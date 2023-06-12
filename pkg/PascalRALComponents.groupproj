@@ -1,0 +1,72 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{39844859-EE38-48FB-93E1-AD54794BBE71}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Delphi\PascalRAL.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Delphi\IndyRAL.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Delphi\SynopseRAL.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Delphi\NetHttpRAL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="PascalRAL">
+        <MSBuild Projects="Delphi\PascalRAL.dproj"/>
+    </Target>
+    <Target Name="PascalRAL:Clean">
+        <MSBuild Projects="Delphi\PascalRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PascalRAL:Make">
+        <MSBuild Projects="Delphi\PascalRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="IndyRAL">
+        <MSBuild Projects="Delphi\IndyRAL.dproj"/>
+    </Target>
+    <Target Name="IndyRAL:Clean">
+        <MSBuild Projects="Delphi\IndyRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="IndyRAL:Make">
+        <MSBuild Projects="Delphi\IndyRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SynopseRAL">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj"/>
+    </Target>
+    <Target Name="SynopseRAL:Clean">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SynopseRAL:Make">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="NetHttpRAL">
+        <MSBuild Projects="Delphi\NetHttpRAL.dproj"/>
+    </Target>
+    <Target Name="NetHttpRAL:Clean">
+        <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="NetHttpRAL:Make">
+        <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="PascalRAL;IndyRAL;SynopseRAL;NetHttpRAL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="PascalRAL:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="PascalRAL:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
