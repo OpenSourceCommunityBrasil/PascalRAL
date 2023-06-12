@@ -37,6 +37,7 @@ contains
   RALRoutes in '..\..\src\base\RALRoutes.pas',
   RALServer in '..\..\src\base\RALServer.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
-  RALConsts in '..\..\src\base\RALConsts.pas';
+  RALConsts in '..\..\src\base\RALConsts.pas',
+  RALTypes in '..\..\src\base\RALTypes.pas';
 
 end.

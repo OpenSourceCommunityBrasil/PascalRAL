@@ -4,54 +4,57 @@ interface
 
 uses
   Classes, SysUtils,
-  RALAuthentication, RALCrypto, RALRoutes;
+  RALAuthentication, RALRoutes, RALTypes;
 
 type
   TRALRequest = class
   private
     FHeaders: TStringList;
     FBody: TStream;
-    FContentType: string;
-    FContentSize: integer;
-    FQuery: string;
+    FContentType: StringRAL;
+    FContentSize: IntegerRAL;
+    FQuery: StringRAL;
     procedure SetBody(const Value: TStream);
     procedure SetHeaders(const Value: TStringList);
-    procedure SetContentSize(const Value: integer);
-    procedure SetContentType(const Value: string);
-    procedure SetQuery(const Value: string);
+    procedure SetContentSize(const Value: IntegerRAL);
+    procedure SetContentType(const Value: StringRAL);
+    procedure SetQuery(const Value: StringRAL);
   public
     property Body: TStream read FBody write SetBody;
-    property ContentSize: integer read FContentSize write SetContentSize;
-    property ContentType: string read FContentType write SetContentType;
+    property ContentSize: IntegerRAL read FContentSize write SetContentSize;
+    property ContentType: StringRAL read FContentType write SetContentType;
     property Headers: TStringList read FHeaders write SetHeaders;
-    property Query: string read FQuery write SetQuery;
+    property Query: StringRAL read FQuery write SetQuery;
   end;
 
   TRALResponse = class
   private
     FHeaders: TStringList;
     FBody: TStream;
-    FContentType: string;
+    FContentType: StringRAL;
     procedure SetBody(const Value: TStream);
-    procedure SetContentType(const Value: string);
+    procedure SetContentType(const Value: StringRAL);
     procedure SetHeaders(const Value: TStringList);
   public
     property Body: TStream read FBody write SetBody;
-    property ContentType: string read FContentType write SetContentType;
+    property ContentType: StringRAL read FContentType write SetContentType;
     property Headers: TStringList read FHeaders write SetHeaders;
   end;
 
   TRALServer = class(TComponent)
   private
-    FPort: integer;
+    FPort: IntegerRAL;
     FAuthentication: TRALAuthentication;
     FRoutes: TRALRoutes;
+    FRequest: TRALRequest;
+    FResponse: TRALResponse;
   public
     constructor Create;
     destructor Destroy; override;
+  published
     property Authentication: TRALAuthentication read FAuthentication
       write FAuthentication;
-    property Port: integer read FPort write FPort;
+    property Port: IntegerRAL read FPort write FPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
   end;
 
@@ -84,12 +87,12 @@ begin
   FBody := Value;
 end;
 
-procedure TRALRequest.SetContentSize(const Value: integer);
+procedure TRALRequest.SetContentSize(const Value: IntegerRAL);
 begin
   FContentSize := Value;
 end;
 
-procedure TRALRequest.SetContentType(const Value: string);
+procedure TRALRequest.SetContentType(const Value: StringRAL);
 begin
   FContentType := Value;
 end;
@@ -99,7 +102,7 @@ begin
   FHeaders := Value;
 end;
 
-procedure TRALRequest.SetQuery(const Value: string);
+procedure TRALRequest.SetQuery(const Value: StringRAL);
 begin
   FQuery := Value;
 end;
@@ -111,7 +114,7 @@ begin
   FBody := Value;
 end;
 
-procedure TRALResponse.SetContentType(const Value: string);
+procedure TRALResponse.SetContentType(const Value: StringRAL);
 begin
   FContentType := Value;
 end;

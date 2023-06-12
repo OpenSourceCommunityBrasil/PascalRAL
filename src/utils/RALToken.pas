@@ -3,22 +3,22 @@ unit RALToken;
 interface
 
 uses
-  Classes;
+  Classes, RALTypes;
 
 type
   TTokenCryptTypes = (tctHSHA256, tctHSHA512);
 
   TJWT = class
   private
-    FHeader: string;
-    FPayload: string;
-    FSignature: string;
-    FToken: string;
+    FHeader: StringRAL;
+    FPayload: StringRAL;
+    FSignature: StringRAL;
+    FToken: StringRAL;
     FClaims: TStringList;
   public
-    property Header: string read FHeader;
-    property Payload: string read FPayload;
-    property Token: string read FToken;
+    property Header: StringRAL read FHeader;
+    property Payload: StringRAL read FPayload;
+    property Token: StringRAL read FToken;
   end;
 
 implementation

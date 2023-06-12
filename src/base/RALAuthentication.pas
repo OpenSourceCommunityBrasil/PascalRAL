@@ -4,7 +4,7 @@ interface
 
 uses
   Classes,
-  RALToken;
+  RALToken, RALTypes;
 
 type
   TRALAuthentication = class(TPersistent)
@@ -17,31 +17,34 @@ type
 
   TRALBasicAuth = class(TRALAuthentication)
   private
-    FUserName: string;
-    FPassword: string;
+    FUserName: StringRAL;
+    FPassword: StringRAL;
   public
 
   published
-    property UserName: string read FUserName write FUserName;
-    property Password: string read FPassword write FPassword;
+    property UserName: StringRAL read FUserName write FUserName;
+    property Password: StringRAL read FPassword write FPassword;
   end;
 
   TRALJWTAuth = class(TRALAuthentication)
   private
     FToken: TJWT;
+    FHeader: TStringList;
+    FPayload: TStringList;
+    FSignature: StringRAL;
   public
-    function GetToken(aJSONParams: string): string;
-    function RenewToken(aToken: string; aJSONParams: string): string;
+    function GetToken(aJSONParams: string): StringRAL;
+    function RenewToken(aToken: string; aJSONParams: string): StringRAL;
   end;
 
-  TRALOAuthAuth = class(TRALAuthentication)
+  TRALOAuth = class(TRALAuthentication)
   private
 
   public
 
   end;
 
-  TRALOAuth2Auth = class(TRALAuthentication)
+  TRALOAuth2 = class(TRALAuthentication)
   private
 
   public
@@ -49,5 +52,18 @@ type
   end;
 
 implementation
+
+{ TRALAuthentication }
+
+constructor TRALAuthentication.Create;
+begin
+
+end;
+
+destructor TRALAuthentication.Destroy;
+begin
+
+  inherited;
+end;
 
 end.

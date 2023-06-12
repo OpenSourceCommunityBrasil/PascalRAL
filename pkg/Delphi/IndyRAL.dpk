@@ -31,7 +31,6 @@ requires
   rtl;
 
 contains
-  IndyRAL in '..\..\src\engine\IndyRAL.pas',
-  RALClient in '..\..\src\base\RALClient.pas';
+  IndyRAL in '..\..\src\engine\IndyRAL.pas';
 
 end.
