@@ -1,5 +1,5 @@
-name: Form Bug Report en-us
-description: "[EN-US] Submit an error report."
+name: "[EN-US] Form Bug Report"
+description: "Submit an error report."
 title: "[Bug]: "
 labels: ["vcs: Error"]
 body:
