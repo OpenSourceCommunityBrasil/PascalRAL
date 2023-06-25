@@ -1,7 +1,7 @@
 name: "[PT-BR] Formulário de sugestão"
 description: Preencher um relatório de sugestão de mudança.
 title: "[Feature Request]: "
-labels: ["vcs: New Resource"]
+labels: ["vcs: New Feature"]
 body:
   - type: markdown
     attributes:
