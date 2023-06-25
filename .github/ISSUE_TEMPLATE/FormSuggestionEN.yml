@@ -1,7 +1,7 @@
 name: "[EN-US] Feature Suggestion Form"
 description: Fill a form to propose a new feature or change.
 title: "[Feature Request]: "
-labels: ["vcs: New Resource"]
+labels: ["vcs: New Feature"]
 body:
   - type: markdown
     attributes:
