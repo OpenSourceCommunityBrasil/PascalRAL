@@ -1,0 +1,49 @@
+name: "[EN-US] Feature Suggestion Form"
+description: Fill a form to propose a new feature or change.
+title: "[Feature Request]: "
+labels: ["vcs: New Feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill all the required fields below to make a suggestion of a function or change that you would like in the project.
+  - type: textarea
+    id: descricao-sugestao
+    attributes:
+      label: "Suggestion Description"
+      description: "A short concise text describing in details the suggestion."
+      placeholder: "A short concise text describing in details the suggestion."
+    validations:
+      required: true
+  - type: textarea
+    id: anexos
+    attributes:
+      label: "Assets"
+      description: "Pictures, short videos or any file that helps describe the suggestion."
+      placeholder: "Pictures, short videos or any file that helps describe the suggestion."
+    validations:
+      required: true
+  - type: textarea
+    id: motivo
+    attributes:
+      label: "Reason for the suggestion"
+      description: "Describe the reason why you think this should be implemented."
+      placeholder: "Describe the reason why you think this should be implemented."
+    validations:
+      required: false
+  - type: textarea
+    id: informacoes
+    attributes:
+      label: "Additional Info"
+      description: "Any additional information not necessarily related to the suggestion that you want to add."
+      placeholder: "Any additional information not necessarily related to the suggestion that you want to add."
+    validations:
+      required: false
+  - type: input
+    id: relator
+    attributes:
+      label: "Referral"
+      description: "In case this suggestion wasn't made by you but you're filling in the form for someone else, please provide his/hers telegram tag here."
+      placeholder: "ex. FulanoDeTal @fulanodt"
+    validations:
+      required: false

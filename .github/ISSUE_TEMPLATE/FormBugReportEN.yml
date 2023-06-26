@@ -1,0 +1,96 @@
+name: "[EN-US] Form Bug Report"
+description: "Submit an error report."
+title: "[Bug]: "
+labels: ["vcs: Error"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill all the required fields below to report an error.
+  - type: textarea
+    id: descricao-bug
+    attributes:
+      label: "Bug Description"
+      description: "Describe in details how, when and where the bug happens."
+      placeholder: "Describe in details how, when and where the bug happens."
+    validations:
+      required: true
+  - type: textarea
+    id: passos-bug
+    attributes:
+      label: "Steps to reproduce the bug"
+      description: "Describe the steps required to reproduce the issue found."
+      placeholder: |
+        example
+        1. Go to '...'
+        2. Click on '....'
+        3. do '....'
+        4. Error
+    validations:
+      required: true      
+  - type: textarea
+    id: expectativa-bug
+    attributes:
+      label: "Expected behavior"
+      description: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
+      placeholder: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
+    validations:
+      required: false       
+  - type: textarea
+    id: imagens-bug
+    attributes:
+      label: "Pictures of the issue"
+      description: "Paste or drag here pictures of the issue."
+      placeholder: "Paste or drag here pictures of the issue."
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        Required technical informations:
+  - type: dropdown
+    id: version
+    attributes:
+      label: "RAL Version:"
+      description: "Choose the version of the components where the issue happens."
+      options:
+        - 1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: IDE
+    attributes:
+      label: "IDE:"
+      description: "Choose the IDE Version where the issue occurs."
+      options:
+        - Delphi 11.+
+        - Delphi 10.0~10.4
+        - Delphi XE~XE8
+        - Delphi 2006~2010
+        - Delphi 7
+        - Lazarus 2.2+
+        - Lazarus < 2.2 
+    validations:
+      required: true
+  - type: dropdown
+    id: OS
+    attributes:
+      label: "Operating System:"
+      description: "Choose the proper OS where the issue happens."
+      options:
+        - Windows
+        - Linux
+        - MacOS
+        - Android
+        - iOS
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: relator
+    attributes:
+      label: "Referral"
+      description: "In case you're posting an issue found by someone else, state here his/hers telegram account tag so we can contact him/her if needed."
+      placeholder: "ex. FulanoDeTal @fulanodt"
+    validations:
+      required: false
