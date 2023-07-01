@@ -66,4 +66,16 @@ begin
   inherited;
 end;
 
+{ TRALJWTAuth }
+
+function TRALJWTAuth.GetToken(aJSONParams: string): StringRAL;
+begin
+
+end;
+
+function TRALJWTAuth.RenewToken(aToken, aJSONParams: string): StringRAL;
+begin
+
+end;
+
 end.
