@@ -153,15 +153,18 @@ procedure TRALIndyServer.EncodeParams(AResponse: TRALResponse;
 var
   vMultPart : TIdMultiPartFormDataStream;
   vInt : integer;
+  vStream : TStream;
 begin
   vMultPart := TIdMultiPartFormDataStream.Create;
   try
     vInt := 0;
     while vInt < AResponse.Body.Count do begin
+      vStream := AResponse.Body.Param[vInt].AsStream;
       vMultPart.AddFormField(AResponse.Body.Param[vInt].ParamName,
                              AResponse.Body.Param[vInt].ContentType,
                              '', // charset
-                             AResponse.Body.Param[vInt].Content);
+                             vStream);
+      FreeAndNil(vStream);
       vInt := vInt + 1;
     end;
 
@@ -274,8 +277,10 @@ begin
             EncodeParams(vResponse,AResponseInfo);
           end
           else begin
-            ContentStream.CopyFrom(vResponse.Body.Param[0].Content,
-                                   vResponse.Body.Param[0].ContentSize);
+            if vResponse.Body.Param[0].IsString then
+              ContentText := vResponse.Body.Param[0].AsString
+            else
+              ContentStream := vResponse.Body.Param[0].AsStream;
           end;
         end;
 

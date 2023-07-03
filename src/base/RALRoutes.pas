@@ -12,26 +12,28 @@ type
   TRALRoute = class(TCollectionItem)
   private
     FDisplayName : StringRAL;
-    FSubDomain: StringRAL;
-    FEndpoint: StringRAL;
+    FDocument : StringRAL;
     FRouteList: TRALRoutes;
+    function getFullDocument: StringRAL;
   protected
     function GetDisplayName: string; override;
     procedure SetDisplayName(const Value: string); override;
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
+
+    property FullDocument : StringRAL read getFullDocument;
   published
     property DisplayName;
-    property SubDomain: StringRAL read FSubDomain write FSubDomain;
-    property Endpoint: StringRAL read FEndpoint write FEndpoint;
+    property Document: StringRAL read FDocument write FDocument;
     property RouteList: TRALRoutes read FRouteList write FRouteList;
   end;
 
   TRALRoutes = class(TOwnedCollection)
   protected
     function getRoute(address: string): TRALRoute;
-    function findRoute(subdomain, address : string) : TRALRoute;
+    function findRoute(subdomain, address : string; partial : boolean = false) : TRALRoute;
+    function fixAddress(address : string) : string;
   public
     constructor Create(AOwner : TPersistent);
     property RouteAddress[Address : string] : TRALRoute read getRoute;
@@ -41,11 +43,11 @@ implementation
 
 { TRALRoutes }
 
-constructor TRALRoute.Create;
+constructor TRALRoute.Create(Collection: TCollection);
 begin
   inherited;
   FDisplayName := GetNamePath;
-  FRouteList := TRALRoutes.Create(Collection);
+  FRouteList := TRALRoutes.Create(Self);
   Changed(False);
 end;
 
@@ -60,6 +62,19 @@ begin
   Result := GetNamePath;
   if FDisplayName <> '' then
     Result := FDisplayName;
+end;
+
+function TRALRoute.getFullDocument: StringRAL;
+begin
+  Result := '';
+  if (Collection <> nil) and (Collection.Owner is TRALRoute) then
+    Result := TRALRoute(Collection.Owner).FullDocument;
+
+  if Result <> '' then
+    Result := Result + '/';
+
+  Result := '/' + Result + FDocument + '/';
+  Result := TRALRoutes(Collection).fixAddress(Result);
 end;
 
 procedure TRALRoute.SetDisplayName(const Value: string);
@@ -78,50 +93,62 @@ begin
   inherited Create(AOwner,TRALRoute);
 end;
 
-function TRALRoutes.findRoute(subdomain, address: string): TRALRoute;
+function TRALRoutes.findRoute(subdomain, address: string; partial : boolean): TRALRoute;
 var
   vInt : integer;
   vRoute : TRALRoute;
   vResp : TRALRoute;
-  vaddress : string;
-
-  function fixAddress(addr : string) : string;
-  var
-    vAddr : string;
-  begin
-    vAddr := '/'+addr+'/';
-    while Pos('//',vAddr) > 0 do
-      vAddr := ReplaceStr(vAddr,'//','/');
-
-    fixAddress := vAddr;
-  end;
-
+  vaddr1, vaddr2 : string;
+  vpart : boolean;
 begin
   address := fixAddress(address);
 
   Result := nil;
   vInt := 0;
+  vpart := False;
+  vResp := nil;
+
   while vInt < Count do begin
     vRoute := TRALRoute(Items[vInt]);
-    vaddress := fixAddress(subdomain + vRoute.Endpoint);
+    vaddr1 := fixAddress(subdomain + vRoute.Document);
+    vaddr2 := Copy(address,1,Length(vaddr1));
     if vRoute.RouteList.Count = 0 then begin
-      if SameText(vaddress,address) then
+      if SameText(vaddr1,address) then begin
         vResp := vRoute;
+        vpart := False;
+      end
+      else if (partial) and SameText(vaddr1,vaddr2) then begin
+        vResp := vRoute;
+        vpart := True;
+      end;
     end
     else begin
-      vResp := vRoute.RouteList.findRoute(vaddress,address);
+      vResp := vRoute.RouteList.findRoute(vaddr1,address,partial);
     end;
 
-    if vResp <> nil then begin
+    if (vResp <> nil) and (not vpart) then begin
       Result := vResp;
       Break;
     end;
+    vInt := vInt + 1;
   end;
+
+  if (Result = nil) and (vResp <> nil) then
+    Result := vResp;
+end;
+
+function TRALRoutes.fixAddress(address: string): string;
+begin
+  Result := '/'+address+'/';
+  while Pos('//',Result) > 0 do
+    Result := ReplaceStr(Result,'//','/');
 end;
 
 function TRALRoutes.getRoute(address: string): TRALRoute;
 begin
-  Result := findRoute('',address);
+  Result := findRoute('',address,False);
+  if Result = nil then
+    Result := findRoute('',address,True);
 end;
 
 end.

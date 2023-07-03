@@ -14,6 +14,7 @@ type
   StringRAL = string;
   Int64RAL = int64;
   DoubleRAL = double;
+  CharRAL = char;
 
 implementation
 

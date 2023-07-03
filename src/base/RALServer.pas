@@ -26,9 +26,13 @@ type
     FParamName : StringRAL;
     FContentType: StringRAL;
     FContent : TMemoryStream;
+    FIsString : boolean;
   protected
     function GetAsString: StringRAL;
     procedure SetAsString(const Value: StringRAL);
+
+    function GetAsStream: TStream;
+    procedure SetAsStream(const Value: TStream);
 
     function GetContentSize: Int64RAL;
   public
@@ -38,8 +42,9 @@ type
     property ParamName: StringRAL read FParamName write FParamName;
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
-    property Content: TMemoryStream read FContent write FContent;
+    property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
+    property IsString: boolean read FIsString;
   end;
 
   TRALParams = class
@@ -116,8 +121,11 @@ type
     FAuthentication: TRALAuthentication;
     FRoutes: TRALRoutes;
     FOnClientRequest : TRALOnClientRequest;
+    FServerStatus : TStringList;
+    FShowServerStatus : boolean;
   protected
     procedure SetActive(const Value: boolean); virtual;
+    procedure WriteServerStatus; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -129,6 +137,8 @@ type
       write FAuthentication;
     property Port: IntegerRAL read FPort write FPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
+    property ServerStatus : TStringList read FServerStatus write FServerStatus;
+    property ShowServerStatus : boolean read FShowServerStatus write FShowServerStatus;
 
     property OnClientRequest : TRALOnClientRequest read FOnClientRequest write FOnClientRequest;
   end;
@@ -143,6 +153,9 @@ begin
   FPort := 8000;
   FAuthentication := nil;
   FRoutes := TRALRoutes.Create(Self);
+  FServerStatus := TStringList.Create;
+  FShowServerStatus := True;
+  WriteServerStatus;
 end;
 
 destructor TRALServer.Destroy;
@@ -150,13 +163,15 @@ begin
   if Assigned(FAuthentication) then
     FreeAndNil(FAuthentication);
 
-  if Assigned(FRoutes) then
-    FreeAndNil(FRoutes);
+  FreeAndNil(FRoutes);
+  FreeAndNil(FServerStatus);
 
   inherited;
 end;
 
 function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
+var
+  vRoute : TRALRoute;
 begin
   Result := TRALResponse.Create;
   Result.RespCode := 200;
@@ -164,12 +179,39 @@ begin
   if Assigned(OnClientRequest) then
     OnClientRequest(ARequest,Result);
 
-  Result.Body.AddParam('result','teste');
+  vRoute := FRoutes.RouteAddress[ARequest.Query];
+
+  if (vRoute = nil) then begin
+    if (ARequest.Query = '/') and (FShowServerStatus) then begin
+      Result.ContentType := 'text/html';
+      Result.Body.AddParam('html',FServerStatus.Text);
+    end
+    else begin
+      Result.RespCode := 404;
+      Result.ContentType := 'text/html';
+    end;
+  end
+  else begin
+    Result.ContentType := 'text/html';
+    Result.Body.AddParam('result',vRoute.FullDocument);
+  end;
 end;
 
 procedure TRALServer.SetActive(const Value: boolean);
 begin
   FActive := Value;
+end;
+
+procedure TRALServer.WriteServerStatus;
+begin
+  with FServerStatus do begin
+    Clear;
+    Add('<html>');
+    Add('<body>');
+    Add('<h1>Server OnLine</h1>');
+    Add('</body>');
+    Add('</html>');
+  end;
 end;
 
 { TRALRequest }
@@ -216,7 +258,6 @@ end;
 constructor TRALResponse.Create;
 begin
   inherited;
-
   FHeaders := TStringList.Create;
   FContentType := 'text/plain';
   FBody := TRALParams.Create;
@@ -271,12 +312,25 @@ begin
   inherited;
 end;
 
+function TRALParam.GetAsStream: TStream;
+begin
+  Result := TMemoryStream.Create;
+  Result.CopyFrom(FContent,FContent.Size);
+  Result.Position := 0;
+end;
+
 function TRALParam.GetAsString: StringRAL;
+var
+  vLen : integer;
 begin
   Result := '';
   if FContent.Size > 0 then begin
+    vLen := (FContent.Size div SizeOf(CharRAL)) - 1;
+    FContent.Position := 0;
     SetLength(Result,FContent.Size);
-    FContent.Read(Result[1],FContent.Size)
+    FContent.Read(Result[1],FContent.Size);
+
+    FContent.Position := 0;
   end;
 end;
 
@@ -285,11 +339,26 @@ begin
   Result := FContent.Size;
 end;
 
-procedure TRALParam.SetAsString(const Value: StringRAL);
+procedure TRALParam.SetAsStream(const Value: TStream);
 begin
+  Value.Position := 0;
+  FContent.CopyFrom(Value,Value.Size);
+  FIsString := False;
+  FContent.Position := 0;
+end;
+
+procedure TRALParam.SetAsString(const Value: StringRAL);
+var
+  vLen : integer;
+begin
+  vLen := (Length(Value)+1)*SizeOf(CharRAL);
+
   FContent.Size := 0;
   FContent.Position := 0;
-  FContent.Write(Value[1],Length(Value));
+  FContent.Write(Value[1],vLen);
+
+  FContent.Position := 0;
+  FIsString := True;
 end;
 
 { TRALParams }
@@ -313,7 +382,7 @@ begin
     Result := NewParam;
 
   Result.ParamName := AName;
-  Result.Content.CopyFrom(AContent,AContent.Position);
+  Result.AsStream := AContent;
   Result.ContentType := AType;
 end;
 
