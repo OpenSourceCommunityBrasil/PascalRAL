@@ -142,7 +142,7 @@ begin
   inherited;
   FPort := 8000;
   FAuthentication := nil;
-  FRoutes := nil;
+  FRoutes := TRALRoutes.Create(Self);
 end;
 
 destructor TRALServer.Destroy;
