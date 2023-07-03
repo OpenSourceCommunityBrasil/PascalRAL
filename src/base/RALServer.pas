@@ -27,8 +27,8 @@ type
     FContentType: StringRAL;
     FContent : TMemoryStream;
   protected
-    function GetAsString: AnsiString;
-    procedure SetAsString(const Value: AnsiString);
+    function GetAsString: StringRAL;
+    procedure SetAsString(const Value: StringRAL);
 
     function GetContentSize: Int64RAL;
   public
@@ -39,25 +39,28 @@ type
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
     property Content: TMemoryStream read FContent write FContent;
-    property AsString: AnsiString read GetAsString write SetAsString;
+    property AsString: StringRAL read GetAsString write SetAsString;
   end;
 
   TRALParams = class
   private
     FParams : TList;
+  protected
     function GetParam(idx: integer): TRALParam;
+    function GetParamName(name: StringRAL): TRALParam;
   public
     constructor Create;
     destructor Destroy; override;
 
     function Count : integer;
-    function AddParam(AName, AContent : string; AType : string = 'text/plain') : TRALParam; overload;
-    function AddParam(AName : string; AContent : TStream; AType : string = 'application/octed') : TRALParam; overload;
+    function AddParam(AName, AContent : StringRAL; AType : StringRAL = 'text/plain') : TRALParam; overload;
+    function AddParam(AName : StringRAL; AContent : TStream; AType : StringRAL = 'application/octed') : TRALParam; overload;
     function NewParam : TRALParam;
 
     procedure ClearParams;
 
     property Param[idx : integer] : TRALParam read GetParam;
+    property ParamName[name : StringRAL] : TRALParam read GetParamName;
   end;
 
   TRALRequest = class
@@ -88,31 +91,23 @@ type
   TRALResponse = class
   private
     FHeaders: TStringList;
-    FBody: TStream;
+    FBody: TRALParams;
     FContentType: StringRAL;
-    FContentSize: Int64RAL;
-    FContent: StringRAL;
-    FRawContent: TStream;
+    FRespCode : IntegerRAL;
   protected
-    procedure SetBody(const Value: TStream);
     procedure SetContentType(const Value: StringRAL);
     procedure SetHeaders(const Value: TStringList);
-    procedure SetContent(const Value: StringRAL);
-    procedure SetRawContent(const Value: TStream);
-    procedure SetContentSize(const Value: Int64RAL);
   public
     constructor Create;
     destructor Destroy; override;
 
-    property Body: TStream read FBody write SetBody;
-    property Content: StringRAL read FContent write SetContent;
+    property Body: TRALParams read FBody;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property ContentSize: Int64RAL read FContentSize write SetContentSize;
     property Headers: TStringList read FHeaders write SetHeaders;
-    property RawContent: TStream read FRawContent write SetRawContent;
+    property RespCode: IntegerRAL read FRespCode write FRespCode;
   end;
 
-  TRALOnClientRequest = procedure(AResquest : TRALRequest; var AResponse : TRALResponse) of object;
+  TRALOnClientRequest = procedure(ARequest : TRALRequest; var AResponse : TRALResponse) of object;
 
   TRALServer = class(TComponent)
   private
@@ -164,12 +159,12 @@ end;
 function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 begin
   Result := TRALResponse.Create;
+  Result.RespCode := 200;
 
   if Assigned(OnClientRequest) then
     OnClientRequest(ARequest,Result);
 
-  Result.Content := 'teste';
-  Result.ContentSize := 5;
+  Result.Body.AddParam('result','teste');
 end;
 
 procedure TRALServer.SetActive(const Value: boolean);
@@ -223,30 +218,15 @@ begin
   inherited;
 
   FHeaders := TStringList.Create;
-  FContentSize := 0;
-//  FBody: TStream;
-//  FRawContent: TStream;
+  FContentType := 'text/plain';
+  FBody := TRALParams.Create;
 end;
 
 destructor TRALResponse.Destroy;
 begin
   FHeaders.Free;
+  FBody.Free;
   inherited;
-end;
-
-procedure TRALResponse.SetBody(const Value: TStream);
-begin
-  FBody := Value;
-end;
-
-procedure TRALResponse.SetContent(const Value: StringRAL);
-begin
-  FContent := Value;
-end;
-
-procedure TRALResponse.SetContentSize(const Value: Int64RAL);
-begin
-  FContentSize := Value;
 end;
 
 procedure TRALResponse.SetContentType(const Value: StringRAL);
@@ -257,11 +237,6 @@ end;
 procedure TRALResponse.SetHeaders(const Value: TStringList);
 begin
   FHeaders := Value;
-end;
-
-procedure TRALResponse.SetRawContent(const Value: TStream);
-begin
-  FRawContent := Value;
 end;
 
 { TRALClientInfo }
@@ -296,7 +271,7 @@ begin
   inherited;
 end;
 
-function TRALParam.GetAsString: AnsiString;
+function TRALParam.GetAsString: StringRAL;
 begin
   Result := '';
   if FContent.Size > 0 then begin
@@ -310,7 +285,7 @@ begin
   Result := FContent.Size;
 end;
 
-procedure TRALParam.SetAsString(const Value: AnsiString);
+procedure TRALParam.SetAsString(const Value: StringRAL);
 begin
   FContent.Size := 0;
   FContent.Position := 0;
@@ -319,18 +294,24 @@ end;
 
 { TRALParams }
 
-function TRALParams.AddParam(AName, AContent, AType: string): TRALParam;
+function TRALParams.AddParam(AName, AContent, AType: StringRAL): TRALParam;
 begin
-  Result := NewParam;
+  Result := ParamName[AName];
+  if Result = nil then
+    Result := NewParam;
+
   Result.ParamName := AName;
   Result.AsString := AContent;
   Result.ContentType := AType;
 end;
 
-function TRALParams.AddParam(AName: string; AContent: TStream;
-  AType: string): TRALParam;
+function TRALParams.AddParam(AName: StringRAL; AContent: TStream;
+  AType: StringRAL): TRALParam;
 begin
-  Result := NewParam;
+  Result := ParamName[AName];
+  if Result = nil then
+    Result := NewParam;
+
   Result.ParamName := AName;
   Result.Content.CopyFrom(AContent,AContent.Position);
   Result.ContentType := AType;
@@ -367,6 +348,25 @@ begin
   Result := nil;
   if (idx >= 0) and (idx < FParams.Count) then
     Result := TRALParam(FParams.Items[idx]);
+end;
+
+function TRALParams.GetParamName(name: StringRAL): TRALParam;
+var
+  idx : integer;
+  vParam : TRALParam;
+begin
+  Result := nil;
+
+  idx := 0;
+  while idx < FParams.Count do begin
+    vParam := TRALParam(FParams.Items[idx]);
+    if SameText(vParam.ParamName,name) then begin
+      Result := vParam;
+      Break;
+    end;
+
+    idx := idx + 1;
+  end;
 end;
 
 function TRALParams.NewParam: TRALParam;
