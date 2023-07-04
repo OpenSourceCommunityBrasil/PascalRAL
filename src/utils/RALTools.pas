@@ -43,7 +43,7 @@ begin
   Result := '';
   if Length(b) > 0 then
   begin
-    SetLength(Result, Length(b);
+    SetLength(Result, Length(b));
     Move(b[0], Result[PosIniStr], Length(b));
   end;
 end;
