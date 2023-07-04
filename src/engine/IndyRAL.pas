@@ -50,6 +50,20 @@ begin
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
+
+  FHttp.Bindings.Clear;
+
+  with FHttp.Bindings.Add do begin
+    IP := '0.0.0.0';
+    Port := Self.Port;
+    IPVersion := Id_IPv4;
+  end;
+
+  with FHttp.Bindings.Add do begin
+    IP := '::';
+    Port := Self.Port;
+    IPVersion := Id_IPv6;
+  end;
 end;
 
 procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
