@@ -57,10 +57,9 @@ type
 
     function Count: IntegerRAL;
     function AddParam(AName, AContent: StringRAL;
-      AType: StringRAL = TRALContentType.ctTEXTPLAIN): TRALParam; overload;
+                      AType: StringRAL = TRALContentType.ctTEXTPLAIN): TRALParam; overload;
     function AddParam(AName: StringRAL; AContent: TStream;
-      AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM)
-      : TRALParam; overload;
+                      AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM) : TRALParam; overload;
     function NewParam: TRALParam;
 
     procedure ClearParams;
@@ -116,8 +115,7 @@ type
   end;
 
   TRALRoutes = class;
-  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest;
-    var AResponse: TRALResponse) of object;
+  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; var AResponse: TRALResponse) of object;
 
   TRALRoute = class(TCollectionItem)
   private
@@ -145,11 +143,9 @@ type
     property RouteList: TRALRoutes read FRouteList write FRouteList;
 
     // verbos que a rota responde
-    property AllowedMethods: TRALMethods read FAllowedMethods
-      write FAllowedMethods;
+    property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
     // verbos que vão ignorar autenticação
-    property SkipAuthMethods: TRALMethods read FSkipAuthMethods
-      write FSkipAuthMethods;
+    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
     // se for uma rota de callback pra OAuth
     property Callback: Boolean read FCallback write FCallback;
     property OnReply: TRALOnReply read FOnReply write FOnReply;
@@ -158,8 +154,7 @@ type
   TRALRoutes = class(TOwnedCollection)
   protected
     function getRoute(address: StringRAL): TRALRoute;
-    function findRoute(subdomain, address: StringRAL; partial: Boolean = false)
-      : TRALRoute;
+    function findRoute(subdomain, address: StringRAL; partial: Boolean = false) : TRALRoute;
     function fixAddress(address: StringRAL): StringRAL;
   public
     constructor Create(AOwner: TPersistent);

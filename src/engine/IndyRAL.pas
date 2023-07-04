@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALServer, RALClient, RALTypes, RALMIMETypes,
+  RALServer, RALClient, RALTypes, RALMIMETypes, RALRoutes,
   IdHTTPServer, IdHTTP, IdContext, IdCustomHTTPServer, IdMultipartFormData,
   IdMessageCoder, IdGlobalProtocols, IdMessageCoderMIME, IdGlobal,
   IdServerIOHandler, IdSSL, IdSSLOpenSSL;
@@ -28,13 +28,12 @@ type
     procedure SetActive(const Value: boolean); override;
     procedure SetPort(const Value: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
-    procedure DecodeParams(var ARequest: TRALRequest;
-      ARequestInfo: TIdHTTPRequestInfo);
-    procedure EncodeParams(AResponse: TRALResponse;
-      AResponseInfo: TIdHTTPResponseInfo);
+    procedure DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
+    procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo);
 
     procedure OnCommandProcess(AContext: TIdContext;
-      ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
+                               ARequestInfo: TIdHTTPRequestInfo;
+                               AResponseInfo: TIdHTTPResponseInfo);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -82,8 +81,7 @@ var
   vBoundaryFound, vIsStartBoundary, vMsgEnd: boolean;
   vStream: TMemoryStream;
 begin
-  vBoundary := ExtractHeaderSubItem(ARequest.ContentType, 'boundary',
-    QuoteHTTP);
+  vBoundary := ExtractHeaderSubItem(ARequest.ContentType, 'boundary', QuoteHTTP);
   if vBoundary = '' then
     Exit;
 
@@ -124,7 +122,7 @@ begin
       vDecoder.ReadHeader;
       case vDecoder.PartType of
         mcptText, mcptAttachment:
-          begin
+        begin
             vStream := TMemoryStream.Create;
             try
               vReader := vDecoder.ReadBody(vStream, vMsgEnd);
@@ -144,17 +142,17 @@ begin
 
             FreeAndNil(vDecoder);
             vDecoder := vReader;
-          end;
+        end;
         mcptIgnore:
-          begin
+        begin
             FreeAndNil(vDecoder);
             vDecoder := TIdMessageDecoderMIME.Create(nil);
-          end;
+        end;
         mcptEOF:
-          begin
+        begin
             FreeAndNil(vDecoder);
             vMsgEnd := True;
-          end;
+        end;
       end;
     until (vDecoder = nil) or vMsgEnd;
   finally
@@ -164,7 +162,8 @@ end;
 
 destructor TRALIndyServer.Destroy;
 begin
-  FHttp.Active := False;
+  if FHttp.Active then
+    FHttp.Active := False;
 
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
@@ -185,8 +184,9 @@ begin
     begin
       vStream := AResponse.Body.Param[vInt].AsStream;
       vMultPart.AddFormField(AResponse.Body.Param[vInt].ParamName,
-        AResponse.Body.Param[vInt].ContentType, '', // charset
-        vStream);
+                             AResponse.Body.Param[vInt].ContentType,
+                             '', // charset
+                             vStream);
       FreeAndNil(vStream);
       vInt := vInt + 1;
     end;
@@ -279,13 +279,11 @@ begin
           vStr1 := ARequestInfo.UnparsedParams;
       end;
 
-      if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0)
-      then
+      if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0) then
       begin
         if SameText(ContentType, TRALContentType.ctTEXTPLAIN) then
         begin
-          Params.AddParam('ral_body', ARequestInfo.PostStream,
-            TRALContentType.ctTEXTPLAIN);
+          Params.AddParam('ral_body', ARequestInfo.PostStream, TRALContentType.ctTEXTPLAIN);
         end
         else if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
         begin
@@ -319,8 +317,7 @@ begin
           vInt := vInt + 1;
         end;
 
-        if (vResponse.Body.Count > 0) then
-        begin
+        if (vResponse.Body.Count > 0) then begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
           begin
             EncodeParams(vResponse, AResponseInfo);
@@ -366,15 +363,13 @@ begin
   FHttp.DefaultPort := Value;
   FHttp.Bindings.Clear;
 
-  with FHttp.Bindings.Add do
-  begin
+  with FHttp.Bindings.Add do begin
     IP := '0.0.0.0';
     Port := Value;
     IPVersion := Id_IPv4;
   end;
 
-  with FHttp.Bindings.Add do
-  begin
+  with FHttp.Bindings.Add do begin
     IP := '::';
     Port := Value;
     IPVersion := Id_IPv6;

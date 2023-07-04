@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes;
+  RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts;
 
 type
   TRALSSL = class
@@ -38,17 +38,14 @@ type
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
-    property Authentication: TRALAuthentication read FAuthentication
-      write FAuthentication;
+    property Authentication: TRALAuthentication read FAuthentication write FAuthentication;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
-    property ShowServerStatus: boolean read FShowServerStatus
-      write FShowServerStatus;
+    property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
 
-    property OnClientRequest: TRALOnReply read FOnClientRequest
-      write FOnClientRequest;
+    property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
 
 implementation
@@ -162,8 +159,12 @@ begin
   begin
     Clear;
     Add('<html>');
+    Add('<head>');
+    Add('<title>RALServer - '+RALVERSION+'</title>');
+    Add('</head>');
     Add('<body>');
     Add('<h1>Server OnLine</h1>');
+    Add('<h4>Version: '+RALVERSION+'</h4>');
     Add('</body>');
     Add('</html>');
   end;

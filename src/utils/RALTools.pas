@@ -14,7 +14,6 @@ implementation
 function VarToBytes(v: variant): TBytes;
 var
   vTyp: TVarType;
-  vInt: IntegerRAL;
 begin
   vTyp := VarType(v);
 
@@ -28,23 +27,23 @@ begin
         SetLength(Result, 0);
         if v <> '' then
         begin
-          vInt := (Length(v) + 1) * SizeOf(CharRAL);
-          SetLength(Result, vInt);
-          Move(Pointer(@StringRAL(v)[PosIniStr])^, Pointer(Result)^, vInt);
+          {$IFNDEF FPC}
+            Result := TEncoding.ANSI.GetBytes(StringRAL(v));
+          {$ELSE}
+            SetLength(Result, Length(v));
+            Move(Pointer(@StringRAL(v)[PosIniStr])^, Pointer(Result)^, Length(v));
+          {$ENDIF}
         end;
       end;
   end;
 end;
 
 function BytesToString(b: TBytes): StringRAL;
-var
-  vInt: IntegerRAL;
 begin
   Result := '';
   if Length(b) > 0 then
   begin
-    vInt := (Length(b) div SizeOf(CharRAL)) - 1;
-    SetLength(Result, vInt);
+    SetLength(Result, Length(b);
     Move(b[0], Result[PosIniStr], Length(b));
   end;
 end;
