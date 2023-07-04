@@ -4,11 +4,9 @@ interface
 
 uses
   Classes, SysUtils,
-  RALServer, RALClient,
+  RALServer, RALClient, RALTypes,
   IdHTTPServer, IdHTTP, IdContext, IdCustomHTTPServer, IdMultipartFormData,
   IdMessageCoder, IdGlobalProtocols, IdMessageCoderMIME, IdGlobal;
-
-// IdHTTPServer, IdCustomHTTPServer, IdContext, IdSocketHandle, IdGlobal,
 
 type
   TRALIndyServer = class(TRALServer)
@@ -57,9 +55,9 @@ end;
 procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
 var
   vBoundary, vBoundaryStart, vBoundaryEnd,
-  vLine, vName : string;
+  vLine, vName : StringRAL;
 
-  vIdxName : integer;
+  vIdxName : IntegerRAL;
 
   vDecoder, vReader : TIdMessageDecoder;
   vBoundaryFound, vIsStartBoundary, vMsgEnd : boolean;
@@ -183,7 +181,7 @@ var
   vResponse : TRALResponse;
 
   vInt : integer;
-  vStr1, vStr2 : string;
+  vStr1, vStr2 : StringRAL;
   vMultPart : TIdMultiPartFormDataStream;
 begin
   vRequest := TRALRequest.Create;
@@ -194,6 +192,17 @@ begin
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
       Query := ARequestInfo.Document;
+
+      case ARequestInfo.CommandType of
+        hcUnknown: Method := rmGET;
+        hcHEAD   : Method := rmGET;
+        hcGET    : Method := rmGET;
+        hcPOST   : Method := rmPOST;
+        hcDELETE : Method := rmDELETE;
+        hcPUT    : Method := rmPUT;
+        hcTRACE  : Method := rmGET;
+        hcOPTION : Method := rmOPTION;
+      end;
 
       ContentType := ARequestInfo.ContentType;
       ContentSize := ARequestInfo.ContentLength;

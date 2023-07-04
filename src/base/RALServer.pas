@@ -25,7 +25,7 @@ type
   private
     FParamName : StringRAL;
     FContentType: StringRAL;
-    FContent : TMemoryStream;
+    FContent : TStream;
     FIsString : boolean;
   protected
     function GetAsString: StringRAL;
@@ -51,20 +51,20 @@ type
   private
     FParams : TList;
   protected
-    function GetParam(idx: integer): TRALParam;
+    function GetParam(idx: IntegerRAL): TRALParam;
     function GetParamName(name: StringRAL): TRALParam;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function Count : integer;
+    function Count : IntegerRAL;
     function AddParam(AName, AContent : StringRAL; AType : StringRAL = 'text/plain') : TRALParam; overload;
     function AddParam(AName : StringRAL; AContent : TStream; AType : StringRAL = 'application/octed') : TRALParam; overload;
     function NewParam : TRALParam;
 
     procedure ClearParams;
 
-    property Param[idx : integer] : TRALParam read GetParam;
+    property Param[idx : IntegerRAL] : TRALParam read GetParam;
     property ParamName[name : StringRAL] : TRALParam read GetParamName;
   end;
 
@@ -74,6 +74,7 @@ type
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
+    FMethod : TRALMethod;
     FParams: TRALParams;
     FQuery: StringRAL;
   protected
@@ -90,6 +91,7 @@ type
     property ContentSize: Int64RAL read FContentSize write SetContentSize;
     property Headers: TStringList read FHeaders write SetHeaders;
     property Params: TRALParams read FParams;
+    property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
   end;
 
@@ -126,6 +128,7 @@ type
   protected
     procedure SetActive(const Value: boolean); virtual;
     procedure WriteServerStatus; virtual;
+    function ValidateAuth(ARequest : TRALRequest) : boolean;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -192,14 +195,33 @@ begin
     end;
   end
   else begin
-    Result.ContentType := 'text/html';
-    Result.Body.AddParam('result',vRoute.FullDocument);
+    if (not (rmALL in vRoute.AllowedMethods)) and
+       (not (ARequest.Method in vRoute.AllowedMethods)) then begin
+      Result.RespCode := 404;
+      Result.ContentType := 'text/html';
+    end
+    else if (FAuthentication <> nil) and
+            (not (rmALL in vRoute.SkipAuthMethods)) and
+            (not (ARequest.Method in vRoute.SkipAuthMethods)) and
+            (not (ValidateAuth(ARequest))) then begin
+      Result.RespCode := 401;
+      Result.ContentType := 'text/html';
+    end
+    else begin
+      Result.ContentType := 'text/html';
+      Result.Body.AddParam('result',vRoute.FullDocument);
+    end;
   end;
 end;
 
 procedure TRALServer.SetActive(const Value: boolean);
 begin
   FActive := Value;
+end;
+
+function TRALServer.ValidateAuth(ARequest: TRALRequest): boolean;
+begin
+  Result := False;
 end;
 
 procedure TRALServer.WriteServerStatus;
@@ -302,7 +324,7 @@ end;
 constructor TRALParam.Create;
 begin
   inherited;
-  FContent := TMemoryStream.Create;
+  FContent := TBytesStream.Create;
   FContentType := 'text/plain';
 end;
 
@@ -321,7 +343,7 @@ end;
 
 function TRALParam.GetAsString: StringRAL;
 var
-  vLen : integer;
+  vLen : IntegerRAL;
 begin
   Result := '';
   if FContent.Size > 0 then begin
@@ -349,7 +371,7 @@ end;
 
 procedure TRALParam.SetAsString(const Value: StringRAL);
 var
-  vLen : integer;
+  vLen : IntegerRAL;
 begin
   vLen := (Length(Value)+1)*SizeOf(CharRAL);
 
@@ -394,7 +416,7 @@ begin
   end;
 end;
 
-function TRALParams.Count: integer;
+function TRALParams.Count: IntegerRAL;
 begin
   Result := FParams.Count;
 end;
@@ -412,7 +434,7 @@ begin
   inherited;
 end;
 
-function TRALParams.GetParam(idx: integer): TRALParam;
+function TRALParams.GetParam(idx: IntegerRAL): TRALParam;
 begin
   Result := nil;
   if (idx >= 0) and (idx < FParams.Count) then
@@ -421,7 +443,7 @@ end;
 
 function TRALParams.GetParamName(name: StringRAL): TRALParam;
 var
-  idx : integer;
+  idx : IntegerRAL;
   vParam : TRALParam;
 begin
   Result := nil;

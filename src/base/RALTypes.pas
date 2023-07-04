@@ -10,6 +10,9 @@ interface
 }
 
 type
+  TRALMethod = (rmGET, rmPOST, rmPUT, rmPATCH, rmDELETE, rmOPTION, rmALL);
+  TRALMethods = set of TRALMethod;
+
   IntegerRAL = integer;
   StringRAL = string;
   Int64RAL = int64;
