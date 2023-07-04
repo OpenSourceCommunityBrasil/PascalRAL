@@ -58,7 +58,7 @@ begin
   inherited;
   FDisplayName := GetNamePath;
   FRouteList := TRALRoutes.Create(Self);
-  FAllowedMethods := [rmALL];
+  FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
   FCallback := False;
   Changed(False);

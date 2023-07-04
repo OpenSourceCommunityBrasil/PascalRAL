@@ -208,14 +208,14 @@ begin
       Query := ARequestInfo.Document;
 
       case ARequestInfo.CommandType of
-        hcUnknown: Method := rmGET;
-        hcHEAD   : Method := rmGET;
-        hcGET    : Method := rmGET;
-        hcPOST   : Method := rmPOST;
-        hcDELETE : Method := rmDELETE;
-        hcPUT    : Method := rmPUT;
-        hcTRACE  : Method := rmGET;
-        hcOPTION : Method := rmOPTION;
+        hcUnknown: Method := amGET;
+        hcHEAD   : Method := amGET;
+        hcGET    : Method := amGET;
+        hcPOST   : Method := amPOST;
+        hcDELETE : Method := amDELETE;
+        hcPUT    : Method := amPUT;
+        hcTRACE  : Method := amGET;
+        hcOPTION : Method := amOPTION;
       end;
 
       ContentType := ARequestInfo.ContentType;
@@ -293,17 +293,11 @@ begin
         end;
 
         if (vResponse.Body.Count > 0) then begin
-          if SameText(ContentType,'text/plain') then begin
-            ContentText := vResponse.Body.Param[0].AsString;
-          end
-          else if SameText(ContentType,'multipart/form-data') then begin
+          if SameText(ContentType,'multipart/form-data') then begin
             EncodeParams(vResponse,AResponseInfo);
           end
           else begin
-            if vResponse.Body.Param[0].IsString then
-              ContentText := vResponse.Body.Param[0].AsString
-            else
-              ContentStream := vResponse.Body.Param[0].AsStream;
+            ContentStream := vResponse.Body.Param[0].AsStream;
           end;
         end;
 

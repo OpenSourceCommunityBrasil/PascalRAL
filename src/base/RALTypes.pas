@@ -10,7 +10,7 @@ interface
 }
 
 type
-  TRALMethod = (rmGET, rmPOST, rmPUT, rmPATCH, rmDELETE, rmOPTION, rmALL);
+  TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amALL);
   TRALMethods = set of TRALMethod;
 
   IntegerRAL = integer;
@@ -18,6 +18,7 @@ type
   Int64RAL = int64;
   DoubleRAL = double;
   CharRAL = char;
+  PCharRAL = ^CharRAL;
 
 implementation
 

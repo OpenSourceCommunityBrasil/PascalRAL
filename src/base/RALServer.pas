@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALAuthentication, RALRoutes, RALTypes;
+  RALAuthentication, RALRoutes, RALTypes, RALTools;
 
 type
   TRALClientInfo = class
@@ -26,7 +26,6 @@ type
     FParamName : StringRAL;
     FContentType: StringRAL;
     FContent : TStream;
-    FIsString : boolean;
   protected
     function GetAsString: StringRAL;
     procedure SetAsString(const Value: StringRAL);
@@ -44,7 +43,6 @@ type
     property ContentSize: Int64RAL read GetContentSize;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
-    property IsString: boolean read FIsString;
   end;
 
   TRALParams = class
@@ -195,13 +193,13 @@ begin
     end;
   end
   else begin
-    if (not (rmALL in vRoute.AllowedMethods)) and
+    if (not (amALL in vRoute.AllowedMethods)) and
        (not (ARequest.Method in vRoute.AllowedMethods)) then begin
       Result.RespCode := 404;
       Result.ContentType := 'text/html';
     end
     else if (FAuthentication <> nil) and
-            (not (rmALL in vRoute.SkipAuthMethods)) and
+            (not (amALL in vRoute.SkipAuthMethods)) and
             (not (ARequest.Method in vRoute.SkipAuthMethods)) and
             (not (ValidateAuth(ARequest))) then begin
       Result.RespCode := 401;
@@ -342,12 +340,9 @@ begin
 end;
 
 function TRALParam.GetAsString: StringRAL;
-var
-  vLen : IntegerRAL;
 begin
   Result := '';
   if FContent.Size > 0 then begin
-    vLen := (FContent.Size div SizeOf(CharRAL)) - 1;
     FContent.Position := 0;
     SetLength(Result,FContent.Size);
     FContent.Read(Result[1],FContent.Size);
@@ -365,22 +360,20 @@ procedure TRALParam.SetAsStream(const Value: TStream);
 begin
   Value.Position := 0;
   FContent.CopyFrom(Value,Value.Size);
-  FIsString := False;
   FContent.Position := 0;
 end;
 
 procedure TRALParam.SetAsString(const Value: StringRAL);
 var
-  vLen : IntegerRAL;
+  vBytes : TBytes;
 begin
-  vLen := (Length(Value)+1)*SizeOf(CharRAL);
+  vBytes := VarToBytes(Value);
 
   FContent.Size := 0;
   FContent.Position := 0;
-  FContent.Write(Value[1],vLen);
+  FContent.Write(vBytes,Length(vBytes));
 
   FContent.Position := 0;
-  FIsString := True;
 end;
 
 { TRALParams }
