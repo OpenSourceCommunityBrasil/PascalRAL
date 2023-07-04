@@ -125,6 +125,8 @@
         <DCCReference Include="..\..\src\utils\RALToken.pas"/>
         <DCCReference Include="..\..\src\base\RALConsts.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

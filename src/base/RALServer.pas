@@ -4,48 +4,51 @@ interface
 
 uses
   Classes, SysUtils,
-  RALAuthentication, RALRoutes, RALTypes, RALTools, RALConsts;
+  RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes;
 
 type
   TRALSSL = class
   private
-    FEnabled : boolean;
+    FEnabled: boolean;
   published
-    property Enabled : boolean read FEnabled write FEnabled;
+    property Enabled: boolean read FEnabled write FEnabled;
   end;
 
   TRALServer = class(TComponent)
   private
-    FActive : boolean;
+    FActive: boolean;
     FPort: IntegerRAL;
     FAuthentication: TRALAuthentication;
     FRoutes: TRALRoutes;
-    FOnClientRequest : TRALOnReply;
-    FServerStatus : TStringList;
-    FShowServerStatus : boolean;
-    FSSL : TRALSSL;
+    FOnClientRequest: TRALOnReply;
+    FServerStatus: TStringList;
+    FShowServerStatus: boolean;
+    FSSL: TRALSSL;
+    FServerInstance: TThread;
   protected
     procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
     procedure WriteServerStatus; virtual;
-    function ValidateAuth(ARequest : TRALRequest) : boolean;
-    function CreateRALSSL : TRALSSL; virtual;
+    function ValidateAuth(ARequest: TRALRequest): boolean;
+    function CreateRALSSL: TRALSSL; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ProcessCommands(ARequest : TRALRequest) : TRALResponse;
+    function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
-    property Active : boolean read FActive write SetActive;
+    property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthentication read FAuthentication
       write FAuthentication;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
-    property ServerStatus : TStringList read FServerStatus write FServerStatus;
-    property ShowServerStatus : boolean read FShowServerStatus write FShowServerStatus;
-    property SSL : TRALSSL read FSSL write FSSL;
+    property ServerStatus: TStringList read FServerStatus write FServerStatus;
+    property ShowServerStatus: boolean read FShowServerStatus
+      write FShowServerStatus;
+    property SSL: TRALSSL read FSSL write FSSL;
 
-    property OnClientRequest : TRALOnReply read FOnClientRequest write FOnClientRequest;
+    property OnClientRequest: TRALOnReply read FOnClientRequest
+      write FOnClientRequest;
   end;
 
 implementation
@@ -61,6 +64,8 @@ begin
   FServerStatus := TStringList.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
+  FServerInstance := TThread.Create;
+  FServerInstance.FreeOnTerminate := True;
   WriteServerStatus;
 end;
 
@@ -77,49 +82,61 @@ begin
   if Assigned(FSSL) then
     FreeAndNil(FSSL);
 
-  FreeAndNil(FRoutes);
-  FreeAndNil(FServerStatus);
+  if Assigned(FRoutes) then
+    FreeAndNil(FRoutes);
+
+  if Assigned(FServerStatus) then
+    FreeAndNil(FServerStatus);
+
+  if Assigned(FServerInstance) then
+    FServerInstance.Terminate;
 
   inherited;
 end;
 
 function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
-  vRoute : TRALRoute;
+  vRoute: TRALRoute;
 begin
   Result := TRALResponse.Create;
   Result.RespCode := 200;
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
-  if (vRoute = nil) then begin
-    if (ARequest.Query = '/') and (FShowServerStatus) then begin
-      Result.ContentType := 'text/html';
-      Result.Body.AddParam('html',FServerStatus.Text);
+  if (vRoute = nil) then
+  begin
+    if (ARequest.Query = '/') and (FShowServerStatus) then
+    begin
+      Result.ContentType := TRALContentType.ctTEXTHTML;
+      Result.Body.AddParam('html', FServerStatus.Text);
     end
-    else begin
+    else
+    begin
       Result.RespCode := 404;
-      Result.ContentType := 'text/html';
+      Result.ContentType := TRALContentType.ctTEXTHTML;
     end;
   end
-  else begin
-    if (not (amALL in vRoute.AllowedMethods)) and
-       (not (ARequest.Method in vRoute.AllowedMethods)) then begin
+  else
+  begin
+    if (not(amALL in vRoute.AllowedMethods)) and
+      (not(ARequest.Method in vRoute.AllowedMethods)) then
+    begin
       Result.RespCode := 404;
-      Result.ContentType := 'text/html';
+      Result.ContentType := TRALContentType.ctTEXTHTML;
     end
-    else if (FAuthentication <> nil) and
-            (not (amALL in vRoute.SkipAuthMethods)) and
-            (not (ARequest.Method in vRoute.SkipAuthMethods)) and
-            (not (ValidateAuth(ARequest))) then begin
+    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods))
+      and (not(ARequest.Method in vRoute.SkipAuthMethods)) and
+      (not(ValidateAuth(ARequest))) then
+    begin
       Result.RespCode := 401;
-      Result.ContentType := 'text/html';
+      Result.ContentType := TRALContentType.ctTEXTHTML;
     end
-    else begin
+    else
+    begin
       if Assigned(OnClientRequest) then
-        OnClientRequest(vRoute,ARequest,Result);
+        OnClientRequest(vRoute, ARequest, Result);
 
-      vRoute.Execute(ARequest,Result);
+      vRoute.Execute(ARequest, Result);
     end;
   end;
 end;
@@ -141,7 +158,8 @@ end;
 
 procedure TRALServer.WriteServerStatus;
 begin
-  with FServerStatus do begin
+  with FServerStatus do
+  begin
     Clear;
     Add('<html>');
     Add('<body>');

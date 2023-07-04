@@ -38,6 +38,8 @@ contains
   RALServer in '..\..\src\base\RALServer.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
   RALConsts in '..\..\src\base\RALConsts.pas',
-  RALTypes in '..\..\src\base\RALTypes.pas';
+  RALTypes in '..\..\src\base\RALTypes.pas',
+  RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
+  RALTools in '..\..\src\utils\RALTools.pas';
 
 end.

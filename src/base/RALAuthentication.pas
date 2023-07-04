@@ -20,7 +20,6 @@ type
     FUserName: StringRAL;
     FPassword: StringRAL;
   public
-
   published
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
@@ -39,22 +38,17 @@ type
 
   TRALOAuth = class(TRALAuthentication)
   private
-
   public
-
   end;
 
   TRALOAuth2 = class(TRALAuthentication)
   private
-
   public
-
   end;
 
 implementation
 
 { TRALAuthentication }
-
 constructor TRALAuthentication.Create;
 begin
 
@@ -65,7 +59,6 @@ begin
 
   inherited;
 end;
-
 { TRALJWTAuth }
 
 function TRALJWTAuth.GetToken(aJSONParams: string): StringRAL;

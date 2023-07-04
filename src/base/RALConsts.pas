@@ -14,8 +14,6 @@ const
              + char(48 + VERSION_MINOR) + '.'
              + char(48 + VERSION_RELEASE);
 
-  PosIniStr = 1;
-
 implementation
 
 end.

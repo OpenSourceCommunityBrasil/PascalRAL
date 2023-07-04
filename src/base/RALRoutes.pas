@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  RALTypes, RALConsts, RALTools;
+  RALTypes, RALConsts, RALTools, RALMIMETypes;
 
 type
   TRALClientInfo = class
@@ -23,9 +23,9 @@ type
 
   TRALParam = class
   private
-    FParamName : StringRAL;
+    FParamName: StringRAL;
     FContentType: StringRAL;
-    FContent : TStream;
+    FContent: TStream;
   protected
     function GetAsString: StringRAL;
     procedure SetAsString(const Value: StringRAL);
@@ -47,7 +47,7 @@ type
 
   TRALParams = class
   private
-    FParams : TList;
+    FParams: TList;
   protected
     function GetParam(idx: IntegerRAL): TRALParam;
     function GetParamName(name: StringRAL): TRALParam;
@@ -55,15 +55,18 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function Count : IntegerRAL;
-    function AddParam(AName, AContent : StringRAL; AType : StringRAL = 'text/plain') : TRALParam; overload;
-    function AddParam(AName : StringRAL; AContent : TStream; AType : StringRAL = 'application/octed') : TRALParam; overload;
-    function NewParam : TRALParam;
+    function Count: IntegerRAL;
+    function AddParam(AName, AContent: StringRAL;
+      AType: StringRAL = TRALContentType.ctTEXTPLAIN): TRALParam; overload;
+    function AddParam(AName: StringRAL; AContent: TStream;
+      AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM)
+      : TRALParam; overload;
+    function NewParam: TRALParam;
 
     procedure ClearParams;
 
-    property Param[idx : IntegerRAL] : TRALParam read GetParam;
-    property ParamName[name : StringRAL] : TRALParam read GetParamName;
+    property Param[idx: IntegerRAL]: TRALParam read GetParam;
+    property ParamName[name: StringRAL]: TRALParam read GetParamName;
   end;
 
   TRALRequest = class
@@ -72,7 +75,7 @@ type
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
-    FMethod : TRALMethod;
+    FMethod: TRALMethod;
     FParams: TRALParams;
     FQuery: StringRAL;
   protected
@@ -98,7 +101,7 @@ type
     FHeaders: TStringList;
     FBody: TRALParams;
     FContentType: StringRAL;
-    FRespCode : IntegerRAL;
+    FRespCode: IntegerRAL;
   protected
     procedure SetContentType(const Value: StringRAL);
     procedure SetHeaders(const Value: TStringList);
@@ -113,7 +116,8 @@ type
   end;
 
   TRALRoutes = class;
-  TRALOnReply = procedure(Sender : TObject; ARequest : TRALRequest; var AResponse : TRALResponse) of object;
+  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest;
+    var AResponse: TRALResponse) of object;
 
   TRALRoute = class(TCollectionItem)
   private
@@ -123,7 +127,7 @@ type
     FAllowedMethods: TRALMethods;
     FSkipAuthMethods: TRALMethods;
     FCallback: Boolean;
-    FOnReply : TRALOnReply;
+    FOnReply: TRALOnReply;
   protected
     function GetDisplayName: StringRAL; override;
     procedure SetDisplayName(const Value: StringRAL); override;
@@ -132,31 +136,34 @@ type
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
 
-    procedure Execute(ARequest : TRALRequest; var AResponse : TRALResponse);
+    procedure Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
 
-    property FullDocument : StringRAL read GetFullDocument;
+    property FullDocument: StringRAL read GetFullDocument;
   published
     property DisplayName;
     property Document: StringRAL read FDocument write FDocument;
     property RouteList: TRALRoutes read FRouteList write FRouteList;
 
     // verbos que a rota responde
-    property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
+    property AllowedMethods: TRALMethods read FAllowedMethods
+      write FAllowedMethods;
     // verbos que vão ignorar autenticação
-    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
+    property SkipAuthMethods: TRALMethods read FSkipAuthMethods
+      write FSkipAuthMethods;
     // se for uma rota de callback pra OAuth
     property Callback: Boolean read FCallback write FCallback;
     property OnReply: TRALOnReply read FOnReply write FOnReply;
-   end;
+  end;
 
   TRALRoutes = class(TOwnedCollection)
   protected
     function getRoute(address: StringRAL): TRALRoute;
-    function findRoute(subdomain, address : StringRAL; partial : boolean = false) : TRALRoute;
-    function fixAddress(address : StringRAL) : StringRAL;
+    function findRoute(subdomain, address: StringRAL; partial: Boolean = false)
+      : TRALRoute;
+    function fixAddress(address: StringRAL): StringRAL;
   public
-    constructor Create(AOwner : TPersistent);
-    property RouteAddress[Address : StringRAL] : TRALRoute read getRoute;
+    constructor Create(AOwner: TPersistent);
+    property RouteAddress[address: StringRAL]: TRALRoute read getRoute;
   end;
 
 implementation
@@ -170,8 +177,8 @@ begin
   FRouteList := TRALRoutes.Create(Self);
   FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
-  FCallback := False;
-  Changed(False);
+  FCallback := false;
+  Changed(false);
 end;
 
 destructor TRALRoute.Destroy;
@@ -182,12 +189,14 @@ end;
 
 procedure TRALRoute.Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
 begin
-  if Assigned(OnReply) then begin
-    OnReply(Self,ARequest,AResponse);
+  if Assigned(OnReply) then
+  begin
+    OnReply(Self, ARequest, AResponse);
   end
-  else begin
+  else
+  begin
     AResponse.RespCode := 404;
-    AResponse.ContentType := 'text/html';
+    AResponse.ContentType := TRALContentType.ctTEXTHTML;
   end;
 end;
 
@@ -222,45 +231,52 @@ end;
 
 { RALRoutes }
 
-constructor TRALRoutes.Create(AOwner : TPersistent);
+constructor TRALRoutes.Create(AOwner: TPersistent);
 begin
-  inherited Create(AOwner,TRALRoute);
+  inherited Create(AOwner, TRALRoute);
 end;
 
-function TRALRoutes.findRoute(subdomain, address: StringRAL; partial : boolean): TRALRoute;
+function TRALRoutes.findRoute(subdomain, address: StringRAL; partial: Boolean)
+  : TRALRoute;
 var
-  vInt : IntegerRAL;
-  vRoute : TRALRoute;
-  vResp : TRALRoute;
-  vaddr1, vaddr2 : StringRAL;
-  vpart : boolean;
+  vInt: IntegerRAL;
+  vRoute: TRALRoute;
+  vResp: TRALRoute;
+  vaddr1, vaddr2: StringRAL;
+  vpart: Boolean;
 begin
   address := fixAddress(address);
 
   Result := nil;
   vInt := 0;
-  vpart := False;
+  vpart := false;
   vResp := nil;
 
-  while vInt < Count do begin
+  while vInt < Count do
+  begin
     vRoute := TRALRoute(Items[vInt]);
     vaddr1 := fixAddress(subdomain + vRoute.Document);
-    vaddr2 := Copy(address,1,Length(vaddr1));
-    if vRoute.RouteList.Count = 0 then begin
-      if SameText(vaddr1,address) then begin
+    vaddr2 := Copy(address, 1, Length(vaddr1));
+    if vRoute.RouteList.Count = 0 then
+    begin
+      if SameText(vaddr1, address) then
+      begin
         vResp := vRoute;
-        vpart := False;
+        vpart := false;
       end
-      else if (partial) and SameText(vaddr1,vaddr2) then begin
+      else if (partial) and SameText(vaddr1, vaddr2) then
+      begin
         vResp := vRoute;
         vpart := True;
       end;
     end
-    else begin
-      vResp := vRoute.RouteList.findRoute(vaddr1,address,partial);
+    else
+    begin
+      vResp := vRoute.RouteList.findRoute(vaddr1, address, partial);
     end;
 
-    if (vResp <> nil) and (not vpart) then begin
+    if (vResp <> nil) and (not vpart) then
+    begin
       Result := vResp;
       Break;
     end;
@@ -273,16 +289,16 @@ end;
 
 function TRALRoutes.fixAddress(address: StringRAL): StringRAL;
 begin
-  Result := '/'+address+'/';
-  while Pos('//',Result) > 0 do
-    Result := ReplaceStr(Result,'//','/');
+  Result := '/' + address + '/';
+  while Pos('//', Result) > 0 do
+    Result := ReplaceStr(Result, '//', '/');
 end;
 
 function TRALRoutes.getRoute(address: StringRAL): TRALRoute;
 begin
-  Result := findRoute('',address,False);
+  Result := findRoute('', address, false);
   if Result = nil then
-    Result := findRoute('',address,True);
+    Result := findRoute('', address, True);
 end;
 
 { TRALClientInfo }
@@ -347,7 +363,7 @@ constructor TRALResponse.Create;
 begin
   inherited;
   FHeaders := TStringList.Create;
-  FContentType := 'text/plain';
+  FContentType := TRALContentType.ctTEXTPLAIN;
   FBody := TRALParams.Create;
 end;
 
@@ -374,7 +390,7 @@ constructor TRALParam.Create;
 begin
   inherited;
   FContent := TBytesStream.Create;
-  FContentType := 'text/plain';
+  FContentType := TRALContentType.ctTEXTPLAIN;
 end;
 
 destructor TRALParam.Destroy;
@@ -386,17 +402,18 @@ end;
 function TRALParam.GetAsStream: TStream;
 begin
   Result := TMemoryStream.Create;
-  Result.CopyFrom(FContent,FContent.Size);
+  Result.CopyFrom(FContent, FContent.Size);
   Result.Position := 0;
 end;
 
 function TRALParam.GetAsString: StringRAL;
 begin
   Result := '';
-  if FContent.Size > 0 then begin
+  if FContent.Size > 0 then
+  begin
     FContent.Position := 0;
-    SetLength(Result,FContent.Size);
-    FContent.Read(Result[PosIniStr],FContent.Size);
+    SetLength(Result, FContent.Size);
+    FContent.Read(Result[PosIniStr], FContent.Size);
 
     FContent.Position := 0;
   end;
@@ -410,19 +427,19 @@ end;
 procedure TRALParam.SetAsStream(const Value: TStream);
 begin
   Value.Position := 0;
-  FContent.CopyFrom(Value,Value.Size);
+  FContent.CopyFrom(Value, Value.Size);
   FContent.Position := 0;
 end;
 
 procedure TRALParam.SetAsString(const Value: StringRAL);
 var
-  vBytes : TBytes;
+  vBytes: TBytes;
 begin
   vBytes := VarToBytes(Value);
 
   FContent.Size := 0;
   FContent.Position := 0;
-  FContent.Write(vBytes,Length(vBytes));
+  FContent.Write(vBytes, Length(vBytes));
 
   FContent.Position := 0;
 end;
@@ -454,9 +471,10 @@ end;
 
 procedure TRALParams.ClearParams;
 begin
-  while FParams.Count > 0 do begin
-    TObject(FParams.Items[FParams.Count-1]).Free;
-    FParams.Delete(FParams.Count-1);
+  while FParams.Count > 0 do
+  begin
+    TObject(FParams.Items[FParams.Count - 1]).Free;
+    FParams.Delete(FParams.Count - 1);
   end;
 end;
 
@@ -487,15 +505,17 @@ end;
 
 function TRALParams.GetParamName(name: StringRAL): TRALParam;
 var
-  idx : IntegerRAL;
-  vParam : TRALParam;
+  idx: IntegerRAL;
+  vParam: TRALParam;
 begin
   Result := nil;
 
   idx := 0;
-  while idx < FParams.Count do begin
+  while idx < FParams.Count do
+  begin
     vParam := TRALParam(FParams.Items[idx]);
-    if SameText(vParam.ParamName,name) then begin
+    if SameText(vParam.ParamName, name) then
+    begin
       Result := vParam;
       Break;
     end;

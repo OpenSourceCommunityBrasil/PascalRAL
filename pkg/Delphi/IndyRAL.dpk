@@ -28,6 +28,7 @@ package IndyRAL;
 {$IMPLICITBUILD ON}
 
 requires
+  PascalRAL,
   rtl;
 
 contains

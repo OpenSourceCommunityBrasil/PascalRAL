@@ -8,7 +8,6 @@ interface
   or IDEs that might differ on the charset code or basic type length.
   Expect heavy usage of IFDEFs at this point
 }
-
 type
   TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amALL);
   TRALMethods = set of TRALMethod;
@@ -19,6 +18,9 @@ type
   DoubleRAL = double;
   CharRAL = char;
   PCharRAL = ^CharRAL;
+
+const
+  PosIniStr = 1;
 
 implementation
 
