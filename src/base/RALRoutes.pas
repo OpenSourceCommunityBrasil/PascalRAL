@@ -57,7 +57,7 @@ type
 
     function Count: IntegerRAL;
     function AddParam(AName, AContent: StringRAL;
-                      AType: StringRAL = TRALContentType.ctTEXTPLAIN): TRALParam; overload;
+                      AType: StringRAL = TRALContentType.ctTEXTHTML): TRALParam; overload;
     function AddParam(AName: StringRAL; AContent: TStream;
                       AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM) : TRALParam; overload;
     function NewParam: TRALParam;
@@ -127,8 +127,8 @@ type
     FCallback: Boolean;
     FOnReply: TRALOnReply;
   protected
-    function GetDisplayName: StringRAL; override;
-    procedure SetDisplayName(const Value: StringRAL); override;
+    function GetDisplayName: string; override;
+    procedure SetDisplayName(const Value: string); override;
     function GetFullDocument: StringRAL;
   public
     constructor Create(Collection: TCollection); override;
@@ -195,7 +195,7 @@ begin
   end;
 end;
 
-function TRALRoute.GetDisplayName: StringRAL;
+function TRALRoute.GetDisplayName: string;
 begin
   Result := GetNamePath;
   if FDisplayName <> '' then
@@ -215,7 +215,7 @@ begin
   Result := TRALRoutes(Collection).fixAddress(Result);
 end;
 
-procedure TRALRoute.SetDisplayName(const Value: StringRAL);
+procedure TRALRoute.SetDisplayName(const Value: string);
 begin
   if Value <> '' then
     FDisplayName := Value
@@ -358,7 +358,7 @@ constructor TRALResponse.Create;
 begin
   inherited;
   FHeaders := TStringList.Create;
-  FContentType := TRALContentType.ctTEXTPLAIN;
+  FContentType := TRALContentType.ctTEXTHTML;
   FBody := TRALParams.Create;
 end;
 
@@ -384,8 +384,8 @@ end;
 constructor TRALParam.Create;
 begin
   inherited;
-  FContent := TBytesStream.Create;
-  FContentType := TRALContentType.ctTEXTPLAIN;
+  FContent := nil;
+  FContentType := TRALContentType.ctTEXTHTML;
 end;
 
 destructor TRALParam.Destroy;
@@ -406,9 +406,14 @@ begin
   Result := '';
   if FContent.Size > 0 then
   begin
-    FContent.Position := 0;
-    SetLength(Result, FContent.Size);
-    FContent.Read(Result[PosIniStr], FContent.Size);
+    if FContent.ClassType = TMemoryStream then begin
+      FContent.Position := 0;
+      SetLength(Result, FContent.Size);
+      FContent.Read(Result[PosIniStr], FContent.Size);
+    end
+    else if FContent.ClassType = TStringStream then begin
+      Result := TStringStream(FContent).DataString;
+    end;
 
     FContent.Position := 0;
   end;
@@ -421,21 +426,20 @@ end;
 
 procedure TRALParam.SetAsStream(const Value: TStream);
 begin
-  Value.Position := 0;
+  if Assigned(FContent) then
+    FreeAndNil(FContent);
+
+  FContent := TMemoryStream.Create;
   FContent.CopyFrom(Value, Value.Size);
   FContent.Position := 0;
 end;
 
 procedure TRALParam.SetAsString(const Value: StringRAL);
-var
-  vBytes: TBytes;
 begin
-  vBytes := VarToBytes(Value);
+  if Assigned(FContent) then
+    FreeAndNil(FContent);
 
-  FContent.Size := 0;
-  FContent.Position := 0;
-  FContent.Write(vBytes, Length(vBytes));
-
+  FContent := TStringStream.Create(Value);
   FContent.Position := 0;
 end;
 

@@ -3,7 +3,7 @@ unit RALServer;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, StrUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts;
 
 type
@@ -61,8 +61,9 @@ begin
   FServerStatus := TStringList.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
-  FServerInstance := TThread.Create;
-  FServerInstance.FreeOnTerminate := True;
+  FServerInstance := nil;
+//  FServerInstance := TThread.Create;
+//  FServerInstance.FreeOnTerminate := True;
   WriteServerStatus;
 end;
 
@@ -94,6 +95,7 @@ end;
 function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
+  vString : StringRAL;
 begin
   Result := TRALResponse.Create;
   Result.RespCode := 200;
@@ -105,7 +107,9 @@ begin
     if (ARequest.Query = '/') and (FShowServerStatus) then
     begin
       Result.ContentType := TRALContentType.ctTEXTHTML;
-      Result.Body.AddParam('html', FServerStatus.Text);
+      vString := FServerStatus.Text;
+      vString := ReplaceText(vString,'$ralversion;',RALVERSION);
+      Result.Body.AddParam('html', vString);
     end
     else
     begin
@@ -160,11 +164,11 @@ begin
     Clear;
     Add('<html>');
     Add('<head>');
-    Add('<title>RALServer - '+RALVERSION+'</title>');
+    Add('<title>RALServer - $ralversion;</title>');
     Add('</head>');
     Add('<body>');
     Add('<h1>Server OnLine</h1>');
-    Add('<h4>Version: '+RALVERSION+'</h4>');
+    Add('<h4>Version: $ralversion;</h4>');
     Add('</body>');
     Add('</html>');
   end;

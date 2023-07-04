@@ -281,11 +281,7 @@ begin
 
       if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0) then
       begin
-        if SameText(ContentType, TRALContentType.ctTEXTPLAIN) then
-        begin
-          Params.AddParam('ral_body', ARequestInfo.PostStream, TRALContentType.ctTEXTPLAIN);
-        end
-        else if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
+        if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
         begin
           DecodeParams(vRequest, ARequestInfo);
         end
