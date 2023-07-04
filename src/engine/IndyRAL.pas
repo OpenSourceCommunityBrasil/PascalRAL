@@ -6,14 +6,30 @@ uses
   Classes, SysUtils,
   RALServer, RALClient, RALTypes,
   IdHTTPServer, IdHTTP, IdContext, IdCustomHTTPServer, IdMultipartFormData,
-  IdMessageCoder, IdGlobalProtocols, IdMessageCoderMIME, IdGlobal;
+  IdMessageCoder, IdGlobalProtocols, IdMessageCoderMIME, IdGlobal,
+  IdServerIOHandler, IdSSL, IdSSLOpenSSL;
 
 type
+  TRALIndySSL = class(TRALSSL)
+  private
+    FSSLOptions : TIdSSLOptions;
+  public
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property SSLOptions : TIdSSLOptions read FSSLOptions write FSSLOptions;
+  end;
+
   TRALIndyServer = class(TRALServer)
   private
     FHttp : TIdHTTPServer;
+    FHandlerSSL : TIdServerIOHandlerSSLOpenSSL;
   protected
     procedure SetActive(const Value: boolean); override;
+    procedure SetPort(const Value: IntegerRAL); override;
+
+    function CreateRALSSL : TRALSSL; override;
+
     procedure DecodeParams(var ARequest : TRALRequest; ARequestInfo : TIdHTTPRequestInfo);
     procedure EncodeParams(AResponse : TRALResponse; AResponseInfo : TIdHTTPResponseInfo);
 
@@ -51,19 +67,12 @@ begin
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
 
-  FHttp.Bindings.Clear;
+  FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
+end;
 
-  with FHttp.Bindings.Add do begin
-    IP := '0.0.0.0';
-    Port := Self.Port;
-    IPVersion := Id_IPv4;
-  end;
-
-  with FHttp.Bindings.Add do begin
-    IP := '::';
-    Port := Self.Port;
-    IPVersion := Id_IPv6;
-  end;
+function TRALIndyServer.CreateRALSSL: TRALSSL;
+begin
+  Result := TRALIndySSL.Create;
 end;
 
 procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
@@ -130,33 +139,35 @@ begin
 
               ARequest.Params.AddParam(vName,vStream);
             finally
-              vStream.Free;
+              FreeAndNil(vStream);
             end;
 
-            vDecoder.Free;
+            FreeAndNil(vDecoder);
             vDecoder := vReader;
           end;
         mcptIgnore:
           begin
-            vDecoder.Free;
+            FreeAndNil(vDecoder);
             vDecoder := TIdMessageDecoderMIME.Create(nil);
           end;
         mcptEOF:
           begin
-            vDecoder.Free;
+            FreeAndNil(vDecoder);
             vMsgEnd := True;
           end;
       end;
     until (vDecoder = nil) or vMsgEnd;
   finally
-    vDecoder.Free;
+    FreeAndNil(vDecoder);
   end;
 end;
 
 destructor TRALIndyServer.Destroy;
 begin
   FHttp.Active := False;
-  FHttp.Free;
+
+  FreeAndNil(FHttp);
+  FreeAndNil(FHandlerSSL);
   inherited;
 end;
 
@@ -184,7 +195,7 @@ begin
     AResponseInfo.ContentStream.Size := 0;
     AResponseInfo.ContentStream.CopyFrom(vMultPart,vMultPart.Size);
   finally
-    vMultPart.Free;
+    FreeAndNil(vMultPart);
   end;
 end;
 
@@ -304,17 +315,64 @@ begin
         WriteContent;
       end;
     finally
-      vResponse.Free
+      FreeAndNil(vResponse);
     end;
   finally
-    vRequest.Free;
+    FreeAndNil(vRequest);
   end;
 end;
 
 procedure TRALIndyServer.SetActive(const Value: boolean);
 begin
-  FHttp.DefaultPort := Port;
+  if Assigned(SSL) then
+    FHandlerSSL.SSLOptions.Assign(TRALIndySSL(SSL).SSLOptions);
+
+  FHttp.IOHandler := nil;
+  if (Assigned(SSL)) and (SSL.Enabled) then
+    FHttp.IOHandler := FHandlerSSL;
+
   FHttp.Active := Value;
+
+  inherited;
+end;
+
+procedure TRALIndyServer.SetPort(const Value: IntegerRAL);
+var
+  vActive : boolean;
+begin
+  inherited;
+  vActive := Self.Active;
+  Active := False;
+
+  FHttp.DefaultPort := Value;
+  FHttp.Bindings.Clear;
+
+  with FHttp.Bindings.Add do begin
+    IP := '0.0.0.0';
+    Port := Value;
+    IPVersion := Id_IPv4;
+  end;
+
+  with FHttp.Bindings.Add do begin
+    IP := '::';
+    Port := Value;
+    IPVersion := Id_IPv6;
+  end;
+
+  Active := vActive;
+end;
+
+{ TRALIndySSL }
+
+constructor TRALIndySSL.Create;
+begin
+  inherited;
+  FSSLOptions := TIdSSLOptions.Create;
+end;
+
+destructor TRALIndySSL.Destroy;
+begin
+  FreeAndNil(FSSLOptions);
   inherited;
 end;
 

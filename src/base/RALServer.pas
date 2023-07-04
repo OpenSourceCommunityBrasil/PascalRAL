@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALAuthentication, RALRoutes, RALTypes, RALTools;
+  RALAuthentication, RALRoutes, RALTypes, RALTools, RALConsts;
 
 type
   TRALClientInfo = class
@@ -19,6 +19,13 @@ type
     property IP: StringRAL read FIP write SetIP;
     property MACAddress: StringRAL read FMACAddress write SetMACAddress;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
+  end;
+
+  TRALSSL = class
+  private
+    FEnabled : boolean;
+  published
+    property Enabled : boolean read FEnabled write FEnabled;
   end;
 
   TRALParam = class
@@ -123,10 +130,13 @@ type
     FOnClientRequest : TRALOnClientRequest;
     FServerStatus : TStringList;
     FShowServerStatus : boolean;
+    FSSL : TRALSSL;
   protected
+    procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
     procedure WriteServerStatus; virtual;
     function ValidateAuth(ARequest : TRALRequest) : boolean;
+    function CreateRALSSL : TRALSSL; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -136,10 +146,11 @@ type
     property Active : boolean read FActive write SetActive;
     property Authentication: TRALAuthentication read FAuthentication
       write FAuthentication;
-    property Port: IntegerRAL read FPort write FPort;
+    property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus : TStringList read FServerStatus write FServerStatus;
     property ShowServerStatus : boolean read FShowServerStatus write FShowServerStatus;
+    property SSL : TRALSSL read FSSL write FSSL;
 
     property OnClientRequest : TRALOnClientRequest read FOnClientRequest write FOnClientRequest;
   end;
@@ -156,13 +167,22 @@ begin
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
   FShowServerStatus := True;
+  FSSL := CreateRALSSL;
   WriteServerStatus;
+end;
+
+function TRALServer.CreateRALSSL: TRALSSL;
+begin
+  Result := nil;
 end;
 
 destructor TRALServer.Destroy;
 begin
   if Assigned(FAuthentication) then
     FreeAndNil(FAuthentication);
+
+  if Assigned(FSSL) then
+    FreeAndNil(FSSL);
 
   FreeAndNil(FRoutes);
   FreeAndNil(FServerStatus);
@@ -217,6 +237,11 @@ begin
   FActive := Value;
 end;
 
+procedure TRALServer.SetPort(const Value: IntegerRAL);
+begin
+  FPort := Value;
+end;
+
 function TRALServer.ValidateAuth(ARequest: TRALRequest): boolean;
 begin
   Result := False;
@@ -247,9 +272,9 @@ end;
 
 destructor TRALRequest.Destroy;
 begin
-  FHeaders.Free;
-  FClientInfo.Free;
-  FParams.Free;
+  FreeAndNil(FHeaders);
+  FreeAndNil(FClientInfo);
+  FreeAndNil(FParams);
   inherited;
 end;
 
@@ -285,8 +310,8 @@ end;
 
 destructor TRALResponse.Destroy;
 begin
-  FHeaders.Free;
-  FBody.Free;
+  FreeAndNil(FHeaders);
+  FreeAndNil(FBody);
   inherited;
 end;
 
@@ -328,7 +353,7 @@ end;
 
 destructor TRALParam.Destroy;
 begin
-  FContent.Free;
+  FreeAndNil(FContent);
   inherited;
 end;
 
@@ -345,7 +370,7 @@ begin
   if FContent.Size > 0 then begin
     FContent.Position := 0;
     SetLength(Result,FContent.Size);
-    FContent.Read(Result[1],FContent.Size);
+    FContent.Read(Result[PosIniStr],FContent.Size);
 
     FContent.Position := 0;
   end;
@@ -423,7 +448,7 @@ end;
 destructor TRALParams.Destroy;
 begin
   ClearParams;
-  FParams.Free;
+  FreeAndNil(FParams);
   inherited;
 end;
 

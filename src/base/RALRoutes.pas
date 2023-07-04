@@ -66,7 +66,7 @@ end;
 
 destructor TRALRoute.Destroy;
 begin
-  FRouteList.Free;
+  FreeAndNil(FRouteList);
   inherited;
 end;
 
