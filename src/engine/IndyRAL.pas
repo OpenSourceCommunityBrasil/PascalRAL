@@ -93,7 +93,7 @@ var
   vBoundaryFound, vIsStartBoundary, vMsgEnd: boolean;
   vStream: TMemoryStream;
 begin
-  vBoundary := ExtractHeaderSubItem(ARequest.ContentType, 'boundary', QuoteHTTP);
+  vBoundary := ExtractHeaderSubItem(ARequestInfo.ContentType, 'boundary', QuoteHTTP);
   if vBoundary = '' then
     Exit;
 
@@ -141,7 +141,7 @@ begin
               vStream.Position := 0;
 
               vName := vDecoder.Headers.Values['name'];
-              if vName <> '' then
+              if vName = '' then
               begin
                 vName := 'ral_multpart' + IntToStr(vIdxName);
                 vIdxName := vIdxName + 1;
@@ -243,7 +243,7 @@ begin
           Method := amOPTION;
       end;
 
-      ContentType := ARequestInfo.ContentType;
+      ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
       ContentSize := ARequestInfo.ContentLength;
 
       vInt := 0;
