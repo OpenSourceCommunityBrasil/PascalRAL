@@ -27,13 +27,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-
+    function Delete(ARoute : StringRAL; AHeaders: TStringList = nil): IntegerRAL;
     function Get(ARoute : StringRAL; AHeaders: TStringList = nil): IntegerRAL;
     function Post(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
     function Put(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
     function Patch(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    function Delete(ARoute : StringRAL; AHeaders: TStringList = nil): IntegerRAL;
-
     property ResponseCode : IntegerRAL read FResponseCode write FResponseCode;
     property ResponseText : StringRAL read GetResponseText;
   published

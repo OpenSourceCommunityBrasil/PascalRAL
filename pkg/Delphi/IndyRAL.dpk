@@ -32,6 +32,8 @@ requires
   rtl;
 
 contains
-  IndyRAL in '..\..\src\engine\IndyRAL.pas';
+  RALIndyServer in '..\..\src\engine\indy\RALIndyServer.pas',
+  RALIndyClient in '..\..\src\engine\indy\RALIndyClient.pas',
+  RALIndyRegister in '..\..\src\engine\indy\RALIndyRegister.pas';
 
 end.

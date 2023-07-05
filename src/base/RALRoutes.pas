@@ -29,10 +29,8 @@ type
   protected
     function GetAsString: StringRAL;
     procedure SetAsString(const Value: StringRAL);
-
     function GetAsStream: TStream;
     procedure SetAsStream(const Value: TStream);
-
     function GetContentSize: Int64RAL;
   public
     constructor Create;
@@ -56,7 +54,6 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
     function Count: IntegerRAL;
     function AddParam(AName, AContent: StringRAL;
                       AType: StringRAL = TRALContentType.ctTEXTHTML): TRALParam; overload;
@@ -67,9 +64,7 @@ type
     function AddValue(AContent: TStream;
                       AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM): TRALParam; overload;
     function NewParam: TRALParam;
-
     procedure ClearParams;
-
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
     property ParamName[name: StringRAL]: TRALParam read GetParamName;
   end;
@@ -91,7 +86,6 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
     property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
     property ContentType: StringRAL read FContentType write SetContentType;
     property ContentSize: Int64RAL read FContentSize write SetContentSize;
@@ -111,7 +105,6 @@ type
   protected
     procedure SetContentType(const Value: StringRAL);
     procedure SetHeaders(const Value: TStringList);
-
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
     procedure SetResponseStream(const Value: TStream);
@@ -119,12 +112,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
     property Body: TRALParams read FBody;
-
     property ResponseText : StringRAL read GetResponseText write SetResponseText;
     property ResponseStream : TStream read GetResponseStream write SetResponseStream;
-
     property ContentType: StringRAL read FContentType write SetContentType;
     property Headers: TStringList read FHeaders write SetHeaders;
     property RespCode: IntegerRAL read FRespCode write FRespCode;
@@ -146,20 +136,16 @@ type
     function GetDisplayName: string; override;
     procedure SetDisplayName(const Value: string); override;
     function GetNamePath : string; override;
-
     function GetFullDocument: StringRAL;
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
-
     procedure Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
-
     property FullDocument: StringRAL read GetFullDocument;
   published
     property DisplayName;
     property Document: StringRAL read FDocument write FDocument;
     property RouteList: TRALRoutes read FRouteList write FRouteList;
-
     // verbos que a rota responde
     property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
     // verbos que vão ignorar autenticação
