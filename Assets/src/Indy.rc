@@ -1,0 +1,4 @@
+TRALIndyClient BITMAP "..\components\indy\TRALIndyClient.bmp"
+TRALIndyServer BITMAP "..\components\indy\TRALIndyServer.bmp"
+TRALIndyClient16 BITMAP "..\components\indy\TRALIndyClient16.bmp"
+TRALIndyServer16 BITMAP "..\components\indy\TRALIndyServer16.bmp"

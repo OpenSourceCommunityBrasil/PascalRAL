@@ -25,6 +25,7 @@ package NetHttpRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | NetHttp Components'}
 {$IMPLICITBUILD ON}
 
 requires

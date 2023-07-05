@@ -1,6 +1,7 @@
 package IndyRAL;
 
 {$R *.res}
+{$R 'IndyRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -25,6 +26,7 @@ package IndyRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Indy Components'}
 {$IMPLICITBUILD ON}
 
 requires

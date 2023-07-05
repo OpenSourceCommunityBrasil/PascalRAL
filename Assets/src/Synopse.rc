@@ -1,0 +1,4 @@
+TRALSynopseClient BITMAP "..\components\Synopse\TRALSynopseClient.bmp"
+TRALSynopseServer BITMAP "..\components\Synopse\TRALSynopseServer.bmp"
+TRALSynopseClient16 BITMAP "..\components\Synopse\TRALSynopseClient16.bmp"
+TRALSynopseServer16 BITMAP "..\components\Synopse\TRALSynopseServer16.bmp"
