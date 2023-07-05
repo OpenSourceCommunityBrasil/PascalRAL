@@ -24,7 +24,6 @@ type
     FServerStatus: TStringList;
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
-    FServerInstance: TThread;
   protected
     procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
@@ -61,9 +60,6 @@ begin
   FServerStatus := TStringList.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
-  FServerInstance := nil;
-//  FServerInstance := TThread.Create;
-//  FServerInstance.FreeOnTerminate := True;
   WriteServerStatus;
 end;
 
@@ -85,9 +81,6 @@ begin
 
   if Assigned(FServerStatus) then
     FreeAndNil(FServerStatus);
-
-  if Assigned(FServerInstance) then
-    FServerInstance.Terminate;
 
   inherited;
 end;
