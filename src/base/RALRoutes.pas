@@ -48,9 +48,11 @@ type
   TRALParams = class
   private
     FParams: TList;
+    FNextParam : IntegerRAL;
   protected
     function GetParam(idx: IntegerRAL): TRALParam;
     function GetParamName(name: StringRAL): TRALParam;
+    function NextParam : StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -60,6 +62,10 @@ type
                       AType: StringRAL = TRALContentType.ctTEXTHTML): TRALParam; overload;
     function AddParam(AName: StringRAL; AContent: TStream;
                       AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM) : TRALParam; overload;
+    function AddValue(AContent: StringRAL;
+                      AType: StringRAL = TRALContentType.ctTEXTHTML): TRALParam; overload;
+    function AddValue(AContent: TStream;
+                      AType: StringRAL = TRALContentType.ctAPPLICATIONOCTETSTREAM): TRALParam; overload;
     function NewParam: TRALParam;
 
     procedure ClearParams;
@@ -101,14 +107,24 @@ type
     FBody: TRALParams;
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
+    FResponse : TRALParam;
   protected
     procedure SetContentType(const Value: StringRAL);
     procedure SetHeaders(const Value: TStringList);
+
+    function GetResponseStream: TStream;
+    function GetResponseText: StringRAL;
+    procedure SetResponseStream(const Value: TStream);
+    procedure SetResponseText(const Value: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
     property Body: TRALParams read FBody;
+
+    property ResponseText : StringRAL read GetResponseText write SetResponseText;
+    property ResponseStream : TStream read GetResponseStream write SetResponseStream;
+
     property ContentType: StringRAL read FContentType write SetContentType;
     property Headers: TStringList read FHeaders write SetHeaders;
     property RespCode: IntegerRAL read FRespCode write FRespCode;
@@ -119,7 +135,7 @@ type
 
   TRALRoute = class(TCollectionItem)
   private
-    FDisplayName: StringRAL;
+    FDisplayName : StringRAL;
     FDocument: StringRAL;
     FRouteList: TRALRoutes;
     FAllowedMethods: TRALMethods;
@@ -129,6 +145,8 @@ type
   protected
     function GetDisplayName: string; override;
     procedure SetDisplayName(const Value: string); override;
+    function GetNamePath : string; override;
+
     function GetFullDocument: StringRAL;
   public
     constructor Create(Collection: TCollection); override;
@@ -168,11 +186,11 @@ implementation
 constructor TRALRoute.Create(Collection: TCollection);
 begin
   inherited;
-  FDisplayName := GetNamePath;
   FRouteList := TRALRoutes.Create(Self);
   FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
   FCallback := false;
+  FDisplayName := 'ralevent'+IntToStr(Index);
   Changed(false);
 end;
 
@@ -197,9 +215,7 @@ end;
 
 function TRALRoute.GetDisplayName: string;
 begin
-  Result := GetNamePath;
-  if FDisplayName <> '' then
-    Result := FDisplayName;
+  Result := FDisplayName;
 end;
 
 function TRALRoute.GetFullDocument: StringRAL;
@@ -215,13 +231,20 @@ begin
   Result := TRALRoutes(Collection).fixAddress(Result);
 end;
 
+function TRALRoute.GetNamePath: string;
+begin
+  Result := Collection.GetNamePath + FDisplayName;
+  Result := ReplaceStr(Result,'.Routes','.r');
+  Result := ReplaceStr(Result,'.RouteList','.rl');
+end;
+
 procedure TRALRoute.SetDisplayName(const Value: string);
 begin
-  if Value <> '' then
-    FDisplayName := Value
-  else
-    FDisplayName := GetNamePath;
-  inherited;
+  if Trim(Value) <> '' then begin
+    FDisplayName := Value;
+    if FDocument = '' then
+      FDocument := Value;
+  end;
 end;
 
 { RALRoutes }
@@ -360,23 +383,55 @@ begin
   FHeaders := TStringList.Create;
   FContentType := TRALContentType.ctTEXTHTML;
   FBody := TRALParams.Create;
+  FResponse := nil; // pertence ao body;
 end;
 
 destructor TRALResponse.Destroy;
 begin
   FreeAndNil(FHeaders);
   FreeAndNil(FBody);
+  FResponse := nil; // pertence ao body;
   inherited;
+end;
+
+function TRALResponse.GetResponseStream: TStream;
+begin
+  Result := nil;
+  if FResponse <> nil then
+    Result := FResponse.AsStream;
+end;
+
+function TRALResponse.GetResponseText: StringRAL;
+begin
+  Result := '';
+  if FResponse <> nil then
+    Result := FResponse.AsString;
 end;
 
 procedure TRALResponse.SetContentType(const Value: StringRAL);
 begin
   FContentType := Value;
+  if (FResponse <> nil) and (FBody.Count = 1) then
+    FResponse.ContentType := Value;
 end;
 
 procedure TRALResponse.SetHeaders(const Value: TStringList);
 begin
   FHeaders := Value;
+end;
+
+procedure TRALResponse.SetResponseStream(const Value: TStream);
+begin
+  Body.ClearParams;
+  FResponse := Body.AddValue(Value);
+  FResponse.ContentType := FContentType;
+end;
+
+procedure TRALResponse.SetResponseText(const Value: StringRAL);
+begin
+  Body.ClearParams;
+  FResponse := Body.AddValue(Value);
+  FResponse.ContentType := FContentType;
 end;
 
 { TRALParam }
@@ -468,6 +523,22 @@ begin
   Result.ContentType := AType;
 end;
 
+function TRALParams.AddValue(AContent: TStream; AType: StringRAL): TRALParam;
+begin
+  Result := NewParam;
+  Result.ParamName := NextParam;
+  Result.AsStream := AContent;
+  Result.ContentType := AType;
+end;
+
+function TRALParams.AddValue(AContent, AType: StringRAL): TRALParam;
+begin
+  Result := NewParam;
+  Result.ParamName := NextParam;
+  Result.AsString := AContent;
+  Result.ContentType := AType;
+end;
+
 procedure TRALParams.ClearParams;
 begin
   while FParams.Count > 0 do
@@ -486,6 +557,7 @@ constructor TRALParams.Create;
 begin
   inherited;
   FParams := TList.Create;
+  FNextParam := 0;
 end;
 
 destructor TRALParams.Destroy;
@@ -527,6 +599,12 @@ function TRALParams.NewParam: TRALParam;
 begin
   Result := TRALParam.Create;
   FParams.Add(Result)
+end;
+
+function TRALParams.NextParam: StringRAL;
+begin
+  FNextParam := FNextParam + 1;
+  Result := 'ralparam'+IntToStr(FNextParam);
 end;
 
 end.
