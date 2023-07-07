@@ -34,7 +34,13 @@ const
                  00,00,00,00,00,00,00,00,00);
 
 type
+
+  { TRALBase64 }
+
   TRALBase64 = class
+  protected
+    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
+    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
   public
     class function Encode(AValue : StringRAL) : StringRAL; overload;
     class function Decode(AValue : StringRAL) : StringRAL; overload;
@@ -92,11 +98,12 @@ begin
   end;
 end;
 
+
 class function TRALBase64.DecodeAsStream(AValue: TStream): TStringStream;
 var
-  vWriteBuf: array[0..2] of Byte;
-  vReadBuf : array[0..3] of Byte;
-  vInt, vChar : IntegerRAL;
+  InBuf: array[0..1019] of Byte;
+  OutBuf: array[0..764] of Byte;
+  BytesRead, BytesWrite: Integer;
   vPosition, vSize : Int64RAL;
 begin
   AValue.Position := 0;
@@ -105,26 +112,13 @@ begin
 
   Result := TStringStream.Create;
   while vPosition < vSize do begin
-    AValue.Read(vReadBuf[0],4);
+    BytesRead := AValue.Read(InBuf[0], Length(InBuf));
+    BytesWrite := DecodeBase64(@InBuf[0], @OutBuf[0], BytesRead);
 
-    vChar := 0;
-    vInt := 0;
-    while vInt < 4 do begin
-      if vReadBuf[vInt] <> 61 then
-        vReadBuf[vInt] := TRALCharB64[vReadBuf[vInt]] - 1
-      else
-        vReadBuf[vInt] := 0;
-      vChar := (vChar shl 6) or vReadBuf[vInt];
-
-      vInt := vInt + 1;
-    end;
-    vWriteBuf[0] := ((vChar shr 16) and $ff);
-    vWriteBuf[1] := ((vChar shr 8) and $ff);
-    vWriteBuf[2] := (vChar and $ff);
-
-    Result.Write(vWriteBuf, 3);
-    vPosition := vPosition + 4;
+    Result.Write(Outbuf[0], BytesWrite);
+    vPosition := vPosition + BytesRead;
   end;
+  Result.Position := 0;
 end;
 
 class function TRALBase64.DecodeAsBytes(AValue: StringRAL): TBytes;
@@ -148,6 +142,92 @@ begin
     Result := vResult.DataString;
   finally
     FreeAndNil(vResult);
+  end;
+end;
+
+class function TRALBase64.EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
+var
+  vRead : IntegerRAL;
+begin
+  Result := 0;
+  while AInputLen > 0 do begin
+    vRead := 3;
+    if AInputLen < 3 then
+      vRead := AInputLen;
+
+    case vRead of
+      1: begin
+          AOutput^ := TRALTableB64[(AInput^ shr 2)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[(AInput^ and 3) shl 4];
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+      end;
+      2: begin
+          AOutput^ := TRALTableB64[(AInput^ shr 02)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[((AInput+1)^ and 15) shl 2];
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+      end;
+      3: begin
+          AOutput^ := TRALTableB64[(AInput^ shr 02)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[((AInput+1)^ and 15) shl 2 or ((AInput+2)^ shr 6)];
+          Inc(AOutput);
+          AOutput^ := TRALTableB64[((AInput+2)^ and 63)];
+          Inc(AOutput);
+      end;
+    end;
+
+    Inc(AInput,vRead);
+    Result := Result + 4;
+
+    AInputLen := AInputLen - 3;
+  end;
+end;
+
+class function TRALBase64.DecodeBase64(AInput, AOutput: PByte;
+  AInputLen: Integer): IntegerRAL;
+var
+  vInt, vChar,
+  vBuf, vRead : IntegerRAL;
+begin
+  Result := 0;
+  while AInputLen > 0 do begin
+    vChar := 0;
+    vInt := 0;
+    vRead := 0;
+    while vInt < 4 do begin
+      if AInput^ <> 61 then begin
+        vBuf := TRALCharB64[AInput^] - 1;
+        vRead := vRead + 1;
+      end
+      else begin
+        vBuf := 0;
+      end;
+      vChar := (vChar shl 6) or vBuf;
+      vInt := vInt + 1;
+      Inc(AInput);
+    end;
+
+    Result := Result + (3 - (4 - vRead));
+    AOutput^ := ((vChar shr 16) and $ff);
+    Inc(AOutput);
+    AOutput^ := ((vChar shr 8) and $ff);
+    Inc(AOutput);
+    AOutput^ := (vChar and $ff);
+    Inc(AOutput);
+
+    AInputLen := AInputLen - 4;
   end;
 end;
 
@@ -189,9 +269,10 @@ end;
 
 class function TRALBase64.EncodeAsStream(AValue: TStream): TStringStream;
 var
-  vWriteBuf: array[0..3] of Byte;
-  vReadBuf : array[0..2] of Byte;
-  vBufSize, vPosition, vSize : Int64RAL;
+  InBuf: array[0..764] of Byte;
+  OutBuf: array[0..1019] of Byte;
+  BytesRead, BytesWrite: IntegerRAL;
+  vPosition, vSize : Int64RAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -199,41 +280,15 @@ begin
 
   Result := TStringStream.Create;
   while vPosition < vSize do begin
-    vBufSize := vSize - vPosition;
-    if vBufSize > 3 then
-      vBufSize := 3;
+    BytesRead := AValue.Read(InBuf[0], Length(InBuf));
+    BytesWrite := EncodeBase64(@InBuf[0], @OutBuf[0], BytesRead);
 
-    AValue.Read(vReadBuf[0],vBufSize);
+    Result.Write(Outbuf[0], BytesWrite);
 
-    if vBufSize < 3 then
-      Break;
-
-    vWriteBuf[0] := TRALTableB64[(vReadBuf[0] shr 02)];
-    vWriteBuf[1] := TRALTableB64[(vReadBuf[0] and 03) shl 4 or (vReadBuf[1] shr 4)];
-    vWriteBuf[2] := TRALTableB64[(vReadBuf[1] and 15) shl 2 or (vReadBuf[2] shr 6)];
-    vWriteBuf[3] := TRALTableB64[(vReadBuf[2] and 63)];
-
-    Result.Write(vWriteBuf, 4);
-    vPosition := vPosition + 3;
+    vPosition := vPosition + BytesRead;
   end;
-
-  case vBufSize of
-    1: begin
-        vWriteBuf[0] := TRALTableB64[(vReadBuf[0] shr 2)];
-        vWriteBuf[1] := TRALTableB64[(vReadBuf[0] and 3) shl 4];
-        vWriteBuf[2] := 61;
-        vWriteBuf[3] := 61;
-    end;
-    2: begin
-        vWriteBuf[0] := TRALTableB64[(vReadBuf[0] shr 02)];
-        vWriteBuf[1] := TRALTableB64[(vReadBuf[0] and 03) shl 4 or (vReadBuf[1] shr 4)];
-        vWriteBuf[2] := TRALTableB64[(vReadBuf[1] and 15) shl 2];
-        vWriteBuf[3] := 61;
-    end;
-  end;
-
-  if vBufSize <> 3 then
-    Result.Write(vWriteBuf, 4);
+  Result.Position := 0;
 end;
+
 
 end.
