@@ -6,9 +6,38 @@ uses
   Classes, SysUtils,
   RALTypes;
 
+type
+  { TRALBase64 }
+
+  TRALBase64 = class
+  protected
+    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
+    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
+  public
+    class function Encode(AValue : StringRAL) : StringRAL; overload;
+    class function Decode(AValue : StringRAL) : StringRAL; overload;
+
+    class function Encode(AValue : TStream) : StringRAL; overload;
+    class function Decode(AValue : TStream) : StringRAL; overload;
+
+    class function Encode(AValue : TBytes) : StringRAL; overload;
+    class function Decode(AValue : TBytes) : StringRAL; overload;
+
+    class function EncodeAsBytes(AValue : StringRAL) : TBytes; overload;
+    class function DecodeAsBytes(AValue : StringRAL) : TBytes; overload;
+
+    class function EncodeAsBytes(AValue : TStream) : TBytes; overload;
+    class function DecodeAsBytes(AValue : TStream) : TBytes; overload;
+
+    class function EncodeAsStream(AValue : TStream) : TStringStream; overload;
+    class function DecodeAsStream(AValue : TStream) : TStringStream; overload;
+  end;
+
+implementation
+
 const
   // nessa tabela esta os 64 chars possivels na base64
-  TRALTableB64 : array[0..63] of Byte = (
+  TEncode64 : array[0..63] of Byte = (
                  065,066,067,068,069,070,071,072,073,074,075,076,077,078,
                  079,080,081,082,083,084,085,086,087,088,089,090,097,098,
                  099,100,101,102,103,104,105,106,107,108,109,110,111,112,
@@ -17,7 +46,7 @@ const
 
   // nessa tabela os 64 chars da base64 estao posicionados conforme a
   // tabela ascii, ou seja, "A" = 65 - posicao = 01
-  TRALCharB64 : array[0..255] of Byte = (
+  TDecode64 : array[0..255] of Byte = (
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
                  00,00,00,00,00,63,00,00,00,64,53,54,55,56,57,58,59,60,61,
@@ -32,33 +61,6 @@ const
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
                  00,00,00,00,00,00,00,00,00);
-
-type
-
-  { TRALBase64 }
-
-  TRALBase64 = class
-  protected
-    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
-    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
-  public
-    class function Encode(AValue : StringRAL) : StringRAL; overload;
-    class function Decode(AValue : StringRAL) : StringRAL; overload;
-
-    class function Encode(AValue : TStream) : StringRAL; overload;
-    class function Decode(AValue : TStream) : StringRAL; overload;
-
-    class function EncodeAsBytes(AValue : StringRAL) : TBytes; overload;
-    class function DecodeAsBytes(AValue : StringRAL) : TBytes; overload;
-
-    class function EncodeAsBytes(AValue : TStream) : TBytes; overload;
-    class function DecodeAsBytes(AValue : TStream) : TBytes; overload;
-
-    class function EncodeAsStream(AValue : TStream) : TStringStream; overload;
-    class function DecodeAsStream(AValue : TStream) : TStringStream; overload;
-  end;
-
-implementation
 
 { TRALBase64 }
 
@@ -86,6 +88,18 @@ begin
   end;
 end;
 
+class function TRALBase64.Decode(AValue: TBytes): StringRAL;
+var
+  vStream : TStringStream;
+begin
+  vStream := TStringStream.Create(AValue);
+  try
+    Result := Decode(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
 class function TRALBase64.DecodeAsBytes(AValue: TStream): TBytes;
 var
   vResult : TStringStream;
@@ -101,9 +115,9 @@ end;
 
 class function TRALBase64.DecodeAsStream(AValue: TStream): TStringStream;
 var
-  InBuf: array[0..1019] of Byte;
-  OutBuf: array[0..764] of Byte;
-  BytesRead, BytesWrite: Integer;
+  vInBuf: array[0..1019] of Byte;
+  vOutBuf: array[0..764] of Byte;
+  vBytesRead, vBytesWrite: Integer;
   vPosition, vSize : Int64RAL;
 begin
   AValue.Position := 0;
@@ -111,12 +125,13 @@ begin
   vSize := AValue.Size;
 
   Result := TStringStream.Create;
-  while vPosition < vSize do begin
-    BytesRead := AValue.Read(InBuf[0], Length(InBuf));
-    BytesWrite := DecodeBase64(@InBuf[0], @OutBuf[0], BytesRead);
+  while vPosition < vSize do
+  begin
+    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+    vBytesWrite := DecodeBase64(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    Result.Write(Outbuf[0], BytesWrite);
-    vPosition := vPosition + BytesRead;
+    Result.Write(vOutbuf[0], vBytesWrite);
+    vPosition := vPosition + vBytesRead;
   end;
   Result.Position := 0;
 end;
@@ -150,16 +165,17 @@ var
   vRead : IntegerRAL;
 begin
   Result := 0;
-  while AInputLen > 0 do begin
+  while AInputLen > 0 do
+  begin
     vRead := 3;
     if AInputLen < 3 then
       vRead := AInputLen;
 
     case vRead of
       1: begin
-          AOutput^ := TRALTableB64[(AInput^ shr 2)];
+          AOutput^ := TEncode64[(AInput^ shr 2)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[(AInput^ and 3) shl 4];
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4];
           Inc(AOutput);
           AOutput^ := 61;
           Inc(AOutput);
@@ -167,23 +183,23 @@ begin
           Inc(AOutput);
       end;
       2: begin
-          AOutput^ := TRALTableB64[(AInput^ shr 02)];
+          AOutput^ := TEncode64[(AInput^ shr 02)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
+          AOutput^ := TEncode64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[((AInput+1)^ and 15) shl 2];
+          AOutput^ := TEncode64[((AInput+1)^ and 15) shl 2];
           Inc(AOutput);
           AOutput^ := 61;
           Inc(AOutput);
       end;
       3: begin
-          AOutput^ := TRALTableB64[(AInput^ shr 02)];
+          AOutput^ := TEncode64[(AInput^ shr 02)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
+          AOutput^ := TEncode64[(AInput^ and 03) shl 4 or ((AInput+1)^ shr 4)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[((AInput+1)^ and 15) shl 2 or ((AInput+2)^ shr 6)];
+          AOutput^ := TEncode64[((AInput+1)^ and 15) shl 2 or ((AInput+2)^ shr 6)];
           Inc(AOutput);
-          AOutput^ := TRALTableB64[((AInput+2)^ and 63)];
+          AOutput^ := TEncode64[((AInput+2)^ and 63)];
           Inc(AOutput);
       end;
     end;
@@ -202,16 +218,20 @@ var
   vBuf, vRead : IntegerRAL;
 begin
   Result := 0;
-  while AInputLen > 0 do begin
+  while AInputLen > 0 do
+  begin
     vChar := 0;
     vInt := 0;
     vRead := 0;
-    while vInt < 4 do begin
-      if AInput^ <> 61 then begin
-        vBuf := TRALCharB64[AInput^] - 1;
+    while vInt < 4 do
+    begin
+      if AInput^ <> 61 then
+      begin
+        vBuf := TDecode64[AInput^] - 1;
         vRead := vRead + 1;
       end
-      else begin
+      else
+      begin
         vBuf := 0;
       end;
       vChar := (vChar shl 6) or vBuf;
@@ -255,6 +275,18 @@ begin
   end;
 end;
 
+class function TRALBase64.Encode(AValue: TBytes): StringRAL;
+var
+  vStream : TStringStream;
+begin
+  vStream := TStringStream.Create(AValue);
+  try
+    Result := Encode(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
 class function TRALBase64.EncodeAsBytes(AValue: TStream): TBytes;
 var
   vResult : TStringStream;
@@ -269,9 +301,9 @@ end;
 
 class function TRALBase64.EncodeAsStream(AValue: TStream): TStringStream;
 var
-  InBuf: array[0..764] of Byte;
-  OutBuf: array[0..1019] of Byte;
-  BytesRead, BytesWrite: IntegerRAL;
+  vInBuf: array[0..764] of Byte;
+  vOutBuf: array[0..1019] of Byte;
+  vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize : Int64RAL;
 begin
   AValue.Position := 0;
@@ -279,13 +311,14 @@ begin
   vSize := AValue.Size;
 
   Result := TStringStream.Create;
-  while vPosition < vSize do begin
-    BytesRead := AValue.Read(InBuf[0], Length(InBuf));
-    BytesWrite := EncodeBase64(@InBuf[0], @OutBuf[0], BytesRead);
+  while vPosition < vSize do
+  begin
+    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+    vBytesWrite := EncodeBase64(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    Result.Write(Outbuf[0], BytesWrite);
+    Result.Write(vOutbuf[0], vBytesWrite);
 
-    vPosition := vPosition + BytesRead;
+    vPosition := vPosition + vBytesRead;
   end;
   Result.Position := 0;
 end;
