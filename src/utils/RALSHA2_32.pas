@@ -1,4 +1,4 @@
-unit RALSHA2_256;
+unit RALSHA2_32;
 
 interface
 
@@ -7,21 +7,23 @@ uses
   RALHashes, RALTypes, RALTools, RALBase64;
 
 type
-  TRALSHA2_256 = class(TRALHashes)
+  TRALSHA32Versions = (rsv224,rsv256);
+
+  TRALSHA2_32 = class(TRALHashes)
   private
+    FVersion : TRALSHA32Versions;
     FHash : array[0..7] of Cardinal;
     FBufLength : Byte;
     FBuffer : array[0..63] of Byte;
     FIndex : IntegerRAL;
     FLenHi : Cardinal;
     FLenLo : Cardinal;
+    FHashSize : Byte;
+    procedure SetVersion(const Value: TRALSHA32Versions);
   protected
-    procedure Hash256(AData : PByte; ALength : IntegerRAL);
+    procedure HashSHA2(AData : PByte; ALength : IntegerRAL);
     procedure Compress;
     procedure Initialize;
-
-    function DigestToHex(AValue : TBytes) : StringRAL;
-    function DigestToBase64(AValue : TBytes) : StringRAL;
 
     function Swap(AValue : Cardinal) : Cardinal;
     function Finalize : TBytes;
@@ -46,6 +48,8 @@ type
     function HMACAsString(AValue, AKey: StringRAL): StringRAL; overload;
     function HMACAsString(AValue : TStream; AKey: StringRAL): StringRAL; overload;
     function HMACAsString(AValue : TBytes; AKey: StringRAL): StringRAL; overload;
+  published
+    property Version : TRALSHA32Versions read FVersion write SetVersion;
   end;
 
 implementation
@@ -65,37 +69,14 @@ const
    $90befffa, $a4506ceb, $bef9a3f7, $c67178f2);
 
 
-{ TRALSHA2_256 }
+{ TRALSHA2_32 }
 
-function TRALSHA2_256.DigestToBase64(AValue: TBytes): StringRAL;
-begin
-  Result := TRALBase64.Encode(AValue);
-  if (Result <> '') and (Result[Length(Result)] = '=') then
-    Delete(Result,Length(Result),1);
-end;
-
-function TRALSHA2_256.DigestToHex(AValue: TBytes): StringRAL;
-const
-  HexChar : array[0..15] of CharRAL = ('0','1','2','3','4','5','6','7','8','9',
-                                       'a','b','c','d','e','f');
-var
-  vInt : IntegerRAL;
-begin
-  vInt := 0;
-  while vInt < Length(AValue) do
-  begin
-    Result := Result + HexChar[(AValue[vInt] shr 4) and $0f];
-    Result := Result + HexChar[(AValue[vInt] and $0f)];
-    Inc(vInt);
-  end;
-end;
-
-procedure TRALSHA2_256.Compress;
+procedure TRALSHA2_32.Compress;
 var
   I: Integer;
   s0, s1, m0, c0, t1, t2: Cardinal;
-  w: array[0..63] of Cardinal;
   a, b, c, d, e, f, g, h: Cardinal;
+  W: array[0..63] of Cardinal;
 begin
   a := FHash[0];
   b := FHash[1];
@@ -160,17 +141,18 @@ begin
   FIndex := 0;
 end;
 
-constructor TRALSHA2_256.Create;
+constructor TRALSHA2_32.Create;
 begin
   FBufLength := 64;
   Initialize;
 end;
 
-function TRALSHA2_256.Finalize: TBytes;
+function TRALSHA2_32.Finalize: TBytes;
 begin
   FBuffer[FIndex]:= $80;
   if FIndex >= 56 then
     Compress;
+
   PCardinal(@FBuffer[56])^:= Swap(FLenHi);
   PCardinal(@FBuffer[60])^:= Swap(FLenLo);
   Compress;
@@ -184,39 +166,36 @@ begin
   FHash[6]:= Swap(FHash[6]);
   FHash[7]:= Swap(FHash[7]);
 
-  SetLength(Result,32);
-  Move(FHash,Result[0],Sizeof(FHash));
+  SetLength(Result,FHashSize);
+  Move(FHash,Result[0],FHashSize);
 end;
 
-function TRALSHA2_256.GetDigest(AValue: TBytes): TBytes;
+function TRALSHA2_32.GetDigest(AValue: TBytes): TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   Result := Finalize;
 end;
 
-function TRALSHA2_256.GetDigest(AValue: StringRAL): TBytes;
+function TRALSHA2_32.GetDigest(AValue: StringRAL): TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   Result := Finalize;
 end;
 
-function TRALSHA2_256.GetDigest(AValue: TStream): TBytes;
+function TRALSHA2_32.GetDigest(AValue: TStream): TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   Result := Finalize;
 end;
 
-procedure TRALSHA2_256.Hash256(AData: PByte; ALength: IntegerRAL);
+procedure TRALSHA2_32.HashSHA2(AData: PByte; ALength: IntegerRAL);
 var
   vBufSize : Integer;
 begin
-  Inc(FLenHi,ALength shr 29);
   Inc(FLenLo,ALength*8);
-  if FLenLo < (ALength*8) then
-    Inc(FLenHi);
 
   while ALength > 0 do
   begin
@@ -236,7 +215,7 @@ begin
   end;
 end;
 
-function TRALSHA2_256.HashAsStream(AValue: TStream): TStringStream;
+function TRALSHA2_32.HashAsStream(AValue: TStream): TStringStream;
 var
   vDigest : TBytes;
   vResult : StringRAL;
@@ -254,7 +233,7 @@ begin
   Result.Position := 0;
 end;
 
-function TRALSHA2_256.HashAsString(AValue: TStream): StringRAL;
+function TRALSHA2_32.HashAsString(AValue: TStream): StringRAL;
 var
   vResult : TStringStream;
 begin
@@ -266,7 +245,7 @@ begin
   end;
 end;
 
-function TRALSHA2_256.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
+function TRALSHA2_32.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
 var
   vKey : TBytes;
   vTemp1 : TBytes;
@@ -298,7 +277,7 @@ begin
   Result := Finalize;
 end;
 
-function TRALSHA2_256.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
+function TRALSHA2_32.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
 var
   vKey, vDigest : TBytes;
 begin
@@ -311,7 +290,7 @@ begin
   end;
 end;
 
-function TRALSHA2_256.HMACAsString(AValue, AKey: StringRAL): StringRAL;
+function TRALSHA2_32.HMACAsString(AValue, AKey: StringRAL): StringRAL;
 var
   vStream : TStringStream;
 begin
@@ -323,7 +302,7 @@ begin
   end;
 end;
 
-function TRALSHA2_256.HashAsString(AValue: StringRAL): StringRAL;
+function TRALSHA2_32.HashAsString(AValue: StringRAL): StringRAL;
 var
   vStream : TStringStream;
 begin
@@ -335,16 +314,34 @@ begin
   end;
 end;
 
-procedure TRALSHA2_256.Initialize;
+procedure TRALSHA2_32.Initialize;
 begin
-  FHash[0]:= $6a09e667;
-  FHash[1]:= $bb67ae85;
-  FHash[2]:= $3c6ef372;
-  FHash[3]:= $a54ff53a;
-  FHash[4]:= $510e527f;
-  FHash[5]:= $9b05688c;
-  FHash[6]:= $1f83d9ab;
-  FHash[7]:= $5be0cd19;
+  case FVersion of
+    rsv224: begin
+      FHash[0]:= $c1059ed8;
+      FHash[1]:= $367cd507;
+      FHash[2]:= $3070dd17;
+      FHash[3]:= $f70e5939;
+      FHash[4]:= $ffc00b31;
+      FHash[5]:= $68581511;
+      FHash[6]:= $64f98fa7;
+      FHash[7]:= $befa4fa4;
+
+      FHashSize := 28;
+    end;
+    rsv256: begin
+      FHash[0]:= $6a09e667;
+      FHash[1]:= $bb67ae85;
+      FHash[2]:= $3c6ef372;
+      FHash[3]:= $a54ff53a;
+      FHash[4]:= $510e527f;
+      FHash[5]:= $9b05688c;
+      FHash[6]:= $1f83d9ab;
+      FHash[7]:= $5be0cd19;
+
+      FHashSize := 32;
+    end;
+  end;
 
   FillChar(FBuffer,Sizeof(FBuffer),0);
   FIndex := 0;
@@ -352,13 +349,19 @@ begin
   FLenLo := 0;
 end;
 
-function TRALSHA2_256.Swap(AValue: Cardinal): Cardinal;
+procedure TRALSHA2_32.SetVersion(const Value: TRALSHA32Versions);
+begin
+  FVersion := Value;
+  Initialize;
+end;
+
+function TRALSHA2_32.Swap(AValue: Cardinal): Cardinal;
 begin
   Result:= ((AValue and $FF) shl 24) or ((AValue and $FF00) shl 8) or
            ((AValue and $FF0000) shr 8) or ((AValue and $FF000000) shr 24);
 end;
 
-procedure TRALSHA2_256.UpdateBuffer(AValue: TBytes);
+procedure TRALSHA2_32.UpdateBuffer(AValue: TBytes);
 var
   vStream : TStringStream;
 begin
@@ -370,7 +373,7 @@ begin
   end;
 end;
 
-procedure TRALSHA2_256.UpdateBuffer(AValue: StringRAL);
+procedure TRALSHA2_32.UpdateBuffer(AValue: StringRAL);
 var
   vStream : TStringStream;
 begin
@@ -382,7 +385,7 @@ begin
   end;
 end;
 
-procedure TRALSHA2_256.UpdateBuffer(AValue: TStream);
+procedure TRALSHA2_32.UpdateBuffer(AValue: TStream);
 var
   vInBuf: array[0..4095] of Byte;
   vBytesRead : IntegerRAL;
@@ -395,13 +398,13 @@ begin
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
-    Hash256(@vInBuf[0], vBytesRead);
+    HashSHA2(@vInBuf[0], vBytesRead);
 
     vPosition := vPosition + vBytesRead;
   end;
 end;
 
-function TRALSHA2_256.HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL;
+function TRALSHA2_32.HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL;
 var
   vStream : TStringStream;
 begin
