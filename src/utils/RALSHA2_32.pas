@@ -13,41 +13,21 @@ type
   private
     FVersion : TRALSHA32Versions;
     FHash : array[0..7] of Cardinal;
-    FBufLength : Byte;
     FBuffer : array[0..63] of Byte;
-    FIndex : IntegerRAL;
-    FLenHi : Cardinal;
-    FLenLo : Cardinal;
     FHashSize : Byte;
-    procedure SetVersion(const Value: TRALSHA32Versions);
   protected
-    procedure HashSHA2(AData : PByte; ALength : IntegerRAL);
-    procedure Compress;
-    procedure Initialize;
-
+    procedure SetVersion(const Value: TRALSHA32Versions);
     function Swap(AValue : Cardinal) : Cardinal;
-    function Finalize : TBytes;
 
-    procedure UpdateBuffer(AValue: TStream); overload;
-    procedure UpdateBuffer(AValue: StringRAL); overload;
-    procedure UpdateBuffer(AValue: TBytes); overload;
+    function GetBufLength : IntegerRAL; override;
+    function GetBuffer(AIndex : IntegerRAL) : Pointer; override;
 
-    function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
+    procedure Compress; override;
+    procedure Initialize; override;
 
-    function GetDigest(AValue: TStream) : TBytes; overload;
-    function GetDigest(AValue: StringRAL) : TBytes; overload;
-    function GetDigest(AValue: TBytes) : TBytes; overload;
+    function Finalize : TBytes; override;
   public
     constructor Create;
-
-    function HashAsString(AValue: StringRAL): StringRAL; overload;
-    function HashAsString(AValue: TStream): StringRAL; overload;
-
-    function HashAsStream(AValue: TStream): TStringStream;
-
-    function HMACAsString(AValue, AKey: StringRAL): StringRAL; overload;
-    function HMACAsString(AValue : TStream; AKey: StringRAL): StringRAL; overload;
-    function HMACAsString(AValue : TBytes; AKey: StringRAL): StringRAL; overload;
   published
     property Version : TRALSHA32Versions read FVersion write SetVersion;
   end;
@@ -87,7 +67,7 @@ begin
   g := FHash[6];
   h := FHash[7];
 
-  Move(FBuffer, W, FBufLength);
+  Move(FBuffer, W, GetBufLength);
 
   for I := 0 to 15 do
     W[I] := Swap(W[I]);
@@ -138,23 +118,28 @@ begin
   FHash[7] := FHash[7] + h;
 
   FillChar(FBuffer,Sizeof(FBuffer),0);
-  FIndex := 0;
+  inherited;
 end;
 
 constructor TRALSHA2_32.Create;
 begin
-  FBufLength := 64;
-  Initialize;
+  SetVersion(rsv256);
 end;
 
 function TRALSHA2_32.Finalize: TBytes;
+var
+  vIndex : IntegerRAL;
+  vLenBit : UInt64;
 begin
-  FBuffer[FIndex]:= $80;
-  if FIndex >= 56 then
+  vIndex := GetIndex;
+  vLenBit := GetLenBit;
+
+  FBuffer[vIndex]:= $80;
+  if vIndex >= 56 then
     Compress;
 
-  PCardinal(@FBuffer[56])^:= Swap(FLenHi);
-  PCardinal(@FBuffer[60])^:= Swap(FLenLo);
+  PCardinal(@FBuffer[56])^:= 0;
+  PCardinal(@FBuffer[60])^:= Swap(Cardinal(vLenBit));
   Compress;
 
   FHash[0]:= Swap(FHash[0]);
@@ -170,148 +155,14 @@ begin
   Move(FHash,Result[0],FHashSize);
 end;
 
-function TRALSHA2_32.GetDigest(AValue: TBytes): TBytes;
+function TRALSHA2_32.GetBuffer(AIndex: IntegerRAL): Pointer;
 begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
+  Result := Pointer(@FBuffer[AIndex]);
 end;
 
-function TRALSHA2_32.GetDigest(AValue: StringRAL): TBytes;
+function TRALSHA2_32.GetBufLength: IntegerRAL;
 begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
-end;
-
-function TRALSHA2_32.GetDigest(AValue: TStream): TBytes;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
-end;
-
-procedure TRALSHA2_32.HashSHA2(AData: PByte; ALength: IntegerRAL);
-var
-  vBufSize : Integer;
-begin
-  Inc(FLenLo,ALength*8);
-
-  while ALength > 0 do
-  begin
-    vBufSize := FBufLength - FIndex;
-    if ALength < vBufSize then
-      vBufSize := ALength;
-
-    Move(AData^,FBuffer[FIndex],vBufSize);
-    Inc(AData,vBufSize);
-
-    if vBufSize + FIndex = FBufLength then
-      Compress
-    else
-      FIndex := vBufSize;
-
-    Dec(ALength,vBufSize);
-  end;
-end;
-
-function TRALSHA2_32.HashAsStream(AValue: TStream): TStringStream;
-var
-  vDigest : TBytes;
-  vResult : StringRAL;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  vDigest := Finalize;
-
-  case OutputType of
-    rhotHex    : vResult := DigestToHex(vDigest);
-    rhotBase64 : vResult := DigestToBase64(vDigest);
-  end;
-
-  Result := TStringStream.Create(vResult);
-  Result.Position := 0;
-end;
-
-function TRALSHA2_32.HashAsString(AValue: TStream): StringRAL;
-var
-  vResult : TStringStream;
-begin
-  vResult := HashAsStream(AValue);
-  try
-    Result := vResult.DataString
-  finally
-    vResult.Free;
-  end;
-end;
-
-function TRALSHA2_32.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
-var
-  vKey : TBytes;
-  vTemp1 : TBytes;
-  vTemp2 : TBytes;
-  vInt : integer;
-begin
-  if Length(AKey) > FBufLength then
-    vKey := GetDigest(AKey)
-  else
-    vKey := AKey;
-
-  SetLength(vKey, FBufLength);
-  SetLength(vTemp1, FBufLength);
-  for vInt := Low(vKey) to High(vKey) do
-    vTemp1[vInt] := vKey[vInt] xor $36;
-
-  Initialize;
-  UpdateBuffer(vTemp1);
-  UpdateBuffer(AValue);
-  vTemp2 := Finalize;
-
-  SetLength(vTemp1, FBufLength);
-  for vInt := Low(vKey) to High(vKey) do
-    vTemp1[vInt] := vKey[vInt] xor $5C;
-
-  Initialize;
-  UpdateBuffer(vTemp1);
-  UpdateBuffer(vTemp2);
-  Result := Finalize;
-end;
-
-function TRALSHA2_32.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
-var
-  vKey, vDigest : TBytes;
-begin
-  vKey := VarToBytes(AKey);
-  vDigest := HMACAsDigest(AValue,vKey);
-
-  case OutputType of
-    rhotHex    : Result := DigestToHex(vDigest);
-    rhotBase64 : Result := DigestToBase64(vDigest);
-  end;
-end;
-
-function TRALSHA2_32.HMACAsString(AValue, AKey: StringRAL): StringRAL;
-var
-  vStream : TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    Result := HMACAsString(vStream,AKey);
-  finally
-    vStream.Free;
-  end;
-end;
-
-function TRALSHA2_32.HashAsString(AValue: StringRAL): StringRAL;
-var
-  vStream : TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    Result := HashAsString(vStream);
-  finally
-    vStream.Free;
-  end;
+  Result := 64;
 end;
 
 procedure TRALSHA2_32.Initialize;
@@ -344,9 +195,6 @@ begin
   end;
 
   FillChar(FBuffer,Sizeof(FBuffer),0);
-  FIndex := 0;
-  FLenHi := 0;
-  FLenLo := 0;
 end;
 
 procedure TRALSHA2_32.SetVersion(const Value: TRALSHA32Versions);
@@ -359,61 +207,6 @@ function TRALSHA2_32.Swap(AValue: Cardinal): Cardinal;
 begin
   Result:= ((AValue and $FF) shl 24) or ((AValue and $FF00) shl 8) or
            ((AValue and $FF0000) shr 8) or ((AValue and $FF000000) shr 24);
-end;
-
-procedure TRALSHA2_32.UpdateBuffer(AValue: TBytes);
-var
-  vStream : TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    UpdateBuffer(vStream);
-  finally
-    vStream.Free;
-  end;
-end;
-
-procedure TRALSHA2_32.UpdateBuffer(AValue: StringRAL);
-var
-  vStream : TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    UpdateBuffer(vStream);
-  finally
-    vStream.Free;
-  end;
-end;
-
-procedure TRALSHA2_32.UpdateBuffer(AValue: TStream);
-var
-  vInBuf: array[0..4095] of Byte;
-  vBytesRead : IntegerRAL;
-  vPosition, vSize : Int64RAL;
-begin
-  AValue.Position := 0;
-  vPosition := 0;
-  vSize := AValue.Size;
-
-  while vPosition < vSize do
-  begin
-    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
-    HashSHA2(@vInBuf[0], vBytesRead);
-
-    vPosition := vPosition + vBytesRead;
-  end;
-end;
-
-function TRALSHA2_32.HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL;
-var
-  vStream : TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    Result := HMACAsString(vStream,AKey);
-  finally
-    vStream.Free;
-  end;
 end;
 
 end.
