@@ -195,6 +195,7 @@ begin
   end;
 
   FillChar(FBuffer,Sizeof(FBuffer),0);
+  inherited;
 end;
 
 procedure TRALSHA2_32.SetVersion(const Value: TRALSHA32Versions);

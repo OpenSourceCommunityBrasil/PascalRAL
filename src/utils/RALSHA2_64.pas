@@ -237,8 +237,10 @@ end;
 
 function TRALSHA2_64.Swap(AValue: UInt64): UInt64;
 begin
-  Result:= ((AValue and $FF) shl 56) or ((AValue and $FF00) shl 40) or
-           ((AValue and $FF0000) shl 24) or ((AValue and $FF000000) shl 8) or
+  Result:= ((AValue and $FF) shl 56) or
+           ((AValue and $FF00) shl 40) or
+           ((AValue and $FF0000) shl 24) or
+           ((AValue and $FF000000) shl 8) or
            ((AValue and $FF00000000) shr 8) or
            ((AValue and $FF0000000000) shr 24) or
            ((AValue and $FF000000000000) shr 40) or

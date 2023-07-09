@@ -137,6 +137,7 @@ begin
   FHash[3] := FHash[3] + D;
 
   FillChar(FBuffer,Sizeof(FBuffer),0);
+  inherited;
 end;
 
 constructor TRALMD5.Create;
