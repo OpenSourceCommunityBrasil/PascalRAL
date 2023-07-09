@@ -70,7 +70,7 @@ end;
 function TRALHashes.DigestToBase64(AValue: TBytes): StringRAL;
 begin
   Result := TRALBase64.Encode(AValue);
-  if (Result <> '') and (Result[Length(Result)] = '=') then
+  while (Result <> '') and (Result[Length(Result)] = '=') do
     Delete(Result,Length(Result),1);
 end;
 
