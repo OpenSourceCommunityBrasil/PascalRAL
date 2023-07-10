@@ -29,9 +29,15 @@ type
     function CreateRALSSL: TRALSSL; override;
     procedure DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
     procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo);
+    procedure DecodeAuth(var ARequest: TRALRequest; AParam, AValue : StringRAL);
+
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
+    procedure OnParseAuthentication(AContext: TIdContext;
+                                    const AAuthType, AAuthData: String;
+                                    var VUsername, VPassword: String;
+                                    var VHandled: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -47,6 +53,7 @@ begin
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
+  FHttp.OnParseAuthentication := OnParseAuthentication;
 
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 end;
@@ -54,6 +61,32 @@ end;
 function TRALIndyServer.CreateRALSSL: TRALSSL;
 begin
   Result := TRALIndySSL.Create;
+end;
+
+procedure TRALIndyServer.DecodeAuth(var ARequest: TRALRequest; AParam,
+  AValue: StringRAL);
+var
+  vInt : IntegerRAL;
+  vAuthType : StringRAL;
+begin
+  if not SameText(AParam,'Authorization') then
+    Exit;
+
+  vAuthType := '';
+
+  vInt := Pos(' ',AValue);
+  if vInt > 0 then begin
+    vAuthType := Copy(AValue,1,vInt-1);
+    Delete(AValue,1,vInt);
+  end;
+
+  if vAuthType <> '' then begin
+    ARequest.Authorization.AuthString := AValue;
+    if SameText(vAuthType,'basic') then
+      ARequest.Authorization.AuthType := ratBasic
+    else if SameText(vAuthType,'bearer') then
+      ARequest.Authorization.AuthType := ratBearer
+  end;
 end;
 
 procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest;
@@ -220,12 +253,21 @@ begin
       ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
       ContentSize := ARequestInfo.ContentLength;
 
+      if AContext.Data is TRALAuthClient then begin
+        Authorization.AuthType := TRALAuthClient(AContext.Data).AuthType;
+        Authorization.AuthString := TRALAuthClient(AContext.Data).AuthString;
+
+        AContext.Data.Free;
+        AContext.Data := nil;
+      end;
+
       vInt := 0;
       while vInt < ARequestInfo.RawHeaders.Count do
       begin
         vStr1 := ARequestInfo.RawHeaders.Names[vInt];
         vStr2 := ARequestInfo.RawHeaders.Values[vStr1];
 
+//        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
 
         Headers.Add(vStr1 + '=' + vStr2);
@@ -238,6 +280,7 @@ begin
         vStr1 := ARequestInfo.CustomHeaders.Names[vInt];
         vStr2 := ARequestInfo.CustomHeaders.Values[vStr1];
 
+//        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
 
         Headers.Add(vStr1 + '=' + vStr2);
@@ -317,6 +360,29 @@ begin
     end;
   finally
     FreeAndNil(vRequest);
+  end;
+end;
+
+procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
+  const AAuthType, AAuthData: String; var VUsername, VPassword: String;
+  var VHandled: Boolean);
+var
+  vAuth : TRALAuthClient;
+begin
+  VHandled := False;
+  if Authentication <> nil then begin
+    case Authentication.AuthType of
+      ratBasic  : VHandled := SameText(AAuthType,'basic');
+      ratBearer : VHandled := SameText(AAuthType,'bearer');
+    end;
+
+    if VHandled then begin
+      vAuth := TRALAuthClient.Create;
+      vAuth.AuthType := Authentication.AuthType;
+      vAuth.AuthString := AAuthData;
+
+      AContext.Data := vAuth;
+    end;
   end;
 end;
 

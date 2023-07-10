@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  RALTypes, RALConsts, RALTools, RALMIMETypes;
+  RALTypes, RALConsts, RALTools, RALMIMETypes, RALBase64;
 
 type
   TRALClientInfo = class
@@ -69,8 +69,25 @@ type
     property ParamName[name: StringRAL]: TRALParam read GetParamName;
   end;
 
+  TRALAuthClient = class
+  private
+    FAuthType : TRALAuthTypes;
+    FAuthString : StringRAL;
+  protected
+    function GetPassword: StringRAL;
+    function GetUserName: StringRAL;
+  public
+    constructor Create;
+  published
+    property AuthType : TRALAuthTypes read FAuthType write FAuthType;
+    property AuthString : StringRAL read FAuthString write FAuthString;
+    property UserName : StringRAL read GetUserName;
+    property Password : StringRAL read GetPassword;
+  end;
+
   TRALRequest = class
   private
+    FAuthorization : TRALAuthClient;
     FHeaders: TStringList;
     FContentType: StringRAL;
     FContentSize: Int64RAL;
@@ -93,6 +110,7 @@ type
     property Params: TRALParams read FParams;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
+    property Authorization : TRALAuthClient read FAuthorization write FAuthorization;
   end;
 
   TRALResponse = class
@@ -327,6 +345,7 @@ end;
 constructor TRALRequest.Create;
 begin
   inherited;
+  FAuthorization := TRALAuthClient.Create;
   FHeaders := TStringList.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
@@ -338,6 +357,7 @@ begin
   FreeAndNil(FHeaders);
   FreeAndNil(FClientInfo);
   FreeAndNil(FParams);
+  FreeAndNil(FAuthorization);
   inherited;
 end;
 
@@ -591,6 +611,43 @@ function TRALParams.NextParam: StringRAL;
 begin
   FNextParam := FNextParam + 1;
   Result := 'ralparam'+IntToStr(FNextParam);
+end;
+
+{ TRALAuthClient }
+
+constructor TRALAuthClient.Create;
+begin
+  inherited;
+  FAuthType := ratNone;
+  FAuthString := '';
+end;
+
+function TRALAuthClient.GetPassword: StringRAL;
+var
+  vString : StringRAL;
+  vInt : IntegerRAL;
+begin
+  Result := '';
+  if FAuthType = ratBasic then begin
+    vString := TRALBase64.Decode(FAuthString);
+    vInt := Pos(':',vString);
+    if vInt > 0 then
+      Result := Copy(vString,vInt+1,Length(vString));
+  end;
+end;
+
+function TRALAuthClient.GetUserName: StringRAL;
+var
+  vString : StringRAL;
+  vInt : IntegerRAL;
+begin
+  Result := '';
+  if FAuthType = ratBasic then begin
+    vString := TRALBase64.Decode(FAuthString);
+    vInt := Pos(':',vString);
+    if vInt > 0 then
+      Result := Copy(vString,1,vInt-1);
+  end;
 end;
 
 end.

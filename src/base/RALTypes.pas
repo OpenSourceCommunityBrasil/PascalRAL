@@ -11,6 +11,7 @@ interface
 type
   TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amALL);
   TRALMethods = set of TRALMethod;
+  TRALAuthTypes = (ratNone,ratBasic,ratBearer);
 
   IntegerRAL = integer;
   StringRAL = string;

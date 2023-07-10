@@ -9,10 +9,14 @@ uses
 type
   TRALAuthentication = class(TPersistent)
   private
-
+    FAuthType : TRALAuthTypes;
+  protected
+    procedure SetAuthType(AType : TRALAuthTypes);
   public
     constructor Create;
     destructor Destroy; override;
+  published
+    property AuthType : TRALAuthTypes read FAuthType;
   end;
 
   TRALBasicAuth = class(TRALAuthentication)
@@ -20,7 +24,7 @@ type
     FUserName: StringRAL;
     FPassword: StringRAL;
   public
-
+    constructor Create;
   published
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
@@ -60,12 +64,18 @@ begin
 
   inherited;
 end;
+procedure TRALAuthentication.SetAuthType(AType: TRALAuthTypes);
+begin
+  FAuthType := AType;
+end;
+
 { TRALJWTAuth }
 
 constructor TRALJWTAuth.Create;
 begin
   inherited;
   FToken := TRALJWT.Create;
+  SetAuthType(ratBearer);
 end;
 
 destructor TRALJWTAuth.Destroy;
@@ -82,6 +92,13 @@ end;
 function TRALJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
 begin
 
+end;
+
+{ TRALBasicAuth }
+
+constructor TRALBasicAuth.Create;
+begin
+  SetAuthType(ratBasic);
 end;
 
 end.
