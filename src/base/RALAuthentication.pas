@@ -29,20 +29,12 @@ type
   TRALJWTAuth = class(TRALAuthentication)
   private
     FToken: TRALJWT;
-    FHeader: TRALJWTHeader;
-    FPayload: TRALJWTPayload;
-  protected
-    function GetSecret: StringRAL;
-    procedure SetSecret(const AValue: StringRAL);
   public
-    function GetToken(aJSONParams: string): StringRAL;
+    function GetToken(AJSONParams: StringRAL): StringRAL;
+    function GetRenewToken(AToken, AJSONParams: StringRAL): StringRAL;
 
     constructor Create;
     destructor Destroy; override;
-  published
-    property Header: TRALJWTHeader read FHeader write FHeader;
-    property Payload: TRALJWTPayload read FPayload write FPayload;
-    property Secret : StringRAL read GetSecret write SetSecret;
   end;
 
   TRALOAuth = class(TRALAuthentication)
@@ -74,33 +66,22 @@ constructor TRALJWTAuth.Create;
 begin
   inherited;
   FToken := TRALJWT.Create;
-  FHeader := TRALJWTHeader.Create;
-  FPayload := TRALJWTPayload.Create;
 end;
 
 destructor TRALJWTAuth.Destroy;
 begin
-  FreeAndNil(FHeader);
-  FreeAndNil(FPayload);
   FreeAndNil(FToken);
   inherited;
 end;
 
-function TRALJWTAuth.GetSecret: StringRAL;
+function TRALJWTAuth.GetRenewToken(AToken, AJSONParams: StringRAL): StringRAL;
 begin
-  Result := FToken.Secret;
+
 end;
 
-function TRALJWTAuth.GetToken(aJSONParams: string): StringRAL;
+function TRALJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
 begin
-  FToken.Header := FHeader.AsJSON;
-  FToken.Payload := FPayload.AsJSON;
-  Result := FToken.Token;
-end;
 
-procedure TRALJWTAuth.SetSecret(const AValue: StringRAL);
-begin
-  FToken.Secret := AValue;
 end;
 
 end.

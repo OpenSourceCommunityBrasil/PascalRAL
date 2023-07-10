@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64,
+  RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALKeyPairs,
   {$IFNDEF FPC}
     JSON
   {$ELSE}
@@ -43,7 +43,7 @@ type
     FJWTId : StringRAL;
     FNotBefore : TDateTime;
     FSubject : StringRAL;
-    FCustoms : TStringList;
+    FCustoms : TRALKeyPairs;
   protected
     function GetAsJSON: StringRAL;
     procedure SetAsJSON(const AValue: StringRAL);
@@ -59,6 +59,7 @@ type
     property JWTId : StringRAL read FJWTId write FJWTId;
     property NotBefore : TDateTime read FNotBefore write FNotBefore;
     property Subject : StringRAL read FSubject write FSubject;
+    property Customs : TRALKeyPairs read FCustoms write FCustoms;
 
     property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
   end;
@@ -66,16 +67,19 @@ type
   TRALJWT = class
   private
     FAlgorithm : TRALJWTAlgorithm;
-    FHeader: StringRAL;
-    FPayload: StringRAL;
+    FHeader: TRALJWTHeader;
+    FPayload: TRALJWTPayload;
     FSignature: StringRAL;
     FSecret : StringRAL;
   protected
+    constructor Create;
+    destructor Destroy; override;
+
     procedure SetToken(const AValue: StringRAL);
     function GetToken: StringRAL;
   public
-    property Header: StringRAL read FHeader write FHeader;
-    property Payload: StringRAL read FPayload write FPayload;
+    property Header: TRALJWTHeader read FHeader write FHeader;
+    property Payload: TRALJWTPayload read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
     property Secret: StringRAL read FSecret write FSecret;
 
@@ -109,7 +113,7 @@ begin
 
     Result := vJson.ToJSON;
   finally
-    vJson.Free;
+    FreeAndNil(vJson);
   end;
 end;
 
@@ -163,7 +167,7 @@ end;
 
 constructor TRALJWTPayload.Create;
 begin
-  FCustoms := TStringList.Create;
+  FCustoms := TRALKeyPairs.Create(Self);
   Initialize;
 end;
 
@@ -176,7 +180,10 @@ end;
 function TRALJWTPayload.GetAsJSON: StringRAL;
 var
   vJson : TJSONObject;
+  vJsonValue : TJSONValue;
   vInt : IntegerRAL;
+  vItem : TRALKeyPair;
+  vInvalidName : boolean;
 begin
   vJson := TJSONObject.Create;
   try
@@ -203,13 +210,49 @@ begin
 
     vInt := 0;
     while vInt < FCustoms.Count do begin
+      vItem := TRALKeyPair(FCustoms.Items[vInt]);
+      vInvalidName := SameText(vItem.KeyName,'aud') or
+                      SameText(vItem.KeyName,'exp') or
+                      SameText(vItem.KeyName,'iat') or
+                      SameText(vItem.KeyName,'iss') or
+                      SameText(vItem.KeyName,'jti') or
+                      SameText(vItem.KeyName,'nbf') or
+                      SameText(vItem.KeyName,'sub');
+
+      if not vInvalidName then begin
+        if vItem.KeyType = ktString then begin
+          vJson.AddPair(vItem.KeyName,vItem.KeyValue);
+        end
+        else if vItem.KeyType = ktInteger then begin
+          vJsonValue := TJSONNumber.Create(StrToInt64(vItem.KeyValue));
+          vJson.AddPair(vItem.KeyName,vJsonValue);
+        end
+        else if vItem.KeyType = ktFloat then begin
+          vJsonValue := TJSONNumber.Create(StrToFloat(vItem.KeyValue));
+          vJson.AddPair(vItem.KeyName,vJsonValue);
+        end
+        else if vItem.KeyType in [ktDate,ktTime,ktDateTime] then begin
+          vJsonValue := TJSONNumber.Create(StrToDateTime(vItem.KeyValue));
+          vJson.AddPair(vItem.KeyName,vJsonValue);
+        end
+        else if vItem.KeyType = ktBoolean then begin
+          if SameText(vItem.KeyValue,'true') then
+            vJsonValue := TJSONBool.Create(True)
+          else
+            vJsonValue := TJSONBool.Create(False);
+          vJson.AddPair(vItem.KeyName,vJsonValue);
+        end
+        else begin
+          vJson.AddPair(vItem.KeyName,TJSONNull.Create);
+        end;
+      end;
 
       vInt := vInt + 1;
     end;
 
     Result := vJson.ToJSON;
   finally
-    vJson.Free;
+    FreeAndNil(vJson);
   end;
 end;
 
@@ -281,13 +324,24 @@ end;
 
 { TRALJWT }
 
+constructor TRALJWT.Create;
+begin
+  inherited;
+  FHeader := TRALJWTHeader.Create;
+  FPayload := TRALJWTPayload.Create;
+end;
+
+destructor TRALJWT.Destroy;
+begin
+  FreeAndNil(FHeader);
+  FreeAndNil(FPayload);
+  inherited;
+end;
+
 function TRALJWT.GetToken: StringRAL;
 var
   vHash : TRALHashes;
 begin
-  Result := TRALBase64.Encode(FHeader) + '.' +
-            TRALBase64.Encode(FPayload);
-
   case FAlgorithm of
     tjaHSHA256: begin
       vHash := TRALSHA2_32.Create;
@@ -301,8 +355,12 @@ begin
 
   try
     vHash.OutputType := rhotBase64;
-    Result := Result + '.' +
-              vHash.HMACAsString(Result,FSecret);
+
+    Result := TRALBase64.Encode(FHeader.AsJSON) + '.' +
+              TRALBase64.Encode(FPayload.AsJSON);
+
+    FSignature := vHash.HMACAsString(Result,FSecret);
+    Result := Result + '.' + FSignature;
   finally
     FreeAndNil(vHash);
   end;
@@ -326,8 +384,8 @@ begin
     until vInt = 0;
 
     if vStr.Count = 3 then begin
-      FHeader := TRALBase64.Decode(vStr.Strings[0]);
-      FPayload := TRALBase64.Decode(vStr.Strings[1]);
+      FHeader.AsJSON := TRALBase64.Decode(vStr.Strings[0]);
+      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
       FSignature := vStr.Strings[2];
     end;
   finally
