@@ -3,8 +3,11 @@ unit RALAuthentication;
 interface
 
 uses
+  {$IFNDEF FPC}
+  RALToken,
+  {$ENDIF}
   Classes, SysUtils,
-  RALToken, RALConsts, RALTypes;
+  RALConsts, RALTypes;
 
 type
   TRALAuthentication = class(TRALComponent)
@@ -30,6 +33,7 @@ type
     property Password: StringRAL read FPassword write FPassword;
   end;
 
+  {$IFNDEF FPC}
   TRALJWTAuth = class(TRALAuthentication)
   private
     FToken: TRALJWT;
@@ -41,6 +45,7 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+  {$ENDIF}
 
   TRALOAuth = class(TRALAuthentication)
   private
@@ -65,11 +70,13 @@ begin
 
   inherited;
 end;
+
 procedure TRALAuthentication.SetAuthType(AType: TRALAuthTypes);
 begin
   FAuthType := AType;
 end;
 
+{$IFNDEF FPC}
 { TRALJWTAuth }
 
 constructor TRALJWTAuth.Create;
@@ -99,6 +106,7 @@ function TRALJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
 begin
 
 end;
+{$ENDIF}
 
 { TRALBasicAuth }
 

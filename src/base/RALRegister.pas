@@ -3,13 +3,13 @@ unit RALRegister;
 interface
 
 uses
-//  {$IFDEF FPC}
-//  LResources, LazarusPackageIntf, PropEdits, ComponentEditors,
-//  {$ELSE}
-//  DesignIntf, DesignEditors, // DsgnIntf
-//  {$ENDIF}
+    {$IFDEF FPC}
+    LResources,
+    {$ELSE}
+  //  DesignIntf, DesignEditors, // DsgnIntf
+    {$ENDIF}
   Classes, SysUtils,
-  RALBase, RALAuthentication;
+  RALAuthentication;
 
 //type
 //  TRALAboutFormProperty = class(TPropertyEditor)
@@ -25,9 +25,9 @@ implementation
 
 procedure Register;
 begin
-//  RegisterPropertyEditor(TypeInfo(TRALAboutInfo), nil, 'About',
-//    TRALAboutFormProperty);
-  RegisterComponents('RAL - Authentication', [TRALBasicAuth, TRALJWTAuth])
+  //  RegisterPropertyEditor(TypeInfo(TRALAboutInfo), nil, 'About',
+  //    TRALAboutFormProperty);
+  RegisterComponents('RAL - Authentication', [TRALBasicAuth{$IFNDEF FPC}, TRALJWTAuth{$ENDIF}]);
 end;
 
 { TRALAboutDialogProperty }
@@ -37,15 +37,20 @@ end;
 //  inherited;
 //  ShowRALAboutForm;
 //end;
-//
+
 //function TRALAboutDialogProperty.GetAttributes: TPropertyAttributes;
 //begin
 //  Result := [paDialog, paReadOnly];
 //end;
-//
+
 //function TRALAboutDialogProperty.GetValue: string;
 //begin
 //  Result := 'RAL - REST API Lite';
 //end;
+
+{$IFDEF FPC}
+initialization
+{$I pascalral.lrs}
+{$ENDIF}
 
 end.

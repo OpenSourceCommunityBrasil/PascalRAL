@@ -1,12 +1,13 @@
 unit RALToken;
 
 interface
+{$IFNDEF FPC} // apagar quando corrigir o JSON
 
 uses
   Classes, SysUtils, DateUtils,
   RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALKeyPairs,
   {$IFNDEF FPC}
-    JSON
+    JSON, RALTools
   {$ELSE}
     fpjson
   {$ENDIF}
@@ -72,13 +73,12 @@ type
     FSignature: StringRAL;
     FSecret : StringRAL;
   protected
-    constructor Create;
-    destructor Destroy; override;
-
     function CreateToken(AHeader,APayload : StringRAL;
                          var ASignature : StringRAL) : StringRAL;
     function GetToken: StringRAL;
   public
+    constructor Create;
+    destructor Destroy; override;
     function ValidToken(const AValue: StringRAL) : boolean;
 
     property Token: StringRAL read GetToken;
@@ -88,9 +88,9 @@ type
     property Signature: StringRAL read FSignature;
     property Secret: StringRAL read FSecret write FSecret;
   end;
-
+{$ENDIF}
 implementation
-
+{$IFNDEF FPC} // apagar quando corrigir o JSON
 { TRALJWTHeader }
 
 constructor TRALJWTHeader.Create;
@@ -104,17 +104,17 @@ var
 begin
   vJson := TJSONObject.Create;
   try
-    vJson.AddPair('typ',FHeaderType);
+    vJson.Add('typ',FHeaderType);
 
     case FAlgorithm of
-      tjaHSHA256: vJson.AddPair('alg','hs256');
-      tjaHSHA512: vJson.AddPair('alg','hs512');
+      tjaHSHA256: vJson.Add('alg', 'hs256');
+      tjaHSHA512: vJson.Add('alg', 'hs512');
     end;
 
     if FKeyID <> '' then
-      vJson.AddPair('kid',FKeyID);
+      vJson.Add('kid', FKeyID);
 
-    Result := vJson.ToJSON;
+    Result := vJson.AsJSON;
   finally
     FreeAndNil(vJson);
   end;
@@ -142,19 +142,19 @@ begin
       while vInt < vJson.Count do begin
         vPair := vJson.Pairs[vInt];
         vPairName := vPair.JsonString.Value;
-        if SameText(vPairName,'typ') then begin
+        if SameText(vPairName, 'typ') then begin
           FHeaderType := vPair.JsonValue.Value;
         end
-        else if SameText(vPairName,'alg') then begin
+        else if SameText(vPairName, 'alg') then begin
           vAux1 := vPair.JsonValue.Value;
 
           FAlgorithm := tjaHSHA256;
-          if SameText(vAux1,'hs256') then
+          if SameText(vAux1, 'hs256') then
             FAlgorithm := tjaHSHA256
-          else if SameText(vAux1,'hs512') then
+          else if SameText(vAux1, 'hs512') then
             FAlgorithm := tjaHSHA512;
         end
-        else if SameText(vPairName,'kid') then begin
+        else if SameText(vPairName, 'kid') then begin
           FKeyID := vPair.JsonValue.Value;
         end;
 
@@ -191,25 +191,25 @@ begin
   vJson := TJSONObject.Create;
   try
     if FAudience <> '' then
-      vJson.AddPair('aud',FAudience);
+      vJson.Add('aud', FAudience);
 
     if FExpiration > 0 then
-      vJson.AddPair('exp',TJSONNumber.Create(DateTimeToUnix(FExpiration)));
+      vJson.Add('exp', TJSONNumber.Create(DateTimeToUnix(FExpiration)));
 
     if FIssuedAt > 0 then
-      vJson.AddPair('iat',TJSONNumber.Create(DateTimeToUnix(FIssuedAt)));
+      vJson.Add('iat', TJSONNumber.Create(DateTimeToUnix(FIssuedAt)));
 
     if FIssuer <> '' then
-      vJson.AddPair('iss',FIssuer);
+      vJson.Add('iss', FIssuer);
 
     if FJWTId <> '' then
-      vJson.AddPair('jti',FJWTId);
+      vJson.Add('jti', FJWTId);
 
     if FNotBefore > 0 then
-      vJson.AddPair('nbf',TJSONNumber.Create(DateTimeToUnix(FNotBefore)));
+      vJson.Add('nbf', TJSONNumber.Create(DateTimeToUnix(FNotBefore)));
 
     if FSubject <> '' then
-      vJson.AddPair('sub',FSubject);
+      vJson.Add('sub', FSubject);
 
     vInt := 0;
     while vInt < FCustoms.Count do begin
@@ -224,29 +224,29 @@ begin
 
       if not vInvalidName then begin
         if vItem.KeyType = ktString then begin
-          vJson.AddPair(vItem.KeyName,vItem.KeyValue);
+          vJson.Add(vItem.KeyName, vItem.KeyValue);
         end
         else if vItem.KeyType = ktInteger then begin
           vJsonValue := TJSONNumber.Create(StrToInt64(vItem.KeyValue));
-          vJson.AddPair(vItem.KeyName,vJsonValue);
+          vJson.Add(vItem.KeyName, vJsonValue);
         end
         else if vItem.KeyType = ktFloat then begin
           vJsonValue := TJSONNumber.Create(StrToFloat(vItem.KeyValue));
-          vJson.AddPair(vItem.KeyName,vJsonValue);
+          vJson.Add(vItem.KeyName, vJsonValue);
         end
         else if vItem.KeyType in [ktDate,ktTime,ktDateTime] then begin
           vJsonValue := TJSONNumber.Create(DateTimeToUnix(StrToDateTime(vItem.KeyValue)));
-          vJson.AddPair(vItem.KeyName,vJsonValue);
+          vJson.Add(vItem.KeyName, vJsonValue);
         end
         else if vItem.KeyType = ktBoolean then begin
-          if SameText(vItem.KeyValue,'true') then
+          if SameText(vItem.KeyValue, 'true') then
             vJsonValue := TJSONBool.Create(True)
           else
             vJsonValue := TJSONBool.Create(False);
-          vJson.AddPair(vItem.KeyName,vJsonValue);
+          vJson.Add(vItem.KeyName, vJsonValue);
         end
         else begin
-          vJson.AddPair(vItem.KeyName,TJSONNull.Create);
+          vJson.Add(vItem.KeyName, TJSONNull.Create);
         end;
       end;
 
@@ -287,48 +287,48 @@ begin
       while vInt < vJson.Count do begin
         vPair := vJson.Pairs[vInt];
         vPairName := vPair.JsonString.Value;
-        if SameText(vPairName,'aud') then begin
+        if SameText(vPairName, 'aud') then begin
           FAudience := vPair.JsonValue.Value;
         end
-        else if SameText(vPairName,'exp') then begin
+        else if SameText(vPairName, 'exp') then begin
           if vPair.JsonValue is TJSONNumber then
             FExpiration := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
-            FExpiration := StrToDateTimeDef(vPair.JsonValue.Value,0);
+            FExpiration := StrToDateTimeDef(vPair.JsonValue.Value, 0);
         end
-        else if SameText(vPairName,'iat') then begin
+        else if SameText(vPairName, 'iat') then begin
           if vPair.JsonValue is TJSONNumber then
             FIssuedAt := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
-            FIssuedAt := StrToDateTimeDef(vPair.JsonValue.Value,0);
+            FIssuedAt := StrToDateTimeDef(vPair.JsonValue.Value, 0);
         end
-        else if SameText(vPairName,'iss') then begin
+        else if SameText(vPairName, 'iss') then begin
           FIssuer := vPair.JsonValue.Value;
         end
-        else if SameText(vPairName,'jti') then begin
+        else if SameText(vPairName, 'jti') then begin
           FJWTId := vPair.JsonValue.Value;
         end
-        else if SameText(vPairName,'nbf') then begin
+        else if SameText(vPairName, 'nbf') then begin
           if vPair.JsonValue is TJSONNumber then
             FNotBefore := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
-            FNotBefore := StrToDateTimeDef(vPair.JsonValue.Value,0);
+            FNotBefore := StrToDateTimeDef(vPair.JsonValue.Value, 0);
         end
-        else if SameText(vPairName,'sub') then begin
+        else if SameText(vPairName, 'sub') then begin
           FSubject := vPair.JsonValue.Value;
         end
         else begin
           if vPair.JsonValue is TJSONNumber then begin
-            if not TryStrToInt64(vPair.JsonValue.Value,vInt64) then
-              FCustoms.AddKey(vPairName,TJSONNumber(vPair.JsonValue).AsDouble)
+            if not TryStrToInt64(vPair.JsonValue.Value, vInt64) then
+              FCustoms.AddKey(vPairName, TJSONNumber(vPair.JsonValue).AsDouble)
             else
-              FCustoms.AddKey(vPairName,TJSONNumber(vPair.JsonValue).AsInt64)
+              FCustoms.AddKey(vPairName, TJSONNumber(vPair.JsonValue).AsInt64)
           end
           else if vPair.JsonValue is TJSONBool then begin
-            FCustoms.AddKey(vPairName,TJSONBool(vPair.JsonValue).AsBoolean)
+            FCustoms.AddKey(vPairName, TJSONBool(vPair.JsonValue).AsBoolean)
           end
           else begin
-            FCustoms.AddKey(vPairName,vPair.JsonValue.Value)
+            FCustoms.AddKey(vPairName, vPair.JsonValue.Value)
           end;
         end;
 
@@ -408,10 +408,10 @@ begin
   vStr := TStringList.Create;
   try
     repeat
-      vInt := Pos('.',vValue);
+      vInt := Pos('.', vValue);
       if vInt > 0 then begin
-        vStr.Add(Copy(vValue,1,vInt-1));
-        Delete(vValue,1,vInt);
+        vStr.Add(Copy(vValue, 1, vInt - 1));
+        Delete(vValue, 1, vInt);
       end;
     until vInt = 0;
 
@@ -420,7 +420,7 @@ begin
       vPayload   := TRALBase64.Decode(vStr.Strings[1]);
       vSignature := vStr.Strings[2];
 
-      CreateToken(vHeader,vPayload,vMySignature);
+      CreateToken(vHeader, vPayload, vMySignature);
 
       if vMySignature = vSignature then begin
         vObjPayload := TRALJWTPayload.Create;
@@ -442,5 +442,6 @@ begin
     FreeAndNil(vStr);
   end;
 end;
+{$ENDIF}
 
 end.

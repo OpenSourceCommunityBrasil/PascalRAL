@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="PascalRAL"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils"/>
+        <UnitOutputDirectory Value="..\..\compiled"/>
+      </SearchPaths>
+      <Other>
+        <Verbosity>
+          <ShoLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Version Major="1"/>
+    <Files Count="18">
+      <Item1>
+        <Filename Value="..\..\src\base\RALAuthentication.pas"/>
+        <UnitName Value="RALAuthentication"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\src\base\RALClient.pas"/>
+        <UnitName Value="RALClient"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\src\base\RALConsts.pas"/>
+        <UnitName Value="RALConsts"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\src\base\RALRegister.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALRegister"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\src\base\RALRoutes.pas"/>
+        <UnitName Value="RALRoutes"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\src\base\RALServer.pas"/>
+        <UnitName Value="RALServer"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\src\base\RALTypes.pas"/>
+        <UnitName Value="RALTypes"/>
+      </Item7>
+      <Item8>
+        <Filename Value="..\..\src\utils\RALBase64.pas"/>
+        <UnitName Value="RALBase64"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\src\utils\RALCrypto.pas"/>
+        <UnitName Value="RALCrypto"/>
+      </Item9>
+      <Item10>
+        <Filename Value="..\..\src\utils\RALHashes.pas"/>
+        <UnitName Value="RALHashes"/>
+      </Item10>
+      <Item11>
+        <Filename Value="..\..\src\utils\RALKeyPairs.pas"/>
+        <UnitName Value="RALKeyPairs"/>
+      </Item11>
+      <Item12>
+        <Filename Value="..\..\src\utils\RALMD5.pas"/>
+        <UnitName Value="RALMD5"/>
+      </Item12>
+      <Item13>
+        <Filename Value="..\..\src\utils\RALMIMETypes.pas"/>
+        <UnitName Value="RALMIMETypes"/>
+      </Item13>
+      <Item14>
+        <Filename Value="..\..\src\utils\RALSHA2_32.pas"/>
+        <UnitName Value="RALSHA2_32"/>
+      </Item14>
+      <Item15>
+        <Filename Value="..\..\src\utils\RALSHA2_64.pas"/>
+        <UnitName Value="RALSHA2_64"/>
+      </Item15>
+      <Item16>
+        <Filename Value="..\..\src\utils\RALToken.pas"/>
+        <UnitName Value="RALToken"/>
+      </Item16>
+      <Item17>
+        <Filename Value="..\..\src\utils\RALTools.pas"/>
+        <UnitName Value="RALTools"/>
+      </Item17>
+      <Item18>
+        <Filename Value="PascalRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item18>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="LCL"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

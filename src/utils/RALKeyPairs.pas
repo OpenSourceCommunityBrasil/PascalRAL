@@ -19,7 +19,7 @@ type
     procedure SetKeyValue(const AValue : StringRAL);
     procedure SetKeyType(const AValue: TRALKeyType);
   public
-    constructor Create(Collection: TCollection); override;
+    constructor Create(ACollection: TCollection); override;
   published
     property KeyName : StringRAL read FKeyName write FKeyName;
     property KeyType : TRALKeyType read FKeyType write SetKeyType;
@@ -106,7 +106,7 @@ end;
 
 { TRALKeyPair }
 
-constructor TRALKeyPair.Create(Collection: TCollection);
+constructor TRALKeyPair.Create(ACollection: TCollection);
 begin
   inherited;
   FKeyName := '';

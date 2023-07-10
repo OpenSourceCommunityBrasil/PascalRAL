@@ -137,6 +137,7 @@
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
+        <None Include="..\..\src\base\PascalRAL.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

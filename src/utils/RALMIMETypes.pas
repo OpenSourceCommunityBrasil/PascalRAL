@@ -1,5 +1,9 @@
 unit RALMIMETypes;
 
+{$IFDEF FPC}
+{$mode Delphi}
+{$ENDIF}
+
 interface
 
 uses
@@ -19,7 +23,8 @@ type
   TRALContentType = type string;
 
   TRALContentTypeHelper = record helper for TRALContentType
-  public const
+  public
+  const
     {$REGION 'Const definitions'}
     ctNONE = '';
     ctAPPLICATIONATOMXML = 'application/atom+xml';
@@ -232,6 +237,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LReg.Free;
     end;
   end;
+
 {$ENDIF}
 {$IF DEFINED(LINUX)}
   procedure LoadFile(const aFileName: string);

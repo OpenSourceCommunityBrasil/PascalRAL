@@ -156,7 +156,7 @@ type
     function GetNamePath : string; override;
     function GetFullDocument: StringRAL;
   public
-    constructor Create(Collection: TCollection); override;
+    constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
     procedure Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
     property FullDocument: StringRAL read GetFullDocument;
@@ -187,7 +187,7 @@ implementation
 
 { TRALRoutes }
 
-constructor TRALRoute.Create(Collection: TCollection);
+constructor TRALRoute.Create(ACollection: TCollection);
 begin
   inherited;
   FRouteList := TRALRoutes.Create(Self);
