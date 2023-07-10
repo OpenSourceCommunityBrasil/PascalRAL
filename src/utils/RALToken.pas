@@ -3,7 +3,7 @@ unit RALToken;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALKeyPairs,
   {$IFNDEF FPC}
     JSON
@@ -75,15 +75,18 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    procedure SetToken(const AValue: StringRAL);
+    function CreateToken(AHeader,APayload : StringRAL;
+                         var ASignature : StringRAL) : StringRAL;
     function GetToken: StringRAL;
   public
+    function ValidToken(const AValue: StringRAL) : boolean;
+
+    property Token: StringRAL read GetToken;
+  published
     property Header: TRALJWTHeader read FHeader write FHeader;
     property Payload: TRALJWTPayload read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
     property Secret: StringRAL read FSecret write FSecret;
-
-    property Token: StringRAL read GetToken write SetToken;
   end;
 
 implementation
@@ -191,10 +194,10 @@ begin
       vJson.AddPair('aud',FAudience);
 
     if FExpiration > 0 then
-      vJson.AddPair('exp',TJSONNumber.Create(FExpiration));
+      vJson.AddPair('exp',TJSONNumber.Create(DateTimeToUnix(FExpiration)));
 
     if FIssuedAt > 0 then
-      vJson.AddPair('iat',TJSONNumber.Create(FIssuedAt));
+      vJson.AddPair('iat',TJSONNumber.Create(DateTimeToUnix(FIssuedAt)));
 
     if FIssuer <> '' then
       vJson.AddPair('iss',FIssuer);
@@ -203,7 +206,7 @@ begin
       vJson.AddPair('jti',FJWTId);
 
     if FNotBefore > 0 then
-      vJson.AddPair('nbf',TJSONNumber.Create(FNotBefore));
+      vJson.AddPair('nbf',TJSONNumber.Create(DateTimeToUnix(FNotBefore)));
 
     if FSubject <> '' then
       vJson.AddPair('sub',FSubject);
@@ -232,7 +235,7 @@ begin
           vJson.AddPair(vItem.KeyName,vJsonValue);
         end
         else if vItem.KeyType in [ktDate,ktTime,ktDateTime] then begin
-          vJsonValue := TJSONNumber.Create(StrToDateTime(vItem.KeyValue));
+          vJsonValue := TJSONNumber.Create(DateTimeToUnix(StrToDateTime(vItem.KeyValue)));
           vJson.AddPair(vItem.KeyName,vJsonValue);
         end
         else if vItem.KeyType = ktBoolean then begin
@@ -273,6 +276,7 @@ var
   vJson : TJSONObject;
   vPair : TJSONPair;
   vInt : IntegerRAL;
+  vInt64 : Int64RAL;
   vPairName, vAux1 : StringRAL;
 begin
   vJson := TJSONObject.ParseJSONValue(AValue) as TJSONObject;
@@ -288,13 +292,13 @@ begin
         end
         else if SameText(vPairName,'exp') then begin
           if vPair.JsonValue is TJSONNumber then
-            FExpiration := TJSONNumber(vPair.JsonValue).AsDouble
+            FExpiration := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
             FExpiration := StrToDateTimeDef(vPair.JsonValue.Value,0);
         end
         else if SameText(vPairName,'iat') then begin
           if vPair.JsonValue is TJSONNumber then
-            FIssuedAt := TJSONNumber(vPair.JsonValue).AsDouble
+            FIssuedAt := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
             FIssuedAt := StrToDateTimeDef(vPair.JsonValue.Value,0);
         end
@@ -306,12 +310,26 @@ begin
         end
         else if SameText(vPairName,'nbf') then begin
           if vPair.JsonValue is TJSONNumber then
-            FNotBefore := TJSONNumber(vPair.JsonValue).AsDouble
+            FNotBefore := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
           else
             FNotBefore := StrToDateTimeDef(vPair.JsonValue.Value,0);
         end
         else if SameText(vPairName,'sub') then begin
           FSubject := vPair.JsonValue.Value;
+        end
+        else begin
+          if vPair.JsonValue is TJSONNumber then begin
+            if not TryStrToInt64(vPair.JsonValue.Value,vInt64) then
+              FCustoms.AddKey(vPairName,TJSONNumber(vPair.JsonValue).AsDouble)
+            else
+              FCustoms.AddKey(vPairName,TJSONNumber(vPair.JsonValue).AsInt64)
+          end
+          else if vPair.JsonValue is TJSONBool then begin
+            FCustoms.AddKey(vPairName,TJSONBool(vPair.JsonValue).AsBoolean)
+          end
+          else begin
+            FCustoms.AddKey(vPairName,vPair.JsonValue.Value)
+          end;
         end;
 
         vInt := vInt + 1;
@@ -331,14 +349,8 @@ begin
   FPayload := TRALJWTPayload.Create;
 end;
 
-destructor TRALJWT.Destroy;
-begin
-  FreeAndNil(FHeader);
-  FreeAndNil(FPayload);
-  inherited;
-end;
-
-function TRALJWT.GetToken: StringRAL;
+function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
+                             var ASignature : StringRAL): StringRAL;
 var
   vHash : TRALHashes;
 begin
@@ -356,22 +368,42 @@ begin
   try
     vHash.OutputType := rhotBase64;
 
-    Result := TRALBase64.Encode(FHeader.AsJSON) + '.' +
-              TRALBase64.Encode(FPayload.AsJSON);
+    Result := TRALBase64.Encode(AHeader) + '.' +
+              TRALBase64.Encode(APayload);
 
-    FSignature := vHash.HMACAsString(Result,FSecret);
+    ASignature := vHash.HMACAsString(Result,FSecret);
     Result := Result + '.' + FSignature;
   finally
     FreeAndNil(vHash);
   end;
 end;
 
-procedure TRALJWT.SetToken(const AValue: StringRAL);
+destructor TRALJWT.Destroy;
+begin
+  FreeAndNil(FHeader);
+  FreeAndNil(FPayload);
+  inherited;
+end;
+
+function TRALJWT.GetToken: StringRAL;
+begin
+  Result := CreateToken(FHeader.AsJSON,FPayload.AsJSON,FSignature);
+end;
+
+function TRALJWT.ValidToken(const AValue: StringRAL) : boolean;
 var
   vStr : TStringList;
   vInt : IntegerRAL;
   vValue : StringRAL;
+
+  vHeader : StringRAL;
+  vPayload : StringRAL;
+  vSignature, vMySignature : StringRAL;
+
+  vObjPayload : TRALJWTPayload;
 begin
+  Result := False;
+
   vValue := AValue;
   vStr := TStringList.Create;
   try
@@ -384,9 +416,27 @@ begin
     until vInt = 0;
 
     if vStr.Count = 3 then begin
-      FHeader.AsJSON := TRALBase64.Decode(vStr.Strings[0]);
-      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
-      FSignature := vStr.Strings[2];
+      vHeader    := TRALBase64.Decode(vStr.Strings[0]);
+      vPayload   := TRALBase64.Decode(vStr.Strings[1]);
+      vSignature := vStr.Strings[2];
+
+      CreateToken(vHeader,vPayload,vMySignature);
+
+      if vMySignature = vSignature then begin
+        vObjPayload := TRALJWTPayload.Create;
+        try
+          vObjPayload.AsJSON := vPayload;
+          if (vObjPayload.Expiration > 0) and (vObjPayload.Expiration < Now) then
+            Result := False
+          else if (vObjPayload.NotBefore > 0) and (vObjPayload.NotBefore > Now) then
+            Result := False
+          else if (vObjPayload.NotBefore > 0) and (vObjPayload.Expiration > 0) and
+                  (vObjPayload.Expiration < vObjPayload.NotBefore) then
+            Result := False;
+        finally
+          vObjPayload.Free;
+        end;
+      end;
     end;
   finally
     FreeAndNil(vStr);

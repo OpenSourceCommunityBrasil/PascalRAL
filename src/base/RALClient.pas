@@ -10,8 +10,7 @@ type
   TRALClient = class(TComponent)
   private
     FAuthentication: TRALAuthentication;
-    FHost: StringRAL;
-    FPort: IntegerRAL;
+    FBaseURL : StringRAL;
     FUseSSL: boolean;
 
     FResponseCode : IntegerRAL;
@@ -36,8 +35,7 @@ type
     property ResponseText : StringRAL read GetResponseText;
   published
     property Authentication: TRALAuthentication read FAuthentication write FAuthentication;
-    property Host: StringRAL read FHost write FHost;
-    property Port: IntegerRAL read FPort write FPort;
+    property BaseURL: StringRAL read FBaseURL write FBaseURL;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
   end;
 
@@ -49,8 +47,7 @@ constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAuthentication := nil;
-  FHost := '';
-  FPort := 8000;
+  FBaseURL := '';
   FUseSSL := False;
   FResponseCode := 0;
   FResponseStream := nil;
@@ -91,14 +88,14 @@ end;
 
 function TRALClient.GetURL(ARoute: StringRAL): StringRAL;
 begin
-  ARoute := '/'+ARoute+'/';
+  ARoute := FBaseURL+'/'+ARoute+'/';
   while Pos('//',ARoute) > 0 do
     ReplaceText(ARoute,'//','/');
 
   Result := 'http';
   if FUseSSL then
     Result := Result + 's';
-  Result := Result + '://'+FHost+':'+IntToStr(FPort)+ARoute;
+  Result := Result + '://'+ARoute;
 end;
 
 function TRALClient.Patch(ARoute: StringRAL; AHeaders: TStringList;
