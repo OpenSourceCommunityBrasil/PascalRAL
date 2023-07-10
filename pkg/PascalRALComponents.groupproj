@@ -6,6 +6,9 @@
         <Projects Include="Delphi\PascalRAL.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="Delphi\PascalRALDsgn.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="Delphi\IndyRAL.dproj">
             <Dependencies/>
         </Projects>
@@ -31,6 +34,15 @@
     </Target>
     <Target Name="PascalRAL:Make">
         <MSBuild Projects="Delphi\PascalRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="PascalRALDsgn">
+        <MSBuild Projects="Delphi\PascalRALDsgn.dproj"/>
+    </Target>
+    <Target Name="PascalRALDsgn:Clean">
+        <MSBuild Projects="Delphi\PascalRALDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PascalRALDsgn:Make">
+        <MSBuild Projects="Delphi\PascalRALDsgn.dproj" Targets="Make"/>
     </Target>
     <Target Name="IndyRAL">
         <MSBuild Projects="Delphi\IndyRAL.dproj"/>
@@ -60,13 +72,13 @@
         <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;IndyRAL;SynopseRAL;NetHttpRAL"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

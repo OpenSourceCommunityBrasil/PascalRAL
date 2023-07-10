@@ -1,13 +1,10 @@
 unit RALIndyServer;
-
 interface
-
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
   IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
-  RALServer, RALTypes, RALMIMETypes, RALRoutes;
-
+  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
 type
   TRALIndySSL = class(TRALSSL)
   private
@@ -30,7 +27,6 @@ type
     procedure DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
     procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo);
     procedure DecodeAuth(var ARequest: TRALRequest; AParam, AValue : StringRAL);
-
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
@@ -54,7 +50,6 @@ begin
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
   FHttp.OnParseAuthentication := OnParseAuthentication;
-
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 end;
 
@@ -93,9 +88,7 @@ procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest;
   ARequestInfo: TIdHTTPRequestInfo);
 var
   vBoundary, vBoundaryStart, vBoundaryEnd, vLine, vName: StringRAL;
-
   vIdxName: IntegerRAL;
-
   vDecoder, vReader: TIdMessageDecoder;
   vBoundaryFound, vIsStartBoundary, vMsgEnd: boolean;
   vStream: TMemoryStream;
@@ -103,16 +96,13 @@ begin
   vBoundary := ExtractHeaderSubItem(ARequestInfo.ContentType, 'boundary', QuoteHTTP);
   if vBoundary = '' then
     Exit;
-
   vBoundaryStart := '--' + vBoundary;
   vBoundaryEnd := vBoundaryStart + '--';
-
   vDecoder := TIdMessageDecoderMIME.Create(nil);
   try
     TIdMessageDecoderMIME(vDecoder).MIMEBoundary := vBoundary;
     vDecoder.SourceStream := ARequestInfo.PostStream;
     vDecoder.FreeSourceStream := False;
-
     vBoundaryFound := False;
     vIsStartBoundary := False;
     repeat
@@ -127,17 +117,14 @@ begin
         vBoundaryFound := True;
       end;
     until vBoundaryFound;
-
     if (not vBoundaryFound) or (not vIsStartBoundary) then
       Exit;
-
     vIdxName := 1;
     vMsgEnd := False;
     repeat
       TIdMessageDecoderMIME(vDecoder).MIMEBoundary := vBoundary;
       vDecoder.SourceStream := ARequestInfo.PostStream;
       vDecoder.FreeSourceStream := False;
-
       vDecoder.ReadHeader;
       case vDecoder.PartType of
         mcptText, mcptAttachment:
@@ -146,19 +133,16 @@ begin
             try
               vReader := vDecoder.ReadBody(vStream, vMsgEnd);
               vStream.Position := 0;
-
               vName := vDecoder.Headers.Values['name'];
               if vName = '' then
               begin
                 vName := 'ral_multpart' + IntToStr(vIdxName);
                 vIdxName := vIdxName + 1;
               end;
-
               ARequest.Params.AddParam(vName, vStream);
             finally
               FreeAndNil(vStream);
             end;
-
             FreeAndNil(vDecoder);
             vDecoder := vReader;
         end;
@@ -183,7 +167,6 @@ destructor TRALIndyServer.Destroy;
 begin
   if FHttp.Active then
     FHttp.Active := False;
-
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
@@ -208,7 +191,6 @@ begin
                              vStream);
       vInt := vInt + 1;
     end;
-
     vMultPart.Position := 0;
     AResponseInfo.ContentStream.Size := 0;
     AResponseInfo.ContentStream.CopyFrom(vMultPart, vMultPart.Size);
@@ -222,7 +204,6 @@ procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-
   vInt: integer;
   vStr1, vStr2: StringRAL;
   vMultPart: TIdMultiPartFormDataStream;
@@ -234,9 +215,7 @@ begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
-
       Query := ARequestInfo.Document;
-
       case ARequestInfo.CommandType of
         hcUnknown, hcHEAD, hcGET, hcTRACE:
           Method := amGET;
@@ -249,44 +228,34 @@ begin
         hcOPTION:
           Method := amOPTION;
       end;
-
       ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
       ContentSize := ARequestInfo.ContentLength;
-
       if AContext.Data is TRALAuthClient then begin
         Authorization.AuthType := TRALAuthClient(AContext.Data).AuthType;
         Authorization.AuthString := TRALAuthClient(AContext.Data).AuthString;
-
         AContext.Data.Free;
         AContext.Data := nil;
       end;
-
       vInt := 0;
       while vInt < ARequestInfo.RawHeaders.Count do
       begin
         vStr1 := ARequestInfo.RawHeaders.Names[vInt];
         vStr2 := ARequestInfo.RawHeaders.Values[vStr1];
-
 //        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
-
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;
       end;
-
       vInt := 0;
       while vInt < ARequestInfo.CustomHeaders.Count do
       begin
         vStr1 := ARequestInfo.CustomHeaders.Names[vInt];
         vStr2 := ARequestInfo.CustomHeaders.Values[vStr1];
-
 //        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
-
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;
       end;
-
       if ARequestInfo.Params.Count > 0 then
       begin
         vInt := 0;
@@ -294,9 +263,7 @@ begin
         begin
           vStr1 := ARequestInfo.Params.Names[vInt];
           vStr2 := ARequestInfo.Params.ValueFromIndex[vInt];
-
           Params.AddParam(vStr1, vStr2);
-
           vInt := vInt + 1;
         end;
       end
@@ -307,7 +274,6 @@ begin
           vStr1 := ARequestInfo.UnparsedParams;
         //TODO
       end;
-
       if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0) then
       begin
         if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
@@ -318,30 +284,24 @@ begin
         begin
           Params.AddParam('ral_body', ARequestInfo.PostStream, ContentType);
         end;
-
         // limpando para economia de memoria
         ARequestInfo.PostStream.Size := 0;
       end;
     end;
-
     vResponse := ProcessCommands(vRequest);
-
     if (vResponse.Body.Count > 1) then
       vResponse.ContentType := TRALContentType.ctMULTIPARTFORMDATA;
-
     try
       with AResponseInfo do
       begin
         ResponseNo := vResponse.RespCode;
         ContentType := vResponse.ContentType;
-
         vInt := 0;
         while vInt < vResponse.Headers.Count do
         begin
           CustomHeaders.Add(vResponse.Headers.Strings[vInt]);
           vInt := vInt + 1;
         end;
-
         if (vResponse.Body.Count > 0) then begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
           begin
@@ -352,7 +312,6 @@ begin
             ContentStream := vResponse.Body.Param[0].AsStream;
           end;
         end;
-
         WriteContent;
       end;
     finally
@@ -390,13 +349,10 @@ procedure TRALIndyServer.SetActive(const Value: boolean);
 begin
   if Assigned(SSL) then
     FHandlerSSL.SSLOptions.Assign(TRALIndySSL(SSL).SSLOptions);
-
   FHttp.IOHandler := nil;
   if (Assigned(SSL)) and (SSL.Enabled) then
     FHttp.IOHandler := FHandlerSSL;
-
   FHttp.Active := Value;
-
   inherited;
 end;
 
@@ -407,22 +363,18 @@ begin
   inherited;
   vActive := Self.Active;
   Active := False;
-
   FHttp.DefaultPort := Value;
   FHttp.Bindings.Clear;
-
   with FHttp.Bindings.Add do begin
     IP := '0.0.0.0';
     Port := Value;
     IPVersion := Id_IPv4;
   end;
-
   with FHttp.Bindings.Add do begin
     IP := '::';
     Port := Value;
     IPVersion := Id_IPv6;
   end;
-
   Active := vActive;
 end;
 

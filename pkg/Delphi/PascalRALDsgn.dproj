@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
-        <ProjectGuid>{1925C1DA-9CCF-474B-B024-33CF54B0DC81}</ProjectGuid>
-        <MainSource>PascalRAL.dpk</MainSource>
+        <ProjectGuid>{275A7112-AA9F-4ED6-B2C3-812FB853756C}</ProjectGuid>
+        <MainSource>PascalRALDsgn.dpk</MainSource>
         <ProjectVersion>19.5</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
@@ -66,10 +66,7 @@
         <GenPackage>true</GenPackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
-        <SanitizedProjectName>PascalRAL</SanitizedProjectName>
-        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
-        <VerInfo_Locale>1046</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <SanitizedProjectName>PascalRALDsgn</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
@@ -104,11 +101,10 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
+        <DCC_DcuOutput>..\..\compiled</DCC_DcuOutput>
+        <DCC_UnitSearchPath>..\..\src\base\;..\..\src\utils\;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_DcuOutput>..\..\compiled</DCC_DcuOutput>
-        <DCC_UnitSearchPath>..\..\src\base;..\..\src\utils;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_Description>PascalRAL | Base package</DCC_Description>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -120,23 +116,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="PascalRAL.dcr"/>
+        <DCCReference Include="PascalRAL.dcp"/>
         <DCCReference Include="rtl.dcp"/>
-        <DCCReference Include="..\..\src\base\RALClient.pas"/>
-        <DCCReference Include="..\..\src\base\RALAuthentication.pas"/>
-        <DCCReference Include="..\..\src\base\RALRoutes.pas"/>
-        <DCCReference Include="..\..\src\base\RALServer.pas"/>
-        <DCCReference Include="..\..\src\utils\RALToken.pas"/>
-        <DCCReference Include="..\..\src\base\RALConsts.pas"/>
-        <DCCReference Include="..\..\src\base\RALTypes.pas"/>
-        <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
-        <DCCReference Include="..\..\src\utils\RALTools.pas"/>
-        <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
-        <DCCReference Include="..\..\src\utils\RALCrypto.pas"/>
-        <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
-        <DCCReference Include="..\..\src\utils\RALKeyPairs.pas"/>
-        <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
-        <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
-        <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
+        <DCCReference Include="..\..\src\base\RALRegister.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -155,7 +138,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">PascalRAL.dpk</Source>
+                    <Source Name="MainSource">PascalRALDsgn.dpk</Source>
                 </Source>
                 <Excluded_Packages>
                     <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWFireDACDriver.bpl">File C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWFireDACDriver.bpl not found</Excluded_Packages>
@@ -178,9 +161,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\22.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\22.0\Bpl\PascalRALDsgn.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
-                        <RemoteName>PascalRAL.bpl</RemoteName>
+                        <RemoteName>PascalRALDsgn.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

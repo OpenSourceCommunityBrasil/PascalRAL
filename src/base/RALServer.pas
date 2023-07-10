@@ -14,7 +14,7 @@ type
     property Enabled: boolean read FEnabled write FEnabled;
   end;
 
-  TRALServer = class(TComponent)
+  TRALServer = class(TRALComponent)
   private
     FActive: boolean;
     FPort: IntegerRAL;

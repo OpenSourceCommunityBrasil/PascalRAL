@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData,
-  RALClient, RALRoutes, RALTypes;
+  RALClient, RALRoutes, RALTypes, RALConsts;
 
 type
   TRALIndyClient = class(TRALClient)

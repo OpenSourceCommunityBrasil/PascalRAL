@@ -4,10 +4,10 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  RALTypes, RALAuthentication, RALRoutes;
+  RALTypes, RALConsts, RALAuthentication, RALRoutes;
 
 type
-  TRALClient = class(TComponent)
+  TRALClient = class(TRALComponent)
   private
     FAuthentication: TRALAuthentication;
     FBaseURL : StringRAL;

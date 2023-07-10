@@ -41,6 +41,13 @@ contains
   RALConsts in '..\..\src\base\RALConsts.pas',
   RALTypes in '..\..\src\base\RALTypes.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
-  RALTools in '..\..\src\utils\RALTools.pas';
+  RALTools in '..\..\src\utils\RALTools.pas',
+  RALBase64 in '..\..\src\utils\RALBase64.pas',
+  RALCrypto in '..\..\src\utils\RALCrypto.pas',
+  RALHashes in '..\..\src\utils\RALHashes.pas',
+  RALKeyPairs in '..\..\src\utils\RALKeyPairs.pas',
+  RALMD5 in '..\..\src\utils\RALMD5.pas',
+  RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
+  RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas';
 
 end.

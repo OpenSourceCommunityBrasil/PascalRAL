@@ -4,10 +4,10 @@ interface
 
 uses
   Classes, SysUtils,
-  RALToken, RALTypes;
+  RALToken, RALConsts, RALTypes;
 
 type
-  TRALAuthentication = class(TPersistent)
+  TRALAuthentication = class(TRALComponent)
   private
     FAuthType : TRALAuthTypes;
   protected
@@ -35,7 +35,8 @@ type
     FToken: TRALJWT;
   public
     function GetToken(AJSONParams: StringRAL): StringRAL;
-    function GetRenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+    function RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+    function Validate(aToken: StringRAL): boolean;
 
     constructor Create;
     destructor Destroy; override;
@@ -56,7 +57,7 @@ implementation
 { TRALAuthentication }
 constructor TRALAuthentication.Create;
 begin
-
+  FAuthType := ratNone;
 end;
 
 destructor TRALAuthentication.Destroy;
@@ -84,7 +85,12 @@ begin
   inherited;
 end;
 
-function TRALJWTAuth.GetRenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+function TRALJWTAuth.RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+begin
+
+end;
+
+function TRALJWTAuth.Validate(aToken: StringRAL): boolean;
 begin
 
 end;
@@ -98,6 +104,8 @@ end;
 
 constructor TRALBasicAuth.Create;
 begin
+  Self := nil;
+  inherited;
   SetAuthType(ratBasic);
 end;
 

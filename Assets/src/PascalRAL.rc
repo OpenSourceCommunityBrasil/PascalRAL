@@ -1,0 +1,8 @@
+TRALBasicAuth BITMAP "..\components\base\TRALBasicAuth.bmp"
+TRALJWTAuth BITMAP "..\components\base\TRALJWTAuth.bmp"
+TRALOAuth BITMAP "..\components\base\TRALOAuth.bmp"
+TRALOAuth2 BITMAP "..\components\base\TRALOAuth2.bmp"
+TRALBasicAuth16 BITMAP "..\components\base\TRALBasicAuth16.bmp"
+TRALJWTAuth16 BITMAP "..\components\base\TRALJWTAuth16.bmp"
+TRALOAuth16 BITMAP "..\components\base\TRALOAuth16.bmp"
+TRALOAuth216 BITMAP "..\components\base\TRALOAuth216.bmp"
