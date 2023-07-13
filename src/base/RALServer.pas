@@ -25,6 +25,9 @@ type
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetAuthentication(const AValue: TRALAuthentication);
+
     procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
     procedure WriteServerStatus; virtual;
@@ -37,7 +40,7 @@ type
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
-    property Authentication: TRALAuthentication read FAuthentication write FAuthentication;
+    property Authentication: TRALAuthentication read FAuthentication write SetAuthentication;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
@@ -82,6 +85,15 @@ begin
   if Assigned(FServerStatus) then
     FreeAndNil(FServerStatus);
 
+  inherited;
+end;
+
+procedure TRALServer.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  if (Operation  = opRemove) and
+     (AComponent = FAuthentication) then
+    FAuthentication := nil;
   inherited;
 end;
 
@@ -138,6 +150,14 @@ end;
 procedure TRALServer.SetActive(const Value: boolean);
 begin
   FActive := Value;
+end;
+
+procedure TRALServer.SetAuthentication(const AValue: TRALAuthentication);
+begin
+  if AValue <> FAuthentication then
+    FAuthentication := AValue;
+  if FAuthentication <> nil then
+    FAuthentication.FreeNotification(Self);
 end;
 
 procedure TRALServer.SetPort(const Value: IntegerRAL);
