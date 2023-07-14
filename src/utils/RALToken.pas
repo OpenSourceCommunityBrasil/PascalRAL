@@ -1,17 +1,11 @@
 unit RALToken;
 
 interface
-{$IFNDEF FPC} // apagar quando corrigir o JSON
 
 uses
   Classes, SysUtils, DateUtils,
   RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALKeyPairs,
-  {$IFNDEF FPC}
-    JSON, RALTools
-  {$ELSE}
-    fpjson
-  {$ENDIF}
-  ;
+  RALJson;
 
 type
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA512);
@@ -88,9 +82,9 @@ type
     property Signature: StringRAL read FSignature;
     property Secret: StringRAL read FSecret write FSecret;
   end;
-{$ENDIF}
+
 implementation
-{$IFNDEF FPC} // apagar quando corrigir o JSON
+
 { TRALJWTHeader }
 
 constructor TRALJWTHeader.Create;
@@ -100,9 +94,9 @@ end;
 
 function TRALJWTHeader.GetAsJSON: StringRAL;
 var
-  vJson : TJSONObject;
+  vJson : TRALJSONObject;
 begin
-  vJson := TJSONObject.Create;
+  vJson := TRALJSONObject.Create;
   try
     vJson.Add('typ',FHeaderType);
 
@@ -114,7 +108,7 @@ begin
     if FKeyID <> '' then
       vJson.Add('kid', FKeyID);
 
-    Result := vJson.AsJSON;
+    Result := vJson.ToJSON;
   finally
     FreeAndNil(vJson);
   end;
@@ -129,24 +123,25 @@ end;
 
 procedure TRALJWTHeader.SetAsJSON(const AValue: StringRAL);
 var
-  vJson : TJSONObject;
-  vPair : TJSONPair;
+  vJson : TRALJSONObject;
   vInt : IntegerRAL;
+  vName : StringRAL;
+  vValue : TRALJSONValue;
   vPairName, vAux1 : StringRAL;
 begin
-  vJson := TJSONObject.ParseJSONValue(AValue) as TJSONObject;
+  vJson := TRALJSONObject(ParseJson(AValue));
   try
     if vJson <> nil then begin
       Initialize;
       vInt := 0;
       while vInt < vJson.Count do begin
-        vPair := vJson.Pairs[vInt];
-        vPairName := vPair.JsonString.Value;
-        if SameText(vPairName, 'typ') then begin
-          FHeaderType := vPair.JsonValue.Value;
+        vName := vJson.Names[vInt];
+        vValue := vJson.Get(vInt);
+        if SameText(vName, 'typ') then begin
+          FHeaderType := vValue.ToJSON;
         end
-        else if SameText(vPairName, 'alg') then begin
-          vAux1 := vPair.JsonValue.Value;
+        else if SameText(vName, 'alg') then begin
+          vAux1 := vValue.ToJSON;
 
           FAlgorithm := tjaHSHA256;
           if SameText(vAux1, 'hs256') then
@@ -154,8 +149,8 @@ begin
           else if SameText(vAux1, 'hs512') then
             FAlgorithm := tjaHSHA512;
         end
-        else if SameText(vPairName, 'kid') then begin
-          FKeyID := vPair.JsonValue.Value;
+        else if SameText(vName, 'kid') then begin
+          FKeyID := vValue.ToJSON;
         end;
 
         vInt := vInt + 1;
@@ -182,22 +177,21 @@ end;
 
 function TRALJWTPayload.GetAsJSON: StringRAL;
 var
-  vJson : TJSONObject;
-  vJsonValue : TJSONValue;
+  vJson : TRALJSONObject;
   vInt : IntegerRAL;
   vItem : TRALKeyPair;
   vInvalidName : boolean;
 begin
-  vJson := TJSONObject.Create;
+  vJson := TRALJSONObject.Create;
   try
     if FAudience <> '' then
       vJson.Add('aud', FAudience);
 
     if FExpiration > 0 then
-      vJson.Add('exp', TJSONNumber.Create(DateTimeToUnix(FExpiration)));
+      vJson.Add('exp', DateTimeToUnix(FExpiration));
 
     if FIssuedAt > 0 then
-      vJson.Add('iat', TJSONNumber.Create(DateTimeToUnix(FIssuedAt)));
+      vJson.Add('iat', DateTimeToUnix(FIssuedAt));
 
     if FIssuer <> '' then
       vJson.Add('iss', FIssuer);
@@ -206,7 +200,7 @@ begin
       vJson.Add('jti', FJWTId);
 
     if FNotBefore > 0 then
-      vJson.Add('nbf', TJSONNumber.Create(DateTimeToUnix(FNotBefore)));
+      vJson.Add('nbf', DateTimeToUnix(FNotBefore));
 
     if FSubject <> '' then
       vJson.Add('sub', FSubject);
@@ -227,26 +221,19 @@ begin
           vJson.Add(vItem.KeyName, vItem.KeyValue);
         end
         else if vItem.KeyType = ktInteger then begin
-          vJsonValue := TJSONNumber.Create(StrToInt64(vItem.KeyValue));
-          vJson.Add(vItem.KeyName, vJsonValue);
+          vJson.Add(vItem.KeyName, StrToInt64(vItem.KeyValue));
         end
         else if vItem.KeyType = ktFloat then begin
-          vJsonValue := TJSONNumber.Create(StrToFloat(vItem.KeyValue));
-          vJson.Add(vItem.KeyName, vJsonValue);
+          vJson.Add(vItem.KeyName, StrToFloat(vItem.KeyValue));
         end
         else if vItem.KeyType in [ktDate,ktTime,ktDateTime] then begin
-          vJsonValue := TJSONNumber.Create(DateTimeToUnix(StrToDateTime(vItem.KeyValue)));
-          vJson.Add(vItem.KeyName, vJsonValue);
+          vJson.Add(vItem.KeyName, DateTimeToUnix(StrToDateTime(vItem.KeyValue)));
         end
         else if vItem.KeyType = ktBoolean then begin
-          if SameText(vItem.KeyValue, 'true') then
-            vJsonValue := TJSONBool.Create(True)
-          else
-            vJsonValue := TJSONBool.Create(False);
-          vJson.Add(vItem.KeyName, vJsonValue);
+          vJson.Add(vItem.KeyName, SameText(vItem.KeyValue, 'true'));
         end
         else begin
-          vJson.Add(vItem.KeyName, TJSONNull.Create);
+          vJson.Add(vItem.KeyName);
         end;
       end;
 
@@ -273,62 +260,62 @@ end;
 
 procedure TRALJWTPayload.SetAsJSON(const AValue: StringRAL);
 var
-  vJson : TJSONObject;
-  vPair : TJSONPair;
+  vJson : TRALJSONObject;
   vInt : IntegerRAL;
   vInt64 : Int64RAL;
-  vPairName, vAux1 : StringRAL;
+  vName : StringRAL;
+  vValue : TRALJSONValue;
 begin
-  vJson := TJSONObject.ParseJSONValue(AValue) as TJSONObject;
+  vJson := TRALJSONObject(ParseJson(AValue));
   try
     if vJson <> nil then begin
       Initialize;
       vInt := 0;
       while vInt < vJson.Count do begin
-        vPair := vJson.Pairs[vInt];
-        vPairName := vPair.JsonString.Value;
-        if SameText(vPairName, 'aud') then begin
-          FAudience := vPair.JsonValue.Value;
+        vName := vJson.Names[vInt];
+        vValue := vJson.Get(vInt);
+        if SameText(vName, 'aud') then begin
+          FAudience := vValue.ToJSON;
         end
-        else if SameText(vPairName, 'exp') then begin
-          if vPair.JsonValue is TJSONNumber then
-            FExpiration := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
+        else if SameText(vName, 'exp') then begin
+          if vValue is TRALJSONNumber then
+            FExpiration := UnixToDateTime(vValue.AsInt64)
           else
-            FExpiration := StrToDateTimeDef(vPair.JsonValue.Value, 0);
+            FExpiration := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vPairName, 'iat') then begin
-          if vPair.JsonValue is TJSONNumber then
-            FIssuedAt := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
+        else if SameText(vName, 'iat') then begin
+          if vValue is TRALJSONNumber then
+            FIssuedAt := UnixToDateTime(vValue.AsInt64)
           else
-            FIssuedAt := StrToDateTimeDef(vPair.JsonValue.Value, 0);
+            FIssuedAt := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vPairName, 'iss') then begin
-          FIssuer := vPair.JsonValue.Value;
+        else if SameText(vName, 'iss') then begin
+          FIssuer := vValue.AsString;
         end
-        else if SameText(vPairName, 'jti') then begin
-          FJWTId := vPair.JsonValue.Value;
+        else if SameText(vName, 'jti') then begin
+          FJWTId := vValue.AsString;
         end
-        else if SameText(vPairName, 'nbf') then begin
-          if vPair.JsonValue is TJSONNumber then
-            FNotBefore := UnixToDateTime(TJSONNumber(vPair.JsonValue).AsInt64)
+        else if SameText(vName, 'nbf') then begin
+          if vValue is TRALJSONNumber then
+            FNotBefore := UnixToDateTime(vValue.AsInt64)
           else
-            FNotBefore := StrToDateTimeDef(vPair.JsonValue.Value, 0);
+            FNotBefore := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vPairName, 'sub') then begin
-          FSubject := vPair.JsonValue.Value;
+        else if SameText(vName, 'sub') then begin
+          FSubject := vValue.AsString;
         end
         else begin
-          if vPair.JsonValue is TJSONNumber then begin
-            if not TryStrToInt64(vPair.JsonValue.Value, vInt64) then
-              FCustoms.AddKey(vPairName, TJSONNumber(vPair.JsonValue).AsDouble)
+          if vValue is TRALJSONNumber then begin
+            if not TryStrToInt64(vValue.AsString, vInt64) then
+              FCustoms.AddKey(vName, vValue.AsFloat)
             else
-              FCustoms.AddKey(vPairName, TJSONNumber(vPair.JsonValue).AsInt64)
+              FCustoms.AddKey(vName, vValue.AsInt64)
           end
-          else if vPair.JsonValue is TJSONBool then begin
-            FCustoms.AddKey(vPairName, TJSONBool(vPair.JsonValue).AsBoolean)
+          else if vValue is TRALJSONBoolean then begin
+            FCustoms.AddKey(vName, vValue.AsBoolean)
           end
           else begin
-            FCustoms.AddKey(vPairName, vPair.JsonValue.Value)
+            FCustoms.AddKey(vName, vValue.AsString)
           end;
         end;
 
@@ -442,6 +429,5 @@ begin
     FreeAndNil(vStr);
   end;
 end;
-{$ENDIF}
 
 end.
