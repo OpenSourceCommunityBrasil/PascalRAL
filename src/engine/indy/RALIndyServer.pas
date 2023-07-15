@@ -33,7 +33,6 @@ type
     function CreateRALSSL: TRALSSL; override;
     procedure DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
     procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo);
-    procedure DecodeAuth(var ARequest: TRALRequest; AParam, AValue : StringRAL);
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
@@ -63,32 +62,6 @@ end;
 function TRALIndyServer.CreateRALSSL: TRALSSL;
 begin
   Result := TRALIndySSL.Create;
-end;
-
-procedure TRALIndyServer.DecodeAuth(var ARequest: TRALRequest; AParam,
-  AValue: StringRAL);
-var
-  vInt : IntegerRAL;
-  vAuthType : StringRAL;
-begin
-  if not SameText(AParam,'Authorization') then
-    Exit;
-
-  vAuthType := '';
-
-  vInt := Pos(' ',AValue);
-  if vInt > 0 then begin
-    vAuthType := Copy(AValue,1,vInt-1);
-    Delete(AValue,1,vInt);
-  end;
-
-  if vAuthType <> '' then begin
-    ARequest.Authorization.AuthString := AValue;
-    if SameText(vAuthType,'basic') then
-      ARequest.Authorization.AuthType := ratBasic
-    else if SameText(vAuthType,'bearer') then
-      ARequest.Authorization.AuthType := ratBearer
-  end;
 end;
 
 procedure TRALIndyServer.DecodeParams(var ARequest: TRALRequest;
@@ -248,7 +221,6 @@ begin
       begin
         vStr1 := ARequestInfo.RawHeaders.Names[vInt];
         vStr2 := ARequestInfo.RawHeaders.Values[vStr1];
-//        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;
@@ -258,7 +230,6 @@ begin
       begin
         vStr1 := ARequestInfo.CustomHeaders.Names[vInt];
         vStr2 := ARequestInfo.CustomHeaders.Values[vStr1];
-//        DecodeAuth(vRequest,vStr1,vStr2);
         Params.AddParam(vStr1, vStr2);
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;

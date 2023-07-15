@@ -49,7 +49,8 @@ const
 
 procedure TRALKeyPairs.AddKey(AKey, AValue: StringRAL);
 begin
-  with Add as TRALKeyPair do begin
+  with Add as TRALKeyPair do
+  begin
     FKeyName := AKey;
     FKeyType := ktString;
     FKeyValue := AValue;
@@ -58,7 +59,8 @@ end;
 
 procedure TRALKeyPairs.AddKey(AKey: StringRAL; AValue: Int64RAL);
 begin
-  with Add as TRALKeyPair do begin
+  with Add as TRALKeyPair do
+  begin
     FKeyName := AKey;
     FKeyType := ktInteger;
     FKeyValue := IntToStr(AValue);
@@ -67,7 +69,8 @@ end;
 
 procedure TRALKeyPairs.AddKey(AKey: StringRAL; AValue: Extended);
 begin
-  with Add as TRALKeyPair do begin
+  with Add as TRALKeyPair do
+  begin
     FKeyName := AKey;
     FKeyType := ktFloat;
     FKeyValue := FloatToStr(AValue);
@@ -76,7 +79,8 @@ end;
 
 procedure TRALKeyPairs.AddKey(AKey: StringRAL; AValue: TDateTime);
 begin
-  with Add as TRALKeyPair do begin
+  with Add as TRALKeyPair do
+  begin
     FKeyName := AKey;
     if (Trunc(AValue) > 0) and (Frac(AValue) > 0) then
       FKeyType := ktDateTime
@@ -90,7 +94,8 @@ end;
 
 procedure TRALKeyPairs.AddKey(AKey: StringRAL; AValue: Boolean);
 begin
-  with Add as TRALKeyPair do begin
+  with Add as TRALKeyPair do
+  begin
     FKeyName := AKey;
     FKeyType := ktBoolean;
     FKeyValue := 'false';
@@ -122,7 +127,8 @@ begin
   vValue := FKeyValue;
   vType := FKeyType;
 
-  if vValue <> '' then begin
+  if vValue <> '' then
+  begin
     try
       FKeyType := AValue;
       KeyValue := vValue;
@@ -138,72 +144,89 @@ var
   vInteger : Int64;
   vFloat : Extended;
 begin
-  if (AValue <> '') then begin
-    if FKeyType = ktString then begin
+  if (AValue <> '') then
+  begin
+    if FKeyType = ktString then
+    begin
       FKeyValue := AValue
     end
-    else if (FKeyType = ktNone) then begin
-      if TryStrToInt64(AValue,vInteger) then begin
+    else if (FKeyType = ktNone) then
+    begin
+      if TryStrToInt64(AValue,vInteger) then
+      begin
         FKeyType := ktInteger;
         FKeyValue := AValue;
       end
-      else if TryStrToFloat(AValue,vFloat) then begin
+      else if TryStrToFloat(AValue,vFloat) then
+      begin
         FKeyType := ktFloat;
         FKeyValue := AValue;
       end
-      else if TryStrToDateTime(AValue,vDateTime) then begin
+      else if TryStrToDateTime(AValue,vDateTime) then
+      begin
         FKeyType := ktDateTime;
         if (vDateTime > 0) and (Frac(vDateTime) = 0) and
-           (Trunc(vDateTime) > 0) then begin
+           (Trunc(vDateTime) > 0) then
+        begin
           FKeyType := ktDate;
         end
         else if (vDateTime > 0) and (Frac(vDateTime) > 0) and
-                (Trunc(vDateTime) = 0) then begin
+                (Trunc(vDateTime) = 0) then
+        begin
           FKeyType := ktTime;
         end;
         FKeyValue := AValue;
       end
-      else if SameText(AValue,'true') or SameText(AValue,'false') then begin
+      else if SameText(AValue,'true') or SameText(AValue,'false') then
+      begin
         FKeyType := ktBoolean;
         FKeyValue := AValue;
       end
-      else begin
+      else
+      begin
         FKeyType := ktString;
         FKeyValue := AValue;
       end;
     end
-    else if FKeyType = ktInteger then begin
+    else if FKeyType = ktInteger then
+    begin
       if TryStrToInt64(AValue,vInteger) then
         FKeyValue := AValue
       else
         raise Exception.Create(ctNotKeyInteger);
     end
-    else if FKeyType = ktFloat then begin
+    else if FKeyType = ktFloat then
+    begin
       if TryStrToFloat(AValue,vFloat) then
         FKeyValue := AValue
       else
         raise Exception.Create(ctNotKeyFloat);
     end
-    else if FKeyType in [ktDate,ktTime,ktDateTime] then begin
-      if TryStrToDateTime(AValue,vDateTime) then begin
+    else if FKeyType in [ktDate,ktTime,ktDateTime] then
+    begin
+      if TryStrToDateTime(AValue,vDateTime) then
+      begin
         case FKeyType of
           ktDateTime : FKeyValue := DateTimeToStr(vDateTime);
           ktDate     : FKeyValue := DateToStr(vDateTime);
           ktTime     : FKeyValue := TimeToStr(vDateTime);
         end;
       end
-      else begin
+      else
+      begin
         raise Exception.Create(ctNotKeyDate);
       end;
     end
-    else if FKeyType = ktBoolean then begin
+    else if FKeyType = ktBoolean then
+    begin
       if SameText(AValue,'true') or SameText(AValue,'false') then
         FKeyValue := AValue
       else
         raise Exception.Create(ctNotKeyBoolean);
     end;
   end
-  else begin
+  else
+  begin
     FKeyType := ktNone; // string
     FKeyValue := '';
   end;

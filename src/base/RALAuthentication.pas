@@ -3,37 +3,46 @@ unit RALAuthentication;
 interface
 
 uses
-  {$IFNDEF FPC}
-  RALToken,
-  {$ENDIF}
   Classes, SysUtils,
-  RALConsts, RALTypes;
+  RALToken, RALConsts, RALTypes, RALRoutes, RALBase64;
 
 type
+  TRALOnAuth = procedure(ARequest : TRALRequest; var AResult : boolean) of object;
+
   TRALAuthentication = class(TRALComponent)
   private
     FAuthType : TRALAuthTypes;
+    FOnAuth : TRALOnAuth;
   protected
     procedure SetAuthType(AType : TRALAuthTypes);
   public
-    constructor Create;
+    constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
-  published
+
+    procedure Validate(ARequest : TRALRequest; var AResponse : TRALResponse); virtual; abstract;
+    procedure GetHeader(var AHeader : TStringList); virtual; abstract;
+
     property AuthType : TRALAuthTypes read FAuthType;
+  published
+    property OnAuth : TRALOnAuth read FOnAuth write FOnAuth;
   end;
 
   TRALBasicAuth = class(TRALAuthentication)
   private
+    FAuthDialog: boolean;
     FUserName: StringRAL;
     FPassword: StringRAL;
   public
-    constructor Create;
+    constructor Create(AOwner : TComponent); override;
+
+    procedure Validate(ARequest : TRALRequest; var AResponse : TRALResponse); override;
+    procedure GetHeader(var AHeader : TStringList); override;
   published
+    property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
   end;
 
-  {$IFNDEF FPC}
   TRALJWTAuth = class(TRALAuthentication)
   private
     FToken: TRALJWT;
@@ -42,10 +51,11 @@ type
     function RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
     function Validate(aToken: StringRAL): boolean;
 
-    constructor Create;
+    procedure GetHeader(var AHeader : TStringList); override;
+
+    constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
   end;
-  {$ENDIF}
 
   TRALOAuth = class(TRALAuthentication)
   private
@@ -60,9 +70,10 @@ type
 implementation
 
 { TRALAuthentication }
-constructor TRALAuthentication.Create;
+constructor TRALAuthentication.Create(AOwner : TComponent);
 begin
-  FAuthType := ratNone;
+  inherited;
+  FAuthType := ratBasic;
 end;
 
 destructor TRALAuthentication.Destroy;
@@ -76,7 +87,6 @@ begin
   FAuthType := AType;
 end;
 
-{$IFNDEF FPC}
 { TRALJWTAuth }
 
 constructor TRALJWTAuth.Create;
@@ -102,19 +112,82 @@ begin
 
 end;
 
+procedure TRALJWTAuth.GetHeader(var AHeader: TStringList);
+var
+  vAuth : integer;
+begin
+  repeat
+    vAuth := AHeader.IndexOfName('Authorization');
+    if vAuth >= 0 then
+      AHeader.Delete(vAuth);
+  until vAuth < 0;
+
+  AHeader.Add('Authorization=Bearer ');
+end;
+
 function TRALJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
 begin
 
 end;
-{$ENDIF}
 
 { TRALBasicAuth }
 
 constructor TRALBasicAuth.Create;
 begin
-  Self := nil;
   inherited;
   SetAuthType(ratBasic);
+end;
+
+procedure TRALBasicAuth.GetHeader(var AHeader: TStringList);
+var
+  vAuth : integer;
+  vBase64 : StringRAL;
+begin
+  repeat
+    vAuth := AHeader.IndexOfName('Authorization');
+    if vAuth >= 0 then
+      AHeader.Delete(vAuth);
+  until vAuth < 0;
+
+  vBase64 := TRALBase64.Encode(FUserName+':'+FPassword);
+
+  AHeader.Add('Authorization=Basic '+vBase64);
+end;
+
+procedure TRALBasicAuth.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
+var
+  vResult : boolean;
+
+  procedure Error401;
+  begin
+    AResponse.RespCode := 401;
+    if FAuthDialog then
+      AResponse.Headers.Add('WWW-Authenticate: Basic realm="RAL Basic');
+  end;
+begin
+  inherited;
+  AResponse.RespCode := 200;
+  if (ARequest.Authorization.AuthType <> ratBasic) then
+  begin
+    Error401;
+    Exit;
+  end;
+
+  if Assigned(FOnAuth) then
+  begin
+    vResult := False;
+    FOnAuth(ARequest,vResult);
+    if not vResult then
+      Error401;
+  end
+  else
+  begin
+    if (ARequest.Authorization.AuthType <> ratBasic) or
+       (Trim(FUserName) = '') or (Trim(FPassword) = '') or
+       (ARequest.Authorization.UserName <> FUserName) or
+       (ARequest.Authorization.Password <> FPassword) then
+      Error401;
+  end;
 end;
 
 end.

@@ -4,8 +4,8 @@ interface
 
 uses
   Classes, SysUtils,
-  IdSSLOpenSSL, IdHTTP, IdMultipartFormData,
-  RALClient, RALRoutes, RALTypes, RALConsts;
+  IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication,
+  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication;
 
 type
   TRALIndyClient = class(TRALClient)
@@ -85,6 +85,7 @@ var
   vSource, vResult, vContent : TStream;
   vStr1, vStr2 : StringRAL;
 begin
+  inherited;
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
 //  FHttp.Request.ContentType := '';
@@ -128,15 +129,14 @@ begin
         if Pos('text/',LowerCase(FHttp.Response.ContentType)) = 1 then
         begin
           vResult := TStringStream.Create;
-          vResult.CopyFrom(vContent,vContent.Size);
+          vResult.CopyFrom(vContent, vContent.Size);
         end
         else
         begin
           vResult := TMemoryStream.Create;
-          vResult.CopyFrom(vContent,vContent.Size);
+          vResult.CopyFrom(vContent, vContent.Size);
         end;
       except
-        FreeAndNil(vResult);
         vResult := TStringStream.Create(FHttp.ResponseText);
       end;
       vResult.Position := 0;

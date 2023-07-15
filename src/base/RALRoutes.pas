@@ -628,11 +628,12 @@ var
   vInt : IntegerRAL;
 begin
   Result := '';
-  if FAuthType = ratBasic then begin
+  if FAuthType = ratBasic then
+  begin
     vString := TRALBase64.Decode(FAuthString);
     vInt := Pos(':',vString);
     if vInt > 0 then
-      Result := Copy(vString,vInt+1,Length(vString));
+      Result := Copy(vString, vInt+1, Length(vString));
   end;
 end;
 
@@ -642,11 +643,12 @@ var
   vInt : IntegerRAL;
 begin
   Result := '';
-  if FAuthType = ratBasic then begin
+  if FAuthType = ratBasic then
+  begin
     vString := TRALBase64.Decode(FAuthString);
     vInt := Pos(':',vString);
     if vInt > 0 then
-      Result := Copy(vString,1,vInt-1);
+      Result := Copy(vString, 1, vInt-1);
   end;
 end;
 

@@ -31,7 +31,7 @@ type
     procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
     procedure WriteServerStatus; virtual;
-    function ValidateAuth(ARequest: TRALRequest): boolean;
+    function ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
     function CreateRALSSL: TRALSSL; virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -130,9 +130,10 @@ begin
       Result.RespCode := 404;
       Result.ContentType := TRALContentType.ctTEXTHTML;
     end
-    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods))
-      and (not(ARequest.Method in vRoute.SkipAuthMethods)) and
-      (not(ValidateAuth(ARequest))) then
+    else if (FAuthentication <> nil) and
+            (not (amALL in vRoute.SkipAuthMethods)) and
+            (not (ARequest.Method in vRoute.SkipAuthMethods)) and
+            (not (ValidateAuth(ARequest,Result))) then
     begin
       Result.RespCode := 401;
       Result.ContentType := TRALContentType.ctTEXTHTML;
@@ -165,9 +166,13 @@ begin
   FPort := Value;
 end;
 
-function TRALServer.ValidateAuth(ARequest: TRALRequest): boolean;
+function TRALServer.ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
 begin
   Result := False;
+  if FAuthentication <> nil then begin
+    FAuthentication.Validate(ARequest,AResponse);
+    Result := AResponse.RespCode = 200;
+  end;
 end;
 
 procedure TRALServer.WriteServerStatus;

@@ -16,7 +16,11 @@ type
     FResponseCode : IntegerRAL;
     FResponseStream : TStream;
   protected
-    procedure SetUseSSL(const Value: boolean); virtual;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetAuthentication(const AValue: TRALAuthentication);
+
+    procedure SetBaseURL(const AValue: StringRAL);
+    procedure SetUseSSL(const AValue: boolean); virtual;
     procedure SetResponse(AStream : TStream);
     function SendUrl(AURL : StringRAL; AMethod : TRALMethod;
                      AHeaders: TStringList = nil;
@@ -34,8 +38,8 @@ type
     property ResponseCode : IntegerRAL read FResponseCode write FResponseCode;
     property ResponseText : StringRAL read GetResponseText;
   published
-    property Authentication: TRALAuthentication read FAuthentication write FAuthentication;
-    property BaseURL: StringRAL read FBaseURL write FBaseURL;
+    property Authentication: TRALAuthentication read FAuthentication write SetAuthentication;
+    property BaseURL: StringRAL read FBaseURL write SetBaseURL;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
   end;
 
@@ -98,6 +102,15 @@ begin
   Result := Result + '://'+ARoute;
 end;
 
+procedure TRALClient.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  if (Operation  = opRemove) and
+     (AComponent = FAuthentication) then
+    FAuthentication := nil;
+  inherited;
+end;
+
 function TRALClient.Patch(ARoute: StringRAL; AHeaders: TStringList;
   ABody: TRALParams): IntegerRAL;
 begin
@@ -119,7 +132,37 @@ end;
 function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams) : IntegerRAL;
 begin
+  if FAuthentication <> nil then
+    FAuthentication.GetHeader(AHeaders);
   Result := 0;
+end;
+
+procedure TRALClient.SetAuthentication(const AValue: TRALAuthentication);
+begin
+  if AValue <> FAuthentication then
+    FAuthentication := AValue;
+  if FAuthentication <> nil then
+    FAuthentication.FreeNotification(Self);
+end;
+
+procedure TRALClient.SetBaseURL(const AAValue: StringRAL);
+var
+  vInt : IntegerRAL;
+  vProtocol : StringRAL;
+begin
+  vInt := Pos(':\\',AValue);
+  if vInt > 0 then
+  begin
+    FBaseURL := Copy(AValue, vInt+3, Length(AValue));
+    vProtocol := Copy(AValue, 1, vInt - 1);
+    FUseSSL := False;
+    if SameText(vProtocol,'https') then
+      FUseSSL := True;
+  end
+  else
+  begin
+    FBaseURL := AValue;
+  end;
 end;
 
 procedure TRALClient.SetResponse(AStream: TStream);
@@ -129,9 +172,9 @@ begin
   FResponseStream := AStream;
 end;
 
-procedure TRALClient.SetUseSSL(const Value: boolean);
+procedure TRALClient.SetUseSSL(const AValue: boolean);
 begin
-  FUseSSL := Value;
+  FUseSSL := AValue;
 end;
 
 end.

@@ -131,16 +131,20 @@ var
 begin
   vJson := TRALJSONObject(ParseJson(AValue));
   try
-    if vJson <> nil then begin
+    if vJson <> nil then
+    begin
       Initialize;
       vInt := 0;
-      while vInt < vJson.Count do begin
+      while vInt < vJson.Count do
+      begin
         vName := vJson.Names[vInt];
         vValue := vJson.Get(vInt);
-        if SameText(vName, 'typ') then begin
+        if SameText(vName, 'typ') then
+        begin
           FHeaderType := vValue.ToJSON;
         end
-        else if SameText(vName, 'alg') then begin
+        else if SameText(vName, 'alg') then
+        begin
           vAux1 := vValue.ToJSON;
 
           FAlgorithm := tjaHSHA256;
@@ -149,7 +153,8 @@ begin
           else if SameText(vAux1, 'hs512') then
             FAlgorithm := tjaHSHA512;
         end
-        else if SameText(vName, 'kid') then begin
+        else if SameText(vName, 'kid') then
+        begin
           FKeyID := vValue.ToJSON;
         end;
 
@@ -208,13 +213,13 @@ begin
     vInt := 0;
     while vInt < FCustoms.Count do begin
       vItem := TRALKeyPair(FCustoms.Items[vInt]);
-      vInvalidName := SameText(vItem.KeyName,'aud') or
-                      SameText(vItem.KeyName,'exp') or
-                      SameText(vItem.KeyName,'iat') or
-                      SameText(vItem.KeyName,'iss') or
-                      SameText(vItem.KeyName,'jti') or
-                      SameText(vItem.KeyName,'nbf') or
-                      SameText(vItem.KeyName,'sub');
+      vInvalidName := SameText(vItem.KeyName, 'aud') or
+                      SameText(vItem.KeyName, 'exp') or
+                      SameText(vItem.KeyName, 'iat') or
+                      SameText(vItem.KeyName, 'iss') or
+                      SameText(vItem.KeyName, 'jti') or
+                      SameText(vItem.KeyName, 'nbf') or
+                      SameText(vItem.KeyName, 'sub');
 
       if not vInvalidName then begin
         if vItem.KeyType = ktString then begin
@@ -268,50 +273,61 @@ var
 begin
   vJson := TRALJSONObject(ParseJson(AValue));
   try
-    if vJson <> nil then begin
+    if vJson <> nil then
+    begin
       Initialize;
       vInt := 0;
-      while vInt < vJson.Count do begin
+      while vInt < vJson.Count do
+      begin
         vName := vJson.Names[vInt];
         vValue := vJson.Get(vInt);
-        if SameText(vName, 'aud') then begin
+        if SameText(vName, 'aud') then
+        begin
           FAudience := vValue.ToJSON;
         end
-        else if SameText(vName, 'exp') then begin
+        else if SameText(vName, 'exp') then
+        begin
           if vValue is TRALJSONNumber then
             FExpiration := UnixToDateTime(vValue.AsInt64)
           else
             FExpiration := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'iat') then begin
+        else if SameText(vName, 'iat') then
+        begin
           if vValue is TRALJSONNumber then
             FIssuedAt := UnixToDateTime(vValue.AsInt64)
           else
             FIssuedAt := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'iss') then begin
+        else if SameText(vName, 'iss') then
+        begin
           FIssuer := vValue.AsString;
         end
-        else if SameText(vName, 'jti') then begin
+        else if SameText(vName, 'jti') then
+        begin
           FJWTId := vValue.AsString;
         end
-        else if SameText(vName, 'nbf') then begin
+        else if SameText(vName, 'nbf') then
+        begin
           if vValue is TRALJSONNumber then
             FNotBefore := UnixToDateTime(vValue.AsInt64)
           else
             FNotBefore := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'sub') then begin
+        else if SameText(vName, 'sub') then
+        begin
           FSubject := vValue.AsString;
         end
         else begin
-          if vValue is TRALJSONNumber then begin
+          if vValue is TRALJSONNumber then
+          begin
             if not TryStrToInt64(vValue.AsString, vInt64) then
               FCustoms.AddKey(vName, vValue.AsFloat)
             else
               FCustoms.AddKey(vName, vValue.AsInt64)
           end
-          else if vValue is TRALJSONBoolean then begin
+          else if vValue is TRALJSONBoolean then
+          begin
             FCustoms.AddKey(vName, vValue.AsBoolean)
           end
           else begin
@@ -396,20 +412,23 @@ begin
   try
     repeat
       vInt := Pos('.', vValue);
-      if vInt > 0 then begin
+      if vInt > 0 then
+      begin
         vStr.Add(Copy(vValue, 1, vInt - 1));
         Delete(vValue, 1, vInt);
       end;
     until vInt = 0;
 
-    if vStr.Count = 3 then begin
+    if vStr.Count = 3 then
+    begin
       vHeader    := TRALBase64.Decode(vStr.Strings[0]);
       vPayload   := TRALBase64.Decode(vStr.Strings[1]);
       vSignature := vStr.Strings[2];
 
       CreateToken(vHeader, vPayload, vMySignature);
 
-      if vMySignature = vSignature then begin
+      if vMySignature = vSignature then
+      begin
         vObjPayload := TRALJWTPayload.Create;
         try
           vObjPayload.AsJSON := vPayload;
