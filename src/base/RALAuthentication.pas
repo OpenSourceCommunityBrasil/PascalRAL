@@ -3,31 +3,60 @@ unit RALAuthentication;
 interface
 
 uses
-  Classes, SysUtils,
-  RALToken, RALConsts, RALTypes, RALRoutes, RALBase64;
+  Classes, SysUtils, DateUtils,
+  RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson;
 
 type
   TRALOnAuth = procedure(ARequest : TRALRequest; var AResult : boolean) of object;
+  TRALOnGetToken = procedure(ARequest : TRALRequest; var AToken : string;
+                             var AResult : boolean) of object;
 
   TRALAuthentication = class(TRALComponent)
   private
     FAuthType : TRALAuthTypes;
-    FOnAuth : TRALOnAuth;
   protected
     procedure SetAuthType(AType : TRALAuthTypes);
   public
     constructor Create(AOwner : TComponent); override;
-    destructor Destroy; override;
+  end;
 
-    procedure Validate(ARequest : TRALRequest; var AResponse : TRALResponse); virtual; abstract;
+  TRALAuthClient = class(TRALAuthentication)
+  private
+
+  public
     procedure GetHeader(var AHeader : TStringList); virtual; abstract;
+  end;
+
+  TRALAuthServer = class(TRALAuthentication)
+  private
+    FOnAuth : TRALOnAuth;
+    FOnGetToken : TRALOnGetToken;
+  public
+    procedure Validate(ARequest : TRALRequest;
+                       var AResponse : TRALResponse); virtual; abstract;
+    procedure CallQuery(AQuery : StringRAL; ARequest : TRALRequest;
+                        var AResponse : TRALResponse); virtual; abstract;
 
     property AuthType : TRALAuthTypes read FAuthType;
+    property OnGetToken : TRALOnGetToken read FOnGetToken write FOnGetToken;
   published
     property OnAuth : TRALOnAuth read FOnAuth write FOnAuth;
   end;
 
-  TRALBasicAuth = class(TRALAuthentication)
+  TRALBasicAuthClient = class(TRALAuthClient)
+  private
+    FUserName: StringRAL;
+    FPassword: StringRAL;
+  public
+    constructor Create(AOwner : TComponent); override;
+
+    procedure GetHeader(var AHeader : TStringList); override;
+  published
+    property UserName: StringRAL read FUserName write FUserName;
+    property Password: StringRAL read FPassword write FPassword;
+  end;
+
+  TRALBasicAuthServer = class(TRALAuthServer)
   private
     FAuthDialog: boolean;
     FUserName: StringRAL;
@@ -36,33 +65,46 @@ type
     constructor Create(AOwner : TComponent); override;
 
     procedure Validate(ARequest : TRALRequest; var AResponse : TRALResponse); override;
-    procedure GetHeader(var AHeader : TStringList); override;
+    procedure CallQuery(AQuery : StringRAL; ARequest : TRALRequest;
+                        var AResponse : TRALResponse); override;
   published
+    property OnAuth;
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
   end;
 
-  TRALJWTAuth = class(TRALAuthentication)
+  TRALJWTAuthServer = class(TRALAuthServer)
   private
     FToken: TRALJWT;
+    FExpSegs : IntegerRAL;
+    FRoute : StringRAL;
+    FKey : StringRAL;
   public
-    function GetToken(AJSONParams: StringRAL): StringRAL;
-    function RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
-    function Validate(aToken: StringRAL): boolean;
-
-    procedure GetHeader(var AHeader : TStringList); override;
-
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+
+    function GetToken(AJSONParams : StringRAL): StringRAL;
+    function RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+
+    procedure Validate(ARequest : TRALRequest;
+                       var AResponse : TRALResponse); override;
+    procedure CallQuery(AQuery : StringRAL; ARequest : TRALRequest;
+                        var AResponse : TRALResponse); override;
+  published
+    property OnAuth;
+    property OnGetToken;
+    property Route : StringRAL read FRoute write FRoute;
+    property ExpSegs : IntegerRAL read FExpSegs write FExpSegs;
+    property Key : StringRAL read FKey write FKey;
   end;
 
-  TRALOAuth = class(TRALAuthentication)
+  TRALOAuth = class(TRALAuthServer)
   private
   public
   end;
 
-  TRALOAuth2 = class(TRALAuthentication)
+  TRALOAuth2 = class(TRALAuthServer)
   private
   public
   end;
@@ -70,16 +112,11 @@ type
 implementation
 
 { TRALAuthentication }
+
 constructor TRALAuthentication.Create(AOwner : TComponent);
 begin
   inherited;
-  FAuthType := ratBasic;
-end;
-
-destructor TRALAuthentication.Destroy;
-begin
-
-  inherited;
+  FAuthType := ratNone;
 end;
 
 procedure TRALAuthentication.SetAuthType(AType: TRALAuthTypes);
@@ -87,74 +124,157 @@ begin
   FAuthType := AType;
 end;
 
-{ TRALJWTAuth }
+{ TRALJWTAuthServer }
 
-constructor TRALJWTAuth.Create;
+procedure TRALJWTAuthServer.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vToken, vPayload : StringRAL;
+  vResult : boolean;
+  vParam : TRALParam;
+  vJson : TRALJSONObject;
 begin
-  inherited;
-  FToken := TRALJWT.Create;
-  SetAuthType(ratBearer);
+  AQuery := FixRoute('/'+AQuery+'/');
+  if SameText(AQuery,FRoute) then
+  begin
+    vResult := False;
+    vToken := '';
+    if Assigned(FOnGetToken) then
+    begin
+      FOnGetToken(ARequest,vToken,vResult);
+    end
+    else
+    begin
+      vParam := ARequest.Params.ParamName['ral_payload'];
+
+      if vParam = nil then
+        vParam := ARequest.Params.ParamName['ral_body'];
+
+      if vParam <> nil then begin
+        if (ARequest.Authorization.AuthString <> '') and
+           (ARequest.Authorization.AuthType = ratBearer) then
+          vToken := RenewToken(ARequest.Authorization.AuthString,vParam.AsString)
+        else
+          vToken := GetToken(vParam.AsString);
+        vResult := vToken <> '';
+      end;
+    end;
+
+    if vResult then begin
+      vJson := TRALJSONObject.Create;
+      try
+        vJson.Add(FKey,vToken);
+        AResponse.ResponseText := vJson.ToJSON;
+      finally
+        vJson.Free;
+      end;
+    end
+    else begin
+      AResponse.RespCode := 401;
+      AResponse.ResponseText := '';
+    end;
+  end;
 end;
 
-destructor TRALJWTAuth.Destroy;
+constructor TRALJWTAuthServer.Create;
+begin
+  inherited;
+  SetAuthType(ratBearer);
+  FToken := TRALJWT.Create;
+  FRoute := 'getToken';
+  FExpSegs := 1800;
+  FKey := 'token';
+end;
+
+destructor TRALJWTAuthServer.Destroy;
 begin
   FreeAndNil(FToken);
   inherited;
 end;
 
-function TRALJWTAuth.RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
-begin
-
-end;
-
-function TRALJWTAuth.Validate(aToken: StringRAL): boolean;
-begin
-
-end;
-
-procedure TRALJWTAuth.GetHeader(var AHeader: TStringList);
+function TRALJWTAuthServer.RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
 var
-  vAuth : integer;
+  vJWT : TRALJWT;
 begin
-  repeat
-    vAuth := AHeader.IndexOfName('Authorization');
-    if vAuth >= 0 then
-      AHeader.Delete(vAuth);
-  until vAuth < 0;
+  Result := '';
+  if FToken.ValidToken(AToken) then
+  begin
+    vJWT := TRALJWT.Create;
+    try
+      vJWT.Header.Algorithm := FToken.Header.Algorithm;
+      vJWT.Header.createKeyID;
 
-  AHeader.Add('Authorization=Bearer ');
+      vJWT.Payload.AsJSON := AJSONParams;
+      vJWT.Payload.Expiration := IncSecond(Now,FExpSegs);
+      vJWT.Payload.createJWTId;
+
+      vJWT.Secret := FToken.Secret;
+
+      Result := vJWT.Token;
+    finally
+      vJWT.Free;
+    end;
+  end;
 end;
 
-function TRALJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
+procedure TRALJWTAuthServer.Validate(ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vResult : boolean;
 begin
+  AResponse.RespCode := 200;
+  if (ARequest.Authorization.AuthType <> ratBearer) then
+  begin
+    AResponse.RespCode := 401;
+    Exit;
+  end;
 
+  vResult := False;
+  if Assigned(FOnAuth) then
+    FOnAuth(ARequest,vResult)
+  else
+    vResult := FToken.ValidToken(ARequest.Authorization.AuthString);
+
+  if not vResult then
+    AResponse.RespCode := 401;
 end;
 
-{ TRALBasicAuth }
+function TRALJWTAuthServer.GetToken(AJSONParams: StringRAL): StringRAL;
+var
+  vJWT : TRALJWT;
+begin
+  vJWT := TRALJWT.Create;
+  try
+    vJWT.Header.Algorithm := FToken.Header.Algorithm;
+    vJWT.Header.createKeyID;
 
-constructor TRALBasicAuth.Create;
+    vJWT.Payload.AsJSON := AJSONParams;
+    vJWT.Payload.Expiration := IncSecond(Now,FExpSegs);
+    vJWT.Payload.createJWTId;
+
+    vJWT.Secret := FToken.Secret;
+
+    Result := vJWT.Token;
+  finally
+    vJWT.Free;
+  end;
+end;
+
+{ TRALBasicAuthServer }
+
+constructor TRALBasicAuthServer.Create;
 begin
   inherited;
   SetAuthType(ratBasic);
 end;
 
-procedure TRALBasicAuth.GetHeader(var AHeader: TStringList);
-var
-  vAuth : integer;
-  vBase64 : StringRAL;
+procedure TRALBasicAuthServer.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
 begin
-  repeat
-    vAuth := AHeader.IndexOfName('Authorization');
-    if vAuth >= 0 then
-      AHeader.Delete(vAuth);
-  until vAuth < 0;
-
-  vBase64 := TRALBase64.Encode(FUserName+':'+FPassword);
-
-  AHeader.Add('Authorization=Basic '+vBase64);
+  AResponse.RespCode := 404;
 end;
 
-procedure TRALBasicAuth.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
+procedure TRALBasicAuthServer.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
 var
   vResult : boolean;
 
@@ -188,6 +308,30 @@ begin
        (ARequest.Authorization.Password <> FPassword) then
       Error401;
   end;
+end;
+
+{ TRALBasicAuthClient }
+
+constructor TRALBasicAuthClient.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetAuthType(ratBasic);
+end;
+
+procedure TRALBasicAuthClient.GetHeader(var AHeader: TStringList);
+var
+  vAuth : integer;
+  vBase64 : StringRAL;
+begin
+  repeat
+    vAuth := AHeader.IndexOfName('Authorization');
+    if vAuth >= 0 then
+      AHeader.Delete(vAuth);
+  until vAuth < 0;
+
+  vBase64 := TRALBase64.Encode(FUserName+':'+FPassword);
+
+  AHeader.Add('Authorization=Basic '+vBase64);
 end;
 
 end.

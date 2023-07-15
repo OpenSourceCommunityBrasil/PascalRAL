@@ -6,11 +6,13 @@ uses
   {$IFNDEF FPC}
   JSON,
   {$ENDIF}
-  Classes, SysUtils, Variants,
+  Classes, SysUtils, Variants, StrUtils,
   RALTypes;
 
 function VarToBytes(v: variant): TBytes;
 function BytesToString(b: TBytes): StringRAL;
+function FixRoute(ARoute : StringRAL) : StringRAL;
+function RandomBytes(numOfBytes : IntegerRAL) : TBytes;
 
 implementation
 
@@ -49,6 +51,23 @@ begin
     SetLength(Result, Length(b));
     Move(b[0], Result[PosIniStr], Length(b));
   end;
+end;
+
+function FixRoute(ARoute : StringRAL) : StringRAL;
+begin
+  Result := '/'+ARoute+'/';
+  while Pos('//', Result) > 0 do
+    Result := ReplaceStr(Result, '//', '/');
+end;
+
+function RandomBytes(numOfBytes : IntegerRAL) : TBytes;
+var
+  vInt : IntegerRAL;
+begin
+  SetLength(Result,numOfBytes);
+  Randomize;
+  for vInt := 1 to numOfBytes do
+    Result[vInt-1] := Random(256);
 end;
 
 end.

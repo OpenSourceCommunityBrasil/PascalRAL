@@ -69,7 +69,7 @@ type
     property ParamName[name: StringRAL]: TRALParam read GetParamName;
   end;
 
-  TRALAuthClient = class
+  TRALAuthorization = class
   private
     FAuthType : TRALAuthTypes;
     FAuthString : StringRAL;
@@ -87,7 +87,7 @@ type
 
   TRALRequest = class
   private
-    FAuthorization : TRALAuthClient;
+    FAuthorization : TRALAuthorization;
     FHeaders: TStringList;
     FContentType: StringRAL;
     FContentSize: Int64RAL;
@@ -110,7 +110,7 @@ type
     property Params: TRALParams read FParams;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
-    property Authorization : TRALAuthClient read FAuthorization write FAuthorization;
+    property Authorization : TRALAuthorization read FAuthorization write FAuthorization;
   end;
 
   TRALResponse = class
@@ -121,12 +121,12 @@ type
     FRespCode: IntegerRAL;
     FResponse : TRALParam;
   protected
-    procedure SetContentType(const Value: StringRAL);
-    procedure SetHeaders(const Value: TStringList);
+    procedure SetContentType(const AValue: StringRAL);
+    procedure SetHeaders(const AValue: TStringList);
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
-    procedure SetResponseStream(const Value: TStream);
-    procedure SetResponseText(const Value: StringRAL);
+    procedure SetResponseStream(const AValue: TStream);
+    procedure SetResponseText(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -177,7 +177,6 @@ type
   protected
     function getRoute(address: StringRAL): TRALRoute;
     function findRoute(subdomain, address: StringRAL; partial: Boolean = false) : TRALRoute;
-    function fixAddress(address: StringRAL): StringRAL;
   public
     constructor Create(AOwner: TPersistent);
     property RouteAddress[address: StringRAL]: TRALRoute read getRoute;
@@ -232,7 +231,7 @@ begin
     Result := Result + '/';
 
   Result := '/' + Result + FDocument + '/';
-  Result := TRALRoutes(Collection).fixAddress(Result);
+  Result := FixRoute(Result);
 end;
 
 function TRALRoute.GetNamePath: string;
@@ -267,7 +266,7 @@ var
   vaddr1, vaddr2: StringRAL;
   vpart: Boolean;
 begin
-  address := fixAddress(address);
+  address := FixRoute(address);
 
   Result := nil;
   vInt := 0;
@@ -277,7 +276,7 @@ begin
   while vInt < Count do
   begin
     vRoute := TRALRoute(Items[vInt]);
-    vaddr1 := fixAddress(subdomain + vRoute.Document);
+    vaddr1 := FixRoute(subdomain + vRoute.Document);
     vaddr2 := Copy(address, 1, Length(vaddr1));
     if vRoute.RouteList.Count = 0 then
     begin
@@ -309,13 +308,6 @@ begin
     Result := vResp;
 end;
 
-function TRALRoutes.fixAddress(address: StringRAL): StringRAL;
-begin
-  Result := '/' + address + '/';
-  while Pos('//', Result) > 0 do
-    Result := ReplaceStr(Result, '//', '/');
-end;
-
 function TRALRoutes.getRoute(address: StringRAL): TRALRoute;
 begin
   Result := findRoute('', address, false);
@@ -345,7 +337,7 @@ end;
 constructor TRALRequest.Create;
 begin
   inherited;
-  FAuthorization := TRALAuthClient.Create;
+  FAuthorization := TRALAuthorization.Create;
   FHeaders := TStringList.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
@@ -414,30 +406,34 @@ begin
     Result := FResponse.AsString;
 end;
 
-procedure TRALResponse.SetContentType(const Value: StringRAL);
+procedure TRALResponse.SetContentType(const AValue: StringRAL);
 begin
-  FContentType := Value;
+  FContentType := AValue;
   if (FResponse <> nil) and (FBody.Count = 1) then
-    FResponse.ContentType := Value;
+    FResponse.ContentType := AValue;
 end;
 
-procedure TRALResponse.SetHeaders(const Value: TStringList);
+procedure TRALResponse.SetHeaders(const AValue: TStringList);
 begin
-  FHeaders := Value;
+  FHeaders := AValue;
 end;
 
-procedure TRALResponse.SetResponseStream(const Value: TStream);
-begin
-  Body.ClearParams;
-  FResponse := Body.AddValue(Value);
-  FResponse.ContentType := FContentType;
-end;
-
-procedure TRALResponse.SetResponseText(const Value: StringRAL);
+procedure TRALResponse.SetResponseStream(const AValue: TStream);
 begin
   Body.ClearParams;
-  FResponse := Body.AddValue(Value);
-  FResponse.ContentType := FContentType;
+  if AValue.Size > 0 then begin
+    FResponse := Body.AddValue(AValue);
+    FResponse.ContentType := FContentType;
+  end;
+end;
+
+procedure TRALResponse.SetResponseText(const AValue: StringRAL);
+begin
+  Body.ClearParams;
+  if AValue <> '' then begin
+    FResponse := Body.AddValue(AValue);
+    FResponse.ContentType := FContentType;
+  end;
 end;
 
 { TRALParam }
@@ -613,16 +609,16 @@ begin
   Result := 'ralparam'+IntToStr(FNextParam);
 end;
 
-{ TRALAuthClient }
+{ TRALAuthorization }
 
-constructor TRALAuthClient.Create;
+constructor TRALAuthorization.Create;
 begin
   inherited;
   FAuthType := ratNone;
   FAuthString := '';
 end;
 
-function TRALAuthClient.GetPassword: StringRAL;
+function TRALAuthorization.GetPassword: StringRAL;
 var
   vString : StringRAL;
   vInt : IntegerRAL;
@@ -637,7 +633,7 @@ begin
   end;
 end;
 
-function TRALAuthClient.GetUserName: StringRAL;
+function TRALAuthorization.GetUserName: StringRAL;
 var
   vString : StringRAL;
   vInt : IntegerRAL;

@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALKeyPairs,
-  RALJson;
+  RALJson, RALTools;
 
 type
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA512);
@@ -21,6 +21,8 @@ type
     procedure Initialize;
   public
     constructor Create;
+
+    procedure createKeyID;
   published
     property HeaderType : StringRAL read FHeaderType;
     property Algorithm : TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
@@ -46,6 +48,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
+    procedure createJWTId;
   published
     property Audience : StringRAL read FAudience write FAudience;
     property Expiration : TDateTime read FExpiration write FExpiration;
@@ -90,6 +94,14 @@ implementation
 constructor TRALJWTHeader.Create;
 begin
   Initialize;
+end;
+
+procedure TRALJWTHeader.createKeyID;
+var
+  vBytes : TBytes;
+begin
+  vBytes := randomBytes(8);
+  FKeyID := TRALBase64.Encode(vBytes);
 end;
 
 function TRALJWTHeader.GetAsJSON: StringRAL;
@@ -172,6 +184,14 @@ constructor TRALJWTPayload.Create;
 begin
   FCustoms := TRALKeyPairs.Create(Self);
   Initialize;
+end;
+
+procedure TRALJWTPayload.createJWTId;
+var
+  vBytes : TBytes;
+begin
+  vBytes := randomBytes(10);
+  FJWTId := TRALBase64.Encode(vBytes);
 end;
 
 destructor TRALJWTPayload.Destroy;

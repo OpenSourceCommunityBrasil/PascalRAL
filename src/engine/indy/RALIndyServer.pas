@@ -208,14 +208,16 @@ begin
         hcOPTION:
           Method := amOPTION;
       end;
+
       ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
       ContentSize := ARequestInfo.ContentLength;
-      if AContext.Data is TRALAuthClient then begin
-        Authorization.AuthType := TRALAuthClient(AContext.Data).AuthType;
-        Authorization.AuthString := TRALAuthClient(AContext.Data).AuthString;
+      if AContext.Data is TRALAuthorization then begin
+        Authorization.AuthType := TRALAuthorization(AContext.Data).AuthType;
+        Authorization.AuthString := TRALAuthorization(AContext.Data).AuthString;
         AContext.Data.Free;
         AContext.Data := nil;
       end;
+
       vInt := 0;
       while vInt < ARequestInfo.RawHeaders.Count do
       begin
@@ -225,6 +227,7 @@ begin
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;
       end;
+
       vInt := 0;
       while vInt < ARequestInfo.CustomHeaders.Count do
       begin
@@ -234,6 +237,7 @@ begin
         Headers.Add(vStr1 + '=' + vStr2);
         vInt := vInt + 1;
       end;
+
       if ARequestInfo.Params.Count > 0 then
       begin
         vInt := 0;
@@ -252,6 +256,7 @@ begin
           vStr1 := ARequestInfo.UnparsedParams;
         //TODO
       end;
+
       if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0) then
       begin
         if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
@@ -304,7 +309,7 @@ procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
   const AAuthType, AAuthData: String; var VUsername, VPassword: String;
   var VHandled: Boolean);
 var
-  vAuth : TRALAuthClient;
+  vAuth : TRALAuthorization;
 begin
   VHandled := False;
   if Authentication <> nil then begin
@@ -314,7 +319,7 @@ begin
     end;
 
     if VHandled then begin
-      vAuth := TRALAuthClient.Create;
+      vAuth := TRALAuthorization.Create;
       vAuth.AuthType := Authentication.AuthType;
       vAuth.AuthString := AAuthData;
 

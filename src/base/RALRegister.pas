@@ -3,11 +3,6 @@ unit RALRegister;
 interface
 
 uses
-    {$IFDEF FPC}
-    LResources,
-    {$ELSE}
-  //  DesignIntf, DesignEditors, // DsgnIntf
-    {$ENDIF}
   Classes, SysUtils,
   RALAuthentication;
 
@@ -17,7 +12,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Authentication', [TRALBasicAuth, TRALJWTAuth]);
+  RegisterComponents('RAL - AuthServers', [TRALBasicAuthServer, TRALJWTAuthServer]);
 end;
 
 {$IFDEF FPC}

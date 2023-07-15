@@ -9,7 +9,7 @@ uses
 type
   TRALClient = class(TRALComponent)
   private
-    FAuthentication: TRALAuthentication;
+    FAuthentication: TRALAuthClient;
     FBaseURL : StringRAL;
     FUseSSL: boolean;
 
@@ -17,7 +17,7 @@ type
     FResponseStream : TStream;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetAuthentication(const AValue: TRALAuthentication);
+    procedure SetAuthentication(const AValue: TRALAuthClient);
 
     procedure SetBaseURL(const AValue: StringRAL);
     procedure SetUseSSL(const AValue: boolean); virtual;
@@ -38,7 +38,7 @@ type
     property ResponseCode : IntegerRAL read FResponseCode write FResponseCode;
     property ResponseText : StringRAL read GetResponseText;
   published
-    property Authentication: TRALAuthentication read FAuthentication write SetAuthentication;
+    property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
   end;
@@ -137,7 +137,7 @@ begin
   Result := 0;
 end;
 
-procedure TRALClient.SetAuthentication(const AValue: TRALAuthentication);
+procedure TRALClient.SetAuthentication(const AValue: TRALAuthClient);
 begin
   if AValue <> FAuthentication then
     FAuthentication := AValue;
@@ -145,7 +145,7 @@ begin
     FAuthentication.FreeNotification(Self);
 end;
 
-procedure TRALClient.SetBaseURL(const AAValue: StringRAL);
+procedure TRALClient.SetBaseURL(const AValue: StringRAL);
 var
   vInt : IntegerRAL;
   vProtocol : StringRAL;

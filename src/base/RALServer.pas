@@ -18,7 +18,7 @@ type
   private
     FActive: boolean;
     FPort: IntegerRAL;
-    FAuthentication: TRALAuthentication;
+    FAuthentication: TRALAuthServer;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
@@ -26,7 +26,7 @@ type
     FSSL: TRALSSL;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetAuthentication(const AValue: TRALAuthentication);
+    procedure SetAuthentication(const AValue: TRALAuthServer);
 
     procedure SetPort(const Value: IntegerRAL); virtual;
     procedure SetActive(const Value: boolean); virtual;
@@ -40,7 +40,7 @@ type
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
-    property Authentication: TRALAuthentication read FAuthentication write SetAuthentication;
+    property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
@@ -116,6 +116,10 @@ begin
       vString := ReplaceText(vString,'$ralversion;',RALVERSION);
       Result.Body.AddParam('html', vString);
     end
+    else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
+    begin
+      FAuthentication.CallQuery(ARequest.Query,ARequest,Result);
+    end
     else
     begin
       Result.RespCode := 404;
@@ -153,7 +157,7 @@ begin
   FActive := Value;
 end;
 
-procedure TRALServer.SetAuthentication(const AValue: TRALAuthentication);
+procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
 begin
   if AValue <> FAuthentication then
     FAuthentication := AValue;
