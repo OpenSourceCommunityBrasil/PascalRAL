@@ -58,7 +58,7 @@ type
     property JWTId : StringRAL read FJWTId write FJWTId;
     property NotBefore : TDateTime read FNotBefore write FNotBefore;
     property Subject : StringRAL read FSubject write FSubject;
-    property Customs : TRALKeyPairs read FCustoms;
+    property Customs : TRALKeyPairs read FCustoms write FCustoms;
   end;
 
   TRALJWT = class

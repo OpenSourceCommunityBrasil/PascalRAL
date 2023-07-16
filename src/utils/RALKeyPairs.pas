@@ -18,6 +18,8 @@ type
   protected
     procedure SetKeyValue(const AValue : StringRAL);
     procedure SetKeyType(const AValue: TRALKeyType);
+    function GetDisplayName: string; override;
+    procedure SetDisplayName(const AValue: string); override;
   public
     constructor Create(ACollection: TCollection); override;
   published
@@ -114,9 +116,22 @@ end;
 constructor TRALKeyPair.Create(ACollection: TCollection);
 begin
   inherited;
-  FKeyName := '';
+  FKeyName := 'key'+IntToStr(Index);
   FKeyValue := '';
   FKeyType := ktNone;
+  Changed(false);
+end;
+
+function TRALKeyPair.GetDisplayName: string;
+begin
+  Result := FKeyName;
+end;
+
+procedure TRALKeyPair.SetDisplayName(const AValue: string);
+begin
+  inherited;
+  if Trim(AValue) <> '' then
+    FKeyName := AValue;
 end;
 
 procedure TRALKeyPair.SetKeyType(const AValue: TRALKeyType);
