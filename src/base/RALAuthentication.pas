@@ -166,7 +166,7 @@ var
   vParam : TRALParam;
   vJson : TRALJSONObject;
 begin
-  AQuery := FixRoute('/'+AQuery+'/');
+  AQuery := FixRoute(AQuery);
   if SameText(AQuery,FRoute) then
   begin
     vResult := False;
@@ -205,6 +205,10 @@ begin
       AResponse.RespCode := 401;
       AResponse.ResponseText := '';
     end;
+  end
+  else
+  begin
+    AResponse.RespCode := 404;
   end;
 end;
 
@@ -265,11 +269,17 @@ procedure TRALJWTAuthServer.Validate(ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
   vResult : boolean;
+
+  procedure Error401;
+  begin
+    AResponse.RespCode := 401;
+    AResponse.Headers.Add('WWW-Authenticate: Bearer realm="RAL Basic');
+  end;
 begin
   AResponse.RespCode := 200;
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
-    AResponse.RespCode := 401;
+    Error401;
     Exit;
   end;
 
@@ -280,7 +290,7 @@ begin
     vResult := FToken.ValidToken(ARequest.Authorization.AuthString);
 
   if not vResult then
-    AResponse.RespCode := 401;
+    Error401;
 end;
 
 function TRALJWTAuthServer.GetSecret: StringRAL;
