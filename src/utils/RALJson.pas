@@ -194,7 +194,7 @@ function THelpRALJSONObject.Get(AIndex : integer) : TRALJSONValue;
 {$ENDIF}
 begin
   {$IFDEF FPC}
-    Result := Extract(AIndex);
+    Result := Items[AIndex];
   {$ELSE}
     vPair := Pairs[AIndex];
     Result := nil;
