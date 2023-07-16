@@ -486,7 +486,7 @@ begin
   if Assigned(FContent) then
     FreeAndNil(FContent);
 
-  FContent := TMemoryStream.Create;
+  FContent := TStringStream.Create;
   FContent.CopyFrom(Value, Value.Size);
   FContent.Position := 0;
 end;

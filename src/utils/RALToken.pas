@@ -23,12 +23,11 @@ type
     constructor Create;
 
     procedure createKeyID;
+    property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
   published
     property HeaderType : StringRAL read FHeaderType;
     property Algorithm : TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property KeyID : StringRAL read FKeyID write FKeyID;
-
-    property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
   end;
 
   TRALJWTPayload = class(TPersistent)
@@ -50,6 +49,7 @@ type
     destructor Destroy; override;
 
     procedure createJWTId;
+    property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
   published
     property Audience : StringRAL read FAudience write FAudience;
     property Expiration : TDateTime read FExpiration write FExpiration;
@@ -58,9 +58,7 @@ type
     property JWTId : StringRAL read FJWTId write FJWTId;
     property NotBefore : TDateTime read FNotBefore write FNotBefore;
     property Subject : StringRAL read FSubject write FSubject;
-    property Customs : TRALKeyPairs read FCustoms write FCustoms;
-
-    property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
+    property Customs : TRALKeyPairs read FCustoms;
   end;
 
   TRALJWT = class
@@ -113,8 +111,8 @@ begin
     vJson.Add('typ',FHeaderType);
 
     case FAlgorithm of
-      tjaHSHA256: vJson.Add('alg', 'hs256');
-      tjaHSHA512: vJson.Add('alg', 'hs512');
+      tjaHSHA256: vJson.Add('alg', 'HS256');
+      tjaHSHA512: vJson.Add('alg', 'HS512');
     end;
 
     if FKeyID <> '' then
@@ -128,7 +126,7 @@ end;
 
 procedure TRALJWTHeader.Initialize;
 begin
-  FHeaderType := 'jwt';
+  FHeaderType := 'JWT';
   FAlgorithm := tjaHSHA256;
   FKeyID := '';
 end;
@@ -391,11 +389,22 @@ begin
   try
     vHash.OutputType := rhotBase64;
 
+    // json codifica / para \/
+    AHeader := StringReplace(AHeader,'\/','/',[rfReplaceAll]);
+    APayload := StringReplace(APayload,'\/','/',[rfReplaceAll]);
+
     Result := TRALBase64.Encode(AHeader) + '.' +
               TRALBase64.Encode(APayload);
 
+    // jwt converte + para - e / para _ - Base64 for URL
+    Result := StringReplace(Result,'+','-',[rfReplaceAll]);
+    Result := StringReplace(Result,'/','_',[rfReplaceAll]);
+
     ASignature := vHash.HMACAsString(Result,FSecret);
-    Result := Result + '.' + FSignature;
+    ASignature := StringReplace(ASignature,'+','-',[rfReplaceAll]);
+    ASignature := StringReplace(ASignature,'/','_',[rfReplaceAll]);
+
+    Result := Result + '.' + ASignature;
   finally
     FreeAndNil(vHash);
   end;
@@ -432,6 +441,9 @@ begin
   try
     repeat
       vInt := Pos('.', vValue);
+      if (vInt = 0) and (vValue <> '') then
+        vInt := Length(vValue) + 1;
+
       if vInt > 0 then
       begin
         vStr.Add(Copy(vValue, 1, vInt - 1));
@@ -449,6 +461,7 @@ begin
 
       if vMySignature = vSignature then
       begin
+        Result := True;
         vObjPayload := TRALJWTPayload.Create;
         try
           vObjPayload.AsJSON := vPayload;

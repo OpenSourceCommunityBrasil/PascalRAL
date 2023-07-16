@@ -18,6 +18,8 @@ type
     procedure SetAuthType(AType : TRALAuthTypes);
   public
     constructor Create(AOwner : TComponent); override;
+
+    property AuthType : TRALAuthTypes read FAuthType;
   end;
 
   TRALAuthClient = class(TRALAuthentication)
@@ -74,15 +76,40 @@ type
     property Password: StringRAL read FPassword write FPassword;
   end;
 
+  TRALJWTAuthClient = class(TRALAuthClient)
+  private
+    FKey : StringRAL;
+    FToken: StringRAL;
+    FPayload : TRALJWTPayload;
+    FRoute : StringRAL;
+  protected
+    procedure SetToken(const AValue: StringRAL);
+    procedure SetRoute(const AValue: StringRAL);
+  public
+    constructor Create(AOwner : TComponent); override;
+    destructor Destroy; override;
+    procedure GetHeader(var AHeader : TStringList); override;
+  published
+    property Key: StringRAL read FKey write FKey;
+    property Token: StringRAL read FToken write SetToken;
+    property Payload: TRALJWTPayload read FPayload write FPayload;
+    property Route : StringRAL read FRoute write SetRoute;
+  end;
+
   TRALJWTAuthServer = class(TRALAuthServer)
   private
     FToken: TRALJWT;
     FExpSegs : IntegerRAL;
     FRoute : StringRAL;
     FKey : StringRAL;
+  protected
+    function GetSecret: StringRAL;
+    procedure SetSecret(const AValue: StringRAL);
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+
+    procedure SetRoute(const AValue: StringRAL);
 
     function GetToken(AJSONParams : StringRAL): StringRAL;
     function RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
@@ -94,9 +121,10 @@ type
   published
     property OnAuth;
     property OnGetToken;
-    property Route : StringRAL read FRoute write FRoute;
+    property Route : StringRAL read FRoute write SetRoute;
     property ExpSegs : IntegerRAL read FExpSegs write FExpSegs;
     property Key : StringRAL read FKey write FKey;
+    property Secret : StringRAL read GetSecret write SetSecret;
   end;
 
   TRALOAuth = class(TRALAuthServer)
@@ -110,6 +138,10 @@ type
   end;
 
 implementation
+
+const
+  tokenDefaultRoute = '/getToken/';
+  tokenDefaultKey = 'token';
 
 { TRALAuthentication }
 
@@ -181,9 +213,9 @@ begin
   inherited;
   SetAuthType(ratBearer);
   FToken := TRALJWT.Create;
-  FRoute := 'getToken';
+  FRoute := tokenDefaultRoute;
   FExpSegs := 1800;
-  FKey := 'token';
+  FKey := tokenDefaultKey;
 end;
 
 destructor TRALJWTAuthServer.Destroy;
@@ -217,6 +249,18 @@ begin
   end;
 end;
 
+procedure TRALJWTAuthServer.SetRoute(const AValue: StringRAL);
+begin
+  FRoute := FixRoute(AValue);
+  if FRoute = '/' then
+    FRoute := tokenDefaultRoute;
+end;
+
+procedure TRALJWTAuthServer.SetSecret(const AValue: StringRAL);
+begin
+  FToken.Secret := AValue;
+end;
+
 procedure TRALJWTAuthServer.Validate(ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
@@ -237,6 +281,11 @@ begin
 
   if not vResult then
     AResponse.RespCode := 401;
+end;
+
+function TRALJWTAuthServer.GetSecret: StringRAL;
+begin
+  Result := FToken.Secret;
 end;
 
 function TRALJWTAuthServer.GetToken(AJSONParams: StringRAL): StringRAL;
@@ -332,6 +381,75 @@ begin
   vBase64 := TRALBase64.Encode(FUserName+':'+FPassword);
 
   AHeader.Add('Authorization=Basic '+vBase64);
+end;
+
+{ TRALJWTAuthClient }
+
+constructor TRALJWTAuthClient.Create(AOwner: TComponent);
+begin
+  inherited;
+  FKey := tokenDefaultKey;
+  FToken := '';
+  FPayload := TRALJWTPayload.Create;
+  FRoute := tokenDefaultRoute;
+end;
+
+destructor TRALJWTAuthClient.Destroy;
+begin
+  FPayload.Free;
+  inherited;
+end;
+
+procedure TRALJWTAuthClient.GetHeader(var AHeader: TStringList);
+var
+  vAuth : integer;
+begin
+  repeat
+    vAuth := AHeader.IndexOfName('Authorization');
+    if vAuth >= 0 then
+      AHeader.Delete(vAuth);
+  until vAuth < 0;
+
+  if FToken <> '' then
+    AHeader.Add('Authorization=Bearer '+FToken);
+end;
+
+procedure TRALJWTAuthClient.SetRoute(const AValue: StringRAL);
+begin
+  FRoute := FixRoute(AValue);
+  if FRoute = '/' then
+    FRoute := tokenDefaultRoute;
+end;
+
+procedure TRALJWTAuthClient.SetToken(const AValue: StringRAL);
+var
+  vStr : TStringList;
+  vInt : IntegerRAL;
+  vValue : StringRAL;
+begin
+  FToken := '';
+  vValue := AValue;
+  vStr := TStringList.Create;
+  try
+    repeat
+      vInt := Pos('.', vValue);
+      if (vInt = 0) and (vValue <> '') then
+        vInt := Length(vValue) + 1;
+
+      if vInt > 0 then
+      begin
+        vStr.Add(Copy(vValue, 1, vInt - 1));
+        Delete(vValue, 1, vInt);
+      end;
+    until vInt = 0;
+
+    if vStr.Count = 3 then begin
+      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
+      FToken := AValue;
+    end;
+  finally
+    vStr.Free;
+  end;
 end;
 
 end.
