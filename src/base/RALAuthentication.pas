@@ -208,7 +208,7 @@ begin
   end;
 end;
 
-constructor TRALJWTAuthServer.Create;
+constructor TRALJWTAuthServer.Create(AOwner : TComponent);
 begin
   inherited;
   SetAuthType(ratBearer);
@@ -311,7 +311,7 @@ end;
 
 { TRALBasicAuthServer }
 
-constructor TRALBasicAuthServer.Create;
+constructor TRALBasicAuthServer.Create(AOwner : TComponent);
 begin
   inherited;
   SetAuthType(ratBasic);
@@ -334,7 +334,6 @@ var
       AResponse.Headers.Add('WWW-Authenticate: Basic realm="RAL Basic');
   end;
 begin
-  inherited;
   AResponse.RespCode := 200;
   if (ARequest.Authorization.AuthType <> ratBasic) then
   begin
@@ -396,7 +395,7 @@ end;
 
 destructor TRALJWTAuthClient.Destroy;
 begin
-  FPayload.Free;
+  FreeAndNil(FPayload);
   inherited;
 end;
 

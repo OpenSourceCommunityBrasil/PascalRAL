@@ -3,6 +3,9 @@ unit RALRegister;
 interface
 
 uses
+  {$IFDEF FPC}
+    LResources,
+  {$ENDIF}
   Classes, SysUtils,
   RALAuthentication;
 

@@ -180,6 +180,7 @@ end;
 
 constructor TRALJWTPayload.Create;
 begin
+  inherited Create;
   FCustoms := TRALKeyPairs.Create(Self);
   Initialize;
 end;
