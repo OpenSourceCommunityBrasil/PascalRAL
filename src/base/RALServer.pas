@@ -14,6 +14,8 @@ type
     property Enabled: boolean read FEnabled write FEnabled;
   end;
 
+  { TRALServer }
+
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
@@ -24,12 +26,14 @@ type
     FServerStatus: TStringList;
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
+    FEngine : StringRAL;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetAuthentication(const AValue: TRALAuthServer);
 
-    procedure SetPort(const Value: IntegerRAL); virtual;
-    procedure SetActive(const Value: boolean); virtual;
+    procedure SetEngine(const AValue: StringRAL);
+    procedure SetPort(const AValue: IntegerRAL); virtual;
+    procedure SetActive(const AValue: boolean); virtual;
     procedure WriteServerStatus; virtual;
     function ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
     function CreateRALSSL: TRALSSL; virtual;
@@ -63,6 +67,7 @@ begin
   FServerStatus := TStringList.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
+  FEngine := '';
   WriteServerStatus;
 end;
 
@@ -114,6 +119,7 @@ begin
       Result.ContentType := TRALContentType.ctTEXTHTML;
       vString := FServerStatus.Text;
       vString := ReplaceText(vString,'$ralversion;',RALVERSION);
+      vString := ReplaceText(vString,'$ralengine;',FEngine);
       Result.Body.AddParam('html', vString);
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
@@ -152,9 +158,9 @@ begin
   end;
 end;
 
-procedure TRALServer.SetActive(const Value: boolean);
+procedure TRALServer.SetActive(const AValue: boolean);
 begin
-  FActive := Value;
+  FActive := AValue;
 end;
 
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
@@ -165,9 +171,14 @@ begin
     FAuthentication.FreeNotification(Self);
 end;
 
-procedure TRALServer.SetPort(const Value: IntegerRAL);
+procedure TRALServer.SetEngine(const AValue : StringRAL);
 begin
-  FPort := Value;
+  FEngine := AValue;
+end;
+
+procedure TRALServer.SetPort(const AValue: IntegerRAL);
+begin
+  FPort := AValue;
 end;
 
 function TRALServer.ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
@@ -191,6 +202,7 @@ begin
     Add('<body>');
     Add('<h1>Server OnLine</h1>');
     Add('<h4>Version: $ralversion;</h4>');
+    Add('<h4>Engine: $ralengine;</h4>');
     Add('</body>');
     Add('</html>');
   end;

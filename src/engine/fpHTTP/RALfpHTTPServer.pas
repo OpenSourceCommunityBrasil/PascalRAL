@@ -333,6 +333,7 @@ end;
 constructor TRALfpHTTPServer.Create(AOwner: TComponent);
 begin
   inherited;
+  SetEngine('fpHTTP');
   FHttpThread := TRALfpHTTPServerThread.Create(Self);
   FHttpThread.Port := Port;
 end;

@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
+  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData, IdGlobal,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
 
 type
@@ -52,6 +52,8 @@ implementation
 constructor TRALIndyServer.Create(AOwner: TComponent);
 begin
   inherited;
+  SetEngine('Indy '+gsIdProductVersion);
+
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
