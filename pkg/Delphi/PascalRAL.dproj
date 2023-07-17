@@ -121,22 +121,25 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
-        <DCCReference Include="..\..\src\base\RALClient.pas"/>
         <DCCReference Include="..\..\src\base\RALAuthentication.pas"/>
+        <DCCReference Include="..\..\src\base\RALClient.pas"/>
+        <DCCReference Include="..\..\src\base\RALConsts.pas"/>
+        <DCCReference Include="..\..\src\base\RALRegister.pas"/>
         <DCCReference Include="..\..\src\base\RALRoutes.pas"/>
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
-        <DCCReference Include="..\..\src\utils\RALToken.pas"/>
-        <DCCReference Include="..\..\src\base\RALConsts.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
-        <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
-        <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
         <DCCReference Include="..\..\src\utils\RALCrypto.pas"/>
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALJson.pas"/>
         <DCCReference Include="..\..\src\utils\RALKeyPairs.pas"/>
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
+        <DCCReference Include="..\..\src\utils\RALMimeCoder.pas"/>
+        <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
+        <DCCReference Include="..\..\src\utils\RALToken.pas"/>
+        <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <None Include="..\..\src\base\PascalRAL.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

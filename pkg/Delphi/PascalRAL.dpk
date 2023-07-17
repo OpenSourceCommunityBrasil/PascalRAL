@@ -33,21 +33,24 @@ requires
   rtl;
 
 contains
-  RALClient in '..\..\src\base\RALClient.pas',
   RALAuthentication in '..\..\src\base\RALAuthentication.pas',
+  RALClient in '..\..\src\base\RALClient.pas',
+  RALConsts in '..\..\src\base\RALConsts.pas',
+  RALRegister in '..\..\src\base\RALRegister.pas',
   RALRoutes in '..\..\src\base\RALRoutes.pas',
   RALServer in '..\..\src\base\RALServer.pas',
-  RALToken in '..\..\src\utils\RALToken.pas',
-  RALConsts in '..\..\src\base\RALConsts.pas',
   RALTypes in '..\..\src\base\RALTypes.pas',
-  RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
-  RALTools in '..\..\src\utils\RALTools.pas',
   RALBase64 in '..\..\src\utils\RALBase64.pas',
   RALCrypto in '..\..\src\utils\RALCrypto.pas',
   RALHashes in '..\..\src\utils\RALHashes.pas',
+  RALJson in '..\..\src\utils\RALJson.pas',
   RALKeyPairs in '..\..\src\utils\RALKeyPairs.pas',
   RALMD5 in '..\..\src\utils\RALMD5.pas',
+  RALMimeCoder in '..\..\src\utils\RALMimeCoder.pas',
+  RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
-  RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas';
+  RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas',
+  RALToken in '..\..\src\utils\RALToken.pas',
+  RALTools in '..\..\src\utils\RALTools.pas';
 
 end.
