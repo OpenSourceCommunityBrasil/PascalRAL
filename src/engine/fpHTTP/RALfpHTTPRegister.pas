@@ -3,10 +3,7 @@ unit RALfpHTTPRegister;
 interface
 
 uses
-  {$IFDEF FPC}
-  LResources,
-  {$ENDIF}
-  Classes,
+  Classes, LResources,
   RALfpHTTPServer, RALfpHTTPClient;
 
 procedure Register;
@@ -15,13 +12,11 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALfpHTTPServer]);
-  RegisterComponents('RAL - Client', [TRALfpHTTPClient]);
+  RegisterComponents('RAL - Server', [TRALfpHttpServer]);
+  RegisterComponents('RAL - Client', [TRALfpHttpClient]);
 end;
 
-//{$IFDEF FPC}
 initialization
-//{$I IndyRAL.lrs}
-//{$ENDIF}
+{$I fpHttpRAL.lrs}
 
 end.

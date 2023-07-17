@@ -24,7 +24,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="..\..\src\engine\fpHTTP\RALfpHTTPClient.pas"/>
         <UnitName Value="RALfpHTTPClient"/>
@@ -38,6 +38,10 @@
         <Filename Value="..\..\src\engine\fpHTTP\RALfpHTTPServer.pas"/>
         <UnitName Value="RALfpHTTPServer"/>
       </Item3>
+      <Item4>
+        <Filename Value="fpHttpRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

@@ -18,13 +18,13 @@ type
     property SSLOptions: TCertificateData read FSSLOptions write FSSLOptions;
   end;
 
-  TRALfpHTTPServer = class;
+  TRALfpHttpServer = class;
 
-  { TRALfpHTTPServerThread }
+  { TRALfpHttpServerThread }
 
-  TRALfpHTTPServerThread = class(TThread)
+  TRALfpHttpServerThread = class(TThread)
   private
-    FParent : TRALfpHTTPServer;
+    FParent : TRALfpHttpServer;
     FHttp : TFPHttpServer;
     FEvent : TSimpleEvent;
   protected
@@ -43,16 +43,16 @@ type
     procedure Execute; override;
     procedure TerminatedSet; override;
   public
-    constructor Create(AOwner: TRALfpHTTPServer);
+    constructor Create(AOwner: TRALfpHttpServer);
     destructor Destroy; override;
   published
     property Active : boolean read GetAtive write SetAtive;
     property Port : IntegerRAL read GetPort write SetPort;
   end;
 
-  TRALfpHTTPServer = class(TRALServer)
+  TRALfpHttpServer = class(TRALServer)
   private
-    FHttpThread : TRALfpHTTPServerThread;
+    FHttpThread : TRALfpHttpServerThread;
   protected
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
@@ -64,14 +64,14 @@ type
 
 implementation
 
-{ TRALfpHTTPServerThread }
+{ TRALfpHttpServerThread }
 
-function TRALfpHTTPServerThread.GetPort : IntegerRAL;
+function TRALfpHttpServerThread.GetPort : IntegerRAL;
 begin
   Result := FParent.Port;
 end;
 
-procedure TRALfpHTTPServerThread.SetPort(AValue : IntegerRAL);
+procedure TRALfpHttpServerThread.SetPort(AValue : IntegerRAL);
 var
   vActive: boolean;
 begin
@@ -84,7 +84,7 @@ begin
   Active := vActive;
 end;
 
-procedure TRALfpHTTPServerThread.DecodeAuth(ARequest : TFPHTTPConnectionRequest; AResult : TRALRequest);
+procedure TRALfpHttpServerThread.DecodeAuth(ARequest : TFPHTTPConnectionRequest; AResult : TRALRequest);
 var
   vStr, vAux : StringRAL;
   vInt : IntegerRAL;
@@ -104,12 +104,12 @@ begin
   end;
 end;
 
-procedure TRALfpHTTPServerThread.EncodeParams(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
+procedure TRALfpHttpServerThread.EncodeParams(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
 begin
 
 end;
 
-procedure TRALfpHTTPServerThread.OnCommandProcess(Sender : TObject;
+procedure TRALfpHttpServerThread.OnCommandProcess(Sender : TObject;
                                  var ARequest : TFPHTTPConnectionRequest;
                                  var AResponse : TFPHTTPConnectionResponse);
 var
@@ -252,12 +252,12 @@ begin
   end;
 end;
 
-function TRALfpHTTPServerThread.GetAtive : boolean;
+function TRALfpHttpServerThread.GetAtive : boolean;
 begin
   Result := FParent.Active;
 end;
 
-procedure TRALfpHTTPServerThread.SetAtive(AValue : boolean);
+procedure TRALfpHttpServerThread.SetAtive(AValue : boolean);
 begin
   if AValue then begin
     FHttp.UseSSL := False;
@@ -271,7 +271,7 @@ begin
   FEvent.SetEvent;
 end;
 
-procedure TRALfpHTTPServerThread.Execute;
+procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do begin
     FEvent.WaitFor(INFINITE);
@@ -285,13 +285,13 @@ begin
   end;
 end;
 
-procedure TRALfpHTTPServerThread.TerminatedSet;
+procedure TRALfpHttpServerThread.TerminatedSet;
 begin
   Active := False;
   inherited TerminatedSet;
 end;
 
-constructor TRALfpHTTPServerThread.Create(AOwner : TRALfpHTTPServer);
+constructor TRALfpHttpServerThread.Create(AOwner : TRALfpHTTPServer);
 begin
   FParent := AOwner;
 
@@ -306,7 +306,7 @@ begin
   inherited Create(False);
 end;
 
-destructor TRALfpHTTPServerThread.Destroy;
+destructor TRALfpHttpServerThread.Destroy;
 begin
   FHttp.Active := False;
   FEvent.SetEvent;
@@ -328,35 +328,35 @@ begin
   inherited;
 end;
 
-{ TRALfpHTTPServer }
+{ TRALfpHttpServer }
 
-constructor TRALfpHTTPServer.Create(AOwner: TComponent);
+constructor TRALfpHttpServer.Create(AOwner: TComponent);
 begin
   inherited;
   SetEngine('fpHTTP');
-  FHttpThread := TRALfpHTTPServerThread.Create(Self);
+  FHttpThread := TRALfpHttpServerThread.Create(Self);
   FHttpThread.Port := Port;
 end;
 
-function TRALfpHTTPServer.CreateRALSSL: TRALSSL;
+function TRALfpHttpServer.CreateRALSSL: TRALSSL;
 begin
   Result := TRALfpHTTPSSL.Create;
 end;
 
-destructor TRALfpHTTPServer.Destroy;
+destructor TRALfpHttpServer.Destroy;
 begin
   FHttpThread.Terminate;
   FHttpThread.Free;
   inherited;
 end;
 
-procedure TRALfpHTTPServer.SetActive(const AValue: boolean);
+procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 begin
   inherited;
   FHttpThread.Active := AValue;
 end;
 
-procedure TRALfpHTTPServer.SetPort(const AValue: IntegerRAL);
+procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
 begin
   inherited;
   FHttpThread.Port := AValue;
