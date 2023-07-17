@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData, IdGlobal,
+  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
 
 type
