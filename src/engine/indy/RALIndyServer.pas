@@ -271,7 +271,9 @@ begin
         ARequestInfo.PostStream.Size := 0;
       end;
     end;
+
     vResponse := ProcessCommands(vRequest);
+
     if (vResponse.Body.Count > 1) then
       vResponse.ContentType := TRALContentType.ctMULTIPARTFORMDATA;
     try
@@ -279,12 +281,14 @@ begin
       begin
         ResponseNo := vResponse.RespCode;
         ContentType := vResponse.ContentType;
+
         vInt := 0;
         while vInt < vResponse.Headers.Count do
         begin
           CustomHeaders.Add(vResponse.Headers.Strings[vInt]);
           vInt := vInt + 1;
         end;
+
         if (vResponse.Body.Count > 0) then begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
           begin

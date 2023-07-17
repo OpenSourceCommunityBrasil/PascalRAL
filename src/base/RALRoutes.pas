@@ -25,12 +25,12 @@ type
   private
     FParamName: StringRAL;
     FContentType: StringRAL;
-    FContent: TStream;
+    FContent: TStringStream;
   protected
     function GetAsString: StringRAL;
-    procedure SetAsString(const Value: StringRAL);
+    procedure SetAsString(const AValue: StringRAL);
     function GetAsStream: TStream;
-    procedure SetAsStream(const Value: TStream);
+    procedure SetAsStream(const AValue: TStream);
     function GetContentSize: Int64RAL;
   public
     constructor Create;
@@ -441,7 +441,7 @@ end;
 constructor TRALParam.Create;
 begin
   inherited;
-  FContent := nil;
+  FContent := TStringStream.Create;
   FContentType := TRALContentType.ctTEXTHTML;
 end;
 
@@ -453,7 +453,7 @@ end;
 
 function TRALParam.GetAsStream: TStream;
 begin
-  Result := TMemoryStream.Create;
+  Result := TStringStream.Create;
   Result.CopyFrom(FContent, FContent.Size);
   Result.Position := 0;
 end;
@@ -463,15 +463,7 @@ begin
   Result := '';
   if FContent.Size > 0 then
   begin
-    if FContent.ClassType = TMemoryStream then begin
-      FContent.Position := 0;
-      SetLength(Result, FContent.Size);
-      FContent.Read(Result[PosIniStr], FContent.Size);
-    end
-    else if FContent.ClassType = TStringStream then begin
-      Result := TStringStream(FContent).DataString;
-    end;
-
+    Result := FContent.DataString;
     FContent.Position := 0;
   end;
 end;
@@ -481,22 +473,17 @@ begin
   Result := FContent.Size;
 end;
 
-procedure TRALParam.SetAsStream(const Value: TStream);
+procedure TRALParam.SetAsStream(const AValue: TStream);
 begin
-  if Assigned(FContent) then
-    FreeAndNil(FContent);
-
-  FContent := TStringStream.Create;
-  FContent.CopyFrom(Value, Value.Size);
+  FContent.Size := 0;
+  FContent.CopyFrom(AValue, AValue.Size);
   FContent.Position := 0;
 end;
 
-procedure TRALParam.SetAsString(const Value: StringRAL);
+procedure TRALParam.SetAsString(const AValue: StringRAL);
 begin
-  if Assigned(FContent) then
-    FreeAndNil(FContent);
-
-  FContent := TStringStream.Create(Value);
+  FContent.Size := 0;
+  FContent.WriteString(AValue);
   FContent.Position := 0;
 end;
 
