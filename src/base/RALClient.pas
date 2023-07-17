@@ -123,15 +123,15 @@ var
   vValue : TRALJSONValue;
 begin
   Result := False;
-  if FAuthentication is TRALJWTAuthClient then
+  if FAuthentication is TRALClientJWTAuth then
   begin
-    if TRALJWTAuthClient(Authentication).Token = '' then
+    if TRALClientJWTAuth(Authentication).Token = '' then
     begin
       vConta := 0;
       repeat
         vBody := TRALParams.Create;
         try
-          with FAuthentication as TRALJWTAuthClient do
+          with FAuthentication as TRALClientJWTAuth do
           begin
             vBody.AddValue(Payload.AsJSON, 'application/json');
             vResult := SendUrl(GetURL(Route), amPOST, nil, vBody);
@@ -149,9 +149,9 @@ begin
         try
           if vJson <> nil then
           begin
-            vValue := vJson.Get(TRALJWTAuthClient(Authentication).Key);
+            vValue := vJson.Get(TRALClientJWTAuth(Authentication).Key);
             if vValue <> nil then
-              TRALJWTAuthClient(Authentication).Token := vValue.AsString;
+              TRALClientJWTAuth(Authentication).Token := vValue.AsString;
           end;
         finally
           vJson.Free;
@@ -201,8 +201,8 @@ end;
 
 procedure TRALClient.ResetToken;
 begin
-  if FAuthentication is TRALJWTAuthClient then
-    TRALJWTAuthClient(Authentication).Token := '';
+  if FAuthentication is TRALClientJWTAuth then
+    TRALClientJWTAuth(Authentication).Token := '';
 end;
 
 function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;

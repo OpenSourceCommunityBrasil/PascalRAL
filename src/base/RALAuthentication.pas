@@ -45,7 +45,7 @@ type
     property OnAuth : TRALOnAuth read FOnAuth write FOnAuth;
   end;
 
-  TRALBasicAuthClient = class(TRALAuthClient)
+  TRALClientBasicAuth = class(TRALAuthClient)
   private
     FUserName: StringRAL;
     FPassword: StringRAL;
@@ -58,7 +58,7 @@ type
     property Password: StringRAL read FPassword write FPassword;
   end;
 
-  TRALBasicAuthServer = class(TRALAuthServer)
+  TRALServerBasicAuth = class(TRALAuthServer)
   private
     FAuthDialog: boolean;
     FUserName: StringRAL;
@@ -76,7 +76,7 @@ type
     property Password: StringRAL read FPassword write FPassword;
   end;
 
-  TRALJWTAuthClient = class(TRALAuthClient)
+  TRALClientJWTAuth = class(TRALAuthClient)
   private
     FKey : StringRAL;
     FToken: StringRAL;
@@ -96,7 +96,7 @@ type
     property Route : StringRAL read FRoute write SetRoute;
   end;
 
-  TRALJWTAuthServer = class(TRALAuthServer)
+  TRALServerJWTAuth = class(TRALAuthServer)
   private
     FToken: TRALJWT;
     FExpSegs : IntegerRAL;
@@ -156,9 +156,9 @@ begin
   FAuthType := AType;
 end;
 
-{ TRALJWTAuthServer }
+{ TRALServerJWTAuth }
 
-procedure TRALJWTAuthServer.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
+procedure TRALServerJWTAuth.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
   vToken, vPayload : StringRAL;
@@ -212,7 +212,7 @@ begin
   end;
 end;
 
-constructor TRALJWTAuthServer.Create(AOwner : TComponent);
+constructor TRALServerJWTAuth.Create(AOwner : TComponent);
 begin
   inherited;
   SetAuthType(ratBearer);
@@ -222,13 +222,13 @@ begin
   FKey := tokenDefaultKey;
 end;
 
-destructor TRALJWTAuthServer.Destroy;
+destructor TRALServerJWTAuth.Destroy;
 begin
   FreeAndNil(FToken);
   inherited;
 end;
 
-function TRALJWTAuthServer.RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
+function TRALServerJWTAuth.RenewToken(AToken, AJSONParams: StringRAL): StringRAL;
 var
   vJWT : TRALJWT;
 begin
@@ -253,19 +253,19 @@ begin
   end;
 end;
 
-procedure TRALJWTAuthServer.SetRoute(const AValue: StringRAL);
+procedure TRALServerJWTAuth.SetRoute(const AValue: StringRAL);
 begin
   FRoute := FixRoute(AValue);
   if FRoute = '/' then
     FRoute := tokenDefaultRoute;
 end;
 
-procedure TRALJWTAuthServer.SetSecret(const AValue: StringRAL);
+procedure TRALServerJWTAuth.SetSecret(const AValue: StringRAL);
 begin
   FToken.Secret := AValue;
 end;
 
-procedure TRALJWTAuthServer.Validate(ARequest: TRALRequest;
+procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
   vResult : boolean;
@@ -293,12 +293,12 @@ begin
     Error401;
 end;
 
-function TRALJWTAuthServer.GetSecret: StringRAL;
+function TRALServerJWTAuth.GetSecret: StringRAL;
 begin
   Result := FToken.Secret;
 end;
 
-function TRALJWTAuthServer.GetToken(AJSONParams: StringRAL): StringRAL;
+function TRALServerJWTAuth.GetToken(AJSONParams: StringRAL): StringRAL;
 var
   vJWT : TRALJWT;
 begin
@@ -319,21 +319,21 @@ begin
   end;
 end;
 
-{ TRALBasicAuthServer }
+{ TRALServerBasicAuth }
 
-constructor TRALBasicAuthServer.Create(AOwner : TComponent);
+constructor TRALServerBasicAuth.Create(AOwner : TComponent);
 begin
   inherited;
   SetAuthType(ratBasic);
 end;
 
-procedure TRALBasicAuthServer.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
+procedure TRALServerBasicAuth.CallQuery(AQuery: StringRAL; ARequest: TRALRequest;
   var AResponse: TRALResponse);
 begin
   AResponse.RespCode := 404;
 end;
 
-procedure TRALBasicAuthServer.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
+procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
 var
   vResult : boolean;
 
@@ -368,15 +368,15 @@ begin
   end;
 end;
 
-{ TRALBasicAuthClient }
+{ TRALClientBasicAuth }
 
-constructor TRALBasicAuthClient.Create(AOwner: TComponent);
+constructor TRALClientBasicAuth.Create(AOwner: TComponent);
 begin
   inherited;
   SetAuthType(ratBasic);
 end;
 
-procedure TRALBasicAuthClient.GetHeader(var AHeader: TStringList);
+procedure TRALClientBasicAuth.GetHeader(var AHeader: TStringList);
 var
   vAuth : integer;
   vBase64 : StringRAL;
@@ -392,9 +392,9 @@ begin
   AHeader.Add('Authorization=Basic '+vBase64);
 end;
 
-{ TRALJWTAuthClient }
+{ TRALClientJWTAuth }
 
-constructor TRALJWTAuthClient.Create(AOwner: TComponent);
+constructor TRALClientJWTAuth.Create(AOwner: TComponent);
 begin
   inherited;
   FKey := tokenDefaultKey;
@@ -403,13 +403,13 @@ begin
   FRoute := tokenDefaultRoute;
 end;
 
-destructor TRALJWTAuthClient.Destroy;
+destructor TRALClientJWTAuth.Destroy;
 begin
   FreeAndNil(FPayload);
   inherited;
 end;
 
-procedure TRALJWTAuthClient.GetHeader(var AHeader: TStringList);
+procedure TRALClientJWTAuth.GetHeader(var AHeader: TStringList);
 var
   vAuth : integer;
 begin
@@ -423,14 +423,14 @@ begin
     AHeader.Add('Authorization=Bearer '+FToken);
 end;
 
-procedure TRALJWTAuthClient.SetRoute(const AValue: StringRAL);
+procedure TRALClientJWTAuth.SetRoute(const AValue: StringRAL);
 begin
   FRoute := FixRoute(AValue);
   if FRoute = '/' then
     FRoute := tokenDefaultRoute;
 end;
 
-procedure TRALJWTAuthClient.SetToken(const AValue: StringRAL);
+procedure TRALClientJWTAuth.SetToken(const AValue: StringRAL);
 var
   vStr : TStringList;
   vInt : IntegerRAL;

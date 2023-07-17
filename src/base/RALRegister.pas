@@ -15,8 +15,8 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - AuthServers', [TRALBasicAuthServer, TRALJWTAuthServer]);
-  RegisterComponents('RAL - AuthClient', [TRALBasicAuthClient, TRALJWTAuthClient]);
+  RegisterComponents('RAL - ServerAuths', [TRALServerBasicAuth, TRALServerJWTAuth]);
+  RegisterComponents('RAL - ClientAuths', [TRALClientBasicAuth, TRALClientJWTAuth]);
 end;
 
 {$IFDEF FPC}
