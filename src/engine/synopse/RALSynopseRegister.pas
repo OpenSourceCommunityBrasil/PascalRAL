@@ -16,7 +16,9 @@ begin
   RegisterComponents('RAL - Client', [TRALSynopseClient]);
 end;
 
-initialization
-//{$I fpHttpRAL.lrs}
+{$IFDEF FPC}
+  initialization
+  {$I SynopseRAL.lrs}
+{$ENDIF}
 
 end.
