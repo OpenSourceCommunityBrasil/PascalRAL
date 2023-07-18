@@ -120,7 +120,7 @@ begin
       vString := FServerStatus.Text;
       vString := ReplaceText(vString,'$ralversion;',RALVERSION);
       vString := ReplaceText(vString,'$ralengine;',FEngine);
-      Result.Body.AddParam('html', vString);
+      Result.ResponseText := vString;
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin

@@ -263,6 +263,7 @@ begin
 
     if (vResponse.Body.Count > 1) then
       vResponse.ContentType := TRALContentType.ctMULTIPARTFORMDATA;
+
     try
       with AResponse do
       begin

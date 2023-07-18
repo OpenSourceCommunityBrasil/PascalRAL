@@ -5,6 +5,7 @@ interface
 uses
   Classes, SysUtils, syncobjs,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
+  mormot.core.base,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
 
 type
@@ -83,16 +84,57 @@ begin
 end;
 
 function TRALSynopseServer.OnCommandProcess(AContext : THttpServerRequestAbstract) : Cardinal;
+var
+  vRequest: TRALRequest;
+  vResponse: TRALResponse;
+  vInt : IntegerRAL;
 begin
-  AContext.OutContent := 'Fernando';
-  AContext.OutContentType := TEXT_CONTENT_TYPE;
-  Result := HTTP_SUCCESS;
+  vRequest := TRALRequest.Create;
+  try
+    with vRequest do
+    begin
+      ClientInfo.IP := AContext.RemoteIP;
+      ClientInfo.MACAddress := '';
+      ClientInfo.UserAgent := AContext.UserAgent;
+
+      Query := AContext.Url;
+      vInt := Pos('?',Query);
+      if vInt > 0 then
+        Query := Copy(Query, 1, vInt - 1);
+
+      Method := amGET;
+      if SameText(AContext.Method,'POST') then
+        Method := amPOST
+      else if SameText(AContext.Method,'DELETE') then
+        Method := amDELETE
+      else if SameText(AContext.Method,'PUT') then
+        Method := amPUT
+      else if SameText(AContext.Method,'OPTION') then
+        Method := amPUT;
+
+      ContentType := AContext.InContentType;
+      ContentSize := Length(AContext.InContent);
+    end;
+
+    vResponse := ProcessCommands(vRequest);
+
+    try
+      AContext.OutContent := vResponse.ResponseText;
+      AContext.OutContentType := vResponse.ContentType;
+      Result := vResponse.RespCode;
+    finally
+      FreeAndNil(vResponse);
+    end;
+  finally
+    FreeAndNil(vRequest);
+  end;
 end;
 
 constructor TRALSynopseServer.Create(AOwner : TComponent);
 begin
-  inherited Create(AOwner);
+  inherited;
   FHttp := nil;
+  SetEngine('Synopse '+SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 destructor TRALSynopseServer.Destroy;
