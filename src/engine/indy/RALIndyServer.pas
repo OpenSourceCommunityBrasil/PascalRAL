@@ -1,9 +1,5 @@
 unit RALIndyServer;
 
-{$IFDEF FPC}
-{$MODE Delphi}
-{$ENDIF}
-
 interface
 
 uses
@@ -22,6 +18,8 @@ type
   published
     property SSLOptions: TIdSSLOptions read FSSLOptions write FSSLOptions;
   end;
+
+  { TRALIndyServer }
 
   TRALIndyServer = class(TRALServer)
   private
@@ -55,9 +53,10 @@ begin
   SetEngine('Indy '+gsIdProductVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
-  FHttp.OnCommandGet := OnCommandProcess;
-  FHttp.OnCommandOther := OnCommandProcess;
-  FHttp.OnParseAuthentication := OnParseAuthentication;
+  FHttp.OnCommandGet := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
+  FHttp.OnCommandOther := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
+  FHttp.OnParseAuthentication := {$IFDEF FPC}@{$ENDIF}OnParseAuthentication;
+
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 end;
 
@@ -301,6 +300,8 @@ begin
             ContentStream := vResponse.Body.Param[0].AsStream;
           end;
         end;
+        FreeContentStream := True;
+        CloseConnection := True;
         WriteContent;
       end;
     finally

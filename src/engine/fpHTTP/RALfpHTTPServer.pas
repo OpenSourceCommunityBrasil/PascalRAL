@@ -8,14 +8,32 @@ uses
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
 
 type
+
+  { TRALfpHTTPCertData }
+
+  TRALfpHTTPCertData = class(TCertificateData)
+  private
+    function GetFileName(AIndex : Integer) : string;
+    procedure SetFileName(AIndex : Integer; AValue : string);
+  published
+    property KeyPassword;
+    property CipherList;
+    Property HostName;
+    property CertificateFile : string Index 0 read GetFileName write SetFileName;
+    property TrustCertificateFile : string Index 1 read GetFileName write SetFileName;
+    property PrivateKeyFile : string Index 2 read GetFileName write SetFileName;
+    property PFXFile : string Index 3 read GetFileName write SetFileName;
+    property CertCAFile : string Index 4 read GetFileName write SetFileName;
+  end;
+
   TRALfpHTTPSSL = class(TRALSSL)
   private
-    FSSLOptions : TCertificateData;
+    FSSLOptions : TRALfpHTTPCertData;
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TCertificateData read FSSLOptions write FSSLOptions;
+    property SSLOptions: TRALfpHTTPCertData read FSSLOptions write FSSLOptions;
   end;
 
   TRALfpHttpServer = class;
@@ -64,6 +82,30 @@ type
 
 implementation
 
+{ TRALfpHTTPCertData }
+
+function TRALfpHTTPCertData.GetFileName(AIndex : Integer) : string;
+begin
+  case AIndex of
+    0 : Result := Certificate.FileName;
+    1 : Result := TrustedCertificate.FileName;
+    2 : Result := PrivateKey.FileName;
+    3 : Result := PFX.FileName;
+    4 : Result := CertCA.FileName;
+  end;
+end;
+
+procedure TRALfpHTTPCertData.SetFileName(AIndex : Integer; AValue : string);
+begin
+  case AIndex of
+    0 : Certificate.FileName := AValue;
+    1 : TrustedCertificate.FileName := AValue;
+    2 : PrivateKey.FileName := AValue;
+    3 : PFX.FileName := AValue;
+    4 : CertCA.FileName := AValue;
+  end;
+end;
+
 { TRALfpHttpServerThread }
 
 function TRALfpHttpServerThread.GetPort : IntegerRAL;
@@ -89,6 +131,9 @@ var
   vStr, vAux : StringRAL;
   vInt : IntegerRAL;
 begin
+  if FParent.Authentication = nil then
+    Exit;
+
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
@@ -230,6 +275,7 @@ begin
           CustomHeaders.Add(vResponse.Headers.Strings[vInt]);
           vInt := vInt + 1;
         end;
+        CustomHeaders.Add('Connection=close');
 
         if (vResponse.Body.Count > 0) then begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
@@ -268,16 +314,25 @@ begin
   end;
   if (not AValue) and (Active) then
     FHttp.Active := False;
-  FEvent.SetEvent;
+
+  if not Terminated then
+    FEvent.SetEvent;
 end;
 
 procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do begin
+    if (Terminated) or (FEvent = nil) then
+      Break;
+
     FEvent.WaitFor(INFINITE);
+
+    if (Terminated) or (FEvent = nil) then
+      Break;
+
     FEvent.ResetEvent;
 
-    if Terminated then
+    if (Terminated) or (FEvent = nil) then
       Break;
 
     if (FParent.Active) then
@@ -287,13 +342,16 @@ end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
 begin
-  Active := False;
+  if Active then
+    Active := False;
   inherited TerminatedSet;
 end;
 
 constructor TRALfpHttpServerThread.Create(AOwner : TRALfpHTTPServer);
 begin
   FParent := AOwner;
+
+  FreeOnTerminate := False;
 
   FHttp := TFPHttpServer.Create(AOwner);
   FHttp.QueueSize := 15;
@@ -310,8 +368,9 @@ destructor TRALfpHttpServerThread.Destroy;
 begin
   FHttp.Active := False;
   FEvent.SetEvent;
-  FEvent.Free;
-  FHttp.Free;
+  FParent := nil;
+  FreeAndNil(FEvent);
+  FreeAndNil(FHttp);
 end;
 
 { TRALfpHTTPSSL }
@@ -319,7 +378,7 @@ end;
 constructor TRALfpHTTPSSL.Create;
 begin
   inherited;
-  FSSLOptions := TCertificateData.Create;
+  FSSLOptions := TRALfpHTTPCertData.Create;
 end;
 
 destructor TRALfpHTTPSSL.Destroy;
