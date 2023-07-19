@@ -29,15 +29,17 @@ type
     procedure SetActive(const Value: boolean); override;
     procedure SetPort(const Value: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
-    procedure DecodeParams(var ARequest: TRALRequest; ARequestInfo: TIdHTTPRequestInfo);
-    procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo);
+    procedure DecodeParams(var ARequest: TRALRequest;
+                           ARequestInfo: TIdHTTPRequestInfo);
+    procedure EncodeParams(AResponse: TRALResponse;
+                           AResponseInfo: TIdHTTPResponseInfo);
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
     procedure OnParseAuthentication(AContext: TIdContext;
                                     const AAuthType, AAuthData: String;
                                     var VUsername, VPassword: String;
-                                    var VHandled: Boolean);
+                                    var VHandled: boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -50,13 +52,18 @@ implementation
 constructor TRALIndyServer.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('Indy '+gsIdProductVersion);
+  SetEngine('Indy ' + gsIdProductVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
-  FHttp.OnCommandGet := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
-  FHttp.OnCommandOther := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
-  FHttp.OnParseAuthentication := {$IFDEF FPC}@{$ENDIF}OnParseAuthentication;
-
+  {$IFDEF FPC}
+  FHttp.OnCommandGet := @OnCommandProcess;
+  FHttp.OnCommandOther := @OnCommandProcess;
+  FHttp.OnParseAuthentication := @OnParseAuthentication;
+  {$ELSE}
+  FHttp.OnCommandGet := OnCommandProcess;
+  FHttp.OnCommandOther := OnCommandProcess;
+  FHttp.OnParseAuthentication := OnParseAuthentication;
+  {$ENDIF}
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 end;
 
@@ -75,8 +82,10 @@ var
   vStream: TMemoryStream;
 begin
   vBoundary := ExtractHeaderSubItem(ARequestInfo.ContentType, 'boundary', QuoteHTTP);
+
   if vBoundary = '' then
     Exit;
+
   vBoundaryStart := '--' + vBoundary;
   vBoundaryEnd := vBoundaryStart + '--';
   vDecoder := TIdMessageDecoderMIME.Create(nil);
@@ -86,6 +95,7 @@ begin
     vDecoder.FreeSourceStream := False;
     vBoundaryFound := False;
     vIsStartBoundary := False;
+
     repeat
       vLine := ReadLnFromStream(ARequestInfo.PostStream, -1, True);
       if vLine = vBoundaryStart then
@@ -98,10 +108,12 @@ begin
         vBoundaryFound := True;
       end;
     until vBoundaryFound;
+
     if (not vBoundaryFound) or (not vIsStartBoundary) then
       Exit;
     vIdxName := 1;
     vMsgEnd := False;
+
     repeat
       TIdMessageDecoderMIME(vDecoder).MIMEBoundary := vBoundary;
       vDecoder.SourceStream := ARequestInfo.PostStream;
@@ -109,7 +121,7 @@ begin
       vDecoder.ReadHeader;
       case vDecoder.PartType of
         mcptText, mcptAttachment:
-        begin
+          begin
             vStream := TMemoryStream.Create;
             try
               vReader := vDecoder.ReadBody(vStream, vMsgEnd);
@@ -126,17 +138,19 @@ begin
             end;
             FreeAndNil(vDecoder);
             vDecoder := vReader;
-        end;
+          end;
+
         mcptIgnore:
-        begin
+          begin
             FreeAndNil(vDecoder);
             vDecoder := TIdMessageDecoderMIME.Create(nil);
-        end;
+          end;
+
         mcptEOF:
-        begin
+          begin
             FreeAndNil(vDecoder);
             vMsgEnd := True;
-        end;
+          end;
       end;
     until (vDecoder = nil) or vMsgEnd;
   finally
@@ -212,50 +226,28 @@ begin
 
       ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
       ContentSize := ARequestInfo.ContentLength;
-      if AContext.Data is TRALAuthorization then begin
+      if AContext.Data is TRALAuthorization then
+      begin
         Authorization.AuthType := TRALAuthorization(AContext.Data).AuthType;
         Authorization.AuthString := TRALAuthorization(AContext.Data).AuthString;
         AContext.Data.Free;
         AContext.Data := nil;
       end;
 
-      vInt := 0;
-      while vInt < ARequestInfo.RawHeaders.Count do
-      begin
-        vStr1 := ARequestInfo.RawHeaders.Names[vInt];
-        vStr2 := ARequestInfo.RawHeaders.Values[vStr1];
-        Params.AddParam(vStr1, vStr2);
-        Headers.Add(vStr1 + '=' + vStr2);
-        vInt := vInt + 1;
-      end;
+      AppendParams(ARequestInfo.RawHeaders, Params);
+      AppendList(ARequestInfo.RawHeaders, Headers);
 
-      vInt := 0;
-      while vInt < ARequestInfo.CustomHeaders.Count do
-      begin
-        vStr1 := ARequestInfo.CustomHeaders.Names[vInt];
-        vStr2 := ARequestInfo.CustomHeaders.Values[vStr1];
-        Params.AddParam(vStr1, vStr2);
-        Headers.Add(vStr1 + '=' + vStr2);
-        vInt := vInt + 1;
-      end;
+      AppendParams(ARequestInfo.CustomHeaders, Params);
+      AppendList(ARequestInfo.CustomHeaders, Headers);
 
       if ARequestInfo.Params.Count > 0 then
-      begin
-        vInt := 0;
-        while vInt < ARequestInfo.Params.Count do
-        begin
-          vStr1 := ARequestInfo.Params.Names[vInt];
-          vStr2 := ARequestInfo.Params.ValueFromIndex[vInt];
-          Params.AddParam(vStr1, vStr2);
-          vInt := vInt + 1;
-        end;
-      end
+        AppendParams(ARequestInfo.Params, Params)
       else
       begin
         vStr1 := ARequestInfo.QueryParams;
         if vStr1 = '' then
           vStr1 := ARequestInfo.UnparsedParams;
-        //TODO
+        // TODO
       end;
 
       if (ARequestInfo.PostStream <> nil) and (ARequestInfo.PostStream.Size > 0) then
@@ -290,7 +282,8 @@ begin
           vInt := vInt + 1;
         end;
 
-        if (vResponse.Body.Count > 0) then begin
+        if (vResponse.Body.Count > 0) then
+        begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
           begin
             EncodeParams(vResponse, AResponseInfo);
@@ -314,18 +307,20 @@ end;
 
 procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
   const AAuthType, AAuthData: String; var VUsername, VPassword: String;
-  var VHandled: Boolean);
+  var VHandled: boolean);
 var
-  vAuth : TRALAuthorization;
+  vAuth: TRALAuthorization;
 begin
   VHandled := False;
-  if Authentication <> nil then begin
+  if Authentication <> nil then
+  begin
     case Authentication.AuthType of
-      ratBasic  : VHandled := SameText(AAuthType,'basic');
-      ratBearer : VHandled := SameText(AAuthType,'bearer');
+      ratBasic: VHandled := SameText(AAuthType, 'basic');
+      ratBearer: VHandled := SameText(AAuthType, 'bearer');
     end;
 
-    if VHandled then begin
+    if VHandled then
+    begin
       vAuth := TRALAuthorization.Create;
       vAuth.AuthType := Authentication.AuthType;
       vAuth.AuthString := AAuthData;
@@ -355,12 +350,14 @@ begin
   Active := False;
   FHttp.DefaultPort := Value;
   FHttp.Bindings.Clear;
-  with FHttp.Bindings.Add do begin
+  with FHttp.Bindings.Add do
+  begin
     IP := '0.0.0.0';
     Port := Value;
     IPVersion := Id_IPv4;
   end;
-  with FHttp.Bindings.Add do begin
+  with FHttp.Bindings.Add do
+  begin
     IP := '::';
     Port := Value;
     IPVersion := Id_IPv6;

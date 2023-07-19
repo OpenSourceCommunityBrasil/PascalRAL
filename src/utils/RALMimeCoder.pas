@@ -26,8 +26,8 @@ type
 
     procedure ProcessHeader(AHeader : StringRAL);
 
-    procedure SaveToFile(AFileName : StringRAL);
-    procedure SaveToFile(var AStream : TStream);
+    procedure SaveToFile(AFileName : StringRAL); overload;
+    procedure SaveToFile(var AStream : TStream); overload;
   published
     property Disposition : StringRAL read FDisposition write FDisposition;
     property Description : StringRAL read FDescription write FDescription;

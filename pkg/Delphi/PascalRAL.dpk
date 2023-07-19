@@ -36,7 +36,6 @@ contains
   RALAuthentication in '..\..\src\base\RALAuthentication.pas',
   RALClient in '..\..\src\base\RALClient.pas',
   RALConsts in '..\..\src\base\RALConsts.pas',
-  RALRegister in '..\..\src\base\RALRegister.pas',
   RALRoutes in '..\..\src\base\RALRoutes.pas',
   RALServer in '..\..\src\base\RALServer.pas',
   RALTypes in '..\..\src\base\RALTypes.pas',
