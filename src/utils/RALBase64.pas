@@ -31,6 +31,9 @@ type
 
     class function EncodeAsStream(AValue : TStream) : TStringStream; overload;
     class function DecodeAsStream(AValue : TStream) : TStringStream; overload;
+
+    class function ToBase64Url(AValue : StringRAL) : StringRAL;
+    class function FromBase64Url(AValue : StringRAL) : StringRAL;
   end;
 
 implementation
@@ -43,14 +46,6 @@ const
                  099,100,101,102,103,104,105,106,107,108,109,110,111,112,
                  113,114,115,116,117,118,119,120,121,122,048,049,050,051,
                  052,053,054,055,056,057,043,047);
-
-  // muda as duas posicoes final + para -  e / para _
-  TEncode64URL : array[0..63] of Byte = (
-                 065,066,067,068,069,070,071,072,073,074,075,076,077,078,
-                 079,080,081,082,083,084,085,086,087,088,089,090,097,098,
-                 099,100,101,102,103,104,105,106,107,108,109,110,111,112,
-                 113,114,115,116,117,118,119,120,121,122,048,049,050,051,
-                 052,053,054,055,056,057,045,095);
 
   // nessa tabela os 64 chars da base64 estao posicionados conforme a
   // tabela ascii, ou seja, "A" = 65 - posicao = 01
@@ -142,6 +137,22 @@ begin
     vPosition := vPosition + vBytesRead;
   end;
   Result.Position := 0;
+end;
+
+class function TRALBase64.ToBase64Url(AValue : StringRAL) : StringRAL;
+begin
+  Result := StringReplace(AValue,'+','-',[rfReplaceAll]);
+  Result := StringReplace(Result,'/','_',[rfReplaceAll]);
+  while (Result <> '') and (Result[Length(Result)] = '=') do
+    Delete(Result,Length(Result),1);
+end;
+
+class function TRALBase64.FromBase64Url(AValue : StringRAL) : StringRAL;
+begin
+  Result := StringReplace(AValue,'-','+',[rfReplaceAll]);
+  Result := StringReplace(Result,'_','/',[rfReplaceAll]);
+  while (Length(Result) mod 4) <> 0 do
+    Result := Result + '=';
 end;
 
 class function TRALBase64.DecodeAsBytes(AValue: StringRAL): TBytes;

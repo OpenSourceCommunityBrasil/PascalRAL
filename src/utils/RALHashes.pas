@@ -7,7 +7,9 @@ uses
   RALBase64, RALTypes, RALTools;
 
 type
-  TRALHashOutputType = (rhotHex,rhotBase64);
+  TRALHashOutputType = (rhotHex, rhotBase64, rhotBase64Url);
+
+  { TRALHashes }
 
   TRALHashes = class
   private
@@ -28,6 +30,7 @@ type
 
     function DigestToHex(AValue : TBytes) : StringRAL;
     function DigestToBase64(AValue : TBytes) : StringRAL;
+    function DigestToBase64Url(AValue : TBytes) : StringRAL;
 
     procedure UpdateBuffer(AValue: TStream); overload; virtual;
     procedure UpdateBuffer(AValue: StringRAL); overload; virtual;
@@ -70,8 +73,12 @@ end;
 function TRALHashes.DigestToBase64(AValue: TBytes): StringRAL;
 begin
   Result := TRALBase64.Encode(AValue);
-  while (Result <> '') and (Result[Length(Result)] = '=') do
-    Delete(Result,Length(Result),1);
+end;
+
+function TRALHashes.DigestToBase64Url(AValue : TBytes) : StringRAL;
+begin
+  Result := TRALBase64.Encode(AValue);
+  Result := TRALBase64.ToBase64Url(Result);
 end;
 
 function TRALHashes.DigestToHex(AValue: TBytes): StringRAL;
@@ -131,8 +138,9 @@ begin
   vDigest := Finalize;
 
   case OutputType of
-    rhotHex    : vResult := DigestToHex(vDigest);
-    rhotBase64 : vResult := DigestToBase64(vDigest);
+    rhotHex       : vResult := DigestToHex(vDigest);
+    rhotBase64    : vResult := DigestToBase64(vDigest);
+    rhotBase64Url : vResult := DigestToBase64Url(vDigest);
   end;
 
   Result := TStringStream.Create(vResult);
@@ -243,8 +251,9 @@ begin
   vDigest := HMACAsDigest(AValue,vKey);
 
   case OutputType of
-    rhotHex    : Result := DigestToHex(vDigest);
-    rhotBase64 : Result := DigestToBase64(vDigest);
+    rhotHex       : Result := DigestToHex(vDigest);
+    rhotBase64    : Result := DigestToBase64(vDigest);
+    rhotBase64Url : Result := DigestToBase64Url(vDigest);
   end;
 end;
 

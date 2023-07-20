@@ -375,6 +375,7 @@ function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
                              var ASignature : StringRAL): StringRAL;
 var
   vHash : TRALHashes;
+  vStr : StringRAL;
 begin
   case FAlgorithm of
     tjaHSHA256: begin
@@ -388,22 +389,23 @@ begin
   end;
 
   try
-    vHash.OutputType := rhotBase64;
+    vHash.OutputType := rhotBase64Url;
 
     // json codifica / para \/
     AHeader := StringReplace(AHeader,'\/','/',[rfReplaceAll]);
     APayload := StringReplace(APayload,'\/','/',[rfReplaceAll]);
 
-    Result := TRALBase64.Encode(AHeader) + '.' +
-              TRALBase64.Encode(APayload);
+    vStr := TRALBase64.Encode(AHeader);
+    vStr := TRALBase64.ToBase64Url(vStr);
 
-    // jwt converte + para - e / para _ - Base64 for URL
-    Result := StringReplace(Result,'+','-',[rfReplaceAll]);
-    Result := StringReplace(Result,'/','_',[rfReplaceAll]);
+    Result := vStr + '.';
+
+    vStr := TRALBase64.Encode(APayload);
+    vStr := TRALBase64.ToBase64Url(vStr);
+
+    Result := Result + vStr;
 
     ASignature := vHash.HMACAsString(Result,FSecret);
-    ASignature := StringReplace(ASignature,'+','-',[rfReplaceAll]);
-    ASignature := StringReplace(ASignature,'/','_',[rfReplaceAll]);
 
     Result := Result + '.' + ASignature;
   finally
