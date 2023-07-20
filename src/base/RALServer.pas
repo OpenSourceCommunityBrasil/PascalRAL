@@ -55,8 +55,8 @@ type
     FAuthentication: TRALAuthServer;
     FBruteForceProtection: TRALBruteForceProtection;
     FBlockedList : TRALStringListSafe;
-    FWhiteIPList : TRALStringListSafe;
-    FBlackIPList : TRALStringListSafe;
+    FWhiteIPList : TStringList;
+    FBlackIPList : TStringList;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
@@ -96,8 +96,8 @@ type
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property WhiteIPList : TRALStringListSafe read FWhiteIPList write FWhiteIPList;
-    property BlackIPList : TRALStringListSafe read FBlackIPList write FBlackIPList;
+    property WhiteIPList : TStringList read FWhiteIPList write FWhiteIPList;
+    property BlackIPList : TStringList read FBlackIPList write FBlackIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
@@ -164,8 +164,8 @@ begin
   FFavIcon := TMemoryStream.Create;
 
   FBlockedList := TRALStringListSafe.Create;
-  FWhiteIPList := TRALStringListSafe.Create;
-  FBlackIPList := TRALStringListSafe.Create;
+  FWhiteIPList := TStringList.Create;
+  FBlackIPList := TStringList.Create;
 
   // liberando localhost
 //  FWhiteIPList.Add('localhost');
@@ -190,7 +190,8 @@ begin
     Exit;
 
   // nao adiciona o ip se ele estiver liberado ou bloqueado
-  if FWhiteIPList.Exists(AClientIP) or FBlackIPList.Exists(AClientIP) then
+  if (FWhiteIPList.IndexOf(AClientIP) >= 0) or
+     (FBlackIPList.IndexOf(AClientIP) >= 0) then
     Exit;
 
   vClient := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
@@ -225,8 +226,8 @@ begin
     Exit;
 
   // verifica ip se ele estiver bloquedo e nao liberado
-  Result := (FBlackIPList.Exists(AClientIP)) and
-            (not FWhiteIPList.Exists(AClientIP));
+  Result := (FBlackIPList.IndexOf(AClientIP) >= 0) and
+            (FWhiteIPList.IndexOf(AClientIP) < 0);
   if Result then
     Exit;
 
