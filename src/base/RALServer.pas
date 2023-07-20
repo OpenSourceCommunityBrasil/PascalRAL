@@ -167,16 +167,13 @@ begin
   FBlockedList.Sorted := True;
 
   FWhiteIPList := TStringList.Create;
-  FWhiteIPList.Sorted := True;
-
   FBlackIPList := TStringList.Create;
-  FBlackIPList.Sorted := True;
 
   // liberando localhost
-  FWhiteIPList.Add('localhost');
-  FWhiteIPList.Add('127.0.0.1');
-  FWhiteIPList.Add('0:0:0:0:0:0:0:1');
-  FWhiteIPList.Add('::1');
+//  FWhiteIPList.Add('localhost');
+//  FWhiteIPList.Add('127.0.0.1');
+//  FWhiteIPList.Add('0:0:0:0:0:0:0:1');
+//  FWhiteIPList.Add('::1');
 
   WriteServerStatus;
 end;
@@ -195,8 +192,8 @@ begin
     Exit;
 
   // nao adiciona o ip se ele estiver liberado ou bloqueado
-  if (FWhiteIPList.IndexOf(AClientIP) > 0) or
-     (FBlackIPList.IndexOf(AClientIP) > 0) then
+  if (FWhiteIPList.IndexOf(AClientIP) >= 0) or
+     (FBlackIPList.IndexOf(AClientIP) >= 0) then
     Exit;
 
   vInt := FBlockedList.IndexOf(AClientIP);
@@ -261,7 +258,7 @@ begin
     vClient := TRALClientBlockList(FBlockedList.Objects[vInt]);
     if Now - vClient.LastAccess > vTimeMax then
       vDelete := True
-    else if vClient.NumTry > FBruteForceProtection.MaxTry then
+    else if vClient.NumTry >= FBruteForceProtection.MaxTry then
       Result := True;
 
     if vDelete then
@@ -290,7 +287,7 @@ begin
   vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
   while vInt >= 0 do
   begin
-    vClient := TRALClientBlockList(FBlockedList.Objects[vInt-1]);
+    vClient := TRALClientBlockList(FBlockedList.Objects[vInt]);
     if Now - vClient.LastAccess > vTimeMax then
     begin
       FBlockedList.Delete(vInt);
@@ -404,6 +401,8 @@ end;
 
 procedure TRALServer.SetActive(const AValue: boolean);
 begin
+  FWhiteIPList.Sorted := True;
+  FBlackIPList.Sorted := True;
   FActive := AValue;
 end;
 
@@ -438,6 +437,7 @@ end;
 
 procedure TRALServer.WriteServerStatus;
 begin
+  FServerStatus.Clear;
   with FServerStatus do
   begin
     Clear;
