@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils, DateUtils,
-  RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson;
+  RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
+  RALRequest, RALParams, RALResponse;
 
 type
   TRALOnAuth = procedure(ARequest : TRALRequest; var AResult : boolean) of object;

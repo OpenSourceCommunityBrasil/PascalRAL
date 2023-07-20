@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts;
+  RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
+  RALParams, RALRequest, RALResponse;
 
 type
   TRALSSL = class

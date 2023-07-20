@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  RALTypes, RALConsts, RALAuthentication, RALRoutes, RALJson, RALTools;
+  RALTypes, RALConsts, RALAuthentication, RALRoutes, RALJson, RALTools,
+  RALParams;
 
 type
   TRALClient = class(TRALComponent)
