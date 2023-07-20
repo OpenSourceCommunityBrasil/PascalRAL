@@ -3,7 +3,7 @@ unit RALServer;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Graphics,
+  Classes, SysUtils, StrUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse;
 
@@ -35,7 +35,7 @@ type
 
   { TRALClientBlockList }
 
-  TRALClientBlockList = class
+  TRALClientBlackList = class
   private
     FLastAccess : TDateTime;
     FNumTry : IntegerRAL;
@@ -54,13 +54,13 @@ type
     FPort: IntegerRAL;
     FAuthentication: TRALAuthServer;
     FBruteForceProtection: TRALBruteForceProtection;
-    FBlockList : TStringList;
+    FBlackList : TStringList;
     FWhiteIPList : TStringList;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
     FShowServerStatus: boolean;
-    FFavIcon : TPicture;
+    FFavIcon : TMemoryStream;
     FSSL: TRALSSL;
     FEngine: StringRAL;
   protected
@@ -79,8 +79,8 @@ type
 
     procedure AddBlockList(AClientIP : StringRAL);
     procedure DelBlockList(AClientIP : StringRAL);
-    function ClientIsBlockList(AClientIP : StringRAL) : boolean;
-    procedure CleanBlockList;
+    function ClientIsBlackList(AClientIP : StringRAL) : boolean;
+    procedure CleanBlackList;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -94,7 +94,6 @@ type
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property FavIcon : TPicture read FFavIcon write FFavIcon;
     property WhiteIPList : TStringList read FWhiteIPList write FWhiteIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
@@ -104,7 +103,7 @@ implementation
 
 { TRALClientBlockList }
 
-constructor TRALClientBlockList.Create;
+constructor TRALClientBlackList.Create;
 begin
   inherited;
   FLastAccess := Now;
@@ -159,10 +158,10 @@ begin
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
   FEngine := '';
-  FFavIcon := TPicture.Create;
+  FFavIcon := TMemoryStream.Create;
 
-  FBlockList := TStringList.Create;
-  FBlockList.Sorted := True;
+  FBlackList := TStringList.Create;
+  FBlackList.Sorted := True;
 
   FWhiteIPList := TStringList.Create;
   FWhiteIPList.Sorted := True;
@@ -184,20 +183,23 @@ end;
 procedure TRALServer.AddBlockList(AClientIP : StringRAL);
 var
   vInt : IntegerRAL;
-  vClient : TRALClientBlockList;
+  vClient : TRALClientBlackList;
 begin
+  if FAuthentication = nil then
+    Exit;
+
   // nao adiciona o ip se ele estiver liberado
   vInt := FWhiteIPList.IndexOf(AClientIP);
   if vInt >= 0 then
     Exit;
 
-  vInt := FBlockList.IndexOf(AClientIP);
+  vInt := FBlackList.IndexOf(AClientIP);
   if vInt < 0 then begin
-    vClient := TRALClientBlockList.Create;
-    FBlockList.AddObject(AClientIP,vClient);
+    vClient := TRALClientBlackList.Create;
+    FBlackList.AddObject(AClientIP,vClient);
   end
   else begin
-    vClient := TRALClientBlockList(FBlockList.Objects[vInt]);
+    vClient := TRALClientBlackList(FBlackList.Objects[vInt]);
   end;
 
   vClient.LastAccess := Now;
@@ -208,25 +210,38 @@ procedure TRALServer.DelBlockList(AClientIP : StringRAL);
 var
   vInt : IntegerRAL;
 begin
-  vInt := FBlockList.IndexOf(AClientIP);
+  if FAuthentication = nil then
+    Exit;
+
+  FBlackList.BeginUpdate;
+
+  vInt := FBlackList.IndexOf(AClientIP);
   if vInt >= 0 then begin
-    TObject(FBlockList.Objects[vInt]).Free;
-    FBlockList.Delete(vInt);
+    TObject(FBlackList.Objects[vInt]).Free;
+    FBlackList.Delete(vInt);
   end;
+
+  FBlackList.EndUpdate;
 end;
 
-function TRALServer.ClientIsBlockList(AClientIP : StringRAL) : boolean;
+function TRALServer.ClientIsBlackList(AClientIP : StringRAL) : boolean;
 var
   vInt : IntegerRAL;
-  vClient : TRALClientBlockList;
+  vClient : TRALClientBlackList;
   vDelete : boolean;
   vTimeMax : TDateTime;
 begin
   Result := False;
+  if FAuthentication = nil then
+    Exit;
+
   vDelete := False;
-  vInt := FBlockList.IndexOf(AClientIP);
+
+  FBlackList.BeginUpdate;
+
+  vInt := FBlackList.IndexOf(AClientIP);
   if vInt >= 0 then begin
-    vClient := TRALClientBlockList(FBlockList.Objects[vInt]);
+    vClient := TRALClientBlackList(FBlackList.Objects[vInt]);
     vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
     if Now - vClient.LastAccess > vTimeMax then
       vDelete := True
@@ -236,13 +251,15 @@ begin
     if vDelete then
       DelBlockList(AClientIP);
   end;
+
+  FBlackList.EndUpdate;
 end;
 
-procedure TRALServer.CleanBlockList;
+procedure TRALServer.CleanBlackList;
 begin
-  while FBlockList.Count > 0 do begin
-    TObject(FBlockList.Objects[FBlockList.Count-1]).Free;
-    FBlockList.Delete(FBlockList.Count-1);
+  while FBlackList.Count > 0 do begin
+    TObject(FBlackList.Objects[FBlackList.Count-1]).Free;
+    FBlackList.Delete(FBlackList.Count-1);
   end;
 end;
 
@@ -256,8 +273,8 @@ begin
   FreeAndNil(FFavIcon);
   FreeAndNil(FBruteForceProtection);
 
-  CleanBlockList;
-  FreeAndNil(FBlockList);
+  CleanBlackList;
+  FreeAndNil(FBlackList);
 
   FreeAndNil(FWhiteIPList);
 
@@ -276,12 +293,11 @@ function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
   vString: StringRAL;
-  vStream: TMemoryStream;
 begin
   Result := TRALResponse.Create;
   Result.RespCode := 200;
 
-  if (FAuthentication <> nil) and (ClientIsBlockList(ARequest.ClientInfo.IP)) then begin
+  if (ClientIsBlackList(ARequest.ClientInfo.IP)) then begin
     Result.RespCode := 401;
     Result.ContentType := TRALContentType.ctTEXTHTML;
     Exit;
@@ -302,14 +318,7 @@ begin
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
     begin
       Result.ContentType := 'image/icon';
-      vStream := TMemoryStream.Create;
-      try
-        FFavIcon.SaveToStream(vStream);
-        vStream.Position := 0;
-        Result.ResponseStream := vStream;
-      finally
-        vStream.Free;
-      end;
+      Result.ResponseStream := FFavIcon;
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
