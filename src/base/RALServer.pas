@@ -55,6 +55,7 @@ type
     FAuthentication: TRALAuthServer;
     FBruteForceProtection: TRALBruteForceProtection;
     FBlockList : TStringList;
+    FWhiteIPList : TStringList;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
@@ -94,6 +95,7 @@ type
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
     property FavIcon : TPicture read FFavIcon write FFavIcon;
+    property WhiteIPList : TStringList read FWhiteIPList write FWhiteIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
@@ -162,6 +164,15 @@ begin
   FBlockList := TStringList.Create;
   FBlockList.Sorted := True;
 
+  FWhiteIPList := TStringList.Create;
+  FWhiteIPList.Sorted := True;
+
+  // liberando localhost
+  FWhiteIPList.Add('localhost');
+  FWhiteIPList.Add('127.0.0.1');
+  FWhiteIPList.Add('0:0:0:0:0:0:0:1');
+  FWhiteIPList.Add('::1');
+
   WriteServerStatus;
 end;
 
@@ -175,6 +186,11 @@ var
   vInt : IntegerRAL;
   vClient : TRALClientBlockList;
 begin
+  // nao adiciona o ip se ele estiver liberado
+  vInt := FWhiteIPList.IndexOf(AClientIP);
+  if vInt >= 0 then
+    Exit;
+
   vInt := FBlockList.IndexOf(AClientIP);
   if vInt < 0 then begin
     vClient := TRALClientBlockList.Create;
@@ -242,6 +258,8 @@ begin
 
   CleanBlockList;
   FreeAndNil(FBlockList);
+
+  FreeAndNil(FWhiteIPList);
 
   inherited;
 end;
