@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication;
+  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams;
 
 type
   TRALfpHttpClient = class(TRALClient)

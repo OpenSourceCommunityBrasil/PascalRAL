@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
   TRALSynopseClient = class(TRALClient)

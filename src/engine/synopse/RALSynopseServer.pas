@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, syncobjs,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
+  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse;
 
 type
 

@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
   IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRoutes;
+  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse;
 
 type
   TRALIndySSL = class(TRALSSL)

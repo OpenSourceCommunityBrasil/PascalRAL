@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication,
-  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
   TRALIndyClient = class(TRALClient)
@@ -46,6 +46,7 @@ function TRALIndyClient.EncodeParams(AParams: TRALParams): TStream;
 var
   vInt : IntegerRAL;
   vStream : TStream;
+  vField : TIdFormDataField;
 begin
   Result := nil;
   if AParams = nil then
@@ -67,10 +68,10 @@ begin
       vStream := AParams.Param[vInt].AsStream;
       with Result as TIdMultiPartFormDataStream do
       begin
-        AddFormField(AParams.Param[vInt].ParamName,
-                     AParams.Param[vInt].ContentType,
-                     '', // charset
-                     vStream);
+        vField := AddFormField(AParams.Param[vInt].ParamName,
+                               AParams.Param[vInt].ContentType,
+                               '', // charset
+                               vStream);
       end;
       vInt := vInt + 1;
     end;
