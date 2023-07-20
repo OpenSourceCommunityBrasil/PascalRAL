@@ -174,6 +174,7 @@ var
   vInt : IntegerRAL;
   vRoute : TRALRoute;
 begin
+  Result := nil;
   ARoute := FixRoute(ARoute);
   for vInt := 0 to Count-1 do begin
     vRoute := TRALRoute(Items[vInt]);

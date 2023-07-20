@@ -3,16 +3,47 @@ unit RALServer;
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
+  Classes, SysUtils, StrUtils, Graphics,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse;
 
 type
-  TRALSSL = class
+
+  { TRALSSL }
+
+  TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
   published
     property Enabled: boolean read FEnabled write FEnabled;
+  end;
+
+  { TRALBruteForceProtection }
+
+  TRALBruteForceProtection = class(TPersistent)
+  private
+    FEnabled : boolean;
+    FExpirationMin : IntegerRAL;
+    FMaxTry : IntegerRAL;
+  public
+    constructor Create;
+  published
+    property Enabled : boolean read FEnabled write FEnabled;
+    property ExpirationMin : IntegerRAL read FExpirationMin write FExpirationMin;
+    property MaxTry : IntegerRAL read FMaxTry write FMaxTry;
+  end;
+
+  { TRALClientBlockList }
+
+  TRALClientBlockList = class
+  private
+    FLastAccess : TDateTime;
+    FNumTry : IntegerRAL;
+  public
+    constructor Create;
+  published
+    property LastAccess : TDateTime read FLastAccess write FLastAccess;
+    property NumTry : IntegerRAL read FNumTry write FNumTry;
   end;
 
   { TRALServer }
@@ -22,10 +53,13 @@ type
     FActive: boolean;
     FPort: IntegerRAL;
     FAuthentication: TRALAuthServer;
+    FBruteForceProtection: TRALBruteForceProtection;
+    FBlockList : TStringList;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
     FShowServerStatus: boolean;
+    FFavIcon : TPicture;
     FSSL: TRALSSL;
     FEngine: StringRAL;
   protected
@@ -41,6 +75,11 @@ type
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
     function CreateRALSSL: TRALSSL; virtual;
+
+    procedure AddBlockList(AClientIP : StringRAL);
+    procedure DelBlockList(AClientIP : StringRAL);
+    function ClientIsBlockList(AClientIP : StringRAL) : boolean;
+    procedure CleanBlockList;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -48,16 +87,37 @@ type
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
+    property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
+    property FavIcon : TPicture read FFavIcon write FFavIcon;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
 
 implementation
+
+{ TRALClientBlockList }
+
+constructor TRALClientBlockList.Create;
+begin
+  inherited;
+  FLastAccess := Now;
+  FNumTry := 0;
+end;
+
+{ TRALBruteForceProtection }
+
+constructor TRALBruteForceProtection.Create;
+begin
+  inherited;
+  FEnabled := True;
+  FExpirationMin := 30;
+  FMaxTry := 3;
+end;
 
 { TRALServer }
 
@@ -79,7 +139,6 @@ begin
     test := ASource.Strings[I];
     ADest.AddParam( ASource.Names[I], ASource.Values[ASource.Names[I]]);
   end;
-
 end;
 
 procedure TRALServer.AppendParams(ASource: TStrings; ADest: TRALParams);
@@ -94,9 +153,15 @@ begin
   FAuthentication := nil;
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
+  FBruteForceProtection := TRALBruteForceProtection.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
   FEngine := '';
+  FFavIcon := TPicture.Create;
+
+  FBlockList := TStringList.Create;
+  FBlockList.Sorted := True;
+
   WriteServerStatus;
 end;
 
@@ -105,19 +170,78 @@ begin
   Result := nil;
 end;
 
+procedure TRALServer.AddBlockList(AClientIP : StringRAL);
+var
+  vInt : IntegerRAL;
+  vClient : TRALClientBlockList;
+begin
+  vInt := FBlockList.IndexOf(AClientIP);
+  if vInt < 0 then begin
+    vClient := TRALClientBlockList.Create;
+    FBlockList.AddObject(AClientIP,vClient);
+  end
+  else begin
+    vClient := TRALClientBlockList(FBlockList.Objects[vInt]);
+  end;
+
+  vClient.LastAccess := Now;
+  vClient.NumTry := vClient.NumTry + 1;
+end;
+
+procedure TRALServer.DelBlockList(AClientIP : StringRAL);
+var
+  vInt : IntegerRAL;
+begin
+  vInt := FBlockList.IndexOf(AClientIP);
+  if vInt >= 0 then begin
+    TObject(FBlockList.Objects[vInt]).Free;
+    FBlockList.Delete(vInt);
+  end;
+end;
+
+function TRALServer.ClientIsBlockList(AClientIP : StringRAL) : boolean;
+var
+  vInt : IntegerRAL;
+  vClient : TRALClientBlockList;
+  vDelete : boolean;
+  vTimeMax : TDateTime;
+begin
+  Result := False;
+  vDelete := False;
+  vInt := FBlockList.IndexOf(AClientIP);
+  if vInt >= 0 then begin
+    vClient := TRALClientBlockList(FBlockList.Objects[vInt]);
+    vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
+    if Now - vClient.LastAccess > vTimeMax then
+      vDelete := True
+    else if vClient.NumTry > FBruteForceProtection.MaxTry then
+      Result := True;
+
+    if vDelete then
+      DelBlockList(AClientIP);
+  end;
+end;
+
+procedure TRALServer.CleanBlockList;
+begin
+  while FBlockList.Count > 0 do begin
+    TObject(FBlockList.Objects[FBlockList.Count-1]).Free;
+    FBlockList.Delete(FBlockList.Count-1);
+  end;
+end;
+
 destructor TRALServer.Destroy;
 begin
-  if Assigned(FAuthentication) then
-    FreeAndNil(FAuthentication);
-
   if Assigned(FSSL) then
     FreeAndNil(FSSL);
 
-  if Assigned(FRoutes) then
-    FreeAndNil(FRoutes);
+  FreeAndNil(FRoutes);
+  FreeAndNil(FServerStatus);
+  FreeAndNil(FFavIcon);
+  FreeAndNil(FBruteForceProtection);
 
-  if Assigned(FServerStatus) then
-    FreeAndNil(FServerStatus);
+  CleanBlockList;
+  FreeAndNil(FBlockList);
 
   inherited;
 end;
@@ -134,9 +258,16 @@ function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
   vString: StringRAL;
+  vStream: TMemoryStream;
 begin
   Result := TRALResponse.Create;
   Result.RespCode := 200;
+
+  if (FAuthentication <> nil) and (ClientIsBlockList(ARequest.ClientInfo.IP)) then begin
+    Result.RespCode := 401;
+    Result.ContentType := TRALContentType.ctTEXTHTML;
+    Exit;
+  end;
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
@@ -150,35 +281,53 @@ begin
       vString := ReplaceText(vString, '$ralengine;', FEngine);
       Result.ResponseText := vString;
     end
+    else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
+    begin
+      Result.ContentType := 'image/icon';
+      vStream := TMemoryStream.Create;
+      try
+        FFavIcon.SaveToStream(vStream);
+        vStream.Position := 0;
+        Result.ResponseStream := vStream;
+      finally
+        vStream.Free;
+      end;
+    end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
       FAuthentication.CallQuery(ARequest.Query, ARequest, Result);
+      if Result.RespCode >= 400 then
+        AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else
     begin
       Result.RespCode := 404;
       Result.ContentType := TRALContentType.ctTEXTHTML;
+      AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end;
   end
   else
   begin
     if (not(amALL in vRoute.AllowedMethods)) and
-      (not(ARequest.Method in vRoute.AllowedMethods)) then
+       (not(ARequest.Method in vRoute.AllowedMethods)) then
     begin
       Result.RespCode := 404;
       Result.ContentType := TRALContentType.ctTEXTHTML;
     end
-    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods))
-      and (not(ARequest.Method in vRoute.SkipAuthMethods)) and
-      (not(ValidateAuth(ARequest, Result))) then
+    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
+            (not(ARequest.Method in vRoute.SkipAuthMethods)) and
+            (not(ValidateAuth(ARequest, Result))) then
     begin
       Result.RespCode := 401;
       Result.ContentType := TRALContentType.ctTEXTHTML;
+      AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else
     begin
       if Assigned(OnClientRequest) then
         OnClientRequest(vRoute, ARequest, Result);
+
+      DelBlockList(ARequest.ClientInfo.IP);
 
       vRoute.Execute(ARequest, Result);
     end;
