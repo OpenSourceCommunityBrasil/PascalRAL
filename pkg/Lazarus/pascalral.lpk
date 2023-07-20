@@ -19,7 +19,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="20">
+    <Files Count="24">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -33,74 +33,90 @@
         <UnitName Value="RALConsts"/>
       </Item3>
       <Item4>
+        <Filename Value="..\..\src\base\RALRoutes.pas"/>
+        <UnitName Value="RALRoutes"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\src\base\RALServer.pas"/>
+        <UnitName Value="RALServer"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\src\base\RALTypes.pas"/>
+        <UnitName Value="RALTypes"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\src\base\RALRequest.pas"/>
+        <UnitName Value="RALRequest"/>
+      </Item7>
+      <Item8>
+        <Filename Value="..\..\src\base\RALResponse.pas"/>
+        <UnitName Value="RALResponse"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\src\base\RALParams.pas"/>
+        <UnitName Value="RALParams"/>
+      </Item9>
+      <Item10>
         <Filename Value="..\..\src\base\RALRegister.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALRegister"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\src\base\RALRoutes.pas"/>
-        <UnitName Value="RALRoutes"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\src\base\RALServer.pas"/>
-        <UnitName Value="RALServer"/>
-      </Item6>
-      <Item7>
-        <Filename Value="..\..\src\base\RALTypes.pas"/>
-        <UnitName Value="RALTypes"/>
-      </Item7>
-      <Item8>
-        <Filename Value="..\..\src\utils\RALBase64.pas"/>
-        <UnitName Value="RALBase64"/>
-      </Item8>
-      <Item9>
-        <Filename Value="..\..\src\utils\RALCrypto.pas"/>
-        <UnitName Value="RALCrypto"/>
-      </Item9>
-      <Item10>
-        <Filename Value="..\..\src\utils\RALHashes.pas"/>
-        <UnitName Value="RALHashes"/>
       </Item10>
       <Item11>
-        <Filename Value="..\..\src\utils\RALKeyPairs.pas"/>
-        <UnitName Value="RALKeyPairs"/>
+        <Filename Value="..\..\src\utils\RALBase64.pas"/>
+        <UnitName Value="RALBase64"/>
       </Item11>
       <Item12>
-        <Filename Value="..\..\src\utils\RALMD5.pas"/>
-        <UnitName Value="RALMD5"/>
+        <Filename Value="..\..\src\utils\RALCrypto.pas"/>
+        <UnitName Value="RALCrypto"/>
       </Item12>
       <Item13>
-        <Filename Value="..\..\src\utils\RALMIMETypes.pas"/>
-        <UnitName Value="RALMIMETypes"/>
+        <Filename Value="..\..\src\utils\RALHashes.pas"/>
+        <UnitName Value="RALHashes"/>
       </Item13>
       <Item14>
-        <Filename Value="..\..\src\utils\RALSHA2_32.pas"/>
-        <UnitName Value="RALSHA2_32"/>
+        <Filename Value="..\..\src\utils\RALKeyPairs.pas"/>
+        <UnitName Value="RALKeyPairs"/>
       </Item14>
       <Item15>
-        <Filename Value="..\..\src\utils\RALSHA2_64.pas"/>
-        <UnitName Value="RALSHA2_64"/>
+        <Filename Value="..\..\src\utils\RALMD5.pas"/>
+        <UnitName Value="RALMD5"/>
       </Item15>
       <Item16>
-        <Filename Value="..\..\src\utils\RALToken.pas"/>
-        <UnitName Value="RALToken"/>
+        <Filename Value="..\..\src\utils\RALMIMETypes.pas"/>
+        <UnitName Value="RALMIMETypes"/>
       </Item16>
       <Item17>
-        <Filename Value="..\..\src\utils\RALTools.pas"/>
-        <UnitName Value="RALTools"/>
+        <Filename Value="..\..\src\utils\RALSHA2_32.pas"/>
+        <UnitName Value="RALSHA2_32"/>
       </Item17>
       <Item18>
-        <Filename Value="PascalRAL.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="..\..\src\utils\RALSHA2_64.pas"/>
+        <UnitName Value="RALSHA2_64"/>
       </Item18>
       <Item19>
-        <Filename Value="..\..\src\utils\RALJson.pas"/>
-        <UnitName Value="RALJson"/>
+        <Filename Value="..\..\src\utils\RALToken.pas"/>
+        <UnitName Value="RALToken"/>
       </Item19>
       <Item20>
+        <Filename Value="..\..\src\utils\RALTools.pas"/>
+        <UnitName Value="RALTools"/>
+      </Item20>
+      <Item21>
+        <Filename Value="..\..\src\utils\RALJson.pas"/>
+        <UnitName Value="RALJson"/>
+      </Item21>
+      <Item22>
         <Filename Value="..\..\src\utils\RALMimeCoder.pas"/>
         <UnitName Value="RALMimeCoder"/>
-      </Item20>
+      </Item22>
+      <Item23>
+        <Filename Value="..\..\src\utils\RALThreadSafe.pas"/>
+        <UnitName Value="RALThreadSafe"/>
+      </Item23>
+      <Item24>
+        <Filename Value="PascalRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item24>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

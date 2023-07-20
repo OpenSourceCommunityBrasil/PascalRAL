@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, StrUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse;
+  RALParams, RALRequest, RALResponse, RALThreadSafe;
 
 type
 
@@ -54,9 +54,9 @@ type
     FPort: IntegerRAL;
     FAuthentication: TRALAuthServer;
     FBruteForceProtection: TRALBruteForceProtection;
-    FBlockedList : TStringList;
-    FWhiteIPList : TStringList;
-    FBlackIPList : TStringList;
+    FBlockedList : TRALStringListSafe;
+    FWhiteIPList : TRALStringListSafe;
+    FBlackIPList : TRALStringListSafe;
     FRoutes: TRALRoutes;
     FOnClientRequest: TRALOnReply;
     FServerStatus: TStringList;
@@ -96,8 +96,8 @@ type
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property WhiteIPList : TStringList read FWhiteIPList write FWhiteIPList;
-    property BlackIPList : TStringList read FBlackIPList write FBlackIPList;
+    property WhiteIPList : TRALStringListSafe read FWhiteIPList write FWhiteIPList;
+    property BlackIPList : TRALStringListSafe read FBlackIPList write FBlackIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
@@ -163,11 +163,9 @@ begin
   FEngine := '';
   FFavIcon := TMemoryStream.Create;
 
-  FBlockedList := TStringList.Create;
-  FBlockedList.Sorted := True;
-
-  FWhiteIPList := TStringList.Create;
-  FBlackIPList := TStringList.Create;
+  FBlockedList := TRALStringListSafe.Create;
+  FWhiteIPList := TRALStringListSafe.Create;
+  FBlackIPList := TRALStringListSafe.Create;
 
   // liberando localhost
 //  FWhiteIPList.Add('localhost');
@@ -192,19 +190,14 @@ begin
     Exit;
 
   // nao adiciona o ip se ele estiver liberado ou bloqueado
-  if (FWhiteIPList.IndexOf(AClientIP) >= 0) or
-     (FBlackIPList.IndexOf(AClientIP) >= 0) then
+  if FWhiteIPList.Exists(AClientIP) or FBlackIPList.Exists(AClientIP) then
     Exit;
 
-  vInt := FBlockedList.IndexOf(AClientIP);
-  if vInt < 0 then
+  vClient := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
+  if vClient = nil then
   begin
     vClient := TRALClientBlockList.Create;
     FBlockedList.AddObject(AClientIP,vClient);
-  end
-  else
-  begin
-    vClient := TRALClientBlockList(FBlockedList.Objects[vInt]);
   end;
 
   vClient.LastAccess := Now;
@@ -218,21 +211,11 @@ begin
   if FAuthentication = nil then
     Exit;
 
-  FBlockedList.BeginUpdate;
-
-  vInt := FBlockedList.IndexOf(AClientIP);
-  if vInt >= 0 then
-  begin
-    TObject(FBlockedList.Objects[vInt]).Free;
-    FBlockedList.Delete(vInt);
-  end;
-
-  FBlockedList.EndUpdate;
+  FBlockedList.Remove(AClientIP,True);
 end;
 
 function TRALServer.ClientIsBlocked(AClientIP : StringRAL) : boolean;
 var
-  vInt : IntegerRAL;
   vClient : TRALClientBlockList;
   vDelete : boolean;
   vTimeMax : TDateTime;
@@ -242,20 +225,17 @@ begin
     Exit;
 
   // verifica ip se ele estiver bloquedo e nao liberado
-  Result := (FBlackIPList.IndexOf(AClientIP) >= 0) and
-            (FWhiteIPList.IndexOf(AClientIP) < 0);
+  Result := (FBlackIPList.Exists(AClientIP)) and
+            (not FWhiteIPList.Exists(AClientIP));
   if Result then
     Exit;
 
   vDelete := False;
 
-  FBlockedList.BeginUpdate;
-
   vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
-  vInt := FBlockedList.IndexOf(AClientIP);
-  if vInt >= 0 then
+  vClient := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
+  if vClient <> nil then
   begin
-    vClient := TRALClientBlockList(FBlockedList.Objects[vInt]);
     if Now - vClient.LastAccess > vTimeMax then
       vDelete := True
     else if vClient.NumTry >= FBruteForceProtection.MaxTry then
@@ -264,17 +244,11 @@ begin
     if vDelete then
       DelBlockList(AClientIP);
   end;
-
-  FBlockedList.EndUpdate;
 end;
 
 procedure TRALServer.CleanBlockedList;
 begin
-  while FBlockedList.Count > 0 do
-  begin
-    TObject(FBlockedList.Objects[FBlockedList.Count-1]).Free;
-    FBlockedList.Delete(FBlockedList.Count-1);
-  end;
+  FBlockedList.Clear(True);
 end;
 
 procedure TRALServer.CleanExpiredBlockedList;
@@ -282,19 +256,23 @@ var
   vClient : TRALClientBlockList;
   vInt : IntegerRAL;
   vTimeMax : TDateTime;
+  vList : TStringList;
 begin
-  vInt := FBlockedList.Count - 1;
+  vList := FBlockedList.Lock;
   vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
+
+  vInt := vList.Count - 1;
   while vInt >= 0 do
   begin
-    vClient := TRALClientBlockList(FBlockedList.Objects[vInt]);
+    vClient := TRALClientBlockList(vList.Objects[vInt]);
     if Now - vClient.LastAccess > vTimeMax then
     begin
-      FBlockedList.Delete(vInt);
+      vList.Delete(vInt);
       vClient.Free;
     end;
     vInt := vInt - 1;
   end;
+  FBlockedList.Unlock;
 end;
 
 destructor TRALServer.Destroy;
@@ -401,8 +379,6 @@ end;
 
 procedure TRALServer.SetActive(const AValue: boolean);
 begin
-  FWhiteIPList.Sorted := True;
-  FBlackIPList.Sorted := True;
   FActive := AValue;
 end;
 
