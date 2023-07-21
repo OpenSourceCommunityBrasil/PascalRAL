@@ -26,6 +26,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
+                     AContentType: TRALContentType = TRALContentType.ctTEXTHTML);
     property Body: TRALParams read FBody;
     property ResponseText : StringRAL read GetResponseText write SetResponseText;
     property ResponseStream : TStream read GetResponseStream write SetResponseStream;
@@ -37,6 +39,13 @@ type
 implementation
 
 { TRALResponse }
+
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
+  AContentType: TRALContentType);
+begin
+  RespCode := AStatusCode;
+  ResponseText := AMessage;
+end;
 
 constructor TRALResponse.Create;
 begin

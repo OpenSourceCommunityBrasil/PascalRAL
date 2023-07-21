@@ -25,18 +25,18 @@ type
 
   TRALAuthorization = class
   private
-    FAuthType : TRALAuthTypes;
-    FAuthString : StringRAL;
+    FAuthType: TRALAuthTypes;
+    FAuthString: StringRAL;
   protected
     function GetPassword: StringRAL;
     function GetUserName: StringRAL;
   public
     constructor Create;
   published
-    property AuthType : TRALAuthTypes read FAuthType write FAuthType;
-    property AuthString : StringRAL read FAuthString write FAuthString;
-    property UserName : StringRAL read GetUserName;
-    property Password : StringRAL read GetPassword;
+    property AuthType: TRALAuthTypes read FAuthType write FAuthType;
+    property AuthString: StringRAL read FAuthString write FAuthString;
+    property UserName: StringRAL read GetUserName;
+    property Password: StringRAL read GetPassword;
   end;
 
   { TRALRequest }
@@ -90,33 +90,33 @@ end;
 
 { TRALAuthorization }
 
-function TRALAuthorization.GetPassword : StringRAL;
+function TRALAuthorization.GetPassword: StringRAL;
 var
-  vString : StringRAL;
-  vInt : IntegerRAL;
+  vString: StringRAL;
+  vInt: IntegerRAL;
 begin
   Result := '';
   if FAuthType = ratBasic then
   begin
     vString := TRALBase64.Decode(FAuthString);
-    vInt := Pos(':',vString);
+    vInt := Pos(':', vString);
     if vInt > 0 then
-      Result := Copy(vString, vInt+1, Length(vString));
+      Result := Copy(vString, vInt + 1, Length(vString));
   end;
 end;
 
-function TRALAuthorization.GetUserName : StringRAL;
+function TRALAuthorization.GetUserName: StringRAL;
 var
-  vString : StringRAL;
-  vInt : IntegerRAL;
+  vString: StringRAL;
+  vInt: IntegerRAL;
 begin
   Result := '';
   if FAuthType = ratBasic then
   begin
     vString := TRALBase64.Decode(FAuthString);
-    vInt := Pos(':',vString);
+    vInt := Pos(':', vString);
     if vInt > 0 then
-      Result := Copy(vString, 1, vInt-1);
+      Result := Copy(vString, 1, vInt - 1);
   end;
 end;
 

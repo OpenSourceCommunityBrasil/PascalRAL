@@ -180,6 +180,9 @@
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
         <DCCReference Include="..\..\src\utils\RALToken.pas"/>
         <DCCReference Include="..\..\src\utils\RALTools.pas"/>
+        <DCCReference Include="..\..\src\base\RALParams.pas"/>
+        <DCCReference Include="..\..\src\base\RALRequest.pas"/>
+        <DCCReference Include="..\..\src\base\RALResponse.pas"/>
         <None Include="..\..\src\base\PascalRAL.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

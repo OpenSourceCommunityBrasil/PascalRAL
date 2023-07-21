@@ -96,8 +96,7 @@ begin
   end
   else
   begin
-    AResponse.RespCode := 404;
-    AResponse.ContentType := TRALContentType.ctTEXTHTML;
+    AResponse.Answer(404, RAL404Page);
   end;
 end;
 

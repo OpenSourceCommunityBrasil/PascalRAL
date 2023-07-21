@@ -313,8 +313,7 @@ begin
 
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
-    Result.RespCode := 404;
-    Result.ContentType := TRALContentType.ctTEXTHTML;
+    Result.Answer(404, RAL404Page);
     Exit;
   end;
 
@@ -326,7 +325,6 @@ begin
     begin
       Result.ContentType := TRALContentType.ctTEXTHTML;
       vString := FServerStatus.Text;
-      vString := ReplaceText(vString, '$ralversion;', RALVERSION);
       vString := ReplaceText(vString, '$ralengine;', FEngine);
       Result.ResponseText := vString;
     end
@@ -337,14 +335,13 @@ begin
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
-      FAuthentication.CallQuery(ARequest.Query, ARequest, Result);
+      FAuthentication.AuthQuery(ARequest.Query, ARequest, Result);
       if Result.RespCode >= 400 then
         AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else
     begin
-      Result.RespCode := 404;
-      Result.ContentType := TRALContentType.ctTEXTHTML;
+      Result.Answer(404, RAL404Page);
       AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end;
   end
@@ -353,15 +350,13 @@ begin
     if (not(amALL in vRoute.AllowedMethods)) and
        (not(ARequest.Method in vRoute.AllowedMethods)) then
     begin
-      Result.RespCode := 404;
-      Result.ContentType := TRALContentType.ctTEXTHTML;
+      Result.Answer(404, RAL404Page);
     end
     else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
             (not(ARequest.Method in vRoute.SkipAuthMethods)) and
             (not(ValidateAuth(ARequest, Result))) then
     begin
-      Result.RespCode := 401;
-      Result.ContentType := TRALContentType.ctTEXTHTML;
+      Result.Answer(401, RAL401Page);
       AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else
@@ -415,20 +410,7 @@ end;
 procedure TRALServer.WriteServerStatus;
 begin
   FServerStatus.Clear;
-  with FServerStatus do
-  begin
-    Clear;
-    Add('<html>');
-    Add('<head>');
-    Add('<title>RALServer - $ralversion;</title>');
-    Add('</head>');
-    Add('<body>');
-    Add('<h1>Server OnLine</h1>');
-    Add('<h4>Version: $ralversion;</h4>');
-    Add('<h4>Engine: $ralengine;</h4>');
-    Add('</body>');
-    Add('</html>');
-  end;
+  FServerStatus.Text := RALDefaultPage;
 end;
 
 end.

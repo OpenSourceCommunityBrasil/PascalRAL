@@ -37,7 +37,7 @@ type
   TRALParams = class
   private
     FParams: TList;
-    FNextParam : IntegerRAL;
+    FNextParam: IntegerRAL;
   protected
     function GetParam(idx: IntegerRAL): TRALParam;
     function GetParamName(name: StringRAL): TRALParam;

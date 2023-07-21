@@ -50,6 +50,9 @@ contains
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
   RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
-  RALTools in '..\..\src\utils\RALTools.pas';
+  RALTools in '..\..\src\utils\RALTools.pas',
+  RALParams in '..\..\src\base\RALParams.pas',
+  RALRequest in '..\..\src\base\RALRequest.pas',
+  RALResponse in '..\..\src\base\RALResponse.pas';
 
 end.

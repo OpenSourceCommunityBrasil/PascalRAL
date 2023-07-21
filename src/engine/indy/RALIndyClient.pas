@@ -82,9 +82,9 @@ end;
 function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
 var
-  vInt : IntegerRAL;
-  vSource, vResult, vContent : TStream;
-  vStr1, vStr2 : StringRAL;
+  vInt: IntegerRAL;
+  vSource, vResult, vContent: TStream;
+  vStr1, vStr2: StringRAL;
 begin
   inherited;
   FHttp.Request.Clear;
@@ -109,25 +109,25 @@ begin
     try
       try
         case AMethod of
-          amGET : begin
-            FHttp.Get(AURL,vContent);
-          end;
-          amPOST : begin
-            FHttp.Post(AURL,vSource,vContent);
-          end;
-          amPUT : begin
-            FHttp.Put(AURL,vSource,vContent);
-          end;
-          amPATCH : begin
-            FHttp.Patch(AURL,vSource,vContent);
-          end;
-          amDELETE : begin
-            FHttp.Delete(AURL,vContent);
-          end;
+          amGET:
+            FHttp.Get(AURL, vContent);
+
+          amPOST:
+            FHttp.Post(AURL, vSource, vContent);
+
+          amPUT:
+            FHttp.Put(AURL, vSource, vContent);
+
+          amPATCH:
+            FHttp.Patch(AURL, vSource, vContent);
+
+          amDELETE:
+            FHttp.Delete(AURL, vContent);
+
         end;
         vContent.Position := 0;
 
-        if Pos('text/',LowerCase(FHttp.Response.ContentType)) = 1 then
+        if Pos('text/', LowerCase(FHttp.Response.ContentType)) = 1 then
         begin
           vResult := TStringStream.Create;
           vResult.CopyFrom(vContent, vContent.Size);

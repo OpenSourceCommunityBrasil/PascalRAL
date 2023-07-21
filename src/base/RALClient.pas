@@ -5,45 +5,45 @@ interface
 uses
   Classes, SysUtils, StrUtils,
   RALTypes, RALConsts, RALAuthentication, RALRoutes, RALJson, RALTools,
-  RALParams;
+  RALParams, RALMIMETypes;
 
 type
   TRALClient = class(TRALComponent)
   private
     FAuthentication: TRALAuthClient;
-    FBaseURL : StringRAL;
+    FBaseURL: StringRAL;
     FUseSSL: boolean;
 
-    FResponseCode : IntegerRAL;
-    FResponseStream : TStream;
+    FResponseCode: IntegerRAL;
+    FResponseStream: TStream;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetAuthentication(const AValue: TRALAuthClient);
 
     procedure SetBaseURL(const AValue: StringRAL);
     procedure SetUseSSL(const AValue: boolean); virtual;
-    procedure SetResponse(AStream : TStream);
+    procedure SetResponse(AStream: TStream);
     procedure ResetToken;
 
-    function BeforeSendUrl(AURL : StringRAL; AMethod : TRALMethod;
+    function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil) : IntegerRAL; virtual;
-    function SendUrl(AURL : StringRAL; AMethod : TRALMethod;
+                     ABody: TRALParams = nil): IntegerRAL; virtual;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil) : IntegerRAL; virtual;
-    function GetToken : boolean;
-    function GetURL(ARoute : StringRAL) : StringRAL;
+                     ABody: TRALParams = nil): IntegerRAL; virtual;
+    function GetToken: boolean;
+    function GetURL(ARoute: StringRAL): StringRAL;
     function GetResponseText: StringRAL;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Delete(ARoute : StringRAL; AHeaders: TStringList = nil): IntegerRAL;
-    function Get(ARoute : StringRAL; AHeaders: TStringList = nil): IntegerRAL;
-    function Post(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    function Put(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    function Patch(ARoute : StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    property ResponseCode : IntegerRAL read FResponseCode write FResponseCode;
-    property ResponseText : StringRAL read GetResponseText;
+    function Delete(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
+    function Get(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
+    function Post(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
+    function Put(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
+    function Patch(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
+    property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
+    property ResponseText: StringRAL read GetResponseText;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
@@ -85,7 +85,7 @@ end;
 
 function TRALClient.Delete(ARoute: StringRAL; AHeaders: TStringList): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute),amDELETE,AHeaders,nil);
+  Result := BeforeSendUrl(GetURL(ARoute), amDELETE, AHeaders, nil);
 end;
 
 destructor TRALClient.Destroy;
@@ -98,7 +98,7 @@ end;
 
 function TRALClient.Get(ARoute: StringRAL; AHeaders: TStringList): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute),amGET,AHeaders,nil);
+  Result := BeforeSendUrl(GetURL(ARoute), amGET, AHeaders, nil);
 end;
 
 function TRALClient.GetResponseText: StringRAL;
@@ -108,7 +108,7 @@ begin
   begin
     if FResponseStream.ClassType = TMemoryStream then begin
       SetLength(Result,FResponseStream.Size);
-      FResponseStream.Read(Result[PosIniStr],FResponseStream.Size);
+      FResponseStream.Read(Result[PosIniStr], FResponseStream.Size);
     end
     else if FResponseStream.ClassType = TStringStream then begin
       Result := TStringStream(FResponseStream).DataString;
@@ -116,12 +116,12 @@ begin
   end;
 end;
 
-function TRALClient.GetToken : boolean;
+function TRALClient.GetToken: boolean;
 var
-  vBody : TRALParams;
-  vResult, vConta : IntegerRAL;
-  vJson : TRALJSONObject;
-  vValue : TRALJSONValue;
+  vBody: TRALParams;
+  vResult, vConta: IntegerRAL;
+  vJson: TRALJSONObject;
+  vValue: TRALJSONValue;
 begin
   Result := False;
   if FAuthentication is TRALClientJWTAuth then
@@ -134,7 +134,7 @@ begin
         try
           with FAuthentication as TRALClientJWTAuth do
           begin
-            vBody.AddValue(Payload.AsJSON, 'application/json');
+            vBody.AddValue(Payload.AsJSON, TRALContentType.ctAPPLICATIONJSON);
             vResult := SendUrl(GetURL(Route), amPOST, nil, vBody);
           end;
         finally
@@ -164,13 +164,13 @@ end;
 
 function TRALClient.GetURL(ARoute: StringRAL): StringRAL;
 begin
-  ARoute := FBaseURL+'/'+ARoute+'/';
+  ARoute := FBaseURL + '/' + ARoute + '/';
   ARoute := FixRoute(ARoute);
 
   Result := 'http';
   if FUseSSL then
     Result := Result + 's';
-  Result := Result + ':/'+ARoute;
+  Result := Result + ':/' + ARoute;
 end;
 
 procedure TRALClient.Notification(AComponent: TComponent;
@@ -185,19 +185,19 @@ end;
 function TRALClient.Patch(ARoute: StringRAL; AHeaders: TStringList;
   ABody: TRALParams): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute),amPATCH,AHeaders,ABody);
+  Result := BeforeSendUrl(GetURL(ARoute), amPATCH, AHeaders, ABody);
 end;
 
 function TRALClient.Post(ARoute: StringRAL; AHeaders: TStringList;
   ABody: TRALParams): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute),amPOST,AHeaders,ABody);
+  Result := BeforeSendUrl(GetURL(ARoute), amPOST, AHeaders, ABody);
 end;
 
 function TRALClient.Put(ARoute: StringRAL; AHeaders: TStringList;
   ABody: TRALParams): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute),amPUT,AHeaders,ABody);
+  Result := BeforeSendUrl(GetURL(ARoute), amPUT, AHeaders, ABody);
 end;
 
 procedure TRALClient.ResetToken;
@@ -207,7 +207,7 @@ begin
 end;
 
 function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams) : IntegerRAL;
+  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
 begin
   Result := 0;
 end;
@@ -222,10 +222,10 @@ end;
 
 procedure TRALClient.SetBaseURL(const AValue: StringRAL);
 var
-  vInt : IntegerRAL;
-  vProtocol : StringRAL;
+  vInt: IntegerRAL;
+  vProtocol: StringRAL;
 begin
-  vInt := Pos(':\\',AValue);
+  vInt := Pos(':\\', AValue);
   if vInt > 0 then
   begin
     FBaseURL := Copy(AValue, vInt+3, Length(AValue));
