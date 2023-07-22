@@ -270,17 +270,11 @@ procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
   vResult : boolean;
-
-  procedure Error401;
-  begin
-    AResponse.RespCode := 401;
-    AResponse.Headers.Add('WWW-Authenticate: Bearer realm="RAL Basic');
-  end;
 begin
   AResponse.RespCode := 200;
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
-    Error401;
+    AResponse.Answer(401,RAL401Page);
     Exit;
   end;
 
@@ -291,7 +285,7 @@ begin
     vResult := FToken.ValidToken(ARequest.Authorization.AuthString);
 
   if not vResult then
-    Error401;
+    AResponse.Answer(401,RAL401Page);
 end;
 
 function TRALServerJWTAuth.GetSecret: StringRAL;
@@ -340,10 +334,15 @@ var
   vResult: boolean;
 
   procedure Error401;
+  var
+    vParam : TRALParam;
   begin
-    AResponse.RespCode := 401;
+    AResponse.Answer(401,RAL401Page);
     if FAuthDialog then
-      AResponse.Headers.Add('WWW-Authenticate: Basic realm="RAL Basic');
+    begin
+      vParam := AResponse.Params.AddParam('WWW-Authenticate','Basic realm="RAL Basic');
+      vParam.Kind := rpkHEADER;
+    end;
   end;
 begin
   AResponse.RespCode := 200;

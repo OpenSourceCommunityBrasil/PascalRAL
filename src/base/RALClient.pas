@@ -125,6 +125,7 @@ var
   vResult, vConta: IntegerRAL;
   vJson: TRALJSONObject;
   vValue: TRALJSONValue;
+  vParam : TRALParam;
 begin
   Result := False;
   if FAuthentication is TRALClientJWTAuth then
@@ -137,7 +138,8 @@ begin
         try
           with FAuthentication as TRALClientJWTAuth do
           begin
-            vBody.AddValue(Payload.AsJSON, TRALContentType.ctAPPLICATIONJSON);
+            vParam := vBody.AddValue(Payload.AsJSON);
+            vParam.ContentType := TRALContentType.ctAPPLICATIONJSON;
             vResult := SendUrl(GetURL(Route), amPOST, nil, vBody);
           end;
         finally

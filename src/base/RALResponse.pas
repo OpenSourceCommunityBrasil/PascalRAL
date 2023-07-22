@@ -12,13 +12,10 @@ type
 
   TRALResponse = class
   private
-    FHeaders: TStringList;
-    FBody: TRALParams;
+    FParams : TRALParams;
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
-    FResponse : TRALParam;
   protected
-    procedure SetContentType(const AValue: StringRAL);
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
     procedure SetResponseStream(const AValue: TStream);
@@ -28,11 +25,10 @@ type
     destructor Destroy; override;
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
                      AContentType: TRALContentType = TRALContentType.ctTEXTHTML);
-    property Body: TRALParams read FBody;
+    property Params : TRALParams read FParams;
     property ResponseText : StringRAL read GetResponseText write SetResponseText;
     property ResponseStream : TStream read GetResponseStream write SetResponseStream;
-    property ContentType: StringRAL read FContentType write SetContentType;
-    property Headers: TStringList read FHeaders write FHeaders;
+    property ContentType: StringRAL read FContentType write FContentType;
     property RespCode: IntegerRAL read FRespCode write FRespCode;
   end;
 
@@ -45,61 +41,51 @@ procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
 begin
   RespCode := AStatusCode;
   ResponseText := AMessage;
+  FContentType := AContentType;
 end;
 
 constructor TRALResponse.Create;
 begin
   inherited;
-  FHeaders := TStringList.Create;
   FContentType := TRALContentType.ctTEXTHTML;
-  FBody := TRALParams.Create;
-  FResponse := nil; // pertence ao body;
+  FParams := TRALParams.Create;
 end;
 
 destructor TRALResponse.Destroy;
 begin
-  FreeAndNil(FHeaders);
-  FreeAndNil(FBody);
-  FResponse := nil; // pertence ao body;
+  FreeAndNil(FParams);
   inherited;
 end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
   Result := nil;
-  if FResponse <> nil then
-    Result := FResponse.AsStream;
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
   Result := '';
-  if FResponse <> nil then
-    Result := FResponse.AsString;
-end;
-
-procedure TRALResponse.SetContentType(const AValue: StringRAL);
-begin
-  FContentType := AValue;
-  if (FResponse <> nil) and (FBody.Count = 1) then
-    FResponse.ContentType := AValue;
 end;
 
 procedure TRALResponse.SetResponseStream(const AValue: TStream);
+var
+  vParam : TRALParam;
 begin
-  Body.ClearParams;
+  FParams.ClearParams(rpkBODY);
   if AValue.Size > 0 then begin
-    FResponse := Body.AddValue(AValue);
-    FResponse.ContentType := FContentType;
+    vParam := FParams.AddValue(AValue);
+    vParam.ContentType := FContentType;
   end;
 end;
 
 procedure TRALResponse.SetResponseText(const AValue: StringRAL);
+var
+  vParam : TRALParam;
 begin
-  Body.ClearParams;
+  FParams.ClearParams(rpkBODY);
   if AValue <> '' then begin
-    FResponse := Body.AddValue(AValue);
-    FResponse.ContentType := FContentType;
+    vParam := FParams.AddValue(AValue);
+    vParam.ContentType := FContentType;
   end;
 end;
 

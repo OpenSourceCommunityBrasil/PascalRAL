@@ -7,10 +7,9 @@ uses
   RALTypes;
 
 type
+  { TRALMIMEFormData }
 
-  { TRALMimeFormData }
-
-  TRALMimeFormData = class
+  TRALMIMEFormData = class
   private
     FDisposition : StringRAL;
     FName : StringRAL;
@@ -28,6 +27,8 @@ type
 
     procedure SaveToFile(AFileName : StringRAL); overload;
     procedure SaveToFile(var AStream : TStream); overload;
+
+    property AsStream : TMemoryStream read FBufferStream;
   published
     property Disposition : StringRAL read FDisposition write FDisposition;
     property Description : StringRAL read FDescription write FDescription;
@@ -36,9 +37,11 @@ type
     property ContentType: StringRAL read FContentType write FContentType;
   end;
 
-  { TRALMimeDecoder }
+  TRALMIMEFormDataComplete = procedure(Sender : TObject; AFormData : TRALMIMEFormData; var AFreeData : boolean) of object;
 
-  TRALMimeDecoder = class
+  { TRALMIMEDecoder }
+
+  TRALMIMEDecoder = class
   private
     FBoundary : StringRAL;
     FBuffer : array[0..4095] of Byte;
@@ -47,14 +50,18 @@ type
     FWaitSepEnd : boolean;
     FIs13 : boolean;
     FFormData : TList;
+    FOnFormDataComplete : TRALMIMEFormDataComplete;
   protected
+    procedure SetContentType(AValue : StringRAL);
+
     procedure ProcessBuffer(AInput : PByte; AInputLen: IntegerRAL);
     procedure ClearItems;
 
     function BurnBuffer : PByte;
     function ResetBuffer : PByte;
-    function NewItem : TRALMimeFormData;
-    function GetFormData(idx : Integer) : TRALMimeFormData;
+    function GetFormData(idx : Integer) : TRALMIMEFormData;
+
+    procedure FinalizeItem;
   public
     constructor Create;
     destructor Destroy; override;
@@ -64,16 +71,18 @@ type
     procedure ProcessMultiPart(AStream : TStream); overload;
     procedure ProcessMultiPart(AString : StringRAL); overload;
 
-    property FormData[Idx : Integer] : TRALMimeFormData read GetFormData;
+    property FormData[Idx : Integer] : TRALMIMEFormData read GetFormData;
   published
     property Boundary : StringRAL read FBoundary write FBoundary;
+    property ContentType : StringRAL write SetContentType;
+    property OnFormDataComplete : TRALMIMEFormDataComplete read FOnFormDataComplete write FOnFormDataComplete;
   end;
 
 implementation
 
-{ TRALMimeFormData }
+{ TRALMIMEFormData }
 
-constructor TRALMimeFormData.Create;
+constructor TRALMIMEFormData.Create;
 begin
   inherited;
   FBufferStream := TMemoryStream.Create;
@@ -84,13 +93,13 @@ begin
   FContentType := '';
 end;
 
-destructor TRALMimeFormData.Destroy;
+destructor TRALMIMEFormData.Destroy;
 begin
   FBufferStream.Free;
   inherited Destroy;
 end;
 
-procedure TRALMimeFormData.ProcessHeader(AHeader : StringRAL);
+procedure TRALMIMEFormData.ProcessHeader(AHeader : StringRAL);
 var
   vStr : StringRAL;
 
@@ -110,11 +119,11 @@ var
       begin
         vQuoted := not vQuoted;
       end
-      else if not (vChr in [' ','=',';',':']) or vQuoted then
+      else if not (CharInSet(vChr, [' ', '=', ';', ':'])) or vQuoted then
       begin
           Result := Result + vChr;
       end
-      else if (vChr in [';',':','=']) and (not vQuoted) then
+      else if (CharInSet(vChr, [';', ':', '='])) and (not vQuoted) then
       begin
         Delete(AStr,1,vInt);
         Exit;
@@ -149,12 +158,12 @@ begin
   end;
 end;
 
-procedure TRALMimeFormData.SaveToFile(AFileName : StringRAL);
+procedure TRALMIMEFormData.SaveToFile(AFileName : StringRAL);
 begin
   FBufferStream.SaveToFile(AFileName);
 end;
 
-procedure TRALMimeFormData.SaveToFile(var AStream : TStream);
+procedure TRALMIMEFormData.SaveToFile(var AStream : TStream);
 begin
   FBufferStream.Position := 0;
   AStream.Size := 0;
@@ -165,16 +174,46 @@ begin
   FBufferStream.Position := 0;
 end;
 
-{ TRALMimeDecoder }
+{ TRALMIMEDecoder }
 
-function TRALMimeDecoder.GetFormData(idx : Integer) : TRALMimeFormData;
+function TRALMIMEDecoder.GetFormData(idx : Integer) : TRALMIMEFormData;
 begin
   Result := nil;
   if (idx >= 0) and (idx < FFormData.Count) then
     Result := TRALMimeFormData(FFormData.Items[idx]);
 end;
 
-procedure TRALMimeDecoder.ProcessBuffer(AInput : PByte; AInputLen : IntegerRAL);
+procedure TRALMIMEDecoder.FinalizeItem;
+var
+  vFreeItem : boolean;
+begin
+  if FItemForm <> nil then begin
+    vFreeItem := False;
+    if Assigned(FOnFormDataComplete) then
+      FOnFormDataComplete(Self, FItemForm,vFreeItem);
+
+    if not vFreeItem then
+      FFormData.Add(FItemForm)
+    else
+      FreeAndNil(FItemForm);
+  end;
+end;
+
+procedure TRALMIMEDecoder.SetContentType(AValue : StringRAL);
+var
+  vInt : IntegerRAL;
+begin
+  vInt := Pos('boundary',LowerCase(AValue));
+  if vInt > 0 then
+  begin
+    Delete(AValue, 1, vInt - 1);
+    vInt := Pos('=', AValue);
+    Delete(AValue, 1, vInt);
+    FBoundary := AValue;
+  end;
+end;
+
+procedure TRALMIMEDecoder.ProcessBuffer(AInput : PByte; AInputLen : IntegerRAL);
 var
   vBuffer : PByte;
   vLine : StringRAL;
@@ -195,11 +234,13 @@ begin
         Move(FBuffer[0],vLine[1],FIndex);
         // boundary end of file
         if Pos('--'+FBoundary+'--',vLine) > 0 then begin
+          FinalizeItem;
           vBuffer := ResetBuffer;
         end
         // boundary begin of file
         else if Pos('--'+FBoundary+#13#10,vLine) > 0 then begin
-          FItemForm := NewItem;
+          FinalizeItem;
+          FItemForm := TRALMIMEFormData.Create;
           FWaitSepEnd := True;
           vBuffer := ResetBuffer;
         end
@@ -233,25 +274,19 @@ begin
   end;
 end;
 
-function TRALMimeDecoder.BurnBuffer : PByte;
+function TRALMIMEDecoder.BurnBuffer : PByte;
 begin
   FItemForm.BufferStream.Write(FBuffer[0],FIndex);
   Result := ResetBuffer;
 end;
 
-function TRALMimeDecoder.ResetBuffer : PByte;
+function TRALMIMEDecoder.ResetBuffer : PByte;
 begin
   FIndex := 0;
   Result := @FBuffer[FIndex];
 end;
 
-function TRALMimeDecoder.NewItem : TRALMimeFormData;
-begin
-  Result := TRALMimeFormData.Create;
-  FFormData.Add(Result);
-end;
-
-procedure TRALMimeDecoder.ClearItems;
+procedure TRALMIMEDecoder.ClearItems;
 begin
   while FFormData.Count > 0 do begin
     TObject(FFormData.Items[FFormData.Count-1]).Free;
@@ -259,13 +294,13 @@ begin
   end;
 end;
 
-constructor TRALMimeDecoder.Create;
+constructor TRALMIMEDecoder.Create;
 begin
   inherited;
   FFormData := TList.Create;
 end;
 
-destructor TRALMimeDecoder.Destroy;
+destructor TRALMIMEDecoder.Destroy;
 begin
   FItemForm := nil;
   ClearItems;
@@ -273,7 +308,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALMimeDecoder.ProcessMultiPart(AStream : TStream);
+procedure TRALMIMEDecoder.ProcessMultiPart(AStream : TStream);
 var
   vInBuf: array[0..4095] of Byte;
   vBytesRead : IntegerRAL;
@@ -296,7 +331,7 @@ begin
   end;
 end;
 
-procedure TRALMimeDecoder.ProcessMultiPart(AString : StringRAL);
+procedure TRALMIMEDecoder.ProcessMultiPart(AString : StringRAL);
 var
   vInBuf: array[0..4095] of Byte;
   vBytesRead : IntegerRAL;
@@ -316,14 +351,14 @@ begin
     if vSize - vPosition < 4096 then
       vBytesRead := vSize - vPosition;
 
-    Move(AString[vPosition],vInBuf[0],vBytesRead);
+    Move(AString[vPosition], vInBuf[0], vBytesRead);
     ProcessBuffer(@vInBuf[0], vBytesRead);
 
     vPosition := vPosition + vBytesRead;
   end;
 end;
 
-function TRALMimeDecoder.FormDataCount : IntegerRAL;
+function TRALMIMEDecoder.FormDataCount : IntegerRAL;
 begin
   Result := FFormData.Count;
 end;

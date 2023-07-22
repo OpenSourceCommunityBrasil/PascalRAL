@@ -66,16 +66,13 @@ type
     FWhiteIPList: TStringList;
     FOnClientRequest: TRALOnReply;
   protected
-    procedure AppendList(ASource: TStringList; ADest: TStringList);
-    procedure AppendParams(ASource: TStringList; ADest: TRALParams); overload;
-    procedure AppendParams(ASource: TStrings; ADest: TRALParams); overload;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     procedure SetEngine(const AValue: StringRAL);
     procedure SetPort(const AValue: IntegerRAL); virtual;
-    procedure SetSessionTimeout(const Value: IntegerRAL); virtual;
+    procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
     procedure WriteServerStatus; virtual;
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
@@ -128,31 +125,6 @@ begin
 end;
 
 { TRALServer }
-
-procedure TRALServer.AppendList(ASource: TStringList; ADest: TStringList);
-var
-  I: integer;
-begin
-  for I := 0 to pred(ASource.Count) do
-    ADest.Append(ASource.Strings[I]);
-end;
-
-procedure TRALServer.AppendParams(ASource: TStringList; ADest: TRALParams);
-var
-  I: integer;
-  test: string;
-begin
-  for I := 0 to pred(ASource.Count) do
-  begin
-    test := ASource.Strings[I];
-    ADest.AddParam( ASource.Names[I], ASource.Values[ASource.Names[I]]);
-  end;
-end;
-
-procedure TRALServer.AppendParams(ASource: TStrings; ADest: TRALParams);
-begin
-  AppendParams(TStringList(ASource), ADest);
-end;
 
 constructor TRALServer.Create(AOwner: TComponent);
 begin
@@ -400,9 +372,9 @@ begin
   FPort := AValue;
 end;
 
-procedure TRALServer.SetSessionTimeout(const Value: IntegerRAL);
+procedure TRALServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
-  FSessionTimeout := Value;
+  FSessionTimeout := AValue;
 end;
 
 function TRALServer.ValidateAuth(ARequest: TRALRequest;

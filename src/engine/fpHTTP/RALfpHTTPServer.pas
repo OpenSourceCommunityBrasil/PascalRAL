@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils, syncobjs,
   fphttpserver, sslbase, fpHTTP, fphttpapp,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse;
+  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
+  RALParams;
 
 type
 
@@ -51,9 +52,12 @@ type
 
     function GetPort: IntegerRAL;
     procedure SetPort(AValue: IntegerRAL);
-    procedure SetSessionTimeout(const Value: IntegerRAL); override;
+
+    function GetSessionTimeout : IntegerRAL;
+    procedure SetSessionTimeout(const AValue: IntegerRAL);
+
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
-    procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TFPHTTPConnectionResponse);
+    procedure EncodeBody(AResponse: TRALResponse; AResponseInfo: TFPHTTPConnectionResponse);
 
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
@@ -66,6 +70,7 @@ type
   published
     property Active: boolean read GetActive write SetActive;
     property Port: IntegerRAL read GetPort write SetPort;
+    property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -74,6 +79,7 @@ type
   protected
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -126,10 +132,10 @@ begin
   Active := vActive;
 end;
 
-procedure TRALfpHttpServerThread.SetSessionTimeout(const Value: IntegerRAL);
+procedure TRALfpHttpServerThread.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   inherited;
-  FHttp.AcceptIdleTimeout := Value;
+  FHttp.AcceptIdleTimeout := AValue;
 end;
 
 procedure TRALfpHttpServerThread.DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult : TRALRequest);
@@ -155,9 +161,32 @@ begin
   end;
 end;
 
-procedure TRALfpHttpServerThread.EncodeParams(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
+procedure TRALfpHttpServerThread.EncodeBody(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
+var
+//  vMultPart: TIdMultiPartFormDataStream;
+  vInt: integer;
 begin
-
+  if AResponse.Params.Count(rpkBODY) = 1 then begin
+    AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
+    AResponseInfo.FreeContentStream := False;
+  end
+  else begin
+{
+    vMultPart := TIdMultiPartFormDataStream.Create;
+    vInt := 0;
+    while vInt < AResponse.Params.Count do
+    begin
+      vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
+                             AResponse.Params.Param[vInt].ContentType,
+                             '', // charset
+                             AResponse.Params.Param[vInt].AsStream);
+      vInt := vInt + 1;
+    end;
+    vMultPart.Position := 0;
+    AResponseInfo.ContentStream := vMultPart;
+    AResponseInfo.FreeContentStream := True;
+}
+  end;
 end;
 
 procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
@@ -166,6 +195,7 @@ procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
+  vParam : TRALParam;
   vInt: integer;
   vStr1, vStr2: StringRAL;
 begin
@@ -189,28 +219,17 @@ begin
       if SameText(ARequest.Method, 'POST') then
         Method := amPOST
       else if SameText(ARequest.Method, 'DELETE') then
-          Method := amDELETE
+        Method := amDELETE
       else if SameText(ARequest.Method, 'PUT') then
-          Method := amPUT
+        Method := amPUT
       else if SameText(ARequest.Method, 'OPTION') then
-          Method := amPUT;
+        Method := amPUT;
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;
 
       DecodeAuth(ARequest, vRequest);
-
-      vInt := 0;
-      while vInt < ARequest.CustomHeaders.Count do
-      begin
-        vStr1 := ARequest.CustomHeaders.Names[vInt];
-        vStr2 := ARequest.CustomHeaders.ValueFromIndex[vInt];
-
-        Params.AddParam(vStr1, vStr2);
-        Headers.Add(vStr1 + '=' + vStr2);
-
-        vInt := vInt + 1;
-      end;
+      Params.AppendParams(ARequest.CustomHeaders,rpkHEADER);
 
       // headers tambem
       vInt := 0;
@@ -219,56 +238,17 @@ begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        Params.AddParam(vStr1, vStr2);
-        Headers.Add(vStr1 + '=' + vStr2);
+        vParam := Params.AddParam(vStr1, vStr2);
+        vParam.Kind := rpkHEADER;
 
         vInt := vInt + 1;
       end;
 
-      vInt := 0;
-      while vInt < ARequest.QueryFields.Count do
-      begin
-        vStr1 := ARequest.QueryFields.Names[vInt];
-        vStr2 := ARequest.QueryFields.ValueFromIndex[vInt];
-
-        Params.AddParam(vStr1, vStr2);
-
-        vInt := vInt + 1;
-      end;
-
-      // aki vem os forms data, inclusive os files (com o value = filename)
-      vStr2 := ARequest.ContentFields.Text;
-      vInt := 0;
-      while vInt < ARequest.ContentFields.Count do
-      begin
-        vStr1 := ARequest.ContentFields.Names[vInt];
-        vStr2 := ARequest.ContentFields.ValueFromIndex[vInt];
-
-        Params.AddParam(vStr1, vStr2);
-
-        vInt := vInt + 1;
-      end;
-
-      if ARequest.Files.Count > 0 then
-      begin
-        vInt := 0;
-        while vInt < ARequest.Files.Count do
-        begin
-          vStr1 := ARequest.Files.Files[vInt].FieldName;
-          vRequest.Params.AddParam(vStr1, ARequest.Files.Files[vInt].Stream);
-          vInt := vInt + 1;
-        end;
-      end
-      else if (ARequest.ContentLength > 0) then
-      begin
-        vRequest.Params.AddParam('ral_body', ARequest.Content);
-      end;
+      Params.AppendParams(ARequest.QueryFields,rpkQUERY);
+      Params.DecodeBody(ARequest.Content,ARequest.ContentType);
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);
-
-    if (vResponse.Body.Count > 1) then
-      vResponse.ContentType := TRALContentType.ctMULTIPARTFORMDATA;
 
     try
       with AResponse do
@@ -276,14 +256,9 @@ begin
         Code := vResponse.RespCode;
         ContentType := vResponse.ContentType;
 
-        vInt := 0;
-        while vInt < vResponse.Headers.Count do
-        begin
-          CustomHeaders.Add(vResponse.Headers.Strings[vInt]);
-          vInt := vInt + 1;
-        end;
-        CustomHeaders.Add('Connection=close');
-
+        vResponse.Params.AquireParams(CustomHeaders,rpkHEADER);
+        EncodeBody(vResponse, AResponse);
+{
         if (vResponse.Body.Count > 0) then begin
           if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
           begin
@@ -294,7 +269,8 @@ begin
             ContentStream := vResponse.Body.Param[0].AsStream;
           end;
         end;
-        FreeContentStream := True;
+}
+        CustomHeaders.Add('Connection=close');
         SendContent;
       end;
     finally
@@ -303,6 +279,11 @@ begin
   finally
     FreeAndNil(vRequest);
   end;
+end;
+
+function TRALfpHttpServerThread.GetSessionTimeout : IntegerRAL;
+begin
+  Result := FHttp.AcceptIdleTimeout;
 end;
 
 function TRALfpHttpServerThread.GetActive : boolean;
@@ -426,6 +407,12 @@ procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
 begin
   inherited;
   FHttpThread.Port := AValue;
+end;
+
+procedure TRALfpHttpServer.SetSessionTimeout(const AValue : IntegerRAL);
+begin
+  inherited;
+  FHttpThread.SessionTimeout := AValue;
 end;
 
 end.

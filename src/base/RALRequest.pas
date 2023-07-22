@@ -44,7 +44,6 @@ type
   TRALRequest = class
   private
     FAuthorization : TRALAuthorization;
-    FHeaders: TStringList;
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
@@ -58,7 +57,6 @@ type
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
-    property Headers: TStringList read FHeaders write FHeaders;
     property Params: TRALParams read FParams;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
@@ -73,7 +71,6 @@ constructor TRALRequest.Create;
 begin
   inherited;
   FAuthorization := TRALAuthorization.Create;
-  FHeaders := TStringList.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
   FParams := TRALParams.Create;
@@ -81,7 +78,6 @@ end;
 
 destructor TRALRequest.Destroy;
 begin
-  FreeAndNil(FHeaders);
   FreeAndNil(FClientInfo);
   FreeAndNil(FParams);
   FreeAndNil(FAuthorization);
