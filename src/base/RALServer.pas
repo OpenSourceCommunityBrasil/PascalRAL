@@ -22,28 +22,28 @@ type
 
   TRALBruteForceProtection = class(TPersistent)
   private
-    FEnabled : boolean;
-    FExpirationMin : IntegerRAL;
-    FMaxTry : IntegerRAL;
+    FEnabled: boolean;
+    FExpirationMin: IntegerRAL;
+    FMaxTry: IntegerRAL;
   public
     constructor Create;
   published
-    property Enabled : boolean read FEnabled write FEnabled;
-    property ExpirationMin : IntegerRAL read FExpirationMin write FExpirationMin;
-    property MaxTry : IntegerRAL read FMaxTry write FMaxTry;
+    property Enabled: boolean read FEnabled write FEnabled;
+    property ExpirationMin: IntegerRAL read FExpirationMin write FExpirationMin;
+    property MaxTry: IntegerRAL read FMaxTry write FMaxTry;
   end;
 
   { TRALClientBlockList }
 
   TRALClientBlockList = class
   private
-    FLastAccess : TDateTime;
-    FNumTry : IntegerRAL;
+    FLastAccess: TDateTime;
+    FNumTry: IntegerRAL;
   public
     constructor Create;
   published
-    property LastAccess : TDateTime read FLastAccess write FLastAccess;
-    property NumTry : IntegerRAL read FNumTry write FNumTry;
+    property LastAccess: TDateTime read FLastAccess write FLastAccess;
+    property NumTry: IntegerRAL read FNumTry write FNumTry;
   end;
 
   { TRALServer }
@@ -51,36 +51,39 @@ type
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
-    FPort: IntegerRAL;
     FAuthentication: TRALAuthServer;
+    FBlackIPList: TStringList;
+    FBlockedList: TRALStringListSafe;
     FBruteForceProtection: TRALBruteForceProtection;
-    FBlockedList : TRALStringListSafe;
-    FWhiteIPList : TStringList;
-    FBlackIPList : TStringList;
-    FRoutes: TRALRoutes;
-    FOnClientRequest: TRALOnReply;
-    FServerStatus: TStringList;
-    FShowServerStatus: boolean;
-    FFavIcon : TMemoryStream;
-    FSSL: TRALSSL;
     FEngine: StringRAL;
+    FFavIcon: TMemoryStream;
+    FPort: IntegerRAL;
+    FRoutes: TRALRoutes;
+    FServerStatus: TStringList;
+    FSessionTimeout: IntegerRAL;
+    FShowServerStatus: boolean;
+    FSSL: TRALSSL;
+    FWhiteIPList: TStringList;
+    FOnClientRequest: TRALOnReply;
   protected
     procedure AppendList(ASource: TStringList; ADest: TStringList);
     procedure AppendParams(ASource: TStringList; ADest: TRALParams); overload;
     procedure AppendParams(ASource: TStrings; ADest: TRALParams); overload;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+    procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     procedure SetEngine(const AValue: StringRAL);
     procedure SetPort(const AValue: IntegerRAL); virtual;
-    procedure SetActive(const AValue: boolean); virtual;
+    procedure SetSessionTimeout(const Value: IntegerRAL); virtual;
     procedure WriteServerStatus; virtual;
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
     function CreateRALSSL: TRALSSL; virtual;
 
-    procedure AddBlockList(AClientIP : StringRAL);
-    procedure DelBlockList(AClientIP : StringRAL);
-    function ClientIsBlocked(AClientIP : StringRAL) : boolean;
+    procedure AddBlockList(AClientIP: StringRAL);
+    procedure DelBlockList(AClientIP: StringRAL);
+    function ClientIsBlocked(AClientIP: StringRAL) : boolean;
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
   public
@@ -90,14 +93,15 @@ type
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
+    property BlackIPList: TStringList read FBlackIPList write FBlackIPList;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write FServerStatus;
+    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property WhiteIPList : TStringList read FWhiteIPList write FWhiteIPList;
-    property BlackIPList : TStringList read FBlackIPList write FBlackIPList;
+    property WhiteIPList: TStringList read FWhiteIPList write FWhiteIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
@@ -394,6 +398,11 @@ end;
 procedure TRALServer.SetPort(const AValue: IntegerRAL);
 begin
   FPort := AValue;
+end;
+
+procedure TRALServer.SetSessionTimeout(const Value: IntegerRAL);
+begin
+  FSessionTimeout := Value;
 end;
 
 function TRALServer.ValidateAuth(ARequest: TRALRequest;

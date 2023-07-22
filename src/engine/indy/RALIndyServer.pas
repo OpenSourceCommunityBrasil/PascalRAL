@@ -26,13 +26,15 @@ type
     FHttp: TIdHTTPServer;
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
   protected
-    procedure SetActive(const Value: boolean); override;
-    procedure SetPort(const Value: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
     procedure DecodeParams(var ARequest: TRALRequest;
                            ARequestInfo: TIdHTTPRequestInfo);
     procedure EncodeParams(AResponse: TRALResponse;
                            AResponseInfo: TIdHTTPResponseInfo);
+    procedure SetActive(const Value: boolean); override;
+    procedure SetSessionTimeout(const Value: IntegerRAL); override;
+    procedure SetPort(const Value: IntegerRAL); override;
+
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
@@ -339,6 +341,12 @@ begin
     FHttp.IOHandler := FHandlerSSL;
   FHttp.Active := Value;
   inherited;
+end;
+
+procedure TRALIndyServer.SetConnectTimeout(const Value: IntegerRAL);
+begin
+  inherited;
+  FHttp.SessionTimeOut := Value;
 end;
 
 procedure TRALIndyServer.SetPort(const Value: IntegerRAL);

@@ -13,22 +13,22 @@ type
 
   TRALfpHTTPCertData = class(TCertificateData)
   private
-    function GetFileName(AIndex : Integer) : string;
-    procedure SetFileName(AIndex : Integer; AValue : string);
+    function GetFileName(AIndex: Integer) : string;
+    procedure SetFileName(AIndex: Integer; AValue : string);
   published
     property KeyPassword;
     property CipherList;
     Property HostName;
-    property CertificateFile : string Index 0 read GetFileName write SetFileName;
-    property TrustCertificateFile : string Index 1 read GetFileName write SetFileName;
-    property PrivateKeyFile : string Index 2 read GetFileName write SetFileName;
-    property PFXFile : string Index 3 read GetFileName write SetFileName;
-    property CertCAFile : string Index 4 read GetFileName write SetFileName;
+    property CertificateFile: string Index 0 read GetFileName write SetFileName;
+    property TrustCertificateFile: string Index 1 read GetFileName write SetFileName;
+    property PrivateKeyFile: string Index 2 read GetFileName write SetFileName;
+    property PFXFile: string Index 3 read GetFileName write SetFileName;
+    property CertCAFile: string Index 4 read GetFileName write SetFileName;
   end;
 
   TRALfpHTTPSSL = class(TRALSSL)
   private
-    FSSLOptions : TRALfpHTTPCertData;
+    FSSLOptions: TRALfpHTTPCertData;
   public
     constructor Create;
     destructor Destroy; override;
@@ -42,21 +42,21 @@ type
 
   TRALfpHttpServerThread = class(TThread)
   private
-    FParent : TRALfpHttpServer;
-    FHttp : TFPHttpServer;
-    FEvent : TSimpleEvent;
+    FParent: TRALfpHttpServer;
+    FHttp: TFPHttpServer;
+    FEvent: TSimpleEvent;
   protected
-    function GetAtive : boolean;
-    procedure SetAtive(AValue : boolean);
+    function GetActive: boolean;
+    procedure SetActive(AValue: boolean);
 
-    function GetPort : IntegerRAL;
-    procedure SetPort(AValue : IntegerRAL);
-
-    procedure DecodeAuth(ARequest : TFPHTTPConnectionRequest; AResult : TRALRequest);
+    function GetPort: IntegerRAL;
+    procedure SetPort(AValue: IntegerRAL);
+    procedure SetSessionTimeout(const Value: IntegerRAL); override;
+    procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
     procedure EncodeParams(AResponse: TRALResponse; AResponseInfo: TFPHTTPConnectionResponse);
 
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
-                               var AResponse : TFPHTTPConnectionResponse);
+                               var AResponse: TFPHTTPConnectionResponse);
 
     procedure Execute; override;
     procedure TerminatedSet; override;
@@ -64,8 +64,8 @@ type
     constructor Create(AOwner: TRALfpHttpServer);
     destructor Destroy; override;
   published
-    property Active : boolean read GetAtive write SetAtive;
-    property Port : IntegerRAL read GetPort write SetPort;
+    property Active: boolean read GetActive write SetActive;
+    property Port: IntegerRAL read GetPort write SetPort;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -126,10 +126,16 @@ begin
   Active := vActive;
 end;
 
-procedure TRALfpHttpServerThread.DecodeAuth(ARequest : TFPHTTPConnectionRequest; AResult : TRALRequest);
+procedure TRALfpHttpServerThread.SetSessionTimeout(const Value: IntegerRAL);
+begin
+  inherited;
+  FHttp.AcceptIdleTimeout := Value;
+end;
+
+procedure TRALfpHttpServerThread.DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult : TRALRequest);
 var
-  vStr, vAux : StringRAL;
-  vInt : IntegerRAL;
+  vStr, vAux: StringRAL;
+  vInt: IntegerRAL;
 begin
   if FParent.Authentication = nil then
     Exit;
@@ -139,7 +145,7 @@ begin
 
   vStr := ARequest.GetCustomHeader('Authorization');
   if vStr <> '' then begin
-    vInt := Pos(' ',vStr);
+    vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
     if SameText(vAux,'Basic') then
       AResult.Authorization.AuthType := ratBasic
@@ -154,9 +160,9 @@ begin
 
 end;
 
-procedure TRALfpHttpServerThread.OnCommandProcess(Sender : TObject;
-                                 var ARequest : TFPHTTPConnectionRequest;
-                                 var AResponse : TFPHTTPConnectionResponse);
+procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
+                                 var ARequest: TFPHTTPConnectionRequest;
+                                 var AResponse: TFPHTTPConnectionResponse);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -175,24 +181,24 @@ begin
       ClientInfo.UserAgent := ARequest.UserAgent;
 
       Query := ARequest.URI;
-      vInt := Pos('?',Query);
+      vInt := Pos('?', Query);
       if vInt > 0 then
         Query := Copy(Query, 1, vInt - 1);
 
       Method := amGET;
-      if SameText(ARequest.Method,'POST') then
+      if SameText(ARequest.Method, 'POST') then
         Method := amPOST
-      else if SameText(ARequest.Method,'DELETE') then
+      else if SameText(ARequest.Method, 'DELETE') then
           Method := amDELETE
-      else if SameText(ARequest.Method,'PUT') then
+      else if SameText(ARequest.Method, 'PUT') then
           Method := amPUT
-      else if SameText(ARequest.Method,'OPTION') then
+      else if SameText(ARequest.Method, 'OPTION') then
           Method := amPUT;
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;
 
-      DecodeAuth(ARequest,vRequest);
+      DecodeAuth(ARequest, vRequest);
 
       vInt := 0;
       while vInt < ARequest.CustomHeaders.Count do
@@ -299,12 +305,12 @@ begin
   end;
 end;
 
-function TRALfpHttpServerThread.GetAtive : boolean;
+function TRALfpHttpServerThread.GetActive : boolean;
 begin
   Result := FParent.Active;
 end;
 
-procedure TRALfpHttpServerThread.SetAtive(AValue : boolean);
+procedure TRALfpHttpServerThread.SetActive(AValue : boolean);
 begin
   if AValue then begin
     FHttp.UseSSL := False;
@@ -348,7 +354,7 @@ begin
   inherited TerminatedSet;
 end;
 
-constructor TRALfpHttpServerThread.Create(AOwner : TRALfpHTTPServer);
+constructor TRALfpHttpServerThread.Create(AOwner: TRALfpHttpServer);
 begin
   FParent := AOwner;
 

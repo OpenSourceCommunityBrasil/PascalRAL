@@ -31,10 +31,10 @@ type
   private
     FHttp : THttpServer;
   protected
+    function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
-    function CreateRALSSL: TRALSSL; override;
-
+    procedure SetSessionTimeout(const Value: IntegerRAL); override;
     function OnCommandProcess(AContext : THttpServerRequestAbstract): Cardinal;
   public
     constructor Create(AOwner: TComponent); override;
@@ -75,6 +75,11 @@ begin
   Active := False;
 
   Active := vActive;
+end;
+
+procedure TRALSynopseServer.SetSessionTimeout(const Value: IntegerRAL);
+begin
+  inherited;
 end;
 
 function TRALSynopseServer.CreateRALSSL : TRALSSL;
@@ -134,7 +139,7 @@ constructor TRALSynopseServer.Create(AOwner : TComponent);
 begin
   inherited;
   FHttp := nil;
-  SetEngine('Synopse '+SYNOPSE_FRAMEWORK_FULLVERSION);
+  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 destructor TRALSynopseServer.Destroy;

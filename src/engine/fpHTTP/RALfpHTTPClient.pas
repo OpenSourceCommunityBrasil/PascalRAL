@@ -7,11 +7,15 @@ uses
   RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams;
 
 type
+
+  { TRALfpHttpClient }
+
   TRALfpHttpClient = class(TRALClient)
   private
   protected
     function EncodeParams(AParams: TRALParams): TStream;
-
+    procedure SetConnectTimeout(const Value: IntegerRAL); override;
+    procedure SetRequestTimeout(const Value: IntegerRAL); override;
     procedure SetUseSSL(const Value: boolean); override;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
@@ -40,6 +44,16 @@ end;
 function TRALfpHttpClient.EncodeParams(AParams: TRALParams): TStream;
 begin
 
+end;
+
+procedure TRALfpHttpClient.SetConnectTimeout(const Value: IntegerRAL);
+begin
+  inherited SetConnectTimeout(Value);
+end;
+
+procedure TRALfpHttpClient.SetRequestTimeout(const Value: IntegerRAL);
+begin
+  inherited SetRequestTimeout(Value);
 end;
 
 function TRALfpHttpClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;

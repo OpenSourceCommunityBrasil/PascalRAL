@@ -15,6 +15,8 @@ type
   protected
     function EncodeParams(AParams: TRALParams): TStream;
 
+    procedure SetConnectTimeout(const Value: IntegerRAL); override;
+    procedure SetRequestTimeout(const Value: IntegerRAL); override;
     procedure SetUseSSL(const Value: boolean); override;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
@@ -44,9 +46,9 @@ end;
 
 function TRALIndyClient.EncodeParams(AParams: TRALParams): TStream;
 var
-  vInt : IntegerRAL;
-  vStream : TStream;
-  vField : TIdFormDataField;
+  vInt: IntegerRAL;
+  vStream: TStream;
+  vField: TIdFormDataField;
 begin
   Result := nil;
   if AParams = nil then
@@ -151,6 +153,18 @@ begin
   finally
     FreeAndNil(vSource);
   end;
+end;
+
+procedure TRALIndyClient.SetConnectTimeout(const Value: IntegerRAL);
+begin
+  inherited;
+  FHttp.Socket.ConnectTimeout := Value;
+end;
+
+procedure TRALIndyClient.SetRequestTimeout(const Value: IntegerRAL);
+begin
+  inherited;
+  FHttp.Socket.ReadTimeout := Value;
 end;
 
 procedure TRALIndyClient.SetUseSSL(const Value: boolean);

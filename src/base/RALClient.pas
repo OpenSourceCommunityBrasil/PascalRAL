@@ -12,28 +12,29 @@ type
   private
     FAuthentication: TRALAuthClient;
     FBaseURL: StringRAL;
-    FUseSSL: boolean;
-
+    FConnectTimeout: IntegerRAL;
+    FRequestTimeout: IntegerRAL;
     FResponseCode: IntegerRAL;
     FResponseStream: TStream;
+    FUseSSL: boolean;
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetAuthentication(const AValue: TRALAuthClient);
-
-    procedure SetBaseURL(const AValue: StringRAL);
-    procedure SetUseSSL(const AValue: boolean); virtual;
-    procedure SetResponse(AStream: TStream);
-    procedure ResetToken;
-
     function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
                      ABody: TRALParams = nil): IntegerRAL; virtual;
+    function GetToken: boolean;
+    function GetResponseText: StringRAL;
+    function GetURL(ARoute: StringRAL): StringRAL;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure ResetToken;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
                      ABody: TRALParams = nil): IntegerRAL; virtual;
-    function GetToken: boolean;
-    function GetURL(ARoute: StringRAL): StringRAL;
-    function GetResponseText: StringRAL;
+    procedure SetAuthentication(const AValue: TRALAuthClient);
+    procedure SetBaseURL(const AValue: StringRAL);
+    procedure SetConnectTimeout(const Value: IntegerRAL); virtual;
+    procedure SetRequestTimeout(const Value: IntegerRAL); virtual;
+    procedure SetResponse(AStream: TStream);
+    procedure SetUseSSL(const AValue: boolean); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -47,6 +48,8 @@ type
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
+    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout default 5000;
+    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
   end;
 
@@ -238,6 +241,16 @@ begin
   begin
     FBaseURL := AValue;
   end;
+end;
+
+procedure TRALClient.SetConnectTimeout(const Value: IntegerRAL);
+begin
+  FConnectTimeout := Value;
+end;
+
+procedure TRALClient.SetRequestTimeout(const Value: IntegerRAL);
+begin
+  FRequestTimeout := Value;
 end;
 
 procedure TRALClient.SetResponse(AStream: TStream);
