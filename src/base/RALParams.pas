@@ -71,10 +71,12 @@ type
     procedure AppendParams(ASource: TStringList; AKind : TRALParamKind); overload;
     procedure AppendParams(ASource: TStrings;  AKind : TRALParamKind); overload;
 
-    procedure AquireParams(ASource: TStringList; AKind : TRALParamKind);
+    procedure AcquireParams(ASource: TStringList; AKind : TRALParamKind);
 
     procedure DecodeBody(ASource : TStream; AContentType : StringRAL); overload;
     procedure DecodeBody(ASource : StringRAL; AContentType : StringRAL); overload;
+
+    procedure DecodeQuery(ASource : StringRAL);
 
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
     property ParamName[name: StringRAL]: TRALParam read GetParamName;
@@ -205,11 +207,15 @@ procedure TRALParams.AppendParams(ASource : TStringList; AKind : TRALParamKind);
 var
   vInt : integer;
   vParam : TRALParam;
+  vName : StringRAL;
 begin
   for vInt := 0 to ASource.Count - 1 do
   begin
-    vParam := NewParam;
-    vParam.ParamName := ASource.Names[vInt];
+    vName := ASource.Names[vInt];
+    vParam := ParamNameKind[vName,AKind];
+    if vParam = nil then
+      vParam := NewParam;
+    vParam.ParamName := vName;
     vParam.AsString := ASource.Values[ASource.Names[vInt]];
     vParam.ContentType := TRALContentTypeHelper.ctTEXTPLAIN;
     vParam.Kind := AKind;
@@ -221,18 +227,16 @@ begin
   AppendParams(TStringList(ASource),AKind);
 end;
 
-procedure TRALParams.AquireParams(ASource : TStringList; AKind : TRALParamKind);
+procedure TRALParams.AcquireParams(ASource : TStringList; AKind : TRALParamKind);
 var
   vInt : IntegerRAL;
   vParam : TRALParam;
 begin
-  vInt := 0;
-  while vInt < FParams.Count do
+  for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
       ASource.Add(vParam.ParamName+'='+vParam.AsString);
-    vInt := vInt + 1;
   end;
 end;
 
@@ -280,6 +284,26 @@ begin
   end;
 end;
 
+procedure TRALParams.DecodeQuery(ASource : StringRAL);
+var
+  vStringList : TStringList;
+begin
+  if Trim(ASource) = '' then
+    Exit;
+
+  ASource := StringReplace(ASource,'&amp;',#38,[rfReplaceAll]);
+  ASource := StringReplace(ASource,#13#10,'|',[rfReplaceAll]);
+  ASource := StringReplace(ASource,'&',#13#10,[rfReplaceAll]);
+
+  vStringList := TStringList.Create;
+  try
+    vStringList.Text := ASource;
+    AppendParams(vStringList,rpkQUERY);
+  finally
+    FreeAndNil(vStringList);
+  end;
+end;
+
 function TRALParams.Count: IntegerRAL;
 begin
   Result := FParams.Count;
@@ -290,14 +314,12 @@ var
   vInt : IntegerRAL;
   vParam : TRALParam;
 begin
-  vInt := 0;
   Result := 0;
-  while vInt < FParams.Count do
+  for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
       Result := Result + 1;
-    vInt := vInt + 1;
   end;
 end;
 
@@ -317,22 +339,19 @@ end;
 
 function TRALParams.GetParamNameKind(name : StringRAL; kind : TRALParamKind) : TRALParam;
 var
-  idx: IntegerRAL;
+  vInt : IntegerRAL;
   vParam: TRALParam;
 begin
   Result := nil;
 
-  idx := 0;
-  while idx < FParams.Count do
+  for vInt := 0 to FParams.Count - 1 do
   begin
-    vParam := TRALParam(FParams.Items[idx]);
+    vParam := TRALParam(FParams.Items[vInt]);
     if (SameText(vParam.ParamName, name)) and (vParam.Kind = kind) then
     begin
       Result := vParam;
       Break;
     end;
-
-    idx := idx + 1;
   end;
 end;
 
@@ -345,22 +364,19 @@ end;
 
 function TRALParams.GetParamName(name: StringRAL): TRALParam;
 var
-  idx: IntegerRAL;
-  vParam: TRALParam;
+  vInt : IntegerRAL;
+  vParam : TRALParam;
 begin
   Result := nil;
 
-  idx := 0;
-  while idx < FParams.Count do
+  for vInt := 0 to FParams.Count - 1 do
   begin
-    vParam := TRALParam(FParams.Items[idx]);
+    vParam := TRALParam(FParams.Items[vInt]);
     if SameText(vParam.ParamName, name) then
     begin
       Result := vParam;
       Break;
     end;
-
-    idx := idx + 1;
   end;
 end;
 

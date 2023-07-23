@@ -104,6 +104,7 @@ begin
     end;
     vMultPart.Position := 0;
     AResponseInfo.ContentStream := vMultPart;
+    AResponseInfo.ContentType := vMultPart.RequestContentType;
     AResponseInfo.FreeContentStream := True;
   end;
 end;
@@ -122,6 +123,10 @@ begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
+
+      ContentType := ARequestInfo.ContentType;
+      ContentSize := ARequestInfo.ContentLength;
+
       Query := ARequestInfo.Document;
       case ARequestInfo.CommandType of
         hcUnknown, hcHEAD, hcGET, hcTRACE:
@@ -136,8 +141,6 @@ begin
           Method := amOPTION;
       end;
 
-      ContentType := ExtractHeaderItem(ARequestInfo.ContentType);
-      ContentSize := ARequestInfo.ContentLength;
       if AContext.Data is TRALAuthorization then
       begin
         Authorization.AuthType := TRALAuthorization(AContext.Data).AuthType;
@@ -146,8 +149,8 @@ begin
         AContext.Data := nil;
       end;
 
-      Params.AppendParams(ARequestInfo.RawHeaders,rpkHEADER);
-      Params.AppendParams(ARequestInfo.RawHeaders,rpkHEADER);
+      Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
+      Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
 
       if ARequestInfo.Params.Count > 0 then
         Params.AppendParams(ARequestInfo.Params, rpkQUERY)
@@ -156,10 +159,11 @@ begin
         vStr1 := ARequestInfo.QueryParams;
         if vStr1 = '' then
           vStr1 := ARequestInfo.UnparsedParams;
-        // TODO
+
+        Params.DecodeQuery(vStr1);
       end;
 
-      Params.DecodeBody(ARequestInfo.PostStream,ARequestInfo.ContentType);
+      Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
       // limpando para economia de memoria
       if (ARequestInfo.PostStream <> nil) then
         ARequestInfo.PostStream.Size := 0;
@@ -171,9 +175,8 @@ begin
       with AResponseInfo do
       begin
         ResponseNo := vResponse.RespCode;
-        ContentType := vResponse.ContentType;
 
-        vRequest.Params.AquireParams(CustomHeaders,rpkHEADER);
+        vRequest.Params.AcquireParams(CustomHeaders, rpkHEADER);
         EncodeBody(vResponse, AResponseInfo);
 
         CloseConnection := True;
@@ -193,7 +196,7 @@ procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
 var
   vAuth: TRALAuthorization;
 begin
-  VHandled := False;
+  VHandled := True;
   if Authentication <> nil then
   begin
     case Authentication.AuthType of

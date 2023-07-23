@@ -64,7 +64,7 @@ end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
-  Result := '';
+  Result := Params.Param[0].AsString;
 end;
 
 procedure TRALResponse.SetResponseStream(const AValue: TStream);

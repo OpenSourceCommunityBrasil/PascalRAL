@@ -188,9 +188,12 @@ var
   vFreeItem : boolean;
 begin
   if FItemForm <> nil then begin
+    // tirando CRLF do fim do arquivo
+    FItemForm.BufferStream.Size := FItemForm.BufferStream.Size - 2;
+
     vFreeItem := False;
     if Assigned(FOnFormDataComplete) then
-      FOnFormDataComplete(Self, FItemForm,vFreeItem);
+      FOnFormDataComplete(Self, FItemForm, vFreeItem);
 
     if not vFreeItem then
       FFormData.Add(FItemForm)

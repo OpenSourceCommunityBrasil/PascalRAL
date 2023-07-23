@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, syncobjs,
-  fphttpserver, sslbase, fpHTTP, fphttpapp,
+  fphttpserver, sslbase, fpHTTP, fphttpapp, httpprotocol,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams;
 
@@ -149,7 +149,7 @@ begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
-  vStr := ARequest.GetCustomHeader('Authorization');
+  vStr := ARequest.GetHeader(hhAuthorization);
   if vStr <> '' then begin
     vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
@@ -198,6 +198,7 @@ var
   vParam : TRALParam;
   vInt: integer;
   vStr1, vStr2: StringRAL;
+  vParamQuery : StringRAL;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -213,7 +214,12 @@ begin
       Query := ARequest.URI;
       vInt := Pos('?', Query);
       if vInt > 0 then
+      begin
+        vParamQuery := Copy(Query, vInt + 1, Length(Query));
         Query := Copy(Query, 1, vInt - 1);
+
+        Params.DecodeQuery(vParamQuery);
+      end;
 
       Method := amGET;
       if SameText(ARequest.Method, 'POST') then
@@ -238,8 +244,7 @@ begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        vParam := Params.AddParam(vStr1, vStr2);
-        vParam.Kind := rpkHEADER;
+        vParam := Params.AddParam(vStr1, vStr2, rpkHEADER);
 
         vInt := vInt + 1;
       end;
@@ -256,20 +261,9 @@ begin
         Code := vResponse.RespCode;
         ContentType := vResponse.ContentType;
 
-        vResponse.Params.AquireParams(CustomHeaders,rpkHEADER);
+        vResponse.Params.AcquireParams(CustomHeaders,rpkHEADER);
         EncodeBody(vResponse, AResponse);
-{
-        if (vResponse.Body.Count > 0) then begin
-          if SameText(ContentType, TRALContentType.ctMULTIPARTFORMDATA) then
-          begin
-            EncodeParams(vResponse, AResponse);
-          end
-          else
-          begin
-            ContentStream := vResponse.Body.Param[0].AsStream;
-          end;
-        end;
-}
+
         CustomHeaders.Add('Connection=close');
         SendContent;
       end;

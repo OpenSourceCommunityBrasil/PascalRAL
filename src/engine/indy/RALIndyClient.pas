@@ -8,12 +8,15 @@ uses
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
+
+  { TRALIndyClient }
+
   TRALIndyClient = class(TRALClient)
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
   protected
-    function EncodeParams(AParams: TRALParams): TStream;
+    function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
 
     procedure SetConnectTimeout(const Value: IntegerRAL); override;
     procedure SetRequestTimeout(const Value: IntegerRAL); override;
@@ -44,39 +47,34 @@ begin
   inherited;
 end;
 
-function TRALIndyClient.EncodeParams(AParams: TRALParams): TStream;
+function TRALIndyClient.EncodeParams(AParams : TRALParams; var AFreeAfter : boolean) : TStream;
 var
   vInt: IntegerRAL;
-  vStream: TStream;
-  vField: TIdFormDataField;
 begin
   Result := nil;
   if AParams = nil then
     Exit;
 
-  if AParams.Count = 0 then
-    Exit;
+  AFreeAfter := False;
 
   if AParams.Count = 1 then
   begin
     Result := AParams.Param[0].AsStream;
   end
-  else
+  else if AParams.Count > 1 then
   begin
     Result := TIdMultiPartFormDataStream.Create;
-    vInt := 0;
-    while vInt < AParams.Count do
+    for vInt := 0 to AParams.Count - 1 do
     begin
-      vStream := AParams.Param[vInt].AsStream;
       with Result as TIdMultiPartFormDataStream do
       begin
-        vField := AddFormField(AParams.Param[vInt].ParamName,
-                               AParams.Param[vInt].ContentType,
-                               '', // charset
-                               vStream);
+        AddFormField(AParams.Param[vInt].ParamName,
+                     AParams.Param[vInt].ContentType,
+                     '', // charset
+                     AParams.Param[vInt].AsStream);
       end;
-      vInt := vInt + 1;
     end;
+    AFreeAfter := True;
   end;
   Result.Position := 0;
 end;
@@ -85,73 +83,58 @@ function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
 var
   vInt: IntegerRAL;
-  vSource, vResult, vContent: TStream;
+  vSource, vResult : TStream;
   vStr1, vStr2: StringRAL;
+  vFree : boolean;
 begin
   inherited;
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
-//  FHttp.Request.ContentType := '';
 
   if AHeaders <> nil then
   begin
-    vInt := 0;
-    while vInt < AHeaders.Count do
+    for vInt := 0 to AHeaders.Count - 1 do
     begin
       vStr1 := AHeaders.Names[vInt];
       vStr2 := AHeaders.ValueFromIndex[vInt];
-      FHttp.Request.CustomHeaders.AddValue(vStr1,vStr2);
-      vInt := vInt + 1;
+
+      FHttp.Request.CustomHeaders.AddValue(vStr1, vStr2);
     end;
   end;
 
-  vSource := EncodeParams(ABody);
+  vFree := False;
+  vSource := EncodeParams(ABody,vFree);
   try
-    vContent := TMemoryStream.Create;
+    vResult := TStringStream.Create;
     try
-      try
-        case AMethod of
-          amGET:
-            FHttp.Get(AURL, vContent);
+      case AMethod of
+        amGET:
+          FHttp.Get(AURL, vResult);
 
-          amPOST:
-            FHttp.Post(AURL, vSource, vContent);
+        amPOST:
+          FHttp.Post(AURL, vSource, vResult);
 
-          amPUT:
-            FHttp.Put(AURL, vSource, vContent);
+        amPUT:
+          FHttp.Put(AURL, vSource, vResult);
 
-          amPATCH:
-            FHttp.Patch(AURL, vSource, vContent);
+        amPATCH:
+          FHttp.Patch(AURL, vSource, vResult);
 
-          amDELETE:
-            FHttp.Delete(AURL, vContent);
-
-        end;
-        vContent.Position := 0;
-
-        if Pos('text/', LowerCase(FHttp.Response.ContentType)) = 1 then
-        begin
-          vResult := TStringStream.Create;
-          vResult.CopyFrom(vContent, vContent.Size);
-        end
-        else
-        begin
-          vResult := TMemoryStream.Create;
-          vResult.CopyFrom(vContent, vContent.Size);
-        end;
-      except
-        vResult := TStringStream.Create(FHttp.ResponseText);
+        amDELETE:
+          FHttp.Delete(AURL, vResult);
       end;
-      vResult.Position := 0;
-
-      ResponseCode := FHttp.ResponseCode;
-      SetResponse(vResult);
-      Result := FHttp.ResponseCode;
-    finally
-      FreeAndNil(vContent);
+    except
+      vResult.Size := 0;
+      TStringStream(vResult).WriteString(FHttp.ResponseText);
     end;
+    vResult.Position := 0;
+
+    ResponseCode := FHttp.ResponseCode;
+    SetResponse(vResult);
+    Result := FHttp.ResponseCode;
   finally
-    FreeAndNil(vSource);
+    if vFree then
+      FreeAndNil(vSource);
   end;
 end;
 
