@@ -146,7 +146,7 @@ begin
 
   Result.ParamName := AName;
   Result.AsString := AContent;
-  Result.ContentType := TRALContentTypeHelper.ctTEXTPLAIN;
+  Result.ContentType := TRALContentType.ctTEXTPLAIN;
 end;
 
 function TRALParams.AddParam(AName : StringRAL; AContent : TStream; AKind : TRALParamKind) : TRALParam;
@@ -157,7 +157,7 @@ begin
 
   Result.ParamName := AName;
   Result.AsStream := AContent;
-  Result.ContentType := TRALContentTypeHelper.ctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
 end;
 
 function TRALParams.AddValue(AContent : StringRAL) : TRALParam;
@@ -165,7 +165,7 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsString := AContent;
-  Result.ContentType := TRALContentTypeHelper.ctTEXTPLAIN;
+  Result.ContentType := TRALContentType.ctTEXTPLAIN;
 end;
 
 function TRALParams.AddValue(AContent : TStream) : TRALParam;
@@ -173,7 +173,7 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsStream := AContent;
-  Result.ContentType := TRALContentTypeHelper.ctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
 end;
 
 procedure TRALParams.ClearParams;
@@ -217,7 +217,7 @@ begin
       vParam := NewParam;
     vParam.ParamName := vName;
     vParam.AsString := ASource.Values[ASource.Names[vInt]];
-    vParam.ContentType := TRALContentTypeHelper.ctTEXTPLAIN;
+    vParam.ContentType := TRALContentType.ctTEXTPLAIN;
     vParam.Kind := AKind;
   end;
 end;

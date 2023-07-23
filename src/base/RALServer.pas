@@ -68,6 +68,10 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
+    procedure SetServerStatus(AValue : TStringList);
+    procedure SetBlackIPList(AValue : TStringList);
+    procedure SetWhiteIPList(AValue : TStringList);
+
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     procedure SetEngine(const AValue: StringRAL);
@@ -90,15 +94,15 @@ type
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    property BlackIPList: TStringList read FBlackIPList write FBlackIPList;
+    property BlackIPList: TStringList read FBlackIPList write SetBlackIPList;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
-    property ServerStatus: TStringList read FServerStatus write FServerStatus;
+    property ServerStatus: TStringList read FServerStatus write SetServerStatus;
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property WhiteIPList: TStringList read FWhiteIPList write FWhiteIPList;
+    property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
   end;
@@ -271,6 +275,28 @@ begin
   inherited;
 end;
 
+procedure TRALServer.SetServerStatus(AValue : TStringList);
+begin
+  if FServerStatus =AValue then
+    Exit;
+
+  FServerStatus.Text := AValue.Text;
+end;
+
+procedure TRALServer.SetBlackIPList(AValue : TStringList);
+begin
+  if FBlackIPList = AValue then
+    Exit;
+  FBlackIPList.Text := AValue.Text;
+end;
+
+procedure TRALServer.SetWhiteIPList(AValue : TStringList);
+begin
+  if FWhiteIPList = AValue then
+    Exit;
+  FWhiteIPList.Text := AValue.Text;
+end;
+
 procedure TRALServer.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
@@ -390,8 +416,8 @@ end;
 
 procedure TRALServer.WriteServerStatus;
 begin
-  FServerStatus.Clear;
-  FServerStatus.Text := RALDefaultPage;
+  if Trim(FServerStatus.Text) = '' then
+    FServerStatus.Text := RALDefaultPage;
 end;
 
 end.
