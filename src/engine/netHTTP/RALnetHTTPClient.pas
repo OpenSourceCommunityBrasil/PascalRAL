@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  System.Net.HttpClientComponent, System.Net.UrlClient, System.Net.HttpClient,
+  System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
@@ -16,10 +16,11 @@ type
     FHttp: TNetHTTPClient;
   protected
     function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
-
+    procedure SetUserAgent(const AValue : StringRAL); override;
     procedure SetConnectTimeout(const Value: IntegerRAL); override;
     procedure SetRequestTimeout(const Value: IntegerRAL); override;
     procedure SetUseSSL(const Value: boolean); override;
+
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
                      ABody: TRALParams = nil): IntegerRAL; override;
@@ -36,6 +37,7 @@ constructor TRALnetHTTPClient.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := TNetHTTPClient.Create(nil);
+  SetEngine('netHTTP');
 end;
 
 destructor TRALnetHTTPClient.Destroy;
@@ -73,7 +75,7 @@ var
   vStr1, vStr2: StringRAL;
   vFree : boolean;
   vHeaders : TNetHeaders;
-  vReponse : THTTPResponse;
+  vReponse : IHTTPResponse;
 begin
   inherited;
 
@@ -85,7 +87,7 @@ begin
       vStr1 := AHeaders.Names[vInt];
       vStr2 := AHeaders.ValueFromIndex[vInt];
 
-      vHeaders[vInt] := AHeaders.Names[vInt]+': '+AHeaders.Names[vInt];
+      vHeaders[vInt] := TNameValuePair.Create(vStr1, vStr2);
     end;
   end;
 
@@ -96,19 +98,19 @@ begin
     try
       case AMethod of
         amGET:
-          vReponse := FHttp.Get(AURL, vResult, AHeaders);
+          vReponse := FHttp.Get(AURL, vResult, vHeaders);
 
         amPOST:
-          vReponse := FHttp.Post(AURL, vSource, vResult, AHeaders);
+          vReponse := FHttp.Post(AURL, vSource, vResult, vHeaders);
 
         amPUT:
-          vReponse := FHttp.Put(AURL, vSource, vResult, AHeaders);
+          vReponse := FHttp.Put(AURL, vSource, vResult, vHeaders);
 
         amPATCH:
-          vReponse := FHttp.Patch(AURL, vSource, vResult, AHeaders);
+          vReponse := FHttp.Patch(AURL, vSource, vResult, vHeaders);
 
         amDELETE:
-          vReponse := FHttp.Delete(AURL, vResult, AHeaders);
+          vReponse := FHttp.Delete(AURL, vResult, vHeaders);
       end;
     except
       vResult.Size := 0;
@@ -137,12 +139,22 @@ begin
   FHttp.ResponseTimeout := Value;
 end;
 
+procedure TRALnetHTTPClient.SetUserAgent(const AValue: StringRAL);
+begin
+  inherited;
+  FHttp.UserAgent := AValue
+end;
+
 procedure TRALnetHTTPClient.SetUseSSL(const Value: boolean);
 begin
   inherited;
   FHttp.SecureProtocols := [];
   if Value then
-    FHttp.SecureProtocols := [SSL2, SSL3, TLS1, TLS11, TLS12]
+    FHttp.SecureProtocols := [THTTPSecureProtocol.SSL2,
+                              THTTPSecureProtocol.SSL3,
+                              THTTPSecureProtocol.TLS1,
+                              THTTPSecureProtocol.TLS11,
+                              THTTPSecureProtocol.TLS12]
 end;
 
 end.

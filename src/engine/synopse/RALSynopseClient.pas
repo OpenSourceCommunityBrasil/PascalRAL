@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  mormot.net.client,
+  mormot.net.client, mormot.core.base,
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
@@ -16,6 +16,10 @@ type
     FHttp : THttpClientSocket;
   protected
     function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
+
+    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
+    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
+    procedure SetUserAgent(const AValue : StringRAL); override;
 
     procedure SetUseSSL(const AValue: boolean); override;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
@@ -34,6 +38,7 @@ constructor TRALSynopseClient.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := THttpClientSocket.Create;
+  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 destructor TRALSynopseClient.Destroy;
@@ -61,6 +66,24 @@ begin
   Result.Position := 0;
 end;
 
+procedure TRALSynopseClient.SetConnectTimeout(const AValue : IntegerRAL);
+begin
+  inherited;
+  FHttp.SendTimeout := AValue;
+end;
+
+procedure TRALSynopseClient.SetRequestTimeout(const AValue : IntegerRAL);
+begin
+  inherited;
+  FHttp.ReceiveTimeout := AValue;
+end;
+
+procedure TRALSynopseClient.SetUserAgent(const AValue : StringRAL);
+begin
+  inherited;
+  FHttp.UserAgent := AValue;
+end;
+
 function TRALSynopseClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
 var
@@ -72,8 +95,12 @@ var
 begin
   inherited;
   vHeader := '';
-  if AHeaders <> nil then
-    vHeader := AHeaders.Text;
+  if AHeaders <> nil then begin
+    for vInt := 0 to AHeaders.Count - 1 do
+      vHeader := vHeader + AHeaders.Names[vInt]+': '+AHeaders.ValueFromIndex[vInt] + #13#10;
+  end;
+
+  vHeader := vHeader + 'User-Agent: '+UserAgent;
 
   vFree := False;
   vSource := EncodeParams(ABody,vFree);

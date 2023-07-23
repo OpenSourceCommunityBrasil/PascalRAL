@@ -8,6 +8,9 @@ uses
   RALParams, RALMIMETypes;
 
 type
+
+  { TRALClient }
+
   TRALClient = class(TRALComponent)
   private
     FAuthentication: TRALAuthClient;
@@ -17,6 +20,8 @@ type
     FResponseCode: IntegerRAL;
     FResponseStream: TStream;
     FUseSSL: boolean;
+    FUserAgent : StringRAL;
+    FEngine : StringRAL;
   protected
     function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
@@ -31,13 +36,16 @@ type
                      ABody: TRALParams = nil): IntegerRAL; virtual;
     procedure SetAuthentication(const AValue: TRALAuthClient);
     procedure SetBaseURL(const AValue: StringRAL);
-    procedure SetConnectTimeout(const Value: IntegerRAL); virtual;
-    procedure SetRequestTimeout(const Value: IntegerRAL); virtual;
+    procedure SetEngine(const AValue: StringRAL);
+    procedure SetUserAgent(const AValue : StringRAL); virtual;
+    procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
+    procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
     procedure SetResponse(AStream: TStream);
     procedure SetUseSSL(const AValue: boolean); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     function Delete(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
     function Get(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
     function Post(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
@@ -51,11 +59,21 @@ type
     property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout default 5000;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
+    property UserAgent: StringRAL read FUserAgent write SetUserAgent;
   end;
 
 implementation
 
 { TRALClient }
+
+procedure TRALClient.SetUserAgent(const AValue : StringRAL);
+begin
+  if FUserAgent = AValue then
+    Exit;
+
+  if AValue <> '' then
+    FUserAgent := AValue;
+end;
 
 function TRALClient.BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
@@ -84,6 +102,7 @@ begin
   FUseSSL := False;
   FResponseCode := 0;
   FResponseStream := nil;
+  FUserAgent := 'RALClient '+RALVERSION;
 end;
 
 function TRALClient.Delete(ARoute: StringRAL; AHeaders: TStringList): IntegerRAL;
@@ -245,14 +264,20 @@ begin
   end;
 end;
 
-procedure TRALClient.SetConnectTimeout(const Value: IntegerRAL);
+procedure TRALClient.SetEngine(const AValue : StringRAL);
 begin
-  FConnectTimeout := Value;
+  FEngine := AValue;
+  UserAgent := 'RALClient '+RALVERSION+'; Engine '+FEngine;
 end;
 
-procedure TRALClient.SetRequestTimeout(const Value: IntegerRAL);
+procedure TRALClient.SetConnectTimeout(const AValue: IntegerRAL);
 begin
-  FRequestTimeout := Value;
+  FConnectTimeout := AValue;
+end;
+
+procedure TRALClient.SetRequestTimeout(const AValue: IntegerRAL);
+begin
+  FRequestTimeout := AValue;
 end;
 
 procedure TRALClient.SetResponse(AStream: TStream);

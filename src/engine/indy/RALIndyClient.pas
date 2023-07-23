@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication,
+  IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
 
 type
@@ -18,9 +18,11 @@ type
   protected
     function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
 
-    procedure SetConnectTimeout(const Value: IntegerRAL); override;
-    procedure SetRequestTimeout(const Value: IntegerRAL); override;
     procedure SetUseSSL(const Value: boolean); override;
+    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
+    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
+    procedure SetUserAgent(const AValue : StringRAL); override;
+
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
                      ABody: TRALParams = nil): IntegerRAL; override;
@@ -38,6 +40,7 @@ begin
   inherited;
   FHttp := TIdHTTP.Create(nil);
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
+  SetEngine('Indy ' + gsIdProductVersion);
 end;
 
 destructor TRALIndyClient.Destroy;
@@ -90,6 +93,7 @@ begin
   inherited;
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
+  FHttp.Request.UserAgent := UserAgent;
 
   if AHeaders <> nil then
   begin
@@ -138,16 +142,22 @@ begin
   end;
 end;
 
-procedure TRALIndyClient.SetConnectTimeout(const Value: IntegerRAL);
+procedure TRALIndyClient.SetConnectTimeout(const AValue: IntegerRAL);
 begin
   inherited;
-  FHttp.Socket.ConnectTimeout := Value;
+  FHttp.Socket.ConnectTimeout := AValue;
 end;
 
-procedure TRALIndyClient.SetRequestTimeout(const Value: IntegerRAL);
+procedure TRALIndyClient.SetRequestTimeout(const AValue: IntegerRAL);
 begin
   inherited;
-  FHttp.Socket.ReadTimeout := Value;
+  FHttp.Socket.ReadTimeout := AValue;
+end;
+
+procedure TRALIndyClient.SetUserAgent(const AValue : StringRAL);
+begin
+  inherited;
+  FHttp.Request.UserAgent := AValue;
 end;
 
 procedure TRALIndyClient.SetUseSSL(const Value: boolean);

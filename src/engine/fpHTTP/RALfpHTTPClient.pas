@@ -35,6 +35,7 @@ constructor TRALfpHttpClient.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := TFPHTTPClient.Create(nil);
+  SetEngine('fpHTTP');
 end;
 
 destructor TRALfpHttpClient.Destroy;
@@ -94,6 +95,8 @@ begin
       FHttp.RequestHeaders.AddPair(vStr1, vStr2);
     end;
   end;
+
+  FHttp.RequestHeaders.AddPair('User-Agent',UserAgent);
 
   vFree := False;
   vSource := EncodeParams(ABody,vFree);
