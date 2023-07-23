@@ -150,7 +150,7 @@ begin
       end;
 
       Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
-      Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
+      Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
 
       if ARequestInfo.Params.Count > 0 then
         Params.AppendParams(ARequestInfo.Params, rpkQUERY)

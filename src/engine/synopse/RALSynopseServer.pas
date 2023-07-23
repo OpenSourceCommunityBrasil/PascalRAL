@@ -155,16 +155,18 @@ begin
       vStringList := TStringList.Create;
       try
         vStringList.NameValueSeparator := ':';
-        vStringList.DelimitedText := ': ';
         vStringList.Text := AContext.InHeaders;
 
+        for vInt := 0 to vStringList.Count - 1 do
+          vStringList.ValueFromIndex[vInt] := TrimLeft(vStringList.ValueFromIndex[vInt]);
+
         DecodeAuth(vStringList,vRequest);
-        Params.AppendParams(vStringList,rpkHEADER);
+        Params.AppendParams(vStringList, rpkHEADER);
       finally
         FreeAndNil(vStringList);
       end;
 
-      Params.DecodeBody(AContext.InContent,AContext.InContentType);
+      Params.DecodeBody(AContext.InContent, AContext.InContentType);
     end;
 
     vResponse := ProcessCommands(vRequest);
@@ -172,9 +174,8 @@ begin
     try
       vStringList := TStringList.Create;
       try
-        vResponse.Params.AcquireParams(vStringList,rpkHEADER);
+        vResponse.Params.AcquireParams(vStringList, rpkHEADER);
         vStringList.NameValueSeparator := ':';
-        vStringList.DelimitedText := ': ';
         AContext.OutCustomHeaders := vStringList.Text;
       finally
         FreeAndNil(vStringList);

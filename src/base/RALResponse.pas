@@ -59,12 +59,14 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := nil;
+  if Params.Count(rpkBODY) > 0 then
+    Result := Params.Param[0].AsStream;
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
-  Result := Params.Param[0].AsString;
+  if Params.Count(rpkBODY) > 0 then
+    Result := Params.Param[0].AsString;
 end;
 
 procedure TRALResponse.SetResponseStream(const AValue: TStream);
@@ -75,6 +77,7 @@ begin
   if AValue.Size > 0 then begin
     vParam := FParams.AddValue(AValue);
     vParam.ContentType := FContentType;
+    vParam.Kind := rpkBODY;
   end;
 end;
 
@@ -86,6 +89,7 @@ begin
   if AValue <> '' then begin
     vParam := FParams.AddValue(AValue);
     vParam.ContentType := FContentType;
+    vParam.Kind := rpkBODY;
   end;
 end;
 
