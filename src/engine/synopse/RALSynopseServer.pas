@@ -174,8 +174,7 @@ begin
     try
       vStringList := TStringList.Create;
       try
-        vResponse.Params.AcquireParams(vStringList, rpkHEADER);
-        vStringList.NameValueSeparator := ':';
+        vResponse.Params.AcquireParams(vStringList, rpkHEADER, ': ');
         AContext.OutCustomHeaders := vStringList.Text;
       finally
         FreeAndNil(vStringList);

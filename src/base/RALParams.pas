@@ -71,7 +71,7 @@ type
     procedure AppendParams(ASource: TStringList; AKind : TRALParamKind); overload;
     procedure AppendParams(ASource: TStrings;  AKind : TRALParamKind); overload;
 
-    procedure AcquireParams(ASource: TStringList; AKind : TRALParamKind);
+    procedure AcquireParams(ASource: TStringList; AKind : TRALParamKind; ASeparator : StringRAL = '=');
 
     procedure DecodeBody(ASource : TStream; AContentType : StringRAL); overload;
     procedure DecodeBody(ASource : StringRAL; AContentType : StringRAL); overload;
@@ -227,7 +227,7 @@ begin
   AppendParams(TStringList(ASource),AKind);
 end;
 
-procedure TRALParams.AcquireParams(ASource : TStringList; AKind : TRALParamKind);
+procedure TRALParams.AcquireParams(ASource : TStringList; AKind : TRALParamKind; ASeparator : StringRAL);
 var
   vInt : IntegerRAL;
   vParam : TRALParam;
@@ -236,7 +236,7 @@ begin
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
-      ASource.Add(vParam.ParamName+'='+vParam.AsString);
+      ASource.Add(vParam.ParamName+ASeparator+vParam.AsString);
   end;
 end;
 

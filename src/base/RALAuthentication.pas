@@ -162,7 +162,7 @@ end;
 procedure TRALServerJWTAuth.AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
   var AResponse: TRALResponse);
 var
-  vToken, vPayload: StringRAL;
+  vToken : StringRAL;
   vResult: boolean;
   vParam: TRALParam;
   vJson: TRALJSONObject;
@@ -340,7 +340,7 @@ var
     AResponse.Answer(401,RAL401Page);
     if FAuthDialog then
     begin
-      vParam := AResponse.Params.AddParam('WWW-Authenticate','Basic realm="RAL Basic');
+      vParam := AResponse.Params.AddParam('WWW-Authenticate','Basic realm="RAL Basic"');
       vParam.Kind := rpkHEADER;
     end;
   end;
