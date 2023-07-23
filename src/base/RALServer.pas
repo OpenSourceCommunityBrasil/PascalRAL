@@ -77,7 +77,6 @@ type
     procedure SetEngine(const AValue: StringRAL);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
-    procedure WriteServerStatus; virtual;
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
     function CreateRALSSL: TRALSSL; virtual;
@@ -147,13 +146,16 @@ begin
   FWhiteIPList := TStringList.Create;
   FBlackIPList := TStringList.Create;
 
-  // liberando localhost
-//  FWhiteIPList.Add('localhost');
-//  FWhiteIPList.Add('127.0.0.1');
-//  FWhiteIPList.Add('0:0:0:0:0:0:0:1');
-//  FWhiteIPList.Add('::1');
+//  liberando localhost
+//  if FWhiteIPList.Text = '' then begin
+//    FWhiteIPList.Add('localhost');
+//    FWhiteIPList.Add('127.0.0.1');
+//    FWhiteIPList.Add('0:0:0:0:0:0:0:1');
+//    FWhiteIPList.Add('::1');
+//  end;
 
-  WriteServerStatus;
+  if Trim(FServerStatus.Text) = '' then
+    FServerStatus.Text := RALDefaultPage;
 end;
 
 function TRALServer.CreateRALSSL: TRALSSL;
@@ -280,7 +282,10 @@ begin
   if FServerStatus =AValue then
     Exit;
 
-  FServerStatus.Text := AValue.Text;
+  if Trim(AValue.Text) <> '' then
+    FServerStatus.Text := AValue.Text
+  else
+    FServerStatus.Text := RALDefaultPage;
 end;
 
 procedure TRALServer.SetBlackIPList(AValue : TStringList);
@@ -412,12 +417,6 @@ begin
     FAuthentication.Validate(ARequest, AResponse);
     Result := AResponse.RespCode = 200;
   end;
-end;
-
-procedure TRALServer.WriteServerStatus;
-begin
-  if Trim(FServerStatus.Text) = '' then
-    FServerStatus.Text := RALDefaultPage;
 end;
 
 end.
