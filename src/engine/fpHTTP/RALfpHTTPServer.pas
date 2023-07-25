@@ -251,6 +251,11 @@ begin
 
       Params.AppendParams(ARequest.QueryFields,rpkQUERY);
       Params.DecodeBody(ARequest.Content,ARequest.ContentType);
+
+      ARequest.Content := '';
+      ARequest.QueryFields.Clear;
+      ARequest.CustomHeaders.Clear;
+      ARequest.Files.Clear;
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);

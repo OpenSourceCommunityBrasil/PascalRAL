@@ -46,6 +46,9 @@ type
     property NumTry: IntegerRAL read FNumTry write FNumTry;
   end;
 
+  TRALOnClientTryBlocked = procedure(Sender : TObject; AClientIP : StringRAL; ANumTry : IntegerRAL) of object;
+  TRALOnClientWasBlocked = procedure(Sender : TObject; AClientIP : StringRAL) of object;
+
   { TRALServer }
 
   TRALServer = class(TRALComponent)
@@ -64,7 +67,10 @@ type
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
     FWhiteIPList: TStringList;
+
     FOnClientRequest: TRALOnReply;
+    FOnClientTryBlocked: TRALOnClientTryBlocked;
+    FOnClientWasBlocked: TRALOnClientWasBlocked;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
@@ -104,6 +110,8 @@ type
     property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
 
     property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
+    property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
+    property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
 
 implementation
@@ -180,11 +188,14 @@ begin
   if vClient = nil then
   begin
     vClient := TRALClientBlockList.Create;
-    FBlockedList.AddObject(AClientIP,vClient);
+    FBlockedList.AddObject(AClientIP, vClient);
   end;
 
   vClient.LastAccess := Now;
   vClient.NumTry := vClient.NumTry + 1;
+
+  if Assigned(FOnClientTryBlocked) then
+    FOnClientTryBlocked(Self,AClientIP,vClient.NumTry);
 end;
 
 procedure TRALServer.DelBlockList(AClientIP : StringRAL);
@@ -194,7 +205,7 @@ begin
   if FAuthentication = nil then
     Exit;
 
-  FBlockedList.Remove(AClientIP,True);
+  FBlockedList.Remove(AClientIP, True);
 end;
 
 function TRALServer.ClientIsBlocked(AClientIP : StringRAL) : boolean;
@@ -320,6 +331,8 @@ begin
 
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
+    if Assigned(FOnClientWasBlocked) then
+      FOnClientWasBlocked(Self,ARequest.ClientInfo.IP);
     Result.Answer(404, RAL404Page);
     Exit;
   end;
@@ -354,8 +367,8 @@ begin
   end
   else
   begin
-    if (not(amALL in vRoute.AllowedMethods)) and
-       (not(ARequest.Method in vRoute.AllowedMethods)) then
+    if (not (amALL in vRoute.AllowedMethods)) and
+       (not (ARequest.Method in vRoute.AllowedMethods)) then
     begin
       Result.Answer(404, RAL404Page);
     end
