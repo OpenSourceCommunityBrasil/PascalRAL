@@ -30,7 +30,8 @@ type
     procedure SetRouteDomain(AValue : StringRAL);
     function RouteExists(ARoute : StringRAL) : boolean;
 
-    procedure SetDisplayName(const Value: string); override;
+    procedure SetDescription(const AValue: TStringList);
+    procedure SetDisplayName(const AValue: string); override;
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -42,7 +43,7 @@ type
   published
     property RouteDomain : StringRAL read FRouteDomain write SetRouteDomain;
     property RouteName : StringRAL read FRouteName write SetRouteName;
-    property Description: TStringList read FDescription write FDescription;
+    property Description: TStringList read FDescription write SetDescription;
     // verbos que a rota responde
     property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
     // verbos que vão ignorar autenticação
@@ -148,6 +149,7 @@ end;
 function TRALRoute.GetDisplayName: string;
 begin
   Result := FRouteName;
+  inherited;
 end;
 
 function TRALRoute.GetNamePath: string;
@@ -155,15 +157,33 @@ var
   vName : StringRAL;
 begin
   vName := Collection.GetNamePath;
-  if Collection.Owner is TComponent then
-    vName := TComponent(Collection.Owner).Name + '_';
-  Result := vName + FRouteName;
+  {$IFDEF FPC}
+    if (Collection.Owner <> nil) and
+       (Collection.Owner is TComponent) then
+      vName := TComponent(Collection.Owner).Name;
+  {$ENDIF}
+
+  if (FRouteDomain <> '') and (FRouteDomain <> '/') then
+    vName := vName + '_' + StringReplace(FRouteDomain, '/', '_', [rfReplaceAll]);
+
+  Result := vName + '_' + FRouteName;
+  while Pos('__', Result) > 0 do
+    Result := StringReplace(Result, '__', '_', [rfReplaceAll]);
 end;
 
-procedure TRALRoute.SetDisplayName(const Value: string);
+procedure TRALRoute.SetDescription(const AValue: TStringList);
 begin
-  if Trim(Value) <> '' then
-    FRouteName := Value;
+  if FDescription = AValue then
+    Exit;
+
+  FDescription.Text := AValue.Text;
+end;
+
+procedure TRALRoute.SetDisplayName(const AValue: string);
+begin
+  if Trim(AValue) <> '' then
+    FRouteName := AValue;
+  inherited;
 end;
 
 { RALRoutes }

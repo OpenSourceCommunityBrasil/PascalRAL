@@ -290,7 +290,7 @@ end;
 
 procedure TRALServer.SetServerStatus(AValue : TStringList);
 begin
-  if FServerStatus =AValue then
+  if FServerStatus = AValue then
     Exit;
 
   if Trim(AValue.Text) <> '' then
