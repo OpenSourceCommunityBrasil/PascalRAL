@@ -167,6 +167,9 @@ begin
       end;
 
       Params.DecodeBody(AContext.InContent, AContext.InContentType);
+
+      AContext.InContent := '';
+      AContext.InHeaders := '';
     end;
 
     vResponse := ProcessCommands(vRequest);

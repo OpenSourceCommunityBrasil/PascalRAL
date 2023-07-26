@@ -164,9 +164,14 @@ begin
       end;
 
       Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
+
       // limpando para economia de memoria
       if (ARequestInfo.PostStream <> nil) then
         ARequestInfo.PostStream.Size := 0;
+
+      ARequestInfo.RawHeaders.Clear;
+      ARequestInfo.CustomHeaders.Clear;
+      ARequestInfo.Params.Clear;
     end;
 
     vResponse := ProcessCommands(vRequest);
