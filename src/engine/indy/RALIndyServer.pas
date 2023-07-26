@@ -53,7 +53,7 @@ implementation
 constructor TRALIndyServer.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('Indy ' + gsIdProductVersion);
+  SetEngine('Indy ' + gsIdVersion);// gsIdProductVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
   {$IFDEF FPC}

@@ -40,7 +40,7 @@ begin
   inherited;
   FHttp := TIdHTTP.Create(nil);
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
-  SetEngine('Indy ' + gsIdProductVersion);
+  SetEngine('Indy ' + gsIdVersion); //gsIdProductVersion);
 end;
 
 destructor TRALIndyClient.Destroy;

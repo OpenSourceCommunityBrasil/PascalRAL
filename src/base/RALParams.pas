@@ -245,6 +245,9 @@ var
   vParam : TRALParam;
   vDecoder : TRALMIMEDecoder;
 begin
+  if ASource = nil then
+    Exit;
+
   if Pos(TRALContentType.ctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMIMEDecoder.Create;
@@ -267,6 +270,9 @@ var
   vParam : TRALParam;
   vDecoder : TRALMIMEDecoder;
 begin
+  if ASource = '' then
+    Exit;
+
   if Pos(TRALContentType.ctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMIMEDecoder.Create;
