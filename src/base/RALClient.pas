@@ -79,19 +79,29 @@ function TRALClient.BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
   AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
 var
   vConta : IntegerRAL;
+  vFreeHeader : boolean;
 begin
-  vConta := 0;
-  repeat
-    if FAuthentication <> nil then
-    begin
-      GetToken;
-      FAuthentication.GetHeader(AHeaders);
-    end;
-    Result := SendUrl(AURL,AMethod,AHeaders,ABody);
-    vConta := vConta + 1;
-    if Result = 401 then
-      ResetToken;
-  until (Result < 400) or (vConta > 3);
+  vFreeHeader := AHeaders = nil;
+  if vFreeHeader then
+    AHeaders := TStringList.Create;
+
+  try
+    vConta := 0;
+    repeat
+      if FAuthentication <> nil then
+      begin
+        GetToken;
+        FAuthentication.GetHeader(AHeaders);
+      end;
+      Result := SendUrl(AURL,AMethod,AHeaders,ABody);
+      vConta := vConta + 1;
+      if Result = 401 then
+        ResetToken;
+    until (Result < 400) or (vConta > 3);
+  finally
+    if vFreeHeader then
+      FreeAndNil(AHeaders);
+  end;
 end;
 
 constructor TRALClient.Create(AOwner: TComponent);

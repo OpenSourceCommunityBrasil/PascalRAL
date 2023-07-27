@@ -92,8 +92,11 @@ var
 begin
   inherited;
   FHttp.Request.Clear;
+  FHttp.Request.CustomHeaders.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
   FHttp.Request.UserAgent := UserAgent;
+
+  FHttp.Response.Clear;
 
   if AHeaders <> nil then
   begin
@@ -145,13 +148,13 @@ end;
 procedure TRALIndyClient.SetConnectTimeout(const AValue: IntegerRAL);
 begin
   inherited;
-  FHttp.Socket.ConnectTimeout := AValue;
+  FHttp.ConnectTimeout := AValue;
 end;
 
 procedure TRALIndyClient.SetRequestTimeout(const AValue: IntegerRAL);
 begin
   inherited;
-  FHttp.Socket.ReadTimeout := AValue;
+  FHttp.ReadTimeout := AValue;
 end;
 
 procedure TRALIndyClient.SetUserAgent(const AValue : StringRAL);

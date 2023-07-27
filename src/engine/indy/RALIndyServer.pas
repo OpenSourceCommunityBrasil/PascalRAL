@@ -181,7 +181,7 @@ begin
       begin
         ResponseNo := vResponse.RespCode;
 
-        vRequest.Params.AcquireParams(CustomHeaders, rpkHEADER);
+        vResponse.Params.AcquireParams(CustomHeaders, rpkHEADER);
         EncodeBody(vResponse, AResponseInfo);
 
         CloseConnection := True;

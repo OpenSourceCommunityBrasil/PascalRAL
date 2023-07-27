@@ -68,7 +68,8 @@ type
     FSSL: TRALSSL;
     FWhiteIPList: TStringList;
 
-    FOnClientRequest: TRALOnReply;
+    FOnRequest: TRALOnReply;
+    FOnResponse: TRALOnReply;
     FOnClientTryBlocked: TRALOnClientTryBlocked;
     FOnClientWasBlocked: TRALOnClientWasBlocked;
   protected
@@ -109,7 +110,8 @@ type
     property SSL: TRALSSL read FSSL write FSSL;
     property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
 
-    property OnClientRequest: TRALOnReply read FOnClientRequest write FOnClientRequest;
+    property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
+    property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
     property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
     property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
@@ -381,12 +383,17 @@ begin
     end
     else
     begin
-      if Assigned(OnClientRequest) then
-        OnClientRequest(vRoute, ARequest, Result);
+      if Assigned(FOnRequest) then
+        FOnRequest(vRoute, ARequest, Result);
 
       DelBlockList(ARequest.ClientInfo.IP);
 
       vRoute.Execute(ARequest, Result);
+
+      if Assigned(FOnResponse) then
+        FOnResponse(vRoute, ARequest, Result);
+
+      ARequest.Params.ClearParams;
     end;
   end;
 

@@ -9,7 +9,7 @@ uses
 
 type
   TRALRoutes = class;
-  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; var AResponse: TRALResponse) of object;
+  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
 
   { TRALRoute }
 
