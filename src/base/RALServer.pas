@@ -51,6 +51,8 @@ type
 
   { TRALServer }
 
+  TRALReplyProc = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
+
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
@@ -96,6 +98,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure CreateRoute(ARouteName: StringRAL; AReplyProc: TRALReplyProc; ADescription: StringRAL = '');
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
@@ -171,6 +174,17 @@ end;
 function TRALServer.CreateRALSSL: TRALSSL;
 begin
   Result := nil;
+end;
+
+procedure TRALServer.CreateRoute(aRouteName: StringRAL; aReplyProc: TRALReplyProc;
+  aDescription: StringRAL);
+var
+  Route: TRALRoute;
+begin
+  Route := TRALRoute.Create(Self.Routes);
+  Route.RouteName := aRouteName;
+  Route.OnReply := aReplyProc;
+  Route.Description.Text := aDescription;
 end;
 
 procedure TRALServer.AddBlockList(AClientIP : StringRAL);
