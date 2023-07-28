@@ -194,6 +194,7 @@ constructor TRALTokenParams.Create;
 begin
   inherited Create;
   FCustomClaims := TStringList.Create;
+  FCustomClaims.Sorted := True;
   Initialize;
 end;
 

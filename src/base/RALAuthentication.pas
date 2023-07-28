@@ -327,11 +327,11 @@ begin
   vJWT := TRALJWT.Create;
   try
     vJWT.Header.Algorithm := FToken.Header.Algorithm;
-    vJWT.Header.createKeyID;
+//    vJWT.Header.createKeyID;
 
     vJWT.Payload.AsJSON := AJSONParams;
     vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
-    vJWT.Payload.createNewId;
+//    vJWT.Payload.createNewId;
 
     AJSONParams := vJWT.Payload.AsJSON;
 
