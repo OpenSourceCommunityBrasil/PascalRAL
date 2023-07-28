@@ -119,9 +119,11 @@ var
   vRoute : TRALRoute;
 begin
   Result := False;
-  if Collection is TRALRoutes then begin
+  if Collection is TRALRoutes then
+  begin
     vRoute := TRALRoutes(Collection).RouteAddress[ARoute];
-    if (vRoute <> nil) and (vRoute <> Self) then begin
+    if (vRoute <> nil) and (vRoute <> Self) then
+    begin
       Result := True;
       raise Exception.Create(routeAlreadyExists);
     end;
@@ -195,9 +197,11 @@ var
 begin
   Result := nil;
   ARoute := FixRoute(ARoute);
-  for vInt := 0 to Count-1 do begin
+  for vInt := 0 to Count-1 do
+  begin
     vRoute := TRALRoute(Items[vInt]);
-    if SameText(vRoute.Route,ARoute) then begin
+    if SameText(vRoute.Route, ARoute) then
+    begin
       Result := vRoute;
       Break;
     end;

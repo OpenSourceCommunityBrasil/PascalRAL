@@ -53,7 +53,7 @@ implementation
 constructor TRALIndyServer.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('Indy ' + gsIdVersion);// gsIdProductVersion);
+  SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
   {$IFDEF FPC}
@@ -93,14 +93,12 @@ begin
   end
   else begin
     vMultPart := TIdMultiPartFormDataStream.Create;
-    vInt := 0;
-    while vInt < AResponse.Params.Count do
+    for vInt := 0 to Pred(AResponse.Params.Count) do
     begin
       vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
                              AResponse.Params.Param[vInt].ContentType,
                              '', // charset
                              AResponse.Params.Param[vInt].AsStream);
-      vInt := vInt + 1;
     end;
     vMultPart.Position := 0;
     AResponseInfo.ContentStream := vMultPart;
@@ -181,7 +179,7 @@ begin
       begin
         ResponseNo := vResponse.RespCode;
 
-        vResponse.Params.AcquireParams(CustomHeaders, rpkHEADER);
+        vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
         EncodeBody(vResponse, AResponseInfo);
 
         CloseConnection := True;

@@ -30,12 +30,11 @@ type
 
   TRALSynopseServer = class(TRALServer)
   private
-    FHttp : THttpServer;
+    FHttp : THttpAsyncServer;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
-    procedure SetSessionTimeout(const Value: IntegerRAL); override;
 
     procedure DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
     function OnCommandProcess(AContext : THttpServerRequestAbstract): Cardinal;
@@ -52,11 +51,11 @@ procedure TRALSynopseServer.SetActive(const AValue : boolean);
 begin
   inherited;
   if AValue then begin
-    FHttp := THttpServer.Create(IntToStr(Port),nil,nil,'');
+    FHttp := THttpAsyncServer.Create(IntToStr(Port), nil, nil, '', 0, SessionTimeout);
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then begin
       with SSL as TRALSynopseSSL do
-        FHttp.WaitStarted(30,CertificateFile,PrivateKeyFile,PrivateKeyPassword,CACertificatesFile);
+        FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile, PrivateKeyPassword, CACertificatesFile);
     end
     else begin
       FHttp.WaitStarted;
@@ -80,11 +79,6 @@ begin
   Active := vActive;
 end;
 
-procedure TRALSynopseServer.SetSessionTimeout(const Value: IntegerRAL);
-begin
-  inherited;
-end;
-
 procedure TRALSynopseServer.DecodeAuth(AHeaders : TStringList; AResult : TRALRequest);
 var
   vStr, vAux: StringRAL;
@@ -100,9 +94,9 @@ begin
   if vStr <> '' then begin
     vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if SameText(vAux,'Basic') then
+    if SameText(vAux, 'Basic') then
       AResult.Authorization.AuthType := ratBasic
-    else if SameText(vAux,'Bearer') then
+    else if SameText(vAux, 'Bearer') then
       AResult.Authorization.AuthType := ratBearer;
     AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
   end;
@@ -143,13 +137,13 @@ begin
       end;
 
       Method := amGET;
-      if SameText(AContext.Method,'POST') then
+      if SameText(AContext.Method, 'POST') then
         Method := amPOST
-      else if SameText(AContext.Method,'DELETE') then
+      else if SameText(AContext.Method, 'DELETE') then
         Method := amDELETE
-      else if SameText(AContext.Method,'PUT') then
+      else if SameText(AContext.Method, 'PUT') then
         Method := amPUT
-      else if SameText(AContext.Method,'OPTION') then
+      else if SameText(AContext.Method, 'OPTION') then
         Method := amPUT;
 
       vStringList := TStringList.Create;
@@ -160,7 +154,7 @@ begin
         for vInt := 0 to vStringList.Count - 1 do
           vStringList.ValueFromIndex[vInt] := TrimLeft(vStringList.ValueFromIndex[vInt]);
 
-        DecodeAuth(vStringList,vRequest);
+        DecodeAuth(vStringList, vRequest);
         Params.AppendParams(vStringList, rpkHEADER);
       finally
         FreeAndNil(vStringList);
@@ -177,7 +171,7 @@ begin
     try
       vStringList := TStringList.Create;
       try
-        vResponse.Params.AcquireParams(vStringList, rpkHEADER, ': ');
+        vResponse.Params.AssignParams(vStringList, rpkHEADER, ': ');
         AContext.OutCustomHeaders := vStringList.Text;
       finally
         FreeAndNil(vStringList);

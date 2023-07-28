@@ -51,8 +51,6 @@ type
 
   { TRALServer }
 
-  TRALReplyProc = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
-
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
@@ -98,7 +96,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure CreateRoute(ARouteName: StringRAL; AReplyProc: TRALReplyProc; ADescription: StringRAL = '');
+    procedure CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = '');
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
@@ -176,15 +174,15 @@ begin
   Result := nil;
 end;
 
-procedure TRALServer.CreateRoute(aRouteName: StringRAL; aReplyProc: TRALReplyProc;
-  aDescription: StringRAL);
+procedure TRALServer.CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply;
+  ADescription: StringRAL);
 var
   Route: TRALRoute;
 begin
   Route := TRALRoute.Create(Self.Routes);
-  Route.RouteName := aRouteName;
-  Route.OnReply := aReplyProc;
-  Route.Description.Text := aDescription;
+  Route.RouteName := ARouteName;
+  Route.OnReply := AReplyProc;
+  Route.Description.Text := ADescription;
 end;
 
 procedure TRALServer.AddBlockList(AClientIP : StringRAL);
@@ -211,7 +209,7 @@ begin
   vClient.NumTry := vClient.NumTry + 1;
 
   if Assigned(FOnClientTryBlocked) then
-    FOnClientTryBlocked(Self,AClientIP,vClient.NumTry);
+    FOnClientTryBlocked(Self, AClientIP, vClient.NumTry);
 end;
 
 procedure TRALServer.DelBlockList(AClientIP : StringRAL);
@@ -348,7 +346,7 @@ begin
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
     if Assigned(FOnClientWasBlocked) then
-      FOnClientWasBlocked(Self,ARequest.ClientInfo.IP);
+      FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
     Result.Answer(404, RAL404Page);
     Exit;
   end;

@@ -40,7 +40,7 @@ begin
   inherited;
   FHttp := TIdHTTP.Create(nil);
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
-  SetEngine('Indy ' + gsIdVersion); //gsIdProductVersion);
+  SetEngine('Indy ' + gsIdVersion);
 end;
 
 destructor TRALIndyClient.Destroy;
@@ -110,7 +110,7 @@ begin
   end;
 
   vFree := False;
-  vSource := EncodeParams(ABody,vFree);
+  vSource := EncodeParams(ABody, vFree);
   try
     vResult := TStringStream.Create;
     try

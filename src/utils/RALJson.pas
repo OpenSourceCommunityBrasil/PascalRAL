@@ -117,10 +117,10 @@ end;
 function THelpRALJSONObject.Add(const AStr : string; const AValue : string) : TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,AValue);
+    Result := AddPair(AStr, AValue);
   {$ENDIF}
 end;
 
@@ -128,10 +128,10 @@ function THelpRALJSONObject.Add(const AStr: string;
   const AValue: TRALJSONValue): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,AValue);
+    Result := AddPair(AStr, AValue);
   {$ENDIF}
 end;
 
@@ -139,10 +139,10 @@ function THelpRALJSONObject.Add(const AStr: TRALJSONString;
   const AValue: TRALJSONValue): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr.AsString,AValue);
+    inherited Add(AStr.AsString, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,AValue);
+    Result := AddPair(AStr, AValue);
   {$ENDIF}
 end;
 
@@ -150,10 +150,10 @@ function THelpRALJSONObject.Add(const AStr: string;
   const AValue: int64): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,TRALJSONNumber.Create(AValue));
+    Result := AddPair(AStr, TRALJSONNumber.Create(AValue));
   {$ENDIF}
 end;
 
@@ -161,10 +161,10 @@ function THelpRALJSONObject.Add(const AStr: string;
   const AValue: boolean): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,TRALJSONBoolean.Create(AValue));
+    Result := AddPair(AStr, TRALJSONBoolean.Create(AValue));
   {$ENDIF}
 end;
 
@@ -174,7 +174,7 @@ begin
     inherited Add(AStr);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,TJSONNull.Create);
+    Result := AddPair(AStr, TJSONNull.Create);
   {$ENDIF}
 end;
 
@@ -219,10 +219,10 @@ function THelpRALJSONObject.Add(const AStr: string;
   const AValue: double): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,TRALJSONNumber.Create(AValue));
+    Result := AddPair(AStr, TRALJSONNumber.Create(AValue));
   {$ENDIF}
 end;
 
@@ -230,10 +230,10 @@ function THelpRALJSONObject.Add(const AStr: string;
   const AValue: integer): TRALJSONObject;
 begin
   {$IFDEF FPC}
-    inherited Add(AStr,AValue);
+    inherited Add(AStr, AValue);
     Result := Self;
   {$ELSE}
-    Result := AddPair(AStr,TRALJSONNumber.Create(AValue));
+    Result := AddPair(AStr, TRALJSONNumber.Create(AValue));
   {$ENDIF}
 end;
 

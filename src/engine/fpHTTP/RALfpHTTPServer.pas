@@ -153,9 +153,9 @@ begin
   if vStr <> '' then begin
     vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if SameText(vAux,'Basic') then
+    if SameText(vAux, 'Basic') then
       AResult.Authorization.AuthType := ratBasic
-    else if SameText(vAux,'Bearer') then
+    else if SameText(vAux, 'Bearer') then
       AResult.Authorization.AuthType := ratBearer;
     AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
   end;
@@ -235,7 +235,7 @@ begin
       ContentSize := ARequest.ContentLength;
 
       DecodeAuth(ARequest, vRequest);
-      Params.AppendParams(ARequest.CustomHeaders,rpkHEADER);
+      Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
       // headers tambem
       vInt := 0;
@@ -249,8 +249,8 @@ begin
         vInt := vInt + 1;
       end;
 
-      Params.AppendParams(ARequest.QueryFields,rpkQUERY);
-      Params.DecodeBody(ARequest.Content,ARequest.ContentType);
+      Params.AppendParams(ARequest.QueryFields, rpkQUERY);
+      Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
       ARequest.Content := '';
       ARequest.QueryFields.Clear;
@@ -266,7 +266,7 @@ begin
         Code := vResponse.RespCode;
         ContentType := vResponse.ContentType;
 
-        vResponse.Params.AcquireParams(CustomHeaders,rpkHEADER);
+        vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
         EncodeBody(vResponse, AResponse);
 
         CustomHeaders.Add('Connection=close');

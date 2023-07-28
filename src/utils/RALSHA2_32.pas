@@ -142,17 +142,17 @@ begin
   PCardinal(@FBuffer[60])^:= Swap(Cardinal(vLenBit));
   Compress;
 
-  FHash[0]:= Swap(FHash[0]);
-  FHash[1]:= Swap(FHash[1]);
-  FHash[2]:= Swap(FHash[2]);
-  FHash[3]:= Swap(FHash[3]);
-  FHash[4]:= Swap(FHash[4]);
-  FHash[5]:= Swap(FHash[5]);
-  FHash[6]:= Swap(FHash[6]);
-  FHash[7]:= Swap(FHash[7]);
+  FHash[0] := Swap(FHash[0]);
+  FHash[1] := Swap(FHash[1]);
+  FHash[2] := Swap(FHash[2]);
+  FHash[3] := Swap(FHash[3]);
+  FHash[4] := Swap(FHash[4]);
+  FHash[5] := Swap(FHash[5]);
+  FHash[6] := Swap(FHash[6]);
+  FHash[7] := Swap(FHash[7]);
 
-  SetLength(Result,FHashSize);
-  Move(FHash,Result[0],FHashSize);
+  SetLength(Result, FHashSize);
+  Move(FHash,Result[0], FHashSize);
 end;
 
 function TRALSHA2_32.GetBuffer(AIndex: IntegerRAL): Pointer;
@@ -169,32 +169,32 @@ procedure TRALSHA2_32.Initialize;
 begin
   case FVersion of
     rsv224: begin
-      FHash[0]:= $c1059ed8;
-      FHash[1]:= $367cd507;
-      FHash[2]:= $3070dd17;
-      FHash[3]:= $f70e5939;
-      FHash[4]:= $ffc00b31;
-      FHash[5]:= $68581511;
-      FHash[6]:= $64f98fa7;
-      FHash[7]:= $befa4fa4;
+      FHash[0] := $c1059ed8;
+      FHash[1] := $367cd507;
+      FHash[2] := $3070dd17;
+      FHash[3] := $f70e5939;
+      FHash[4] := $ffc00b31;
+      FHash[5] := $68581511;
+      FHash[6] := $64f98fa7;
+      FHash[7] := $befa4fa4;
 
       FHashSize := 28;
     end;
     rsv256: begin
-      FHash[0]:= $6a09e667;
-      FHash[1]:= $bb67ae85;
-      FHash[2]:= $3c6ef372;
-      FHash[3]:= $a54ff53a;
-      FHash[4]:= $510e527f;
-      FHash[5]:= $9b05688c;
-      FHash[6]:= $1f83d9ab;
-      FHash[7]:= $5be0cd19;
+      FHash[0] := $6a09e667;
+      FHash[1] := $bb67ae85;
+      FHash[2] := $3c6ef372;
+      FHash[3] := $a54ff53a;
+      FHash[4] := $510e527f;
+      FHash[5] := $9b05688c;
+      FHash[6] := $1f83d9ab;
+      FHash[7] := $5be0cd19;
 
       FHashSize := 32;
     end;
   end;
 
-  FillChar(FBuffer,Sizeof(FBuffer),0);
+  FillChar(FBuffer, Sizeof(FBuffer),0);
   inherited;
 end;
 

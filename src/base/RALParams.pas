@@ -71,7 +71,8 @@ type
     procedure AppendParams(ASource: TStringList; AKind : TRALParamKind); overload;
     procedure AppendParams(ASource: TStrings;  AKind : TRALParamKind); overload;
 
-    procedure AcquireParams(ASource: TStringList; AKind : TRALParamKind; ASeparator : StringRAL = '=');
+    procedure AssignParams(ADest: TStringList; AKind : TRALParamKind;
+                           ASeparator : StringRAL = '=');
 
     procedure DecodeBody(ASource : TStream; AContentType : StringRAL); overload;
     procedure DecodeBody(ASource : StringRAL; AContentType : StringRAL); overload;
@@ -212,7 +213,7 @@ begin
   for vInt := 0 to ASource.Count - 1 do
   begin
     vName := ASource.Names[vInt];
-    vParam := ParamNameKind[vName,AKind];
+    vParam := ParamNameKind[vName, AKind];
     if vParam = nil then
       vParam := NewParam;
     vParam.ParamName := vName;
@@ -224,10 +225,10 @@ end;
 
 procedure TRALParams.AppendParams(ASource : TStrings; AKind : TRALParamKind);
 begin
-  AppendParams(TStringList(ASource),AKind);
+  AppendParams(TStringList(ASource), AKind);
 end;
 
-procedure TRALParams.AcquireParams(ASource : TStringList; AKind : TRALParamKind; ASeparator : StringRAL);
+procedure TRALParams.AssignParams(ADest : TStringList; AKind : TRALParamKind; ASeparator : StringRAL);
 var
   vInt : IntegerRAL;
   vParam : TRALParam;
@@ -236,7 +237,7 @@ begin
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
-      ASource.Add(vParam.ParamName+ASeparator+vParam.AsString);
+      ADest.Add(vParam.ParamName + ASeparator + vParam.AsString);
   end;
 end;
 
@@ -297,9 +298,8 @@ begin
   if Trim(ASource) = '' then
     Exit;
 
-  ASource := StringReplace(ASource,'&amp;',#38,[rfReplaceAll]);
-  ASource := StringReplace(ASource,#13#10,'|',[rfReplaceAll]);
-  ASource := StringReplace(ASource,'&',#13#10,[rfReplaceAll]);
+  ASource := StringReplace(ASource, '&amp;','%26', [rfReplaceAll]);
+  ASource := StringReplace(ASource, '&', #13#10, [rfReplaceAll]);
 
   vStringList := TStringList.Create;
   try
@@ -396,7 +396,7 @@ end;
 function TRALParams.NextParamStr : StringRAL;
 begin
   FNextParam := FNextParam + 1;
-  Result := 'ral_param'+IntToStr(FNextParam);
+  Result := 'ral_param' + IntToStr(FNextParam);
 end;
 
 function TRALParams.NextParamInt : IntegerRAL;
@@ -410,15 +410,17 @@ var
   vParam : TRALParam;
 begin
   vParam := NewParam;
-  vParam.ParamName := AFormData.Name;
-  if vParam.ParamName = '' then
-    vParam.ParamName := 'ral_body'+IntToStr(NextParamInt);
+  if AFormData.Name = '' then
+    vParam.ParamName := 'ral_body' + IntToStr(NextParamInt)
+  else
+    vParam.ParamName := AFormData.Name;
 
   vParam.AsStream := AFormData.AsStream;
 
-  vParam.ContentType := TRALContentType.ctTEXTPLAIN;
-  if AFormData.ContentType <> '' then
-    vParam.ContentType := AFormData.ContentType;
+  if AFormData.ContentType = '' then
+    vParam.ContentType := AFormData.ContentType
+  else
+    vParam.ContentType := TRALContentType.ctTEXTPLAIN;
 
   vParam.Kind := rpkBODY;
 

@@ -125,7 +125,7 @@ var
       end
       else if (CharInSet(vChr, [';', ':', '='])) and (not vQuoted) then
       begin
-        Delete(AStr,1,vInt);
+        Delete(AStr, 1, vInt);
         Exit;
       end;
     end;
@@ -135,15 +135,15 @@ var
   function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
   begin
     Result:=True;
-    if SameText(AHeader,'content-disposition') then
+    if SameText(AHeader, 'content-disposition') then
       FDisposition := AValue
-    else if SameText(AHeader,'name') then
+    else if SameText(AHeader, 'name') then
       FName := AValue
-    else if SameText(AHeader,'filename') then
+    else if SameText(AHeader, 'filename') then
       FFilename := AValue
-    else if SameText(AHeader,'content-description') then
+    else if SameText(AHeader, 'content-description') then
       FDescription := AValue
-    else if SameText(AHeader,'content-type') then
+    else if SameText(AHeader, 'content-type') then
       FContentType := AValue
     else
       Result := False;
@@ -187,7 +187,8 @@ procedure TRALMIMEDecoder.FinalizeItem;
 var
   vFreeItem : boolean;
 begin
-  if FItemForm <> nil then begin
+  if FItemForm <> nil then
+  begin
     // tirando CRLF do fim do arquivo
     FItemForm.BufferStream.Size := FItemForm.BufferStream.Size - 2;
 
@@ -206,7 +207,7 @@ procedure TRALMIMEDecoder.SetContentType(AValue : StringRAL);
 var
   vInt : IntegerRAL;
 begin
-  vInt := Pos('boundary',LowerCase(AValue));
+  vInt := Pos('boundary', LowerCase(AValue));
   if vInt > 0 then
   begin
     Delete(AValue, 1, vInt - 1);
@@ -228,43 +229,52 @@ begin
     Inc(FIndex);
     Inc(vBuffer);
 
-    if AInput^ = 13 then begin
+    if AInput^ = 13 then
+    begin
       FIs13 := True;
     end
-    else if (AInput^ = 10) and (FIs13) then begin
-      if FIndex < 500 then begin
-        SetLength(vLine,FIndex);
-        Move(FBuffer[0],vLine[1],FIndex);
+    else if (AInput^ = 10) and (FIs13) then
+    begin
+      if FIndex < 500 then
+      begin
+        SetLength(vLine, FIndex);
+        Move(FBuffer[0], vLine[1], FIndex);
         // boundary end of file
-        if Pos('--'+FBoundary+'--',vLine) > 0 then begin
+        if Pos('--'+FBoundary+'--', vLine) > 0 then
+        begin
           FinalizeItem;
           vBuffer := ResetBuffer;
         end
         // boundary begin of file
-        else if Pos('--'+FBoundary+#13#10,vLine) > 0 then begin
+        else if Pos('--'+FBoundary+#13#10, vLine) > 0 then
+        begin
           FinalizeItem;
           FItemForm := TRALMIMEFormData.Create;
           FWaitSepEnd := True;
           vBuffer := ResetBuffer;
         end
         // line separator header e file
-        else if (vLine = #13#10) and (FWaitSepEnd) then begin
+        else if (vLine = #13#10) and (FWaitSepEnd) then
+        begin
           FWaitSepEnd := False;
           vBuffer := ResetBuffer;
         end
         // line de headers
-        else if FWaitSepEnd then begin
+        else if FWaitSepEnd then
+        begin
           FItemForm.ProcessHeader(vLine);
           vBuffer := ResetBuffer;
         end
         // end of stream
-        else begin
+        else
+        begin
           vBuffer := BurnBuffer;
         end;
       end
       // se o buffer tiver mais q 500 chars significa q o conteudo do
       // buffer eh o parte do arquivo e nao um novo boundary
-      else begin
+      else
+      begin
         vBuffer := BurnBuffer;
       end;
       FIs13 := False;
@@ -291,9 +301,10 @@ end;
 
 procedure TRALMIMEDecoder.ClearItems;
 begin
-  while FFormData.Count > 0 do begin
-    TObject(FFormData.Items[FFormData.Count-1]).Free;
-    FFormData.Delete(FFormData.Count-1);
+  while FFormData.Count > 0 do
+  begin
+    TObject(FFormData.Items[FFormData.Count - 1]).Free;
+    FFormData.Delete(FFormData.Count - 1);
   end;
 end;
 

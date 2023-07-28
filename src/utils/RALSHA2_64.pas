@@ -67,19 +67,19 @@ var
   I: IntegerRAL;
 begin
   FillChar(W, SizeOf(W), 0);
-  a:= FHash[0];
-  b:= FHash[1];
-  c:= FHash[2];
-  d:= FHash[3];
-  e:= FHash[4];
-  f:= FHash[5];
-  g:= FHash[6];
-  h:= FHash[7];
+  a := FHash[0];
+  b := FHash[1];
+  c := FHash[2];
+  d := FHash[3];
+  e := FHash[4];
+  f := FHash[5];
+  g := FHash[6];
+  h := FHash[7];
 
-  Move(FBuffer,W,Sizeof(GetBufLength));
+  Move(FBuffer, W, Sizeof(GetBufLength));
 
-  for i:= 0 to 15 do
-    W[i]:= Swap(W[i]);
+  for i := 0 to 15 do
+    W[i] := Swap(W[i]);
 
 
   for i:= 16 to 79 do
@@ -93,7 +93,7 @@ begin
     W[I] := W[I - 16] + s0 + W[I - 7] + s1;
   end;
 
-  for i:= 0 to 79 do
+  for i := 0 to 79 do
   begin
     s1 := ((e shr 14) or (e shl 50)) xor ((e shr 18) or (e shl 46)) xor
           ((e shr 41) or (e shl 23));
@@ -105,26 +105,26 @@ begin
     m0 := (a and b) xor (a and c) xor (b and c);
     t2 := s0 + m0;
 
-    h:= g;
-    g:= f;
-    f:= e;
-    e:= d + t1;
-    d:= c;
-    c:= b;
-    b:= a;
-    a:= t1 + t2;
+    h := g;
+    g := f;
+    f := e;
+    e := d + t1;
+    d := c;
+    c := b;
+    b := a;
+    a := t1 + t2;
   end;
 
-  FHash[0]:= FHash[0] + a;
-  FHash[1]:= FHash[1] + b;
-  FHash[2]:= FHash[2] + c;
-  FHash[3]:= FHash[3] + d;
-  FHash[4]:= FHash[4] + e;
-  FHash[5]:= FHash[5] + f;
-  FHash[6]:= FHash[6] + g;
-  FHash[7]:= FHash[7] + h;
+  FHash[0] := FHash[0] + a;
+  FHash[1] := FHash[1] + b;
+  FHash[2] := FHash[2] + c;
+  FHash[3] := FHash[3] + d;
+  FHash[4] := FHash[4] + e;
+  FHash[5] := FHash[5] + f;
+  FHash[6] := FHash[6] + g;
+  FHash[7] := FHash[7] + h;
 
-  FillChar(FBuffer,Sizeof(FBuffer),0);
+  FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited;
 end;
 
@@ -141,25 +141,25 @@ begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
 
-  FBuffer[vIndex]:= $80;
+  FBuffer[vIndex] := $80;
   if vIndex >= 112 then
     Compress;
 
-  PUInt64(@FBuffer[120])^:= 0;
-  PUInt64(@FBuffer[124])^:= Swap(vLenBit);
+  PUInt64(@FBuffer[120])^ := 0;
+  PUInt64(@FBuffer[124])^ := Swap(vLenBit);
   Compress;
 
-  FHash[0]:= Swap(FHash[0]);
-  FHash[1]:= Swap(FHash[1]);
-  FHash[2]:= Swap(FHash[2]);
-  FHash[3]:= Swap(FHash[3]);
-  FHash[4]:= Swap(FHash[4]);
-  FHash[5]:= Swap(FHash[5]);
-  FHash[6]:= Swap(FHash[6]);
-  FHash[7]:= Swap(FHash[7]);
+  FHash[0] := Swap(FHash[0]);
+  FHash[1] := Swap(FHash[1]);
+  FHash[2] := Swap(FHash[2]);
+  FHash[3] := Swap(FHash[3]);
+  FHash[4] := Swap(FHash[4]);
+  FHash[5] := Swap(FHash[5]);
+  FHash[6] := Swap(FHash[6]);
+  FHash[7] := Swap(FHash[7]);
 
-  SetLength(Result,FHashSize);
-  Move(FHash,Result[0],FHashSize);
+  SetLength(Result, FHashSize);
+  Move(FHash, Result[0], FHashSize);
 end;
 
 function TRALSHA2_64.GetBuffer(AIndex: IntegerRAL): Pointer;
@@ -176,56 +176,56 @@ procedure TRALSHA2_64.Initialize;
 begin
   case FVersion of
     rsv384: begin
-      FHash[0]:= $cbbb9d5dc1059ed8;
-      FHash[1]:= $629a292a367cd507;
-      FHash[2]:= $9159015a3070dd17;
-      FHash[3]:= $152fecd8f70e5939;
-      FHash[4]:= $67332667ffc00b31;
-      FHash[5]:= $8eb44a8768581511;
-      FHash[6]:= $db0c2e0d64f98fa7;
-      FHash[7]:= $47b5481dbefa4fa4;
+      FHash[0] := $cbbb9d5dc1059ed8;
+      FHash[1] := $629a292a367cd507;
+      FHash[2] := $9159015a3070dd17;
+      FHash[3] := $152fecd8f70e5939;
+      FHash[4] := $67332667ffc00b31;
+      FHash[5] := $8eb44a8768581511;
+      FHash[6] := $db0c2e0d64f98fa7;
+      FHash[7] := $47b5481dbefa4fa4;
 
       FHashSize := 48;
     end;
     rsv512: begin
-      FHash[0]:= $6a09e667f3bcc908;
-      FHash[1]:= $bb67ae8584caa73b;
-      FHash[2]:= $3c6ef372fe94f82b;
-      FHash[3]:= $a54ff53a5f1d36f1;
-      FHash[4]:= $510e527fade682d1;
-      FHash[5]:= $9b05688c2b3e6c1f;
-      FHash[6]:= $1f83d9abfb41bd6b;
-      FHash[7]:= $5be0cd19137e2179;
+      FHash[0] := $6a09e667f3bcc908;
+      FHash[1] := $bb67ae8584caa73b;
+      FHash[2] := $3c6ef372fe94f82b;
+      FHash[3] := $a54ff53a5f1d36f1;
+      FHash[4] := $510e527fade682d1;
+      FHash[5] := $9b05688c2b3e6c1f;
+      FHash[6] := $1f83d9abfb41bd6b;
+      FHash[7] := $5be0cd19137e2179;
 
       FHashSize := 64;
     end;
     rsv512_224: begin
-      FHash[0]:= $8C3D37C819544DA2;
-      FHash[1]:= $73E1996689DCD4D6;
-      FHash[2]:= $1DFAB7AE32FF9C82;
-      FHash[3]:= $679DD514582F9FCF;
-      FHash[4]:= $0F6D2B697BD44DA8;
-      FHash[5]:= $77E36F7304C48942;
-      FHash[6]:= $3F9D85A86A1D36C8;
-      FHash[7]:= $1112E6AD91D692A1;
+      FHash[0] := $8C3D37C819544DA2;
+      FHash[1] := $73E1996689DCD4D6;
+      FHash[2] := $1DFAB7AE32FF9C82;
+      FHash[3] := $679DD514582F9FCF;
+      FHash[4] := $0F6D2B697BD44DA8;
+      FHash[5] := $77E36F7304C48942;
+      FHash[6] := $3F9D85A86A1D36C8;
+      FHash[7] := $1112E6AD91D692A1;
 
       FHashSize := 28;
     end;
     rsv512_256: begin
-      FHash[0]:= $22312194FC2BF72C;
-      FHash[1]:= $9F555FA3C84C64C2;
-      FHash[2]:= $2393B86B6F53B151;
-      FHash[3]:= $963877195940EABD;
-      FHash[4]:= $96283EE2A88EFFE3;
-      FHash[5]:= $BE5E1E2553863992;
-      FHash[6]:= $2B0199FC2C85B8AA;
-      FHash[7]:= $0EB72DDC81C52CA2;
+      FHash[0] := $22312194FC2BF72C;
+      FHash[1] := $9F555FA3C84C64C2;
+      FHash[2] := $2393B86B6F53B151;
+      FHash[3] := $963877195940EABD;
+      FHash[4] := $96283EE2A88EFFE3;
+      FHash[5] := $BE5E1E2553863992;
+      FHash[6] := $2B0199FC2C85B8AA;
+      FHash[7] := $0EB72DDC81C52CA2;
 
       FHashSize := 32;
     end;
   end;
 
-  FillChar(FBuffer,Sizeof(FBuffer),0);
+  FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited;
 end;
 
