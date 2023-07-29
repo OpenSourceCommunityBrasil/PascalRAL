@@ -16,9 +16,6 @@ type
     FRESTAPI: TRESTRequest;
     FClientAPI: TRESTClient;
     FBasicAuth: THTTPBasicAuthenticator;
-    FServer: String;
-    FCurrentMethod: String;
-    FExpectedCode: integer;
     procedure SetMethodAndCode(aMethod: TTestRequestMethod);
   public
     constructor Create(aServer, aPort: string); override;
@@ -119,6 +116,10 @@ begin
     FRESTAPI.Execute;
     Result := (FRESTAPI.Response.StatusCode = FExpectedCode) AND
       (FRESTAPI.Response.Content.Contains(AExpectedResponse));
+    if not Result then
+      erro := Format('Método %s falhou, com status code: "%d" e conteúdo: "%s"',
+        [FCurrentMethod, FRESTAPI.Response.StatusCode,
+        FRESTAPI.Response.Content]);
   except
     on e: exception do
     begin
@@ -131,9 +132,6 @@ end;
 
 function TRESTDAO.TesteEndpoint(aEndpoint: string; aMethod: TTestRequestMethod;
   out erro: string): boolean;
-var
-  expectedCode: integer;
-  currentmethod: string;
 begin
   Result := false;
   FRESTAPI.Resource := aEndpoint;
@@ -142,6 +140,9 @@ begin
   try
     FRESTAPI.Execute;
     Result := FRESTAPI.Response.StatusCode = FExpectedCode;
+    if not Result then
+      erro := Format('Método %s falhou, com status code: "%d"',
+        [FCurrentMethod, FRESTAPI.Response.StatusCode]);
   except
     on e: exception do
     begin

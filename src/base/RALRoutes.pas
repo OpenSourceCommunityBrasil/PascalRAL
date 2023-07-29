@@ -77,7 +77,7 @@ begin
   FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
   FCallback := false;
-  FRouteName := 'ralroute'+IntToStr(Index);
+  FRouteName := 'ralroute' + IntToStr(Index);
   FRouteDomain := '/';
   FDescription := TStringList.Create;
   Changed(false);

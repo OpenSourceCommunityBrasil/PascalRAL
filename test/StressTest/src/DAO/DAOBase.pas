@@ -6,8 +6,10 @@ type
   TTestRequestMethod = (rtmGET, rtmPOST, rtmPUT, rtmPATCH, rtmDELETE);
 
   TDAOBase = Class
-  private
+  protected
     FServer: String;
+    FCurrentMethod: String;
+    FExpectedCode: integer;
   public
     constructor Create(aServer, aPort: string); virtual; abstract;
     procedure SetBasicAuth(user, password: string); virtual; abstract;

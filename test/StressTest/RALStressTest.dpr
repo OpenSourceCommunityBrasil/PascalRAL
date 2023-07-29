@@ -7,11 +7,15 @@ uses
   uRESTDAO in 'src\DAO\uRESTDAO.pas',
   uConsts in 'src\uConsts.pas',
   uResultado in 'src\Telas\uResultado.pas' {fResultado},
-  DAOBase in 'src\DAO\DAOBase.pas';
+  DAOBase in 'src\DAO\DAOBase.pas',
+  TestUnit in 'src\TestUnit.pas';
 
 {$R *.res}
 
 begin
+  {$IFDEF DEBUG}
+  ReportMemoryLeaksOnShutdown := True;
+  {$ENDIF}
   Application.Initialize;
   Application.CreateForm(TfPrincipal, fPrincipal);
   Application.Run;

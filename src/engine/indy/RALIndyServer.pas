@@ -127,7 +127,9 @@ begin
 
       Query := ARequestInfo.Document;
       case ARequestInfo.CommandType of
-        hcUnknown, hcHEAD, hcGET, hcTRACE:
+        hcUnknown:
+          Method := amPATCH;
+        hcHEAD, hcGET, hcTRACE:
           Method := amGET;
         hcPOST:
           Method := amPOST;

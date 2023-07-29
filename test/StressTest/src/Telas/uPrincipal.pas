@@ -13,26 +13,12 @@ uses
 
   RALConsts,
 
-  uResultado, DAOBase, uRESTDAO
+  uResultado, TestUnit, DAOBase, uRESTDAO
 
     ;
 
 type
-  TTestType = (ttSequencial, ttConcorrente);
-  TAuthType = (atNone, atBasic);
-
-  TTestObject = class
-    FServer: string;
-    FPort: integer;
-    FEndpoint: string;
-    FMethods: Set of TTestRequestMethod;
-    FTestType: TTestType;
-    FRequestCount: integer;
-    FCcRequestCount: integer;
-    FAuthType: TAuthType;
-    FAuthUser: string;
-    FAuthPassword: string;
-  end;
+  TRESTClientKind = (rckREST, rckRALIndy, rckRALSynopse);
 
   TfPrincipal = class(TForm)
     Layout1: TLayout;
@@ -121,7 +107,7 @@ type
     inicio, fim: Double;
     pass, fail: integer;
     TelaResultado: TFResultado;
-    procedure DefinirParametrosTeste;
+    procedure DefinirParametrosTeste(aClient: TRESTClientKind; aMemo: TMemo);
     procedure LimparObjetosTeste;
     procedure IniciaTestes;
     procedure EncerraTeste;
@@ -196,82 +182,68 @@ end;
 procedure TfPrincipal.Button5Click(Sender: TObject);
 begin
   FResultado.Show;
-  TThread.CreateAnonymousThread(IniciaTestes).Start;
+  // TThread.CreateAnonymousThread(IniciaTestes).Start;
+  TThread.CreateAnonymousThread(Testar).Start;
 end;
 
-procedure TfPrincipal.DefinirParametrosTeste;
+procedure TfPrincipal.DefinirParametrosTeste(aClient: TRESTClientKind;
+aMemo: TMemo);
 var
-  I: integer;
   dummytest: TTestObject;
+  I: integer;
+  RESTClient: TDAOBase;
 begin
-  LimparObjetosTeste;
-
-  if StringGrid1.RowCount = 0 then
+  for I := 0 to pred(StringGrid1.RowCount) do
   begin
-    dummytest := TTestObject.Create;
+    case aClient of
+      rckREST:
+        RESTClient := TRESTDAO.Create(StringGrid1.Cells[0, I],
+          StringGrid1.Cells[1, I]);
+      rckRALIndy:
+        ;
+      rckRALSynopse:
+        ;
+    end;
+
+    dummytest := TTestObject.Create(RESTClient, aMemo);
     with dummytest do
     begin
-      FServer := eServidor.Text;
-      FPort := StrToIntDef(ePorta.Text, 0);
-      FEndpoint := eEndpoint.Text;
-      FAuthType := TAuthType(cbAutenticacao.ItemIndex);
-      if FAuthType <> atNone then
+      Server := StringGrid1.Cells[0, I];
+      Port := StrToIntDef(StringGrid1.Cells[1, I], 0);
+      Endpoint := StringGrid1.Cells[2, I];
+      if StringGrid1.Cells[3, I].Contains('Basic') then
       begin
-        FAuthUser := eUsuario.Text;
-        FAuthPassword := eSenha.Text;
-      end;
-      FMethods := [rtmGET, rtmPOST, rtmPUT, rtmPATCH, rtmDELETE];
-      FTestType := ttSequencial;
-      FRequestCount := 1000;
-    end;
+        AuthType := atBasic;
+        AuthUser := StringGrid1.Cells[4, I];
+        AuthPassword := StringGrid1.Cells[5, I];
+      end
+      else
+        AuthType := atNone;
 
-    SetLength(TestObjects, 1);
-    TestObjects[0] := dummytest;
-  end
-  else
-  begin
-    for I := 0 to pred(StringGrid1.RowCount) do
-    begin
-      dummytest := TTestObject.Create;
-      with dummytest do
+      Methods := [];
+      if cbGET.IsChecked then
+        Methods := Methods + [rtmGET];
+      if cbPOST.IsChecked then
+        Methods := Methods + [rtmPOST];
+      if cbPUT.IsChecked then
+        Methods := Methods + [rtmPUT];
+      if cbPATCH.IsChecked then
+        Methods := Methods + [rtmPATCH];
+      if cbDELETE.IsChecked then
+        Methods := Methods + [rtmDELETE];
+
+      if rbSequencial.IsChecked then
+        TestType := ttSequencial
+      else if rbParalelo.IsChecked then
       begin
-        FServer := StringGrid1.Cells[0, I];
-        FPort := StrToIntDef(StringGrid1.Cells[1, I], 0);
-        FEndpoint := StringGrid1.Cells[2, I];
-        if StringGrid1.Cells[3, I].Contains('Basic') then
-        begin
-          FAuthType := atBasic;
-          FAuthUser := StringGrid1.Cells[4, I];
-          FAuthPassword := StringGrid1.Cells[5, I];
-        end
-        else
-          FAuthType := atNone;
-
-        if cbGET.IsChecked then
-          FMethods := FMethods + [rtmGET];
-        if cbPOST.IsChecked then
-          FMethods := FMethods + [rtmPOST];
-        if cbPUT.IsChecked then
-          FMethods := FMethods + [rtmPUT];
-        if cbPATCH.IsChecked then
-          FMethods := FMethods + [rtmPATCH];
-        if cbDELETE.IsChecked then
-          FMethods := FMethods + [rtmDELETE];
-
-        if rbSequencial.IsChecked then
-          FTestType := ttSequencial
-        else if rbParalelo.IsChecked then
-        begin
-          FTestType := ttConcorrente;
-          FCcRequestCount := StrToIntDef(eConcorrentes.Text, 0);
-        end;
-        FRequestCount := StrToIntDef(eRequisicoes.Text, 0);
+        TestType := ttConcorrente;
+        CcRequestCount := StrToIntDef(eConcorrentes.Text, 0);
       end;
-      SetLength(TestObjects, Length(TestObjects) + 1);
-      TestObjects[High(TestObjects)] := dummytest;
+      RequestCount := StrToIntDef(eRequisicoes.Text, 0);
     end;
+    SetLength(TestObjects, Length(TestObjects) + 1);
+    TestObjects[High(TestObjects)] := dummytest;
   end;
-
 end;
 
 procedure TfPrincipal.EncerraTeste;
@@ -437,102 +409,31 @@ end;
 
 procedure TfPrincipal.Testar;
 var
-  I, J: integer;
+  I: integer;
+  dummytest: TTestObject;
   RESTClient: TRESTDAO;
+  // RALIndyClient: TRALIndyClient;
+  // RALSynopseClient: TRALSynopseClient;
 begin
-  DefinirParametrosTeste;
+  LimparObjetosTeste;
+
   if not Assigned(FResultado) then
     Application.CreateForm(TFResultado, FResultado);
-  FResultado.Show;
-  inicio := now;
-  FResultado.LogMessage('Testes iniciados às %s', [TimeToStr(inicio)]);
-  FResultado.LogMessage('------------------------------------------');
-
-  for I := 0 to pred(Length(TestObjects)) do
-  begin
-    if cbRESTNativo.IsChecked then
+  try
+    if StringGrid1.RowCount > 0 then
     begin
-      RESTClient := TRESTDAO.Create(TestObjects[I].FServer,
-        TestObjects[I].FPort.ToString);
-
-      if TestObjects[I].FAuthType = atBasic then
-        RESTClient.SetBasicAuth(TestObjects[I].FAuthUser,
-          TestObjects[I].FAuthPassword);
-
-      FResultado.LogMessage('Testando servidor %s:%d com %d requisições',
-        [TestObjects[I].FServer, TestObjects[I].FPort,
-        TestObjects[I].FRequestCount]);
-      if TestObjects[I].FTestType = ttSequencial then
+      if cbRESTNativo.IsChecked then
       begin
-        FResultado.LogMessage('Iniciando testes sequenciais com RESTClient...');
-
-        if (rtmGET in TestObjects[I].FMethods) then
-          TesteEndpointREST(TestObjects[I].FEndpoint, rtmGET,
-            TestObjects[I].FRequestCount, RESTClient);
-
-        if (rtmPOST in TestObjects[I].FMethods) then
-          TesteEndpointREST(TestObjects[I].FEndpoint, rtmPOST,
-            TestObjects[I].FRequestCount, RESTClient);
-
-        if (rtmPUT in TestObjects[I].FMethods) then
-          TesteEndpointREST(TestObjects[I].FEndpoint, rtmPUT,
-            TestObjects[I].FRequestCount, RESTClient);
-
-        if (rtmPATCH in TestObjects[I].FMethods) then
-          TesteEndpointREST(TestObjects[I].FEndpoint, rtmPATCH,
-            TestObjects[I].FRequestCount, RESTClient);
-
-        if (rtmDELETE in TestObjects[I].FMethods) then
-          TesteEndpointREST(TestObjects[I].FEndpoint, rtmDELETE,
-            TestObjects[I].FRequestCount, RESTClient);
-
-        FResultado.LogMessage('Fim dos testes sequenciais');
-      end
-      else
-      begin
-        FResultado.LogMessage
-          ('Iniciando testes com concorrência de conexão com RESTClient...');
-        for J := 0 to pred(TestObjects[I].FCcRequestCount) do
-          TThread.CreateAnonymousThread(
-            procedure
-            var
-              count: integer;
-              ThreadedCli: TRESTDAO;
-            begin
-              ThreadedCli := TRESTDAO.Create(TestObjects[I].FServer,
-                TestObjects[I].FPort.ToString);
-              if TestObjects[I].FAuthType = atBasic then
-                ThreadedCli.SetBasicAuth(TestObjects[I].FAuthUser,
-                  TestObjects[I].FAuthPassword);
-
-              count := TestObjects[I].FRequestCount div TestObjects[I]
-                .FCcRequestCount;
-              if (rtmGET in TestObjects[I].FMethods) then
-                TesteEndpointREST(TestObjects[I].FEndpoint, rtmGET, count,
-                  ThreadedCli);
-
-              if (rtmPOST in TestObjects[I].FMethods) then
-                TesteEndpointREST(TestObjects[I].FEndpoint, rtmPOST, count,
-                  ThreadedCli);
-
-              if (rtmPUT in TestObjects[I].FMethods) then
-                TesteEndpointREST(TestObjects[I].FEndpoint, rtmPUT, count,
-                  ThreadedCli);
-
-              if (rtmPATCH in TestObjects[I].FMethods) then
-                TesteEndpointREST(TestObjects[I].FEndpoint, rtmPATCH, count,
-                  ThreadedCli);
-
-              if (rtmDELETE in TestObjects[I].FMethods) then
-                TesteEndpointREST(TestObjects[I].FEndpoint, rtmDELETE, count,
-                  ThreadedCli);
-
-              ThreadedCli.Free;
-            end).Start;
+        DefinirParametrosTeste(rckREST, FResultado.Memo1);
       end;
-      if Assigned(RESTClient) then
-        RESTClient.Free;
     end;
+
+    FResultado.Show;
+    for I := 0 to pred(Length(TestObjects)) do
+      TestObjects[I].Test;
+  finally
+    if Assigned(RESTClient) then
+      FreeAndNil(RESTClient);
   end;
 
 end;
@@ -544,8 +445,8 @@ var
   ini, fim: Double;
   erro: string;
 begin
-  ini := now;
   FResultado.LogMessage('Testando %d requisições...', [count]);
+  ini := now;
   for I := 0 to count do
     if not aClient.TesteEndpoint(aEndpoint, metodo, erro) then
     begin
