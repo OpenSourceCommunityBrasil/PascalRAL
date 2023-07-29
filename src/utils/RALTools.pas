@@ -6,13 +6,14 @@ uses
   {$IFNDEF FPC}
   JSON,
   {$ENDIF}
-  Classes, SysUtils, Variants, StrUtils,
-  RALTypes;
+  Classes, SysUtils, Variants, StrUtils, TypInfo,
+  RALTypes, RALConsts;
 
 function VarToBytes(v: variant): TBytes;
 function BytesToString(b: TBytes): StringRAL;
 function FixRoute(ARoute : StringRAL) : StringRAL;
 function RandomBytes(numOfBytes : IntegerRAL) : TBytes;
+function MethodToRALMethod(AMethod : StringRAL) : TRALMethod;
 
 implementation
 
@@ -68,6 +69,18 @@ begin
   Randomize;
   for vInt := 1 to numOfBytes do
     Result[vInt-1] := Random(256);
+end;
+
+function MethodToRALMethod(AMethod : StringRAL) : TRALMethod;
+var
+  vInt : IntegerRAL;
+begin
+  AMethod := 'am'+UpperCase(AMethod);
+  vInt := GetEnumValue(TypeInfo(TRALMethod),AMethod);
+  if vInt <> -1 then
+    Result := TRALMethod(vInt)
+  else
+    Result := amGET;
 end;
 
 end.

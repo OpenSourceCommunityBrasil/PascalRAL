@@ -109,19 +109,28 @@ begin
     try
       case AMethod of
         amGET:
-          Result := FHttp.Request(AURL, 'Get', 0, vHeader, '', '', False, vSource, vResult);
+          Result := FHttp.Request(AURL, 'GET', 0, vHeader, '', '', False, vSource, vResult);
 
         amPOST:
-          Result := FHttp.Request(AURL, 'Post', 0, vHeader, '', '', False, vSource, vResult);
+          Result := FHttp.Request(AURL, 'POST', 0, vHeader, '', '', False, vSource, vResult);
 
         amPUT:
-          Result := FHttp.Request(AURL, 'Put', 0, vHeader, '', '', False, vSource, vResult);
+          Result := FHttp.Request(AURL, 'PUT', 0, vHeader, '', '', False, vSource, vResult);
 
         amPATCH:
-          Result := FHttp.Request(AURL, 'Put', 0, vHeader, '', '', False, vSource, vResult);
+          Result := FHttp.Request(AURL, 'PATCH', 0, vHeader, '', '', False, vSource, vResult);
 
         amDELETE:
-          Result := FHttp.Request(AURL, 'Delete', 0, vHeader, '', '', False, vSource, vResult);
+          Result := FHttp.Request(AURL, 'DELETE', 0, vHeader, '', '', False, vSource, vResult);
+
+        amTRACE  :
+          Result := FHttp.Request(AURL, 'TRACE', 0, vHeader, '', '', False, vSource, vResult);
+
+        amHEAD   :
+          Result := FHttp.Request(AURL, 'HEAD', 0, vHeader, '', '', False, vSource, vResult);
+
+        amOPTION :
+          Result := FHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
       end;
     except
       on e : Exception do begin

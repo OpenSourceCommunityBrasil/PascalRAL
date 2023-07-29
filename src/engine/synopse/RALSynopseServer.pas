@@ -7,7 +7,7 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams;
+  RALParams, RALTools;
 
 type
 
@@ -136,15 +136,7 @@ begin
         Params.DecodeQuery(vParamQuery);
       end;
 
-      Method := amGET;
-      if SameText(AContext.Method, 'POST') then
-        Method := amPOST
-      else if SameText(AContext.Method, 'DELETE') then
-        Method := amDELETE
-      else if SameText(AContext.Method, 'PUT') then
-        Method := amPUT
-      else if SameText(AContext.Method, 'OPTION') then
-        Method := amPUT;
+      Method := MethodToRALMethod(AContext.Method);
 
       vStringList := TStringList.Create;
       try

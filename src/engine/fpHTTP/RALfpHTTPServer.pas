@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, syncobjs,
   fphttpserver, sslbase, fpHTTP, fphttpapp, httpprotocol,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams;
+  RALParams, RALTools;
 
 type
 
@@ -221,15 +221,7 @@ begin
         Params.DecodeQuery(vParamQuery);
       end;
 
-      Method := amGET;
-      if SameText(ARequest.Method, 'POST') then
-        Method := amPOST
-      else if SameText(ARequest.Method, 'DELETE') then
-        Method := amDELETE
-      else if SameText(ARequest.Method, 'PUT') then
-        Method := amPUT
-      else if SameText(ARequest.Method, 'OPTION') then
-        Method := amPUT;
+      Method := MethodToRALMethod(ARequest.Method);
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;

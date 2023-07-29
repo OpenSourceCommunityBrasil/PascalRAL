@@ -7,7 +7,7 @@ uses
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
   IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams;
+  RALParams, RALTools;
 
 type
   TRALIndySSL = class(TRALSSL)
@@ -126,17 +126,8 @@ begin
       ContentSize := ARequestInfo.ContentLength;
 
       Query := ARequestInfo.Document;
-      case ARequestInfo.CommandType of
-        hcUnknown,
-        hcGET    : Method := amGET;
-        hcPOST   : Method := amPOST;
-        hcDELETE : Method := amDELETE;
-        hcPUT    : Method := amPUT;
-        hcOPTION : Method := amOPTION;
-        hcHEAD   : Method := amHEAD;
-        hcTRACE  : Method := amTRACE;
-        hcPATCH  : Method := amPATCH;
-      end;
+
+      Method := MethodToRALMethod(ARequestInfo.Command);
 
       if AContext.Data is TRALAuthorization then
       begin

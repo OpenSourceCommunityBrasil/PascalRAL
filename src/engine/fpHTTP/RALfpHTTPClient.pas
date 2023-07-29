@@ -105,20 +105,14 @@ begin
     vResult := TStringStream.Create;
     try
       case AMethod of
-        amGET:
-          FHttp.Get(AURL, vResult);
-
-        amPOST:
-          FHttp.Post(AURL, vResult);
-
-        amPUT:
-          FHttp.Put(AURL, vResult);
-
-        amPATCH:
-          FHttp.Put(AURL, vResult);
-
-        amDELETE:
-          FHttp.Delete(AURL, vResult);
+        amGET    : FHttp.Get(AURL, vResult);
+        amPOST   : FHttp.Post(AURL, vResult);
+        amPUT    : FHttp.Put(AURL, vResult);
+        amPATCH  : FHttp.HTTPMethod('PATCH',AURL,vResult,[]); // sem funcao
+        amDELETE : FHttp.Delete(AURL, vResult);
+        amTRACE  : FHttp.HTTPMethod('TRACE',AURL,vResult,[]); // sem funcao
+        amHEAD   : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
+        amOPTION : FHttp.Options(AURL, vResult);
       end;
     except
       vResult.Size := 0;
