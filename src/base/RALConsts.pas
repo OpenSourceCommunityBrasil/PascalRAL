@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils;
 
-Type
+type
   TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE, amALL);
   TRALMethods = set of TRALMethod;
   TRALAuthTypes = (ratNone, ratBasic, ratBearer);
@@ -58,6 +58,8 @@ const
              + '<p>The server informs that it doesn''t want to work now and you'
              + ' should try later</p>'
              + '</body></html>';
+
+  wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
 
 implementation
 

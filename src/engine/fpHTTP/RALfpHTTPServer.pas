@@ -123,7 +123,6 @@ procedure TRALfpHttpServerThread.SetPort(AValue : IntegerRAL);
 var
   vActive: boolean;
 begin
-  inherited;
   vActive := Self.Active;
   Active := False;
 
@@ -390,14 +389,21 @@ end;
 
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 begin
-  inherited;
+  if AValue = Active then
+    Exit;
+
   FHttpThread.Active := AValue;
+
+  inherited;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
 begin
-  inherited;
+  if AValue = Port then
+    Exit;
+
   FHttpThread.Port := AValue;
+  inherited;
 end;
 
 procedure TRALfpHttpServer.SetSessionTimeout(const AValue : IntegerRAL);

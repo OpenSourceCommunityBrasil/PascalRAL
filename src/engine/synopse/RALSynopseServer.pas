@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, syncobjs,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
-  mormot.core.base,
+  mormot.core.base, mormot.rest.http.server, mormot.rest.server,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools;
 
@@ -36,6 +36,8 @@ type
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
 
+    function IPv6IsImplemented : boolean; override;
+
     procedure DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
     function OnCommandProcess(AContext : THttpServerRequestAbstract): Cardinal;
   public
@@ -48,35 +50,66 @@ implementation
 { TRALSynopseServer }
 
 procedure TRALSynopseServer.SetActive(const AValue : boolean);
+var
+  vAddr : StringRAL;
 begin
-  inherited;
-  if AValue then begin
-    FHttp := THttpAsyncServer.Create(IntToStr(Port), nil, nil, '', 0, SessionTimeout);
+  if AValue = Active then
+    Exit;
+
+  if AValue then
+  begin
+    if IPConfig.IPv6Enabled then
+      vAddr := Format('[%s]:%d',[IPConfig.IPv6Bind,Self.Port])
+    else
+      vAddr := IntToStr(Self.Port);
+
+    FHttp := THttpAsyncServer.Create(vAddr, nil, nil,
+                              'RAL ' + RALVERSION, 0, SessionTimeout,
+                              [hsoNoXPoweredHeader,
+                               hsoNoStats,
+                               hsoHeadersInterning,
+                               hsoThreadSmooting]);
+
+    FHttp.HttpQueueLength := 100000;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
-    if SSL.Enabled then begin
+    if SSL.Enabled then
+    begin
       with SSL as TRALSynopseSSL do
         FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile, PrivateKeyPassword, CACertificatesFile);
     end
-    else begin
+    else
+    begin
       FHttp.WaitStarted;
     end;
   end
-  else begin
+  else
+  begin
     if FHttp <> nil then
       FHttp.Free;
   end;
+
+  inherited;
 end;
 
 procedure TRALSynopseServer.SetPort(const AValue : IntegerRAL);
 var
   vActive: boolean;
 begin
+  if AValue = Port then
+    Exit;
+
   inherited;
-  vActive := Self.Active;
+
+  vActive := Active;
 
   Active := False;
 
   Active := vActive;
+end;
+
+function TRALSynopseServer.IPv6IsImplemented : boolean;
+begin
+  Result := True;
 end;
 
 procedure TRALSynopseServer.DecodeAuth(AHeaders : TStringList; AResult : TRALRequest);

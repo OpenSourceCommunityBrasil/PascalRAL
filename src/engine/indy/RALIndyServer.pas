@@ -33,6 +33,7 @@ type
     procedure SetActive(const AValue: boolean); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+    function IPv6IsImplemented : boolean; override;
 
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
@@ -56,6 +57,7 @@ begin
   SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
+
   {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
   FHttp.OnCommandOther := @OnCommandProcess;
@@ -87,11 +89,13 @@ var
   vMultPart: TIdMultiPartFormDataStream;
   vInt: integer;
 begin
-  if AResponse.Params.Count(rpkBODY) = 1 then begin
+  if AResponse.Params.Count(rpkBODY) = 1 then
+  begin
     AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
     AResponseInfo.FreeContentStream := False;
   end
-  else begin
+  else
+  begin
     vMultPart := TIdMultiPartFormDataStream.Create;
     for vInt := 0 to Pred(AResponse.Params.Count) do
     begin
@@ -210,12 +214,37 @@ end;
 
 procedure TRALIndyServer.SetActive(const AValue: boolean);
 begin
+  if AValue = Active then
+    Exit;
+
+  FHttp.Active := False;
+
   if Assigned(SSL) then
     FHandlerSSL.SSLOptions.Assign(TRALIndySSL(SSL).SSLOptions);
   FHttp.IOHandler := nil;
   if (Assigned(SSL)) and (SSL.Enabled) then
     FHttp.IOHandler := FHandlerSSL;
+
+  FHttp.Bindings.Clear;
+  if IPConfig.IPv6Enabled then
+  begin
+    with FHttp.Bindings.Add do
+    begin
+      IP := Self.IPConfig.IPv6Bind;
+      Port := Self.Port;
+      IPVersion := Id_IPv6;
+    end;
+  end;
+
+  with FHttp.Bindings.Add do
+  begin
+    IP := Self.IPConfig.IPv4Bind;
+    Port := Self.Port;
+    IPVersion := Id_IPv4;
+  end;
+
   FHttp.Active := AValue;
+
   inherited;
 end;
 
@@ -229,24 +258,21 @@ procedure TRALIndyServer.SetPort(const AValue: IntegerRAL);
 var
   vActive: boolean;
 begin
-  inherited;
+  if AValue = Port then
+    Exit;
+
   vActive := Self.Active;
   Active := False;
+
   FHttp.DefaultPort := AValue;
-  FHttp.Bindings.Clear;
-  with FHttp.Bindings.Add do
-  begin
-    IP := '0.0.0.0';
-    Port := AValue;
-    IPVersion := Id_IPv4;
-  end;
-  with FHttp.Bindings.Add do
-  begin
-    IP := '::';
-    Port := AValue;
-    IPVersion := Id_IPv6;
-  end;
+
   Active := vActive;
+  inherited;
+end;
+
+function TRALIndyServer.IPv6IsImplemented : boolean;
+begin
+  Result := True;
 end;
 
 { TRALIndySSL }
