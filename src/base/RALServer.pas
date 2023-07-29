@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, StrUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse, RALThreadSafe;
+  RALParams, RALRequest, RALResponse, RALThreadSafe, TypInfo;
 
 type
 
@@ -93,6 +93,8 @@ type
     function ClientIsBlocked(AClientIP: StringRAL) : boolean;
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
+
+    function HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -281,6 +283,18 @@ begin
     vInt := vInt - 1;
   end;
   FBlockedList.Unlock;
+end;
+
+function TRALServer.HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
+var
+  vInt : IntegerRAL;
+begin
+  AMethod := 'am'+UpperCase(AMethod);
+  vInt := GetEnumValue(TypeInfo(TRALMethod),AMethod);
+  if vInt <> -1 then
+    Result := TRALMethod(vInt)
+  else
+    Result := amGET;
 end;
 
 destructor TRALServer.Destroy;

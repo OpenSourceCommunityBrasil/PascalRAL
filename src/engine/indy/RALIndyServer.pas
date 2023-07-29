@@ -127,7 +127,7 @@ begin
 
       Query := ARequestInfo.Document;
 
-      Method := MethodToRALMethod(ARequestInfo.Command);
+      Method := HTTPMethodToRALMethod(ARequestInfo.Command);
 
       if AContext.Data is TRALAuthorization then
       begin

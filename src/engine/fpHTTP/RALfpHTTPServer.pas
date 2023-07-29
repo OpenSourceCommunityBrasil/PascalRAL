@@ -221,7 +221,7 @@ begin
         Params.DecodeQuery(vParamQuery);
       end;
 
-      Method := MethodToRALMethod(ARequest.Method);
+      Method := FParent.HTTPMethodToRALMethod(ARequest.Method);
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;

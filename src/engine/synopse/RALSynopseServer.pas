@@ -136,7 +136,7 @@ begin
         Params.DecodeQuery(vParamQuery);
       end;
 
-      Method := MethodToRALMethod(AContext.Method);
+      Method := HTTPMethodToRALMethod(AContext.Method);
 
       vStringList := TStringList.Create;
       try
