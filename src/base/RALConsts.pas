@@ -6,7 +6,7 @@ uses
   Classes, SysUtils;
 
 Type
-  TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amALL);
+  TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, hcHEAD, hcTRACE, amALL);
   TRALMethods = set of TRALMethod;
   TRALAuthTypes = (ratNone, ratBasic, ratBearer);
 

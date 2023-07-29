@@ -127,18 +127,15 @@ begin
 
       Query := ARequestInfo.Document;
       case ARequestInfo.CommandType of
-        hcUnknown:
-          Method := amPATCH;
-        hcHEAD, hcGET, hcTRACE:
-          Method := amGET;
-        hcPOST:
-          Method := amPOST;
-        hcDELETE:
-          Method := amDELETE;
-        hcPUT:
-          Method := amPUT;
-        hcOPTION:
-          Method := amOPTION;
+        hcUnknown,
+        hcGET    : Method := amGET;
+        hcPOST   : Method := amPOST;
+        hcDELETE : Method := amDELETE;
+        hcPUT    : Method := amPUT;
+        hcOPTION : Method := amOPTION;
+        hcHEAD   : Method := amHEAD;
+        hcTRACE  : Method := amTRACE;
+        hcPATCH  : Method := amPATCH;
       end;
 
       if AContext.Data is TRALAuthorization then
