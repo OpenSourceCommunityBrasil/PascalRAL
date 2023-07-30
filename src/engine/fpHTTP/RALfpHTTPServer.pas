@@ -5,8 +5,8 @@ interface
 uses
   Classes, SysUtils, syncobjs,
   fphttpserver, sslbase, fpHTTP, fphttpapp, httpprotocol,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
+  RALParams, RALMultipartCoder;
 
 type
 
@@ -57,7 +57,6 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL);
 
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
-    procedure EncodeBody(AResponse: TRALResponse; AResponseInfo: TFPHTTPConnectionResponse);
 
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
@@ -160,34 +159,6 @@ begin
   end;
 end;
 
-procedure TRALfpHttpServerThread.EncodeBody(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
-var
-//  vMultPart: TIdMultiPartFormDataStream;
-  vInt: integer;
-begin
-  if AResponse.Params.Count(rpkBODY) = 1 then begin
-    AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
-    AResponseInfo.FreeContentStream := False;
-  end
-  else begin
-{
-    vMultPart := TIdMultiPartFormDataStream.Create;
-    vInt := 0;
-    while vInt < AResponse.Params.Count do
-    begin
-      vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
-                             AResponse.Params.Param[vInt].ContentType,
-                             '', // charset
-                             AResponse.Params.Param[vInt].AsStream);
-      vInt := vInt + 1;
-    end;
-    vMultPart.Position := 0;
-    AResponseInfo.ContentStream := vMultPart;
-    AResponseInfo.FreeContentStream := True;
-}
-  end;
-end;
-
 procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
                                  var ARequest: TFPHTTPConnectionRequest;
                                  var AResponse: TFPHTTPConnectionResponse);
@@ -228,14 +199,14 @@ begin
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
-      // headers tambem
+      // fields tambem
       vInt := 0;
       while vInt < ARequest.FieldCount do
       begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        vParam := Params.AddParam(vStr1, vStr2, rpkHEADER);
+        vParam := Params.AddParam(vStr1, vStr2, rpkFIELD);
 
         vInt := vInt + 1;
       end;
@@ -255,10 +226,13 @@ begin
       with AResponse do
       begin
         Code := vResponse.RespCode;
-        ContentType := vResponse.ContentType;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
-        EncodeBody(vResponse, AResponse);
+
+        ContentStream := vResponse.ResponseStream;
+
+        FreeContentStream := vResponse.FreeContent;
+        ContentType := vResponse.ContentType;
 
         CustomHeaders.Add('Connection=close');
         SendContent;

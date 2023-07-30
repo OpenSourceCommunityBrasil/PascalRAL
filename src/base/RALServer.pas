@@ -438,7 +438,7 @@ begin
     begin
       Result.ContentType := TRALContentType.ctTEXTHTML;
       vString := FServerStatus.Text;
-      vString := ReplaceText(vString, '$ralengine;', FEngine);
+      vString := ReplaceText(vString, '%ralengine%', FEngine);
       Result.ResponseText := vString;
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then

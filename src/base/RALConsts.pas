@@ -25,7 +25,7 @@ const
   RALDefaultPage = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
                  + '</head><body><h1>Server OnLine</h1>'
                  + '<h4>Version: ' + RALVERSION + '</h4>'
-                 + '<h4>Engine: $ralengine;</h4>'
+                 + '<h4>Engine: %ralengine%</h4>'
                  + '</body></html>';
   RAL400Page = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
              + '</head><body><h1>400 - BadRequest</h1>'

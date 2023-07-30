@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
+  IdGlobalProtocols, IdGlobal,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools;
 
@@ -28,8 +28,6 @@ type
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure EncodeBody(AResponse: TRALResponse;
-                         AResponseInfo: TIdHTTPResponseInfo);
     procedure SetActive(const AValue: boolean); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
@@ -82,33 +80,6 @@ begin
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
-end;
-
-procedure TRALIndyServer.EncodeBody(AResponse : TRALResponse; AResponseInfo : TIdHTTPResponseInfo);
-var
-  vMultPart: TIdMultiPartFormDataStream;
-  vInt: integer;
-begin
-  if AResponse.Params.Count(rpkBODY) = 1 then
-  begin
-    AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
-    AResponseInfo.FreeContentStream := False;
-  end
-  else
-  begin
-    vMultPart := TIdMultiPartFormDataStream.Create;
-    for vInt := 0 to Pred(AResponse.Params.Count) do
-    begin
-      vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
-                             AResponse.Params.Param[vInt].ContentType,
-                             '', // charset
-                             AResponse.Params.Param[vInt].AsStream);
-    end;
-    vMultPart.Position := 0;
-    AResponseInfo.ContentStream := vMultPart;
-    AResponseInfo.ContentType := vMultPart.RequestContentType;
-    AResponseInfo.FreeContentStream := True;
-  end;
 end;
 
 procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
@@ -174,7 +145,10 @@ begin
         ResponseNo := vResponse.RespCode;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
-        EncodeBody(vResponse, AResponseInfo);
+
+        ContentStream := vResponse.ResponseStream;
+        ContentType := vResponse.ContentType;
+        FreeContentStream := vResponse.FreeContent;
 
         CloseConnection := True;
         WriteContent;

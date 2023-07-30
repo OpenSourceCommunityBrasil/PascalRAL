@@ -3,7 +3,10 @@ unit RALSynopseRegister;
 interface
 
 uses
-  Classes, LResources,
+  {$IFDEF FPC}
+    LResources,
+  {$ENDIF}
+  Classes,
   RALSynopseServer, RALSynopseClient;
 
 procedure Register;
