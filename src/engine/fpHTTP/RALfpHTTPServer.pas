@@ -3,10 +3,10 @@ unit RALfpHTTPServer;
 interface
 
 uses
-  Classes, SysUtils, syncobjs,
-  fphttpserver, sslbase, fpHTTP, fphttpapp, httpprotocol,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  Classes, SysUtils, Forms,
+  fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient,
+  RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
+  RALParams, RALMultipartCoder;
 
 type
 
@@ -45,10 +45,11 @@ type
   private
     FParent: TRALfpHttpServer;
     FHttp: TFPHttpServer;
-    FEvent: TSimpleEvent;
   protected
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
+
+    function GetURLServer : StringRAL;
 
     function GetPort: IntegerRAL;
     procedure SetPort(AValue: IntegerRAL);
@@ -57,7 +58,6 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL);
 
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
-    procedure EncodeBody(AResponse: TRALResponse; AResponseInfo: TFPHTTPConnectionResponse);
 
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
@@ -123,7 +123,6 @@ procedure TRALfpHttpServerThread.SetPort(AValue : IntegerRAL);
 var
   vActive: boolean;
 begin
-  inherited;
   vActive := Self.Active;
   Active := False;
 
@@ -158,34 +157,6 @@ begin
     else if SameText(vAux, 'Bearer') then
       AResult.Authorization.AuthType := ratBearer;
     AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
-  end;
-end;
-
-procedure TRALfpHttpServerThread.EncodeBody(AResponse : TRALResponse; AResponseInfo : TFPHTTPConnectionResponse);
-var
-//  vMultPart: TIdMultiPartFormDataStream;
-  vInt: integer;
-begin
-  if AResponse.Params.Count(rpkBODY) = 1 then begin
-    AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
-    AResponseInfo.FreeContentStream := False;
-  end
-  else begin
-{
-    vMultPart := TIdMultiPartFormDataStream.Create;
-    vInt := 0;
-    while vInt < AResponse.Params.Count do
-    begin
-      vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
-                             AResponse.Params.Param[vInt].ContentType,
-                             '', // charset
-                             AResponse.Params.Param[vInt].AsStream);
-      vInt := vInt + 1;
-    end;
-    vMultPart.Position := 0;
-    AResponseInfo.ContentStream := vMultPart;
-    AResponseInfo.FreeContentStream := True;
-}
   end;
 end;
 
@@ -229,14 +200,14 @@ begin
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
-      // headers tambem
+      // fields tambem
       vInt := 0;
       while vInt < ARequest.FieldCount do
       begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        vParam := Params.AddParam(vStr1, vStr2, rpkHEADER);
+        vParam := Params.AddParam(vStr1, vStr2, rpkFIELD);
 
         vInt := vInt + 1;
       end;
@@ -256,10 +227,13 @@ begin
       with AResponse do
       begin
         Code := vResponse.RespCode;
-        ContentType := vResponse.ContentType;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
-        EncodeBody(vResponse, AResponse);
+
+        ContentStream := vResponse.ResponseStream;
+
+        FreeContentStream := vResponse.FreeContent;
+        ContentType := vResponse.ContentType;
 
         CustomHeaders.Add('Connection=close');
         SendContent;
@@ -290,39 +264,52 @@ begin
       FHttp.UseSSL := True;
       FHttp.CertificateData.Assign(TRALfpHTTPSSL(FParent.SSL).SSLOptions);
     end;
-  end;
-  if (not AValue) and (Active) then
+  end
+  else if (not AValue) and (FHttp.Active) then begin
     FHttp.Active := False;
+  end;
+end;
 
-  if not Terminated then
-    FEvent.SetEvent;
+function TRALfpHttpServerThread.GetURLServer : StringRAL;
+begin
+  Result := 'http';
+  if FParent.SSL.Enabled then
+    Result := Result + 's';
+  Result := Result + '://127.0.0.1:'+IntToStr(Port);
 end;
 
 procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do begin
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
-    FEvent.WaitFor(INFINITE);
-
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
-    FEvent.ResetEvent;
-
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
     if (FParent.Active) then
       FHttp.Active := FParent.Active;
   end;
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
+var
+  vFP : TFPHTTPClient;
 begin
-  if Active then
+  if FHttp.Active then begin
     Active := False;
+    // fernando - 30/07/2023
+    // POG para fechar o socket assim q ele for desativado
+    // ao ativar o Server ele congela a thread e ao desativar ele mantem ela
+    // congelada ate que uma conexao client tente conectar, permitindo assim
+    // destruir a thread.
+    vFP := TFPHTTPClient.Create(nil);
+    try
+      try
+        {$warnings off}
+        vFP.Get(GetURLServer);
+        {$warnings on}
+      except
+
+      end;
+    finally
+      FreeAndNil(vFP);
+    end;
+  end;
   inherited TerminatedSet;
 end;
 
@@ -337,18 +324,14 @@ begin
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 
-  FEvent := TSimpleEvent.Create;
-  FEvent.ResetEvent;
-
   inherited Create(False);
 end;
 
 destructor TRALfpHttpServerThread.Destroy;
 begin
-  FHttp.Active := False;
-  FEvent.SetEvent;
+  if FHttp.Active then
+    FHttp.Active := False;
   FParent := nil;
-  FreeAndNil(FEvent);
   FreeAndNil(FHttp);
 end;
 
@@ -384,20 +367,28 @@ end;
 destructor TRALfpHttpServer.Destroy;
 begin
   FHttpThread.Terminate;
-  FHttpThread.Free;
+  FHttpThread.WaitFor;
+  FreeAndNil(FHttpThread);
   inherited;
 end;
 
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 begin
+  if AValue = Active then
+    Exit;
+
   inherited;
+
   FHttpThread.Active := AValue;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
 begin
-  inherited;
+  if AValue = Port then
+    Exit;
+
   FHttpThread.Port := AValue;
+  inherited;
 end;
 
 procedure TRALfpHttpServer.SetSessionTimeout(const AValue : IntegerRAL);

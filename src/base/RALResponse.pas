@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes;
+  RALTypes, RALParams, RALMIMETypes, RALConsts;
 
 type
 
@@ -15,6 +15,7 @@ type
     FParams : TRALParams;
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
+    FFreeContent : boolean;
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -30,6 +31,7 @@ type
     property ResponseStream : TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write FContentType;
     property RespCode: IntegerRAL read FRespCode write FRespCode;
+    property FreeContent: boolean read FFreeContent;
   end;
 
 implementation
@@ -49,6 +51,7 @@ begin
   inherited;
   FContentType := TRALContentType.ctTEXTHTML;
   FParams := TRALParams.Create;
+  FFreeContent := False;
 end;
 
 destructor TRALResponse.Destroy;
@@ -59,14 +62,26 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  if Params.Count(rpkBODY) > 0 then
-    Result := Params.Param[0].AsStream;
+  Result := Params.EncodeBody(FContentType,FFreeContent);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
+var
+  vStream : TStream;
 begin
-  if Params.Count(rpkBODY) > 0 then
-    Result := Params.Param[0].AsString;
+  Result := '';
+  vStream := Params.EncodeBody(FContentType,FFreeContent);
+  if vStream <> nil then
+  begin
+    vStream.Position := 0;
+    SetLength(Result,vStream.Size);
+    vStream.Read(Result[PosIniStr],vStream.Size);
+
+    if FFreeContent then
+      vStream.Free;
+
+    FFreeContent := False;
+  end;
 end;
 
 procedure TRALResponse.SetResponseStream(const AValue: TStream);

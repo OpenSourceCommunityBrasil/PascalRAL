@@ -8,6 +8,7 @@ uses
   RALParams, RALRequest, RALResponse, RALThreadSafe, TypInfo;
 
 type
+  TRALServer = class;
 
   { TRALSSL }
 
@@ -35,7 +36,7 @@ type
 
   { TRALClientBlockList }
 
-  TRALClientBlockList = class
+  TRALClientBlockList = class(TPersistent)
   private
     FLastAccess: TDateTime;
     FNumTry: IntegerRAL;
@@ -44,6 +45,24 @@ type
   published
     property LastAccess: TDateTime read FLastAccess write FLastAccess;
     property NumTry: IntegerRAL read FNumTry write FNumTry;
+  end;
+
+  { TRALIPConfig }
+
+  TRALIPConfig = class(TPersistent)
+  private
+    FOwner : TRALServer;
+    FIPv4Bind : StringRAL;
+    FIPv6Bind : StringRAL;
+    FIPv6Enabled : boolean;
+  protected
+    procedure SetIPv6Enabled(AValue : boolean);
+  public
+    constructor Create(AOwner : TRALServer);
+  published
+    property IPv4Bind : StringRAL read FIPv4Bind write FIPv4Bind;
+    property IPv6Bind : StringRAL read FIPv6Bind write FIPv6Bind;
+    property IPv6Enabled : boolean read FIPv6Enabled write SetIPv6Enabled;
   end;
 
   TRALOnClientTryBlocked = procedure(Sender : TObject; AClientIP : StringRAL; ANumTry : IntegerRAL) of object;
@@ -67,6 +86,7 @@ type
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
     FWhiteIPList: TStringList;
+    FIPConfig : TRALIPConfig;
 
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
@@ -94,6 +114,8 @@ type
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
 
+    function IPv6IsImplemented : boolean; virtual;
+
     function HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
   public
     constructor Create(AOwner: TComponent); override;
@@ -101,7 +123,6 @@ type
     procedure CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = '');
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
-    property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     property BlackIPList: TStringList read FBlackIPList write SetBlackIPList;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
@@ -112,6 +133,9 @@ type
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
     property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
+    property IPConfig : TRALIPConfig read FIPConfig write FIPConfig;
+
+    property Active: boolean read FActive write SetActive;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
@@ -120,6 +144,38 @@ type
   end;
 
 implementation
+
+{ TRALIPConfig }
+
+procedure TRALIPConfig.SetIPv6Enabled(AValue : boolean);
+var
+  vActive : boolean;
+begin
+  if FIPv6Enabled = AValue then
+    Exit;
+
+  if FOwner <> nil then
+  begin
+    vActive := FOwner.Active;
+    FOwner.Active := False;
+
+    if (AValue) and (not FOwner.IPv6IsImplemented) then
+      raise Exception.Create(wmIPv6notImplemented)
+    else
+      FIPv6Enabled := AValue;
+
+    FOwner.Active := vActive;
+  end;
+end;
+
+constructor TRALIPConfig.Create(AOwner : TRALServer);
+begin
+  inherited Create;
+  FOwner := AOwner;
+  FIPv4Bind := '0.0.0.0';
+  FIPv6Bind := '::';
+  FIPv6Enabled := False;
+end;
 
 { TRALClientBlockList }
 
@@ -154,10 +210,12 @@ begin
   FSSL := CreateRALSSL;
   FEngine := '';
   FFavIcon := TMemoryStream.Create;
+  FSessionTimeout := 30000;
 
   FBlockedList := TRALStringListSafe.Create;
   FWhiteIPList := TStringList.Create;
   FBlackIPList := TStringList.Create;
+  FIPConfig := TRALIPConfig.Create(Self);
 
 //  liberando localhost
 //  if FWhiteIPList.Text = '' then begin
@@ -285,6 +343,11 @@ begin
   FBlockedList.Unlock;
 end;
 
+function TRALServer.IPv6IsImplemented : boolean;
+begin
+  Result := False;
+end;
+
 function TRALServer.HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
 var
   vInt : IntegerRAL;
@@ -312,6 +375,8 @@ begin
 
   FreeAndNil(FWhiteIPList);
   FreeAndNil(FBlackIPList);
+
+  FreeAndNil(FIPConfig);
 
   inherited;
 end;
@@ -367,13 +432,16 @@ begin
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
+  if Assigned(FOnRequest) then
+    FOnRequest(vRoute, ARequest, Result);
+
   if (vRoute = nil) then
   begin
     if (ARequest.Query = '/') and (FShowServerStatus) then
     begin
       Result.ContentType := TRALContentType.ctTEXTHTML;
       vString := FServerStatus.Text;
-      vString := ReplaceText(vString, '$ralengine;', FEngine);
+      vString := ReplaceText(vString, '%ralengine%', FEngine);
       Result.ResponseText := vString;
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
@@ -409,19 +477,16 @@ begin
     end
     else
     begin
-      if Assigned(FOnRequest) then
-        FOnRequest(vRoute, ARequest, Result);
-
       DelBlockList(ARequest.ClientInfo.IP);
 
       vRoute.Execute(ARequest, Result);
-
-      if Assigned(FOnResponse) then
-        FOnResponse(vRoute, ARequest, Result);
-
-      ARequest.Params.ClearParams;
     end;
   end;
+
+  if Assigned(FOnResponse) then
+    FOnResponse(vRoute, ARequest, Result);
+
+  ARequest.Params.ClearParams;
 
   CleanExpiredBlockedList;
 end;

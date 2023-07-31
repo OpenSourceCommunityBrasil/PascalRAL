@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdMessageCoderMIME, IdGlobal, IdMultipartFormData,
+  IdGlobalProtocols, IdGlobal,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools;
 
@@ -28,11 +28,10 @@ type
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure EncodeBody(AResponse: TRALResponse;
-                         AResponseInfo: TIdHTTPResponseInfo);
     procedure SetActive(const AValue: boolean); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+    function IPv6IsImplemented : boolean; override;
 
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
@@ -56,6 +55,7 @@ begin
   SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
+
   {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
   FHttp.OnCommandOther := @OnCommandProcess;
@@ -80,31 +80,6 @@ begin
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
-end;
-
-procedure TRALIndyServer.EncodeBody(AResponse : TRALResponse; AResponseInfo : TIdHTTPResponseInfo);
-var
-  vMultPart: TIdMultiPartFormDataStream;
-  vInt: integer;
-begin
-  if AResponse.Params.Count(rpkBODY) = 1 then begin
-    AResponseInfo.ContentStream := AResponse.Params.Param[0].AsStream;
-    AResponseInfo.FreeContentStream := False;
-  end
-  else begin
-    vMultPart := TIdMultiPartFormDataStream.Create;
-    for vInt := 0 to Pred(AResponse.Params.Count) do
-    begin
-      vMultPart.AddFormField(AResponse.Params.Param[vInt].ParamName,
-                             AResponse.Params.Param[vInt].ContentType,
-                             '', // charset
-                             AResponse.Params.Param[vInt].AsStream);
-    end;
-    vMultPart.Position := 0;
-    AResponseInfo.ContentStream := vMultPart;
-    AResponseInfo.ContentType := vMultPart.RequestContentType;
-    AResponseInfo.FreeContentStream := True;
-  end;
 end;
 
 procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
@@ -170,7 +145,10 @@ begin
         ResponseNo := vResponse.RespCode;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
-        EncodeBody(vResponse, AResponseInfo);
+
+        ContentStream := vResponse.ResponseStream;
+        ContentType := vResponse.ContentType;
+        FreeContentStream := vResponse.FreeContent;
 
         CloseConnection := True;
         WriteContent;
@@ -210,12 +188,37 @@ end;
 
 procedure TRALIndyServer.SetActive(const AValue: boolean);
 begin
+  if AValue = Active then
+    Exit;
+
+  FHttp.Active := False;
+
   if Assigned(SSL) then
     FHandlerSSL.SSLOptions.Assign(TRALIndySSL(SSL).SSLOptions);
   FHttp.IOHandler := nil;
   if (Assigned(SSL)) and (SSL.Enabled) then
     FHttp.IOHandler := FHandlerSSL;
+
+  FHttp.Bindings.Clear;
+  if IPConfig.IPv6Enabled then
+  begin
+    with FHttp.Bindings.Add do
+    begin
+      IP := Self.IPConfig.IPv6Bind;
+      Port := Self.Port;
+      IPVersion := Id_IPv6;
+    end;
+  end;
+
+  with FHttp.Bindings.Add do
+  begin
+    IP := Self.IPConfig.IPv4Bind;
+    Port := Self.Port;
+    IPVersion := Id_IPv4;
+  end;
+
   FHttp.Active := AValue;
+
   inherited;
 end;
 
@@ -229,24 +232,21 @@ procedure TRALIndyServer.SetPort(const AValue: IntegerRAL);
 var
   vActive: boolean;
 begin
-  inherited;
+  if AValue = Port then
+    Exit;
+
   vActive := Self.Active;
   Active := False;
+
   FHttp.DefaultPort := AValue;
-  FHttp.Bindings.Clear;
-  with FHttp.Bindings.Add do
-  begin
-    IP := '0.0.0.0';
-    Port := AValue;
-    IPVersion := Id_IPv4;
-  end;
-  with FHttp.Bindings.Add do
-  begin
-    IP := '::';
-    Port := AValue;
-    IPVersion := Id_IPv6;
-  end;
+
   Active := vActive;
+  inherited;
+end;
+
+function TRALIndyServer.IPv6IsImplemented : boolean;
+begin
+  Result := True;
 end;
 
 { TRALIndySSL }

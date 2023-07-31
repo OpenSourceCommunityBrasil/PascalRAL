@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils;
 
-Type
+type
   TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE, amALL);
   TRALMethods = set of TRALMethod;
   TRALAuthTypes = (ratNone, ratBasic, ratBearer);
@@ -25,7 +25,7 @@ const
   RALDefaultPage = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
                  + '</head><body><h1>Server OnLine</h1>'
                  + '<h4>Version: ' + RALVERSION + '</h4>'
-                 + '<h4>Engine: $ralengine;</h4>'
+                 + '<h4>Engine: %ralengine%</h4>'
                  + '</body></html>';
   RAL400Page = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
              + '</head><body><h1>400 - BadRequest</h1>'
@@ -58,6 +58,8 @@ const
              + '<p>The server informs that it doesn''t want to work now and you'
              + ' should try later</p>'
              + '</body></html>';
+
+  wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
 
 implementation
 
