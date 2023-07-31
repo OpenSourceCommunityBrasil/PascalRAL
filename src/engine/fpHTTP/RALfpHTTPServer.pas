@@ -235,7 +235,6 @@ begin
         FreeContentStream := vResponse.FreeContent;
         ContentType := vResponse.ContentType;
 
-        CustomHeaders.Add('Connection=close');
         SendContent;
       end;
     finally

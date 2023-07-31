@@ -431,6 +431,7 @@ begin
     else
       FreeAndNil(FItemForm);
   end;
+  FItemForm := nil;
 end;
 
 procedure TRALMultipartDecoder.SetContentType(AValue : StringRAL);
@@ -451,6 +452,53 @@ procedure TRALMultipartDecoder.ProcessBuffer(AInput : PByte; AInputLen : Integer
 var
   vBuffer : PByte;
   vLine : StringRAL;
+
+  procedure processLine;
+  begin
+    if FIndex < 500 then
+    begin
+      SetLength(vLine, FIndex);
+      Move(FBuffer[0], vLine[1], FIndex);
+      // boundary end of file
+      if Pos('--'+FBoundary+'--', vLine) > 0 then
+      begin
+        FinalizeItem;
+        vBuffer := ResetBuffer;
+      end
+      // boundary begin of file
+      else if Pos('--'+FBoundary+#13#10, vLine) > 0 then
+      begin
+        FinalizeItem;
+        FItemForm := TRALMultipartFormData.Create;
+        FWaitSepEnd := True;
+        vBuffer := ResetBuffer;
+      end
+      // line separator header e file
+      else if (vLine = #13#10) and (FWaitSepEnd) then
+      begin
+        FWaitSepEnd := False;
+        vBuffer := ResetBuffer;
+      end
+      // line de headers
+      else if FWaitSepEnd then
+      begin
+        FItemForm.ProcessHeader(vLine);
+        vBuffer := ResetBuffer;
+      end
+      // end of stream
+      else
+      begin
+        vBuffer := BurnBuffer;
+      end
+    end
+    else
+    // se o buffer tiver mais q 500 chars significa q o conteudo do
+    // buffer eh o parte do arquivo e nao um novo boundary
+    begin
+      vBuffer := BurnBuffer;
+    end;
+  end;
+
 begin
   vBuffer := @FBuffer[FIndex];
   while AInputLen > 0 do
@@ -465,48 +513,7 @@ begin
     end
     else if (AInput^ = 10) and (FIs13) then
     begin
-      if FIndex < 500 then
-      begin
-        SetLength(vLine, FIndex);
-        Move(FBuffer[0], vLine[1], FIndex);
-        // boundary end of file
-        if Pos('--'+FBoundary+'--', vLine) > 0 then
-        begin
-          FinalizeItem;
-          vBuffer := ResetBuffer;
-        end
-        // boundary begin of file
-        else if Pos('--'+FBoundary+#13#10, vLine) > 0 then
-        begin
-          FinalizeItem;
-          FItemForm := TRALMultipartFormData.Create;
-          FWaitSepEnd := True;
-          vBuffer := ResetBuffer;
-        end
-        // line separator header e file
-        else if (vLine = #13#10) and (FWaitSepEnd) then
-        begin
-          FWaitSepEnd := False;
-          vBuffer := ResetBuffer;
-        end
-        // line de headers
-        else if FWaitSepEnd then
-        begin
-          FItemForm.ProcessHeader(vLine);
-          vBuffer := ResetBuffer;
-        end
-        // end of stream
-        else
-        begin
-          vBuffer := BurnBuffer;
-        end;
-      end
-      // se o buffer tiver mais q 500 chars significa q o conteudo do
-      // buffer eh o parte do arquivo e nao um novo boundary
-      else
-      begin
-        vBuffer := BurnBuffer;
-      end;
+      processLine;
       FIs13 := False;
     end;
 
@@ -515,6 +522,11 @@ begin
     Dec(AInputLen);
     Inc(AInput);
   end;
+
+  if FIndex > 0 then
+    processLine;
+
+  FinalizeItem;
 end;
 
 function TRALMultipartDecoder.BurnBuffer : PByte;

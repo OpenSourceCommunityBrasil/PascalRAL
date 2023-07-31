@@ -30,7 +30,7 @@ type
 
   TRALSynopseServer = class(TRALServer)
   private
-    FHttp : THttpAsyncServer;
+    FHttp : THttpServerSocketGeneric;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
@@ -63,14 +63,17 @@ begin
     else
       vAddr := IntToStr(Self.Port);
 
+    // THttpAsyncServer nao funciona com AB;
+    // THttpServer
     FHttp := THttpAsyncServer.Create(vAddr, nil, nil,
-                              'RAL ' + RALVERSION, 0, SessionTimeout,
-                              [hsoNoXPoweredHeader,
-                               hsoNoStats,
-                               hsoHeadersInterning,
-                               hsoThreadSmooting]);
-
+                               '', 0, SessionTimeout,
+                               [hsoNoXPoweredHeader,
+                                hsoNoStats,
+                                hsoHeadersInterning,
+                                hsoThreadSmooting]);
     FHttp.HttpQueueLength := 100000;
+    FHttp.ServerName := 'RAL_Mormot2';
+    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then
     begin
