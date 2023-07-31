@@ -43,7 +43,7 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
-              <DebugInfoType Value="dsDwarf3"/>
+              <DebugInfoType Value="dsDwarf2"/>
               <UseHeaptrc Value="True"/>
               <TrashVariables Value="True"/>
               <UseExternalDbgSyms Value="True"/>
@@ -57,6 +57,7 @@
           <Other>
             <Verbosity>
               <ShoLineNum Value="True"/>
+              <ShowAll Value="True"/>
             </Verbosity>
           </Other>
         </CompilerOptions>

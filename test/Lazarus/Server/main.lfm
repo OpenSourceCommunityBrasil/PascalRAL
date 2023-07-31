@@ -8,6 +8,7 @@ object Form1: TForm1
   ClientWidth = 320
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  LCLVersion = '2.2.6.0'
   object LabeledEdit1: TLabeledEdit
     Left = 104
     Height = 23

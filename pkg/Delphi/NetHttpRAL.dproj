@@ -159,7 +159,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="NetHttpRAL.dcr"/>
         <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="..\..\src\engine\netHTTP\RALnetHTTPClient.pas"/>
+        <DCCReference Include="..\..\src\engine\netHTTP\RALNetHTTPRegister.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -201,7 +204,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\NetHttpRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\22.0\Bpl\NetHttpRAL.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>NetHttpRAL.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

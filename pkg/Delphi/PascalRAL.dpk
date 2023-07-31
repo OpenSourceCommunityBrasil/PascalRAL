@@ -43,7 +43,6 @@ contains
   RALHashes in '..\..\src\utils\RALHashes.pas',
   RALJson in '..\..\src\utils\RALJson.pas',
   RALMD5 in '..\..\src\utils\RALMD5.pas',
-  RALMimeCoder in '..\..\src\utils\RALMimeCoder.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
   RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas',
@@ -51,6 +50,7 @@ contains
   RALTools in '..\..\src\utils\RALTools.pas',
   RALParams in '..\..\src\base\RALParams.pas',
   RALRequest in '..\..\src\base\RALRequest.pas',
-  RALResponse in '..\..\src\base\RALResponse.pas';
+  RALResponse in '..\..\src\base\RALResponse.pas',
+  RALMultipartCoder in '..\..\src\utils\RALMultipartCoder.pas';
 
 end.

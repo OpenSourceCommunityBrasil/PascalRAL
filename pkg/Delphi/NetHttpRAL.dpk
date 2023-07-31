@@ -1,6 +1,7 @@
 package NetHttpRAL;
 
 {$R *.res}
+{$R 'NetHttpRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -30,5 +31,9 @@ package NetHttpRAL;
 
 requires
   rtl;
+
+contains
+  RALnetHTTPClient in '..\..\src\engine\netHTTP\RALnetHTTPClient.pas',
+  RALNetHTTPRegister in '..\..\src\engine\netHTTP\RALNetHTTPRegister.pas';
 
 end.

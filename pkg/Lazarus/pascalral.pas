@@ -11,7 +11,7 @@ uses
   RALAuthentication, RALClient, RALConsts, RALRoutes, RALServer, RALTypes, 
   RALRequest, RALResponse, RALParams, RALRegister, RALBase64, RALHashes, 
   RALMD5, RALMIMETypes, RALSHA2_32, RALSHA2_64, RALToken, RALTools, RALJson, 
-  RALMimeCoder, RALThreadSafe, LazarusPackageIntf;
+  RALThreadSafe, RALMultipartCoder, LazarusPackageIntf;
 
 implementation
 

@@ -172,7 +172,6 @@
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
         <DCCReference Include="..\..\src\utils\RALJson.pas"/>
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
-        <DCCReference Include="..\..\src\utils\RALMimeCoder.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
@@ -181,6 +180,7 @@
         <DCCReference Include="..\..\src\base\RALParams.pas"/>
         <DCCReference Include="..\..\src\base\RALRequest.pas"/>
         <DCCReference Include="..\..\src\base\RALResponse.pas"/>
+        <DCCReference Include="..\..\src\utils\RALMultipartCoder.pas"/>
         <None Include="..\..\src\base\PascalRAL.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

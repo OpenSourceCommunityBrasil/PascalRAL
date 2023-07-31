@@ -81,21 +81,24 @@ procedure TForm1.SetupServer;
 var
   I: integer;
 begin
-  case Engine.ItemIndex of
-    0: FServer := TRALfpHttpServer.Create(Self);
-    1: FServer := TRALIndyServer.Create(Self);
-    2: FServer := TRALSynopseServer.Create(Self);
+  if not (LabeledEdit1.Text = '') then
+  begin
+    case Engine.ItemIndex of
+      0: FServer := TRALfpHttpServer.Create(Self);
+      1: FServer := TRALIndyServer.Create(Self);
+      2: FServer := TRALSynopseServer.Create(Self);
+    end;
+    FServer.Port := StrToInt(LabeledEdit1.Text);
+    FServer.CreateRoute('ping', @Ping);
+    FServer.CreateRoute('test', @Test);
+    FServer.CreateRoute('file', @Archive);
+
+    ListView1.Clear;
+    for I := 0 to pred(FServer.Routes.Count) do
+      ListView1.Items.Add.Caption := TRALRoute(FServer.Routes.Items[I]).RouteName;
+
+    FServer.Active := True;
   end;
-  FServer.Port := StrToInt(LabeledEdit1.Text);
-  FServer.CreateRoute('ping', @Ping);
-  FServer.CreateRoute('test', @Test);
-  FServer.CreateRoute('file', @Archive);
-
-  ListView1.Clear;
-  for I := 0 to pred(FServer.Routes.Count) do
-    ListView1.Items.Add.Caption := TRALRoute(FServer.Routes.Items[I]).RouteName;
-
-  FServer.Active := True;
 end;
 
 procedure TForm1.Ping(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
@@ -106,7 +109,7 @@ end;
 procedure TForm1.Archive(Sender: TObject; ARequest: TRALRequest;
   AResponse: TRALResponse);
 begin
-  TMemoryStream(AResponse.ResponseStream).LoadFromFile('.\test.pdf');
+  AResponse.Params.AddFile('', '.\test.pdf');
 end;
 
 procedure TForm1.Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);

@@ -12,10 +12,10 @@ type
 
   TRALResponse = class
   private
-    FParams : TRALParams;
+    FParams: TRALParams;
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
-    FFreeContent : boolean;
+    FFreeContent: boolean;
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -62,7 +62,7 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := Params.EncodeBody(FContentType,FFreeContent);
+  Result := Params.EncodeBody(FContentType, FFreeContent);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
@@ -70,12 +70,12 @@ var
   vStream : TStream;
 begin
   Result := '';
-  vStream := Params.EncodeBody(FContentType,FFreeContent);
+  vStream := Params.EncodeBody(FContentType, FFreeContent);
   if vStream <> nil then
   begin
     vStream.Position := 0;
-    SetLength(Result,vStream.Size);
-    vStream.Read(Result[PosIniStr],vStream.Size);
+    SetLength(Result, vStream.Size);
+    vStream.Read(Result[PosIniStr], vStream.Size);
 
     if FFreeContent then
       vStream.Free;
@@ -86,7 +86,7 @@ end;
 
 procedure TRALResponse.SetResponseStream(const AValue: TStream);
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   FParams.ClearParams(rpkBODY);
   if AValue.Size > 0 then begin
@@ -98,7 +98,7 @@ end;
 
 procedure TRALResponse.SetResponseText(const AValue: StringRAL);
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   FParams.ClearParams(rpkBODY);
   if AValue <> '' then begin

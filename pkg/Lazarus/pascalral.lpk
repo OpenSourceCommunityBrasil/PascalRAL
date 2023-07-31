@@ -19,7 +19,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="22">
+    <Files Count="23">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -98,17 +98,21 @@
         <UnitName Value="RALJson"/>
       </Item19>
       <Item20>
-        <Filename Value="..\..\src\utils\RALMimeCoder.pas"/>
-        <UnitName Value="RALMimeCoder"/>
-      </Item20>
-      <Item21>
         <Filename Value="..\..\src\utils\RALThreadSafe.pas"/>
         <UnitName Value="RALThreadSafe"/>
-      </Item21>
-      <Item22>
+      </Item20>
+      <Item21>
         <Filename Value="PascalRAL.lrs"/>
         <Type Value="LRS"/>
+      </Item21>
+      <Item22>
+        <Filename Value="..\..\src\base\PascalRAL.inc"/>
+        <Type Value="Include"/>
       </Item22>
+      <Item23>
+        <Filename Value="..\..\src\utils\RALMultipartCoder.pas"/>
+        <UnitName Value="RALMultipartCoder"/>
+      </Item23>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

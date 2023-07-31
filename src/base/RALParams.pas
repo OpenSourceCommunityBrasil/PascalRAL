@@ -199,11 +199,11 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddFile(AParamName, AFileName : StringRAL) : TRALParam;
+function TRALParams.AddFile(AParamName, AFileName: StringRAL) : TRALParam;
 var
   vMime : TRALMIMEType;
 begin
-  Result := ParamNameKind[AParamName,rpkBODY];
+  Result := ParamNameKind[AParamName, rpkBODY];
   if Result = nil then
     Result := NewParam;
 
@@ -384,6 +384,7 @@ begin
   if vInt1+vInt2 = 1 then
   begin
     Result := Param[0].AsStream;
+    AContentType := Param[0].ContentType;
   end
   else if (vInt2 > 0) and (vInt1 = 0) then
   begin
@@ -397,7 +398,7 @@ begin
           vString := vString + '&';
 
         vValor := vItem.ParamName + '=' + vItem.AsString;
-        vValor := StringReplace(vValor,'&', '%26', [rfReplaceAll]);
+        vValor := StringReplace(vValor, '&', '%26', [rfReplaceAll]);
         vValor := StringReplace(vValor, '&amp;', '%26', [rfReplaceAll]);
 
         vString := vString + vValor;
@@ -416,7 +417,7 @@ begin
       for vInt1 := 0 to Pred(Count) do
       begin
         vItem := Param[vInt1];
-        if vItem.Kind in [rpkBODY,rpkFIELD] then
+        if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
           vMultPart.AddStream(Param[vInt1].ParamName,
                               Param[vInt1].AsStream,
@@ -439,7 +440,7 @@ begin
   if Trim(ASource) = '' then
     Exit;
 
-  ASource := StringReplace(ASource, '&amp;','%26', [rfReplaceAll]);
+  ASource := StringReplace(ASource, '&amp;', '%26', [rfReplaceAll]);
   ASource := StringReplace(ASource, '&', #13#10, [rfReplaceAll]);
   Result.Text := ASource;
 end;
@@ -450,7 +451,7 @@ var
 begin
   vStringList := URLEncodedToList(ASource);
   try
-    AppendParams(vStringList,rpkQUERY);
+    AppendParams(vStringList, rpkQUERY);
   finally
     FreeAndNil(vStringList);
   end;
@@ -462,7 +463,7 @@ var
 begin
   vStringList := URLEncodedToList(ASource);
   try
-    AppendParams(vStringList,rpkFIELD);
+    AppendParams(vStringList, rpkFIELD);
   finally
     FreeAndNil(vStringList);
   end;
