@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils,
   fphttpclient, fphttp,
-  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams;
+  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
+  RALRequest;
 
 type
 

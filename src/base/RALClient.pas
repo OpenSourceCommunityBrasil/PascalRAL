@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, StrUtils,
   RALTypes, RALConsts, RALAuthentication, RALRoutes, RALJson, RALTools,
-  RALParams, RALMIMETypes;
+  RALParams, RALMIMETypes, RALRequest;
 
 type
 

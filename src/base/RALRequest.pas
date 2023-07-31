@@ -7,6 +7,8 @@ uses
   RALTypes, RALConsts, RALParams, RALBase64;
 
 type
+  TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE, amALL);
+  TRALMethods = set of TRALMethod;
 
   { TRALClientInfo }
 

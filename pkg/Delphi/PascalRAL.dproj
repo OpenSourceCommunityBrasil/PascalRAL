@@ -169,10 +169,8 @@
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
-        <DCCReference Include="..\..\src\utils\RALCrypto.pas"/>
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
         <DCCReference Include="..\..\src\utils\RALJson.pas"/>
-        <DCCReference Include="..\..\src\utils\RALKeyPairs.pas"/>
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMimeCoder.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>

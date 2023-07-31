@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   mormot.net.client, mormot.core.base,
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest;
 
 type
 

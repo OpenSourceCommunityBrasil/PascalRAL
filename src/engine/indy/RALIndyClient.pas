@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest;
 
 type
 

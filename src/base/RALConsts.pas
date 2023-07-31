@@ -6,8 +6,6 @@ uses
   Classes, SysUtils;
 
 type
-  TRALMethod = (amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE, amALL);
-  TRALMethods = set of TRALMethod;
   TRALAuthTypes = (ratNone, ratBasic, ratBearer);
 
 const

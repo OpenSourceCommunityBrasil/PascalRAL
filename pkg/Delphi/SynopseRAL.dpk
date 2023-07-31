@@ -1,6 +1,7 @@
 package SynopseRAL;
 
 {$R *.res}
+{$R 'SynopseRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -29,6 +30,12 @@ package SynopseRAL;
 {$IMPLICITBUILD ON}
 
 requires
+  PascalRAL,
   rtl;
+
+contains
+  RALSynopseClient in '..\..\src\engine\synopse\RALSynopseClient.pas',
+  RALSynopseRegister in '..\..\src\engine\synopse\RALSynopseRegister.pas',
+  RALSynopseServer in '..\..\src\engine\synopse\RALSynopseServer.pas';
 
 end.
