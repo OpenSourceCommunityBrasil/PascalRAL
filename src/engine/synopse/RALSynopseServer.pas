@@ -85,7 +85,7 @@ begin
   else
   begin
     if FHttp <> nil then
-      FHttp.Free;
+      FreeAndNil(FHttp);
   end;
 
   inherited;

@@ -214,7 +214,6 @@ function TRALMultipartEncoder.AsStream : TStringStream;
 var
   vInt : IntegerRAL;
   vHeaderFile, vHeaderField, vHeaderEnd : StringRAL;
-  vFile : TStringStream;
   vItem : TRALMultipartFormData;
 begin
   vHeaderFile := '----------------------------%s' + #13#10 +
@@ -227,24 +226,25 @@ begin
 
   vHeaderEnd := '----------------------------%s--';
 
-  vFile := TStringStream.Create;
+  Result := TStringStream.Create;
   for vInt := 0 to Pred(FFormData.Count) do
   begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
     if vItem.Filename <> '' then
     begin
-      vFile.WriteString(Format(vHeaderFile,[Boundary,vItem.Disposition,
+      Result.WriteString(Format(vHeaderFile,[Boundary,vItem.Disposition,
                         vItem.Name,vItem.Filename,vItem.ContentType]));
     end
     else
     begin
-      vFile.WriteString(Format(vHeaderField,[Boundary,vItem.Disposition,
+      Result.WriteString(Format(vHeaderField,[Boundary,vItem.Disposition,
                         vItem.Name,vItem.ContentType]));
     end;
-    vFile.CopyFrom(vItem.AsStream,vItem.AsStream.Size);
-    vFile.WriteString(#13#10);
+    vItem.AsStream.Position := 0;
+    Result.CopyFrom(vItem.AsStream,vItem.AsStream.Size);
+    Result.WriteString(#13#10);
   end;
-  vFile.WriteString(Format(vHeaderEnd,[Boundary]));
+  Result.WriteString(Format(vHeaderEnd,[Boundary]));
 end;
 
 function TRALMultipartEncoder.GetBoundary : StringRAL;

@@ -3,8 +3,8 @@ unit RALfpHTTPServer;
 interface
 
 uses
-  Classes, SysUtils, syncobjs,
-  fphttpserver, sslbase, fpHTTP, fphttpapp, httpprotocol,
+  Classes, SysUtils, Forms,
+  fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder;
 
@@ -45,10 +45,11 @@ type
   private
     FParent: TRALfpHttpServer;
     FHttp: TFPHttpServer;
-    FEvent: TSimpleEvent;
   protected
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
+
+    function GetURLServer : StringRAL;
 
     function GetPort: IntegerRAL;
     procedure SetPort(AValue: IntegerRAL);
@@ -263,39 +264,52 @@ begin
       FHttp.UseSSL := True;
       FHttp.CertificateData.Assign(TRALfpHTTPSSL(FParent.SSL).SSLOptions);
     end;
-  end;
-  if (not AValue) and (Active) then
+  end
+  else if (not AValue) and (FHttp.Active) then begin
     FHttp.Active := False;
+  end;
+end;
 
-  if not Terminated then
-    FEvent.SetEvent;
+function TRALfpHttpServerThread.GetURLServer : StringRAL;
+begin
+  Result := 'http';
+  if FParent.SSL.Enabled then
+    Result := Result + 's';
+  Result := Result + '://127.0.0.1:'+IntToStr(Port);
 end;
 
 procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do begin
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
-    FEvent.WaitFor(INFINITE);
-
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
-    FEvent.ResetEvent;
-
-    if (Terminated) or (FEvent = nil) then
-      Break;
-
     if (FParent.Active) then
       FHttp.Active := FParent.Active;
   end;
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
+var
+  vFP : TFPHTTPClient;
 begin
-  if Active then
+  if FHttp.Active then begin
     Active := False;
+    // fernando - 30/07/2023
+    // POG para fechar o socket assim q ele for desativado
+    // ao ativar o Server ele congela a thread e ao desativar ele mantem ela
+    // congelada ate que uma conexao client tente conectar, permitindo assim
+    // destruir a thread.
+    vFP := TFPHTTPClient.Create(nil);
+    try
+      try
+        {$warnings off}
+        vFP.Get(GetURLServer);
+        {$warnings on}
+      except
+
+      end;
+    finally
+      FreeAndNil(vFP);
+    end;
+  end;
   inherited TerminatedSet;
 end;
 
@@ -310,18 +324,14 @@ begin
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 
-  FEvent := TSimpleEvent.Create;
-  FEvent.ResetEvent;
-
   inherited Create(False);
 end;
 
 destructor TRALfpHttpServerThread.Destroy;
 begin
-  FHttp.Active := False;
-  FEvent.SetEvent;
+  if FHttp.Active then
+    FHttp.Active := False;
   FParent := nil;
-  FreeAndNil(FEvent);
   FreeAndNil(FHttp);
 end;
 
@@ -357,7 +367,8 @@ end;
 destructor TRALfpHttpServer.Destroy;
 begin
   FHttpThread.Terminate;
-  FHttpThread.Free;
+  FHttpThread.WaitFor;
+  FreeAndNil(FHttpThread);
   inherited;
 end;
 
@@ -366,9 +377,9 @@ begin
   if AValue = Active then
     Exit;
 
-  FHttpThread.Active := AValue;
-
   inherited;
+
+  FHttpThread.Active := AValue;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);

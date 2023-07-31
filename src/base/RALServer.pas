@@ -432,6 +432,9 @@ begin
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
+  if Assigned(FOnRequest) then
+    FOnRequest(vRoute, ARequest, Result);
+
   if (vRoute = nil) then
   begin
     if (ARequest.Query = '/') and (FShowServerStatus) then
@@ -474,19 +477,16 @@ begin
     end
     else
     begin
-      if Assigned(FOnRequest) then
-        FOnRequest(vRoute, ARequest, Result);
-
       DelBlockList(ARequest.ClientInfo.IP);
 
       vRoute.Execute(ARequest, Result);
-
-      if Assigned(FOnResponse) then
-        FOnResponse(vRoute, ARequest, Result);
-
-      ARequest.Params.ClearParams;
     end;
   end;
+
+  if Assigned(FOnResponse) then
+    FOnResponse(vRoute, ARequest, Result);
+
+  ARequest.Params.ClearParams;
 
   CleanExpiredBlockedList;
 end;

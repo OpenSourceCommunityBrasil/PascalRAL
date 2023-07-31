@@ -73,6 +73,7 @@ begin
   vStream := Params.EncodeBody(FContentType,FFreeContent);
   if vStream <> nil then
   begin
+    vStream.Position := 0;
     SetLength(Result,vStream.Size);
     vStream.Read(Result[PosIniStr],vStream.Size);
 

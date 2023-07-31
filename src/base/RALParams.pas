@@ -68,8 +68,8 @@ type
     function AddParam(AName, AContent: StringRAL; AKind : TRALParamKind = rpkNONE): TRALParam; overload;
     function AddParam(AName: StringRAL; AContent: TStream; AKind : TRALParamKind = rpkNONE) : TRALParam; overload;
     function AddFile(AParamName, AFileName : StringRAL) : TRALParam;
-    function AddValue(AContent: StringRAL): TRALParam; overload;
-    function AddValue(AContent: TStream): TRALParam; overload;
+    function AddValue(AContent: StringRAL; AKind : TRALParamKind = rpkNONE): TRALParam; overload;
+    function AddValue(AContent: TStream; AKind : TRALParamKind = rpkNONE): TRALParam; overload;
     function NewParam: TRALParam;
 
     procedure ClearParams; overload;
@@ -184,6 +184,7 @@ begin
   Result.ParamName := AName;
   Result.AsString := AContent;
   Result.ContentType := TRALContentType.ctTEXTPLAIN;
+  Result.Kind := AKind;
 end;
 
 function TRALParams.AddParam(AName : StringRAL; AContent : TStream; AKind : TRALParamKind) : TRALParam;
@@ -195,6 +196,7 @@ begin
   Result.ParamName := AName;
   Result.AsStream := AContent;
   Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+  Result.Kind := AKind;
 end;
 
 function TRALParams.AddFile(AParamName, AFileName : StringRAL) : TRALParam;
@@ -220,20 +222,22 @@ begin
   end;
 end;
 
-function TRALParams.AddValue(AContent : StringRAL) : TRALParam;
+function TRALParams.AddValue(AContent : StringRAL; AKind : TRALParamKind = rpkNONE) : TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsString := AContent;
   Result.ContentType := TRALContentType.ctTEXTPLAIN;
+  Result.Kind := AKind;
 end;
 
-function TRALParams.AddValue(AContent : TStream) : TRALParam;
+function TRALParams.AddValue(AContent : TStream; AKind : TRALParamKind = rpkNONE) : TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsStream := AContent;
   Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+  Result.Kind := AKind;
 end;
 
 procedure TRALParams.ClearParams;
@@ -368,28 +372,56 @@ end;
 function TRALParams.EncodeBody(var AContentType : StringRAL; var AFreeContent : Boolean) : TStream;
 var
   vMultPart: TRALMultipartEncoder;
-  vInt: integer;
+  vInt1, vInt2 : integer;
   vItem : TRALParam;
+  vString, vValor : StringRAL;
 begin
   AFreeContent := False;
   Result := nil;
 
-  vInt := Count([rpkBODY,rpkFIELD]);
-  if vInt = 1 then begin
+  vInt1 := Count(rpkBODY);
+  vInt2 := Count(rpkFIELD);
+  if vInt1+vInt2 = 1 then
+  begin
     Result := Param[0].AsStream;
   end
-  else if vInt > 1 then begin
+  else if (vInt2 > 0) and (vInt1 = 0) then
+  begin
+    vString := '';
+    for vInt1 := 0 to Pred(Count) do
+    begin
+      vItem := Param[vInt1];
+      if vItem.Kind in [rpkFIELD] then
+      begin
+        if vString <> '' then
+          vString := vString + '&';
+
+        vValor := vItem.ParamName + '=' + vItem.AsString;
+        vValor := StringReplace(vValor,'&', '%26', [rfReplaceAll]);
+        vValor := StringReplace(vValor, '&amp;', '%26', [rfReplaceAll]);
+
+        vString := vString + vValor;
+      end;
+    end;
+    Result := TStringStream.Create(vString);
+    Result.Position := 0;
+
+    AFreeContent := True;
+    AContentType := TRALContentType.ctAPPLICATIONXWWWFORMURLENCODED;
+  end
+  else if vInt1+vInt2 > 1 then
+  begin
     vMultPart := TRALMultipartEncoder.Create;
     try
-      for vInt := 0 to Pred(Count) do
+      for vInt1 := 0 to Pred(Count) do
       begin
-        vItem := Param[vInt];
+        vItem := Param[vInt1];
         if vItem.Kind in [rpkBODY,rpkFIELD] then
         begin
-          vMultPart.AddStream(Param[vInt].ParamName,
-                              Param[vInt].AsStream,
-                              Param[vInt].FileName,
-                              Param[vInt].ContentType);
+          vMultPart.AddStream(Param[vInt1].ParamName,
+                              Param[vInt1].AsStream,
+                              Param[vInt1].FileName,
+                              Param[vInt1].ContentType);
         end;
       end;
       Result := vMultPart.AsStream;
@@ -447,7 +479,7 @@ var
   vParam : TRALParam;
 begin
   Result := 0;
-  for vInt := 0 to FParams.Count - 1 do
+  for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
@@ -461,7 +493,7 @@ var
   vParam : TRALParam;
 begin
   Result := 0;
-  for vInt := 0 to FParams.Count - 1 do
+  for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind in AKinds then
