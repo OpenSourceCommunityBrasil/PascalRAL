@@ -19,7 +19,6 @@ type
     procedure SetUserAgent(const AValue: StringRAL); override;
     procedure SetConnectTimeout(const Value: IntegerRAL); override;
     procedure SetRequestTimeout(const Value: IntegerRAL); override;
-    procedure SetUseSSL(const Value: boolean); override;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
                      AHeaders: TStringList = nil;
                      ABody: TRALParams = nil): IntegerRAL; override;
@@ -35,6 +34,7 @@ constructor TRALnetHTTPClient.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := TNetHTTPClient.Create(nil);
+  FHttp.Asynchronous := False;
   SetEngine('NetHTTP');
 end;
 
@@ -52,6 +52,7 @@ begin
   Result := nil;
   if AParams = nil then
     Exit;
+
   AFreeAfter := False;
   if AParams.Count = 1 then
   begin
@@ -85,37 +86,42 @@ begin
       vHeaders[vInt] := TNameValuePair.Create(vStr1, vStr2);
     end;
   end;
+
+  ResponseCode := -1;
   vFree := False;
   vSource := EncodeParams(ABody, vFree);
   try
-    vResult := TStringStream.Create;
     try
+      vResult := TStringStream.Create;
       case AMethod of
         amGET:
-          vReponse := FHttp.Get(AURL, vResult, vHeaders);
+          vReponse := FHttp.Get(AURL, nil, vHeaders);
         amPOST:
-          vReponse := FHttp.Post(AURL, vSource, vResult, vHeaders);
+          vReponse := FHttp.Post(AURL, vSource, nil, vHeaders);
         amPUT:
-          vReponse := FHttp.Put(AURL, vSource, vResult, vHeaders);
+          vReponse := FHttp.Put(AURL, vSource, nil, vHeaders);
         amPATCH:
-          vReponse := FHttp.Patch(AURL, vSource, vResult, vHeaders);
+          vReponse := FHttp.Patch(AURL, vSource, nil, vHeaders);
         amDELETE:
-          vReponse := FHttp.Delete(AURL, vResult, vHeaders);
+          vReponse := FHttp.Delete(AURL, nil, vHeaders);
         amTRACE:
-          vReponse := FHttp.Trace(AURL, vResult, vHeaders);
+          vReponse := FHttp.Trace(AURL, nil, vHeaders);
         amHEAD:
           vReponse := FHttp.Head(AURL, vHeaders);
         amOPTION:
-          vReponse := FHttp.Options(AURL, vResult, vHeaders);
+          vReponse := FHttp.Options(AURL, nil, vHeaders);
       end;
-    except
-      vResult.Size := 0;
       TStringStream(vResult).WriteString(vReponse.ContentAsString);
+      ResponseCode := vReponse.GetStatusCode;
+    except
+      on e : ENetHTTPClientException do begin
+        // todo erro string
+      end;
     end;
+
     vResult.Position := 0;
-    ResponseCode := vReponse.GetStatusCode;
     SetResponse(vResult);
-    Result := vReponse.GetStatusCode;
+    Result := ResponseCode;
   finally
     if vFree then
       FreeAndNil(vSource);
@@ -138,19 +144,6 @@ procedure TRALnetHTTPClient.SetUserAgent(const AValue: StringRAL);
 begin
   inherited;
   FHttp.UserAgent := AValue
-end;
-
-procedure TRALnetHTTPClient.SetUseSSL(const Value: boolean);
-begin
-  inherited;
-  FHttp.SecureProtocols := [];
-  if Value then
-    FHttp.SecureProtocols := [THTTPSecureProtocol.SSL2,
-                              THTTPSecureProtocol.SSL3,
-                              THTTPSecureProtocol.TLS1,
-                              THTTPSecureProtocol.TLS11,
-                              THTTPSecureProtocol.TLS12,
-                              THTTPSecureProtocol.TLS13];
 end;
 
 end.

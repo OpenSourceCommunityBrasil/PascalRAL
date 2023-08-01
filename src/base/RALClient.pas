@@ -259,7 +259,7 @@ var
   vInt: IntegerRAL;
   vProtocol: StringRAL;
 begin
-  vInt := Pos(':\\', AValue);
+  vInt := Pos('://', AValue);
   if vInt > 0 then
   begin
     FBaseURL := Copy(AValue, vInt+3, Length(AValue));
