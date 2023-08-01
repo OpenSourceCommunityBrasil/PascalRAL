@@ -30,6 +30,7 @@ package NetHttpRAL;
 {$IMPLICITBUILD ON}
 
 requires
+  PascalRAL,
   rtl;
 
 contains
