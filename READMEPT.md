@@ -3,8 +3,8 @@
 
 <a href=".\READMEPT.md"><img src="https://img.shields.io/badge/Traduzir-PT--BR-blue" /></a><a href=".\READMEES.md"><img src="https://img.shields.io/badge/Traducir-ES--ES-blue" /></a><a href=".\README.md"><img src="https://img.shields.io/badge/Translate-EN--US-blue" /></a>
 
-Pascal REST API Lite is a component suite to allow creating and consuming RESTFul servers in a quick, light and easy way.
+Pascal REST API Lite é uma suíte de componentes de criação e consumo de servidores de APIs RESTFul de forma simples, leve e rápida.
 
-* [IDE Compatibility List]()
-* [Installation Guide]()
-* [Samples](https://github.com/OpenSourceCommunityBrasil/PascalRAL-Demos)
+* [Lista de compatibilidade com as IDEs]()
+* [Guia de instalação]()
+* [Exemplos de uso](https://github.com/OpenSourceCommunityBrasil/PascalRAL-Demos)
