@@ -1,4 +1,4 @@
-unit uRESTDAO;
+unit DAO.REST;
 
 interface
 
@@ -6,7 +6,7 @@ uses
   System.JSON, System.SysUtils, System.Classes,
   REST.Client, REST.Types, REST.Authenticator.Basic,
 
-  DAOBase
+  DAO.Base
 
     ;
 

@@ -5,7 +5,7 @@ interface
 uses
   System.Classes, System.SysUtils, System.TypInfo,
   FMX.Memo,
-  DAOBase
+  DAO.Base
 
     ;
 
@@ -142,12 +142,13 @@ end;
 function TTestObject.Test: boolean;
 var
   I: integer;
+  inicio, fim: Double;
 begin
   LogMessage('Testes iniciados às %s', [TimeToStr(now)], FLogMemo);
   LogMessage('------------------------------------------', FLogMemo);
   LogMessage('Testando servidor %s:%d com %d requisições por verbo',
     [Server, Port, RequestCount], FLogMemo);
-
+  inicio := now;
   try
     if TestType = ttSequencial then
       DoTest(RequestCount)
@@ -158,8 +159,9 @@ begin
           begin
             DoTest(RequestCount div CcRequestCount)
           end).Start;
-
+    fim := now;
     LogMessage('Testes Finalizados às %s', [TimeToStr(now)], FLogMemo);
+    // LogMessage(' após ' + FormatDateTime('hh:nn:ss:zzz', (fim - inicio)) + ' (hor:min:seg:mil)');
     LogMessage('Total: %d testes; %d sucesso; %d falhas',
       [FFail + FSuccess, FSuccess, FFail], FLogMemo);
     Result := true;

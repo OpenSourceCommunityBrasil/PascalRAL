@@ -1,4 +1,4 @@
-unit DAOBase;
+unit DAO.Base;
 
 interface
 
@@ -10,6 +10,7 @@ type
     FServer: String;
     FCurrentMethod: String;
     FExpectedCode: integer;
+    function MethodToString(aMethod: TTestRequestMethod): string;
   public
     constructor Create(aServer, aPort: string); virtual; abstract;
     procedure SetBasicAuth(user, password: string); virtual; abstract;
@@ -21,5 +22,18 @@ type
   End;
 
 implementation
+
+{ TDAOBase }
+
+function TDAOBase.MethodToString(aMethod: TTestRequestMethod): string;
+begin
+  case aMethod of
+    rtmGET: Result := 'GET';
+    rtmPOST: Result := 'POST';
+    rtmPUT: Result := 'PUT';
+    rtmPATCH: Result := 'PATCH';
+    rtmDELETE: Result := 'DELETE';
+  end;
+end;
 
 end.

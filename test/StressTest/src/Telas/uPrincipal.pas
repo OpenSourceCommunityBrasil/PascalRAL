@@ -5,45 +5,29 @@ interface
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes,
   System.Variants, System.DateUtils, System.Rtti,
+
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Memo.Types,
   FMX.StdCtrls, FMX.ScrollBox, FMX.Memo, FMX.Controls.Presentation, FMX.Edit,
   FMX.Layouts, FMX.Objects, FMX.ListBox, FMX.TabControl, FMX.Grid.Style,
   FMX.Grid,
-  REST.Types,
 
   RALConsts,
 
-  uResultado, TestUnit, DAOBase, uRESTDAO
+  DAO.Base, DAO.REST, DAO.RALIndy, DAO.RALNetHttp,
+
+  TestUnit
 
     ;
 
 type
-  TRESTClientKind = (rckREST, rckRALIndy, rckRALSynopse);
+  TRESTClientKind = (rckREST, rckRALIndy, rckRALSynopse, rckRALNetHttp);
 
   TfPrincipal = class(TForm)
     Layout1: TLayout;
     Image1: TImage;
     lVersao: TLabel;
     TabControl1: TTabControl;
-    tiSimples: TTabItem;
-    tiAvancado: TTabItem;
-    FlowLayout1: TFlowLayout;
-    eServidor: TEdit;
-    Label1: TLabel;
-    ePorta: TEdit;
-    Label2: TLabel;
-    eEndpoint: TEdit;
-    Label3: TLabel;
-    FlowLayout2: TFlowLayout;
-    cbAutenticacao: TComboBox;
-    Label4: TLabel;
-    eUsuario: TEdit;
-    Label5: TLabel;
-    eSenha: TEdit;
-    Label6: TLabel;
-    FlowLayout3: TFlowLayout;
-    Button1: TButton;
-    Button2: TButton;
+    tiStress: TTabItem;
     Layout2: TLayout;
     StringGrid1: TStringGrid;
     FlowLayout5: TFlowLayout;
@@ -88,10 +72,54 @@ type
     Label13: TLabel;
     eConcorrentes: TEdit;
     Label14: TLabel;
-    CheckBox1: TCheckBox;
-    CheckBox2: TCheckBox;
-    procedure IniciarClick(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
+    cbRALIndy: TCheckBox;
+    cbRALSynopse: TCheckBox;
+    tiServer: TTabItem;
+    Layout5: TLayout;
+    FlowLayout1: TFlowLayout;
+    ComboBox1: TComboBox;
+    Label1: TLabel;
+    Edit1: TEdit;
+    Label2: TLabel;
+    Edit2: TEdit;
+    Label3: TLabel;
+    FlowLayout2: TFlowLayout;
+    Edit3: TEdit;
+    Label4: TLabel;
+    Edit4: TEdit;
+    Label5: TLabel;
+    Edit5: TEdit;
+    Label6: TLabel;
+    FlowLayout3: TFlowLayout;
+    CheckBox3: TCheckBox;
+    CheckBox4: TCheckBox;
+    CheckBox5: TCheckBox;
+    CheckBox6: TCheckBox;
+    CheckBox7: TCheckBox;
+    CheckBox8: TCheckBox;
+    CheckBox9: TCheckBox;
+    CheckBox10: TCheckBox;
+    CheckBox11: TCheckBox;
+    CheckBox12: TCheckBox;
+    CheckBox13: TCheckBox;
+    CheckBox14: TCheckBox;
+    CheckBox15: TCheckBox;
+    CheckBox16: TCheckBox;
+    CheckBox17: TCheckBox;
+    CheckBox18: TCheckBox;
+    CheckBox19: TCheckBox;
+    CheckBox20: TCheckBox;
+    CheckBox21: TCheckBox;
+    CheckBox22: TCheckBox;
+    CheckBox23: TCheckBox;
+    FlowLayout7: TFlowLayout;
+    Button1: TButton;
+    cbRALNetHttp: TCheckBox;
+    tiLog: TTabItem;
+    Memo1: TMemo;
+    FlowLayout8: TFlowLayout;
+    Button2: TButton;
+    tiCliente: TTabItem;
     procedure FormCreate(Sender: TObject);
     procedure Rectangle1MouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Single);
@@ -99,22 +127,13 @@ type
     procedure bAdicionarClick(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure bRemoverClick(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
   private
     { Private declarations }
     TestObjects: array of TTestObject;
-    REST: TRESTDAO;
-    inicio, fim: Double;
-    pass, fail: integer;
-    TelaResultado: TFResultado;
     procedure DefinirParametrosTeste(aClient: TRESTClientKind; aMemo: TMemo);
     procedure LimparObjetosTeste;
-    procedure IniciaTestes;
-    procedure EncerraTeste;
     procedure Testar;
-    procedure TesteRESTRequest(aClient: TRESTDAO);
-    procedure TesteEndpointREST(aEndpoint: string; metodo: TTestRequestMethod;
-      count: integer; aClient: TRESTDAO);
   public
     { Public declarations }
   end;
@@ -150,44 +169,21 @@ begin
 end;
 
 procedure TfPrincipal.Button2Click(Sender: TObject);
+var
+  path: string;
 begin
-  if not Assigned(FResultado) then
-    Application.CreateForm(TFResultado, FResultado);
-  FResultado.Show;
-  inicio := now;
-
-  FResultado.LogMessage('Teste de 1000 requests sequenciais iniciados às ' +
-    TimeToStr(inicio));
-  REST := TRESTDAO.Create(eServidor.Text, ePorta.Text);
-  if (cbAutenticacao.ItemIndex = 1) and
-    ((eUsuario.Text <> EmptyStr) and (eSenha.Text <> EmptyStr)) then
-  begin
-    REST.SetBasicAuth(eUsuario.Text, eSenha.Text);
-  end;
-
-  TThread.CreateAnonymousThread(
-    procedure
-    begin
-      pass := 0;
-      fail := 0;
-      FResultado.LogMessage('Iniciando testes com REST Nativos...');
-      TesteEndpointREST(eEndpoint.Text, rtmGET, 1000, REST);
-
-      EncerraTeste;
-
-      REST.Free;
-    end).Start;
+  path := ExtractFileDir(ParamStr(0)) + '\logTestTool.txt';
+  Memo1.Lines.SaveToFile(path);
+  Memo1.Lines.Add('Log salvo no arquivo: ' + path);
 end;
 
 procedure TfPrincipal.Button5Click(Sender: TObject);
 begin
-  FResultado.Show;
-  // TThread.CreateAnonymousThread(IniciaTestes).Start;
   TThread.CreateAnonymousThread(Testar).Start;
 end;
 
 procedure TfPrincipal.DefinirParametrosTeste(aClient: TRESTClientKind;
-aMemo: TMemo);
+  aMemo: TMemo);
 var
   dummytest: TTestObject;
   I: integer;
@@ -199,10 +195,14 @@ begin
       rckREST:
         RESTClient := TRESTDAO.Create(StringGrid1.Cells[0, I],
           StringGrid1.Cells[1, I]);
+
       rckRALIndy:
-        ;
-      rckRALSynopse:
-        ;
+        RESTClient := TRALIndyDAO.Create(StringGrid1.Cells[0, I],
+          StringGrid1.Cells[1, I]);
+
+      rckRALNetHttp:
+        RESTClient := TRALNetHttpDAO.Create(StringGrid1.Cells[0, I],
+          StringGrid1.Cells[1, I]);
     end;
 
     dummytest := TTestObject.Create(RESTClient, aMemo);
@@ -246,144 +246,10 @@ begin
   end;
 end;
 
-procedure TfPrincipal.EncerraTeste;
-begin
-  fim := now;
-  FResultado.LogMessage('Testes finalizados após ' +
-    FormatDateTime('hh:nn:ss:zzz', (fim - inicio)) + ' (hor:min:seg:mil)');
-  FResultado.LogMessage(Format(' - Total: %d, Sucesso: %d, Falha: %d',
-    [pass + fail, pass, fail]));
-  FResultado.LogMessage('=======================================');
-  LimparObjetosTeste;
-end;
-
 procedure TfPrincipal.FormCreate(Sender: TObject);
 begin
   lVersao.Text := Format('Versão componentes: %s', [RALVERSION]);
   StringGrid1.RowCount := 0;
-  FResultado := nil;
-  Application.CreateForm(TFResultado, FResultado);
-end;
-
-procedure TfPrincipal.FormDestroy(Sender: TObject);
-begin
-  try
-    FResultado.Free; // Porque? Porque o assigned não funciona
-  except // basta ignorar o erro ou rodar em modo release
-  end;
-end;
-
-procedure TfPrincipal.IniciarClick(Sender: TObject);
-begin
-  if not Assigned(FResultado) then
-    Application.CreateForm(TFResultado, FResultado);
-  FResultado.Show;
-  inicio := now;
-
-  FResultado.LogMessage('Testes sequenciais iniciados às ' + TimeToStr(inicio));
-  REST := TRESTDAO.Create(eServidor.Text, ePorta.Text);
-  if (cbAutenticacao.ItemIndex = 1) and
-    ((eUsuario.Text <> EmptyStr) and (eSenha.Text <> EmptyStr)) then
-  begin
-    REST.SetBasicAuth(eUsuario.Text, eSenha.Text);
-  end;
-  TThread.CreateAnonymousThread(
-    procedure
-    begin
-      TesteRESTRequest(REST);
-
-      EncerraTeste;
-    end).Start;
-end;
-
-procedure TfPrincipal.IniciaTestes;
-var
-  I: integer;
-  RESTClient: TRESTDAO;
-begin
-  inicio := now;
-  FResultado.LogMessage('Testes sequenciais iniciados às ' + TimeToStr(inicio));
-  FResultado.LogMessage('-------------------------------------');
-  for I := 0 to pred(StringGrid1.RowCount) do
-  begin
-    if cbRESTNativo.IsChecked then
-    begin
-      RESTClient := TRESTDAO.Create(StringGrid1.Cells[0, I],
-        StringGrid1.Cells[1, I]);
-      if (cbMetodoAv.ItemIndex = 1) and
-        ((eUsuarioAv.Text <> EmptyStr) and (eSenhaAv.Text <> EmptyStr)) then
-        RESTClient.SetBasicAuth(eUsuarioAv.Text, eSenhaAv.Text);
-    end;
-
-    if cbGET.IsChecked then
-    begin
-      if cbRESTNativo.IsChecked then
-      begin
-        FResultado.LogMessage
-          (Format('Testando servidor %s:%s com REST Nativos...',
-          [StringGrid1.Cells[0, I], StringGrid1.Cells[1, I]]));
-        FResultado.LogMessage('Testando verbo GET...');
-        TesteEndpointREST(StringGrid1.Cells[2, I], rtmGET,
-          eRequisicoes.Text.ToInteger, RESTClient);
-      end;
-    end;
-
-    if cbPOST.IsChecked then
-    begin
-      if cbRESTNativo.IsChecked then
-      begin
-        FResultado.LogMessage
-          (Format('Testando servidor %s:%s com REST Nativos...',
-          [StringGrid1.Cells[0, I], StringGrid1.Cells[1, I]]));
-        FResultado.LogMessage('Testando verbo POST...');
-        TesteEndpointREST(StringGrid1.Cells[2, I], rtmPOST,
-          eRequisicoes.Text.ToInteger, RESTClient);
-      end;
-    end;
-
-    if cbPUT.IsChecked then
-    begin
-      if cbRESTNativo.IsChecked then
-      begin
-        FResultado.LogMessage
-          (Format('Testando servidor %s:%s com REST Nativos...',
-          [StringGrid1.Cells[0, I], StringGrid1.Cells[1, I]]));
-        FResultado.LogMessage('Testando verbo PUT...');
-        TesteEndpointREST(StringGrid1.Cells[2, I], rtmPUT,
-          eRequisicoes.Text.ToInteger, RESTClient);
-      end;
-    end;
-
-    if cbPATCH.IsChecked then
-    begin
-      if cbRESTNativo.IsChecked then
-      begin
-        FResultado.LogMessage
-          (Format('Testando servidor %s:%s com REST Nativos...',
-          [StringGrid1.Cells[0, I], StringGrid1.Cells[1, I]]));
-        FResultado.LogMessage('Testando verbo PATCH...');
-        TesteEndpointREST(StringGrid1.Cells[2, I], rtmPATCH,
-          eRequisicoes.Text.ToInteger, RESTClient);
-      end;
-    end;
-
-    if cbDELETE.IsChecked then
-    begin
-      if cbRESTNativo.IsChecked then
-      begin
-        FResultado.LogMessage
-          (Format('Testando servidor %s:%s com REST Nativos...',
-          [StringGrid1.Cells[0, I], StringGrid1.Cells[1, I]]));
-        FResultado.LogMessage('Testando verbo DELETE...');
-        TesteEndpointREST(StringGrid1.Cells[2, I], rtmDELETE,
-          eRequisicoes.Text.ToInteger, RESTClient);
-      end;
-    end;
-
-    if Assigned(RESTClient) then
-      RESTClient.Free;
-  end;
-  EncerraTeste;
 end;
 
 procedure TfPrincipal.LimparObjetosTeste;
@@ -397,7 +263,7 @@ begin
 end;
 
 procedure TfPrincipal.Rectangle1MouseDown(Sender: TObject; Button: TMouseButton;
-Shift: TShiftState; X, Y: Single);
+  Shift: TShiftState; X, Y: Single);
 begin
   StartWindowDrag;
 end;
@@ -410,150 +276,31 @@ end;
 procedure TfPrincipal.Testar;
 var
   I: integer;
-  dummytest: TTestObject;
-  RESTClient: TRESTDAO;
-  // RALIndyClient: TRALIndyClient;
-  // RALSynopseClient: TRALSynopseClient;
 begin
   LimparObjetosTeste;
 
-  if not Assigned(FResultado) then
-    Application.CreateForm(TFResultado, FResultado);
-  try
-    if StringGrid1.RowCount > 0 then
-    begin
+  if StringGrid1.RowCount > 0 then
+  begin
+    try
       if cbRESTNativo.IsChecked then
-      begin
-        DefinirParametrosTeste(rckREST, FResultado.Memo1);
-      end;
-    end;
+        DefinirParametrosTeste(rckREST, Memo1);
 
-    FResultado.Show;
-    for I := 0 to pred(Length(TestObjects)) do
-      TestObjects[I].Test;
-  finally
-    if Assigned(RESTClient) then
-      FreeAndNil(RESTClient);
-  end;
+      if cbRALIndy.IsChecked then
+        DefinirParametrosTeste(rckRALIndy, Memo1);
 
-end;
+      if cbRALSynopse.IsChecked then
+        DefinirParametrosTeste(rckRALSynopse, Memo1);
 
-procedure TfPrincipal.TesteEndpointREST(aEndpoint: string;
-metodo: TTestRequestMethod; count: integer; aClient: TRESTDAO);
-var
-  I: integer;
-  ini, fim: Double;
-  erro: string;
-begin
-  FResultado.LogMessage('Testando %d requisições...', [count]);
-  ini := now;
-  for I := 0 to count do
-    if not aClient.TesteEndpoint(aEndpoint, metodo, erro) then
-    begin
-      FResultado.LogMessage('%s após %d requisições', [erro, I]);
-      inc(fail);
-      break;
-    end;
-  fim := now;
-  inc(pass);
+      if cbRALNetHttp.IsChecked then
+        DefinirParametrosTeste(rckRALNetHttp, Memo1);
 
-  FResultado.LogMessage(' - finalizado após %s (min:seg:mil)',
-    [FormatDateTime('nn:ss:zzz', (fim - ini))]);
-  FResultado.LogMessage('=======================================');
-end;
+      TabControl1.ActiveTab := tiLog;
+      for I := 0 to pred(Length(TestObjects)) do
+        TestObjects[I].Test;
+    finally
 
-procedure TfPrincipal.TesteRESTRequest(aClient: TRESTDAO);
-var
-  erro: string;
-begin
-  pass := 0;
-  fail := 0;
-  FResultado.LogMessage('Realizando testes de Requisição com REST nativos...');
-  if (eServidor.Text = EmptyStr) or (ePorta.Text = EmptyStr) then
-  begin
-    FResultado.LogMessage('Erro: Configurações de servidor ou porta inválidas');
-    exit;
-  end
-  else
-  begin
-    if not aClient.TesteEndpoint(eEndpoint.Text, rtmGET, erro) then
-    begin
-      FResultado.LogMessage(Format('Teste %s', [erro]));
-      inc(fail);
-    end
-    else
-    begin
-      FResultado.LogMessage('Método GET disponível');
-      TesteEndpointREST(eEndpoint.Text, rtmGET, 100, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmGET, 1000, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmGET, 10000, aClient);
-
-      FResultado.LogMessage('Teste GET concluído');
-    end;
-
-    if not aClient.TesteEndpoint(eEndpoint.Text, rtmPOST, erro) then
-    begin
-      FResultado.LogMessage(Format('Teste %s', [erro]));
-      inc(fail);
-    end
-    else
-    begin
-      FResultado.LogMessage('Método POST disponível');
-      TesteEndpointREST(eEndpoint.Text, rtmPOST, 100, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPOST, 1000, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPOST, 10000, aClient);
-
-      FResultado.LogMessage('Teste POST concluído');
-    end;
-
-    if not aClient.TesteEndpoint(eEndpoint.Text, rtmPUT, erro) then
-    begin
-      FResultado.LogMessage(Format('Teste %s', [erro]));
-      inc(fail);
-    end
-    else
-    begin
-      FResultado.LogMessage('Método PUT disponível');
-      TesteEndpointREST(eEndpoint.Text, rtmPUT, 100, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPUT, 1000, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPUT, 10000, aClient);
-
-      FResultado.LogMessage('Teste PUT concluído');
-    end;
-
-    if not aClient.TesteEndpoint(eEndpoint.Text, rtmPATCH, erro) then
-    begin
-      FResultado.LogMessage(Format('Teste %s', [erro]));
-      inc(fail);
-    end
-    else
-    begin
-      FResultado.LogMessage('Método PATCH disponível');
-      TesteEndpointREST(eEndpoint.Text, rtmPATCH, 100, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPATCH, 1000, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmPATCH, 10000, aClient);
-
-      FResultado.LogMessage('Teste PATCH concluído');
-    end;
-
-    if not aClient.TesteEndpoint(eEndpoint.Text, rtmDELETE, erro) then
-    begin
-      FResultado.LogMessage(Format('Teste %s', [erro]));
-      inc(fail);
-    end
-    else
-    begin
-      FResultado.LogMessage('Método DELETE disponível');
-      TesteEndpointREST(eEndpoint.Text, rtmDELETE, 100, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmDELETE, 1000, aClient);
-      TesteEndpointREST(eEndpoint.Text, rtmDELETE, 10000, aClient);
-
-      FResultado.LogMessage('Teste DELETE concluído');
     end;
   end;
-  FResultado.LogMessage('Fim de testes de Requisição com REST nativos...');
-  FResultado.LogMessage(Format('Testes realizados: %d, Sucesso: %d, Falhas: %d',
-    [pass + fail, pass, fail]));
 end;
 
 end.

@@ -51,7 +51,9 @@ type
     FUserName: StringRAL;
     FPassword: StringRAL;
   public
-    constructor Create(AOwner: TComponent); override;
+    constructor Create(AOwner: TComponent); overload; override;
+    constructor Create(AOwner: TComponent; AUser: StringRAL;
+                       APassword: StringRAL); overload;
 
     procedure GetHeader(var AHeader: TStringList); override;
   published
@@ -401,6 +403,14 @@ constructor TRALClientBasicAuth.Create(AOwner: TComponent);
 begin
   inherited;
   SetAuthType(ratBasic);
+end;
+
+constructor TRALClientBasicAuth.Create(AOwner: TComponent; AUser,
+  APassword: StringRAL);
+begin
+  Create(AOwner);
+  Password := APassword;
+  UserName := AUser;
 end;
 
 procedure TRALClientBasicAuth.GetHeader(var AHeader: TStringList);

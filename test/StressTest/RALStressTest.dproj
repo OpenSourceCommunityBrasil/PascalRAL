@@ -4,7 +4,7 @@
         <ProjectVersion>19.5</ProjectVersion>
         <FrameworkType>FMX</FrameworkType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>693267</TargetedPlatforms>
         <AppType>Application</AppType>
@@ -287,14 +287,12 @@
             <Form>fPrincipal</Form>
             <FormType>fmx</FormType>
         </DCCReference>
-        <DCCReference Include="src\DAO\uRESTDAO.pas"/>
-        <DCCReference Include="src\uConsts.pas"/>
-        <DCCReference Include="src\Telas\uResultado.pas">
-            <Form>fResultado</Form>
-            <FormType>fmx</FormType>
-        </DCCReference>
-        <DCCReference Include="src\DAO\DAOBase.pas"/>
-        <DCCReference Include="src\TestUnit.pas"/>
+        <DCCReference Include="src\DAO\DAO.REST.pas"/>
+        <DCCReference Include="src\DAO\DAO.Base.pas"/>
+        <DCCReference Include="src\Classes\TestUnit.pas"/>
+        <DCCReference Include="src\DAO\DAO.RALIndy.pas"/>
+        <DCCReference Include="src\DAO\DAO.RALSynopse.pas"/>
+        <DCCReference Include="src\DAO\DAO.RALNetHttp.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -337,6 +335,12 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="Win32\Debug\RALStressTest.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>RALStressTest.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="Win32\Release\RALStressTest.exe" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>RALStressTest.exe</RemoteName>
                         <Overwrite>true</Overwrite>

@@ -4,11 +4,12 @@ uses
   System.StartUpCopy,
   FMX.Forms,
   uPrincipal in 'src\Telas\uPrincipal.pas' {fPrincipal},
-  uRESTDAO in 'src\DAO\uRESTDAO.pas',
-  uConsts in 'src\uConsts.pas',
-  uResultado in 'src\Telas\uResultado.pas' {fResultado},
-  DAOBase in 'src\DAO\DAOBase.pas',
-  TestUnit in 'src\TestUnit.pas';
+  DAO.REST in 'src\DAO\DAO.REST.pas',
+  DAO.Base in 'src\DAO\DAO.Base.pas',
+  TestUnit in 'src\Classes\TestUnit.pas',
+  DAO.RALIndy in 'src\DAO\DAO.RALIndy.pas',
+  DAO.RALSynopse in 'src\DAO\DAO.RALSynopse.pas',
+  DAO.RALNetHttp in 'src\DAO\DAO.RALNetHttp.pas';
 
 {$R *.res}
 
