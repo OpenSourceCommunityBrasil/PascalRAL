@@ -14,7 +14,8 @@ uses
   uRotas,
 
   RALServer, RALRequest, RALResponse, RALRoutes,
-  RALIndyServer, RALSynopseServer
+  RALIndyServer, RALSynopseServer, FMX.TabControl, System.Rtti, FMX.Grid.Style,
+  FMX.Grid
 
     ;
 
@@ -33,23 +34,42 @@ type
     saPassword: TEdit;
     saToken: TEdit;
     saUser: TEdit;
-    GroupBox4: TGroupBox;
-    mLog: TMemo;
     bStart: TButton;
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
-    SpeedButton1: TSpeedButton;
-    Layout1: TLayout;
     Layout2: TLayout;
     Layout3: TLayout;
     Layout4: TLayout;
-    Layout5: TLayout;
-    Label6: TLabel;
-    ListView1: TListView;
     rbIndy: TRadioButton;
     rbSynopse: TRadioButton;
+    TabControl1: TTabControl;
+    TabItem1: TTabItem;
+    TabItem2: TTabItem;
+    GroupBox4: TGroupBox;
+    mLog: TMemo;
+    Layout1: TLayout;
+    SpeedButton1: TSpeedButton;
+    StringGrid1: TStringGrid;
+    Edit1: TEdit;
+    Label6: TLabel;
+    Edit2: TEdit;
+    Label7: TLabel;
+    GroupBox5: TGroupBox;
+    FlowLayout4: TFlowLayout;
+    CheckBox1: TCheckBox;
+    CheckBox2: TCheckBox;
+    CheckBox3: TCheckBox;
+    CheckBox4: TCheckBox;
+    CheckBox5: TCheckBox;
+    CheckBox6: TCheckBox;
+    Layout5: TLayout;
+    Button1: TButton;
+    Button2: TButton;
+    StringColumn1: TStringColumn;
+    StringColumn2: TStringColumn;
+    StringColumn3: TStringColumn;
     procedure bStartClick(Sender: TObject);
   private
     { Private declarations }
@@ -93,10 +113,6 @@ begin
 
   FServer.Port := spPort.Text.ToInteger;
   Rotas.CreateRoutes(FServer);
-
-  ListView1.Items.Clear;
-  for I := 0 to pred(FServer.Routes.Count) do
-    ListView1.Items.Add.Text := TRALRoute(FServer.Routes.Items[I]).RouteName;
 
   FServer.Active := true;
 end;

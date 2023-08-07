@@ -1,4 +1,4 @@
-unit RALAuthentication;
+﻿unit RALAuthentication;
 
 interface
 

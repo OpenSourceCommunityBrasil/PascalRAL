@@ -1,10 +1,10 @@
-unit uRotas;
+ï»¿unit uRotas;
 
 interface
 
 uses
   SysUtils,
-  RALServer, RALRequest, RALResponse;
+  RALServer, RALRequest, RALResponse, RALMIMETypes;
 
 type
   TRotas = class
@@ -36,16 +36,16 @@ procedure TRotas.TextRoute(Sender: TObject; ARequest: TRALRequest;
 begin
   case ARequest.Method of
     amGET:
-      AResponse.Answer(200, 'teste de texto com UTF8 e acentuação',
-        'text/plain');
+      AResponse.Answer(200, 'teste de texto com UTF8 e acentuaÃ§Ã£o',
+        rctAPPLICATIONJSON);
 
     amPOST, amPUT, amPATCH:
       AResponse.Answer(201, Format('os params enviados: %s',
-        [ARequest.Params.AsString]), 'text/plain');
+        [ARequest.Params.AsString]), rctAPPLICATIONJSON);
 
     amDELETE:
-      AResponse.Answer(200, 'teste de texto após deleção com UTF8 e acentuação',
-        'text/plain');
+      AResponse.Answer(200, 'teste de texto apÃ³s deleÃ§Ã£o com UTF8 e acentuaÃ§Ã£o',
+        rctAPPLICATIONJSON);
   end;
 end;
 
@@ -58,7 +58,7 @@ end;
 procedure TRotas.PingRoute(Sender: TObject; ARequest: TRALRequest;
   AResponse: TRALResponse);
 begin
-  AResponse.Answer(200, 'pong', 'text/plain');
+  AResponse.Answer(200, 'pong', rctTEXTPLAIN);
 end;
 
 end.

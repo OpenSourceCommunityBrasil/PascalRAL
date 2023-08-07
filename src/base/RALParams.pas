@@ -1,4 +1,4 @@
-unit RALParams;
+﻿unit RALParams;
 
 interface
 
@@ -97,7 +97,7 @@ constructor TRALParam.Create;
 begin
   inherited;
   FContent := nil;
-  FContentType := TRALContentType.ctTEXTPLAIN;
+  FContentType := rctTEXTPLAIN;
   FKind := rpkNONE;
 end;
 
@@ -177,7 +177,7 @@ begin
 
   Result.ParamName := AName;
   Result.AsString := AContent;
-  Result.ContentType := TRALContentType.ctTEXTPLAIN;
+  Result.ContentType := rctTEXTPLAIN;
   Result.Kind := AKind;
 end;
 
@@ -189,7 +189,7 @@ begin
 
   Result.ParamName := AName;
   Result.AsStream := AContent;
-  Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := rctAPPLICATIONOCTETSTREAM;
   Result.Kind := AKind;
 end;
 
@@ -210,7 +210,7 @@ begin
   try
     Result.ContentType := vMime.GetMIMEType(AFileName);
     if Result.ContentType = '' then
-      Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+      Result.ContentType := rctAPPLICATIONOCTETSTREAM;
   finally
     FreeAndNil(vMime);
   end;
@@ -221,7 +221,7 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsString := AContent;
-  Result.ContentType := TRALContentType.ctTEXTPLAIN;
+  Result.ContentType := rctTEXTPLAIN;
   Result.Kind := AKind;
 end;
 
@@ -230,7 +230,7 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsStream := AContent;
-  Result.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := rctAPPLICATIONOCTETSTREAM;
   Result.Kind := AKind;
 end;
 
@@ -275,7 +275,7 @@ begin
       vParam := NewParam;
     vParam.ParamName := vName;
     vParam.AsString := ASource.Values[ASource.Names[vInt]];
-    vParam.ContentType := TRALContentType.ctTEXTPLAIN;
+    vParam.ContentType := rctTEXTPLAIN;
     vParam.Kind := AKind;
   end;
 end;
@@ -320,7 +320,7 @@ begin
   if ASource = nil then
     Exit;
 
-  if Pos(TRALContentType.ctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+  if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMultipartDecoder.Create;
     vDecoder.ContentType := AContentType;
@@ -328,7 +328,7 @@ begin
     vDecoder.ProcessMultiPart(ASource);
     vDecoder.Free;
   end
-  else if Pos(TRALContentType.ctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
+  else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
   begin
     vStream := TStringStream.Create;
     try
@@ -355,7 +355,7 @@ begin
   if ASource = '' then
     Exit;
 
-  if Pos(TRALContentType.ctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+  if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMultipartDecoder.Create;
     vDecoder.ContentType := AContentType;
@@ -363,7 +363,7 @@ begin
     vDecoder.ProcessMultiPart(ASource);
     vDecoder.Free;
   end
-  else if Pos(TRALContentType.ctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
+  else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
   begin
     DecodeFields(ASource);
   end
@@ -415,7 +415,7 @@ begin
     Result.Position := 0;
 
     AFreeContent := True;
-    AContentType := TRALContentType.ctAPPLICATIONXWWWFORMURLENCODED;
+    AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
   else if vInt1+vInt2 > 1 then
   begin
@@ -601,7 +601,7 @@ begin
   if AFormData.ContentType = '' then
     vParam.ContentType := AFormData.ContentType
   else
-    vParam.ContentType := TRALContentType.ctTEXTPLAIN;
+    vParam.ContentType := rctTEXTPLAIN;
 
   if vParam.FileName <> '' then
     vParam.Kind := rpkBODY

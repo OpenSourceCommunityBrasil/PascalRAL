@@ -1,4 +1,4 @@
-unit RALTypes;
+﻿unit RALTypes;
 
 interface
 
@@ -12,11 +12,14 @@ uses
   Expect heavy usage of IFDEFs at this point
 }
 type
+  // numeric types
   IntegerRAL = integer;
-  StringRAL = string;
   Int64RAL = int64;
   DoubleRAL = double;
-  CharRAL = char;
+
+  // text types
+  StringRAL = UTF8String;
+  CharRAL = WideChar;
   PCharRAL = ^CharRAL;
 
   TRALComponent = class(TComponent)

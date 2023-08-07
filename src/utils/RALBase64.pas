@@ -1,4 +1,4 @@
-unit RALBase64;
+﻿unit RALBase64;
 
 interface
 
@@ -11,29 +11,29 @@ type
 
   TRALBase64 = class
   protected
-    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
-    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer) : IntegerRAL;
+    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
+    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
   public
-    class function Encode(AValue : StringRAL) : StringRAL; overload;
-    class function Decode(AValue : StringRAL) : StringRAL; overload;
+    class function Encode(AValue: StringRAL): StringRAL; overload;
+    class function Decode(AValue: StringRAL): StringRAL; overload;
 
-    class function Encode(AValue : TStream) : StringRAL; overload;
-    class function Decode(AValue : TStream) : StringRAL; overload;
+    class function Encode(AValue: TStream): StringRAL; overload;
+    class function Decode(AValue: TStream): StringRAL; overload;
 
-    class function Encode(AValue : TBytes) : StringRAL; overload;
-    class function Decode(AValue : TBytes) : StringRAL; overload;
+    class function Encode(AValue: TBytes): StringRAL; overload;
+    class function Decode(AValue: TBytes): StringRAL; overload;
 
-    class function EncodeAsBytes(AValue : StringRAL) : TBytes; overload;
-    class function DecodeAsBytes(AValue : StringRAL) : TBytes; overload;
+    class function EncodeAsBytes(AValue: StringRAL): TBytes; overload;
+    class function DecodeAsBytes(AValue: StringRAL): TBytes; overload;
 
-    class function EncodeAsBytes(AValue : TStream) : TBytes; overload;
-    class function DecodeAsBytes(AValue : TStream) : TBytes; overload;
+    class function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    class function DecodeAsBytes(AValue: TStream): TBytes; overload;
 
-    class function EncodeAsStream(AValue : TStream) : TStringStream; overload;
-    class function DecodeAsStream(AValue : TStream) : TStringStream; overload;
+    class function EncodeAsStream(AValue: TStream): TStringStream; overload;
+    class function DecodeAsStream(AValue: TStream): TStringStream; overload;
 
-    class function ToBase64Url(AValue : StringRAL) : StringRAL;
-    class function FromBase64Url(AValue : StringRAL) : StringRAL;
+    class function ToBase64Url(AValue: StringRAL): StringRAL;
+    class function FromBase64Url(AValue: StringRAL): StringRAL;
   end;
 
 implementation
@@ -69,7 +69,7 @@ const
 
 class function TRALBase64.Decode(AValue: StringRAL): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -81,7 +81,7 @@ end;
 
 class function TRALBase64.Decode(AValue: TStream): StringRAL;
 var
-  vResult : TStringStream;
+  vResult: TStringStream;
 begin
   vResult := TStringStream(DecodeAsStream(AValue));
   try
@@ -93,7 +93,7 @@ end;
 
 class function TRALBase64.Decode(AValue: TBytes): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -105,7 +105,7 @@ end;
 
 class function TRALBase64.DecodeAsBytes(AValue: TStream): TBytes;
 var
-  vResult : TStringStream;
+  vResult: TStringStream;
 begin
   vResult := TStringStream(DecodeAsStream(AValue));
   try
@@ -121,7 +121,7 @@ var
   vInBuf: array[0..1019] of Byte;
   vOutBuf: array[0..764] of Byte;
   vBytesRead, vBytesWrite: Integer;
-  vPosition, vSize : Int64RAL;
+  vPosition, vSize: Int64RAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -139,25 +139,25 @@ begin
   Result.Position := 0;
 end;
 
-class function TRALBase64.ToBase64Url(AValue : StringRAL) : StringRAL;
+class function TRALBase64.ToBase64Url(AValue: StringRAL): StringRAL;
 begin
-  Result := StringReplace(AValue,'+','-',[rfReplaceAll]);
-  Result := StringReplace(Result,'/','_',[rfReplaceAll]);
+  Result := StringReplace(AValue, '+', '-', [rfReplaceAll]);
+  Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
   while (Result <> '') and (Result[Length(Result)] = '=') do
-    Delete(Result,Length(Result),1);
+    Delete(Result, Length(Result), 1);
 end;
 
-class function TRALBase64.FromBase64Url(AValue : StringRAL) : StringRAL;
+class function TRALBase64.FromBase64Url(AValue: StringRAL): StringRAL;
 begin
-  Result := StringReplace(AValue,'-','+',[rfReplaceAll]);
-  Result := StringReplace(Result,'_','/',[rfReplaceAll]);
+  Result := StringReplace(AValue, '-', '+', [rfReplaceAll]);
+  Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
   while (Length(Result) mod 4) <> 0 do
     Result := Result + '=';
 end;
 
 class function TRALBase64.DecodeAsBytes(AValue: StringRAL): TBytes;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -169,7 +169,7 @@ end;
 
 class function TRALBase64.Encode(AValue: TStream): StringRAL;
 var
-  vResult : TStringStream;
+  vResult: TStringStream;
 begin
   vResult := TStringStream(EncodeAsStream(AValue));
   try
@@ -181,7 +181,7 @@ end;
 
 class function TRALBase64.EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
 var
-  vRead : IntegerRAL;
+  vRead: IntegerRAL;
 begin
   Result := 0;
   while AInputLen > 0 do
@@ -204,9 +204,9 @@ begin
       2: begin
           AOutput^ := TEncode64[(AInput^ shr 2)];
           Inc(AOutput);
-          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or ((AInput+1)^ shr 4)];
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or ((AInput + 1)^ shr 4)];
           Inc(AOutput);
-          AOutput^ := TEncode64[((AInput+1)^ and 15) shl 2];
+          AOutput^ := TEncode64[((AInput + 1)^ and 15) shl 2];
           Inc(AOutput);
           AOutput^ := 61;
           Inc(AOutput);
@@ -214,16 +214,16 @@ begin
       3: begin
           AOutput^ := TEncode64[(AInput^ shr 2)];
           Inc(AOutput);
-          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or ((AInput+1)^ shr 4)];
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or ((AInput + 1)^ shr 4)];
           Inc(AOutput);
-          AOutput^ := TEncode64[((AInput+1)^ and 15) shl 2 or ((AInput+2)^ shr 6)];
+          AOutput^ := TEncode64[((AInput + 1)^ and 15) shl 2 or ((AInput + 2)^ shr 6)];
           Inc(AOutput);
-          AOutput^ := TEncode64[((AInput+2)^ and 63)];
+          AOutput^ := TEncode64[((AInput + 2)^ and 63)];
           Inc(AOutput);
       end;
     end;
 
-    Inc(AInput,vRead);
+    Inc(AInput, vRead);
     Result := Result + 4;
 
     AInputLen := AInputLen - 3;
@@ -233,8 +233,7 @@ end;
 class function TRALBase64.DecodeBase64(AInput, AOutput: PByte;
   AInputLen: Integer): IntegerRAL;
 var
-  vInt, vChar,
-  vBuf, vRead : IntegerRAL;
+  vInt, vChar, vBuf, vRead: IntegerRAL;
 begin
   Result := 0;
   while AInputLen > 0 do
@@ -272,7 +271,7 @@ end;
 
 class function TRALBase64.Encode(AValue: StringRAL): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -284,7 +283,7 @@ end;
 
 class function TRALBase64.EncodeAsBytes(AValue: StringRAL): TBytes;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -296,7 +295,7 @@ end;
 
 class function TRALBase64.Encode(AValue: TBytes): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -308,7 +307,7 @@ end;
 
 class function TRALBase64.EncodeAsBytes(AValue: TStream): TBytes;
 var
-  vResult : TStringStream;
+  vResult: TStringStream;
 begin
   vResult := TStringStream(EncodeAsStream(AValue));
   try

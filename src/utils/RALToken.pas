@@ -1,4 +1,4 @@
-unit RALToken;
+﻿unit RALToken;
 
 interface
 
@@ -115,7 +115,7 @@ var
 begin
   vJson := TRALJSONObject.Create;
   try
-    vJson.Add('typ',FHeaderType);
+    vJson.Add('typ', FHeaderType);
 
     case FAlgorithm of
       tjaHSHA256: vJson.Add('alg', 'HS256');

@@ -1,4 +1,4 @@
-unit RALTools;
+﻿unit RALTools;
 
 interface
 
@@ -11,8 +11,8 @@ uses
 
 function VarToBytes(v: variant): TBytes;
 function BytesToString(b: TBytes): StringRAL;
-function FixRoute(ARoute : StringRAL) : StringRAL;
-function RandomBytes(numOfBytes : IntegerRAL) : TBytes;
+function FixRoute(ARoute: StringRAL): StringRAL;
+function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 
 implementation
 
@@ -26,6 +26,9 @@ begin
   // 256 - varString  - ansistring
   // 008 - varOleStr  - widestring
 
+  { TODO -o Fernando -c Implementacao :
+    Analisar compatibilidade com indy e synopse abaixo.
+    Indy usa ANSI pra tudo, Synopse usa UTF8 }
   case vTyp of
     varUString, varString, varOleStr:
     begin
@@ -33,7 +36,7 @@ begin
       if v <> '' then
       begin
         {$IFNDEF FPC}
-        Result := TEncoding.ANSI.GetBytes(StringRAL(v));
+        Result := TEncoding.UTF8.GetBytes(StringRAL(v));
         {$ELSE}
         SetLength(Result, Length(v));
         // Move(Pointer(@StringRAL(v)[PosIniStr])^, Pointer(Result)^, Length(v));
@@ -53,21 +56,21 @@ begin
   end;
 end;
 
-function FixRoute(ARoute : StringRAL) : StringRAL;
+function FixRoute(ARoute: StringRAL): StringRAL;
 begin
-  Result := '/'+ARoute+'/';
-  while Pos('//', Result) > 0 do
+  Result := '/' + ARoute + '/';
+  while Pos(StringRAL('//'), Result) > 0 do
     Result := ReplaceStr(Result, '//', '/');
 end;
 
-function RandomBytes(numOfBytes : IntegerRAL) : TBytes;
+function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
-  SetLength(Result,numOfBytes);
+  SetLength(Result, numOfBytes);
   Randomize;
   for vInt := 1 to numOfBytes do
-    Result[vInt-1] := Random(256);
+    Result[vInt - 1] := Random(256);
 end;
 
 end.

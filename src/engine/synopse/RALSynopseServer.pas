@@ -20,26 +20,26 @@ type
     FPrivateKeyPassword: StringRAL;
     FCACertificatesFile: StringRAL;
   published
-    property CertificateFile : StringRAL read FCertificateFile write FCertificateFile;
-    property PrivateKeyFile : StringRAL read FPrivateKeyFile write FPrivateKeyFile;
-    property PrivateKeyPassword : StringRAL read FPrivateKeyPassword write FPrivateKeyPassword;
-    property CACertificatesFile : StringRAL read FCACertificatesFile write FCACertificatesFile;
+    property CertificateFile: StringRAL read FCertificateFile write FCertificateFile;
+    property PrivateKeyFile: StringRAL read FPrivateKeyFile write FPrivateKeyFile;
+    property PrivateKeyPassword: StringRAL read FPrivateKeyPassword write FPrivateKeyPassword;
+    property CACertificatesFile: StringRAL read FCACertificatesFile write FCACertificatesFile;
   end;
 
   { TRALSynopseServer }
 
   TRALSynopseServer = class(TRALServer)
   private
-    FHttp : THttpServerSocketGeneric;
+    FHttp: THttpServerSocketGeneric;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
 
-    function IPv6IsImplemented : boolean; override;
+    function IPv6IsImplemented: boolean; override;
 
     procedure DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
-    function OnCommandProcess(AContext : THttpServerRequestAbstract): Cardinal;
+    function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -51,7 +51,7 @@ implementation
 
 procedure TRALSynopseServer.SetActive(const AValue : boolean);
 var
-  vAddr : StringRAL;
+  vAddr: StringRAL;
 begin
   if AValue = Active then
     Exit;
@@ -59,7 +59,7 @@ begin
   if AValue then
   begin
     if IPConfig.IPv6Enabled then
-      vAddr := Format('[%s]:%d',[IPConfig.IPv6Bind,Self.Port])
+      vAddr := Format('[%s]:%d', [IPConfig.IPv6Bind, Self.Port])
     else
       vAddr := IntToStr(Self.Port);
 
@@ -94,7 +94,7 @@ begin
   inherited;
 end;
 
-procedure TRALSynopseServer.SetPort(const AValue : IntegerRAL);
+procedure TRALSynopseServer.SetPort(const AValue: IntegerRAL);
 var
   vActive: boolean;
 begin
@@ -104,18 +104,16 @@ begin
   inherited;
 
   vActive := Active;
-
   Active := False;
-
   Active := vActive;
 end;
 
-function TRALSynopseServer.IPv6IsImplemented : boolean;
+function TRALSynopseServer.IPv6IsImplemented: boolean;
 begin
   Result := True;
 end;
 
-procedure TRALSynopseServer.DecodeAuth(AHeaders : TStringList; AResult : TRALRequest);
+procedure TRALSynopseServer.DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
 var
   vStr, vAux: StringRAL;
   vInt: IntegerRAL;
@@ -138,19 +136,19 @@ begin
   end;
 end;
 
-function TRALSynopseServer.CreateRALSSL : TRALSSL;
+function TRALSynopseServer.CreateRALSSL: TRALSSL;
 begin
   inherited;
   Result := TRALSynopseSSL.Create;
 end;
 
-function TRALSynopseServer.OnCommandProcess(AContext : THttpServerRequestAbstract) : Cardinal;
+function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vInt : IntegerRAL;
-  vStringList : TStringList;
-  vParamQuery : StringRAL;
+  vInt: IntegerRAL;
+  vStringList: TStringList;
+  vParamQuery: StringRAL;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -164,7 +162,7 @@ begin
       ContentSize := Length(AContext.InContent);
 
       Query := AContext.Url;
-      vInt := Pos('?',Query);
+      vInt := Pos('?', Query);
       if vInt > 0 then begin
         vParamQuery := Copy(Query, vInt + 1, Length(Query));
         Query := Copy(Query, 1, vInt - 1);
@@ -217,7 +215,7 @@ begin
   end;
 end;
 
-constructor TRALSynopseServer.Create(AOwner : TComponent);
+constructor TRALSynopseServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := nil;

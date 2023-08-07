@@ -1,4 +1,4 @@
-unit RALResponse;
+﻿unit RALResponse;
 
 interface
 
@@ -25,10 +25,10 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-                     AContentType: TRALContentType = TRALContentType.ctTEXTHTML);
-    property Params : TRALParams read FParams;
-    property ResponseText : StringRAL read GetResponseText write SetResponseText;
-    property ResponseStream : TStream read GetResponseStream write SetResponseStream;
+                     AContentType: StringRAL = rctTEXTHTML);
+    property Params: TRALParams read FParams;
+    property ResponseText: StringRAL read GetResponseText write SetResponseText;
+    property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write FContentType;
     property StatusCode: IntegerRAL read FRespCode write FRespCode;
     property FreeContent: boolean read FFreeContent;
@@ -39,17 +39,17 @@ implementation
 { TRALResponse }
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-  AContentType: TRALContentType);
+  AContentType: StringRAL);
 begin
   StatusCode := AStatusCode;
+  ContentType := AContentType;
   ResponseText := AMessage;
-  FContentType := AContentType;
 end;
 
 constructor TRALResponse.Create;
 begin
   inherited;
-  FContentType := TRALContentType.ctTEXTHTML;
+  FContentType := rctTEXTHTML;
   FParams := TRALParams.Create;
   FFreeContent := False;
 end;

@@ -1,4 +1,4 @@
-unit RALRoutes;
+Ôªøunit RALRoutes;
 
 interface
 
@@ -46,7 +46,7 @@ type
     property Description: TStringList read FDescription write SetDescription;
     // verbos que a rota responde
     property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
-    // verbos que v„o ignorar autenticaÁ„o
+    // verbos que v√£o ignorar autentica√ß√£o
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
     // se for uma rota de callback pra OAuth
     property Callback: Boolean read FCallback write FCallback;

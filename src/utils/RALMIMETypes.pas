@@ -1,4 +1,4 @@
-unit RALMIMETypes;
+﻿unit RALMIMETypes;
 
 {$IFDEF FPC}
 {$mode Delphi}
@@ -19,132 +19,128 @@ uses
   Classes, SysUtils,
   RALTypes;
 
+const
+  {$REGION 'Const definitions'}
+  rctNONE = '';
+  rctAPPLICATIONATOMXML = 'application/atom+xml';
+  rctAPPLICATIONECMASCRIPT = 'application/ecmascript';
+  rctAPPLICATIONEDIX12 = 'application/EDI-X12';
+  rctAPPLICATIONEDIFACT = 'application/EDIFACT';
+  rctAPPLICATIONFONTWOFF = 'application/font-woff';
+  rctAPPLICATIONGZIP = 'application/gzip';
+  rctAPPLICATIONJAVASCRIPT = 'application/javascript';
+  rctAPPLICATIONJSON = 'application/json';
+  rctAPPLICATIONOCTETSTREAM = 'application/octet-stream';
+  rctAPPLICATIONOGG = 'application/ogg';
+  rctAPPLICATIONPDF = 'application/pdf';
+  rctAPPLICATIONPOSTSCRIPT = 'application/postscript';
+  rctAPPLICATIONRDFXML = 'application/rdf+xml';
+  rctAPPLICATIONRSSXML = 'application/rss+xml';
+  rctAPPLICATIONSOAPXML = 'application/soap+xml';
+  rctAPPLICATIONVNDANDROIDPACKAGEARCHIVE =
+    'application/vnd.android.package-archive';
+  rctAPPLICATIONVNDDART = 'application/vnd.dart';
+  rctAPPLICATIONVNDEMBARCADEROFIREDACJSON =
+    'application/vnd.embarcadero.firedac+json';
+  rctAPPLICATIONVNDGOOGLEEARTHKMLXML = 'application/vnd.google-earth.kml+xml';
+  rctAPPLICATIONVNDGOOGLEEARTHKMZ = 'application/vnd.google-earth.kmz';
+  rctAPPLICATIONVNDMOZILLAXULXML = 'application/vnd.mozilla.xul+xml';
+  rctAPPLICATIONVNDMSEXCEL = 'application/vnd.ms-excel';
+  rctAPPLICATIONVNDMSPOWERPOINT = 'application/vnd.ms-powerpoint';
+  rctAPPLICATIONVNDOASISOPENDOCUMENTGRAPHICS =
+    'application/vnd.oasis.opendocument.graphics';
+  rctAPPLICATIONVNDOASISOPENDOCUMENTPRESENTATION =
+    'application/vnd.oasis.opendocument.presentation';
+  rctAPPLICATIONVNDOASISOPENDOCUMENTSPREADSHEET =
+    'application/vnd.oasis.opendocument.spreadsheet';
+  rctAPPLICATIONVNDOASISOPENDOCUMENTTEXT =
+    'application/vnd.oasis.opendocument.text';
+  rctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTPRESENTATIONMLPRESENTATION =
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  rctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTSPREADSHEETMLSHEET =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  rctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTWORDPROCESSINGMLDOCUMENT =
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  rctAPPLICATIONXDEB = 'application/x-deb';
+  rctAPPLICATIONXDVI = 'application/x-dvi';
+  rctAPPLICATIONXFONTTTF = 'application/x-font-ttf';
+  rctAPPLICATIONXJAVASCRIPT = 'application/x-javascript';
+  rctAPPLICATIONXLATEX = 'application/x-latex';
+  rctAPPLICATIONXMPEGURL = 'application/x-mpegURL';
+  rctAPPLICATIONXPKCS12 = 'application/x-pkcs12';
+  rctAPPLICATIONXPKCS7CERTIFICATES = 'application/x-pkcs7-certificates';
+  rctAPPLICATIONXPKCS7CERTREQRESP = 'application/x-pkcs7-certreqresp';
+  rctAPPLICATIONXPKCS7MIME = 'application/x-pkcs7-mime';
+  rctAPPLICATIONXPKCS7SIGNATURE = 'application/x-pkcs7-signature';
+  rctAPPLICATIONXRARCOMPRESSED = 'application/x-rar-compressed';
+  rctAPPLICATIONXSHOCKWAVEFLASH = 'application/x-shockwave-flash';
+  rctAPPLICATIONXSTUFFIT = 'application/x-stuffit';
+  rctAPPLICATIONXTAR = 'application/x-tar';
+  rctAPPLICATIONXWWWFORMURLENCODED = 'application/x-www-form-urlencoded';
+  rctAPPLICATIONXXPINSTALL = 'application/x-xpinstall';
+  rctAPPLICATIONXHTMLXML = 'application/xhtml+xml';
+  rctAPPLICATIONXML = 'application/xml';
+  rctAPPLICATIONXMLDTD = 'application/xml-dtd';
+  rctAPPLICATIONXOPXML = 'application/xop+xml';
+  rctAPPLICATIONZIP = 'application/zip';
+  rctAUDIOBASIC = 'audio/basic';
+  rctAUDIOL24 = 'audio/L24';
+  rctAUDIOMP4 = 'audio/mp4';
+  rctAUDIOMPEG = 'audio/mpeg';
+  rctAUDIOOGG = 'audio/ogg';
+  rctAUDIOVNDRNREALAUDIO = 'audio/vnd.rn-realaudio';
+  rctAUDIOVNDWAVE = 'audio/vnd.wave';
+  rctAUDIOVORBIS = 'audio/vorbis';
+  rctAUDIOWEBM = 'audio/webm';
+  rctAUDIOXAAC = 'audio/x-aac';
+  rctAUDIOXCAF = 'audio/x-caf';
+  rctIMAGEGIF = 'image/gif';
+  rctIMAGEJPEG = 'image/jpeg';
+  rctIMAGEICON = 'image/icon';
+  rctIMAGEPJPEG = 'image/pjpeg';
+  rctIMAGEPNG = 'image/png';
+  rctIMAGESVGXML = 'image/svg+xml';
+  rctIMAGETIFF = 'image/tiff';
+  rctIMAGEXXCF = 'image/x-xcf';
+  rctMESSAGEHTTP = 'message/http';
+  rctMESSAGEIMDNXML = 'message/imdn+xml';
+  rctMESSAGEPARTIAL = 'message/partial';
+  rctMESSAGERFC822 = 'message/rfc822';
+  rctMODELEXAMPLE = 'model/example';
+  rctMODELIGES = 'model/iges';
+  rctMODELMESH = 'model/mesh';
+  rctMODELVRML = 'model/vrml';
+  rctMODELX3DBINARY = 'model/x3d+binary';
+  rctMODELX3DVRML = 'model/x3d+vrml';
+  rctMODELX3DXML = 'model/x3d+xml';
+  rctMULTIPARTALTERNATIVE = 'multipart/alternative';
+  rctMULTIPARTENCRYPTED = 'multipart/encrypted';
+  rctMULTIPARTFORMDATA = 'multipart/form-data';
+  rctMULTIPARTMIXED = 'multipart/mixed';
+  rctMULTIPARTRELATED = 'multipart/related';
+  rctMULTIPARTSIGNED = 'multipart/signed';
+  rctTEXTCMD = 'text/cmd';
+  rctTEXTCSS = 'text/css';
+  rctTEXTCSV = 'text/csv';
+  rctTEXTHTML = 'text/html';
+  rctTEXTJAVASCRIPT = 'text/javascript';
+  rctTEXTPLAIN = 'text/plain';
+  rctTEXTVCARD = 'text/vcard';
+  rctTEXTXGWTRPC = 'text/x-gwt-rpc';
+  rctTEXTXJQUERYTMPL = 'text/x-jquery-tmpl';
+  rctTEXTXMARKDOWN = 'text/x-markdown';
+  rctTEXTXML = 'text/xml';
+  rctVIDEOMP4 = 'video/mp4';
+  rctVIDEOMPEG = 'video/mpeg';
+  rctVIDEOOGG = 'video/ogg';
+  rctVIDEOQUICKTIME = 'video/quicktime';
+  rctVIDEOWEBM = 'video/webm';
+  rctVIDEOXFLV = 'video/x-flv';
+  rctVIDEOXMATROSKA = 'video/x-matroska';
+  rctVIDEOXMSWMV = 'video/x-ms-wmv';
+  {$ENDREGION}
+
 type
-  TRALContentType = type string;
-
-  TRALContentTypeHelper = record helper for TRALContentType
-  public
-  const
-    {$REGION 'Const definitions'}
-    ctNONE = '';
-    ctAPPLICATIONATOMXML = 'application/atom+xml';
-    ctAPPLICATIONECMASCRIPT = 'application/ecmascript';
-    ctAPPLICATIONEDIX12 = 'application/EDI-X12';
-    ctAPPLICATIONEDIFACT = 'application/EDIFACT';
-    ctAPPLICATIONFONTWOFF = 'application/font-woff';
-    ctAPPLICATIONGZIP = 'application/gzip';
-    ctAPPLICATIONJAVASCRIPT = 'application/javascript';
-    ctAPPLICATIONJSON = 'application/json';
-    ctAPPLICATIONOCTETSTREAM = 'application/octet-stream';
-    ctAPPLICATIONOGG = 'application/ogg';
-    ctAPPLICATIONPDF = 'application/pdf';
-    ctAPPLICATIONPOSTSCRIPT = 'application/postscript';
-    ctAPPLICATIONRDFXML = 'application/rdf+xml';
-    ctAPPLICATIONRSSXML = 'application/rss+xml';
-    ctAPPLICATIONSOAPXML = 'application/soap+xml';
-    ctAPPLICATIONVNDANDROIDPACKAGEARCHIVE =
-      'application/vnd.android.package-archive';
-    ctAPPLICATIONVNDDART = 'application/vnd.dart';
-    ctAPPLICATIONVNDEMBARCADEROFIREDACJSON =
-      'application/vnd.embarcadero.firedac+json';
-    ctAPPLICATIONVNDGOOGLEEARTHKMLXML = 'application/vnd.google-earth.kml+xml';
-    ctAPPLICATIONVNDGOOGLEEARTHKMZ = 'application/vnd.google-earth.kmz';
-    ctAPPLICATIONVNDMOZILLAXULXML = 'application/vnd.mozilla.xul+xml';
-    ctAPPLICATIONVNDMSEXCEL = 'application/vnd.ms-excel';
-    ctAPPLICATIONVNDMSPOWERPOINT = 'application/vnd.ms-powerpoint';
-    ctAPPLICATIONVNDOASISOPENDOCUMENTGRAPHICS =
-      'application/vnd.oasis.opendocument.graphics';
-    ctAPPLICATIONVNDOASISOPENDOCUMENTPRESENTATION =
-      'application/vnd.oasis.opendocument.presentation';
-    ctAPPLICATIONVNDOASISOPENDOCUMENTSPREADSHEET =
-      'application/vnd.oasis.opendocument.spreadsheet';
-    ctAPPLICATIONVNDOASISOPENDOCUMENTTEXT =
-      'application/vnd.oasis.opendocument.text';
-    ctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTPRESENTATIONMLPRESENTATION =
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    ctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTSPREADSHEETMLSHEET =
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    ctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTWORDPROCESSINGMLDOCUMENT =
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    ctAPPLICATIONXDEB = 'application/x-deb';
-    ctAPPLICATIONXDVI = 'application/x-dvi';
-    ctAPPLICATIONXFONTTTF = 'application/x-font-ttf';
-    ctAPPLICATIONXJAVASCRIPT = 'application/x-javascript';
-    ctAPPLICATIONXLATEX = 'application/x-latex';
-    ctAPPLICATIONXMPEGURL = 'application/x-mpegURL';
-    ctAPPLICATIONXPKCS12 = 'application/x-pkcs12';
-    ctAPPLICATIONXPKCS7CERTIFICATES = 'application/x-pkcs7-certificates';
-    ctAPPLICATIONXPKCS7CERTREQRESP = 'application/x-pkcs7-certreqresp';
-    ctAPPLICATIONXPKCS7MIME = 'application/x-pkcs7-mime';
-    ctAPPLICATIONXPKCS7SIGNATURE = 'application/x-pkcs7-signature';
-    ctAPPLICATIONXRARCOMPRESSED = 'application/x-rar-compressed';
-    ctAPPLICATIONXSHOCKWAVEFLASH = 'application/x-shockwave-flash';
-    ctAPPLICATIONXSTUFFIT = 'application/x-stuffit';
-    ctAPPLICATIONXTAR = 'application/x-tar';
-    ctAPPLICATIONXWWWFORMURLENCODED = 'application/x-www-form-urlencoded';
-    ctAPPLICATIONXXPINSTALL = 'application/x-xpinstall';
-    ctAPPLICATIONXHTMLXML = 'application/xhtml+xml';
-    ctAPPLICATIONXML = 'application/xml';
-    ctAPPLICATIONXMLDTD = 'application/xml-dtd';
-    ctAPPLICATIONXOPXML = 'application/xop+xml';
-    ctAPPLICATIONZIP = 'application/zip';
-    ctAUDIOBASIC = 'audio/basic';
-    ctAUDIOL24 = 'audio/L24';
-    ctAUDIOMP4 = 'audio/mp4';
-    ctAUDIOMPEG = 'audio/mpeg';
-    ctAUDIOOGG = 'audio/ogg';
-    ctAUDIOVNDRNREALAUDIO = 'audio/vnd.rn-realaudio';
-    ctAUDIOVNDWAVE = 'audio/vnd.wave';
-    ctAUDIOVORBIS = 'audio/vorbis';
-    ctAUDIOWEBM = 'audio/webm';
-    ctAUDIOXAAC = 'audio/x-aac';
-    ctAUDIOXCAF = 'audio/x-caf';
-    ctIMAGEGIF = 'image/gif';
-    ctIMAGEJPEG = 'image/jpeg';
-    ctIMAGEPJPEG = 'image/pjpeg';
-    ctIMAGEPNG = 'image/png';
-    ctIMAGESVGXML = 'image/svg+xml';
-    ctIMAGETIFF = 'image/tiff';
-    ctIMAGEXXCF = 'image/x-xcf';
-    ctMESSAGEHTTP = 'message/http';
-    ctMESSAGEIMDNXML = 'message/imdn+xml';
-    ctMESSAGEPARTIAL = 'message/partial';
-    ctMESSAGERFC822 = 'message/rfc822';
-    ctMODELEXAMPLE = 'model/example';
-    ctMODELIGES = 'model/iges';
-    ctMODELMESH = 'model/mesh';
-    ctMODELVRML = 'model/vrml';
-    ctMODELX3DBINARY = 'model/x3d+binary';
-    ctMODELX3DVRML = 'model/x3d+vrml';
-    ctMODELX3DXML = 'model/x3d+xml';
-    ctMULTIPARTALTERNATIVE = 'multipart/alternative';
-    ctMULTIPARTENCRYPTED = 'multipart/encrypted';
-    ctMULTIPARTFORMDATA = 'multipart/form-data';
-    ctMULTIPARTMIXED = 'multipart/mixed';
-    ctMULTIPARTRELATED = 'multipart/related';
-    ctMULTIPARTSIGNED = 'multipart/signed';
-    ctTEXTCMD = 'text/cmd';
-    ctTEXTCSS = 'text/css';
-    ctTEXTCSV = 'text/csv';
-    ctTEXTHTML = 'text/html';
-    ctTEXTJAVASCRIPT = 'text/javascript';
-    ctTEXTPLAIN = 'text/plain';
-    ctTEXTVCARD = 'text/vcard';
-    ctTEXTXGWTRPC = 'text/x-gwt-rpc';
-    ctTEXTXJQUERYTMPL = 'text/x-jquery-tmpl';
-    ctTEXTXMARKDOWN = 'text/x-markdown';
-    ctTEXTXML = 'text/xml';
-    ctVIDEOMP4 = 'video/mp4';
-    ctVIDEOMPEG = 'video/mpeg';
-    ctVIDEOOGG = 'video/ogg';
-    ctVIDEOQUICKTIME = 'video/quicktime';
-    ctVIDEOWEBM = 'video/webm';
-    ctVIDEOXFLV = 'video/x-flv';
-    ctVIDEOXMATROSKA = 'video/x-matroska';
-    ctVIDEOXMSWMV = 'video/x-ms-wmv';
-    {$ENDREGION}
-  end;
-
   TRALMIMEType = class
   private
     FInternalMIMEList: TStringList;
@@ -157,7 +153,7 @@ type
   end;
 
 const
-  DEFAULTCONTENTTYPE = TRALContentType.ctNONE;
+  DEFAULTCONTENTTYPE = rctNONE;
 
 implementation
 

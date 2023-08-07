@@ -1,4 +1,4 @@
-unit RALServer;
+﻿unit RALServer;
 
 interface
 
@@ -51,22 +51,22 @@ type
 
   TRALIPConfig = class(TPersistent)
   private
-    FOwner : TRALServer;
-    FIPv4Bind : StringRAL;
-    FIPv6Bind : StringRAL;
-    FIPv6Enabled : boolean;
+    FOwner: TRALServer;
+    FIPv4Bind: StringRAL;
+    FIPv6Bind: StringRAL;
+    FIPv6Enabled: boolean;
   protected
-    procedure SetIPv6Enabled(AValue : boolean);
+    procedure SetIPv6Enabled(AValue: boolean);
   public
-    constructor Create(AOwner : TRALServer);
+    constructor Create(AOwner: TRALServer);
   published
-    property IPv4Bind : StringRAL read FIPv4Bind write FIPv4Bind;
-    property IPv6Bind : StringRAL read FIPv6Bind write FIPv6Bind;
-    property IPv6Enabled : boolean read FIPv6Enabled write SetIPv6Enabled;
+    property IPv4Bind: StringRAL read FIPv4Bind write FIPv4Bind;
+    property IPv6Bind: StringRAL read FIPv6Bind write FIPv6Bind;
+    property IPv6Enabled: boolean read FIPv6Enabled write SetIPv6Enabled;
   end;
 
-  TRALOnClientTryBlocked = procedure(Sender : TObject; AClientIP : StringRAL; ANumTry : IntegerRAL) of object;
-  TRALOnClientWasBlocked = procedure(Sender : TObject; AClientIP : StringRAL) of object;
+  TRALOnClientTryBlocked = procedure(Sender: TObject; AClientIP: StringRAL; ANumTry: IntegerRAL) of object;
+  TRALOnClientWasBlocked = procedure(Sender: TObject; AClientIP: StringRAL) of object;
 
   { TRALServer }
 
@@ -86,7 +86,7 @@ type
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
     FWhiteIPList: TStringList;
-    FIPConfig : TRALIPConfig;
+    FIPConfig: TRALIPConfig;
 
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
@@ -95,9 +95,9 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
-    procedure SetServerStatus(AValue : TStringList);
-    procedure SetBlackIPList(AValue : TStringList);
-    procedure SetWhiteIPList(AValue : TStringList);
+    procedure SetServerStatus(AValue: TStringList);
+    procedure SetBlackIPList(AValue: TStringList);
+    procedure SetWhiteIPList(AValue: TStringList);
 
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
@@ -114,9 +114,9 @@ type
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
 
-    function IPv6IsImplemented : boolean; virtual;
+    function IPv6IsImplemented: boolean; virtual;
 
-    function HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
+    function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -133,7 +133,7 @@ type
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
     property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
-    property IPConfig : TRALIPConfig read FIPConfig write FIPConfig;
+    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
 
     property Active: boolean read FActive write SetActive;
 
@@ -147,7 +147,7 @@ implementation
 
 { TRALIPConfig }
 
-procedure TRALIPConfig.SetIPv6Enabled(AValue : boolean);
+procedure TRALIPConfig.SetIPv6Enabled(AValue: boolean);
 var
   vActive: boolean;
 begin
@@ -352,7 +352,7 @@ function TRALServer.HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 var
   vInt: IntegerRAL;
 begin
-  AMethod := 'am'+UpperCase(AMethod);
+  AMethod := 'am' + UpperCase(AMethod);
   vInt := GetEnumValue(TypeInfo(TRALMethod), AMethod);
   if vInt <> -1 then
     Result := TRALMethod(vInt)
@@ -439,14 +439,14 @@ begin
   begin
     if (ARequest.Query = '/') and (FShowServerStatus) then
     begin
-      Result.ContentType := TRALContentType.ctTEXTHTML;
+      Result.ContentType := rctTEXTHTML;
       vString := FServerStatus.Text;
       vString := ReplaceText(vString, '%ralengine%', FEngine);
       Result.ResponseText := vString;
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
     begin
-      Result.ContentType := 'image/icon';
+      Result.ContentType := rctIMAGEICON;
       Result.ResponseStream := FFavIcon;
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then

@@ -1,294 +1,472 @@
 object Form1: TForm1
   Left = 0
   Top = 0
-  Caption = 'V'
+  Caption = 'RAL TestServer'
   ClientHeight = 480
   ClientWidth = 633
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
   DesignerMasterStyle = 0
-  object Layout2: TLayout
-    Align = Top
-    Size.Width = 633.000000000000000000
-    Size.Height = 129.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 3
-    object GroupBox1: TGroupBox
-      Size.Width = 120.000000000000000000
-      Size.Height = 129.000000000000000000
-      Size.PlatformDefault = False
-      Text = 'Server Params'
-      TabOrder = 3
-      object FlowLayout1: TFlowLayout
-        Align = Client
-        Padding.Top = 20.000000000000000000
-        Margins.Left = 5.000000000000000000
-        Margins.Top = 15.000000000000000000
-        Margins.Right = 5.000000000000000000
-        Margins.Bottom = 5.000000000000000000
-        Size.Width = 110.000000000000000000
-        Size.Height = 109.000000000000000000
-        Size.PlatformDefault = False
-        TabOrder = 38
-        Justify = Left
-        JustifyLastLine = Left
-        FlowDirection = LeftToRight
-        VerticalGap = 5.000000000000000000
-        object spPort: TEdit
-          Touch.InteractiveGestures = [LongTap, DoubleTap]
-          TabOrder = 0
-          Position.Y = 20.000000000000000000
-          object Label1: TLabel
-            Align = Top
-            Margins.Top = -20.000000000000000000
-            Position.Y = -20.000000000000000000
-            Size.Width = 100.000000000000000000
-            Size.Height = 17.000000000000000000
-            Size.PlatformDefault = False
-            Text = 'Port'
-            TabOrder = 0
-          end
-        end
-        object spUseSSL: TCheckBox
-          Position.Y = 47.000000000000000000
-          TabOrder = 1
-          Text = 'UseSSL'
-        end
-      end
-    end
-    object GroupBox2: TGroupBox
-      Position.X = 121.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 129.000000000000000000
-      Size.PlatformDefault = False
-      Text = 'Server Engine'
-      TabOrder = 2
-      object FlowLayout2: TFlowLayout
-        Align = Client
-        Padding.Left = 5.000000000000000000
-        Padding.Top = 10.000000000000000000
-        Padding.Right = 5.000000000000000000
-        Padding.Bottom = 5.000000000000000000
-        Margins.Left = 5.000000000000000000
-        Margins.Top = 15.000000000000000000
-        Margins.Right = 5.000000000000000000
-        Margins.Bottom = 5.000000000000000000
-        Size.Width = 110.000000000000000000
-        Size.Height = 109.000000000000000000
-        Size.PlatformDefault = False
-        TabOrder = 38
-        Justify = Left
-        JustifyLastLine = Left
-        FlowDirection = LeftToRight
-        VerticalGap = 5.000000000000000000
-        object rbIndy: TRadioButton
-          Position.X = 5.000000000000000000
-          Position.Y = 10.000000000000000000
-          Size.Width = 96.000000000000000000
-          Size.Height = 19.000000000000000000
-          Size.PlatformDefault = False
-          TabOrder = 40
-          Text = 'Indy'
-        end
-        object rbSynopse: TRadioButton
-          Position.X = 5.000000000000000000
-          Position.Y = 34.000000000000000000
-          Size.Width = 96.000000000000000000
-          Size.Height = 19.000000000000000000
-          Size.PlatformDefault = False
-          TabOrder = 39
-          Text = 'Synopse'
-        end
-      end
-    end
-    object GroupBox3: TGroupBox
-      Position.X = 240.000000000000000000
-      Size.Width = 392.000000000000000000
-      Size.Height = 129.000000000000000000
-      Size.PlatformDefault = False
-      Text = 'Server Authentication'
-      TabOrder = 1
-      object FlowLayout3: TFlowLayout
-        Align = Client
-        Padding.Left = 5.000000000000000000
-        Padding.Top = 20.000000000000000000
-        Padding.Right = 5.000000000000000000
-        Padding.Bottom = 5.000000000000000000
-        Margins.Left = 5.000000000000000000
-        Margins.Top = 15.000000000000000000
-        Margins.Right = 5.000000000000000000
-        Margins.Bottom = 5.000000000000000000
-        Size.Width = 382.000000000000000000
-        Size.Height = 109.000000000000000000
-        Size.PlatformDefault = False
-        TabOrder = 38
-        Justify = Left
-        JustifyLastLine = Left
-        FlowDirection = LeftToRight
-        HorizontalGap = 10.000000000000000000
-        VerticalGap = 20.000000000000000000
-        object saAuthType: TComboBox
-          Position.X = 5.000000000000000000
-          Position.Y = 20.000000000000000000
-          TabOrder = 0
-          object Label5: TLabel
-            Align = Top
-            Margins.Top = -20.000000000000000000
-            Position.Y = -20.000000000000000000
-            Size.Width = 100.000000000000000000
-            Size.Height = 17.000000000000000000
-            Size.PlatformDefault = False
-            Text = 'Authentication'
-            TabOrder = 0
-          end
-        end
-        object saUser: TEdit
-          Touch.InteractiveGestures = [LongTap, DoubleTap]
-          TabOrder = 3
-          Position.X = 115.000000000000000000
-          Position.Y = 20.000000000000000000
-          object Label2: TLabel
-            Align = Top
-            Margins.Top = -20.000000000000000000
-            Position.Y = -20.000000000000000000
-            Size.Width = 100.000000000000000000
-            Size.Height = 17.000000000000000000
-            Size.PlatformDefault = False
-            Text = 'User'
-            TabOrder = 0
-          end
-        end
-        object saPassword: TEdit
-          Touch.InteractiveGestures = [LongTap, DoubleTap]
-          TabOrder = 1
-          Position.X = 225.000000000000000000
-          Position.Y = 20.000000000000000000
-          object Label3: TLabel
-            Align = Top
-            Margins.Top = -20.000000000000000000
-            Position.Y = -20.000000000000000000
-            Size.Width = 100.000000000000000000
-            Size.Height = 17.000000000000000000
-            Size.PlatformDefault = False
-            Text = 'Password'
-            TabOrder = 0
-          end
-        end
-        object saToken: TEdit
-          Touch.InteractiveGestures = [LongTap, DoubleTap]
-          TabOrder = 2
-          Position.X = 5.000000000000000000
-          Position.Y = 62.000000000000000000
-          object Label4: TLabel
-            Align = Top
-            Margins.Top = -20.000000000000000000
-            Position.Y = -20.000000000000000000
-            Size.Width = 100.000000000000000000
-            Size.Height = 17.000000000000000000
-            Size.PlatformDefault = False
-            Text = 'Token'
-            TabOrder = 0
-          end
-        end
-      end
-    end
-  end
-  object Layout3: TLayout
-    Align = Top
-    Position.Y = 129.000000000000000000
-    Size.Width = 633.000000000000000000
-    Size.Height = 40.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 2
-    object bStart: TButton
-      Position.X = 8.000000000000000000
-      Position.Y = 8.000000000000000000
-      Size.Width = 117.000000000000000000
-      Size.Height = 22.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 5
-      Text = 'Start Server'
-      OnClick = bStartClick
-    end
-  end
-  object Layout4: TLayout
+  object TabControl1: TTabControl
     Align = Client
     Size.Width = 633.000000000000000000
-    Size.Height = 311.000000000000000000
+    Size.Height = 480.000000000000000000
     Size.PlatformDefault = False
-    TabOrder = 1
-    object GroupBox4: TGroupBox
-      Align = Client
-      Padding.Left = 5.000000000000000000
-      Padding.Top = 20.000000000000000000
-      Padding.Right = 5.000000000000000000
-      Padding.Bottom = 5.000000000000000000
-      Size.Width = 508.000000000000000000
-      Size.Height = 311.000000000000000000
+    TabIndex = 0
+    TabOrder = 2
+    TabPosition = PlatformDefault
+    Sizes = (
+      633s
+      454s
+      633s
+      454s)
+    object TabItem1: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = True
+      Size.Width = 63.000000000000000000
+      Size.Height = 26.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Log'
-      TabOrder = 4
-      object mLog: TMemo
-        Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
-        DataDetectorTypes = []
-        TextSettings.WordWrap = True
-        Align = Client
-        Size.Width = 498.000000000000000000
-        Size.Height = 286.000000000000000000
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Settings'
+      object Layout2: TLayout
+        Align = Top
+        Size.Width = 633.000000000000000000
+        Size.Height = 129.000000000000000000
         Size.PlatformDefault = False
-        TabOrder = 38
-        Viewport.Width = 494.000000000000000000
-        Viewport.Height = 282.000000000000000000
-        object Layout1: TLayout
-          Align = Right
-          Margins.Right = 20.000000000000000000
-          Position.X = 427.000000000000000000
-          Size.Width = 47.000000000000000000
-          Size.Height = 282.000000000000000000
+        TabOrder = 3
+        object GroupBox1: TGroupBox
+          Size.Width = 120.000000000000000000
+          Size.Height = 129.000000000000000000
           Size.PlatformDefault = False
-          TabOrder = 0
-          object SpeedButton1: TSpeedButton
-            Align = Top
+          Text = 'Server Params'
+          TabOrder = 3
+          object FlowLayout1: TFlowLayout
+            Align = Client
+            Padding.Top = 20.000000000000000000
             Margins.Left = 5.000000000000000000
-            Margins.Top = 5.000000000000000000
+            Margins.Top = 15.000000000000000000
             Margins.Right = 5.000000000000000000
             Margins.Bottom = 5.000000000000000000
-            Position.X = 5.000000000000000000
-            Position.Y = 5.000000000000000000
-            Size.Width = 37.000000000000000000
+            Size.Width = 110.000000000000000000
+            Size.Height = 109.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 38
+            Justify = Left
+            JustifyLastLine = Left
+            FlowDirection = LeftToRight
+            VerticalGap = 5.000000000000000000
+            object spPort: TEdit
+              Touch.InteractiveGestures = [LongTap, DoubleTap]
+              TabOrder = 0
+              Position.Y = 20.000000000000000000
+              object Label1: TLabel
+                Align = Top
+                Margins.Top = -20.000000000000000000
+                Position.Y = -20.000000000000000000
+                Size.Width = 100.000000000000000000
+                Size.Height = 17.000000000000000000
+                Size.PlatformDefault = False
+                Text = 'Port'
+                TabOrder = 0
+              end
+            end
+            object spUseSSL: TCheckBox
+              Position.Y = 47.000000000000000000
+              TabOrder = 1
+              Text = 'UseSSL'
+            end
+          end
+        end
+        object GroupBox2: TGroupBox
+          Position.X = 121.000000000000000000
+          Size.Width = 120.000000000000000000
+          Size.Height = 129.000000000000000000
+          Size.PlatformDefault = False
+          Text = 'Server Engine'
+          TabOrder = 2
+          object FlowLayout2: TFlowLayout
+            Align = Client
+            Padding.Left = 5.000000000000000000
+            Padding.Top = 10.000000000000000000
+            Padding.Right = 5.000000000000000000
+            Padding.Bottom = 5.000000000000000000
+            Margins.Left = 5.000000000000000000
+            Margins.Top = 15.000000000000000000
+            Margins.Right = 5.000000000000000000
+            Margins.Bottom = 5.000000000000000000
+            Size.Width = 110.000000000000000000
+            Size.Height = 109.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 38
+            Justify = Left
+            JustifyLastLine = Left
+            FlowDirection = LeftToRight
+            VerticalGap = 5.000000000000000000
+            object rbIndy: TRadioButton
+              Position.X = 5.000000000000000000
+              Position.Y = 10.000000000000000000
+              Size.Width = 96.000000000000000000
+              Size.Height = 19.000000000000000000
+              Size.PlatformDefault = False
+              TabOrder = 40
+              Text = 'Indy'
+            end
+            object rbSynopse: TRadioButton
+              Position.X = 5.000000000000000000
+              Position.Y = 34.000000000000000000
+              Size.Width = 96.000000000000000000
+              Size.Height = 19.000000000000000000
+              Size.PlatformDefault = False
+              TabOrder = 39
+              Text = 'Synopse'
+            end
+          end
+        end
+        object GroupBox3: TGroupBox
+          Position.X = 240.000000000000000000
+          Size.Width = 392.000000000000000000
+          Size.Height = 129.000000000000000000
+          Size.PlatformDefault = False
+          Text = 'Server Authentication'
+          TabOrder = 1
+          object FlowLayout3: TFlowLayout
+            Align = Client
+            Padding.Left = 5.000000000000000000
+            Padding.Top = 20.000000000000000000
+            Padding.Right = 5.000000000000000000
+            Padding.Bottom = 5.000000000000000000
+            Margins.Left = 5.000000000000000000
+            Margins.Top = 15.000000000000000000
+            Margins.Right = 5.000000000000000000
+            Margins.Bottom = 5.000000000000000000
+            Size.Width = 382.000000000000000000
+            Size.Height = 109.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 38
+            Justify = Left
+            JustifyLastLine = Left
+            FlowDirection = LeftToRight
+            HorizontalGap = 10.000000000000000000
+            VerticalGap = 20.000000000000000000
+            object saAuthType: TComboBox
+              Items.Strings = (
+                'NONE'
+                'BASIC')
+              ItemIndex = 0
+              Position.X = 5.000000000000000000
+              Position.Y = 20.000000000000000000
+              TabOrder = 0
+              object Label5: TLabel
+                Align = Top
+                Margins.Top = -20.000000000000000000
+                Position.Y = -20.000000000000000000
+                Size.Width = 100.000000000000000000
+                Size.Height = 17.000000000000000000
+                Size.PlatformDefault = False
+                Text = 'Authentication'
+                TabOrder = 0
+              end
+            end
+            object saUser: TEdit
+              Touch.InteractiveGestures = [LongTap, DoubleTap]
+              TabOrder = 3
+              Position.X = 115.000000000000000000
+              Position.Y = 20.000000000000000000
+              object Label2: TLabel
+                Align = Top
+                Margins.Top = -20.000000000000000000
+                Position.Y = -20.000000000000000000
+                Size.Width = 100.000000000000000000
+                Size.Height = 17.000000000000000000
+                Size.PlatformDefault = False
+                Text = 'User'
+                TabOrder = 0
+              end
+            end
+            object saPassword: TEdit
+              Touch.InteractiveGestures = [LongTap, DoubleTap]
+              TabOrder = 1
+              Position.X = 225.000000000000000000
+              Position.Y = 20.000000000000000000
+              object Label3: TLabel
+                Align = Top
+                Margins.Top = -20.000000000000000000
+                Position.Y = -20.000000000000000000
+                Size.Width = 100.000000000000000000
+                Size.Height = 17.000000000000000000
+                Size.PlatformDefault = False
+                Text = 'Password'
+                TabOrder = 0
+              end
+            end
+            object saToken: TEdit
+              Touch.InteractiveGestures = [LongTap, DoubleTap]
+              TabOrder = 2
+              Position.X = 5.000000000000000000
+              Position.Y = 62.000000000000000000
+              object Label4: TLabel
+                Align = Top
+                Margins.Top = -20.000000000000000000
+                Position.Y = -20.000000000000000000
+                Size.Width = 100.000000000000000000
+                Size.Height = 17.000000000000000000
+                Size.PlatformDefault = False
+                Text = 'Token'
+                TabOrder = 0
+              end
+            end
+          end
+        end
+      end
+      object Layout3: TLayout
+        Align = Bottom
+        Position.Y = 414.000000000000000000
+        Size.Width = 633.000000000000000000
+        Size.Height = 40.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 2
+        object bStart: TButton
+          Position.X = 8.000000000000000000
+          Position.Y = 8.000000000000000000
+          Size.Width = 117.000000000000000000
+          Size.Height = 22.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 5
+          Text = 'Start Server'
+          OnClick = bStartClick
+        end
+      end
+      object Layout4: TLayout
+        Align = Client
+        Size.Width = 633.000000000000000000
+        Size.Height = 285.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 1
+        object StringGrid1: TStringGrid
+          Align = Client
+          CanFocus = True
+          ClipChildren = True
+          Size.Width = 633.000000000000000000
+          Size.Height = 172.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 3
+          Viewport.Width = 613.000000000000000000
+          Viewport.Height = 147.000000000000000000
+          object StringColumn1: TStringColumn
+            Header = 'Route'
+            Size.Width = 118.000000000000000000
+          end
+          object StringColumn2: TStringColumn
+            Header = 'Description'
+            Size.Width = 354.000000000000000000
+          end
+          object StringColumn3: TStringColumn
+            Header = 'SkipAuth'
+            Size.Width = 134.000000000000000000
+          end
+        end
+        object Layout5: TLayout
+          Align = Top
+          Size.Width = 633.000000000000000000
+          Size.Height = 113.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 4
+          object Edit1: TEdit
+            Touch.InteractiveGestures = [LongTap, DoubleTap]
+            TabOrder = 1
+            Position.X = 8.000000000000000000
+            Position.Y = 28.000000000000000000
+            Size.Width = 180.000000000000000000
             Size.Height = 22.000000000000000000
             Size.PlatformDefault = False
-            StyleLookup = 'organizetoolbutton'
-            Text = 'SpeedButton1'
+            object Label6: TLabel
+              Align = Top
+              Margins.Top = -20.000000000000000000
+              Position.Y = -20.000000000000000000
+              Size.Width = 180.000000000000000000
+              Size.Height = 17.000000000000000000
+              Size.PlatformDefault = False
+              Text = 'Route'
+              TabOrder = 0
+            end
+          end
+          object Edit2: TEdit
+            Touch.InteractiveGestures = [LongTap, DoubleTap]
+            TabOrder = 0
+            Position.X = 8.000000000000000000
+            Position.Y = 78.000000000000000000
+            Size.Width = 180.000000000000000000
+            Size.Height = 22.000000000000000000
+            Size.PlatformDefault = False
+            object Label7: TLabel
+              Align = Top
+              Margins.Top = -20.000000000000000000
+              Position.Y = -20.000000000000000000
+              Size.Width = 180.000000000000000000
+              Size.Height = 17.000000000000000000
+              Size.PlatformDefault = False
+              Text = 'Description'
+              TabOrder = 0
+            end
+          end
+          object GroupBox5: TGroupBox
+            Position.X = 192.000000000000000000
+            Position.Y = 8.000000000000000000
+            Size.Width = 217.000000000000000000
+            Size.Height = 105.000000000000000000
+            Size.PlatformDefault = False
+            Text = 'Skip Auth'
+            TabOrder = 2
+            object FlowLayout4: TFlowLayout
+              Align = Client
+              Padding.Left = 5.000000000000000000
+              Padding.Top = 10.000000000000000000
+              Padding.Right = 5.000000000000000000
+              Padding.Bottom = 5.000000000000000000
+              Margins.Left = 5.000000000000000000
+              Margins.Top = 15.000000000000000000
+              Margins.Right = 5.000000000000000000
+              Margins.Bottom = 5.000000000000000000
+              Size.Width = 207.000000000000000000
+              Size.Height = 85.000000000000000000
+              Size.PlatformDefault = False
+              TabOrder = 38
+              Justify = Left
+              JustifyLastLine = Left
+              FlowDirection = LeftToRight
+              VerticalGap = 5.000000000000000000
+              object CheckBox1: TCheckBox
+                Position.X = 5.000000000000000000
+                Position.Y = 10.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 44
+                Text = 'amGET'
+              end
+              object CheckBox2: TCheckBox
+                Position.X = 101.000000000000000000
+                Position.Y = 10.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 43
+                Text = 'amPOST'
+              end
+              object CheckBox3: TCheckBox
+                Position.X = 5.000000000000000000
+                Position.Y = 34.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 42
+                Text = 'amPUT'
+              end
+              object CheckBox4: TCheckBox
+                Position.X = 101.000000000000000000
+                Position.Y = 34.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 41
+                Text = 'amPATCH'
+              end
+              object CheckBox5: TCheckBox
+                Position.X = 5.000000000000000000
+                Position.Y = 58.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 40
+                Text = 'amDELETE'
+              end
+              object CheckBox6: TCheckBox
+                Position.X = 101.000000000000000000
+                Position.Y = 58.000000000000000000
+                Size.Width = 96.000000000000000000
+                Size.Height = 19.000000000000000000
+                Size.PlatformDefault = False
+                TabOrder = 39
+                Text = 'amALL'
+              end
+            end
+          end
+          object Button1: TButton
+            Position.X = 545.000000000000000000
+            Position.Y = 8.000000000000000000
+            TabOrder = 4
+            Text = 'Add'
+          end
+          object Button2: TButton
+            Position.X = 545.000000000000000000
+            Position.Y = 38.000000000000000000
+            TabOrder = 3
+            Text = 'Delete Last'
           end
         end
       end
     end
-    object Layout5: TLayout
-      Align = Left
-      Size.Width = 125.000000000000000000
-      Size.Height = 311.000000000000000000
+    object TabItem2: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = False
+      Size.Width = 40.000000000000000000
+      Size.Height = 26.000000000000000000
       Size.PlatformDefault = False
-      TabOrder = 5
-      object Label6: TLabel
-        Align = Top
-        Size.Width = 125.000000000000000000
-        Size.Height = 17.000000000000000000
-        Size.PlatformDefault = False
-        Text = 'Routes'
-        TabOrder = 0
-      end
-      object ListView1: TListView
-        ItemAppearanceClassName = 'TCustomizeItemObjects'
-        ItemEditAppearanceClassName = 'TCustomizeItemObjects'
-        HeaderAppearanceClassName = 'TListHeaderObjects'
-        FooterAppearanceClassName = 'TListHeaderObjects'
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Log'
+      object GroupBox4: TGroupBox
         Align = Client
-        Size.Width = 125.000000000000000000
-        Size.Height = 294.000000000000000000
+        Padding.Left = 5.000000000000000000
+        Padding.Top = 20.000000000000000000
+        Padding.Right = 5.000000000000000000
+        Padding.Bottom = 5.000000000000000000
+        Size.Width = 633.000000000000000000
+        Size.Height = 454.000000000000000000
         Size.PlatformDefault = False
-        TabOrder = 1
+        Text = 'Log'
+        TabOrder = 4
+        object mLog: TMemo
+          Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+          DataDetectorTypes = []
+          TextSettings.WordWrap = True
+          Align = Client
+          Size.Width = 623.000000000000000000
+          Size.Height = 429.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 38
+          Viewport.Width = 619.000000000000000000
+          Viewport.Height = 425.000000000000000000
+          object Layout1: TLayout
+            Align = Right
+            Margins.Right = 20.000000000000000000
+            Position.X = 552.000000000000000000
+            Size.Width = 47.000000000000000000
+            Size.Height = 425.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+            object SpeedButton1: TSpeedButton
+              Align = Top
+              Margins.Left = 5.000000000000000000
+              Margins.Top = 5.000000000000000000
+              Margins.Right = 5.000000000000000000
+              Margins.Bottom = 5.000000000000000000
+              Position.X = 5.000000000000000000
+              Position.Y = 5.000000000000000000
+              Size.Width = 37.000000000000000000
+              Size.Height = 22.000000000000000000
+              Size.PlatformDefault = False
+              StyleLookup = 'organizetoolbutton'
+              Text = 'SpeedButton1'
+            end
+          end
+        end
       end
     end
   end

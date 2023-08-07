@@ -11,52 +11,52 @@ type
 
   TRALMultipartFormData = class
   private
-    FFreeBuffer : boolean;
-    FDisposition : StringRAL;
-    FName : StringRAL;
-    FFilename : StringRAL;
+    FFreeBuffer: boolean;
+    FDisposition: StringRAL;
+    FName: StringRAL;
+    FFilename: StringRAL;
     FContentType: StringRAL;
-    FDescription : StringRAL;
-    FBufferStream : TStream;
+    FDescription: StringRAL;
+    FBufferStream: TStream;
   protected
-    procedure SetBufferStream(AValue : TStream);
-    function GetBufferStream : TStream;
-    function GetBufferString : StringRAL;
-    procedure SetBufferString(AValue : StringRAL);
+    procedure SetBufferStream(AValue: TStream);
+    function GetBufferStream: TStream;
+    function GetBufferString: StringRAL;
+    procedure SetBufferString(AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure ProcessHeader(AHeader : StringRAL);
+    procedure ProcessHeader(AHeader: StringRAL);
 
-    procedure SaveToFile(AFileName : StringRAL);
-    procedure SaveToStream(var AStream : TStream);
-    procedure OpenFile(AFileName : StringRAL);
+    procedure SaveToFile(AFileName: StringRAL);
+    procedure SaveToStream(var AStream: TStream);
+    procedure OpenFile(AFileName: StringRAL);
 
-    property AsStream : TStream read GetBufferStream write SetBufferStream;
-    property AsString : StringRAL read GetBufferString write SetBufferString;
+    property AsStream: TStream read GetBufferStream write SetBufferStream;
+    property AsString: StringRAL read GetBufferString write SetBufferString;
   published
-    property Disposition : StringRAL read FDisposition write FDisposition;
-    property Description : StringRAL read FDescription write FDescription;
-    property Name : StringRAL read FName write FName;
-    property Filename : StringRAL read FFilename write FFilename;
+    property Disposition: StringRAL read FDisposition write FDisposition;
+    property Description: StringRAL read FDescription write FDescription;
+    property Name: StringRAL read FName write FName;
+    property Filename: StringRAL read FFilename write FFilename;
     property ContentType: StringRAL read FContentType write FContentType;
   end;
 
-  TRALMultipartFormDataComplete = procedure(Sender : TObject; AFormData : TRALMultipartFormData; var AFreeData : boolean) of object;
+  TRALMultipartFormDataComplete = procedure(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData : boolean) of object;
 
   { TRALMultipartDecoder }
 
   TRALMultipartDecoder = class
   private
-    FBoundary : StringRAL;
-    FBuffer : array[0..4095] of Byte;
-    FIndex : IntegerRAL;
-    FItemForm : TRALMultipartFormData;
-    FWaitSepEnd : boolean;
-    FIs13 : boolean;
-    FFormData : TList;
-    FOnFormDataComplete : TRALMultipartFormDataComplete;
+    FBoundary: StringRAL;
+    FBuffer: array[0..4095] of Byte;
+    FIndex: IntegerRAL;
+    FItemForm: TRALMultipartFormData;
+    FWaitSepEnd: boolean;
+    FIs13: boolean;
+    FFormData: TList;
+    FOnFormDataComplete: TRALMultipartFormDataComplete;
   protected
     procedure SetContentType(AValue : StringRAL);
 
@@ -120,7 +120,7 @@ implementation
 
 function TRALMultipartEncoder.GetContentType : StringRAL;
 begin
-  Result := TRALContentType.ctMULTIPARTFORMDATA + '; boundary=' + Boundary;
+  Result := rctMULTIPARTFORMDATA + '; boundary=' + Boundary;
 end;
 
 procedure TRALMultipartEncoder.ClearItems;
@@ -157,7 +157,7 @@ begin
   vField := TRALMultipartFormData.Create;
   vField.Name := AName;
   vField.AsString := AValue;
-  vField.ContentType := TRALContentType.ctTEXTPLAIN;
+  vField.ContentType := rctTEXTPLAIN;
 
   FFormData.Add(vField);
 end;
@@ -176,12 +176,12 @@ begin
   if AContentType <> '' then
     vField.ContentType := AContentType
   else
-    vField.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+    vField.ContentType := rctAPPLICATIONOCTETSTREAM;
 
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.AddFile(AName, AFileName : StringRAL; AContentType : StringRAL);
+procedure TRALMultipartEncoder.AddFile(AName, AFileName: StringRAL; AContentType: StringRAL);
 var
   vField : TRALMultipartFormData;
 begin
@@ -193,7 +193,7 @@ begin
   if AContentType <> '' then
     vField.ContentType := AContentType
   else
-    vField.ContentType := TRALContentType.ctAPPLICATIONOCTETSTREAM;
+    vField.ContentType := rctAPPLICATIONOCTETSTREAM;
 
   FFormData.Add(vField);
 end;
@@ -316,22 +316,22 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALMultipartFormData.ProcessHeader(AHeader : StringRAL);
+procedure TRALMultipartFormData.ProcessHeader(AHeader: StringRAL);
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 
-  function GetWord(var AStr : StringRAL) : StringRAL;
+  function GetWord(var AStr: StringRAL): StringRAL;
   var
-    vInt,vLen : Integer;
-    vQuoted : Boolean;
-    vChr : Char;
+    vInt, vLen: Integer;
+    vQuoted: Boolean;
+    vChr: CharRAL;
   begin
     Result := '';
     vLen := Length(AStr);
     vQuoted := False;
     for vInt := 1 to vLen do
     begin
-      vChr := AStr[vInt];
+      vChr := Char(AStr[vInt]);
       if (vChr = '"') then
       begin
         vQuoted := not vQuoted;

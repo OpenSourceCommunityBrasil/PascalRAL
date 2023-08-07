@@ -1,4 +1,4 @@
-unit RALConsts;
+﻿unit RALConsts;
 
 interface
 

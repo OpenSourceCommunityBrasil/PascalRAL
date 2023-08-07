@@ -1,4 +1,4 @@
-unit RALThreadSafe;
+﻿unit RALThreadSafe;
 
 {
   ver fonts unit : IdThreadSafe
@@ -117,8 +117,8 @@ begin
     begin
       while FValue.Count > 0 do
       begin
-        FValue.Objects[FValue.Count-1].Free;
-        FValue.Delete(FValue.Count-1);
+        FValue.Objects[FValue.Count - 1].Free;
+        FValue.Delete(FValue.Count - 1);
       end;
     end
     else begin
