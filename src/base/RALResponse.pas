@@ -30,7 +30,7 @@ type
     property ResponseText : StringRAL read GetResponseText write SetResponseText;
     property ResponseStream : TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write FContentType;
-    property RespCode: IntegerRAL read FRespCode write FRespCode;
+    property StatusCode: IntegerRAL read FRespCode write FRespCode;
     property FreeContent: boolean read FFreeContent;
   end;
 
@@ -41,7 +41,7 @@ implementation
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
   AContentType: TRALContentType);
 begin
-  RespCode := AStatusCode;
+  StatusCode := AStatusCode;
   ResponseText := AMessage;
   FContentType := AContentType;
 end;

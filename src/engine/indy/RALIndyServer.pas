@@ -142,7 +142,7 @@ begin
     try
       with AResponseInfo do
       begin
-        ResponseNo := vResponse.RespCode;
+        ResponseNo := vResponse.StatusCode;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
 

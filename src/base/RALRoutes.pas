@@ -16,19 +16,19 @@ type
   TRALRoute = class(TCollectionItem)
   private
     FRouteDomain : StringRAL;
-    FRouteName : StringRAL;
+    FRouteName: StringRAL;
     FDescription: TStringList;
     FAllowedMethods: TRALMethods;
     FSkipAuthMethods: TRALMethods;
     FCallback: Boolean;
     FOnReply: TRALOnReply;
   protected
-    function GetRoute : StringRAL;
+    function GetRoute: StringRAL;
     function GetDisplayName: string; override;
 
-    procedure SetRouteName(AValue : StringRAL);
-    procedure SetRouteDomain(AValue : StringRAL);
-    function RouteExists(ARoute : StringRAL) : boolean;
+    procedure SetRouteName(AValue: StringRAL);
+    procedure SetRouteDomain(AValue: StringRAL);
+    function RouteExists(ARoute: StringRAL): boolean;
 
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
@@ -36,13 +36,13 @@ type
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
 
-    function GetNamePath : string; override;
+    function GetNamePath: string; override;
     procedure Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
 
-    property Route : StringRAL read GetRoute;
+    property Route: StringRAL read GetRoute;
   published
-    property RouteDomain : StringRAL read FRouteDomain write SetRouteDomain;
-    property RouteName : StringRAL read FRouteName write SetRouteName;
+    property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
+    property RouteName: StringRAL read FRouteName write SetRouteName;
     property Description: TStringList read FDescription write SetDescription;
     // verbos que a rota responde
     property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
@@ -57,11 +57,11 @@ type
 
   TRALRoutes = class(TOwnedCollection)
   private
-    function GetRouteAddress(ARoute : StringRAL) : TRALRoute;
+    function GetRouteAddress(ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
 
-    property RouteAddress[ARoute : StringRAL] : TRALRoute read GetRouteAddress;
+    property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
   end;
 
 implementation
@@ -101,7 +101,7 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetRouteDomain(AValue : StringRAL);
+procedure TRALRoute.SetRouteDomain(AValue: StringRAL);
 var
   vRouteStr : StringRAL;
 begin
@@ -114,9 +114,9 @@ begin
     FRouteDomain := FixRoute(AValue);
 end;
 
-function TRALRoute.RouteExists(ARoute : StringRAL) : boolean;
+function TRALRoute.RouteExists(ARoute: StringRAL): boolean;
 var
-  vRoute : TRALRoute;
+  vRoute: TRALRoute;
 begin
   Result := False;
   if Collection is TRALRoutes then
@@ -130,9 +130,9 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetRouteName(AValue : StringRAL);
+procedure TRALRoute.SetRouteName(AValue: StringRAL);
 var
-  vRouteStr : StringRAL;
+  vRouteStr: StringRAL;
 begin
   if FRouteName = AValue then
     Exit;
@@ -143,7 +143,7 @@ begin
     FRouteName := AValue;
 end;
 
-function TRALRoute.GetRoute : StringRAL;
+function TRALRoute.GetRoute: StringRAL;
 begin
   Result := FixRoute(FRouteDomain + '/' + FRouteName);
 end;
@@ -190,10 +190,10 @@ end;
 
 { RALRoutes }
 
-function TRALRoutes.GetRouteAddress(ARoute : StringRAL) : TRALRoute;
+function TRALRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
 var
-  vInt : IntegerRAL;
-  vRoute : TRALRoute;
+  vInt: IntegerRAL;
+  vRoute: TRALRoute;
 begin
   Result := nil;
   ARoute := FixRoute(ARoute);

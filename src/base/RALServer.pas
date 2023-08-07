@@ -149,7 +149,7 @@ implementation
 
 procedure TRALIPConfig.SetIPv6Enabled(AValue : boolean);
 var
-  vActive : boolean;
+  vActive: boolean;
 begin
   if FIPv6Enabled = AValue then
     Exit;
@@ -168,7 +168,7 @@ begin
   end;
 end;
 
-constructor TRALIPConfig.Create(AOwner : TRALServer);
+constructor TRALIPConfig.Create(AOwner: TRALServer);
 begin
   inherited Create;
   FOwner := AOwner;
@@ -245,10 +245,10 @@ begin
   Route.Description.Text := ADescription;
 end;
 
-procedure TRALServer.AddBlockList(AClientIP : StringRAL);
+procedure TRALServer.AddBlockList(AClientIP: StringRAL);
 var
-  vInt : IntegerRAL;
-  vClient : TRALClientBlockList;
+  vInt: IntegerRAL;
+  vClient: TRALClientBlockList;
 begin
   if (FAuthentication = nil) or (not FBruteForceProtection.Enabled) then
     Exit;
@@ -272,9 +272,9 @@ begin
     FOnClientTryBlocked(Self, AClientIP, vClient.NumTry);
 end;
 
-procedure TRALServer.DelBlockList(AClientIP : StringRAL);
+procedure TRALServer.DelBlockList(AClientIP: StringRAL);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   if FAuthentication = nil then
     Exit;
@@ -282,11 +282,11 @@ begin
   FBlockedList.Remove(AClientIP, True);
 end;
 
-function TRALServer.ClientIsBlocked(AClientIP : StringRAL) : boolean;
+function TRALServer.ClientIsBlocked(AClientIP: StringRAL): boolean;
 var
-  vClient : TRALClientBlockList;
-  vDelete : boolean;
-  vTimeMax : TDateTime;
+  vClient: TRALClientBlockList;
+  vDelete: boolean;
+  vTimeMax: TDateTime;
 begin
   Result := False;
   if FAuthentication = nil then
@@ -321,10 +321,10 @@ end;
 
 procedure TRALServer.CleanExpiredBlockedList;
 var
-  vClient : TRALClientBlockList;
-  vInt : IntegerRAL;
-  vTimeMax : TDateTime;
-  vList : TStringList;
+  vClient: TRALClientBlockList;
+  vInt: IntegerRAL;
+  vTimeMax: TDateTime;
+  vList: TStringList;
 begin
   vList := FBlockedList.Lock;
   vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
@@ -343,17 +343,17 @@ begin
   FBlockedList.Unlock;
 end;
 
-function TRALServer.IPv6IsImplemented : boolean;
+function TRALServer.IPv6IsImplemented: boolean;
 begin
   Result := False;
 end;
 
-function TRALServer.HTTPMethodToRALMethod(AMethod : StringRAL) : TRALMethod;
+function TRALServer.HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   AMethod := 'am'+UpperCase(AMethod);
-  vInt := GetEnumValue(TypeInfo(TRALMethod),AMethod);
+  vInt := GetEnumValue(TypeInfo(TRALMethod), AMethod);
   if vInt <> -1 then
     Result := TRALMethod(vInt)
   else
@@ -381,7 +381,7 @@ begin
   inherited;
 end;
 
-procedure TRALServer.SetServerStatus(AValue : TStringList);
+procedure TRALServer.SetServerStatus(AValue: TStringList);
 begin
   if FServerStatus = AValue then
     Exit;
@@ -392,14 +392,14 @@ begin
     FServerStatus.Text := RALDefaultPage;
 end;
 
-procedure TRALServer.SetBlackIPList(AValue : TStringList);
+procedure TRALServer.SetBlackIPList(AValue: TStringList);
 begin
   if FBlackIPList = AValue then
     Exit;
   FBlackIPList.Text := AValue.Text;
 end;
 
-procedure TRALServer.SetWhiteIPList(AValue : TStringList);
+procedure TRALServer.SetWhiteIPList(AValue: TStringList);
 begin
   if FWhiteIPList = AValue then
     Exit;
@@ -420,7 +420,7 @@ var
   vString: StringRAL;
 begin
   Result := TRALResponse.Create;
-  Result.RespCode := 200;
+  Result.StatusCode := 200;
 
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
@@ -452,7 +452,7 @@ begin
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
       FAuthentication.AuthQuery(ARequest.Query, ARequest, Result);
-      if Result.RespCode >= 400 then
+      if Result.StatusCode >= 400 then
         AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else
@@ -526,7 +526,7 @@ begin
   if FAuthentication <> nil then
   begin
     FAuthentication.Validate(ARequest, AResponse);
-    Result := AResponse.RespCode = 200;
+    Result := AResponse.StatusCode = 200;
   end;
 end;
 

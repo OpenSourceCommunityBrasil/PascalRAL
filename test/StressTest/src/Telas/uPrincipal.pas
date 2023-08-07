@@ -15,7 +15,7 @@ uses
 
   DAO.Base, DAO.REST, DAO.RALIndy, DAO.RALNetHttp,
 
-  TestUnit
+  TestUnit, FMX.ComboEdit
 
     ;
 
@@ -120,6 +120,99 @@ type
     FlowLayout8: TFlowLayout;
     Button2: TButton;
     tiCliente: TTabItem;
+    GroupBox4: TGroupBox;
+    TabControl3: TTabControl;
+    Request: TTabItem;
+    ComboEdit2: TComboEdit;
+    Label15: TLabel;
+    Memo3: TMemo;
+    Layout8: TLayout;
+    ComboEdit1: TComboEdit;
+    Label16: TLabel;
+    ComboBox2: TComboBox;
+    Label17: TLabel;
+    Label18: TLabel;
+    Parameters: TTabItem;
+    Authentication: TTabItem;
+    Connection: TTabItem;
+    Layout7: TLayout;
+    Button3: TButton;
+    Button4: TButton;
+    Button6: TButton;
+    Button7: TButton;
+    Button8: TButton;
+    GroupBox5: TGroupBox;
+    Splitter1: TSplitter;
+    TabControl4: TTabControl;
+    TabItem7: TTabItem;
+    TabItem8: TTabItem;
+    TabItem9: TTabItem;
+    Label19: TLabel;
+    VertScrollBox1: TVertScrollBox;
+    Label20: TLabel;
+    Edit6: TEdit;
+    Label21: TLabel;
+    Layout6: TLayout;
+    Layout9: TLayout;
+    Button9: TButton;
+    Button10: TButton;
+    Button11: TButton;
+    ComboBox3: TComboBox;
+    Label22: TLabel;
+    Label23: TLabel;
+    Edit7: TEdit;
+    Edit8: TEdit;
+    Label24: TLabel;
+    Edit9: TEdit;
+    Label25: TLabel;
+    Edit10: TEdit;
+    Label26: TLabel;
+    Edit11: TEdit;
+    Label27: TLabel;
+    Edit12: TEdit;
+    Label28: TLabel;
+    Edit13: TEdit;
+    Label29: TLabel;
+    Edit14: TEdit;
+    Label30: TLabel;
+    Button12: TButton;
+    CheckBox1: TCheckBox;
+    Layout10: TLayout;
+    Layout11: TLayout;
+    Layout12: TLayout;
+    Edit15: TEdit;
+    Label31: TLabel;
+    Edit16: TEdit;
+    Label32: TLabel;
+    Edit17: TEdit;
+    Label33: TLabel;
+    Edit18: TEdit;
+    Label34: TLabel;
+    CheckBox2: TCheckBox;
+    Edit19: TEdit;
+    Label35: TLabel;
+    CheckBox24: TCheckBox;
+    CheckBox25: TCheckBox;
+    CheckBox27: TCheckBox;
+    CheckBox28: TCheckBox;
+    CheckBox29: TCheckBox;
+    cbTLS1_0: TCheckBox;
+    Memo2: TMemo;
+    Memo4: TMemo;
+    Layout13: TLayout;
+    Memo5: TMemo;
+    Label36: TLabel;
+    Label37: TLabel;
+    Edit20: TEdit;
+    Layout14: TLayout;
+    Label38: TLabel;
+    Label39: TLabel;
+    Edit21: TEdit;
+    StringGrid2: TStringGrid;
+    CheckBox26: TCheckBox;
+    Label40: TLabel;
+    Button13: TButton;
+    ComboBox4: TComboBox;
     procedure FormCreate(Sender: TObject);
     procedure Rectangle1MouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Single);
@@ -288,8 +381,8 @@ begin
       if cbRALIndy.IsChecked then
         DefinirParametrosTeste(rckRALIndy, Memo1);
 
-      if cbRALSynopse.IsChecked then
-        DefinirParametrosTeste(rckRALSynopse, Memo1);
+//      if cbRALSynopse.IsChecked then
+//        DefinirParametrosTeste(rckRALSynopse, Memo1);
 
       if cbRALNetHttp.IsChecked then
         DefinirParametrosTeste(rckRALNetHttp, Memo1);

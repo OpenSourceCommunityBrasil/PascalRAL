@@ -3,7 +3,8 @@ program RALServerTest;
 uses
   System.StartUpCopy,
   FMX.Forms,
-  ServerTest in 'ServerTest.pas' {Form1};
+  ServerTest in 'ServerTest.pas' {Form1},
+  uRotas in 'src\uRotas.pas';
 
 {$R *.res}
 

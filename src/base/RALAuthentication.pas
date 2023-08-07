@@ -297,7 +297,7 @@ procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest;
 var
   vResult : boolean;
 begin
-  AResponse.RespCode := 200;
+  AResponse.StatusCode := 200;
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
     AResponse.Answer(401, RAL401Page);
@@ -373,7 +373,7 @@ var
       vParam := AResponse.Params.AddParam('WWW-Authenticate', 'Basic realm="RAL Basic"',rpkHEADER);
   end;
 begin
-  AResponse.RespCode := 200;
+  AResponse.StatusCode := 200;
   if (ARequest.Authorization.AuthType <> ratBasic) then
   begin
     Error401;

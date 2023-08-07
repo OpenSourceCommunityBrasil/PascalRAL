@@ -208,7 +208,7 @@ begin
       AContext.OutContent := vResponse.ResponseText;
       AContext.OutContentType := vResponse.ContentType;
 
-      Result := vResponse.RespCode;
+      Result := vResponse.StatusCode;
     finally
       FreeAndNil(vResponse);
     end;

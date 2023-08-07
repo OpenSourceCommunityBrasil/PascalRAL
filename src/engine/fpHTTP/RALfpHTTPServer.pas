@@ -49,12 +49,12 @@ type
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
 
-    function GetURLServer : StringRAL;
+    function GetURLServer: StringRAL;
 
     function GetPort: IntegerRAL;
     procedure SetPort(AValue: IntegerRAL);
 
-    function GetSessionTimeout : IntegerRAL;
+    function GetSessionTimeout: IntegerRAL;
     procedure SetSessionTimeout(const AValue: IntegerRAL);
 
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
@@ -75,7 +75,7 @@ type
 
   TRALfpHttpServer = class(TRALServer)
   private
-    FHttpThread : TRALfpHttpServerThread;
+    FHttpThread: TRALfpHttpServerThread;
   protected
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
@@ -90,7 +90,7 @@ implementation
 
 { TRALfpHTTPCertData }
 
-function TRALfpHTTPCertData.GetFileName(AIndex : Integer) : string;
+function TRALfpHTTPCertData.GetFileName(AIndex: Integer): string;
 begin
   case AIndex of
     0 : Result := Certificate.FileName;
@@ -101,7 +101,7 @@ begin
   end;
 end;
 
-procedure TRALfpHTTPCertData.SetFileName(AIndex : Integer; AValue : string);
+procedure TRALfpHTTPCertData.SetFileName(AIndex: Integer; AValue: string);
 begin
   case AIndex of
     0 : Certificate.FileName := AValue;
@@ -114,12 +114,12 @@ end;
 
 { TRALfpHttpServerThread }
 
-function TRALfpHttpServerThread.GetPort : IntegerRAL;
+function TRALfpHttpServerThread.GetPort: IntegerRAL;
 begin
   Result := FParent.Port;
 end;
 
-procedure TRALfpHttpServerThread.SetPort(AValue : IntegerRAL);
+procedure TRALfpHttpServerThread.SetPort(AValue: IntegerRAL);
 var
   vActive: boolean;
 begin
@@ -137,7 +137,7 @@ begin
   FHttp.AcceptIdleTimeout := AValue;
 end;
 
-procedure TRALfpHttpServerThread.DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult : TRALRequest);
+procedure TRALfpHttpServerThread.DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
 var
   vStr, vAux: StringRAL;
   vInt: IntegerRAL;
@@ -166,10 +166,10 @@ procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vParam : TRALParam;
+  vParam: TRALParam;
   vInt: integer;
   vStr1, vStr2: StringRAL;
-  vParamQuery : StringRAL;
+  vParamQuery: StringRAL;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -226,7 +226,7 @@ begin
     try
       with AResponse do
       begin
-        Code := vResponse.RespCode;
+        Code := vResponse.StatusCode;
 
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
 
@@ -245,17 +245,17 @@ begin
   end;
 end;
 
-function TRALfpHttpServerThread.GetSessionTimeout : IntegerRAL;
+function TRALfpHttpServerThread.GetSessionTimeout: IntegerRAL;
 begin
   Result := FHttp.AcceptIdleTimeout;
 end;
 
-function TRALfpHttpServerThread.GetActive : boolean;
+function TRALfpHttpServerThread.GetActive: boolean;
 begin
   Result := FParent.Active;
 end;
 
-procedure TRALfpHttpServerThread.SetActive(AValue : boolean);
+procedure TRALfpHttpServerThread.SetActive(AValue: boolean);
 begin
   if AValue then begin
     FHttp.UseSSL := False;
@@ -269,20 +269,19 @@ begin
   end;
 end;
 
-function TRALfpHttpServerThread.GetURLServer : StringRAL;
+function TRALfpHttpServerThread.GetURLServer: StringRAL;
 begin
   Result := 'http';
   if FParent.SSL.Enabled then
     Result := Result + 's';
-  Result := Result + '://127.0.0.1:'+IntToStr(Port);
+  Result := Result + '://127.0.0.1:' + IntToStr(Port);
 end;
 
 procedure TRALfpHttpServerThread.Execute;
 begin
-  while not Terminated do begin
+  while not Terminated do
     if (FParent.Active) then
       FHttp.Active := FParent.Active;
-  end;
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
@@ -390,7 +389,7 @@ begin
   inherited;
 end;
 
-procedure TRALfpHttpServer.SetSessionTimeout(const AValue : IntegerRAL);
+procedure TRALfpHttpServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttpThread.SessionTimeout := AValue;
