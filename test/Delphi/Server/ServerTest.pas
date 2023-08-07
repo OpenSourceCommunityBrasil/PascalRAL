@@ -4,18 +4,18 @@ interface
 
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes,
-  System.Variants,
+  System.Variants, System.Rtti,
 
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Memo.Types,
   FMX.StdCtrls, FMX.ScrollBox, FMX.Memo, FMX.ListBox, FMX.Edit, FMX.Layouts,
   FMX.Controls.Presentation, FMX.ListView.Types, FMX.ListView.Appearances,
-  FMX.ListView.Adapters.Base, FMX.ListView,
+  FMX.ListView.Adapters.Base, FMX.ListView, FMX.TabControl, FMX.Grid.Style,
+  FMX.Grid,
 
   uRotas,
 
   RALServer, RALRequest, RALResponse, RALRoutes,
-  RALIndyServer, RALSynopseServer, FMX.TabControl, System.Rtti, FMX.Grid.Style,
-  FMX.Grid
+  RALIndyServer, RALSynopseServer
 
     ;
 
@@ -97,6 +97,7 @@ begin
     end
     else if FServer.Active then
     begin
+      FServer.Active := false;
       FreeAndNil(FServer);
       bStart.Text := 'Start Server';
     end;

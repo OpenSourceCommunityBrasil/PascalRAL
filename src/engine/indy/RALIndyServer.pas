@@ -147,7 +147,7 @@ begin
         vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
 
         ContentStream := vResponse.ResponseStream;
-        ContentType := vResponse.ContentType + '; charset=utf-8';
+        ContentType := vResponse.ContentType;
         FreeContentStream := vResponse.FreeContent;
 
         CloseConnection := True;

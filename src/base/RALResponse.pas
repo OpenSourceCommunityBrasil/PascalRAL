@@ -21,6 +21,7 @@ type
     function GetResponseText: StringRAL;
     procedure SetResponseStream(const AValue: TStream);
     procedure SetResponseText(const AValue: StringRAL);
+    procedure SetContentType(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -29,7 +30,7 @@ type
     property Params: TRALParams read FParams;
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
-    property ContentType: StringRAL read FContentType write FContentType;
+    property ContentType: StringRAL read FContentType write SetContentType;
     property StatusCode: IntegerRAL read FRespCode write FRespCode;
     property FreeContent: boolean read FFreeContent;
   end;
@@ -49,7 +50,7 @@ end;
 constructor TRALResponse.Create;
 begin
   inherited;
-  FContentType := rctTEXTHTML;
+  ContentType := rctTEXTHTML;
   FParams := TRALParams.Create;
   FFreeContent := False;
 end;
@@ -67,7 +68,7 @@ end;
 
 function TRALResponse.GetResponseText: StringRAL;
 var
-  vStream : TStream;
+  vStream: TStream;
 begin
   Result := '';
   vStream := Params.EncodeBody(FContentType, FFreeContent);
@@ -89,6 +90,13 @@ begin
   end;
 end;
 
+procedure TRALResponse.SetContentType(const AValue: StringRAL);
+begin
+  FContentType := AValue;
+  if Pos('charset=', FContentType) = 0 then
+    FContentType := FContentType + '; charset=utf-8';
+end;
+
 procedure TRALResponse.SetResponseStream(const AValue: TStream);
 var
   vParam: TRALParam;
@@ -96,7 +104,7 @@ begin
   FParams.ClearParams(rpkBODY);
   if AValue.Size > 0 then begin
     vParam := FParams.AddValue(AValue);
-    vParam.ContentType := FContentType;
+    vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;
 end;
@@ -108,7 +116,7 @@ begin
   FParams.ClearParams(rpkBODY);
   if AValue <> '' then begin
     vParam := FParams.AddValue(AValue);
-    vParam.ContentType := FContentType;
+    vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;
 end;

@@ -37,7 +37,7 @@ begin
   case ARequest.Method of
     amGET:
       AResponse.Answer(200, 'teste de texto com UTF8 e acentuação',
-        rctAPPLICATIONJSON);
+        rctTEXTPLAIN);
 
     amPOST, amPUT, amPATCH:
       AResponse.Answer(201, Format('os params enviados: %s',

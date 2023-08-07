@@ -204,7 +204,7 @@ begin
       end;
 
       AContext.OutContent := vResponse.ResponseText;
-      AContext.OutContentType := vResponse.ContentType + '; charset=utf-8';
+      AContext.OutContentType := vResponse.ContentType;
 
       Result := vResponse.StatusCode;
     finally

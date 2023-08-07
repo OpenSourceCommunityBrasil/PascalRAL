@@ -45,7 +45,7 @@ type
 
   TRALRequest = class
   private
-    FAuthorization : TRALAuthorization;
+    FAuthorization: TRALAuthorization;
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
