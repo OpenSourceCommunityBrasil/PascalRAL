@@ -65,6 +65,7 @@ begin
 
     // THttpAsyncServer nao funciona com AB;
     // THttpServer
+    //SystemInfo.dwNumberOfProcessors + 1
     FHttp := THttpAsyncServer.Create(vAddr, nil, nil,
                                '', 0, SessionTimeout,
                                [hsoNoXPoweredHeader,
@@ -198,6 +199,7 @@ begin
       vStringList := TStringList.Create;
       try
         vResponse.Params.AssignParams(vStringList, rpkHEADER, ': ');
+        vStringList.Add('Connection: close');
         AContext.OutCustomHeaders := vStringList.Text;
       finally
         FreeAndNil(vStringList);
