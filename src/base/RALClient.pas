@@ -168,7 +168,7 @@ begin
           with FAuthentication as TRALClientJWTAuth do
           begin
             vParam := vBody.AddValue(Payload.AsJSON);
-            vParam.ContentType := TRALContentType.ctAPPLICATIONJSON;
+            vParam.ContentType := rctAPPLICATIONJSON;
             vResult := SendUrl(GetURL(Route), amPOST, nil, vBody);
           end;
         finally

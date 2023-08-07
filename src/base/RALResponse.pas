@@ -74,8 +74,13 @@ begin
   if vStream <> nil then
   begin
     vStream.Position := 0;
-    SetLength(Result, vStream.Size);
-    vStream.Read(Result[PosIniStr], vStream.Size);
+    if vStream is TStringStream then begin
+      Result := TStringStream(vStream).DataString;
+    end
+    else begin
+      SetLength(Result, vStream.Size);
+      vStream.Read(Result[PosIniStr], vStream.Size);
+    end;
 
     if FFreeContent then
       vStream.Free;

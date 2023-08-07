@@ -163,7 +163,11 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  FContent := TStringStream.Create(AValue);
+  {$IFNDEF FPC}
+    FContent := TStringStream.Create(AValue,TEncoding.UTF8);
+  {$ELSE}
+    FContent := TStringStream.Create(AValue);
+  {$ENDIF}
   FContent.Position := 0;
 end;
 
