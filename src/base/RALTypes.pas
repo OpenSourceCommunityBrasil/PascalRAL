@@ -3,7 +3,8 @@
 interface
 
 uses
-  Classes, RALConsts;
+  Classes,
+  RALConsts;
 
 // compatibility types
 {
@@ -18,8 +19,13 @@ type
   DoubleRAL = double;
 
   // text types
+  {$IFDEF FPC}
+  StringRAL = string;
+  CharRAL = Char;
+  {$ELSE}
   StringRAL = UTF8String;
   CharRAL = WideChar;
+  {$ENDIF}
   PCharRAL = ^CharRAL;
 
   TRALComponent = class(TComponent)

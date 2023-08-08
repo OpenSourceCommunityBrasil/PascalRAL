@@ -6,21 +6,41 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, ComCtrls,
-  StdCtrls,
+  StdCtrls, Grids, LazUTF8,
   RALServer, RALIndyServer, RALFpHttpServer, RALSynopseServer, RALResponse,
-  RALRequest, RALRoutes;
+  RALRequest, RALRoutes, RALMIMETypes,
+  uroutes
+  ;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
-    Label1: TLabel;
-    Label2: TLabel;
-    LabeledEdit1: TLabeledEdit;
+    Button1: TButton;
+    Button2: TButton;
+    CheckBox1: TCheckBox;
+    ComboBox1: TComboBox;
     Engine: TRadioGroup;
-    ListView1: TListView;
+    Engine1: TRadioGroup;
+    GroupBox1: TGroupBox;
+    GroupBox2: TGroupBox;
+    Label2: TLabel;
+    Label3: TLabel;
+    LabeledEdit1: TLabeledEdit;
+    LabeledEdit2: TLabeledEdit;
+    LabeledEdit3: TLabeledEdit;
+    LabeledEdit4: TLabeledEdit;
+    LabeledEdit5: TLabeledEdit;
+    LabeledEdit6: TLabeledEdit;
     Memo1: TMemo;
+    PageControl1: TPageControl;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    StringGrid1: TStringGrid;
+    TabSheet1: TTabSheet;
+    TabSheet2: TTabSheet;
     ToggleBox1: TToggleBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -28,9 +48,7 @@ type
   private
     FServer: TRALServer;
     procedure SetupServer;
-    procedure Ping(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure Archive(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+
   public
 
   end;
@@ -67,13 +85,13 @@ begin
   if (FServer = nil) or ((FServer <> nil) and (not FServer.Active)) then
   begin
     SetupServer;
-    ToggleBox1.Caption := 'http://localhost:' + FServer.Port.ToString;
+    ToggleBox1.Caption := Format('http://localhost:%d', [FServer.Port]);
   end
   else
   begin
-    ToggleBox1.Caption := 'Offline';
     FServer.Active := False;
     FreeAndNil(FServer);
+    ToggleBox1.Caption := 'Start Server';
   end;
 end;
 
@@ -89,38 +107,10 @@ begin
       2: FServer := TRALSynopseServer.Create(Self);
     end;
     FServer.Port := StrToInt(LabeledEdit1.Text);
-    FServer.CreateRoute('ping', @Ping);
-    FServer.CreateRoute('test', @Test);
-    FServer.CreateRoute('file', @Archive);
 
-    ListView1.Clear;
-    for I := 0 to pred(FServer.Routes.Count) do
-      ListView1.Items.Add.Caption := TRALRoute(FServer.Routes.Items[I]).RouteName;
+    Routes.CreateRoutes(FServer);
 
     FServer.Active := True;
-  end;
-end;
-
-procedure TForm1.Ping(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-begin
-  AResponse.ResponseText := 'pong';
-end;
-
-procedure TForm1.Archive(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
-begin
-  AResponse.Params.AddFile('', '.\test.pdf');
-end;
-
-procedure TForm1.Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-begin
-  AResponse.ContentType := 'text/plain';
-  AResponse.ResponseText := 'pong';
-  case ARequest.Method of
-    amGET, amDELETE:
-      AResponse.RespCode := 200;
-    amPOST, amPUT, amPATCH:
-      AResponse.RespCode := 201;
   end;
 end;
 

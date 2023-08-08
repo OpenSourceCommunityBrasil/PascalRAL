@@ -304,12 +304,12 @@ end;
 
 function TRALParams.AsString: StringRAL;
 var
-  Param: TRALParam;
+  I: IntegerRAL;
 begin
   Result := '';
-  for Param in FParams do
+  for I := 0 to pred(FParams.Count) do
   begin
-    Result := Result + Param.AsString;
+    Result := Result + TRALParam(FParams.Items[I]).AsString;
     if FParams.Count > 0 then
     Result := Result + ', ';
   end;
