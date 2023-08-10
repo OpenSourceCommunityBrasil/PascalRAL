@@ -57,6 +57,13 @@ const
              + ' should try later</p>'
              + '</body></html>';
 
+  // constant internal messages
+  // am = alert messages
+
+  // em = error messages
+  emRouteAlreadyExists = 'Route already exists!';
+
+  // wm = warning messages
   wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
 
 implementation

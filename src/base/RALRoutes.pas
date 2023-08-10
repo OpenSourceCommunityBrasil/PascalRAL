@@ -15,7 +15,7 @@ type
 
   TRALRoute = class(TCollectionItem)
   private
-    FRouteDomain : StringRAL;
+    FRouteDomain: StringRAL;
     FRouteName: StringRAL;
     FDescription: TStringList;
     FAllowedMethods: TRALMethods;
@@ -28,7 +28,7 @@ type
 
     procedure SetRouteName(AValue: StringRAL);
     procedure SetRouteDomain(AValue: StringRAL);
-    function RouteExists(ARoute: StringRAL): boolean;
+    function RouteExists(ARoute: StringRAL): Boolean;
 
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
@@ -66,10 +66,7 @@ type
 
 implementation
 
-const
-  routeAlreadyExists = 'Route already exists!';
-
-{ TRALRoutes }
+  { TRALRoutes }
 
 constructor TRALRoute.Create(ACollection: TCollection);
 begin
@@ -103,7 +100,7 @@ end;
 
 procedure TRALRoute.SetRouteDomain(AValue: StringRAL);
 var
-  vRouteStr : StringRAL;
+  vRouteStr: StringRAL;
 begin
   if FRouteDomain = AValue then
     Exit;
@@ -114,18 +111,18 @@ begin
     FRouteDomain := FixRoute(AValue);
 end;
 
-function TRALRoute.RouteExists(ARoute: StringRAL): boolean;
+function TRALRoute.RouteExists(ARoute: StringRAL): Boolean;
 var
   vRoute: TRALRoute;
 begin
-  Result := False;
+  Result := false;
   if Collection is TRALRoutes then
   begin
     vRoute := TRALRoutes(Collection).RouteAddress[ARoute];
     if (vRoute <> nil) and (vRoute <> Self) then
     begin
       Result := True;
-      raise Exception.Create(routeAlreadyExists);
+      raise Exception.Create(emRouteAlreadyExists);
     end;
   end;
 end;
@@ -156,13 +153,12 @@ end;
 
 function TRALRoute.GetNamePath: string;
 var
-  vName : StringRAL;
+  vName: StringRAL;
 begin
   vName := Collection.GetNamePath;
   {$IFDEF FPC}
-    if (Collection.Owner <> nil) and
-       (Collection.Owner is TComponent) then
-      vName := TComponent(Collection.Owner).Name;
+  if (Collection.Owner <> nil) and (Collection.Owner is TComponent) then
+    vName := TComponent(Collection.Owner).Name;
   {$ENDIF}
 
   if (FRouteDomain <> '') and (FRouteDomain <> '/') then
@@ -197,7 +193,7 @@ var
 begin
   Result := nil;
   ARoute := FixRoute(ARoute);
-  for vInt := 0 to Count-1 do
+  for vInt := 0 to Count - 1 do
   begin
     vRoute := TRALRoute(Items[vInt]);
     if SameText(vRoute.Route, ARoute) then

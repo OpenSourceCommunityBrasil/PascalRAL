@@ -3,23 +3,24 @@ object Form1: TForm1
   Top = 0
   Caption = 'RAL TestServer'
   ClientHeight = 480
-  ClientWidth = 633
+  ClientWidth = 584
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
   DesignerMasterStyle = 0
   object TabControl1: TTabControl
     Align = Client
-    Size.Width = 633.000000000000000000
+    Size.Width = 584.000000000000000000
     Size.Height = 480.000000000000000000
     Size.PlatformDefault = False
     TabIndex = 0
     TabOrder = 2
     TabPosition = PlatformDefault
     Sizes = (
-      633s
+      584s
       454s
-      633s
+      584s
       454s)
     object TabItem1: TTabItem
       CustomIcon = <
@@ -32,9 +33,11 @@ object Form1: TForm1
       StyleLookup = ''
       TabOrder = 0
       Text = 'Settings'
+      ExplicitSize.cx = 63.000000000000000000
+      ExplicitSize.cy = 26.000000000000000000
       object Layout2: TLayout
         Align = Top
-        Size.Width = 633.000000000000000000
+        Size.Width = 584.000000000000000000
         Size.Height = 129.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 3
@@ -102,12 +105,12 @@ object Form1: TForm1
             Size.Height = 109.000000000000000000
             Size.PlatformDefault = False
             TabOrder = 38
-            Justify = Left
-            JustifyLastLine = Left
+            Justify = Center
+            JustifyLastLine = Center
             FlowDirection = LeftToRight
             VerticalGap = 5.000000000000000000
             object rbIndy: TRadioButton
-              Position.X = 5.000000000000000000
+              Position.X = 7.000000000000000000
               Position.Y = 10.000000000000000000
               Size.Width = 96.000000000000000000
               Size.Height = 19.000000000000000000
@@ -116,7 +119,7 @@ object Form1: TForm1
               Text = 'Indy'
             end
             object rbSynopse: TRadioButton
-              Position.X = 5.000000000000000000
+              Position.X = 7.000000000000000000
               Position.Y = 34.000000000000000000
               Size.Width = 96.000000000000000000
               Size.Height = 19.000000000000000000
@@ -128,7 +131,7 @@ object Form1: TForm1
         end
         object GroupBox3: TGroupBox
           Position.X = 240.000000000000000000
-          Size.Width = 392.000000000000000000
+          Size.Width = 345.000000000000000000
           Size.Height = 129.000000000000000000
           Size.PlatformDefault = False
           Text = 'Server Authentication'
@@ -143,7 +146,7 @@ object Form1: TForm1
             Margins.Top = 15.000000000000000000
             Margins.Right = 5.000000000000000000
             Margins.Bottom = 5.000000000000000000
-            Size.Width = 382.000000000000000000
+            Size.Width = 335.000000000000000000
             Size.Height = 109.000000000000000000
             Size.PlatformDefault = False
             TabOrder = 38
@@ -225,7 +228,7 @@ object Form1: TForm1
       object Layout3: TLayout
         Align = Bottom
         Position.Y = 414.000000000000000000
-        Size.Width = 633.000000000000000000
+        Size.Width = 584.000000000000000000
         Size.Height = 40.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 2
@@ -242,71 +245,52 @@ object Form1: TForm1
       end
       object Layout4: TLayout
         Align = Client
-        Size.Width = 633.000000000000000000
+        Size.Width = 584.000000000000000000
         Size.Height = 285.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 1
-        object StringGrid1: TStringGrid
+        object sgRoutes: TStringGrid
           Align = Client
           CanFocus = True
           ClipChildren = True
-          Size.Width = 633.000000000000000000
+          Size.Width = 584.000000000000000000
           Size.Height = 172.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 3
-          Viewport.Width = 613.000000000000000000
+          Viewport.Width = 564.000000000000000000
           Viewport.Height = 147.000000000000000000
-          object StringColumn1: TStringColumn
+          object sgcRouteName: TStringColumn
             Header = 'Route'
             Size.Width = 118.000000000000000000
           end
-          object StringColumn2: TStringColumn
+          object sgcDescription: TStringColumn
             Header = 'Description'
-            Size.Width = 354.000000000000000000
+            Size.Width = 300.000000000000000000
           end
-          object StringColumn3: TStringColumn
+          object sgcSkipAuth: TStringColumn
             Header = 'SkipAuth'
-            Size.Width = 134.000000000000000000
+            Size.Width = 141.000000000000000000
           end
         end
         object Layout5: TLayout
           Align = Top
-          Size.Width = 633.000000000000000000
+          Size.Width = 584.000000000000000000
           Size.Height = 113.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 4
-          object Edit1: TEdit
+          object eRouteDescription: TEdit
             Touch.InteractiveGestures = [LongTap, DoubleTap]
             TabOrder = 1
             Position.X = 8.000000000000000000
-            Position.Y = 28.000000000000000000
-            Size.Width = 180.000000000000000000
-            Size.Height = 22.000000000000000000
-            Size.PlatformDefault = False
-            object Label6: TLabel
-              Align = Top
-              Margins.Top = -20.000000000000000000
-              Position.Y = -20.000000000000000000
-              Size.Width = 180.000000000000000000
-              Size.Height = 17.000000000000000000
-              Size.PlatformDefault = False
-              Text = 'Route'
-              TabOrder = 0
-            end
-          end
-          object Edit2: TEdit
-            Touch.InteractiveGestures = [LongTap, DoubleTap]
-            TabOrder = 0
-            Position.X = 8.000000000000000000
             Position.Y = 78.000000000000000000
-            Size.Width = 180.000000000000000000
+            Size.Width = 249.000000000000000000
             Size.Height = 22.000000000000000000
             Size.PlatformDefault = False
             object Label7: TLabel
               Align = Top
               Margins.Top = -20.000000000000000000
               Position.Y = -20.000000000000000000
-              Size.Width = 180.000000000000000000
+              Size.Width = 249.000000000000000000
               Size.Height = 17.000000000000000000
               Size.PlatformDefault = False
               Text = 'Description'
@@ -314,8 +298,8 @@ object Form1: TForm1
             end
           end
           object GroupBox5: TGroupBox
-            Position.X = 192.000000000000000000
-            Position.Y = 8.000000000000000000
+            Position.X = 265.000000000000000000
+            Position.Y = 4.000000000000000000
             Size.Width = 217.000000000000000000
             Size.Height = 105.000000000000000000
             Size.PlatformDefault = False
@@ -339,73 +323,93 @@ object Form1: TForm1
               JustifyLastLine = Left
               FlowDirection = LeftToRight
               VerticalGap = 5.000000000000000000
-              object CheckBox1: TCheckBox
+              object cbGET: TCheckBox
                 Position.X = 5.000000000000000000
                 Position.Y = 10.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 44
-                Text = 'amGET'
+                Text = 'GET'
               end
-              object CheckBox2: TCheckBox
+              object cbPOST: TCheckBox
                 Position.X = 101.000000000000000000
                 Position.Y = 10.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 43
-                Text = 'amPOST'
+                Text = 'POST'
               end
-              object CheckBox3: TCheckBox
+              object cbPUT: TCheckBox
                 Position.X = 5.000000000000000000
                 Position.Y = 34.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 42
-                Text = 'amPUT'
+                Text = 'PUT'
               end
-              object CheckBox4: TCheckBox
+              object cbPATCH: TCheckBox
                 Position.X = 101.000000000000000000
                 Position.Y = 34.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 41
-                Text = 'amPATCH'
+                Text = 'PATCH'
               end
-              object CheckBox5: TCheckBox
+              object cbDELETE: TCheckBox
                 Position.X = 5.000000000000000000
                 Position.Y = 58.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 40
-                Text = 'amDELETE'
+                Text = 'DELETE'
               end
-              object CheckBox6: TCheckBox
+              object cbALL: TCheckBox
                 Position.X = 101.000000000000000000
                 Position.Y = 58.000000000000000000
                 Size.Width = 96.000000000000000000
                 Size.Height = 19.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 39
-                Text = 'amALL'
+                Text = 'ALL'
               end
             end
           end
-          object Button1: TButton
-            Position.X = 545.000000000000000000
+          object bAdd: TButton
+            Position.X = 490.000000000000000000
             Position.Y = 8.000000000000000000
             TabOrder = 4
             Text = 'Add'
+            OnClick = bAddClick
           end
-          object Button2: TButton
-            Position.X = 545.000000000000000000
+          object bDelete: TButton
+            Position.X = 490.000000000000000000
             Position.Y = 38.000000000000000000
             TabOrder = 3
             Text = 'Delete Last'
+          end
+          object cbRoute: TComboBox
+            Items.Strings = (
+              'text'
+              'ping'
+              'file')
+            Position.X = 13.000000000000000000
+            Position.Y = 28.000000000000000000
+            TabOrder = 0
+            object Label6: TLabel
+              Align = Top
+              Margins.Top = -20.000000000000000000
+              Position.Y = -20.000000000000000000
+              Size.Width = 100.000000000000000000
+              Size.Height = 17.000000000000000000
+              Size.PlatformDefault = False
+              Text = 'Route'
+              TabOrder = 0
+            end
           end
         end
       end
@@ -421,13 +425,15 @@ object Form1: TForm1
       StyleLookup = ''
       TabOrder = 0
       Text = 'Log'
+      ExplicitSize.cx = 40.000000000000000000
+      ExplicitSize.cy = 26.000000000000000000
       object GroupBox4: TGroupBox
         Align = Client
         Padding.Left = 5.000000000000000000
         Padding.Top = 20.000000000000000000
         Padding.Right = 5.000000000000000000
         Padding.Bottom = 5.000000000000000000
-        Size.Width = 633.000000000000000000
+        Size.Width = 584.000000000000000000
         Size.Height = 454.000000000000000000
         Size.PlatformDefault = False
         Text = 'Log'
@@ -437,16 +443,16 @@ object Form1: TForm1
           DataDetectorTypes = []
           TextSettings.WordWrap = True
           Align = Client
-          Size.Width = 623.000000000000000000
+          Size.Width = 574.000000000000000000
           Size.Height = 429.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 38
-          Viewport.Width = 619.000000000000000000
+          Viewport.Width = 570.000000000000000000
           Viewport.Height = 425.000000000000000000
           object Layout1: TLayout
             Align = Right
             Margins.Right = 20.000000000000000000
-            Position.X = 552.000000000000000000
+            Position.X = 503.000000000000000000
             Size.Width = 47.000000000000000000
             Size.Height = 425.000000000000000000
             Size.PlatformDefault = False

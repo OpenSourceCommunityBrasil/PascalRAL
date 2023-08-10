@@ -43,14 +43,14 @@ type
     property ContentType: StringRAL read FContentType write FContentType;
   end;
 
-  TRALMultipartFormDataComplete = procedure(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData : boolean) of object;
+  TRALMultipartFormDataComplete = procedure(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData: boolean) of object;
 
   { TRALMultipartDecoder }
 
   TRALMultipartDecoder = class
   private
     FBoundary: StringRAL;
-    FBuffer: array[0..4095] of Byte;
+    FBuffer: array [0 .. 4095] of Byte;
     FIndex: IntegerRAL;
     FItemForm: TRALMultipartFormData;
     FWaitSepEnd: boolean;
@@ -58,67 +58,66 @@ type
     FFormData: TList;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
   protected
-    procedure SetContentType(AValue : StringRAL);
+    procedure SetContentType(AValue: StringRAL);
 
-    procedure ProcessBuffer(AInput : PByte; AInputLen: IntegerRAL);
+    procedure ProcessBuffer(AInput: PByte; AInputLen: IntegerRAL);
     procedure ClearItems;
 
-    function BurnBuffer : PByte;
-    function ResetBuffer : PByte;
-    function GetFormData(idx : Integer) : TRALMultipartFormData;
+    function BurnBuffer: PByte;
+    function ResetBuffer: PByte;
+    function GetFormData(idx: Integer): TRALMultipartFormData;
 
     procedure FinalizeItem;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function FormDataCount : IntegerRAL;
+    function FormDataCount: IntegerRAL;
 
-    procedure ProcessMultiPart(AStream : TStream); overload;
-    procedure ProcessMultiPart(AString : StringRAL); overload;
+    procedure ProcessMultiPart(AStream: TStream); overload;
+    procedure ProcessMultiPart(AString: StringRAL); overload;
 
-    property FormData[Idx : Integer] : TRALMultipartFormData read GetFormData;
+    property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
   published
-    property Boundary : StringRAL read FBoundary write FBoundary;
-    property ContentType : StringRAL write SetContentType;
-    property OnFormDataComplete : TRALMultipartFormDataComplete read FOnFormDataComplete write FOnFormDataComplete;
+    property Boundary: StringRAL read FBoundary write FBoundary;
+    property ContentType: StringRAL write SetContentType;
+    property OnFormDataComplete: TRALMultipartFormDataComplete read FOnFormDataComplete write FOnFormDataComplete;
   end;
 
   { TRALMultipartEncoder }
 
   TRALMultipartEncoder = class
   private
-    FBoundary : StringRAL;
-    FFormData : TList;
+    FBoundary: StringRAL;
+    FFormData: TList;
   protected
-    function GetBoundary : StringRAL;
-    function GetContentType : StringRAL;
+    function GetBoundary: StringRAL;
+    function GetContentType: StringRAL;
 
     procedure ClearItems;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function FormDataCount : IntegerRAL;
+    function FormDataCount: IntegerRAL;
 
-    procedure AddField(AName, AValue : StringRAL);
-    procedure AddStream(AName : StringRAL; const AFileStream : TStream;
-                        AFileName : StringRAL = '';
-                        AContentType : StringRAL = '');
-    procedure AddFile(AName, AFileName : StringRAL; AContentType : StringRAL = '');
+    procedure AddField(AName, AValue: StringRAL);
+    procedure AddStream(AName: StringRAL; const AFileStream: TStream;
+                        AFileName: StringRAL = ''; AContentType: StringRAL = '');
+    procedure AddFile(AName, AFileName: StringRAL; AContentType: StringRAL = '');
 
-    procedure SaveToFile(AFileName : StringRAL);
-    function AsStream : TStringStream;
+    procedure SaveToFile(AFileName: StringRAL);
+    function AsStream: TStringStream;
   published
-    property Boundary : StringRAL read GetBoundary write FBoundary;
-    property ContentType : StringRAL read GetContentType;
+    property Boundary: StringRAL read GetBoundary write FBoundary;
+    property ContentType: StringRAL read GetContentType;
   end;
 
 implementation
 
 { TRALMultipartEncoder }
 
-function TRALMultipartEncoder.GetContentType : StringRAL;
+function TRALMultipartEncoder.GetContentType: StringRAL;
 begin
   Result := rctMULTIPARTFORMDATA + '; boundary=' + Boundary;
 end;
@@ -145,14 +144,14 @@ begin
   inherited Destroy;
 end;
 
-function TRALMultipartEncoder.FormDataCount : IntegerRAL;
+function TRALMultipartEncoder.FormDataCount: IntegerRAL;
 begin
   Result := FFormData.Count;
 end;
 
-procedure TRALMultipartEncoder.AddField(AName, AValue : StringRAL);
+procedure TRALMultipartEncoder.AddField(AName, AValue: StringRAL);
 var
-  vField : TRALMultipartFormData;
+  vField: TRALMultipartFormData;
 begin
   vField := TRALMultipartFormData.Create;
   vField.Name := AName;
@@ -162,10 +161,10 @@ begin
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.AddStream(AName : StringRAL; const AFileStream : TStream;
-                               AFileName : StringRAL; AContentType : StringRAL);
+procedure TRALMultipartEncoder.AddStream(AName: StringRAL; const AFileStream: TStream;
+                                         AFileName: StringRAL; AContentType: StringRAL);
 var
-  vField : TRALMultipartFormData;
+  vField: TRALMultipartFormData;
 begin
   vField := TRALMultipartFormData.Create;
   vField.Name := AName;
@@ -183,7 +182,7 @@ end;
 
 procedure TRALMultipartEncoder.AddFile(AName, AFileName: StringRAL; AContentType: StringRAL);
 var
-  vField : TRALMultipartFormData;
+  vField: TRALMultipartFormData;
 begin
   vField := TRALMultipartFormData.Create;
   vField.Name := AName;
@@ -198,9 +197,9 @@ begin
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.SaveToFile(AFileName : StringRAL);
+procedure TRALMultipartEncoder.SaveToFile(AFileName: StringRAL);
 var
-  vFile : TStringStream;
+  vFile: TStringStream;
 begin
   vFile := AsStream;
   try
@@ -210,19 +209,19 @@ begin
   end;
 end;
 
-function TRALMultipartEncoder.AsStream : TStringStream;
+function TRALMultipartEncoder.AsStream: TStringStream;
 var
-  vInt : IntegerRAL;
-  vHeaderFile, vHeaderField, vHeaderEnd : StringRAL;
-  vItem : TRALMultipartFormData;
+  vInt: IntegerRAL;
+  vHeaderFile, vHeaderField, vHeaderEnd: StringRAL;
+  vItem: TRALMultipartFormData;
 begin
-  vHeaderFile := '----------------------------%s' + #13#10 +
-                 'Content-Disposition: %s; name="%s"; filename="%s"' + #13#10 +
-                 'Content-Type: %s' + #13#10#13#10;
+  vHeaderFile := '----------------------------%s' + #13#10
+               + 'Content-Disposition: %s; name="%s"; filename="%s"' + #13#10
+               + 'Content-Type: %s' + #13#10#13#10;
 
-  vHeaderField := '----------------------------%s' + #13#10 +
-                  'Content-Disposition: %s; name="%s"' + #13#10 +
-                  'Content-Type: %s' + #13#10#13#10;
+  vHeaderField := '----------------------------%s' + #13#10
+                + 'Content-Disposition: %s; name="%s"' + #13#10
+                + 'Content-Type: %s' + #13#10#13#10;
 
   vHeaderEnd := '----------------------------%s--';
 
@@ -232,36 +231,36 @@ begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
     if vItem.Filename <> '' then
     begin
-      Result.WriteString(Format(vHeaderFile,[Boundary,vItem.Disposition,
-                        vItem.Name,vItem.Filename,vItem.ContentType]));
+      Result.WriteString(Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
+                         vItem.Filename, vItem.ContentType]));
     end
     else
     begin
-      Result.WriteString(Format(vHeaderField,[Boundary,vItem.Disposition,
-                        vItem.Name,vItem.ContentType]));
+      Result.WriteString(Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
+                         vItem.ContentType]));
     end;
     vItem.AsStream.Position := 0;
-    Result.CopyFrom(vItem.AsStream,vItem.AsStream.Size);
+    Result.CopyFrom(vItem.AsStream, vItem.AsStream.Size);
     Result.WriteString(#13#10);
   end;
-  Result.WriteString(Format(vHeaderEnd,[Boundary]));
+  Result.WriteString(Format(vHeaderEnd, [Boundary]));
 end;
 
-function TRALMultipartEncoder.GetBoundary : StringRAL;
+function TRALMultipartEncoder.GetBoundary: StringRAL;
 begin
   if FBoundary = '' then
-    FBoundary := 'ral' + FormatDateTime('ddmmyyyyhhnnsszzz',Now);
+    FBoundary := 'ral' + FormatDateTime('ddmmyyyyhhnnsszzz', Now);
   Result := FBoundary;
 end;
 
 { TRALMultipartFormData }
 
-function TRALMultipartFormData.GetBufferStream : TStream;
+function TRALMultipartFormData.GetBufferStream: TStream;
 begin
   Result := FBufferStream;
 end;
 
-function TRALMultipartFormData.GetBufferString : StringRAL;
+function TRALMultipartFormData.GetBufferString: StringRAL;
 begin
   if FBufferStream.InheritsFrom(TStringStream) then
   begin
@@ -270,12 +269,12 @@ begin
   else
   begin
     FBufferStream.Position := 0;
-    SetLength(Result,FBufferStream.Size);
-    FBufferStream.Write(Result[PosIniStr],FBufferStream.Size);
+    SetLength(Result, FBufferStream.Size);
+    FBufferStream.Write(Result[PosIniStr], FBufferStream.Size);
   end;
 end;
 
-procedure TRALMultipartFormData.SetBufferString(AValue : StringRAL);
+procedure TRALMultipartFormData.SetBufferString(AValue: StringRAL);
 begin
   if (FBufferStream <> nil) and (FFreeBuffer) then
     FBufferStream.Free;
@@ -284,7 +283,7 @@ begin
   FFreeBuffer := True;
 end;
 
-procedure TRALMultipartFormData.SetBufferStream(AValue : TStream);
+procedure TRALMultipartFormData.SetBufferStream(AValue: TStream);
 begin
   if FBufferStream = AValue then
     Exit;
@@ -323,7 +322,7 @@ var
   function GetWord(var AStr: StringRAL): StringRAL;
   var
     vInt, vLen: Integer;
-    vQuoted: Boolean;
+    vQuoted: boolean;
     vChr: CharRAL;
   begin
     Result := '';
@@ -336,9 +335,9 @@ var
       begin
         vQuoted := not vQuoted;
       end
-      else if not (CharInSet(vChr, [' ', '=', ';', ':'])) or vQuoted then
+      else if not(CharInSet(vChr, [' ', '=', ';', ':'])) or vQuoted then
       begin
-          Result := Result + vChr;
+        Result := Result + vChr;
       end
       else if (CharInSet(vChr, [';', ':', '='])) and (not vQuoted) then
       begin
@@ -349,9 +348,9 @@ var
     AStr := '';
   end;
 
-  function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
+  function ProcessVar(const AHeader, AValue: StringRAL): boolean;
   begin
-    Result:=True;
+    Result := True;
     if SameText(AHeader, 'content-disposition') then
       FDisposition := AValue
     else if SameText(AHeader, 'name') then
@@ -365,23 +364,24 @@ var
     else
       Result := False;
   end;
+
 begin
   AHeader := Trim(AHeader);
   vStr := GetWord(AHeader);
   while (vStr <> '') do
   begin
-    ProcessVar(vStr,GetWord(AHeader));
+    ProcessVar(vStr, GetWord(AHeader));
     vStr := GetWord(AHeader);
   end;
 end;
 
-procedure TRALMultipartFormData.SaveToFile(AFileName : StringRAL);
+procedure TRALMultipartFormData.SaveToFile(AFileName: StringRAL);
 begin
   if FBufferStream.InheritsFrom(TCustomMemoryStream) then
     TCustomMemoryStream(FBufferStream).SaveToFile(AFileName)
 end;
 
-procedure TRALMultipartFormData.SaveToStream(var AStream : TStream);
+procedure TRALMultipartFormData.SaveToStream(var AStream: TStream);
 begin
   FBufferStream.Position := 0;
   AStream.Size := 0;
@@ -392,13 +392,13 @@ begin
   FBufferStream.Position := 0;
 end;
 
-procedure TRALMultipartFormData.OpenFile(AFileName : StringRAL);
+procedure TRALMultipartFormData.OpenFile(AFileName: StringRAL);
 begin
   if (FBufferStream <> nil) and (FFreeBuffer) then
     FBufferStream.Free;
 
   if FileExists(AFileName) then
-    FBufferStream := TFileStream.Create(AFileName,fmOpenRead)
+    FBufferStream := TFileStream.Create(AFileName, fmOpenRead)
   else
     FBufferStream := TStringStream.Create;
   FFreeBuffer := True;
@@ -406,7 +406,7 @@ end;
 
 { TRALMultipartDecoder }
 
-function TRALMultipartDecoder.GetFormData(idx : Integer) : TRALMultipartFormData;
+function TRALMultipartDecoder.GetFormData(idx: Integer): TRALMultipartFormData;
 begin
   Result := nil;
   if (idx >= 0) and (idx < FFormData.Count) then
@@ -415,7 +415,7 @@ end;
 
 procedure TRALMultipartDecoder.FinalizeItem;
 var
-  vFreeItem : boolean;
+  vFreeItem: boolean;
 begin
   if FItemForm <> nil then
   begin
@@ -434,9 +434,9 @@ begin
   FItemForm := nil;
 end;
 
-procedure TRALMultipartDecoder.SetContentType(AValue : StringRAL);
+procedure TRALMultipartDecoder.SetContentType(AValue: StringRAL);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   vInt := Pos('boundary', LowerCase(AValue));
   if vInt > 0 then
@@ -448,10 +448,10 @@ begin
   end;
 end;
 
-procedure TRALMultipartDecoder.ProcessBuffer(AInput : PByte; AInputLen : IntegerRAL);
+procedure TRALMultipartDecoder.ProcessBuffer(AInput: PByte; AInputLen: IntegerRAL);
 var
-  vBuffer : PByte;
-  vLine : StringRAL;
+  vBuffer: PByte;
+  vLine: StringRAL;
 
   procedure processLine;
   begin
@@ -460,13 +460,13 @@ var
       SetLength(vLine, FIndex);
       Move(FBuffer[0], vLine[1], FIndex);
       // boundary end of file
-      if Pos('--'+FBoundary+'--', vLine) > 0 then
+      if Pos('--' + FBoundary + '--', vLine) > 0 then
       begin
         FinalizeItem;
         vBuffer := ResetBuffer;
       end
       // boundary begin of file
-      else if Pos('--'+FBoundary+#13#10, vLine) > 0 then
+      else if Pos('--' + FBoundary + #13#10, vLine) > 0 then
       begin
         FinalizeItem;
         FItemForm := TRALMultipartFormData.Create;
@@ -529,13 +529,13 @@ begin
   FinalizeItem;
 end;
 
-function TRALMultipartDecoder.BurnBuffer : PByte;
+function TRALMultipartDecoder.BurnBuffer: PByte;
 begin
-  FItemForm.AsStream.Write(FBuffer[0],FIndex);
+  FItemForm.AsStream.Write(FBuffer[0], FIndex);
   Result := ResetBuffer;
 end;
 
-function TRALMultipartDecoder.ResetBuffer : PByte;
+function TRALMultipartDecoder.ResetBuffer: PByte;
 begin
   FIndex := 0;
   Result := @FBuffer[FIndex];
@@ -564,11 +564,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALMultipartDecoder.ProcessMultiPart(AStream : TStream);
+procedure TRALMultipartDecoder.ProcessMultiPart(AStream: TStream);
 var
-  vInBuf: array[0..4095] of Byte;
-  vBytesRead : IntegerRAL;
-  vPosition, vSize : Int64RAL;
+  vInBuf: array [0 .. 4095] of Byte;
+  vBytesRead: IntegerRAL;
+  vPosition, vSize: Int64RAL;
 begin
   AStream.Position := 0;
   vPosition := 0;
@@ -587,11 +587,11 @@ begin
   end;
 end;
 
-procedure TRALMultipartDecoder.ProcessMultiPart(AString : StringRAL);
+procedure TRALMultipartDecoder.ProcessMultiPart(AString: StringRAL);
 var
-  vInBuf: array[0..4095] of Byte;
-  vBytesRead : IntegerRAL;
-  vPosition, vSize : Int64RAL;
+  vInBuf: array [0 .. 4095] of Byte;
+  vBytesRead: IntegerRAL;
+  vPosition, vSize: Int64RAL;
 begin
   vPosition := 1;
   vSize := Length(AString);
@@ -614,10 +614,9 @@ begin
   end;
 end;
 
-function TRALMultipartDecoder.FormDataCount : IntegerRAL;
+function TRALMultipartDecoder.FormDataCount: IntegerRAL;
 begin
   Result := FFormData.Count;
 end;
 
 end.
-

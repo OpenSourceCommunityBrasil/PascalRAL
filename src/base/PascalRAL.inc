@@ -16,7 +16,7 @@
   {$DEFINE DELPHINET}
 {$ENDIF}
 
-{$IFDEF VER360 or CompilerVersion >= 36}
+{$IF Defined(VER360) or (CompilerVersion >= 36)}
   {$DEFINE DELPHI12UP}
   {$DEFINE DELPHI11UP}
   {$DEFINE DELPHI10_4UP}
@@ -41,7 +41,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER350}
 
-{$IFDEF VER350 or CompilerVersion >= 35}
+{$IF Defined(VER350) or (CompilerVersion >= 35)}
   {$DEFINE DELPHI11UP}
   {$DEFINE DELPHI10_4UP}
   {$DEFINE DELPHI10_3UP}
@@ -65,7 +65,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER350}
 
-{$IFDEF VER340 or CompilerVersion >= 34}
+{$IF Defined(VER340) or (CompilerVersion >= 34)}
   {$DEFINE DELPHI10_4UP}
   {$DEFINE DELPHI10_3UP}
   {$DEFINE DELPHI10_2UP}
@@ -88,7 +88,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER340}
 
-{$IFDEF VER330 or CompilerVersion >= 33}
+{$IF Defined(VER330) or (CompilerVersion >= 33)}
   {$DEFINE DELPHI10_3UP}
   {$DEFINE DELPHI10_2UP}
   {$DEFINE DELPHI10_1UP}
@@ -110,7 +110,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER330}
 
-{$IFDEF VER320 or CompilerVersion >= 32}
+{$IF Defined(VER320) or (CompilerVersion >= 32)}
   {$DEFINE DELPHI10_2UP}
   {$DEFINE DELPHI10_1UP}
   {$DEFINE DELPHI10_0UP}
@@ -131,7 +131,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER320}
 
-{$IFDEF VER310 or CompilerVersion >= 31}
+{$IF Defined(VER310) or (CompilerVersion >= 31)}
   {$DEFINE DELPHI10_1UP}
   {$DEFINE DELPHI10_0UP}
   {$DEFINE DELPHIXE8UP}
@@ -151,7 +151,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER310}
 
-{$IFDEF VER300 or CompilerVersion >= 30}
+{$IF Defined(VER300) or (CompilerVersion >= 30)}
   {$DEFINE DELPHI10_0UP}
   {$DEFINE DELPHIXE8UP}
   {$DEFINE DELPHIXE7UP}
@@ -170,7 +170,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER300}
 
-{$IFDEF VER290 or CompilerVersion >= 29}
+{$IF Defined(VER290) or (CompilerVersion >= 29)
   {$DEFINE DELPHIXE8UP}
   {$DEFINE DELPHIXE7UP}
   {$DEFINE DELPHIXE6UP}
@@ -188,7 +188,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER290}
 
-{$IFDEF VER280 or CompilerVersion >= 28}
+{$IF Defined(VER280) or (CompilerVersion >= 28)}
   {$DEFINE DELPHIXE7UP}
   {$DEFINE DELPHIXE6UP}
   {$DEFINE DELPHIXE5UP}
@@ -205,7 +205,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER280}
 
-{$IFDEF VER270 or CompilerVersion >= 27}
+{$IF Defined(VER270) or (CompilerVersion >= 27)}
   {$DEFINE DELPHIXE6UP}
   {$DEFINE DELPHIXE5UP}
   {$DEFINE DELPHIXE4UP}
@@ -221,7 +221,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER270}
 
-{$IFDEF VER260 or CompilerVersion >= 26}
+{$IF Defined(VER260) or (CompilerVersion >= 26)}
   {$DEFINE DELPHIXE5UP}
   {$DEFINE DELPHIXE4UP}
   {$DEFINE DELPHIXE3UP}
@@ -236,7 +236,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER260}
 
-{$IFDEF VER250 or CompilerVersion >= 25}
+{$IF Defined(VER250) or (CompilerVersion >= 25)}
   {$DEFINE DELPHIXE4UP}
   {$DEFINE DELPHIXE3UP}
   {$DEFINE DELPHIXE2UP}
@@ -250,7 +250,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER250}
 
-{$IFDEF VER240 or CompilerVersion >= 24}
+{$IF Defined(VER240) or (CompilerVersion >= 24)}
   {$DEFINE DELPHIXE3UP}
   {$DEFINE DELPHIXE2UP}
   {$DEFINE DELPHIXEUP}
@@ -263,7 +263,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER240}
 
-{$IFDEF VER230 or CompilerVersion >= 23}
+{$IF Defined(VER230) or (CompilerVersion >= 23)}
   {$DEFINE DELPHIXE2UP}
   {$DEFINE DELPHIXEUP}
   {$DEFINE DELPHI2010UP}
@@ -275,7 +275,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER230}
 
-{$IFDEF VER220 or CompilerVersion >= 22}
+{$IF Defined(VER220) or (CompilerVersion >= 22)}
   {$DEFINE DELPHIXEUP}
   {$DEFINE DELPHI2010UP}
   {$DEFINE DELPHI2009UP}
@@ -286,7 +286,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER220}
 
-{$IFDEF VER210 or CompilerVersion >= 21}
+{$IF Defined(VER210) or (CompilerVersion >= 21)}
   {$DEFINE DELPHI2010UP}
   {$DEFINE DELPHI2009UP}
   {$DEFINE DELPHI2007UP}
@@ -296,7 +296,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER210}
 
-{$IFDEF VER200 or CompilerVersion >= 20}
+{$IF Defined(VER200) or (CompilerVersion >= 20)}
   {$DEFINE DELPHI2009UP}
   {$DEFINE DELPHI2007UP}
   {$DEFINE DELPHI2006UP}
@@ -305,7 +305,7 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER200}
 
-{$IFDEF VER190 or CompilerVersion >= 19}
+{$IF Defined(VER190) or (CompilerVersion >= 19)}
   {$DEFINE DELPHI2007UP}
   {$DEFINE DELPHI2006UP}
   {$DEFINE DELPHI2005UP}
@@ -313,25 +313,25 @@
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER190}
 
-{$IFDEF VER180 OR VER185 or CompilerVersion >= 18}
+{$IF Defined(VER180) or Defined(VER185) or (CompilerVersion >= 18)}
   {$DEFINE DELPHI2006UP}
   {$DEFINE DELPHI2005UP}
   {$DEFINE DELPHI8UP}
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER180 OR VER185}
 
-{$IFDEF VER170 or CompilerVersion >= 17}
+{$IF Defined(VER170) or (CompilerVersion >= 17)}
   {$DEFINE DELPHI2005UP}
   {$DEFINE DELPHI8UP}
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER170}
 
-{$IFDEF VER160 or CompilerVersion >= 16}
+{$IF Defined(VER160) or (CompilerVersion >= 16)}
   {$DEFINE DELPHI8UP}
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER160}
 
-{$IFDEF VER150 or CompilerVersion >= 15}
+{$IF Defined(VER150) or (CompilerVersion >= 15)}
   {$DEFINE DELPHI7UP}
 {$ENDIF ~VER150}
 {$ENDIF}

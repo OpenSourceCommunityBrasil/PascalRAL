@@ -3,9 +3,9 @@
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
+  Classes, SysUtils, StrUtils, TypInfo,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse, RALThreadSafe, TypInfo;
+  RALParams, RALRequest, RALResponse, RALThreadSafe;
 
 type
   TRALServer = class;
@@ -116,11 +116,10 @@ type
 
     function IPv6IsImplemented: boolean; virtual;
 
-    function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = '');
+    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -234,15 +233,13 @@ begin
   Result := nil;
 end;
 
-procedure TRALServer.CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply;
-  ADescription: StringRAL);
-var
-  Route: TRALRoute;
+function TRALServer.CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply;
+  ADescription: StringRAL): TRALRoute;
 begin
-  Route := TRALRoute.Create(Self.Routes);
-  Route.RouteName := ARouteName;
-  Route.OnReply := AReplyProc;
-  Route.Description.Text := ADescription;
+  Result := TRALRoute.Create(Self.Routes);
+  Result.RouteName := ARouteName;
+  Result.OnReply := AReplyProc;
+  Result.Description.Text := ADescription;
 end;
 
 procedure TRALServer.AddBlockList(AClientIP: StringRAL);
@@ -346,18 +343,6 @@ end;
 function TRALServer.IPv6IsImplemented: boolean;
 begin
   Result := False;
-end;
-
-function TRALServer.HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
-var
-  vInt: IntegerRAL;
-begin
-  AMethod := 'am' + UpperCase(AMethod);
-  vInt := GetEnumValue(TypeInfo(TRALMethod), AMethod);
-  if vInt <> -1 then
-    Result := TRALMethod(vInt)
-  else
-    Result := amGET;
 end;
 
 destructor TRALServer.Destroy;
@@ -472,7 +457,6 @@ begin
             (not(ARequest.Method in vRoute.SkipAuthMethods)) and
             (not(ValidateAuth(ARequest, Result))) then
     begin
-      Result.Answer(401, RAL401Page);
       AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
     else

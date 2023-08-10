@@ -1,4 +1,4 @@
-unit RALSynopseServer;
+﻿unit RALSynopseServer;
 
 interface
 
@@ -148,7 +148,7 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: IntegerRAL;
-  vStringList: TStringList;
+  AuxList: TStrings;
   vParamQuery: StringRAL;
 begin
   vRequest := TRALRequest.Create;
@@ -173,18 +173,18 @@ begin
 
       Method := HTTPMethodToRALMethod(AContext.Method);
 
-      vStringList := TStringList.Create;
+      AuxList := TStringList.Create;
       try
-        vStringList.NameValueSeparator := ':';
-        vStringList.Text := AContext.InHeaders;
+        AuxList.Delimiter := '=';
+        AuxList.Text := ReplaceStr(UTF8ToString(AContext.InHeaders), ': ', '=');
 
-        for vInt := 0 to vStringList.Count - 1 do
-          vStringList.ValueFromIndex[vInt] := TrimLeft(vStringList.ValueFromIndex[vInt]);
+        for vInt := 0 to AuxList.Count - 1 do
+          AuxList.Strings[vInt] := TrimLeft(AuxList.Strings[vInt]);
 
-        DecodeAuth(vStringList, vRequest);
-        Params.AppendParams(vStringList, rpkHEADER);
+        DecodeAuth(TStringList(AuxList), vRequest);
+        Params.AppendParams(AuxList, rpkHEADER);
       finally
-        FreeAndNil(vStringList);
+        FreeAndNil(AuxList);
       end;
 
       Params.DecodeBody(AContext.InContent, AContext.InContentType);
@@ -196,13 +196,13 @@ begin
     vResponse := ProcessCommands(vRequest);
 
     try
-      vStringList := TStringList.Create;
+      AuxList := TStringList.Create;
       try
-        vResponse.Params.AssignParams(vStringList, rpkHEADER, ': ');
-        vStringList.Add('Connection: close');
-        AContext.OutCustomHeaders := vStringList.Text;
+        vResponse.Params.AssignParams(TStringList(AuxList), rpkHEADER, ': ');
+        AuxList.Add('Connection: close');
+        AContext.OutCustomHeaders := AuxList.Text;
       finally
-        FreeAndNil(vStringList);
+        FreeAndNil(AuxList);
       end;
 
       AContext.OutContent := vResponse.ResponseText;

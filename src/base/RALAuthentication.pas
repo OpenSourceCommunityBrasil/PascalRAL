@@ -67,7 +67,9 @@ type
     FUserName: StringRAL;
     FPassword: StringRAL;
   public
-    constructor Create(AOwner: TComponent); override;
+    constructor Create(AOwner: TComponent); overload; override;
+    constructor Create(AOwner: TComponent; AUser: StringRAL;
+                       APassword: StringRAL); overload;
 
     procedure Validate(ARequest: TRALRequest; var AResponse: TRALResponse); override;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
@@ -199,10 +201,10 @@ begin
     end
     else
     begin
-      vParam := ARequest.Params.ParamName['ral_payload'];
+      vParam := ARequest.Params.ParamByName['ral_payload'];
 
       if vParam = nil then
-        vParam := ARequest.Params.ParamName['ral_body'];
+        vParam := ARequest.Params.ParamByName['ral_body'];
 
       vStrParams := '';
       if vParam <> nil then
@@ -360,17 +362,24 @@ begin
   AResponse.Answer(404, RAL404Page);
 end;
 
+constructor TRALServerBasicAuth.Create(AOwner: TComponent; AUser, APassword: StringRAL);
+begin
+  Create(AOwner);
+  UserName := AUser;
+  Password := APassword;
+end;
+
 procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
 var
   vResult: boolean;
 
   procedure Error401;
   var
-    vParam : TRALParam;
+    vParam: TRALParam;
   begin
     AResponse.Answer(401, RAL401Page);
     if FAuthDialog then
-      vParam := AResponse.Params.AddParam('WWW-Authenticate', 'Basic realm="RAL Basic"',rpkHEADER);
+      vParam := AResponse.Params.AddParam('WWW-Authenticate', 'Basic realm="RAL Basic"', rpkHEADER);
   end;
 begin
   AResponse.StatusCode := 200;

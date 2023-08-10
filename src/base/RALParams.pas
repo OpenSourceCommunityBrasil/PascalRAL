@@ -7,8 +7,6 @@ uses
   RALTypes, RALMIMETypes, RALMultipartCoder;
 
 type
-  TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY);
-  TRALParamKinds = set of TRALParamKind;
 
   { TRALParam }
 
@@ -20,27 +18,26 @@ type
     FFileName: StringRAL;
     FKind: TRALParamKind;
   protected
+    function GetAsFile: TFileStream;
+    function GetAsStream: TStream;
     function GetAsString: StringRAL;
-    procedure SetAsString(const AValue : StringRAL);
-
-    function GetAsStream : TStream;
+    procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
-
     function GetContentSize: Int64RAL;
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure OpenFile(AFileName : StringRAL);
-
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
+    property AsFile: TFileStream read GetAsFile;
+    procedure OpenFile(AFileName: StringRAL);
   public
-    property ParamName: StringRAL read FParamName write FParamName;
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
     property FileName: StringRAL read FFileName write FFileName;
-    property Kind : TRALParamKind read FKind write FKind;
+    property Kind: TRALParamKind read FKind write FKind;
+    property ParamName: StringRAL read FParamName write FParamName;
   end;
 
   { TRALParams }
@@ -50,27 +47,28 @@ type
     FNextParam: IntegerRAL;
     FParams: TList;
   protected
-    function GetParam(idx: IntegerRAL): TRALParam;
-    function GetParamName(name: StringRAL): TRALParam;
-    function GetParamNameKind(name: StringRAL; kind: TRALParamKind): TRALParam;
+    function GetBody: TList;
+    function GetParam(idx: IntegerRAL): TRALParam; overload;
+    function GetParam(name: StringRAL): TRALParam; overload;
+    function GetParam(name: StringRAL; Kind: TRALParamKind): TRALParam; overload;
     function NextParamInt: IntegerRAL;
     function NextParamStr: StringRAL;
 
-    procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData : boolean);
+    procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
+      var AFreeData: boolean);
   public
     constructor Create;
     destructor Destroy; override;
 
     function AddParam(AName, AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    function AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind = rpkNONE) : TRALParam; overload;
+    function AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     function AddFile(AParamName, AFileName: StringRAL): TRALParam;
     function AddValue(AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     function AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
-    procedure AppendParams(ASource: TStrings;  AKind: TRALParamKind); overload;
-
+    procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
-                           ASeparator: StringRAL = '=');
+      ASeparator: StringRAL = '=');
     function AsString: StringRAL;
     procedure ClearParams; overload;
     procedure ClearParams(AKind: TRALParamKind); overload;
@@ -81,12 +79,15 @@ type
     procedure DecodeBody(ASource: StringRAL; AContentType: StringRAL); overload;
     procedure DecodeFields(ASource: StringRAL);
     procedure DecodeQuery(ASource: StringRAL);
-    function EncodeBody(var AContentType: StringRAL; var AFreeContent: Boolean): TStream;
+    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
     function NewParam: TRALParam;
-    property Param[idx: IntegerRAL]: TRALParam read GetParam;
-    property ParamName[name: StringRAL]: TRALParam read GetParamName;
-    property ParamNameKind[name: StringRAL; kind: TRALParamKind]: TRALParam read GetParamNameKind;
     function URLEncodedToList(ASource: StringRAL): TStringList;
+
+    property Body: TList read GetBody;
+    property Param[idx: IntegerRAL]: TRALParam read GetParam;
+    property ParamByName[name: StringRAL]: TRALParam read GetParam;
+    property ParamByNameAndKind[name: StringRAL; Kind: TRALParamKind]: TRALParam
+      read GetParam;
   end;
 
 implementation
@@ -107,16 +108,26 @@ begin
   inherited;
 end;
 
-procedure TRALParam.OpenFile(AFileName : StringRAL);
+procedure TRALParam.OpenFile(AFileName: StringRAL);
 begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
   if FileExists(AFileName) then
-    FContent := TFileStream.Create(AFileName,fmOpenRead)
+    FContent := TFileStream.Create(AFileName, fmOpenRead)
   else
     FContent := TMemoryStream.Create;
   FContent.Position := 0;
+end;
+
+function TRALParam.GetAsFile: TFileStream;
+begin
+  if FKind = rpkBODY then
+  try
+    Result := TFileStream(FContent);
+  except
+    Result := nil;
+  end;
 end;
 
 function TRALParam.GetAsStream: TStream;
@@ -135,7 +146,8 @@ begin
     begin
       Result := TStringStream(FContent).DataString;
     end
-    else begin
+    else
+    begin
       SetLength(Result, FContent.Size);
       FContent.Read(Result[PosIniStr], FContent.Size);
     end;
@@ -164,9 +176,9 @@ begin
     FreeAndNil(FContent);
 
   {$IFNDEF FPC}
-    FContent := TStringStream.Create(AValue,TEncoding.UTF8);
+  FContent := TStringStream.Create(AValue, TEncoding.UTF8);
   {$ELSE}
-    FContent := TStringStream.Create(AValue);
+  FContent := TStringStream.Create(AValue);
   {$ENDIF}
   FContent.Position := 0;
 end;
@@ -175,7 +187,7 @@ end;
 
 function TRALParams.AddParam(AName, AContent: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
-  Result := ParamNameKind[AName,AKind];
+  Result := ParamByNameAndKind[AName, AKind];
   if Result = nil then
     Result := NewParam;
 
@@ -185,9 +197,9 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind) : TRALParam;
+function TRALParams.AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind): TRALParam;
 begin
-  Result := ParamNameKind[AName,AKind];
+  Result := ParamByNameAndKind[AName, AKind];
   if Result = nil then
     Result := NewParam;
 
@@ -201,7 +213,7 @@ function TRALParams.AddFile(AParamName, AFileName: StringRAL): TRALParam;
 var
   vMime: TRALMIMEType;
 begin
-  Result := ParamNameKind[AParamName, rpkBODY];
+  Result := ParamByNameAndKind[AParamName, rpkBODY];
   if Result = nil then
     Result := NewParam;
 
@@ -274,7 +286,7 @@ begin
   for vInt := 0 to ASource.Count - 1 do
   begin
     vName := ASource.Names[vInt];
-    vParam := ParamNameKind[vName, AKind];
+    vParam := ParamByNameAndKind[vName, AKind];
     if vParam = nil then
       vParam := NewParam;
     vParam.ParamName := vName;
@@ -311,7 +323,7 @@ begin
   begin
     Result := Result + TRALParam(FParams.Items[I]).AsString;
     if FParams.Count > 0 then
-    Result := Result + ', ';
+      Result := Result + ', ';
   end;
 end;
 
@@ -342,7 +354,8 @@ begin
       FreeAndNil(vStream);
     end;
   end
-  else begin
+  else
+  begin
     vParam := NewParam;
     vParam.ParamName := 'ral_body';
     vParam.AsStream := ASource;
@@ -371,7 +384,8 @@ begin
   begin
     DecodeFields(ASource);
   end
-  else begin
+  else
+  begin
     vParam := NewParam;
     vParam.ParamName := 'ral_body';
     vParam.AsString := ASource;
@@ -380,7 +394,7 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: Boolean): TStream;
+function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
@@ -392,7 +406,7 @@ begin
 
   vInt1 := Count(rpkBODY);
   vInt2 := Count(rpkFIELD);
-  if vInt1+vInt2 = 1 then
+  if vInt1 + vInt2 = 1 then
   begin
     Result := Param[0].AsStream;
     AContentType := Param[0].ContentType;
@@ -400,7 +414,7 @@ begin
   else if (vInt2 > 0) and (vInt1 = 0) then
   begin
     vString := '';
-    for vInt1 := 0 to Pred(Count) do
+    for vInt1 := 0 to pred(Count) do
     begin
       vItem := Param[vInt1];
       if vItem.Kind in [rpkFIELD] then
@@ -421,19 +435,17 @@ begin
     AFreeContent := True;
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
-  else if vInt1+vInt2 > 1 then
+  else if vInt1 + vInt2 > 1 then
   begin
     vMultPart := TRALMultipartEncoder.Create;
     try
-      for vInt1 := 0 to Pred(Count) do
+      for vInt1 := 0 to pred(Count) do
       begin
         vItem := Param[vInt1];
         if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
-          vMultPart.AddStream(Param[vInt1].ParamName,
-                              Param[vInt1].AsStream,
-                              Param[vInt1].FileName,
-                              Param[vInt1].ContentType);
+          vMultPart.AddStream(Param[vInt1].ParamName, Param[vInt1].AsStream,
+                              Param[vInt1].FileName, Param[vInt1].ContentType);
         end;
       end;
       Result := vMultPart.AsStream;
@@ -491,7 +503,7 @@ var
   vParam: TRALParam;
 begin
   Result := 0;
-  for vInt := 0 to Pred(FParams.Count) do
+  for vInt := 0 to pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
@@ -505,7 +517,7 @@ var
   vParam: TRALParam;
 begin
   Result := 0;
-  for vInt := 0 to Pred(FParams.Count) do
+  for vInt := 0 to pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind in AKinds then
@@ -527,7 +539,7 @@ begin
   inherited;
 end;
 
-function TRALParams.GetParamNameKind(name: StringRAL; kind: TRALParamKind): TRALParam;
+function TRALParams.GetParam(name: StringRAL; Kind: TRALParamKind): TRALParam;
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -537,12 +549,22 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if (SameText(vParam.ParamName, name)) and (vParam.Kind = kind) then
+    if (SameText(vParam.ParamName, name)) and (vParam.Kind = Kind) then
     begin
       Result := vParam;
       Break;
     end;
   end;
+end;
+
+function TRALParams.GetBody: TList;
+var
+  I: IntegerRAL;
+begin
+  Result := TList.Create;
+  for I := 0 to pred(FParams.Count) do
+    if TRALParam(FParams.Items[I]).Kind = rpkBODY then
+      Result.Add(TRALParam(FParams.Items[I]));
 end;
 
 function TRALParams.GetParam(idx: IntegerRAL): TRALParam;
@@ -552,7 +574,7 @@ begin
     Result := TRALParam(FParams.Items[idx]);
 end;
 
-function TRALParams.GetParamName(name: StringRAL): TRALParam;
+function TRALParams.GetParam(name: StringRAL): TRALParam;
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -589,18 +611,18 @@ begin
   Result := FNextParam;
 end;
 
-procedure TRALParams.OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData : boolean);
+procedure TRALParams.OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData: boolean);
 var
   vParam: TRALParam;
 begin
   vParam := NewParam;
-  if AFormData.Name = '' then
+  if AFormData.name = '' then
     vParam.ParamName := 'ral_body' + IntToStr(NextParamInt)
   else
-    vParam.ParamName := AFormData.Name;
+    vParam.ParamName := AFormData.name;
 
   vParam.AsStream := AFormData.AsStream;
-  vParam.FileName := AFormData.Filename;
+  vParam.FileName := AFormData.FileName;
 
   if AFormData.ContentType = '' then
     vParam.ContentType := AFormData.ContentType
@@ -616,4 +638,3 @@ begin
 end;
 
 end.
-

@@ -13,6 +13,8 @@ function VarToBytes(v: variant): TBytes;
 function BytesToString(b: TBytes): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
+function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
+function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 
 implementation
 
@@ -71,6 +73,24 @@ begin
   Randomize;
   for vInt := 1 to numOfBytes do
     Result[vInt - 1] := Random(256);
+end;
+
+function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
+var
+  vInt: IntegerRAL;
+begin
+  AMethod := 'am' + UpperCase(AMethod);
+  vInt := GetEnumValue(TypeInfo(TRALMethod), AMethod);
+  if vInt <> -1 then
+    Result := TRALMethod(vInt)
+  else
+    Result := amGET;
+end;
+
+function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
+begin
+  Result := GetEnumName(TypeInfo(TRALMethod), ord(AMethod));
+  Result := ReplaceStr(Result, 'am', '');
 end;
 
 end.

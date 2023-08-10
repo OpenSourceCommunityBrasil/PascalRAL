@@ -28,6 +28,11 @@ type
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
+  TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE);
+  TRALMethods = set of TRALMethod;
+  TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY);
+  TRALParamKinds = set of TRALParamKind;
+
   TRALComponent = class(TComponent)
   private
     function getVersion: string;
