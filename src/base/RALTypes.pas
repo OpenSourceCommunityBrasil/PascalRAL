@@ -13,7 +13,7 @@ interface
 
 uses
   {$IF DEFINED(FPC)}
-   httpprotocol,
+  httpprotocol,
   {$ELSEIF Defined(DELPHIXE7UP)}
   NetEncoding,
   {$ELSE}
@@ -50,14 +50,14 @@ type
     property Version: string read getVersion;
   end;
 
-function RALHTTPDecode(const AStr: string): string;
+function RALHTTPDecode(const AStr: StringRAL): StringRAL;
 
 const
   PosIniStr = 1;
 
 implementation
 
-function RALHTTPDecode(const AStr: string): string;
+function RALHTTPDecode(const AStr: StringRAL): StringRAL;
 begin
   {$IFDEF DELPHIXE7UP}
   Result := TNetEncoding.URL.Decode(AStr);
