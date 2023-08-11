@@ -164,20 +164,20 @@ end;
 
 procedure TRALParam.SaveToFile(AFileName: StringRAL);
 var
-  vFile : TFileStream;
+  vFile: TFileStream;
 begin
   vFile := TFileStream.Create(AFileName, fmCreate);
   if FContent <> nil then begin
     FContent.Position := 0;
-    vFile.CopyFrom(FContent,FContent.Size);
+    vFile.CopyFrom(FContent, FContent.Size);
   end;
   vFile.Free;
 end;
 
 procedure TRALParam.SaveToFile;
 var
-  vFile, vExt : StringRAL;
-  vMime : TRALMIMEType;
+  vFile, vExt: StringRAL;
+  vMime: TRALMIMEType;
 begin
   vMime := TRALMIMEType.Create;
   try

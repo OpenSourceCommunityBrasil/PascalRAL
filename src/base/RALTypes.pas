@@ -2,9 +2,7 @@
 
 interface
 
-uses
-  Classes,
-  RALConsts;
+{$I ..\base\PascalRAL.inc}
 
 // compatibility types
 {
@@ -12,6 +10,18 @@ uses
   or IDEs that might differ on the charset code or basic type length.
   Expect heavy usage of IFDEFs at this point
 }
+
+uses
+  {$IF DEFINED(FPC)}
+   httpprotocol,
+  {$ELSEIF Defined(DELPHIXE7UP)}
+  NetEncoding,
+  {$ELSE}
+  HttpApp,
+  {$IFEND}
+  Classes,
+  RALConsts;
+
 type
   // numeric types
   IntegerRAL = integer;
@@ -40,10 +50,21 @@ type
     property Version: string read getVersion;
   end;
 
+function RALHTTPDecode(const AStr: string): string;
+
 const
   PosIniStr = 1;
 
 implementation
+
+function RALHTTPDecode(const AStr: string): string;
+begin
+  {$IFDEF DELPHIXE7UP}
+  Result := TNetEncoding.URL.Decode(AStr);
+  {$ELSE}
+  Result := HTTPDecode(AStr);
+  {$ENDIF}
+end;
 
 { TRALComponent }
 

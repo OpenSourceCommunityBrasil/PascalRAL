@@ -163,6 +163,8 @@ begin
   FInternalMIMEList.Delimiter := '=';
   FInternalMIMEList.Duplicates := dupIgnore;
   FInternalMIMEList.Sorted := True;
+  SetDefaultTypes;
+  GetSystemTypes;  
 end;
 
 destructor TRALMIMEType.Destroy;
@@ -176,9 +178,6 @@ function TRALMIMEType.GetMIMEContentExt(aContentType: StringRAL): StringRAL;
 var
   vInt : IntegerRAL;
 begin
-  SetDefaultTypes;
-  GetSystemTypes;
-
   Result := '';
   try
     for vInt := 0 to Pred(FInternalMIMEList.Count) do
@@ -196,8 +195,6 @@ end;
 
 function TRALMIMEType.GetMIMEType(aFileName: StringRAL): StringRAL;
 begin
-  SetDefaultTypes;
-  GetSystemTypes;
   Result := FInternalMIMEList.Values[ExtractFileExt(aFileName)];
 end;
 
