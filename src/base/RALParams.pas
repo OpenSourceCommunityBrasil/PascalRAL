@@ -32,6 +32,8 @@ type
     property AsString: StringRAL read GetAsString write SetAsString;
     property AsFile: TFileStream read GetAsFile;
     procedure OpenFile(AFileName: StringRAL);
+    procedure SaveToFile(AFileName: StringRAL); overload;
+    procedure SaveToFile; overload;
   public
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
@@ -160,6 +162,35 @@ begin
   Result := FContent.Size;
 end;
 
+procedure TRALParam.SaveToFile(AFileName: StringRAL);
+var
+  vFile : TFileStream;
+begin
+  vFile := TFileStream.Create(AFileName, fmCreate);
+  if FContent <> nil then begin
+    FContent.Position := 0;
+    vFile.CopyFrom(FContent,FContent.Size);
+  end;
+  vFile.Free;
+end;
+
+procedure TRALParam.SaveToFile;
+var
+  vFile, vExt : StringRAL;
+  vMime : TRALMIMEType;
+begin
+  vMime := TRALMIMEType.Create;
+  try
+    vExt := vMime.GetMIMEContentExt(FContentType);
+  finally
+    FreeAndNil(vMime);
+  end;
+
+  vFile := IncludeTrailingPathDelimiter(ExtractFileDir(ParamStr(0)));
+  vFile := vFile + FParamName + vExt;
+  SaveToFile(vFile);
+end;
+
 procedure TRALParam.SetAsStream(const AValue: TStream);
 begin
   if FContent <> nil then
@@ -175,11 +206,7 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  {$IFNDEF FPC}
-  FContent := TStringStream.Create(AValue, TEncoding.UTF8);
-  {$ELSE}
   FContent := TStringStream.Create(AValue);
-  {$ENDIF}
   FContent.Position := 0;
 end;
 
@@ -562,7 +589,7 @@ var
   I: IntegerRAL;
 begin
   Result := TList.Create;
-  for I := 0 to pred(FParams.Count) do
+  for I := 0 to Pred(FParams.Count) do
     if TRALParam(FParams.Items[I]).Kind = rpkBODY then
       Result.Add(TRALParam(FParams.Items[I]));
 end;

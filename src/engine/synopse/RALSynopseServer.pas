@@ -3,7 +3,7 @@
 interface
 
 uses
-  Classes, SysUtils, syncobjs,
+  Classes, SysUtils, syncobjs, StrUtils,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
