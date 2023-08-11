@@ -37,11 +37,9 @@ const
   rctAPPLICATIONRDFXML = 'application/rdf+xml';
   rctAPPLICATIONRSSXML = 'application/rss+xml';
   rctAPPLICATIONSOAPXML = 'application/soap+xml';
-  rctAPPLICATIONVNDANDROIDPACKAGEARCHIVE =
-    'application/vnd.android.package-archive';
+  rctAPPLICATIONVNDANDROIDPACKAGEARCHIVE = 'application/vnd.android.package-archive';
   rctAPPLICATIONVNDDART = 'application/vnd.dart';
-  rctAPPLICATIONVNDEMBARCADEROFIREDACJSON =
-    'application/vnd.embarcadero.firedac+json';
+  rctAPPLICATIONVNDEMBARCADEROFIREDACJSON = 'application/vnd.embarcadero.firedac+json';
   rctAPPLICATIONVNDGOOGLEEARTHKMLXML = 'application/vnd.google-earth.kml+xml';
   rctAPPLICATIONVNDGOOGLEEARTHKMZ = 'application/vnd.google-earth.kmz';
   rctAPPLICATIONVNDMOZILLAXULXML = 'application/vnd.mozilla.xul+xml';
@@ -53,8 +51,7 @@ const
     'application/vnd.oasis.opendocument.presentation';
   rctAPPLICATIONVNDOASISOPENDOCUMENTSPREADSHEET =
     'application/vnd.oasis.opendocument.spreadsheet';
-  rctAPPLICATIONVNDOASISOPENDOCUMENTTEXT =
-    'application/vnd.oasis.opendocument.text';
+  rctAPPLICATIONVNDOASISOPENDOCUMENTTEXT = 'application/vnd.oasis.opendocument.text';
   rctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTPRESENTATIONMLPRESENTATION =
     'application/vnd.openxmlformats-officedocument.presentationml.presentation';
   rctAPPLICATIONVNDOPENXMLFORMATSOFFICEDOCUMENTSPREADSHEETMLSHEET =
@@ -150,6 +147,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function GetMIMEType(aFileName: StringRAL): StringRAL;
+    function GetMIMEContentExt(aContentType: StringRAL): StringRAL;
   end;
 
 const
@@ -172,6 +170,16 @@ begin
   if Assigned(FInternalMIMEList) then
     FreeAndNil(FInternalMIMEList);
   inherited;
+end;
+
+function TRALMIMEType.GetMIMEContentExt(aContentType: StringRAL): StringRAL;
+begin
+  Result := '';
+  try
+    Result := FInternalMIMEList.Names[FInternalMIMEList.IndexOf(aContentType)];
+  except
+    Result := '';
+  end;
 end;
 
 function TRALMIMEType.GetMIMEType(aFileName: StringRAL): StringRAL;
@@ -217,8 +225,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
           LReg.GetKeyNames(LKeys);
           LReg.CloseKey;
           for LType in LKeys do
-            if (LType.Trim <> '') and LReg.OpenKeyReadOnly(CTypesKey + LType)
-            then
+            if (LType.Trim <> '') and LReg.OpenKeyReadOnly(CTypesKey + LType) then
             begin
               LExt := LReg.ReadString('Extension').Trim; // do not localize
               if LExt <> '' then
@@ -291,8 +298,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LExts := TStringList.Create;
       try
         try
-          LFile := TFileStream.Create(aFileName, fmOpenRead or
-            fmShareDenyWrite);
+          LFile := TFileStream.Create(aFileName, fmOpenRead or fmShareDenyWrite);
           try
             SetLength(LHeader, Length(CBinary));
             // ignore binary plist
@@ -312,15 +318,14 @@ function TRALMIMEType.GetSystemTypes: boolean;
         LMode := -1;
         for i := 0 to LItems.Count - 1 do
         begin
-          LArr := LItems[i].Split(['<', '>', #9, ' '],
-            TStringSplitOptions.ExcludeEmpty);
+          LArr := LItems[i].Split(['<', '>', #9, ' '], TStringSplitOptions.ExcludeEmpty);
           if Length(LArr) = 3 then
           begin
-            if SameText(LArr[0], 'key') and
-              SameText(LArr[1], 'CFBundleTypeExtensions') then
+            if SameText(LArr[0], 'key') and SameText(LArr[1], 'CFBundleTypeExtensions')
+            then
               LMode := 0
-            else if SameText(LArr[0], 'key') and
-              SameText(LArr[1], 'CFBundleTypeMIMETypes') then
+            else if SameText(LArr[0], 'key') and SameText(LArr[1], 'CFBundleTypeMIMETypes')
+            then
               LMode := 1
             else if SameText(LArr[0], 'key') then
               LMode := 2
@@ -332,8 +337,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
                 LType := LArr[1];
             end
           end
-          else if (Length(LArr) = 1) and SameText(LArr[0], '/dict') and
-            (LMode >= 0) then
+          else if (Length(LArr) = 1) and SameText(LArr[0], '/dict') and (LMode >= 0) then
           begin
             if LType.Trim <> '' then
               for j := 0 to LExts.Count - 1 do
