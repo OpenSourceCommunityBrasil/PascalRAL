@@ -1,10 +1,13 @@
 {
-  Unit: RALJSON.lkJSON
+  RALJSON_lkJSON
   SouceForce: https://sourceforge.net/projects/lkjson
   Version: 1.07 de 06/11/2009
+
+  Unit criada para ser utilizar RAL com Delphi antigos, especificadamente
+  Delphi 7 a Delphi 2009
 }
 
-unit RALJSON.lkJSON;
+unit RALJSON_lkJSON;
 
 interface
 

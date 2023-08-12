@@ -1,4 +1,9 @@
-unit RALJSON.FPC;
+{
+  RALJSON_FPC
+  Unit criada para ser utilizar RAL com Lazarus
+}
+
+unit RALJSON_FPC;
 
 {$mode ObjFPC}{$H+}
 

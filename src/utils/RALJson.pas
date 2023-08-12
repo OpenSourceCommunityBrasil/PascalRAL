@@ -4,15 +4,23 @@ interface
 
 {$I ../base/PascalRAL.inc}
 
+{$DEFINE RALlkJSON}
+{.$DEFINE RALuJSON}
+
 uses
   {$IFNDEF FPC}
     {$IFDEF DELPHI2010UP}
-       RALJSON.Delphi,
+       RALJSON_Delphi,
     {$ELSE}
-       RALJSON.lkJSON,
+       {$IFDEF RALlkJSON}
+         RALJSON_lkJSON,
+       {$ENDIF}
+       {$IFDEF RALlkJSON}
+         RALJSON_uJSON,
+       {$ENDIF}
     {$ENDIF}
   {$ELSE}
-    RALJSON.FPC,
+    RALJSON_FPC,
   {$ENDIF}
   Classes, SysUtils;
 

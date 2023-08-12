@@ -1,11 +1,17 @@
-unit RALJSON.Delphi;
+{
+  RALJSON_Delphi
+
+  Unit criada para ser utilizar RAL com Delphi, especificadamente
+  Delphi 2010 ou superior
+}
+
+unit RALJSON_Delphi;
 
 interface
 
 {$I ../base/PascalRAL.inc}
 
 // DBXJSON
-// 2009  - CompVersion 20 - NOT Tested
 // 2010  - CompVersion 21 - Tested OK
 // XE    - CompVersion 22 - Tested OK
 // XE2   - CompVersion 23 - Tested OK
@@ -17,6 +23,7 @@ interface
 // XE6   - CompVersion 27 - Tested OK
 // XE7   - CompVersion 28 - Tested OK
 // XE8   - CompVersion 29 - Tested OK
+// XE10  - 29 > - Em Testes
 
 uses
   {$IFDEF DELPHIXE6UP}
