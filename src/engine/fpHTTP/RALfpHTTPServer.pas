@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, Forms,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
-  RALParams, RALMultipartCoder;
+  RALParams, RALMultipartCoder, RALTools;
 
 type
 
@@ -192,7 +192,7 @@ begin
         Params.DecodeQuery(vParamQuery);
       end;
 
-      Method := FParent.HTTPMethodToRALMethod(ARequest.Method);
+      Method := HTTPMethodToRALMethod(ARequest.Method);
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;

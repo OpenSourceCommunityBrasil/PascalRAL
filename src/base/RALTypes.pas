@@ -42,6 +42,7 @@ type
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY);
   TRALParamKinds = set of TRALParamKind;
+  TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
 
   TRALComponent = class(TComponent)
   private

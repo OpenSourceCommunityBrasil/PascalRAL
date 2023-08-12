@@ -146,7 +146,7 @@ var
   vValue : TRALJSONValue;
   vPairName, vAux1 : StringRAL;
 begin
-  vJson := TRALJSONObject(ParseJson(AValue));
+  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
   try
     if vJson <> nil then
     begin
@@ -154,15 +154,15 @@ begin
       vInt := 0;
       while vInt < vJson.Count do
       begin
-        vName := vJson.Names[vInt];
+        vName := vJson.GetName(vInt);
         vValue := vJson.Get(vInt);
         if SameText(vName, 'typ') then
         begin
-          FHeaderType := vValue.ToJSON;
+          FHeaderType := vValue.AsValue;
         end
         else if SameText(vName, 'alg') then
         begin
-          vAux1 := vValue.ToJSON;
+          vAux1 := vValue.AsValue;
 
           FAlgorithm := tjaHSHA256;
           if SameText(vAux1, 'hs256') then
@@ -172,7 +172,7 @@ begin
         end
         else if SameText(vName, 'kid') then
         begin
-          FKeyID := vValue.ToJSON;
+          FKeyID := vValue.AsValue;
         end;
 
         vInt := vInt + 1;
@@ -264,7 +264,7 @@ begin
       vInt := vInt + 1;
     end;
 
-    Result := vJson.ToJSON;
+    Result := vJson.ToJson;
   finally
     FreeAndNil(vJson);
   end;
@@ -291,30 +291,30 @@ var
   vValue : TRALJSONValue;
 begin
   Initialize;
-  vJson := TRALJSONObject(ParseJson(AValue));
+  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
   try
     if vJson <> nil then
     begin
       vInt := 0;
       while vInt < vJson.Count do
       begin
-        vName := vJson.Names[vInt];
+        vName := vJson.GetName(vInt);
         vValue := vJson.Get(vInt);
         if SameText(vName, 'aud') then
         begin
-          FAudience := vValue.ToJSON;
+          FAudience := vValue.AsValue;
         end
         else if SameText(vName, 'exp') then
         begin
-          if vValue is TRALJSONNumber then
-            FExpiration := UnixToDateTime(vValue.AsInt64)
+          if vValue.JsonType = rjtNumber then
+            FExpiration := UnixToDateTime(vValue.AsInteger)
           else
             FExpiration := StrToDateTimeDef(vValue.AsString, 0);
         end
         else if SameText(vName, 'iat') then
         begin
-          if vValue is TRALJSONNumber then
-            FIssuedAt := UnixToDateTime(vValue.AsInt64)
+          if vValue.JsonType = rjtNumber then
+            FIssuedAt := UnixToDateTime(vValue.AsInteger)
           else
             FIssuedAt := StrToDateTimeDef(vValue.AsString, 0);
         end
@@ -328,8 +328,8 @@ begin
         end
         else if SameText(vName, 'nbf') then
         begin
-          if vValue is TRALJSONNumber then
-            FNotBefore := UnixToDateTime(vValue.AsInt64)
+          if vValue.JsonType = rjtNumber then
+            FNotBefore := UnixToDateTime(vValue.AsInteger)
           else
             FNotBefore := StrToDateTimeDef(vValue.AsString, 0);
         end

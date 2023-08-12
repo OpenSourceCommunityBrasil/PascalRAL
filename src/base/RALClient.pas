@@ -180,7 +180,7 @@ begin
       Result := vResult = 200;
       if Result then
       begin
-        vJson := TRALJSONObject(ParseJson(ResponseText));
+        vJson := TRALJSONObject(TRALJSON.ParseJSON(ResponseText));
         try
           if vJson <> nil then
           begin
