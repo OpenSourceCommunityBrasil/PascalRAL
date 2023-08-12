@@ -31,11 +31,11 @@ var
 begin
   {$IFDEF DELPHIXE3UP}
   if Assigned(SplashScreenServices) then
-    SplashScreenServices.AddPluginBitmap('Pascal REST API Lite (RAL) Components - ' +
-      RALVersion, loadbitmap(HInstance, 'PascalRAL'));
+    SplashScreenServices.AddPluginBitmap('Pascal REST API Lite (RAL) Components',
+      loadbitmap(HInstance, 'PascalRAL'), false, 'OpenSource - v' + RALVersion);
   if (BorlandIDEServices <> nil) and supports(BorlandIDEServices, IOTAAboutBoxServices,
     AboutSvcs) then
-    AboutSvcs.AddPluginInfo('PascalRAL', 'PascalRAL' + sLineBreak +
+    AboutSvcs.AddPluginInfo('PascalRAL v' + RALVersion, 'PascalRAL' + sLineBreak +
       'OpenSource REST API Components' + sLineBreak + sLineBreak +
       'https://github.com/OpenSourceCommunityBrasil/PascalRAL',
       loadbitmap(HInstance, 'PascalRAL'), False, 'OpenSource');
