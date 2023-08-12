@@ -52,15 +52,18 @@ procedure TRotas.FileRoute(Sender: TObject; ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
   I: Integer;
-  filestr: TFileStream;
+  vBody: TList;
+  test: string;
 begin
+  test := ARequest.Params.ParamByName['filename'].AsString;
+  test := RALHTTPDecode(test);
   case ARequest.Method of
     amPOST, amPUT, amPATCH:
-      for I := 0 to pred(ARequest.Params.Body.Count) do
       begin
-        filestr := TFileStream.Create(ExtractFileDir(ParamStr(0)) +
-          TRALParam(ARequest.Params.Body.Items[I]).AsFile.FileName, fmOpenWrite);
-        filestr.Free;
+        vBody := ARequest.Params.Body;
+        for I := 0 to pred(vBody.Count) do
+          TRALParam(vBody.Items[I]).SaveToFile(test);
+        vBody.Free;
       end;
   end;
 end;

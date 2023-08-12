@@ -29,8 +29,9 @@ package PascalRALDsgn;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL,
-  rtl;
+  designide,
+  rtl,
+  PascalRAL;
 
 contains
   RALRegister in '..\..\src\base\RALRegister.pas';

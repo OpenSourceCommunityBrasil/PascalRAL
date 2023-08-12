@@ -1,3 +1,4 @@
+PascalRAL BITMAP "..\components\base\PascalRAL.bmp"
 TRALClientBasicAuth BITMAP "..\components\base\TRALClientBasicAuth.bmp"
 TRALClientJWTAuth BITMAP "..\components\base\TRALClientJWTAuth.bmp"
 TRALClientOAuth BITMAP "..\components\base\TRALClientOAuth.bmp"

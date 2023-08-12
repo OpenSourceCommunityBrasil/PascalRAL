@@ -40,7 +40,10 @@ begin
 end;
 
 procedure TRoutes.Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+var
+   test: string;
 begin
+  test := '';
   case ARequest.Method of
     amGET, amDELETE:
       AResponse.Answer(200, 'teste de texto com acentuação', rctTEXTPLAIN);

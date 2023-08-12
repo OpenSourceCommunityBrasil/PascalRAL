@@ -175,8 +175,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="PascalRAL.dcr"/>
-        <DCCReference Include="PascalRAL.dcp"/>
+        <DCCReference Include="designide.dcp"/>
         <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="PascalRAL.dcp"/>
         <DCCReference Include="..\..\src\base\RALRegister.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

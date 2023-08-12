@@ -103,15 +103,8 @@ type
     CheckBox12: TCheckBox;
     CheckBox13: TCheckBox;
     CheckBox14: TCheckBox;
-    CheckBox15: TCheckBox;
-    CheckBox16: TCheckBox;
-    CheckBox17: TCheckBox;
-    CheckBox18: TCheckBox;
-    CheckBox19: TCheckBox;
     CheckBox20: TCheckBox;
     CheckBox21: TCheckBox;
-    CheckBox22: TCheckBox;
-    CheckBox23: TCheckBox;
     FlowLayout7: TFlowLayout;
     Button1: TButton;
     cbRALNetHttp: TCheckBox;

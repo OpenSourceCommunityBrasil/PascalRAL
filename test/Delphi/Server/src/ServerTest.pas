@@ -21,29 +21,10 @@ uses
 
 type
   TForm1 = class(TForm)
-    GroupBox1: TGroupBox;
-    GroupBox2: TGroupBox;
-    GroupBox3: TGroupBox;
-    FlowLayout1: TFlowLayout;
-    FlowLayout2: TFlowLayout;
-    FlowLayout3: TFlowLayout;
-    spPort: TEdit;
-    Label1: TLabel;
-    spUseSSL: TCheckBox;
-    saAuthType: TComboBox;
-    saPassword: TEdit;
-    saToken: TEdit;
-    saUser: TEdit;
     bStart: TButton;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
-    Label5: TLabel;
     Layout2: TLayout;
     Layout3: TLayout;
     Layout4: TLayout;
-    rbIndy: TRadioButton;
-    rbSynopse: TRadioButton;
     TabControl1: TTabControl;
     TabItem1: TTabItem;
     TabItem2: TTabItem;
@@ -70,6 +51,37 @@ type
     sgcSkipAuth: TStringColumn;
     cbRoute: TComboBox;
     Label6: TLabel;
+    TabControl2: TTabControl;
+    TabItem3: TTabItem;
+    TabItem4: TTabItem;
+    TabItem5: TTabItem;
+    GroupBox3: TGroupBox;
+    FlowLayout3: TFlowLayout;
+    saAuthType: TComboBox;
+    Label5: TLabel;
+    saUser: TEdit;
+    Label2: TLabel;
+    saPassword: TEdit;
+    Label3: TLabel;
+    saToken: TEdit;
+    Label4: TLabel;
+    GroupBox6: TGroupBox;
+    FlowLayout5: TFlowLayout;
+    esslCertFile: TEdit;
+    Label9: TLabel;
+    esslCertKeyFile: TEdit;
+    Label10: TLabel;
+    Edit3: TEdit;
+    Label11: TLabel;
+    cbUseSSL: TCheckBox;
+    GroupBox1: TGroupBox;
+    FlowLayout1: TFlowLayout;
+    spPort: TEdit;
+    Label1: TLabel;
+    GroupBox2: TGroupBox;
+    FlowLayout2: TFlowLayout;
+    rbIndy: TRadioButton;
+    rbSynopse: TRadioButton;
     procedure bStartClick(Sender: TObject);
     procedure bAddClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -77,7 +89,7 @@ type
     { Private declarations }
     FServer: TRALServer;
     procedure ConfigureServer;
-    procedure ClearControls(AControlName: array of string);
+    procedure ClearControls(AControlName: array of TComponent);
     function GetSelectedMethods: string;
     procedure LogRequest(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
     procedure LogResponse(Sender: TObject; ARequest: TRALRequest;
@@ -103,6 +115,8 @@ begin
     Cells[1, pred(RowCount)] := eRouteDescription.Text;
     Cells[2, pred(RowCount)] := GetSelectedMethods;
   end;
+  ClearControls([eRouteDescription, cbGET, cbPOST, cbPUT, cbPATCH, cbDELETE, cbALL,
+    cbRoute]);
 end;
 
 procedure TForm1.bStartClick(Sender: TObject);
@@ -121,7 +135,7 @@ begin
     end;
 end;
 
-procedure TForm1.ClearControls(AControlName: array of string);
+procedure TForm1.ClearControls(AControlName: array of TComponent);
 var
   I: integer;
   compname: string;
@@ -129,7 +143,7 @@ var
 begin
   for I := 0 to pred(Length(AControlName)) do
   begin
-    comp := FindComponent(AControlName[I]);
+    comp := FindComponent(AControlName[I].Name);
     if comp is TEdit then
       TEdit(comp).Text := ''
     else if comp is TCheckBox then
@@ -145,9 +159,17 @@ var
   SkipMethods: TStrings;
 begin
   if rbIndy.IsChecked then
-    FServer := TRALIndyServer.Create(self)
+  begin
+    FServer := TRALIndyServer.Create(self);
+    FServer.SSL.Enabled := cbUseSSL.IsChecked;
+    TRALIndySSL(FServer.SSL).SSLOptions.CertFile := esslCertFile.Text;
+    TRALIndySSL(FServer.SSL).SSLOptions.KeyFile := esslCertKeyFile.Text;
+    TRALIndySSL(FServer.SSL).SSLOptions.Method := sslvTLSv1_2;
+  end
   else if rbSynopse.IsChecked then
+  begin
     FServer := TRALSynopseServer.Create(self);
+  end;
 
   case saAuthType.ItemIndex of
     0:
