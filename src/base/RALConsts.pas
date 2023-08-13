@@ -18,6 +18,13 @@ const
              + char(48 + VERSION_MINOR) + '.'
              + char(48 + VERSION_RELEASE)
              + VERSION_ADDITIVE;
+  // IOTA Constants
+  RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
+  RALPACKAGESHORT          = 'PascalRAL';
+  RALPACKAGESHORTLICENSE   = 'PascalRAL v' + RALVERSION;
+  RALPACKAGESITE           = 'https://github.com/OpenSourceCommunityBrasil/PascalRAL';
+  RALPACKAGELICENSE        = 'OpenSource';
+  RALPACKAGELICENSEVERSION = 'OpenSource - v' + RALVERSION;
 
   // respostas de erro
   RALDefaultPage = '<html><head><title>RALServer - ' + RALVERSION + '</title>'

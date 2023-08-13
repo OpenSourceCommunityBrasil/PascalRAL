@@ -7,8 +7,8 @@ uses
   {$IFDEF FPC}
   LResources,
   {$ENDIF}
-  {$IFDEF DELPHIXE3UP}
-  DesignIntf, ToolsAPI,
+  {$IFDEF DELPHI2005UP}
+  ToolsAPI,
   {$ENDIF}
   {$IFDEF MSWINDOWS}
   Windows,
@@ -24,30 +24,30 @@ implementation
 // ide splash screen and about box
 
 procedure Register;
-{$IFDEF DELPHIXE3UP}
+{$IFDEF DELPHI2005UP}
 var
   AboutSvcs: IOTAAboutBoxServices;
   {$ENDIF}
 begin
-  {$IFDEF DELPHIXE3UP}
+  {$IFDEF DELPHI2005UP}
+  // add project info to IDE's splash screen
   if Assigned(SplashScreenServices) then
-    SplashScreenServices.AddPluginBitmap('Pascal REST API Lite (RAL) Components',
-      loadbitmap(HInstance, 'PascalRAL'), false, 'OpenSource - v' + RALVersion);
+    SplashScreenServices.AddPluginBitmap(RALPACKAGENAME,
+      loadbitmap(HInstance, RALPACKAGESHORT), false, RALPACKAGELICENSEVERSION);
+
+  // add project info to IDE's help panels
   if (BorlandIDEServices <> nil) and supports(BorlandIDEServices, IOTAAboutBoxServices,
     AboutSvcs) then
-    AboutSvcs.AddPluginInfo('PascalRAL v' + RALVersion, 'PascalRAL' + sLineBreak +
-      'OpenSource REST API Components' + sLineBreak + sLineBreak +
-      'https://github.com/OpenSourceCommunityBrasil/PascalRAL',
-      loadbitmap(HInstance, 'PascalRAL'), False, 'OpenSource');
+    AboutSvcs.AddPluginInfo(RALPACKAGESHORTLICENSE, RALPACKAGESHORT + sLineBreak +
+      RALPACKAGENAME + sLineBreak + sLineBreak + RALPACKAGESITE,
+      loadbitmap(HInstance, RALPACKAGESHORT), false, RALPACKAGELICENSE);
   {$ENDIF}
   RegisterComponents('RAL - ServerAuths', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - ClientAuths', [TRALClientBasicAuth, TRALClientJWTAuth]);
 end;
 
 {$IFDEF FPC}
-
 initialization
-
 {$I pascalral.lrs}
 {$ENDIF}
 
