@@ -13,7 +13,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALConsts, RALTools, RALUrlCoder;
+  RALConsts;
 
 type
   // numeric types
@@ -61,6 +61,9 @@ const
   PosIniStr = 1;
 
 implementation
+
+uses
+  RALTools, RALUrlCoder;
 
 { TRALStringList }
 
@@ -134,7 +137,7 @@ begin
       AppendLine(vLine, ANameSeparator);
       vIs13 := True;
       vLine := '';
-    end;
+    end
     else if ASource[vInt] = #10 then
     begin
       if not vIs13 then

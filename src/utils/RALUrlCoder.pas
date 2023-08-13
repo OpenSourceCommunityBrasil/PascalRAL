@@ -1,7 +1,5 @@
 unit RALUrlCoder;
 
-{$mode ObjFPC}{$H+}
-
 interface
 
 uses
@@ -139,7 +137,6 @@ end;
 class function TRALHTTPCoder.EncodeURL(AUrl : StringRAL) : StringRAL;
 var
   vInt, vChr : IntegerRAL;
-  vStr : StringRAL;
 begin
   Result := '';
   vInt := RALLowStr(AUrl);
@@ -166,11 +163,11 @@ begin
       vEsc := True;
       vCode := AHtml[vInt];
     end
-    else if (AHtml[i] = ';') and (vEsc) then begin
+    else if (AHtml[vInt] = ';') and (vEsc) then begin
       vCode := vCode + AHtml[vInt];
       vChr := 0;
       while vChr <= 255 do begin
-        if FArrHTMLEntile[vChr] = vCode then begin
+        if HTMLStrTable[vChr] = vCode then begin
           Result := Result + CharRAL(vChr);
           Break;
         end;
@@ -178,7 +175,7 @@ begin
       end;
 
       if vChr > 255 then
-        Result := Result + vCode
+        Result := Result + vCode;
 
       vCode := '';
       vEsc := False;
@@ -189,7 +186,7 @@ begin
       else
         Result := Result + AHtml[vInt];
     end;
-    i := i + 1;
+    vInt := vInt + 1;
   end;
 
   if vCode <> '' then
@@ -202,10 +199,10 @@ var
   vStr : StringRAL;
 begin
   Result := '';
-  vInt := RALLowStr(AUrl);
-  while vInt <= RALHighStr(AUrl) do
+  vInt := RALLowStr(AHtml);
+  while vInt <= RALHighStr(AHtml) do
   begin
-    vChr := Ord(AUrl[vInt]);
+    vChr := Ord(AHtml[vInt]);
     Result := Result + HTMLStrTable[vChr];
     vInt := vInt + 1;
   end;

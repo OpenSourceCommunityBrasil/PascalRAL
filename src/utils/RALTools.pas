@@ -3,9 +3,6 @@
 interface
 
 uses
-  {$IFNDEF FPC}
-  JSON,
-  {$ENDIF}
   Classes, SysUtils, Variants, StrUtils, TypInfo,
   RALTypes, RALConsts;
 
@@ -93,7 +90,7 @@ end;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
   Result := GetEnumName(TypeInfo(TRALMethod), ord(AMethod));
-  Result := Delete(Result,1,2); // delete 'am'
+  Delete(Result, 1, 2); // delete 'am'
 end;
 
 function RALLowStr(AStr : StringRAL) : integer;
