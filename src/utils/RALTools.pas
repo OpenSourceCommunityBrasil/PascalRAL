@@ -15,6 +15,9 @@ function FixRoute(ARoute: StringRAL): StringRAL;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
+function RALLowStr(AStr : StringRAL) : IntegerRAL;
+function RALHighStr(AStr : StringRAL) : IntegerRAL;
+function StrIsUTF8(AStr : StringRAL) : boolean;
 
 implementation
 
@@ -90,7 +93,67 @@ end;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
   Result := GetEnumName(TypeInfo(TRALMethod), ord(AMethod));
-  Result := ReplaceStr(Result, 'am', '');
+  Result := Delete(Result,1,2); // delete 'am'
+end;
+
+function RALLowStr(AStr : StringRAL) : integer;
+begin
+  {$IFNDEF FPC}
+    {$IFNDEF DELPHIXE2}
+      Result := 1;
+    {$ELSE}
+      Result := Low(AStr);
+    {$ENDIF}
+  {$ELSE}
+    Result := Low(AStr);
+  {$ENDIF}
+end;
+
+function RALHighStr(AStr : StringRAL) : integer;
+begin
+  {$IFNDEF FPC}
+    {$IFNDEF DELPHIXE2}
+      Result := Length(AStr);
+    {$ELSE}
+      Result := High(AStr);
+    {$ENDIF}
+  {$ELSE}
+    Result := High(AStr);
+  {$ENDIF}
+end;
+
+function StrIsUTF8(AStr : StringRAL) : boolean;
+var
+  vStr : TStringStream;
+  ySeq, nSeq, i : integer;
+  pvByte, nwByte : byte;
+begin
+  vStr := TStringStream.Create(AStr);
+  try
+    vStr.Position := 0;
+
+    ySeq := 0;
+    nseq := 0;
+    if vStr.Size > 1 then begin
+      vStr.Read(pvByte,1);
+      for i := 1 to vStr.Size do begin
+        vStr.Read(nwByte,1);
+        if ((nwByte and $c0) = $80) then begin
+          if ((pvByte and $c0) = $c0) then begin
+            Inc(ySeq)
+          end
+          else  begin
+            if ((pvByte and $80) = $0) then
+              Inc(nSeq);
+          end;
+        end;
+        pvByte := nwByte;
+      end;
+    end;
+    Result := ySeq > nSeq;
+  finally
+    FreeAndNil(vStr);
+  end;
 end;
 
 end.
