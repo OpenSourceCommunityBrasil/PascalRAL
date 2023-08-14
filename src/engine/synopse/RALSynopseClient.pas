@@ -104,16 +104,14 @@ begin
         amOPTION :
           Result := FHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
       end;
+      Response.Params.DecodeBody(vResult,FHttp.ContentType);
+      Response.Params.AppendParamsListText(FHttp.Headers,rpkHEADER);
     except
-      on e : Exception do begin
-        vResult.Size := 0;
-        TStringStream(vResult).WriteString(e.Message);
-      end;
+      on e : Exception do
+        ResponseError := e.Message;
     end;
-    vResult.Position := 0;
-
+    FreeAndNil(vResult);
     ResponseCode := Result;
-    SetResponse(vResult);
   finally
     if vFree then
       FreeAndNil(vSource);

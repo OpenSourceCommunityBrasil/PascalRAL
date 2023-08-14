@@ -18,12 +18,11 @@ type
     FConnectTimeout: IntegerRAL;
     FRequestTimeout: IntegerRAL;
     FResponseCode: IntegerRAL;
-    FResponseStream: TStream;
+    FResponseError: StringRAL;
     FUseSSL: boolean;
     FUserAgent: StringRAL;
     FEngine: StringRAL;
 
-    FLastMethod: TRALMethod;
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
     FLastResponse: TRALHTTPHeaderInfo;
@@ -41,29 +40,26 @@ type
     procedure SetUserAgent(const AValue : StringRAL); virtual;
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
-    procedure SetResponse(AStream: TStream);
     procedure SetUseSSL(const AValue: boolean); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function Delete(ARoute: StringRAL): IntegerRAL;
-    function Get(ARoute: StringRAL): IntegerRAL;
-    function Post(ARoute: StringRAL): IntegerRAL;
-    function Put(ARoute: StringRAL): IntegerRAL;
-    function Patch(ARoute: StringRAL): IntegerRAL;
+    function Delete: IntegerRAL;
+    function Get: IntegerRAL;
+    function Post: IntegerRAL;
+    function Put: IntegerRAL;
+    function Patch: IntegerRAL;
 
-    function SetMethod(AMethod : TRALMethod) : TRALClient;
     function SetRoute(ARoute : StringRAL) : TRALClient;
     function AddHeader(AName, AValue : StringRAL) : TRALClient;
     function AddField(AName, AValue : StringRAL) : TRALClient;
     function AddCookie(AName, AValue : StringRAL) : TRALClient;
     function AddFile(AFileName : StringRAL) : TRALClient;
     function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient;
-    function Execute(ARoute : StringRAL) : IntegerRAL;
-    function Execute : IntegerRAL;
 
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
+    property ResponseError: StringRAL read FResponseError write FResponseError;
     property ResponseText: StringRAL read GetResponseText;
 
     property Request : TRALHTTPHeaderInfo read FLastRequest;
@@ -129,19 +125,16 @@ begin
   FBaseURL := '';
   FUseSSL := False;
   FResponseCode := 0;
-  FResponseStream := nil;
+  FResponseError := '';
   FUserAgent := 'RALClient '+RALVERSION;
 
-  FLastMethod := amGET;
   FLastRequest := TRALHTTPHeaderInfo.Create;
   FLastResponse := TRALHTTPHeaderInfo.Create;
 end;
 
-function TRALClient.Delete(ARoute: StringRAL): IntegerRAL;
+function TRALClient.Delete: IntegerRAL;
 begin
-  FLastMethod := amDELETE;
-  FLastRoute := ARoute;
-  Result := Execute;
+  Result := BeforeSendUrl(GetURL(FLastRoute), amDELETE);
 end;
 
 destructor TRALClient.Destroy;
@@ -155,26 +148,14 @@ begin
   inherited;
 end;
 
-function TRALClient.Get(ARoute: StringRAL): IntegerRAL;
+function TRALClient.Get : IntegerRAL;
 begin
-  FLastMethod := amGET;
-  FLastRoute := ARoute;
-  Result := Execute;
+  Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
 end;
 
 function TRALClient.GetResponseText: StringRAL;
 begin
-  Result := '';
-  if (FResponseStream <> nil) and (FResponseStream.Size > 0) then
-  begin
-    if FResponseStream.ClassType = TMemoryStream then begin
-      SetLength(Result,FResponseStream.Size);
-      FResponseStream.Read(Result[PosIniStr], FResponseStream.Size);
-    end
-    else if FResponseStream.ClassType = TStringStream then begin
-      Result := TStringStream(FResponseStream).DataString;
-    end;
-  end;
+//  Result := FLastResponse.res;
 end;
 
 function TRALClient.GetToken: boolean;
@@ -247,17 +228,9 @@ begin
   inherited;
 end;
 
-function TRALClient.Patch(ARoute: StringRAL): IntegerRAL;
+function TRALClient.Patch: IntegerRAL;
 begin
-  FLastMethod := amPATCH;
-  FLastRoute := ARoute;
-  Result := Execute;
-end;
-
-function TRALClient.SetMethod(AMethod : TRALMethod) : TRALClient;
-begin
-  FLastMethod := AMethod;
-  Result := Self;
+  Result := BeforeSendUrl(GetURL(FLastRoute), amPATCH);
 end;
 
 function TRALClient.SetRoute(ARoute : StringRAL) : TRALClient;
@@ -296,29 +269,14 @@ begin
   Result := Self;
 end;
 
-function TRALClient.Execute(ARoute : StringRAL) : IntegerRAL;
+function TRALClient.Post : IntegerRAL;
 begin
-  FLastRoute := ARoute;
-  Result := Execute;
+  Result := BeforeSendUrl(GetURL(FLastRoute), amPOST);
 end;
 
-function TRALClient.Execute : IntegerRAL;
+function TRALClient.Put: IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(FLastRoute), FLastMethod);
-end;
-
-function TRALClient.Post(ARoute: StringRAL): IntegerRAL;
-begin
-  FLastMethod := amPOST;
-  FLastRoute := ARoute;
-  Result := Execute;
-end;
-
-function TRALClient.Put(ARoute: StringRAL): IntegerRAL;
-begin
-  FLastMethod := amPUT;
-  FLastRoute := ARoute;
-  Result := Execute;
+  Result := BeforeSendUrl(GetURL(FLastRoute), amPUT);
 end;
 
 procedure TRALClient.ResetToken;
@@ -374,13 +332,6 @@ end;
 procedure TRALClient.SetRequestTimeout(const AValue: IntegerRAL);
 begin
   FRequestTimeout := AValue;
-end;
-
-procedure TRALClient.SetResponse(AStream: TStream);
-begin
-  if FResponseStream <> nil then
-    FreeAndNil(FResponseStream);
-  FResponseStream := AStream;
 end;
 
 procedure TRALClient.SetUseSSL(const AValue: boolean);

@@ -83,14 +83,15 @@ begin
         amHEAD   : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
         amOPTION : FHttp.Options(AURL, vResult);
       end;
+      vContentType := FHttp.ResponseHeaders.Values['Content-Type'];
+      Response.Params.DecodeBody(vResult,vContentType);
+      Response.Params.AppendParams(FHttp.ResponseHeaders,rpkHEADER);
+      Response.Params.AppendParams(FHttp.Cookies,rpkCOOKIE);
     except
-      vResult.Size := 0;
-      TStringStream(vResult).WriteString(FHttp.ResponseStatusText);
+      ResponseError := FHttp.ResponseStatusText;
     end;
-    vResult.Position := 0;
-
+    FreeAndNil(vResult);
     ResponseCode := FHttp.ResponseStatusCode;
-    SetResponse(vResult);
     Result := FHttp.ResponseStatusCode;
   finally
     if vFree then

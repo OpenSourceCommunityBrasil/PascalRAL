@@ -5,6 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
+  IdCookie,
   RALClient, RALParams, RALTypes;
 
 type
@@ -51,6 +52,7 @@ var
   vSource, vResult : TStream;
   vContentType : StringRAL;
   vFree : boolean;
+  vInt : Integer;
 begin
   inherited;
   FHttp.Request.Clear;
@@ -65,6 +67,7 @@ begin
   vFree := False;
   vSource := AParams.EncodeBody(vContentType, vFree);
   try
+    FHttp.AllowCookies := True;
     FHttp.Request.ContentType := vContentType;
     vResult := TStringStream.Create;
     try
@@ -78,14 +81,16 @@ begin
         amHEAD   : FHttp.Head(AURL);
         amOPTION : FHttp.Options(AURL, vResult);
       end;
+
+      Response.Params.DecodeBody(vResult,FHttp.Response.ContentType);
+      Response.Params.AppendParams(FHttp.Response.RawHeaders,rpkHEADER);
+      Response.Params.AppendParams(FHttp.Response.CustomHeaders,rpkHEADER);
     except
-      vResult.Size := 0;
-      TStringStream(vResult).WriteString(FHttp.ResponseText);
+      ResponseError := FHttp.ResponseText;
     end;
-    vResult.Position := 0;
+    FreeAndNil(vResult);
 
     ResponseCode := FHttp.ResponseCode;
-    SetResponse(vResult);
     Result := FHttp.ResponseCode;
   finally
     if vFree then
