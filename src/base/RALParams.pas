@@ -63,11 +63,14 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function AddParam(AName, AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+    function AddParam(AName, AValue: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     function AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    function AddFile(AParamName, AFileName: StringRAL): TRALParam;
+
     function AddValue(AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     function AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+
+    function AddFile(AParamName, AFileName: StringRAL): TRALParam; overload;
+    function AddFile(AFileName: StringRAL): TRALParam; overload;
 
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
     procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
@@ -225,14 +228,14 @@ end;
 
 { TRALParams }
 
-function TRALParams.AddParam(AName, AContent: StringRAL; AKind: TRALParamKind): TRALParam;
+function TRALParams.AddParam(AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
   Result := ParamByNameAndKind[AName, AKind];
   if Result = nil then
     Result := NewParam;
 
   Result.ParamName := AName;
-  Result.AsString := AContent;
+  Result.AsString := AValue;
   Result.ContentType := rctTEXTPLAIN;
   Result.Kind := AKind;
 end;
@@ -258,6 +261,26 @@ begin
     Result := NewParam;
 
   Result.ParamName := AParamName;
+  Result.FileName := ExtractFileName(AFileName);
+  Result.OpenFile(AFileName);
+  Result.Kind := rpkBODY;
+
+  vMime := TRALMIMEType.Create;
+  try
+    Result.ContentType := vMime.GetMIMEType(AFileName);
+    if Result.ContentType = '' then
+      Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+  finally
+    FreeAndNil(vMime);
+  end;
+end;
+
+function TRALParams.AddFile(AFileName : StringRAL) : TRALParam;
+var
+  vMime: TRALMIMEType;
+begin
+  Result := NewParam;
+  Result.ParamName := NextParamStr;
   Result.FileName := ExtractFileName(AFileName);
   Result.OpenFile(AFileName);
   Result.Kind := rpkBODY;

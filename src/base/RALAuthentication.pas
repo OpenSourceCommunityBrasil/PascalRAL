@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
-  RALRequest, RALParams, RALResponse;
+  RALRequest, RALParams, RALResponse, RALCustomObjects;
 
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; var AResult: boolean) of object;
@@ -374,12 +374,10 @@ var
   vResult: boolean;
 
   procedure Error401;
-  var
-    vParam: TRALParam;
   begin
     AResponse.Answer(401, RAL401Page);
     if FAuthDialog then
-      vParam := AResponse.Params.AddParam('WWW-Authenticate', 'Basic realm="RAL Basic"', rpkHEADER);
+      AResponse.AddHeader('WWW-Authenticate', 'Basic realm="RAL Basic"');
   end;
 begin
   AResponse.StatusCode := 200;

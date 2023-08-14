@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest;
+  RALClient, RALParams, RALTypes;
 
 type
 
@@ -16,16 +16,12 @@ type
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
   protected
-    function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
-
     procedure SetUseSSL(const Value: boolean); override;
     procedure SetConnectTimeout(const AValue: IntegerRAL); override;
     procedure SetRequestTimeout(const AValue: IntegerRAL); override;
     procedure SetUserAgent(const AValue : StringRAL); override;
 
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; override;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -50,44 +46,10 @@ begin
   inherited;
 end;
 
-function TRALIndyClient.EncodeParams(AParams : TRALParams; var AFreeAfter : boolean) : TStream;
+function TRALIndyClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
-  vInt: IntegerRAL;
-begin
-  Result := nil;
-  if AParams = nil then
-    Exit;
-
-  AFreeAfter := False;
-
-  if AParams.Count = 1 then
-  begin
-    Result := AParams.Param[0].AsStream;
-  end
-  else if AParams.Count > 1 then
-  begin
-    Result := TIdMultiPartFormDataStream.Create;
-    for vInt := 0 to AParams.Count - 1 do
-    begin
-      with Result as TIdMultiPartFormDataStream do
-      begin
-        AddFormField(AParams.Param[vInt].ParamName,
-                     AParams.Param[vInt].ContentType,
-                     '', // charset
-                     AParams.Param[vInt].AsStream);
-      end;
-    end;
-    AFreeAfter := True;
-  end;
-  Result.Position := 0;
-end;
-
-function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
-var
-  vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vStr1, vStr2: StringRAL;
+  vContentType : StringRAL;
   vFree : boolean;
 begin
   inherited;
@@ -98,20 +60,12 @@ begin
 
   FHttp.Response.Clear;
 
-  if AHeaders <> nil then
-  begin
-    for vInt := 0 to AHeaders.Count - 1 do
-    begin
-      vStr1 := AHeaders.Names[vInt];
-      vStr2 := AHeaders.ValueFromIndex[vInt];
-
-      FHttp.Request.CustomHeaders.AddValue(vStr1, vStr2);
-    end;
-  end;
+  AParams.AssignParams(FHttp.Request.CustomHeaders,rpkHEADER);
 
   vFree := False;
-  vSource := EncodeParams(ABody, vFree);
+  vSource := AParams.EncodeBody(vContentType, vFree);
   try
+    FHttp.Request.ContentType := vContentType;
     vResult := TStringStream.Create;
     try
       case AMethod of

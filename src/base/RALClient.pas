@@ -3,9 +3,9 @@ unit RALClient;
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
-  RALTypes, RALConsts, RALAuthentication, RALRoutes, RALJson, RALTools,
-  RALParams, RALMIMETypes, RALRequest;
+  Classes, SysUtils,
+  RALTypes, RALConsts, RALAuthentication, RALJson, RALTools,
+  RALParams, RALMIMETypes, RALCustomObjects;
 
 type
 
@@ -20,20 +20,21 @@ type
     FResponseCode: IntegerRAL;
     FResponseStream: TStream;
     FUseSSL: boolean;
-    FUserAgent : StringRAL;
-    FEngine : StringRAL;
+    FUserAgent: StringRAL;
+    FEngine: StringRAL;
+
+    FLastMethod: TRALMethod;
+    FLastRoute : StringRAL;
+    FLastRequest: TRALHTTPHeaderInfo;
+    FLastResponse: TRALHTTPHeaderInfo;
   protected
-    function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; virtual;
+    function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
     function GetToken: boolean;
     function GetResponseText: StringRAL;
     function GetURL(ARoute: StringRAL): StringRAL;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ResetToken;
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; virtual;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL; virtual;
     procedure SetAuthentication(const AValue: TRALAuthClient);
     procedure SetBaseURL(const AValue: StringRAL);
     procedure SetEngine(const AValue: StringRAL);
@@ -46,13 +47,27 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function Delete(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
-    function Get(ARoute: StringRAL; AHeaders: TStringList = nil): IntegerRAL;
-    function Post(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    function Put(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
-    function Patch(ARoute: StringRAL; AHeaders: TStringList = nil; ABody: TRALParams = nil): IntegerRAL;
+    function Delete(ARoute: StringRAL): IntegerRAL;
+    function Get(ARoute: StringRAL): IntegerRAL;
+    function Post(ARoute: StringRAL): IntegerRAL;
+    function Put(ARoute: StringRAL): IntegerRAL;
+    function Patch(ARoute: StringRAL): IntegerRAL;
+
+    function SetMethod(AMethod : TRALMethod) : TRALClient;
+    function SetRoute(ARoute : StringRAL) : TRALClient;
+    function AddHeader(AName, AValue : StringRAL) : TRALClient;
+    function AddField(AName, AValue : StringRAL) : TRALClient;
+    function AddCookie(AName, AValue : StringRAL) : TRALClient;
+    function AddFile(AFileName : StringRAL) : TRALClient;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient;
+    function Execute(ARoute : StringRAL) : IntegerRAL;
+    function Execute : IntegerRAL;
+
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseText: StringRAL read GetResponseText;
+
+    property Request : TRALHTTPHeaderInfo read FLastRequest;
+    property Response : TRALHTTPHeaderInfo read FLastResponse;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
@@ -75,32 +90,35 @@ begin
     FUserAgent := AValue;
 end;
 
-function TRALClient.BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
+function TRALClient.BeforeSendUrl(AURL : StringRAL; AMethod : TRALMethod) : IntegerRAL;
 var
-  vConta : IntegerRAL;
-  vFreeHeader : boolean;
+  vConta, vInt : IntegerRAL;
+  vHeader : TStringList;
 begin
-  vFreeHeader := AHeaders = nil;
-  if vFreeHeader then
-    AHeaders := TStringList.Create;
-
+  vHeader := TStringList.Create;
   try
     vConta := 0;
     repeat
+      vHeader.Clear;
       if FAuthentication <> nil then
       begin
         GetToken;
-        FAuthentication.GetHeader(AHeaders);
+        FAuthentication.GetHeader(vHeader);
       end;
-      Result := SendUrl(AURL,AMethod,AHeaders,ABody);
+
+      for vInt := 0 to Pred(vHeader.Count) do
+        FLastRequest.AddHeader(vHeader.Names[vInt],vHeader.ValueFromIndex[vInt]);
+
+      Result := SendUrl(AURL,AMethod,FLastRequest.Params);
+
       vConta := vConta + 1;
-      if Result = 401 then
-        ResetToken;
+      if (Result = 401) and (vConta = 1) then
+        ResetToken
+      else if (Result = 401) and (vConta > 1) then
+        Break;
     until (Result < 400) or (vConta > 3);
   finally
-    if vFreeHeader then
-      FreeAndNil(AHeaders);
+    FreeAndNil(vHeader);
   end;
 end;
 
@@ -113,11 +131,17 @@ begin
   FResponseCode := 0;
   FResponseStream := nil;
   FUserAgent := 'RALClient '+RALVERSION;
+
+  FLastMethod := amGET;
+  FLastRequest := TRALHTTPHeaderInfo.Create;
+  FLastResponse := TRALHTTPHeaderInfo.Create;
 end;
 
-function TRALClient.Delete(ARoute: StringRAL; AHeaders: TStringList): IntegerRAL;
+function TRALClient.Delete(ARoute: StringRAL): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute), amDELETE, AHeaders, nil);
+  FLastMethod := amDELETE;
+  FLastRoute := ARoute;
+  Result := Execute;
 end;
 
 destructor TRALClient.Destroy;
@@ -125,12 +149,17 @@ begin
   if Assigned(FAuthentication) then
     FreeAndNil(FAuthentication);
 
+  FreeAndNil(FLastRequest);
+  FreeAndNil(FLastResponse);
+
   inherited;
 end;
 
-function TRALClient.Get(ARoute: StringRAL; AHeaders: TStringList): IntegerRAL;
+function TRALClient.Get(ARoute: StringRAL): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute), amGET, AHeaders, nil);
+  FLastMethod := amGET;
+  FLastRoute := ARoute;
+  Result := Execute;
 end;
 
 function TRALClient.GetResponseText: StringRAL;
@@ -169,12 +198,14 @@ begin
           begin
             vParam := vBody.AddValue(Payload.AsJSON);
             vParam.ContentType := rctAPPLICATIONJSON;
-            vResult := SendUrl(GetURL(Route), amPOST, nil, vBody);
+            vResult := SendUrl(GetURL(Route), amPOST, vBody);
           end;
         finally
           vBody.Free;
         end;
         vConta := vConta + 1;
+        if (vResult = 401) and (vConta > 1) then
+          Break;
       until (vResult = 200) or (vConta > 3);
 
       Result := vResult = 200;
@@ -216,22 +247,78 @@ begin
   inherited;
 end;
 
-function TRALClient.Patch(ARoute: StringRAL; AHeaders: TStringList;
-  ABody: TRALParams): IntegerRAL;
+function TRALClient.Patch(ARoute: StringRAL): IntegerRAL;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute), amPATCH, AHeaders, ABody);
+  FLastMethod := amPATCH;
+  FLastRoute := ARoute;
+  Result := Execute;
 end;
 
-function TRALClient.Post(ARoute: StringRAL; AHeaders: TStringList;
-  ABody: TRALParams): IntegerRAL;
+function TRALClient.SetMethod(AMethod : TRALMethod) : TRALClient;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute), amPOST, AHeaders, ABody);
+  FLastMethod := AMethod;
+  Result := Self;
 end;
 
-function TRALClient.Put(ARoute: StringRAL; AHeaders: TStringList;
-  ABody: TRALParams): IntegerRAL;
+function TRALClient.SetRoute(ARoute : StringRAL) : TRALClient;
 begin
-  Result := BeforeSendUrl(GetURL(ARoute), amPUT, AHeaders, ABody);
+  FLastRoute := ARoute;
+  Result := Self;
+end;
+
+function TRALClient.AddHeader(AName, AValue : StringRAL) : TRALClient;
+begin
+  FLastRequest.AddHeader(AName,AValue);
+  Result := Self;
+end;
+
+function TRALClient.AddField(AName, AValue : StringRAL) : TRALClient;
+begin
+  FLastRequest.AddField(AName,AValue);
+  Result := Self;
+end;
+
+function TRALClient.AddCookie(AName, AValue : StringRAL) : TRALClient;
+begin
+  FLastRequest.AddCookie(AName,AValue);
+  Result := Self;
+end;
+
+function TRALClient.AddFile(AFileName : StringRAL) : TRALClient;
+begin
+  FLastRequest.AddFile(AFileName);
+  Result := Self;
+end;
+
+function TRALClient.AddFile(AStream : TStream; AFileName : StringRAL) : TRALClient;
+begin
+  FLastRequest.AddFile(AStream,AFileName);
+  Result := Self;
+end;
+
+function TRALClient.Execute(ARoute : StringRAL) : IntegerRAL;
+begin
+  FLastRoute := ARoute;
+  Result := Execute;
+end;
+
+function TRALClient.Execute : IntegerRAL;
+begin
+  Result := BeforeSendUrl(GetURL(FLastRoute), FLastMethod);
+end;
+
+function TRALClient.Post(ARoute: StringRAL): IntegerRAL;
+begin
+  FLastMethod := amPOST;
+  FLastRoute := ARoute;
+  Result := Execute;
+end;
+
+function TRALClient.Put(ARoute: StringRAL): IntegerRAL;
+begin
+  FLastMethod := amPUT;
+  FLastRoute := ARoute;
+  Result := Execute;
 end;
 
 procedure TRALClient.ResetToken;
@@ -240,10 +327,9 @@ begin
     TRALClientJWTAuth(Authentication).Token := '';
 end;
 
-function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
+function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL;
 begin
-  Result := 0;
+  Result := -1;
 end;
 
 procedure TRALClient.SetAuthentication(const AValue: TRALAuthClient);

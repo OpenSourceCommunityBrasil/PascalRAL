@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, TypInfo,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse, RALThreadSafe;
+  RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects;
 
 type
   TRALServer = class;

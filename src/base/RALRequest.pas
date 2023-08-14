@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALParams, RALBase64;
+  RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects;
 
 type
 
@@ -41,23 +41,27 @@ type
 
   { TRALRequest }
 
-  TRALRequest = class
+  TRALRequest = class(TRALHTTPHeaderInfo)
   private
     FAuthorization: TRALAuthorization;
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
     FMethod: TRALMethod;
-    FParams: TRALParams;
     FQuery: StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
 
+    function AddHeader(AName, AValue : StringRAL) : TRALRequest; override;
+    function AddField(AName, AValue : StringRAL) : TRALRequest; override;
+    function AddCookie(AName, AValue : StringRAL) : TRALRequest; override;
+    function AddFile(AFileName : StringRAL) : TRALRequest; override;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALRequest; override;
+  published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
-    property Params: TRALParams read FParams;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
     property Authorization : TRALAuthorization read FAuthorization write FAuthorization;
@@ -73,15 +77,43 @@ begin
   FAuthorization := TRALAuthorization.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
-  FParams := TRALParams.Create;
 end;
 
 destructor TRALRequest.Destroy;
 begin
   FreeAndNil(FClientInfo);
-  FreeAndNil(FParams);
   FreeAndNil(FAuthorization);
   inherited;
+end;
+
+function TRALRequest.AddHeader(AName, AValue : StringRAL) : TRALRequest;
+begin
+  inherited AddHeader(AName, AValue);
+  Result := Self;
+end;
+
+function TRALRequest.AddField(AName, AValue : StringRAL) : TRALRequest;
+begin
+  inherited AddField(AName, AValue);
+  Result := Self;
+end;
+
+function TRALRequest.AddCookie(AName, AValue : StringRAL) : TRALRequest;
+begin
+  inherited AddCookie(AName, AValue);
+  Result := Self;
+end;
+
+function TRALRequest.AddFile(AFileName : StringRAL) : TRALRequest;
+begin
+  inherited AddFile(AFileName);
+  Result := Self;
+end;
+
+function TRALRequest.AddFile(AStream : TStream; AFileName : StringRAL) : TRALRequest;
+begin
+  inherited AddFile(AStream,AFileName);
+  Result := Self;
 end;
 
 { TRALAuthorization }

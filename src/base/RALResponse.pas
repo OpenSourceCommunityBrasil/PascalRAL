@@ -4,15 +4,14 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes, RALConsts;
+  RALTypes, RALParams, RALMIMETypes, RALCustomObjects;
 
 type
 
   { TRALResponse }
 
-  TRALResponse = class
+  TRALResponse = class(TRALHTTPHeaderInfo)
   private
-    FParams: TRALParams;
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
     FFreeContent: boolean;
@@ -27,7 +26,13 @@ type
     destructor Destroy; override;
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
                      AContentType: StringRAL = rctTEXTHTML);
-    property Params: TRALParams read FParams;
+
+    function AddHeader(AName, AValue : StringRAL) : TRALResponse; override;
+    function AddField(AName, AValue : StringRAL) : TRALResponse; override;
+    function AddCookie(AName, AValue : StringRAL) : TRALResponse; override;
+    function AddFile(AFileName : StringRAL) : TRALResponse; override;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALResponse; override;
+  published
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write SetContentType;
@@ -47,17 +52,45 @@ begin
   ResponseText := AMessage;
 end;
 
+function TRALResponse.AddHeader(AName, AValue : StringRAL) : TRALResponse;
+begin
+  inherited AddHeader(AName, AValue);
+  Result := Self;
+end;
+
+function TRALResponse.AddField(AName, AValue : StringRAL) : TRALResponse;
+begin
+  inherited AddField(AName, AValue);
+  Result := Self;
+end;
+
+function TRALResponse.AddCookie(AName, AValue : StringRAL) : TRALResponse;
+begin
+  inherited AddCookie(AName, AValue);
+  Result := Self;
+end;
+
+function TRALResponse.AddFile(AFileName : StringRAL) : TRALResponse;
+begin
+  inherited AddFile(AFileName);
+  Result := Self;
+end;
+
+function TRALResponse.AddFile(AStream : TStream; AFileName : StringRAL) : TRALResponse;
+begin
+  inherited AddFile(AStream, AFileName);
+  Result := Self;
+end;
+
 constructor TRALResponse.Create;
 begin
   inherited;
   ContentType := rctTEXTHTML;
-  FParams := TRALParams.Create;
   FFreeContent := False;
 end;
 
 destructor TRALResponse.Destroy;
 begin
-  FreeAndNil(FParams);
   inherited;
 end;
 
@@ -101,9 +134,9 @@ procedure TRALResponse.SetResponseStream(const AValue: TStream);
 var
   vParam: TRALParam;
 begin
-  FParams.ClearParams(rpkBODY);
+  Params.ClearParams(rpkBODY);
   if AValue.Size > 0 then begin
-    vParam := FParams.AddValue(AValue);
+    vParam := Params.AddValue(AValue);
     vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;
@@ -113,9 +146,9 @@ procedure TRALResponse.SetResponseText(const AValue: StringRAL);
 var
   vParam: TRALParam;
 begin
-  FParams.ClearParams(rpkBODY);
+  Params.ClearParams(rpkBODY);
   if AValue <> '' then begin
-    vParam := FParams.AddValue(AValue);
+    vParam := Params.AddValue(AValue);
     vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;

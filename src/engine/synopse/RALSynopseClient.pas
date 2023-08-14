@@ -15,16 +15,12 @@ type
   private
     FHttp : THttpClientSocket;
   protected
-    function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
-
     procedure SetConnectTimeout(const AValue: IntegerRAL); override;
     procedure SetRequestTimeout(const AValue: IntegerRAL); override;
     procedure SetUserAgent(const AValue : StringRAL); override;
 
     procedure SetUseSSL(const AValue: boolean); override;
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; override;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -47,25 +43,6 @@ begin
   inherited;
 end;
 
-function TRALSynopseClient.EncodeParams(AParams : TRALParams; var AFreeAfter : boolean) : TStream;
-begin
-  Result := nil;
-  if AParams = nil then
-    Exit;
-
-  AFreeAfter := False;
-
-  if AParams.Count = 1 then
-  begin
-    Result := AParams.Param[0].AsStream;
-  end
-  else if AParams.Count > 1 then
-  begin
-    // multipart todo
-  end;
-  Result.Position := 0;
-end;
-
 procedure TRALSynopseClient.SetConnectTimeout(const AValue : IntegerRAL);
 begin
   inherited;
@@ -84,27 +61,22 @@ begin
   FHttp.UserAgent := AValue;
 end;
 
-function TRALSynopseClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
+function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
-  vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vStr1, vStr2: StringRAL;
+  vContentType: StringRAL;
   vFree : boolean;
   vHeader : StringRAL;
 begin
   inherited;
-  vHeader := '';
-  if AHeaders <> nil then begin
-    for vInt := 0 to AHeaders.Count - 1 do
-      vHeader := vHeader + AHeaders.Names[vInt]+': '+AHeaders.ValueFromIndex[vInt] + #13#10;
-  end;
-
-  vHeader := vHeader + 'User-Agent: '+UserAgent;
+  AParams.AddParam('User-Agent',UserAgent,rpkHEADER);
 
   vFree := False;
-  vSource := EncodeParams(ABody,vFree);
+  vSource := AParams.EncodeBody(vContentType,vFree);
   try
+    AParams.AddParam('Content-Type',vContentType,rpkHEADER);
+    vHeader := AParams.AssignParamsListText(rpkHEADER,': ');
+
     vResult := TStringStream.Create;
     try
       case AMethod of

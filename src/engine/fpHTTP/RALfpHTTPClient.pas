@@ -16,13 +16,10 @@ type
   private
     FHttp : TFPHTTPClient;
   protected
-    function EncodeParams(AParams: TRALParams; var AFreeAfter : boolean): TStream;
     procedure SetConnectTimeout(const Value: IntegerRAL); override;
     procedure SetRequestTimeout(const Value: IntegerRAL); override;
 
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; override;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -45,25 +42,6 @@ begin
   inherited;
 end;
 
-function TRALfpHttpClient.EncodeParams(AParams : TRALParams; var AFreeAfter : boolean) : TStream;
-begin
-  Result := nil;
-  if AParams = nil then
-    Exit;
-
-  AFreeAfter := False;
-
-  if AParams.Count = 1 then
-  begin
-    Result := AParams.Param[0].AsStream;
-  end
-  else if AParams.Count > 1 then
-  begin
-    // multipart todo
-  end;
-  Result.Position := 0;
-end;
-
 procedure TRALfpHttpClient.SetConnectTimeout(const Value: IntegerRAL);
 begin
   inherited;
@@ -76,32 +54,22 @@ begin
   FHttp.IOTimeout := Value;
 end;
 
-function TRALfpHttpClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
+function TRALfpHttpClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
   vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vStr1, vStr2: StringRAL;
+  vContentType : StringRAL;
   vFree : boolean;
 begin
   inherited;
 
-  if AHeaders <> nil then
-  begin
-    for vInt := 0 to AHeaders.Count - 1 do
-    begin
-      vStr1 := AHeaders.Names[vInt];
-      vStr2 := AHeaders.ValueFromIndex[vInt];
-
-      FHttp.RequestHeaders.AddPair(vStr1, vStr2);
-    end;
-  end;
-
+  AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
+  AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
   FHttp.RequestHeaders.AddPair('User-Agent',UserAgent);
 
-  vFree := False;
-  vSource := EncodeParams(ABody,vFree);
+  vSource := AParams.EncodeBody(vContentType,vFree);
   try
+    FHttp.RequestHeaders.AddPair('Content-Type',vContentType);
     FHttp.RequestBody := vSource;
     vResult := TStringStream.Create;
     try
