@@ -38,7 +38,7 @@ type
 
     function IPv6IsImplemented: boolean; override;
 
-    procedure DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
+    procedure DecodeAuth(AResult: TRALRequest);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
   public
     constructor Create(AOwner: TComponent); override;
@@ -114,10 +114,11 @@ begin
   Result := True;
 end;
 
-procedure TRALSynopseServer.DecodeAuth(AHeaders: TStringList; AResult: TRALRequest);
+procedure TRALSynopseServer.DecodeAuth(AResult: TRALRequest);
 var
   vStr, vAux: StringRAL;
   vInt: IntegerRAL;
+  vParam : TRALParam;
 begin
   if Authentication = nil then
     Exit;
@@ -125,7 +126,8 @@ begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
-  vStr := AHeaders.Values['Authorization'];
+  vParam := AResult.Params.ParamByNameAndKind['Authorization',rpkHEADER];
+  vStr := vParam.AsString;
   if vStr <> '' then begin
     vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
@@ -163,29 +165,12 @@ begin
       ContentSize := Length(AContext.InContent);
 
       Query := AContext.Url;
-      vInt := Pos('?', Query);
-      if vInt > 0 then begin
-        vParamQuery := Copy(Query, vInt + 1, Length(Query));
-        Query := Copy(Query, 1, vInt - 1);
-
-        Params.DecodeQuery(vParamQuery);
-      end;
+      Params.AppendParamsUrl(AContext.Url,rpkQUERY);
 
       Method := HTTPMethodToRALMethod(AContext.Method);
 
-      AuxList := TStringList.Create;
-      try
-        AuxList.Delimiter := '=';
-        AuxList.Text := ReplaceStr(UTF8ToString(AContext.InHeaders), ': ', '=');
-
-        for vInt := 0 to AuxList.Count - 1 do
-          AuxList.Strings[vInt] := TrimLeft(AuxList.Strings[vInt]);
-
-        DecodeAuth(TStringList(AuxList), vRequest);
-        Params.AppendParams(AuxList, rpkHEADER);
-      finally
-        FreeAndNil(AuxList);
-      end;
+      Params.AppendParamsListText(AContext.InHeaders,rpkHEADER);
+      DecodeAuth(vRequest);
 
       Params.DecodeBody(AContext.InContent, AContext.InContentType);
 
@@ -196,19 +181,16 @@ begin
     vResponse := ProcessCommands(vRequest);
 
     try
-      AuxList := TStringList.Create;
-      try
-        vResponse.Params.AssignParams(TStringList(AuxList), rpkHEADER, ': ');
-        AuxList.Add('Connection: close');
-        AContext.OutCustomHeaders := AuxList.Text;
-      finally
-        FreeAndNil(AuxList);
+      with vResponse do
+      begin
+        Params.AddParam('Connection','close',rpkHEADER);
+        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER,': ');
+
+        AContext.OutContent := ResponseText;
+        AContext.OutContentType := ContentType;
+
+        Result := StatusCode;
       end;
-
-      AContext.OutContent := vResponse.ResponseText;
-      AContext.OutContentType := vResponse.ContentType;
-
-      Result := vResponse.StatusCode;
     finally
       FreeAndNil(vResponse);
     end;

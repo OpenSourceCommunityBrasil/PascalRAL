@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALMIMETypes, RALMultipartCoder;
+  RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder;
 
 type
 
@@ -55,9 +55,10 @@ type
     function GetParam(name: StringRAL; Kind: TRALParamKind): TRALParam; overload;
     function NextParamInt: IntegerRAL;
     function NextParamStr: StringRAL;
+    function FindNameSeparator(ASource : StringRAL) : StringRAL;
+    procedure AppendParamLine(ALine, ANameSeparator : StringRAL; AKind: TRALParamKind);
 
-    procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
-      var AFreeData: boolean);
+    procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData: boolean);
   public
     constructor Create;
     destructor Destroy; override;
@@ -67,29 +68,41 @@ type
     function AddFile(AParamName, AFileName: StringRAL): TRALParam;
     function AddValue(AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     function AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
     procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
-    procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
-      ASeparator: StringRAL = '=');
-    function AsString: StringRAL;
+    procedure AppendParamsListText(ASource: StringRAL; AKind: TRALParamKind; ANameSeparator : StringRAL = '');
+    procedure AppendParamsText(AText: StringRAL; AKind: TRALParamKind; ANameSeparator : StringRAL = '='; ALineSeparator : StringRAL = '&');
+    procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
+
+    procedure AssignParams(ADest: TStringList; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;
+    procedure AssignParams(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;
+    function AssignParamsListText(AKind: TRALParamKind; ANameSeparator : StringRAL = '=') : StringRAL;
+    function AssignParamsText(AKind: TRALParamKind; ANameSeparator : StringRAL = '='; ALineSeparator : StringRAL = '&') : StringRAL;
+    function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
+
     procedure ClearParams; overload;
     procedure ClearParams(AKind: TRALParamKind); overload;
+
     function Count: IntegerRAL; overload;
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
+
     procedure DecodeBody(ASource: TStream; AContentType: StringRAL); overload;
     procedure DecodeBody(ASource: StringRAL; AContentType: StringRAL); overload;
-    procedure DecodeFields(ASource: StringRAL);
-    procedure DecodeQuery(ASource: StringRAL);
+    procedure DecodeFields(ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
+
     function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
+
     function NewParam: TRALParam;
     function URLEncodedToList(ASource: StringRAL): TStringList;
+
+    function AsString: StringRAL;
 
     property Body: TList read GetBody;
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
     property ParamByName[name: StringRAL]: TRALParam read GetParam;
-    property ParamByNameAndKind[name: StringRAL; Kind: TRALParamKind]: TRALParam
-      read GetParam;
+    property ParamByNameAndKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
   end;
 
 implementation
@@ -305,40 +318,137 @@ begin
 end;
 
 procedure TRALParams.AppendParams(ASource: TStringList; AKind: TRALParamKind);
-var
-  vInt: integer;
-  vParam: TRALParam;
-  vName: StringRAL;
 begin
-  for vInt := 0 to ASource.Count - 1 do
-  begin
-    vName := ASource.Names[vInt];
-    vParam := ParamByNameAndKind[vName, AKind];
-    if vParam = nil then
-      vParam := NewParam;
-    vParam.ParamName := vName;
-    vParam.AsString := ASource.Values[ASource.Names[vInt]];
-    vParam.ContentType := rctTEXTPLAIN;
-    vParam.Kind := AKind;
-  end;
+  AppendParams(TStrings(ASource),AKind);
 end;
 
 procedure TRALParams.AppendParams(ASource: TStrings; AKind: TRALParamKind);
+var
+  vInt: integer;
+  vSeparator : StringRAL;
 begin
-  AppendParams(TStringList(ASource), AKind);
+  if ASource.Count > 0 then
+    vSeparator := FindNameSeparator(ASource.Strings[0]);
+
+  for vInt := 0 to Pred(ASource.Count) do
+    AppendParamLine(ASource.Strings[vInt],vSeparator,AKind);
+end;
+
+procedure TRALParams.AppendParamsListText(ASource : StringRAL; AKind : TRALParamKind; ANameSeparator : StringRAL);
+var
+  vInt : IntegerRAL;
+  vLine : StringRAL;
+  vIs13 : boolean;
+  vSeparator : StringRAL;
+begin
+  {$IFNDEF FPC}
+    if StrIsUTF8(ASource) then
+      ASource := UTF8ToString(ASource);
+  {$ENDIF}
+
+  if ASource <> '' then
+    vSeparator := FindNameSeparator(ASource);
+
+  vLine := '';
+  for vInt := RALLowStr(ASource) to RALHighStr(ASource) do
+  begin
+    if ASource[vInt] = #13 then
+    begin
+      AppendParamLine(vLine, ANameSeparator, AKind);
+      vIs13 := True;
+      vLine := '';
+    end
+    else if ASource[vInt] = #10 then
+    begin
+      if not vIs13 then
+        AppendParamLine(vLine, ANameSeparator, AKind);
+      vIs13 := False;
+      vLine := '';
+    end
+    else
+    begin
+      vLine := vLine + ASource[vInt];
+      vIs13 := False;
+    end;
+  end;
+end;
+
+procedure TRALParams.AppendParamsText(AText : StringRAL; AKind : TRALParamKind; ANameSeparator : StringRAL; ALineSeparator : StringRAL);
+var
+  vLine : StringRAL;
+  vInt : IntegerRAL;
+begin
+  vLine := '';
+  vInt := RALLowStr(AText);
+  while vInt <= RALHighStr(AText) do
+  begin
+    if Copy(AText, vInt, Length(ALineSeparator)) = ALineSeparator then
+    begin
+      AppendParamLine(vLine, ANameSeparator, AKind);
+      vLine := '';
+      vInt := vInt + Length(ALineSeparator) - 1;
+    end
+    else
+    begin
+      vLine := vLine + AText[vInt];
+    end;
+    vInt := vInt + 1;
+  end;
+end;
+
+procedure TRALParams.AppendParamsUrl(AUrlQuery : StringRAL; AKind : TRALParamKind);
+var
+  vInt : IntegerRAL;
+begin
+  vInt := Pos('?',AUrlQuery);
+  if vInt > 0 then
+    System.Delete(AUrlQuery,1,vInt);
+
+  AppendParamsText(AUrlQuery,AKind);
 end;
 
 procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind; ASeparator: StringRAL);
+begin
+  AssignParams(TStrings(ADest),AKind,ASeparator);
+end;
+
+procedure TRALParams.AssignParams(ADest : TStrings; AKind : TRALParamKind; ASeparator : StringRAL);
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
-  for vInt := 0 to FParams.Count - 1 do
+  for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
       ADest.Add(vParam.ParamName + ASeparator + vParam.AsString);
   end;
+end;
+
+function TRALParams.AssignParamsListText(AKind : TRALParamKind; ANameSeparator : StringRAL) : StringRAL;
+begin
+  Result := AssignParamsText(AKind,ANameSeparator,#13#10);
+end;
+
+function TRALParams.AssignParamsText(AKind : TRALParamKind; ANameSeparator : StringRAL; ALineSeparator : StringRAL) : StringRAL;
+var
+  vInt : Integer;
+  vParam : TRALParam;
+begin
+  Result := '';
+  for vInt := 0 to Pred(Count) do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if vParam.Kind = AKind then
+      Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString + ALineSeparator;
+  end;
+
+  Result := TrimRight(Result);
+end;
+
+function TRALParams.AssignParamsUrl(AKind : TRALParamKind) : StringRAL;
+begin
+  Result := AssignParamsText(AKind);
 end;
 
 function TRALParams.AsString: StringRAL;
@@ -495,25 +605,13 @@ begin
   Result.Text := ASource;
 end;
 
-procedure TRALParams.DecodeQuery(ASource: StringRAL);
+procedure TRALParams.DecodeFields(ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
 var
   vStringList: TStringList;
 begin
   vStringList := URLEncodedToList(ASource);
   try
-    AppendParams(vStringList, rpkQUERY);
-  finally
-    FreeAndNil(vStringList);
-  end;
-end;
-
-procedure TRALParams.DecodeFields(ASource: StringRAL);
-var
-  vStringList: TStringList;
-begin
-  vStringList := URLEncodedToList(ASource);
-  try
-    AppendParams(vStringList, rpkFIELD);
+    AppendParams(vStringList, AKind);
   finally
     FreeAndNil(vStringList);
   end;
@@ -630,6 +728,46 @@ function TRALParams.NextParamStr: StringRAL;
 begin
   FNextParam := FNextParam + 1;
   Result := 'ral_param' + IntToStr(FNextParam);
+end;
+
+function TRALParams.FindNameSeparator(ASource : StringRAL) : StringRAL;
+var
+  vPos, vMin : IntegerRAL;
+begin
+  vMin := Length(ASource);
+  vPos := Pos('=', Result);
+  if (vPos > 0) and (vPos < vMin) then
+    Result := '=';
+
+  vPos := Pos(': ', Result);
+  if (vPos > 0) and (vPos < vMin) then
+    Result := ': ';
+end;
+
+procedure TRALParams.AppendParamLine(ALine, ANameSeparator : StringRAL; AKind : TRALParamKind);
+var
+  vPos: SizeInt;
+  vName, vValue: StringRAL;
+  vParam: TRALParam;
+begin
+  if ALine = '' then
+    Exit;
+
+  vPos := Pos(ANameSeparator, ALine);
+
+  vName := Copy(ALine, RALLowStr(ALine), vPos-1);
+  vName := TRALHTTPCoder.DecodeURL(vName);
+
+  vValue := Copy(ALine, vPos+Length(ANameSeparator), Length(ALine));
+  vValue := TRALHTTPCoder.DecodeURL(vValue);
+
+  vParam := ParamByNameAndKind[vName, AKind];
+  if vParam = nil then
+    vParam := NewParam;
+  vParam.ParamName := vName;
+  vParam.AsString := vValue;
+  vParam.ContentType := rctTEXTPLAIN;
+  vParam.Kind := AKind;
 end;
 
 function TRALParams.NextParamInt: IntegerRAL;

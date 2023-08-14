@@ -166,10 +166,8 @@ procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vParam: TRALParam;
   vInt: integer;
   vStr1, vStr2: StringRAL;
-  vParamQuery: StringRAL;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -183,14 +181,7 @@ begin
       ClientInfo.UserAgent := ARequest.UserAgent;
 
       Query := ARequest.URI;
-      vInt := Pos('?', Query);
-      if vInt > 0 then
-      begin
-        vParamQuery := Copy(Query, vInt + 1, Length(Query));
-        Query := Copy(Query, 1, vInt - 1);
-
-        Params.DecodeQuery(vParamQuery);
-      end;
+      Params.AppendParamsUrl(ARequest.URI,rpkQUERY);
 
       Method := HTTPMethodToRALMethod(ARequest.Method);
 
@@ -198,7 +189,7 @@ begin
       ContentSize := ARequest.ContentLength;
 
       DecodeAuth(ARequest, vRequest);
-      Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
+      Params.AppendParams(ARequest.CustomHeaders,rpkHEADER);
 
       // fields tambem
       vInt := 0;
@@ -207,35 +198,38 @@ begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        vParam := Params.AddParam(vStr1, vStr2, rpkFIELD);
+        Params.AddParam(vStr1,vStr2,rpkFIELD);
 
         vInt := vInt + 1;
       end;
 
-      Params.AppendParams(ARequest.QueryFields, rpkQUERY);
+      Params.AppendParams(ARequest.QueryFields,rpkQUERY);
+      Params.AppendParams(ARequest.CookieFields,rpkCOOKIE);
+
       Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
       ARequest.Content := '';
       ARequest.QueryFields.Clear;
       ARequest.CustomHeaders.Clear;
+      ARequest.CookieFields.Clear;
       ARequest.Files.Clear;
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);
-
     try
-      with AResponse do
+      with vResponse do
       begin
-        Code := vResponse.StatusCode;
+        AResponse.Code := StatusCode;
 
-        vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
+        Params.AssignParams(AResponse.CustomHeaders,rpkHEADER);
+        Params.AssignParams(AResponse.CookieFields,rpkCOOKIE);
 
-        ContentStream := vResponse.ResponseStream;
+        AResponse.ContentStream := ResponseStream;
 
-        FreeContentStream := vResponse.FreeContent;
-        ContentType := vResponse.ContentType;
+        AResponse.FreeContentStream := vResponse.FreeContent;
+        AResponse.ContentType := ContentType;
 
-        SendContent;
+        AResponse.SendContent;
       end;
     finally
       FreeAndNil(vResponse);

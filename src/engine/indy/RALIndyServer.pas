@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdGlobal,
+  IdGlobalProtocols, IdGlobal, IdCookie,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools;
 
@@ -87,7 +87,9 @@ procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vStr1 : StringRAL;
+  vInt : IntegerRAL;
+  vIdCookie : TIdCookie;
+  vCookies : TStringList;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -114,16 +116,15 @@ begin
 
       Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
       Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
+      Params.AppendParams(ARequestInfo.Params, rpkQUERY);
+      if ARequestInfo.Params.Count = 0 then begin
+        Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
+        Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
+      end;
 
-      if ARequestInfo.Params.Count > 0 then
-        Params.AppendParams(ARequestInfo.Params, rpkQUERY)
-      else
-      begin
-        vStr1 := ARequestInfo.QueryParams;
-        if vStr1 = '' then
-          vStr1 := ARequestInfo.UnparsedParams;
-
-        Params.DecodeQuery(vStr1);
+      for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do begin
+        vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
+        Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
       end;
 
       Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
@@ -134,24 +135,36 @@ begin
 
       ARequestInfo.RawHeaders.Clear;
       ARequestInfo.CustomHeaders.Clear;
+      ARequestInfo.Cookies.Clear;
       ARequestInfo.Params.Clear;
     end;
 
     vResponse := ProcessCommands(vRequest);
-
     try
-      with AResponseInfo do
+      with vResponse do
       begin
-        ResponseNo := vResponse.StatusCode;
+        AResponseInfo.ResponseNo := StatusCode;
 
-        vResponse.Params.AssignParams(CustomHeaders, rpkHEADER);
+        Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
 
-        ContentStream := vResponse.ResponseStream;
-        ContentType := vResponse.ContentType;
-        FreeContentStream := vResponse.FreeContent;
+        vCookies := TStringList.Create;
+        try
+          Params.AssignParams(vCookies,rpkCOOKIE);
+          for vInt := 0 to Pred(vCookies.Count) do begin
+            vIdCookie := AResponseInfo.Cookies.Add;
+            vIdCookie.CookieName := vCookies.Names[vInt];
+            vIdCookie.Value := vCookies.ValueFromIndex[vInt];
+          end;
+        finally
+          FreeAndNil(vCookies);
+        end;
 
-        CloseConnection := True;
-        WriteContent;
+        AResponseInfo.ContentStream := ResponseStream;
+        AResponseInfo.ContentType := ContentType;
+        AResponseInfo.FreeContentStream := FreeContent;
+
+        AResponseInfo.CloseConnection := True;
+        AResponseInfo.WriteContent;
       end;
     finally
       FreeAndNil(vResponse);

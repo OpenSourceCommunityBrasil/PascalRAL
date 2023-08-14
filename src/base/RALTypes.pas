@@ -33,7 +33,7 @@ type
 
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE);
   TRALMethods = set of TRALMethod;
-  TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY);
+  TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
 
