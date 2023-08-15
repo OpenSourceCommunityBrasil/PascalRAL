@@ -215,14 +215,17 @@ begin
       Result := vRoute;
       Break;
     end
-    else if (ARoute <> '/') and (vPartialRoute = nil) and (SameText(vPartial, ARoute)) then
+    else if (ARoute <> '/') and (SameText(vPartial, ARoute)) then
     begin
-      vPartialRoute := vRoute;
-    end
-    else if (ARoute <> '/') and (vPartialRoute <> nil) and (SameText(vPartial, ARoute)) then
-    begin
-      if Length(vRoute.Route) > Length(vPartialRoute.Route) then
+      if (vPartialRoute <> nil) then
+      begin
+        if Length(vRoute.Route) > Length(vPartialRoute.Route) then
+          vPartialRoute := vRoute;
+      end
+      else
+      begin
         vPartialRoute := vRoute;
+      end;
     end;
   end;
 
