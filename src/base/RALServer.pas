@@ -92,39 +92,42 @@ type
     FOnResponse: TRALOnReply;
     FOnClientTryBlocked: TRALOnClientTryBlocked;
     FOnClientWasBlocked: TRALOnClientWasBlocked;
+    FOptions: TRALServerOptions;
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-
-    procedure SetServerStatus(AValue: TStringList);
-    procedure SetBlackIPList(AValue: TStringList);
-    procedure SetWhiteIPList(AValue: TStringList);
-
-    procedure SetActive(const AValue: boolean); virtual;
-    procedure SetAuthentication(const AValue: TRALAuthServer);
-    procedure SetEngine(const AValue: StringRAL);
-    procedure SetPort(const AValue: IntegerRAL); virtual;
-    procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
-    function ValidateAuth(ARequest: TRALRequest;
-                          var AResponse: TRALResponse): boolean;
-    function CreateRALSSL: TRALSSL; virtual;
-
     procedure AddBlockList(AClientIP: StringRAL);
-    procedure DelBlockList(AClientIP: StringRAL);
-    function ClientIsBlocked(AClientIP: StringRAL) : boolean;
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
-
+    function ClientIsBlocked(AClientIP: StringRAL) : boolean;
+    function CreateRALSSL: TRALSSL; virtual;
+    procedure DelBlockList(AClientIP: StringRAL);
     function IPv6IsImplemented: boolean; virtual;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetActive(const AValue: boolean); virtual;
+    procedure SetAuthentication(const AValue: TRALAuthServer);
+    procedure SetBlackIPList(AValue: TStringList);
+    procedure SetEngine(const AValue: StringRAL);
+    procedure SetOptions(const Value: TRALServerOptions);
+    procedure SetPort(const AValue: IntegerRAL); virtual;
+    procedure SetServerStatus(AValue: TStringList);
+    procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+    procedure SetWhiteIPList(AValue: TStringList);
+    function ValidateAuth(ARequest: TRALRequest;
+                          var AResponse: TRALResponse): boolean;
 
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
+
   published
+    property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     property BlackIPList: TStringList read FBlackIPList write SetBlackIPList;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
+    property Engine: StringRAL read FEngine;
+    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    property Options: TRALServerOptions read FOptions write SetOptions;
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
@@ -132,9 +135,6 @@ type
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
     property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
-    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
-
-    property Active: boolean read FActive write SetActive;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
@@ -500,6 +500,11 @@ end;
 procedure TRALServer.SetEngine(const AValue: StringRAL);
 begin
   FEngine := AValue;
+end;
+
+procedure TRALServer.SetOptions(const Value: TRALServerOptions);
+begin
+  FOptions := Value;
 end;
 
 procedure TRALServer.SetPort(const AValue: IntegerRAL);

@@ -31,11 +31,13 @@ type
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
+  TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTION, amHEAD, amTRACE);
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
-  TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
+  TRALServerOption = (rsoPathTransvBlackList, rsoDDoSProtection, rsoIPBroadcastProtection);
+  TRALServerOptions = set of TRALServerOption;
 
 const
   PosIniStr = 1;
