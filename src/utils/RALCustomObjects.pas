@@ -32,8 +32,7 @@ type
     function AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
-    function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo;
-      overload; virtual;
+    function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
 
     function GetHeader(AName: StringRAL): StringRAL; virtual;
     function GetField(AName: StringRAL): StringRAL; virtual;

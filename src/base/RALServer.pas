@@ -413,6 +413,11 @@ begin
       FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
     Result.Answer(404, RAL404Page);
     Exit;
+  end
+  else if Pos('../',ARequest.Query) > 0 then
+  begin
+    Result.Answer(404, RAL404Page);
+    Exit;
   end;
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
