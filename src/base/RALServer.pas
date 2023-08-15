@@ -417,6 +417,9 @@ begin
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
+  // adicionando params de URI no request
+  ARequest.Params.AppendParamsUri(ARequest.Query,vRoute.Route);
+
   if Assigned(FOnRequest) then
     FOnRequest(vRoute, ARequest, Result);
 

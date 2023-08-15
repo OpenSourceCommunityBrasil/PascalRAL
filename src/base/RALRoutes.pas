@@ -130,9 +130,20 @@ end;
 procedure TRALRoute.SetRouteName(AValue: StringRAL);
 var
   vRouteStr: StringRAL;
+  vPos : IntegerRAL;
 begin
   if FRouteName = AValue then
     Exit;
+
+  if (AValue <> '') and AValue[Length(AValue)] = '/' then
+    Delete(AValue, Length(AValue), 1);
+
+  vPos := LastDelimiter('/',AValue);
+  if (vPos > 0) and (vPos < Length(AValue)) then
+  begin
+    RouteDomain := Copy(AValue, 1, vPos);
+    Delete(AValue, 1, vPos);
+  end;
 
   vRouteStr := FRouteDomain + '/' + AValue;
 
@@ -189,19 +200,34 @@ end;
 function TRALRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
 var
   vInt: IntegerRAL;
-  vRoute: TRALRoute;
+  vRoute, vPartialRoute : TRALRoute;
+  vPartial : StringRAL;
 begin
   Result := nil;
+  vPartialRoute := nil;
   ARoute := FixRoute(ARoute);
   for vInt := 0 to Count - 1 do
   begin
     vRoute := TRALRoute(Items[vInt]);
+    vPartial := FixRoute(Copy(vRoute.Route, 1, Length(ARoute)));
     if SameText(vRoute.Route, ARoute) then
     begin
       Result := vRoute;
       Break;
+    end
+    else if (vPartialRoute = nil) and (SameText(vPartial, ARoute)) then
+    begin
+      vPartialRoute := vRoute;
+    end
+    else if (vPartialRoute <> nil) and (SameText(vPartial, ARoute)) then
+    begin
+      if Length(vRoute.Route) > Length(vPartialRoute.Route) then
+        vPartialRoute := vRoute;
     end;
   end;
+
+  if Result = nil then
+    Result := vPartialRoute;
 end;
 
 constructor TRALRoutes.Create(AOwner: TPersistent);

@@ -61,6 +61,9 @@ end;
 function FixRoute(ARoute: StringRAL): StringRAL;
 begin
   Result := '/' + ARoute + '/';
+  while Pos(StringRAL('.'), Result) > 0 do
+    Result := ReplaceStr(Result, '.', '');
+
   while Pos(StringRAL('//'), Result) > 0 do
     Result := ReplaceStr(Result, '//', '/');
 end;

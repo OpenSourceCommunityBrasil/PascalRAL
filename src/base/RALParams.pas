@@ -77,6 +77,7 @@ type
     procedure AppendParamsListText(ASource: StringRAL; AKind: TRALParamKind; ANameSeparator : StringRAL = '');
     procedure AppendParamsText(AText: StringRAL; AKind: TRALParamKind; ANameSeparator : StringRAL = '='; ALineSeparator : StringRAL = '&');
     procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
+    procedure AppendParamsUri(AFullURI, APartialURI : StringRAL; AKind: TRALParamKind);
 
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;
     procedure AssignParams(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;
@@ -416,6 +417,32 @@ begin
       vLine := vLine + AText[vInt];
     end;
     vInt := vInt + 1;
+  end;
+end;
+
+procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
+var
+  vInt, vIdx : IntegerRAL;
+begin
+  if SameText(AFullURI,APartialURI) then
+    Exit;
+
+  AFullURI := FixRoute(AFullURI);
+  APartialURI := FixRoute(APartialURI);
+
+  if Pos(LowerCase(APartialURI),LowerCase(AFullURI)) > 0 then
+  begin
+    Delete(AFullURI,1,Length(APartialURI)); // removendo partialuri
+    vIdx := 1;
+    repeat
+      vInt := Pos('/',AFullURI);
+      if vInt > 0 then
+      begin
+        AddParam('uri'+IntToStr(vIdx),Copy(AFullURI,1,vInt-1),rpkFIELD);
+        Delete(AFullURI,1,vInt);
+        vIdx := vIdx + 1;
+      end;
+    until vInt = 0;
   end;
 end;
 
