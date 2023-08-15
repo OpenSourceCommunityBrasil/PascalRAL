@@ -72,21 +72,25 @@ end;
 function TRALHTTPHeaderInfo.AddHeader(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkHEADER);
+  Result := Self;
 end;
 
 function TRALHTTPHeaderInfo.AddField(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkFIELD);
+  Result := Self;
 end;
 
 function TRALHTTPHeaderInfo.AddCookie(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
+  Result := Self;
 end;
 
 function TRALHTTPHeaderInfo.AddFile(AFileName : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddFile(AFileName);
+  Result := Self;
 end;
 
 function TRALHTTPHeaderInfo.AddFile(AStream : TStream; AFileName : StringRAL) : TRALHTTPHeaderInfo;
@@ -95,6 +99,7 @@ var
 begin
   vParam := FParams.AddValue(AStream, rpkBODY);
   vParam.FileName := AFileName;
+  Result := Self;
 end;
 
 function TRALHTTPHeaderInfo.GetHeader(AName : StringRAL) : StringRAL;

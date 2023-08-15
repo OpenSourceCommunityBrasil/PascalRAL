@@ -15,13 +15,10 @@ type
   private
     FHttp: TNetHTTPClient;
   protected
-    function EncodeParams(AParams: TRALParams; var AFreeAfter: boolean): TStream;
     procedure SetUserAgent(const AValue: StringRAL); override;
     procedure SetConnectTimeout(const Value: IntegerRAL); override;
     procedure SetRequestTimeout(const Value: IntegerRAL); override;
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-                     AHeaders: TStringList = nil;
-                     ABody: TRALParams = nil): IntegerRAL; override;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams = nil): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -44,55 +41,33 @@ begin
   inherited;
 end;
 
-function TRALnetHTTPClient.EncodeParams(AParams: TRALParams;
-  var AFreeAfter: boolean): TStream;
+function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL;
 var
   vInt: IntegerRAL;
-begin
-  Result := nil;
-  if AParams = nil then
-    Exit;
-
-  AFreeAfter := False;
-  if AParams.Count = 1 then
-  begin
-    Result := AParams.Param[0].AsStream;
-  end
-  else if AParams.Count > 1 then
-  begin
-    // todo
-  end;
-  Result.Position := 0;
-end;
-
-function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod;
-  AHeaders: TStringList; ABody: TRALParams): IntegerRAL;
-var
-  vInt: IntegerRAL;
-  vSource, vResult: TStream;
-  vStr1, vStr2: StringRAL;
+  vSource : TStream;
   vFree: boolean;
+  vContentType : StringRAL;
   vHeaders: TNetHeaders;
   vReponse: IHTTPResponse;
+  vParam : TRALParam;
 begin
   inherited;
-  if AHeaders <> nil then
-  begin
-    SetLength(vHeaders, AHeaders.Count);
-    for vInt := 0 to AHeaders.Count - 1 do
-    begin
-      vStr1 := AHeaders.Names[vInt];
-      vStr2 := AHeaders.ValueFromIndex[vInt];
-      vHeaders[vInt] := TNameValuePair.Create(vStr1, vStr2);
-    end;
-  end;
 
   ResponseCode := -1;
+
+  SetLength(vHeaders, AParams.Count(rpkHEADER));
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    vParam := AParams.Param[vInt];
+    if vParam.Kind = rpkHEADER then
+      vHeaders[vInt] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+  end;
+
   vFree := False;
-  vSource := EncodeParams(ABody, vFree);
+  vSource := AParams.EncodeBody(vContentType,vFree);
   try
+    FHttp.ContentType := vContentType;
     try
-      vResult := TStringStream.Create;
       case AMethod of
         amGET:
           vReponse := FHttp.Get(AURL, nil, vHeaders);
@@ -111,16 +86,17 @@ begin
         amOPTION:
           vReponse := FHttp.Options(AURL, nil, vHeaders);
       end;
-      TStringStream(vResult).WriteString(vReponse.ContentAsString);
+
+      Response.Params.DecodeBody(vReponse.ContentStream,vReponse.MimeType);
+      for vInt := 0 to Pred(Length(vReponse.Headers)) do
+        Response.AddHeader(vReponse.Headers[vInt].Name,vReponse.Headers[vInt].Value);
+
       ResponseCode := vReponse.GetStatusCode;
     except
       on e : ENetHTTPClientException do begin
-        // todo erro string
+        ResponseError := e.Message;
       end;
     end;
-
-    vResult.Position := 0;
-    SetResponse(vResult);
     Result := ResponseCode;
   finally
     if vFree then

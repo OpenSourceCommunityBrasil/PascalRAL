@@ -27,11 +27,11 @@ type
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
                      AContentType: StringRAL = rctTEXTHTML);
 
-    function AddHeader(AName, AValue : StringRAL) : TRALResponse; override;
-    function AddField(AName, AValue : StringRAL) : TRALResponse; override;
-    function AddCookie(AName, AValue : StringRAL) : TRALResponse; override;
-    function AddFile(AFileName : StringRAL) : TRALResponse; override;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALResponse; override;
+    function AddHeader(AName, AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddField(AName, AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddCookie(AName, AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddFile(AFileName : StringRAL) : TRALResponse; reintroduce; overload;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALResponse; reintroduce; overload;
   published
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;

@@ -55,8 +55,8 @@ type
     function AddHeader(AName, AValue : StringRAL) : TRALClient;
     function AddField(AName, AValue : StringRAL) : TRALClient;
     function AddCookie(AName, AValue : StringRAL) : TRALClient;
-    function AddFile(AFileName : StringRAL) : TRALClient;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient;
+    function AddFile(AFileName : StringRAL) : TRALClient; overload;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient; overload;
 
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
