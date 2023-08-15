@@ -414,8 +414,9 @@ begin
     Result.Answer(404, RAL404Page);
     Exit;
   end
-  else if Pos('../',ARequest.Query) > 0 then
+  else if Pos('../', ARequest.Query) > 0 then
   begin
+    AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     Result.Answer(404, RAL404Page);
     Exit;
   end;
