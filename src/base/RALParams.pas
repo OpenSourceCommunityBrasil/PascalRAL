@@ -438,7 +438,7 @@ begin
       vInt := Pos('/', AFullURI);
       if vInt > 0 then
       begin
-        AddParam('uri' + IntToStr(vIdx), Copy(AFullURI, 1, vInt - 1), rpkFIELD);
+        AddParam('uri' + IntToStr(vIdx), Copy(AFullURI, 1, vInt - 1), AKind);
         Delete(AFullURI, 1, vInt);
         vIdx := vIdx + 1;
       end;

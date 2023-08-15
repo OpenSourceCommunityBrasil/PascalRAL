@@ -66,6 +66,7 @@ end;
 
 destructor TRALHTTPHeaderInfo.Destroy;
 begin
+  FreeAndNil(FParams);
   inherited Destroy;
 end;
 

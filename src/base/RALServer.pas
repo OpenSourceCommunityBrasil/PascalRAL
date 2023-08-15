@@ -423,9 +423,6 @@ begin
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
 
-  // adicionando params de URI no request
-  ARequest.Params.AppendParamsUri(ARequest.Query, vRoute.Route);
-
   if Assigned(FOnRequest) then
     FOnRequest(vRoute, ARequest, Result);
 
@@ -457,6 +454,9 @@ begin
   end
   else
   begin
+    // adicionando params de URI no request
+    ARequest.Params.AppendParamsUri(ARequest.Query, vRoute.Route, rpkFIELD);
+
     if (not (amALL in vRoute.AllowedMethods)) and
        (not (ARequest.Method in vRoute.AllowedMethods)) then
     begin

@@ -221,6 +221,7 @@ begin
       begin
         AResponse.Code := StatusCode;
 
+        Params.AddParam('Connection','Close',rpkHEADER);
         Params.AssignParams(AResponse.CustomHeaders,rpkHEADER);
         Params.AssignParams(AResponse.CookieFields,rpkCOOKIE);
 

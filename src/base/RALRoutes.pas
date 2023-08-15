@@ -135,7 +135,7 @@ begin
   if FRouteName = AValue then
     Exit;
 
-  if (AValue <> '') and AValue[Length(AValue)] = '/' then
+  if (AValue <> '') and (AValue[Length(AValue)] = '/') then
     Delete(AValue, Length(AValue), 1);
 
   vPos := LastDelimiter('/', AValue);
