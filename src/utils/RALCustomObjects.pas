@@ -21,23 +21,24 @@ type
 
   TRALHTTPHeaderInfo = class
   private
-    FParams : TRALParams;
+    FParams: TRALParams;
   protected
-    function GetParams : TRALParams;
+    function GetParams: TRALParams;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function AddHeader(AName, AValue : StringRAL) : TRALHTTPHeaderInfo; virtual;
-    function AddField(AName, AValue : StringRAL) : TRALHTTPHeaderInfo; virtual;
-    function AddCookie(AName, AValue : StringRAL) : TRALHTTPHeaderInfo; virtual;
-    function AddFile(AFileName : StringRAL) : TRALHTTPHeaderInfo; overload; virtual;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALHTTPHeaderInfo; overload; virtual;
+    function AddHeader(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
+    function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo;
+      overload; virtual;
 
-    function GetHeader(AName : StringRAL) : StringRAL; virtual;
-    function GetField(AName : StringRAL) : StringRAL; virtual;
-    function GetCookie(AName : StringRAL) : StringRAL; virtual;
-    function GetBody(AIdx : IntegerRAL) : TRALParam; virtual;
+    function GetHeader(AName: StringRAL): StringRAL; virtual;
+    function GetField(AName: StringRAL): StringRAL; virtual;
+    function GetCookie(AName: StringRAL): StringRAL; virtual;
+    function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
   published
     property Params: TRALParams read GetParams;
   end;
@@ -46,14 +47,14 @@ implementation
 
 { TRALComponent }
 
-function TRALComponent.getVersion : string;
+function TRALComponent.getVersion: string;
 begin
   Result := RALVERSION;
 end;
 
 { TRALHTTPHeaderInfo }
 
-function TRALHTTPHeaderInfo.GetParams : TRALParams;
+function TRALHTTPHeaderInfo.GetParams: TRALParams;
 begin
   Result := FParams;
 end;
@@ -69,73 +70,73 @@ begin
   inherited Destroy;
 end;
 
-function TRALHTTPHeaderInfo.AddHeader(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddHeader(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkHEADER);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddField(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkFIELD);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddCookie(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddFile(AFileName : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddFile(AStream : TStream; AFileName : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddFile(AStream: TStream; AFileName: StringRAL): TRALHTTPHeaderInfo;
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   vParam := FParams.AddValue(AStream, rpkBODY);
   vParam.FileName := AFileName;
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.GetHeader(AName : StringRAL) : StringRAL;
+function TRALHTTPHeaderInfo.GetHeader(AName: StringRAL): StringRAL;
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName,rpkHEADER];
+  vParam := FParams.ParamByNameAndKind[AName, rpkHEADER];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
 
-function TRALHTTPHeaderInfo.GetField(AName : StringRAL) : StringRAL;
+function TRALHTTPHeaderInfo.GetField(AName: StringRAL): StringRAL;
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName,rpkFIELD];
+  vParam := FParams.ParamByNameAndKind[AName, rpkFIELD];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
 
-function TRALHTTPHeaderInfo.GetCookie(AName : StringRAL) : StringRAL;
+function TRALHTTPHeaderInfo.GetCookie(AName: StringRAL): StringRAL;
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName,rpkCOOKIE];
+  vParam := FParams.ParamByNameAndKind[AName, rpkCOOKIE];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
 
-function TRALHTTPHeaderInfo.GetBody(AIdx : IntegerRAL) : TRALParam;
+function TRALHTTPHeaderInfo.GetBody(AIdx: IntegerRAL): TRALParam;
 var
-  vParam : TRALParam;
-  vInt : IntegerRAL;
+  vParam: TRALParam;
+  vInt: IntegerRAL;
 begin
   Result := nil;
   for vInt := 0 to FParams.Count do
@@ -143,7 +144,8 @@ begin
     vParam := FParams.Param[vInt];
     if vParam.Kind = rpkBODY then
     begin
-      if AIdx > 0 then begin
+      if AIdx > 0 then
+      begin
         AIdx := AIdx - 1;
       end
       else
@@ -156,4 +158,3 @@ begin
 end;
 
 end.
-

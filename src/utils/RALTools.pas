@@ -60,12 +60,16 @@ end;
 
 function FixRoute(ARoute: StringRAL): StringRAL;
 begin
+  // path transversal fix
+  while Pos('../', ARoute) > 0 do
+    ARoute := StringReplace(ARoute, '../', '', [rfReplaceAll]);
+
   Result := '/' + ARoute + '/';
   while Pos(StringRAL('.'), Result) > 0 do
     Result := ReplaceStr(Result, '.', '');
 
   while Pos(StringRAL('//'), Result) > 0 do
-    Result := ReplaceStr(Result, '//', '/');
+    Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
 end;
 
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
