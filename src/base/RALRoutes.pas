@@ -130,7 +130,7 @@ end;
 procedure TRALRoute.SetRouteName(AValue: StringRAL);
 var
   vRouteStr: StringRAL;
-  vPos : IntegerRAL;
+  vPos: IntegerRAL;
 begin
   if FRouteName = AValue then
     Exit;
@@ -138,7 +138,7 @@ begin
   if (AValue <> '') and AValue[Length(AValue)] = '/' then
     Delete(AValue, Length(AValue), 1);
 
-  vPos := LastDelimiter('/',AValue);
+  vPos := LastDelimiter('/', AValue);
   if (vPos > 0) and (vPos < Length(AValue)) then
   begin
     RouteDomain := Copy(AValue, 1, vPos);
@@ -200,8 +200,8 @@ end;
 function TRALRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
 var
   vInt: IntegerRAL;
-  vRoute, vPartialRoute : TRALRoute;
-  vPartial : StringRAL;
+  vRoute, vPartialRoute: TRALRoute;
+  vPartial: StringRAL;
 begin
   Result := nil;
   vPartialRoute := nil;

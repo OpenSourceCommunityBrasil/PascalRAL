@@ -422,24 +422,24 @@ end;
 
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
 var
-  vInt, vIdx : IntegerRAL;
+  vInt, vIdx: IntegerRAL;
 begin
-  if SameText(AFullURI,APartialURI) then
+  if SameText(AFullURI, APartialURI) then
     Exit;
 
   AFullURI := FixRoute(AFullURI);
   APartialURI := FixRoute(APartialURI);
 
-  if Pos(LowerCase(APartialURI),LowerCase(AFullURI)) > 0 then
+  if Pos(LowerCase(APartialURI), LowerCase(AFullURI)) > 0 then
   begin
-    Delete(AFullURI,1,Length(APartialURI)); // removendo partialuri
+    Delete(AFullURI, 1, Length(APartialURI)); // removendo partialuri
     vIdx := 1;
     repeat
-      vInt := Pos('/',AFullURI);
+      vInt := Pos('/', AFullURI);
       if vInt > 0 then
       begin
-        AddParam('uri'+IntToStr(vIdx),Copy(AFullURI,1,vInt-1),rpkFIELD);
-        Delete(AFullURI,1,vInt);
+        AddParam('uri' + IntToStr(vIdx), Copy(AFullURI, 1, vInt - 1), rpkFIELD);
+        Delete(AFullURI, 1, vInt);
         vIdx := vIdx + 1;
       end;
     until vInt = 0;
