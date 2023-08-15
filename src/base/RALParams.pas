@@ -769,7 +769,7 @@ end;
 
 procedure TRALParams.AppendParamLine(ALine, ANameSeparator : StringRAL; AKind : TRALParamKind);
 var
-  vPos: SizeInt;
+  vPos: IntegerRAL;
   vName, vValue: StringRAL;
   vParam: TRALParam;
 begin

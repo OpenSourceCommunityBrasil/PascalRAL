@@ -56,8 +56,8 @@ type
     function AddHeader(AName, AValue : StringRAL) : TRALRequest; reintroduce;
     function AddField(AName, AValue : StringRAL) : TRALRequest; reintroduce;
     function AddCookie(AName, AValue : StringRAL) : TRALRequest; reintroduce;
-    function AddFile(AFileName : StringRAL) : TRALRequest; reintroduce;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALRequest; reintroduce;
+    function AddFile(AFileName : StringRAL) : TRALRequest; reintroduce; overload;
+    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALRequest; reintroduce; overload;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
