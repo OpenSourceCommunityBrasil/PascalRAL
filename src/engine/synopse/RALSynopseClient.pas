@@ -69,6 +69,10 @@ var
   vHeader : StringRAL;
 begin
   inherited;
+  Response.Clear;
+  ResponseCode := -1;
+  ResponseError := '';
+
   AParams.AddParam('User-Agent',UserAgent,rpkHEADER);
 
   vFree := False;

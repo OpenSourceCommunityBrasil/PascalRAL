@@ -76,12 +76,14 @@ constructor TRALStringListSafe.Create;
 begin
   inherited Create;
   FValue := TStringList.Create;
+  FValue.Sorted := True;
 end;
 
 destructor TRALStringListSafe.Destroy;
 begin
   inherited Lock;
   try
+    Clear(True);
     FreeAndNil(FValue);
   finally
     inherited Unlock;

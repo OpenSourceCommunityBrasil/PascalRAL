@@ -62,6 +62,10 @@ begin
 
   FHttp.Response.Clear;
 
+  Response.Clear;
+  ResponseCode := -1;
+  ResponseError := '';
+
   AParams.AssignParams(FHttp.Request.CustomHeaders,rpkHEADER);
 
   vFree := False;

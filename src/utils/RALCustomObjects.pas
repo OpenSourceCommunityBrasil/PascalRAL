@@ -38,6 +38,8 @@ type
     function GetField(AName: StringRAL): StringRAL; virtual;
     function GetCookie(AName: StringRAL): StringRAL; virtual;
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
+
+    procedure Clear;
   published
     property Params: TRALParams read GetParams;
   end;
@@ -56,6 +58,11 @@ end;
 function TRALHTTPHeaderInfo.GetParams: TRALParams;
 begin
   Result := FParams;
+end;
+
+procedure TRALHTTPHeaderInfo.Clear;
+begin
+  FParams.ClearParams;
 end;
 
 constructor TRALHTTPHeaderInfo.Create;

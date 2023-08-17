@@ -367,15 +367,13 @@ var
   vInt: IntegerRAL;
   vLine: StringRAL;
   vIs13: boolean;
-  vSeparator: StringRAL;
 begin
   {$IFNDEF FPC}
-  // if StrIsUTF8(ASource) then
   ASource := UTF8ToString(ASource);
   {$ENDIF}
 
-  if ASource <> '' then
-    vSeparator := FindNameSeparator(ASource);
+  if (ASource <> '') and (ANameSeparator = '') then
+    ANameSeparator := FindNameSeparator(ASource);
 
   vLine := '';
   for vInt := RALLowStr(ASource) to RALHighStr(ASource) do
@@ -423,6 +421,9 @@ begin
     end;
     vInt := vInt + 1;
   end;
+
+  if vLine <> '' then
+    AppendParamLine(vLine, ANameSeparator, AKind);
 end;
 
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
@@ -792,11 +793,11 @@ var
   vPos, vMin: IntegerRAL;
 begin
   vMin := Length(ASource);
-  vPos := Pos('=', Result);
+  vPos := Pos('=', ASource);
   if (vPos > 0) and (vPos < vMin) then
     Result := '=';
 
-  vPos := Pos(': ', Result);
+  vPos := Pos(': ', ASource);
   if (vPos > 0) and (vPos < vMin) then
     Result := ': ';
 end;
@@ -811,20 +812,22 @@ begin
     Exit;
 
   vPos := Pos(ANameSeparator, ALine);
+  if vPos > 0 then
+  begin
+    vName := Copy(ALine, RALLowStr(ALine), vPos - 1);
+    vName := TRALHTTPCoder.DecodeURL(vName);
 
-  vName := Copy(ALine, RALLowStr(ALine), vPos - 1);
-  vName := TRALHTTPCoder.DecodeURL(vName);
+    vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
+    vValue := TRALHTTPCoder.DecodeURL(vValue);
 
-  vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
-  vValue := TRALHTTPCoder.DecodeURL(vValue);
-
-  vParam := ParamByNameAndKind[vName, AKind];
-  if vParam = nil then
-    vParam := NewParam;
-  vParam.ParamName := vName;
-  vParam.AsString := vValue;
-  vParam.ContentType := rctTEXTPLAIN;
-  vParam.Kind := AKind;
+    vParam := ParamByNameAndKind[vName, AKind];
+    if vParam = nil then
+      vParam := NewParam;
+    vParam.ParamName := vName;
+    vParam.AsString := vValue;
+    vParam.ContentType := rctTEXTPLAIN;
+    vParam.Kind := AKind;
+  end;
 end;
 
 function TRALParams.NextParamInt: IntegerRAL;

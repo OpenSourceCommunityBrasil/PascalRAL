@@ -62,6 +62,9 @@ var
   vFree : boolean;
 begin
   inherited;
+  Response.Clear;
+  ResponseCode := -1;
+  ResponseError := '';
 
   AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
   AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);

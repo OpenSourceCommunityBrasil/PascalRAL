@@ -74,8 +74,6 @@ type
   private
     FActive: boolean;
     FAuthentication: TRALAuthServer;
-    FBlackIPList: TStringList;
-    FBlockedList: TRALStringListSafe;
     FBruteForceProtection: TRALBruteForceProtection;
     FEngine: StringRAL;
     FFavIcon: TMemoryStream;
@@ -85,8 +83,11 @@ type
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
-    FWhiteIPList: TStringList;
     FIPConfig: TRALIPConfig;
+
+    FBlackIPList: TRALStringListSafe;
+    FWhiteIPList: TRALStringListSafe;
+    FBlockedList: TRALStringListSafe;
 
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
@@ -104,16 +105,20 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
-    procedure SetBlackIPList(AValue: TStringList);
     procedure SetEngine(const AValue: StringRAL);
     procedure SetOptions(const Value: TRALServerOptions);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+
     procedure SetWhiteIPList(AValue: TStringList);
+    procedure SetBlackIPList(AValue: TStringList);
+
+    function GetBlackIPList: TStringList;
+    function GetWhiteIPList: TStringList;
+
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
-
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -123,7 +128,6 @@ type
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    property BlackIPList: TStringList read FBlackIPList write SetBlackIPList;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
     property Engine: StringRAL read FEngine;
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
@@ -134,7 +138,8 @@ type
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property SSL: TRALSSL read FSSL write FSSL;
-    property WhiteIPList: TStringList read FWhiteIPList write SetWhiteIPList;
+    property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
+    property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
@@ -212,8 +217,8 @@ begin
   FSessionTimeout := 30000;
 
   FBlockedList := TRALStringListSafe.Create;
-  FWhiteIPList := TStringList.Create;
-  FBlackIPList := TStringList.Create;
+  FWhiteIPList := TRALStringListSafe.Create;
+  FBlackIPList := TRALStringListSafe.Create;
   FIPConfig := TRALIPConfig.Create(Self);
 
 //  liberando localhost
@@ -247,12 +252,9 @@ var
   vInt: IntegerRAL;
   vClient: TRALClientBlockList;
 begin
-  if (FAuthentication = nil) or (not FBruteForceProtection.Enabled) then
-    Exit;
-
   // nao adiciona o ip se ele estiver liberado ou bloqueado
-  if (FWhiteIPList.IndexOf(AClientIP) >= 0) or
-     (FBlackIPList.IndexOf(AClientIP) >= 0) then
+  if (FWhiteIPList.Exists(AClientIP)) or
+     (FBlackIPList.Exists(AClientIP)) then
     Exit;
 
   vClient := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
@@ -286,12 +288,14 @@ var
   vTimeMax: TDateTime;
 begin
   Result := False;
-  if FAuthentication = nil then
+  if (FBlockedList.Empty) and (FBlackIPList.Empty) and
+     (FWhiteIPList.Empty) then
     Exit;
 
   // verifica ip se ele estiver bloquedo e nao liberado
-  Result := (FBlackIPList.IndexOf(AClientIP) >= 0) and
-            (FWhiteIPList.IndexOf(AClientIP) < 0);
+  Result := (FBlackIPList.Exists(AClientIP)) and
+            (not FWhiteIPList.Exists(AClientIP));
+
   if Result then
     Exit;
 
@@ -323,6 +327,9 @@ var
   vTimeMax: TDateTime;
   vList: TStringList;
 begin
+  if FBlockedList.Empty then
+    Exit;
+
   vList := FBlockedList.Lock;
   vTimeMax := FBruteForceProtection.ExpirationMin / 60 / 24;
 
@@ -366,6 +373,30 @@ begin
   inherited;
 end;
 
+function TRALServer.GetBlackIPList: TStringList;
+var
+  vInt : IntegerRAL;
+  vList : TStringList;
+begin
+  Result := TStringList.Create;
+  vList := FBlackIPList.Lock;
+  for vInt := 0 to Pred(vList.Count) do
+    Result.Add(vList.Strings[vInt]);
+  FBlackIPList.Unlock;
+end;
+
+function TRALServer.GetWhiteIPList: TStringList;
+var
+  vInt : IntegerRAL;
+  vList : TStringList;
+begin
+  Result := TStringList.Create;
+  vList := FWhiteIPList.Lock;
+  for vInt := 0 to Pred(vList.Count) do
+    Result.Add(vList.Strings[vInt]);
+  FWhiteIPList.Unlock;
+end;
+
 procedure TRALServer.SetServerStatus(AValue: TStringList);
 begin
   if FServerStatus = AValue then
@@ -378,17 +409,21 @@ begin
 end;
 
 procedure TRALServer.SetBlackIPList(AValue: TStringList);
+var
+  vInt : IntegerRAL;
 begin
-  if FBlackIPList = AValue then
-    Exit;
-  FBlackIPList.Text := AValue.Text;
+  FBlackIPList.Clear;
+  for vInt := 0 to Pred(AValue.Count) do
+    FBlackIPList.Add(AValue.Strings[vInt]);
 end;
 
 procedure TRALServer.SetWhiteIPList(AValue: TStringList);
+var
+  vInt : IntegerRAL;
 begin
-  if FWhiteIPList = AValue then
-    Exit;
-  FWhiteIPList.Text := AValue.Text;
+  FWhiteIPList.Clear;
+  for vInt := 0 to Pred(AValue.Count) do
+    FWhiteIPList.Add(AValue.Strings[vInt]);
 end;
 
 procedure TRALServer.Notification(AComponent: TComponent;
@@ -406,6 +441,7 @@ var
 begin
   Result := TRALResponse.Create;
   Result.StatusCode := 200;
+
 
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin

@@ -52,8 +52,9 @@ var
   vParam : TRALParam;
 begin
   inherited;
-
+  Response.Clear;
   ResponseCode := -1;
+  ResponseError := '';
 
   SetLength(vHeaders, AParams.Count(rpkHEADER));
   for vInt := 0 to Pred(AParams.Count) do

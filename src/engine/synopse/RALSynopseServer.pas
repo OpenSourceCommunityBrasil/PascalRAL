@@ -74,8 +74,7 @@ begin
       vOptions := vOptions + [hsoEnableTls];
 
     FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '',
-                                     SystemInfo.dwNumberOfProcessors + 1,
-                                     SessionTimeout, vOptions);
+                                     32, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := 100000;
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.RegisterCompressGzStatic := True;
@@ -164,6 +163,9 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := AContext.RemoteIP;
+      if ClientInfo.IP = '' then
+        ClientInfo.IP := '127.0.0.1';
+
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := AContext.UserAgent;
 
