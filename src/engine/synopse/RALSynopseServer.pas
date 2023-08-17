@@ -52,6 +52,7 @@ implementation
 procedure TRALSynopseServer.SetActive(const AValue : boolean);
 var
   vAddr: StringRAL;
+  vOptions : THttpServerOptions;
 begin
   if AValue = Active then
     Exit;
@@ -66,20 +67,25 @@ begin
     // THttpAsyncServer nao funciona com AB;
     // THttpServer
     //SystemInfo.dwNumberOfProcessors + 1
-    FHttp := THttpAsyncServer.Create(vAddr, nil, nil,
-                               '', 0, SessionTimeout,
-                               [hsoNoXPoweredHeader,
-                                hsoNoStats,
-                                hsoHeadersInterning,
-                                hsoThreadSmooting]);
+
+    vOptions := [hsoNoXPoweredHeader, hsoNoStats, hsoHeadersInterning,
+                 hsoThreadSmooting];
+    if SSL.Enabled then
+      vOptions := vOptions + [hsoEnableTls];
+
+    FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '',
+                                     SystemInfo.dwNumberOfProcessors + 1,
+                                     SessionTimeout, vOptions);
     FHttp.HttpQueueLength := 100000;
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then
     begin
-      with SSL as TRALSynopseSSL do
+      with SSL as TRALSynopseSSL do begin
         FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile, PrivateKeyPassword, CACertificatesFile);
+        FHttp.InitializeTlsAfterBind;
+      end;
     end
     else
     begin

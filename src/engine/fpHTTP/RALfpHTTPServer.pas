@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, Forms,
-  fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient,
+  fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;
 
@@ -370,9 +370,9 @@ begin
   if AValue = Active then
     Exit;
 
-  inherited;
-
   FHttpThread.Active := AValue;
+
+  inherited;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
