@@ -87,9 +87,9 @@ procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vInt : IntegerRAL;
-  vIdCookie : TIdCookie;
-  vCookies : TStringList;
+  vInt: IntegerRAL;
+  vIdCookie: TIdCookie;
+  vCookies: TStringList;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -117,6 +117,7 @@ begin
       Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
       Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
       Params.AppendParams(ARequestInfo.Params, rpkQUERY);
+
       if ARequestInfo.Params.Count = 0 then begin
         Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
         Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
@@ -235,7 +236,7 @@ begin
   inherited;
 end;
 
-procedure TRALIndyServer.SetSessionTimeout(const AValue : IntegerRAL);
+procedure TRALIndyServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttp.SessionTimeOut := AValue;

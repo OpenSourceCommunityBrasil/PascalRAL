@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils,
-  RALServer, RALRequest, RALResponse, RALMIMETypes, RALTypes, RALParams;
+  RALServer, RALRequest, RALResponse, RALMIMETypes, RALTypes, RALParams, RALUrlCoder;
 
 type
   TRotas = class
@@ -53,16 +53,16 @@ procedure TRotas.FileRoute(Sender: TObject; ARequest: TRALRequest;
 var
   I: Integer;
   vBody: TList;
-  test: string;
+  filename: string;
 begin
-  test := ARequest.Params.ParamByName['filename'].AsString;
-  test := RALHTTPDecode(test);
   case ARequest.Method of
     amPOST, amPUT, amPATCH:
       begin
+        filename := TRALHTTPCoder.DecodeURL(ARequest.Params.ParamByName['filename']
+          .AsString);
         vBody := ARequest.Params.Body;
         for I := 0 to pred(vBody.Count) do
-          TRALParam(vBody.Items[I]).SaveToFile(test);
+          TRALParam(vBody.Items[I]).SaveToFile(filename);
         vBody.Free;
       end;
   end;

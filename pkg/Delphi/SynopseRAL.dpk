@@ -31,7 +31,6 @@ package SynopseRAL;
 
 requires
   PascalRAL,
-  RALmORMot2,
   rtl;
 
 contains

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALServer, RALRequest, RALResponse, RALMIMETypes;
+  RALServer, RALRequest, RALResponse, RALMIMETypes, RALTypes, RALUrlCoder, RALParams;
 
 type
 
@@ -14,9 +14,9 @@ type
 
   TRoutes = class
   private
-    procedure Ping(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure Archive(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure PingRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure FileRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure TextRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
   public
     procedure CreateRoutes(AServer: TRALServer);
   end;
@@ -28,35 +28,58 @@ implementation
 
 { TRoutes }
 
-procedure TRoutes.Ping(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRoutes.PingRoute(Sender: TObject; ARequest: TRALRequest;
+  AResponse: TRALResponse);
 begin
   AResponse.Answer(200, 'pong', rctTEXTPLAIN);
 end;
 
-procedure TRoutes.Archive(Sender: TObject; ARequest: TRALRequest;
+procedure TRoutes.FileRoute(Sender: TObject; ARequest: TRALRequest;
   AResponse: TRALResponse);
+var
+  I: integer;
+  vBody: TList;
+  filename: string;
 begin
-  AResponse.Params.AddFile('', '.\test.pdf');
+  case ARequest.Method of
+    amPOST, amPUT, amPATCH:
+    begin
+      filename := TRALHTTPCoder.DecodeURL(ARequest.Params.ParamByName['filename']
+        .AsString);
+      vBody := ARequest.Params.Body;
+      for I := 0 to pred(vBody.Count) do
+        TRALParam(vBody.Items[I]).SaveToFile(filename);
+      vBody.Free;
+    end;
+
+    amGET:
+      AResponse.Params.AddFile('', '.\test.pdf');
+  end;
+
 end;
 
-procedure TRoutes.Test(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-var
-   test: string;
+procedure TRoutes.TextRoute(Sender: TObject; ARequest: TRALRequest;
+  AResponse: TRALResponse);
 begin
-  test := '';
   case ARequest.Method of
-    amGET, amDELETE:
-      AResponse.Answer(200, 'teste de texto com acentuação', rctTEXTPLAIN);
+    amGET:
+      AResponse.Answer(200, 'teste de texto com UTF8 e acentuação', rctTEXTPLAIN);
+
     amPOST, amPUT, amPATCH:
-      AResponse.Answer(201, 'teste de texto com acentuação', rctTEXTPLAIN);
+      AResponse.Answer(201, Format('os params enviados: %s', [ARequest.Params.AsString]),
+        rctTEXTPLAIN);
+
+    amDELETE:
+      AResponse.Answer(200, 'teste de texto após deleção com UTF8 e acentuação',
+        rctTEXTPLAIN);
   end;
 end;
 
 procedure TRoutes.CreateRoutes(AServer: TRALServer);
 begin
-  AServer.CreateRoute('ping', @Ping);
-  AServer.CreateRoute('test', @Test);
-  AServer.CreateRoute('file', @Archive);
+  AServer.CreateRoute('ping', @PingRoute);
+  AServer.CreateRoute('text', @TextRoute);
+  AServer.CreateRoute('file', @FileRoute);
 end;
 
 end.

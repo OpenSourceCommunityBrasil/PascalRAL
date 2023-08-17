@@ -6,9 +6,6 @@
         <Projects Include="Delphi\PascalRAL.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="Delphi\RALmORMot2.dproj">
-            <Dependencies/>
-        </Projects>
         <Projects Include="Delphi\PascalRALDsgn.dproj">
             <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
         </Projects>
@@ -16,7 +13,7 @@
             <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\SynopseRAL.dproj">
-            <Dependencies>Delphi\RALmORMot2.dproj;Delphi\PascalRAL.dproj</Dependencies>
+            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\NetHttpRAL.dproj">
             <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
@@ -38,15 +35,6 @@
     <Target Name="PascalRAL:Make">
         <MSBuild Projects="Delphi\PascalRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALmORMot2">
-        <MSBuild Projects="Delphi\RALmORMot2.dproj"/>
-    </Target>
-    <Target Name="RALmORMot2:Clean">
-        <MSBuild Projects="Delphi\RALmORMot2.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALmORMot2:Make">
-        <MSBuild Projects="Delphi\RALmORMot2.dproj" Targets="Make"/>
-    </Target>
     <Target Name="PascalRALDsgn" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Delphi\PascalRALDsgn.dproj"/>
     </Target>
@@ -65,13 +53,13 @@
     <Target Name="IndyRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Delphi\IndyRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="SynopseRAL" DependsOnTargets="RALmORMot2;PascalRAL">
+    <Target Name="SynopseRAL" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Delphi\SynopseRAL.dproj"/>
     </Target>
-    <Target Name="SynopseRAL:Clean" DependsOnTargets="RALmORMot2:Clean;PascalRAL:Clean">
+    <Target Name="SynopseRAL:Clean" DependsOnTargets="PascalRAL:Clean">
         <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="SynopseRAL:Make" DependsOnTargets="RALmORMot2:Make;PascalRAL:Make">
+    <Target Name="SynopseRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="NetHttpRAL" DependsOnTargets="PascalRAL">
@@ -84,13 +72,13 @@
         <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;RALmORMot2;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;RALmORMot2:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;RALmORMot2:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

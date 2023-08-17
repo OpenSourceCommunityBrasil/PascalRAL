@@ -162,7 +162,6 @@
         </DelphiCompile>
         <DCCReference Include="SynopseRAL.dcr"/>
         <DCCReference Include="PascalRAL.dcp"/>
-        <DCCReference Include="RALmORMot2.dcp"/>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <DCCReference Include="..\..\src\engine\synopse\RALSynopseRegister.pas"/>

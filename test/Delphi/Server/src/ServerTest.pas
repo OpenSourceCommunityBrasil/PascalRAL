@@ -82,9 +82,11 @@ type
     FlowLayout2: TFlowLayout;
     rbIndy: TRadioButton;
     rbSynopse: TRadioButton;
+    cbLog: TCheckBox;
     procedure bStartClick(Sender: TObject);
     procedure bAddClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     { Private declarations }
     FServer: TRALServer;
@@ -164,7 +166,7 @@ begin
     FServer.SSL.Enabled := cbUseSSL.IsChecked;
     TRALIndySSL(FServer.SSL).SSLOptions.CertFile := esslCertFile.Text;
     TRALIndySSL(FServer.SSL).SSLOptions.KeyFile := esslCertKeyFile.Text;
-    TRALIndySSL(FServer.SSL).SSLOptions.Method := sslvTLSv1_2;
+    // TRALIndySSL(FServer.SSL).SSLOptions.Method := sslvTLSv1_2;
   end
   else if rbSynopse.IsChecked then
   begin
@@ -195,8 +197,11 @@ begin
   end;
   SkipMethods.Free;
 
-  FServer.OnRequest := LogRequest;
-  FServer.OnResponse := LogResponse;
+  if cbLog.IsChecked then
+  begin
+    FServer.OnRequest := LogRequest;
+    FServer.OnResponse := LogResponse;
+  end;
 
   FServer.Active := true;
 end;
@@ -204,6 +209,16 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   sgRoutes.RowCount := 0;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  if Assigned(FServer) then
+  begin
+    FServer.Active := false;
+    FreeAndNil(FServer);
+    sleep(500);
+  end;
 end;
 
 function TForm1.GetSelectedMethods: string;

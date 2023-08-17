@@ -8,9 +8,10 @@
       <Unit>
         <Filename Value="TestServer.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="66" Y="13"/>
-        <UsageCount Value="53"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="14" Y="20"/>
+        <UsageCount Value="66"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="main.pas"/>
@@ -19,9 +20,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Main"/>
-        <TopLine Value="91"/>
-        <CursorPos X="34" Y="111"/>
-        <UsageCount Value="53"/>
+        <TopLine Value="179"/>
+        <CursorPos X="33" Y="187"/>
+        <UsageCount Value="66"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -29,33 +30,38 @@
         <Filename Value="uroutes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uRoutes"/>
-        <EditorIndex Value="1"/>
-        <CursorPos X="34" Y="8"/>
-        <UsageCount Value="24"/>
-        <Loaded Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="14" Y="9"/>
+        <UsageCount Value="37"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="20" Y="7"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\config_lazarus\onlinepackagemanager\packages\Indy10\System\IdVers.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="16"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
-        <EditorIndex Value="-1"/>
-        <UsageCount Value="7"/>
+        <EditorIndex Value="3"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALServer.pas"/>
-        <EditorIndex Value="2"/>
-        <UsageCount Value="11"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="227"/>
+        <CursorPos X="3" Y="206"/>
+        <UsageCount Value="17"/>
+        <Bookmarks Count="1">
+          <Item0 X="28" Y="416" ID="1"/>
+        </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -63,82 +69,82 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="30"/>
         <CursorPos X="15" Y="40"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALRequest.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="22" Y="7"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALConsts.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="50" Y="9"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALResponse.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="59" Y="42"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="10"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALAuthentication.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="5" Y="10"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALClient.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="38" Y="8"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\indy\RALIndyClient.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="75" Y="8"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\fpHTTP\RALfpHTTPServer.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="334"/>
         <CursorPos X="28" Y="357"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\fpHTTP\RALfpHTTPClient.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="9"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="75" Y="8"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\lazarus\lcl\include\customform.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="945"/>
-        <CursorPos Y="957"/>
-        <UsageCount Value="9"/>
+        <CursorPos Y="963"/>
+        <UsageCount Value="10"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\utils\RALMIMETypes.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="144"/>
         <CursorPos X="8" Y="148"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="10"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALParams.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="17" Y="308"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\pkg\Lazarus\pascalral.pas"/>
@@ -146,21 +152,21 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="11"/>
         <CursorPos X="3" Y="14"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\lazarus\components\lazutils\lazutf8.pas"/>
         <UnitName Value="LazUTF8"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="145"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\RALTypes.pas"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="35"/>
-        <CursorPos X="69" Y="48"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="23"/>
+        <CursorPos X="81" Y="39"/>
         <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
@@ -169,181 +175,205 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="445"/>
         <CursorPos X="3" Y="458"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-web\src\base\fphttpapp.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-web\src\base\custhttpapp.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="120"/>
         <CursorPos X="51" Y="130"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\chm\src\htmlutil.pas"/>
         <UnitName Value="HTMLUtil"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="40"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\httpd22\src\httpd.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="145"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\winunits-base\src\httpapi.pp"/>
         <UnitName Value="HttpApi"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="295"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\winunits-base\src\winhttp.pp"/>
         <UnitName Value="WinHTTP"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="772"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-web\src\base\custmicrohttpapp.pp"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-web\src\base\httpprotocol.pp"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="119"/>
         <CursorPos X="10" Y="132"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\base\PascalRAL.inc"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="157"/>
         <CursorPos X="51" Y="173"/>
+        <UsageCount Value="15"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\src\utils\RALJSON_FPC.pas"/>
+        <EditorIndex Value="-1"/>
         <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\src\utils\RALJSON_Delphi.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="19"/>
+        <CursorPos X="10" Y="32"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\pkg\Lazarus\synopseral.pas"/>
+        <UnitName Value="SynopseRAL"/>
+        <EditorIndex Value="2"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="27">
+    <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="83" Column="3" TopLine="81"/>
-      </Position>
-      <Position>
-        <Filename Value="main.pas"/>
-        <Caret Line="82" Column="3" TopLine="80"/>
+        <Caret Line="182" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="84" Column="3" TopLine="82"/>
+        <Caret Line="183" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="83" Column="3" TopLine="81"/>
+        <Caret Line="184" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="84" Column="3" TopLine="82"/>
+        <Caret Line="183" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="83" Column="3" TopLine="81"/>
+        <Caret Line="182" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="82" Column="3" TopLine="80"/>
+        <Caret Line="179" TopLine="166"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="84" Column="3" TopLine="82"/>
+        <Caret Line="187" TopLine="169"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="85" Column="3" TopLine="83"/>
+        <Caret Line="176" TopLine="169"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="84" Column="3" TopLine="82"/>
+        <Caret Line="189" TopLine="171"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="85" Column="3" TopLine="83"/>
+        <Caret Line="191" TopLine="173"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="16" Column="29"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="192" TopLine="174"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="20" Column="85" TopLine="9"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="194" TopLine="176"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="31" Column="11" TopLine="13"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="88" TopLine="76"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="11" Column="36"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="90" TopLine="76"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="28" Column="16" TopLine="16"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="92" TopLine="76"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="26" Column="25" TopLine="13"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="93" TopLine="76"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="8" Column="31"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="95" TopLine="76"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="46" Column="13" TopLine="25"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="97" TopLine="78"/>
       </Position>
       <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="8" Column="33"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="102" Column="31" TopLine="87"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="67" Column="15" TopLine="59"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="180" Column="59" TopLine="170"/>
+      </Position>
+      <Position>
+        <Filename Value="TestServer.lpr"/>
+        <Caret Line="20" Column="14"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\pkg\Lazarus\synopseral.pas"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
       </Position>
       <Position>
         <Filename Value="..\..\..\src\base\RALServer.pas"/>
+        <Caret Line="409" Column="21" TopLine="388"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="37" Column="33" TopLine="22"/>
+        <Filename Value="..\..\..\src\base\RALServer.pas"/>
+        <Caret Line="7" Column="43"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="4" Column="13"/>
+        <Filename Value="..\..\..\src\base\RALServer.pas"/>
+        <Caret Line="141" Column="38" TopLine="126"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="44" Column="21" TopLine="33"/>
+        <Filename Value="..\..\..\src\base\RALServer.pas"/>
+        <Caret Line="493" Column="29" TopLine="486"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="47" Column="50" TopLine="31"/>
+        <Filename Value="..\..\..\src\base\RALServer.pas"/>
+        <Caret Line="122" Column="20" TopLine="107"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="48" Column="30" TopLine="35"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="52" Column="59" TopLine="35"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\src\base\RALTypes.pas"/>
-        <Caret Line="48" Column="58" TopLine="35"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="187" Column="33" TopLine="179"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -354,7 +384,13 @@
   <Debugging>
     <Watches>
       <Item>
-        <Expression Value="AResponse.ResponseStream"/>
+        <Expression Value="SkipMethods.Count"/>
+      </Item>
+      <Item>
+        <Expression Value="SkipMethods.DelimitedText"/>
+      </Item>
+      <Item>
+        <Expression Value="SkipMethods"/>
       </Item>
     </Watches>
   </Debugging>

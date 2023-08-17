@@ -19,7 +19,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="23">
+    <Files Count="26">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -113,6 +113,18 @@
         <Filename Value="..\..\src\utils\RALMultipartCoder.pas"/>
         <UnitName Value="RALMultipartCoder"/>
       </Item23>
+      <Item24>
+        <Filename Value="..\..\src\utils\RALCustomObjects.pas"/>
+        <UnitName Value="RALCustomObjects"/>
+      </Item24>
+      <Item25>
+        <Filename Value="..\..\src\utils\RALJSON_FPC.pas"/>
+        <UnitName Value="RALJSON_FPC"/>
+      </Item25>
+      <Item26>
+        <Filename Value="..\..\src\utils\RALUrlCoder.pas"/>
+        <UnitName Value="RALUrlCoder"/>
+      </Item26>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

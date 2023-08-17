@@ -191,8 +191,7 @@ begin
     try
       with vResponse do
       begin
-        Params.AddParam('Connection','close',rpkHEADER);
-        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER,': ');
+        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
 
         AContext.OutContent := ResponseText;
         AContext.OutContentType := ContentType;

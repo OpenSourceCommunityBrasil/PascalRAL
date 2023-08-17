@@ -36,7 +36,8 @@ type
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
-  TRALServerOption = (rsoPathTransvBlackList, rsoDDoSProtection, rsoIPBroadcastProtection);
+  TRALServerOption = (rsoBruteForceProtection, rsoDDoSProtection, rsoEnableBlackList, rsoEnableBlockList,
+    rsoEnableWhiteList, rsoIPBroadcastProtection, rsoPathTransvBlackList);
   TRALServerOptions = set of TRALServerOption;
 
 const

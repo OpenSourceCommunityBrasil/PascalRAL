@@ -66,7 +66,7 @@ type
 
 implementation
 
-  { TRALRoutes }
+{ TRALRoutes }
 
 constructor TRALRoute.Create(ACollection: TCollection);
 begin
