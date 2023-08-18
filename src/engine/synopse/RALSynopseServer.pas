@@ -31,10 +31,15 @@ type
   TRALSynopseServer = class(TRALServer)
   private
     FHttp: THttpServerSocketGeneric;
+    FPoolCount: IntegerRAL;
+    FQueueSize: IntegerRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+
+    procedure SetPoolCount(const AValue: IntegerRAL);
+    procedure SetQueueSize(const AValue: IntegerRAL);
 
     function IPv6IsImplemented: boolean; override;
 
@@ -43,6 +48,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+  published
+    property PoolCount: IntegerRAL read FPoolCount write SetPoolCount;
+    property QueueSize: IntegerRAL read FQueueSize write SetQueueSize;
   end;
 
 implementation
@@ -64,9 +72,8 @@ begin
     else
       vAddr := IntToStr(Self.Port);
 
-    // THttpAsyncServer nao funciona com AB;
-    // THttpServer
-    //SystemInfo.dwNumberOfProcessors + 1
+    // THttpAsyncServer - AB funciona com a opcao -v
+    // THttpServer - AB funciona sem opcao -v
 
     vOptions := [hsoNoXPoweredHeader, hsoNoStats, hsoHeadersInterning,
                  hsoThreadSmooting];
@@ -74,8 +81,8 @@ begin
       vOptions := vOptions + [hsoEnableTls];
 
     FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '',
-                                     32, SessionTimeout, vOptions);
-    FHttp.HttpQueueLength := 100000;
+                                     FPoolCount, SessionTimeout, vOptions);
+    FHttp.HttpQueueLength := FQueueSize;
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
@@ -100,6 +107,23 @@ begin
   inherited;
 end;
 
+procedure TRALSynopseServer.SetPoolCount(const AValue: IntegerRAL);
+var
+  vActive: boolean;
+begin
+  if AValue = Port then
+    Exit;
+
+  if AValue > 256 then
+    FPoolCount := 256
+  else
+    FPoolCount := AValue;
+
+  vActive := Active;
+  Active := False;
+  Active := vActive;
+end;
+
 procedure TRALSynopseServer.SetPort(const AValue: IntegerRAL);
 var
   vActive: boolean;
@@ -112,6 +136,16 @@ begin
   vActive := Active;
   Active := False;
   Active := vActive;
+end;
+
+procedure TRALSynopseServer.SetQueueSize(const AValue: IntegerRAL);
+begin
+  if AValue = FQueueSize then
+    Exit;
+
+  FQueueSize := AValue;
+  if FHttp <> nil then
+    FHttp.HttpQueueLength := FQueueSize;
 end;
 
 function TRALSynopseServer.IPv6IsImplemented: boolean;
@@ -210,6 +244,8 @@ constructor TRALSynopseServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := nil;
+  FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
+  FQueueSize := 1000; // padrao do synopse
   SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 

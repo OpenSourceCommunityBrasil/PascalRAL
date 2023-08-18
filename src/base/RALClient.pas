@@ -22,6 +22,7 @@ type
     FUseSSL: boolean;
     FUserAgent: StringRAL;
     FEngine: StringRAL;
+    FKeepAlive : boolean;
 
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
@@ -41,6 +42,7 @@ type
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
     procedure SetUseSSL(const AValue: boolean); virtual;
+    procedure SetKeepAlive(const AValue: boolean); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -71,6 +73,7 @@ type
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
+    property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
   end;
 
 implementation
@@ -127,6 +130,7 @@ begin
   FResponseCode := 0;
   FResponseError := '';
   FUserAgent := 'RALClient '+RALVERSION;
+  FKeepAlive := True;
 
   FLastRequest := TRALHTTPHeaderInfo.Create;
   FLastResponse := TRALHTTPHeaderInfo.Create;
@@ -322,6 +326,11 @@ procedure TRALClient.SetEngine(const AValue : StringRAL);
 begin
   FEngine := AValue;
   UserAgent := 'RALClient '+RALVERSION+'; Engine '+FEngine;
+end;
+
+procedure TRALClient.SetKeepAlive(const AValue: boolean);
+begin
+  FKeepAlive := AValue;
 end;
 
 procedure TRALClient.SetConnectTimeout(const AValue: IntegerRAL);

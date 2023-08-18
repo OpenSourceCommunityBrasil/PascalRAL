@@ -73,13 +73,18 @@ begin
   ResponseCode := -1;
   ResponseError := '';
 
-  AParams.AddParam('User-Agent',UserAgent,rpkHEADER);
+  AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+
+  if KeepAlive then
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+  else
+    AParams.AddParam('Connection', 'close', rpkHEADER);
 
   vFree := False;
-  vSource := AParams.EncodeBody(vContentType,vFree);
+  vSource := AParams.EncodeBody(vContentType, vFree);
   try
-    AParams.AddParam('Content-Type',vContentType,rpkHEADER);
-    vHeader := AParams.AssignParamsListText(rpkHEADER,': ');
+    AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+    vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
 
     vResult := TStringStream.Create;
     try

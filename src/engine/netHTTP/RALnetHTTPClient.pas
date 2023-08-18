@@ -56,7 +56,12 @@ begin
   ResponseCode := -1;
   ResponseError := '';
 
-  SetLength(vHeaders, AParams.Count(rpkHEADER));
+  if KeepALive then
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+  else
+    AParams.AddParam('Connection', 'close', rpkHEADER);
+
+  SetLength(vHeaders, AParams.Count(rpkHEADER));
   for vInt := 0 to Pred(AParams.Count) do
   begin
     vParam := AParams.Param[vInt];

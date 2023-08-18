@@ -66,13 +66,19 @@ begin
   ResponseCode := -1;
   ResponseError := '';
 
-  AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
   AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
-  FHttp.RequestHeaders.AddPair('User-Agent',UserAgent);
 
-  vSource := AParams.EncodeBody(vContentType,vFree);
+  if KeepAlive then
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+  else
+    AParams.AddParam('Connection', 'close', rpkHEADER);
+
+  AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+
+  vSource := AParams.EncodeBody(vContentType, vFree);
   try
-    FHttp.RequestHeaders.AddPair('Content-Type',vContentType);
+    AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+    AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
     FHttp.RequestBody := vSource;
     vResult := TStringStream.Create;
     try

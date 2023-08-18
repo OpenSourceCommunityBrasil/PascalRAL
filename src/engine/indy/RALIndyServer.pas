@@ -55,6 +55,7 @@ begin
   SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
+  FHttp.KeepAlive := True;
 
   {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
@@ -146,6 +147,7 @@ begin
       begin
         AResponseInfo.ResponseNo := StatusCode;
 
+        AResponseInfo.Server := 'RAL_Indy';
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
 
         vCookies := TStringList.Create;
@@ -164,7 +166,6 @@ begin
         AResponseInfo.ContentType := ContentType;
         AResponseInfo.FreeContentStream := FreeContent;
 
-        AResponseInfo.CloseConnection := True;
         AResponseInfo.WriteContent;
       end;
     finally

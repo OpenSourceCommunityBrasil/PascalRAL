@@ -49,6 +49,9 @@ type
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
 
+    function GetQueueSize: IntegerRAL;
+    procedure SetQueueSize(const AValue: IntegerRAL);
+
     function GetURLServer: StringRAL;
 
     function GetPort: IntegerRAL;
@@ -71,6 +74,7 @@ type
     property Active: boolean read GetActive write SetActive;
     property Port: IntegerRAL read GetPort write SetPort;
     property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
+    property QueueSize : IntegerRAL read GetQueueSize write SetQueueSize;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -79,11 +83,17 @@ type
   protected
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+
+    function GetQueueSize: IntegerRAL;
+    procedure SetQueueSize(const AValue: IntegerRAL);
+
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+  published
+    property QueueSize : IntegerRAL read GetQueueSize write SetQueueSize;
   end;
 
 implementation
@@ -119,6 +129,11 @@ begin
   Result := FParent.Port;
 end;
 
+function TRALfpHttpServerThread.GetQueueSize: IntegerRAL;
+begin
+  Result := FHttp.QueueSize;
+end;
+
 procedure TRALfpHttpServerThread.SetPort(AValue: IntegerRAL);
 var
   vActive: boolean;
@@ -129,6 +144,11 @@ begin
   FHttp.Port := AValue;
 
   Active := vActive;
+end;
+
+procedure TRALfpHttpServerThread.SetQueueSize(const AValue: IntegerRAL);
+begin
+  FHttp.QueueSize := AValue;
 end;
 
 procedure TRALfpHttpServerThread.SetSessionTimeout(const AValue: IntegerRAL);
@@ -168,6 +188,7 @@ var
   vResponse: TRALResponse;
   vInt: integer;
   vStr1, vStr2: StringRAL;
+  vConnClose : boolean;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -208,6 +229,12 @@ begin
 
       Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
+      vConnClose := False;
+      if Pos('/1.0',ARequest.ProtocolVersion) > 0 then
+        vConnClose := True;
+      if SameText(ARequest.GetHeader(hhConnection), 'close') then
+        vConnClose := True;
+
       ARequest.Content := '';
       ARequest.QueryFields.Clear;
       ARequest.CustomHeaders.Clear;
@@ -221,7 +248,9 @@ begin
       begin
         AResponse.Code := StatusCode;
 
-        Params.AddParam('Connection','Close',rpkHEADER);
+        Params.AddParam('Server', 'RAL_fpHTTP', rpkHEADER);
+        if vConnClose then
+          Params.AddParam('Connection', 'close', rpkHEADER);
         Params.AssignParams(AResponse.CustomHeaders,rpkHEADER);
         Params.AssignParams(AResponse.CookieFields,rpkCOOKIE);
 
@@ -365,6 +394,11 @@ begin
   inherited;
 end;
 
+function TRALfpHttpServer.GetQueueSize: IntegerRAL;
+begin
+  Result := FHttpThread.QueueSize;
+end;
+
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 begin
   if AValue = Active then
@@ -382,6 +416,11 @@ begin
 
   FHttpThread.Port := AValue;
   inherited;
+end;
+
+procedure TRALfpHttpServer.SetQueueSize(const AValue: IntegerRAL);
+begin
+  FHttpThread.QueueSize := AValue;
 end;
 
 procedure TRALfpHttpServer.SetSessionTimeout(const AValue: IntegerRAL);

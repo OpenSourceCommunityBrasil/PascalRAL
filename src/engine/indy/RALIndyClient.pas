@@ -66,7 +66,12 @@ begin
   ResponseCode := -1;
   ResponseError := '';
 
-  AParams.AssignParams(FHttp.Request.CustomHeaders,rpkHEADER);
+  if KeepAlive then
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+  else
+    AParams.AddParam('Connection', 'close', rpkHEADER);
+
+  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);
 
   vFree := False;
   vSource := AParams.EncodeBody(vContentType, vFree);
