@@ -29,12 +29,14 @@ type
     destructor Destroy; override;
 
     function AddHeader(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddQuery(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
 
     function GetHeader(AName: StringRAL): StringRAL; virtual;
+    function GetQuery(AName: StringRAL): StringRAL; virtual;
     function GetField(AName: StringRAL): StringRAL; virtual;
     function GetCookie(AName: StringRAL): StringRAL; virtual;
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
@@ -83,6 +85,12 @@ begin
   Result := Self;
 end;
 
+function TRALHTTPHeaderInfo.AddQuery(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
+begin
+  FParams.AddParam(AName, AValue, rpkQUERY);
+  Result := Self;
+end;
+
 function TRALHTTPHeaderInfo.AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkFIELD);
@@ -116,6 +124,16 @@ var
 begin
   Result := '';
   vParam := FParams.ParamByNameAndKind[AName, rpkHEADER];
+  if vParam <> nil then
+    Result := vParam.AsString;
+end;
+
+function TRALHTTPHeaderInfo.GetQuery(AName : StringRAL) : StringRAL;
+var
+  vParam: TRALParam;
+begin
+  Result := '';
+  vParam := FParams.ParamByNameAndKind[AName, rpkQUERY];
   if vParam <> nil then
     Result := vParam.AsString;
 end;

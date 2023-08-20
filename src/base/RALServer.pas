@@ -124,7 +124,6 @@ type
     destructor Destroy; override;
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
-
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;

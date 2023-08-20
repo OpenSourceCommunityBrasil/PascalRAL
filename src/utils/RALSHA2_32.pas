@@ -53,7 +53,7 @@ const
 
 procedure TRALSHA2_32.Compress;
 var
-  I: Integer;
+  i: Integer;
   s0, s1, m0, c0, t1, t2: Cardinal;
   a, b, c, d, e, f, g, h: Cardinal;
   W: array[0..63] of Cardinal;
@@ -69,8 +69,8 @@ begin
 
   Move(FBuffer, W, GetBufLength);
 
-  for I := 0 to 15 do
-    W[I] := Swap(W[I]);
+  for i := 0 to 15 do
+    W[i] := Swap(W[i]);
 
   for i:= 16 to 63 do
   begin
@@ -95,7 +95,7 @@ begin
           ((e shr 25) or (e shl 7));
     m0 := (a and b) xor (a and c) xor (b and c);
     c0 := (e and f) xor (not e and g);
-    t1 := h + s1 + c0 + K[I] + W[I];
+    t1 := h + s1 + c0 + K[i] + W[i];
     t2 := s0 + m0;
 
     h:= g;

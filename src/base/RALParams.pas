@@ -369,7 +369,7 @@ var
   vIs13: boolean;
 begin
   {$IFNDEF FPC}
-  ASource := UTF8ToString(ASource);
+    ASource := UTF8ToString(ASource);
   {$ENDIF}
 
   if (ASource <> '') and (ANameSeparator = '') then
@@ -397,6 +397,9 @@ begin
       vIs13 := False;
     end;
   end;
+
+  if vLine <> '' then
+    AppendParamLine(vLine, ANameSeparator, AKind);
 end;
 
 procedure TRALParams.AppendParamsText(AText: StringRAL; AKind: TRALParamKind;

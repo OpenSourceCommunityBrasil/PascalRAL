@@ -188,9 +188,6 @@ function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vInt: IntegerRAL;
-  AuxList: TStrings;
-  vParamQuery: StringRAL;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -215,6 +212,13 @@ begin
       DecodeAuth(vRequest);
 
       Params.DecodeBody(AContext.InContent, AContext.InContentType);
+
+      Host := AContext.Host;
+      Protocol := '1.1';
+      if SSL.Enabled then
+        HttpVersion := 'HTTPS'
+      else
+        HttpVersion := 'HTTP';
 
       AContext.InContent := '';
       AContext.InHeaders := '';

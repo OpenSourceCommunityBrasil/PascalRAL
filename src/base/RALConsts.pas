@@ -6,7 +6,7 @@ uses
   Classes, SysUtils;
 
 type
-  TRALAuthTypes = (ratNone, ratBasic, ratBearer);
+  TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth, ratOAuth2, ratDigest);
 
 const
   // Versionamento

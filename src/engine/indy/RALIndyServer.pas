@@ -131,6 +131,18 @@ begin
 
       Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
 
+      Host := ARequestInfo.Host;
+      vInt := Pos('/', ARequestInfo.Version);
+      if vInt > 0 then
+      begin
+        HttpVersion := Copy(ARequestInfo.Version, 1, vInt-1);
+        Protocol := Copy(ARequestInfo.Version, vInt+1, 3);
+      end
+      else begin
+        HttpVersion := 'HTTP';
+        Protocol := '1.0';
+      end;
+
       // limpando para economia de memoria
       if (ARequestInfo.PostStream <> nil) then
         ARequestInfo.PostStream.Size := 0;

@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects;
+  RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects, RALTools;
 
 type
 
@@ -49,6 +49,11 @@ type
     FClientInfo: TRALClientInfo;
     FMethod: TRALMethod;
     FQuery: StringRAL;
+    FHost: StringRAL;
+    FProtocol: StringRAL;
+    FHttpVersion : StringRAL;
+  protected
+    function GetURL : StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -58,18 +63,28 @@ type
     function AddCookie(AName, AValue: StringRAL): TRALRequest; reintroduce;
     function AddFile(AFileName: StringRAL): TRALRequest; reintroduce; overload;
     function AddFile(AStream: TStream; AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
+
+    property URL: StringRAL read GetURL;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write FQuery;
+    property Host: StringRAL read FHost write FHost;
+    property Protocol: StringRAL read FProtocol write FProtocol;
+    property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Authorization : TRALAuthorization read FAuthorization write FAuthorization;
   end;
 
 implementation
 
 { TRALRequest }
+
+function TRALRequest.GetURL : StringRAL;
+begin
+  Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
+end;
 
 constructor TRALRequest.Create;
 begin

@@ -202,7 +202,7 @@ begin
       ClientInfo.UserAgent := ARequest.UserAgent;
 
       Query := ARequest.URI;
-      Params.AppendParamsUrl(ARequest.URI,rpkQUERY);
+      Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
 
       Method := HTTPMethodToRALMethod(ARequest.Method);
 
@@ -210,7 +210,7 @@ begin
       ContentSize := ARequest.ContentLength;
 
       DecodeAuth(ARequest, vRequest);
-      Params.AppendParams(ARequest.CustomHeaders,rpkHEADER);
+      Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
       // fields tambem
       vInt := 0;
@@ -219,7 +219,7 @@ begin
         vStr1 := ARequest.FieldNames[vInt];
         vStr2 := ARequest.FieldValues[vInt];
 
-        Params.AddParam(vStr1,vStr2,rpkFIELD);
+        Params.AddParam(vStr1, vStr2, rpkFIELD);
 
         vInt := vInt + 1;
       end;
@@ -229,8 +229,20 @@ begin
 
       Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
+      Host := ARequest.Host;
+      vInt := Pos('/', ARequest.ProtocolVersion);
+      if vInt > 0 then
+      begin
+        HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
+        Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
+      end
+      else begin
+        HttpVersion := 'HTTP';
+        Protocol := '1.0';
+      end;
+
       vConnClose := False;
-      if Pos('/1.0',ARequest.ProtocolVersion) > 0 then
+      if Protocol = '1.0' then
         vConnClose := True;
       if SameText(ARequest.GetHeader(hhConnection), 'close') then
         vConnClose := True;
@@ -251,8 +263,8 @@ begin
         Params.AddParam('Server', 'RAL_fpHTTP', rpkHEADER);
         if vConnClose then
           Params.AddParam('Connection', 'close', rpkHEADER);
-        Params.AssignParams(AResponse.CustomHeaders,rpkHEADER);
-        Params.AssignParams(AResponse.CookieFields,rpkCOOKIE);
+        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER);
+        Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
 
         AResponse.ContentStream := ResponseStream;
 

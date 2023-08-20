@@ -5,10 +5,11 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64,
-  RALJson, RALTools;
+  RALJson, RALTools, RALUrlCoder;
 
 type
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA512);
+  TRALOAuthAlgorithm = (toaHSHA256, toaHSHA512, toaPLAINTEXT);
 
   { TRALJWTHeader }
 
@@ -32,9 +33,9 @@ type
     property KeyID : StringRAL read FKeyID write FKeyID;
   end;
 
-  { TRALTokenParams }
+  { TRALJWTParams }
 
-  TRALTokenParams = class(TPersistent)
+  TRALJWTParams = class(TPersistent)
   private
     FAudience : StringRAL;
     FExpiration : TDateTime;
@@ -47,13 +48,13 @@ type
   protected
     function GetAsJSON: StringRAL;
     procedure SetAsJSON(const AValue: StringRAL);
-    procedure Initialize;
   public
     constructor Create;
     destructor Destroy; override;
 
     procedure AddClaim(AKey : StringRAL; AValue : StringRAL);
     procedure DelClaim(AKey : StringRAL);
+    procedure Clear;
 
     procedure createNewId;
     property AsJSON : StringRAL read GetAsJSON write SetAsJSON;
@@ -71,7 +72,7 @@ type
   private
     FAlgorithm : TRALJWTAlgorithm;
     FHeader: TRALJWTHeader;
-    FPayload: TRALTokenParams;
+    FPayload: TRALJWTParams;
     FSignature: StringRAL;
     FSecret : StringRAL;
   protected
@@ -87,12 +88,222 @@ type
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property Header: TRALJWTHeader read FHeader write FHeader;
-    property Payload: TRALTokenParams read FPayload write FPayload;
+    property Payload: TRALJWTParams read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
     property Secret: StringRAL read FSecret write FSecret;
   end;
 
+  { TRALOAuth }
+
+  TRALOAuth = class
+  private
+    FAlgorithm: TRALOAuthAlgorithm;
+    FConsumerKey: StringRAL;
+    FConsumerSecret: StringRAL;
+    FTokenAccess: StringRAL;
+    FTokenSecret: StringRAL;
+    FCallBack: StringRAL;
+    FNonce: StringRAL;
+    FVerifier: StringRAL;
+    FTimestamp: Int64RAL;
+    FVersion: StringRAL;
+    FURL: StringRAL;
+    FMethod: StringRAL;
+    FSignature: StringRAL;
+  protected
+    function GetHeader : TStringList;
+    function GetSignature : StringRAL;
+
+    function AlgorithmToStr(AAlg: TRALOAuthAlgorithm) : StringRAL;
+    function StrToAlgorithm(AStr: StringRAL) : TRALOAuthAlgorithm;
+  public
+    constructor Create;
+    function Validate : boolean;
+    function Load(const AValue: StringRAL) : boolean;
+
+    property Signature: StringRAL read GetSignature;
+    property Header: TStringList read GetHeader;
+  published
+    property Algorithm: TRALOAuthAlgorithm read FAlgorithm write FAlgorithm;
+    property ConsumerKey: StringRAL read FConsumerKey write FConsumerKey;
+    property ConsumerSecret: StringRAL read FConsumerSecret write FConsumerSecret;
+    property TokenAccess: StringRAL read FTokenAccess write FTokenAccess;
+    property TokenSecret: StringRAL read FTokenSecret write FTokenSecret;
+    property CallBack: StringRAL read FCallBack write FCallBack;
+    property Nonce: StringRAL read FNonce write FNonce;
+    property Verifier: StringRAL read FVerifier write FVerifier;
+    property Timestamp: Int64RAL read FTimestamp write FTimestamp;
+    property Version: StringRAL read FVersion write FVersion;
+    property URL: StringRAL read FURL write FURL;
+    property Method: StringRAL read FMethod write FMethod;
+  end;
+
 implementation
+
+{ TRALOAuth }
+
+function TRALOAuth.GetSignature : StringRAL;
+begin
+
+end;
+
+function TRALOAuth.AlgorithmToStr(AAlg : TRALOAuthAlgorithm) : StringRAL;
+begin
+  case AAlg of
+    toaHSHA256   : Result := 'HMAC-SHA256';
+    toaHSHA512   : Result := 'HMAC-SHA512';
+    toaPLAINTEXT : Result := 'PLAINTEXT';
+  end;
+end;
+
+function TRALOAuth.StrToAlgorithm(AStr : StringRAL) : TRALOAuthAlgorithm;
+begin
+  if AStr = 'HMAC-SHA256' then
+    Result := toaHSHA256
+  else if AStr = 'HMAC-SHA512' then
+    Result := toaHSHA512
+  else
+    Result := toaPLAINTEXT
+end;
+
+function TRALOAuth.GetHeader : TStringList;
+var
+  vNonce, vAlgorithm : StringRAL;
+  vURL, vSign, vSecret : StringRAL;
+  vInt : IntegerRAL;
+  vHash : TRALHashes;
+begin
+  inherited;
+  if Trim(FNonce) = '' then
+    vNonce := TRALBase64.Encode(RandomBytes(10))
+  else
+    vNonce := FNonce;
+
+  FTimestamp := DateTimeToUnix(Now);
+
+  Result := TStringList.Create;
+  Result.Sorted := True;
+
+  Result.Add('oauth_callback=' + FCallBack);
+  Result.Add('oauth_consumer_key=' + FConsumerKey);
+  Result.Add('oauth_nonce=' + vNonce);
+  case FAlgorithm of
+    toaHSHA256   : vAlgorithm := 'HMAC-SHA256';
+    toaHSHA512   : vAlgorithm := 'HMAC-SHA512';
+    toaPLAINTEXT : vAlgorithm := 'PLAINTEXT';
+  end;
+  Result.Add('oauth_signature_method=' + vAlgorithm);
+  Result.Add('oauth_timestamp=' + IntToStr(FTimestamp));
+  Result.Add('oauth_token=' + FTokenAccess);
+  Result.Add('oauth_verifier=' + FVerifier);
+  Result.Add('oauth_version=' + FVersion);
+
+  vSecret := FConsumerSecret + '&' + FTokenSecret;
+
+  if FAlgorithm <> toaPLAINTEXT then begin
+    vSign := '';
+    for vInt := 0 to Pred(Result.Count) do
+    begin
+      if vSign <> '' then
+        vSign := vSign + '&';
+      vSign := vSign + Result.Strings[vInt];
+    end;
+    vSign := TRALHTTPCoder.EncodeURL(vSign);
+    vURL := TRALHTTPCoder.EncodeURL(FURL);
+
+    vSign := Format('%s&%s&%s', [FMethod, vURL, vSign]);
+
+    case FAlgorithm of
+      toaHSHA256: begin
+        vHash := TRALSHA2_32.Create;
+        TRALSHA2_32(vHash).Version := rsv256;
+      end;
+      toaHSHA512: begin
+        vHash := TRALSHA2_64.Create;
+        TRALSHA2_64(vHash).Version := rsv512;
+      end;
+    end;
+
+    try
+      vHash.OutputType := rhotBase64;
+      vSign := vHash.HMACAsString(vSign, vSecret);
+    finally
+      FreeAndNil(vHash);
+    end;
+
+    Result.Add('oauth_signature='+vSign);
+  end
+  else begin
+    Result.Add('oauth_signature='+vSecret);
+  end;
+end;
+
+constructor TRALOAuth.Create;
+begin
+  inherited Create;
+  FAlgorithm := toaHSHA256;
+end;
+
+function TRALOAuth.Validate : boolean;
+var
+  vParams : TStringList;
+begin
+  vParams := GetHeader;
+  try
+    Result := vParams.Values['oauth_signature'] = FSignature;
+  finally
+    FreeAndNil(vParams);
+  end;
+end;
+
+function TRALOAuth.Load(const AValue : StringRAL) : boolean;
+var
+  vAuth, vParam: StringRAL;
+  vIni, vLen: IntegerRAL;
+  vParams: TStringList;
+begin
+  Result := False;
+
+  vParams := TStringList.Create;
+  try
+    vParams.Sorted := True;
+    vParam := '';
+    vAuth := AValue + ',';
+    vIni := RALLowStr(vAuth);
+    vLen := RALHighStr(vAuth);
+    while vIni <= vLen do
+    begin
+      if (vAuth[vIni] = ' ') or (vAuth[vIni] = ',') then
+      begin
+        vParam := Trim(vParam);
+        if vParam <> '' then
+          vParams.Add(vParam);
+        vParam := '';
+      end
+      else if vAuth[vIni] <> '"' then
+      begin
+        vParam := vParam + vAuth[vIni];
+      end;
+      vIni := vIni + 1;
+    end;
+
+    Result := (vParams.Values['oauth_consumer_key'] = FConsumerKey) and
+              (AlgorithmToStr(FAlgorithm) = vParams.Values['oauth_signature_method']);
+
+    if Result then
+    begin
+      FCallBack := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_callback']);
+      FNonce := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_nonce']);
+      FTimestamp := StrToInt64(vParams.Values['oauth_timestamp']);
+      FTokenAccess := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_token']);
+      FVerifier := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_verifier']);
+      FVersion := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_version']);
+      FSignature := TRALHTTPCoder.DecodeURL(vParams.Values['oauth_signature']);
+    end;
+  finally
+    vParams.Free;
+  end;
+end;
 
 { TRALJWTHeader }
 
@@ -183,22 +394,22 @@ begin
   end;
 end;
 
-{ TRALTokenParams }
+{ TRALJWTParams }
 
-procedure TRALTokenParams.AddClaim(AKey, AValue: StringRAL);
+procedure TRALJWTParams.AddClaim(AKey, AValue: StringRAL);
 begin
   FCustomClaims.Add(AKey + '=' + AValue);
 end;
 
-constructor TRALTokenParams.Create;
+constructor TRALJWTParams.Create;
 begin
   inherited Create;
   FCustomClaims := TStringList.Create;
   FCustomClaims.Sorted := True;
-  Initialize;
+  Clear;
 end;
 
-procedure TRALTokenParams.createNewId;
+procedure TRALJWTParams.createNewId;
 var
   vBytes : TBytes;
 begin
@@ -206,7 +417,7 @@ begin
   FId := TRALBase64.Encode(vBytes);
 end;
 
-procedure TRALTokenParams.DelClaim(AKey: StringRAL);
+procedure TRALJWTParams.DelClaim(AKey: StringRAL);
 var
   vInt : IntegerRAL;
 begin
@@ -215,13 +426,13 @@ begin
     FCustomClaims.Delete(vInt);
 end;
 
-destructor TRALTokenParams.Destroy;
+destructor TRALJWTParams.Destroy;
 begin
   FreeAndNil(FCustomClaims);
   inherited;
 end;
 
-function TRALTokenParams.GetAsJSON: StringRAL;
+function TRALJWTParams.GetAsJSON: StringRAL;
 var
   vJson : TRALJSONObject;
   vInt : IntegerRAL;
@@ -270,7 +481,7 @@ begin
   end;
 end;
 
-procedure TRALTokenParams.Initialize;
+procedure TRALJWTParams.Clear;
 begin
   FAudience := '';
   FExpiration := 0;
@@ -282,7 +493,7 @@ begin
   FCustomClaims.Clear;
 end;
 
-procedure TRALTokenParams.SetAsJSON(const AValue: StringRAL);
+procedure TRALJWTParams.SetAsJSON(const AValue: StringRAL);
 var
   vJson : TRALJSONObject;
   vInt : IntegerRAL;
@@ -290,7 +501,7 @@ var
   vName : StringRAL;
   vValue : TRALJSONValue;
 begin
-  Initialize;
+  Clear;
   vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
   try
     if vJson <> nil then
@@ -355,7 +566,7 @@ constructor TRALJWT.Create;
 begin
   inherited;
   FHeader := TRALJWTHeader.Create;
-  FPayload := TRALTokenParams.Create;
+  FPayload := TRALJWTParams.Create;
 end;
 
 function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
@@ -422,7 +633,7 @@ var
   vPayload : StringRAL;
   vSignature, vMySignature : StringRAL;
 
-  vObjPayload : TRALTokenParams;
+  vObjPayload : TRALJWTParams;
 begin
   Result := False;
 
@@ -452,7 +663,7 @@ begin
       if vMySignature = vSignature then
       begin
         Result := True;
-        vObjPayload := TRALTokenParams.Create;
+        vObjPayload := TRALJWTParams.Create;
         try
           vObjPayload.AsJSON := vPayload;
           if (vObjPayload.Expiration > 0) and (vObjPayload.Expiration < Now) then
