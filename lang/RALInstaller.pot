@@ -1,0 +1,136 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: tform1.button1.caption
+msgid "test logo anim"
+msgstr ""
+
+#: tform1.caption
+msgid "Form1"
+msgstr ""
+
+#: tform1.cbideversion.texthint
+msgctxt "tform1.cbideversion.texthint"
+msgid "Selecione"
+msgstr ""
+
+#: tform1.cbinstalltype.text
+msgid "Padrão - Indy"
+msgstr ""
+
+#: tform1.cbsources.texthint
+msgctxt "tform1.cbsources.texthint"
+msgid "Selecione"
+msgstr ""
+
+#: tform1.folderdialog.title
+msgid "Escolha a pasta pra baixar os fontes"
+msgstr ""
+
+#: tform1.lbedfolder.editlabel.caption
+msgid "Caminho para baixar os fontes"
+msgstr ""
+
+#: tform1.lbedfolder.texthint
+msgid "Escolha um local pra baixar os fontes"
+msgstr ""
+
+#: tform1.lconfirmback.caption
+msgctxt "tform1.lconfirmback.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tform1.lconfirmnext.caption
+msgid "Instalar >"
+msgstr ""
+
+#: tform1.lconfirmsubtitle.caption
+msgid "Resumo dos recursos escolhidos"
+msgstr ""
+
+#: tform1.ldataengine.caption
+msgid "Motor de dados"
+msgstr ""
+
+#: tform1.ldbware.caption
+msgid "Drivers de banco (DBWare)"
+msgstr ""
+
+#: tform1.lidenext.caption
+msgctxt "tform1.lidenext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tform1.lideprevious.caption
+msgctxt "tform1.lideprevious.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tform1.lidesubtitle.caption
+msgid "Escolha a IDE"
+msgstr ""
+
+#: tform1.lideversion.caption
+msgid "Escolha a versão da IDE"
+msgstr ""
+
+#: tform1.linstallback.caption
+msgctxt "tform1.linstallback.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tform1.linstallclose.caption
+msgid "Fechar"
+msgstr ""
+
+#: tform1.linstallsubtitle.caption
+msgid "Instalação"
+msgstr ""
+
+#: tform1.linstalltype.caption
+msgid "Tipo de Instalação"
+msgstr ""
+
+#: tform1.llanguagenext.caption
+msgctxt "tform1.llanguagenext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tform1.llanguagesubtitle.caption
+msgid "Escolha o Idioma"
+msgstr ""
+
+#: tform1.lotherresources.caption
+msgid "Outros Recursos"
+msgstr ""
+
+#: tform1.lplatforms.caption
+msgid "Plataformas"
+msgstr ""
+
+#: tform1.lresourcesnext.caption
+msgctxt "tform1.lresourcesnext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tform1.lresourcesprevious.caption
+msgctxt "tform1.lresourcesprevious.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tform1.lresourcessubtitle.caption
+msgid "Escolha os recursos a instalar"
+msgstr ""
+
+#: tform1.lsourceversion.caption
+msgid "Versão dos Fontes"
+msgstr ""
+
+#: tform1.ltheme.caption
+msgid "Claro"
+msgstr ""
+
+#: tform1.lversion.caption
+msgid "Instalador Versão 1.0"
+msgstr ""
+
