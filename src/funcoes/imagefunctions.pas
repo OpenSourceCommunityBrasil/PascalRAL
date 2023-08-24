@@ -22,7 +22,8 @@ type
     class procedure AnimaImagemFade(aImage: TImage; aOpacity: byte;
       aDuracao: single = 2.0; aDirecao: TImageAnimDirection = iadUP);
     class procedure AnimaImagemSurgir(aImage: TImage; aDuracao: single = 2.0);
-    class function Ofuscar(aImage: TImage; aAlphaPercent: integer = 100): TImage;
+    class function Ofuscar(aImage: TImage; aAlphaPercent: integer = 100): TStream;
+    class function Ofuscar(aImage: TStream; aAlphaPercent: integer = 100): TStream;
   published
   end;
 
@@ -165,30 +166,60 @@ end;
 
 class procedure TImgUtils.AnimaImagemSurgir(aImage: TImage; aDuracao: single);
 var
-  BaseImage: TMemoryStream;
-  img: TImage;
-  I: integer;
-  ini, fin: double;
+  BaseImage, OfuscImage: TMemoryStream;
+  ini, fin, di, i: double;
+  tci, tcf: QWord;
+  td, tt, tm: int64;
 begin
   BaseImage := TMemoryStream.Create;
-  aImage.Picture.SaveToStream(BaseImage);
-  img := TImage.Create(nil);
-  ini := now;
-  for I := 10 to 25 do
-  begin
-    BaseImage.Position := 0;
-    img.Picture.LoadFromStream(BaseImage);
-    aImage.Picture.Assign(Ofuscar(img, 4 * I).Picture);
-    Application.ProcessMessages;
+  try
+    aImage.Picture.SaveToStream(BaseImage);
+    ini := now;
+    td := Trunc(aDuracao * 1000) - 100;
+    tt := td;
+    i := 40;
+    di := 0;
+    repeat
+      tci := GetTickCount64;
+      i := i + di;
+      BaseImage.Position := 0;
+      OfuscImage := TMemoryStream(Ofuscar(BaseImage, Trunc(i)));
+      try
+        aImage.Picture.LoadFromStream(OfuscImage);
+      finally
+        FreeAndNil(OfuscImage);
+      end;
+      Application.ProcessMessages;
+      tcf := GetTickCount64;
+      tm := tcf - tci;
+      if tt > 0 then
+        di := (100 - i) / (tt / tm);
+      tt := tt - tm;
+    until (i >= 100.0);
+
+    fin := now;
+  finally
+    BaseImage.Free;
   end;
-  fin := now;
-  ShowMessage(FormatDateTime('nn:zzz', fin - ini));
-  BaseImage.Free;
+
+  ShowMessage(FormatDateTime('ss:zzz', fin - ini));
 end;
 
-class function TImgUtils.Ofuscar(aImage: TImage; aAlphaPercent: integer): TImage;
+class function TImgUtils.Ofuscar(aImage: TImage; aAlphaPercent: integer): TStream;
 var
-  mem: TMemoryStream;
+  mem : TMemoryStream;
+begin
+  mem := TMemoryStream.Create;
+  try
+    aImage.Picture.SaveToStream(mem);
+    Result := Ofuscar(mem,aAlphaPercent);
+  finally
+    FreeAndNil(mem);
+  end;
+end;
+
+class function TImgUtils.Ofuscar(aImage: TStream; aAlphaPercent: integer): TStream;
+var
   img: TFPMemoryImage;
   i, j: integer;
   fp, fpf: TFPColor;
@@ -199,44 +230,38 @@ begin
   else if aAlphaPercent < 0 then
     aAlphaPercent := 0;
 
-  mem := TMemoryStream.Create;
-  aImage.Picture.SaveToStream(mem);
-  mem.Position := 0;
+  img := TFPMemoryImage.Create(0, 0);
+  try
+    img.LoadFromStream(aImage);
 
-  img := TFPMemoryImage.Create(512, 512);
-  img.LoadFromStream(mem);
+    fpf := TColorToFPColor(clWhite);
+    fpf.Alpha := round($FFFF * ((100 - aAlphaPercent) / 100));
 
-  mem.Free;
-
-  fpf := TColorToFPColor(clWhite);
-  fpf.Alpha := round($FFFF * ((100 - aAlphaPercent) / 100));
-
-  for i := 0 to img.Height - 1 do
-    for j := 0 to img.Width - 1 do
-    begin
-      fp := img.Colors[j, i];
-      if fp.Alpha > 30 shl 8 then
+    for i := 0 to img.Height - 1 do
+      for j := 0 to img.Width - 1 do
       begin
-        fp := FPImage.AlphaBlend(fp, fpf);
-        img.Colors[j, i] := fp;
-      end
-      else
-        img.Colors[j, i] := colTransparent;
+        fp := img.Colors[j, i];
+        if fp.Alpha > 30 shl 8 then
+        begin
+          fp := FPImage.AlphaBlend(fp, fpf);
+          img.Colors[j, i] := fp;
+        end
+        else
+          img.Colors[j, i] := colTransparent;
+      end;
+
+    Result := TMemoryStream.Create;
+    wr := TFPWriterPNG.Create;
+    try
+      wr.UseAlpha := True;
+      img.SaveToStream(Result, wr);
+    finally
+      FreeAndNil(wr);
     end;
-
-  mem := TMemoryStream.Create;
-  wr := TFPWriterPNG.Create;
-  wr.UseAlpha := True;
-  img.SaveToStream(mem, wr);
-
-  wr.Free;
-  img.Free;
-
-  mem.Position := 0;
-  //aImage.Picture.LoadFromStream(mem);
-  Result := TImage.Create(nil);
-  Result.Picture.LoadFromStream(mem);
-  mem.Free;
+    Result.Position := 0;
+  finally
+    FreeAndNil(img);
+  end;
 end;
 
 end.
