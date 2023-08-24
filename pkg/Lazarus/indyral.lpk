@@ -12,6 +12,11 @@
         <OtherUnitFiles Value="..\..\src\engine\indy;..\..\src\base;..\..\src\utils"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
       <Other>
         <Verbosity>
           <ShoLineNum Value="True"/>

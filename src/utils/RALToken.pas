@@ -4,12 +4,13 @@ interface
 
 uses
   Classes, SysUtils, DateUtils,
-  RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64,
+  RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALMD5,
   RALJson, RALTools, RALUrlCoder;
 
 type
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA512);
   TRALOAuthAlgorithm = (toaHSHA256, toaHSHA512, toaPLAINTEXT);
+  TRALDigestAlgorithm = (tdaMD5, tdaSHA2_256, tdaSHA2_512);
 
   { TRALJWTHeader }
 
@@ -138,7 +139,182 @@ type
     property Method: StringRAL read FMethod write FMethod;
   end;
 
+  TRALDigestParams = class(TPersistent)
+  private
+    FAlgorithm: TRALDigestAlgorithm;
+    FSessAlgorithm : boolean;
+    FRealm: StringRAL;
+    FQop: StringRAL;
+    FNonce: StringRAL;
+    FOpaque: StringRAL;
+  published
+    property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
+    property SessAlgorithm: StringRAL read FSessAlgorithm write FSessAlgorithm;
+    property Realm: StringRAL read FRealm write FRealm;
+    property Qop: StringRAL read FQop write FQop;
+    property Nonce: StringRAL read FNonce write FNonce;
+    property Opaque: StringRAL read FOpaque write FOpaque;
+  end;
+
+  { TRALDigest }
+
+  TRALDigest = class
+  private
+    FParams : TRALDigestParams;
+
+    FNC: StringRAL;
+    FCNonce: StringRAL;
+    FURL: StringRAL;
+    FMethod: StringRAL;
+    FUserName: StringRAL;
+    FPassword: StringRAL;
+  protected
+    function GetHeader : TStringList;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Load(const AValue: StringRAL);
+    property Header: TStringList read GetHeader;
+  published
+    property Params : TRALDigestParams read FParams write FParams;
+    property NC: StringRAL read FNC write FNC;
+    property CNonce: StringRAL read FCNonce write FCNonce;
+    property URL: StringRAL read FURL write FURL;
+    property Method: StringRAL read FMethod write FMethod;
+    property UserName: StringRAL read FUserName write FUserName;
+    property Password: StringRAL read FPassword write FPassword;
+  end;
+
 implementation
+
+{ TRALDigest }
+
+function TRALDigest.GetHeader : TStringList;
+var
+  vHa1, vHa2, vAux1 : StringRAL;
+  vHash : TRALHashes;
+begin
+  case FParams.Algorithm of
+    tdaMD5      : begin
+      vHash := TRALMD5.Create;
+    end;
+    tdaSHA2_256 : begin
+      vHash := TRALSHA2_32.Create;
+      TRALSHA2_32(vHash).Version := rsv256;
+    end;
+    tdaSHA2_512 : begin
+      vHash := TRALSHA2_64.Create;
+      TRALSHA2_64(vHash).Version := rsv512_256;
+    end;
+  end;
+
+  try
+    vHa1 := Format('%s:%s:%s',[FUserName,FParams.Realm,FPassword]);
+    vHa1 := vHash.HashAsString(vHa1);
+
+    if FParams.SessAlgorithm then
+      vHa1 := vHash.HashAsString(Format('%s:%s:%s',[vHa1,FParams.Nonce,FCNonce]))
+
+    if ((Pos('auth',LowerCase(FParams.Qop)) > 0) and
+       (Pos('auth-int',LowerCase(FParams.Qop)) = 0)) or
+       (Trim(FParams.Qop) = '') then
+    begin
+      vHa2 := Format('%s:%s',[FMethod,FURL]);
+      vHa2 = vHash.HashAsString(vHa2)
+    end
+    else if (Pos('auth-int',LowerCase(FParams.Qop)) > 0) then
+    begin
+      vHa2 := vHash.HashAsString(''); //entityBody
+      vHa2 := Format('%s:%s:%s',[FMethod,FURL,vHa2]);
+      vHa2 = vHash.HashAsString(vHa2)
+    end;
+
+    if (Pos('auth',LowerCase(FParams.Qop)) > 0) then
+      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1,FParams.Nonce,FNC,FCNonce,FParams.Qop,vHa2]);
+    else
+      vAux1 := Format('%s:%s:%s',[vHa1,FParams.Nonce,vHa2]);
+    vAux1 = vHash.HashAsString(vAux1);
+  finally
+    FreeAndNil(vHash);
+  end;
+
+  Result := TStringList.Create;
+  Result.Add('realm=' + FParams.Realm);
+  Result.Add('username=' + FUserName);
+  Result.Add('nonce=' + FParams.Nonce);
+  Result.Add('uri=' + FURL);
+  Result.Add('qop=' + FParams.Qop);
+  Result.Add('nc=' + FNC);  //  nc=00000001,
+  Result.Add('cnonce=' + FCNonce); // cnonce="0a4f113b",
+  Result.Add('response=' + vAux1);
+  Result.Add('opaque=' + FParams.Opaque);
+end;
+
+constructor TRALDigest.Create;
+begin
+  inherited;
+  FParams := TRALDigestParams.Create;
+end;
+
+destructor TRALDigest.Destroy;
+begin
+  FreeAndNil(FParams);
+  inherited Destroy;
+end;
+
+procedure TRALDigest.Load(const AValue : StringRAL);
+var
+  vParams : TStringList;
+  vParam, vAuth, vAux1 : StringRAL;
+  vIni , vLen: IntegerRAL;
+  vQuoted : boolean;
+begin
+  vParams := TStringList.Create;
+  try
+    vParams.Sorted := True;
+    vParam := '';
+    vAuth := AValue + ',';
+    vIni := RALLowStr(vAuth);
+    vLen := RALHighStr(vAuth);
+    vQuoted := False;
+    while vIni <= vLen do
+    begin
+      if ((vAuth[vIni] = ' ') or (vAuth[vIni] = ',')) and (not vQuoted) then
+      begin
+        vParam := Trim(vParam);
+        if vParam <> '' then
+          vParams.Add(vParam);
+        vParam := '';
+      end
+      else if vAuth[vIni] = '"' then
+      begin
+        vQuoted := not vQuoted;
+      end;
+      else
+      begin
+        vParam := vParam + vAuth[vIni];
+      end;
+      vIni := vIni + 1;
+    end;
+
+    FParams.Algorithm := tdaMD5;
+
+    FParams.Realm := vParams.Values['realm'];
+    vAux1 := LowerCase(vParams.Values['algorithm']);
+
+    FParams.SessAlgorithm := Pos('sess',vAux1);
+    if Pos('sha-256',vAux1) > 0 then
+      FParams.Algorithm := tdaSHA2_256;
+    else if Pos('sha-512-256',vAux1) > 0 then
+      FParams.Algorithm := tdaSHA2_512;
+    FParams.Qop := vParams.Values['qop'];
+    FParams.Nonce := vParams.Values['nonce'];
+    FParams.Opaque := vParams.Values['opaque'];
+  finally
+    FreeAndNil(vParams);
+  end;
+end;
 
 { TRALOAuth }
 

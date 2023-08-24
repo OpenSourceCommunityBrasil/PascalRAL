@@ -336,8 +336,47 @@ begin
 end;
 
 function TRALClient.GetTokenDigest(AParams, AHeader : TStringList) : boolean;
+var
+  vObjAuth : TRALClientDigest;
+  vConta, vResult: IntegerRAL;
+  vBody : TRALParams;
+  vURL, vAuth: StringRAL;
+  vDigest : TRALDigest;
 begin
+  vObjAuth := TRALClientDigest(FAuthentication);
+  if (vObjAuth.DigestParams.Nonce = '') or (vObjAuth.DigestParams.Opaque = '') then
+  begin
+    vURL := AParams.Values['url'];
+    vMethod := HTTPMethodToRALMethod(AParams.Values['method']);
+    vConta := 0;
+    repeat
+      vBody := TRALParams.Create;
+      try
+        vResult := SendUrl(vURL, vMethod, vBody);
+      finally
+        vBody.Free;
+      end;
+      vConta := vConta + 1;
+    until (vResult = 401) or (vConta > 3);
 
+    if vResult = 401 then
+    begin
+      vAuth := Response.GetHeader('WWW-Authenticate');
+      vDigest := TRALDigest.Create;
+      try
+        vDigest.Load(vAuth);
+        vObjAuth.DigestParams.Assign(vDigest.Params);
+        vObjAuth.GetHeader(AParams, AHeader);
+      finally
+        vDigest.Free;
+      end;
+    end;
+  end
+  else begin
+    vObjAuth.GetHeader(AParams, AHeader);
+  end;
+  Result := (vObjAuth.DigestParams.Nonce <> '') and
+            (vObjAuth.DigestParams.Opaque <> '')
 end;
 
 function TRALClient.GetURL(ARoute: StringRAL): StringRAL;

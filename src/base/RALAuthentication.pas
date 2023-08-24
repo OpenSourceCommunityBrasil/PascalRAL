@@ -202,11 +202,21 @@ type
 
   end;
 
+  { TRALClientDigest }
+
   TRALClientDigest = class(TRALAuthClient)
   private
+    FUserName: StringRAL;
+    FPassword: StringRAL;
 
+    FDigestParams: TRALDigestParams;
   public
+    procedure GetHeader(AParams, AHeader : TStringList); override;
 
+    property DigestParams: TRALDigestParams read FDigestParams write FDigestParams;
+  published
+    property UserName: StringRAL read FUserName write FUserName;
+    property Password: StringRAL read FPassword write FPassword;
   end;
 
   TRALServerDigest = class(TRALAuthServer)
@@ -217,6 +227,50 @@ type
   end;
 
 implementation
+
+{ TRALClientDigest }
+
+procedure TRALClientDigest.SetRealm(ARealm : StringRAL);
+begin
+  FRealm := ARealm;
+end;
+
+procedure TRALClientDigest.GetHeader(AParams, AHeader : TStringList);
+var
+  vAuth: TRALDigest;
+  vParams: TStringList;
+  vHead: StringRAL;
+  vInt : IntegerRAL;
+begin
+  inherited;
+  vAuth := TRALDigest.Create;
+  try
+    vAuth.Params.Assign(FDigestParams);
+    vAuth.UserName := FUserName;
+    vAuth.Password := FPassword;
+    vAuth.URL := AParams.Values['url'];
+    vAuth.Method := AParams.Values['method'];
+
+    vParams := vAuth.Header;
+    try
+      for vInt := 0 to Pred(vParams.Count) do
+      begin
+        if vInt = 0 then
+          vHead := vHead + Format(' %s="%s"',[vParams.Names[vInt],
+                   TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
+        else
+          vHead := vHead + Format(', %s="%s"',[vParams.Names[vInt],
+                   TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
+      end;
+
+      AHeader.Add('Authorization=Digest '+vHead);
+    finally
+      FreeAndNil(vParams);
+    end;
+  finally
+    FreeAndNil(vAuth);
+  end;
+end;
 
 { TRALServerOAuth }
 
