@@ -1,5 +1,5 @@
 {"version":1,"strings":[
-{"hash":5073153,"name":"tform1.caption","sourcebytes":[70,111,114,109,49],"value":"Form1"},
+{"hash":119536834,"name":"tform1.caption","sourcebytes":[80,97,115,99,97,108,82,65,76,32,73,110,115,116,97,108,97,100,111,114],"value":"PascalRAL Instalador"},
 {"hash":56261408,"name":"tform1.lversion.caption","sourcebytes":[73,110,115,116,97,108,97,100,111,114,32,86,101,114,115,195,163,111,32,49,46,48],"value":"Instalador Vers\u00E3o 1.0"},
 {"hash":267988773,"name":"tform1.lidesubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,97,32,73,68,69],"value":"Escolha a IDE"},
 {"hash":183197662,"name":"tform1.lidenext.caption","sourcebytes":[80,114,195,179,120,105,109,111,32,62],"value":"Pr\u00F3ximo >"},

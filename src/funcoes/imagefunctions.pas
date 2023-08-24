@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, IntfGraphics, ExtCtrls, Graphics, Forms,
-  FPImage, FPWritePNG, FPReadPNG, dialogs;
+  FPImage, FPWritePNG, FPReadPNG, Dialogs;
 
 type
   TImageAnimDirection = (iadUP, iadDOWN, iadRIGHT, iadLEFT);
@@ -68,8 +68,8 @@ begin
       end;
     png2.LoadFromIntfImage(t);
     aImage.Picture.Assign(png2);
-  finally
 
+  finally
     png1.Free;
     png2.Free;
   end;
@@ -167,15 +167,13 @@ end;
 class procedure TImgUtils.AnimaImagemSurgir(aImage: TImage; aDuracao: single);
 var
   BaseImage, OfuscImage: TMemoryStream;
-  ini, fin : double;
-  porc, inc_porc : double;
+  porc, inc_porc: double;
   tick_ini, tick_fim: QWord;
   time_duracao, tempo_exec: int64;
 begin
   BaseImage := TMemoryStream.Create;
   try
     aImage.Picture.SaveToStream(BaseImage);
-    ini := now;
     time_duracao := Trunc(aDuracao * 1000);
     porc := 40;
     inc_porc := 0;
@@ -198,23 +196,19 @@ begin
       else if porc < 100 then
         inc_porc := (100 - porc);
     until (porc >= 100.0);
-
-    fin := now;
   finally
     BaseImage.Free;
   end;
-
-  ShowMessage(FormatDateTime('ss:zzz', fin - ini));
 end;
 
 class function TImgUtils.Ofuscar(aImage: TImage; aAlphaPercent: integer): TStream;
 var
-  mem : TMemoryStream;
+  mem: TMemoryStream;
 begin
   mem := TMemoryStream.Create;
   try
     aImage.Picture.SaveToStream(mem);
-    Result := Ofuscar(mem,aAlphaPercent);
+    Result := Ofuscar(mem, aAlphaPercent);
   finally
     FreeAndNil(mem);
   end;

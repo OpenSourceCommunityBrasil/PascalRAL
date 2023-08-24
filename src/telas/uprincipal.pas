@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, fphttpclient, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   StdCtrls, ComCtrls, CheckLst, ValEdit, Buttons, fpJSON, jsonparser,
-  urestfunctions, uconsts, lclfunctions, DefaultTranslator, imagefunctions;
+  urestfunctions, uconsts, lclfunctions, DefaultTranslator, LCLTranslator,
+  imagefunctions;
 
 type
   TSplashFormStyle = record
@@ -127,6 +128,10 @@ type
     FPanelSteps: array of TComponent;
   end;
 
+resourcestring
+  ThemeLight = 'Claro';
+  ThemeDark = 'Escuro';
+
 var
   Form1: TForm1;
   Themes: array of TSplashFormStyle;
@@ -168,7 +173,11 @@ begin
         Themes[Ord(aTheme)].button);
   end;
 
-  lTheme.Caption := Themes[Ord(aTheme)].subtitle;
+  if Ord(aTheme) = 0 then
+    lTheme.Caption := ThemeLight
+  else
+    lTheme.Caption := ThemeDark;
+
   FThemeIndex := Ord(aTheme);
 end;
 
@@ -213,53 +222,14 @@ end;
 procedure TForm1.Translate(aLangIndex: integer);
 begin
   case aLangIndex of
-    0: begin //PT-BR
-      //títulos
-      lVersion.Caption := 'Versão';
-      lLanguageSubTitle.Caption := 'Escolha o idioma';
-      lIDESubTitle.Caption := 'Escolha a IDE';
-      lResourcesSubTitle.Caption := 'Escolha os recursos a instalar';
-      //botões
-      lLanguageNext.Caption := 'Próximo >';
-      lIDENext.Caption := 'Próximo >';
-      lResourcesNext.Caption := 'Próximo >';
-      lIDEPrevious.Caption := '< Anterior';
-      lResourcesPrevious.Caption := '< Anterior';
-      //outros
-      lDataEngine.Caption := 'Motor de Dados';
-    end;
+    //PT-BR
+    0: SetDefaultLang('pt_BR', '/lang');
 
-    1: begin //EN-US
-      //títulos
-      lVersion.Caption := 'Version';
-      lLanguageSubTitle.Caption := 'Choose your language';
-      lIDESubTitle.Caption := 'Choose an IDE';
-      lResourcesSubTitle.Caption := 'Choose which resources to install';
-      //botões
-      lLanguageNext.Caption := 'Next >';
-      lIDENext.Caption := 'Next >';
-      lResourcesNext.Caption := 'Next >';
-      lIDEPrevious.Caption := '< Back';
-      lResourcesPrevious.Caption := '< Back';
-      //outros
-      lDataEngine.Caption := 'Data Engine';
-    end;
+    //EN-US
+    1: SetDefaultLang('en_US', '/lang');
 
-    2: begin //ES-ES
-      //títulos
-      lVersion.Caption := 'Versión';
-      lLanguageSubTitle.Caption := 'Seleccione su idioma';
-      lIDESubTitle.Caption := 'Seleccione su IDE';
-      lResourcesSubTitle.Caption := 'Elija las características para instalar';
-      //botões
-      lLanguageNext.Caption := 'Próximo >';
-      lIDENext.Caption := 'Próximo >';
-      lResourcesNext.Caption := 'Próximo >';
-      lIDEPrevious.Caption := '< Anterior';
-      lResourcesPrevious.Caption := '< Anterior';
-      //outros
-      lDataEngine.Caption := 'Motor de Datos';
-    end;
+    //ES-ES
+    2: SetDefaultLang('es_ES', '/lang');
   end;
 end;
 
@@ -327,6 +297,7 @@ begin
   imDelphi.Enabled := False;
   imDelphi.Visible := False;
   {$ENDIF}
+  SetDefaultLang('en_US', '/lang');
   SetIgnoredLabels;
   ConfigThemes;
   FIDE := -1;
@@ -349,7 +320,7 @@ end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
-  TImgUtils.AnimaImagemSurgir(imlogoBG, 2.0);
+  TImgUtils.AnimaImagemSurgir(imlogoBG, 1.0);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
