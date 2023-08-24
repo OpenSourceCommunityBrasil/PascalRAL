@@ -167,35 +167,37 @@ end;
 class procedure TImgUtils.AnimaImagemSurgir(aImage: TImage; aDuracao: single);
 var
   BaseImage, OfuscImage: TMemoryStream;
-  ini, fin, di, i: double;
-  tci, tcf: QWord;
-  td, tt, tm: int64;
+  ini, fin : double;
+  porc, inc_porc : double;
+  tick_ini, tick_fim: QWord;
+  time_duracao, tempo_exec: int64;
 begin
   BaseImage := TMemoryStream.Create;
   try
     aImage.Picture.SaveToStream(BaseImage);
     ini := now;
-    td := Trunc(aDuracao * 1000) - 100;
-    tt := td;
-    i := 40;
-    di := 0;
+    time_duracao := Trunc(aDuracao * 1000);
+    porc := 40;
+    inc_porc := 0;
     repeat
-      tci := GetTickCount64;
-      i := i + di;
+      tick_ini := GetTickCount64;
+      porc := porc + inc_porc;
       BaseImage.Position := 0;
-      OfuscImage := TMemoryStream(Ofuscar(BaseImage, Trunc(i)));
+      OfuscImage := TMemoryStream(Ofuscar(BaseImage, Trunc(porc)));
       try
         aImage.Picture.LoadFromStream(OfuscImage);
       finally
         FreeAndNil(OfuscImage);
       end;
       Application.ProcessMessages;
-      tcf := GetTickCount64;
-      tm := tcf - tci;
-      if tt > 0 then
-        di := (100 - i) / (tt / tm);
-      tt := tt - tm;
-    until (i >= 100.0);
+      tick_fim := GetTickCount64;
+      tempo_exec := tick_fim - tick_ini;
+      time_duracao := time_duracao - tempo_exec;
+      if time_duracao > 0 then
+        inc_porc := (100 - porc) / (time_duracao / tempo_exec)
+      else if porc < 100 then
+        inc_porc := (100 - porc);
+    until (porc >= 100.0);
 
     fin := now;
   finally
