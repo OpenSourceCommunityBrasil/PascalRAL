@@ -5,10 +5,11 @@ unit imagefunctions;
 interface
 
 uses
-  Classes, SysUtils, IntfGraphics, FPimage, ExtCtrls, Graphics, Forms;
+  Classes, SysUtils, IntfGraphics, ExtCtrls, Graphics, Forms,
+  FPImage, FPWritePNG, FPReadPNG, dialogs;
 
 type
-  TImageAnimDirection = (iadUP, iadDOWN);
+  TImageAnimDirection = (iadUP, iadDOWN, iadRIGHT, iadLEFT);
 
   { TImgUtils }
 
@@ -18,8 +19,10 @@ type
   public
     procedure pintaImagemBaixoCima(aImage: TImage; aProgress: double);
     procedure pintaImagemCimaBaixo(aImage: TImage; aProgress: double);
-    procedure AnimaImagemFade(aImage: TImage; aOpacity: byte;
+    class procedure AnimaImagemFade(aImage: TImage; aOpacity: byte;
       aDuracao: single = 2.0; aDirecao: TImageAnimDirection = iadUP);
+    class procedure AnimaImagemSurgir(aImage: TImage; aDuracao: single = 2.0);
+    class function Ofuscar(aImage: TImage; aAlphaPercent: integer = 100): TImage;
   published
   end;
 
@@ -113,7 +116,7 @@ begin
   end;
 end;
 
-procedure TImgUtils.AnimaImagemFade(aImage: TImage; aOpacity: byte;
+class procedure TImgUtils.AnimaImagemFade(aImage: TImage; aOpacity: byte;
   aDuracao: single; aDirecao: TImageAnimDirection);
 var
   i, j, hporc, aprogress: integer;
@@ -132,7 +135,7 @@ begin
   aprogress := 1;
   t := png1.CreateIntfImage;
   try
-    while aprogress < t.Height -1 do
+    while aprogress < t.Height - 1 do
     begin
       hporc := Trunc(aProgress * t.Height / 100);
       if aDirecao = iadUP then
@@ -158,6 +161,82 @@ begin
     png1.Free;
     png2.Free;
   end;
+end;
+
+class procedure TImgUtils.AnimaImagemSurgir(aImage: TImage; aDuracao: single);
+var
+  BaseImage: TMemoryStream;
+  img: TImage;
+  I: integer;
+  ini, fin: double;
+begin
+  BaseImage := TMemoryStream.Create;
+  aImage.Picture.SaveToStream(BaseImage);
+  img := TImage.Create(nil);
+  ini := now;
+  for I := 10 to 25 do
+  begin
+    BaseImage.Position := 0;
+    img.Picture.LoadFromStream(BaseImage);
+    aImage.Picture.Assign(Ofuscar(img, 4 * I).Picture);
+    Application.ProcessMessages;
+  end;
+  fin := now;
+  ShowMessage(FormatDateTime('nn:zzz', fin - ini));
+  BaseImage.Free;
+end;
+
+class function TImgUtils.Ofuscar(aImage: TImage; aAlphaPercent: integer): TImage;
+var
+  mem: TMemoryStream;
+  img: TFPMemoryImage;
+  i, j: integer;
+  fp, fpf: TFPColor;
+  wr: TFPWriterPNG;
+begin
+  if aAlphaPercent > 100 then
+    aAlphaPercent := 100
+  else if aAlphaPercent < 0 then
+    aAlphaPercent := 0;
+
+  mem := TMemoryStream.Create;
+  aImage.Picture.SaveToStream(mem);
+  mem.Position := 0;
+
+  img := TFPMemoryImage.Create(512, 512);
+  img.LoadFromStream(mem);
+
+  mem.Free;
+
+  fpf := TColorToFPColor(clWhite);
+  fpf.Alpha := round($FFFF * ((100 - aAlphaPercent) / 100));
+
+  for i := 0 to img.Height - 1 do
+    for j := 0 to img.Width - 1 do
+    begin
+      fp := img.Colors[j, i];
+      if fp.Alpha > 30 shl 8 then
+      begin
+        fp := FPImage.AlphaBlend(fp, fpf);
+        img.Colors[j, i] := fp;
+      end
+      else
+        img.Colors[j, i] := colTransparent;
+    end;
+
+  mem := TMemoryStream.Create;
+  wr := TFPWriterPNG.Create;
+  wr.UseAlpha := True;
+  img.SaveToStream(mem, wr);
+
+  wr.Free;
+  img.Free;
+
+  mem.Position := 0;
+  //aImage.Picture.LoadFromStream(mem);
+  Result := TImage.Create(nil);
+  Result.Picture.LoadFromStream(mem);
+  mem.Free;
 end;
 
 end.

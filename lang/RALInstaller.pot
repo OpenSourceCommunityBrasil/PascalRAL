@@ -9,30 +9,22 @@ msgstr ""
 msgid "Form1"
 msgstr ""
 
-#: tform1.cbideversion.texthint
-msgctxt "tform1.cbideversion.texthint"
-msgid "Selecione"
+#: tform1.checkbox1.caption
+msgid "Instalar Dependências"
 msgstr ""
 
-#: tform1.cbinstalltype.text
-msgid "Padrão - Indy"
+#: tform1.epathfolder.editlabel.caption
+msgctxt "tform1.epathfolder.editlabel.caption"
+msgid "Caminho para baixar os fontes"
 msgstr ""
 
-#: tform1.cbsources.texthint
-msgctxt "tform1.cbsources.texthint"
-msgid "Selecione"
+#: tform1.epathfolder.texthint
+msgctxt "tform1.epathfolder.texthint"
+msgid "Escolha um local pra baixar os fontes"
 msgstr ""
 
 #: tform1.folderdialog.title
 msgid "Escolha a pasta pra baixar os fontes"
-msgstr ""
-
-#: tform1.lbedfolder.editlabel.caption
-msgid "Caminho para baixar os fontes"
-msgstr ""
-
-#: tform1.lbedfolder.texthint
-msgid "Escolha um local pra baixar os fontes"
 msgstr ""
 
 #: tform1.lconfirmback.caption
@@ -52,8 +44,8 @@ msgstr ""
 msgid "Motor de dados"
 msgstr ""
 
-#: tform1.ldbware.caption
-msgid "Drivers de banco (DBWare)"
+#: tform1.ldataengine1.caption
+msgid "Pré-visualização"
 msgstr ""
 
 #: tform1.lidenext.caption
@@ -70,10 +62,6 @@ msgstr ""
 msgid "Escolha a IDE"
 msgstr ""
 
-#: tform1.lideversion.caption
-msgid "Escolha a versão da IDE"
-msgstr ""
-
 #: tform1.linstallback.caption
 msgctxt "tform1.linstallback.caption"
 msgid "< Anterior"
@@ -87,10 +75,6 @@ msgstr ""
 msgid "Instalação"
 msgstr ""
 
-#: tform1.linstalltype.caption
-msgid "Tipo de Instalação"
-msgstr ""
-
 #: tform1.llanguagenext.caption
 msgctxt "tform1.llanguagenext.caption"
 msgid "Próximo >"
@@ -100,12 +84,22 @@ msgstr ""
 msgid "Escolha o Idioma"
 msgstr ""
 
-#: tform1.lotherresources.caption
-msgid "Outros Recursos"
+#: tform1.lpathideversion.caption
+msgid "Versão da IDE"
 msgstr ""
 
-#: tform1.lplatforms.caption
-msgid "Plataformas"
+#: tform1.lpathnext.caption
+msgctxt "tform1.lpathnext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tform1.lpathprevious.caption
+msgctxt "tform1.lpathprevious.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tform1.lpathsubtitle.caption
+msgid "Caminho da Instalação"
 msgstr ""
 
 #: tform1.lresourcesnext.caption
@@ -120,10 +114,6 @@ msgstr ""
 
 #: tform1.lresourcessubtitle.caption
 msgid "Escolha os recursos a instalar"
-msgstr ""
-
-#: tform1.lsourceversion.caption
-msgid "Versão dos Fontes"
 msgstr ""
 
 #: tform1.ltheme.caption
