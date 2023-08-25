@@ -22,6 +22,7 @@ type
     class procedure AnimaImagemFade(aImage: TImage; aOpacity: byte;
       aDuracao: single = 2.0; aDirecao: TImageAnimDirection = iadUP);
     class procedure AnimaImagemSurgir(aImage: TImage; aDuracao: single = 2.0);
+
     class function Ofuscar(aImage: TImage; aAlphaPercent: integer = 100): TStream;
     class function Ofuscar(aImage: TStream; aAlphaPercent: integer = 100): TStream;
   published

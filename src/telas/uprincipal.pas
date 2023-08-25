@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, fphttpclient, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   StdCtrls, ComCtrls, CheckLst, ValEdit, Buttons, fpJSON, jsonparser,
   urestfunctions, uconsts, lclfunctions, DefaultTranslator, LCLTranslator,
-  imagefunctions;
+  imagefunctions, LResources, fclimage, LCLType, FPWritePNG;
 
 type
   TSplashFormStyle = record
@@ -30,7 +30,8 @@ type
     CheckBox1: TCheckBox;
     CheckListBox1: TCheckListBox;
     clbDataEngine: TCheckListBox;
-    Image1: TImage;
+    Image1 : TImage;
+    imBanner : TImage;
     imPathNext: TImage;
     imPathPrevious: TImage;
     ImageList1: TImageList;
@@ -44,11 +45,9 @@ type
     imlogoBG: TImage;
     imResourceBack: TImage;
     imLanguageNext: TImage;
-    imBanner: TImage;
     imLangBR: TImage;
     imLangUS: TImage;
     imLangES: TImage;
-    imBackground: TImage;
     imIDENext: TImage;
     imResourceNext: TImage;
     imTheme: TImage;
@@ -77,6 +76,7 @@ type
     lTheme: TLabel;
     mmConfirm: TMemo;
     mmLogInstall: TMemo;
+    pBanner : TPanel;
     pConfirmaRecursos: TPanel;
     pInstall: TPanel;
     pPath: TPanel;
@@ -124,6 +124,8 @@ type
     procedure PreparaVersoes;
     procedure ConfiguraOpcoes;
     procedure RevisarConfiguracoes;
+
+    procedure ImageToPanel(AResource : string; APanel : TPanel);
   public
     FPanelSteps: array of TComponent;
   end;
@@ -155,8 +157,16 @@ var
   I: integer;
 begin
   imBanner.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Banner);
-  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
-  imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
+//  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
+//  imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
+
+  ImageToPanel(Themes[Ord(aTheme)].Background, pBanner);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pLanguage);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pIDE);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pPath);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pRecursos);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pConfirmaRecursos);
+  ImageToPanel(Themes[Ord(aTheme)].Background, pInstall);
 
   for I := 0 to pred(ComponentCount) do
   begin
@@ -223,19 +233,20 @@ procedure TForm1.Translate(aLangIndex: integer);
 begin
   case aLangIndex of
     //PT-BR
-    0: SetDefaultLang('pt_BR', '/lang');
+    0: SetDefaultLang('pt_BR', 'lang');
 
     //EN-US
-    1: SetDefaultLang('en_US', '/lang');
+    1: SetDefaultLang('en_US', 'lang');
 
     //ES-ES
-    2: SetDefaultLang('es_ES', '/lang');
+    2: SetDefaultLang('es_ES', 'lang');
   end;
 end;
 
 procedure TForm1.ShowStep(aStep: TSteps);
 begin
   LCLFunc.EscondeControles(FPanelSteps);
+  pBanner.Visible := True;
 
   case aStep of
     sLanguage: pLanguage.Visible := True;
@@ -261,6 +272,63 @@ end;
 procedure TForm1.RevisarConfiguracoes;
 begin
 
+end;
+
+procedure TForm1.ImageToPanel(AResource : string; APanel : TPanel);
+var
+  res : TResourceStream;
+  mem : TMemoryStream;
+  img1, img2, img3 : TFCLImage;
+  rc1 : TRect;
+  timg : TImage;
+  wpng : TFPWriterPNG;
+begin
+  res := TResourceStream.Create(HInstance, AResource, RT_RCDATA);
+  try
+    img1 := TFCLImage.Create(0, 0);
+    try
+      img1.LoadFromStream(res);
+      img2 := img1.Canvas.Stretched(Self.Width, Self.Height);
+      try
+        rc1 := TRect.Create(APanel.Left, APanel.Top, APanel.Width+APanel.Left,
+                            APanel.Height+APanel.Top);
+        img3 := img2.Canvas.CopyRect(rc1);
+        try
+          mem := TMemoryStream.Create;
+          wpng := TFPWriterPNG.Create;
+          try
+            wpng.UseAlpha := True;
+            img3.SaveToStream(mem, wpng);
+            mem.Position := 0;
+            timg := TImage(APanel.FindChildControl('fnd_' + APanel.Name));
+            if timg = nil then
+            begin
+              timg := TImage.Create(Self);
+              timg.Parent := APanel;
+              timg.Name := 'fnd_' + APanel.Name;
+            end;
+            timg.Left := 0;
+            timg.Top := 0;
+            timg.Width := APanel.Width;
+            timg.Height := APanel.Height;
+            timg.Picture.LoadFromStream(mem);
+            timg.SendToBack;
+          finally
+            FreeAndNil(mem);
+            FreeAndNil(wpng);
+          end;
+        finally
+          FreeAndNil(img3);
+        end;
+      finally
+        FreeAndNil(img2);
+      end;
+    finally
+      FreeAndNil(img1);
+    end;
+  finally
+    FreeAndNil(res);
+  end;
 end;
 
 procedure TForm1.ImageSelect(Sender: TObject);
@@ -297,7 +365,7 @@ begin
   imDelphi.Enabled := False;
   imDelphi.Visible := False;
   {$ENDIF}
-  SetDefaultLang('en_US', '/lang');
+  SetDefaultLang('en_US', 'lang');
   SetIgnoredLabels;
   ConfigThemes;
   FIDE := -1;
