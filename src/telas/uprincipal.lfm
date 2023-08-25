@@ -12,14 +12,6 @@ object Form1: TForm1
   OnDestroy = FormDestroy
   Position = poScreenCenter
   LCLVersion = '2.2.6.0'
-  object lVersion: TLabel
-    Left = 216
-    Height = 15
-    Top = 88
-    Width = 107
-    Caption = 'Instalador Versão 1.0'
-    ParentColor = False
-  end
   object pIDE: TPanel
     Left = 0
     Height = 368
@@ -5116,6 +5108,14 @@ object Form1: TForm1
         CBF444D1F6FF01081ACB27931731A60000000049454E44AE426082
       }
       Stretch = True
+    end
+    object lVersion: TLabel
+      Left = 216
+      Height = 15
+      Top = 88
+      Width = 107
+      Caption = 'Instalador Versão 1.0'
+      ParentColor = False
     end
   end
   object ImageList1: TImageList

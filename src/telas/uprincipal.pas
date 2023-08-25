@@ -71,9 +71,9 @@ type
     lResourcesSubTitle: TLabel;
     lConfirmSubTitle: TLabel;
     lInstallSubTitle: TLabel;
-    lVersion: TLabel;
     lLanguageSubTitle: TLabel;
     lTheme: TLabel;
+    lVersion : TLabel;
     mmConfirm: TMemo;
     mmLogInstall: TMemo;
     pBanner : TPanel;
@@ -125,7 +125,8 @@ type
     procedure ConfiguraOpcoes;
     procedure RevisarConfiguracoes;
 
-    procedure ImageToPanel(AResource : string; APanel : TPanel);
+    procedure ImageToPanel(AStream : TStream; APanel : TPanel);
+    function ImageBackground(AResource : string; APanel : TPanel) : TStream;
   public
     FPanelSteps: array of TComponent;
   end;
@@ -155,18 +156,31 @@ end;
 procedure TForm1.SetTheme(aTheme: TThemes);
 var
   I: integer;
+  mem : TStream;
 begin
   imBanner.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Banner);
 //  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
-//  imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
+  imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
 
-  ImageToPanel(Themes[Ord(aTheme)].Background, pBanner);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pLanguage);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pIDE);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pPath);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pRecursos);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pConfirmaRecursos);
-  ImageToPanel(Themes[Ord(aTheme)].Background, pInstall);
+  mem := ImageBackground(Themes[Ord(aTheme)].Background, pBanner);
+  try
+    ImageToPanel(mem,pBanner);
+  finally
+    mem.Free;
+  end;
+
+  // panels do mesmo tamanho
+  mem := ImageBackground(Themes[Ord(aTheme)].Background, pLanguage);
+  try
+    ImageToPanel(mem, pLanguage);
+    ImageToPanel(mem, pIDE);
+    ImageToPanel(mem, pPath);
+    ImageToPanel(mem, pRecursos);
+    ImageToPanel(mem, pConfirmaRecursos);
+    ImageToPanel(mem, pInstall);
+  finally
+    mem.Free;
+  end;
 
   for I := 0 to pred(ComponentCount) do
   begin
@@ -274,13 +288,31 @@ begin
 
 end;
 
-procedure TForm1.ImageToPanel(AResource : string; APanel : TPanel);
+procedure TForm1.ImageToPanel(AStream : TStream; APanel : TPanel);
+var
+  timg : TImage;
+begin
+  AStream.Position := 0;
+  timg := TImage(APanel.FindChildControl('fnd_' + APanel.Name));
+  if timg = nil then
+  begin
+    timg := TImage.Create(Self);
+    timg.Parent := APanel;
+    timg.Name := 'fnd_' + APanel.Name;
+  end;
+  timg.Left := 0;
+  timg.Top := 0;
+  timg.Width := APanel.Width;
+  timg.Height := APanel.Height;
+  timg.Picture.LoadFromStream(AStream);
+  timg.SendToBack;
+end;
+
+function TForm1.ImageBackground(AResource : string; APanel : TPanel) : TStream;
 var
   res : TResourceStream;
-  mem : TMemoryStream;
   img1, img2, img3 : TFCLImage;
   rc1 : TRect;
-  timg : TImage;
   wpng : TFPWriterPNG;
 begin
   res := TResourceStream.Create(HInstance, AResource, RT_RCDATA);
@@ -294,27 +326,13 @@ begin
                             APanel.Height+APanel.Top);
         img3 := img2.Canvas.CopyRect(rc1);
         try
-          mem := TMemoryStream.Create;
+          Result := TMemoryStream.Create;
           wpng := TFPWriterPNG.Create;
           try
             wpng.UseAlpha := True;
-            img3.SaveToStream(mem, wpng);
-            mem.Position := 0;
-            timg := TImage(APanel.FindChildControl('fnd_' + APanel.Name));
-            if timg = nil then
-            begin
-              timg := TImage.Create(Self);
-              timg.Parent := APanel;
-              timg.Name := 'fnd_' + APanel.Name;
-            end;
-            timg.Left := 0;
-            timg.Top := 0;
-            timg.Width := APanel.Width;
-            timg.Height := APanel.Height;
-            timg.Picture.LoadFromStream(mem);
-            timg.SendToBack;
+            img3.SaveToStream(Result, wpng);
+            Result.Position := 0;
           finally
-            FreeAndNil(mem);
             FreeAndNil(wpng);
           end;
         finally
