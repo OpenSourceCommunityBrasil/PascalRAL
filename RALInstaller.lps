@@ -3,12 +3,16 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Debug"/>
+    <BuildModes Active="Debug">
+      <SessionMatrixOptions Count="1">
+        <Item1 ID="093963229880" Modes="linux32,linux64" Type="IDEMacro" MacroName="LCLWidgetType" Value="gtk2"/>
+      </SessionMatrixOptions>
+    </BuildModes>
     <Units>
       <Unit>
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="7" Y="10"/>
+        <CursorPos Y="10"/>
         <UsageCount Value="201"/>
         <Loaded Value="True"/>
       </Unit>
@@ -31,22 +35,16 @@
         <UsageCount Value="200"/>
       </Unit>
       <Unit>
-        <Filename Value="src\funcoes\consts.pas"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="28" Y="2"/>
-        <UsageCount Value="208"/>
-      </Unit>
-      <Unit>
         <Filename Value="src\telas\principal.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="Form1"/>
+        <ComponentName Value="fprincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="1"/>
-        <CursorPos X="17"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="28"/>
+        <CursorPos X="76" Y="10"/>
         <UsageCount Value="213"/>
         <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\funcoes\restfunctions.pas"/>
@@ -60,25 +58,32 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="4"/>
         <CursorPos X="34" Y="62"/>
-        <UsageCount Value="181"/>
+        <UsageCount Value="182"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\funcoes\imagefunctions.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="1"/>
         <CursorPos X="20" Y="7"/>
-        <UsageCount Value="142"/>
+        <UsageCount Value="143"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\funcoes\lclfunctions.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <CursorPos X="49" Y="63"/>
-        <UsageCount Value="127"/>
+        <TopLine Value="46"/>
+        <CursorPos X="48" Y="69"/>
+        <UsageCount Value="128"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\funcoes\consts.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="28" Y="2"/>
+        <UsageCount Value="208"/>
       </Unit>
       <Unit>
         <Filename Value="src\funcoes\ulocale.pas"/>
@@ -297,11 +302,27 @@
         <EditorIndex Value="-1"/>
         <UsageCount Value="25"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\telas\principal.lfm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1083"/>
+        <CursorPos Y="941"/>
+        <UsageCount Value="10"/>
+        <DefaultSyntaxHighlighter Value="LFM"/>
+      </Unit>
     </Units>
-    <JumpHistory>
+    <JumpHistory HistoryIndex="2">
       <Position>
         <Filename Value="RALInstaller.lpr"/>
         <Caret Line="10" Column="27"/>
+      </Position>
+      <Position>
+        <Filename Value="src\telas\principal.pas"/>
+        <Caret Column="17" TopLine="172"/>
+      </Position>
+      <Position>
+        <Filename Value="src\telas\principal.pas"/>
+        <Caret Line="10" Column="18"/>
       </Position>
     </JumpHistory>
     <RunParams>

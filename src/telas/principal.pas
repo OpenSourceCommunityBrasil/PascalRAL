@@ -5,9 +5,9 @@ unit principal;
 interface
 
 uses
-  Classes, SysUtils, fphttpclient, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, ComCtrls, CheckLst, ValEdit, Buttons, fpJSON, jsonparser,
-  urestfunctions, uconsts, lclfunctions, DefaultTranslator, LCLTranslator,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+  StdCtrls, ComCtrls, CheckLst, Buttons, fpJSON, jsonparser,
+  lclfunctions, DefaultTranslator, LCLTranslator,
   imagefunctions, LResources, fclimage, LCLType, FPWritePNG;
 
 type
@@ -23,9 +23,9 @@ type
   TSteps = (sLanguage, sIDE, sPath, sResources, sConfirm, sInstall, sFinish);
   TThemes = (tLight, tDark);
 
-  { TForm1 }
+  { Tfprincipal }
 
-  TForm1 = class(TForm)
+  Tfprincipal = class(TForm)
     Button1: TButton;
     CheckBox1: TCheckBox;
     CheckListBox1: TCheckListBox;
@@ -139,16 +139,16 @@ resourcestring
   ThemeDark = 'Escuro';
 
 var
-  Form1: TForm1;
+  fprincipal: Tfprincipal;
   Themes: array of TSplashFormStyle;
 
 implementation
 
 {$R *.lfm}
 
-{ TForm1 }
+{ Tfprincipal }
 
-procedure TForm1.imThemeClick(Sender: TObject);
+procedure Tfprincipal.imThemeClick(Sender: TObject);
 begin
   if FThemeIndex = 0 then
     SetTheme(tDark)
@@ -156,7 +156,7 @@ begin
     SetTheme(tLight);
 end;
 
-procedure TForm1.SetTheme(aTheme: TThemes);
+procedure Tfprincipal.SetTheme(aTheme: TThemes);
 var
   I: integer;
   mem : TStream;
@@ -206,7 +206,7 @@ begin
   FThemeIndex := Ord(aTheme);
 end;
 
-procedure TForm1.ConfigThemes;
+procedure Tfprincipal.ConfigThemes;
 var
   theme: TSplashFormStyle;
 begin
@@ -230,7 +230,7 @@ begin
   Themes[1] := theme;
 end;
 
-procedure TForm1.SetIgnoredLabels;
+procedure Tfprincipal.SetIgnoredLabels;
 var
   I: integer;
 begin
@@ -244,7 +244,7 @@ begin
       IgnoredLabels.Add(TLabel(Components[I]).Name);
 end;
 
-procedure TForm1.Translate(aLangIndex: integer);
+procedure Tfprincipal.Translate(aLangIndex: integer);
 begin
   case aLangIndex of
     //PT-BR
@@ -258,7 +258,7 @@ begin
   end;
 end;
 
-procedure TForm1.ShowStep(aStep: TSteps);
+procedure Tfprincipal.ShowStep(aStep: TSteps);
 begin
   LCLFunc.EscondeControles(FPanelSteps);
   pBanner.Visible := True;
@@ -274,22 +274,22 @@ begin
   end;
 end;
 
-procedure TForm1.PreparaVersoes;
+procedure Tfprincipal.PreparaVersoes;
 begin
 
 end;
 
-procedure TForm1.ConfiguraOpcoes;
+procedure Tfprincipal.ConfiguraOpcoes;
 begin
   //clbDataEngine.Items.Clear;
 end;
 
-procedure TForm1.RevisarConfiguracoes;
+procedure Tfprincipal.RevisarConfiguracoes;
 begin
 
 end;
 
-procedure TForm1.ImageToPanel(AStream : TStream; APanel : TPanel);
+procedure Tfprincipal.ImageToPanel(AStream : TStream; APanel : TPanel);
 var
   timg : TImage;
 begin
@@ -309,7 +309,7 @@ begin
   timg.SendToBack;
 end;
 
-function TForm1.ImageBackground(AResource : string; APanel : TPanel) : TStream;
+function Tfprincipal.ImageBackground(AResource : string; APanel : TPanel) : TStream;
 var
   res : TResourceStream;
   img1, img2, img3 : TFCLImage;
@@ -350,7 +350,7 @@ begin
   end;
 end;
 
-procedure TForm1.ImageSelect(Sender: TObject);
+procedure Tfprincipal.ImageSelect(Sender: TObject);
 begin
   selectionbox.Visible := True;
   selectionbox.Left := TImage(Sender).Left - 4;
@@ -365,7 +365,7 @@ begin
     lTheme.Caption := ThemeDark;
 end;
 
-procedure TForm1.IDESelect(Sender: TObject);
+procedure Tfprincipal.IDESelect(Sender: TObject);
 begin
   FIde := TImage(Sender).Tag;
   imLazarusFundo.Visible := FIDE = 0;
@@ -373,13 +373,13 @@ begin
   lIDENext.Enabled := FIde > -1;
 end;
 
-procedure TForm1.SpeedButton1Click(Sender: TObject);
+procedure Tfprincipal.SpeedButton1Click(Sender: TObject);
 begin
   if FolderDialog.Execute then
     ePathFolder.Text := FolderDialog.FileName;
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure Tfprincipal.FormCreate(Sender: TObject);
 var
   I, J: integer;
 begin
@@ -418,30 +418,30 @@ begin
   SetTheme(tLight);
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
+procedure Tfprincipal.Button1Click(Sender: TObject);
 begin
   TImgUtils.AnimaImagemSurgir(imlogoBG, 1.0);
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure Tfprincipal.FormDestroy(Sender: TObject);
 begin
   if Assigned(IgnoredLabels) then
     IgnoredLabels.Free;
 end;
 
-procedure TForm1.Image1Click(Sender: TObject);
+procedure Tfprincipal.Image1Click(Sender: TObject);
 begin
   Application.Terminate;
 end;
 
-procedure TForm1.imBannerMouseDown(Sender: TObject; Button: TMouseButton;
+procedure Tfprincipal.imBannerMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: integer);
 begin
   FMouseClick := Mouse.CursorPos;
   imBanner.Tag := 1;
 end;
 
-procedure TForm1.imBannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
+procedure Tfprincipal.imBannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
 begin
   if imBanner.Tag = 1 then
   begin
@@ -451,54 +451,54 @@ begin
   end;
 end;
 
-procedure TForm1.imBannerMouseUp(Sender: TObject; Button: TMouseButton;
+procedure Tfprincipal.imBannerMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: integer);
 begin
   imBanner.Tag := 0;
 end;
 
-procedure TForm1.imConfirmBackClick(Sender: TObject);
+procedure Tfprincipal.imConfirmBackClick(Sender: TObject);
 begin
   ShowStep(sResources);
 end;
 
-procedure TForm1.imConfirmNextClick(Sender: TObject);
+procedure Tfprincipal.imConfirmNextClick(Sender: TObject);
 begin
   ShowStep(sInstall);
 end;
 
-procedure TForm1.imPathNextClick(Sender: TObject);
+procedure Tfprincipal.imPathNextClick(Sender: TObject);
 begin
   ShowStep(sResources);
 end;
 
-procedure TForm1.imPathPreviousClick(Sender: TObject);
+procedure Tfprincipal.imPathPreviousClick(Sender: TObject);
 begin
   ShowStep(sIDE);
 end;
 
-procedure TForm1.imResourceBackClick(Sender: TObject);
+procedure Tfprincipal.imResourceBackClick(Sender: TObject);
 begin
   ShowStep(sPath);
 end;
 
-procedure TForm1.imResourceNextClick(Sender: TObject);
+procedure Tfprincipal.imResourceNextClick(Sender: TObject);
 begin
   RevisarConfiguracoes;
   ShowStep(sConfirm);
 end;
 
-procedure TForm1.imIDEBackClick(Sender: TObject);
+procedure Tfprincipal.imIDEBackClick(Sender: TObject);
 begin
   ShowStep(sLanguage);
 end;
 
-procedure TForm1.imLanguageNextClick(Sender: TObject);
+procedure Tfprincipal.imLanguageNextClick(Sender: TObject);
 begin
   ShowStep(sIDE);
 end;
 
-procedure TForm1.imIDENextClick(Sender: TObject);
+procedure Tfprincipal.imIDENextClick(Sender: TObject);
 begin
   ShowStep(sPath);
 end;

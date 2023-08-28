@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2023-08-28 15:57-0300\n"
+"PO-Revision-Date: 2023-08-28 16:54-0300\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en_US\n"
@@ -12,140 +12,147 @@ msgstr ""
 "X-Generator: Poedit 3.3.2\n"
 "X-Poedit-Basepath: .\n"
 
-#: tform1.button1.caption
-msgid "test logo anim"
-msgstr "test logo anim"
-
-#: tform1.caption
-msgid "PascalRAL Instalador"
-msgstr "PascalRAL Installer"
-
-#: tform1.checkbox1.caption
-msgid "Instalar Dependências"
-msgstr "Install Depedancies"
-
-#: tform1.epathfolder.editlabel.caption
-msgctxt "tform1.epathfolder.editlabel.caption"
-msgid "Caminho para baixar os fontes"
-msgstr "Path where to download files"
-
-#: tform1.epathfolder.texthint
-msgctxt "tform1.epathfolder.texthint"
-msgid "Escolha um local pra baixar os fontes"
-msgstr "Choose a location to download files"
-
-#: tform1.folderdialog.title
-msgid "Escolha a pasta pra baixar os fontes"
-msgstr "Choose the folder to download files"
-
-#: tform1.lconfirmback.caption
-msgctxt "tform1.lconfirmback.caption"
-msgid "< Anterior"
-msgstr "< Previous"
-
-#: tform1.lconfirmnext.caption
-msgid "Instalar >"
-msgstr "Install >"
-
-#: tform1.lconfirmsubtitle.caption
-msgid "Resumo dos recursos escolhidos"
-msgstr "Confirm the chosen resources"
-
-#: tform1.ldataengine.caption
-msgid "Motor de dados"
-msgstr "Data Engine"
-
-#: tform1.ldataengine1.caption
-msgid "Pré-visualização"
-msgstr "Preview"
-
-#: tform1.lidedelphi.caption
-msgctxt "tform1.lidedelphi.caption"
-msgid "Delphi"
-msgstr ""
-
-#: tform1.lidelazarus.caption
-msgctxt "tform1.lidelazarus.caption"
-msgid "Lazarus"
-msgstr ""
-
-#: tform1.lidenext.caption
-msgctxt "tform1.lidenext.caption"
-msgid "Próximo >"
-msgstr "Next >"
-
-#: tform1.lideprevious.caption
-msgctxt "tform1.lideprevious.caption"
-msgid "< Anterior"
-msgstr "< Previous"
-
-#: tform1.lidesubtitle.caption
-msgid "Escolha a IDE"
-msgstr "Choose IDE"
-
-#: tform1.linstallback.caption
-msgctxt "tform1.linstallback.caption"
-msgid "< Anterior"
-msgstr "< Previous"
-
-#: tform1.linstallclose.caption
-msgid "Fechar"
-msgstr "Close"
-
-#: tform1.linstallsubtitle.caption
-msgid "Instalação"
-msgstr "Installation"
-
-#: tform1.llanguagenext.caption
-msgctxt "tform1.llanguagenext.caption"
-msgid "Próximo >"
-msgstr "Next >"
-
-#: tform1.llanguagesubtitle.caption
-msgid "Escolha o Idioma"
-msgstr "Choose your Language"
-
-#: tform1.lpathideversion.caption
-msgid "Versão da IDE"
-msgstr "IDE Version"
-
-#: tform1.lpathnext.caption
-msgctxt "tform1.lpathnext.caption"
-msgid "Próximo >"
-msgstr "Next >"
-
-#: tform1.lpathprevious.caption
-msgctxt "tform1.lpathprevious.caption"
-msgid "< Anterior"
-msgstr "< Previous"
-
-#: tform1.lpathsubtitle.caption
-msgid "Caminho da Instalação"
-msgstr "Installation Path"
-
-#: tform1.lresourcesnext.caption
-msgctxt "tform1.lresourcesnext.caption"
-msgid "Próximo >"
-msgstr "Next >"
-
-#: tform1.lresourcesprevious.caption
-msgctxt "tform1.lresourcesprevious.caption"
-msgid "< Anterior"
-msgstr "< Previous"
-
-#: tform1.lresourcessubtitle.caption
-msgid "Escolha os recursos a instalar"
-msgstr "Choose resources to install"
-
-#: tform1.lversion.caption
-msgid "Instalador Versão 1.0"
-msgstr "Installer Version 1.0"
-
-#: uprincipal.themedark
+#: principal.themedark
+msgctxt "principal.themedark"
 msgid "Escuro"
 msgstr "Dark"
 
-#: uprincipal.themelight
-msgctxt "uprincipal.themelight"
+#: principal.themelight
+msgctxt "principal.themelight"
 msgid "Claro"
 msgstr "Light"
+
+#: tfprincipal.button1.caption
+msgctxt "tfprincipal.button1.caption"
+msgid "test logo anim"
+msgstr "test logo anim"
+
+#: tfprincipal.caption
+msgctxt "tfprincipal.caption"
+msgid "PascalRAL Instalador"
+msgstr "PascalRAL Installer"
+
+#: tfprincipal.checkbox1.caption
+msgctxt "tfprincipal.checkbox1.caption"
+msgid "Instalar Dependências"
+msgstr "Install Depedancies"
+
+#: tfprincipal.epathfolder.editlabel.caption
+msgctxt "tfprincipal.epathfolder.editlabel.caption"
+msgid "Caminho para baixar os fontes"
+msgstr "Path where to download files"
+
+#: tfprincipal.epathfolder.texthint
+msgctxt "tfprincipal.epathfolder.texthint"
+msgid "Escolha um local pra baixar os fontes"
+msgstr "Choose a location to download files"
+
+#: tfprincipal.folderdialog.title
+msgctxt "tfprincipal.folderdialog.title"
+msgid "Escolha a pasta pra baixar os fontes"
+msgstr "Choose the folder to download files"
+
+#: tfprincipal.lconfirmback.caption
+msgctxt "tfprincipal.lconfirmback.caption"
+msgid "< Anterior"
+msgstr "< Previous"
+
+#: tfprincipal.lconfirmnext.caption
+msgctxt "tfprincipal.lconfirmnext.caption"
+msgid "Instalar >"
+msgstr "Install >"
+
+#: tfprincipal.lconfirmsubtitle.caption
+msgctxt "tfprincipal.lconfirmsubtitle.caption"
+msgid "Resumo dos recursos escolhidos"
+msgstr "Confirm the chosen resources"
+
+#: tfprincipal.ldataengine.caption
+msgctxt "tfprincipal.ldataengine.caption"
+msgid "Motor de dados"
+msgstr "Data Engine"
+
+#: tfprincipal.ldataengine1.caption
+msgctxt "tfprincipal.ldataengine1.caption"
+msgid "Pré-visualização"
+msgstr "Preview"
+
+#: tfprincipal.lidenext.caption
+msgctxt "tfprincipal.lidenext.caption"
+msgid "Próximo >"
+msgstr "Next >"
+
+#: tfprincipal.lideprevious.caption
+msgctxt "tfprincipal.lideprevious.caption"
+msgid "< Anterior"
+msgstr "< Previous"
+
+#: tfprincipal.lidesubtitle.caption
+msgctxt "tfprincipal.lidesubtitle.caption"
+msgid "Escolha a IDE"
+msgstr "Choose IDE"
+
+#: tfprincipal.linstallback.caption
+msgctxt "tfprincipal.linstallback.caption"
+msgid "< Anterior"
+msgstr "< Previous"
+
+#: tfprincipal.linstallclose.caption
+msgctxt "tfprincipal.linstallclose.caption"
+msgid "Fechar"
+msgstr "Close"
+
+#: tfprincipal.linstallsubtitle.caption
+msgctxt "tfprincipal.linstallsubtitle.caption"
+msgid "Instalação"
+msgstr "Installation"
+
+#: tfprincipal.llanguagenext.caption
+msgctxt "tfprincipal.llanguagenext.caption"
+msgid "Próximo >"
+msgstr "Next >"
+
+#: tfprincipal.llanguagesubtitle.caption
+msgctxt "tfprincipal.llanguagesubtitle.caption"
+msgid "Escolha o Idioma"
+msgstr "Choose your Language"
+
+#: tfprincipal.lpathideversion.caption
+msgctxt "tfprincipal.lpathideversion.caption"
+msgid "Versão da IDE"
+msgstr "IDE Version"
+
+#: tfprincipal.lpathnext.caption
+msgctxt "tfprincipal.lpathnext.caption"
+msgid "Próximo >"
+msgstr "Next >"
+
+#: tfprincipal.lpathprevious.caption
+msgctxt "tfprincipal.lpathprevious.caption"
+msgid "< Anterior"
+msgstr "< Previous"
+
+#: tfprincipal.lpathsubtitle.caption
+msgctxt "tfprincipal.lpathsubtitle.caption"
+msgid "Caminho da Instalação"
+msgstr "Installation Path"
+
+#: tfprincipal.lresourcesnext.caption
+msgctxt "tfprincipal.lresourcesnext.caption"
+msgid "Próximo >"
+msgstr "Next >"
+
+#: tfprincipal.lresourcesprevious.caption
+msgctxt "tfprincipal.lresourcesprevious.caption"
+msgid "< Anterior"
+msgstr "< Previous"
+
+#: tfprincipal.lresourcessubtitle.caption
+msgctxt "tfprincipal.lresourcessubtitle.caption"
+msgid "Escolha os recursos a instalar"
+msgstr "Choose resources to install"
+
+#: tfprincipal.lversion.caption
+msgctxt "tfprincipal.lversion.caption"
+msgid "Instalador Versão 1.0"
+msgstr "Installer Version 1.0"

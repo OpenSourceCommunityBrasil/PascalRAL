@@ -16,38 +16,33 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="14">
-        <Resource_0 FileName="Assets\128-spain.png" Type="RCDATA" ResourceName="LANGSPAIN"/>
-        <Resource_1 FileName="Assets\255-brazil.png" Type="RCDATA" ResourceName="LANGBRAZIL"/>
-        <Resource_2 FileName="Assets\Summer.png" Type="RCDATA" ResourceName="LIGHTICON"/>
-        <Resource_3 FileName="Assets\united-states.png" Type="RCDATA" ResourceName="LANGUSA"/>
-        <Resource_4 FileName="Assets\DelphiIDE.png" Type="RCDATA" ResourceName="LIGHTDELPHI"/>
-        <Resource_5 FileName="Assets\DelphiIDEDARK.png" Type="RCDATA" ResourceName="DARKDELPHI"/>
-        <Resource_6 FileName="Assets\LazarusIDE.png" Type="RCDATA" ResourceName="LIGHTLAZARUS"/>
-        <Resource_7 FileName="Assets\LazarusIDEDARK.png" Type="RCDATA" ResourceName="DARKLAZARUS"/>
-        <Resource_8 FileName="Assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
-        <Resource_9 FileName="Assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
-        <Resource_10 FileName="Assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
-        <Resource_11 FileName="Assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
-        <Resource_12 FileName="Assets\Banner.png" Type="RCDATA" ResourceName="BANNER"/>
-        <Resource_13 FileName="Assets\Moon Symbol_White.png" Type="RCDATA" ResourceName="DARKICON"/>
+      <Resources Count="7">
+        <Resource_0 FileName="Assets\Summer.png" Type="RCDATA" ResourceName="LIGHTICON"/>
+        <Resource_1 FileName="Assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
+        <Resource_2 FileName="Assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
+        <Resource_3 FileName="Assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
+        <Resource_4 FileName="Assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
+        <Resource_5 FileName="Assets\Banner.png" Type="RCDATA" ResourceName="BANNER"/>
+        <Resource_6 FileName="Assets\Moon Symbol_White.png" Type="RCDATA" ResourceName="DARKICON"/>
       </Resources>
     </General>
     <i18n>
       <EnableI18N Value="True"/>
       <OutDir Value="lang"/>
-      <ExcludedIdentifiers Count="1">
-        <Item1 Value="tform1.ltheme.caption"/>
+      <ExcludedIdentifiers Count="3">
+        <Item1 Value="tfprincipal.ltheme.caption"/>
+        <Item2 Value="tfprincipal.lidedelphi.caption"/>
+        <Item3 Value="tfprincipal.lidelazarus.caption"/>
       </ExcludedIdentifiers>
     </i18n>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
-      <Item Name="Release">
+      <Item Name="win32">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="RALInstaller"/>
+            <Filename Value="RALInstaller-Win32"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
@@ -56,6 +51,42 @@
           </SearchPaths>
           <CodeGeneration>
             <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="win32"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf3"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="win64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="RALInstaller-Win64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="win64"/>
             <Optimizations>
               <OptimizationLevel Value="3"/>
             </Optimizations>
@@ -73,6 +104,153 @@
           </Linking>
         </CompilerOptions>
       </Item>
+      <Item Name="linux32">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="gtk2"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="RALInstaller-Linux32"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="linux64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="gtk2"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="RALInstaller-Linux64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="osx64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="RALInstaller-OSX64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="macos"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="osxarm64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="RALInstaller-OSXArm64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="arm"/>
+            <TargetOS Value="macos"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <SharedMatrixOptions Count="1">
+        <Item1 ID="037071596881" Modes="osxarm64,osx64" Type="IDEMacro" MacroName="LCLWidgetType" Value="cocoa"/>
+      </SharedMatrixOptions>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -108,7 +286,7 @@
       <Unit>
         <Filename Value="src\telas\principal.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="Form1"/>
+        <ComponentName Value="fprincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
@@ -139,7 +317,7 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\.."/>
-      <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
@@ -160,7 +338,6 @@
         <DebugInfoType Value="dsDwarf3"/>
         <UseHeaptrc Value="True"/>
         <TrashVariables Value="True"/>
-        <StripSymbols Value="True"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
       <Options>
@@ -169,11 +346,6 @@
         </Win32>
       </Options>
     </Linking>
-    <Other>
-      <Verbosity>
-        <ShoLineNum Value="True"/>
-      </Verbosity>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>
