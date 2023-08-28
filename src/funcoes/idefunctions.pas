@@ -1,4 +1,4 @@
-unit uidefunctions;
+unit idefunctions;
 
 {$mode ObjFPC}{$H+}
 
@@ -40,6 +40,8 @@ type
     destructor Destroy; override;
   end;
 
+  { TDelphiInstaller }
+
   TDelphiInstaller = class
   private
     procedure AddLibraryPathToDelphi(const APath: string);
@@ -49,6 +51,23 @@ type
   end;
 
 implementation
+
+{ TDelphiInstaller }
+
+procedure TDelphiInstaller.AddLibraryPathToDelphi(const APath: string);
+begin
+
+end;
+
+constructor TDelphiInstaller.Create;
+begin
+
+end;
+
+destructor TDelphiInstaller.Destroy;
+begin
+  inherited Destroy;
+end;
 
 { TLazInstaller }
 

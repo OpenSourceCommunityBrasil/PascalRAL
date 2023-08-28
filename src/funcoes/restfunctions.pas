@@ -1,4 +1,4 @@
-unit urestfunctions;
+unit restfunctions;
 
 {$mode ObjFPC}{$H+}
 
@@ -15,6 +15,7 @@ const
     'https://api.github.com/repos/OpenSourceCommunityBrasil/PascalRAL/zipball/%s';
   FileDownloadAPI =
     'https://github.com/OpenSourceCommunityBrasil/PascalRAL/raw/installer/%s';
+  USERAGENT = 'Pascal REST Api Lite (RAL) Installer Tool';
 
 type
 
@@ -54,7 +55,7 @@ end;
 procedure TRESTClient.setDefaultHeaders;
 begin
   FHTTPREST.RequestHeaders.Clear;
-  FHTTPREST.AddHeader('User-Agent', 'Pascal REST Api Lite (RAL) Installer Tool');
+  FHTTPREST.AddHeader('User-Agent', USERAGENT);
   FHTTPREST.AddHeader('Accept', '*/*');
   FHTTPREST.AddHeader('Connection', 'keep-alive');
   FHTTPREST.AddHeader('Content-Type', 'application/json; charset=UTF-8');

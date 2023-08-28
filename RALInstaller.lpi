@@ -39,7 +39,6 @@
       <ExcludedIdentifiers Count="1">
         <Item1 Value="tform1.ltheme.caption"/>
       </ExcludedIdentifiers>
-      <ExcludedOriginals Count="1"/>
     </i18n>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
@@ -99,26 +98,22 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\funcoes\udetectide.pas"/>
+        <Filename Value="src\funcoes\detectide.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\funcoes\uidefunctions.pas"/>
+        <Filename Value="src\funcoes\idefunctions.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\funcoes\uconsts.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\uprincipal.pas"/>
+        <Filename Value="src\telas\principal.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
-        <Filename Value="src\funcoes\urestfunctions.pas"/>
+        <Filename Value="src\funcoes\restfunctions.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

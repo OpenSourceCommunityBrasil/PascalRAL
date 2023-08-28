@@ -3,17 +3,12 @@ program RALInstaller;
 {$mode objfpc}{$H+}
 
 uses
- {$IFDEF UNIX}
-  cthreads,
-   {$ENDIF} {$IFDEF HASAMIGA}
-  athreads,
-   {$ENDIF}
+ {$IFDEF UNIX}cthreads, {$ENDIF}
+ {$IFDEF HASAMIGA}athreads, {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms,
-  DefaultTranslator,
-  uconsts in 'src\funcoes\uconsts.pas',
-  uprincipal in 'src\telas\uprincipal.pas',
-  urestfunctions in 'src\funcoes\urestfunctions.pas',
+  principal in 'src\telas\principal.pas',
+  restfunctions in 'src\funcoes\restfunctions.pas',
   configdatabase in 'src\funcoes\configdatabase.pas',
   imagefunctions in 'src\funcoes\imagefunctions.pas',
   lclfunctions in 'src\funcoes\lclfunctions.pas';

@@ -1,4 +1,4 @@
-unit udetectide;
+unit detectide;
 
 {$mode Delphi}{$H+}
 
@@ -28,8 +28,8 @@ interface
 uses
   Generics.Defaults,
   Generics.Collections,
-  DITE.SupportedIDEs,
-  Vcl.Graphics,
+  //DITE.SupportedIDEs,
+  Graphics,
   SysUtils,
   Classes,
   ComCtrls;
@@ -43,13 +43,14 @@ type
     DelphiXE8, Delphi10Seattle, Delphi10Berlin, Delphi10Tokyo, Delphi10Rio,
     Delphi10Sydney, Delphi11Alexandria);
 
+  TDelphiCmpnyName = (OldBorland, Borland, CodeGear, Embarcadero);
+
   TDelphiVersionData = class
   private
     FVersion: TDelphiVersions;
     FName: string;
     FPath: string;
     FIcon: TIcon;
-    FIDEType: TSupportedIDEs;
     FRegKey: string;
   public
     property Version: TDelphiVersions read FVersion write FVersion;
@@ -57,128 +58,9 @@ type
     property Name: string read FName write FName;
     property Icon: TIcon read FIcon write FIcon;
     property RegKey: string read FRegKey;
-    property IDEType: TSupportedIDEs read FIDEType write FIDEType;
     constructor Create;
     destructor Destroy; override;
   end;
-
-const
-{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
-  DelphiOldVersions = 2;
-  DelphiOldVersionNumbers: array [0 .. DelphiOldVersions - 1]
-  of TDelphiVersions = (Delphi5, Delphi6);
-
-  DelphiOldColorsCount = 16;
-
-  { BGR
-    Color0=$000000
-    Color1=$000080
-    Color2=$008000
-    Color3=$008080
-    Color4=$800000
-    Color5=$800080
-    Color6=$808000
-    Color7=$C0C0C0
-    Color8=$808080
-    Color9=$0000FF
-    Color10=$00FF00
-    Color11=$00FFFF
-    Color12=$FF0000
-    Color13=$FF00FF
-    Color14=$FFFF00
-    Color15=$FFFFFF
-  }
-  DelphiOldColorsList: array [0 .. DelphiOldColorsCount - 1] of TColor =
-  ($000000, $000080, $008000, $008080, $800000,
-   $800080, $808000, $C0C0C0, $808080, $0000FF,
-   $00FF00, $00FFFF, $FF0000, $FF00FF, $FFFF00, $FFFFFF);
-{$ENDIF}
-  DelphiVersionsNames: array [TDelphiVersions] of string = ('Delphi 5', 'Delphi 6',
-    'Delphi 7', 'Delphi 8', 'BDS 2005', 'BDS 2006', 'RAD Studio 2007',
-    'RAD Studio 2009', 'RAD Studio 2010', 'RAD Studio XE', 'RAD Studio XE2',
-    'RAD Studio XE3', 'RAD Studio XE4', 'RAD Studio XE5', 'Appmethod 1.13',
-    'RAD Studio XE6/Appmethod 1.14', 'RAD Studio XE7/Appmethod 1.15',
-    'RAD Studio XE8', 'RAD Studio 10 Seattle', 'RAD Studio 10.1 Berlin',
-    'RAD Studio 10.2 Tokyo', 'RAD Studio 10.3 Rio', 'RAD Studio 10.4 Sydney',
-    'RAD Studio 11.0 Alexandria');
-
-  DelphiVersionNumbers: array [TDelphiVersions] of double = (
-    13, // 'Delphi 5',
-    14, // 'Delphi 6',
-    15, // 'Delphi 7',
-    16, // 'Delphi 8',
-    17, // 'BDS 2005',
-    18, // 'BDS 2006',
-    18.5, // 'RAD Studio 2007',
-    20, // 'RAD Studio 2009',
-    21, // 'RAD Studio 2010',
-    22, // 'RAD Studio XE'
-    23, // 'RAD Studio XE2'
-    24, // 'RAD Studio XE3'
-    25, // 'RAD Studio XE4'
-    26, // 'RAD Studio XE5'
-    27, // 'Appmethod 1.13'
-    27, // 'RAD Studio XE6'
-    28, // 'RAD Studio XE7'
-    29, // 'RAD Studio XE8'
-    30, // 'RAD Studio 10 Seattle'
-    31, // 'RAD Studio 10.1 Berlin'
-    32, // 'RAD Studio 10.2 Tokyo'
-    33, // 'RAD Studio 10.3 Rio'
-    34, // 'RAD Studio 10.4 Sydney'
-    35  // 'RAD Studio 11.0 Alexandria'
-    );
-
-  DelphiVCLStylesPaths: array [TDelphiVersions] of string = (
-{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
-    '', '',
-{$ENDIF}
-    '', '', '', '', '', '', '', '',
-    'RAD Studio\9.0\Styles',
-    'RAD Studio\10.0\Styles',
-    'RAD Studio\11.0\Styles',
-    'RAD Studio\12.0\Styles',
-    '',
-    'Embarcadero\Studio\14.0\Styles',
-    'Embarcadero\Studio\15.0\Styles',
-    'Embarcadero\Studio\16.0\Styles',
-    'Embarcadero\Studio\17.0\Styles',
-    'Embarcadero\Studio\18.0\Styles',
-    'Embarcadero\Studio\19.0\Styles',
-    'Embarcadero\Studio\20.0\Styles',
-    'Embarcadero\Studio\21.0\Styles',
-    'Embarcadero\Studio\22.0\Styles'
-    );
-
-procedure FillCurrentDelphiVersion(Data: TDelphiVersionData);
-procedure FillListDelphiVersions(AList: TList<TDelphiVersionData>);
-{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
-function DelphiIsOldVersion(ADelphiVersionData: TDelphiVersionData): Boolean;
-function GetIndexClosestColor(AColor: TColor): Integer;
-{$ENDIF}
-function GetDelphiVersionMappedColor(AColor: TColor;
-  ADelphiVersionData: TDelphiVersionData): TColor;
-function GetVCLStylesFolder(DelphiVersion: TDelphiVersions): string;
-
-{
-  [HKEY_CURRENT_USER\Software\Embarcadero\BDS\8.0\Editor\Highlight\Attribute Names]
-  "Bold"="False"
-  "Italic"="False"
-  "Underline"="False"
-  "Default Foreground"="False"
-  "Default Background"="False"
-  "Foreground Color New"="$00DE4841"
-  "Background Color New"="$00272727"
-}
-
-implementation
-
-uses
-  DITE.Misc, PsAPI, Controls, ImgList, CommCtrl, ShellAPI, ShlObj, Windows,
-  DITE.Registry, Registry;
-
-type
-  TDelphiCmpnyName = (OldBorland, Borland, CodeGear, Embarcadero);
 
 const
   DelphiRegPaths: array [TDelphiVersions] of string = (
@@ -296,6 +178,124 @@ const
     Embarcadero  // 'RAD Studio 11 Alexandria
     );
 
+{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
+  DelphiOldVersions = 2;
+  DelphiOldVersionNumbers: array [0 .. DelphiOldVersions - 1]
+  of TDelphiVersions = (Delphi5, Delphi6);
+
+  DelphiOldColorsCount = 16;
+
+  { BGR
+    Color0=$000000
+    Color1=$000080
+    Color2=$008000
+    Color3=$008080
+    Color4=$800000
+    Color5=$800080
+    Color6=$808000
+    Color7=$C0C0C0
+    Color8=$808080
+    Color9=$0000FF
+    Color10=$00FF00
+    Color11=$00FFFF
+    Color12=$FF0000
+    Color13=$FF00FF
+    Color14=$FFFF00
+    Color15=$FFFFFF
+  }
+  DelphiOldColorsList: array [0 .. DelphiOldColorsCount - 1] of TColor =
+  ($000000, $000080, $008000, $008080, $800000,
+   $800080, $808000, $C0C0C0, $808080, $0000FF,
+   $00FF00, $00FFFF, $FF0000, $FF00FF, $FFFF00, $FFFFFF);
+{$ENDIF}
+  DelphiVersionsNames: array [TDelphiVersions] of string = ('Delphi 5', 'Delphi 6',
+    'Delphi 7', 'Delphi 8', 'BDS 2005', 'BDS 2006', 'RAD Studio 2007',
+    'RAD Studio 2009', 'RAD Studio 2010', 'RAD Studio XE', 'RAD Studio XE2',
+    'RAD Studio XE3', 'RAD Studio XE4', 'RAD Studio XE5', 'Appmethod 1.13',
+    'RAD Studio XE6/Appmethod 1.14', 'RAD Studio XE7/Appmethod 1.15',
+    'RAD Studio XE8', 'RAD Studio 10 Seattle', 'RAD Studio 10.1 Berlin',
+    'RAD Studio 10.2 Tokyo', 'RAD Studio 10.3 Rio', 'RAD Studio 10.4 Sydney',
+    'RAD Studio 11.0 Alexandria');
+
+  DelphiVersionNumbers: array [TDelphiVersions] of double = (
+    13, // 'Delphi 5',
+    14, // 'Delphi 6',
+    15, // 'Delphi 7',
+    16, // 'Delphi 8',
+    17, // 'BDS 2005',
+    18, // 'BDS 2006',
+    18.5, // 'RAD Studio 2007',
+    20, // 'RAD Studio 2009',
+    21, // 'RAD Studio 2010',
+    22, // 'RAD Studio XE'
+    23, // 'RAD Studio XE2'
+    24, // 'RAD Studio XE3'
+    25, // 'RAD Studio XE4'
+    26, // 'RAD Studio XE5'
+    27, // 'Appmethod 1.13'
+    27, // 'RAD Studio XE6'
+    28, // 'RAD Studio XE7'
+    29, // 'RAD Studio XE8'
+    30, // 'RAD Studio 10 Seattle'
+    31, // 'RAD Studio 10.1 Berlin'
+    32, // 'RAD Studio 10.2 Tokyo'
+    33, // 'RAD Studio 10.3 Rio'
+    34, // 'RAD Studio 10.4 Sydney'
+    35  // 'RAD Studio 11.0 Alexandria'
+    );
+
+  DelphiVCLStylesPaths: array [TDelphiVersions] of string = (
+{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
+    '', '',
+{$ENDIF}
+    '', '', '', '', '', '', '', '',
+    'RAD Studio\9.0\Styles',
+    'RAD Studio\10.0\Styles',
+    'RAD Studio\11.0\Styles',
+    'RAD Studio\12.0\Styles',
+    '',
+    'Embarcadero\Studio\14.0\Styles',
+    'Embarcadero\Studio\15.0\Styles',
+    'Embarcadero\Studio\16.0\Styles',
+    'Embarcadero\Studio\17.0\Styles',
+    'Embarcadero\Studio\18.0\Styles',
+    'Embarcadero\Studio\19.0\Styles',
+    'Embarcadero\Studio\20.0\Styles',
+    'Embarcadero\Studio\21.0\Styles',
+    'Embarcadero\Studio\22.0\Styles'
+    );
+
+procedure FillCurrentDelphiVersion(Data: TDelphiVersionData);
+procedure FillListDelphiVersions(AList: TList<TDelphiVersionData>);
+{$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
+function DelphiIsOldVersion(ADelphiVersionData: TDelphiVersionData): Boolean;
+function GetIndexClosestColor(AColor: TColor): Integer;
+{$ENDIF}
+function GetDelphiVersionMappedColor(AColor: TColor;
+  ADelphiVersionData: TDelphiVersionData): TColor;
+function GetVCLStylesFolder(DelphiVersion: TDelphiVersions): string;
+function ListInstalledDelphiVersions: array of TDelphiVersionData;
+
+{
+  [HKEY_CURRENT_USER\Software\Embarcadero\BDS\8.0\Editor\Highlight\Attribute Names]
+  "Bold"="False"
+  "Italic"="False"
+  "Underline"="False"
+  "Default Foreground"="False"
+  "Default Background"="False"
+  "Foreground Color New"="$00DE4841"
+  "Background Color New"="$00272727"
+}
+
+implementation
+
+uses
+  //DITE.Misc,
+  //PsAPI,
+  Controls, ImgList, CommCtrl, ShellAPI, ShlObj, Windows,
+  //DITE.Registry,
+  Registry;
+
 function RegKeyExists(const RegPath: string; const RootKey: HKEY): boolean;
 var
   Reg: TRegistry;
@@ -349,7 +349,7 @@ begin
   end;
 end;
 
-procedure click();
+function ListInstalledDelphiVersions: array of TDelphiVersionData;
 var
   item: TListItem;
   DelphiComp: TDelphiVersions;
@@ -357,13 +357,13 @@ var
   ImageIndex: integer;
   Found: boolean;
 begin
+  SetLength(Result, 0);
   for DelphiComp := Low(TDelphiVersions) to High(TDelphiVersions) do
   begin
     Found := RegKeyExists(DelphiRegPaths[DelphiComp], HKEY_CURRENT_USER);
     if Found then
       Found := RegReadStr(DelphiRegPaths[DelphiComp], 'App', FileName,
-        HKEY_CURRENT_USER) and
-        FileExists(FileName);
+        HKEY_CURRENT_USER) and FileExists(FileName);
 
     if not Found then
     begin
@@ -375,18 +375,25 @@ begin
 
     if Found then
     begin
-      item := ListViewIDEs.Items.Add;
-      item.Caption := DelphiVersionsNames[DelphiComp];
-      item.SubItems.Add(FileName);
-      ExtractIconFileToImageList(ImageList1, Filename);
-      ImageIndex := ImageList1.Count - 1;
-      item.ImageIndex := ImageIndex;
+      SetLength(Result, Length(Result) + 1);
+      with Result[High(Result)] do
+      begin
+        Name := DelphiVersionsNames[DelphiComp];
+        Path := FileName;
+        Version := DelphiComp;
+        Icon := TIcon.Create;
+        Icon.LoadFromFile(FileName);
+      end;
+
+      //item := ListViewIDEs.Items.Add;
+      //item.Caption := DelphiVersionsNames[DelphiComp];
+      //item.SubItems.Add(FileName);
+      //ExtractIconFileToImageList(ImageList1, Filename);
+      //ImageIndex := ImageList1.Count - 1;
+      //item.ImageIndex := ImageIndex;
     end;
   end;
 end;
-
-
-
 
 {$IFDEF DELPHI_OLDER_VERSIONS_SUPPORT}
 function DelphiIsOldVersion(ADelphiVersionData: TDelphiVersionData): Boolean;

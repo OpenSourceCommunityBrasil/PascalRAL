@@ -1,4 +1,4 @@
-unit uprincipal;
+unit principal;
 
 {$mode ObjFPC}{$H+}
 
