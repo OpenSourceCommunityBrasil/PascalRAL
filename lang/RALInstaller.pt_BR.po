@@ -58,6 +58,16 @@ msgstr "Motor de dados"
 msgid "Pré-visualização"
 msgstr "Pré-visualização"
 
+#: tform1.lidedelphi.caption
+msgctxt "tform1.lidedelphi.caption"
+msgid "Delphi"
+msgstr ""
+
+#: tform1.lidelazarus.caption
+msgctxt "tform1.lidelazarus.caption"
+msgid "Lazarus"
+msgstr ""
+
 #: tform1.lidenext.caption
 msgctxt "tform1.lidenext.caption"
 msgid "Próximo >"
@@ -125,11 +135,6 @@ msgstr "< Anterior"
 #: tform1.lresourcessubtitle.caption
 msgid "Escolha os recursos a instalar"
 msgstr "Escolha os recursos a instalar"
-
-#: tform1.ltheme.caption
-msgctxt "tform1.ltheme.caption"
-msgid "Claro"
-msgstr "Claro"
 
 #: tform1.lversion.caption
 msgid "Instalador Versão 1.0"

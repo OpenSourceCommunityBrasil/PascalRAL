@@ -26,7 +26,7 @@ begin
   GlobalSkipIfNoLeaks := True; // supported as of debugger version 3.2.0
   {$endIf}
   RequireDerivedFormResource := True;
-  Application.Scaled := True;
+  Application.Scaled:=True;
   Application.Initialize;
   //Application.CreateForm(TfPrincipal, fPrincipal);
   Application.CreateForm(TForm1, Form1);

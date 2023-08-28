@@ -117,9 +117,8 @@ begin
     ARect.Height := Height;
 
   Result := TFCLImage.Create(ARect.Width,ARect.Height);
-  ix := 0;
-  iy := 0;
 
+  iy := 0;
   for dy := ARect.Top to ARect.Bottom-1 do begin
     ix := 0;
     for dx := ARect.Left to ARect.Right-1 do begin

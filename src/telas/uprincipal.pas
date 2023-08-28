@@ -32,6 +32,11 @@ type
     clbDataEngine: TCheckListBox;
     Image1 : TImage;
     imBanner : TImage;
+    imDelphiFundo: TImage;
+    imLazarusFundo: TImage;
+    lIDELazarus: TLabel;
+    lIDEDelphi: TLabel;
+    selectionbox: TImage;
     imPathNext: TImage;
     imPathPrevious: TImage;
     ImageList1: TImageList;
@@ -84,8 +89,6 @@ type
     pIDE: TPanel;
     pLanguage: TPanel;
     FolderDialog: TSelectDirectoryDialog;
-    selectionbox: TShape;
-    IDESelector: TShape;
     SpeedButton1: TSpeedButton;
     Timer1: TTimer;
     tvResources: TTreeView;
@@ -162,6 +165,7 @@ begin
 //  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
   imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
 
+//  ImageToTImage(Themes[Ord(aTheme)].Banner,imBanner);
   mem := ImageBackground(Themes[Ord(aTheme)].Background, pBanner);
   try
     ImageToPanel(mem,pBanner);
@@ -182,19 +186,16 @@ begin
     mem.Free;
   end;
 
-  for I := 0 to pred(ComponentCount) do
+  for I := 0 to Pred(ComponentCount) do
   begin
-    if (Components[I] is TLabel) and (IgnoredLabels.IndexOf(
-      TLabel(Components[I]).Name) < 0) then
-      TLabel(Components[I]).Font.Color := Themes[Ord(aTheme)].FontColor;
-
-    if (Components[I] is TLabeledEdit) and (IgnoredLabels.IndexOf(
-      TLabeledEdit(Components[I]).Name) < 0) then
-      TLabeledEdit(Components[I]).EditLabel.Font.Color := Themes[Ord(aTheme)].FontColor;
-
-    if (Components[I] is TImage) and (TImage(Components[I]).Tag = -1) then
-      TImage(Components[I]).Picture.LoadFromResourceName(HInstance,
-        Themes[Ord(aTheme)].button);
+    if (Components[I] is TLabel) and (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) < 0) then
+      TLabel(Components[I]).Font.Color := Themes[Ord(aTheme)].FontColor
+    else if (Components[I] is TLabel) and (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) >= 0) then
+      TLabel(Components[I]).Font.Color := clWhite
+    else if (Components[I] is TLabeledEdit) and (IgnoredLabels.IndexOf(TLabeledEdit(Components[I]).Name) < 0) then
+      TLabeledEdit(Components[I]).EditLabel.Font.Color := Themes[Ord(aTheme)].FontColor
+    else if (Components[I] is TImage) and (TImage(Components[I]).Tag = -1) then
+      TImage(Components[I]).Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].button);
   end;
 
   if Ord(aTheme) = 0 then
@@ -352,20 +353,23 @@ end;
 procedure TForm1.ImageSelect(Sender: TObject);
 begin
   selectionbox.Visible := True;
-  selectionbox.Left := TImage(Sender).Left - 2;
-  selectionbox.Top := TImage(Sender).Top + 13;
+  selectionbox.Left := TImage(Sender).Left - 4;
+  selectionbox.Top := TImage(Sender).Top - 4;
   selectionbox.Visible := True;
   Translate(TImage(Sender).Tag);
   lLanguageNext.Enabled := True;
+
+  if FThemeIndex = 0 then
+    lTheme.Caption := ThemeLight
+  else
+    lTheme.Caption := ThemeDark;
 end;
 
 procedure TForm1.IDESelect(Sender: TObject);
 begin
-  IDESelector.Visible := True;
-  IDESelector.Left := TImage(Sender).Left + 3;
-  IDESelector.Top := TImage(Sender).Top;
-  IDESelector.Visible := True;
   FIde := TImage(Sender).Tag;
+  imLazarusFundo.Visible := FIDE = 0;
+  imDelphiFundo.Visible := FIDE = 1;
   lIDENext.Enabled := FIde > -1;
 end;
 
@@ -380,15 +384,25 @@ var
   I, J: integer;
 begin
   {$IFNDEF MSWindows}
-  imDelphi.Enabled := False;
-  imDelphi.Visible := False;
+    imDelphi.Enabled := False;
+    imDelphi.Visible := False;
+
+    imDelphiFundo.Enabled := False;
+    imDelphiFundo.Visible := False;
+
+    lIDEDelphi.Visible := False;
+
+    imLazarus.Left := Round((Self.Width / 2) - (imLazarus.Width / 2));
+    lIDELazarus.Left := Round((Self.Width / 2) - (lIDELazarus.Width / 2));
+    imLazarusFundo.Left := imLazarus.Left - 4;
   {$ENDIF}
   SetDefaultLang('en_US', 'lang');
   SetIgnoredLabels;
   ConfigThemes;
   FIDE := -1;
   LCLFunc.DesativaControles([lIDENext, lLanguageNext, lInstallClose]);
-  LCLFunc.EscondeControles([IDESelector, selectionbox]);
+  LCLFunc.EscondeControles([imDelphiFundo,imLazarusFundo]);
+  ImageSelect(imLangUS);
 
   J := 0;
   SetLength(FPanelSteps, 0);

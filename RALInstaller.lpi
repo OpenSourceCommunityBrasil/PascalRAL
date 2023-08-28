@@ -19,23 +19,27 @@
       <Resources Count="14">
         <Resource_0 FileName="Assets\128-spain.png" Type="RCDATA" ResourceName="LANGSPAIN"/>
         <Resource_1 FileName="Assets\255-brazil.png" Type="RCDATA" ResourceName="LANGBRAZIL"/>
-        <Resource_2 FileName="Assets\Moon Symbol.png" Type="RCDATA" ResourceName="DARKICON"/>
-        <Resource_3 FileName="Assets\Summer.png" Type="RCDATA" ResourceName="LIGHTICON"/>
-        <Resource_4 FileName="Assets\united-states.png" Type="RCDATA" ResourceName="LANGUSA"/>
-        <Resource_5 FileName="Assets\DelphiIDE.png" Type="RCDATA" ResourceName="LIGHTDELPHI"/>
-        <Resource_6 FileName="Assets\DelphiIDEDARK.png" Type="RCDATA" ResourceName="DARKDELPHI"/>
-        <Resource_7 FileName="Assets\LazarusIDE.png" Type="RCDATA" ResourceName="LIGHTLAZARUS"/>
-        <Resource_8 FileName="Assets\LazarusIDEDARK.png" Type="RCDATA" ResourceName="DARKLAZARUS"/>
-        <Resource_9 FileName="Assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
-        <Resource_10 FileName="Assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
-        <Resource_11 FileName="Assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
-        <Resource_12 FileName="Assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
-        <Resource_13 FileName="Assets\Banner.png" Type="RCDATA" ResourceName="BANNER"/>
+        <Resource_2 FileName="Assets\Summer.png" Type="RCDATA" ResourceName="LIGHTICON"/>
+        <Resource_3 FileName="Assets\united-states.png" Type="RCDATA" ResourceName="LANGUSA"/>
+        <Resource_4 FileName="Assets\DelphiIDE.png" Type="RCDATA" ResourceName="LIGHTDELPHI"/>
+        <Resource_5 FileName="Assets\DelphiIDEDARK.png" Type="RCDATA" ResourceName="DARKDELPHI"/>
+        <Resource_6 FileName="Assets\LazarusIDE.png" Type="RCDATA" ResourceName="LIGHTLAZARUS"/>
+        <Resource_7 FileName="Assets\LazarusIDEDARK.png" Type="RCDATA" ResourceName="DARKLAZARUS"/>
+        <Resource_8 FileName="Assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
+        <Resource_9 FileName="Assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
+        <Resource_10 FileName="Assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
+        <Resource_11 FileName="Assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
+        <Resource_12 FileName="Assets\Banner.png" Type="RCDATA" ResourceName="BANNER"/>
+        <Resource_13 FileName="Assets\Moon Symbol_White.png" Type="RCDATA" ResourceName="DARKICON"/>
       </Resources>
     </General>
     <i18n>
       <EnableI18N Value="True"/>
       <OutDir Value="lang"/>
+      <ExcludedIdentifiers Count="1">
+        <Item1 Value="tform1.ltheme.caption"/>
+      </ExcludedIdentifiers>
+      <ExcludedOriginals Count="1"/>
     </i18n>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
