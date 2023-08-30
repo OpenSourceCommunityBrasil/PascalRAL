@@ -1,4 +1,4 @@
-object Form1: TForm1
+object fprincipal: Tfprincipal
   Left = 470
   Height = 481
   Top = 260
@@ -1305,7 +1305,6 @@ object Form1: TForm1
       Caption = 'Instalar >'
       Font.Color = clBlack
       Font.Height = -19
-      Font.Name = 'Roboto'
       Font.Style = [fsBold]
       Layout = tlCenter
       ParentColor = False
@@ -1324,7 +1323,6 @@ object Form1: TForm1
       Caption = '< Anterior'
       Font.Color = clBlack
       Font.Height = -19
-      Font.Name = 'Roboto'
       Font.Style = [fsBold]
       Layout = tlCenter
       ParentColor = False

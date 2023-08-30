@@ -27,92 +27,93 @@ msgstr "Claro"
 msgid "test logo anim"
 msgstr "test logo anim"
 
-#: tform1.caption
+#: tfprincipal.caption
+msgctxt "tfprincipal.caption"
 msgid "PascalRAL Instalador"
 msgstr "PascalRAL Instalador"
 
-#: tform1.checkbox1.caption
+#: tfprincipal.checkbox1.caption
+msgctxt "tfprincipal.checkbox1.caption"
 msgid "Instalar Dependências"
 msgstr "Instalar Dependencias"
 
-#: tform1.epathfolder.editlabel.caption
-msgctxt "tform1.epathfolder.editlabel.caption"
+#: tfprincipal.epathfolder.editlabel.caption
+msgctxt "tfprincipal.epathfolder.editlabel.caption"
 msgid "Caminho para baixar os fontes"
 msgstr "Carpeta para descargar los archivos"
 
-#: tform1.epathfolder.texthint
-msgctxt "tform1.epathfolder.texthint"
+#: tfprincipal.epathfolder.texthint
+msgctxt "tfprincipal.epathfolder.texthint"
 msgid "Escolha um local pra baixar os fontes"
 msgstr "Elija una carpeta para descargar los archivos"
 
-#: tform1.folderdialog.title
+#: tfprincipal.folderdialog.title
+msgctxt "tfprincipal.folderdialog.title"
 msgid "Escolha a pasta pra baixar os fontes"
 msgstr "Elija una carpeta para descargar los archivos"
 
-#: tform1.lconfirmback.caption
-msgctxt "tform1.lconfirmback.caption"
+#: tfprincipal.lconfirmback.caption
+msgctxt "tfprincipal.lconfirmback.caption"
 msgid "< Anterior"
 msgstr "< Anterior"
 
-#: tform1.lconfirmnext.caption
+#: tfprincipal.lconfirmnext.caption
+msgctxt "tfprincipal.lconfirmnext.caption"
 msgid "Instalar >"
 msgstr "Instalar >"
 
-#: tform1.lconfirmsubtitle.caption
+#: tfprincipal.lconfirmsubtitle.caption
+msgctxt "tfprincipal.lconfirmsubtitle.caption"
 msgid "Resumo dos recursos escolhidos"
 msgstr "Resumen de las funciones elegidas"
 
-#: tform1.ldataengine.caption
+#: tfprincipal.ldataengine.caption
+msgctxt "tfprincipal.ldataengine.caption"
 msgid "Motor de dados"
 msgstr "Motor de datos"
 
-#: tform1.ldataengine1.caption
+#: tfprincipal.ldataengine1.caption
+msgctxt "tfprincipal.ldataengine1.caption"
 msgid "Pré-visualização"
 msgstr "Preestrenar"
 
-#: tform1.lidedelphi.caption
-msgctxt "tform1.lidedelphi.caption"
-msgid "Delphi"
-msgstr ""
-
-#: tform1.lidelazarus.caption
-msgctxt "tform1.lidelazarus.caption"
-msgid "Lazarus"
-msgstr ""
-
-#: tform1.lidenext.caption
-msgctxt "tform1.lidenext.caption"
+#: tfprincipal.lidenext.caption
+msgctxt "tfprincipal.lidenext.caption"
 msgid "Próximo >"
 msgstr "Siguiente >"
 
-#: tform1.lideprevious.caption
-msgctxt "tform1.lideprevious.caption"
+#: tfprincipal.lideprevious.caption
+msgctxt "tfprincipal.lideprevious.caption"
 msgid "< Anterior"
 msgstr "< Anterior"
 
-#: tform1.lidesubtitle.caption
+#: tfprincipal.lidesubtitle.caption
+msgctxt "tfprincipal.lidesubtitle.caption"
 msgid "Escolha a IDE"
 msgstr "Seleccione su IDE"
 
-#: tform1.linstallback.caption
-msgctxt "tform1.linstallback.caption"
+#: tfprincipal.linstallback.caption
+msgctxt "tfprincipal.linstallback.caption"
 msgid "< Anterior"
 msgstr "< Anterior"
 
-#: tform1.linstallclose.caption
+#: tfprincipal.linstallclose.caption
+msgctxt "tfprincipal.linstallclose.caption"
 msgid "Fechar"
 msgstr "Cerrar"
 
-#: tform1.linstallsubtitle.caption
+#: tfprincipal.linstallsubtitle.caption
+msgctxt "tfprincipal.linstallsubtitle.caption"
 msgid "Instalação"
 msgstr "Instalación"
 
-#: tform1.llanguagenext.caption
-msgctxt "tform1.llanguagenext.caption"
+#: tfprincipal.llanguagenext.caption
+msgctxt "tfprincipal.llanguagenext.caption"
 msgid "Próximo >"
 msgstr "Siguiente >"
 
-#: tform1.llanguagesubtitle.caption
+#: tfprincipal.llanguagesubtitle.caption
+msgctxt "tfprincipal.llanguagesubtitle.caption"
 msgid "Escolha o Idioma"
 msgstr "Seleccione su idioma"
 
@@ -124,17 +125,18 @@ msgstr ""
 msgid "Versão da IDE"
 msgstr "Versión del IDE"
 
-#: tform1.lpathnext.caption
-msgctxt "tform1.lpathnext.caption"
+#: tfprincipal.lpathnext.caption
+msgctxt "tfprincipal.lpathnext.caption"
 msgid "Próximo >"
 msgstr "Siguiente >"
 
-#: tform1.lpathprevious.caption
-msgctxt "tform1.lpathprevious.caption"
+#: tfprincipal.lpathprevious.caption
+msgctxt "tfprincipal.lpathprevious.caption"
 msgid "< Anterior"
 msgstr "< Anterior"
 
-#: tform1.lpathsubtitle.caption
+#: tfprincipal.lpathsubtitle.caption
+msgctxt "tfprincipal.lpathsubtitle.caption"
 msgid "Caminho da Instalação"
 msgstr "Ruta de instalación"
 
@@ -147,16 +149,18 @@ msgctxt "tform1.lresourcesnext.caption"
 msgid "Próximo >"
 msgstr "Siguiente >"
 
-#: tform1.lresourcesprevious.caption
-msgctxt "tform1.lresourcesprevious.caption"
+#: tfprincipal.lresourcesprevious.caption
+msgctxt "tfprincipal.lresourcesprevious.caption"
 msgid "< Anterior"
 msgstr "< Anterior"
 
-#: tform1.lresourcessubtitle.caption
+#: tfprincipal.lresourcessubtitle.caption
+msgctxt "tfprincipal.lresourcessubtitle.caption"
 msgid "Escolha os recursos a instalar"
 msgstr "Elija funciones para instalar"
 
-#: tform1.lversion.caption
+#: tfprincipal.lversion.caption
+msgctxt "tfprincipal.lversion.caption"
 msgid "Instalador Versão 1.0"
 msgstr "Instalador Versión 1.0"
 

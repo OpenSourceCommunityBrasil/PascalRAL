@@ -25,7 +25,6 @@ begin
   RequireDerivedFormResource := True;
   Application.Scaled := True;
   Application.Initialize;
-  //Application.CreateForm(TfPrincipal, fPrincipal);
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(Tfprincipal, fprincipal);
   Application.Run;
 end.
