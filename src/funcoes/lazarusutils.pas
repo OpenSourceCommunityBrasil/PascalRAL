@@ -1,38 +1,37 @@
-unit idefunctions;
+unit lazarusutils;
 
 {$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils,
-  uconsts;
+  Classes, SysUtils, process;
 
 type
-  TIDEObject = class
+
+  { TLazarusObjectData }
+
+  TLazarusObjectData = class
   private
-    FIcon: TIcon;
     FName: string;
-    FInstallDir: string;
+    FPath: string;
     FRegKey: string;
-    FVersion: string;
+    FInstallPath: string;
   public
+    property Path: string read FPath write FPath;
+    property Name: string read FName write FName;
+    property RegKey: string read FRegKey;
+    property InstallPath: string read FInstallPath write FInstallPath;
     constructor Create;
     destructor Destroy; override;
-
-    property Version: string read FVersion write FVersion;
-    property InstallPath: string read FInstallDir write FInstallDir;
-    property Name: string read FName write FName;
-    property Icon: TIcon read FIcon write FIcon;
-    property RegKey: string read FRegKey;
   end;
 
-  { TLazInstaller }
+  TLazarusObjectList = TList;
 
   TLazInstaller = class
   private
-    FLazarus: TIDEObject;
-    function FindLazarusInstallDir: TIDEObject;
+    FLazarus: TLazarusObjectData;
+    //function FindLazarusInstallDir: TIDEObject;
     procedure RebuildIDE;
     procedure Install;
   public
@@ -40,41 +39,103 @@ type
     destructor Destroy; override;
   end;
 
-  { TDelphiInstaller }
 
-  TDelphiInstaller = class
+  { TLazarusFinder }
+
+  TLazarusFinder = class
   private
-    procedure AddLibraryPathToDelphi(const APath: string);
+    function Comparar(str, tipo: ansistring): boolean;
   public
-    constructor Create;
-    destructor Destroy; override;
+    procedure ListaArquivos(pasta, ext: string; var str: TStringList);
   end;
+
+procedure FillCurrentLazarusVersion(Data: TLazarusObjectData);
+procedure FillListLazarusVersions(AList: TList);
+function ListInstalledLazarusVersions: TLazarusObjectList;
 
 implementation
 
-{ TDelphiInstaller }
-
-procedure TDelphiInstaller.AddLibraryPathToDelphi(const APath: string);
+procedure FillCurrentLazarusVersion(Data: TLazarusObjectData);
 begin
 
 end;
 
-constructor TDelphiInstaller.Create;
+procedure FillListLazarusVersions(AList: TList);
 begin
 
 end;
 
-destructor TDelphiInstaller.Destroy;
+function ListInstalledLazarusVersions: TLazarusObjectList;
+begin
+
+end;
+
+{ TLazarusFinder }
+
+function TLazarusFinder.Comparar(str, tipo: ansistring): boolean;
+begin
+  Result := (tipo = 'A') and (SameText(ExtractFileName(str), 'environmentoptions.xml'));
+end;
+
+procedure TLazarusFinder.ListaArquivos(pasta, ext: string; var str: TStringList);
+var
+  F: TSearchRec;
+  Ret: integer;
+  bcomp: boolean;
+  recursivo: boolean;
+  onlyFolder: boolean;
+begin
+  recursivo := True;
+
+  pasta := IncludeTrailingPathDelimiter(pasta);
+
+  if ext = '' then
+    ext := '*.*';
+
+  onlyFolder := False;
+  Ret := FindFirst(pasta + ext, faAnyFile, F);
+  if Ret <> 0 then
+  begin
+    FindClose(F);
+    Ret := FindFirst(pasta + '*', faAnyFile, F);
+    onlyFolder := True;
+  end;
+
+  try
+    while Ret = 0 do
+    begin
+      if (F.Attr and faDirectory > 0) then
+      begin
+        if (F.Name <> '.') and (F.Name <> '..') and (F.Name <> '') and (recursivo) then
+          listaArquivos(pasta + F.Name, ext, str);
+      end
+      else if (F.Name <> '') and (not onlyFolder) then
+      begin
+        bcomp := comparar(pasta + F.Name, 'A');
+
+        if bcomp then
+          str.Add(pasta + F.Name);
+      end;
+      Ret := FindNext(F);
+    end;
+  finally
+    FindClose(F);
+  end;
+end;
+
+{ TLazarusObjectData }
+
+constructor TLazarusObjectData.Create;
+begin
+
+end;
+
+destructor TLazarusObjectData.Destroy;
 begin
   inherited Destroy;
 end;
 
 { TLazInstaller }
-
-function TLazInstaller.FindLazarusInstallDir: TIDEObject;
-begin
-
-end;
 
 procedure TLazInstaller.RebuildIDE;
 const
@@ -85,7 +146,7 @@ var
   SStream: TStringStream;
   nread: longint;
 begin
-  outputScreen.Clear;
+  //outputScreen.Clear;
   AProcess := TProcess.Create(nil);
   AProcess.Executable := IncludeTrailingPathDelimiter(FLazarus.InstallPath) +
     'lazbuild';
@@ -107,7 +168,7 @@ begin
     begin
       SStream.size := 0;
       SStream.Write(Buffer^, nread);
-      outputScreen.Lines.Append(SStream.DataString);
+      //outputScreen.Lines.Append(SStream.DataString);
     end;
   end;
   repeat
@@ -116,7 +177,7 @@ begin
     begin
       SStream.size := 0;
       SStream.Write(Buffer^, nread);
-      outputScreen.Lines.Append(SStream.DataString);
+      //outputScreen.Lines.Append(SStream.DataString);
     end;
   until nread = 0;
   ///
@@ -136,14 +197,15 @@ var
   i: integer;
   fPath: string;
 begin
-  fPath := IncludeTrailingPathDelimiter(edtPathLazarus.Text) + 'lazbuild';
+  fPath := IncludeTrailingPathDelimiter(FLazarus.InstallPath) + 'lazbuild';
 
-  for i := 0 to strListACBr.Count - 1 do
+  //for i := 0 to strListACBr.Count - 1 do
   begin
     AProcess := TProcess.Create(nil);
     try
       AProcess.CommandLine := concat(fPath, ' --add-package-link ',
-        strListACBr.Strings[i]);
+        //strListACBr.Strings[i]
+        '');
       AProcess.Options := [poUsePipes, poStdErrToOutput];
       AProcess.ShowWindow := swoHIDE;
       ///
@@ -162,8 +224,8 @@ begin
           SStream.size := 0;
           SStream.Write(Buffer^, nread);
           { ...to do - verificar o porque nao esta dando saida em outputscreen}
-          outputScreen.Lines.Append(SStream.DataString);
-          outputScreen.Lines.Append(strListACBr.Strings[i]);
+          //outputScreen.Lines.Append(SStream.DataString);
+          //outputScreen.Lines.Append(strListACBr.Strings[i]);
         end;
       end;
 
@@ -173,7 +235,7 @@ begin
         begin
           SStream.size := 0;
           SStream.Write(Buffer^, nread);
-          outputScreen.Lines.Append(strListACBr.Strings[i]);
+          //outputScreen.Lines.Append(strListACBr.Strings[i]);
         end
       until nread = 0;
 
@@ -181,31 +243,19 @@ begin
       AProcess.Free;
       Freemem(buffer);
       SStream.Free;
-      Application.ProcessMessages;
+      //Application.ProcessMessages;
     end;
   end; /// for in
 end;
 
 constructor TLazInstaller.Create;
 begin
-  FindLazarusInstallDir;
+  //FindLazarusInstallDir;
 end;
 
 destructor TLazInstaller.Destroy;
 begin
   inherited Destroy;
-end;
-
-{ TIDEObject }
-
-constructor TIDEObject.Create;
-begin
-  Icon := nil;
-end;
-
-destructor TIDEObject.Destroy;
-begin
-  Icon.Free;
 end;
 
 end.

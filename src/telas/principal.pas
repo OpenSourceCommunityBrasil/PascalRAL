@@ -5,10 +5,15 @@ unit principal;
 interface
 
 uses
-  Classes, SysUtils, fphttpclient, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, ComCtrls, CheckLst, ValEdit, Buttons, fpJSON, jsonparser,
-  urestfunctions, uconsts, lclfunctions, DefaultTranslator, LCLTranslator,
-  imagefunctions, LResources, fclimage, LCLType, FPWritePNG;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+  ComCtrls, CheckLst, Buttons, LResources, LCLType,
+  fpJSON, jsonparser, DefaultTranslator, LCLTranslator,
+  FPWritePNG,
+  lclfunctions, imagefunctions, ghrepofunctions,
+  {$IFDEF MSWINDOWS}
+  delphiutils,
+  {$ENDIF}
+  lazarusutils;
 
 type
   TSplashFormStyle = record
@@ -30,10 +35,14 @@ type
     CheckBox1: TCheckBox;
     CheckListBox1: TCheckListBox;
     clbDataEngine: TCheckListBox;
-    Image1 : TImage;
-    imBanner : TImage;
+    Image1: TImage;
+    imBanner: TImage;
     imDelphiFundo: TImage;
     imLazarusFundo: TImage;
+    lRepoNotes: TLabel;
+    lLatestVersion: TLabel;
+    lRepoVersion: TLabel;
+    lVersionNotes: TLabel;
     lIDELazarus: TLabel;
     lIDEDelphi: TLabel;
     selectionbox: TImage;
@@ -78,10 +87,10 @@ type
     lInstallSubTitle: TLabel;
     lLanguageSubTitle: TLabel;
     lTheme: TLabel;
-    lVersion : TLabel;
+    lVersion: TLabel;
     mmConfirm: TMemo;
     mmLogInstall: TMemo;
-    pBanner : TPanel;
+    pBanner: TPanel;
     pConfirmaRecursos: TPanel;
     pInstall: TPanel;
     pPath: TPanel;
@@ -128,8 +137,8 @@ type
     procedure ConfiguraOpcoes;
     procedure RevisarConfiguracoes;
 
-    procedure ImageToPanel(AStream : TStream; APanel : TPanel);
-    function ImageBackground(AResource : string; APanel : TPanel) : TStream;
+    procedure ImageToPanel(AStream: TStream; APanel: TPanel);
+    function ImageBackground(AResource: string; APanel: TPanel): TStream;
   public
     FPanelSteps: array of TComponent;
   end;
@@ -159,16 +168,16 @@ end;
 procedure TForm1.SetTheme(aTheme: TThemes);
 var
   I: integer;
-  mem : TStream;
+  mem: TStream;
 begin
   imBanner.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Banner);
-//  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
+  //  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
   imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
 
-//  ImageToTImage(Themes[Ord(aTheme)].Banner,imBanner);
+  //  ImageToTImage(Themes[Ord(aTheme)].Banner,imBanner);
   mem := ImageBackground(Themes[Ord(aTheme)].Background, pBanner);
   try
-    ImageToPanel(mem,pBanner);
+    ImageToPanel(mem, pBanner);
   finally
     mem.Free;
   end;
@@ -188,14 +197,18 @@ begin
 
   for I := 0 to Pred(ComponentCount) do
   begin
-    if (Components[I] is TLabel) and (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) < 0) then
+    if (Components[I] is TLabel) and
+      (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) < 0) then
       TLabel(Components[I]).Font.Color := Themes[Ord(aTheme)].FontColor
-    else if (Components[I] is TLabel) and (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) >= 0) then
+    else if (Components[I] is TLabel) and
+      (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) >= 0) then
       TLabel(Components[I]).Font.Color := clWhite
-    else if (Components[I] is TLabeledEdit) and (IgnoredLabels.IndexOf(TLabeledEdit(Components[I]).Name) < 0) then
+    else if (Components[I] is TLabeledEdit) and
+      (IgnoredLabels.IndexOf(TLabeledEdit(Components[I]).Name) < 0) then
       TLabeledEdit(Components[I]).EditLabel.Font.Color := Themes[Ord(aTheme)].FontColor
     else if (Components[I] is TImage) and (TImage(Components[I]).Tag = -1) then
-      TImage(Components[I]).Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].button);
+      TImage(Components[I]).Picture.LoadFromResourceName(HInstance,
+        Themes[Ord(aTheme)].button);
   end;
 
   if Ord(aTheme) = 0 then
@@ -289,9 +302,9 @@ begin
 
 end;
 
-procedure TForm1.ImageToPanel(AStream : TStream; APanel : TPanel);
+procedure TForm1.ImageToPanel(AStream: TStream; APanel: TPanel);
 var
-  timg : TImage;
+  timg: TImage;
 begin
   AStream.Position := 0;
   timg := TImage(APanel.FindChildControl('fnd_' + APanel.Name));
@@ -309,12 +322,12 @@ begin
   timg.SendToBack;
 end;
 
-function TForm1.ImageBackground(AResource : string; APanel : TPanel) : TStream;
+function TForm1.ImageBackground(AResource: string; APanel: TPanel): TStream;
 var
-  res : TResourceStream;
-  img1, img2, img3 : TFCLImage;
-  rc1 : TRect;
-  wpng : TFPWriterPNG;
+  res: TResourceStream;
+  img1, img2, img3: TFCLImage;
+  rc1: TRect;
+  wpng: TFPWriterPNG;
 begin
   res := TResourceStream.Create(HInstance, AResource, RT_RCDATA);
   try
@@ -323,8 +336,8 @@ begin
       img1.LoadFromStream(res);
       img2 := img1.Canvas.Stretched(Self.Width, Self.Height);
       try
-        rc1 := TRect.Create(APanel.Left, APanel.Top, APanel.Width+APanel.Left,
-                            APanel.Height+APanel.Top);
+        rc1 := TRect.Create(APanel.Left, APanel.Top, APanel.Width +
+          APanel.Left, APanel.Height + APanel.Top);
         img3 := img2.Canvas.CopyRect(rc1);
         try
           Result := TMemoryStream.Create;
@@ -401,7 +414,7 @@ begin
   ConfigThemes;
   FIDE := -1;
   LCLFunc.DesativaControles([lIDENext, lLanguageNext, lInstallClose]);
-  LCLFunc.EscondeControles([imDelphiFundo,imLazarusFundo]);
+  LCLFunc.EscondeControles([imDelphiFundo, imLazarusFundo]);
   ImageSelect(imLangUS);
 
   J := 0;

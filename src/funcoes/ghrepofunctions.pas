@@ -1,4 +1,4 @@
-unit restfunctions;
+unit ghrepofunctions;
 
 {$mode ObjFPC}{$H+}
 
@@ -8,16 +8,35 @@ uses
   Classes, SysUtils, fphttpclient, opensslsockets, fpjson, jsonparser;
 
 const
-  TagsAPI = 'https://api.github.com/repos/OpenSourceCommunityBrasil/PascalRAL/tags';
-  BranchesAPI =
-    'https://api.github.com/repos/OpenSourceCommunityBrasil/PascalRAL/branches';
-  ZipDownloadAPI =
-    'https://api.github.com/repos/OpenSourceCommunityBrasil/PascalRAL/zipball/%s';
-  FileDownloadAPI =
-    'https://github.com/OpenSourceCommunityBrasil/PascalRAL/raw/installer/%s';
+  RepoName = 'OpenSourceCommunityBrasil/PascalRAL/';
+  APIURL = 'https://api.github.com/repos/' + RepoName;
+  SiteURL = 'https://github.com/' + RepoName;
+  TagsAPI = APIURL + 'tags';
+  BranchesAPI = APIURL + 'branches';
+  ZipDownloadAPI = APIURL + 'zipball/%s';
+  FileDownloadAPI = SiteURL + 'raw/installer/%s';
+  ReleaseAPI = APIURL + 'releases/latest';
   USERAGENT = 'Pascal REST Api Lite (RAL) Installer Tool';
 
 type
+
+  { TRelease }
+
+  TRelease = class
+  private
+    FDownloadLink: string;
+    FName: string;
+    FNotes: string;
+    FVersion: string;
+    procedure SetName(AValue: string);
+    procedure SetNotes(AValue: string);
+    procedure SetVersion(AValue: string);
+  published
+    property Name: string read FName write SetName;
+    property Notes: string read FNotes write SetNotes;
+    property Version: string read FVersion write SetVersion;
+    property DownloadLink: string read FDownloadLink;
+  end;
 
   { TRESTClient }
 
@@ -28,15 +47,34 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure setDefaultHeaders;
-    function getRepoTags: TStream;
+    function getLatestRelease: TRelease;
     function getTagsList: string;
     function getBranchesList: string;
-    function getRepoBranches: TStream;
     function getFileStream(aFileName: string): TFileStream;
     function Download(aDirectory: string; aVersion: string): boolean;
   end;
 
 implementation
+
+{ TRelease }
+
+procedure TRelease.SetName(AValue: string);
+begin
+  if FName = AValue then Exit;
+  FName := AValue;
+end;
+
+procedure TRelease.SetNotes(AValue: string);
+begin
+  if FNotes = AValue then Exit;
+  FNotes := AValue;
+end;
+
+procedure TRelease.SetVersion(AValue: string);
+begin
+  if FVersion = AValue then Exit;
+  FVersion := AValue;
+end;
 
 { TRESTClient }
 
@@ -61,27 +99,33 @@ begin
   FHTTPREST.AddHeader('Content-Type', 'application/json; charset=UTF-8');
 end;
 
-function TRESTClient.getRepoTags: TStream;
+function TRESTClient.getLatestRelease: TRelease;
 var
-  sresp: TStringStream;
+  sstr: TStringStream;
 begin
-  sresp := TStringStream.Create(FHTTPREST.Get(TagsAPI), TEncoding.UTF8);
-  Result := sresp;
+  sstr := TStringStream.Create(FHTTPREST.Get(ReleaseAPI));
+  try
+    Result := TRelease.Create;
+    Result.FName := TJSONObject(GetJSON(sstr)).Get('name');
+    Result.FNotes := TJSONObject(GetJSON(sstr)).Get('body');
+    Result.FVersion := TJSONObject(GetJSON(sstr)).Get('tag_name');
+    Result.FDownloadLink := TJSONObject(GetJSON(sstr)).Get('zipball_url');
+  finally
+    sstr.Free;
+  end;
 end;
 
 function TRESTClient.getTagsList: string;
 var
-  RestClient: TRESTClient;
   Tags: TJSONArray;
   slistTags: TStringList;
   strResposta: TStream;
   I: integer;
 begin
-  RestClient := TRESTClient.Create;
   slistTags := TStringList.Create;
   Result := '';
   try
-    strResposta := RestClient.getRepoTags;
+    strResposta := TStringStream.Create(FHTTPREST.Get(TagsAPI), TEncoding.UTF8);
     Tags := TJSONArray(GetJSON(strResposta));
     for I := 0 to pred(Tags.Count) do
       slistTags.Add(TJSONObject(Tags.Items[i]).Get('name'));
@@ -90,24 +134,20 @@ begin
     slistTags.Free;
     strResposta.Free;
     Tags.Free;
-    RestClient.Free;
   end;
 end;
 
 function TRESTClient.getBranchesList: string;
 var
-  RestClient: TRESTClient;
   Tags: TJSONArray;
   slistBranches: TStringList;
   strResposta: TStream;
   I: integer;
 begin
-  RestClient := TRESTClient.Create;
-  //Tags := TJSONArray.Create;
   slistBranches := TStringList.Create;
   Result := '';
   try
-    strResposta := RestClient.getRepoBranches;
+    strResposta := TStringStream.Create(FHTTPREST.Get(BranchesAPI), TEncoding.UTF8);
     Tags := TJSONArray(GetJSON(strResposta));
     for I := 0 to pred(Tags.Count) do
       slistBranches.Add(TJSONObject(Tags.Items[i]).Get('name'));
@@ -116,16 +156,7 @@ begin
     slistBranches.Free;
     strResposta.Free;
     Tags.Free;
-    RestClient.Free;
   end;
-end;
-
-function TRESTClient.getRepoBranches: TStream;
-var
-  sresp: TStringStream;
-begin
-  sresp := TStringStream.Create(FHTTPREST.Get(BranchesAPI), TEncoding.UTF8);
-  Result := sresp;
 end;
 
 function TRESTClient.getFileStream(aFileName: string): TFileStream;

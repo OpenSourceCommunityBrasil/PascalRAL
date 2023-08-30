@@ -11,6 +11,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 3.3.2\n"
 
+#: principal.themedark
+#, fuzzy
+msgctxt "principal.themedark"
+msgid "Escuro"
+msgstr "Nigro"
+
+#: principal.themelight
+#, fuzzy
+msgctxt "principal.themelight"
+msgid "Claro"
+msgstr "Claro"
+
 #: tform1.button1.caption
 msgid "test logo anim"
 msgstr "test logo anim"
@@ -104,6 +116,10 @@ msgstr "Siguiente >"
 msgid "Escolha o Idioma"
 msgstr "Seleccione su idioma"
 
+#: tform1.llatestversion.caption
+msgid "Versão mais recente dos fontes:"
+msgstr ""
+
 #: tform1.lpathideversion.caption
 msgid "Versão da IDE"
 msgstr "Versión del IDE"
@@ -121,6 +137,10 @@ msgstr "< Anterior"
 #: tform1.lpathsubtitle.caption
 msgid "Caminho da Instalação"
 msgstr "Ruta de instalación"
+
+#: tform1.lrepoversion.caption
+msgid "lRepoVersion"
+msgstr ""
 
 #: tform1.lresourcesnext.caption
 msgctxt "tform1.lresourcesnext.caption"
@@ -140,11 +160,7 @@ msgstr "Elija funciones para instalar"
 msgid "Instalador Versão 1.0"
 msgstr "Instalador Versión 1.0"
 
-#: uprincipal.themedark
-msgid "Escuro"
-msgstr "Nigro"
+#: tform1.lversionnotes.caption
+msgid "Notas da versão:"
+msgstr ""
 
-#: uprincipal.themelight
-msgctxt "uprincipal.themelight"
-msgid "Claro"
-msgstr "Claro"

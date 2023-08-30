@@ -1,6 +1,16 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
+#: principal.themedark
+msgctxt "principal.themedark"
+msgid "Escuro"
+msgstr ""
+
+#: principal.themelight
+msgctxt "principal.themelight"
+msgid "Claro"
+msgstr ""
+
 #: tform1.button1.caption
 msgid "test logo anim"
 msgstr ""
@@ -94,6 +104,10 @@ msgstr ""
 msgid "Escolha o Idioma"
 msgstr ""
 
+#: tform1.llatestversion.caption
+msgid "Versão mais recente dos fontes:"
+msgstr ""
+
 #: tform1.lpathideversion.caption
 msgid "Versão da IDE"
 msgstr ""
@@ -110,6 +124,10 @@ msgstr ""
 
 #: tform1.lpathsubtitle.caption
 msgid "Caminho da Instalação"
+msgstr ""
+
+#: tform1.lrepoversion.caption
+msgid "lRepoVersion"
 msgstr ""
 
 #: tform1.lresourcesnext.caption
@@ -130,12 +148,7 @@ msgstr ""
 msgid "Instalador Versão 1.0"
 msgstr ""
 
-#: uprincipal.themedark
-msgid "Escuro"
-msgstr ""
-
-#: uprincipal.themelight
-msgctxt "uprincipal.themelight"
-msgid "Claro"
+#: tform1.lversionnotes.caption
+msgid "Notas da versão:"
 msgstr ""
 

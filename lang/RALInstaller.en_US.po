@@ -12,6 +12,18 @@ msgstr ""
 "X-Generator: Poedit 3.3.2\n"
 "X-Poedit-Basepath: .\n"
 
+#: principal.themedark
+#, fuzzy
+msgctxt "principal.themedark"
+msgid "Escuro"
+msgstr "Dark"
+
+#: principal.themelight
+#, fuzzy
+msgctxt "principal.themelight"
+msgid "Claro"
+msgstr "Light"
+
 #: tform1.button1.caption
 msgid "test logo anim"
 msgstr "test logo anim"
@@ -105,6 +117,10 @@ msgstr "Next >"
 msgid "Escolha o Idioma"
 msgstr "Choose your Language"
 
+#: tform1.llatestversion.caption
+msgid "Versão mais recente dos fontes:"
+msgstr ""
+
 #: tform1.lpathideversion.caption
 msgid "Versão da IDE"
 msgstr "IDE Version"
@@ -122,6 +138,10 @@ msgstr "< Previous"
 #: tform1.lpathsubtitle.caption
 msgid "Caminho da Instalação"
 msgstr "Installation Path"
+
+#: tform1.lrepoversion.caption
+msgid "lRepoVersion"
+msgstr ""
 
 #: tform1.lresourcesnext.caption
 msgctxt "tform1.lresourcesnext.caption"
@@ -141,11 +161,7 @@ msgstr "Choose resources to install"
 msgid "Instalador Versão 1.0"
 msgstr "Installer Version 1.0"
 
-#: uprincipal.themedark
-msgid "Escuro"
-msgstr "Dark"
+#: tform1.lversionnotes.caption
+msgid "Notas da versão:"
+msgstr ""
 
-#: uprincipal.themelight
-msgctxt "uprincipal.themelight"
-msgid "Claro"
-msgstr "Light"
