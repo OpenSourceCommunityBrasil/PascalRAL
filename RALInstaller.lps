@@ -8,7 +8,6 @@
       <Unit>
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <TopLine Value="5"/>
         <CursorPos X="23" Y="7"/>
         <UsageCount Value="201"/>
@@ -20,9 +19,9 @@
         <ComponentName Value="fprincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="496"/>
-        <CursorPos X="23" Y="512"/>
+        <CursorPos X="42" Y="10"/>
         <UsageCount Value="213"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
