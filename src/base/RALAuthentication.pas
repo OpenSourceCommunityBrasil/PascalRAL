@@ -230,11 +230,6 @@ implementation
 
 { TRALClientDigest }
 
-procedure TRALClientDigest.SetRealm(ARealm : StringRAL);
-begin
-  FRealm := ARealm;
-end;
-
 procedure TRALClientDigest.GetHeader(AParams, AHeader : TStringList);
 var
   vAuth: TRALDigest;

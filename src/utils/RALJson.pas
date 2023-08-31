@@ -7,29 +7,54 @@ interface
 {$DEFINE RALlkJSON}
 {.$DEFINE RALuJSON}
 
+// DBXJSON
+// 2010  - CompVersion 21 - Tested OK
+// XE    - CompVersion 22 - Tested OK
+// XE2   - CompVersion 23 - Tested OK
+// XE3   - CompVersion 24 - NOT Tested
+// XE4   - CompVersion 25 - Tested OK
+// XE5   - CompVersion 26 - Tested OK
+
+// System.JSON
+// XE6   - CompVersion 27 - Tested OK
+// XE7   - CompVersion 28 - Tested OK
+// XE8   - CompVersion 29 - Tested OK
+// XE10  - 29 > - Em Testes
+
 uses
   {$IFNDEF FPC}
     {$IFDEF DELPHI2010UP}
-       RALJSON_Delphi,
+      {$IFDEF DELPHIXE6UP}
+        System.JSON,
+      {$ELSE}
+        DBXJSON,
+      {$ENDIF}
     {$ELSE}
        {$IFDEF RALlkJSON}
-         RALJSON_lkJSON,
+         ulkJSON,
        {$ENDIF}
        {$IFDEF RALlkJSON}
-         RALJSON_uJSON,
+         uJSON,
        {$ENDIF}
     {$ENDIF}
   {$ELSE}
-    RALJSON_FPC,
+    fpjson,
   {$ENDIF}
-  Classes, SysUtils;
+  Variants, RALTypes, Classes, SysUtils;
 
-type
-  TRALJSONValue  = TRALJSONValueBase;
-  TRALJSONObject = TRALJSONObjectBase;
-  TRALJSON       = TRALJSONBase;
-  TRALJSONArray  = TRALJSONArrayBase;
-
-implementation
+{$IFNDEF FPC}
+  {$IFDEF DELPHI2010UP}
+    {$I RALJSON_Delphi.inc}
+  {$ELSE}
+    {$IFDEF RALlkJSON}
+      {$I RALJSON_lkJSON.inc}
+    {$ENDIF}
+    {$IFDEF RALlkJSON}
+      {$I RALJSON_uJSON.inc}
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$I RALJSON_FPC.inc}
+{$ENDIF}
 
 end.

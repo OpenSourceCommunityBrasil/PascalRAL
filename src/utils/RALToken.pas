@@ -149,7 +149,7 @@ type
     FOpaque: StringRAL;
   published
     property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
-    property SessAlgorithm: StringRAL read FSessAlgorithm write FSessAlgorithm;
+    property SessAlgorithm: boolean read FSessAlgorithm write FSessAlgorithm;
     property Realm: StringRAL read FRealm write FRealm;
     property Qop: StringRAL read FQop write FQop;
     property Nonce: StringRAL read FNonce write FNonce;
@@ -210,31 +210,31 @@ begin
   end;
 
   try
-    vHa1 := Format('%s:%s:%s',[FUserName,FParams.Realm,FPassword]);
+    vHa1 := Format('%s:%s:%s',[FUserName, FParams.Realm, FPassword]);
     vHa1 := vHash.HashAsString(vHa1);
 
     if FParams.SessAlgorithm then
-      vHa1 := vHash.HashAsString(Format('%s:%s:%s',[vHa1,FParams.Nonce,FCNonce]))
+      vHa1 := vHash.HashAsString(Format('%s:%s:%s',[vHa1, FParams.Nonce, FCNonce]));
 
     if ((Pos('auth',LowerCase(FParams.Qop)) > 0) and
        (Pos('auth-int',LowerCase(FParams.Qop)) = 0)) or
        (Trim(FParams.Qop) = '') then
     begin
-      vHa2 := Format('%s:%s',[FMethod,FURL]);
-      vHa2 = vHash.HashAsString(vHa2)
+      vHa2 := Format('%s:%s',[FMethod, FURL]);
+      vHa2 := vHash.HashAsString(vHa2);
     end
     else if (Pos('auth-int',LowerCase(FParams.Qop)) > 0) then
     begin
       vHa2 := vHash.HashAsString(''); //entityBody
-      vHa2 := Format('%s:%s:%s',[FMethod,FURL,vHa2]);
-      vHa2 = vHash.HashAsString(vHa2)
+      vHa2 := Format('%s:%s:%s',[FMethod, FURL, vHa2]);
+      vHa2 := vHash.HashAsString(vHa2);
     end;
 
     if (Pos('auth',LowerCase(FParams.Qop)) > 0) then
-      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1,FParams.Nonce,FNC,FCNonce,FParams.Qop,vHa2]);
+      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1, FParams.Nonce, FNC, FCNonce, FParams.Qop, vHa2])
     else
-      vAux1 := Format('%s:%s:%s',[vHa1,FParams.Nonce,vHa2]);
-    vAux1 = vHash.HashAsString(vAux1);
+      vAux1 := Format('%s:%s:%s',[vHa1, FParams.Nonce, vHa2]);
+    vAux1 := vHash.HashAsString(vAux1);
   finally
     FreeAndNil(vHash);
   end;
@@ -290,7 +290,7 @@ begin
       else if vAuth[vIni] = '"' then
       begin
         vQuoted := not vQuoted;
-      end;
+      end
       else
       begin
         vParam := vParam + vAuth[vIni];
@@ -303,9 +303,9 @@ begin
     FParams.Realm := vParams.Values['realm'];
     vAux1 := LowerCase(vParams.Values['algorithm']);
 
-    FParams.SessAlgorithm := Pos('sess',vAux1);
+    FParams.SessAlgorithm := Pos('sess', vAux1) > 0;
     if Pos('sha-256',vAux1) > 0 then
-      FParams.Algorithm := tdaSHA2_256;
+      FParams.Algorithm := tdaSHA2_256
     else if Pos('sha-512-256',vAux1) > 0 then
       FParams.Algorithm := tdaSHA2_512;
     FParams.Qop := vParams.Values['qop'];

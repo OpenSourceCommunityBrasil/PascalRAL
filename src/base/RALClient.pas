@@ -342,6 +342,7 @@ var
   vBody : TRALParams;
   vURL, vAuth: StringRAL;
   vDigest : TRALDigest;
+  vMethod : TRALMethod;
 begin
   vObjAuth := TRALClientDigest(FAuthentication);
   if (vObjAuth.DigestParams.Nonce = '') or (vObjAuth.DigestParams.Opaque = '') then
