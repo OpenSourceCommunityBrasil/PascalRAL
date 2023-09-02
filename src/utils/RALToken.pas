@@ -147,6 +147,12 @@ type
     FQop: StringRAL;
     FNonce: StringRAL;
     FOpaque: StringRAL;
+    FDomain: StringRAL;
+    FStale: StringRAL;
+    FCharset: StringRAL;
+    FUserHash: boolean;
+    FNC: integer;
+    FCNonce: StringRAL;
   published
     property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
     property SessAlgorithm: boolean read FSessAlgorithm write FSessAlgorithm;
@@ -154,6 +160,12 @@ type
     property Qop: StringRAL read FQop write FQop;
     property Nonce: StringRAL read FNonce write FNonce;
     property Opaque: StringRAL read FOpaque write FOpaque;
+    property Domain: StringRAL read FDomain write FDomain;
+    property Stale: StringRAL read FStale write FStale;
+    property Charset: StringRAL read FCharset write FCharset;
+    property UserHash: boolean read FUserHash write FUserHash;
+    property NC: integer read FNC write FNC;
+    property CNonce: StringRAL read FCNonce write FCNonce;
   end;
 
   { TRALDigest }
@@ -162,8 +174,6 @@ type
   private
     FParams : TRALDigestParams;
 
-    FNC: StringRAL;
-    FCNonce: StringRAL;
     FURL: StringRAL;
     FMethod: StringRAL;
     FUserName: StringRAL;
@@ -178,8 +188,6 @@ type
     property Header: TStringList read GetHeader;
   published
     property Params : TRALDigestParams read FParams write FParams;
-    property NC: StringRAL read FNC write FNC;
-    property CNonce: StringRAL read FCNonce write FCNonce;
     property URL: StringRAL read FURL write FURL;
     property Method: StringRAL read FMethod write FMethod;
     property UserName: StringRAL read FUserName write FUserName;
@@ -192,7 +200,7 @@ implementation
 
 function TRALDigest.GetHeader : TStringList;
 var
-  vHa1, vHa2, vAux1 : StringRAL;
+  vHa1, vHa2, vAux1, vNC : StringRAL;
   vHash : TRALHashes;
 begin
   case FParams.Algorithm of
@@ -210,11 +218,14 @@ begin
   end;
 
   try
+    vNC := FormatFloat('00000000', FParams.NC);
+    FParams.CNonce := vHash.HashAsString(vNC);
+
     vHa1 := Format('%s:%s:%s',[FUserName, FParams.Realm, FPassword]);
     vHa1 := vHash.HashAsString(vHa1);
 
     if FParams.SessAlgorithm then
-      vHa1 := vHash.HashAsString(Format('%s:%s:%s',[vHa1, FParams.Nonce, FCNonce]));
+      vHa1 := vHash.HashAsString(Format('%s:%s:%s',[vHa1, FParams.Nonce, FParams.CNonce]));
 
     if ((Pos('auth',LowerCase(FParams.Qop)) > 0) and
        (Pos('auth-int',LowerCase(FParams.Qop)) = 0)) or
@@ -231,7 +242,8 @@ begin
     end;
 
     if (Pos('auth',LowerCase(FParams.Qop)) > 0) then
-      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1, FParams.Nonce, FNC, FCNonce, FParams.Qop, vHa2])
+      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1, FParams.Nonce, FParams.NC,
+                                           FParams.CNonce, FParams.Qop, vHa2])
     else
       vAux1 := Format('%s:%s:%s',[vHa1, FParams.Nonce, vHa2]);
     vAux1 := vHash.HashAsString(vAux1);
@@ -245,8 +257,8 @@ begin
   Result.Add('nonce=' + FParams.Nonce);
   Result.Add('uri=' + FURL);
   Result.Add('qop=' + FParams.Qop);
-  Result.Add('nc=' + FNC);  //  nc=00000001,
-  Result.Add('cnonce=' + FCNonce); // cnonce="0a4f113b",
+  Result.Add('nc=' + vNC);  //  nc=00000001,
+  Result.Add('cnonce=' + FParams.CNonce); // cnonce="0a4f113b",
   Result.Add('response=' + vAux1);
   Result.Add('opaque=' + FParams.Opaque);
 end;
@@ -308,9 +320,13 @@ begin
       FParams.Algorithm := tdaSHA2_256
     else if Pos('sha-512-256',vAux1) > 0 then
       FParams.Algorithm := tdaSHA2_512;
+
     FParams.Qop := vParams.Values['qop'];
     FParams.Nonce := vParams.Values['nonce'];
     FParams.Opaque := vParams.Values['opaque'];
+    FParams.Stale := vParams.Values['stale'];
+    FParams.Charset := vParams.Values['charset'];
+    FParams.UserHash := SameText(vParams.Values['userhash'],'true');
   finally
     FreeAndNil(vParams);
   end;

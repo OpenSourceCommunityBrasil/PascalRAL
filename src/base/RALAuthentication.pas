@@ -245,6 +245,7 @@ begin
     vAuth.Password := FPassword;
     vAuth.URL := AParams.Values['url'];
     vAuth.Method := AParams.Values['method'];
+    vAuth.Params.NC := vAuth.Params.NC + 1;
 
     vParams := vAuth.Header;
     try

@@ -367,6 +367,7 @@ begin
       try
         vDigest.Load(vAuth);
         vObjAuth.DigestParams.Assign(vDigest.Params);
+        vObjAuth.DigestParams.NC := 0;
         vObjAuth.GetHeader(AParams, AHeader);
       finally
         vDigest.Free;
