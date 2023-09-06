@@ -13,32 +13,32 @@ type
 
   TRALHashes = class
   private
-    FOutputType : TRALHashOutputType;
-    FLenBit : UInt64;
-    FIndex : IntegerRAL;
+    FOutputType: TRALHashOutputType;
+    FLenBit: uint64;
+    FIndex: IntegerRAL;
   protected
-    function GetBufLength : IntegerRAL; virtual; abstract;
-    function GetBuffer(AIndex : IntegerRAL) : Pointer; virtual; abstract;
-    function GetIndex : integer;
-    function GetLenBit : UInt64;
+    function GetBufLength: IntegerRAL; virtual; abstract;
+    function GetBuffer(AIndex: IntegerRAL): Pointer; virtual; abstract;
+    function GetIndex: integer;
+    function GetLenBit: uint64;
 
     procedure Initialize; virtual;
     procedure Compress; virtual;
-    function Finalize : TBytes; virtual; abstract;
+    function Finalize: TBytes; virtual; abstract;
 
-    procedure HashBytes(AData : PByte; ALength : IntegerRAL); virtual;
+    procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
 
-    function DigestToHex(AValue : TBytes) : StringRAL;
-    function DigestToBase64(AValue : TBytes) : StringRAL;
-    function DigestToBase64Url(AValue : TBytes) : StringRAL;
+    function DigestToHex(AValue: TBytes): StringRAL;
+    function DigestToBase64(AValue: TBytes): StringRAL;
+    function DigestToBase64Url(AValue: TBytes): StringRAL;
 
     procedure UpdateBuffer(AValue: TStream); overload; virtual;
     procedure UpdateBuffer(AValue: StringRAL); overload; virtual;
     procedure UpdateBuffer(AValue: TBytes); overload; virtual;
 
-    function GetDigest(AValue: TStream) : TBytes; overload; virtual;
-    function GetDigest(AValue: StringRAL) : TBytes; overload; virtual;
-    function GetDigest(AValue: TBytes) : TBytes; overload; virtual;
+    function GetDigest(AValue: TStream): TBytes; overload; virtual;
+    function GetDigest(AValue: StringRAL): TBytes; overload; virtual;
+    function GetDigest(AValue: TBytes): TBytes; overload; virtual;
 
     function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
   public
@@ -50,10 +50,10 @@ type
     function HashAsStream(AValue: TStream): TStringStream;
 
     function HMACAsString(AValue, AKey: StringRAL): StringRAL; overload; virtual;
-    function HMACAsString(AValue : TStream; AKey: StringRAL): StringRAL; overload; virtual;
-    function HMACAsString(AValue : TBytes; AKey: StringRAL): StringRAL; overload; virtual;
+    function HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL; overload; virtual;
+    function HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL; overload; virtual;
   published
-    property OutputType : TRALHashOutputType read FOutputType write FOutputType;
+    property OutputType: TRALHashOutputType read FOutputType write FOutputType;
   end;
 
 implementation
@@ -75,7 +75,7 @@ begin
   Result := TRALBase64.Encode(AValue);
 end;
 
-function TRALHashes.DigestToBase64Url(AValue : TBytes) : StringRAL;
+function TRALHashes.DigestToBase64Url(AValue: TBytes): StringRAL;
 begin
   Result := TRALBase64.Encode(AValue);
   Result := TRALBase64.ToBase64Url(Result);
@@ -83,10 +83,10 @@ end;
 
 function TRALHashes.DigestToHex(AValue: TBytes): StringRAL;
 const
-  HexChar : array[0..15] of CharRAL = ('0','1','2','3','4','5','6','7','8','9',
-                                       'a','b','c','d','e','f');
+  HexChar: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                                      'a', 'b', 'c', 'd', 'e', 'f');
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   vInt := 0;
   while vInt < Length(AValue) do
@@ -123,24 +123,24 @@ begin
   Result := FIndex;
 end;
 
-function TRALHashes.GetLenBit: UInt64;
+function TRALHashes.GetLenBit: uint64;
 begin
   Result := FLenBit;
 end;
 
 function TRALHashes.HashAsStream(AValue: TStream): TStringStream;
 var
-  vDigest : TBytes;
-  vResult : StringRAL;
+  vDigest: TBytes;
+  vResult: StringRAL;
 begin
   Initialize;
   UpdateBuffer(AValue);
   vDigest := Finalize;
 
   case OutputType of
-    rhotHex       : vResult := DigestToHex(vDigest);
-    rhotBase64    : vResult := DigestToBase64(vDigest);
-    rhotBase64Url : vResult := DigestToBase64Url(vDigest);
+    rhotHex: vResult := DigestToHex(vDigest);
+    rhotBase64: vResult := DigestToBase64(vDigest);
+    rhotBase64Url: vResult := DigestToBase64Url(vDigest);
   end;
 
   Result := TStringStream.Create(vResult);
@@ -149,7 +149,7 @@ end;
 
 function TRALHashes.HashAsString(AValue: TStream): StringRAL;
 var
-  vResult : TStringStream;
+  vResult: TStringStream;
 begin
   vResult := HashAsStream(AValue);
   try
@@ -161,7 +161,7 @@ end;
 
 function TRALHashes.HashAsString(AValue: StringRAL): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -171,14 +171,14 @@ begin
   end;
 end;
 
-procedure TRALHashes.HashBytes(AData: PByte; ALength: IntegerRAL);
+procedure TRALHashes.HashBytes(AData: pbyte; ALength: IntegerRAL);
 var
-  vBufSize : Integer;
-  vBufLength : Integer;
-  vBuffer : Pointer;
+  vBufSize: integer;
+  vBufLength: integer;
+  vBuffer: Pointer;
 begin
   vBufLength := GetBufLength;
-  Inc(FLenBit,ALength*8);
+  Inc(FLenBit, ALength * 8);
 
   while ALength > 0 do
   begin
@@ -187,24 +187,24 @@ begin
       vBufSize := ALength;
 
     vBuffer := GetBuffer(FIndex);
-    Move(AData^,vBuffer^,vBufSize);
-    Inc(AData,vBufSize);
+    Move(AData^, vBuffer^, vBufSize);
+    Inc(AData, vBufSize);
 
     if vBufSize + FIndex = vBufLength then
       Compress
     else
       FIndex := vBufSize;
 
-    Dec(ALength,vBufSize);
+    Dec(ALength, vBufSize);
   end;
 end;
 
 function TRALHashes.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
 var
-  vKey : TBytes;
-  vTemp1 : TBytes;
-  vTemp2 : TBytes;
-  vInt : integer;
+  vKey: TBytes;
+  vTemp1: TBytes;
+  vTemp2: TBytes;
+  vInt: integer;
 begin
   if Length(AKey) > GetBufLength then
     vKey := GetDigest(AKey)
@@ -233,11 +233,11 @@ end;
 
 function TRALHashes.HMACAsString(AValue, AKey: StringRAL): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
-    Result := HMACAsString(vStream,AKey);
+    Result := HMACAsString(vStream, AKey);
   finally
     vStream.Free;
   end;
@@ -245,25 +245,25 @@ end;
 
 function TRALHashes.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
 var
-  vKey, vDigest : TBytes;
+  vKey, vDigest: TBytes;
 begin
   vKey := VarToBytes(AKey);
-  vDigest := HMACAsDigest(AValue,vKey);
+  vDigest := HMACAsDigest(AValue, vKey);
 
   case OutputType of
-    rhotHex       : Result := DigestToHex(vDigest);
-    rhotBase64    : Result := DigestToBase64(vDigest);
-    rhotBase64Url : Result := DigestToBase64Url(vDigest);
+    rhotHex: Result := DigestToHex(vDigest);
+    rhotBase64: Result := DigestToBase64(vDigest);
+    rhotBase64Url: Result := DigestToBase64Url(vDigest);
   end;
 end;
 
 function TRALHashes.HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL;
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
-    Result := HMACAsString(vStream,AKey);
+    Result := HMACAsString(vStream, AKey);
   finally
     vStream.Free;
   end;
@@ -277,9 +277,9 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TStream);
 var
-  vInBuf: array[0..4095] of Byte;
-  vBytesRead : IntegerRAL;
-  vPosition, vSize : Int64RAL;
+  vInBuf: array[0..4095] of byte;
+  vBytesRead: IntegerRAL;
+  vPosition, vSize: Int64RAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -296,7 +296,7 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: StringRAL);
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
@@ -308,7 +308,7 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TBytes);
 var
-  vStream : TStringStream;
+  vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try

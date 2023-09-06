@@ -458,10 +458,10 @@ begin
     end
     else
     begin
-      vParam := ARequest.Params.ParamByName['ral_payload'];
+      vParam := ARequest.ParamByName('ral_payload');
 
       if vParam = nil then
-        vParam := ARequest.Params.ParamByName['ral_body'];
+        vParam := ARequest.ParamByName('ral_body');
 
       vStrParams := '';
       if vParam <> nil then

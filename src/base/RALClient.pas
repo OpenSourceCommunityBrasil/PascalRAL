@@ -339,10 +339,10 @@ function TRALClient.GetTokenDigest(AParams, AHeader : TStringList) : boolean;
 var
   vObjAuth : TRALClientDigest;
   vConta, vResult: IntegerRAL;
-  vBody : TRALParams;
+  vBody: TRALParams;
   vURL, vAuth: StringRAL;
-  vDigest : TRALDigest;
-  vMethod : TRALMethod;
+  vDigest: TRALDigest;
+  vMethod: TRALMethod;
 begin
   vObjAuth := TRALClientDigest(FAuthentication);
   if (vObjAuth.DigestParams.Nonce = '') or (vObjAuth.DigestParams.Opaque = '') then

@@ -25,7 +25,9 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-                     AContentType: StringRAL = rctTEXTHTML);
+                     AContentType: StringRAL = rctTEXTHTML); overload;
+    procedure Answer(AFileName: StringRAL); overload;
+    procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; AFileName: StringRAL); overload;
 
     function AddHeader(AName, AValue : StringRAL) : TRALResponse; reintroduce;
     function AddField(AName, AValue : StringRAL) : TRALResponse; reintroduce;
@@ -50,6 +52,18 @@ begin
   StatusCode := AStatusCode;
   ContentType := AContentType;
   ResponseText := AMessage;
+end;
+
+procedure TRALResponse.Answer(AFileName: StringRAL);
+begin
+  AddFile(AFileName);
+end;
+
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AFile: TStream;
+  AFileName: StringRAL);
+begin
+  StatusCode := AStatusCode;
+  AddFile(AFile, AFileName);
 end;
 
 function TRALResponse.AddHeader(AName, AValue : StringRAL) : TRALResponse;

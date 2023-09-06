@@ -31,6 +31,7 @@ type
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property AsFile: TFileStream read GetAsFile;
+    function IsNilOrEmpty: boolean;
     procedure OpenFile(AFileName: StringRAL);
     procedure SaveToFile(AFileName: StringRAL); overload;
     procedure SaveToFile; overload;
@@ -108,7 +109,7 @@ type
 
     property Body: TList read GetBody;
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
-    property ParamByName[name: StringRAL]: TRALParam read GetParam;
+    property Get[name: StringRAL]: TRALParam read GetParam;
     property ParamByNameAndKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
   end;
 
@@ -128,6 +129,11 @@ destructor TRALParam.Destroy;
 begin
   FreeAndNil(FContent);
   inherited;
+end;
+
+function TRALParam.IsNilOrEmpty: boolean;
+begin
+  Result := (Self = nil) or ((Self <> nil) and (self.AsString = ''));
 end;
 
 procedure TRALParam.OpenFile(AFileName: StringRAL);
