@@ -110,7 +110,7 @@ type
     property Body: TList read GetBody;
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
     property Get[name: StringRAL]: TRALParam read GetParam;
-    property ParamByNameAndKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
+    property GetKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
   end;
 
 implementation
@@ -241,7 +241,7 @@ end;
 
 function TRALParams.AddParam(AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
-  Result := ParamByNameAndKind[AName, AKind];
+  Result := GetKind[AName, AKind];
   if Result = nil then
     Result := NewParam;
 
@@ -253,7 +253,7 @@ end;
 
 function TRALParams.AddParam(AName: StringRAL; AContent: TStream; AKind: TRALParamKind): TRALParam;
 begin
-  Result := ParamByNameAndKind[AName, AKind];
+  Result := GetKind[AName, AKind];
   if Result = nil then
     Result := NewParam;
 
@@ -267,7 +267,7 @@ function TRALParams.AddFile(AParamName, AFileName: StringRAL): TRALParam;
 var
   vMime: TRALMIMEType;
 begin
-  Result := ParamByNameAndKind[AParamName, rpkBODY];
+  Result := GetKind[AParamName, rpkBODY];
   if Result = nil then
     Result := NewParam;
 
@@ -829,7 +829,7 @@ begin
     vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
     vValue := TRALHTTPCoder.DecodeURL(vValue);
 
-    vParam := ParamByNameAndKind[vName, AKind];
+    vParam := GetKind[vName, AKind];
     if vParam = nil then
       vParam := NewParam;
     vParam.ParamName := vName;

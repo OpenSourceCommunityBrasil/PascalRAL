@@ -165,16 +165,18 @@ begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
-  vParam := AResult.Params.ParamByNameAndKind['Authorization',rpkHEADER];
-  vStr := vParam.AsString;
-  if vStr <> '' then begin
-    vInt := Pos(' ', vStr);
-    vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if SameText(vAux, 'Basic') then
-      AResult.Authorization.AuthType := ratBasic
-    else if SameText(vAux, 'Bearer') then
-      AResult.Authorization.AuthType := ratBearer;
-    AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
+  vParam := AResult.Params.GetKind['Authorization',rpkHEADER];
+  if vParam.IsNilOrEmpty then begin
+    vStr := vParam.AsString;
+    if vStr <> '' then begin
+      vInt := Pos(' ', vStr);
+      vAux := Trim(Copy(vStr, 1, vInt - 1));
+      if SameText(vAux, 'Basic') then
+        AResult.Authorization.AuthType := ratBasic
+      else if SameText(vAux, 'Bearer') then
+        AResult.Authorization.AuthType := ratBearer;
+      AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
+    end;
   end;
 end;
 

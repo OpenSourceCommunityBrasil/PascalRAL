@@ -123,7 +123,7 @@ var
   vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName, rpkHEADER];
+  vParam := FParams.GetKind[AName, rpkHEADER];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
@@ -133,7 +133,7 @@ var
   vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName, rpkQUERY];
+  vParam := FParams.GetKind[AName, rpkQUERY];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
@@ -143,7 +143,7 @@ var
   vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName, rpkFIELD];
+  vParam := FParams.GetKind[AName, rpkFIELD];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
@@ -153,7 +153,7 @@ var
   vParam: TRALParam;
 begin
   Result := '';
-  vParam := FParams.ParamByNameAndKind[AName, rpkCOOKIE];
+  vParam := FParams.GetKind[AName, rpkCOOKIE];
   if vParam <> nil then
     Result := vParam.AsString;
 end;
