@@ -166,7 +166,7 @@ begin
   AResult.Authorization.AuthString := '';
 
   vParam := AResult.Params.GetKind['Authorization',rpkHEADER];
-  if vParam.IsNilOrEmpty then begin
+  if not vParam.IsNilOrEmpty then begin
     vStr := vParam.AsString;
     if vStr <> '' then begin
       vInt := Pos(' ', vStr);
