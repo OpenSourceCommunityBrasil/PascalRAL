@@ -32,6 +32,7 @@ type
     property AsString: StringRAL read GetAsString write SetAsString;
     property AsFile: TFileStream read GetAsFile;
     function IsNilOrEmpty: boolean;
+    function Size: Int64;
     procedure OpenFile(AFileName: StringRAL);
     procedure SaveToFile(AFileName: StringRAL); overload;
     procedure SaveToFile; overload;
@@ -133,7 +134,15 @@ end;
 
 function TRALParam.IsNilOrEmpty: boolean;
 begin
-  Result := (Self = nil) or ((Self <> nil) and (self.AsString = ''));
+  Result := (Self = nil) or ((Self <> nil) and (Self.Size > 0));
+end;
+
+function TRALParam.Size : Int64;
+begin
+  if FContent <> nil then
+    Result := FContent.Size
+  else
+    Result := 0;
 end;
 
 procedure TRALParam.OpenFile(AFileName: StringRAL);

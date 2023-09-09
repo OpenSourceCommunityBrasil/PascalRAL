@@ -9,8 +9,8 @@ uses
 
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; var AResult: boolean) of object;
-  TRALOnGetTokenJWT = procedure(ARequest: TRALRequest; AParams: TRALJWTParams;
-                                var AResult: boolean) of object;
+  TRALOnTokenJWT = procedure(ARequest: TRALRequest; AParams: TRALJWTParams; var AResult: boolean) of object;
+
   TRALOnResolve = procedure(AToken: StringRAL; AParams : TRALJWTParams;
                             var AResult: StringRAL) of object;
 
@@ -33,12 +33,10 @@ type
   private
 
   public
-    procedure GetHeader(AParams, AHeader : TStringList); virtual;
+    procedure GetHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
   end;
 
   TRALAuthServer = class(TRALAuthentication)
-  private
-    FOnValidate: TRALOnValidate;
   public
     procedure Validate(ARequest: TRALRequest;
                        var AResponse: TRALResponse); virtual; abstract;
@@ -46,8 +44,6 @@ type
                         var AResponse: TRALResponse); virtual; abstract;
 
     property AuthType: TRALAuthTypes read FAuthType;
-  published
-    property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
   end;
 
   TRALClientBasicAuth = class(TRALAuthClient)
@@ -59,7 +55,7 @@ type
     constructor Create(AOwner: TComponent; AUser: StringRAL;
                        APassword: StringRAL); overload;
 
-    procedure GetHeader(AParams, AHeader : TStringList); override;
+    procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
   published
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
@@ -70,6 +66,7 @@ type
     FAuthDialog: boolean;
     FUserName: StringRAL;
     FPassword: StringRAL;
+    FOnValidate: TRALOnValidate;
   public
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent; AUser: StringRAL;
@@ -79,10 +76,11 @@ type
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
                         var AResponse: TRALResponse); override;
   published
-    property OnValidate;
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
+
+    property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
   end;
 
   TRALClientJWTAuth = class(TRALAuthClient)
@@ -97,7 +95,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure GetHeader(AParams, AHeader : TStringList); override;
+    procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
   published
     property Key: StringRAL read FKey write FKey;
     property Token: StringRAL read FToken write SetToken;
@@ -112,7 +110,9 @@ type
     FRoute: StringRAL;
     FKey: StringRAL;
     FSecret : StringRAL;
-    FOnGetToken: TRALOnGetTokenJWT;
+
+    FOnGetToken: TRALOnTokenJWT;
+    FOnValidate: TRALOnTokenJWT;
   public
     constructor Create(AOwner: TComponent); override;
 
@@ -132,8 +132,8 @@ type
     property Key: StringRAL read FKey write FKey;
     property Secret: StringRAL read FSecret write FSecret;
 
-    property OnValidate;
-    property OnGetToken: TRALOnGetTokenJWT read FOnGetToken write FOnGetToken;
+    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
+    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
   end;
 
   { TRALClientOAuth }
@@ -154,7 +154,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
 
-    procedure GetHeader(AParams, AHeader : TStringList); override;
+    procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
   published
     property Algorithm: TRALOAuthAlgorithm read FAlgorithm write FAlgorithm;
     property ConsumerKey: StringRAL read FConsumerKey write FConsumerKey;
@@ -210,8 +210,10 @@ type
     FPassword: StringRAL;
 
     FDigestParams: TRALDigestParams;
+  protected
+    function GetEntityBody(AParams: TRALParams) : StringRAL;
   public
-    procedure GetHeader(AParams, AHeader : TStringList); override;
+    procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
 
     property DigestParams: TRALDigestParams read FDigestParams write FDigestParams;
   published
@@ -230,21 +232,45 @@ implementation
 
 { TRALClientDigest }
 
-procedure TRALClientDigest.GetHeader(AParams, AHeader : TStringList);
+function TRALClientDigest.GetEntityBody(AParams: TRALParams) : StringRAL;
+var
+  vStream: TStream;
+  vFreeContent : boolean;
+  vContentType : StringRAL;
+begin
+  Result := '';
+  vStream := AParams.EncodeBody(vContentType, vFreeContent);
+  if vStream <> nil then
+  begin
+    vStream.Position := 0;
+    if vStream is TStringStream then begin
+      Result := TStringStream(vStream).DataString;
+    end
+    else begin
+      SetLength(Result, vStream.Size);
+      vStream.Read(Result[PosIniStr], vStream.Size);
+    end;
+
+    if vFreeContent then
+      vStream.Free;
+  end;
+end;
+
+procedure TRALClientDigest.GetHeader(AVars: TStringList; AParams: TRALParams);
 var
   vAuth: TRALDigest;
   vParams: TStringList;
   vHead: StringRAL;
   vInt : IntegerRAL;
 begin
-  inherited;
   vAuth := TRALDigest.Create;
   try
     vAuth.Params.Assign(FDigestParams);
     vAuth.UserName := FUserName;
     vAuth.Password := FPassword;
-    vAuth.URL := AParams.Values['url'];
-    vAuth.Method := AParams.Values['method'];
+    vAuth.URL := AVars.Values['url'];
+    vAuth.Method := AVars.Values['method'];
+    vAuth.EntityBody := GetEntityBody(AParams);
     vAuth.Params.NC := vAuth.Params.NC + 1;
 
     vParams := vAuth.Header;
@@ -259,7 +285,7 @@ begin
                    TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
       end;
 
-      AHeader.Add('Authorization=Digest '+vHead);
+      AParams.AddParam('Authorization', 'Digest '+vHead, rpkHEADER);
     finally
       FreeAndNil(vParams);
     end;
@@ -342,19 +368,6 @@ begin
   end;
 end;
 
-{ TRALAuthClient }
-
-procedure TRALAuthClient.GetHeader(AParams, AHeader : TStringList);
-var
-  vAuth: integer;
-begin
-  repeat
-    vAuth := AHeader.IndexOfName('Authorization');
-    if vAuth >= 0 then
-      AHeader.Delete(vAuth);
-  until vAuth < 0;
-end;
-
 { TRALClientOAuth }
 
 constructor TRALClientOAuth.Create(AOwner : TComponent);
@@ -365,15 +378,13 @@ begin
   FRouteAuthorize := '/authorize/';
 end;
 
-procedure TRALClientOAuth.GetHeader(AParams, AHeader : TStringList);
+procedure TRALClientOAuth.GetHeader(AVars: TStringList; AParams: TRALParams);
 var
   vParams : TStringList;
   vInt : IntegerRAL;
   vHead : StringRAL;
   vAuth : TRALOAuth;
 begin
-  inherited;
-
   vAuth := TRALOAuth.Create;
   try
     vAuth.Algorithm := FAlgorithm;
@@ -386,8 +397,8 @@ begin
     vAuth.TokenSecret := FTokenSecret;
     vAuth.Verifier := FVerifier;
     vAuth.Version := '1.0';
-    vAuth.URL := AHeader.Values['url'];
-    vAuth.Method := AHeader.Values['method'];
+    vAuth.URL := AVars.Values['url'];
+    vAuth.Method := AVars.Values['method'];
 
     vParams := vAuth.Header;
     try
@@ -402,7 +413,7 @@ begin
                    TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
       end;
 
-      AHeader.Add('Authorization=OAuth '+vHead);
+      AParams.AddParam('Authorization', 'OAuth '+vHead, rpkHEADER);
     finally
       FreeAndNil(vParams);
     end;
@@ -464,7 +475,7 @@ begin
         vParam := ARequest.ParamByName('ral_body');
 
       vStrParams := '';
-      if vParam <> nil then
+      if  not vParam.IsNilOrEmpty then
         vStrParams := vParam.AsString;
 
       if (ARequest.Authorization.AuthString <> '') and
@@ -511,11 +522,8 @@ begin
     vJWT.Secret := FSecret;
     if vJWT.ValidToken(AToken) then
     begin
-      vJWT.Header.createKeyID;
-
       vJWT.Payload.AsJSON := AJSONParams;
       vJWT.Payload.Expiration := IncSecond(Now,FExpSecs);
-      vJWT.Payload.createNewId;
 
       AJSONParams := vJWT.Payload.AsJSON;
 
@@ -550,11 +558,11 @@ begin
 
   vJWT := TRALJWT.Create;
   try
-    vJWT.Algorithm := FAlgorithm;
+    vJWT.Header.Algorithm := FAlgorithm;
     vJWT.Secret := FSecret;
     vResult := vJWT.ValidToken(ARequest.Authorization.AuthString);
     if vResult and Assigned(FOnValidate) then
-      FOnValidate(ARequest, vResult);
+      FOnValidate(ARequest, vJWT.Payload, vResult);
   finally
     FreeAndNil(vJWT);
   end;
@@ -660,15 +668,12 @@ begin
   UserName := AUser;
 end;
 
-procedure TRALClientBasicAuth.GetHeader(AParams, AHeader : TStringList);
+procedure TRALClientBasicAuth.GetHeader(AVars: TStringList; AParams: TRALParams);
 var
   vBase64: StringRAL;
 begin
-  inherited;
-
   vBase64 := TRALBase64.Encode(FUserName + ':' + FPassword);
-
-  AHeader.Add('Authorization=Basic ' + vBase64);
+  AParams.AddParam('Authorization', 'Basic ' + vBase64, rpkHEADER);
 end;
 
 { TRALClientJWTAuth }
@@ -688,11 +693,10 @@ begin
   inherited;
 end;
 
-procedure TRALClientJWTAuth.GetHeader(AParams, AHeader : TStringList);
+procedure TRALClientJWTAuth.GetHeader(AVars: TStringList; AParams: TRALParams);
 begin
-  inherited;
   if FToken <> '' then
-    AHeader.Add('Authorization=Bearer ' + FToken);
+    AParams.AddParam('Authorization', 'Bearer ' + FToken, rpkHEADER);
 end;
 
 procedure TRALClientJWTAuth.SetRoute(const AValue: StringRAL);

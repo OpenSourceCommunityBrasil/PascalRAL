@@ -36,13 +36,13 @@ type
 
     procedure ResetToken;
 
-    function GetToken(AParams, AHeader: TStringList) : boolean;
+    function GetToken(AVars: TStringList; AParams: TRALParams) : boolean;
 
-    function GetTokenBasic(AParams, AHeader: TStringList): boolean;
-    function GetTokenJWT(AParams, AHeader: TStringList): boolean;
-    function GetTokenOAuth1(AParams, AHeader: TStringList): boolean;
-    function GetTokenOAuth2(AParams, AHeader: TStringList): boolean;
-    function GetTokenDigest(AParams, AHeader: TStringList): boolean;
+    function GetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
+    function GetTokenJWT(AVars: TStringList; AParams: TRALParams): boolean;
+    function GetTokenOAuth1(AVars: TStringList; AParams: TRALParams): boolean;
+    function GetTokenOAuth2(AVars: TStringList; AParams: TRALParams): boolean;
+    function GetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
 
     function GetResponseText: StringRAL;
 
@@ -120,13 +120,10 @@ begin
       vHeader.Clear;
       vContinue := True;
       if FAuthentication <> nil then
-        vContinue := GetToken(vParams, vHeader);
+        vContinue := GetToken(vParams, FLastRequest.Params);
 
       if vContinue then
       begin
-        for vInt := 0 to Pred(vHeader.Count) do
-          FLastRequest.AddHeader(vHeader.Names[vInt], vHeader.ValueFromIndex[vInt]);
-
         Result := SendUrl(AURL,AMethod,FLastRequest.Params);
 
         vConta := vConta + 1;
@@ -206,31 +203,31 @@ begin
   end;
 end;
 
-function TRALClient.GetToken(AParams, AHeader: TStringList): boolean;
+function TRALClient.GetToken(AVars: TStringList; AParams: TRALParams): boolean;
 begin
   Result := False;
   if FAuthentication is TRALClientBasicAuth then
-    Result := GetTokenBasic(AParams, AHeader)
+    Result := GetTokenBasic(AVars, AParams)
   else if FAuthentication is TRALClientJWTAuth then
-    Result := GetTokenJWT(AParams, AHeader)
+    Result := GetTokenJWT(AVars, AParams)
   else if FAuthentication is TRALClientOAuth then
-    Result := GetTokenOAuth1(AParams, AHeader)
+    Result := GetTokenOAuth1(AVars, AParams)
   else if FAuthentication is TRALClientOAuth2 then
-    Result := GetTokenOAuth2(AParams, AHeader)
+    Result := GetTokenOAuth2(AVars, AParams)
   else if FAuthentication is TRALClientDigest then
-    Result := GetTokenDigest(AParams, AHeader)
+    Result := GetTokenDigest(AVars, AParams)
 end;
 
-function TRALClient.GetTokenBasic(AParams, AHeader : TStringList) : boolean;
+function TRALClient.GetTokenBasic(AVars: TStringList; AParams: TRALParams) : boolean;
 var
   vObjAuth : TRALClientBasicAuth;
 begin
   vObjAuth := TRALClientBasicAuth(FAuthentication);
-  vObjAuth.GetHeader(AParams,AHeader);
+  vObjAuth.GetHeader(AVars, AParams);
   Result := True;
 end;
 
-function TRALClient.GetTokenJWT(AParams, AHeader: TStringList) : boolean;
+function TRALClient.GetTokenJWT(AVars: TStringList; AParams: TRALParams) : boolean;
 var
   vBody: TRALParams;
   vResult, vConta: IntegerRAL;
@@ -272,17 +269,17 @@ begin
         vJson.Free;
       end;
 
-      vObjAuth.GetHeader(AParams,AHeader);
+      vObjAuth.GetHeader(AVars,AParams);
     end;
   end
   else
   begin
-    vObjAuth.GetHeader(AParams,AHeader);
+    vObjAuth.GetHeader(AVars,AParams);
     Result := True;
   end;
 end;
 
-function TRALClient.GetTokenOAuth1(AParams, AHeader : TStringList) : boolean;
+function TRALClient.GetTokenOAuth1(AVars: TStringList; AParams: TRALParams) : boolean;
 var
   vObjAuth: TRALClientOAuth;
   vConta: Integer;
@@ -297,8 +294,7 @@ begin
     repeat
       vBody := TRALParams.Create;
       try
-        vObjAuth.GetHeader(AParams, AHeader);
-        vBody.AppendParams(AHeader, rpkHEADER);
+        vObjAuth.GetHeader(AVars, AParams);
         vResult := SendUrl(GetURL(vObjAuth.RouteInitialize), amPOST, vBody);
       finally
         vBody.Free;
@@ -330,12 +326,12 @@ begin
   end;
 end;
 
-function TRALClient.GetTokenOAuth2(AParams, AHeader : TStringList) : boolean;
+function TRALClient.GetTokenOAuth2(AVars: TStringList; AParams: TRALParams) : boolean;
 begin
 
 end;
 
-function TRALClient.GetTokenDigest(AParams, AHeader : TStringList) : boolean;
+function TRALClient.GetTokenDigest(AVars: TStringList; AParams: TRALParams) : boolean;
 var
   vObjAuth : TRALClientDigest;
   vConta, vResult: IntegerRAL;
@@ -347,8 +343,8 @@ begin
   vObjAuth := TRALClientDigest(FAuthentication);
   if (vObjAuth.DigestParams.Nonce = '') or (vObjAuth.DigestParams.Opaque = '') then
   begin
-    vURL := AParams.Values['url'];
-    vMethod := HTTPMethodToRALMethod(AParams.Values['method']);
+    vURL := AVars.Values['url'];
+    vMethod := HTTPMethodToRALMethod(AVars.Values['method']);
     vConta := 0;
     repeat
       vBody := TRALParams.Create;
@@ -368,14 +364,14 @@ begin
         vDigest.Load(vAuth);
         vObjAuth.DigestParams.Assign(vDigest.Params);
         vObjAuth.DigestParams.NC := 0;
-        vObjAuth.GetHeader(AParams, AHeader);
+        vObjAuth.GetHeader(AVars, AParams);
       finally
         vDigest.Free;
       end;
     end;
   end
   else begin
-    vObjAuth.GetHeader(AParams, AHeader);
+    vObjAuth.GetHeader(AVars, AParams);
   end;
   Result := (vObjAuth.DigestParams.Nonce <> '') and
             (vObjAuth.DigestParams.Opaque <> '')

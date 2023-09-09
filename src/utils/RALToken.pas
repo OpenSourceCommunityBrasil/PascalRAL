@@ -71,7 +71,6 @@ type
 
   TRALJWT = class
   private
-    FAlgorithm : TRALJWTAlgorithm;
     FHeader: TRALJWTHeader;
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
@@ -80,14 +79,14 @@ type
     function CreateToken(AHeader,APayload : StringRAL;
                          var ASignature : StringRAL) : StringRAL;
     function GetToken: StringRAL;
+    procedure SetToken(AValue : StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
     function ValidToken(const AValue: StringRAL) : boolean;
 
-    property Token: StringRAL read GetToken;
+    property Token: StringRAL read GetToken write SetToken;
   published
-    property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property Header: TRALJWTHeader read FHeader write FHeader;
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
@@ -178,6 +177,7 @@ type
     FMethod: StringRAL;
     FUserName: StringRAL;
     FPassword: StringRAL;
+    FEntityBody: StringRAL;
   protected
     function GetHeader : TStringList;
   public
@@ -192,6 +192,7 @@ type
     property Method: StringRAL read FMethod write FMethod;
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
+    property EntityBody: StringRAL read FEntityBody write FEntityBody;
   end;
 
 implementation
@@ -236,7 +237,7 @@ begin
     end
     else if (Pos('auth-int',LowerCase(FParams.Qop)) > 0) then
     begin
-      vHa2 := vHash.HashAsString(''); //entityBody
+      vHa2 := vHash.HashAsString(FEntityBody);
       vHa2 := Format('%s:%s:%s',[FMethod, FURL, vHa2]);
       vHa2 := vHash.HashAsString(vHa2);
     end;
@@ -761,13 +762,43 @@ begin
   FPayload := TRALJWTParams.Create;
 end;
 
+procedure TRALJWT.SetToken(AValue : StringRAL);
+var
+  vInt : SizeInt;
+  vStr : TStringList;
+begin
+  vStr := TStringList.Create;
+  try
+    repeat
+      vInt := Pos('.', AValue);
+      if (vInt = 0) and (AValue <> '') then
+        vInt := Length(AValue) + 1;
+
+      if vInt > 0 then
+      begin
+        vStr.Add(Copy(AValue, 1, vInt - 1));
+        Delete(AValue, 1, vInt);
+      end;
+    until vInt = 0;
+
+    if vStr.Count = 3 then
+    begin
+      FHeader.AsJSON  := TRALBase64.Decode(vStr.Strings[0]);
+      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
+      FSignature      := vStr.Strings[2];
+    end;
+  finally
+    FreeAndNil(vStr);
+  end;
+end;
+
 function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
                              var ASignature : StringRAL): StringRAL;
 var
   vHash : TRALHashes;
   vStr : StringRAL;
 begin
-  case FAlgorithm of
+  case FHeader.Algorithm of
     tjaHSHA256: begin
       vHash := TRALSHA2_32.Create;
       TRALSHA2_32(vHash).Version := rsv256;
@@ -817,61 +848,29 @@ end;
 
 function TRALJWT.ValidToken(const AValue: StringRAL) : boolean;
 var
-  vStr : TStringList;
-  vInt : IntegerRAL;
-  vValue : StringRAL;
-
-  vHeader : StringRAL;
-  vPayload : StringRAL;
-  vSignature, vMySignature : StringRAL;
-
-  vObjPayload : TRALJWTParams;
+  vSignature : StringRAL;
+  vAlgorithm : TRALJWTAlgorithm;
 begin
   Result := False;
 
-  vValue := AValue;
-  vStr := TStringList.Create;
-  try
-    repeat
-      vInt := Pos('.', vValue);
-      if (vInt = 0) and (vValue <> '') then
-        vInt := Length(vValue) + 1;
+  vAlgorithm := FHeader.Algorithm;
 
-      if vInt > 0 then
-      begin
-        vStr.Add(Copy(vValue, 1, vInt - 1));
-        Delete(vValue, 1, vInt);
-      end;
-    until vInt = 0;
-
-    if vStr.Count = 3 then
+  Token := AValue;
+  if vAlgorithm = FHeader.Algorithm then
+  begin
+    vSignature := FSignature;
+    GetToken;
+    if vSignature = FSignature then
     begin
-      vHeader    := TRALBase64.Decode(vStr.Strings[0]);
-      vPayload   := TRALBase64.Decode(vStr.Strings[1]);
-      vSignature := vStr.Strings[2];
-
-      CreateToken(vHeader, vPayload, vMySignature);
-
-      if vMySignature = vSignature then
-      begin
-        Result := True;
-        vObjPayload := TRALJWTParams.Create;
-        try
-          vObjPayload.AsJSON := vPayload;
-          if (vObjPayload.Expiration > 0) and (vObjPayload.Expiration < Now) then
-            Result := False
-          else if (vObjPayload.NotBefore > 0) and (vObjPayload.NotBefore > Now) then
-            Result := False
-          else if (vObjPayload.NotBefore > 0) and (vObjPayload.Expiration > 0) and
-                  (vObjPayload.Expiration < vObjPayload.NotBefore) then
-            Result := False;
-        finally
-          vObjPayload.Free;
-        end;
-      end;
+      Result := True;
+      if (FPayload.Expiration > 0) and (FPayload.Expiration < Now) then
+        Result := False
+      else if (FPayload.NotBefore > 0) and (FPayload.NotBefore > Now) then
+        Result := False
+      else if (FPayload.NotBefore > 0) and (FPayload.Expiration > 0) and
+              (FPayload.Expiration < FPayload.NotBefore) then
+        Result := False;
     end;
-  finally
-    FreeAndNil(vStr);
   end;
 end;
 
