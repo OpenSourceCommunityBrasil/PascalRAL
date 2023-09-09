@@ -134,7 +134,7 @@ end;
 
 function TRALParam.IsNilOrEmpty: boolean;
 begin
-  Result := (Self = nil) or ((Self <> nil) and (Self.Size > 0));
+  Result := (Self = nil) or ((Self <> nil) and (Self.Size = 0));
 end;
 
 function TRALParam.Size : Int64;

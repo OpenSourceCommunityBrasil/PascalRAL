@@ -55,6 +55,7 @@ type
 
     procedure AddClaim(AKey : StringRAL; AValue : StringRAL);
     procedure DelClaim(AKey : StringRAL);
+    function GetClaim(AKey : StringRAL) : StringRAL;
     procedure Clear;
 
     procedure createNewId;
@@ -674,6 +675,11 @@ begin
   end;
 end;
 
+function TRALJWTParams.GetClaim(AKey: StringRAL): StringRAL;
+begin
+  Result := FCustomClaims.Values[AKey];
+end;
+
 procedure TRALJWTParams.Clear;
 begin
   FAudience := '';
@@ -764,7 +770,7 @@ end;
 
 procedure TRALJWT.SetToken(AValue : StringRAL);
 var
-  vInt : SizeInt;
+  vInt : IntegerRAL;
   vStr : TStringList;
 begin
   vStr := TStringList.Create;
