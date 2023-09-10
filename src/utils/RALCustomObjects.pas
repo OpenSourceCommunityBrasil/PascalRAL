@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALParams, RALTypes, RALConsts;
+  RALParams, RALTypes, RALConsts, RALMIMETypes;
 
 type
 
@@ -34,6 +34,7 @@ type
     function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
+    function AddText(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN): TRALHTTPHeaderInfo; virtual;
     procedure Clear;
     function GetHeader(AName: StringRAL): StringRAL; virtual;
     function GetQuery(AName: StringRAL): StringRAL; virtual;
@@ -42,6 +43,7 @@ type
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
 
     function ParamByName(AParamName: StringRAL): TRALParam;
+    function RawBody : TRALParam;
   published
     property Params: TRALParams read GetParams;
   end;
@@ -88,6 +90,15 @@ end;
 function TRALHTTPHeaderInfo.AddQuery(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkQUERY);
+  Result := Self;
+end;
+
+function TRALHTTPHeaderInfo.AddText(AText, AContextType: StringRAL): TRALHTTPHeaderInfo;
+var
+  vParam: TRALParam;
+begin
+  vParam := FParams.AddValue(AText,rpkBODY);
+  vParam.ContentType := AContextType;
   Result := Self;
 end;
 
@@ -185,6 +196,11 @@ end;
 function TRALHTTPHeaderInfo.ParamByName(AParamName: StringRAL): TRALParam;
 begin
   Result := FParams.Get[aParamName];
+end;
+
+function TRALHTTPHeaderInfo.RawBody: TRALParam;
+begin
+  Result := ParamByName('ral_body');
 end;
 
 end.

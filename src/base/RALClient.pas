@@ -71,6 +71,7 @@ type
     function AddCookie(AName, AValue : StringRAL) : TRALClient;
     function AddFile(AFileName : StringRAL) : TRALClient; overload;
     function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient; overload;
+    function AddText(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
 
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
@@ -243,8 +244,15 @@ begin
     repeat
       vBody := TRALParams.Create;
       try
-        vParam := vBody.AddValue(vObjAuth.Payload.AsJSON);
-        vParam.ContentType := rctAPPLICATIONJSON;
+        if Assigned(vObjAuth.OnBeforeGetToken) then
+        begin
+          vObjAuth.OnBeforeGetToken(vBody);
+        end
+        else
+        begin
+          vParam := vBody.AddValue(vObjAuth.Payload.AsJSON);
+          vParam.ContentType := rctAPPLICATIONJSON;
+        end;
         vResult := SendUrl(GetURL(vObjAuth.Route), amPOST, vBody);
       finally
         vBody.Free;
@@ -257,19 +265,22 @@ begin
     Result := vResult = 200;
     if Result then
     begin
-      vJson := TRALJSONObject(TRALJSON.ParseJSON(ResponseText));
-      try
-        if vJson <> nil then
-        begin
-          vValue := vJson.Get(vObjAuth.Key);
-          if vValue <> nil then
-            vObjAuth.Token := vValue.AsString;
+      if not FLastRequest.RawBody.IsNilOrEmpty then
+      begin
+        vJson := TRALJSONObject(TRALJSON.ParseJSON(FLastRequest.RawBody.AsString));
+        try
+          if vJson <> nil then
+          begin
+            vValue := vJson.Get(vObjAuth.Key);
+            if vValue <> nil then
+              vObjAuth.Token := vValue.AsString;
+          end;
+        finally
+          vJson.Free;
         end;
-      finally
-        vJson.Free;
-      end;
 
-      vObjAuth.GetHeader(AVars,AParams);
+        vObjAuth.GetHeader(AVars,AParams);
+      end;
     end;
   end
   else
@@ -425,6 +436,12 @@ end;
 function TRALClient.AddQuery(AName, AValue : StringRAL) : TRALClient;
 begin
   FLastRequest.AddQuery(AName, AValue);
+  Result := Self;
+end;
+
+function TRALClient.AddText(AText, AContextType: StringRAL): TRALClient;
+begin
+  FLastRequest.AddText(AText, AContextType);
   Result := Self;
 end;
 

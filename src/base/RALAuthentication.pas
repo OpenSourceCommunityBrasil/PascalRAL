@@ -10,6 +10,7 @@ uses
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; var AResult: boolean) of object;
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AParams: TRALJWTParams; var AResult: boolean) of object;
+  TRALOnBeforeGetToken = procedure(AParams : TRALParams) of object;
 
   TRALOnResolve = procedure(AToken: StringRAL; AParams : TRALJWTParams;
                             var AResult: StringRAL) of object;
@@ -31,9 +32,10 @@ type
 
   TRALAuthClient = class(TRALAuthentication)
   private
-
+    FOnBeforeGetToken : TRALOnBeforeGetToken;
   public
     procedure GetHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
+    property OnBeforeGetToken : TRALOnBeforeGetToken read FOnBeforeGetToken write FOnBeforeGetToken;
   end;
 
   TRALAuthServer = class(TRALAuthentication)
@@ -97,6 +99,7 @@ type
     destructor Destroy; override;
     procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
   published
+    property OnBeforeGetToken;
     property Key: StringRAL read FKey write FKey;
     property Token: StringRAL read FToken write SetToken;
     property Payload: TRALJWTParams read FPayload write FPayload;
@@ -472,7 +475,7 @@ begin
       vParam := ARequest.ParamByName('ral_payload');
 
       if vParam = nil then
-        vParam := ARequest.ParamByName('ral_body');
+        vParam := ARequest.RawBody;
 
       vStrParams := '';
       if  not vParam.IsNilOrEmpty then

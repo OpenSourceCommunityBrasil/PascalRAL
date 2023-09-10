@@ -12,18 +12,10 @@ type
   { TRALSynopseClient }
 
   TRALSynopseClient = class(TRALClient)
-  private
-    FHttp : THttpClientSocket;
   protected
-    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUserAgent(const AValue : StringRAL); override;
-
-    procedure SetUseSSL(const AValue: boolean); override;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
   end;
 
 implementation
@@ -33,32 +25,7 @@ implementation
 constructor TRALSynopseClient.Create(AOwner: TComponent);
 begin
   inherited;
-  FHttp := THttpClientSocket.Create;
   SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
-end;
-
-destructor TRALSynopseClient.Destroy;
-begin
-  FreeAndNil(FHttp);
-  inherited;
-end;
-
-procedure TRALSynopseClient.SetConnectTimeout(const AValue : IntegerRAL);
-begin
-  inherited;
-  FHttp.SendTimeout := AValue;
-end;
-
-procedure TRALSynopseClient.SetRequestTimeout(const AValue : IntegerRAL);
-begin
-  inherited;
-  FHttp.ReceiveTimeout := AValue;
-end;
-
-procedure TRALSynopseClient.SetUserAgent(const AValue : StringRAL);
-begin
-  inherited;
-  FHttp.UserAgent := AValue;
 end;
 
 function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
@@ -67,70 +34,73 @@ var
   vContentType: StringRAL;
   vFree : boolean;
   vHeader : StringRAL;
+  vHttp : THttpClientSocket;
 begin
   inherited;
   Response.Clear;
   ResponseCode := -1;
   ResponseError := '';
 
-  AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+  vHttp := THttpClientSocket.OpenUri(AUrl,AUrl,'',ConnectTimeout);
+  try
+    vHttp.TLS.Enabled := UseSSL;
+    vHttp.SendTimeout := ConnectTimeout;
+    vHttp.ReceiveTimeout := RequestTimeout;
+    vHttp.UserAgent := UserAgent;
 
-  if KeepAlive then
-    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
-  else
-    AParams.AddParam('Connection', 'close', rpkHEADER);
+    if KeepAlive then
+      AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+    else
+      AParams.AddParam('Connection', 'close', rpkHEADER);
 
-  vFree := False;
-  vSource := AParams.EncodeBody(vContentType, vFree);
-  try
-    AParams.AddParam('Content-Type', vContentType, rpkHEADER);
-    vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
-
-    vResult := TStringStream.Create;
+    vFree := False;
+    vSource := AParams.EncodeBody(vContentType, vFree);
     try
-      case AMethod of
-        amGET:
-          Result := FHttp.Request(AURL, 'GET', 0, vHeader, '', '', False, vSource, vResult);
+      AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+      vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
 
-        amPOST:
-          Result := FHttp.Request(AURL, 'POST', 0, vHeader, '', '', False, vSource, vResult);
+      vResult := TStringStream.Create;
+      try
+        case AMethod of
+          amGET:
+            Result := vHttp.Request(AURL, 'GET', 0, vHeader, '', '', False, vSource, vResult);
 
-        amPUT:
-          Result := FHttp.Request(AURL, 'PUT', 0, vHeader, '', '', False, vSource, vResult);
+          amPOST:
+            Result := vHttp.Request(AURL, 'POST', 0, vHeader, '', '', False, vSource, vResult);
 
-        amPATCH:
-          Result := FHttp.Request(AURL, 'PATCH', 0, vHeader, '', '', False, vSource, vResult);
+          amPUT:
+            Result := vHttp.Request(AURL, 'PUT', 0, vHeader, '', '', False, vSource, vResult);
 
-        amDELETE:
-          Result := FHttp.Request(AURL, 'DELETE', 0, vHeader, '', '', False, vSource, vResult);
+          amPATCH:
+            Result := vHttp.Request(AURL, 'PATCH', 0, vHeader, '', '', False, vSource, vResult);
 
-        amTRACE  :
-          Result := FHttp.Request(AURL, 'TRACE', 0, vHeader, '', '', False, vSource, vResult);
+          amDELETE:
+            Result := vHttp.Request(AURL, 'DELETE', 0, vHeader, '', '', False, vSource, vResult);
 
-        amHEAD   :
-          Result := FHttp.Request(AURL, 'HEAD', 0, vHeader, '', '', False, vSource, vResult);
+          amTRACE  :
+            Result := vHttp.Request(AURL, 'TRACE', 0, vHeader, '', '', False, vSource, vResult);
 
-        amOPTION :
-          Result := FHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
+          amHEAD   :
+            Result := vHttp.Request(AURL, 'HEAD', 0, vHeader, '', '', False, vSource, vResult);
+
+          amOPTION :
+            Result := vHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
+        end;
+        Response.Params.DecodeBody(vResult,vHttp.ContentType);
+        Response.Params.AppendParamsListText(vHttp.Headers,rpkHEADER);
+      except
+        on e : Exception do
+          ResponseError := e.Message;
       end;
-      Response.Params.DecodeBody(vResult,FHttp.ContentType);
-      Response.Params.AppendParamsListText(FHttp.Headers,rpkHEADER);
-    except
-      on e : Exception do
-        ResponseError := e.Message;
+      FreeAndNil(vResult);
+      ResponseCode := Result;
+    finally
+      if vFree then
+        FreeAndNil(vSource);
     end;
-    FreeAndNil(vResult);
-    ResponseCode := Result;
   finally
-    if vFree then
-      FreeAndNil(vSource);
+    FreeAndNil(vHttp);
   end;
-end;
-
-procedure TRALSynopseClient.SetUseSSL(const AValue: boolean);
-begin
-  inherited;
-  FHttp.TLS.Enabled := AValue;
 end;
 
 end.
