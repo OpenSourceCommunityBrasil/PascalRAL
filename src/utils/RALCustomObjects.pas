@@ -34,7 +34,7 @@ type
     function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
-    function AddText(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN): TRALHTTPHeaderInfo; virtual;
+    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN): TRALHTTPHeaderInfo; virtual;
     procedure Clear;
     function GetHeader(AName: StringRAL): StringRAL; virtual;
     function GetQuery(AName: StringRAL): StringRAL; virtual;
@@ -43,7 +43,7 @@ type
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
 
     function ParamByName(AParamName: StringRAL): TRALParam;
-    function RawBody : TRALParam;
+    function Body : TRALParam;
   published
     property Params: TRALParams read GetParams;
   end;
@@ -93,7 +93,7 @@ begin
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddText(AText, AContextType: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddBody(AText, AContextType: StringRAL): TRALHTTPHeaderInfo;
 var
   vParam: TRALParam;
 begin
@@ -198,7 +198,7 @@ begin
   Result := FParams.Get[aParamName];
 end;
 
-function TRALHTTPHeaderInfo.RawBody: TRALParam;
+function TRALHTTPHeaderInfo.Body: TRALParam;
 begin
   Result := ParamByName('ral_body');
 end;

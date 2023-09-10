@@ -64,7 +64,7 @@ type
     function AddCookie(AName, AValue: StringRAL): TRALRequest; reintroduce;
     function AddFile(AFileName: StringRAL): TRALRequest; reintroduce; overload;
     function AddFile(AStream: TStream; AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
-    function AddText(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
+    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
     property URL: StringRAL read GetURL;
   published
@@ -109,9 +109,9 @@ begin
   Result := Self;
 end;
 
-function TRALRequest.AddText(AText, AContextType: StringRAL): TRALRequest;
+function TRALRequest.AddBody(AText, AContextType: StringRAL): TRALRequest;
 begin
-  inherited AddText(AText, AContextType);
+  inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 

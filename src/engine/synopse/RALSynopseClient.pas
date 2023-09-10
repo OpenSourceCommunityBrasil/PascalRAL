@@ -41,12 +41,12 @@ begin
   ResponseCode := -1;
   ResponseError := '';
 
-  vHttp := THttpClientSocket.OpenUri(AUrl,AUrl,'',ConnectTimeout);
-  try
-    vHttp.TLS.Enabled := UseSSL;
-    vHttp.SendTimeout := ConnectTimeout;
-    vHttp.ReceiveTimeout := RequestTimeout;
-    vHttp.UserAgent := UserAgent;
+  vHttp := THttpClientSocket.OpenUri(AUrl,AUrl,'',ConnectTimeout);
+  try
+    vHttp.TLS.Enabled := UseSSL;
+    vHttp.SendTimeout := ConnectTimeout;
+    vHttp.ReceiveTimeout := RequestTimeout;
+    vHttp.UserAgent := UserAgent;
 
     if KeepAlive then
       AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
@@ -64,25 +64,18 @@ begin
         case AMethod of
           amGET:
             Result := vHttp.Request(AURL, 'GET', 0, vHeader, '', '', False, vSource, vResult);
-
           amPOST:
             Result := vHttp.Request(AURL, 'POST', 0, vHeader, '', '', False, vSource, vResult);
-
           amPUT:
             Result := vHttp.Request(AURL, 'PUT', 0, vHeader, '', '', False, vSource, vResult);
-
           amPATCH:
             Result := vHttp.Request(AURL, 'PATCH', 0, vHeader, '', '', False, vSource, vResult);
-
           amDELETE:
             Result := vHttp.Request(AURL, 'DELETE', 0, vHeader, '', '', False, vSource, vResult);
-
           amTRACE  :
             Result := vHttp.Request(AURL, 'TRACE', 0, vHeader, '', '', False, vSource, vResult);
-
           amHEAD   :
             Result := vHttp.Request(AURL, 'HEAD', 0, vHeader, '', '', False, vSource, vResult);
-
           amOPTION :
             Result := vHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
         end;

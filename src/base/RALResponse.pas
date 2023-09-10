@@ -34,6 +34,7 @@ type
     function AddCookie(AName, AValue : StringRAL) : TRALResponse; reintroduce;
     function AddFile(AFileName : StringRAL) : TRALResponse; reintroduce; overload;
     function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALResponse; reintroduce; overload;
+    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALResponse; reintroduce;
   published
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
@@ -75,6 +76,12 @@ end;
 function TRALResponse.AddField(AName, AValue : StringRAL) : TRALResponse;
 begin
   inherited AddField(AName, AValue);
+  Result := Self;
+end;
+
+function TRALResponse.AddBody(AText, AContextType: StringRAL): TRALResponse;
+begin
+  inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
