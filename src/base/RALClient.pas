@@ -142,7 +142,6 @@ begin
       end;
     until (Result < 400) or (vConta > 3);
   finally
-    FreeAndNil(vHeader);
     FreeAndNil(vParams);
   end;
 end;

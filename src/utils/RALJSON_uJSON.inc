@@ -118,7 +118,7 @@ begin
   end;
 end;
 
-class function ParseJSON(AStream : TStream) : TRALJSONValue;
+class function TRALJSON.ParseJSON(AStream : TStream) : TRALJSONValue;
 var
   vJson : string;
 begin

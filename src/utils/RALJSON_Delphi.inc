@@ -79,8 +79,8 @@ type
 
   TRALJSON = class
   public
-    class function ParseJSON(AJSON : String) : TRALJSONValue;
-    class function ParseJSON(AStream : TStream) : TRALJSONValue;
+    class function ParseJSON(AJSON : String) : TRALJSONValue; overload;
+    class function ParseJSON(AStream : TStream) : TRALJSONValue; overload;
   end;
 
 implementation
@@ -431,7 +431,7 @@ begin
   end;
 end;
 
-class function ParseJSON(AStream : TStream) : TRALJSONValue;
+class function TRALJSON.ParseJSON(AStream : TStream) : TRALJSONValue;
 var
   vJson: string;
 begin
@@ -439,7 +439,7 @@ begin
   if not Assigned(AStream) then
     Exit;
   SetLength(vJson, AStream.Size);
-  src.Read(PChar(vJson)^, AStream.Size);
+  AStream.Read(PChar(vJson)^, AStream.Size);
   Result := ParseJSON(vJson);
 end;
 

@@ -243,19 +243,13 @@ begin
     vRead := 0;
     while (vInt < 4) do
     begin
-      if AInputLen > 0 then
+      if (AInputLen > 0) and (AInput^ <> 61) then
       begin
-        if AInput^ <> 61 then
-        begin
-          vBuf := TDecode64[AInput^] - 1;
-          vRead := vRead + 1;
-        end
-        else
-        begin
-          vBuf := 0;
-        end;
+        vBuf := TDecode64[AInput^] - 1;
+        vRead := vRead + 1;
       end
-      else begin
+      else
+      begin
         vBuf := 0;
       end;
       vChar := (vChar shl 6) or vBuf;
