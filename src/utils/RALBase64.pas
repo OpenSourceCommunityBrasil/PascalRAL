@@ -241,20 +241,27 @@ begin
     vChar := 0;
     vInt := 0;
     vRead := 0;
-    while vInt < 4 do
+    while (vInt < 4) do
     begin
-      if AInput^ <> 61 then
+      if AInputLen > 0 then
       begin
-        vBuf := TDecode64[AInput^] - 1;
-        vRead := vRead + 1;
+        if AInput^ <> 61 then
+        begin
+          vBuf := TDecode64[AInput^] - 1;
+          vRead := vRead + 1;
+        end
+        else
+        begin
+          vBuf := 0;
+        end;
       end
-      else
-      begin
+      else begin
         vBuf := 0;
       end;
       vChar := (vChar shl 6) or vBuf;
       vInt := vInt + 1;
       Inc(AInput);
+      AInputLen := AInputLen - 1;
     end;
 
     Result := Result + (3 - (4 - vRead));
@@ -264,8 +271,6 @@ begin
     Inc(AOutput);
     AOutput^ := (vChar and $ff);
     Inc(AOutput);
-
-    AInputLen := AInputLen - 4;
   end;
 end;
 

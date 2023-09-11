@@ -33,7 +33,7 @@ uses
        {$IFDEF RALlkJSON}
          ulkJSON,
        {$ENDIF}
-       {$IFDEF RALlkJSON}
+       {$IFDEF RALuJSON}
          uJSON,
        {$ENDIF}
     {$ENDIF}
@@ -49,7 +49,7 @@ uses
     {$IFDEF RALlkJSON}
       {$I RALJSON_lkJSON.inc}
     {$ENDIF}
-    {$IFDEF RALlkJSON}
+    {$IFDEF RALuJSON}
       {$I RALJSON_uJSON.inc}
     {$ENDIF}
   {$ENDIF}

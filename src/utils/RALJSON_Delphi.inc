@@ -212,9 +212,16 @@ end;
 function TRALJSONValue.AsString: string;
 begin
   if FJsonObj <> nil then
-    Result := FJsonObj.Value
+  begin
+    if (FJsonObj is TJSONObject) or (FJsonObj is TJSONArray) then
+      Result := ToJSON
+    else
+      Result := FJsonObj.Value
+  end
   else
+  begin
     Result := 'null';
+  end;
 end;
 
 function TRALJSONValue.AsValue: variant;

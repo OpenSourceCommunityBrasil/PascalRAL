@@ -48,6 +48,9 @@ begin
     vHttp.SendTimeout := ConnectTimeout;
     vHttp.ReceiveTimeout := RequestTimeout;
     vHttp.UserAgent := UserAgent;
+    vHttp.Accept := '*/*';
+
+    AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
     if KeepAlive then
       AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
@@ -57,29 +60,30 @@ begin
     vFree := False;
     vSource := AParams.EncodeBody(vContentType, vFree);
     try
-      AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+      if vContentType <> '' then
+        AParams.AddParam('Content-Type', vContentType, rpkHEADER);
       vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
-
-      vResult := TStringStream.Create;
       try
         case AMethod of
           amGET:
-            Result := vHttp.Request(AURL, 'GET', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'GET', 0, vHeader, '', '', False, vSource, nil);
           amPOST:
-            Result := vHttp.Request(AURL, 'POST', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'POST', 0, vHeader, '', '', False, vSource, nil);
           amPUT:
-            Result := vHttp.Request(AURL, 'PUT', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'PUT', 0, vHeader, '', '', False, vSource, nil);
           amPATCH:
-            Result := vHttp.Request(AURL, 'PATCH', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'PATCH', 0, vHeader, '', '', False, vSource, nil);
           amDELETE:
-            Result := vHttp.Request(AURL, 'DELETE', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'DELETE', 0, vHeader, '', '', False, vSource, nil);
           amTRACE  :
-            Result := vHttp.Request(AURL, 'TRACE', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'TRACE', 0, vHeader, '', '', False, vSource, nil);
           amHEAD   :
-            Result := vHttp.Request(AURL, 'HEAD', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'HEAD', 0, vHeader, '', '', False, vSource, nil);
           amOPTION :
-            Result := vHttp.Request(AURL, 'OPTION', 0, vHeader, '', '', False, vSource, vResult);
+            Result := vHttp.Request(vAddress, 'OPTION', 0, vHeader, '', '', False, vSource, nil);
         end;
+        vResult := TStringStream.Create(vHttp.Content);
+        vResult.Position := 0;
         Response.Params.DecodeBody(vResult,vHttp.ContentType);
         Response.Params.AppendParamsListText(vHttp.Headers,rpkHEADER);
       except

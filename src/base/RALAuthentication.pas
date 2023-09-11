@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
-  RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder;
+  RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder,
+  RALMIMETypes;
 
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; var AResult: boolean) of object;
@@ -492,6 +493,9 @@ begin
     if vResult then
     begin
       vStrResult := Format('{"%s":"%s"}', [FKey, vToken]);
+
+      AResponse.StatusCode := 200;
+      AResponse.ContentType := rctAPPLICATIONJSON;
       AResponse.ResponseText := vStrResult;
     end
     else

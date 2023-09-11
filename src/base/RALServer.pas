@@ -441,7 +441,6 @@ begin
   Result := TRALResponse.Create;
   Result.StatusCode := 200;
 
-
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
     if Assigned(FOnClientWasBlocked) then

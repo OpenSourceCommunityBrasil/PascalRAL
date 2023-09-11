@@ -108,11 +108,10 @@ end;
 function TRALClient.BeforeSendUrl(AURL : StringRAL; AMethod : TRALMethod) : IntegerRAL;
 var
   vConta, vInt : IntegerRAL;
-  vHeader, vParams : TStringList;
+  vParams : TStringList;
   vContinue : boolean;
 begin
   vParams := TStringList.Create;
-  vHeader := TStringList.Create;
   try
     // alguns parametro do cliente poderao ser passados por aqui
     vParams.Sorted := True;
@@ -121,10 +120,11 @@ begin
 
     vConta := 0;
     repeat
-      vHeader.Clear;
       vContinue := True;
       if (FAuthentication <> nil) and (FAutoGetToken) then
-        vContinue := GetToken(vParams, FLastRequest.Params);
+        vContinue := GetToken(vParams, FLastRequest.Params)
+      else if (FAuthentication <> nil) and (not FAutoGetToken) then
+        FAuthentication.GetHeader(vParams,FLastRequest.Params);
 
       if vContinue then
       begin
@@ -403,6 +403,9 @@ begin
   if FUseSSL then
     Result := Result + 's';
   Result := Result + ':/' + ARoute;
+
+  if FLastRequest.Params.Count(rpkQUERY) > 0 then
+    Result := Result + '?' + FLastRequest.Params.AssignParamsUrl(rpkQUERY);
 end;
 
 procedure TRALClient.Notification(AComponent: TComponent;
@@ -494,8 +497,6 @@ end;
 function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL;
 begin
   Result := -1;
-  if AParams.Count(rpkQUERY) > 0 then
-    AURL := AURL + '?' + AParams.AssignParamsUrl(rpkQUERY);
 end;
 
 procedure TRALClient.SetAuthentication(const AValue: TRALAuthClient);

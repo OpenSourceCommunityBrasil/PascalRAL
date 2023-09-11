@@ -515,8 +515,11 @@ begin
   begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
-      Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString +
-        ALineSeparator;
+    begin
+      if Result <> '' then
+        Result := Result + ALineSeparator;
+      Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString;
+    end;
   end;
 
   Result := TrimRight(Result);
