@@ -475,7 +475,7 @@ begin
       vParam := ARequest.ParamByName('ral_payload');
 
       if vParam = nil then
-        vParam := ARequest.RawBody;
+        vParam := ARequest.Body;
 
       vStrParams := '';
       if  not vParam.IsNilOrEmpty then

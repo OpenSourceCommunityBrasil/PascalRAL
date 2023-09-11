@@ -23,6 +23,7 @@ type
     FUserAgent: StringRAL;
     FEngine: StringRAL;
     FKeepAlive : boolean;
+    FAutoGetToken : boolean;
 
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
@@ -71,7 +72,7 @@ type
     function AddCookie(AName, AValue : StringRAL) : TRALClient;
     function AddFile(AFileName : StringRAL) : TRALClient; overload;
     function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient; overload;
-    function AddText(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
+    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
 
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
@@ -87,6 +88,8 @@ type
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
+    property AutoGetToken: boolean read FAutoGetToken write FAutoGetToken;
+
   end;
 
 implementation
@@ -120,12 +123,12 @@ begin
     repeat
       vHeader.Clear;
       vContinue := True;
-      if FAuthentication <> nil then
+      if (FAuthentication <> nil) and (FAutoGetToken) then
         vContinue := GetToken(vParams, FLastRequest.Params);
 
       if vContinue then
       begin
-        Result := SendUrl(AURL,AMethod,FLastRequest.Params);
+        Result := SendUrl(AURL, AMethod, FLastRequest.Params);
 
         vConta := vConta + 1;
         if (Result = 401) and (vConta = 1) then
@@ -154,6 +157,9 @@ begin
   FResponseError := '';
   FUserAgent := 'RALClient '+RALVERSION;
   FKeepAlive := True;
+  FConnectTimeout := 30000;
+  FRequestTimeout := 10000;
+  FAutoGetToken := True;
 
   FLastRequest := TRALHTTPHeaderInfo.Create;
   FLastResponse := TRALHTTPHeaderInfo.Create;
@@ -265,9 +271,9 @@ begin
     Result := vResult = 200;
     if Result then
     begin
-      if not FLastRequest.RawBody.IsNilOrEmpty then
+      if not FLastRequest.Body.IsNilOrEmpty then
       begin
-        vJson := TRALJSONObject(TRALJSON.ParseJSON(FLastRequest.RawBody.AsString));
+        vJson := TRALJSONObject(TRALJSON.ParseJSON(FLastRequest.Body.AsString));
         try
           if vJson <> nil then
           begin
@@ -439,9 +445,9 @@ begin
   Result := Self;
 end;
 
-function TRALClient.AddText(AText, AContextType: StringRAL): TRALClient;
+function TRALClient.AddBody(AText, AContextType: StringRAL): TRALClient;
 begin
-  FLastRequest.AddText(AText, AContextType);
+  FLastRequest.AddBody(AText, AContextType);
   Result := Self;
 end;
 
@@ -510,9 +516,7 @@ begin
   begin
     FBaseURL := Copy(AValue, vInt+3, Length(AValue));
     vProtocol := Copy(AValue, 1, vInt - 1);
-    FUseSSL := False;
-    if SameText(vProtocol,'https') then
-      FUseSSL := True;
+    UseSSL := SameText(vProtocol,'https');
   end
   else
   begin
