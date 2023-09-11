@@ -36,6 +36,7 @@ var
   vHeader : StringRAL;
   vHttp : THttpClientSocket;
   vAddress : UTF8String;
+  vKeepAlive : Cardinal;
 begin
   inherited;
   Response.Clear;
@@ -49,13 +50,14 @@ begin
     vHttp.ReceiveTimeout := RequestTimeout;
     vHttp.UserAgent := UserAgent;
     vHttp.Accept := '*/*';
-
-    AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+    vHttp.KeepAlive := KeepAlive;
 
     if KeepAlive then
-      AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+      vKeepAlive := ConnectTimeout
     else
-      AParams.AddParam('Connection', 'close', rpkHEADER);
+      vKeepAlive := 0;
+
+    AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
     vFree := False;
     vSource := AParams.EncodeBody(vContentType, vFree);
@@ -66,21 +68,21 @@ begin
       try
         case AMethod of
           amGET:
-            Result := vHttp.Request(vAddress, 'GET', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPOST:
-            Result := vHttp.Request(vAddress, 'POST', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPUT:
-            Result := vHttp.Request(vAddress, 'PUT', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPATCH:
-            Result := vHttp.Request(vAddress, 'PATCH', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amDELETE:
-            Result := vHttp.Request(vAddress, 'DELETE', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amTRACE  :
-            Result := vHttp.Request(vAddress, 'TRACE', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amHEAD   :
-            Result := vHttp.Request(vAddress, 'HEAD', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amOPTION :
-            Result := vHttp.Request(vAddress, 'OPTION', 0, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'OPTION', vKeepAlive, vHeader, '', '', False, vSource, nil);
         end;
         vResult := TStringStream.Create(vHttp.Content);
         vResult.Position := 0;

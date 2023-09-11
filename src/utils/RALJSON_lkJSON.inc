@@ -359,7 +359,7 @@ begin
   if not Assigned(AStream) then
     Exit;
   SetLength(vJson, AStream.Size);
-  src.Read(PChar(vJson)^, AStream.Size);
+  AStream.Read(PChar(vJson)^, AStream.Size);
   Result := ParseJSON(vJson);
 end;
 
