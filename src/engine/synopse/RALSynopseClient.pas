@@ -35,13 +35,14 @@ var
   vFree : boolean;
   vHeader : StringRAL;
   vHttp : THttpClientSocket;
+  vAddress : UTF8String;
 begin
   inherited;
   Response.Clear;
   ResponseCode := -1;
   ResponseError := '';
 
-  vHttp := THttpClientSocket.OpenUri(AUrl,AUrl,'',ConnectTimeout);
+  vHttp := THttpClientSocket.OpenUri(AUrl,vAddress,'',ConnectTimeout);
   try
     vHttp.TLS.Enabled := UseSSL;
     vHttp.SendTimeout := ConnectTimeout;
