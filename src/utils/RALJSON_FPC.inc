@@ -79,6 +79,7 @@ type
   TRALJSON = class
   public
     class function ParseJSON(AJson : String) : TRALJSONValue;
+    class function ParseJSON(AStream : TStream) : TRALJSONValue;
   end;
 
 implementation
@@ -92,6 +93,26 @@ begin
   Result := nil;
 
   jObj := GetJSON(AJson);
+
+  if jObj <> nil then
+  begin
+    if jObj is TJSONObject then
+      Result := TRALJSONObject.Create
+    else if jObj is TJSONArray then
+      Result := TRALJSONArray.Create
+    else
+      Result := TRALJSONValue.Create;
+    Result.SetJsonObj(jObj);
+  end;
+end;
+
+class function TRALJSON.ParseJSON(AStream : TStream) : TRALJSONValue;
+var
+  jObj : TJSONData;
+begin
+  Result := nil;
+
+  jObj := GetJSON(AStream);
 
   if jObj <> nil then
   begin

@@ -83,6 +83,7 @@ type
   TRALJSON = class
   public
     class function ParseJSON(AJson : String) : TRALJSONValue;
+    class function ParseJSON(AStream : TStream) : TRALJSONValue;
   end;
 
 implementation
@@ -275,11 +276,11 @@ end;
 
 constructor TRALJSONObject.Create;
 var
-  jObj : TlkJSONObject;
+  vObj : TlkJSONObject;
 begin
   inherited;
-  jObj := TlkJSONObject.Create;
-  SetJsonObj(jObj);
+  vObj := TlkJSONObject.Create;
+  SetJsonObj(vObj);
 end;
 
 function TRALJSONObject.Get(AName: string): TRALJSONValue;
@@ -332,22 +333,34 @@ end;
 
 class function TRALJSON.ParseJSON(AJson: String): TRALJSONValue;
 var
-  jObj : TlkJSON;
+  vObj : TlkJSONbase;
 begin
   Result := nil;
 
-  jObj := TlkJSON.ParseText(AJson);
+  vObj := TlkJSON.ParseText(AJson);
 
-  if jobj <> nil then
+  if vobj <> nil then
   begin
-    if jObj is TlkJSONobject then
+    if vobj is TlkJSONobject then
       Result := TRALJSONObject.Create
-    else if jObj is TlkJSONlist then
+    else if vobj is TlkJSONlist then
       Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
-    Result.SetJsonObj(jObj);
+    Result.SetJsonObj(vobj);
   end;
+end;
+
+class function ParseJSON(AStream : TStream) : TRALJSONValue;
+var
+  vJson: string;
+begin
+  Result := nil;
+  if not Assigned(AStream) then
+    Exit;
+  SetLength(vJson, AStream.Size);
+  src.Read(PChar(vJson)^, AStream.Size);
+  Result := ParseJSON(vJson);
 end;
 
 { TRALJSONArray }
@@ -401,11 +414,11 @@ end;
 
 constructor TRALJSONArray.Create;
 var
-  jObj : TlkJSONlist;
+  vObj : TlkJSONlist;
 begin
   inherited;
-  jObj := TlkJSONlist.Create;
-  SetJsonObj(jObj);
+  vObj := TlkJSONlist.Create;
+  SetJsonObj(vObj);
 end;
 
 function TRALJSONArray.Get(AIndex: integer): TRALJSONValue;

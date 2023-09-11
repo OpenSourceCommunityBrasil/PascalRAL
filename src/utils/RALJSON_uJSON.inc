@@ -83,6 +83,7 @@ type
   TRALJSON = class
   public
     class function ParseJSON(AJson : String) : TRALJSONValue;
+    class function ParseJSON(AStream : TStream) : TRALJSONValue;
   end;
 
 implementation
@@ -91,30 +92,43 @@ implementation
 
 class function TRALJSON.ParseJSON(AJson : String) : TRALJSONValue;
 var
-  jTok : JSONTokener;
-  jObj : TZAbstractObject;
+  vTok : JSONTokener;
+  vObj : TZAbstractObject;
 begin
   Result := nil;
 
-  jTok := JSONTokener.create(AJson);
+  vTok := JSONTokener.create(AJson);
   try
-    if jTok <> nil then
+    if vTok <> nil then
     begin
-      jObj := jTok.nextValue;
-      if jObj <> nil then
+      vObj := vTok.nextValue;
+      if vObj <> nil then
       begin
-        if jObj is TJSONobject then
+        if vObj is TJSONobject then
           Result := TRALJSONObject.Create
-        else if jObj is TJSONArray then
+        else if vObj is TJSONArray then
           Result := TRALJSONArray.Create
         else
           Result := TRALJSONValue.Create;
-        Result.SetJsonObj(jObj);
+        Result.SetJsonObj(vObj);
       end
     end;
   finally
-    FreeAndNil(jTok);
+    FreeAndNil(vTok);
   end;
+end;
+
+class function ParseJSON(AStream : TStream) : TRALJSONValue;
+var
+  vJson : string;
+begin
+  Result := nil;
+  if not Assigned(AStream) then
+    Exit;
+
+  SetLength(vJson, AStream.Size);
+  AStream.Read(PChar(vJson)^, AStream.Size);
+  Result := ParseJSON(vJson);
 end;
 
 { TRALJSONArray }
@@ -126,11 +140,11 @@ end;
 
 constructor TRALJSONArray.Create;
 var
-  jObj : TJSONArray;
+  vObj : TJSONArray;
 begin
   inherited;
-  jObj := TJSONArray.Create;
-  SetJsonObj(jObj);
+  vObj := TJSONArray.Create;
+  SetJsonObj(vObj);
 end;
 
 function TRALJSONArray.Add(const AValue : TRALJSONValue) : TRALJSONArray;
@@ -206,11 +220,11 @@ end;
 
 constructor TRALJSONObject.Create;
 var
-  jObj : TJSONObject;
+  vObj : TJSONObject;
 begin
   inherited;
-  jObj := TJSONObject.Create;
-  SetJsonObj(jObj);
+  vObj := TJSONObject.Create;
+  SetJsonObj(vObj);
 end;
 
 function TRALJSONObject.Add(const AStr : string; const AValue : TRALJSONValue) : TRALJSONObject;
@@ -281,12 +295,12 @@ end;
 function TRALJSONObject.Get(AIndex : integer) : TRALJSONValue;
 var
   vObj : TZAbstractObject;
-  aName : string;
+  vName : string;
 begin
   Result := nil;
   aName := GetName(AIndex);
-  if aName <> '' then begin
-    vObj := JsonObject.opt(AName);
+  if vName <> '' then begin
+    vObj := JsonObject.opt(vName);
     if vObj <> nil then
     begin
       if vObj is TJSONObject then

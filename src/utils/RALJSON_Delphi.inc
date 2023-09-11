@@ -80,6 +80,7 @@ type
   TRALJSON = class
   public
     class function ParseJSON(AJSON : String) : TRALJSONValue;
+    class function ParseJSON(AStream : TStream) : TRALJSONValue;
   end;
 
 implementation
@@ -421,6 +422,18 @@ begin
       Result := TRALJSONArray.Create;
     Result.SetJsonObj(vObj);
   end;
+end;
+
+class function ParseJSON(AStream : TStream) : TRALJSONValue;
+var
+  vJson: string;
+begin
+  Result := nil;
+  if not Assigned(AStream) then
+    Exit;
+  SetLength(vJson, AStream.Size);
+  src.Read(PChar(vJson)^, AStream.Size);
+  Result := ParseJSON(vJson);
 end;
 
 { TRALJSONArray }
