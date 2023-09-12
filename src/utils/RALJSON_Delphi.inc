@@ -102,7 +102,7 @@ end;
 
 function TRALJSONValue.IsNull: boolean;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj is TJSONNull
   else
     Result := True;
@@ -111,7 +111,7 @@ end;
 function TRALJSONValue.JsonType: TRALJSONType;
 begin
   Result := rjtString;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if FJsonObj is TJSONNumber then
@@ -133,7 +133,7 @@ end;
 function TRALJSONValue.AsBoolean: boolean;
 begin
   Result := False;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -158,7 +158,7 @@ end;
 function TRALJSONValue.AsFloat: double;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -170,7 +170,7 @@ end;
 function TRALJSONValue.AsInteger: int64;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -199,7 +199,7 @@ end;
 
 function TRALJSONValue.ToJSON: string;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     {$IFDEF DELPHIXE7UP}
       Result := FJsonObj.ToJSON
     {$ELSE}
@@ -211,7 +211,11 @@ end;
 
 function TRALJSONValue.AsString: string;
 begin
-  if FJsonObj <> nil then
+  if Self = nil then
+  begin
+    Result := '';
+  end
+  else if FJsonObj <> nil then
   begin
     if (FJsonObj is TJSONObject) or (FJsonObj is TJSONArray) then
       Result := ToJSON
@@ -226,7 +230,7 @@ end;
 
 function TRALJSONValue.AsValue: variant;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj.Value
   else
     Result := Variants.Null;
@@ -287,7 +291,7 @@ begin
 end;
 
 function TRALJSONObject.Add(const AStr: string;
-                              const AValue: boolean): TRALJSONObject;
+                            const AValue: boolean): TRALJSONObject;
 begin
   {$IFDEF DELPHI10_0UP}
     JsonObject.AddPair(AStr,TJSONBool.Create(AValue));
@@ -310,11 +314,14 @@ end;
 
 function TRALJSONObject.Count: integer;
 begin
-  {$IFDEF DELPHIXE6UP}
-    Result := JsonObject.Count;
-  {$ELSE}
-    Result := JsonObject.Size;
-  {$ENDIF}
+  if Self <> nil then
+    {$IFDEF DELPHIXE6UP}
+      Result := JsonObject.Count;
+    {$ELSE}
+      Result := JsonObject.Size;
+    {$ENDIF}
+  else
+    Result := 0;
 end;
 
 constructor TRALJSONObject.Create;
@@ -331,6 +338,10 @@ var
   vObj : TJSONPair;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   {$IFDEF DELPHIXE6UP}
     vObj := JsonObject.Pairs[AIndex];
   {$ELSE}
@@ -353,6 +364,10 @@ var
   vObj : TJSONPair;
 begin
   Result := '';
+
+  if Self = nil then
+    Exit;
+
   {$IFDEF DELPHIXE6UP}
     vObj := JsonObject.Pairs[AIndex];
   {$ELSE}
@@ -373,6 +388,10 @@ var
   vObj : TJSONValue;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   {$IFDEF DELPHI10_0UP}
     vObj := JsonObject.FindValue(AName);
   {$ELSE}
@@ -426,7 +445,9 @@ begin
     if vObj is TJSONObject then
       Result := TRALJSONObject.Create
     else if vObj is TJSONArray then
-      Result := TRALJSONArray.Create;
+      Result := TRALJSONArray.Create
+    else
+      Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj);
   end;
 end;
@@ -490,11 +511,14 @@ end;
 
 function TRALJSONArray.Count: integer;
 begin
-  {$IFDEF DELPHIXE6UP}
-    Result := JsonObject.Count;
-  {$ELSE}
-    Result := JsonObject.Size;
-  {$ENDIF}
+  if Self <> nil then
+    {$IFDEF DELPHIXE6UP}
+      Result := JsonObject.Count;
+    {$ELSE}
+      Result := JsonObject.Size;
+    {$ENDIF}
+  else
+    Result := 0;
 end;
 
 constructor TRALJSONArray.Create;
@@ -512,6 +536,10 @@ var
 begin
   inherited;
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   {$IFDEF DELPHIXE6UP}
     vObj := JsonObject.Items[AIndex];
   {$ELSE}

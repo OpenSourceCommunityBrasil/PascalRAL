@@ -106,7 +106,7 @@ end;
 function TRALJSONValue.AsBoolean: boolean;
 begin
   Result := False;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -127,7 +127,7 @@ end;
 function TRALJSONValue.AsFloat: double;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -143,7 +143,7 @@ end;
 function TRALJSONValue.AsInteger: int64;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -165,7 +165,9 @@ end;
 
 function TRALJSONValue.AsString: string;
 begin
-  if FJsonObj <> nil then
+  if (Self = nil) then
+    Result := ''
+  else if FJsonObj <> nil then
     Result := FJsonObj.Value
   else
     Result := 'null';
@@ -173,7 +175,7 @@ end;
 
 function TRALJSONValue.IsNull: boolean;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj is TlkJSONNull
   else
     Result := True;
@@ -182,7 +184,7 @@ end;
 function TRALJSONValue.JsonType: TRALJSONType;
 begin
   Result := rjtString;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if FJsonObj is TlkJSONnumber then
@@ -197,7 +199,7 @@ end;
 
 function TRALJSONValue.AsValue: variant;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj.Value
   else
     Result := Variants.Null;
@@ -205,7 +207,7 @@ end;
 
 function TRALJSONValue.ToJson: string;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := TlkJSON.GenerateText(FJsonObj)
   else
     Result := '';
@@ -253,7 +255,10 @@ end;
 
 function TRALJSONObject.Count: integer;
 begin
-  Result := JsonObject.Count;
+  if (Self <> nil) and (JsonObject <> nil) then  
+    Result := JsonObject.Count
+  else
+    Result := 0;
 end;
 
 function TRALJSONObject.Add(const AStr: string; const AValue: TRALJSONValue): TRALJSONObject;
@@ -288,6 +293,10 @@ var
   vObj : TlkJSON;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   vObj := JsonObject.Field[AName];
   if vObj <> nil then
   begin
@@ -306,6 +315,10 @@ var
   vObj : TlkJSON;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   vObj := JsonObject.FieldByIndex[AIndex];
   if vObj <> nil then
   begin
@@ -321,7 +334,10 @@ end;
 
 function TRALJSONObject.GetName(AIndex: integer): string;
 begin
-  Result := JsonObject.NameOf[AIndex];
+  if Self = nil then
+    Result := ''
+  else
+    Result := JsonObject.NameOf[AIndex];
 end;
 
 function TRALJSONObject.JsonObject: TlkJSONobject;
@@ -409,7 +425,10 @@ end;
 
 function TRALJSONArray.Count: integer;
 begin
-  Result := JsonObject.Count
+  if (Self <> nil) and (JsonObject <> nil) then  
+    Result := JsonObject.Count
+  else
+    Result := 0;
 end;
 
 constructor TRALJSONArray.Create;
@@ -425,8 +444,11 @@ function TRALJSONArray.Get(AIndex: integer): TRALJSONValue;
 var
   vObj : TlkJSON;
 begin
-  inherited;
   Result := nil;
+
+  if Self = nil then
+    Exit;
+  
   vObj := JsonObject.Child[AIndex];
   if vObj <> nil then
   begin

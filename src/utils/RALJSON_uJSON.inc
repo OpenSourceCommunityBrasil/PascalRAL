@@ -193,6 +193,11 @@ function TRALJSONArray.Get(AIndex : integer) : TRALJSONValue;
 var
   vObj : TZAbstractObject;
 begin
+  Result := nil;
+
+  if Self = nil then
+    Exit;
+
   vObj := JsonObject.opt(AIndex);
   if vObj <> nil then
   begin
@@ -208,7 +213,10 @@ end;
 
 function TRALJSONArray.Count : integer;
 begin
-  Result := JsonObject.length;
+  if (Self <> nil) and (JsonObject <> nil) then
+    Result := JsonObject.length
+  else
+    Result := 0;
 end;
 
 { TRALJSONObject }
@@ -271,7 +279,10 @@ end;
 
 function TRALJSONObject.Count : integer;
 begin
-  Result := JsonObject.length;
+  if (Self <> nil) and (JsonObject <> nil) then
+    Result := JsonObject.length
+  else
+    Result := 0;
 end;
 
 function TRALJSONObject.Get(AName : string) : TRALJSONValue;
@@ -279,6 +290,10 @@ var
   vObj : TZAbstractObject;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   vObj := JsonObject.opt(AName);
   if vObj <> nil then
   begin
@@ -298,6 +313,10 @@ var
   vName : string;
 begin
   Result := nil;
+
+  if Self = nil then
+    Exit;
+
   aName := GetName(AIndex);
   if vName <> '' then begin
     vObj := JsonObject.opt(vName);
@@ -318,12 +337,15 @@ function TRALJSONObject.GetName(AIndex : integer) : string;
 var
   vKey : TStringList;
 begin
+  Result := '';
+
+  if Self = nil then
+    Exit;
+
   vKey := JsonObject.keys;
   try
     if (AIndex >= 0) and (AIndex < vKey.Count) then
-      Result := vKey.Strings[AIndex]
-    else
-      Result := '';
+      Result := vKey.Strings[AIndex];
   finally
     FreeAndNil(vKey);
   end;
@@ -362,7 +384,7 @@ end;
 function TRALJSONValue.JsonType : TRALJSONType;
 begin
   Result := rjtString;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if FJsonObj is _Number then
@@ -377,7 +399,7 @@ end;
 
 function TRALJSONValue.IsNull : boolean;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj is uJSON.NULL
   else
     Result := True;
@@ -385,7 +407,7 @@ end;
 
 function TRALJSONValue.AsValue : variant;
 begin
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj.toString
   else
     Result := Variants.Null;
@@ -393,7 +415,9 @@ end;
 
 function TRALJSONValue.AsString : string;
 begin
-  if FJsonObj <> nil then
+  if (Self = nil) then
+    Result := ''
+  else if FJsonObj <> nil then
     Result := FJsonObj.toString
   else
     Result := 'null';
@@ -402,7 +426,7 @@ end;
 function TRALJSONValue.AsInteger : int64;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -425,7 +449,7 @@ end;
 function TRALJSONValue.AsFloat : double;
 begin
   Result := -1;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -441,7 +465,7 @@ end;
 function TRALJSONValue.AsBoolean : boolean;
 begin
   Result := False;
-  if FJsonObj = nil then
+  if (Self = nil) or (FJsonObj = nil) then
     Exit;
 
   if JsonType = rjtNumber then
@@ -461,8 +485,8 @@ end;
 
 function TRALJSONValue.ToJson : string;
 begin
-  if FJsonObj <> nil then
-    Result := FJsonObj.toString;
+  if (Self <> nil) and (FJsonObj <> nil) then
+    Result := FJsonObj.toString
   else
     Result := '';
 end;

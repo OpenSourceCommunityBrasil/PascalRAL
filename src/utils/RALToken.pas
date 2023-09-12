@@ -8,7 +8,7 @@ uses
   RALJson, RALTools, RALUrlCoder;
 
 type
-  TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA512);
+  TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA384, tjaHSHA512);
   TRALOAuthAlgorithm = (toaHSHA256, toaHSHA512, toaPLAINTEXT);
   TRALDigestAlgorithm = (tdaMD5, tdaSHA2_256, tdaSHA2_512);
 
@@ -77,6 +77,10 @@ type
     FSignature: StringRAL;
     FSecret : StringRAL;
   protected
+    function signHS256(ASource : StringRAL) : StringRAL;
+    function signHS384(ASource : StringRAL) : StringRAL;
+    function signHS512(ASource : StringRAL) : StringRAL;
+
     function CreateToken(AHeader,APayload : StringRAL;
                          var ASignature : StringRAL) : StringRAL;
     function GetToken: StringRAL;
@@ -801,43 +805,29 @@ end;
 function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
                              var ASignature : StringRAL): StringRAL;
 var
-  vHash : TRALHashes;
   vStr : StringRAL;
 begin
+  // json codifica / para \/
+  AHeader := StringReplace(AHeader, '\/', '/', [rfReplaceAll]);
+  APayload := StringReplace(APayload, '\/', '/', [rfReplaceAll]);
+
+  vStr := TRALBase64.Encode(AHeader);
+  vStr := TRALBase64.ToBase64Url(vStr);
+
+  Result := vStr + '.';
+
+  vStr := TRALBase64.Encode(APayload);
+  vStr := TRALBase64.ToBase64Url(vStr);
+
+  Result := Result + vStr;
+
   case FHeader.Algorithm of
-    tjaHSHA256: begin
-      vHash := TRALSHA2_32.Create;
-      TRALSHA2_32(vHash).Version := rsv256;
-    end;
-    tjaHSHA512: begin
-      vHash := TRALSHA2_64.Create;
-      TRALSHA2_64(vHash).Version := rsv512;
-    end;
+    tjaHSHA256: ASignature := signHS256(Result);
+    tjaHSHA384: ASignature := signHS384(Result);
+    tjaHSHA512: ASignature := signHS512(Result);
   end;
 
-  try
-    vHash.OutputType := rhotBase64Url;
-
-    // json codifica / para \/
-    AHeader := StringReplace(AHeader, '\/', '/', [rfReplaceAll]);
-    APayload := StringReplace(APayload, '\/', '/', [rfReplaceAll]);
-
-    vStr := TRALBase64.Encode(AHeader);
-    vStr := TRALBase64.ToBase64Url(vStr);
-
-    Result := vStr + '.';
-
-    vStr := TRALBase64.Encode(APayload);
-    vStr := TRALBase64.ToBase64Url(vStr);
-
-    Result := Result + vStr;
-
-    ASignature := vHash.HMACAsString(Result, FSecret);
-
-    Result := Result + '.' + ASignature;
-  finally
-    FreeAndNil(vHash);
-  end;
+  Result := Result + '.' + ASignature;
 end;
 
 destructor TRALJWT.Destroy;
@@ -850,6 +840,48 @@ end;
 function TRALJWT.GetToken: StringRAL;
 begin
   Result := CreateToken(FHeader.AsJSON, FPayload.AsJSON, FSignature);
+end;
+
+function TRALJWT.signHS256(ASource: StringRAL): StringRAL;
+var
+  vHash : TRALSHA2_32;
+begin
+  vHash := TRALSHA2_32.Create;
+  try
+    vHash.Version := rsv256;
+    vHash.OutputType := rhotBase64Url;
+    Result := vHash.HMACAsString(ASource, FSecret);
+  finally
+    FreeAndNil(vHash);
+  end;
+end;
+
+function TRALJWT.signHS384(ASource: StringRAL): StringRAL;
+var
+  vHash : TRALSHA2_64;
+begin
+  vHash := TRALSHA2_64.Create;
+  try
+    vHash.Version := rsv384;
+    vHash.OutputType := rhotBase64Url;
+    Result := vHash.HMACAsString(ASource, FSecret);
+  finally
+    FreeAndNil(vHash);
+  end;
+end;
+
+function TRALJWT.signHS512(ASource: StringRAL): StringRAL;
+var
+  vHash : TRALSHA2_64;
+begin
+  vHash := TRALSHA2_64.Create;
+  try
+    vHash.Version := rsv512;
+    vHash.OutputType := rhotBase64Url;
+    Result := vHash.HMACAsString(ASource, FSecret);
+  finally
+    FreeAndNil(vHash);
+  end;
 end;
 
 function TRALJWT.ValidToken(const AValue: StringRAL) : boolean;
