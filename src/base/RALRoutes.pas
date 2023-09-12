@@ -139,7 +139,7 @@ begin
     Delete(AValue, Length(AValue), 1);
 
   vPos := LastDelimiter('/', AValue);
-  if (vPos > 0) and (vPos < Length(AValue)) then
+  if (vPos > 1) and (vPos < Length(AValue)) then
   begin
     RouteDomain := Copy(AValue, 1, vPos);
     Delete(AValue, 1, vPos);

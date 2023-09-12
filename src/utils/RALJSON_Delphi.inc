@@ -316,9 +316,9 @@ function TRALJSONObject.Count: integer;
 begin
   if Self <> nil then
     {$IFDEF DELPHIXE6UP}
-      Result := JsonObject.Count;
+      Result := JsonObject.Count
     {$ELSE}
-      Result := JsonObject.Size;
+      Result := JsonObject.Size
     {$ENDIF}
   else
     Result := 0;
@@ -513,9 +513,9 @@ function TRALJSONArray.Count: integer;
 begin
   if Self <> nil then
     {$IFDEF DELPHIXE6UP}
-      Result := JsonObject.Count;
+      Result := JsonObject.Count
     {$ELSE}
-      Result := JsonObject.Size;
+      Result := JsonObject.Size
     {$ENDIF}
   else
     Result := 0;

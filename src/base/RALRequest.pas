@@ -55,6 +55,7 @@ type
     FHttpVersion : StringRAL;
   protected
     function GetURL : StringRAL;
+    procedure SetQuery(const Value: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -72,7 +73,7 @@ type
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Method: TRALMethod read FMethod write FMethod;
-    property Query: StringRAL read FQuery write FQuery;
+    property Query: StringRAL read FQuery write SetQuery;
     property Host: StringRAL read FHost write FHost;
     property Protocol: StringRAL read FProtocol write FProtocol;
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
@@ -86,6 +87,16 @@ implementation
 function TRALRequest.GetURL : StringRAL;
 begin
   Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
+end;
+
+procedure TRALRequest.SetQuery(const Value: StringRAL);
+var
+  vInt : IntegerRAL;
+begin
+  FQuery := Value;
+  vInt := Pos('?',FQuery);
+  if vInt > 0 then
+    Delete(FQuery,vInt,Length(FQuery));
 end;
 
 constructor TRALRequest.Create;
