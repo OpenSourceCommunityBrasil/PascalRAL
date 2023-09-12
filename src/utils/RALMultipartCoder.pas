@@ -421,6 +421,7 @@ begin
   begin
     // tirando CRLF do fim do arquivo
     FItemForm.AsStream.Size := FItemForm.AsStream.Size - 2;
+    FItemForm.AsStream.Position := 0;
 
     vFreeItem := False;
     if Assigned(FOnFormDataComplete) then
@@ -593,7 +594,7 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
-  vPosition := 1;
+  vPosition := 0;
   vSize := Length(AString);
 
   FIndex := 0;
@@ -607,7 +608,7 @@ begin
     if vSize - vPosition < 4096 then
       vBytesRead := vSize - vPosition;
 
-    Move(AString[vPosition], vInBuf[0], vBytesRead);
+    Move(AString[vPosition + 1], vInBuf[0], vBytesRead);
     ProcessBuffer(@vInBuf[0], vBytesRead);
 
     vPosition := vPosition + vBytesRead;
