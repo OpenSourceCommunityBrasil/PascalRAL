@@ -237,6 +237,7 @@ var
 begin
   vStream := TStringStream.Create(AValue);
   try
+    vStream.Position := 0;
     Result := HMACAsString(vStream, AKey);
   finally
     vStream.Free;
@@ -263,6 +264,7 @@ var
 begin
   vStream := TStringStream.Create(AValue);
   try
+    vStream.Position := 0;
     Result := HMACAsString(vStream, AKey);
   finally
     vStream.Free;

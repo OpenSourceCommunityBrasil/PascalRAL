@@ -35,8 +35,10 @@ implementation
 
 function TRALSHA1.Swap(AValue : Cardinal) : Cardinal;
 begin
-  Result:= ((AValue and $FF) shl 24) or ((AValue and $FF00) shl 8) or
-           ((AValue and $FF0000) shr 8) or ((AValue and $FF000000) shr 24);
+  Result:= ((AValue and $FF) shl 24) or
+           ((AValue and $FF00) shl 8) or
+           ((AValue and $FF0000) shr 8) or
+           ((AValue and $FF000000) shr 24);
 end;
 
 function TRALSHA1.GetBufLength : IntegerRAL;

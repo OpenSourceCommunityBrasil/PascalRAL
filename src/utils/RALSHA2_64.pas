@@ -12,7 +12,7 @@ type
   TRALSHA2_64 = class(TRALHashes)
   private
     FVersion: TRALSHA64Versions;
-    FHash: array[0..7] of uint64;
+    FHash: array[0..7] of UInt64;
     FBuffer: array[0..127] of byte;
     FHashSize: byte;
   protected
@@ -20,7 +20,8 @@ type
     function GetBufLength: IntegerRAL; override;
     function GetBuffer(AIndex: IntegerRAL): Pointer; override;
 
-    function Swap(AValue: uint64): uint64;
+    function Swap(AValue: Cardinal): Cardinal; overload;
+    function Swap(AValue: UInt64): UInt64; overload;
 
     procedure Compress; override;
     procedure Initialize; override;
@@ -34,7 +35,7 @@ type
 implementation
 
 const
-  K: array[0..79] of uint64 = (
+  K: array[0..79] of UInt64 = (
     $428a2f98d728ae22, $7137449123ef65cd, $b5c0fbcfec4d3b2f, $e9b5dba58189dbbc,
     $3956c25bf348b538, $59f111f1b605d019, $923f82a4af194f9b, $ab1c5ed5da6d8118,
     $d807aa98a3030242, $12835b0145706fbe, $243185be4ee4b28c, $550c7dc3d5ffb4e2,
@@ -61,9 +62,9 @@ const
 
 procedure TRALSHA2_64.Compress;
 var
-  s0, s1, m0, c0, t1, t2: uint64;
-  a, b, c, d, e, f, g, h: uint64;
-  W: array[0..79] of uint64;
+  s0, s1, m0, c0, t1, t2: UInt64;
+  a, b, c, d, e, f, g, h: UInt64;
+  W: array[0..79] of UInt64;
   I: IntegerRAL;
 begin
   FillChar(W, SizeOf(W), 0);
@@ -76,11 +77,10 @@ begin
   g := FHash[6];
   h := FHash[7];
 
-  Move(FBuffer, W, Sizeof(GetBufLength));
+  Move(FBuffer, W, GetBufLength);
 
   for i := 0 to 15 do
     W[i] := Swap(W[i]);
-
 
   for i := 16 to 79 do
   begin
@@ -138,7 +138,7 @@ end;
 function TRALSHA2_64.Finalize: TBytes;
 var
   vIndex: IntegerRAL;
-  vLenBit: uint64;
+  vLenBit: UInt64;
 begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
@@ -147,8 +147,10 @@ begin
   if vIndex >= 112 then
     Compress;
 
-  PUInt64(@FBuffer[120])^ := 0;
-  PUInt64(@FBuffer[124])^ := Swap(vLenBit);
+  PCardinal(@FBuffer[112])^ := 0;
+  PCardinal(@FBuffer[116])^ := 0;
+  PCardinal(@FBuffer[120])^ := Swap(Cardinal(vLenBit shr 32));
+  PCardinal(@FBuffer[124])^ := Swap(Cardinal(vLenBit));
   Compress;
 
   FHash[0] := Swap(FHash[0]);
@@ -237,16 +239,18 @@ begin
   Initialize;
 end;
 
-function TRALSHA2_64.Swap(AValue: uint64): uint64;
+function TRALSHA2_64.Swap(AValue: UInt64): UInt64;
 begin
-  Result := ((AValue and $FF) shl 56) 
-         or ((AValue and $FF00) shl 40) 
-         or ((AValue and $FF0000) shl 24) 
-         or ((AValue and $FF000000) shl 8) 
-         or ((AValue and $FF00000000) shr 8) 
-         or ((AValue and $FF0000000000) shr 24) 
-         or ((AValue and $FF000000000000) shr 40) 
-         or ((AValue and $FF00000000000000) shr 56);
+  Result := UInt64(Swap(Cardinal(AValue))) shl 32 or
+                   Swap(Cardinal(AValue shr 32));
+end;
+
+function TRALSHA2_64.Swap(AValue: Cardinal): Cardinal;
+begin
+  Result := ((AValue and $FF) shl 24)
+         or ((AValue and $FF00) shl 8)
+         or ((AValue and $FF0000) shr 8)
+         or ((AValue and $FF000000) shr 24);
 end;
 
 end.
