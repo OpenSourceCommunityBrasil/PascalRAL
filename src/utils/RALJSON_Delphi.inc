@@ -10,17 +10,22 @@ type
 
   TRALJSONValue = class
   private
-    FJsonObj : TJSONValue;
-    FFreeObj : boolean;
+    FJsonObj: TJSONValue;
+    FFreeObj: boolean;
+    FListObj: TList;
+    FMarkFree : boolean;
   protected
-    procedure SetJsonObj(AObj : TJSONValue; AFree : boolean = True);
-    function GetJsonObj : TJSONValue;
+    procedure SetJsonObj(AObj: TJSONValue; AFree: boolean = True);
+    function GetJsonObj: TJSONValue;
+
+    procedure AddObj(AObj: TRALJSONValue);
+    procedure ClearObjs;
   public
     constructor Create; virtual;
     destructor Destroy; override;
 
-    function JsonType : TRALJSONType;
-    function IsNull : boolean;
+    function JsonType: TRALJSONType;
+    function IsNull: boolean;
 
     function AsValue: variant;
     function AsString : string;
@@ -28,7 +33,7 @@ type
     function AsFloat : double;
     function AsBoolean : boolean;
 
-    function ToJSON : string;
+    function ToJSON: string;
   end;
 
   { TRALJSONObject }
@@ -236,17 +241,41 @@ begin
     Result := Variants.Null;
 end;
 
+procedure TRALJSONValue.AddObj(AObj: TRALJSONValue);
+begin
+  if AObj <> nil then
+  begin
+    AObj.FFreeObj := False;
+    if not AObj.FMarkFree then
+      FListObj.Add(AObj);
+    AObj.FMarkFree := True;
+  end;
+end;
+
+procedure TRALJSONValue.ClearObjs;
+begin
+  while FListObj.Count > 0 do
+  begin
+    TObject(FListObj.Items[FListObj.Count-1]).Free;
+    FListObj.Delete(FListObj.Count-1);
+  end;
+end;
+
 constructor TRALJSONValue.Create;
 begin
   inherited;
   FJsonObj := nil;
   FFreeObj := True;
+  FListObj := TList.Create;
+  FMarkFree := False;
 end;
 
 destructor TRALJSONValue.Destroy;
 begin
   if (FJsonObj <> nil) and (FFreeObj) then
     FJsonObj.Free;
+  ClearObjs;
+  FListObj.Free;
   inherited;
 end;
 
@@ -283,10 +312,17 @@ begin
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string;
-  const AValue: TRALJSONValue): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: string; const AValue: TRALJSONValue): TRALJSONObject;
 begin
-  JsonObject.AddPair(AStr,AValue.GetJsonObj);
+  if AValue <> nil then
+  begin
+    JsonObject.AddPair(AStr,AValue.GetJsonObj);
+    AddObj(AValue);
+  end
+  else
+  begin
+    JsonObject.AddPair(AStr,TJSONNull.Create);
+  end;
   Result := Self;
 end;
 
@@ -356,6 +392,7 @@ begin
     else
       Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj.JsonValue,False);
+    AddObj(Result);
   end;
 end;
 
@@ -419,6 +456,7 @@ begin
     else
       Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj,False);
+    AddObj(Result);
   end;
 end;
 
@@ -480,13 +518,22 @@ function TRALJSONArray.Add(const AValue: TRALJSONValue): TRALJSONArray;
 var
   vObj : TJSONValue;
 begin
-  vObj := AValue.GetJsonObj;
-  if vObj is TJSONObject then
-    JsonObject.Add(TJSONObject(vObj))
-  else if vObj is TJSONArray then
-    JsonObject.Add(TJSONArray(vObj))
+  if AValue <> nil then
+  begin
+    vObj := AValue.GetJsonObj;
+    if vObj is TJSONObject then
+      JsonObject.Add(TJSONObject(vObj))
+    else if vObj is TJSONArray then
+      JsonObject.Add(TJSONArray(vObj))
+    else
+      JsonObject.AddElement(vObj);
+
+    AddObj(AValue);
+  end
   else
-    JsonObject.AddElement(vObj)
+  begin
+    JsonObject.AddElement(TJSONNull.Create);
+  end;
 end;
 
 function TRALJSONArray.Add(const AValue: integer): TRALJSONArray;
@@ -554,6 +601,7 @@ begin
     else
       Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj,False);
+    AddObj(Result);
   end;
 end;
 

@@ -143,8 +143,7 @@ class function TRALBase64.ToBase64Url(AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, '+', '-', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
-  while (Result <> '') and (Result[Length(Result)] = '=') do
-    Delete(Result, Length(Result), 1);
+  Result := StringReplace(Result, '=', '', [rfReplaceAll]);
 end;
 
 class function TRALBase64.FromBase64Url(AValue: StringRAL): StringRAL;

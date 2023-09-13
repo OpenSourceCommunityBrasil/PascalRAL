@@ -90,13 +90,9 @@ end;
 procedure TRALRoute.Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
 begin
   if Assigned(OnReply) then
-  begin
-    OnReply(Self, ARequest, AResponse);
-  end
+    OnReply(Self, ARequest, AResponse)
   else
-  begin
     AResponse.Answer(404, RAL404Page);
-  end;
 end;
 
 procedure TRALRoute.SetRouteDomain(AValue: StringRAL);

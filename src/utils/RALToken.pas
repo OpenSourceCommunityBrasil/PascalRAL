@@ -248,7 +248,7 @@ begin
     end;
 
     if (Pos('auth',LowerCase(FParams.Qop)) > 0) then
-      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1, FParams.Nonce, FParams.NC,
+      vAux1 := Format('%s:%s:%s:%s:%s:%s',[vHa1, FParams.Nonce, vNC,
                                            FParams.CNonce, FParams.Qop, vHa2])
     else
       vAux1 := Format('%s:%s:%s',[vHa1, FParams.Nonce, vHa2]);

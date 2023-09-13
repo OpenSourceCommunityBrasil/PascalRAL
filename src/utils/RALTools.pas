@@ -21,6 +21,7 @@ implementation
 function VarToBytes(v: variant): TBytes;
 var
   vTyp: TVarType;
+  vStream: TStringStream;
 begin
   vTyp := VarType(v);
 
@@ -37,12 +38,12 @@ begin
       SetLength(Result, 0);
       if v <> '' then
       begin
-        {$IFNDEF FPC}
-        Result := TEncoding.UTF8.GetBytes(StringRAL(v));
-        {$ELSE}
-        SetLength(Result, Length(v));
-        // Move(Pointer(@StringRAL(v)[PosIniStr])^, Pointer(Result)^, Length(v));
-        {$ENDIF}
+        vStream := TStringStream.Create(StringRAL(v));
+        try
+          Result := vStream.Bytes;
+        finally
+          FreeAndNil(vStream);
+        end;
       end;
     end;
   end;
@@ -63,8 +64,7 @@ begin
   Result := '/' + ARoute + '/';
 
   // path transversal fix
-  while Pos('../', ARoute) > 0 do
-    ARoute := StringReplace(ARoute, '../', '', [rfReplaceAll]);
+  ARoute := StringReplace(ARoute, '../', '', [rfReplaceAll]);
 
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);

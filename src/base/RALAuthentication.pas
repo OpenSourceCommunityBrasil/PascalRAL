@@ -44,9 +44,9 @@ type
   TRALAuthServer = class(TRALAuthentication)
   public
     procedure Validate(ARequest: TRALRequest;
-                       var AResponse: TRALResponse); virtual; abstract;
+                       AResponse: TRALResponse); virtual; abstract;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-                        var AResponse: TRALResponse); virtual; abstract;
+                        AResponse: TRALResponse); virtual; abstract;
 
     property AuthType: TRALAuthTypes read FAuthType;
   end;
@@ -77,9 +77,9 @@ type
     constructor Create(AOwner: TComponent; AUser: StringRAL;
                        APassword: StringRAL); overload;
 
-    procedure Validate(ARequest: TRALRequest; var AResponse: TRALResponse); override;
+    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-                        var AResponse: TRALResponse); override;
+                        AResponse: TRALResponse); override;
   published
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     property UserName: StringRAL read FUserName write FUserName;
@@ -128,9 +128,9 @@ type
     function RenewToken(AToken : StringRAL; var AJSONParams: StringRAL): StringRAL;
 
     procedure Validate(ARequest: TRALRequest;
-                       var AResponse: TRALResponse); override;
+                       AResponse: TRALResponse); override;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-                        var AResponse: TRALResponse); override;
+                        AResponse: TRALResponse); override;
   published
     property Algorithm : TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property Route: StringRAL read FRoute write SetRoute;
@@ -189,9 +189,9 @@ type
     constructor Create(AOwner: TComponent); override;
 
     procedure Validate(ARequest: TRALRequest;
-                       var AResponse: TRALResponse); override;
+                       AResponse: TRALResponse); override;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-                        var AResponse: TRALResponse); override;
+                        AResponse: TRALResponse); override;
   end;
 
   TRALClientOAuth2 = class(TRALAuthClient)
@@ -310,7 +310,7 @@ begin
   FRouteAuthorize := '/authorize/';
 end;
 
-procedure TRALServerOAuth.Validate(ARequest : TRALRequest; var AResponse : TRALResponse);
+procedure TRALServerOAuth.Validate(ARequest : TRALRequest; AResponse : TRALResponse);
 var
   vAuth: TRALOAuth;
   vResult, vGetToken: boolean;
@@ -361,7 +361,7 @@ begin
     AResponse.Answer(401, RAL401Page);
 end;
 
-procedure TRALServerOAuth.AuthQuery(AQuery : StringRAL; ARequest : TRALRequest; var AResponse : TRALResponse);
+procedure TRALServerOAuth.AuthQuery(AQuery : StringRAL; ARequest : TRALRequest; AResponse : TRALResponse);
 begin
   AQuery := FixRoute(AQuery);
   if SameText(AQuery, FRouteInitialize) then
@@ -443,8 +443,7 @@ end;
 
 { TRALServerJWTAuth }
 
-procedure TRALServerJWTAuth.AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-  var AResponse: TRALResponse);
+procedure TRALServerJWTAuth.AuthQuery(AQuery: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vToken : StringRAL;
   vStrParams : StringRAL;
@@ -551,8 +550,7 @@ begin
     FRoute := '/gettoken/';
 end;
 
-procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest;
-  var AResponse: TRALResponse);
+procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult : boolean;
   vJWT : TRALJWT;
@@ -614,8 +612,7 @@ begin
   SetAuthType(ratBasic);
 end;
 
-procedure TRALServerBasicAuth.AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
-  var AResponse: TRALResponse);
+procedure TRALServerBasicAuth.AuthQuery(AQuery: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(404, RAL404Page);
 end;
@@ -627,7 +624,7 @@ begin
   Password := APassword;
 end;
 
-procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; var AResponse: TRALResponse);
+procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult: boolean;
 
