@@ -9,8 +9,10 @@ uses
   RALMIMETypes;
 
 type
-  TRALOnValidate = procedure(ARequest: TRALRequest; var AResult: boolean) of object;
-  TRALOnTokenJWT = procedure(ARequest: TRALRequest; AParams: TRALJWTParams; var AResult: boolean) of object;
+  TRALOnValidate = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
+                             var AResult: boolean) of object;
+  TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
+                             AParams: TRALJWTParams; var AResult: boolean) of object;
   TRALOnBeforeGetToken = procedure(AParams : TRALParams) of object;
 
   TRALOnResolve = procedure(AToken: StringRAL; AParams : TRALJWTParams;
@@ -462,7 +464,7 @@ begin
     begin
       vParamJWT := TRALJWTParams.Create;
       try
-        FOnGetToken(ARequest, vParamJWT, vResult);
+        FOnGetToken(ARequest, AResponse, vParamJWT, vResult);
         if vResult then begin
           vStrParams := vParamJWT.AsJSON;
           vToken := GetToken(vStrParams);
@@ -500,7 +502,8 @@ begin
     end
     else
     begin
-      AResponse.Answer(401, RAL401Page);
+      if AResponse.StatusCode < 400 then
+        AResponse.Answer(401, RAL401Page);
     end;
   end
   else
@@ -569,12 +572,12 @@ begin
     vJWT.Secret := FSecret;
     vResult := vJWT.ValidToken(ARequest.Authorization.AuthString);
     if vResult and Assigned(FOnValidate) then
-      FOnValidate(ARequest, vJWT.Payload, vResult);
+      FOnValidate(ARequest, AResponse, vJWT.Payload, vResult);
   finally
     FreeAndNil(vJWT);
   end;
 
-  if not vResult then
+  if (not vResult) and (AResponse.StatusCode < 400) then
     AResponse.Answer(401, RAL401Page);
 end;
 
@@ -630,7 +633,8 @@ var
 
   procedure Error401;
   begin
-    AResponse.Answer(401, RAL401Page);
+    if AResponse.StatusCode < 400 then
+      AResponse.Answer(401, RAL401Page);
     if FAuthDialog then
       AResponse.AddHeader('WWW-Authenticate', 'Basic realm="RAL Basic"');
   end;
@@ -645,7 +649,7 @@ begin
   if Assigned(FOnValidate) then
   begin
     vResult := False;
-    FOnValidate(ARequest, vResult);
+    FOnValidate(ARequest, AResponse, vResult);
     if not vResult then
       Error401;
   end
