@@ -20,7 +20,7 @@ type
     FDescription: TStringList;
     FAllowedMethods: TRALMethods;
     FSkipAuthMethods: TRALMethods;
-    FCallback: Boolean;
+    FCallback: boolean;
     FOnReply: TRALOnReply;
   protected
     function GetRoute: StringRAL;
@@ -28,7 +28,7 @@ type
 
     procedure SetRouteName(AValue: StringRAL);
     procedure SetRouteDomain(AValue: StringRAL);
-    function RouteExists(ARoute: StringRAL): Boolean;
+    function RouteExists(ARoute: StringRAL): boolean;
 
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
@@ -49,7 +49,7 @@ type
     // verbos que vão ignorar autenticação
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
     // se for uma rota de callback pra OAuth
-    property Callback: Boolean read FCallback write FCallback;
+    property Callback: boolean read FCallback write FCallback;
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   end;
 
@@ -60,6 +60,7 @@ type
     function GetRouteAddress(ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
+    function AsString: StringRAL;
 
     property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
   end;
@@ -73,11 +74,11 @@ begin
   inherited;
   FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
-  FCallback := false;
+  FCallback := False;
   FRouteName := 'ralroute' + IntToStr(Index);
   FRouteDomain := '/';
   FDescription := TStringList.Create;
-  Changed(false);
+  Changed(False);
 end;
 
 destructor TRALRoute.Destroy;
@@ -111,11 +112,11 @@ begin
     FRouteDomain := FixRoute(AValue);
 end;
 
-function TRALRoute.RouteExists(ARoute: StringRAL): Boolean;
+function TRALRoute.RouteExists(ARoute: StringRAL): boolean;
 var
   vRoute: TRALRoute;
 begin
-  Result := false;
+  Result := False;
   if Collection is TRALRoutes then
   begin
     vRoute := TRALRoutes(Collection).RouteAddress[ARoute];
@@ -236,6 +237,18 @@ end;
 constructor TRALRoutes.Create(AOwner: TPersistent);
 begin
   inherited Create(AOwner, TRALRoute);
+end;
+
+function TRALRoutes.AsString: StringRAL;
+var
+  I: integer;
+begin
+  Result := '';
+  for I := 0 to pred(Self.Count) do
+    if I = 0 then
+      Result := Result + TRALRoute(Self.Items[I]).Route
+    else
+      Result := Result + #13#10 + TRALRoute(Self.Items[I]).Route;
 end;
 
 end.
