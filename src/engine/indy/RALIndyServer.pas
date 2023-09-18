@@ -33,6 +33,9 @@ type
     procedure SetPort(const AValue: IntegerRAL); override;
     function IPv6IsImplemented : boolean; override;
 
+    function GetSSL: TRALIndySSL;
+    procedure SetSSL(const AValue: TRALIndySSL);
+
     procedure OnCommandProcess(AContext: TIdContext;
                                ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo);
@@ -43,6 +46,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+  published
+    property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
 
 implementation
@@ -81,6 +86,11 @@ begin
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
+end;
+
+function TRALIndyServer.GetSSL: TRALIndySSL;
+begin
+  Result := TRALIndySSL(GetDefaultSSL);
 end;
 
 procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
@@ -253,6 +263,11 @@ procedure TRALIndyServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttp.SessionTimeOut := AValue;
+end;
+
+procedure TRALIndyServer.SetSSL(const AValue: TRALIndySSL);
+begin
+  TRALIndySSL(GetDefaultSSL).Assign(AValue);
 end;
 
 procedure TRALIndyServer.SetPort(const AValue: IntegerRAL);

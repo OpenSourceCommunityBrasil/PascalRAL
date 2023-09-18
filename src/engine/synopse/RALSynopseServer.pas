@@ -15,15 +15,15 @@ type
 
   TRALSynopseSSL = class(TRALSSL)
   private
-    FCertificateFile: StringRAL;
-    FPrivateKeyFile: StringRAL;
+    FCertificateFile: TFileName;
+    FPrivateKeyFile: TFileName;
     FPrivateKeyPassword: StringRAL;
-    FCACertificatesFile: StringRAL;
+    FCACertificatesFile: TFileName;
   published
-    property CertificateFile: StringRAL read FCertificateFile write FCertificateFile;
-    property PrivateKeyFile: StringRAL read FPrivateKeyFile write FPrivateKeyFile;
+    property CertificateFile: TFileName read FCertificateFile write FCertificateFile;
+    property PrivateKeyFile: TFileName read FPrivateKeyFile write FPrivateKeyFile;
     property PrivateKeyPassword: StringRAL read FPrivateKeyPassword write FPrivateKeyPassword;
-    property CACertificatesFile: StringRAL read FCACertificatesFile write FCACertificatesFile;
+    property CACertificatesFile: TFileName read FCACertificatesFile write FCACertificatesFile;
   end;
 
   { TRALSynopseServer }
@@ -38,6 +38,9 @@ type
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
 
+    function GetSSL: TRALSynopseSSL;
+    procedure SetSSL(const AValue: TRALSynopseSSL);
+
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetQueueSize(const AValue: IntegerRAL);
 
@@ -51,6 +54,7 @@ type
   published
     property PoolCount: IntegerRAL read FPoolCount write SetPoolCount;
     property QueueSize: IntegerRAL read FQueueSize write SetQueueSize;
+    property SSL: TRALSynopseSSL read GetSSL write SetSSL;
   end;
 
 implementation
@@ -146,6 +150,11 @@ begin
   FQueueSize := AValue;
   if FHttp <> nil then
     FHttp.HttpQueueLength := FQueueSize;
+end;
+
+procedure TRALSynopseServer.SetSSL(const AValue: TRALSynopseSSL);
+begin
+  TRALSynopseSSL(GetDefaultSSL).Assign(AValue);
 end;
 
 function TRALSynopseServer.IPv6IsImplemented: boolean;
@@ -259,6 +268,11 @@ destructor TRALSynopseServer.Destroy;
 begin
   FreeAndNil(FHttp);
   inherited;
+end;
+
+function TRALSynopseServer.GetSSL: TRALSynopseSSL;
+begin
+  Result := TRALSynopseSSL(GetDefaultSSL);
 end;
 
 end.

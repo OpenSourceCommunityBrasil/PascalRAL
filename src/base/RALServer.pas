@@ -119,6 +119,8 @@ type
 
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
+
+    function GetDefaultSSL : TRALSSL;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -136,7 +138,6 @@ type
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
-    property SSL: TRALSSL read FSSL write FSSL;
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
 
@@ -382,6 +383,11 @@ begin
   for vInt := 0 to Pred(vList.Count) do
     Result.Add(vList.Strings[vInt]);
   FBlackIPList.Unlock;
+end;
+
+function TRALServer.GetDefaultSSL: TRALSSL;
+begin
+  Result := FSSL;
 end;
 
 function TRALServer.GetWhiteIPList: TStringList;

@@ -84,6 +84,9 @@ type
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
 
+    function GetSSL: TRALfpHTTPSSL;
+    procedure SetSSL(const AValue: TRALfpHTTPSSL);
+
     function GetQueueSize: IntegerRAL;
     procedure SetQueueSize(const AValue: IntegerRAL);
 
@@ -94,6 +97,7 @@ type
     destructor Destroy; override;
   published
     property QueueSize : IntegerRAL read GetQueueSize write SetQueueSize;
+    property SSL: TRALfpHTTPSSL read GetSSL write SetSSL;
   end;
 
 implementation
@@ -297,7 +301,7 @@ begin
     FHttp.UseSSL := False;
     if FParent.SSL.Enabled then begin
       FHttp.UseSSL := True;
-      FHttp.CertificateData.Assign(TRALfpHTTPSSL(FParent.SSL).SSLOptions);
+      FHttp.CertificateData.Assign(FParent.SSL.SSLOptions);
     end;
   end
   else if (not AValue) and (FHttp.Active) then begin
@@ -411,6 +415,11 @@ begin
   Result := FHttpThread.QueueSize;
 end;
 
+function TRALfpHttpServer.GetSSL: TRALfpHTTPSSL;
+begin
+  Result := TRALfpHTTPSSL(GetDefaultSSL);
+end;
+
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 begin
   if AValue = Active then
@@ -439,6 +448,11 @@ procedure TRALfpHttpServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttpThread.SessionTimeout := AValue;
+end;
+
+procedure TRALfpHttpServer.SetSSL(const AValue: TRALfpHTTPSSL);
+begin
+  TRALfpHTTPSSL(GetDefaultSSL).Assign(AValue);
 end;
 
 end.
