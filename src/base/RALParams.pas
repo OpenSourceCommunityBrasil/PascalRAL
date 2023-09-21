@@ -35,6 +35,7 @@ type
     function Size: Int64;
     procedure OpenFile(AFileName: StringRAL);
     procedure SaveToFile(AFileName: StringRAL); overload;
+    procedure SaveToFile(AFolderName,AFileName: StringRAL); overload;
     procedure SaveToFile; overload;
   public
     property ContentType: StringRAL read FContentType write FContentType;
@@ -211,20 +212,40 @@ begin
 end;
 
 procedure TRALParam.SaveToFile;
-var
-  vFile, vExt: StringRAL;
-  vMime: TRALMIMEType;
 begin
-  vMime := TRALMIMEType.Create;
-  try
-    vExt := vMime.GetMIMEContentExt(FContentType);
-  finally
-    FreeAndNil(vMime);
+  SaveToFile('','');
+end;
+
+procedure TRALParam.SaveToFile(AFolderName, AFileName: StringRAL);
+var
+  vMime: TRALMIMEType;
+  vExt : StringRAL;
+begin
+  if AFolderName = '' then
+    AFolderName := ExtractFileDir(ParamStr(0));
+
+  AFolderName := IncludeTrailingPathDelimiter(AFolderName);
+
+  if AFileName = '' then
+  begin
+    if FileName = '' then
+    begin
+      vMime := TRALMIMEType.Create;
+      try
+        vExt := vMime.GetMIMEContentExt(FContentType);
+      finally
+        FreeAndNil(vMime);
+      end;
+
+      AFileName := FParamName + vExt;
+    end
+    else
+    begin
+      AFileName := FileName;
+    end;
   end;
 
-  vFile := IncludeTrailingPathDelimiter(ExtractFileDir(ParamStr(0)));
-  vFile := vFile + FParamName + vExt;
-  SaveToFile(vFile);
+  SaveToFile(AFolderName+AFileName);
 end;
 
 procedure TRALParam.SetAsStream(const AValue: TStream);

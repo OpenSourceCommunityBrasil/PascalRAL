@@ -459,7 +459,7 @@ var
     if FIndex < 500 then
     begin
       SetLength(vLine, FIndex);
-      Move(FBuffer[0], vLine[1], FIndex);
+      Move(FBuffer[0], vLine[PosIniStr], FIndex);
       // boundary end of file
       if Pos('--' + FBoundary + '--', vLine) > 0 then
       begin
@@ -526,13 +526,12 @@ begin
 
   if FIndex > 0 then
     processLine;
-
-  FinalizeItem;
 end;
 
 function TRALMultipartDecoder.BurnBuffer: PByte;
 begin
-  FItemForm.AsStream.Write(FBuffer[0], FIndex);
+  if FIndex > 0 then
+    FItemForm.AsStream.Write(FBuffer[0], FIndex);
   Result := ResetBuffer;
 end;
 
@@ -608,7 +607,7 @@ begin
     if vSize - vPosition < 4096 then
       vBytesRead := vSize - vPosition;
 
-    Move(AString[vPosition + 1], vInBuf[0], vBytesRead);
+    Move(AString[vPosition + PosIniStr], vInBuf[0], vBytesRead);
     ProcessBuffer(@vInBuf[0], vBytesRead);
 
     vPosition := vPosition + vBytesRead;
