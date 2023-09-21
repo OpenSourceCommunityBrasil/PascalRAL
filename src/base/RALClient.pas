@@ -46,6 +46,7 @@ type
     function GetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
 
     function GetResponseText: StringRAL;
+    function GetResponseStream: TStream;
 
     procedure SetAuthentication(const AValue: TRALAuthClient);
     procedure SetBaseURL(const AValue: StringRAL);
@@ -77,6 +78,7 @@ type
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
     property ResponseText: StringRAL read GetResponseText;
+    property ResponseStream: TStream read GetResponseStream;
 
     property Request : TRALHTTPHeaderInfo read FLastRequest;
     property Response : TRALHTTPHeaderInfo read FLastResponse;
@@ -183,6 +185,25 @@ end;
 function TRALClient.Get : IntegerRAL;
 begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
+end;
+
+function TRALClient.GetResponseStream: TStream;
+var
+  vStream: TStream;
+  vContentType: StringRAL;
+  vFreeContent: boolean;
+begin
+  Result := TMemoryStream.Create;
+  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent);
+  if vStream <> nil then
+  begin
+    vStream.Position := 0;
+    Result.CopyFrom(vStream,vStream.Size);
+
+    if vFreeContent then
+      vStream.Free;
+  end;
+  Result.Position := 0;
 end;
 
 function TRALClient.GetResponseText: StringRAL;
