@@ -115,7 +115,7 @@ var
 begin
   vParams := TStringList.Create;
   try
-    // alguns parametro do cliente poderao ser passados por aqui
+    // alguns parametros do cliente poderao ser passados por aqui
     vParams.Sorted := True;
     vParams.Add('method=' + RALMethodToHTTPMethod(AMethod));
     vParams.Add('url=' + AURL);
@@ -535,9 +535,9 @@ begin
   vInt := Pos('://', AValue);
   if vInt > 0 then
   begin
-    FBaseURL := Copy(AValue, vInt+3, Length(AValue));
+    FBaseURL := Copy(AValue, vInt + 3, Length(AValue));
     vProtocol := Copy(AValue, 1, vInt - 1);
-    UseSSL := SameText(vProtocol,'https');
+    UseSSL := SameText(vProtocol, 'https');
   end
   else
   begin

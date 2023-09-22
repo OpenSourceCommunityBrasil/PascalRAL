@@ -34,7 +34,7 @@ type
     function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
-    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN): TRALHTTPHeaderInfo; virtual;
+    function AddBody(AText: StringRAL; AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     procedure Clear;
     function GetHeader(AName: StringRAL): StringRAL; virtual;
     function GetQuery(AName: StringRAL): StringRAL; virtual;

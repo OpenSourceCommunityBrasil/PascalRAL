@@ -174,7 +174,7 @@ begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
-  vParam := AResult.Params.GetKind['Authorization',rpkHEADER];
+  vParam := AResult.Params.GetKind['Authorization', rpkHEADER];
   if not vParam.IsNilOrEmpty then begin
     vStr := vParam.AsString;
     if vStr <> '' then begin

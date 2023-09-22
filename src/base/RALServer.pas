@@ -451,13 +451,13 @@ begin
   begin
     if Assigned(FOnClientWasBlocked) then
       FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
-    Result.Answer(404, RAL404Page);
+    Result.Answer(404, RAL404Page, rctTEXTHTML);
     Exit;
   end
   else if Pos('../', ARequest.Query) > 0 then
   begin
     AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
-    Result.Answer(404, RAL404Page);
+    Result.Answer(404, RAL404Page, rctTEXTHTML);
     Exit;
   end;
 
@@ -488,7 +488,7 @@ begin
     end
     else
     begin
-      Result.Answer(404, RAL404Page);
+      Result.Answer(404, RAL404Page, rctTEXTHTML);
       AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end;
   end
@@ -500,7 +500,7 @@ begin
     if (not (amALL in vRoute.AllowedMethods)) and
        (not (ARequest.Method in vRoute.AllowedMethods)) then
     begin
-      Result.Answer(404, RAL404Page);
+      Result.Answer(404, RAL404Page, rctTEXTHTML);
     end
     else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
             (not(ARequest.Method in vRoute.SkipAuthMethods)) and

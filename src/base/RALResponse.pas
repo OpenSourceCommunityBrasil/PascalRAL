@@ -25,7 +25,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-                     AContentType: StringRAL = rctTEXTHTML); overload;
+                     AContentType: StringRAL = rctAPPLICATIONJSON); overload;
     procedure Answer(AFileName: StringRAL); overload;
     procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; AFileName: StringRAL); overload;
 
@@ -106,7 +106,7 @@ end;
 constructor TRALResponse.Create;
 begin
   inherited;
-  ContentType := rctTEXTHTML;
+  ContentType := rctAPPLICATIONJSON;
   FFreeContent := False;
 end;
 
