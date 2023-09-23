@@ -166,9 +166,7 @@ begin
     end;
 
     vResponse := ProcessCommands(vRequest);
-    vResponse.ContentEncoding := vRequest.AcceptEncoding;
-    // apenas pra mudar o contentencoding
-    vResponse.ContentCompress := vResponse.ContentCompress;
+
     try
       with vResponse do
       begin

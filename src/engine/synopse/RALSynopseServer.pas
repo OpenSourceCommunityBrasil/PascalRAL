@@ -242,17 +242,17 @@ begin
     end;
 
     vResponse := ProcessCommands(vRequest);
-    vResponse.ContentEncoding := vRequest.AcceptEncoding;
-    // apenas pra mudar o contentencoding
-    vResponse.ContentCompress := vResponse.ContentCompress;
+
     try
       with vResponse do
       begin
         if ContentCompress <> ctNone then
         begin
           AContext.OutContent := ResponseText;
-          Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
-          Params.AddParam('Content-Type', ContentType, rpkHEADER);
+          if vResponse.ContentEncoding <> '' then
+            Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
+          if ContentType <> '' then
+            Params.AddParam('Content-Type', ContentType, rpkHEADER);
           AContext.OutContentType := STATICFILE_CONTENT_TYPE; // '!STATICFILE';
         end
         else

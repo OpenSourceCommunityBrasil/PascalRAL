@@ -84,6 +84,7 @@ type
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
     FIPConfig: TRALIPConfig;
+    FCompressType: TRALCompressType;
 
     FBlackIPList: TRALStringListSafe;
     FWhiteIPList: TRALStringListSafe;
@@ -140,6 +141,7 @@ type
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
+    property CompressType : TRALCompressType read FCompressType write FCompressType;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
@@ -215,6 +217,7 @@ begin
   FEngine := '';
   FFavIcon := TMemoryStream.Create;
   FSessionTimeout := 30000;
+  FCompressType := ctNone;
 
   FBlockedList := TRALStringListSafe.Create;
   FWhiteIPList := TRALStringListSafe.Create;
@@ -445,7 +448,27 @@ var
   vString: StringRAL;
 begin
   Result := TRALResponse.Create;
+
+  if not ARequest.HasValidContentEncoding then
+  begin
+    Result.Answer(415, RAL415Page);
+    Result.ContentCompress := ctNone;
+    Result.ContentEncoding := ARequest.ContentEncoding;
+    Exit;
+  end
+  else if not ARequest.HasValidAcceptEncoding then
+  begin
+    Result.Answer(415, RAL415Page);
+    Result.ContentCompress := ctNone;
+    Result.ContentEncoding := ARequest.AcceptEncoding;
+    Exit;
+  end;
+
   Result.StatusCode := 200;
+
+  Result.ContentCompress := ARequest.AcceptCompress;
+  if Result.ContentCompress = ctNone then
+    Result.ContentCompress := FCompressType;
 
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin

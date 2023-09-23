@@ -580,7 +580,7 @@ begin
     Exit;
 
   if ACompress <> ctNone then
-    ASource := TRALDeflateCompress.Decompress(ASource, ACompress);
+    ASource := TRALCompressLib.Decompress(ASource, ACompress);
 
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
@@ -622,7 +622,7 @@ begin
     Exit;
 
   if ACompress <> ctNone then
-    ASource := TRALDeflateCompress.Decompress(ASource, ACompress);
+    ASource := TRALCompressLib.Decompress(ASource, ACompress);
 
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
@@ -712,7 +712,7 @@ begin
 
   if (ACompress <> ctNone) and (vResult <> nil) then
   begin
-    Result := TRALDeflateCompress.Compress(vResult, ACompress);
+    Result := TRALCompressLib.Compress(vResult, ACompress);
     if AFreeContent then
       FreeAndNil(vResult);
     AFreeContent := True;

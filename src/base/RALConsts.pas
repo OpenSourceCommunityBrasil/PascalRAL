@@ -50,6 +50,10 @@ const
              + '<p>The server informs that the page you''re requesting doesn''t'
              + ' exist in this reality</p>'
              + '</body></html>';
+  RAL415Page = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
+             + '</head><body><h1>415 - Unsuported Media Type</h1>'
+             + '<p>The server informs that it doesn''t know what you''re asking</p>'
+             + '</body></html>';
   RAL500Page = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
              + '</head><body><h1>500 - Internal Server Error</h1>'
              + '<p>The server made something that it shouldn''t</p>'

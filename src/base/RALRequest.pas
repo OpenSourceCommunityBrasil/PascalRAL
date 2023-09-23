@@ -69,6 +69,8 @@ type
     function AddFile(AStream: TStream; AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
     function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
+    function HasValidAcceptEncoding: boolean;
+
     property URL: StringRAL read GetURL;
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
   published
@@ -143,6 +145,34 @@ function TRALRequest.AddBody(AText : StringRAL; AContextType : StringRAL) : TRAL
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
+end;
+
+function TRALRequest.HasValidAcceptEncoding : boolean;
+var
+  vStr, vEnc : StringRAL;
+  vInt: integer;
+begin
+  Result := (Trim(FAcceptEncoding) = '');
+
+  if Result then
+    Exit;
+
+  vStr := LowerCase(Trim(FAcceptEncoding));
+  while vStr <> '' do begin
+    vInt := Pos(',',vStr);
+    if vInt <= 0 then
+      vInt := Length(vStr) + 1;
+    vEnc := Trim(Copy(vStr,1,vInt - 1));
+
+    if (vEnc = 'gzip') or (vEnc = 'deflate') or
+       (vEnc = 'zlib') or (vEnc = 'br') then
+    begin
+      Result := True;
+      Break;
+    end;
+
+    Delete(vStr,1,vInt);
+  end;
 end;
 
 function TRALRequest.AddField(AName, AValue : StringRAL) : TRALRequest;

@@ -12,9 +12,9 @@ uses
   RALTypes, RALConsts;
 
 type
-  { TRALDeflateCompress }
+  { TRALCompressLib }
 
-  TRALDeflateCompress = class
+  TRALCompressLib = class
   protected
     class procedure UpdateCRC32(var ACRC32 : LongWord; AOctet: Byte);
   public
@@ -68,9 +68,9 @@ const
     $cdd70693, $54de5729, $23d967bf, $b3667a2e, $c4614ab8, $5d681b02, $2a6f2b94,
     $b40bbe37, $c30c8ea1, $5a05df1b, $2d02ef8d);
 
-{ TRALDeflateCompress }
+{ TRALCompressLib }
 
-class function TRALDeflateCompress.Compress(AStream: TStream; AFormat: TRALCompressType): TStream;
+class function TRALCompressLib.Compress(AStream: TStream; AFormat: TRALCompressType): TStream;
 var
   vBuf: PByte;
   vZip: TCompressionStream;
@@ -131,7 +131,7 @@ begin
   Result.Position := 0;
 end;
 
-class function TRALDeflateCompress.Decompress(AStream: TStream; AFormat: TRALCompressType): TStream;
+class function TRALCompressLib.Decompress(AStream: TStream; AFormat: TRALCompressType): TStream;
 var
   vBuf: PByte;
   vZip: TDeCompressionStream;
@@ -197,7 +197,7 @@ begin
   end;
 end;
 
-class function TRALDeflateCompress.Compress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
+class function TRALCompressLib.Compress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
   vStr, vRes : TStringStream;
 begin
@@ -214,7 +214,7 @@ begin
   end;
 end;
 
-class function TRALDeflateCompress.Decompress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
+class function TRALCompressLib.Decompress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
   vStr, vRes : TStringStream;
 begin
@@ -231,7 +231,7 @@ begin
   end;
 end;
 
-class procedure TRALDeflateCompress.UpdateCRC32(var ACRC32: LongWord; AOctet: Byte);
+class procedure TRALCompressLib.UpdateCRC32(var ACRC32: LongWord; AOctet: Byte);
 begin
   ACRC32 := Crc_32_Tab[Byte(ACRC32 xor LongInt(AOctet))] xor
             ((ACRC32 shr 8) and $00FFFFFF);

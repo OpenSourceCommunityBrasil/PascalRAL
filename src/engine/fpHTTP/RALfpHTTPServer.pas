@@ -213,6 +213,7 @@ begin
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;
       ContentEncoding := ARequest.ContentEncoding;
+      AcceptEncoding := ARequest.AcceptEncoding;
 
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
@@ -260,15 +261,13 @@ begin
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);
-    vResponse.ContentEncoding := vRequest.AcceptEncoding;
-    // apenas pra mudar o contentencoding
-    vResponse.ContentCompress := vResponse.ContentCompress;
+
     try
       with vResponse do
       begin
         AResponse.Code := StatusCode;
 
-        if ContentCompress <> ctNone then
+        if vResponse.ContentEncoding <> '' then
           AResponse.ContentEncoding := vResponse.ContentEncoding;
 
         AResponse.Server := 'RAL_fpHTTP';

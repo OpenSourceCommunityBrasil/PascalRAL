@@ -48,6 +48,7 @@ type
     function ParamByName(AParamName: StringRAL): TRALParam;
     function Body : TRALParam;
 
+    function HasValidContentEncoding: boolean;
   published
     property Params: TRALParams read GetParams;
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
@@ -99,7 +100,7 @@ begin
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddBody(AText, AContextType: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddBody(AText : StringRAL; AContextType : StringRAL) : TRALHTTPHeaderInfo;
 var
   vParam: TRALParam;
 begin
@@ -232,6 +233,34 @@ end;
 function TRALHTTPHeaderInfo.Body: TRALParam;
 begin
   Result := ParamByName('ral_body');
+end;
+
+function TRALHTTPHeaderInfo.HasValidContentEncoding : boolean;
+var
+  vStr, vEnc : StringRAL;
+  vInt: integer;
+begin
+  Result := (Trim(FContentEncoding) = '');
+
+  if Result then
+    Exit;
+
+  vStr := LowerCase(Trim(FContentEncoding));
+  while vStr <> '' do begin
+    vInt := Pos(',',vStr);
+    if vInt <= 0 then
+      vInt := Length(vStr) + 1;
+    vEnc := Trim(Copy(vStr,1,vInt - 1));
+
+    if (vEnc = 'gzip') or (vEnc = 'deflate') or
+       (vEnc = 'zlib') or (vEnc = 'br') then
+    begin
+      Result := True;
+      Break;
+    end;
+
+    Delete(vStr,1,vInt);
+  end;
 end;
 
 end.
