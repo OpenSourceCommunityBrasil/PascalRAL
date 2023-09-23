@@ -45,10 +45,10 @@ function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams
 var
   vInt: IntegerRAL;
   vSource : TStream;
-  vFree: boolean;
-  vContentType : StringRAL;
+  vFree, vCompress: boolean;
+  vContentType, vContentEncoding : StringRAL;
   vHeaders: TNetHeaders;
-  vReponse: IHTTPResponse;
+  vResponse: IHTTPResponse;
   vParam : TRALParam;
 begin
   inherited;
@@ -60,6 +60,12 @@ begin
     AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
   else
     AParams.AddParam('Connection', 'close', rpkHEADER);
+
+  if Compress then
+  begin
+    AParams.AddParam('Content-Encoding', 'deflate', rpkHEADER);
+    AParams.AddParam('Accept-Encoding', 'deflate, br', rpkHEADER);
+  end;
 
   SetLength(vHeaders, AParams.Count(rpkHEADER));
   for vInt := 0 to Pred(AParams.Count) do
@@ -76,28 +82,32 @@ begin
     try
       case AMethod of
         amGET:
-          vReponse := FHttp.Get(AURL, nil, vHeaders);
+          vResponse := FHttp.Get(AURL, nil, vHeaders);
         amPOST:
-          vReponse := FHttp.Post(AURL, vSource, nil, vHeaders);
+          vResponse := FHttp.Post(AURL, vSource, nil, vHeaders);
         amPUT:
-          vReponse := FHttp.Put(AURL, vSource, nil, vHeaders);
+          vResponse := FHttp.Put(AURL, vSource, nil, vHeaders);
         amPATCH:
-          vReponse := FHttp.Patch(AURL, vSource, nil, vHeaders);
+          vResponse := FHttp.Patch(AURL, vSource, nil, vHeaders);
         amDELETE:
-          vReponse := FHttp.Delete(AURL, nil, vHeaders);
+          vResponse := FHttp.Delete(AURL, nil, vHeaders);
         amTRACE:
-          vReponse := FHttp.Trace(AURL, nil, vHeaders);
+          vResponse := FHttp.Trace(AURL, nil, vHeaders);
         amHEAD:
-          vReponse := FHttp.Head(AURL, vHeaders);
+          vResponse := FHttp.Head(AURL, vHeaders);
         amOPTION:
-          vReponse := FHttp.Options(AURL, nil, vHeaders);
+          vResponse := FHttp.Options(AURL, nil, vHeaders);
       end;
+      for vInt := 0 to Pred(Length(vResponse.Headers)) do
+        Response.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 
-      Response.Params.DecodeBody(vReponse.ContentStream,vReponse.MimeType);
-      for vInt := 0 to Pred(Length(vReponse.Headers)) do
-        Response.AddHeader(vReponse.Headers[vInt].Name,vReponse.Headers[vInt].Value);
+      vContentType := vResponse.MimeType;
+      vContentEncoding := vResponse.ContentEncoding;
+      vCompress := Pos('deflate', LowerCase(vContentEncoding)) > 0;
 
-      ResponseCode := vReponse.GetStatusCode;
+      Response.Params.DecodeBody(vResponse.ContentStream, vContentType, vCompress);
+
+      ResponseCode := vResponse.GetStatusCode;
     except
       on e : ENetHTTPClientException do begin
         ResponseError := e.Message;

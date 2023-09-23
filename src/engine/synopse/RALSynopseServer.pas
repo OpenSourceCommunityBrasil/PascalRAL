@@ -7,7 +7,7 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  RALParams, RALTools, RALBase64;
 
 type
 
@@ -48,6 +48,7 @@ type
 
     procedure DecodeAuth(AResult: TRALRequest);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
+    function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -80,15 +81,17 @@ begin
     // THttpServer - AB funciona sem opcao -v
 
     vOptions := [hsoNoXPoweredHeader, hsoNoStats, hsoHeadersInterning,
-                 hsoThreadSmooting];
+                 hsoThreadSmooting, hsoHeadersUnfiltered];
+    //                 hsoThreadCpuAffinity, hsoThreadSocketAffinity];
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
     FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '',
                                      FPoolCount, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := FQueueSize;
+    FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';
-    FHttp.RegisterCompressGzStatic := True;
+//    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then
     begin
@@ -222,7 +225,10 @@ begin
       Params.AppendParamsListText(AContext.InHeaders,rpkHEADER);
       DecodeAuth(vRequest);
 
-      Params.DecodeBody(AContext.InContent, AContext.InContentType);
+      ContentEncoding := Params.Get['Content-Encoding'].AsString;
+      AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
+
+      Params.DecodeBody(AContext.InContent, AContext.InContentType, ContentCompress);
 
       Host := AContext.Host;
       Protocol := '1.1';
@@ -236,14 +242,24 @@ begin
     end;
 
     vResponse := ProcessCommands(vRequest);
-
+    vResponse.Compress := vRequest.AcceptCompress;
     try
       with vResponse do
       begin
-        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+        if Compress then
+        begin
+          AContext.OutContent := ResponseText;
+          Params.AddParam('Content-Encoding', 'deflate', rpkHEADER);
+          Params.AddParam('Content-Type', ContentType, rpkHEADER);
+          AContext.OutContentType := STATICFILE_CONTENT_TYPE;// '!STATICFILE';
+        end
+        else
+        begin
+          AContext.OutContent := ResponseText;
+          AContext.OutContentType := ContentType;
+        end;
 
-        AContext.OutContent := ResponseText;
-        AContext.OutContentType := ContentType;
+        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
 
         Result := StatusCode;
       end;
@@ -253,6 +269,15 @@ begin
   finally
     FreeAndNil(vRequest);
   end;
+end;
+
+function TRALSynopseServer.OnSendFile(AContext: THttpServerRequestAbstract;
+  const LocalFileName: TFileName): boolean;
+begin
+  {$IFNDEF FPC}
+    AContext.OutContent := UTF8Decode(AContext.OutContent);
+  {$ENDIF}
+  Result := True;
 end;
 
 constructor TRALSynopseServer.Create(AOwner: TComponent);
@@ -266,7 +291,8 @@ end;
 
 destructor TRALSynopseServer.Destroy;
 begin
-  FreeAndNil(FHttp);
+  if Assigned(FHttp) then
+    FreeAndNil(FHttp);
   inherited;
 end;
 

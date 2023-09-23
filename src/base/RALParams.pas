@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder;
+  RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
+  RALDeflateCompress;
 
 type
 
@@ -98,11 +99,11 @@ type
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
 
-    procedure DecodeBody(ASource: TStream; AContentType: StringRAL); overload;
-    procedure DecodeBody(ASource: StringRAL; AContentType: StringRAL); overload;
+    procedure DecodeBody(ASource: TStream; AContentType: StringRAL; ACompress: boolean); overload;
+    procedure DecodeBody(ASource: StringRAL; AContentType: StringRAL; ACompress: boolean); overload;
     procedure DecodeFields(ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
 
-    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
+    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean; ACompress: boolean = false): TStream;
 
     function NewParam: TRALParam;
     function URLEncodedToList(ASource: StringRAL): TStringList;
@@ -170,15 +171,20 @@ end;
 
 function TRALParam.GetAsStream: TStream;
 begin
-  Result := FContent;
-  if Result <> nil then
-    Result.Position := 0;
+  Result := nil;
+
+  if Self <> nil then
+  begin
+    Result := FContent;
+    if Result <> nil then
+      Result.Position := 0;
+  end;
 end;
 
 function TRALParam.GetAsString: StringRAL;
 begin
   Result := '';
-  if (FContent <> nil) and (FContent.Size > 0) then
+  if (Self <> nil) and (FContent <> nil) and (FContent.Size > 0) then
   begin
     if FContent.InheritsFrom(TStringStream) then
     begin
@@ -564,7 +570,7 @@ begin
   end;
 end;
 
-procedure TRALParams.DecodeBody(ASource: TStream; AContentType: StringRAL);
+procedure TRALParams.DecodeBody(ASource: TStream; AContentType: StringRAL; ACompress: boolean);
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
@@ -572,6 +578,9 @@ var
 begin
   if ASource = nil then
     Exit;
+
+  if ACompress then
+    ASource := TRALDeflateCompress.Decompress(ASource);
 
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
@@ -599,15 +608,21 @@ begin
     vParam.ContentType := AContentType;
     vParam.Kind := rpkBODY;
   end;
+
+  if ACompress then
+    ASource.Free;
 end;
 
-procedure TRALParams.DecodeBody(ASource: StringRAL; AContentType: StringRAL);
+procedure TRALParams.DecodeBody(ASource: StringRAL; AContentType: StringRAL; ACompress: boolean);
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
 begin
   if ASource = '' then
     Exit;
+
+  if ACompress then
+    ASource := TRALDeflateCompress.Decompress(ASource);
 
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
@@ -631,12 +646,13 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
+function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean; ACompress: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
   vString, vValor: StringRAL;
+  vResult : TStream;
 begin
   AFreeContent := False;
   Result := nil;
@@ -645,7 +661,7 @@ begin
   vInt2 := Count(rpkFIELD);
   if vInt1 + vInt2 = 1 then
   begin
-    Result := Param[0].AsStream;
+    vResult := Param[0].AsStream;
     AContentType := Param[0].ContentType;
   end
   else if (vInt2 > 0) and (vInt1 = 0) then
@@ -666,8 +682,8 @@ begin
         vString := vString + vValor;
       end;
     end;
-    Result := TStringStream.Create(vString);
-    Result.Position := 0;
+    vResult := TStringStream.Create(vString);
+    vResult.Position := 0;
 
     AFreeContent := True;
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
@@ -685,12 +701,23 @@ begin
                               Param[vInt1].FileName, Param[vInt1].ContentType);
         end;
       end;
-      Result := vMultPart.AsStream;
+      vResult := vMultPart.AsStream;
       AContentType := vMultPart.ContentType;
       AFreeContent := True;
     finally
       FreeAndNil(vMultPart);
     end;
+  end;
+
+  if (ACompress) and (vResult <> nil) then
+  begin
+    Result := TRALDeflateCompress.Compress(vResult);
+    if AFreeContent then
+      FreeAndNil(vResult);
+    AFreeContent := True;
+  end
+  else begin
+    Result := vResult;
   end;
 end;
 
@@ -896,10 +923,7 @@ begin
   else
     vParam.ContentType := rctTEXTPLAIN;
 
-  if vParam.FileName <> '' then
-    vParam.Kind := rpkBODY
-  else
-    vParam.Kind := rpkFIELD;
+  vParam.Kind := rpkBODY;
 
   AFreeData := True;
 end;

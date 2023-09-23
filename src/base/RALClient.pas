@@ -24,6 +24,7 @@ type
     FEngine: StringRAL;
     FKeepAlive : boolean;
     FAutoGetToken : boolean;
+    FCompress: boolean;
 
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
@@ -91,7 +92,7 @@ type
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     property AutoGetToken: boolean read FAutoGetToken write FAutoGetToken;
-
+    property Compress: boolean read FCompress write FCompress;
   end;
 
 implementation
@@ -161,6 +162,7 @@ begin
   FConnectTimeout := 30000;
   FRequestTimeout := 10000;
   FAutoGetToken := True;
+  FCompress := True;
 
   FLastRequest := TRALHTTPHeaderInfo.Create;
   FLastResponse := TRALHTTPHeaderInfo.Create;

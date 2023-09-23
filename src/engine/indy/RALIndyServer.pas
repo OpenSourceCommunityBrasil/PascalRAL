@@ -111,6 +111,8 @@ begin
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
       ContentType := ARequestInfo.ContentType;
+      ContentEncoding := ARequestInfo.ContentEncoding;
+      AcceptEncoding := ARequestInfo.AcceptEncoding;
       ContentSize := ARequestInfo.ContentLength;
 
       Query := ARequestInfo.Document;
@@ -139,7 +141,7 @@ begin
         Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
       end;
 
-      Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
+      Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType, ContentCompress);
 
       Host := ARequestInfo.Host;
       vInt := Pos('/', ARequestInfo.Version);
@@ -164,12 +166,16 @@ begin
     end;
 
     vResponse := ProcessCommands(vRequest);
+    vResponse.Compress := vRequest.AcceptCompress;
     try
       with vResponse do
       begin
         AResponseInfo.ResponseNo := StatusCode;
 
         AResponseInfo.Server := 'RAL_Indy';
+        if Compress then
+          AResponseInfo.ContentEncoding := 'deflate';
+
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
 
         vCookies := TStringList.Create;
@@ -183,10 +189,17 @@ begin
         finally
           FreeAndNil(vCookies);
         end;
-
+        AResponseInfo.ContentText := '';
         AResponseInfo.ContentStream := ResponseStream;
         AResponseInfo.ContentType := ContentType;
-        AResponseInfo.FreeContentStream := FreeContent;
+
+        AResponseInfo.ContentLength := 0;
+        AResponseInfo.FreeContentStream := False;
+
+        if AResponseInfo.ContentStream <> nil then begin
+          AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
+          AResponseInfo.FreeContentStream := FreeContent;
+        end;
 
         AResponseInfo.WriteContent;
       end;

@@ -15,6 +15,7 @@ type
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
     FFreeContent: boolean;
+    FCompress : boolean;
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -39,6 +40,7 @@ type
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write SetContentType;
+    property Compress: boolean read FCompress write FCompress;
     property StatusCode: IntegerRAL read FRespCode write FRespCode;
     property FreeContent: boolean read FFreeContent;
   end;
@@ -117,7 +119,7 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := Params.EncodeBody(FContentType, FFreeContent);
+  Result := Params.EncodeBody(FContentType, FFreeContent, FCompress);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
@@ -125,12 +127,16 @@ var
   vStream: TStream;
 begin
   Result := '';
-  vStream := Params.EncodeBody(FContentType, FFreeContent);
+  vStream := Params.EncodeBody(FContentType, FFreeContent, FCompress);
   if vStream <> nil then
   begin
     vStream.Position := 0;
     if vStream is TStringStream then begin
       Result := TStringStream(vStream).DataString;
+    end
+    else if vStream.InheritsFrom(TMemoryStream) then begin
+      SetLength(Result, vStream.Size);
+      Move(TMemoryStream(vStream).Memory, Result[PosIniStr], vStream.Size);
     end
     else begin
       SetLength(Result, vStream.Size);
@@ -157,9 +163,8 @@ var
 begin
   Params.ClearParams(rpkBODY);
   if AValue.Size > 0 then begin
-    vParam := Params.AddValue(AValue);
+    vParam := Params.AddValue(AValue, rpkBODY);
     vParam.ContentType := ContentType;
-    vParam.Kind := rpkBODY;
   end;
 end;
 

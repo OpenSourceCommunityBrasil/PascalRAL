@@ -244,6 +244,7 @@ begin
     Result.WriteString(#13#10);
   end;
   Result.WriteString(Format(vHeaderEnd, [Boundary]));
+  Result.Position := 0;
 end;
 
 function TRALMultipartEncoder.GetBoundary: StringRAL;

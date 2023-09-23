@@ -50,8 +50,8 @@ end;
 function TRALIndyClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
   vSource, vResult : TStream;
-  vContentType : StringRAL;
-  vFree : boolean;
+  vContentType, vContentEncoding : StringRAL;
+  vFree, vCompress : boolean;
   vInt : Integer;
 begin
   inherited;
@@ -67,14 +67,20 @@ begin
   ResponseError := '';
 
   if KeepAlive then
-    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
+    FHttp.Request.Connection := 'keep-alive'
   else
-    AParams.AddParam('Connection', 'close', rpkHEADER);
+    FHttp.Request.Connection := 'close';
+
+  if Compress then
+  begin
+    FHttp.Request.ContentEncoding := 'deflate';
+    FHttp.Request.AcceptEncoding := 'deflate, br';
+  end;
 
   AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);
 
   vFree := False;
-  vSource := AParams.EncodeBody(vContentType, vFree);
+  vSource := AParams.EncodeBody(vContentType, vFree, Compress);
   try
     FHttp.AllowCookies := True;
     FHttp.Request.ContentType := vContentType;
@@ -91,9 +97,12 @@ begin
         amOPTION : FHttp.Options(AURL, vResult);
       end;
 
-      Response.Params.DecodeBody(vResult,FHttp.Response.ContentType);
-      Response.Params.AppendParams(FHttp.Response.RawHeaders,rpkHEADER);
-      Response.Params.AppendParams(FHttp.Response.CustomHeaders,rpkHEADER);
+      vContentEncoding := FHttp.Response.ContentEncoding;
+      vCompress := Pos('deflate', LowerCase(vContentEncoding)) > 0;
+
+      Response.Params.DecodeBody(vResult, FHttp.Response.ContentType, vCompress);
+      Response.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
+      Response.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
     except
       ResponseError := FHttp.ResponseText;
     end;

@@ -212,6 +212,7 @@ begin
 
       ContentType := ARequest.ContentType;
       ContentSize := ARequest.ContentLength;
+      ContentEncoding := ARequest.ContentEncoding;
 
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
@@ -231,7 +232,7 @@ begin
       Params.AppendParams(ARequest.QueryFields,rpkQUERY);
       Params.AppendParams(ARequest.CookieFields,rpkCOOKIE);
 
-      Params.DecodeBody(ARequest.Content, ARequest.ContentType);
+      Params.DecodeBody(ARequest.Content, ARequest.ContentType, ContentCompress);
 
       Host := ARequest.Host;
       vInt := Pos('/', ARequest.ProtocolVersion);
@@ -259,14 +260,19 @@ begin
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);
+    vResponse.Compress := vRequest.AcceptCompress;
     try
       with vResponse do
       begin
         AResponse.Code := StatusCode;
 
-        Params.AddParam('Server', 'RAL_fpHTTP', rpkHEADER);
+        if Compress then
+          AResponse.ContentEncoding := 'deflate';
+
+        AResponse.Server := 'RAL_fpHTTP';
         if vConnClose then
-          Params.AddParam('Connection', 'close', rpkHEADER);
+          AResponse.Connection := 'close';
+
         Params.AssignParams(AResponse.CustomHeaders, rpkHEADER);
         Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
 
