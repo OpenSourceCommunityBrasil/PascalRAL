@@ -21,9 +21,12 @@ type
 
   TRALHTTPHeaderInfo = class
   private
+    FContentEncoding : StringRAL;
     FParams: TRALParams;
   protected
     function GetParams: TRALParams;
+    function GetContentCompress : TRALCompressType;
+    procedure SetContentCompress(const AValue: TRALCompressType);
   public
     constructor Create;
     destructor Destroy; override;
@@ -44,8 +47,11 @@ type
 
     function ParamByName(AParamName: StringRAL): TRALParam;
     function Body : TRALParam;
+
   published
     property Params: TRALParams read GetParams;
+    property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
+    property ContentCompress: TRALCompressType read GetContentCompress write SetContentCompress;
   end;
 
 implementation
@@ -159,6 +165,21 @@ begin
     Result := vParam.AsString;
 end;
 
+function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
+var
+  vStr : StringRAL;
+begin
+  vStr := LowerCase(FContentEncoding);
+  if (Pos('gzip', vStr) > 0) then
+    Result := ctGZip
+  else if (Pos('deflate', vStr) > 0) then
+    Result := ctDeflate
+  else if (Pos('zlib', vStr) > 0) then
+    Result := ctZLib
+  else
+    Result := ctNone;
+end;
+
 function TRALHTTPHeaderInfo.GetCookie(AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
@@ -196,6 +217,16 @@ end;
 function TRALHTTPHeaderInfo.ParamByName(AParamName: StringRAL): TRALParam;
 begin
   Result := FParams.Get[aParamName];
+end;
+
+procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
+begin
+  case AValue of
+    ctNone    : FContentEncoding := '';
+    ctDeflate : FContentEncoding := 'deflate';
+    ctZLib    : FContentEncoding := 'zlib';
+    ctGZip    : FContentEncoding := 'gzip';
+  end;
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;

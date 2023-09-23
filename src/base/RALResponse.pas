@@ -15,7 +15,6 @@ type
     FContentType: StringRAL;
     FRespCode: IntegerRAL;
     FFreeContent: boolean;
-    FCompress : boolean;
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -40,7 +39,6 @@ type
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property Compress: boolean read FCompress write FCompress;
     property StatusCode: IntegerRAL read FRespCode write FRespCode;
     property FreeContent: boolean read FFreeContent;
   end;
@@ -119,7 +117,7 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := Params.EncodeBody(FContentType, FFreeContent, FCompress);
+  Result := Params.EncodeBody(FContentType, FFreeContent, ContentCompress);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
@@ -127,7 +125,7 @@ var
   vStream: TStream;
 begin
   Result := '';
-  vStream := Params.EncodeBody(FContentType, FFreeContent, FCompress);
+  vStream := Params.EncodeBody(FContentType, FFreeContent, ContentCompress);
   if vStream <> nil then
   begin
     vStream.Position := 0;

@@ -24,7 +24,7 @@ type
     FEngine: StringRAL;
     FKeepAlive : boolean;
     FAutoGetToken : boolean;
-    FCompress: boolean;
+    FCompress: TRALCompressType;
 
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
@@ -92,7 +92,7 @@ type
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     property AutoGetToken: boolean read FAutoGetToken write FAutoGetToken;
-    property Compress: boolean read FCompress write FCompress;
+    property CompressType : TRALCompressType read FCompress write FCompress;
   end;
 
 implementation
@@ -162,7 +162,7 @@ begin
   FConnectTimeout := 30000;
   FRequestTimeout := 10000;
   FAutoGetToken := True;
-  FCompress := True;
+  FCompress := ctGZip;
 
   FLastRequest := TRALHTTPHeaderInfo.Create;
   FLastResponse := TRALHTTPHeaderInfo.Create;
@@ -196,7 +196,7 @@ var
   vFreeContent: boolean;
 begin
   Result := TMemoryStream.Create;
-  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent);
+  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent, ctNone);
   if vStream <> nil then
   begin
     vStream.Position := 0;
@@ -215,7 +215,7 @@ var
   vFreeContent: boolean;
 begin
   Result := '';
-  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent);
+  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent, ctNone);
   if vStream <> nil then
   begin
     vStream.Position := 0;

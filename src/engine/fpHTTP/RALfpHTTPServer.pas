@@ -260,14 +260,16 @@ begin
     end;
 
     vResponse := FParent.ProcessCommands(vRequest);
-    vResponse.Compress := vRequest.AcceptCompress;
+    vResponse.ContentEncoding := vRequest.AcceptEncoding;
+    // apenas pra mudar o contentencoding
+    vResponse.ContentCompress := vResponse.ContentCompress;
     try
       with vResponse do
       begin
         AResponse.Code := StatusCode;
 
-        if Compress then
-          AResponse.ContentEncoding := 'deflate';
+        if ContentCompress <> ctNone then
+          AResponse.ContentEncoding := vResponse.ContentEncoding;
 
         AResponse.Server := 'RAL_fpHTTP';
         if vConnClose then

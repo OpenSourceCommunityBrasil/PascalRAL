@@ -31,8 +31,8 @@ end;
 function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
   vSource, vResult : TStream;
-  vContentType, vContentEncoding: StringRAL;
-  vFree, vCompress : boolean;
+  vContentType: StringRAL;
+  vFree : boolean;
   vHeader : StringRAL;
   vHttp : THttpClientSocket;
   vAddress : UTF8String;
@@ -59,14 +59,16 @@ begin
 
     AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
-    if Compress then
+    Request.ContentCompress := CompressType;
+    if CompressType <> ctNone then
     begin
-      AParams.AddParam('Content-Encoding', 'deflate', rpkHEADER);
-      AParams.AddParam('Accept-Encoding', 'deflate, br', rpkHEADER);
+      AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
+      AParams.AddParam('Accept-Encoding', 'gzip, deflate, br', rpkHEADER);
     end;
 
     vFree := False;
-    vSource := AParams.EncodeBody(vContentType, vFree, Compress);
+    vContentType := '';
+    vSource := AParams.EncodeBody(vContentType, vFree, CompressType);
     try
       if vContentType <> '' then
         AParams.AddParam('Content-Type', vContentType, rpkHEADER);
@@ -96,10 +98,8 @@ begin
         Response.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
         vContentType := vHttp.ContentType;
-        vContentEncoding := Response.ParamByName('Content-Encoding').AsString;
-        vCompress := Pos('deflate', LowerCase(vContentEncoding)) > 0;
-
-        Response.Params.DecodeBody(vResult, vContentType, vCompress);
+        Response.ContentEncoding := Response.ParamByName('Content-Encoding').AsString;
+        Response.Params.DecodeBody(vResult, vContentType, Response.ContentCompress);
       except
         on e : Exception do
           ResponseError := e.Message;

@@ -46,7 +46,6 @@ type
   private
     FAuthorization: TRALAuthorization;
     FContentType: StringRAL;
-    FContentEncoding : StringRAL;
     FAcceptEncoding : StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
@@ -58,8 +57,7 @@ type
   protected
     function GetURL : StringRAL;
     procedure SetQuery(const Value: StringRAL);
-    function GetAcceptCompress : boolean;
-    function GetContentCompress : boolean;
+    function GetAcceptCompress : TRALCompressType;
   public
     constructor Create;
     destructor Destroy; override;
@@ -72,13 +70,11 @@ type
     function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
     property URL: StringRAL read GetURL;
+    property AcceptCompress: TRALCompressType read GetAcceptCompress;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
-    property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
-    property ContentCompress: boolean read GetContentCompress;
     property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
-    property AcceptCompress: boolean read GetAcceptCompress;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write SetQuery;
@@ -92,14 +88,19 @@ implementation
 
 { TRALRequest }
 
-function TRALRequest.GetAcceptCompress : boolean;
+function TRALRequest.GetAcceptCompress : TRALCompressType;
+var
+  vStr : StringRAL;
 begin
-  Result := Pos('deflate', LowerCase(FAcceptEncoding)) > 0;
-end;
-
-function TRALRequest.GetContentCompress : boolean;
-begin
-  Result := Pos('deflate', LowerCase(FContentEncoding)) > 0;
+  vStr := LowerCase(FAcceptEncoding);
+  if (Pos('gzip', vStr) > 0) then
+    Result := ctGZip
+  else if (Pos('deflate', vStr) > 0) then
+    Result := ctDeflate
+  else if (Pos('zlib', vStr) > 0) then
+    Result := ctZLib
+  else
+    Result := ctNone;
 end;
 
 function TRALRequest.GetURL : StringRAL;

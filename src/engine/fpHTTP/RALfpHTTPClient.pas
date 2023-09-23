@@ -58,8 +58,8 @@ function TRALfpHttpClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParam
 var
   vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vContentType, vContentEncoding : StringRAL;
-  vFree, vCompress : boolean;
+  vContentType : StringRAL;
+  vFree : boolean;
 begin
   inherited;
   Response.Clear;
@@ -73,15 +73,16 @@ begin
   else
     AParams.AddParam('Connection', 'close', rpkHEADER);
 
-  if Compress then
+  Request.ContentCompress := CompressType;
+  if CompressType <> ctNone then
   begin
-    AParams.AddParam('Content-Encoding', 'deflate', rpkHEADER);
-    AParams.AddParam('Accept-Encoding', 'deflate, br', rpkHEADER);
+    AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', 'gzip, deflate, br', rpkHEADER);
   end;
 
   AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
-  vSource := AParams.EncodeBody(vContentType, vFree, Compress);
+  vSource := AParams.EncodeBody(vContentType, vFree, CompressType);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
     AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
@@ -100,10 +101,9 @@ begin
       end;
 
       vContentType := FHttp.ResponseHeaders.Values['Content-Type'];
-      vContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
-      vCompress := Pos('deflate', LowerCase(vContentEncoding)) > 0;
+      Response.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
 
-      Response.Params.DecodeBody(vResult, vContentType, vCompress);
+      Response.Params.DecodeBody(vResult, vContentType, Response.ContentCompress);
       Response.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       Response.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
     except

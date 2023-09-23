@@ -69,6 +69,7 @@ const
 
   // em = error messages
   emRouteAlreadyExists = 'Route already exists!';
+  emContentCheckError = 'Content check error';
 
   // wm = warning messages
   wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';

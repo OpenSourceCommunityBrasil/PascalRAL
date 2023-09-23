@@ -45,8 +45,8 @@ function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams
 var
   vInt: IntegerRAL;
   vSource : TStream;
-  vFree, vCompress: boolean;
-  vContentType, vContentEncoding : StringRAL;
+  vFree: boolean;
+  vContentType : StringRAL;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vParam : TRALParam;
@@ -61,10 +61,11 @@ begin
   else
     AParams.AddParam('Connection', 'close', rpkHEADER);
 
-  if Compress then
+  Request.ContentCompress := CompressType;
+  if CompressType <> ctNone then
   begin
-    AParams.AddParam('Content-Encoding', 'deflate', rpkHEADER);
-    AParams.AddParam('Accept-Encoding', 'deflate, br', rpkHEADER);
+    AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', 'gzip, deflate, br', rpkHEADER);
   end;
 
   SetLength(vHeaders, AParams.Count(rpkHEADER));
@@ -76,7 +77,7 @@ begin
   end;
 
   vFree := False;
-  vSource := AParams.EncodeBody(vContentType,vFree);
+  vSource := AParams.EncodeBody(vContentType, vFree, Request.ContentCompress);
   try
     FHttp.ContentType := vContentType;
     try
@@ -102,10 +103,8 @@ begin
         Response.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 
       vContentType := vResponse.MimeType;
-      vContentEncoding := vResponse.ContentEncoding;
-      vCompress := Pos('deflate', LowerCase(vContentEncoding)) > 0;
-
-      Response.Params.DecodeBody(vResponse.ContentStream, vContentType, vCompress);
+      Response.ContentEncoding := vResponse.ContentEncoding;
+      Response.Params.DecodeBody(vResponse.ContentStream, vContentType, Response.ContentCompress);
 
       ResponseCode := vResponse.GetStatusCode;
     except

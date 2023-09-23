@@ -166,15 +166,16 @@ begin
     end;
 
     vResponse := ProcessCommands(vRequest);
-    vResponse.Compress := vRequest.AcceptCompress;
+    vResponse.ContentEncoding := vRequest.AcceptEncoding;
+    // apenas pra mudar o contentencoding
+    vResponse.ContentCompress := vResponse.ContentCompress;
     try
       with vResponse do
       begin
         AResponseInfo.ResponseNo := StatusCode;
 
         AResponseInfo.Server := 'RAL_Indy';
-        if Compress then
-          AResponseInfo.ContentEncoding := 'deflate';
+        AResponseInfo.ContentEncoding := ContentEncoding;
 
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
 
