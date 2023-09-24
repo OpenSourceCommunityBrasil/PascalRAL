@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   IdCookie,
-  RALClient, RALParams, RALTypes;
+  RALClient, RALParams, RALTypes, RALConsts;
 
 type
 
@@ -75,7 +75,7 @@ begin
   if CompressType <> ctNone then
   begin
     FHttp.Request.ContentEncoding := Request.ContentEncoding;
-    FHttp.Request.AcceptEncoding := 'gzip, deflate';
+    FHttp.Request.AcceptEncoding := SupportedCompressKind;
   end;
 
   AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);

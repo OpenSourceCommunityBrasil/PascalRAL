@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALParams, RALTypes, RALConsts, RALMIMETypes;
+  RALParams, RALTypes, RALConsts, RALMIMETypes, RALTools;
 
 type
 
@@ -242,12 +242,7 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  case AValue of
-    ctNone    : FContentEncoding := '';
-    ctDeflate : FContentEncoding := 'deflate';
-    ctZLib    : FContentEncoding := 'zlib';
-    ctGZip    : FContentEncoding := 'gzip';
-  end;
+  FContentEncoding := CompressToStrCompress(AValue);
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;
@@ -272,8 +267,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if (vEnc = 'gzip') or (vEnc = 'deflate') or
-       (vEnc = 'zlib') then
+    if StrCompressToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;
@@ -300,8 +294,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if (vEnc = 'gzip') or (vEnc = 'deflate') or
-       (vEnc = 'zlib') then
+    if StrCompressToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;

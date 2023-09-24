@@ -77,7 +77,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', 'gzip, deflate', rpkHEADER);
+    AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
   end;
 
   AParams.AddParam('User-Agent', UserAgent, rpkHEADER);

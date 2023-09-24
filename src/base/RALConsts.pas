@@ -68,6 +68,8 @@ const
              + ' should try later</p>'
              + '</body></html>';
 
+  SupportedCompressKind = 'gzip, deflate';
+
   // constant internal messages
   // am = alert messages
 

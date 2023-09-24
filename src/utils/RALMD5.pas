@@ -33,7 +33,7 @@ implementation
 procedure TRALMD5.Compress;
 var
   W : array[0..15] of Cardinal;
-  A, B, C, D, Z: Cardinal;
+  A, B, C, D : Cardinal;
 
   function R1(x, y, z: Cardinal): Cardinal;
   begin

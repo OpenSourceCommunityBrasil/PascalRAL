@@ -15,6 +15,8 @@ function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALLowStr(AStr : StringRAL) : IntegerRAL;
 function RALHighStr(AStr : StringRAL) : IntegerRAL;
 function StrIsUTF8(AStr : StringRAL) : boolean;
+function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
+function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
 
 implementation
 
@@ -155,6 +157,28 @@ begin
     Result := ySeq > nSeq;
   finally
     FreeAndNil(vStr);
+  end;
+end;
+
+function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
+begin
+  if SameText(AStr,'gzip') then
+    Result := ctGZip
+  else if SameText(AStr,'zlib') then
+    Result := ctZLib
+  else if SameText(AStr,'deflate') then
+    Result := ctDeflate
+  else
+    Result := ctNone;
+end;
+
+function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
+begin
+  case ACompress of
+    ctNone    : Result := '';
+    ctGZip    : Result := 'gzip';
+    ctDeflate : Result := 'deflate';
+    ctZLib    : Result := 'zlib';
   end;
 end;
 
