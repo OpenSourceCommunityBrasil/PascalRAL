@@ -269,6 +269,8 @@ begin
 
         if vResponse.ContentEncoding <> '' then
           AResponse.ContentEncoding := vResponse.ContentEncoding;
+        if vResponse.AcceptEncoding <> '' then
+          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
 
         AResponse.Server := 'RAL_fpHTTP';
         if vConnClose then

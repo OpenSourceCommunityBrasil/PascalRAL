@@ -46,7 +46,6 @@ type
   private
     FAuthorization: TRALAuthorization;
     FContentType: StringRAL;
-    FAcceptEncoding : StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
     FMethod: TRALMethod;
@@ -57,7 +56,6 @@ type
   protected
     function GetURL : StringRAL;
     procedure SetQuery(const Value: StringRAL);
-    function GetAcceptCompress : TRALCompressType;
   public
     constructor Create;
     destructor Destroy; override;
@@ -69,14 +67,10 @@ type
     function AddFile(AStream: TStream; AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
     function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
-    function HasValidAcceptEncoding: boolean;
-
     property URL: StringRAL read GetURL;
-    property AcceptCompress: TRALCompressType read GetAcceptCompress;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
-    property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Method: TRALMethod read FMethod write FMethod;
     property Query: StringRAL read FQuery write SetQuery;
@@ -89,21 +83,6 @@ type
 implementation
 
 { TRALRequest }
-
-function TRALRequest.GetAcceptCompress : TRALCompressType;
-var
-  vStr : StringRAL;
-begin
-  vStr := LowerCase(FAcceptEncoding);
-  if (Pos('gzip', vStr) > 0) then
-    Result := ctGZip
-  else if (Pos('deflate', vStr) > 0) then
-    Result := ctDeflate
-  else if (Pos('zlib', vStr) > 0) then
-    Result := ctZLib
-  else
-    Result := ctNone;
-end;
 
 function TRALRequest.GetURL : StringRAL;
 begin
@@ -145,34 +124,6 @@ function TRALRequest.AddBody(AText : StringRAL; AContextType : StringRAL) : TRAL
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
-end;
-
-function TRALRequest.HasValidAcceptEncoding : boolean;
-var
-  vStr, vEnc : StringRAL;
-  vInt: integer;
-begin
-  Result := (Trim(FAcceptEncoding) = '');
-
-  if Result then
-    Exit;
-
-  vStr := LowerCase(Trim(FAcceptEncoding));
-  while vStr <> '' do begin
-    vInt := Pos(',',vStr);
-    if vInt <= 0 then
-      vInt := Length(vStr) + 1;
-    vEnc := Trim(Copy(vStr,1,vInt - 1));
-
-    if (vEnc = 'gzip') or (vEnc = 'deflate') or
-       (vEnc = 'zlib') or (vEnc = 'br') then
-    begin
-      Result := True;
-      Break;
-    end;
-
-    Delete(vStr,1,vInt);
-  end;
 end;
 
 function TRALRequest.AddField(AName, AValue : StringRAL) : TRALRequest;

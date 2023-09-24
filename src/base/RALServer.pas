@@ -451,16 +451,16 @@ begin
 
   if not ARequest.HasValidContentEncoding then
   begin
-    Result.Answer(415, RAL415Page);
-    Result.ContentCompress := ctNone;
+    Result.Answer(415, RAL415Page, rctTEXTHTML);
     Result.ContentEncoding := ARequest.ContentEncoding;
+    Result.AcceptEncoding := 'gzip, deflate';
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    Result.Answer(415, RAL415Page);
-    Result.ContentCompress := ctNone;
+    Result.Answer(415, RAL415Page, rctTEXTHTML);
     Result.ContentEncoding := ARequest.AcceptEncoding;
+    Result.AcceptEncoding := 'gzip, deflate';
     Exit;
   end;
 

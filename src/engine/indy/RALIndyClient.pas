@@ -75,7 +75,7 @@ begin
   if CompressType <> ctNone then
   begin
     FHttp.Request.ContentEncoding := Request.ContentEncoding;
-    FHttp.Request.AcceptEncoding := 'gzip, deflate, br';
+    FHttp.Request.AcceptEncoding := 'gzip, deflate';
   end;
 
   AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);

@@ -174,6 +174,8 @@ begin
 
         AResponseInfo.Server := 'RAL_Indy';
         AResponseInfo.ContentEncoding := ContentEncoding;
+        if vResponse.AcceptEncoding <> '' then
+          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
 
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
 

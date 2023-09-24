@@ -65,7 +65,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', 'gzip, deflate, br', rpkHEADER);
+    AParams.AddParam('Accept-Encoding', 'gzip, deflate', rpkHEADER);
   end;
 
   SetLength(vHeaders, AParams.Count(rpkHEADER));

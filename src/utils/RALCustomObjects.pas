@@ -22,11 +22,13 @@ type
   TRALHTTPHeaderInfo = class
   private
     FContentEncoding : StringRAL;
+    FAcceptEncoding : StringRAL;
     FParams: TRALParams;
   protected
     function GetParams: TRALParams;
     function GetContentCompress : TRALCompressType;
     procedure SetContentCompress(const AValue: TRALCompressType);
+    function GetAcceptCompress : TRALCompressType;
   public
     constructor Create;
     destructor Destroy; override;
@@ -49,10 +51,13 @@ type
     function Body : TRALParam;
 
     function HasValidContentEncoding: boolean;
+    function HasValidAcceptEncoding: boolean;
   published
     property Params: TRALParams read GetParams;
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentCompress: TRALCompressType read GetContentCompress write SetContentCompress;
+    property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
+    property AcceptCompress: TRALCompressType read GetAcceptCompress;
   end;
 
 implementation
@@ -65,6 +70,21 @@ begin
 end;
 
 { TRALHTTPHeaderInfo }
+
+function TRALHTTPHeaderInfo.GetAcceptCompress : TRALCompressType;
+var
+  vStr : StringRAL;
+begin
+  vStr := LowerCase(FAcceptEncoding);
+  if (Pos('gzip', vStr) > 0) then
+    Result := ctGZip
+  else if (Pos('deflate', vStr) > 0) then
+    Result := ctDeflate
+  else if (Pos('zlib', vStr) > 0) then
+    Result := ctZLib
+  else
+    Result := ctNone;
+end;
 
 function TRALHTTPHeaderInfo.GetParams: TRALParams;
 begin
@@ -247,19 +267,47 @@ begin
 
   vStr := LowerCase(Trim(FContentEncoding));
   while vStr <> '' do begin
-    vInt := Pos(',',vStr);
+    vInt := Pos(',', vStr);
     if vInt <= 0 then
       vInt := Length(vStr) + 1;
-    vEnc := Trim(Copy(vStr,1,vInt - 1));
+    vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
     if (vEnc = 'gzip') or (vEnc = 'deflate') or
-       (vEnc = 'zlib') or (vEnc = 'br') then
+       (vEnc = 'zlib') then
     begin
       Result := True;
       Break;
     end;
 
-    Delete(vStr,1,vInt);
+    Delete(vStr, 1, vInt);
+  end;
+end;
+
+function TRALHTTPHeaderInfo.HasValidAcceptEncoding : boolean;
+var
+  vStr, vEnc : StringRAL;
+  vInt: integer;
+begin
+  Result := (Trim(FAcceptEncoding) = '');
+
+  if Result then
+    Exit;
+
+  vStr := LowerCase(Trim(FAcceptEncoding));
+  while vStr <> '' do begin
+    vInt := Pos(',', vStr);
+    if vInt <= 0 then
+      vInt := Length(vStr) + 1;
+    vEnc := Trim(Copy(vStr, 1, vInt - 1));
+
+    if (vEnc = 'gzip') or (vEnc = 'deflate') or
+       (vEnc = 'zlib') then
+    begin
+      Result := True;
+      Break;
+    end;
+
+    Delete(vStr, 1, vInt);
   end;
 end;
 

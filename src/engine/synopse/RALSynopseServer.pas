@@ -253,6 +253,8 @@ begin
             Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
           if ContentType <> '' then
             Params.AddParam('Content-Type', ContentType, rpkHEADER);
+          if vResponse.AcceptEncoding <> '' then
+            Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
           AContext.OutContentType := STATICFILE_CONTENT_TYPE; // '!STATICFILE';
         end
         else
