@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
-  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication;
+  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts;
 
 type
 

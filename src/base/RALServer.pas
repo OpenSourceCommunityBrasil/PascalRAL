@@ -76,7 +76,7 @@ type
     FAuthentication: TRALAuthServer;
     FBruteForceProtection: TRALBruteForceProtection;
     FEngine: StringRAL;
-    FFavIcon: TMemoryStream;
+    FFavIcon: TFileName;
     FPort: IntegerRAL;
     FRoutes: TRALRoutes;
     FServerStatus: TStringList;
@@ -122,6 +122,7 @@ type
                           var AResponse: TRALResponse): boolean;
 
     function GetDefaultSSL : TRALSSL;
+    procedure loadFavIcon(AResponse : TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -132,6 +133,7 @@ type
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
     property Engine: StringRAL read FEngine;
+    property FavIcon: TFileName read FFavIcon write FFavIcon;
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
     property Options: TRALServerOptions read FOptions write SetOptions;
     property Port: IntegerRAL read FPort write SetPort;
@@ -215,7 +217,7 @@ begin
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
   FEngine := '';
-  FFavIcon := TMemoryStream.Create;
+  FFavIcon := '';
   FSessionTimeout := 30000;
   FCompressType := ctNone;
 
@@ -355,6 +357,36 @@ begin
   Result := False;
 end;
 
+procedure TRALServer.loadFavIcon(AResponse: TRALResponse);
+var
+  vFile : TMemoryStream;
+  vMime: TRALMIMEType;
+begin
+  if (FFavIcon = '') or (not FileExists(FFavIcon)) then
+  begin
+    AResponse.Answer(404, RAL404Page, rctTEXTHTML);
+  end
+  else begin
+    vFile := TMemoryStream.Create;
+    try
+      vFile.LoadFromFile(FFavIcon);
+      vFile.Position := 0;
+      AResponse.ResponseStream := vFile;
+    finally
+      FreeAndNil(vFile);
+    end;
+
+    vMime := TRALMIMEType.Create;
+    try
+      AResponse.ContentType := vMime.GetMIMEType(FFavIcon);
+      if AResponse.ContentType = '' then
+        AResponse.ContentType := rctIMAGEICON;
+    finally
+      FreeAndNil(vMime);
+    end;
+  end;
+end;
+
 destructor TRALServer.Destroy;
 begin
   if Assigned(FSSL) then
@@ -362,7 +394,6 @@ begin
 
   FreeAndNil(FRoutes);
   FreeAndNil(FServerStatus);
-  FreeAndNil(FFavIcon);
   FreeAndNil(FBruteForceProtection);
 
   CleanBlockedList;
@@ -453,14 +484,14 @@ begin
   begin
     Result.Answer(415, RAL415Page, rctTEXTHTML);
     Result.ContentEncoding := ARequest.ContentEncoding;
-    Result.AcceptEncoding := 'gzip, deflate';
+    Result.AcceptEncoding := SupportedCompressKind;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     Result.Answer(415, RAL415Page, rctTEXTHTML);
     Result.ContentEncoding := ARequest.AcceptEncoding;
-    Result.AcceptEncoding := 'gzip, deflate';
+    Result.AcceptEncoding := SupportedCompressKind;
     Exit;
   end;
 
@@ -500,8 +531,7 @@ begin
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
     begin
-      Result.ContentType := rctIMAGEICON;
-      Result.ResponseStream := FFavIcon;
+      loadFavIcon(Result);
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
