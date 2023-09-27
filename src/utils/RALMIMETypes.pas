@@ -275,9 +275,8 @@ function TRALMIMEType.GetSystemTypes: boolean;
         if (LItem <> '') and not LItem.StartsWith('#') then
         begin
           LArr := LItem.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-          if LArr[0].Trim <> '' then
-            for i := 1 to Length(LArr) - 1 do
-              FInternalMIMEList.Add(LExt + '=' + LType);
+          if (LArr[0].Trim <> '') and (Length(LArr) > 1) then
+            FInternalMIMEList.Add(LArr[1].Trim + '=' + LArr[0].Trim);
         end;
       end;
     finally
@@ -381,7 +380,7 @@ begin
     LoadRegistry;
     {$ENDIF}
     {$IF DEFINED(LINUX)}
-    LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
+    //LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
     LoadFile('/etc/' + CTypeFile);
     {$ENDIF}
     {$IF DEFINED(MACOS) and not DEFINED(IOS)}

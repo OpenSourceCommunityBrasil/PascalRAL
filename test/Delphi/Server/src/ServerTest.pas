@@ -15,7 +15,7 @@ uses
   uRotas,
 
   RALServer, RALRequest, RALResponse, RALRoutes, RALIndyServer, RALSynopseServer,
-  RALTools, RALAuthentication
+  RALTools, RALAuthentication, RALConsts
 
     ;
 
@@ -163,14 +163,15 @@ begin
   if rbIndy.IsChecked then
   begin
     FServer := TRALIndyServer.Create(self);
-    FServer.SSL.Enabled := cbUseSSL.IsChecked;
-    TRALIndySSL(FServer.SSL).SSLOptions.CertFile := esslCertFile.Text;
-    TRALIndySSL(FServer.SSL).SSLOptions.KeyFile := esslCertKeyFile.Text;
-    // TRALIndySSL(FServer.SSL).SSLOptions.Method := sslvTLSv1_2;
+    TRALIndyServer(FServer).SSL.Enabled := cbUseSSL.IsChecked;
+    TRALIndyServer(FServer).SSL.SSLOptions.CertFile := esslCertFile.Text;
+    TRALIndyServer(FServer).SSL.SSLOptions.KeyFile := esslCertKeyFile.Text;
+    // TRALIndyServer(FServer).SSL.SSLOptions.Method := sslvTLSv1_2;
   end
   else if rbSynopse.IsChecked then
   begin
     FServer := TRALSynopseServer.Create(self);
+    TRALSynopseServer(FServer).SSL.Enabled := cbUseSSL.IsChecked;
   end;
 
   case saAuthType.ItemIndex of
@@ -208,6 +209,7 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  Self.Caption := 'RAL Test Server v' + RALVERSION;
   sgRoutes.RowCount := 0;
 end;
 

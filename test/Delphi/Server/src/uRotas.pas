@@ -58,8 +58,7 @@ begin
   case ARequest.Method of
     amPOST, amPUT, amPATCH:
       begin
-        filename := TRALHTTPCoder.DecodeURL(ARequest.Params.ParamByName['filename']
-          .AsString);
+        filename := TRALHTTPCoder.DecodeURL(ARequest.ParamByName('filename').AsString);
         vBody := ARequest.Params.Body;
         for I := 0 to pred(vBody.Count) do
           TRALParam(vBody.Items[I]).SaveToFile(filename);

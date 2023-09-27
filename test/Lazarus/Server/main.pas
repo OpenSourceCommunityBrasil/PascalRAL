@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, ComCtrls,
   StdCtrls, Grids, LazUTF8,
   RALServer, RALIndyServer, RALFpHttpServer, RALSynopseServer, RALResponse,
-  RALRequest, RALRoutes, RALAuthentication, RALTools,
+  RALRequest, RALRoutes, RALAuthentication, RALConsts, RALTools,
   uroutes;
 
 type
@@ -96,16 +96,13 @@ begin
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
-var
-  leaktest: TForm;
 begin
   FServer := nil;
+  Self.Caption := 'RAL Test Server v' + RALVERSION;
   sgRoutes.RowCount := 1;
   sgRoutes.Cols[0].Text := 'Route';
   sgRoutes.Cols[1].Text := 'Description';
   sgRoutes.Cols[2].Text := 'SkipAuth';
-
-  leaktest := TForm.Create(nil);
 end;
 
 procedure TForm1.bAddClick(Sender: TObject);
@@ -145,19 +142,21 @@ begin
   case Engine.ItemIndex of
     0: begin
       FServer := TRALfpHttpServer.Create(Self);
-      TRALfpHTTPSSL(FServer.SSL).SSLOptions.CertificateFile := esslCertFile.Text;
+      TRALfpHttpServer(FServer).SSL.SSLOptions.CertificateFile := esslCertFile.Text;
+      TRALfpHttpServer(FServer).SSL.Enabled := cbUseSSL.Checked;
     end;
     1: begin
       FServer := TRALIndyServer.Create(Self);
-      TRALIndySSL(FServer.SSL).SSLOptions.CertFile := esslCertFile.Text;
-      TRALIndySSL(FServer.SSL).SSLOptions.KeyFile := esslCertKeyFile.Text;
-      //TRALIndySSL(FServer.SSL).SSLOptions.Method := sslvTLSv1_2;
+      TRALIndyServer(FServer).SSL.SSLOptions.CertFile := esslCertFile.Text;
+      TRALIndyServer(FServer).SSL.SSLOptions.KeyFile := esslCertKeyFile.Text;
+      //TRALIndyServer(FServer).SSL.SSLOptions.Method := sslvTLSv1_2;
+      TRALIndyServer(FServer).SSL.Enabled := cbUseSSL.Checked;
     end;
     2: begin
       FServer := TRALSynopseServer.Create(Self);
+      TRALSynopseServer(FServer).SSL.Enabled := cbUseSSL.Checked;
     end;
   end;
-  FServer.SSL.Enabled := cbUseSSL.Checked;
 
   case saAuthType.ItemIndex of
     0:
