@@ -23,7 +23,6 @@ type
     FUserAgent: StringRAL;
     FEngine: StringRAL;
     FKeepAlive : boolean;
-    FAutoGetToken : boolean;
     FCompressType: TRALCompressType;
 
     FLastRoute : StringRAL;
@@ -91,7 +90,6 @@ type
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
-    property AutoGetToken: boolean read FAutoGetToken write FAutoGetToken;
     property CompressType : TRALCompressType read FCompressType write FCompressType;
   end;
 
@@ -124,10 +122,13 @@ begin
     vConta := 0;
     repeat
       vContinue := True;
-      if (FAuthentication <> nil) and (FAutoGetToken) then
-        vContinue := GetToken(vParams, FLastRequest.Params)
-      else if (FAuthentication <> nil) and (not FAutoGetToken) then
-        FAuthentication.GetHeader(vParams,FLastRequest.Params);
+      if (FAuthentication <> nil) then
+      begin
+        if (FAuthentication.AutoGetToken) then
+          vContinue := GetToken(vParams, FLastRequest.Params)
+        else
+          FAuthentication.GetHeader(vParams,FLastRequest.Params);
+      end;
 
       if vContinue then
       begin
@@ -161,7 +162,6 @@ begin
   FKeepAlive := True;
   FConnectTimeout := 30000;
   FRequestTimeout := 10000;
-  FAutoGetToken := True;
   FCompressType := ctGZip;
 
   FLastRequest := TRALHTTPHeaderInfo.Create;

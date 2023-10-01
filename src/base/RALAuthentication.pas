@@ -36,9 +36,14 @@ type
   TRALAuthClient = class(TRALAuthentication)
   private
     FOnBeforeGetToken : TRALOnBeforeGetToken;
+    FAutoGetToken : boolean;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure GetHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
+
     property OnBeforeGetToken : TRALOnBeforeGetToken read FOnBeforeGetToken write FOnBeforeGetToken;
+  published
+    property AutoGetToken : boolean read FAutoGetToken write FAutoGetToken;
   end;
 
   TRALAuthServer = class(TRALAuthentication)
@@ -235,6 +240,14 @@ type
   end;
 
 implementation
+
+{ TRALAuthClient }
+
+constructor TRALAuthClient.Create(AOwner : TComponent);
+begin
+  inherited;
+  FAutoGetToken := True;
+end;
 
 { TRALClientDigest }
 
