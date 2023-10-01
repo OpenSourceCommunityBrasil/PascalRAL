@@ -37,7 +37,8 @@ type
     destructor Destroy; override;
 
     function GetNamePath: string; override;
-    procedure Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
+    procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse);
+    function GetAllowMethods : StringRAL;
 
     property Route: StringRAL read GetRoute;
   published
@@ -87,12 +88,28 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALRoute.Execute(ARequest: TRALRequest; var AResponse: TRALResponse);
+procedure TRALRoute.Execute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if Assigned(OnReply) then
     OnReply(Self, ARequest, AResponse)
   else
     AResponse.Answer(404, RAL404Page);
+end;
+
+function TRALRoute.GetAllowMethods : StringRAL;
+var
+  vMethod : TRALMethod;
+begin
+  Result := '';
+  for vMethod := Low(TRALMethods) to High(TRALMethods) do
+  begin
+    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or (amALL in FAllowedMethods)) then
+    begin
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + RALMethodToHTTPMethod(vMethod);
+    end;
+  end;
 end;
 
 procedure TRALRoute.SetRouteDomain(AValue: StringRAL);

@@ -68,6 +68,28 @@ type
   TRALOnClientTryBlocked = procedure(Sender: TObject; AClientIP: StringRAL; ANumTry: IntegerRAL) of object;
   TRALOnClientWasBlocked = procedure(Sender: TObject; AClientIP: StringRAL) of object;
 
+  { TRALCORSOptions }
+
+  TRALCORSOptions = class(TPersistent)
+  private
+    FEnabled: boolean;
+    FAllowOrigin: StringRAL;
+    FAllowHeaders: TStringList;
+    FMaxAge: IntegerRAL;
+  protected
+    procedure SetAllowHeaders(AValue : TStringList);
+  public
+    constructor Create;
+    destructor Destroy;
+
+    function GetAllowHeaders : StringRAL;
+  published
+    property Enabled: boolean read FEnabled write FEnabled;
+    property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
+    property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
+    property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
+  end;
+
   { TRALServer }
 
   TRALServer = class(TRALComponent)
@@ -85,6 +107,7 @@ type
     FSSL: TRALSSL;
     FIPConfig: TRALIPConfig;
     FCompressType: TRALCompressType;
+    FCORSOptions : TRALCORSOptions;
 
     FBlackIPList: TRALStringListSafe;
     FWhiteIPList: TRALStringListSafe;
@@ -122,7 +145,8 @@ type
                           var AResponse: TRALResponse): boolean;
 
     function GetDefaultSSL : TRALSSL;
-    procedure loadFavIcon(AResponse : TRALResponse);
+    procedure LoadFavIcon(AResponse : TRALResponse);
+    procedure AnalizeRoute(ARoute : TRALRoute; ARequest : TRALRequest; AResponse : TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -144,6 +168,7 @@ type
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
     property CompressType : TRALCompressType read FCompressType write FCompressType;
+    property CORSOptions : TRALCORSOptions read FCORSOptions write FCORSOptions;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
@@ -152,6 +177,63 @@ type
   end;
 
 implementation
+
+{ TRALCORSOptions }
+
+procedure TRALCORSOptions.SetAllowHeaders(AValue : TStringList);
+begin
+  if FAllowHeaders = AValue then
+    Exit;
+
+  if Trim(AValue.Text) <> '' then
+  begin
+    FAllowHeaders.Text := AValue.Text
+  end
+  else
+  begin
+    FAllowHeaders.Add('Content-Type');
+    FAllowHeaders.Add('Origin');
+    FAllowHeaders.Add('Accept');
+    FAllowHeaders.Add('Authorization');
+    FAllowHeaders.Add('Content-Encoding');
+    FAllowHeaders.Add('Accept-Encoding');
+  end;
+end;
+
+constructor TRALCORSOptions.Create;
+begin
+  inherited;
+  FEnabled := False;
+  FAllowOrigin := '*';
+  FMaxAge := 86400;
+
+  FAllowHeaders := TStringList.Create;
+  FAllowHeaders.Add('Content-Type');
+  FAllowHeaders.Add('Origin');
+  FAllowHeaders.Add('Accept');
+  FAllowHeaders.Add('Authorization');
+  FAllowHeaders.Add('Content-Encoding');
+  FAllowHeaders.Add('Accept-Encoding');
+end;
+
+destructor TRALCORSOptions.Destroy;
+begin
+  FreeAndNil(FAllowHeaders);
+  inherited;
+end;
+
+function TRALCORSOptions.GetAllowHeaders : StringRAL;
+var
+  vInt : IntegerRAL;
+begin
+  Result := '';
+  for vInt := 0 to Pred(FAllowHeaders.Count) do
+  begin
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + Trim(FAllowHeaders.Strings[vInt]);
+  end;
+end;
 
 { TRALIPConfig }
 
@@ -225,6 +307,7 @@ begin
   FWhiteIPList := TRALStringListSafe.Create;
   FBlackIPList := TRALStringListSafe.Create;
   FIPConfig := TRALIPConfig.Create(Self);
+  FCORSOptions := TRALCORSOptions.Create;
 
 //  liberando localhost
 //  if FWhiteIPList.Text = '' then begin
@@ -357,7 +440,7 @@ begin
   Result := False;
 end;
 
-procedure TRALServer.loadFavIcon(AResponse: TRALResponse);
+procedure TRALServer.LoadFavIcon(AResponse: TRALResponse);
 var
   vFile : TMemoryStream;
   vMime: TRALMIMEType;
@@ -387,6 +470,27 @@ begin
   end;
 end;
 
+procedure TRALServer.AnalizeRoute(ARoute : TRALRoute; ARequest : TRALRequest; AResponse : TRALResponse);
+begin
+  if FCORSOptions.Enabled then
+  begin
+    AResponse.Params.AddParam('Access-Control-Allow-Origin',FCORSOptions.AllowOrigin);
+    if ARequest.Method = amOPTIONS then begin
+      AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods);
+      AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders);
+      if FCORSOptions.MaxAge > 0 then
+        AResponse.Params.AddParam('Access-Control-Max-Age', IntToStr(FCORSOptions.MaxAge));
+    end
+    else
+    begin
+      ARoute.Execute(ARequest, AResponse);
+    end;
+  end
+  else begin
+    ARoute.Execute(ARequest, AResponse);
+  end;
+end;
+
 destructor TRALServer.Destroy;
 begin
   if Assigned(FSSL) then
@@ -403,6 +507,7 @@ begin
   FreeAndNil(FBlackIPList);
 
   FreeAndNil(FIPConfig);
+  FreeAndNil(FCORSOptions);
 
   inherited;
 end;
@@ -531,7 +636,7 @@ begin
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
     begin
-      loadFavIcon(Result);
+      LoadFavIcon(Result);
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
@@ -565,7 +670,7 @@ begin
     begin
       DelBlockList(ARequest.ClientInfo.IP);
 
-      vRoute.Execute(ARequest, Result);
+      AnalizeRoute(vRoute, ARequest, Result);
     end;
   end;
 
@@ -617,7 +722,7 @@ begin
   if FAuthentication <> nil then
   begin
     FAuthentication.Validate(ARequest, AResponse);
-    Result := AResponse.StatusCode = 200;
+    Result := AResponse.StatusCode < 400;
   end;
 end;
 
