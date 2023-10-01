@@ -85,11 +85,11 @@ begin
             Result := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amDELETE:
             Result := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', False, vSource, nil);
-          amTRACE  :
+          amTRACE:
             Result := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', False, vSource, nil);
-          amHEAD   :
+          amHEAD:
             Result := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
-          amOPTION :
+          amOPTIONS:
             Result := vHttp.Request(vAddress, 'OPTION', vKeepAlive, vHeader, '', '', False, vSource, nil);
         end;
         vResult := TStringStream.Create(vHttp.Content);
