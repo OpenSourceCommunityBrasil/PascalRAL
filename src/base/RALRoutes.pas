@@ -101,9 +101,10 @@ var
   vMethod : TRALMethod;
 begin
   Result := '';
-  for vMethod := Low(TRALMethods) to High(TRALMethods) do
+  for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or (amALL in FAllowedMethods)) then
+    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or
+       (amALL in FAllowedMethods)) then
     begin
       if Result <> '' then
         Result := Result + ', ';

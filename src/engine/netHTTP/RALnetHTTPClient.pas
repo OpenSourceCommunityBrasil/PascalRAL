@@ -96,7 +96,7 @@ begin
           vResponse := FHttp.Trace(AURL, nil, vHeaders);
         amHEAD:
           vResponse := FHttp.Head(AURL, vHeaders);
-        amOPTION:
+        amOPTIONS:
           vResponse := FHttp.Options(AURL, nil, vHeaders);
       end;
       for vInt := 0 to Pred(Length(vResponse.Headers)) do
