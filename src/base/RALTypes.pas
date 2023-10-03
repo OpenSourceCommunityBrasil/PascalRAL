@@ -8,7 +8,7 @@ interface
 {
   These definitions are meant to keep same code across all versions of the IDE
   or IDEs that might differ on the charset code or basic type length.
-  Expect heavy usage of IFDEFs at this point
+  Expect heavy usage of IFDEFs at this unit
 }
 
 uses

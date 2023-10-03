@@ -31,9 +31,6 @@ begin
   // 256 - varString  - ansistring
   // 008 - varOleStr  - widestring
 
-  { TODO -o Fernando -c Implementacao :
-    Analisar compatibilidade com indy e synopse abaixo.
-    Indy usa ANSI pra tudo, Synopse usa UTF8 }
   case vTyp of
     varUString, varString, varOleStr:
     begin
