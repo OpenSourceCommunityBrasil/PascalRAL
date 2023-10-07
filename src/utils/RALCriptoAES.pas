@@ -10,7 +10,8 @@ unit RALCriptoAES;
 interface
 
 uses
-  Classes, SysUtils, RALCripto;
+  Classes, SysUtils,
+  RALCripto, RALTypes;
 
 type
   TRALAESType = (tAES128, tAES192, tAES256);
@@ -21,37 +22,38 @@ type
   private
     FAESType: TRALAESType;
     FAESKeys: array of array of byte;
-    FLogAES : TStringList;
+    FMulti2: array[0..255] of byte;
+    FMulti3: array[0..255] of byte;
   protected
-    procedure LogAES(AStrState : string; AStage : TBytes);
+    procedure Initialize;
     function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 
     function Multi2(AValue : Byte) : Byte;
     function Multi3(AValue : Byte) : Byte;
     function RCON(AInt : integer) : UInt32;
 
-    function RoundKey(AValue, AKey : TBytes) : TBytes;
+    // cipher encode
+    procedure RoundKey(AInput, AOutput : PByte; AKey : TBytes);
+    procedure EncSubBytes(AInput, AOutput : PByte);
+    procedure EncShiftRows(AInput, AOutput : PByte);
+    procedure EncMixColumns(AInput, AOutput : PByte);
+    procedure EncSubShiftRows(AInput, AOutput : PByte);
 
     // key expansion
     function RotWord(AInt : UInt32) : UInt32;
     function SubWord(AInt : UInt32) : UInt32;
     function WordToBytes(AInt : UInt32) : TBytes;
 
-    // cipher encode
-    function EncSubBytes(ABytes : TBytes) : TBytes;
-    function EncShiftRows(ABytes : TBytes) : TBytes;
-    function EncMixColumns(ABytes : TBytes) : TBytes;
-
     procedure SetAESType(AValue : TRALAESType);
-    procedure SetKey(AValue : string); override;
+    procedure SetKey(AValue : StringRAL); override;
 
     procedure KeyExpansion;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function Encode(AValue : TStream) : string; override;
-    function Decode(AValue : TStream) : string; override;
+    function EncodeAsStream(AValue : TStream) : TStringStream; override;
+    function DecodeAsStream(AValue : TStream) : TStringStream; override;
 
     function AESKeys(AIndex : integer) : TBytes;
     function CountKeys : integer;
@@ -66,26 +68,6 @@ const
   cNumberRounds : array[TRALAESType] of integer = (10, 12, 14);  // nr
   cKeyLength : array[TRALAESType] of integer = (4, 6, 8);        // nk
   cBlockSize : integer = 4;                                      // nb
-
-  // constantes para ser usada no KeyExpansion, para usada deve fazer um deslocamento
-  // para esquerda de 24
-  cRCON : array[1..255] of Byte = (
-         $01, $02, $04, $08, $10, $20, $40, $80, $1b, $36, $6c, $d8, $ab, $4d, $9a, $2f,
-         $5e, $bc, $63, $c6, $97, $35, $6a, $d4, $b3, $7d, $fa, $ef, $c5, $91, $39, $72,
-         $e4, $d3, $bd, $61, $c2, $9f, $25, $4a, $94, $33, $66, $cc, $83, $1d, $3a, $74,
-         $e8, $cb, $8d, $01, $02, $04, $08, $10, $20, $40, $80, $1b, $36, $6c, $d8, $ab,
-         $4d, $9a, $2f, $5e, $bc, $63, $c6, $97, $35, $6a, $d4, $b3, $7d, $fa, $ef, $c5,
-         $91, $39, $72, $e4, $d3, $bd, $61, $c2, $9f, $25, $4a, $94, $33, $66, $cc, $83,
-         $1d, $3a, $74, $e8, $cb, $8d, $01, $02, $04, $08, $10, $20, $40, $80, $1b, $36,
-         $6c, $d8, $ab, $4d, $9a, $2f, $5e, $bc, $63, $c6, $97, $35, $6a, $d4, $b3, $7d,
-         $fa, $ef, $c5, $91, $39, $72, $e4, $d3, $bd, $61, $c2, $9f, $25, $4a, $94, $33,
-         $66, $cc, $83, $1d, $3a, $74, $e8, $cb, $8d, $01, $02, $04, $08, $10, $20, $40,
-         $80, $1b, $36, $6c, $d8, $ab, $4d, $9a, $2f, $5e, $bc, $63, $c6, $97, $35, $6a,
-         $d4, $b3, $7d, $fa, $ef, $c5, $91, $39, $72, $e4, $d3, $bd, $61, $c2, $9f, $25,
-         $4a, $94, $33, $66, $cc, $83, $1d, $3a, $74, $e8, $cb, $8d, $01, $02, $04, $08,
-         $10, $20, $40, $80, $1b, $36, $6c, $d8, $ab, $4d, $9a, $2f, $5e, $bc, $63, $c6,
-         $97, $35, $6a, $d4, $b3, $7d, $fa, $ef, $c5, $91, $39, $72, $e4, $d3, $bd, $61,
-         $c2, $9f, $25, $4a, $94, $33, $66, $cc, $83, $1d, $3a, $74, $e8, $cb, $8d);
 
   // constantes de substituicao no encode S-BOX
   cEncSBOX : array[0..255] of Byte = (
@@ -132,7 +114,6 @@ var
   vNum : TBytes;
 begin
   vNum := WordToBytes(AInt);
-
   Result := UInt32(vNum[0] +
                    vNum[3] shl 8 +
                    vNum[2] shl 16 +
@@ -144,7 +125,6 @@ var
   vNum : TBytes;
 begin
   vNum := WordToBytes(AInt);
-
   Result := UInt32(cEncSBOX[vNum[3]] +
                    cEncSBOX[vNum[2]] shl 8 +
                    cEncSBOX[vNum[1]] shl 16 +
@@ -167,14 +147,15 @@ end;
 
 function TRALCriptoAES.RCON(AInt : integer) : UInt32;
 var
-  vInt : integer;
+  vInt : IntegerRAL;
 begin
   AInt := AInt - 1;
   if AInt < 0 then
     AInt := 0;
 
   Result := 1;
-  for vInt := 1 to AInt do begin
+  for vInt := 1 to AInt do
+  begin
     Result := Result * 2;
     if Result > 255 then
       Result := (Result - 256) xor 27;
@@ -182,88 +163,126 @@ begin
   Result := Result shl 24;
 end;
 
-function TRALCriptoAES.RoundKey(AValue, AKey : TBytes) : TBytes;
+procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : TBytes);
 var
-  vInt : Integer;
+  vInt : IntegerRAL;
 begin
-  SetLength(Result, 16);
-  for vInt := 0 to High(AValue) do
-    Result[vInt] := AValue[vInt] xor AKey[vInt];
+  vInt := 0;
+  while vInt < 16 do
+  begin
+    PUInt32(AInput + vInt)^ := PUInt32(AInput + vInt)^ xor PUInt32(@AKey[vInt])^;
+    vInt := vInt + 4;
+  end;
+  Move(AInput^, AOutput^, 16);
 end;
 
-procedure TRALCriptoAES.LogAES(AStrState : string; AStage : TBytes);
+procedure TRALCriptoAES.EncSubBytes(AInput, AOutput : PByte);
 var
-  vInt : integer;
-  vBytes : string;
+  vInt : IntegerRAL;
 begin
-  FLogAES.Add(AStrState);
-  vBytes := '';
-  for vInt := 0 to High(AStage) do
-  begin
-    if vBytes <> '' then
-      vBytes := vBytes + ' ';
-    vBytes := vBytes + IntToHex(AStage[vInt],2);
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := cEncSBOX[(AInput + vInt)^];
+  Move(AOutput^, AInput^, 16);
+end;
 
-    if vInt mod 4 = 3 then
-    begin
-      FLogAES.Add(vBytes);
-      vBytes := '';
+procedure TRALCriptoAES.EncShiftRows(AInput, AOutput : PByte);
+const
+  vShift : array[0..15] of Byte = (00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11);
+var
+  vInt : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := (AInput + vShift[vInt])^;
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.EncMixColumns(AInput, AOutput : PByte);
+var
+  vInt : IntegerRAL;
+  vPosMix, vProx : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+  begin
+    vPosMix := vInt mod 4;
+    vProx := (vInt div 4) * 4;
+    case vPosMix of
+      0 : begin
+        (AOutput + vInt)^ := FMulti2[(AInput + vProx)^] xor
+                             FMulti3[(AInput + vProx + 1)^] xor
+                             (AInput + vProx + 2)^ xor
+                             (AInput + vProx + 3)^;
+      end;
+      1 : begin
+        (AOutput + vInt)^ := (AInput + vProx)^ xor
+                             FMulti2[(AInput + vProx + 1)^] xor
+                             FMulti3[(AInput + vProx + 2)^] xor
+                             (AInput + vProx + 3)^;
+      end;
+      2 : begin
+        (AOutput + vInt)^ := (AInput + vProx)^ xor
+                             (AInput + vProx + 1)^ xor
+                             FMulti2[(AInput + vProx + 2)^] xor
+                             FMulti3[(AInput + vProx + 3)^];
+      end;
+      3 : begin
+        (AOutput + vInt)^ := FMulti3[(AInput + vProx)^] xor
+                             (AInput + vProx + 1)^ xor
+                             (AInput + vProx + 2)^ xor
+                             FMulti2[(AInput + vProx + 3)^];
+      end;
     end;
   end;
-  FLogAES.Add('');
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.EncSubShiftRows(AInput, AOutput : PByte);
+const
+  vShift : array[0..15] of Byte = (00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11);
+var
+  vInt : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := cEncSBOX[(AInput + vShift[vInt])^];
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.Initialize;
+var
+  vByte : Byte;
+begin
+  for vByte := 0 to 255 do begin
+    FMulti2[vByte] := Multi2(vByte);
+    FMulti3[vByte] := Multi3(vByte);
+  end;
 end;
 
 function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
 var
-  vStage : TBytes;
-  vLen, vPosKey : integer;
+  vPosKey : IntegerRAL;
 begin
-  SetLength(vStage, 16);
   Result := 0;
   while AInputLen > 0 do
   begin
-    vLen := 16;
-    if AInputLen < 16 then
-      vLen := AInputLen;
-
-    FillChar(vStage[0], 16, 0);
-    Move(AInput^, vStage[0], vLen);
-    LogAES('Input',vStage);
-
-    vStage := RoundKey(vStage, FAESKeys[0]);
-    LogAES('Key 0',FAESKeys[0]);
-    LogAES('Round 0',vStage);
+    RoundKey(AInput, AOutput, FAESKeys[0]);
 
     vPosKey := 1;
     while vPosKey < Length(FAESKeys) - 1 do
     begin
-      vStage := EncSubBytes(vStage);
-      LogAES('SubBytes '+IntToStr(vPosKey),vStage);
-      vStage := EncShiftRows(vStage);
-      LogAES('ShiftRows '+IntToStr(vPosKey),vStage);
-      vStage := EncMixColumns(vStage);
-      LogAES('MixColumns '+IntToStr(vPosKey),vStage);
-      vStage := RoundKey(vStage, FAESKeys[vPosKey]);
-      LogAES('Key '+IntToStr(vPosKey),FAESKeys[vPosKey]);
-      LogAES('Round '+IntToStr(vPosKey),vStage);
+      EncSubShiftRows(AInput, AOutput);
+      EncMixColumns(AInput, AOutput);
+      RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
 
       vPosKey := vPosKey + 1;
     end;
 
-    vStage := EncSubBytes(vStage);
-    LogAES('SubBytes '+IntToStr(vPosKey),vStage);
-    vStage := EncShiftRows(vStage);
-    LogAES('ShiftRows '+IntToStr(vPosKey),vStage);
-    vStage := RoundKey(vStage, FAESKeys[vPosKey]);
-    LogAES('Key '+IntToStr(vPosKey),FAESKeys[vPosKey]);
-    LogAES('Output',vStage);
+    EncSubShiftRows(AInput, AOutput);
+    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
 
-    Move(vStage[0], AOutput^, 16);
-
-    AInputLen := AInputLen - vLen;
-    AInput := AInput + vLen;
     Result := Result + 16;
+    AInput := AInput + 16;
     AOutput := AOutput + 16;
+
+    AInputLen := AInputLen - 16;
   end;
 end;
 
@@ -280,57 +299,6 @@ begin
   Result := Multi2(AValue) xor AValue;
 end;
 
-function TRALCriptoAES.EncSubBytes(ABytes : TBytes) : TBytes;
-var
-  vInt : Integer;
-begin
-  SetLength(Result, 16);
-  for vInt := 0 to High(ABytes) do
-    Result[vInt] := cEncSBOX[ABytes[vInt]];
-end;
-
-function TRALCriptoAES.EncShiftRows(ABytes : TBytes) : TBytes;
-const
-  //00,01,02,03,05,06,07,04,10,11,08,09,15,12,13,14
-  //00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11
-  vShift : array[0..15] of Byte = (00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11);
-var
-  vInt : Integer;
-begin
-  SetLength(Result, 16);
-  for vInt := 0 to High(ABytes) do
-    Result[vInt] := ABytes[vShift[vInt]];
-end;
-
-function TRALCriptoAES.EncMixColumns(ABytes : TBytes) : TBytes;
-const
-  vMix : array[0..3,0..3] of Byte = ((2,3,1,1),(1,2,3,1),(1,1,2,3),(3,1,1,2));
-var
-  vInt1, vInt2 : Integer;
-  vPosMix, vProx : Integer;
-  vRes : Byte;
-begin
-  SetLength(Result, 16);
-
-  for vInt1 := 0 to High(ABytes) do
-  begin
-    vRes := 0;
-    vPosMix := vInt1 mod 4;
-    vProx := (vInt1 div 4) * 4;
-    vRes := 0;
-    for vInt2 := 0 to 3 do
-    begin
-      case vMix[vPosMix][vInt2] of
-        1 : vRes := vRes xor ABytes[vProx];
-        2 : vRes := vRes xor Multi2(ABytes[vProx]);
-        3 : vRes := vRes xor Multi3(ABytes[vProx]);
-      end;
-      vProx := vProx + 1;
-    end;
-    Result[vInt1] := vRes;
-  end;
-end;
-
 procedure TRALCriptoAES.SetAESType(AValue : TRALAESType);
 begin
   if FAESType = AValue then
@@ -340,7 +308,7 @@ begin
   KeyExpansion;
 end;
 
-procedure TRALCriptoAES.SetKey(AValue : string);
+procedure TRALCriptoAES.SetKey(AValue : StringRAL);
 begin
   inherited SetKey(AValue);
   KeyExpansion;
@@ -349,10 +317,10 @@ end;
 procedure TRALCriptoAES.KeyExpansion;
 var
   vTemp : UInt32;
-  vInt, vNk, vNb, vNr : integer;
+  vInt, vNk, vNb, vNr : IntegerRAL;
   vKey, vNum : TBytes;
   vWords : array of UInt32;
-  vW1, vW2, vW3, vW4 : integer;
+  vW1, vW2, vW3, vW4 : IntegerRAL;
 begin
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
@@ -385,7 +353,6 @@ begin
 
     if (vInt mod vNk = 0) then
       vTemp := SubWord(RotWord(vTemp)) xor (RCON(vInt div vNk))
-//      vTemp := SubWord(RotWord(vTemp)) xor (cRCON[vInt div vNk] shl 24)
     else if (vNk > 6) and (vInt mod vNk = 4) then
       vTemp := SubWord(vTemp);
 
@@ -407,7 +374,7 @@ constructor TRALCriptoAES.Create;
 begin
   inherited;
   FAESType := tAES128;
-  FLogAES := TStringList.Create;
+  Initialize;
 end;
 
 destructor TRALCriptoAES.Destroy;
@@ -415,38 +382,33 @@ begin
   inherited Destroy;
 end;
 
-function TRALCriptoAES.Encode(AValue : TStream) : string;
+function TRALCriptoAES.EncodeAsStream(AValue : TStream) : TStringStream;
 var
   vInBuf: array[0..4095] of Byte;
   vOutBuf: array[0..4095] of Byte;
-  vBytesRead, vBytesWrite: integer;
-  vPosition, vSize : int64;
-  vStream : TStringStream;
+  vBytesRead, vBytesWrite: IntegerRAL;
+  vPosition, vSize : Int64RAL;
 begin
-  FLogAES.Clear;
-
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
 
-  vStream := TStringStream.Create;
+  Result := TStringStream.Create;
   while vPosition < vSize do
   begin
+    FillChar(vInBuf[0], Length(vInBuf), 0);
+
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
     vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    vStream.Write(vOutbuf[0], vBytesWrite);
+    Result.Write(vOutbuf[0], vBytesWrite);
 
     vPosition := vPosition + vBytesRead;
   end;
-  vStream.Position := 0;
-  Result := vStream.DataString;
-  vStream.Free;
-
-  FLogAES.SaveToFile('d:\aes.txt');
+  Result.Position := 0;
 end;
 
-function TRALCriptoAES.Decode(AValue : TStream) : string;
+function TRALCriptoAES.DecodeAsStream(AValue : TStream) : TStringStream;
 begin
 
 end;
@@ -466,7 +428,7 @@ end;
 function TRALCriptoAES.KeysToList : TStringList;
 var
   vInt1, vInt2 : integer;
-  vStr : string;
+  vStr : StringRAL;
 begin
   Result := TStringList.Create;
 
