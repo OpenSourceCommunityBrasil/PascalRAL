@@ -37,6 +37,9 @@ type
     function EncodeAsBytes(AValue: TStream): TBytes; overload;
     function DecodeAsBytes(AValue: TStream): TBytes; overload;
 
+    function EncodeAsBytes(AValue: TBytes): TBytes; overload;
+    function DecodeAsBytes(AValue: TBytes): TBytes; overload;
+
     function EncodeAsStream(AValue: TStream): TStringStream; overload; virtual; abstract;
     function DecodeAsStream(AValue: TStream): TStringStream; overload; virtual; abstract;
   published
@@ -174,6 +177,30 @@ begin
     SetLength(Result, vResult.Size);
   finally
     FreeAndNil(vResult);
+  end;
+end;
+
+function TRALCripto.EncodeAsBytes(AValue : TBytes) : TBytes;
+var
+  vStream: TStringStream;
+begin
+  vStream := TStringStream.Create(AValue);
+  try
+    Result := EncodeAsBytes(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
+function TRALCripto.DecodeAsBytes(AValue : TBytes) : TBytes;
+var
+  vStream: TStringStream;
+begin
+  vStream := TStringStream.Create(AValue);
+  try
+    Result := DecodeAsBytes(vStream);
+  finally
+    FreeAndNil(vStream);
   end;
 end;
 

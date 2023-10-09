@@ -599,6 +599,7 @@ var
   vOutBuf: array[0..4095] of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize : Int64RAL;
+  vPaddind : IntegerRAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -607,15 +608,33 @@ begin
   Result := TStringStream.Create;
   while vPosition < vSize do
   begin
-    FillChar(vInBuf[0], Length(vInBuf), 0);
-
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+
+    // padding complemantar
+    vPaddind := vBytesRead mod 16;
+    if vPaddind <> 0 then
+    begin
+      FillChar(vInBuf[vBytesRead], 16 - (vBytesRead mod 16),16 - (vPaddind mod 16));
+      vBytesRead := vBytesRead + (16 - (vBytesRead mod 16));
+    end;
+
     vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
     Result.Write(vOutbuf[0], vBytesWrite);
 
     vPosition := vPosition + vBytesRead;
   end;
+
+  // padding nao complementar
+  if vPaddind = 0 then
+  begin
+    FillChar(vInBuf[0], 16, 16);
+    vBytesRead := 16;
+    vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
+
+    Result.Write(vOutbuf[0], vBytesWrite);
+  end;
+
   Result.Position := 0;
 end;
 
@@ -625,6 +644,7 @@ var
   vOutBuf: array[0..4095] of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize : Int64RAL;
+  vPad1, vPad2  : Byte;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -642,6 +662,22 @@ begin
 
     vPosition := vPosition + vBytesRead;
   end;
+
+  // verificando paddind
+  Result.Position := Result.Size - 1;
+  Result.Read(vPad1,1);
+  Result.Position := Result.Size - vPad1;
+  while Result.Position < Result.Size do
+  begin
+    Result.Read(vPad2,1);
+    if vPad2 <> vPad1 then
+      Break;
+  end;
+
+  // eliminando os padding
+  if Result.Position = Result.Size then
+    Result.Size := Result.Size - vPad1;
+
   Result.Position := 0;
 end;
 
