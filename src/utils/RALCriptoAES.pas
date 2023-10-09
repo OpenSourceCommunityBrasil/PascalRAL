@@ -22,22 +22,44 @@ type
   private
     FAESType: TRALAESType;
     FAESKeys: array of array of byte;
-    FMulti2: array[0..255] of byte;
-    FMulti3: array[0..255] of byte;
+
+    // encode
+    FMulti02: array[0..255] of byte;
+    FMulti03: array[0..255] of byte;
+
+    // decode
+    FMulti09: array[0..255] of byte; // 09
+    FMulti11: array[0..255] of byte; // 0b
+    FMulti13: array[0..255] of byte; // 0d
+    FMulti14: array[0..255] of byte; // 0e
+
+    FEncSBOX: array[0..255] of byte;
   protected
     procedure Initialize;
     function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
+    function DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 
-    function Multi2(AValue : Byte) : Byte;
-    function Multi3(AValue : Byte) : Byte;
+    function Multi02(AValue : Byte) : Byte;
+    function Multi(AMult : integer; AByte : Byte) : Byte;
+
+    // usado do keyexpansion
     function RCON(AInt : integer) : UInt32;
 
-    // cipher encode
+    // cipher encode and decode
     procedure RoundKey(AInput, AOutput : PByte; AKey : TBytes);
+
+    // cipher encode
+    function EncSBox(AValue : Byte) : Byte;
     procedure EncSubBytes(AInput, AOutput : PByte);
     procedure EncShiftRows(AInput, AOutput : PByte);
     procedure EncMixColumns(AInput, AOutput : PByte);
     procedure EncSubShiftRows(AInput, AOutput : PByte);
+
+    // cipher decode
+    procedure DecSubBytes(AInput, AOutput : PByte);
+    procedure DecShiftRows(AInput, AOutput : PByte);
+    procedure DecMixColumns(AInput, AOutput : PByte);
+    procedure DecSubShiftRows(AInput, AOutput : PByte);
 
     // key expansion
     function RotWord(AInt : UInt32) : UInt32;
@@ -167,6 +189,8 @@ procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : TBytes);
 var
   vInt : IntegerRAL;
 begin
+  // PUInt32 = 4 Bytes
+
   vInt := 0;
   while vInt < 16 do
   begin
@@ -174,6 +198,62 @@ begin
     vInt := vInt + 4;
   end;
   Move(AInput^, AOutput^, 16);
+end;
+
+function TRALCriptoAES.EncSBox(AValue : Byte) : Byte;
+const
+
+  cSBOX : array[0..7,0..7] of Byte = ((0, 7, 6, 5, 4, 3, 2, 1),
+                                      (1, 0, 7, 6, 5, 4, 3, 2),
+                                      (2, 1, 0, 7, 6, 5, 4, 3),
+                                      (3, 2, 1, 0, 7, 6, 5, 4),
+                                      (4, 3, 2, 1, 0, 7, 6, 5),
+                                      (5, 4, 3, 2, 1, 0, 7, 6),
+                                      (6, 5, 4, 3, 2, 1, 0, 7),
+                                      (7, 6, 5, 4, 3, 2, 1, 0));
+
+  cInv : array[0..7] of Byte = (7, 6, 5, 4, 3, 2, 1, 0);
+{
+  cSBOX : array[0..7,0..7] of Byte = ((1, 2, 3, 4, 5, 6, 7, 0),
+                                      (2, 3, 4, 5, 6, 7, 0, 1),
+                                      (3, 4, 5, 6, 7, 0, 1, 2),
+                                      (4, 5, 6, 7, 0, 1, 2, 3),
+                                      (5, 6, 7, 8, 1, 2, 3, 4),
+                                      (6, 7, 0, 1, 2, 3, 4, 5),
+                                      (7, 0, 1, 2, 3, 4, 5, 6),
+                                      (0, 1, 2, 3, 4, 5, 6, 7));
+}
+var
+  vNumXX, vNum31, vMultAnd : array[0..7] of byte;
+  vInt1, vInt2, vBase31, vNumAnd : integer;
+  vResult : Byte;
+begin
+  vResult := 0;
+  if AValue > 0 then
+  begin
+    vBase31 := 31; // 0x1F
+    for vInt1 := 0 to 7 do
+    begin
+      vNumXX[vInt1] := AValue and 1;
+      vNum31[vInt1] := vBase31 and 1;
+
+      vBase31 := vBase31 shr 1;
+      AValue := AValue shr 1;
+    end;
+
+    for vInt1 := 0 to 7 do
+    begin
+      vNumAnd := 0;
+      for vInt2 := 0 to 7 do
+        vNumAnd := vNumAnd xor (vNum31[cSBOX[vInt1, vInt2]] and vNumXX[vInt2]);
+
+      vMultAnd[cInv[vInt1]] := vNumAnd;
+    end;
+
+    for vInt1 := 0 to 7 do
+      vResult := (vResult shl 1) or vMultAnd[vInt1];
+  end;
+  Result := vResult xor 99; // 0x63
 end;
 
 procedure TRALCriptoAES.EncSubBytes(AInput, AOutput : PByte);
@@ -207,28 +287,28 @@ begin
     vProx := (vInt div 4) * 4;
     case vPosMix of
       0 : begin
-        (AOutput + vInt)^ := FMulti2[(AInput + vProx)^] xor
-                             FMulti3[(AInput + vProx + 1)^] xor
+        (AOutput + vInt)^ := FMulti02[(AInput + vProx)^] xor
+                             FMulti03[(AInput + vProx + 1)^] xor
                              (AInput + vProx + 2)^ xor
                              (AInput + vProx + 3)^;
       end;
       1 : begin
         (AOutput + vInt)^ := (AInput + vProx)^ xor
-                             FMulti2[(AInput + vProx + 1)^] xor
-                             FMulti3[(AInput + vProx + 2)^] xor
+                             FMulti02[(AInput + vProx + 1)^] xor
+                             FMulti03[(AInput + vProx + 2)^] xor
                              (AInput + vProx + 3)^;
       end;
       2 : begin
         (AOutput + vInt)^ := (AInput + vProx)^ xor
                              (AInput + vProx + 1)^ xor
-                             FMulti2[(AInput + vProx + 2)^] xor
-                             FMulti3[(AInput + vProx + 3)^];
+                             FMulti02[(AInput + vProx + 2)^] xor
+                             FMulti03[(AInput + vProx + 3)^];
       end;
       3 : begin
-        (AOutput + vInt)^ := FMulti3[(AInput + vProx)^] xor
+        (AOutput + vInt)^ := FMulti03[(AInput + vProx)^] xor
                              (AInput + vProx + 1)^ xor
                              (AInput + vProx + 2)^ xor
-                             FMulti2[(AInput + vProx + 3)^];
+                             FMulti02[(AInput + vProx + 3)^];
       end;
     end;
   end;
@@ -246,14 +326,94 @@ begin
   Move(AOutput^, AInput^, 16);
 end;
 
+procedure TRALCriptoAES.DecSubBytes(AInput, AOutput : PByte);
+var
+  vInt : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := cDecSBOX[(AInput + vInt)^];
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.DecShiftRows(AInput, AOutput : PByte);
+const
+  vShift : array[0..15] of Byte = (00,13,10,07,04,01,14,11,08,05,02,15,12,09,06,03);
+var
+  vInt : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := (AInput + vShift[vInt])^;
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.DecMixColumns(AInput, AOutput : PByte);
+var
+  vInt : IntegerRAL;
+  vPosMix, vProx : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+  begin
+    vPosMix := vInt mod 4;
+    vProx := (vInt div 4) * 4;
+    case vPosMix of
+      0 : begin
+        (AOutput + vInt)^ := FMulti14[(AInput + vProx)^] xor
+                             FMulti11[(AInput + vProx + 1)^] xor
+                             FMulti13[(AInput + vProx + 2)^] xor
+                             FMulti09[(AInput + vProx + 3)^];
+      end;
+      1 : begin
+        (AOutput + vInt)^ := FMulti09[(AInput + vProx)^] xor
+                             FMulti14[(AInput + vProx + 1)^] xor
+                             FMulti11[(AInput + vProx + 2)^] xor
+                             FMulti13[(AInput + vProx + 3)^];
+      end;
+      2 : begin
+        (AOutput + vInt)^ := FMulti13[(AInput + vProx)^] xor
+                             FMulti09[(AInput + vProx + 1)^] xor
+                             FMulti14[(AInput + vProx + 2)^] xor
+                             FMulti11[(AInput + vProx + 3)^];
+      end;
+      3 : begin
+        (AOutput + vInt)^ := FMulti11[(AInput + vProx)^] xor
+                             FMulti13[(AInput + vProx + 1)^] xor
+                             FMulti09[(AInput + vProx + 2)^] xor
+                             FMulti14[(AInput + vProx + 3)^];
+       end;
+    end;
+  end;
+  Move(AOutput^, AInput^, 16);
+end;
+
+procedure TRALCriptoAES.DecSubShiftRows(AInput, AOutput : PByte);
+const
+  vShift : array[0..15] of Byte = (00,13,10,07,04,01,14,11,08,05,02,15,12,09,06,03);
+var
+  vInt : IntegerRAL;
+begin
+  for vInt := 0 to 15 do
+    (AOutput + vInt)^ := cDecSBOX[(AInput + vShift[vInt])^];
+  Move(AOutput^, AInput^, 16);
+end;
+
 procedure TRALCriptoAES.Initialize;
 var
   vByte : Byte;
 begin
   for vByte := 0 to 255 do begin
-    FMulti2[vByte] := Multi2(vByte);
-    FMulti3[vByte] := Multi3(vByte);
+    // encode
+    FMulti02[vByte] := Multi02(vByte);
+    FMulti03[vByte] := Multi(3,vByte);
+
+    // decode
+    FMulti09[vByte] := Multi(09,vByte);
+    FMulti11[vByte] := Multi(11,vByte);
+    FMulti13[vByte] := Multi(13,vByte);
+    FMulti14[vByte] := Multi(14,vByte);
+
+//    FEncSBOX[vByte] := EncSBox(vByte); // todo
   end;
+  vByte := 1;
 end;
 
 function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
@@ -286,17 +446,44 @@ begin
   end;
 end;
 
-function TRALCriptoAES.Multi2(AValue : Byte) : Byte;
+function TRALCriptoAES.DecodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
+var
+  vPosKey : IntegerRAL;
+begin
+  Result := 0;
+  while AInputLen > 0 do
+  begin
+    vPosKey := Length(FAESKeys) - 1;
+
+    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+
+    vPosKey := vPosKey - 1;
+    while vPosKey > 0 do
+    begin
+      DecSubShiftRows(AInput, AOutput);
+      RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+      DecMixColumns(AInput, AOutput);
+
+      vPosKey := vPosKey - 1;
+    end;
+
+    DecSubShiftRows(AInput, AOutput);
+    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+
+    Result := Result + 16;
+    AInput := AInput + 16;
+    AOutput := AOutput + 16;
+
+    AInputLen := AInputLen - 16;
+  end;
+end;
+
+function TRALCriptoAES.Multi02(AValue : Byte) : Byte;
 begin
   if AValue < 128 then
     Result := (AValue * 2)
   else
     Result := ((AValue * 2) - 256) xor 27;
-end;
-
-function TRALCriptoAES.Multi3(AValue : Byte) : Byte;
-begin
-  Result := Multi2(AValue) xor AValue;
 end;
 
 procedure TRALCriptoAES.SetAESType(AValue : TRALAESType);
@@ -382,6 +569,30 @@ begin
   inherited Destroy;
 end;
 
+function TRALCriptoAES.Multi(AMult : integer; AByte : Byte) : Byte;
+var
+  vInt1, vInt2 : integer;
+  vByte, vCalc : Byte;
+begin
+  Result := 0;
+  vInt1 := 0;
+  while AMult > 0 do
+  begin
+    vByte := AMult and 1;
+
+    if vByte = 1 then
+    begin
+      vCalc := AByte;
+      for vInt2 := 1 to vInt1 do
+        vCalc := Multi02(vCalc);
+      Result := Result xor vCalc;
+    end;
+
+    AMult := AMult shr 1;
+    vInt1 := vInt1 + 1;
+  end;
+end;
+
 function TRALCriptoAES.EncodeAsStream(AValue : TStream) : TStringStream;
 var
   vInBuf: array[0..4095] of Byte;
@@ -409,8 +620,29 @@ begin
 end;
 
 function TRALCriptoAES.DecodeAsStream(AValue : TStream) : TStringStream;
+var
+  vInBuf: array[0..4095] of Byte;
+  vOutBuf: array[0..4095] of Byte;
+  vBytesRead, vBytesWrite: IntegerRAL;
+  vPosition, vSize : Int64RAL;
 begin
+  AValue.Position := 0;
+  vPosition := 0;
+  vSize := AValue.Size;
 
+  Result := TStringStream.Create;
+  while vPosition < vSize do
+  begin
+    FillChar(vInBuf[0], Length(vInBuf), 0);
+
+    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+    vBytesWrite := DecodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
+
+    Result.Write(vOutbuf[0], vBytesWrite);
+
+    vPosition := vPosition + vBytesRead;
+  end;
+  Result.Position := 0;
 end;
 
 function TRALCriptoAES.AESKeys(AIndex : integer) : TBytes;

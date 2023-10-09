@@ -40,6 +40,7 @@ type
     rsoEnableWhiteList, rsoIPBroadcastProtection, rsoPathTransvBlackList);
   TRALServerOptions = set of TRALServerOption;
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip);
+  TRALCriptoType = (crNone, crAES);
 
 const
   PosIniStr = 1;

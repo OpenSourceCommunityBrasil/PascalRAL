@@ -158,6 +158,7 @@ begin
   vResult := TStringStream(EncodeAsStream(AValue));
   try
     Result := vResult.Bytes;
+    SetLength(Result, vResult.Size);
   finally
     FreeAndNil(vResult);
   end;
@@ -170,6 +171,7 @@ begin
   vResult := TStringStream(DecodeAsStream(AValue));
   try
     Result := vResult.Bytes;
+    SetLength(Result, vResult.Size);
   finally
     FreeAndNil(vResult);
   end;
