@@ -21,7 +21,7 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FAESKeys: array of array of byte;
+    FWordKeys : array of UInt32;
 
     // encode
     FMulti02: array[0..255] of byte;
@@ -34,7 +34,11 @@ type
     FMulti14: array[0..255] of byte; // 0e
 
     FEncSBOX: array[0..255] of byte;
+
+    FLogAES : TStringList;
   protected
+    procedure LogAES(ALog : StringRAL; AInput : PByte);
+
     procedure Initialize;
     function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
     function DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
@@ -46,7 +50,7 @@ type
     function RCON(AInt : integer) : UInt32;
 
     // cipher encode and decode
-    procedure RoundKey(AInput, AOutput : PByte; AKey : TBytes);
+    procedure RoundKey(AInput, AOutput : PByte; AKey : PUInt32);
 
     // cipher encode
     function EncSBox(AValue : Byte) : Byte;
@@ -134,12 +138,17 @@ const
 function TRALCriptoAES.RotWord(AInt : UInt32) : UInt32;
 var
   vNum : TBytes;
+  vByte : Byte;
 begin
   vNum := WordToBytes(AInt);
-  Result := UInt32(vNum[0] +
-                   vNum[3] shl 8 +
-                   vNum[2] shl 16 +
-                   vNum[1] shl 24);
+
+  vByte := vNum[0];
+  vNum[0] := vNum[1];
+  vNum[1] := vNum[2];
+  vNum[2] := vNum[3];
+  vNum[3] := vByte;
+
+  Move(vNum[0], Result, 4);
 end;
 
 function TRALCriptoAES.SubWord(AInt : UInt32) : UInt32;
@@ -147,24 +156,18 @@ var
   vNum : TBytes;
 begin
   vNum := WordToBytes(AInt);
-  Result := UInt32(cEncSBOX[vNum[3]] +
-                   cEncSBOX[vNum[2]] shl 8 +
-                   cEncSBOX[vNum[1]] shl 16 +
-                   cEncSBOX[vNum[0]] shl 24);
+  vNum[0] := cEncSBOX[vNum[0]];
+  vNum[1] := cEncSBOX[vNum[1]];
+  vNum[2] := cEncSBOX[vNum[2]];
+  vNum[3] := cEncSBOX[vNum[3]];
+
+  Move(vNum[0], Result, 4);
 end;
 
 function TRALCriptoAES.WordToBytes(AInt : UInt32) : TBytes;
-var
-  vInt, vBit : integer;
 begin
-  vBit := 24;
   SetLength(Result, 4);
-  for vInt := 0 to 3 do
-  begin
-    Result[vInt] := AInt shr vBit;
-    AInt := AInt - (Result[vInt] shl vBit);
-    vBit := vBit - 8;
-  end;
+  Move(AInt, Result[0], 4);
 end;
 
 function TRALCriptoAES.RCON(AInt : integer) : UInt32;
@@ -182,10 +185,9 @@ begin
     if Result > 255 then
       Result := (Result - 256) xor 27;
   end;
-  Result := Result shl 24;
 end;
 
-procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : TBytes);
+procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : PUInt32);
 var
   vInt : IntegerRAL;
 begin
@@ -194,7 +196,8 @@ begin
   vInt := 0;
   while vInt < 16 do
   begin
-    PUInt32(AInput + vInt)^ := PUInt32(AInput + vInt)^ xor PUInt32(@AKey[vInt])^;
+    PUInt32(AInput + vInt)^ := PUInt32(AInput + vInt)^ xor AKey^;
+    Inc(AKey);
     vInt := vInt + 4;
   end;
   Move(AInput^, AOutput^, 16);
@@ -418,25 +421,28 @@ end;
 
 function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
 var
-  vPosKey : IntegerRAL;
+  vPosKey, vNb, vNr : IntegerRAL;
 begin
+  vNb := cBlockSize;
+  vNr := cNumberRounds[FAESType];
+
   Result := 0;
   while AInputLen > 0 do
   begin
-    RoundKey(AInput, AOutput, FAESKeys[0]);
+    RoundKey(AInput, AOutput, @FWordKeys[0]);
 
-    vPosKey := 1;
-    while vPosKey < Length(FAESKeys) - 1 do
+    vPosKey := 4;
+    while vPosKey < (vNb * vNr) do
     begin
       EncSubShiftRows(AInput, AOutput);
       EncMixColumns(AInput, AOutput);
-      RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+      RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
-      vPosKey := vPosKey + 1;
+      vPosKey := vPosKey + 4;
     end;
 
     EncSubShiftRows(AInput, AOutput);
-    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+    RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
     Result := Result + 16;
     AInput := AInput + 16;
@@ -448,27 +454,30 @@ end;
 
 function TRALCriptoAES.DecodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
 var
-  vPosKey : IntegerRAL;
+  vPosKey, vNb, vNr : IntegerRAL;
 begin
+  vNb := cBlockSize;
+  vNr := cNumberRounds[FAESType];
+
   Result := 0;
   while AInputLen > 0 do
   begin
-    vPosKey := Length(FAESKeys) - 1;
+    vPosKey := vNb * vNr;
 
-    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+    RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
-    vPosKey := vPosKey - 1;
+    vPosKey := vPosKey - 4;
     while vPosKey > 0 do
     begin
       DecSubShiftRows(AInput, AOutput);
-      RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+      RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
       DecMixColumns(AInput, AOutput);
 
-      vPosKey := vPosKey - 1;
+      vPosKey := vPosKey - 4;
     end;
 
     DecSubShiftRows(AInput, AOutput);
-    RoundKey(AInput, AOutput, FAESKeys[vPosKey]);
+    RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
     Result := Result + 16;
     AInput := AInput + 16;
@@ -506,66 +515,48 @@ var
   vTemp : UInt32;
   vInt, vNk, vNb, vNr : IntegerRAL;
   vKey, vNum : TBytes;
-  vWords : array of UInt32;
-  vW1, vW2, vW3, vW4 : IntegerRAL;
 begin
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
 
-  SetLength(FAESKeys, vNr + 1);
-  for vInt := 0 to vNr do
-    SetLength(FAESKeys[vInt], 16);
-
   SetLength(vKey, 4 * vNk);
   FillChar(vKey[0], 4 * vNk, 0);
-  SetLength(vWords, vNb * (vNr + 1));
+  SetLength(FWordKeys, vNb * (vNr + 1));
 
   vInt := 4 * vNk;
   if Length(Key) < vInt then
     vInt := Length(Key);
 
-  Move(Key[1], vKey[0], vInt);
-  FAESKeys[0] := vKey;
+  Move(Key[PosIniStr], vKey[0], vInt);
 
   for vInt := 0 to Pred(vNk) do
-    vWords[vInt] := UInt32(vKey[4 * vInt + 3] +
-                           vKey[4 * vInt + 2] shl 8 +
-                           vKey[4 * vInt + 1] shl 16 +
-                           vKey[4 * vInt + 0] shl 24);
+    FWordKeys[vInt] := PUInt32(@vKey[4 * vInt])^;
 
   for vInt := vNk to Pred(vNb * (vNr + 1)) do
   begin
-    vTemp := vWords[vInt - 1];
+    vTemp := FWordKeys[vInt - 1];
 
     if (vInt mod vNk = 0) then
       vTemp := SubWord(RotWord(vTemp)) xor (RCON(vInt div vNk))
     else if (vNk > 6) and (vInt mod vNk = 4) then
       vTemp := SubWord(vTemp);
 
-    vWords[vInt] := vWords[vInt - vNk] xor vTemp;
-
-    vW1 := vInt div 4;
-    vW2 := (vInt mod 4) * 4;
-    vW4 := 0;
-    vNum := WordToBytes(vWords[vInt]);
-    for vW3 := vW2 to vW2 + 4 do
-    begin
-      FAESKeys[vW1][vW3] := vNum[vW4];
-      vW4 := vW4 + 1;
-    end;
+    FWordKeys[vInt] := FWordKeys[vInt - vNk] xor vTemp;
   end;
 end;
 
 constructor TRALCriptoAES.Create;
 begin
   inherited;
+  FLogAES := TStringList.Create;
   FAESType := tAES128;
   Initialize;
 end;
 
 destructor TRALCriptoAES.Destroy;
 begin
+  FLogAES.Free;
   inherited Destroy;
 end;
 
@@ -682,36 +673,69 @@ begin
 end;
 
 function TRALCriptoAES.AESKeys(AIndex : integer) : TBytes;
+var
+  vPosKey, vInt : IntegerRAL;
+  vBytes : TBytes;
 begin
   Result := nil;
-  if (AIndex >= 0) and (AIndex < Length(FAESKeys)) then
-    Result := FAESKeys[AIndex];
+  if (AIndex >= 0) and (AIndex < CountKeys) then
+  begin
+    SetLength(Result, 16);
+    for vInt := 0 to 3 do
+    begin
+      vBytes := WordToBytes(FWordKeys[(AIndex * 4) + vInt]);
+      Move(vBytes[0], Result[vInt * 4], 4);
+    end;
+  end;
 end;
 
 function TRALCriptoAES.CountKeys : integer;
 begin
-  Result := Length(FAESKeys);
+  Result := cNumberRounds[FAESType] + 1;
 end;
 
 function TRALCriptoAES.KeysToList : TStringList;
 var
   vInt1, vInt2 : integer;
   vStr : StringRAL;
+  vKey : TBytes;
 begin
   Result := TStringList.Create;
 
-  for vInt1 := 0 to Pred(Length(FAESKeys)) do
+  for vInt1 := 0 to Pred(CountKeys) do
   begin
+    vKey := AESKeys(vInt1);
     vStr := '';
-    vInt2 := 0;
     for vInt2 := 0 to 15 do
     begin
       if vStr <> '' then
         vStr := vStr + ' ';
-      vStr := vStr + IntToHex(FAESKeys[vInt1][vInt2], 2);
+      vStr := vStr + IntToHex(vKey[vInt2], 2);
     end;
     Result.Add(vStr);
   end;
+end;
+
+procedure TRALCriptoAES.LogAES(ALog: StringRAL; AInput: PByte);
+var
+  vInt : IntegerRAL;
+  vStr : StringRAL;
+begin
+  FLogAES.Add(ALog);
+  vStr := '';
+  for vInt := 1 to 16 do
+  begin
+    if vStr <> '' then
+      vStr := vStr + ' ';
+    vStr := vStr + IntToHex(AInput^, 2);
+    if vInt mod 4 = 0 then
+    begin
+      FLogAES.Add(vStr);
+      vStr := '';
+    end;
+    AInput := AInput + 1;
+  end;
+  FLogAES.Add('');
 end;
 
 end.
