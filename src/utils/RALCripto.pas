@@ -4,14 +4,16 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes;
+  RALTypes, RALStream;
 
 type
   TRALCriptoOptions = class(TPersistent)
   private
+    FCriptType : TRALCriptoType;
     FKey : StringRAL;
   published
     property Key : StringRAL read FKey write FKey;
+    property CriptType : TRALCriptoType read FCriptType write FCriptType;
   end;
 
   { TRALCripto }
@@ -40,8 +42,8 @@ type
     function EncodeAsBytes(AValue: TBytes): TBytes; overload;
     function DecodeAsBytes(AValue: TBytes): TBytes; overload;
 
-    function EncodeAsStream(AValue: TStream): TStringStream; overload; virtual; abstract;
-    function DecodeAsStream(AValue: TStream): TStringStream; overload; virtual; abstract;
+    function EncodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function DecodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
   published
     property Key : StringRAL read FKey write SetKey;
   end;
@@ -60,9 +62,9 @@ end;
 
 function TRALCripto.Encode(AValue : StringRAL) : StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := Encode(vStream);
   finally
@@ -84,11 +86,11 @@ end;
 
 function TRALCripto.Encode(AValue : TStream) : StringRAL;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(EncodeAsStream(AValue));
+  vResult := EncodeAsStream(AValue);
   try
-    Result := vResult.DataString;
+    Result := StreamToStream(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -108,9 +110,9 @@ end;
 
 function TRALCripto.Encode(AValue : TBytes) : StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := Encode(vStream);
   finally
@@ -120,9 +122,9 @@ end;
 
 function TRALCripto.Decode(AValue : TBytes) : StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := Decode(vStream);
   finally
@@ -156,12 +158,11 @@ end;
 
 function TRALCripto.EncodeAsBytes(AValue : TStream) : TBytes;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(EncodeAsStream(AValue));
+  vResult := EncodeAsStream(AValue);
   try
-    Result := vResult.Bytes;
-    SetLength(Result, vResult.Size);
+    Result := StreamToBytes(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -169,12 +170,11 @@ end;
 
 function TRALCripto.DecodeAsBytes(AValue : TStream) : TBytes;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(DecodeAsStream(AValue));
+  vResult := DecodeAsStream(AValue);
   try
-    Result := vResult.Bytes;
-    SetLength(Result, vResult.Size);
+    Result := StreamToBytes(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -182,9 +182,9 @@ end;
 
 function TRALCripto.EncodeAsBytes(AValue : TBytes) : TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := EncodeAsBytes(vStream);
   finally
@@ -194,9 +194,9 @@ end;
 
 function TRALCripto.DecodeAsBytes(AValue : TBytes) : TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := DecodeAsBytes(vStream);
   finally

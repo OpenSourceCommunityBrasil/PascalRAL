@@ -351,6 +351,8 @@
 (* FRAMEWORK Directives *)
 
 {$IFNDEF FPC}
+// Fernando
+// Data: 13/10/2023 - Problemas ao rodar com D7 - ScopeNames
   {$IF Declared(FireMonkeyVersion) or Defined(FRAMEWORK_FMX)
     or Declared(FMX.Types.TFmxObject) or Defined(LINUX64)}
     {$DEFINE HAS_FMX}

@@ -1,4 +1,4 @@
-﻿unit RALTypes;
+unit RALTypes;
 
 interface
 
@@ -31,6 +31,12 @@ type
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
+  // nao foi encontrado TBytes no Delphi7
+  // encontrado no Delphi 2010
+  {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+  TBytes = array of byte;
+  {$ENDIF}
+
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS, amHEAD, amTRACE);
   TRALMethods = set of TRALMethod;
@@ -43,7 +49,12 @@ type
   TRALCriptoType = (crNone, crAES);
 
 const
-  PosIniStr = 1;
+  {$IFDEF HAS_FMX}
+    PosIniStr = 0;
+  {$ELSE}
+    PosIniStr = 1;
+  {$ENDIF}
+
 
 implementation
 

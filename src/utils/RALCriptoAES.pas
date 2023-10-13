@@ -7,6 +7,8 @@
 
 unit RALCriptoAES;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -21,7 +23,7 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FWordKeys : array of UInt32;
+    FWordKeys : array of Cardinal; //UInt32;
 
     // encode
     FMulti02: array[0..255] of byte;
@@ -47,10 +49,10 @@ type
     function Multi(AMult : integer; AByte : Byte) : Byte;
 
     // usado do keyexpansion
-    function RCON(AInt : integer) : UInt32;
+    function RCON(AInt : integer) : Cardinal; //UInt32;
 
     // cipher encode and decode
-    procedure RoundKey(AInput, AOutput : PByte; AKey : PUInt32);
+    procedure RoundKey(AInput, AOutput : PByte; AKey : PCardinal); // PUInt32);
 
     // cipher encode
     function EncSBox(AValue : Byte) : Byte;
@@ -66,9 +68,9 @@ type
     procedure DecSubShiftRows(AInput, AOutput : PByte);
 
     // key expansion
-    function RotWord(AInt : UInt32) : UInt32;
-    function SubWord(AInt : UInt32) : UInt32;
-    function WordToBytes(AInt : UInt32) : TBytes;
+    function RotWord(AInt : Cardinal) : Cardinal;
+    function SubWord(AInt : Cardinal) : Cardinal;
+    function WordToBytes(AInt : Cardinal) : TBytes;
 
     procedure SetAESType(AValue : TRALAESType);
     procedure SetKey(AValue : StringRAL); override;
@@ -78,8 +80,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function EncodeAsStream(AValue : TStream) : TStringStream; override;
-    function DecodeAsStream(AValue : TStream) : TStringStream; override;
+    function EncodeAsStream(AValue : TStream) : TStream; override;
+    function DecodeAsStream(AValue : TStream) : TStream; override;
 
     function AESKeys(AIndex : integer) : TBytes;
     function CountKeys : integer;
@@ -135,7 +137,7 @@ const
 
 { TRALCriptoAES }
 
-function TRALCriptoAES.RotWord(AInt : UInt32) : UInt32;
+function TRALCriptoAES.RotWord(AInt : Cardinal) : Cardinal;
 var
   vNum : TBytes;
   vByte : Byte;
@@ -151,7 +153,7 @@ begin
   Move(vNum[0], Result, 4);
 end;
 
-function TRALCriptoAES.SubWord(AInt : UInt32) : UInt32;
+function TRALCriptoAES.SubWord(AInt : Cardinal) : Cardinal;
 var
   vNum : TBytes;
 begin
@@ -164,13 +166,13 @@ begin
   Move(vNum[0], Result, 4);
 end;
 
-function TRALCriptoAES.WordToBytes(AInt : UInt32) : TBytes;
+function TRALCriptoAES.WordToBytes(AInt : Cardinal) : TBytes;
 begin
   SetLength(Result, 4);
   Move(AInt, Result[0], 4);
 end;
 
-function TRALCriptoAES.RCON(AInt : integer) : UInt32;
+function TRALCriptoAES.RCON(AInt : integer) : Cardinal;
 var
   vInt : IntegerRAL;
 begin
@@ -187,18 +189,20 @@ begin
   end;
 end;
 
-procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : PUInt32);
+procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : PCardinal);
 var
   vInt : IntegerRAL;
 begin
-  // PUInt32 = 4 Bytes
-
   vInt := 0;
   while vInt < 16 do
   begin
-    PUInt32(AInput + vInt)^ := PUInt32(AInput + vInt)^ xor AKey^;
-    Inc(AKey);
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PCardinal(PByte(LongInt(AInput) + vInt))^ := PCardinal(PByte(LongInt(AInput) + vInt))^ xor AKey^;
+    {$ELSE}
+      PCardinal(AInput + vInt)^ := PCardinal(AInput + vInt)^ xor AKey^;
+    {$IFEND}
     vInt := vInt + 4;
+    Inc(AKey);
   end;
   Move(AInput^, AOutput^, 16);
 end;
@@ -264,7 +268,14 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := cEncSBOX[(AInput + vInt)^];
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vInt)^];
+    {$ELSE}
+      PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vInt)^];
+    {$IFEND}
+  end;
+
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -275,7 +286,13 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := (AInput + vShift[vInt])^;
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
+    {$ELSE}
+      PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
+    {$IFEND}
+  end;
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -284,35 +301,64 @@ var
   vInt : IntegerRAL;
   vPosMix, vProx : IntegerRAL;
 begin
+
   for vInt := 0 to 15 do
   begin
     vPosMix := vInt mod 4;
     vProx := (vInt div 4) * 4;
+
     case vPosMix of
-      0 : begin
-        (AOutput + vInt)^ := FMulti02[(AInput + vProx)^] xor
-                             FMulti03[(AInput + vProx + 1)^] xor
-                             (AInput + vProx + 2)^ xor
-                             (AInput + vProx + 3)^;
-      end;
-      1 : begin
-        (AOutput + vInt)^ := (AInput + vProx)^ xor
-                             FMulti02[(AInput + vProx + 1)^] xor
-                             FMulti03[(AInput + vProx + 2)^] xor
-                             (AInput + vProx + 3)^;
-      end;
-      2 : begin
-        (AOutput + vInt)^ := (AInput + vProx)^ xor
-                             (AInput + vProx + 1)^ xor
-                             FMulti02[(AInput + vProx + 2)^] xor
-                             FMulti03[(AInput + vProx + 3)^];
-      end;
-      3 : begin
-        (AOutput + vInt)^ := FMulti03[(AInput + vProx)^] xor
-                             (AInput + vProx + 1)^ xor
-                             (AInput + vProx + 2)^ xor
-                             FMulti02[(AInput + vProx + 3)^];
-      end;
+      {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+        0 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti02[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             FMulti03[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             PByte(LongInt(AInput) + vProx + 2)^ xor
+                                             PByte(LongInt(AInput) + vProx + 3)^;
+        end;
+        1 : begin
+          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)^ xor
+                                             FMulti02[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             FMulti03[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             PByte(LongInt(AInput) + vProx + 3)^;
+        end;
+        2 : begin
+          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)^ xor
+                                             PByte(LongInt(AInput) + vProx + 1)^ xor
+                                             FMulti02[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             FMulti03[PByte(LongInt(AInput) + vProx + 3)^];
+        end;
+        3 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti03[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             PByte(LongInt(AInput) + vProx + 1)^ xor
+                                             PByte(LongInt(AInput) + vProx + 2)^ xor
+                                             FMulti02[PByte(LongInt(AInput) + vProx + 3)^];
+        end;
+      {$ELSE}
+        0 : begin
+          PByte(AOutput + vInt)^ := FMulti02[PByte(AInput + vProx + 0)^] xor
+                                    FMulti03[PByte(AInput + vProx + 1)^] xor
+                                    PByte(AInput + vProx + 2)^ xor
+                                    PByte(AInput + vProx + 3)^;
+        end;
+        1 : begin
+          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)^ xor
+                                    FMulti02[PByte(AInput + vProx + 1)^] xor
+                                    FMulti03[PByte(AInput + vProx + 2)^] xor
+                                    PByte(AInput + vProx + 3)^;
+        end;
+        2 : begin
+          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)^ xor
+                                    PByte(AInput + vProx + 1)^ xor
+                                    FMulti02[PByte(AInput + vProx + 2)^] xor
+                                    FMulti03[PByte(AInput + vProx + 3)^];
+        end;
+        3 : begin
+          PByte(AOutput + vInt)^ := FMulti03[PByte(AInput + vProx + 0)^] xor
+                                    PByte(AInput + vProx + 1)^ xor
+                                    PByte(AInput + vProx + 2)^ xor
+                                    FMulti02[PByte(AInput + vProx + 3)^];
+        end;
+      {$IFEND}
     end;
   end;
   Move(AOutput^, AInput^, 16);
@@ -325,7 +371,13 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := cEncSBOX[(AInput + vShift[vInt])^];
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    {$ELSE}
+      PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vShift[vInt])^];
+    {$IFEND}
+  end;
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -334,7 +386,13 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := cDecSBOX[(AInput + vInt)^];
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vInt)^];
+    {$ELSE}
+      PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vInt)^];
+    {$IFEND}
+  end;
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -345,7 +403,13 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := (AInput + vShift[vInt])^;
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
+    {$ELSE}
+      PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
+    {$IFEND}
+  end;
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -358,31 +422,59 @@ begin
   begin
     vPosMix := vInt mod 4;
     vProx := (vInt div 4) * 4;
+
     case vPosMix of
-      0 : begin
-        (AOutput + vInt)^ := FMulti14[(AInput + vProx)^] xor
-                             FMulti11[(AInput + vProx + 1)^] xor
-                             FMulti13[(AInput + vProx + 2)^] xor
-                             FMulti09[(AInput + vProx + 3)^];
-      end;
-      1 : begin
-        (AOutput + vInt)^ := FMulti09[(AInput + vProx)^] xor
-                             FMulti14[(AInput + vProx + 1)^] xor
-                             FMulti11[(AInput + vProx + 2)^] xor
-                             FMulti13[(AInput + vProx + 3)^];
-      end;
-      2 : begin
-        (AOutput + vInt)^ := FMulti13[(AInput + vProx)^] xor
-                             FMulti09[(AInput + vProx + 1)^] xor
-                             FMulti14[(AInput + vProx + 2)^] xor
-                             FMulti11[(AInput + vProx + 3)^];
-      end;
-      3 : begin
-        (AOutput + vInt)^ := FMulti11[(AInput + vProx)^] xor
-                             FMulti13[(AInput + vProx + 1)^] xor
-                             FMulti09[(AInput + vProx + 2)^] xor
-                             FMulti14[(AInput + vProx + 3)^];
-       end;
+      {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+        0 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti14[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             FMulti11[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             FMulti13[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             FMulti09[PByte(LongInt(AInput) + vProx + 3)^];
+        end;
+        1 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti09[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             FMulti14[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             FMulti11[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             FMulti13[PByte(LongInt(AInput) + vProx + 3)^];
+        end;
+        2 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti13[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             FMulti09[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             FMulti14[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             FMulti11[PByte(LongInt(AInput) + vProx + 3)^];
+        end;
+        3 : begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti11[PByte(LongInt(AInput) + vProx + 0)^] xor
+                                             FMulti13[PByte(LongInt(AInput) + vProx + 1)^] xor
+                                             FMulti09[PByte(LongInt(AInput) + vProx + 2)^] xor
+                                             FMulti14[PByte(LongInt(AInput) + vProx + 3)^];
+         end;
+      {$ELSE}
+        0 : begin
+          PByte(AOutput + vInt)^ := FMulti14[PByte(AInput + vProx + 0)^] xor
+                                    FMulti11[PByte(AInput + vProx + 1)^] xor
+                                    FMulti13[PByte(AInput + vProx + 2)^] xor
+                                    FMulti09[PByte(AInput + vProx + 3)^];
+        end;
+        1 : begin
+          PByte(AOutput + vInt)^ := FMulti09[PByte(AInput + vProx + 0)^] xor
+                                    FMulti14[PByte(AInput + vProx + 1)^] xor
+                                    FMulti11[PByte(AInput + vProx + 2)^] xor
+                                    FMulti13[PByte(AInput + vProx + 3)^];
+        end;
+        2 : begin
+          PByte(AOutput + vInt)^ := FMulti13[PByte(AInput + vProx + 0)^] xor
+                                    FMulti09[PByte(AInput + vProx + 1)^] xor
+                                    FMulti14[PByte(AInput + vProx + 2)^] xor
+                                    FMulti11[PByte(AInput + vProx + 3)^];
+        end;
+        3 : begin
+          PByte(AOutput + vInt)^ := FMulti11[PByte(AInput + vProx + 0)^] xor
+                                    FMulti13[PByte(AInput + vProx + 1)^] xor
+                                    FMulti09[PByte(AInput + vProx + 2)^] xor
+                                    FMulti14[PByte(AInput + vProx + 3)^];
+         end;
+      {$IFEND}
     end;
   end;
   Move(AOutput^, AInput^, 16);
@@ -395,7 +487,13 @@ var
   vInt : IntegerRAL;
 begin
   for vInt := 0 to 15 do
-    (AOutput + vInt)^ := cDecSBOX[(AInput + vShift[vInt])^];
+  begin
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+      PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    {$ELSE}
+      PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vShift[vInt])^];
+    {$IFEND}
+  end;
   Move(AOutput^, AInput^, 16);
 end;
 
@@ -416,7 +514,6 @@ begin
 
 //    FEncSBOX[vByte] := EncSBox(vByte); // todo
   end;
-  vByte := 1;
 end;
 
 function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
@@ -437,7 +534,6 @@ begin
       EncSubShiftRows(AInput, AOutput);
       EncMixColumns(AInput, AOutput);
       RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
-
       vPosKey := vPosKey + 4;
     end;
 
@@ -445,9 +541,8 @@ begin
     RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
     Result := Result + 16;
-    AInput := AInput + 16;
-    AOutput := AOutput + 16;
-
+    Inc(AInput, 16);
+    Inc(AOutput, 16);
     AInputLen := AInputLen - 16;
   end;
 end;
@@ -480,9 +575,8 @@ begin
     RoundKey(AInput, AOutput, @FWordKeys[vPosKey]);
 
     Result := Result + 16;
-    AInput := AInput + 16;
-    AOutput := AOutput + 16;
-
+    Inc(AInput, 16);
+    Inc(AOutput, 16);
     AInputLen := AInputLen - 16;
   end;
 end;
@@ -512,9 +606,9 @@ end;
 
 procedure TRALCriptoAES.KeyExpansion;
 var
-  vTemp : UInt32;
+  vTemp : Cardinal;
   vInt, vNk, vNb, vNr : IntegerRAL;
-  vKey, vNum : TBytes;
+  vKey : TBytes;
 begin
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
@@ -531,7 +625,7 @@ begin
   Move(Key[PosIniStr], vKey[0], vInt);
 
   for vInt := 0 to Pred(vNk) do
-    FWordKeys[vInt] := PUInt32(@vKey[4 * vInt])^;
+    FWordKeys[vInt] := PCardinal(@vKey[4 * vInt])^;
 
   for vInt := vNk to Pred(vNb * (vNr + 1)) do
   begin
@@ -584,10 +678,10 @@ begin
   end;
 end;
 
-function TRALCriptoAES.EncodeAsStream(AValue : TStream) : TStringStream;
+function TRALCriptoAES.EncodeAsStream(AValue : TStream) : TStream;
 var
-  vInBuf: array[0..4095] of Byte;
-  vOutBuf: array[0..4095] of Byte;
+  vInBuf: array[0..8191] of Byte;
+  vOutBuf: array[0..8191] of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize : Int64RAL;
   vPaddind : IntegerRAL;
@@ -596,7 +690,9 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
+  Result.Size := AValue.Size + 32;
+  
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
@@ -613,7 +709,7 @@ begin
 
     Result.Write(vOutbuf[0], vBytesWrite);
 
-    vPosition := vPosition + vBytesRead;
+    vPosition := vPosition + vBytesWrite;
   end;
 
   // padding nao complementar
@@ -624,12 +720,15 @@ begin
     vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
     Result.Write(vOutbuf[0], vBytesWrite);
+
+    vPosition := vPosition + vBytesRead;
   end;
 
+  Result.Size := vPosition;
   Result.Position := 0;
 end;
 
-function TRALCriptoAES.DecodeAsStream(AValue : TStream) : TStringStream;
+function TRALCriptoAES.DecodeAsStream(AValue : TStream) : TStream;
 var
   vInBuf: array[0..4095] of Byte;
   vOutBuf: array[0..4095] of Byte;
@@ -641,7 +740,9 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
+  Result.Size := AValue.Size;
+
   while vPosition < vSize do
   begin
     FillChar(vInBuf[0], Length(vInBuf), 0);
@@ -674,7 +775,7 @@ end;
 
 function TRALCriptoAES.AESKeys(AIndex : integer) : TBytes;
 var
-  vPosKey, vInt : IntegerRAL;
+  vInt : IntegerRAL;
   vBytes : TBytes;
 begin
   Result := nil;
@@ -733,7 +834,7 @@ begin
       FLogAES.Add(vStr);
       vStr := '';
     end;
-    AInput := AInput + 1;
+    Inc(AInput);
   end;
   FLogAES.Add('');
 end;

@@ -9,7 +9,7 @@ uses
 
 type
   TRALRoutes = class;
-  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
+  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) {$IFNDEF CONSOLE} of object {$ENDIF};
 
   { TRALRoute }
 
@@ -41,6 +41,9 @@ type
     function GetAllowMethods : StringRAL;
 
     property Route: StringRAL read GetRoute;
+    {$IFDEF CONSOLE}
+      property OnReply: TRALOnReply read FOnReply write FOnReply;
+    {$ENDIF}
   published
     property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
     property RouteName: StringRAL read FRouteName write SetRouteName;
@@ -51,7 +54,9 @@ type
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
     // se for uma rota de callback pra OAuth
     property Callback: boolean read FCallback write FCallback;
-    property OnReply: TRALOnReply read FOnReply write FOnReply;
+    {$IFNDEF CONSOLE}
+      property OnReply: TRALOnReply read FOnReply write FOnReply;
+    {$ENDIF}
   end;
 
   { TRALRoutes }

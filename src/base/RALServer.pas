@@ -152,6 +152,11 @@ type
     destructor Destroy; override;
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
+
+    {$IFDEF CONSOLE}
+      property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
+      property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
+    {$ENDIF}
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -170,8 +175,10 @@ type
     property CompressType : TRALCompressType read FCompressType write FCompressType;
     property CORSOptions : TRALCORSOptions read FCORSOptions write FCORSOptions;
 
-    property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
-    property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
+    {$IFNDEF CONSOLE}
+      property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
+      property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
+    {$ENDIF}
     property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
     property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
