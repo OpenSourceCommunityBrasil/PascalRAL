@@ -1,5 +1,6 @@
 ﻿unit RALMIMETypes;
 
+{$I ..\base\PascalRAL.inc}
 {$IFDEF FPC}
 {$mode Delphi}
 {$ENDIF}
@@ -10,9 +11,9 @@ uses
   {$IFDEF MACOS}
   Macapi.CoreFoundation,
   {$ENDIF}
-  {$IFDEF MSWINDOWS}
+  {$IF Defined(MSWINDOWS) OR Defined(WINDOWS)}
   Windows, Registry,
-  {$ENDIF}
+  {$IFEND}
   {$IFDEF POSIX}
   System.IOUtils,
   {$ENDIF}
@@ -199,7 +200,7 @@ begin
 end;
 
 function TRALMIMEType.GetSystemTypes: boolean;
-{$IF DEFINED(MSWINDOWS)}
+{$IF DEFINED(MSWINDOWS) OR DEFINED(WINDOWS)}
   procedure LoadRegistry;
   const
     CExtsKey = '\';
@@ -250,13 +251,17 @@ function TRALMIMEType.GetSystemTypes: boolean;
     end;
   end;
 
-{$ENDIF}
+{$IFEND}
 {$IF DEFINED(LINUX)}
   procedure LoadFile(const aFileName: string);
   var
     LTypes: TStringList;
     LItem: string;
+    {$IFDEF DELPHIXE7UP}
+    LArr: TArray<string>;
+    {$ELSE}
     LArr: array of string;
+    {$ENDIF}
     i, j: Integer;
   begin
     if not FileExists(aFileName) then
@@ -283,7 +288,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LTypes.Free;
     end;
   end;
-{$ENDIF}
+{$IFEND}
 {$IF DEFINED(MACOS) and not DEFINED(IOS)}
   procedure LoadFile(const aFileName: string);
   const
@@ -362,30 +367,30 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LItems.Free;
     end;
   end;
-{$ENDIF}
+{$IFEND}
 {$IF DEFINED(LINUX)}
 
 const
   CTypeFile = 'mime.types';
-  {$ENDIF}
+  {$IFEND}
   {$IF DEFINED(MACOS) and not DEFINED(IOS)}
 const
   CTypeFile = '/Applications/Safari.app/Contents/Info.plist';
-  {$ENDIF}
+  {$IFEND}
 begin
   FInternalMIMEList.Clear;
   Result := False;
   try
     {$IF DEFINED(MSWINDOWS)}
     LoadRegistry;
-    {$ENDIF}
+    {$IFEND}
     {$IF DEFINED(LINUX)}
     //LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
     LoadFile('/etc/' + CTypeFile);
-    {$ENDIF}
+    {$IFEND}
     {$IF DEFINED(MACOS) and not DEFINED(IOS)}
     LoadFile(CTypeFile);
-    {$ENDIF}
+    {$IFEND}
     Result := True;
   except
     Result := False;

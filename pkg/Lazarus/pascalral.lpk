@@ -19,7 +19,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="25">
+    <Files Count="29">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -121,6 +121,22 @@
         <Filename Value="..\..\src\utils\RALUrlCoder.pas"/>
         <UnitName Value="RALUrlCoder"/>
       </Item25>
+      <Item26>
+        <Filename Value="..\..\src\utils\RALCripto.pas"/>
+        <UnitName Value="RALCripto"/>
+      </Item26>
+      <Item27>
+        <Filename Value="..\..\src\utils\RALCriptoAES.pas"/>
+        <UnitName Value="RALCriptoAES"/>
+      </Item27>
+      <Item28>
+        <Filename Value="..\..\src\utils\RALCompressLib.pas"/>
+        <UnitName Value="RALCompressLib"/>
+      </Item28>
+      <Item29>
+        <Filename Value="..\..\src\utils\RALSHA1.pas"/>
+        <UnitName Value="RALSHA1"/>
+      </Item29>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

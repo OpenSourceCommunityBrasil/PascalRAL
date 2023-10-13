@@ -172,13 +172,16 @@
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
+        <DCCReference Include="..\..\src\utils\RALCompressLib.pas"/>
+        <DCCReference Include="..\..\src\utils\RALCripto.pas"/>
+        <DCCReference Include="..\..\src\utils\RALCriptoAES.pas"/>
         <DCCReference Include="..\..\src\utils\RALCustomObjects.pas"/>
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
         <DCCReference Include="..\..\src\utils\RALJson.pas"/>
-        <DCCReference Include="..\..\src\utils\RALJSON_Delphi.pas"/>
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALMultipartCoder.pas"/>
+        <DCCReference Include="..\..\src\utils\RALSHA1.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
         <DCCReference Include="..\..\src\utils\RALThreadSafe.pas"/>

@@ -152,6 +152,8 @@ type
     destructor Destroy; override;
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
+    procedure Start;
+    procedure Stop;
 
     {$IFDEF CONSOLE}
       property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
@@ -687,6 +689,16 @@ begin
   ARequest.Params.ClearParams;
 
   CleanExpiredBlockedList;
+end;
+
+procedure TRALServer.Start;
+begin
+  Active := True;
+end;
+
+procedure TRALServer.Stop;
+begin
+  Active := False;
 end;
 
 procedure TRALServer.SetActive(const AValue: boolean);
