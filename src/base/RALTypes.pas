@@ -35,7 +35,7 @@ type
   // encontrado no Delphi 2010
   {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
   TBytes = array of byte;
-  {$ENDIF}
+  {$IFEND}
 
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS, amHEAD, amTRACE);

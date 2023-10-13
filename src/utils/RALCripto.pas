@@ -90,7 +90,7 @@ var
 begin
   vResult := EncodeAsStream(AValue);
   try
-    Result := StreamToStream(vResult);
+    Result := StreamToString(vResult);
   finally
     FreeAndNil(vResult);
   end;

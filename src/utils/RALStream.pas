@@ -7,7 +7,7 @@ uses
   RALTypes;
 
 function StringToStream(AStr : StringRAL) : TStream;
-function StreamToStream(AStream : TStream) : StringRAL;
+function StreamToString(AStream : TStream) : StringRAL;
 
 function BytesToStream(ABytes : TBytes) : TStream;
 function StreamToBytes(AStream : TStream) : TBytes;
@@ -22,7 +22,7 @@ begin
   Result.Position := 0;
 end;
 
-function StreamToStream(AStream : TStream) : StringRAL;
+function StreamToString(AStream : TStream) : StringRAL;
 begin
   AStream.Position := 0;
   
@@ -73,6 +73,7 @@ begin
   
   vFile := TFileStream.Create(AFileName, fmCreate);
   try
+    vFile.Size := AStream.Size;
     vFile.CopyFrom(AStream, AStream.Size);
   finally
     vFile.Free;
