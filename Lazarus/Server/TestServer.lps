@@ -3,15 +3,15 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Linux64"/>
+    <BuildModes Active="Debug"/>
     <Units>
       <Unit>
         <Filename Value="TestServer.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="4"/>
-        <CursorPos X="11" Y="22"/>
+        <TopLine Value="2"/>
+        <CursorPos X="16" Y="9"/>
         <UsageCount Value="80"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="main.pas"/>
@@ -20,10 +20,13 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Main"/>
-        <EditorIndex Value="-1"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
         <TopLine Value="115"/>
-        <CursorPos X="61" Y="122"/>
+        <CursorPos X="31" Y="127"/>
         <UsageCount Value="80"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uroutes.pas"/>
@@ -134,7 +137,6 @@
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\utils\RALMIMETypes.pas"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="368"/>
         <CursorPos X="30" Y="382"/>
@@ -252,8 +254,49 @@
         <EditorIndex Value="-1"/>
         <UsageCount Value="10"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\base\RALResponse.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="155"/>
+        <CursorPos X="40" Y="171"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\base\RALConsts.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="58"/>
+        <CursorPos X="56" Y="70"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\utils\RALCompressLib.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="214"/>
+        <CursorPos X="30" Y="228"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\utils\RALMIMETypes.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="20" Y="17"/>
+        <FoldState Value=" TJN3{YT"/>
+        <UsageCount Value="10"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="-1"/>
+    <JumpHistory HistoryIndex="2">
+      <Position>
+        <Filename Value="TestServer.lpr"/>
+        <Caret Line="28" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="TestServer.lpr"/>
+        <Caret Line="17" Column="41" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="TestServer.lpr"/>
+        <Caret Line="28" TopLine="2"/>
+      </Position>
+    </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>
       <Modes ActiveMode=""/>
