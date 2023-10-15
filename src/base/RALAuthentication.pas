@@ -258,7 +258,8 @@ var
   vContentType : StringRAL;
 begin
   Result := '';
-  vStream := AParams.EncodeBody(vContentType, vFreeContent, ctNone);
+  vFreeContent := False;
+  vStream := AParams.EncodeBody(vContentType, vFreeContent);
   if vStream <> nil then
   begin
     vStream.Position := 0;

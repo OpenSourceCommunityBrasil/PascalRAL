@@ -69,7 +69,7 @@ type
     property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
 
-    property ContentEncription: StringRAL read FContentEncoding write FContentEncoding;
+    property ContentEncription: StringRAL read FContentEncription write FContentEncription;
     property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
 
     property AcceptEncription: StringRAL read FAcceptEncription write FAcceptEncription;
@@ -126,7 +126,7 @@ function TRALHTTPHeaderInfo.GetAcceptCripto : TRALCriptoType;
 var
   vStr : StringRAL;
 begin
-  vStr := LowerCase(FContentEncription);
+  vStr := LowerCase(FAcceptEncription);
   if (Pos('aes256cbc_pkcs7', vStr) > 0) then
     Result := crAES256
   else if (Pos('aes192cbc_pkcs7', vStr) > 0) then
