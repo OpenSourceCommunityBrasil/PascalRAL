@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
-  RALCompressLib;
+  RALCompressZLib, RALCripto, RALCriptoAES, RALStream;
 
 type
 
@@ -52,6 +52,9 @@ type
   private
     FNextParam: IntegerRAL;
     FParams: TList;
+
+    FCompressType: TRALCompressType;
+    FCriptoOptions: TRALCriptoOptions;
   protected
     function GetBody: TList;
     function GetParam(idx: IntegerRAL): TRALParam; overload;
@@ -63,6 +66,15 @@ type
     procedure AppendParamLine(ALine, ANameSeparator: StringRAL; AKind: TRALParamKind);
 
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData: boolean);
+
+    function Compress(AStream : TStream) : TStream;
+    function Encrypt(AStream : TStream) : TStream;
+
+    function Decompress(AStream : TStream) : TStream; overload;
+    function Decompress(ASource : StringRAL) : StringRAL; overload;
+
+    function Decrypt(AStream : TStream) : TStream; overload;
+    function Decrypt(ASource : StringRAL) : StringRAL; overload;
   public
     constructor Create;
     destructor Destroy; override;
@@ -99,11 +111,11 @@ type
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
 
-    procedure DecodeBody(ASource: TStream; AContentType: StringRAL; ACompress: TRALCompressType); overload;
-    procedure DecodeBody(ASource: StringRAL; AContentType: StringRAL; ACompress: TRALCompressType); overload;
     procedure DecodeFields(ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
 
-    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean; ACompress: TRALCompressType): TStream;
+    function DecodeBody(ASource: TStream; AContentType: StringRAL): TStream; overload;
+    function DecodeBody(ASource: StringRAL; AContentType: StringRAL): TStream; overload;
+    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
 
     function NewParam: TRALParam;
     function URLEncodedToList(ASource: StringRAL): TStringList;
@@ -114,6 +126,9 @@ type
     property Param[idx: IntegerRAL]: TRALParam read GetParam;
     property Get[name: StringRAL]: TRALParam read GetParam;
     property GetKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
+
+    property CompressType : TRALCompressType read FCompressType write FCompressType;
+    property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
   end;
 
 implementation
@@ -570,89 +585,78 @@ begin
   end;
 end;
 
-procedure TRALParams.DecodeBody(ASource: TStream; AContentType: StringRAL; ACompress: TRALCompressType);
+function TRALParams.DecodeBody(ASource : TStream; AContentType : StringRAL) : TStream;
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
-  vStream: TStringStream;
+  vTemp : TStream;
 begin
   if ASource = nil then
     Exit;
 
-  if ACompress <> ctNone then
-    ASource := TRALCompressLib.Decompress(ASource, ACompress);
+  ASource.Position := 0;
+
+  Result := TMemoryStream.Create;
+  Result.CopyFrom(ASource, ASource.Size);
+
+  if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
+  begin
+    vTemp := Decrypt(Result);
+    FreeAndNil(Result);
+    Result := vTemp;
+  end;
+
+  if FCompressType <> ctNone then
+  begin
+    vTemp := Decompress(Result);
+    FreeAndNil(Result);
+    Result := vTemp;
+  end;
 
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMultipartDecoder.Create;
     vDecoder.ContentType := AContentType;
     vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-    vDecoder.ProcessMultiPart(ASource);
+    vDecoder.ProcessMultiPart(Result);
     vDecoder.Free;
   end
   else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
   begin
-    vStream := TStringStream.Create;
-    try
-      vStream.CopyFrom(ASource, ASource.Size);
-      DecodeFields(vStream.DataString);
-    finally
-      FreeAndNil(vStream);
-    end;
+    DecodeFields(StreamToString(Result));
   end
   else
   begin
     vParam := NewParam;
     vParam.ParamName := 'ral_body';
-    vParam.AsStream := ASource;
+    vParam.AsStream := Result;
     vParam.ContentType := AContentType;
     vParam.Kind := rpkBODY;
   end;
-
-  if ACompress <> ctNone then
-    ASource.Free;
 end;
 
-procedure TRALParams.DecodeBody(ASource: StringRAL; AContentType: StringRAL; ACompress: TRALCompressType);
+function TRALParams.DecodeBody(ASource : StringRAL; AContentType : StringRAL) : TStream;
 var
-  vParam: TRALParam;
-  vDecoder: TRALMultipartDecoder;
+  vStream: TStream;
 begin
   if ASource = '' then
     Exit;
 
-  if ACompress <> ctNone then
-    ASource := TRALCompressLib.Decompress(ASource, ACompress);
-
-  if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
-  begin
-    vDecoder := TRALMultipartDecoder.Create;
-    vDecoder.ContentType := AContentType;
-    vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-    vDecoder.ProcessMultiPart(ASource);
-    vDecoder.Free;
-  end
-  else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
-  begin
-    DecodeFields(ASource);
-  end
-  else
-  begin
-    vParam := NewParam;
-    vParam.ParamName := 'ral_body';
-    vParam.AsString := ASource;
-    vParam.ContentType := AContentType;
-    vParam.Kind := rpkBODY;
+  vStream := StringToStream(ASource);
+  try
+    Result := DecodeBody(vStream, AContentType);
+  finally
+    FreeAndNil(vStream);
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean; ACompress: TRALCompressType): TStream;
+function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
   vString, vValor: StringRAL;
-  vResult : TStream;
+  vResult, vTemp : TStream;
 begin
   AFreeContent := False;
   Result := nil;
@@ -710,16 +714,26 @@ begin
     end;
   end;
 
-  if (ACompress <> ctNone) and (vResult <> nil) then
+  if (FCompressType <> ctNone) and (vResult <> nil) then
   begin
-    Result := TRALCompressLib.Compress(vResult, ACompress);
+    vTemp := Compress(vResult);
     if AFreeContent then
       FreeAndNil(vResult);
     AFreeContent := True;
-  end
-  else begin
-    Result := vResult;
+    vResult := vTemp;
   end;
+
+  if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
+     (vResult <> nil) then
+  begin
+    vTemp := Encrypt(vResult);
+    if AFreeContent then
+      FreeAndNil(vResult);
+    AFreeContent := True;
+    vResult := vTemp;
+  end;
+
+  Result := vResult;
 end;
 
 function TRALParams.URLEncodedToList(ASource: StringRAL): TStringList;
@@ -782,6 +796,9 @@ constructor TRALParams.Create;
 begin
   inherited;
   FParams := TList.Create;
+  FCriptoOptions := TRALCriptoOptions.Create;
+
+  FCompressType := ctGZip;
   FNextParam := 0;
 end;
 
@@ -789,6 +806,7 @@ destructor TRALParams.Destroy;
 begin
   ClearParams;
   FreeAndNil(FParams);
+  FreeAndNil(FCriptoOptions);
   inherited;
 end;
 
@@ -927,6 +945,120 @@ begin
   vParam.Kind := rpkBODY;
 
   AFreeData := True;
+end;
+
+function TRALParams.Compress(AStream : TStream) : TStream;
+begin
+  Result := nil;
+  case FCompressType of
+    ctDeflate,
+    ctGZip,
+    ctZLib    : Result := TRALCompressZLib.Compress(AStream, FCompressType);
+  end;
+end;
+
+function TRALParams.Encrypt(AStream : TStream) : TStream;
+var
+  vCript : TRALCripto;
+begin
+  Result := nil;
+  case FCriptoOptions.CriptType of
+    crAES128 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
+    crAES192 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
+    crAES256 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
+  end;
+
+  try
+    vCript.Key := FCriptoOptions.Key;
+    Result := vCript.EncodeAsStream(AStream);
+  finally
+    FreeAndNil(vCript);
+  end;
+end;
+
+function TRALParams.Decompress(AStream : TStream) : TStream;
+begin
+  Result := nil;
+  case FCompressType of
+    ctDeflate,
+    ctGZip,
+    ctZLib    : Result := TRALCompressZLib.Decompress(AStream, FCompressType);
+  end;
+end;
+
+function TRALParams.Decompress(ASource : StringRAL) : StringRAL;
+begin
+  Result := '';
+  case FCompressType of
+    ctDeflate,
+    ctGZip,
+    ctZLib    : Result := TRALCompressZLib.Decompress(ASource, FCompressType);
+  end;
+end;
+
+function TRALParams.Decrypt(AStream : TStream) : TStream;
+var
+  vCript : TRALCripto;
+begin
+  Result := nil;
+  case FCriptoOptions.CriptType of
+    crAES128 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
+    crAES192 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
+    crAES256 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
+  end;
+
+  try
+    vCript.Key := FCriptoOptions.Key;
+    Result := vCript.DecodeAsStream(AStream);
+  finally
+    FreeAndNil(vCript);
+  end;
+end;
+
+function TRALParams.Decrypt(ASource : StringRAL) : StringRAL;
+var
+  vCript : TRALCripto;
+begin
+  Result := '';
+  case FCriptoOptions.CriptType of
+    crAES128 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
+    crAES192 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
+    crAES256 : begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
+  end;
+
+  try
+    vCript.Key := FCriptoOptions.Key;
+    Result := vCript.Decode(ASource);
+  finally
+    FreeAndNil(vCript);
+  end;
 end;
 
 end.

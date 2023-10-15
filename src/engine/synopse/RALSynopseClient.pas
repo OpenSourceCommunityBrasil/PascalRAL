@@ -66,9 +66,16 @@ begin
       AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
     end;
 
+    Request.ContentCripto := CriptoOptions.CriptType;
+    if CriptoOptions.CriptType <> crNone then
+    begin
+      AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
+      AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+    end;
+
     vFree := False;
     vContentType := '';
-    vSource := AParams.EncodeBody(vContentType, vFree, CompressType);
+    vSource := AParams.EncodeBody(vContentType, vFree);
     try
       if vContentType <> '' then
         AParams.AddParam('Content-Type', vContentType, rpkHEADER);
@@ -90,16 +97,22 @@ begin
           amHEAD:
             Result := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amOPTIONS:
-            Result := vHttp.Request(vAddress, 'OPTION', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            Result := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', False, vSource, nil);
         end;
+        vContentType := vHttp.ContentType;
+
         vResult := TStringStream.Create(vHttp.Content);
         vResult.Position := 0;
 
         Response.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
-        vContentType := vHttp.ContentType;
         Response.ContentEncoding := Response.ParamByName('Content-Encoding').AsString;
-        Response.Params.DecodeBody(vResult, vContentType, Response.ContentCompress);
+        Response.Params.CompressType := Response.ContentCompress;
+
+        Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
+        Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+
+        ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
       except
         on e : Exception do
           ResponseError := e.Message;

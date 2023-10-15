@@ -80,9 +80,16 @@ begin
     AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
   end;
 
+  Request.ContentCripto := CriptoOptions.CriptType;
+  if CriptoOptions.CriptType <> crNone then
+  begin
+    AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
+    AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+  end;
+
   AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
-  vSource := AParams.EncodeBody(vContentType, vFree, CompressType);
+  vSource := AParams.EncodeBody(vContentType, vFree);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
     AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
@@ -99,13 +106,18 @@ begin
         amHEAD    : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
         amOPTIONS : FHttp.Options(AURL, vResult);
       end;
-
       vContentType := FHttp.ResponseHeaders.Values['Content-Type'];
-      Response.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
 
-      Response.Params.DecodeBody(vResult, vContentType, Response.ContentCompress);
       Response.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       Response.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
+
+      Response.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
+      Response.Params.CompressType := Response.ContentCompress;
+
+      Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
+      Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+
+      ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
     except
       ResponseError := FHttp.ResponseStatusText;
     end;

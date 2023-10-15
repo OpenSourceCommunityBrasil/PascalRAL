@@ -4,8 +4,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALAuthentication, RALJson, RALTools,
-  RALParams, RALMIMETypes, RALCustomObjects, RALToken;
+  RALTypes, RALConsts, RALAuthentication, RALJson, RALTools, RALParams,
+  RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream;
 
 type
 
@@ -24,10 +24,12 @@ type
     FEngine: StringRAL;
     FKeepAlive : boolean;
     FCompressType: TRALCompressType;
+    FCriptoOptions: TRALCriptoOptions;
 
     FLastRoute : StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
     FLastResponse: TRALHTTPHeaderInfo;
+    FLastResponseStream: TStream;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
@@ -46,7 +48,7 @@ type
     function GetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
 
     function GetResponseText: StringRAL;
-    function GetResponseStream: TStream;
+    procedure SetLastResponseStream(AValue : TStream);
 
     procedure SetAuthentication(const AValue: TRALAuthClient);
     procedure SetBaseURL(const AValue: StringRAL);
@@ -78,7 +80,7 @@ type
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
     property ResponseText: StringRAL read GetResponseText;
-    property ResponseStream: TStream read GetResponseStream;
+    property ResponseStream: TStream read FLastResponseStream write SetLastResponseStream;
 
     property Request : TRALHTTPHeaderInfo read FLastRequest;
     property Response : TRALHTTPHeaderInfo read FLastResponse;
@@ -91,6 +93,7 @@ type
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     property CompressType : TRALCompressType read FCompressType write FCompressType;
+    property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
   end;
 
 implementation
@@ -132,6 +135,10 @@ begin
 
       if vContinue then
       begin
+        FLastRequest.Params.CompressType := FCompressType;
+        FLastRequest.Params.CriptoOptions.CriptType := FCriptoOptions.CriptType;
+        FLastRequest.Params.CriptoOptions.Key := FCriptoOptions.Key;
+
         Result := SendUrl(AURL, AMethod, FLastRequest.Params);
 
         vConta := vConta + 1;
@@ -154,6 +161,11 @@ constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAuthentication := nil;
+  FLastRequest := TRALHTTPHeaderInfo.Create;
+  FLastResponse := TRALHTTPHeaderInfo.Create;
+  FCriptoOptions := TRALCriptoOptions.Create;
+  FLastResponseStream := nil;
+
   FBaseURL := '';
   FUseSSL := False;
   FResponseCode := 0;
@@ -163,9 +175,6 @@ begin
   FConnectTimeout := 30000;
   FRequestTimeout := 10000;
   FCompressType := ctGZip;
-
-  FLastRequest := TRALHTTPHeaderInfo.Create;
-  FLastResponse := TRALHTTPHeaderInfo.Create;
 end;
 
 function TRALClient.Delete: IntegerRAL;
@@ -180,6 +189,8 @@ begin
 
   FreeAndNil(FLastRequest);
   FreeAndNil(FLastResponse);
+  FreeAndNil(FCriptoOptions);
+  FreeAndNil(FLastResponseStream);
 
   inherited;
 end;
@@ -189,47 +200,9 @@ begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
 end;
 
-function TRALClient.GetResponseStream: TStream;
-var
-  vStream: TStream;
-  vContentType: StringRAL;
-  vFreeContent: boolean;
-begin
-  Result := TMemoryStream.Create;
-  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent, ctNone);
-  if vStream <> nil then
-  begin
-    vStream.Position := 0;
-    Result.CopyFrom(vStream,vStream.Size);
-
-    if vFreeContent then
-      vStream.Free;
-  end;
-  Result.Position := 0;
-end;
-
 function TRALClient.GetResponseText: StringRAL;
-var
-  vStream: TStream;
-  vContentType: StringRAL;
-  vFreeContent: boolean;
 begin
-  Result := '';
-  vStream := FLastResponse.Params.EncodeBody(vContentType, vFreeContent, ctNone);
-  if vStream <> nil then
-  begin
-    vStream.Position := 0;
-    if vStream is TStringStream then begin
-      Result := TStringStream(vStream).DataString;
-    end
-    else begin
-      SetLength(Result, vStream.Size);
-      vStream.Read(Result[PosIniStr], vStream.Size);
-    end;
-
-    if vFreeContent then
-      vStream.Free;
-  end;
+  Result := StreamToString(FLastResponseStream);
 end;
 
 function TRALClient.GetToken(AVars: TStringList; AParams: TRALParams): boolean;
@@ -430,6 +403,12 @@ begin
     Result := Result + '?' + FLastRequest.Params.AssignParamsUrl(rpkQUERY);
 end;
 
+procedure TRALClient.SetLastResponseStream(AValue : TStream);
+begin
+  FreeAndNil(FLastResponseStream);
+  FLastResponseStream := AValue;
+end;
+
 procedure TRALClient.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
@@ -470,7 +449,7 @@ begin
   Result := Self;
 end;
 
-function TRALClient.AddBody(AText, AContextType: StringRAL): TRALClient;
+function TRALClient.AddBody(AText : StringRAL; AContextType : StringRAL) : TRALClient;
 begin
   FLastRequest.AddBody(AText, AContextType);
   Result := Self;

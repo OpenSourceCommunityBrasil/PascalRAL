@@ -17,6 +17,8 @@ function RALHighStr(AStr : StringRAL) : IntegerRAL;
 function StrIsUTF8(AStr : StringRAL) : boolean;
 function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
 function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
+function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
+function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
 
 implementation
 
@@ -176,6 +178,28 @@ begin
     ctGZip    : Result := 'gzip';
     ctDeflate : Result := 'deflate';
     ctZLib    : Result := 'zlib';
+  end;
+end;
+
+function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
+begin
+  if SameText(AStr,'aes128cbc_pkcs7') then
+    Result := crAES128
+  else if SameText(AStr,'aes192cbc_pkcs7') then
+    Result := crAES192
+  else if SameText(AStr,'aes256cbc_pkcs7') then
+    Result := crAES256
+  else
+    Result := crNone;
+end;
+
+function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
+begin
+  case ACripto of
+    crNone   : Result := '';
+    crAES128 : Result := 'aes128cbc_pkcs7';
+    crAES192 : Result := 'aes192cbc_pkcs7';
+    crAES256 : Result := 'aes256cbc_pkcs7';
   end;
 end;
 

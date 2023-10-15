@@ -53,6 +53,7 @@ type
     FHost: StringRAL;
     FProtocol: StringRAL;
     FHttpVersion : StringRAL;
+    FStream : TStream;
   protected
     function GetURL : StringRAL;
     procedure SetQuery(const Value: StringRAL);
@@ -68,6 +69,7 @@ type
     function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
     property URL: StringRAL read GetURL;
+    property Stream : TStream read FStream write FStream;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
@@ -104,6 +106,7 @@ begin
   inherited;
   FAuthorization := TRALAuthorization.Create;
   FClientInfo := TRALClientInfo.Create;
+  FStream := nil;
   FContentSize := 0;
 end;
 
@@ -111,6 +114,7 @@ destructor TRALRequest.Destroy;
 begin
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
+  FreeAndNil(FStream);
   inherited;
 end;
 

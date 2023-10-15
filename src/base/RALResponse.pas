@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes, RALCustomObjects;
+  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream;
 
 type
 
@@ -13,8 +13,9 @@ type
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     FContentType: StringRAL;
-    FRespCode: IntegerRAL;
+    FStatusCode: IntegerRAL;
     FFreeContent: boolean;
+    FCriptoKey: StringRAL;
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -39,7 +40,8 @@ type
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property StatusCode: IntegerRAL read FRespCode write FRespCode;
+    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     property FreeContent: boolean read FFreeContent;
   end;
 
@@ -117,33 +119,22 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := Params.EncodeBody(FContentType, FFreeContent, ContentCompress);
+  Params.CriptoOptions.CriptType := ContentCripto;
+  Params.CriptoOptions.Key := CriptoKey;
+  Params.CompressType := ContentCompress;
+  Result := Params.EncodeBody(FContentType, FFreeContent);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
 var
   vStream: TStream;
 begin
-  Result := '';
-  vStream := Params.EncodeBody(FContentType, FFreeContent, ContentCompress);
-  if vStream <> nil then
-  begin
-    vStream.Position := 0;
-    if vStream is TStringStream then begin
-      Result := TStringStream(vStream).DataString;
-    end
-    else if vStream.InheritsFrom(TMemoryStream) then begin
-      SetLength(Result, vStream.Size);
-      Move(TMemoryStream(vStream).Memory, Result[PosIniStr], vStream.Size);
-    end
-    else begin
-      SetLength(Result, vStream.Size);
-      vStream.Read(Result[PosIniStr], vStream.Size);
-    end;
-
+  vStream := GetResponseStream;
+  try
+    Result := StreamToString(vStream);
+  finally
     if FFreeContent then
       vStream.Free;
-
     FFreeContent := False;
   end;
 end;

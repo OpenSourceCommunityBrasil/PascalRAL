@@ -46,7 +46,7 @@ type
     rsoEnableWhiteList, rsoIPBroadcastProtection, rsoPathTransvBlackList);
   TRALServerOptions = set of TRALServerOption;
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip);
-  TRALCriptoType = (crNone, crAES);
+  TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
 
 const
   {$IFDEF HAS_FMX}

@@ -68,6 +68,13 @@ begin
     AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
   end;
 
+  Request.ContentCripto := CriptoOptions.CriptType;
+  if CriptoOptions.CriptType <> crNone then
+  begin
+    AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
+    AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+  end;
+
   SetLength(vHeaders, AParams.Count(rpkHEADER));
   for vInt := 0 to Pred(AParams.Count) do
   begin
@@ -77,7 +84,7 @@ begin
   end;
 
   vFree := False;
-  vSource := AParams.EncodeBody(vContentType, vFree, Request.ContentCompress);
+  vSource := AParams.EncodeBody(vContentType, vFree);
   try
     FHttp.ContentType := vContentType;
     try
@@ -103,9 +110,14 @@ begin
         Response.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 
       vContentType := vResponse.MimeType;
-      Response.ContentEncoding := vResponse.ContentEncoding;
-      Response.Params.DecodeBody(vResponse.ContentStream, vContentType, Response.ContentCompress);
 
+      Response.ContentEncoding := vResponse.ContentEncoding;
+      Response.Params.CompressType := Response.ContentCompress;
+
+      Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
+      Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+
+      ResponseStream := Response.Params.DecodeBody(vResponse.ContentStream, vContentType);
       ResponseCode := vResponse.GetStatusCode;
     except
       on e : ENetHTTPClientException do begin

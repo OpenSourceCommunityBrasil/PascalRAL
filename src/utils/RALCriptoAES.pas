@@ -36,6 +36,7 @@ type
     FMulti14: array[0..255] of byte; // 0e
 
     FEncSBOX: array[0..255] of byte;
+    FDecSBOX: array[0..255] of byte;
 
     FLogAES : TStringList;
   protected
@@ -52,10 +53,10 @@ type
     function RCON(AInt : integer) : Cardinal; //UInt32;
 
     // cipher encode and decode
+    procedure GenerateSBox;
     procedure RoundKey(AInput, AOutput : PByte; AKey : PCardinal); // PUInt32);
 
     // cipher encode
-    function EncSBox(AValue : Byte) : Byte;
     procedure EncSubBytes(AInput, AOutput : PByte);
     procedure EncShiftRows(AInput, AOutput : PByte);
     procedure EncMixColumns(AInput, AOutput : PByte);
@@ -207,60 +208,35 @@ begin
   Move(AInput^, AOutput^, 16);
 end;
 
-function TRALCriptoAES.EncSBox(AValue : Byte) : Byte;
-const
-
-  cSBOX : array[0..7,0..7] of Byte = ((0, 7, 6, 5, 4, 3, 2, 1),
-                                      (1, 0, 7, 6, 5, 4, 3, 2),
-                                      (2, 1, 0, 7, 6, 5, 4, 3),
-                                      (3, 2, 1, 0, 7, 6, 5, 4),
-                                      (4, 3, 2, 1, 0, 7, 6, 5),
-                                      (5, 4, 3, 2, 1, 0, 7, 6),
-                                      (6, 5, 4, 3, 2, 1, 0, 7),
-                                      (7, 6, 5, 4, 3, 2, 1, 0));
-
-  cInv : array[0..7] of Byte = (7, 6, 5, 4, 3, 2, 1, 0);
-{
-  cSBOX : array[0..7,0..7] of Byte = ((1, 2, 3, 4, 5, 6, 7, 0),
-                                      (2, 3, 4, 5, 6, 7, 0, 1),
-                                      (3, 4, 5, 6, 7, 0, 1, 2),
-                                      (4, 5, 6, 7, 0, 1, 2, 3),
-                                      (5, 6, 7, 8, 1, 2, 3, 4),
-                                      (6, 7, 0, 1, 2, 3, 4, 5),
-                                      (7, 0, 1, 2, 3, 4, 5, 6),
-                                      (0, 1, 2, 3, 4, 5, 6, 7));
-}
+procedure TRALCriptoAES.GenerateSBox;
 var
-  vNumXX, vNum31, vMultAnd : array[0..7] of byte;
-  vInt1, vInt2, vBase31, vNumAnd : integer;
-  vResult : Byte;
+  vInt: IntegerRAL;
+  vMult: Cardinal;
+  vBytes: array[0..255] of Byte;
+  vByte: Byte;
 begin
-  vResult := 0;
-  if AValue > 0 then
+  vByte := 1;
+  for vInt := 0 to 255 do
   begin
-    vBase31 := 31; // 0x1F
-    for vInt1 := 0 to 7 do
-    begin
-      vNumXX[vInt1] := AValue and 1;
-      vNum31[vInt1] := vBase31 and 1;
-
-      vBase31 := vBase31 shr 1;
-      AValue := AValue shr 1;
-    end;
-
-    for vInt1 := 0 to 7 do
-    begin
-      vNumAnd := 0;
-      for vInt2 := 0 to 7 do
-        vNumAnd := vNumAnd xor (vNum31[cSBOX[vInt1, vInt2]] and vNumXX[vInt2]);
-
-      vMultAnd[cInv[vInt1]] := vNumAnd;
-    end;
-
-    for vInt1 := 0 to 7 do
-      vResult := (vResult shl 1) or vMultAnd[vInt1];
+    vBytes[vInt] := vByte;
+    vByte := vByte xor Multi02(vByte);
   end;
-  Result := vResult xor 99; // 0x63
+
+  // DecSBOX é a posicao do byte no EncSBOX
+  FEncSBOX[0] := 99; // 0x63;
+  FDecSBOX[99] := 0; // 0x00
+
+  FillChar(FDecSBOX, 256, 0);
+  for vInt := 0 to 254 do
+  begin
+    vMult := vBytes[255 - vInt];
+    vMult := vMult or (vMult shl 8);
+    vMult := vMult xor (vMult shr 4) xor (vMult shr 5) xor
+                       (vMult shr 6) xor (vMult shr 7);
+
+    FEncSBOX[vBytes[vInt]] := (vMult xor 99) and 255;
+    FDecSBOX[FEncSBOX[vBytes[vInt]]] := vBytes[vInt];
+  end;
 end;
 
 procedure TRALCriptoAES.EncSubBytes(AInput, AOutput : PByte);
@@ -511,9 +487,9 @@ begin
     FMulti11[vByte] := Multi(11,vByte);
     FMulti13[vByte] := Multi(13,vByte);
     FMulti14[vByte] := Multi(14,vByte);
-
-//    FEncSBOX[vByte] := EncSBox(vByte); // todo
   end;
+  
+  GenerateSBox;
 end;
 
 function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
@@ -583,10 +559,7 @@ end;
 
 function TRALCriptoAES.Multi02(AValue : Byte) : Byte;
 begin
-  if AValue < 128 then
-    Result := (AValue * 2)
-  else
-    Result := ((AValue * 2) - 256) xor 27;
+  Result := (AValue shl 1) xor ((AValue shr 7) * 283);
 end;
 
 procedure TRALCriptoAES.SetAESType(AValue : TRALAESType);

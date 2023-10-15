@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils, StrUtils, TypInfo,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects;
+  RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
+  RALCripto;
 
 type
   TRALServer = class;
@@ -108,6 +109,7 @@ type
     FIPConfig: TRALIPConfig;
     FCompressType: TRALCompressType;
     FCORSOptions : TRALCORSOptions;
+    FCriptoOptions: TRALCriptoOptions;
 
     FBlackIPList: TRALStringListSafe;
     FWhiteIPList: TRALStringListSafe;
@@ -150,10 +152,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
-    procedure Start;
-    procedure Stop;
 
     {$IFDEF CONSOLE}
       property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
@@ -176,6 +177,7 @@ type
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
     property CompressType : TRALCompressType read FCompressType write FCompressType;
     property CORSOptions : TRALCORSOptions read FCORSOptions write FCORSOptions;
+    property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
 
     {$IFNDEF CONSOLE}
       property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
@@ -300,10 +302,17 @@ end;
 constructor TRALServer.Create(AOwner: TComponent);
 begin
   inherited;
-  FPort := 8000;
-  FAuthentication := nil;
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
+  FBlockedList := TRALStringListSafe.Create;
+  FWhiteIPList := TRALStringListSafe.Create;
+  FBlackIPList := TRALStringListSafe.Create;
+  FIPConfig := TRALIPConfig.Create(Self);
+  FCORSOptions := TRALCORSOptions.Create;
+  FCriptoOptions := TRALCriptoOptions.Create;
+
+  FPort := 8000;
+  FAuthentication := nil;
   FBruteForceProtection := TRALBruteForceProtection.Create;
   FShowServerStatus := True;
   FSSL := CreateRALSSL;
@@ -311,23 +320,7 @@ begin
   FFavIcon := '';
   FSessionTimeout := 30000;
   FCompressType := ctNone;
-
-  FBlockedList := TRALStringListSafe.Create;
-  FWhiteIPList := TRALStringListSafe.Create;
-  FBlackIPList := TRALStringListSafe.Create;
-  FIPConfig := TRALIPConfig.Create(Self);
-  FCORSOptions := TRALCORSOptions.Create;
-
-//  liberando localhost
-//  if FWhiteIPList.Text = '' then begin
-//    FWhiteIPList.Add('localhost');
-//    FWhiteIPList.Add('127.0.0.1');
-//    FWhiteIPList.Add('0:0:0:0:0:0:0:1');
-//    FWhiteIPList.Add('::1');
-//  end;
-
-  if Trim(FServerStatus.Text) = '' then
-    FServerStatus.Text := RALDefaultPage;
+  FServerStatus.Text := RALDefaultPage;
 end;
 
 function TRALServer.CreateRALSSL: TRALSSL;
@@ -615,6 +608,13 @@ begin
   if Result.ContentCompress = ctNone then
     Result.ContentCompress := FCompressType;
 
+  Result.ContentCripto := crNone;
+  if CriptoOptions.Key <> '' then
+  begin
+    Result.ContentCripto := ARequest.AcceptCripto;
+    Result.CriptoKey := CriptoOptions.Key;
+  end;
+
   if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
   begin
     if Assigned(FOnClientWasBlocked) then
@@ -689,16 +689,6 @@ begin
   ARequest.Params.ClearParams;
 
   CleanExpiredBlockedList;
-end;
-
-procedure TRALServer.Start;
-begin
-  Active := True;
-end;
-
-procedure TRALServer.Stop;
-begin
-  Active := False;
 end;
 
 procedure TRALServer.SetActive(const AValue: boolean);

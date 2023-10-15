@@ -7,10 +7,15 @@ uses
   RALTypes, RALStream;
 
 type
+
+  { TRALCriptoOptions }
+
   TRALCriptoOptions = class(TPersistent)
   private
     FCriptType : TRALCriptoType;
     FKey : StringRAL;
+  public
+    constructor Create;
   published
     property Key : StringRAL read FKey write FKey;
     property CriptType : TRALCriptoType read FCriptType write FCriptType;
@@ -49,6 +54,15 @@ type
   end;
 
 implementation
+
+{ TRALCriptoOptions }
+
+constructor TRALCriptoOptions.Create;
+begin
+  inherited;
+  FKey := '';
+  FCriptType := crNone;
+end;
 
 { TRALCripto }
 

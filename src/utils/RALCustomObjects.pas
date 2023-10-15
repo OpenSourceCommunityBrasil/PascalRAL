@@ -23,12 +23,20 @@ type
   private
     FContentEncoding : StringRAL;
     FAcceptEncoding : StringRAL;
+
+    FContentEncription : StringRAL;
+    FAcceptEncription : StringRAL;
+
     FParams: TRALParams;
   protected
     function GetParams: TRALParams;
     function GetContentCompress : TRALCompressType;
     procedure SetContentCompress(const AValue: TRALCompressType);
     function GetAcceptCompress : TRALCompressType;
+
+    function GetContentCripto : TRALCriptoType;
+    procedure SetContentCripto(AValue : TRALCriptoType);
+    function GetAcceptCripto : TRALCriptoType;
   public
     constructor Create;
     destructor Destroy; override;
@@ -54,10 +62,18 @@ type
     function HasValidAcceptEncoding: boolean;
   published
     property Params: TRALParams read GetParams;
+
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentCompress: TRALCompressType read GetContentCompress write SetContentCompress;
+
     property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
+
+    property ContentEncription: StringRAL read FContentEncoding write FContentEncoding;
+    property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
+
+    property AcceptEncription: StringRAL read FAcceptEncription write FAcceptEncription;
+    property AcceptCripto: TRALCriptoType read GetAcceptCripto;
   end;
 
 implementation
@@ -84,6 +100,41 @@ begin
     Result := ctZLib
   else
     Result := ctNone;
+end;
+
+function TRALHTTPHeaderInfo.GetContentCripto : TRALCriptoType;
+var
+  vStr : StringRAL;
+begin
+  vStr := LowerCase(FContentEncription);
+  if (Pos('aes256cbc_pkcs7', vStr) > 0) then
+    Result := crAES256
+  else if (Pos('aes192cbc_pkcs7', vStr) > 0) then
+    Result := crAES192
+  else if (Pos('aes128cbc_pkcs7', vStr) > 0) then
+      Result := crAES128
+  else
+    Result := crNone;
+end;
+
+procedure TRALHTTPHeaderInfo.SetContentCripto(AValue : TRALCriptoType);
+begin
+  FContentEncription := CriptoToStrCripto(AValue);
+end;
+
+function TRALHTTPHeaderInfo.GetAcceptCripto : TRALCriptoType;
+var
+  vStr : StringRAL;
+begin
+  vStr := LowerCase(FContentEncription);
+  if (Pos('aes256cbc_pkcs7', vStr) > 0) then
+    Result := crAES256
+  else if (Pos('aes192cbc_pkcs7', vStr) > 0) then
+    Result := crAES192
+  else if (Pos('aes128cbc_pkcs7', vStr) > 0) then
+      Result := crAES128
+  else
+    Result := crNone;
 end;
 
 function TRALHTTPHeaderInfo.GetParams: TRALParams;

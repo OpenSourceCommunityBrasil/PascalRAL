@@ -233,7 +233,13 @@ begin
       Params.AppendParams(ARequest.QueryFields,rpkQUERY);
       Params.AppendParams(ARequest.CookieFields,rpkCOOKIE);
 
-      Params.DecodeBody(ARequest.Content, ARequest.ContentType, ContentCompress);
+      ContentEncription := ParamByName('Content-Encription').AsString;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+
+      Params.CompressType := ContentCompress;
+      Params.CriptoOptions.CriptType := ContentCripto;
+      Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
+      Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
       Host := ARequest.Host;
       vInt := Pos('/', ARequest.ProtocolVersion);
@@ -269,8 +275,12 @@ begin
 
         if vResponse.ContentEncoding <> '' then
           AResponse.ContentEncoding := vResponse.ContentEncoding;
+
         if vResponse.AcceptEncoding <> '' then
           Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+
+        if vResponse.ContentEncription <> '' then
+          Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
         AResponse.Server := 'RAL_fpHTTP';
         if vConnClose then

@@ -228,7 +228,13 @@ begin
       ContentEncoding := Params.Get['Content-Encoding'].AsString;
       AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
-      Params.DecodeBody(AContext.InContent, AContext.InContentType, ContentCompress);
+      ContentEncription := ParamByName('Content-Encription').AsString;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+
+      Params.CompressType := ContentCompress;
+      Params.CriptoOptions.CriptType := ContentCripto;
+      Params.CriptoOptions.Key := CriptoOptions.Key;
+      Stream := Params.DecodeBody(AContext.InContent, AContext.InContentType);
 
       Host := AContext.Host;
       Protocol := '1.1';
@@ -246,15 +252,21 @@ begin
     try
       with vResponse do
       begin
-        if ContentCompress <> ctNone then
+        if (ContentCompress <> ctNone) or (ContentCripto <> crNone) then
         begin
           AContext.OutContent := ResponseText;
           if vResponse.ContentEncoding <> '' then
-            Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
+            Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+
           if ContentType <> '' then
             Params.AddParam('Content-Type', ContentType, rpkHEADER);
+
           if vResponse.AcceptEncoding <> '' then
-            Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+            Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+
+          if vResponse.ContentEncription <> '' then
+            Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+
           AContext.OutContentType := STATICFILE_CONTENT_TYPE; // '!STATICFILE';
         end
         else
