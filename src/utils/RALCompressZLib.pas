@@ -9,7 +9,7 @@ uses
     ZLib,
   {$ENDIF}
   Classes, SysUtils,
-  RALTypes, RALConsts;
+  RALTypes, RALConsts, RALStream;
 
 type
   { TRALCompressZLib }
@@ -87,7 +87,7 @@ begin
 
   vSize := AStream.Size;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
   if AFormat = ctGZip then
     Result.Write(GZipHeader,Length(GZipHeader));
 
@@ -158,7 +158,7 @@ begin
     AStream.Position := 10;
   end;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
   try
     {$IFDEF FPC}
       if AFormat = ctZLib then
@@ -199,13 +199,14 @@ end;
 
 class function TRALCompressZLib.Compress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
-  vStr, vRes : TStringStream;
+  vStr : TStringStream;
+  vRes : TStream;
 begin
   vStr := TStringStream.Create(AString);
   try
-    vRes := TStringStream(Compress(vStr, AFormat));
+    vRes := Compress(vStr, AFormat);
     try
-      Result := vRes.DataString;
+      Result := StreamToString(vRes);
     finally
       FreeAndNil(vRes);
     end;
@@ -216,13 +217,14 @@ end;
 
 class function TRALCompressZLib.Decompress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
-  vStr, vRes : TStringStream;
+  vStr : TStringStream;
+  vRes : TStream;
 begin
   vStr := TStringStream.Create(AString);
   try
-    vRes := TStringStream(Decompress(vStr, AFormat));
+    vRes := Decompress(vStr, AFormat);
     try
-      Result := vRes.DataString;
+      Result := StreamToString(vRes);
     finally
       FreeAndNil(vRes);
     end;

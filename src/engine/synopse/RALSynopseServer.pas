@@ -252,45 +252,17 @@ begin
     try
       with vResponse do
       begin
-        if (ContentCompress <> ctNone) and (ContentCripto = crNone) then
-        begin
-          AContext.OutContent := ResponseText;
-          if vResponse.ContentEncoding <> '' then
-            Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+        AContext.OutContent := ResponseText;
+        AContext.OutContentType := ContentType;
 
-          if vResponse.ContentType <> '' then
-            Params.AddParam('Content-Type', ContentType, rpkHEADER);
+        if vResponse.ContentEncoding <> '' then
+          Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
 
-          if vResponse.AcceptEncoding <> '' then
-            Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+        if vResponse.AcceptEncoding <> '' then
+          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-          if vResponse.ContentEncription <> '' then
-            Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
-
-          AContext.OutContentType := STATICFILE_CONTENT_TYPE; // '!STATICFILE';
-        end
-        else if (ContentCripto <> crNone) then begin
-          AContext.OutContent := ResponseText;
-          if vResponse.ContentEncoding <> '' then
-            Params.AddParam('Content-Transfer-Encoding', ContentEncoding, rpkHEADER);
-
-          if vResponse.ContentType <> '' then
-            Params.AddParam('Content-Transfer-Type', ContentType, rpkHEADER);
-
-          if vResponse.ContentType <> '' then
-            Params.AddParam('Content-Type', rctAPPLICATIONOCTETSTREAM, rpkHEADER);
-
-          if vResponse.AcceptEncoding <> '' then
-            Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
-
-          if vResponse.ContentEncription <> '' then
-            Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
-        end
-        else
-        begin
-          AContext.OutContent := ResponseText;
-          AContext.OutContentType := ContentType;
-        end;
+        if vResponse.ContentEncription <> '' then
+          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
         AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
 
