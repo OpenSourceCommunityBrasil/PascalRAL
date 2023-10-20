@@ -39,7 +39,6 @@ type
     destructor Destroy; override;
   end;
 
-
   { TLazarusFinder }
 
   TLazarusFinder = class
@@ -55,14 +54,109 @@ function ListInstalledLazarusVersions: TLazarusObjectList;
 
 implementation
 
+{$REGION 'custom functions'}
+function GetLazarusLocalFolder: string;
+begin
+  Result := Format('%slazarus', [IncludeTrailingPathDelimiter(GetLocalAppDataFolder)]);
+  if not DirectoryExists(Result) then
+    Result := '';
+end;
+
+function GetConfigLazarusValue(const AValue: string): string;
+var
+  LocalFolder: TFileName;
+  FileName: TFileName;
+  XmlDoc: olevariant;
+  Node: olevariant;
+begin
+  Result := '';
+  LocalFolder := GetLazarusLocalFolder;
+  if LocalFolder <> '' then
+  begin
+    FileName := Format('%s%s', [IncludeTrailingPathDelimiter(LocalFolder),
+      sLazarusConfigFile]);
+    if FileExists(FileName) then
+    begin
+      XmlDoc := CreateOleObject('Msxml2.DOMDocument.6.0');
+      try
+        XmlDoc.Async := False;
+        XmlDoc.Load(FileName);
+        XmlDoc.SetProperty('SelectionLanguage', 'XPath');
+
+        if (XmlDoc.parseError.errorCode <> 0) then
+          raise Exception.CreateFmt('Error in Xml Data %s', [XmlDoc.parseError]);
+
+        Node := XmlDoc.selectSingleNode(AValue);
+        if not VarIsClear(Node) then
+          Result := Node.Text;
+      finally
+        XmlDoc := Unassigned;
+      end;
+    end;
+  end;
+end;
+
+function GetLazarusIDEFolder: string;
+begin
+  Result := GetConfigLazarusValue('//CONFIG/EnvironmentOptions/LazarusDirectory/@Value');
+  if Result = '' then
+    Result := GetConfigLazarusValue(
+      '//CONFIG/EnvironmentOptions/LazarusDirectory/History/Item1/@Value');
+
+end;
+
+function GetLazarusIDEFileName: string;
+begin
+  Result := Format('%s%s', [IncludeTrailingPathDelimiter(GetLazarusIDEFolder),
+    sLazarusIDEName]);
+end;
+
+function GetLazarusCompilerFileName: string;
+begin
+  Result := GetConfigLazarusValue('//CONFIG/EnvironmentOptions/CompilerFilename/@Value');
+end;
+
+function IsLazarusInstalled: boolean;
+begin
+  Result := FileExists(GetLazarusIDEFileName);
+end;
+
+{$ENDREGION}
+
 procedure FillCurrentLazarusVersion(Data: TLazarusObjectData);
 begin
 
 end;
 
 procedure FillListLazarusVersions(AList: TList);
+var
+  VersionData: TDelphiVersionData;
+  Found: boolean;
+  FileName: string;
 begin
-
+  Found := IsLazarusInstalled;
+  if Found then
+  begin
+    FileName := GetLazarusIDEFileName;
+    {
+      ExtractIconFileToImageList(ListView.SmallImages, Filename);
+      Item := ListView.Items.Add;
+      Item.ImageIndex := ListView.SmallImages.Count - 1;
+      Item.Caption := Format('Lazarus %s',[uMisc.GetFileVersion(FileName)]);
+      item.SubItems.Add(FileName);
+      item.SubItems.Add(IntToStr(Ord(TSupportedIDEs.LazarusIDE)));
+      Item.Data := nil;
+    }
+    VersionData := TDelphiVersionData.Create;
+    VersionData.Path := FileName;
+    // VersionData.Version:=;
+    VersionData.Name := Format('Lazarus %s', [DITE.Misc.GetFileVersion(FileName)]);
+    VersionData.IDEType := TSupportedIDEs.LazarusIDE;
+    VersionData.Icon := TIcon.Create;
+    VersionData.Version := TDelphiVersions.DelphiXE; //used for syntax highlight
+    ExtractIconFile(VersionData.Icon, FileName, SHGFI_SMALLICON);
+    AList.Add(VersionData);
+  end;
 end;
 
 function ListInstalledLazarusVersions: TLazarusObjectList;

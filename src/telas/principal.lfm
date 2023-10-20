@@ -11,7 +11,6 @@ object fprincipal: Tfprincipal
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poScreenCenter
-  LCLVersion = '2.2.6.0'
   object pBanner: TPanel
     Left = 0
     Height = 113
@@ -84,6 +83,96 @@ object fprincipal: Tfprincipal
       Width = 107
       Caption = 'Instalador Versão 1.0'
       ParentColor = False
+    end
+  end
+  object pConfirmaRecursos: TPanel
+    Left = 0
+    Height = 368
+    Top = 113
+    Width = 640
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 368
+    ClientWidth = 640
+    TabOrder = 3
+    object imConfirmNext: TImage
+      Tag = -1
+      Left = 508
+      Height = 37
+      Top = 321
+      Width = 121
+      Anchors = [akRight, akBottom]
+      OnClick = imConfirmNextClick
+    end
+    object imConfirmBack: TImage
+      Tag = -1
+      Left = 8
+      Height = 37
+      Top = 321
+      Width = 121
+      Anchors = [akLeft, akBottom]
+      OnClick = imConfirmBackClick
+    end
+    object lConfirmNext: TLabel
+      Tag = 1
+      Left = 508
+      Height = 38
+      Top = 321
+      Width = 120
+      Alignment = taCenter
+      Anchors = [akRight, akBottom]
+      AutoSize = False
+      Caption = 'Instalar >'
+      Font.Color = clBlack
+      Font.Height = -19
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentColor = False
+      ParentFont = False
+      OnClick = imConfirmNextClick
+    end
+    object lConfirmBack: TLabel
+      Tag = 1
+      Left = 8
+      Height = 38
+      Top = 321
+      Width = 120
+      Alignment = taCenter
+      Anchors = [akLeft, akBottom]
+      AutoSize = False
+      Caption = '< Anterior'
+      Font.Color = clBlack
+      Font.Height = -19
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentColor = False
+      ParentFont = False
+      OnClick = imConfirmBackClick
+    end
+    object lConfirmSubTitle: TLabel
+      Left = 0
+      Height = 30
+      Top = 10
+      Width = 640
+      Align = alTop
+      Alignment = taCenter
+      BorderSpacing.Top = 10
+      Caption = 'Resumo dos recursos escolhidos'
+      Font.Height = -21
+      ParentColor = False
+      ParentFont = False
+    end
+    object mmConfirm: TMemo
+      Left = 8
+      Height = 264
+      Top = 48
+      Width = 622
+      Lines.Strings = (
+        'Diretório de instalação: '
+        'IDE selecionada:'
+        'Motor de dados:'
+      )
+      TabOrder = 0
     end
   end
   object pInstall: TPanel
@@ -1126,233 +1215,6 @@ object fprincipal: Tfprincipal
       ParentColor = False
       ParentFont = False
       OnClick = imLanguageNextClick
-    end
-  end
-  object pRecursos: TPanel
-    Left = 0
-    Height = 368
-    Top = 113
-    Width = 640
-    Align = alClient
-    BevelOuter = bvNone
-    ClientHeight = 368
-    ClientWidth = 640
-    TabOrder = 2
-    Visible = False
-    object lResourcesSubTitle: TLabel
-      Left = 0
-      Height = 30
-      Top = 10
-      Width = 640
-      Align = alTop
-      Alignment = taCenter
-      BorderSpacing.Top = 10
-      Caption = 'Escolha os recursos a instalar'
-      Font.Height = -21
-      ParentColor = False
-      ParentFont = False
-    end
-    object clbDataEngine: TCheckListBox
-      Left = 16
-      Height = 144
-      Top = 64
-      Width = 136
-      Items.Strings = (
-        'fpHttp'
-        'indy'
-        'mORMot2'
-        'NetHttp'
-      )
-      ItemHeight = 17
-      TabOrder = 0
-      Data = {
-        0400000000000000
-      }
-    end
-    object lDataEngine: TLabel
-      Left = 16
-      Height = 15
-      Top = 48
-      Width = 84
-      Caption = 'Motor de dados'
-      ParentColor = False
-    end
-    object imResourceNext: TImage
-      Tag = -1
-      Left = 508
-      Height = 37
-      Top = 321
-      Width = 121
-      AntialiasingMode = amOn
-      Anchors = [akRight, akBottom]
-      OnClick = imResourceNextClick
-    end
-    object imResourceBack: TImage
-      Tag = -1
-      Left = 8
-      Height = 37
-      Top = 321
-      Width = 121
-      Anchors = [akLeft, akBottom]
-      OnClick = imResourceBackClick
-    end
-    object lResourcesNext: TLabel
-      Tag = 1
-      Left = 508
-      Height = 37
-      Top = 321
-      Width = 121
-      Alignment = taCenter
-      Anchors = [akRight, akBottom]
-      AutoSize = False
-      Caption = 'Próximo >'
-      Font.Color = clBlack
-      Font.Height = -19
-      Font.Style = [fsBold]
-      Layout = tlCenter
-      ParentColor = False
-      ParentFont = False
-      OnClick = imResourceNextClick
-    end
-    object lResourcesPrevious: TLabel
-      Tag = 1
-      Left = 8
-      Height = 37
-      Top = 321
-      Width = 121
-      Alignment = taCenter
-      Anchors = [akLeft, akBottom]
-      AutoSize = False
-      Caption = '< Anterior'
-      Font.Color = clBlack
-      Font.Height = -19
-      Font.Style = [fsBold]
-      Layout = tlCenter
-      ParentColor = False
-      ParentFont = False
-      OnClick = imResourceBackClick
-    end
-    object CheckBox1: TCheckBox
-      Left = 17
-      Height = 19
-      Top = 213
-      Width = 135
-      Caption = 'Instalar Dependências'
-      TabOrder = 1
-    end
-    object tvResources: TTreeView
-      Left = 408
-      Height = 234
-      Top = 64
-      Width = 209
-      ScrollBars = ssAutoVertical
-      TabOrder = 2
-      Items.Data = {
-        F9FFFFFF020002000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF010000000000
-        0000010C00000052414C202D20536572766572FFFFFFFFFFFFFFFFFFFFFFFFFF
-        FFFFFF0000000000000000000D00000052414C496E6479536572766572FFFFFF
-        FFFFFFFFFFFFFFFFFFFFFFFFFF0100000000000000010C00000052414C202D20
-        436C69656E74FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000010
-        00000052414C4E657448747470436C69656E74
-      }
-    end
-    object lDataEngine1: TLabel
-      Left = 408
-      Height = 15
-      Top = 48
-      Width = 85
-      Caption = 'Pré-visualização'
-      ParentColor = False
-    end
-  end
-  object pConfirmaRecursos: TPanel
-    Left = 0
-    Height = 368
-    Top = 113
-    Width = 640
-    Align = alClient
-    BevelOuter = bvNone
-    ClientHeight = 368
-    ClientWidth = 640
-    TabOrder = 3
-    object imConfirmNext: TImage
-      Tag = -1
-      Left = 508
-      Height = 37
-      Top = 321
-      Width = 121
-      Anchors = [akRight, akBottom]
-      OnClick = imConfirmNextClick
-    end
-    object imConfirmBack: TImage
-      Tag = -1
-      Left = 8
-      Height = 37
-      Top = 321
-      Width = 121
-      Anchors = [akLeft, akBottom]
-      OnClick = imConfirmBackClick
-    end
-    object lConfirmNext: TLabel
-      Tag = 1
-      Left = 508
-      Height = 38
-      Top = 321
-      Width = 120
-      Alignment = taCenter
-      Anchors = [akRight, akBottom]
-      AutoSize = False
-      Caption = 'Instalar >'
-      Font.Color = clBlack
-      Font.Height = -19
-      Font.Style = [fsBold]
-      Layout = tlCenter
-      ParentColor = False
-      ParentFont = False
-      OnClick = imConfirmNextClick
-    end
-    object lConfirmBack: TLabel
-      Tag = 1
-      Left = 8
-      Height = 38
-      Top = 321
-      Width = 120
-      Alignment = taCenter
-      Anchors = [akLeft, akBottom]
-      AutoSize = False
-      Caption = '< Anterior'
-      Font.Color = clBlack
-      Font.Height = -19
-      Font.Style = [fsBold]
-      Layout = tlCenter
-      ParentColor = False
-      ParentFont = False
-      OnClick = imConfirmBackClick
-    end
-    object lConfirmSubTitle: TLabel
-      Left = 0
-      Height = 30
-      Top = 10
-      Width = 640
-      Align = alTop
-      Alignment = taCenter
-      BorderSpacing.Top = 10
-      Caption = 'Resumo dos recursos escolhidos'
-      Font.Height = -21
-      ParentColor = False
-      ParentFont = False
-    end
-    object mmConfirm: TMemo
-      Left = 8
-      Height = 264
-      Top = 48
-      Width = 622
-      Lines.Strings = (
-        'Diretório de instalação: '
-        'IDE selecionada:'
-        'Motor de dados:'
-      )
-      TabOrder = 0
     end
   end
   object pIDE: TPanel
@@ -2683,6 +2545,143 @@ object fprincipal: Tfprincipal
       ParentFont = False
     end
   end
+  object pRecursos: TPanel
+    Left = 0
+    Height = 368
+    Top = 113
+    Width = 640
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 368
+    ClientWidth = 640
+    TabOrder = 2
+    Visible = False
+    object lResourcesSubTitle: TLabel
+      Left = 0
+      Height = 30
+      Top = 10
+      Width = 640
+      Align = alTop
+      Alignment = taCenter
+      BorderSpacing.Top = 10
+      Caption = 'Escolha os recursos a instalar'
+      Font.Height = -21
+      ParentColor = False
+      ParentFont = False
+    end
+    object clbDataEngine: TCheckListBox
+      Left = 16
+      Height = 144
+      Top = 64
+      Width = 136
+      Items.Strings = (
+        'fpHttp'
+        'indy'
+        'mORMot2'
+        'NetHttp'
+      )
+      ItemHeight = 17
+      TabOrder = 0
+      Data = {
+        0400000000000000
+      }
+    end
+    object lDataEngine: TLabel
+      Left = 16
+      Height = 15
+      Top = 48
+      Width = 84
+      Caption = 'Motor de dados'
+      ParentColor = False
+    end
+    object imResourceNext: TImage
+      Tag = -1
+      Left = 508
+      Height = 37
+      Top = 321
+      Width = 121
+      AntialiasingMode = amOn
+      Anchors = [akRight, akBottom]
+      OnClick = imResourceNextClick
+    end
+    object imResourceBack: TImage
+      Tag = -1
+      Left = 8
+      Height = 37
+      Top = 321
+      Width = 121
+      Anchors = [akLeft, akBottom]
+      OnClick = imResourceBackClick
+    end
+    object lResourcesNext: TLabel
+      Tag = 1
+      Left = 508
+      Height = 37
+      Top = 321
+      Width = 121
+      Alignment = taCenter
+      Anchors = [akRight, akBottom]
+      AutoSize = False
+      Caption = 'Próximo >'
+      Font.Color = clBlack
+      Font.Height = -19
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentColor = False
+      ParentFont = False
+      OnClick = imResourceNextClick
+    end
+    object lResourcesPrevious: TLabel
+      Tag = 1
+      Left = 8
+      Height = 37
+      Top = 321
+      Width = 121
+      Alignment = taCenter
+      Anchors = [akLeft, akBottom]
+      AutoSize = False
+      Caption = '< Anterior'
+      Font.Color = clBlack
+      Font.Height = -19
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentColor = False
+      ParentFont = False
+      OnClick = imResourceBackClick
+    end
+    object CheckBox1: TCheckBox
+      Left = 17
+      Height = 19
+      Top = 213
+      Width = 135
+      Caption = 'Instalar Dependências'
+      TabOrder = 1
+    end
+    object tvResources: TTreeView
+      Left = 408
+      Height = 234
+      Top = 64
+      Width = 209
+      ScrollBars = ssAutoVertical
+      TabOrder = 2
+      Items.Data = {
+        F9FFFFFF020002000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF010000000000
+        0000010C00000052414C202D20536572766572FFFFFFFFFFFFFFFFFFFFFFFFFF
+        FFFFFF0000000000000000000D00000052414C496E6479536572766572FFFFFF
+        FFFFFFFFFFFFFFFFFFFFFFFFFF0100000000000000010C00000052414C202D20
+        436C69656E74FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000010
+        00000052414C4E657448747470436C69656E74
+      }
+    end
+    object lDataEngine1: TLabel
+      Left = 408
+      Height = 15
+      Top = 48
+      Width = 85
+      Caption = 'Pré-visualização'
+      ParentColor = False
+    end
+  end
   object pPath: TPanel
     Left = 0
     Height = 368
@@ -2786,8 +2785,82 @@ object fprincipal: Tfprincipal
       Width = 26
       Anchors = [akTop, akLeft, akBottom]
       Flat = True
-      Images = ImageList1
-      ImageIndex = 0
+      Glyph.Data = {
+        36090000424D3609000000000000360000002800000018000000180000000100
+        2000000000000009000064000000640000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        000000000030000000DF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF000000FF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF0000009F00000000000000000000000000000000000000000000
+        0000000000CF000000FF2A6B72FF2C6E76FF2C6F76FF2C6F76FF2C6F76FF2C6F
+        76FF2C6F76FF2C6F76FF2C6F76FF2C6F76FF2C6F76FF2C6F76FF2C6F76FF2C6E
+        76FF205156FF000000FF0000003F000000000000000000000000000000000000
+        0000000000FF000000FF40A1ABFF57DCEBFF58DEEDFF58DEEDFF58DEEDFF58DE
+        EDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DD
+        ECFF4BBECAFF000000FF0000006F000000000000000000000000000000000000
+        0000000000FF000000FF307981FF58DDECFF58DEEDFF58DEEDFF58DEEDFF58DE
+        EDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DD
+        ECFF56D9E7FF10282AFF000000BF000000000000000000000000000000000000
+        0000000000FF000000FF16363AFF58DDECFF58DEEDFF58DEEDFF58DEEDFF58DE
+        EDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DD
+        ECFF55D7E6FF1E4E54FF000000EF000000000000000000000000000000000000
+        0000000000FF000000FF050E0FFF58DDECFF58DEEDFF58DEEDFF58DEEDFF58DE
+        EDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DEEDFF58DDECFF57DA
+        E9FF54D4E2FF378B94FF000000FF0000003F0000000000000000000000000000
+        0000000000FF071B2BFF000000FF42A6B1FF58DEEDFF58DEEDFF58DEEDFF58DE
+        EDFF58DCEBFF57DCEBFF57DBEAFF56DAE9FF56DBEAFF56DAE8FF56D8E7FF54D5
+        E3FF51CCDAFF41A6B1FF000000FF0000006F0000000000000000000000000000
+        0000000000FF0C3557FF000000FF317D85FF58DEEDFF58DEEDFF58DDECFF57DB
+        EAFF56D8E7FF55D6E4FF54D4E2FF53D2E0FF52D1DFFF52D0DEFF52CEDCFF50C9
+        D7FF4CBFCBFF45B1BCFF0C1F21FF000000BF0000000000000000000000000000
+        0000000000FF114774FF071B2CFF16373BFF58DCEBFF57DBEAFF56D9E7FF55D5
+        E3FF53D1DFFF50CBD9FF4EC6D3FF4DC3D0FF4DC2CFFF4CC1CEFF4BBECBFF49B9
+        C5FF46AFBBFF41A3AEFF16393DFF000000EF0000000000000000000000000000
+        0000000000FF114470FF155891FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF000000FF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF000000FF000000FF000000BF0000000000000000000000000000
+        0000000000FF10416AFF2185DBFF1966A8FF114370FF11426EFF10416BFF103E
+        67FF0F3C62FF0E385DFF0D3559FF0D3456FF0C3354FF0C3354FF0C3253FF0C32
+        52FF061928FF000000FF0000006F000000200000000000000000000000000000
+        0000000000FF0F3B61FF1E79C7FF1F7DCDFF1F7ECEFF1E7CCCFF1E79C6FF1D74
+        BEFF1B6DB4FF1A67ABFF1863A4FF18619FFF18609EFF175F9DFF175E9CFF175D
+        9AFF082339FF000000EF00000000000000000000000000000000000000000000
+        0000000000FF0D3556FF1B6BB1FF1B6EB5FF1B6FB6FF1B6EB4FF1B6BAFFF1967
+        A9FF135085FF030D15FF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF0000008F00000000000000000000000000000000000000000000
+        0000000000FF0C304FFF1861A0FF1862A2FF1862A2FF1862A2FF1860A0FF0D36
+        59FF000000FF000000DF0000007F0000007F0000007F0000007F0000007F0000
+        007F0000005F0000000000000000000000000000000000000000000000000000
+        0000000000DF030C13FF0B2E4BFF0B2E4CFF0B2E4CFF0B2E4BFF082338FF0000
+        00FF000000CF0000002000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        000000000030000000CF000000FF000000FF000000FF000000FF000000FF0000
+        008F000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000
+      }
       ImageWidth = 20
       OnClick = SpeedButton1Click
     end

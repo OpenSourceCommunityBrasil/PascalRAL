@@ -53,20 +53,6 @@ begin
   for Component in Args do
     if Component.InheritsFrom(TControl) then
       TControl(Component).Visible := VisibleState;
-{
-    if Component is TLabel then
-      TLabel(Component).Visible := VisibleState
-    else if Component is TCheckGroup then
-      TCheckGroup(Component).Visible := VisibleState
-    else if Component is TCheckListBox then
-      TCheckListBox(Component).Visible := VisibleState
-    else if Component is TShape then
-      TShape(Component).Visible := VisibleState
-    else if Component is TPanel then
-      TPanel(Component).Visible := VisibleState
-    else if Component is TImage then
-      TImage(Component).Visible := VisibleState
-}
 end;
 
 procedure TLCLFunctions.DesativaControles(Args: array of TComponent);

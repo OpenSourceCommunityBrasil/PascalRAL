@@ -5,14 +5,14 @@ unit principal;
 interface
 
 uses
+  {$IFDEF WINDOWS}
+  delphiutils,
+  {$ENDIF}
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   ComCtrls, CheckLst, Buttons, LResources, LCLType,
   fpJSON, jsonparser, DefaultTranslator, LCLTranslator,
   FPWritePNG,
   lclfunctions, imagefunctions, ghrepofunctions,
-  {$IFDEF MSWINDOWS}
-  delphiutils,
-  {$ENDIF}
   lazarusutils;
 
 type

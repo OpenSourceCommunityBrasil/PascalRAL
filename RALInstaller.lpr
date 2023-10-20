@@ -16,12 +16,12 @@ uses
 {$R *.res}
 
 begin
-  {$IFDEF DEBUG}
+  {$ifopt D+}
   SetHeapTraceOutput('debug.trc');
     {$if declared(UseHeapTrace)}
     GlobalSkipIfNoLeaks := True; // supported as of debugger version 3.2.0
     {$endIf}
-  {$ENDIF}
+  {$IFEND}
   RequireDerivedFormResource := True;
   Application.Scaled := True;
   Application.Initialize;

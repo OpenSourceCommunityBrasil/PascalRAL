@@ -16,7 +16,7 @@ const
   ZipDownloadAPI = APIURL + 'zipball/%s';
   FileDownloadAPI = SiteURL + 'raw/installer/%s';
   ReleaseAPI = APIURL + 'releases/latest';
-  USERAGENT = 'Pascal REST Api Lite (RAL) Installer Tool';
+  USERAGENT = 'Pascal REST Api Lite (RAL) Installer Tool v1.0';
 
 type
 

@@ -14,7 +14,7 @@ type
   TDelphiVersions = (Delphi7, Delphi8, Delphi2005, Delphi2006, Delphi2007,
     Delphi2009, Delphi2010, DelphiXE, DelphiXE2, DelphiXE3, DelphiXE4, DelphiXE5,
     DelphiXE6, DelphiXE7, DelphiXE8, Delphi10Seattle, Delphi10Berlin,
-    Delphi10Tokyo, Delphi10Rio, Delphi10Sydney, Delphi11Alexandria);
+    Delphi10Tokyo, Delphi10Rio, Delphi10Sydney, Delphi11Alexandria, Delphi12Yukon);
 
   TDelphiObjectData = class
   private
@@ -69,7 +69,8 @@ const
     '\Software\Embarcadero\BDS\19.0',
     '\Software\Embarcadero\BDS\20.0',
     '\Software\Embarcadero\BDS\21.0',
-    '\Software\Embarcadero\BDS\22.0'
+    '\Software\Embarcadero\BDS\22.0',
+    '\Software\Embarcadero\BDS\23.0'
     );
 
   DelphiCustomRegPaths: array [TDelphiVersions] of string = (
@@ -93,7 +94,8 @@ const
     '\Software\Embarcadero\%s\19.0', // BDS
     '\Software\Embarcadero\%s\20.0', // BDS
     '\Software\Embarcadero\%s\21.0', // BDS
-    '\Software\Embarcadero\%s\22.0'  // BDS
+    '\Software\Embarcadero\%s\22.0',  // BDS
+    '\Software\Embarcadero\%s\23.0'  // BDS
     );
 
   DelphiRegPathNumbers: array [TDelphiVersions] of integer = (
@@ -117,7 +119,8 @@ const
     19, // 'RAD Studio 10.2 Tokyo'
     20, // 'RAD Studio 10.3 Rio'
     21, // 'RAD Studio 10.4 Sydney'
-    22  // 'RAD Studio 11.0 Alexandria'
+    22, // 'RAD Studio 11.0 Alexandria'
+    23  // 'RAD Studio 12.0 Yukon'
     );
 
   DelphiVersionsNames: array [TDelphiVersions] of string = (
@@ -127,7 +130,7 @@ const
     'RAD Studio XE6/Appmethod 1.14', 'RAD Studio XE7/Appmethod 1.15',
     'RAD Studio XE8', 'RAD Studio 10 Seattle', 'RAD Studio 10.1 Berlin',
     'RAD Studio 10.2 Tokyo', 'RAD Studio 10.3 Rio', 'RAD Studio 10.4 Sydney',
-    'RAD Studio 11.0 Alexandria');
+    'RAD Studio 11.0 Alexandria', 'RAD Studio 12.0 Yukon');
 
   DelphiVersionNumbers: array [TDelphiVersions] of double = (
     15, // 'Delphi 7',
@@ -150,7 +153,8 @@ const
     32, // 'RAD Studio 10.2 Tokyo'
     33, // 'RAD Studio 10.3 Rio'
     34, // 'RAD Studio 10.4 Sydney'
-    35  // 'RAD Studio 11.0 Alexandria'
+    35, // 'RAD Studio 11.0 Alexandria'
+    36  // 'RAD Studio 12.0 Yukon'
     );
 {$ENDREGION}
 
