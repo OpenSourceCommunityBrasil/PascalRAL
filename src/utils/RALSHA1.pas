@@ -35,10 +35,10 @@ implementation
 
 function TRALSHA1.Swap(AValue : Cardinal) : Cardinal;
 begin
-  Result:= ((AValue and $FF) shl 24) or
-           ((AValue and $FF00) shl 8) or
-           ((AValue and $FF0000) shr 8) or
-           ((AValue and $FF000000) shr 24);
+  Result := ((AValue and $FF) shl 24) or
+            ((AValue and $FF00) shl 8) or
+            ((AValue and $FF0000) shr 8) or
+            ((AValue and $FF000000) shr 24);
 end;
 
 function TRALSHA1.GetBufLength : IntegerRAL;
@@ -53,7 +53,7 @@ end;
 
 procedure TRALSHA1.Compress;
 const
-  K : array[0..3] of Cardinal = ($5A827999,$6ED9EBA1,$8F1BBCDC,$CA62C1D6);
+  K: array[0..3] of Cardinal = ($5A827999, $6ED9EBA1, $8F1BBCDC, $CA62C1D6);
 var
   A, B, C, D, E: Cardinal;
   W: array[0..79] of Cardinal;
@@ -71,13 +71,13 @@ var
   end;
 begin
   FillChar(W, SizeOf(W), 0);
-  Move(FBuffer,W,GetBufLength);
+  Move(FBuffer, W, GetBufLength);
   for i := 0 to 15 do
     W[i] := Swap(W[i]);
 
   for i := 16 to 79 do
-    W[i] := ((W[i-3] xor W[i-8] xor W[i-14] xor W[i-16]) shl 1) or
-            ((W[i-3] xor W[i-8] xor W[i-14] xor W[i-16]) shr 31);
+    W[i] := ((W[i-3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shl 1) or
+            ((W[i-3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shr 31);
 
   A := FHash[0];
   B := FHash[1];
@@ -88,11 +88,11 @@ begin
   for i := 0 to 79 do
   begin
     case i mod 5 of
-      0 : F1(A,D,C,E,B);
-      1 : F1(E,C,B,D,A);
-      2 : F1(D,B,A,C,E);
-      3 : F1(C,A,E,B,D);
-      4 : F1(B,E,D,A,C);
+      0 : F1(A, D, C, E, B);
+      1 : F1(E, C, B, D, A);
+      2 : F1(D, B, A, C, E);
+      3 : F1(C, A, E, B, D);
+      4 : F1(B, E, D, A, C);
     end;
   end;
 
@@ -128,12 +128,12 @@ begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
 
-  FBuffer[vIndex]:= $80;
+  FBuffer[vIndex] := $80;
   if vIndex >= 56 then
     Compress;
 
-  PCardinal(@FBuffer[56])^:= 0;
-  PCardinal(@FBuffer[60])^:= Swap(Cardinal(vLenBit));
+  PCardinal(@FBuffer[56])^ := 0;
+  PCardinal(@FBuffer[60])^ := Swap(Cardinal(vLenBit));
   Compress;
 
   FHash[0] := Swap(FHash[0]);
@@ -143,7 +143,7 @@ begin
   FHash[4] := Swap(FHash[4]);
 
   SetLength(Result, FHashSize);
-  Move(FHash,Result[0], FHashSize);
+  Move(FHash, Result[0], FHashSize);
 end;
 
 constructor TRALSHA1.Create;

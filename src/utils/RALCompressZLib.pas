@@ -72,60 +72,48 @@ const
 
 class function TRALCompressZLib.Compress(AStream: TStream; AFormat: TRALCompressType): TStream;
 var
-  vBuf: PByte;
+  vBuf: array[0..4095] of Byte;
   vZip: TCompressionStream;
-  vCount, vNewCount, vInt: Integer;
+  vCount, vInt: Integer;
   vCRC32, vSize : LongWord;
 begin
   vCRC32 := $FFFFFFFF;
-
-  {$IFDEF FPC}
-    vBuf := GetMem(4096);
-  {$ELSE}
-    GetMem(vBuf, 4096);
-  {$ENDIF}
 
   vSize := AStream.Size;
 
   Result := TMemoryStream.Create;
   if AFormat = ctGZip then
-    Result.Write(GZipHeader,Length(GZipHeader));
+    Result.Write(GZipHeader[0], Length(GZipHeader));
 
+  {$IFDEF FPC}
+    if AFormat = ctZLib then
+      vZip := TCompressionStream.Create(clmax, Result)
+    else
+      vZip := TCompressionStream.Create(clmax, Result, True);
+  {$ELSE}
+    if AFormat = ctZLib then
+      vZip := TCompressionStream.Create(Result, zcMax, 15)
+    else
+      vZip := TCompressionStream.Create(Result, zcMax, -15);
+  {$ENDIF}
   try
-    {$IFDEF FPC}
-      if AFormat = ctZLib then
-        vZip := TCompressionStream.Create(clmax, Result)
-      else
-        vZip := TCompressionStream.Create(clmax, Result, True);
-    {$ELSE}
-      if AFormat = ctZLib then
-        vZip := TCompressionStream.Create(Result, zcMax, 15)
-      else
-        vZip := TCompressionStream.Create(Result, zcMax, -15);
-    {$ENDIF}
-    try
-      repeat
-        vCount := AStream.Read(vBuf^, 4096);
+    repeat
+      vCount := AStream.Read(vBuf[0], Length(vBuf));
 
-        for vInt := 0 to vCount-1 do
-          UpdateCRC32(vCRC32, vBuf[vInt]);
+      for vInt := 0 to vCount-1 do
+        UpdateCRC32(vCRC32, vBuf[vInt]);
 
-        vNewCount := vCount;
-        while (vNewCount > 0) do
-          vNewCount := vNewCount - vZip.Write(vBuf^, vNewCount);
-      until (vCount = 0);
-    finally
-      FreeAndNil(vZip);
-    end;
+      vZip.Write(vBuf[0], vCount);
+    until (vCount = 0);
   finally
-    FreeMem(vBuf);
+    FreeAndNil(vZip);
   end;
 
   vCRC32 := not vCRC32;
   if AFormat = ctGZip then
   begin
-    Result.Write(vCRC32,SizeOf(vCRC32));
-    Result.Write(vSize,SizeOf(vSize));
+    Result.Write(vCRC32, SizeOf(vCRC32));
+    Result.Write(vSize, SizeOf(vSize));
   end;
 
   Result.Position := 0;
@@ -133,7 +121,7 @@ end;
 
 class function TRALCompressZLib.Decompress(AStream: TStream; AFormat: TRALCompressType): TStream;
 var
-  vBuf: PByte;
+  vBuf: array[0..4095] of Byte;
   vZip: TDeCompressionStream;
   vCount, vInt: integer;
   vCRC32, vCRCFile, vFileSize: LongWord;
@@ -141,56 +129,46 @@ begin
   vCRC32 := $FFFFFFFF;
   vCRCFile := $FFFFFFFF;
 
-  {$IFDEF FPC}
-    vBuf := GetMem(4096);
-  {$ELSE}
-    GetMem(vBuf, 4096);
-  {$ENDIF}
-
   // conferir o header
   if AFormat = ctGZip then
   begin
     AStream.Position := AStream.Size - (2 * SizeOf(LongWord));
-    AStream.Read(vCRCFile,SizeOf(vCRCFile));
-    AStream.Read(vFileSize,SizeOf(vFileSize));
+    AStream.Read(vCRCFile, SizeOf(vCRCFile));
+    AStream.Read(vFileSize, SizeOf(vFileSize));
 
     AStream.Size := AStream.Size - (2 * SizeOf(LongWord));
     AStream.Position := 10;
   end;
 
   Result := TMemoryStream.Create;
+  {$IFDEF FPC}
+    if AFormat = ctZLib then
+      vZip := TDeCompressionStream.Create(AStream)
+    else
+      vZip := TDeCompressionStream.Create(AStream, True);
+  {$ELSE}
+    if AFormat = ctZLib then
+      vZip := TDeCompressionStream.Create(AStream, 15)
+    else
+      vZip := TDeCompressionStream.Create(AStream, -15);
+  {$ENDIF}
   try
-    {$IFDEF FPC}
-      if AFormat = ctZLib then
-        vZip := TDeCompressionStream.Create(AStream)
-      else
-        vZip := TDeCompressionStream.Create(AStream, True);
-    {$ELSE}
-      if AFormat = ctZLib then
-        vZip := TDeCompressionStream.Create(AStream, 15)
-      else
-        vZip := TDeCompressionStream.Create(AStream, -15);
-    {$ENDIF}
-    try
-      repeat
-        vCount := vZip.Read(vBuf^, 4096);
+    repeat
+      vCount := vZip.Read(vBuf[0], Length(vBuf));
 
-        for vInt := 0 to vCount-1 do
-          UpdateCRC32(vCRC32, vBuf[vInt]);
+      for vInt := 0 to vCount-1 do
+        UpdateCRC32(vCRC32, vBuf[vInt]);
 
-        Result.Write(vBuf^, vCount);
-      until (vCount = 0);
-    finally
-      FreeAndNil(vZip);
-    end;
+      Result.Write(vBuf[0], vCount);
+    until (vCount = 0);
   finally
-    FreeMem(vBuf);
+    FreeAndNil(vZip);
   end;
 
   Result.Position := 0;
 
   vCRC32 := not vCRC32;
-  if (vCRC32 <> vCRCFile) or (vFileSize <> Result.Size) then
+  if (AFormat = ctGZip) and ((vCRC32 <> vCRCFile) or (vFileSize <> Result.Size)) then
   begin
     Result.Size := 0;
     raise Exception.Create(emContentCheckError);
@@ -199,10 +177,9 @@ end;
 
 class function TRALCompressZLib.Compress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
-  vStr : TStringStream;
-  vRes : TStream;
+  vStr, vRes: TStream;
 begin
-  vStr := TStringStream.Create(AString);
+  vStr := StringToStream(AString);
   try
     vRes := Compress(vStr, AFormat);
     try
@@ -217,10 +194,9 @@ end;
 
 class function TRALCompressZLib.Decompress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
-  vStr : TStringStream;
-  vRes : TStream;
+  vStr, vRes: TStream;
 begin
-  vStr := TStringStream.Create(AString);
+  vStr := StringToStream(AString);
   try
     vRes := Decompress(vStr, AFormat);
     try

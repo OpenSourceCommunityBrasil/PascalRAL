@@ -3,7 +3,7 @@ unit RALfpHTTPServer;
 interface
 
 uses
-  Classes, SysUtils, Forms,
+  Classes, SysUtils,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;

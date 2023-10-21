@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes;
+  RALTypes, RALStream;
 
 type
   { TRALBase64 }
@@ -29,8 +29,8 @@ type
     class function EncodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
 
-    class function EncodeAsStream(AValue: TStream): TStringStream; overload;
-    class function DecodeAsStream(AValue: TStream): TStringStream; overload;
+    class function EncodeAsStream(AValue: TStream): TStream; overload;
+    class function DecodeAsStream(AValue: TStream): TStream; overload;
 
     class function ToBase64Url(AValue: StringRAL): StringRAL;
     class function FromBase64Url(AValue: StringRAL): StringRAL;
@@ -69,9 +69,9 @@ const
 
 class function TRALBase64.Decode(AValue: StringRAL): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := Decode(vStream);
   finally
@@ -81,11 +81,11 @@ end;
 
 class function TRALBase64.Decode(AValue: TStream): StringRAL;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(DecodeAsStream(AValue));
+  vResult := DecodeAsStream(AValue);
   try
-    Result := vResult.DataString;
+    Result := StreamToString(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -93,9 +93,9 @@ end;
 
 class function TRALBase64.Decode(AValue: TBytes): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := Decode(vStream);
   finally
@@ -105,19 +105,18 @@ end;
 
 class function TRALBase64.DecodeAsBytes(AValue: TStream): TBytes;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(DecodeAsStream(AValue));
+  vResult := DecodeAsStream(AValue);
   try
-    Result := vResult.Bytes;
-    SetLength(Result, vResult.Size);
+    Result := StreamToBytes(vResult);
   finally
     FreeAndNil(vResult);
   end;
 end;
 
 
-class function TRALBase64.DecodeAsStream(AValue: TStream): TStringStream;
+class function TRALBase64.DecodeAsStream(AValue: TStream): TStream;
 var
   vInBuf: array[0..1019] of Byte;
   vOutBuf: array[0..764] of Byte;
@@ -128,7 +127,7 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
@@ -157,9 +156,9 @@ end;
 
 class function TRALBase64.DecodeAsBytes(AValue: StringRAL): TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := DecodeAsBytes(vStream);
   finally
@@ -169,11 +168,11 @@ end;
 
 class function TRALBase64.Encode(AValue: TStream): StringRAL;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(EncodeAsStream(AValue));
+  vResult := EncodeAsStream(AValue);
   try
-    Result := vResult.DataString;
+    Result := StreamToString(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -270,9 +269,9 @@ end;
 
 class function TRALBase64.Encode(AValue: StringRAL): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := Encode(vStream);
   finally
@@ -282,9 +281,9 @@ end;
 
 class function TRALBase64.EncodeAsBytes(AValue: StringRAL): TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := EncodeAsBytes(vStream);
   finally
@@ -294,9 +293,9 @@ end;
 
 class function TRALBase64.Encode(AValue: TBytes): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     Result := Encode(vStream);
   finally
@@ -306,18 +305,17 @@ end;
 
 class function TRALBase64.EncodeAsBytes(AValue: TStream): TBytes;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(EncodeAsStream(AValue));
+  vResult := EncodeAsStream(AValue);
   try
-    Result := vResult.Bytes;
-    SetLength(Result, vResult.Size);
+    Result := StreamToBytes(vResult);
   finally
     FreeAndNil(vResult);
   end;
 end;
 
-class function TRALBase64.EncodeAsStream(AValue: TStream): TStringStream;
+class function TRALBase64.EncodeAsStream(AValue: TStream): TStream;
 var
   vInBuf: array[0..764] of Byte;
   vOutBuf: array[0..1019] of Byte;
@@ -328,7 +326,8 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
+  Result.Size := 4 * ((AValue.Size div 3) + Ord(Frac(AValue.Size / 3) > 0));
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));

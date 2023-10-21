@@ -81,7 +81,7 @@ type
     procedure SetAllowHeaders(AValue : TStringList);
   public
     constructor Create;
-    destructor Destroy;
+    destructor Destroy; override;
 
     function GetAllowHeaders : StringRAL;
   published
@@ -155,11 +155,6 @@ type
 
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
-
-    {$IFDEF CONSOLE}
-      property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
-      property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
-    {$ENDIF}
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -179,10 +174,8 @@ type
     property CORSOptions : TRALCORSOptions read FCORSOptions write FCORSOptions;
     property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
 
-    {$IFNDEF CONSOLE}
-      property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
-      property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
-    {$ENDIF}
+    property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
+    property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
     property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
     property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
@@ -510,6 +503,7 @@ begin
 
   FreeAndNil(FIPConfig);
   FreeAndNil(FCORSOptions);
+  FreeAndNil(FCriptoOptions);
 
   inherited;
 end;
@@ -656,7 +650,7 @@ begin
     else
     begin
       Result.Answer(404, RAL404Page, rctTEXTHTML);
-      AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
+//      AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end;
   end
   else
@@ -678,7 +672,6 @@ begin
     else
     begin
       DelBlockList(ARequest.ClientInfo.IP);
-
       AnalizeRoute(vRoute, ARequest, Result);
     end;
   end;

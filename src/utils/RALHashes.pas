@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALBase64, RALTypes, RALTools;
+  RALBase64, RALTypes, RALTools, RALStream;
 
 type
   TRALHashOutputType = (rhotHex, rhotBase64, rhotBase64Url);
@@ -47,7 +47,7 @@ type
     function HashAsString(AValue: StringRAL): StringRAL; overload; virtual;
     function HashAsString(AValue: TStream): StringRAL; overload; virtual;
 
-    function HashAsStream(AValue: TStream): TStringStream;
+    function HashAsStream(AValue: TStream): TStream;
 
     function HMACAsString(AValue, AKey: StringRAL): StringRAL; overload; virtual;
     function HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL; overload; virtual;
@@ -128,7 +128,7 @@ begin
   Result := FLenBit;
 end;
 
-function TRALHashes.HashAsStream(AValue: TStream): TStringStream;
+function TRALHashes.HashAsStream(AValue: TStream): TStream;
 var
   vDigest: TBytes;
   vResult: StringRAL;
@@ -143,17 +143,16 @@ begin
     rhotBase64Url: vResult := DigestToBase64Url(vDigest);
   end;
 
-  Result := TStringStream.Create(vResult);
-  Result.Position := 0;
+  Result := StringToStream(vResult);
 end;
 
 function TRALHashes.HashAsString(AValue: TStream): StringRAL;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
   vResult := HashAsStream(AValue);
   try
-    Result := vResult.DataString
+    Result := StreamToString(vResult);
   finally
     vResult.Free;
   end;
@@ -161,9 +160,9 @@ end;
 
 function TRALHashes.HashAsString(AValue: StringRAL): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := HashAsString(vStream);
   finally
@@ -248,7 +247,9 @@ function TRALHashes.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
 var
   vKey, vDigest: TBytes;
 begin
-  vKey := VarToBytes(AKey);
+  SetLength(vKey, Length(AKey));
+  Move(AKey[PosIniStr], vKey[0], Length(AKey));
+
   vDigest := HMACAsDigest(AValue, vKey);
 
   case OutputType of

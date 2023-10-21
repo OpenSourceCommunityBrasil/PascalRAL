@@ -279,6 +279,7 @@ end;
 function TRALSynopseServer.OnSendFile(AContext: THttpServerRequestAbstract;
   const LocalFileName: TFileName): boolean;
 begin
+  // para OutContentType = STATICFILE_CONTENT_TYPE
   {$IFNDEF FPC}
     AContext.OutContent := UTF8Decode(AContext.OutContent);
   {$ENDIF}

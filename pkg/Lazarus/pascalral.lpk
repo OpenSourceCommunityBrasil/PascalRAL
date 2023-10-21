@@ -12,6 +12,11 @@
         <OtherUnitFiles Value="..\..\src\base;..\..\src\utils"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
       <Other>
         <Verbosity>
           <ShoLineNum Value="True"/>
@@ -102,40 +107,40 @@
         <UnitName Value="RALThreadSafe"/>
       </Item20>
       <Item21>
-        <Filename Value="PascalRAL.lrs"/>
-        <Type Value="LRS"/>
-      </Item21>
-      <Item22>
-        <Filename Value="..\..\src\base\PascalRAL.inc"/>
-        <Type Value="Include"/>
-      </Item22>
-      <Item23>
         <Filename Value="..\..\src\utils\RALMultipartCoder.pas"/>
         <UnitName Value="RALMultipartCoder"/>
-      </Item23>
-      <Item24>
+      </Item21>
+      <Item22>
         <Filename Value="..\..\src\utils\RALCustomObjects.pas"/>
         <UnitName Value="RALCustomObjects"/>
-      </Item24>
-      <Item25>
+      </Item22>
+      <Item23>
         <Filename Value="..\..\src\utils\RALUrlCoder.pas"/>
         <UnitName Value="RALUrlCoder"/>
-      </Item25>
-      <Item26>
+      </Item23>
+      <Item24>
         <Filename Value="..\..\src\utils\RALCripto.pas"/>
         <UnitName Value="RALCripto"/>
-      </Item26>
-      <Item27>
+      </Item24>
+      <Item25>
         <Filename Value="..\..\src\utils\RALCriptoAES.pas"/>
         <UnitName Value="RALCriptoAES"/>
-      </Item27>
-      <Item28>
-        <Filename Value="..\..\src\utils\RALCompressLib.pas"/>
-        <UnitName Value="RALCompressLib"/>
-      </Item28>
-      <Item29>
+      </Item25>
+      <Item26>
         <Filename Value="..\..\src\utils\RALSHA1.pas"/>
         <UnitName Value="RALSHA1"/>
+      </Item26>
+      <Item27>
+        <Filename Value="..\..\src\utils\RALCompressZLib.pas"/>
+        <UnitName Value="RALCompressZLib"/>
+      </Item27>
+      <Item28>
+        <Filename Value="PascalRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item28>
+      <Item29>
+        <Filename Value="..\..\src\base\PascalRAL.inc"/>
+        <Type Value="Include"/>
       </Item29>
     </Files>
     <CompatibilityMode Value="True"/>

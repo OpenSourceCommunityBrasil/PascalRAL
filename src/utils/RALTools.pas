@@ -6,8 +6,6 @@ uses
   Classes, SysUtils, Variants, StrUtils, TypInfo,
   RALTypes, RALConsts;
 
-function VarToBytes(v: variant): TBytes;
-function BytesToString(b: TBytes): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
@@ -21,44 +19,6 @@ function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
 function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
 
 implementation
-
-function VarToBytes(v: variant): TBytes;
-var
-  vTyp: TVarType;
-  vStream: TStringStream;
-begin
-  vTyp := VarType(v);
-
-  // 258 - varUString - string
-  // 256 - varString  - ansistring
-  // 008 - varOleStr  - widestring
-
-  case vTyp of
-    varUString, varString, varOleStr:
-    begin
-      SetLength(Result, 0);
-      if v <> '' then
-      begin
-        vStream := TStringStream.Create(StringRAL(v));
-        try
-          Result := vStream.Bytes;
-        finally
-          FreeAndNil(vStream);
-        end;
-      end;
-    end;
-  end;
-end;
-
-function BytesToString(b: TBytes): StringRAL;
-begin
-  Result := '';
-  if Length(b) > 0 then
-  begin
-    SetLength(Result, Length(b));
-    Move(b[0], Result[PosIniStr], Length(b));
-  end;
-end;
 
 function FixRoute(ARoute: StringRAL): StringRAL;
 begin

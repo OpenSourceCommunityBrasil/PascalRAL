@@ -591,6 +591,7 @@ var
   vDecoder: TRALMultipartDecoder;
   vTemp : TStream;
 begin
+  Result := nil;
   if ASource = nil then
     Exit;
 
@@ -639,6 +640,7 @@ function TRALParams.DecodeBody(ASource : StringRAL; AContentType : StringRAL) : 
 var
   vStream: TStream;
 begin
+  Result := nil;
   if ASource = '' then
     Exit;
 
