@@ -10,6 +10,7 @@ uses
 type
   TRALRoutes = class;
   TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
+  TRALOnFastReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 
   { TRALRoute }
 
@@ -22,6 +23,7 @@ type
     FSkipAuthMethods: TRALMethods;
     FCallback: boolean;
     FOnReply: TRALOnReply;
+    FOnFastReply: TRALOnFastReply;
   protected
     function GetRoute: StringRAL;
     function GetDisplayName: string; override;
@@ -41,6 +43,7 @@ type
     function GetAllowMethods : StringRAL;
 
     property Route: StringRAL read GetRoute;
+    property OnFastReply: TRALOnFastReply read FOnFastReply write FOnFastReply;
   published
     property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
     property RouteName: StringRAL read FRouteName write SetRouteName;
@@ -92,6 +95,8 @@ procedure TRALRoute.Execute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if Assigned(OnReply) then
     OnReply(Self, ARequest, AResponse)
+  else if Assigned(OnFastReply) then
+    OnFastReply(ARequest, AResponse)
   else
     AResponse.Answer(404, RAL404Page);
 end;
