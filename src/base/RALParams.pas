@@ -38,6 +38,8 @@ type
     procedure SaveToFile(AFileName: StringRAL); overload;
     procedure SaveToFile(AFolderName,AFileName: StringRAL); overload;
     procedure SaveToFile; overload;
+    function SaveToStream : TStream; overload;
+    procedure SaveToStream(var AStream : TStream); overload;
   public
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
@@ -235,6 +237,22 @@ end;
 procedure TRALParam.SaveToFile;
 begin
   SaveToFile('','');
+end;
+
+procedure TRALParam.SaveToStream(var AStream: TStream);
+begin
+  if (FContent = nil) and (FContent.Size = 0) then
+    Exit;
+
+  AStream.Size := 0;
+  AStream.CopyFrom(FContent, FContent.Size);
+  AStream.Position := 0;
+end;
+
+function TRALParam.SaveToStream: TStream;
+begin
+  Result := TMemoryStream.Create;
+  SaveToStream(Result);
 end;
 
 procedure TRALParam.SaveToFile(AFolderName, AFileName: StringRAL);
@@ -668,8 +686,9 @@ begin
   vInt2 := Count(rpkFIELD);
   if vInt1 + vInt2 = 1 then
   begin
-    vResult := Param[0].AsStream;
+    vResult := Param[0].SaveToStream;
     AContentType := Param[0].ContentType;
+    AFreeContent := True;
   end
   else if (vInt2 > 0) and (vInt1 = 0) then
   begin
