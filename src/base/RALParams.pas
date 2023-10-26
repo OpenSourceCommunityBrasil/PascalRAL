@@ -241,10 +241,11 @@ end;
 
 procedure TRALParam.SaveToStream(var AStream: TStream);
 begin
-  if (FContent = nil) and (FContent.Size = 0) then
+  AStream.Size := 0;
+
+  if (FContent = nil) or (FContent.Size = 0) then
     Exit;
 
-  AStream.Size := 0;
   AStream.CopyFrom(FContent, FContent.Size);
   AStream.Position := 0;
 end;
