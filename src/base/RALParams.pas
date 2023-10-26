@@ -246,6 +246,7 @@ begin
   if (FContent = nil) or (FContent.Size = 0) then
     Exit;
 
+  FContent.Position := 0;
   AStream.CopyFrom(FContent, FContent.Size);
   AStream.Position := 0;
 end;
