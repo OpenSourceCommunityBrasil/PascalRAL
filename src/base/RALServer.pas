@@ -154,7 +154,6 @@ type
     destructor Destroy; override;
 
     function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute; overload;
-    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnFastReply; ADescription: StringRAL = ''): TRALRoute; overload;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
@@ -320,15 +319,6 @@ end;
 function TRALServer.CreateRALSSL: TRALSSL;
 begin
   Result := nil;
-end;
-
-function TRALServer.CreateRoute(ARouteName: StringRAL;
-  AReplyProc: TRALOnFastReply; ADescription: StringRAL): TRALRoute;
-begin
-  Result := TRALRoute.Create(Self.Routes);
-  Result.RouteName := ARouteName;
-  Result.OnFastReply := AReplyProc;
-  Result.Description.Text := ADescription;
 end;
 
 function TRALServer.CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply;
