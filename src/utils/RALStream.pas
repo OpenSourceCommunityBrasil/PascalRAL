@@ -78,6 +78,7 @@ begin
   vFile := TFileStream.Create(AFileName, fmCreate);
   try
     vFile.Size := AStream.Size;
+    vFile.Position := 0;
     vFile.CopyFrom(AStream, AStream.Size);
   finally
     vFile.Free;

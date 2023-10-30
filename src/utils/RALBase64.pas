@@ -118,8 +118,8 @@ end;
 
 class function TRALBase64.DecodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..1019] of Byte;
-  vOutBuf: array[0..764] of Byte;
+  vInBuf: array[0..6119] of Byte;
+  vOutBuf: array[0..4589] of Byte;
   vBytesRead, vBytesWrite: Integer;
   vPosition, vSize: Int64RAL;
 begin
@@ -317,8 +317,8 @@ end;
 
 class function TRALBase64.EncodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..764] of Byte;
-  vOutBuf: array[0..1019] of Byte;
+  vInBuf: array[0..4589] of Byte;
+  vOutBuf: array[0..6119] of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize : Int64RAL;
 begin
