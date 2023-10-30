@@ -17,7 +17,7 @@ uses
 
 type
   {$IFDEF FPC}
-    TWebModule = TFPWebModule;
+    TWebModule = class(TFPWebModule);
     TWebRequest = TRequest;
     TWebResponse = TResponse;
   {$ENDIF}

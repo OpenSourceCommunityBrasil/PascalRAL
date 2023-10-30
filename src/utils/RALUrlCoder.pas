@@ -156,6 +156,7 @@ var
 begin
   Result := '';
   vCode := '';
+  vEsc := False;
 
   vInt := RALLowStr(AHtml);
   while vInt <= RALHighStr(AHtml) do begin
@@ -196,7 +197,6 @@ end;
 class function TRALHTTPCoder.EncodeHTML(AHtml : StringRAL) : StringRAL;
 var
   vInt, vChr : IntegerRAL;
-  vStr : StringRAL;
 begin
   Result := '';
   vInt := RALLowStr(AHtml);

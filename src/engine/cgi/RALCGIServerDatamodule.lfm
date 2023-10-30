@@ -10,14 +10,14 @@ object RALWebModule: TRALWebModule
       Template.AllowTagParams = False
     end>
   CreateSession = False
-  CORS.Enabled = True
+  CORS.Enabled = False
   CORS.Options = [coAllowCredentials, coEmptyDomainToOrigin]
   CORS.AllowedMethods = 'GET, PUT, POST, OPTIONS, HEAD'
   CORS.AllowedOrigins = '*'
   CORS.AllowedHeaders = 'x-requested-with, content-type, authorization'
   CORS.MaxAge = 0
-  Height = 345
-  HorizontalOffset = 293
-  VerticalOffset = 131
-  Width = 352
+  Height = 240
+  HorizontalOffset = 676
+  VerticalOffset = 393
+  Width = 320
 end
