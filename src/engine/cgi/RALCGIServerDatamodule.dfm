@@ -1,5 +1,7 @@
 object RALWebModule: TRALWebModule
   OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
   Actions = <
     item
       Default = True

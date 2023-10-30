@@ -9,36 +9,51 @@ interface
 uses
   SysUtils, Classes,
   {$IFDEF FPC}
-    httpdefs, fpHTTP, fpWeb, httpprotocol,
+    httpdefs, fpHTTP, fpWeb, httpprotocol, webutil,
   {$ELSE}
     HTTPApp,
   {$ENDIF}
-  RALServer, RALRequest, RALResponse, RALTools, RALTypes;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALConsts;
 
 type
   {$IFDEF FPC}
-    TWebModule = class(TFPWebModule);
+    TWebModule = TFPWebModule;
     TWebRequest = TRequest;
     TWebResponse = TResponse;
   {$ENDIF}
 
+  { TRALServerCGI }
+
+  TRALServerCGI = class(TRALServer)
+  public
+    constructor Create(AOwner : TComponent); override;
+  end;
+
   { TRALWebModule }
 
   TRALWebModule = class(TWebModule)
+    procedure DataModuleCreate(Sender : TObject);
+    procedure DataModuleDestroy(Sender : TObject);
     procedure HandlerAction(Sender: TObject; ARequest: TWebRequest;
                             AResponse: TWebResponse; var AHandled: Boolean);
   private
     { Private declarations }
+    FRALServer : TRALServerCGI;
+    {$IFDEF FPC}
+      procedure DecodeAuth(ARequest: TWebRequest; AResult: TRALRequest);
+    {$ENDIF}
   public
     { Public declarations }
+    {$IFDEF FPC}
+      function RequestToHtml(ARequest : TWebRequest) : TStringList;
+    {$ENDIF}
+    property RALServer : TRALServerCGI read FRALServer;
   end;
 
+{$IFNDEF FPC}
 var
-  {$IFDEF FPC}
-    RALWebModule : TRALWebModule;
-  {$ELSE}
-    RALWebModuleClass : TComponentClass = TRALWebModule;
-  {$ENDIF}
+  RALWebModule : TComponentClass = TRALWebModule;
+{$ENDIF}
 
 implementation
 
@@ -48,10 +63,61 @@ implementation
   {$R *.dfm}
 {$ENDIF}
 
-uses
-  RALCGIServer;
+{ TRALServerCGI }
+
+constructor TRALServerCGI.Create(AOwner : TComponent);
+begin
+  inherited Create(AOwner);
+  {$IFDEF FPC}
+    SetEngine('CGI Lazarus');
+  {$ELSE}
+    SetEngine('CGI Delphi');
+  {$ENDIF}
+end;
+
+{ TRALWebModule }
+
+procedure TRALWebModule.DataModuleCreate(Sender : TObject);
+begin
+  FRALServer := TRALServerCGI.Create(nil);
+  FRALServer.BruteForceProtection.Enabled := False;
+end;
+
+procedure TRALWebModule.DataModuleDestroy(Sender : TObject);
+begin
+  FRALServer.Free;
+end;
 
 {$IFDEF FPC}
+  procedure TRALWebModule.DecodeAuth(ARequest: TWebRequest; AResult: TRALRequest);
+  var
+    vStr, vAux: StringRAL;
+    vInt: IntegerRAL;
+  begin
+    if FRALServer.Authentication = nil then
+      Exit;
+
+    AResult.Authorization.AuthType := ratNone;
+    AResult.Authorization.AuthString := '';
+
+    vStr := ARequest.GetHeader(hhAuthorization);
+    if vStr <> '' then begin
+      vInt := Pos(' ', vStr);
+      vAux := Trim(Copy(vStr, 1, vInt - 1));
+      if SameText(vAux, 'Basic') then
+        AResult.Authorization.AuthType := ratBasic
+      else if SameText(vAux, 'Bearer') then
+        AResult.Authorization.AuthType := ratBearer;
+      AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
+    end;
+  end;
+
+  function TRALWebModule.RequestToHtml(ARequest : TWebRequest) : TStringList;
+  begin
+    Result := TStringList.Create;
+    DumpRequest(ARequest, Result, True);
+  end;
+
   procedure TRALWebModule.HandlerAction(Sender: TObject; ARequest: TWebRequest;
                                         AResponse: TWebResponse; var AHandled: Boolean);
   var
@@ -62,6 +128,7 @@ uses
     vConnClose : boolean;
   begin
     AHandled := True;
+
     vRequest := TRALRequest.Create;
     try
       with vRequest do
@@ -83,7 +150,7 @@ uses
         ContentEncoding := ARequest.ContentEncoding;
         AcceptEncoding := ARequest.AcceptEncoding;
 
-        //DecodeAuth(ARequest, vRequest);
+        DecodeAuth(ARequest, vRequest);
         Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
         // fields tambem
@@ -106,7 +173,7 @@ uses
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := TRALCGI.GetServer.CriptoOptions.Key;
+        Params.CriptoOptions.Key := FRALServer.CriptoOptions.Key;
         Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
         Host := ARequest.Host;
@@ -134,7 +201,7 @@ uses
         ARequest.Files.Clear;
       end;
 
-      vResponse := TRALCGI.GetServer.ProcessCommands(vRequest);
+      vResponse := FRALServer.ProcessCommands(vRequest);
 
       try
         with vResponse do
@@ -171,7 +238,6 @@ uses
       FreeAndNil(vRequest);
     end;
   end;
-
 {$ELSE}
   procedure TRALWebModule.HandlerAction(Sender: TObject; ARequest: TWebRequest;
                                         AResponse: TWebResponse; var AHandled: Boolean);
@@ -203,7 +269,7 @@ uses
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := TRALCGI.GetServer.CriptoOptions.Key;
+        Params.CriptoOptions.Key := FRALServer.CriptoOptions.Key;
         Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
         Host := Request.Host;
@@ -211,7 +277,7 @@ uses
         Protocol := '1.0';
       end;
 
-      vResponse := TRALCGI.GetServer.ProcessCommands(vRequest);
+      vResponse := FRALServer.ProcessCommands(vRequest);
       try
         Response.ContentStream := vResponse.ResponseStream;
         Response.ContentLength := Response.ContentStream.Size;
@@ -223,11 +289,6 @@ uses
       vRequest.Free;
     end;
   end;
-{$ENDIF}
-
-{$IFDEF FPC}
-initialization
-  RegisterHTTPModule('TRALWebModule', TRALWebModule);
 {$ENDIF}
 
 end.

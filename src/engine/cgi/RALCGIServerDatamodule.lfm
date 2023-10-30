@@ -1,4 +1,6 @@
 object RALWebModule: TRALWebModule
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
   OldCreateOrder = False
   Actions = <  
     item
@@ -8,14 +10,14 @@ object RALWebModule: TRALWebModule
       Template.AllowTagParams = False
     end>
   CreateSession = False
-  CORS.Enabled = False
+  CORS.Enabled = True
   CORS.Options = [coAllowCredentials, coEmptyDomainToOrigin]
   CORS.AllowedMethods = 'GET, PUT, POST, OPTIONS, HEAD'
   CORS.AllowedOrigins = '*'
   CORS.AllowedHeaders = 'x-requested-with, content-type, authorization'
   CORS.MaxAge = 0
-  Height = 150
+  Height = 345
   HorizontalOffset = 293
   VerticalOffset = 131
-  Width = 150
+  Width = 352
 end

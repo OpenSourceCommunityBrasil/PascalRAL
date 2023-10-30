@@ -9,54 +9,36 @@ interface
 uses
   Classes,
   {$IFDEF FPC}
-    fpCGI, fphttp, httpdefs,
+    fpCGI, fphttp, httpdefs
   {$ELSE}
-    Web.WebBroker, CGIApp, HTTPApp,
-  {$ENDIF}
-  RALServer, RALCGIServerDatamodule;
+    WebBroker, CGIApp, HTTPApp
+  {$ENDIF};
 
 type
-  { TRALServerCGI }
-
-  TRALServerCGI = class(TRALServer)
-  public
-    constructor Create(AOwner : TComponent); override;
-  end;
-
   { TRALCGI }
 
   TRALCGI = class
   private
-    class var FServer : TRALServerCGI;
     {$IFDEF FPC}
+      class var FModule : TCustomHTTPModuleClass;
       class function GetApplication: TCGIApplication;
       class procedure OnGetModule(Sender: TObject; ARequest: TRequest;
                                   var ModuleClass: TCustomHTTPModuleClass);
+    {$ELSE}
+      class var FModule : TComponentClass;
     {$ENDIF}
   public
     class procedure Initialize;
-    class procedure Finalize;
-    class function GetServer : TRALServerCGI;
+    {$IFDEF FPC}
+      class procedure SetModule(AModule : TCustomHTTPModuleClass);
+    {$ELSE}
+      class procedure SetModule(AModule : TComponentClass);
+    {$ENDIF}
   end;
 
 implementation
 
 { TRALCGI }
-
-class function TRALCGI.GetServer: TRALServerCGI;
-begin
-  if FServer = nil then begin
-    FServer := TRALServerCGI.Create(nil);
-    FServer.BruteForceProtection.Enabled := False;
-  end;
-  Result := FServer;
-end;
-
-class procedure TRALCGI.Finalize;
-begin
-  if FServer <> nil then
-    FServer.Free;
-end;
 
 {$IFDEF FPC}
   class function TRALCGI.GetApplication : TCGIApplication;
@@ -67,7 +49,7 @@ end;
   class procedure TRALCGI.OnGetModule(Sender : TObject; ARequest : TRequest;
                                       var ModuleClass : TCustomHTTPModuleClass);
   begin
-    ModuleClass := TRALWebModule;
+    ModuleClass := FModule;
   end;
 
   class procedure TRALCGI.Initialize;
@@ -78,30 +60,24 @@ end;
     Application.Initialize;
     Application.Run;
   end;
+
+  class procedure TRALCGI.SetModule(AModule : TCustomHTTPModuleClass);
+  begin
+    FModule := AModule;
+  end;
+
 {$ELSE}
+  class procedure TRALCGI.SetModule(AModule : TComponentClass);
+  begin
+    FModule := AModule;
+  end;
+
   class procedure TRALCGI.Initialize;
   begin
     Application.Initialize;
-    Application.WebModuleClass := RALWebModuleClass;
+    Application.WebModuleClass := FModule;
     Application.Run;
   end;
 {$ENDIF}
-
-{ TRALServerCGI }
-
-constructor TRALServerCGI.Create(AOwner: TComponent);
-begin
-  inherited;
-  {$IFDEF FPC}
-    SetEngine('CGI Lazarus');
-  {$ELSE}
-    SetEngine('CGI Delphi');
-  {$ENDIF}
-end;
-
-initialization
-
-//finalization
-//  TRALCGI.Finalize;
 
 end.
