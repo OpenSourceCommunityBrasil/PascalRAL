@@ -464,7 +464,6 @@ var
   vStrResult : StringRAL;
   vResult: boolean;
   vParam: TRALParam;
-  vJson: TRALJSONObject;
   vParamJWT : TRALJWTParams;
 begin
   AQuery := FixRoute(AQuery);

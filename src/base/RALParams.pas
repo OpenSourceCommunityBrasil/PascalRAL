@@ -19,7 +19,6 @@ type
     FFileName: StringRAL;
     FKind: TRALParamKind;
   protected
-    function GetAsFile: TFileStream;
     function GetAsStream: TStream;
     function GetAsString: StringRAL;
     procedure SetAsString(const AValue: StringRAL);
@@ -29,9 +28,6 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    property AsStream: TStream read GetAsStream write SetAsStream;
-    property AsString: StringRAL read GetAsString write SetAsString;
-    property AsFile: TFileStream read GetAsFile;
     function IsNilOrEmpty: boolean;
     function Size: Int64;
     procedure OpenFile(AFileName: StringRAL);
@@ -40,6 +36,10 @@ type
     procedure SaveToFile; overload;
     function SaveToStream : TStream; overload;
     procedure SaveToStream(var AStream : TStream); overload;
+
+    property Content: TStream read FContent;
+    property AsStream: TStream read GetAsStream write SetAsStream;
+    property AsString: StringRAL read GetAsString write SetAsString;
   public
     property ContentType: StringRAL read FContentType write FContentType;
     property ContentSize: Int64RAL read GetContentSize;
@@ -170,20 +170,14 @@ begin
     FreeAndNil(FContent);
 
   if FileExists(AFileName) then
-    FContent := TFileStream.Create(AFileName, fmOpenRead)
+  begin
+    FContent := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    FContent.Position := 0;
+  end
   else
-    FContent := TMemoryStream.Create;
-  FContent.Position := 0;
-end;
-
-function TRALParam.GetAsFile: TFileStream;
-begin
-  if FKind = rpkBODY then
-    try
-      Result := TFileStream(FContent);
-    except
-      Result := nil;
-    end;
+  begin
+    FContent := TMemoryStream.Create
+  end;
 end;
 
 function TRALParam.GetAsStream: TStream;
@@ -191,29 +185,14 @@ begin
   Result := nil;
 
   if Self <> nil then
-  begin
-    Result := FContent;
-    if Result <> nil then
-      Result.Position := 0;
-  end;
+    Result := SaveToStream;
 end;
 
 function TRALParam.GetAsString: StringRAL;
 begin
   Result := '';
-  if (Self <> nil) and (FContent <> nil) and (FContent.Size > 0) then
-  begin
-    if FContent.InheritsFrom(TStringStream) then
-    begin
-      Result := TStringStream(FContent).DataString;
-    end
-    else
-    begin
-      SetLength(Result, FContent.Size);
-      FContent.Read(Result[PosIniStr], FContent.Size);
-    end;
-    FContent.Position := 0;
-  end;
+  if (Self <> nil) then
+    Result := StreamToString(FContent);
 end;
 
 function TRALParam.GetContentSize: Int64RAL;
@@ -222,16 +201,8 @@ begin
 end;
 
 procedure TRALParam.SaveToFile(AFileName: StringRAL);
-var
-  vFile: TFileStream;
 begin
-  vFile := TFileStream.Create(AFileName, fmCreate);
-  if FContent <> nil then
-  begin
-    FContent.Position := 0;
-    vFile.CopyFrom(FContent, FContent.Size);
-  end;
-  vFile.Free;
+  SaveStream(FContent, AFileName);
 end;
 
 procedure TRALParam.SaveToFile;
@@ -294,7 +265,9 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  FContent := TStringStream.Create;
+  AValue.Position := 0;
+
+  FContent := TMemoryStream.Create;
   FContent.CopyFrom(AValue, AValue.Size);
   FContent.Position := 0;
 end;
@@ -304,8 +277,7 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  FContent := TStringStream.Create(AValue);
-  FContent.Position := 0;
+  FContent := StringToStream(AValue);
 end;
 
 { TRALParams }
@@ -725,7 +697,7 @@ begin
         vItem := Param[vInt1];
         if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
-          vMultPart.AddStream(Param[vInt1].ParamName, Param[vInt1].AsStream,
+          vMultPart.AddStream(Param[vInt1].ParamName, Param[vInt1].Content,
                               Param[vInt1].FileName, Param[vInt1].ContentType);
         end;
       end;
