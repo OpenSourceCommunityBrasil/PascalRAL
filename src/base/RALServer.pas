@@ -10,6 +10,7 @@ uses
 
 type
   TRALServer = class;
+  TRALSubRoutes = class;
 
   { TRALSSL }
 
@@ -120,7 +121,12 @@ type
     FOnClientTryBlocked: TRALOnClientTryBlocked;
     FOnClientWasBlocked: TRALOnClientWasBlocked;
     FOptions: TRALServerOptions;
+    FListSubRoutes : TList;
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure AddSubRoute(ASubRoute : TRALSubRoutes);
+    procedure DelSubRoute(ASubRoute : TRALSubRoutes);
+
     procedure AddBlockList(AClientIP: StringRAL);
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
@@ -128,7 +134,6 @@ type
     function CreateRALSSL: TRALSSL; virtual;
     procedure DelBlockList(AClientIP: StringRAL);
     function IPv6IsImplemented: boolean; virtual;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     procedure SetEngine(const AValue: StringRAL);
@@ -153,7 +158,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute; overload;
+    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
@@ -179,6 +184,27 @@ type
     property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
     property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
+
+  TRALSubRoutes = class(TRALComponent)
+  private
+    FServer : TRALServer;
+    FRoutes : TRALRoutes;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetServer(AValue : TRALServer);
+
+    function GetRouteAddress(ARoute : StringRAL) : TRALRoute;
+    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
+  public
+    constructor Create(AOwner : TComponent); override;
+    destructor Destroy; override;
+
+    property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
+    property Routes : TRALRoutes read FRoutes write FRoutes;
+  published
+    property Server : TRALServer read FServer write SetServer;
+  end;
+
 
 implementation
 
@@ -303,6 +329,7 @@ begin
   FIPConfig := TRALIPConfig.Create(Self);
   FCORSOptions := TRALCORSOptions.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
+  FListSubRoutes := TList.Create;
 
   FPort := 8000;
   FAuthentication := nil;
@@ -504,6 +531,7 @@ begin
   FreeAndNil(FIPConfig);
   FreeAndNil(FCORSOptions);
   FreeAndNil(FCriptoOptions);
+  FreeAndNil(FListSubRoutes);
 
   inherited;
 end;
@@ -574,10 +602,27 @@ begin
   inherited;
 end;
 
+procedure TRALServer.AddSubRoute(ASubRoute : TRALSubRoutes);
+begin
+  if FListSubRoutes.IndexOf(ASubRoute) < 0 then
+    FListSubRoutes.Add(ASubRoute);
+end;
+
+procedure TRALServer.DelSubRoute(ASubRoute : TRALSubRoutes);
+var
+  vInt : IntegerRAL;
+begin
+  vInt := FListSubRoutes.IndexOf(ASubRoute);
+  if vInt >= 0 then
+    FListSubRoutes.Delete(vInt);
+end;
+
 function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
   vString: StringRAL;
+  vInt : integer;
+  vSubRoute : TRALSubRoutes;
 begin
   Result := TRALResponse.Create;
 
@@ -624,6 +669,14 @@ begin
   end;
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
+
+  vInt := 0;
+  while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
+  begin
+    vSubRoute := TRALSubRoutes(FListSubRoutes.Items[vInt]);
+    vRoute := vSubRoute.RouteAddress[ARequest.Query];
+    vInt := vInt + 1;
+  end;
 
   if Assigned(FOnRequest) then
     FOnRequest(vRoute, ARequest, Result);
@@ -693,6 +746,7 @@ procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
 begin
   if AValue <> FAuthentication then
     FAuthentication := AValue;
+
   if FAuthentication <> nil then
     FAuthentication.FreeNotification(Self);
 end;
@@ -726,6 +780,75 @@ begin
     FAuthentication.Validate(ARequest, AResponse);
     Result := AResponse.StatusCode < 400;
   end;
+end;
+
+{ TRALSubRoutes }
+
+procedure TRALSubRoutes.SetServer(AValue : TRALServer);
+begin
+  if AValue <> FServer then
+  begin
+    if FServer <> nil then
+      FServer.DelSubRoute(Self);
+
+    FServer := AValue;
+  end;
+
+  if FServer <> nil then
+  begin
+    FServer.FreeNotification(Self);
+    FServer.AddSubRoute(Self);
+  end;
+end;
+
+procedure TRALSubRoutes.Notification(AComponent : TComponent; Operation : TOperation);
+begin
+  if (Operation = opRemove) and (AComponent = FServer) then
+    FServer := nil;
+
+  inherited;
+end;
+
+function TRALSubRoutes.GetRouteAddress(ARoute : StringRAL) : TRALRoute;
+var
+  vInt : integer;
+  vRouteName : string;
+begin
+  Result := nil;
+
+  if ARoute[PosIniStr] = '/' then
+    Delete(ARoute, 1, 1);
+
+  vInt := Pos('/',ARoute);
+  if vInt > 0 then
+  begin
+    vRouteName := Copy(ARoute, 1, vInt - 1);
+    if SameText(vRouteName,Name) then
+      Result := Routes.RouteAddress[ARoute];
+  end;
+end;
+
+function TRALSubRoutes.CreateRoute(ARouteName : StringRAL; AReplyProc : TRALOnReply; ADescription : StringRAL) : TRALRoute;
+begin
+  Result := TRALRoute.Create(Self.Routes);
+  Result.RouteName := ARouteName;
+  Result.OnReply := AReplyProc;
+  Result.Description.Text := ADescription;
+end;
+
+constructor TRALSubRoutes.Create(AOwner : TComponent);
+begin
+  inherited Create(AOwner);
+  FRoutes := TRALRoutes.Create(Self);
+end;
+
+destructor TRALSubRoutes.Destroy;
+begin
+  if FServer <> nil then
+    FServer.DelSubRoute(Self);
+
+  FRoutes.Free;
+  inherited Destroy;
 end;
 
 end.
