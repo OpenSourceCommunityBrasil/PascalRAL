@@ -1,19 +1,22 @@
-unit RALDBZeos;
+unit RALDBLazarus;
+
+{$mode ObjFPC}{$H+}
 
 interface
 
 uses
   Classes, SysUtils, DB,
-  ZConnection, ZDataset, ZDbcIntfs,
+  SQLDB, PQConnection, SQLite3Conn, IBConnection, mysql51conn,
   RALDBBase, RALTypes;
 
 type
 
-  { TRALDBZeos }
+  { TRALDBLazarus }
 
-  TRALDBZeos = class(TRALDBBase)
+  TRALDBLazarus = class(TRALDBBase)
   private
-    FConnector : TZConnection;
+    FConnector : TSQLConnector;
+    FTransaction : TSQLTransaction;
   protected
     procedure Conectar; override;
     function FindProtocol : StringRAL;
@@ -28,58 +31,63 @@ type
 
 implementation
 
-{ TRALDBZeos }
+{ TRALDBLazarus }
 
-procedure TRALDBZeos.Conectar;
+procedure TRALDBLazarus.Conectar;
 begin
   if FConnector.Connected then
     Exit;
 
-  FConnector.Database := Database;
-  FConnector.HostName := Hostname;
-  FConnector.User     := Username;
-  FConnector.Password := Password;
-  FConnector.Port     := Port;
-  FConnector.Protocol := FindProtocol;
-  FConnector.LoginPrompt := False;
-  FConnector.TransactIsolationLevel := tiReadCommitted;
-  FConnector.Connect;
+  FConnector.DatabaseName  := Database;
+  FConnector.HostName      := Hostname;
+  FConnector.UserName      := Username;
+  FConnector.Password      := Password;
+  if Port <> 0 then
+    FConnector.Params.Add('Port='+IntToStr(Port));
+  FConnector.ConnectorType := FindProtocol;
+  FConnector.LoginPrompt   := False;
+  FConnector.Open;
 end;
 
-function TRALDBZeos.FindProtocol : StringRAL;
+function TRALDBLazarus.FindProtocol : StringRAL;
 begin
   case DatabaseType of
-    dtFirebird   : Result := 'firebird';
-    dtSQLite     : Result := 'sqlite';
-    dtMySQL      : Result := 'mysql';
-    dtPostgreSQL : Result := 'postgresql';
+    dtFirebird   : Result := 'Firebird';
+    dtSQLite     : Result := 'SQLite3';
+    dtMySQL      : Result := 'MySQL 5.1';
+    dtPostgreSQL : Result := 'PostgreSQL';
   end;
 end;
 
-constructor TRALDBZeos.Create;
+constructor TRALDBLazarus.Create;
 begin
   inherited;
-  FConnector := TZConnection.Create(nil);
+  FConnector := TSQLConnector.Create(nil);
+
+  FTransaction := TSQLTransaction.Create(nil);
+  FTransaction.DataBase := FConnector;
+  FTransaction.Action := caCommitRetaining;
 end;
 
-destructor TRALDBZeos.Destroy;
+destructor TRALDBLazarus.Destroy;
 begin
+  FreeAndNil(FTransaction);
   FreeAndNil(FConnector);
   inherited Destroy;
 end;
 
-function TRALDBZeos.Open(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBLazarus.Open(ASQL : string; AParams : TParams) : TDataset;
 var
-  vQuery : TZReadOnlyQuery;
+  vQuery : TSQLQuery;
   vInt : integer;
 begin
   Result := nil;
 
   Conectar;
 
-  vQuery := TZReadOnlyQuery.Create(nil);
-  vQuery.IsUniDirectional := True;
-  vQuery.Connection := FConnector;
+  vQuery := TSQLQuery.Create(nil);
+  vQuery.UniDirectional := True;
+  vQuery.DataBase := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
   for vInt := 0 to Pred(AParams.Count) do
@@ -92,10 +100,10 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBZeos.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                             var ALastInsertId : Int64RAL);
+procedure TRALDBLazarus.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
+                                var ALastInsertId : Int64RAL);
 var
-  vQuery : TZQuery;
+  vQuery : TSQLQuery;
   vInt : integer;
 begin
   Conectar;
@@ -103,9 +111,9 @@ begin
   ALastInsertId := 0;
   ARowsAffected := 0;
 
-  vQuery := TZQuery.Create(nil);
+  vQuery := TSQLQuery.Create(nil);
   try
-    vQuery.Connection := FConnector;
+    vQuery.DataBase := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
     for vInt := 0 to Pred(AParams.Count) do
@@ -135,7 +143,7 @@ begin
 end;
 
 initialization
-  RegisterClass(TRALDBZeos);
+  RegisterClass(TRALDBLazarus);
 
 end.
 

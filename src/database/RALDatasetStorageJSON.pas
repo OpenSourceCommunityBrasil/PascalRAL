@@ -73,7 +73,7 @@ begin
       vBuf := vBuf + ']';
     end;
     vBuf := vBuf + ']';
-    AStream.Write(vBuf[PosIniStr],Length(vBuf));
+    AStream.Write(vBuf[PosIniStr], Length(vBuf));
   end
   else if (soFields in StorageOptions) or (soData in StorageOptions) then
   begin
@@ -82,11 +82,11 @@ begin
     begin
       if vInt1 <> 0 then
         vBuf := vBuf + ',';
-      vStr1 := Format('"%s"',[ADataset.Fields[vInt1].FieldName]);
+      vStr1 := Format('"%s"', [ADataset.Fields[vInt1].FieldName]);
       vBuf := vBuf + vStr1;
     end;
     vBuf := vBuf + ']';
-    AStream.Write(vBuf[PosIniStr],Length(vBuf));
+    AStream.Write(vBuf[PosIniStr], Length(vBuf));
   end;
 end;
 
@@ -109,7 +109,7 @@ begin
     if (soFieldsParams in StorageOptions) or (soData in StorageOptions) then
       vBuf := ',';
     vBuf := vBuf + '"ln":[';
-    AStream.Write(vBuf[PosIniStr],Length(vBuf));
+    AStream.Write(vBuf[PosIniStr], Length(vBuf));
 
     vInt1 := 0;
     while not ADataset.EOF do
@@ -128,13 +128,13 @@ begin
       end;
 
       vBuf := vBuf + ']';
-      AStream.Write(vBuf[PosIniStr],Length(vBuf));
+      AStream.Write(vBuf[PosIniStr], Length(vBuf));
       vInt1 := vInt1 + 1;
       ADataset.Next;
     end;
 
     vBuf := ']';
-    AStream.Write(vBuf[PosIniStr],Length(vBuf));
+    AStream.Write(vBuf[PosIniStr], Length(vBuf));
 
     if not ADataset.IsUniDirectional then
     begin

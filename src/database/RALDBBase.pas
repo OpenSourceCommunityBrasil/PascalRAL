@@ -1,7 +1,5 @@
 unit RALDBBase;
 
-{$mode ObjFPC}{$H+}
-
 interface
 
 uses

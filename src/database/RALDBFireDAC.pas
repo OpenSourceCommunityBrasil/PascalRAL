@@ -1,19 +1,21 @@
-unit RALDBZeos;
+unit RALDBFireDAC;
 
 interface
 
 uses
   Classes, SysUtils, DB,
-  ZConnection, ZDataset, ZDbcIntfs,
+  FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI,
+  FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
+  FireDAC.Phys.PG,
   RALDBBase, RALTypes;
 
 type
 
-  { TRALDBZeos }
+  { TRALDBFireDAC }
 
-  TRALDBZeos = class(TRALDBBase)
+  TRALDBFireDAC = class(TRALDBBase)
   private
-    FConnector : TZConnection;
+    FConnector : TFDConnection;
   protected
     procedure Conectar; override;
     function FindProtocol : StringRAL;
@@ -21,64 +23,67 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function Open(ASQL : string; AParams : TParams) : TDataset; override;
+    function Open(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
   end;
 
 implementation
 
-{ TRALDBZeos }
+{ TRALDBFireDAC }
 
-procedure TRALDBZeos.Conectar;
+procedure TRALDBFireDAC.Conectar;
 begin
   if FConnector.Connected then
     Exit;
 
-  FConnector.Database := Database;
-  FConnector.HostName := Hostname;
-  FConnector.User     := Username;
-  FConnector.Password := Password;
-  FConnector.Port     := Port;
-  FConnector.Protocol := FindProtocol;
-  FConnector.LoginPrompt := False;
-  FConnector.TransactIsolationLevel := tiReadCommitted;
-  FConnector.Connect;
+  FConnector.Params.Clear;
+  FConnector.Params.Add('DriverID=' + FindProtocol);
+  FConnector.Params.Add('Database=' + Database);
+  FConnector.Params.Add('Server=' + Hostname);
+  if Username <> '' then
+    FConnector.Params.Add('User_Name=' + Username);
+  if Password <> '' then
+    FConnector.Params.Add('Password=' + Password);
+  if Port <> 0 then
+    FConnector.Params.Add('Port=' + IntToStr(Port));
+  FConnector.LoginPrompt   := False;
+  FConnector.Open;
 end;
 
-function TRALDBZeos.FindProtocol : StringRAL;
+function TRALDBFireDAC.FindProtocol : StringRAL;
 begin
   case DatabaseType of
-    dtFirebird   : Result := 'firebird';
-    dtSQLite     : Result := 'sqlite';
-    dtMySQL      : Result := 'mysql';
-    dtPostgreSQL : Result := 'postgresql';
+    dtFirebird   : Result := 'FB';
+    dtSQLite     : Result := 'SQLite';
+    dtMySQL      : Result := 'MySQL';
+    dtPostgreSQL : Result := 'PG';
   end;
 end;
 
-constructor TRALDBZeos.Create;
+constructor TRALDBFireDAC.Create;
 begin
   inherited;
-  FConnector := TZConnection.Create(nil);
+  FConnector := TFDConnection.Create(nil);
 end;
 
-destructor TRALDBZeos.Destroy;
+destructor TRALDBFireDAC.Destroy;
 begin
   FreeAndNil(FConnector);
   inherited Destroy;
 end;
 
-function TRALDBZeos.Open(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBFireDAC.Open(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
-  vQuery : TZReadOnlyQuery;
+  vQuery : TFDQuery;
   vInt : integer;
 begin
   Result := nil;
 
   Conectar;
 
-  vQuery := TZReadOnlyQuery.Create(nil);
-  vQuery.IsUniDirectional := True;
+  vQuery := TFDQuery.Create(nil);
+  vQuery.FetchOptions.Unidirectional := True;
   vQuery.Connection := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
@@ -92,10 +97,10 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBZeos.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                             var ALastInsertId : Int64RAL);
+procedure TRALDBFireDAC.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
+                                var ALastInsertId : Int64RAL);
 var
-  vQuery : TZQuery;
+  vQuery : TFDQuery;
   vInt : integer;
 begin
   Conectar;
@@ -103,7 +108,7 @@ begin
   ALastInsertId := 0;
   ARowsAffected := 0;
 
-  vQuery := TZQuery.Create(nil);
+  vQuery := TFDQuery.Create(nil);
   try
     vQuery.Connection := FConnector;
     vQuery.Close;
@@ -129,13 +134,15 @@ begin
 
       end;
     end;
+
+    FConnector.Commit;
   finally
     FreeAndNil(vQuery);
   end;
 end;
 
 initialization
-  RegisterClass(TRALDBZeos);
+  RegisterClass(TRALDBFireDAC);
 
 end.
 

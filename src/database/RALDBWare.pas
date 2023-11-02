@@ -1,7 +1,5 @@
 unit RALDBWare;
 
-{$mode ObjFPC}{$H+}
-
 interface
 
 uses
@@ -141,95 +139,99 @@ var
   vInt : IntegerRAL;
 begin
   vDB := FindDatabaseDriver;
-  if vDB <> nil then
-  begin
-    vParam := ARequest.ParamByName('query');
-
-    if vParam = nil then
-      vParam := ARequest.Body;
-
-    if vParam <> nil then
+  try
+    if vDB <> nil then
     begin
-      vSQL := '';
-      vParams := nil;
-      vQuery := nil;
-      vString := '';
-      vResult := nil;
+      vParam := ARequest.ParamByName('query');
 
-      try
-        if vParam.ContentType = rctAPPLICATIONJSON then
-          RALParamJSONToQuery(vParam, vSQL, vParams)
-        else
-          RALParamBinaryToQuery(vParam, vSQL, vParams);
+      if vParam = nil then
+        vParam := ARequest.Body;
+
+      if vParam <> nil then
+      begin
+        vSQL := '';
+        vParams := nil;
+        vQuery := nil;
+        vString := '';
+        vResult := nil;
 
         try
-          vQuery := vDB.Open(vSQL, vParams);
-        except
-          on e : Exception do
-          begin
-            vString := TRALBase64.Encode(e.Message);
-          end;
-        end;
+          if vParam.ContentType = rctAPPLICATIONJSON then
+            RALParamJSONToQuery(vParam, vSQL, vParams)
+          else
+            RALParamBinaryToQuery(vParam, vSQL, vParams);
 
-        vResult := TMemoryStream.Create;
-        if FDatabaseOutPut = dopJSON then
-        begin
-          AResponse.ContentType := rctAPPLICATIONJSON;
-          if vString <> '' then
+          try
+            vQuery := vDB.Open(vSQL, vParams);
+          except
+            on e : Exception do
+            begin
+              vString := TRALBase64.Encode(e.Message);
+            end;
+          end;
+
+          vResult := TMemoryStream.Create;
+          if FDatabaseOutPut = dopJSON then
           begin
-            vString := Format('{"erro":"%s"}', [vString]);
-            vResult.Write(vString[PosIniStr], Length(vString));
+            AResponse.ContentType := rctAPPLICATIONJSON;
+            if vString <> '' then
+            begin
+              vString := Format('{"erro":"%s"}', [vString]);
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end
+            else
+            begin
+              vString := '{"result":';
+              vResult.Write(vString[PosIniStr], Length(vString));
+
+              vStor := TRALDatasetStorageJSON.Create(nil);
+              try
+                vStor.SaveToStream(vQuery, vResult);
+              finally
+                FreeAndNil(vStor);
+              end;
+
+              vString := '}';
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end;
           end
           else
           begin
-            vString := '{"result":';
-            vResult.Write(vString[PosIniStr], Length(vString));
+            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
 
-            vStor := TRALDatasetStorageJSON.Create(nil);
-            try
-              vStor.SaveToStream(vQuery, vResult);
-            finally
-              FreeAndNil(vStor);
-            end;
+            if vString <> '' then
+            begin
+              vInt := Length(vString);
+              vResult.Write(vInt, SizeOf(vInt));
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end
+            else begin
+              vInt := 0;
+              vResult.Write(vInt, SizeOf(vInt));
 
-            vString := '}';
-            vResult.Write(vString[PosIniStr], Length(vString));
-          end;
-        end
-        else
-        begin
-          AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-
-          if vString <> '' then
-          begin
-            vInt := Length(vString);
-            vResult.Write(vInt, SizeOf(vInt));
-            vResult.Write(vString[PosIniStr], Length(vString));
-          end
-          else begin
-            vInt := 0;
-            vResult.Write(vInt, SizeOf(vInt));
-
-            vStor := TRALDatasetStorageJSON.Create(nil);
-            try
-              vStor.SaveToStream(vQuery, vResult);
-            finally
-              FreeAndNil(vStor);
+              vStor := TRALDatasetStorageJSON.Create(nil);
+              try
+                vStor.SaveToStream(vQuery, vResult);
+              finally
+                FreeAndNil(vStor);
+              end;
             end;
           end;
+
+          vResult.Position := 0;
+          AResponse.ResponseStream := vResult;
+        finally
+          FreeAndNil(vParams);
+          FreeAndNil(vQuery);
+          FreeAndNil(vResult)
         end;
-
-        vResult.Position := 0;
-        AResponse.ResponseStream := vResult;
-      finally
-        FreeAndNil(vParams);
-        FreeAndNil(vQuery);
-        FreeAndNil(vResult)
+      end
+      else begin
+        AResponse.Answer(404, RAL404Page);
       end;
-    end
-    else begin
-      AResponse.Answer(404, RAL404Page);
     end;
+  finally
+    FreeAndNil(vDB);
   end;
 end;
 
@@ -245,75 +247,79 @@ var
   vRowsAffect, vLastId : Int64RAL;
 begin
   vDB := FindDatabaseDriver;
-  if vDB <> nil then
-  begin
-    vParam := ARequest.ParamByName('query');
-
-    if vParam = nil then
-      vParam := ARequest.Body;
-
-    if vParam <> nil then
+  try
+    if vDB <> nil then
     begin
-      vString := '';
-      vRowsAffect := 0;
-      vLastId := 0;
-      try
-        if vParam.ContentType = rctAPPLICATIONJSON then
-          RALParamJSONToQuery(vParam, vSQL, vParams)
-        else
-          RALParamBinaryToQuery(vParam, vSQL, vParams);
+      vParam := ARequest.ParamByName('query');
 
+      if vParam = nil then
+        vParam := ARequest.Body;
+
+      if vParam <> nil then
+      begin
+        vString := '';
+        vRowsAffect := 0;
+        vLastId := 0;
         try
-          vDB.ExecSQL(vSQL, vParams, vRowsAffect, vLastId);
-        except
-          on e : Exception do
-          begin
-            vString := TRALBase64.Encode(e.Message);
-          end;
-        end;
+          if vParam.ContentType = rctAPPLICATIONJSON then
+            RALParamJSONToQuery(vParam, vSQL, vParams)
+          else
+            RALParamBinaryToQuery(vParam, vSQL, vParams);
 
-        vResult := TMemoryStream.Create;
-        if FDatabaseOutPut = dopJSON then
-        begin
-          AResponse.ContentType := rctAPPLICATIONJSON;
-          if vString <> '' then
+          try
+            vDB.ExecSQL(vSQL, vParams, vRowsAffect, vLastId);
+          except
+            on e : Exception do
+            begin
+              vString := TRALBase64.Encode(e.Message);
+            end;
+          end;
+
+          vResult := TMemoryStream.Create;
+          if FDatabaseOutPut = dopJSON then
           begin
-            vString := Format('{"erro":"%s"}', [vString]);
-            vResult.Write(vString[PosIniStr], Length(vString));
+            AResponse.ContentType := rctAPPLICATIONJSON;
+            if vString <> '' then
+            begin
+              vString := Format('{"erro":"%s"}', [vString]);
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end
+            else
+            begin
+              vString := Format('{"rows":%d,"lastid":%d}', [vRowsAffect, vLastId]);
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end;
           end
           else
           begin
-            vString := Format('{"rows":%d,"lastid":%d}', [vRowsAffect, vLastId]);
-            vResult.Write(vString[PosIniStr], Length(vString));
-          end;
-        end
-        else
-        begin
-          AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
 
-          if vString <> '' then
-          begin
-            vInt := Length(vString);
-            vResult.Write(vInt, SizeOf(vInt));
-            vResult.Write(vString[PosIniStr], Length(vString));
-          end
-          else begin
-            vInt := 0;
-            vResult.Write(vInt, SizeOf(vInt));
+            if vString <> '' then
+            begin
+              vInt := Length(vString);
+              vResult.Write(vInt, SizeOf(vInt));
+              vResult.Write(vString[PosIniStr], Length(vString));
+            end
+            else begin
+              vInt := 0;
+              vResult.Write(vInt, SizeOf(vInt));
+            end;
+            vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
+            vResult.Write(vLastId, SizeOf(vLastId));
           end;
-          vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
-          vResult.Write(vLastId, SizeOf(vLastId));
+
+          vResult.Position := 0;
+          AResponse.ResponseStream := vResult;
+        finally
+          vParams.Free;
         end;
-
-        vResult.Position := 0;
-        AResponse.ResponseStream := vResult;
-      finally
-        vParams.Free;
+      end
+      else begin
+        AResponse.Answer(404, RAL404Page);
       end;
-    end
-    else begin
-      AResponse.Answer(404, RAL404Page);
     end;
+  finally
+    FreeAndNil(vDB);
   end;
 end;
 
