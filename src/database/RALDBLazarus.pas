@@ -29,7 +29,21 @@ type
                       var ALastInsertId : Int64RAL); override;
   end;
 
+  { TRALDBLazarusLink }
+
+  TRALDBLazarusLink = class(TRALDBLink)
+  public
+    function GetDBClass : TRALDBClass; override;
+  end;
+
 implementation
+
+{ TRALDBLazarusLink }
+
+function TRALDBLazarusLink.GetDBClass : TRALDBClass;
+begin
+  Result := TRALDBLazarus;
+end;
 
 { TRALDBLazarus }
 
@@ -61,7 +75,6 @@ end;
 
 constructor TRALDBLazarus.Create;
 begin
-  inherited;
   FConnector := TSQLConnector.Create(nil);
 
   FTransaction := TSQLTransaction.Create(nil);
@@ -141,9 +154,6 @@ begin
     FreeAndNil(vQuery);
   end;
 end;
-
-initialization
-  RegisterClass(TRALDBLazarus);
 
 end.
 

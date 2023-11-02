@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes;
+  RALTypes, RALCustomObjects;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
@@ -25,7 +25,7 @@ type
   protected
     procedure Conectar; virtual; abstract;
   public
-    constructor Create; virtual;
+    constructor Create; virtual; abstract;
 
     function Open(ASQL : StringRAL; AParams : TParams) : TDataset; virtual; abstract;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
@@ -43,14 +43,12 @@ type
 
   TRALDBClass = class of TRALDBBase;
 
+  TRALDBLink = class(TRALComponent)
+  public
+    function GetDBClass : TRALDBClass; virtual; abstract;
+  end;
+
 implementation
-
-{ TRALDBBase }
-
-constructor TRALDBBase.Create;
-begin
-  inherited;
-end;
 
 end.
 

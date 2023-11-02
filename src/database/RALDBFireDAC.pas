@@ -28,6 +28,14 @@ type
                       var ALastInsertId : Int64RAL); override;
   end;
 
+  { TRALDBFireDACLink }
+
+  TRALDBFireDACLink = class(TRALDBLink)
+  public
+    function GetDBClass : TRALDBClass; override;
+  end;
+
+
 implementation
 
 { TRALDBFireDAC }
@@ -141,8 +149,12 @@ begin
   end;
 end;
 
-initialization
-  RegisterClass(TRALDBFireDAC);
+{ TRALDBFireDACLink }
+
+function TRALDBFireDACLink.GetDBClass: TRALDBClass;
+begin
+  Result := TRALDBFireDAC;
+end;
 
 end.
 

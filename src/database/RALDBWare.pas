@@ -9,12 +9,6 @@ uses
   RALBase64;
 
 type
-  {$IFDEF FPC}
-    TRALConnectionType = (ctLazarus, ctZeos);
-  {$ELSE}
-    TRALConnectionType = (ctFiredac, ctZeos);
-  {$ENDIF}
-
   { TRALDBWare }
 
   TRALDBWare = class(TRALSubRoutes)
@@ -25,10 +19,13 @@ type
     FPassword : StringRAL;
     FPort     : IntegerRAL;
 
-    FConnectionType : TRALConnectionType;
+    FDBLink : TRALDBLink;
     FDatabaseType : TRALDatabaseType;
     FDatabaseOutPut : TRALDatabaseOutPut;
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetDBLink(AValue : TRALDBLink);
+
     function FindDatabaseDriver : TRALDBBase;
     procedure RALParamJSONToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
     procedure RALParamBinaryToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
@@ -44,7 +41,8 @@ type
     property Password : StringRAL read FPassword write FPassword;
     property Port     : IntegerRAL read FPort write FPort;
 
-    property ConnectionType : TRALConnectionType read FConnectionType write FConnectionType;
+    property DBLink : TRALDBLink read FDBLink write SetDBLink;
+
     property DatabaseType   : TRALDatabaseType read FDatabaseType write FDatabaseType;
     property DatabaseOutPut : TRALDatabaseOutPut read FDatabaseOutPut write FDatabaseOutPut;
   end;
@@ -53,6 +51,22 @@ implementation
 
 { TRALDBWare }
 
+procedure TRALDBWare.Notification(AComponent : TComponent; Operation : TOperation);
+begin
+  if (Operation = opRemove) and (AComponent = FDBLink) then
+    FDBLink := nil;
+  inherited Notification(AComponent, Operation);
+end;
+
+procedure TRALDBWare.SetDBLink(AValue : TRALDBLink);
+begin
+  if AValue <> FDBLink then
+    FServer := AValue;
+
+  if FServer <> nil then
+    FServer.FreeNotification(Self);
+end;
+
 function TRALDBWare.FindDatabaseDriver : TRALDBBase;
 var
   vClass : TRALDBClass;
@@ -60,23 +74,9 @@ var
 begin
   Result := nil;
   vClass := nil;
-  case FConnectionType of
-    {$IFDEF FPC}
-      ctLazarus : begin
-        vClass := TRALDBClass(GetClass('TRALDBLazarus'));
-        vUnit  := 'RALDBLazarus';
-      end;
-    {$ELSE}
-      ctFiredac : begin
-        vClass := TRALDBClass(GetClass('TRALDBFiredac'));
-        vUnit  := 'RALDBFiredac';
-      end;
-    {$ENDIF}
-    ctZeos    : begin
-      vClass := TRALDBClass(GetClass('TRALDBZeos'));
-      vUnit  := 'RALDBZeos';
-    end;
-  end;
+
+  if FDBLink <> nil then
+    vClass := FDBLink.GetDBClass;
 
   if vClass <> nil then
   begin
@@ -90,7 +90,7 @@ begin
     Result.DatabaseOutPut := FDatabaseOutPut;
   end
   else begin
-    raise Exception.Create(Format('Unit %s must be inserted',[vUnit]));
+    raise Exception.Create('Propriedade DBLink deve ser informada');
   end;
 end;
 

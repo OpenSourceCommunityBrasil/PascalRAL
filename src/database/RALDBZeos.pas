@@ -21,12 +21,27 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
+
     function Open(ASQL : string; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
   end;
 
+  { TRALDBZeosLink }
+
+  TRALDBZeosLink = class(TRALDBLink)
+  public
+    function GetDBClass : TRALDBClass; override;
+  end;
+
 implementation
+
+{ TRALDBZeosLink }
+
+function TRALDBZeosLink.GetDBClass : TRALDBClass;
+begin
+  Result := TRALDBZeos;
+end;
 
 { TRALDBZeos }
 
@@ -58,7 +73,6 @@ end;
 
 constructor TRALDBZeos.Create;
 begin
-  inherited;
   FConnector := TZConnection.Create(nil);
 end;
 
@@ -133,9 +147,6 @@ begin
     FreeAndNil(vQuery);
   end;
 end;
-
-initialization
-  RegisterClass(TRALDBZeos);
 
 end.
 
