@@ -68,6 +68,9 @@ type
 
 implementation
 
+uses
+  RALServer;
+
 { TRALRoutes }
 
 constructor TRALRoute.Create(ACollection: TCollection);
@@ -168,7 +171,10 @@ end;
 
 function TRALRoute.GetRoute: StringRAL;
 begin
-  Result := FixRoute(FRouteDomain + '/' + FRouteName);
+  Result := '';
+  if (Collection.Owner <> nil) and (Collection.Owner.InheritsFrom(TRALSubRoutes)) then
+    Result := TRALSubRoutes(Collection.Owner).Name;
+  Result := FixRoute(Result + '/' + FRouteDomain + '/' + FRouteName);
 end;
 
 function TRALRoute.GetDisplayName: string;
