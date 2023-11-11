@@ -15,13 +15,12 @@ type
   private
     FName: string;
     FPath: string;
-    FRegKey: string;
-    FInstallPath: string;
+    FVersion: string;
+    procedure GetInstallData;
   public
     property Path: string read FPath write FPath;
     property Name: string read FName write FName;
-    property RegKey: string read FRegKey;
-    property InstallPath: string read FInstallPath write FInstallPath;
+    property Version: string read FVersion write FVersion;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -57,7 +56,7 @@ implementation
 {$REGION 'custom functions'}
 function GetLazarusLocalFolder: string;
 begin
-  Result := Format('%slazarus', [IncludeTrailingPathDelimiter(GetLocalAppDataFolder)]);
+  //Result := Format('%slazarus', [IncludeTrailingPathDelimiter(GetLocalAppDataFolder)]);
   if not DirectoryExists(Result) then
     Result := '';
 end;
@@ -73,11 +72,11 @@ begin
   LocalFolder := GetLazarusLocalFolder;
   if LocalFolder <> '' then
   begin
-    FileName := Format('%s%s', [IncludeTrailingPathDelimiter(LocalFolder),
-      sLazarusConfigFile]);
+    //FileName := Format('%s%s', [IncludeTrailingPathDelimiter(LocalFolder),
+      //sLazarusConfigFile]);
     if FileExists(FileName) then
     begin
-      XmlDoc := CreateOleObject('Msxml2.DOMDocument.6.0');
+      //XmlDoc := CreateOleObject('Msxml2.DOMDocument.6.0');
       try
         XmlDoc.Async := False;
         XmlDoc.Load(FileName);
@@ -87,7 +86,7 @@ begin
           raise Exception.CreateFmt('Error in Xml Data %s', [XmlDoc.parseError]);
 
         Node := XmlDoc.selectSingleNode(AValue);
-        if not VarIsClear(Node) then
+        //if not VarIsClear(Node) then
           Result := Node.Text;
       finally
         XmlDoc := Unassigned;
@@ -107,8 +106,8 @@ end;
 
 function GetLazarusIDEFileName: string;
 begin
-  Result := Format('%s%s', [IncludeTrailingPathDelimiter(GetLazarusIDEFolder),
-    sLazarusIDEName]);
+  //Result := Format('%s%s', [IncludeTrailingPathDelimiter(GetLazarusIDEFolder),
+    //sLazarusIDEName]);
 end;
 
 function GetLazarusCompilerFileName: string;
@@ -130,7 +129,7 @@ end;
 
 procedure FillListLazarusVersions(AList: TList);
 var
-  VersionData: TDelphiVersionData;
+  //VersionData: TDelphiVersionData;
   Found: boolean;
   FileName: string;
 begin
@@ -147,15 +146,15 @@ begin
       item.SubItems.Add(IntToStr(Ord(TSupportedIDEs.LazarusIDE)));
       Item.Data := nil;
     }
-    VersionData := TDelphiVersionData.Create;
-    VersionData.Path := FileName;
+    //VersionData := TDelphiVersionData.Create;
+    //VersionData.Path := FileName;
     // VersionData.Version:=;
-    VersionData.Name := Format('Lazarus %s', [DITE.Misc.GetFileVersion(FileName)]);
-    VersionData.IDEType := TSupportedIDEs.LazarusIDE;
-    VersionData.Icon := TIcon.Create;
-    VersionData.Version := TDelphiVersions.DelphiXE; //used for syntax highlight
-    ExtractIconFile(VersionData.Icon, FileName, SHGFI_SMALLICON);
-    AList.Add(VersionData);
+    //VersionData.Name := Format('Lazarus %s', [DITE.Misc.GetFileVersion(FileName)]);
+    //VersionData.IDEType := TSupportedIDEs.LazarusIDE;
+    //VersionData.Icon := TIcon.Create;
+    //VersionData.Version := TDelphiVersions.DelphiXE; //used for syntax highlight
+    //ExtractIconFile(VersionData.Icon, FileName, SHGFI_SMALLICON);
+    //AList.Add(VersionData);
   end;
 end;
 
@@ -219,6 +218,11 @@ end;
 
 { TLazarusObjectData }
 
+procedure TLazarusObjectData.GetInstallData;
+begin
+
+end;
+
 constructor TLazarusObjectData.Create;
 begin
 
@@ -232,114 +236,43 @@ end;
 { TLazInstaller }
 
 procedure TLazInstaller.RebuildIDE;
-const
-  C_BUFSIZE = 2048;
-var
-  AProcess: TProcess;
-  Buffer: pointer;
-  SStream: TStringStream;
-  nread: longint;
 begin
-  //outputScreen.Clear;
-  AProcess := TProcess.Create(nil);
-  AProcess.Executable := IncludeTrailingPathDelimiter(FLazarus.InstallPath) +
-    'lazbuild';
-  AProcess.Parameters.Add('--build-ide=');
-  AProcess.Options := [poUsePipes, poStdErrToOutput];
-
-  AProcess.ShowWindow := swoHIDE;
-  Getmem(Buffer, C_BUFSIZE);
-  SStream := TStringStream.Create('');
-  ///
-  AProcess.Execute;
-  // fazer o processo abaixo dentro de uma thread pra atualizar o log
-  while AProcess.Running do
-  begin
-    nread := AProcess.Output.Read(Buffer^, C_BUFSIZE);
-    if nread = 0 then
-      sleep(100)
-    else
-    begin
-      SStream.size := 0;
-      SStream.Write(Buffer^, nread);
-      //outputScreen.Lines.Append(SStream.DataString);
-    end;
-  end;
-  repeat
-    nread := AProcess.Output.Read(Buffer^, C_BUFSIZE);
-    if nread > 0 then
-    begin
-      SStream.size := 0;
-      SStream.Write(Buffer^, nread);
-      //outputScreen.Lines.Append(SStream.DataString);
-    end;
-  until nread = 0;
-  ///
-  AProcess.Free;
-  Freemem(buffer);
-  SStream.Free;
+   // rebuild IDE
+  {
+   AProcess := TProcess.Create(nil);
+   AProcess.Executable := IncludeTrailingPathDelimiter(edtPathLazarus.Text) + 'lazbuild';
+   AProcess.Parameters.Add('--build-ide=');
+   AProcess.Options := [poUsePipes, poStdErrToOutput];
+   AProcess.ShowWindow := swoHIDE;
+   AProcess.Execute;
+  }
+   //
 end;
 
 procedure TLazInstaller.Install;
-const
-  C_BUFSIZE = 2048;
 var
   AProcess: TProcess;
-  Buffer: pointer;
-  SStream: TStringStream;
-  nread: longint;
-  i: integer;
-  fPath: string;
 begin
-  fPath := IncludeTrailingPathDelimiter(FLazarus.InstallPath) + 'lazbuild';
+  {
+  1- buscar diretório do lazarus
+  2- identificar o lazbuild
+  3- adicionar os .lpks via linha de comando e anexar ao lazbuild
+  4- executar o build dos lpks
+  5- executar rebuildide
 
-  //for i := 0 to strListACBr.Count - 1 do
+  3:
+  for i := 0 to strListACBr.Count - 1 do
   begin
     AProcess := TProcess.Create(nil);
     try
-      AProcess.CommandLine := concat(fPath, ' --add-package-link ',
-        //strListACBr.Strings[i]
-        '');
+      AProcess.CommandLine:= concat(fPath,' --add-package-link ', strListACBr.Strings[i]);
       AProcess.Options := [poUsePipes, poStdErrToOutput];
       AProcess.ShowWindow := swoHIDE;
-      ///
-      Getmem(Buffer, C_BUFSIZE);
-      SStream := TStringStream.Create('');
-      ///
       AProcess.Execute;
-      // acrescentar thread no processo abaixo
-      while AProcess.Running do
-      begin
-        nread := AProcess.Output.Read(Buffer^, C_BUFSIZE);
-        if nread = 0 then
-          sleep(100)
-        else
-        begin
-          SStream.size := 0;
-          SStream.Write(Buffer^, nread);
-          { ...to do - verificar o porque nao esta dando saida em outputscreen}
-          //outputScreen.Lines.Append(SStream.DataString);
-          //outputScreen.Lines.Append(strListACBr.Strings[i]);
-        end;
-      end;
-
-      repeat
-        nread := AProcess.Output.Read(Buffer^, C_BUFSIZE);
-        if nread > 0 then
-        begin
-          SStream.size := 0;
-          SStream.Write(Buffer^, nread);
-          //outputScreen.Lines.Append(strListACBr.Strings[i]);
-        end
-      until nread = 0;
-
     finally
       AProcess.Free;
-      Freemem(buffer);
-      SStream.Free;
-      //Application.ProcessMessages;
     end;
-  end; /// for in
+  }
 end;
 
 constructor TLazInstaller.Create;

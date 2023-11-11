@@ -35,16 +35,19 @@ type
     CheckBox1: TCheckBox;
     CheckListBox1: TCheckListBox;
     clbDataEngine: TCheckListBox;
+    ePathLazarusSearch: TEdit;
     Image1: TImage;
     imBanner: TImage;
     imDelphiFundo: TImage;
     imLazarusFundo: TImage;
-    lRepoNotes: TLabel;
     lLatestVersion: TLabel;
     lRepoVersion: TLabel;
     lVersionNotes: TLabel;
     lIDELazarus: TLabel;
     lIDEDelphi: TLabel;
+    mmRepoNotes: TMemo;
+    RadioButton1: TRadioButton;
+    RadioButton2: TRadioButton;
     selectionbox: TImage;
     imPathNext: TImage;
     imPathPrevious: TImage;
@@ -99,6 +102,7 @@ type
     pLanguage: TPanel;
     FolderDialog: TSelectDirectoryDialog;
     SpeedButton1: TSpeedButton;
+    SpeedButton2: TSpeedButton;
     Timer1: TTimer;
     tvResources: TTreeView;
     procedure Button1Click(Sender: TObject);
@@ -128,6 +132,8 @@ type
     FIDE: integer;
     IgnoredLabels: TStrings;
     FMouseClick: TPoint;
+    PathSearched: boolean;
+    LazarusSelected: boolean;
     procedure SetTheme(aTheme: TThemes);
     procedure ConfigThemes;
     procedure SetIgnoredLabels;
@@ -279,7 +285,10 @@ begin
   case aStep of
     sLanguage: pLanguage.Visible := True;
     sIDE: pIDE.Visible := True;
-    sPath: pPath.Visible := True;
+    sPath: begin
+      pPath.Visible := True;
+      PathSearched := False;
+    end;
     sResources: pRecursos.Visible := True;
     sConfirm: pConfirmaRecursos.Visible := True;
     sInstall: pInstall.Visible := True;
@@ -302,7 +311,7 @@ begin
 
 end;
 
-procedure Tfprincipal.ImageToPanel(AStream : TStream; APanel : TPanel);
+procedure Tfprincipal.ImageToPanel(AStream: TStream; APanel: TPanel);
 var
   timg: TImage;
 begin
@@ -322,7 +331,7 @@ begin
   timg.SendToBack;
 end;
 
-function Tfprincipal.ImageBackground(AResource : string; APanel : TPanel) : TStream;
+function Tfprincipal.ImageBackground(AResource: string; APanel: TPanel): TStream;
 var
   res: TResourceStream;
   img1, img2, img3: TFCLImage;
@@ -384,6 +393,7 @@ begin
   imLazarusFundo.Visible := FIDE = 0;
   imDelphiFundo.Visible := FIDE = 1;
   lIDENext.Enabled := FIde > -1;
+  LazarusSelected := FIDE = 0;
 end;
 
 procedure Tfprincipal.SpeedButton1Click(Sender: TObject);
@@ -413,6 +423,7 @@ begin
   SetIgnoredLabels;
   ConfigThemes;
   FIDE := -1;
+  LazarusSelected := False;
   LCLFunc.DesativaControles([lIDENext, lLanguageNext, lInstallClose]);
   LCLFunc.EscondeControles([imDelphiFundo, imLazarusFundo]);
   ImageSelect(imLangUS);
@@ -454,7 +465,8 @@ begin
   imBanner.Tag := 1;
 end;
 
-procedure Tfprincipal.imBannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
+procedure Tfprincipal.imBannerMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: integer);
 begin
   if imBanner.Tag = 1 then
   begin
@@ -482,7 +494,9 @@ end;
 
 procedure Tfprincipal.imPathNextClick(Sender: TObject);
 begin
-  ShowStep(sResources);
+  // verificar se foi feita a busca antes de continuar
+  if PathSearched then
+    ShowStep(sResources);
 end;
 
 procedure Tfprincipal.imPathPreviousClick(Sender: TObject);
