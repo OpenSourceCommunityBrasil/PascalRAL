@@ -1,154 +1,128 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
-#: principal.themedark
-msgid "Escuro"
-msgstr ""
-
-#: principal.themelight
-msgctxt "principal.themelight"
-msgid "Claro"
-msgstr ""
-
-#: tform1.button1.caption
-msgid "test logo anim"
-msgstr ""
-
-#: tform1.caption
-msgid "PascalRAL Instalador"
-msgstr ""
-
-#: tform1.checkbox1.caption
-msgid "Instalar Dependências"
-msgstr ""
-
-#: tform1.epathfolder.editlabel.caption
+#: tfframe_config_recursos.epathfolder.editlabel.caption
+msgctxt "tfframe_config_recursos.epathfolder.editlabel.caption"
 msgid "Caminho para baixar os fontes"
 msgstr ""
 
-#: tform1.epathfolder.texthint
+#: tfframe_config_recursos.epathfolder.texthint
+msgctxt "tfframe_config_recursos.epathfolder.texthint"
 msgid "Escolha um local pra baixar os fontes"
 msgstr ""
 
-#: tform1.folderdialog.title
-msgid "Escolha a pasta pra baixar os fontes"
+#: tfframe_config_recursos.epathlazarussearch.texthint
+msgid "Escolha a pasta onde o Lazarus está instalado"
 msgstr ""
 
-#: tform1.lconfirmback.caption
-msgctxt "tform1.lconfirmback.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tform1.lconfirmnext.caption
-msgid "Instalar >"
-msgstr ""
-
-#: tform1.lconfirmsubtitle.caption
-msgid "Resumo dos recursos escolhidos"
-msgstr ""
-
-#: tform1.ldataengine.caption
-msgid "Motor de dados"
-msgstr ""
-
-#: tform1.ldataengine1.caption
-msgid "Pré-visualização"
-msgstr ""
-
-#: tform1.lidedelphi.caption
-msgid "Delphi"
-msgstr ""
-
-#: tform1.lidelazarus.caption
-msgid "Lazarus"
-msgstr ""
-
-#: tform1.lidenext.caption
-msgctxt "tform1.lidenext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tform1.lideprevious.caption
-msgctxt "tform1.lideprevious.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tform1.lidesubtitle.caption
-msgid "Escolha a IDE"
-msgstr ""
-
-#: tform1.linstallback.caption
-msgctxt "tform1.linstallback.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tform1.linstallclose.caption
-msgid "Fechar"
-msgstr ""
-
-#: tform1.linstallsubtitle.caption
-msgid "Instalação"
-msgstr ""
-
-#: tform1.llanguagenext.caption
-msgctxt "tform1.llanguagenext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tform1.llanguagesubtitle.caption
-msgid "Escolha o Idioma"
-msgstr ""
-
-#: tform1.llatestversion.caption
+#: tfframe_config_recursos.llatestversion.caption
+msgctxt "tfframe_config_recursos.llatestversion.caption"
 msgid "Versão mais recente dos fontes:"
 msgstr ""
 
-#: tform1.lpathideversion.caption
+#: tfframe_config_recursos.lpathideversion.caption
+msgctxt "tfframe_config_recursos.lpathideversion.caption"
 msgid "Versão da IDE"
 msgstr ""
 
-#: tform1.lpathnext.caption
-msgctxt "tform1.lpathnext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tform1.lpathprevious.caption
-msgctxt "tform1.lpathprevious.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tform1.lpathsubtitle.caption
+#: tfframe_config_recursos.lpathsubtitle.caption
+msgctxt "tfframe_config_recursos.lpathsubtitle.caption"
 msgid "Caminho da Instalação"
 msgstr ""
 
-#: tform1.lrepoversion.caption
+#: tfframe_config_recursos.lrepoversion.caption
+msgctxt "tfframe_config_recursos.lrepoversion.caption"
 msgid "lRepoVersion"
 msgstr ""
 
-#: tform1.lresourcesnext.caption
-msgctxt "tform1.lresourcesnext.caption"
-msgid "Próximo >"
+#: tfframe_config_recursos.lversionnotes.caption
+msgctxt "tfframe_config_recursos.lversionnotes.caption"
+msgid "Notas da versão:"
 msgstr ""
 
-#: tform1.lresourcesprevious.caption
-msgctxt "tform1.lresourcesprevious.caption"
-msgid "< Anterior"
+#: tfframe_config_recursos.radiobutton1.caption
+msgid "Apontar a pasta onde o Lazarus está instalado"
 msgstr ""
 
-#: tform1.lresourcessubtitle.caption
+#: tfframe_config_recursos.radiobutton2.caption
+msgid "Deixar o RAL pesquisar (muito lento)"
+msgstr ""
+
+#: tfframe_confirm_recursos.lconfirmsubtitle.caption
+msgctxt "tfframe_confirm_recursos.lconfirmsubtitle.caption"
+msgid "Resumo dos recursos escolhidos"
+msgstr ""
+
+#: tfframe_ide.lbsubtitle.caption
+msgctxt "tfframe_ide.lbsubtitle.caption"
+msgid "Escolha a IDE"
+msgstr ""
+
+#: tfframe_ide.lidedelphi.caption
+msgctxt "tfframe_ide.lidedelphi.caption"
+msgid "Delphi"
+msgstr ""
+
+#: tfframe_ide.lidelazarus.caption
+msgctxt "tfframe_ide.lidelazarus.caption"
+msgid "Lazarus"
+msgstr ""
+
+#: tfframe_ide_versions.label1.caption
+msgid "Lazarus 2.2.6 - FPC 3.2.2"
+msgstr ""
+
+#: tfframe_ide_versions.label2.caption
+msgid "d:\\lazarus"
+msgstr ""
+
+#: tfframe_idioma.llanguagesubtitle.caption
+msgctxt "tfframe_idioma.llanguagesubtitle.caption"
+msgid "Escolha o Idioma"
+msgstr ""
+
+#: tfframe_install.button1.caption
+msgctxt "tfframe_install.button1.caption"
+msgid "test logo anim"
+msgstr ""
+
+#: tfframe_install.linstallsubtitle.caption
+msgctxt "tfframe_install.linstallsubtitle.caption"
+msgid "Instalação"
+msgstr ""
+
+#: tfframe_install_recursos.checkbox1.caption
+msgctxt "tfframe_install_recursos.checkbox1.caption"
+msgid "Instalar Dependências"
+msgstr ""
+
+#: tfframe_install_recursos.lresourcessubtitle.caption
+msgctxt "tfframe_install_recursos.lresourcessubtitle.caption"
 msgid "Escolha os recursos a instalar"
 msgstr ""
 
-#: tform1.ltheme.caption
-msgctxt "tform1.ltheme.caption"
-msgid "Claro"
+#: tfframe_modelo.lbback.caption
+msgctxt "tfframe_modelo.lbback.caption"
+msgid "< Anterior"
 msgstr ""
 
-#: tform1.lversion.caption
+#: tfframe_modelo.lbnext.caption
+msgctxt "tfframe_modelo.lbnext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tfprincipal.caption
+msgctxt "tfprincipal.caption"
+msgid "PascalRAL Instalador"
+msgstr ""
+
+#: tfprincipal.folderdialog.title
+msgctxt "tfprincipal.folderdialog.title"
+msgid "Escolha a pasta pra baixar os fontes"
+msgstr ""
+
+#: tfprincipal.lversion.caption
+msgctxt "tfprincipal.lversion.caption"
 msgid "Instalador Versão 1.0"
-msgstr ""
-
-#: tform1.lversionnotes.caption
-msgid "Notas da versão:"
 msgstr ""
 

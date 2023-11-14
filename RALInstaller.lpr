@@ -6,24 +6,16 @@ uses
  {$IFDEF UNIX}cthreads, {$ENDIF}
  {$IFDEF HASAMIGA}athreads, {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms,
-  principal in 'src\telas\principal.pas',
-  ghrepofunctions in 'src\funcoes\ghrepofunctions.pas',
-  configdatabase in 'src\funcoes\configdatabase.pas',
-  imagefunctions in 'src\funcoes\imagefunctions.pas',
-  lclfunctions in 'src\funcoes\lclfunctions.pas';
+  Forms, principal, ghrepofunctions, configdatabase, imagefunctions,
+  lclfunctions, frame_ide_versions, frame_modelo, frame_ide, frame_idioma,
+  frame_config_recursos, frame_install_recursos,
+  frame_install, frame_confirm_recursos, install_types, install_tools;
 
 {$R *.res}
 
 begin
-  {$ifopt D+}
-  SetHeapTraceOutput('debug.trc');
-    {$if declared(UseHeapTrace)}
-    GlobalSkipIfNoLeaks := True; // supported as of debugger version 3.2.0
-    {$endIf}
-  {$IFEND}
   RequireDerivedFormResource := True;
-  Application.Scaled := True;
+  Application.Scaled :=True;
   Application.Initialize;
   Application.CreateForm(Tfprincipal, fprincipal);
   Application.Run;

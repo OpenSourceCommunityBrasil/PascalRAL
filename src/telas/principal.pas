@@ -9,153 +9,59 @@ uses
   delphiutils,
   {$ENDIF}
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ComCtrls, CheckLst, Buttons, LResources, LCLType,
-  fpJSON, jsonparser, DefaultTranslator, LCLTranslator,
-  FPWritePNG,
-  lclfunctions, imagefunctions, ghrepofunctions,
-  lazarusutils;
+  ComCtrls, Buttons, LResources, LCLType, fpJSON, jsonparser,
+  DefaultTranslator, LCLTranslator, FPWritePNG,
+
+  frame_modelo, frame_idioma, frame_ide, frame_config_recursos,
+  frame_install_recursos, frame_confirm_recursos, frame_install,
+  install_types, install_tools, imagefunctions;
 
 type
-  TSplashFormStyle = record
-    Background: string;
-    Banner: string;
-    subtitle: string;
-    Theme: string;
-    button: string;
-    FontColor: TColor;
-  end;
-
-  TSteps = (sLanguage, sIDE, sPath, sResources, sConfirm, sInstall, sFinish);
-  TThemes = (tLight, tDark);
-
   { Tfprincipal }
 
   Tfprincipal = class(TForm)
-    Button1: TButton;
-    CheckBox1: TCheckBox;
-    CheckListBox1: TCheckListBox;
-    clbDataEngine: TCheckListBox;
-    ePathLazarusSearch: TEdit;
-    Image1: TImage;
+    imClose: TImage;
+    imBackground : TImage;
     imBanner: TImage;
-    imDelphiFundo: TImage;
-    imLazarusFundo: TImage;
-    lLatestVersion: TLabel;
-    lRepoVersion: TLabel;
-    lVersionNotes: TLabel;
-    lIDELazarus: TLabel;
-    lIDEDelphi: TLabel;
-    mmRepoNotes: TMemo;
-    RadioButton1: TRadioButton;
-    RadioButton2: TRadioButton;
-    selectionbox: TImage;
-    imPathNext: TImage;
-    imPathPrevious: TImage;
-    ImageList1: TImageList;
-    imConfirmBack: TImage;
-    imInstallBack: TImage;
-    imConfirmNext: TImage;
-    imInstallClose: TImage;
-    imLazarus: TImage;
-    imDelphi: TImage;
-    imIDEBack: TImage;
-    imlogoBG: TImage;
-    imResourceBack: TImage;
-    imLanguageNext: TImage;
-    imLangBR: TImage;
-    imLangUS: TImage;
-    imLangES: TImage;
-    imIDENext: TImage;
-    imResourceNext: TImage;
-    imTheme: TImage;
-    lDataEngine1: TLabel;
-    lPathIDEVersion: TLabel;
-    ePathFolder: TLabeledEdit;
-    lPathNext: TLabel;
-    lPathSubTitle: TLabel;
-    lPathPrevious: TLabel;
-    lDataEngine: TLabel;
-    lResourcesNext: TLabel;
-    lConfirmNext: TLabel;
-    lInstallClose: TLabel;
-    lResourcesPrevious: TLabel;
-    lLanguageNext: TLabel;
-    lIDEPrevious: TLabel;
-    lIDESubTitle: TLabel;
-    lIDENext: TLabel;
-    lConfirmBack: TLabel;
-    lInstallBack: TLabel;
-    lResourcesSubTitle: TLabel;
-    lConfirmSubTitle: TLabel;
-    lInstallSubTitle: TLabel;
-    lLanguageSubTitle: TLabel;
-    lTheme: TLabel;
+    imTheme : TImage;
+    lTheme : TLabel;
     lVersion: TLabel;
-    mmConfirm: TMemo;
-    mmLogInstall: TMemo;
     pBanner: TPanel;
-    pConfirmaRecursos: TPanel;
-    pInstall: TPanel;
-    pPath: TPanel;
-    pRecursos: TPanel;
-    pIDE: TPanel;
-    pLanguage: TPanel;
-    FolderDialog: TSelectDirectoryDialog;
-    SpeedButton1: TSpeedButton;
-    SpeedButton2: TSpeedButton;
-    Timer1: TTimer;
-    tvResources: TTreeView;
-    procedure Button1Click(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
-    procedure Image1Click(Sender: TObject);
-    procedure imBannerMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: integer);
-    procedure imBannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
-    procedure imBannerMouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: integer);
-    procedure imConfirmBackClick(Sender: TObject);
-    procedure imConfirmNextClick(Sender: TObject);
-    procedure imPathNextClick(Sender: TObject);
-    procedure imPathPreviousClick(Sender: TObject);
-    procedure imResourceBackClick(Sender: TObject);
-    procedure imResourceNextClick(Sender: TObject);
-    procedure imIDEBackClick(Sender: TObject);
-    procedure imLanguageNextClick(Sender: TObject);
-    procedure imIDENextClick(Sender: TObject);
-    procedure imThemeClick(Sender: TObject);
-    procedure ImageSelect(Sender: TObject);
-    procedure IDESelect(Sender: TObject);
-    procedure SpeedButton1Click(Sender: TObject);
+    procedure FormClose(Sender : TObject; var CloseAction : TCloseAction);
+    procedure FormCreate(Sender : TObject);
+    procedure FormShow(Sender : TObject);
+    procedure imBannerMouseDown(Sender : TObject; Button : TMouseButton; Shift : TShiftState; X, Y : Integer);
+    procedure imBannerMouseMove(Sender : TObject; Shift : TShiftState; X, Y : Integer);
+    procedure imBannerMouseUp(Sender : TObject; Button : TMouseButton; Shift : TShiftState; X, Y : Integer);
+    procedure imCloseClick(Sender : TObject);
+    procedure imThemeClick(Sender : TObject);
+  protected
+    frm_idioma : Tfframe_idioma;
+    frm_ide : Tfframe_ide;
+    frm_path : Tfframe_config_recursos;
+    frm_resources : Tfframe_install_recursos;
+    frm_confirm : Tfframe_confirm_recursos;
+    frm_install : Tfframe_install;
   private
-    FThemeIndex: integer;
-    FIDE: integer;
-    IgnoredLabels: TStrings;
+    FTheme : TThemes;
     FMouseClick: TPoint;
-    PathSearched: boolean;
-    LazarusSelected: boolean;
-    procedure SetTheme(aTheme: TThemes);
-    procedure ConfigThemes;
-    procedure SetIgnoredLabels;
-    procedure Translate(aLangIndex: integer);
-    procedure ShowStep(aStep: TSteps);
-    procedure PreparaVersoes;
-    procedure ConfiguraOpcoes;
-    procedure RevisarConfiguracoes;
 
-    procedure ImageToPanel(AStream: TStream; APanel: TPanel);
-    function ImageBackground(AResource: string; APanel: TPanel): TStream;
+    function CreateFrameStep(frame_class : Tfframe_modelo_class) : Tfframe_modelo;
+
+    procedure frmBack(Sender : TObject);
+    procedure frmNext(Sender : TObject);
+    procedure frmChangeLang(Sender : TObject);
+
+    procedure BringToFrontFrame(AIdTela : integer);
+    procedure SetTheme(ATheme: TThemes);
+    function ImageBackgroundFrames(AResource: string): TStream;
+    procedure Translate(ALang: TLanguages);
   public
-    FPanelSteps: array of TComponent;
+    function GetIDESelected : integer;
   end;
-
-resourcestring
-  ThemeLight = 'Claro';
-  ThemeDark = 'Escuro';
 
 var
   fprincipal: Tfprincipal;
-  Themes: array of TSplashFormStyle;
 
 implementation
 
@@ -163,175 +69,154 @@ implementation
 
 { Tfprincipal }
 
-procedure Tfprincipal.imThemeClick(Sender: TObject);
+procedure Tfprincipal.FormCreate(Sender : TObject);
 begin
-  if FThemeIndex = 0 then
-    SetTheme(tDark)
-  else
-    SetTheme(tLight);
+  imBackground.Left := 0;
+  imBackground.Top := 0;
+  imBackground.Width := Self.ClientWidth;
+  imBackground.Height := Self.ClientHeight;
+
+  frm_idioma    := Tfframe_idioma(CreateFrameStep(Tfframe_idioma));
+  frm_ide       := Tfframe_ide(CreateFrameStep(Tfframe_ide));
+  frm_path      := Tfframe_config_recursos(CreateFrameStep(Tfframe_config_recursos));
+  frm_resources := Tfframe_install_recursos(CreateFrameStep(Tfframe_install_recursos));
+  frm_confirm   := Tfframe_confirm_recursos(CreateFrameStep(Tfframe_confirm_recursos));
+  frm_install   := Tfframe_install(CreateFrameStep(Tfframe_install));
+
+  frm_idioma.OnChangeLang := @frmChangeLang;
 end;
 
-procedure Tfprincipal.SetTheme(aTheme: TThemes);
-var
-  I: integer;
-  mem: TStream;
+procedure Tfprincipal.FormShow(Sender : TObject);
 begin
-  imBanner.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Banner);
-  //  imBackground.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Background);
-  imTheme.Picture.LoadFromResourceName(HInstance, Themes[Ord(aTheme)].Theme);
+  BringToFrontFrame(1);
+  SetTheme(tLight);
+end;
 
-  //  ImageToTImage(Themes[Ord(aTheme)].Banner,imBanner);
-  mem := ImageBackground(Themes[Ord(aTheme)].Background, pBanner);
-  try
-    ImageToPanel(mem, pBanner);
-  finally
-    mem.Free;
-  end;
+procedure Tfprincipal.imBannerMouseDown(Sender : TObject; Button : TMouseButton; Shift : TShiftState; X, Y : Integer);
+begin
+  FMouseClick := Mouse.CursorPos;
+  imBanner.Tag := 1;
+end;
 
-  // panels do mesmo tamanho
-  mem := ImageBackground(Themes[Ord(aTheme)].Background, pLanguage);
-  try
-    ImageToPanel(mem, pLanguage);
-    ImageToPanel(mem, pIDE);
-    ImageToPanel(mem, pPath);
-    ImageToPanel(mem, pRecursos);
-    ImageToPanel(mem, pConfirmaRecursos);
-    ImageToPanel(mem, pInstall);
-  finally
-    mem.Free;
-  end;
-
-  for I := 0 to Pred(ComponentCount) do
+procedure Tfprincipal.imBannerMouseMove(Sender : TObject; Shift : TShiftState; X, Y : Integer);
+begin
+  if imBanner.Tag = 1 then
   begin
-    if (Components[I] is TLabel) and
-      (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) < 0) then
-      TLabel(Components[I]).Font.Color := Themes[Ord(aTheme)].FontColor
-    else if (Components[I] is TLabel) and
-      (IgnoredLabels.IndexOf(TLabel(Components[I]).Name) >= 0) then
-      TLabel(Components[I]).Font.Color := clWhite
-    else if (Components[I] is TLabeledEdit) and
-      (IgnoredLabels.IndexOf(TLabeledEdit(Components[I]).Name) < 0) then
-      TLabeledEdit(Components[I]).EditLabel.Font.Color := Themes[Ord(aTheme)].FontColor
-    else if (Components[I] is TImage) and (TImage(Components[I]).Tag = -1) then
-      TImage(Components[I]).Picture.LoadFromResourceName(HInstance,
-        Themes[Ord(aTheme)].button);
-  end;
-
-  if Ord(aTheme) = 0 then
-    lTheme.Caption := ThemeLight
-  else
-    lTheme.Caption := ThemeDark;
-
-  FThemeIndex := Ord(aTheme);
-end;
-
-procedure Tfprincipal.ConfigThemes;
-var
-  theme: TSplashFormStyle;
-begin
-  SetLength(Themes, 2);
-  // light
-  theme.Background := 'LIGHTBG';
-  theme.Banner := 'BANNER';
-  theme.FontColor := clBlack;
-  theme.Theme := 'LIGHTICON';
-  theme.subtitle := 'Light';
-  theme.button := 'LIGHTBTN';
-  Themes[0] := theme;
-
-  // dark
-  theme.Background := 'DARKBG';
-  theme.Banner := 'BANNER';
-  theme.FontColor := clWhite;
-  theme.Theme := 'DARKICON';
-  theme.subtitle := 'Dark';
-  theme.button := 'DARKBTN';
-  Themes[1] := theme;
-end;
-
-procedure Tfprincipal.SetIgnoredLabels;
-var
-  I: integer;
-begin
-  if not Assigned(IgnoredLabels) then
-    IgnoredLabels := TStringList.Create
-  else
-    IgnoredLabels.Clear;
-
-  for I := 0 to pred(ComponentCount) do
-    if (Components[I] is TLabel) and (TLabel(Components[I]).Tag = 1) then
-      IgnoredLabels.Add(TLabel(Components[I]).Name);
-end;
-
-procedure Tfprincipal.Translate(aLangIndex: integer);
-begin
-  case aLangIndex of
-    //PT-BR
-    0: SetDefaultLang('pt_BR', 'lang');
-
-    //EN-US
-    1: SetDefaultLang('en_US', 'lang');
-
-    //ES-ES
-    2: SetDefaultLang('es_ES', 'lang');
+    Self.Left := Self.Left + (Mouse.CursorPos.X - FMouseClick.X);
+    Self.Top := Self.Top + (Mouse.CursorPos.Y - FMouseClick.Y);
+    FMouseClick := Mouse.CursorPos;
   end;
 end;
 
-procedure Tfprincipal.ShowStep(aStep: TSteps);
+procedure Tfprincipal.imBannerMouseUp(Sender : TObject; Button : TMouseButton; Shift : TShiftState; X, Y : Integer);
 begin
-  LCLFunc.EscondeControles(FPanelSteps);
-  pBanner.Visible := True;
+  imBanner.Tag := 0;
+end;
 
-  case aStep of
-    sLanguage: pLanguage.Visible := True;
-    sIDE: pIDE.Visible := True;
-    sPath: begin
-      pPath.Visible := True;
-      PathSearched := False;
+procedure Tfprincipal.FormClose(Sender : TObject; var CloseAction : TCloseAction);
+begin
+  Application.Terminate;
+end;
+
+procedure Tfprincipal.imCloseClick(Sender : TObject);
+begin
+  Close;
+end;
+
+procedure Tfprincipal.imThemeClick(Sender : TObject);
+begin
+  if imTheme.Tag = 1 then
+    SetTheme(tLight)
+  else
+    SetTheme(tDark);
+
+  imTheme.Tag := (imTheme.Tag + 1) mod Length(Themes);
+end;
+
+function Tfprincipal.CreateFrameStep(frame_class : Tfframe_modelo_class) : Tfframe_modelo;
+begin
+  Result := frame_class.Create(Self);
+  Result.Parent := Self;
+  Result.Top := imBanner.Height;
+  Result.Align := alClient;
+  Result.OnBack := @frmBack;
+  Result.OnNext := @frmNext;
+  Result.recalcAligns;
+end;
+
+procedure Tfprincipal.frmBack(Sender : TObject);
+var
+  vFrame : Tfframe_modelo;
+begin
+  vFrame := Tfframe_modelo(Sender);
+  BringToFrontFrame(vFrame.IdTela - 1);
+end;
+
+procedure Tfprincipal.frmNext(Sender : TObject);
+var
+  vFrame : Tfframe_modelo;
+begin
+  vFrame := Tfframe_modelo(Sender);
+  BringToFrontFrame(vFrame.IdTela + 1);
+end;
+
+procedure Tfprincipal.frmChangeLang(Sender : TObject);
+var
+  vFrame : Tfframe_idioma;
+begin
+  vFrame := Tfframe_idioma(Sender);
+  Translate(vFrame.Language);
+  lTheme.Caption := getThemeCaption(FTheme);
+end;
+
+procedure Tfprincipal.BringToFrontFrame(AIdTela : integer);
+var
+  vInt : integer;
+begin
+  for vInt := 0 to Pred(ComponentCount) do begin
+    if (Components[vInt].InheritsFrom(Tfframe_modelo)) and
+       (Tfframe_modelo(Components[vInt]).IdTela = AIdTela) then
+    begin
+      Tfframe_modelo(Components[vInt]).BringToFront;
+      Tfframe_modelo(Components[vInt]).validaControls;
     end;
-    sResources: pRecursos.Visible := True;
-    sConfirm: pConfirmaRecursos.Visible := True;
-    sInstall: pInstall.Visible := True;
-    sFinish: ;
   end;
 end;
 
-procedure Tfprincipal.PreparaVersoes;
-begin
-
-end;
-
-procedure Tfprincipal.ConfiguraOpcoes;
-begin
-  //clbDataEngine.Items.Clear;
-end;
-
-procedure Tfprincipal.RevisarConfiguracoes;
-begin
-
-end;
-
-procedure Tfprincipal.ImageToPanel(AStream: TStream; APanel: TPanel);
+procedure Tfprincipal.SetTheme(ATheme : TThemes);
 var
-  timg: TImage;
+  vInt : integer;
 begin
-  AStream.Position := 0;
-  timg := TImage(APanel.FindChildControl('fnd_' + APanel.Name));
-  if timg = nil then
+  imBanner.Picture.LoadFromResourceName(HInstance, Themes[ATheme].Banner);
+  imTheme.Picture.LoadFromResourceName(HInstance, Themes[ATheme].Theme);
+  imBackground.Picture.LoadFromResourceName(HInstance, Themes[ATheme].Background);
+
+  {$IFDEF LINUX}
+    ImgBackground := ImageBackgroundFrames(Themes[ATheme].Background);
+  {$ENDIF}
+
+  for vInt := 0 to Pred(ComponentCount) do
   begin
-    timg := TImage.Create(Self);
-    timg.Parent := APanel;
-    timg.Name := 'fnd_' + APanel.Name;
+    if (Components[vInt] is TLabel) and (TLabel(Components[vInt]).Tag = 0) then
+      TLabel(Components[vInt]).Font.Color := Themes[ATheme].FontColor
+    else if (Components[vInt] is TLabel) and (TLabel(Components[vInt]).Tag = 1) then
+      TLabel(Components[vInt]).Font.Color := clWhite
+    else if (Components[vInt] is TLabeledEdit) and (TLabeledEdit(Components[vInt]).Tag = 0) then
+      TLabeledEdit(Components[vInt]).EditLabel.Font.Color := Themes[ATheme].FontColor
+    else if (Components[vInt] is TImage) and (TImage(Components[vInt]).Tag = -1) then
+      TImage(Components[vInt]).Picture.LoadFromResourceName(HInstance, Themes[ATheme].Button);
   end;
-  timg.Left := 0;
-  timg.Top := 0;
-  timg.Width := APanel.Width;
-  timg.Height := APanel.Height;
-  timg.Picture.LoadFromStream(AStream);
-  timg.SendToBack;
+
+  for vInt := 0 to Pred(ComponentCount) do begin
+    if (Components[vInt].InheritsFrom(Tfframe_modelo)) then
+      Tfframe_modelo(Components[vInt]).Theme := ATheme;
+  end;
+
+  lTheme.Caption := getThemeCaption(ATheme);
+  FTheme := ATheme;
 end;
 
-function Tfprincipal.ImageBackground(AResource: string; APanel: TPanel): TStream;
+function Tfprincipal.ImageBackgroundFrames(AResource : string) : TStream;
 var
   res: TResourceStream;
   img1, img2, img3: TFCLImage;
@@ -345,8 +230,7 @@ begin
       img1.LoadFromStream(res);
       img2 := img1.Canvas.Stretched(Self.Width, Self.Height);
       try
-        rc1 := TRect.Create(APanel.Left, APanel.Top, APanel.Width +
-          APanel.Left, APanel.Height + APanel.Top);
+        rc1 := TRect.Create(0, imBanner.Height, Self.ClientWidth, Self.ClientHeight);
         img3 := img2.Canvas.CopyRect(rc1);
         try
           Result := TMemoryStream.Create;
@@ -372,162 +256,18 @@ begin
   end;
 end;
 
-procedure Tfprincipal.ImageSelect(Sender: TObject);
+procedure Tfprincipal.Translate(ALang : TLanguages);
 begin
-  selectionbox.Visible := True;
-  selectionbox.Left := TImage(Sender).Left - 4;
-  selectionbox.Top := TImage(Sender).Top - 4;
-  selectionbox.Visible := True;
-  Translate(TImage(Sender).Tag);
-  lLanguageNext.Enabled := True;
-
-  if FThemeIndex = 0 then
-    lTheme.Caption := ThemeLight
-  else
-    lTheme.Caption := ThemeDark;
-end;
-
-procedure Tfprincipal.IDESelect(Sender: TObject);
-begin
-  FIde := TImage(Sender).Tag;
-  imLazarusFundo.Visible := FIDE = 0;
-  imDelphiFundo.Visible := FIDE = 1;
-  lIDENext.Enabled := FIde > -1;
-  LazarusSelected := FIDE = 0;
-end;
-
-procedure Tfprincipal.SpeedButton1Click(Sender: TObject);
-begin
-  if FolderDialog.Execute then
-    ePathFolder.Text := FolderDialog.FileName;
-end;
-
-procedure Tfprincipal.FormCreate(Sender: TObject);
-var
-  I, J: integer;
-begin
-  {$IFNDEF MSWindows}
-    imDelphi.Enabled := False;
-    imDelphi.Visible := False;
-
-    imDelphiFundo.Enabled := False;
-    imDelphiFundo.Visible := False;
-
-    lIDEDelphi.Visible := False;
-
-    imLazarus.Left := Round((Self.Width / 2) - (imLazarus.Width / 2));
-    lIDELazarus.Left := Round((Self.Width / 2) - (lIDELazarus.Width / 2));
-    imLazarusFundo.Left := imLazarus.Left - 4;
-  {$ENDIF}
-  SetDefaultLang('en_US', 'lang');
-  SetIgnoredLabels;
-  ConfigThemes;
-  FIDE := -1;
-  LazarusSelected := False;
-  LCLFunc.DesativaControles([lIDENext, lLanguageNext, lInstallClose]);
-  LCLFunc.EscondeControles([imDelphiFundo, imLazarusFundo]);
-  ImageSelect(imLangUS);
-
-  J := 0;
-  SetLength(FPanelSteps, 0);
-  for I := 0 to pred(ComponentCount) do
-    if Components[I] is TPanel then
-    begin
-      SetLength(FPanelSteps, Length(FPanelSteps) + 1);
-      FPanelSteps[J] := TPanel(Components[I]);
-      Inc(J);
-    end;
-
-  ShowStep(sLanguage);
-  SetTheme(tLight);
-end;
-
-procedure Tfprincipal.Button1Click(Sender: TObject);
-begin
-  TImgUtils.AnimaImagemSurgir(imlogoBG, 1.0);
-end;
-
-procedure Tfprincipal.FormDestroy(Sender: TObject);
-begin
-  if Assigned(IgnoredLabels) then
-    IgnoredLabels.Free;
-end;
-
-procedure Tfprincipal.Image1Click(Sender: TObject);
-begin
-  Application.Terminate;
-end;
-
-procedure Tfprincipal.imBannerMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: integer);
-begin
-  FMouseClick := Mouse.CursorPos;
-  imBanner.Tag := 1;
-end;
-
-procedure Tfprincipal.imBannerMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: integer);
-begin
-  if imBanner.Tag = 1 then
-  begin
-    Self.Left := Self.Left + (Mouse.CursorPos.X - FMouseClick.X);
-    Self.Top := Self.Top + (Mouse.CursorPos.Y - FMouseClick.Y);
-    FMouseClick := Mouse.CursorPos;
+  case ALang of
+    lPortuguese : SetDefaultLang('pt_BR', 'lang');
+    lEnglish    : SetDefaultLang('en_US', 'lang');
+    lSpanish    : SetDefaultLang('es_ES', 'lang');
   end;
 end;
 
-procedure Tfprincipal.imBannerMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: integer);
+function Tfprincipal.GetIDESelected : integer;
 begin
-  imBanner.Tag := 0;
-end;
-
-procedure Tfprincipal.imConfirmBackClick(Sender: TObject);
-begin
-  ShowStep(sResources);
-end;
-
-procedure Tfprincipal.imConfirmNextClick(Sender: TObject);
-begin
-  ShowStep(sInstall);
-end;
-
-procedure Tfprincipal.imPathNextClick(Sender: TObject);
-begin
-  // verificar se foi feita a busca antes de continuar
-  if PathSearched then
-    ShowStep(sResources);
-end;
-
-procedure Tfprincipal.imPathPreviousClick(Sender: TObject);
-begin
-  ShowStep(sIDE);
-end;
-
-procedure Tfprincipal.imResourceBackClick(Sender: TObject);
-begin
-  ShowStep(sPath);
-end;
-
-procedure Tfprincipal.imResourceNextClick(Sender: TObject);
-begin
-  RevisarConfiguracoes;
-  ShowStep(sConfirm);
-end;
-
-procedure Tfprincipal.imIDEBackClick(Sender: TObject);
-begin
-  ShowStep(sLanguage);
-end;
-
-procedure Tfprincipal.imLanguageNextClick(Sender: TObject);
-begin
-  ShowStep(sIDE);
-end;
-
-procedure Tfprincipal.imIDENextClick(Sender: TObject);
-begin
-  ShowStep(sPath);
+  Result := frm_ide.IDE;
 end;
 
 end.
