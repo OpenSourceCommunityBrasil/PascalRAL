@@ -1,0 +1,12 @@
+{"version":1,"strings":[
+{"hash":42039759,"name":"tfframe_modelo1.lpathsubtitle.caption","sourcebytes":[67,97,109,105,110,104,111,32,100,97,32,73,110,115,116,97,108,97,195,167,195,163,111],"value":"Caminho da Instala\u00E7\u00E3o"},
+{"hash":81820179,"name":"tfframe_modelo1.epathfolder.editlabel.caption","sourcebytes":[67,97,109,105,110,104,111,32,112,97,114,97,32,98,97,105,120,97,114,32,111,115,32,102,111,110,116,101,115],"value":"Caminho para baixar os fontes"},
+{"hash":169015923,"name":"tfframe_modelo1.epathfolder.texthint","sourcebytes":[69,115,99,111,108,104,97,32,117,109,32,108,111,99,97,108,32,112,114,97,32,98,97,105,120,97,114,32,111,115,32,102,111,110,116,101,115],"value":"Escolha um local pra baixar os fontes"},
+{"hash":171741269,"name":"tfframe_modelo1.lpathideversion.caption","sourcebytes":[86,101,114,115,195,163,111,32,100,97,32,73,68,69],"value":"Vers\u00E3o da IDE"},
+{"hash":155104266,"name":"tfframe_modelo1.llatestversion.caption","sourcebytes":[86,101,114,115,195,163,111,32,109,97,105,115,32,114,101,99,101,110,116,101,32,100,111,115,32,102,111,110,116,101,115,58],"value":"Vers\u00E3o mais recente dos fontes:"},
+{"hash":198269214,"name":"tfframe_modelo1.lrepoversion.caption","sourcebytes":[108,82,101,112,111,86,101,114,115,105,111,110],"value":"lRepoVersion"},
+{"hash":161514858,"name":"tfframe_modelo1.lversionnotes.caption","sourcebytes":[78,111,116,97,115,32,100,97,32,118,101,114,115,195,163,111,58],"value":"Notas da vers\u00E3o:"},
+{"hash":180791039,"name":"tfframe_modelo1.epathlazarussearch.texthint","sourcebytes":[69,115,99,111,108,104,97,32,97,32,112,97,115,116,97,32,111,110,100,101,32,111,32,76,97,122,97,114,117,115,32,101,115,116,195,161,32,105,110,115,116,97,108,97,100,111],"value":"Escolha a pasta onde o Lazarus est\u00E1 instalado"},
+{"hash":121915327,"name":"tfframe_modelo1.radiobutton1.caption","sourcebytes":[65,112,111,110,116,97,114,32,97,32,112,97,115,116,97,32,111,110,100,101,32,111,32,76,97,122,97,114,117,115,32,101,115,116,195,161,32,105,110,115,116,97,108,97,100,111],"value":"Apontar a pasta onde o Lazarus est\u00E1 instalado"},
+{"hash":12732521,"name":"tfframe_modelo1.radiobutton2.caption","sourcebytes":[68,101,105,120,97,114,32,111,32,82,65,76,32,112,101,115,113,117,105,115,97,114,32,40,109,117,105,116,111,32,108,101,110,116,111,41],"value":"Deixar o RAL pesquisar (muito lento)"}
+]}

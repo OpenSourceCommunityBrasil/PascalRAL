@@ -1,0 +1,117 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: install_types.themedark
+msgid "Escuro"
+msgstr ""
+
+#: install_types.themelight
+msgctxt "install_types.themelight"
+msgid "Claro"
+msgstr ""
+
+#: tfframe_config_recursos.baddlazpath.hint
+msgid "Apontar a pasta onde o Lazarus está instalado"
+msgstr ""
+
+#: tfframe_config_recursos.bfindlazpaths.hint
+msgid "Buscar automaticamente (muito lento)"
+msgstr ""
+
+#: tfframe_config_recursos.lbsubtitle.caption
+msgid "Caminho da Instalação"
+msgstr ""
+
+#: tfframe_config_recursos.llatestversion.caption
+msgid "Versão mais recente dos fontes:"
+msgstr ""
+
+#: tfframe_config_recursos.lpathideversion.caption
+msgid "Versão da IDE"
+msgstr ""
+
+#: tfframe_config_recursos.lrepoversion.caption
+msgid "lRepoVersion"
+msgstr ""
+
+#: tfframe_config_recursos.lversionnotes.caption
+msgid "Notas da versão:"
+msgstr ""
+
+#: tfframe_config_recursos.lversionnotes1.caption
+msgctxt "tfframe_config_recursos.lversionnotes1.caption"
+msgid "Caminho para baixar os fontes"
+msgstr ""
+
+#: tfframe_confirm_recursos.lbsubtitle.caption
+msgid "Resumo dos recursos escolhidos"
+msgstr ""
+
+#: tfframe_ide.lbdelphi.caption
+msgctxt "tfframe_ide.lbdelphi.caption"
+msgid "Delphi"
+msgstr ""
+
+#: tfframe_ide.lblazarus.caption
+msgctxt "tfframe_ide.lblazarus.caption"
+msgid "Lazarus"
+msgstr ""
+
+#: tfframe_ide.lbsubtitle.caption
+msgid "Escolha a IDE"
+msgstr ""
+
+#: tfframe_ide_versions.lbname.caption
+msgctxt "tfframe_ide_versions.lbname.caption"
+msgid "Lazarus 2.2.6 - FPC 3.2.2"
+msgstr ""
+
+#: tfframe_ide_versions.lbpath.caption
+msgctxt "tfframe_ide_versions.lbpath.caption"
+msgid "d:\\lazarus"
+msgstr ""
+
+#: tfframe_idioma.lbsubtitle.caption
+msgid "Escolha o Idioma"
+msgstr ""
+
+#: tfframe_install.button1.caption
+msgid "test logo anim"
+msgstr ""
+
+#: tfframe_install.lbnext.caption
+msgid "Instalar"
+msgstr ""
+
+#: tfframe_install.lbsubtitle.caption
+msgid "Instalação"
+msgstr ""
+
+#: tfframe_install_recursos.checkbox1.caption
+msgid "Instalar Dependências"
+msgstr ""
+
+#: tfframe_install_recursos.lbsubtitle.caption
+msgid "Escolha os recursos a instalar"
+msgstr ""
+
+#: tfframe_modelo.lbback.caption
+msgid "< Anterior"
+msgstr ""
+
+#: tfframe_modelo.lbnext.caption
+msgid "Próximo >"
+msgstr ""
+
+#: tfframe_modelo.lbsubtitle.caption
+msgid "Título"
+msgstr ""
+
+#: tfprincipal.caption
+msgid "PascalRAL Instalador"
+msgstr ""
+
+#: tfprincipal.lversion.caption
+msgid "Instalador Versão 1.0"
+msgstr ""
+
