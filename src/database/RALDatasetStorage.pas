@@ -7,66 +7,120 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects;
+  RALStorage, RALTypes;
 
 type
-  TRALStorageOption = (soFields, soFieldsParams, soData);
-  TRALStorageOptions = set of TRALStorageOption;
 
   { TRALDatasetStorage }
 
-  TRALDatasetStorage = class(TRALComponent)
+  TRALDatasetStorage = class(TPersistent)
   private
-    FStorageOptions : TRALStorageOptions;
+    FDataset : TDataSet;
+    FStorageLink : TRALStorageLink;
   public
-    constructor Create(AOwner : TComponent); override;
+    procedure LoadFromStream(AStream : TStream);
+    procedure SaveToStream(AStream : TStream);
 
-    procedure SaveToStream(ADataset : TDataset; AStream : TStream); virtual; abstract; overload;
-    function SaveToStream(ADataset : TDataset) : TStream; virtual; overload;
-
-    procedure SaveToFile(ADataset : TDataset; AFile : StringRAL) virtual;
-
-    procedure LoadFromStream(ADataset : TDataset; AStream : TStream); virtual; abstract;
-    procedure LoadFromFile(ADataset : TDataset; AFile : StringRAL); virtual;
+    procedure LoadFromFile(AFileName : StringRAL);
+    procedure SaveToFile(AFileName : StringRAL);
   published
-    property StorageOptions : TRALStorageOptions read FStorageOptions write FStorageOptions;
+    property Dataset : TDataSet read FDataset write FDataset;
+    property StorageLink : TRALStorageLink read FStorageLink write FStorageLink;
   end;
 
 implementation
 
 { TRALDatasetStorage }
 
-constructor TRALDatasetStorage.Create(AOwner : TComponent);
-begin
-  inherited Create(AOwner);
-  FStorageOptions := [soFields, soFieldsParams, soData];
-end;
-
-function TRALDatasetStorage.SaveToStream(ADataset : TDataset) : TStream;
-begin
-  Result := TMemoryStream.Create;
-  SaveToStream(ADataset, Result);
-end;
-
-procedure TRALDatasetStorage.SaveToFile(ADataset : TDataset; AFile : StringRAL);
+procedure TRALDatasetStorage.LoadFromStream(AStream: TStream);
 var
-  vStream : TBufferedFileStream;
+  vStorLink : TRALStorage;
+  vInt : integer;
 begin
-  vStream := TBufferedFileStream.Create(AFile, fmCreate);
+  vStorLink := FStorageLink.StorageClass.Create;
   try
-    SaveToStream(ADataset, vStream);
+    vStorLink.Load(AStream, smRead);
+
+    FDataset.Close;
+    if FDataset.FieldCount = 0 then begin
+
+    end;
+    FDataset.Open;
+
+    FDataset.DisableControls;
+    while not vStorLink.EOF do begin
+      for vInt := 0 to Pred(FDataset.FieldCount) do begin
+
+      end;
+      vStorLink.Next;
+    end;
+    FDataset.EnableControls;
   finally
-    FreeAndNil(vStream);
+    FreeAndNil(vStorLink);
   end;
 end;
 
-procedure TRALDatasetStorage.LoadFromFile(ADataset : TDataset; AFile : StringRAL);
+procedure TRALDatasetStorage.SaveToStream(AStream: TStream);
+var
+  vStorLink : TRALStorage;
+  vInt : integer;
+  vBookMark : TBookMark;
+begin
+  vStorLink := FStorageLink.StorageClass.Create;
+  try
+    vStorLink.AssignFields(FDataset.Fields);
+    vStorLink.Load(AStream, smWrite);
+
+    FDataset.DisableControls;
+
+    if not FDataset.IsUniDirectional then
+    begin
+      vBookMark := FDataset.GetBookmark;
+      FDataset.First;
+    end;
+
+    while not FDataset.EOF do begin
+      vStorLink.Append;
+      for vInt := 0 to Pred(FDataset.FieldCount) do
+        vStorLink.WriteField(FDataset.Fields[vInt]);
+      vStorLink.Post;
+      FDataset.Next;
+    end;
+
+    if not FDataset.IsUniDirectional then
+    begin
+      FDataset.GotoBookmark(vBookMark);
+      FDataset.FreeBookmark(vBookMark);
+    end;
+
+    FDataset.EnableControls;
+  finally
+    vStorLink.Free;
+  end;
+end;
+
+procedure TRALDatasetStorage.LoadFromFile(AFileName : StringRAL);
 var
   vStream : TFileStream;
 begin
-  vStream := TFileStream.Create(AFile, fmOpenRead);
+  if FileExists(AFileName) then
+  begin
+    vStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      LoadFromStream(vStream);
+    finally
+      FreeAndNil(vStream);
+    end;
+  end;
+end;
+
+procedure TRALDatasetStorage.SaveToFile(AFileName : StringRAL);
+var
+  vStream : TBufferedFileStream;
+begin
+  vStream := TBufferedFileStream.Create(AFileName, fmCreate);
   try
-    LoadFromStream(ADataset, vStream);
+    SaveToStream(vStream);
   finally
     FreeAndNil(vStream);
   end;

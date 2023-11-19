@@ -4,11 +4,10 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects;
+  RALTypes, RALCustomObjects, RALStorage;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
-  TRALDatabaseOutPut = (dopJSON, dopBinary);
 
   { TRALDBBase }
 
@@ -21,7 +20,7 @@ type
     FPort     : IntegerRAL;
 
     FDatabaseType : TRALDatabaseType;
-    FDatabaseOutPut : TRALDatabaseOutPut;
+    FStorageOutPut : TRALStorageLink;
   protected
     procedure Conectar; virtual; abstract;
   public
@@ -37,8 +36,8 @@ type
     property Password : StringRAL read FPassword write FPassword;
     property Port     : IntegerRAL read FPort write FPort;
 
-    property DatabaseType   : TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property DatabaseOutPut : TRALDatabaseOutPut read FDatabaseOutPut write FDatabaseOutPut;
+    property DatabaseType  : TRALDatabaseType read FDatabaseType write FDatabaseType;
+    property StorageOutPut : TRALStorageLink read FStorageOutPut write FStorageOutPut;
   end;
 
   TRALDBClass = class of TRALDBBase;

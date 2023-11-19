@@ -5,8 +5,7 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALJSON, RALDatasetStorage, RALDatasetStorageJson,
-  RALBase64;
+  RALConsts, RALTypes, RALJSON, RALStorage, RALBase64;
 
 type
   { TRALDBWare }
@@ -19,12 +18,13 @@ type
     FPassword : StringRAL;
     FPort     : IntegerRAL;
 
-    FDBLink : TRALDBLink;
+    FDataBaseLink : TRALDBLink;
     FDatabaseType : TRALDatabaseType;
-    FDatabaseOutPut : TRALDatabaseOutPut;
+    FStorageOutPut : TRALStorageLink;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetDBLink(AValue : TRALDBLink);
+    procedure SetDataBaseLink(AValue : TRALDBLink);
+    procedure SetStorageOutPut(AValue : TRALStorageLink);
 
     function FindDatabaseDriver : TRALDBBase;
     procedure RALParamJSONToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
@@ -41,30 +41,40 @@ type
     property Password : StringRAL read FPassword write FPassword;
     property Port     : IntegerRAL read FPort write FPort;
 
-    property DBLink : TRALDBLink read FDBLink write SetDBLink;
-
-    property DatabaseType   : TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property DatabaseOutPut : TRALDatabaseOutPut read FDatabaseOutPut write FDatabaseOutPut;
+    property DataBaseLink : TRALDBLink read FDataBaseLink write SetDataBaseLink;
+    property DatabaseType  : TRALDatabaseType read FDatabaseType write FDatabaseType;
+    property StorageOutPut : TRALStorageLink read FStorageOutPut write SetStorageOutPut;
   end;
 
 implementation
 
 { TRALDBWare }
 
+procedure TRALDBWare.SetStorageOutPut(AValue : TRALStorageLink);
+begin
+  if AValue <> FStorageOutPut then
+    FStorageOutPut := AValue;
+
+  if FStorageOutPut <> nil then
+    FStorageOutPut.FreeNotification(Self);
+end;
+
 procedure TRALDBWare.Notification(AComponent : TComponent; Operation : TOperation);
 begin
-  if (Operation = opRemove) and (AComponent = FDBLink) then
-    FDBLink := nil;
+  if (Operation = opRemove) and (AComponent = FDataBaseLink) then
+    FDataBaseLink := nil
+  else if (Operation = opRemove) and (AComponent = FStorageOutPut) then
+    FStorageOutPut := nil;
   inherited Notification(AComponent, Operation);
 end;
 
-procedure TRALDBWare.SetDBLink(AValue : TRALDBLink);
+procedure TRALDBWare.SetDataBaseLink(AValue : TRALDBLink);
 begin
-  if AValue <> FDBLink then
-    FServer := AValue;
+  if AValue <> FDataBaseLink then
+    FDataBaseLink := AValue;
 
-  if FServer <> nil then
-    FServer.FreeNotification(Self);
+  if FDataBaseLink <> nil then
+    FDataBaseLink.FreeNotification(Self);
 end;
 
 function TRALDBWare.FindDatabaseDriver : TRALDBBase;
@@ -75,8 +85,8 @@ begin
   Result := nil;
   vClass := nil;
 
-  if FDBLink <> nil then
-    vClass := FDBLink.GetDBClass;
+  if FDataBaseLink <> nil then
+    vClass := FDataBaseLink.GetDBClass;
 
   if vClass <> nil then
   begin
@@ -87,7 +97,7 @@ begin
     Result.Password := FPassword;
     Result.Port     := FPort;
     Result.DatabaseType := FDatabaseType;
-    Result.DatabaseOutPut := FDatabaseOutPut;
+    Result.StorageOutPut := FStorageOutPut;
   end
   else begin
     raise Exception.Create('Propriedade DBLink deve ser informada');
@@ -133,7 +143,6 @@ var
   vSQL : StringRAL;
   vParams : TParams;
   vQuery : TDataSet;
-  vStor : TRALDatasetStorage;
   vResult : TStream;
   vString : StringRAL;
   vInt : IntegerRAL;
@@ -171,59 +180,26 @@ begin
           end;
 
           vResult := TMemoryStream.Create;
-          if FDatabaseOutPut = dopJSON then
-          begin
-            AResponse.ContentType := rctAPPLICATIONJSON;
+          try
             if vString <> '' then
             begin
+              AResponse.ContentType := rctAPPLICATIONJSON;
               vString := Format('{"erro":"%s"}', [vString]);
               vResult.Write(vString[PosIniStr], Length(vString));
             end
             else
             begin
-              vString := '{"result":';
-              vResult.Write(vString[PosIniStr], Length(vString));
-
-              vStor := TRALDatasetStorageJSON.Create(nil);
-              try
-                vStor.SaveToStream(vQuery, vResult);
-              finally
-                FreeAndNil(vStor);
-              end;
-
-              vString := '}';
-              vResult.Write(vString[PosIniStr], Length(vString));
+              AResponse.ContentType := FStorageOutPut.ContentType;
+              FStorageOutPut.SaveDataset(vQuery, vResult);
             end;
-          end
-          else
-          begin
-            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-
-            if vString <> '' then
-            begin
-              vInt := Length(vString);
-              vResult.Write(vInt, SizeOf(vInt));
-              vResult.Write(vString[PosIniStr], Length(vString));
-            end
-            else begin
-              vInt := 0;
-              vResult.Write(vInt, SizeOf(vInt));
-
-              vStor := TRALDatasetStorageJSON.Create(nil);
-              try
-                vStor.SaveToStream(vQuery, vResult);
-              finally
-                FreeAndNil(vStor);
-              end;
-            end;
+            vResult.Position := 0;
+            AResponse.ResponseStream := vResult;
+          finally
+            FreeAndNil(vResult)
           end;
-
-          vResult.Position := 0;
-          AResponse.ResponseStream := vResult;
         finally
           FreeAndNil(vParams);
           FreeAndNil(vQuery);
-          FreeAndNil(vResult)
         end;
       end
       else begin
@@ -276,42 +252,46 @@ begin
           end;
 
           vResult := TMemoryStream.Create;
-          if FDatabaseOutPut = dopJSON then
-          begin
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            if vString <> '' then
+          try
+            if vParam.ContentType = rctAPPLICATIONJSON then
             begin
-              vString := Format('{"erro":"%s"}', [vString]);
-              vResult.Write(vString[PosIniStr], Length(vString));
+              AResponse.ContentType := rctAPPLICATIONJSON;
+              if vString <> '' then
+              begin
+                vString := Format('{"erro":"%s"}', [vString]);
+                vResult.Write(vString[PosIniStr], Length(vString));
+              end
+              else
+              begin
+                vString := Format('{"rows":%d,"lastid":%d}', [vRowsAffect, vLastId]);
+                vResult.Write(vString[PosIniStr], Length(vString));
+              end;
             end
             else
             begin
-              vString := Format('{"rows":%d,"lastid":%d}', [vRowsAffect, vLastId]);
-              vResult.Write(vString[PosIniStr], Length(vString));
-            end;
-          end
-          else
-          begin
-            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+              AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
 
-            if vString <> '' then
-            begin
-              vInt := Length(vString);
-              vResult.Write(vInt, SizeOf(vInt));
-              vResult.Write(vString[PosIniStr], Length(vString));
-            end
-            else begin
-              vInt := 0;
-              vResult.Write(vInt, SizeOf(vInt));
+              if vString <> '' then
+              begin
+                vInt := Length(vString);
+                vResult.Write(vInt, SizeOf(vInt));
+                vResult.Write(vString[PosIniStr], Length(vString));
+              end
+              else begin
+                vInt := 0;
+                vResult.Write(vInt, SizeOf(vInt));
+              end;
+              vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
+              vResult.Write(vLastId, SizeOf(vLastId));
             end;
-            vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
-            vResult.Write(vLastId, SizeOf(vLastId));
+
+            vResult.Position := 0;
+            AResponse.ResponseStream := vResult;
+          finally
+            FreeAndNil(vResult);
           end;
-
-          vResult.Position := 0;
-          AResponse.ResponseStream := vResult;
         finally
-          vParams.Free;
+          FreeAndNil(vParams);
         end;
       end
       else begin
