@@ -13,7 +13,8 @@ uses
   RALHashes, RALMD5, RALMIMETypes, RALSHA2_32, RALSHA2_64,
   RALToken, RALTools, RALJson, RALThreadSafe, RALMultipartCoder,
   RALCustomObjects, RALUrlCoder, RALCripto, RALCriptoAES, RALSHA1,
-  RALCompressZLib, LazarusPackageIntf;
+  RALCompressZLib, RALDatasetStorage, RALDBBase, RALDBWare,
+  RALStorage, RALStorageJSON, LazarusPackageIntf;
 
 implementation
 
