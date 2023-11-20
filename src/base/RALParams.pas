@@ -59,9 +59,9 @@ type
     FCriptoOptions: TRALCriptoOptions;
   protected
     function GetBody: TList;
-    function GetParam(idx: IntegerRAL): TRALParam; overload;
-    function GetParam(name: StringRAL): TRALParam; overload;
-    function GetParam(name: StringRAL; Kind: TRALParamKind): TRALParam; overload;
+    function GetParam(AIndex: IntegerRAL): TRALParam; overload;
+    function GetParam(AName: StringRAL): TRALParam; overload;
+    function GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam; overload;
     function NextParamInt: IntegerRAL;
     function NextParamStr: StringRAL;
     function FindNameSeparator(ASource: StringRAL): StringRAL;
@@ -109,6 +109,9 @@ type
     procedure ClearParams; overload;
     procedure ClearParams(AKind: TRALParamKind); overload;
 
+    procedure DelParam(AName : StringRAL); overload;
+    procedure DelParam(AName : StringRAL; AKind: TRALParamKind); overload;
+
     function Count: IntegerRAL; overload;
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
@@ -125,9 +128,9 @@ type
     function AsString: StringRAL;
 
     property Body: TList read GetBody;
-    property Param[idx: IntegerRAL]: TRALParam read GetParam;
-    property Get[name: StringRAL]: TRALParam read GetParam;
-    property GetKind[name: StringRAL; Kind: TRALParamKind]: TRALParam read GetParam;
+    property Param[AIndex: IntegerRAL]: TRALParam read GetParam;
+    property Get[AName: StringRAL]: TRALParam read GetParam;
+    property GetKind[AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
 
     property CompressType : TRALCompressType read FCompressType write FCompressType;
     property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
@@ -805,7 +808,7 @@ begin
   inherited;
 end;
 
-function TRALParams.GetParam(name: StringRAL; Kind: TRALParamKind): TRALParam;
+function TRALParams.GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam;
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -815,7 +818,7 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if (SameText(vParam.ParamName, name)) and (vParam.Kind = Kind) then
+    if (SameText(vParam.ParamName, AName)) and (vParam.Kind = AKind) then
     begin
       Result := vParam;
       Break;
@@ -833,14 +836,14 @@ begin
       Result.Add(TRALParam(FParams.Items[I]));
 end;
 
-function TRALParams.GetParam(idx: IntegerRAL): TRALParam;
+function TRALParams.GetParam(AIndex: IntegerRAL): TRALParam;
 begin
   Result := nil;
-  if (idx >= 0) and (idx < FParams.Count) then
-    Result := TRALParam(FParams.Items[idx]);
+  if (AIndex >= 0) and (AIndex < FParams.Count) then
+    Result := TRALParam(FParams.Items[AIndex]);
 end;
 
-function TRALParams.GetParam(name: StringRAL): TRALParam;
+function TRALParams.GetParam(AName: StringRAL): TRALParam;
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -850,7 +853,7 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, name) then
+    if SameText(vParam.ParamName, AName) then
     begin
       Result := vParam;
       Break;
@@ -1053,6 +1056,38 @@ begin
     Result := vCript.Decode(ASource);
   finally
     FreeAndNil(vCript);
+  end;
+end;
+
+procedure TRALParams.DelParam(AName: StringRAL; AKind: TRALParamKind);
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+begin
+  for vInt := Pred(FParams.Count) downto 0 do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if SameText(vParam.ParamName, AName) and (vParam.Kind = AKind) then
+    begin
+      vParam.Free;
+      FParams.Delete(vInt);
+    end;
+  end;
+end;
+
+procedure TRALParams.DelParam(AName: StringRAL);
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+begin
+  for vInt := Pred(FParams.Count) downto 0 do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if SameText(vParam.ParamName, AName) then
+    begin
+      vParam.Free;
+      FParams.Delete(vInt);
+    end;
   end;
 end;
 
