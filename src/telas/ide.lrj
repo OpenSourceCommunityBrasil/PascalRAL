@@ -1,0 +1,7 @@
+{"version":1,"strings":[
+{"hash":78395113,"name":"tfride.ldelphi.caption","sourcebytes":[68,101,108,112,104,105],"value":"Delphi"},
+{"hash":43026835,"name":"tfride.llazarus.caption","sourcebytes":[76,97,122,97,114,117,115],"value":"Lazarus"},
+{"hash":267988773,"name":"tfride.lsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,97,32,73,68,69],"value":"Escolha a IDE"},
+{"hash":95382754,"name":"tfride.lprevious.caption","sourcebytes":[60,32,65,110,116,101,114,105,111,114],"value":"< Anterior"},
+{"hash":183197662,"name":"tfride.lnext.caption","sourcebytes":[80,114,195,179,120,105,109,111,32,62],"value":"Pr\u00F3ximo >"}
+]}

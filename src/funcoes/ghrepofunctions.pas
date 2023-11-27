@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, fphttpclient, opensslsockets, fpjson, jsonparser;
 
 const
-  RepoName = 'OpenSourceCommunityBrasil/PascalRAL/';
+  RepoName = 'OpenSourceCommunityBrasil/REST-DataWare/';
   APIURL = 'https://api.github.com/repos/' + RepoName;
   SiteURL = 'https://github.com/' + RepoName;
   TagsAPI = APIURL + 'tags';
@@ -25,9 +25,11 @@ type
   TRelease = class
   private
     FDownloadLink: string;
+    FDownloadLocation: string;
     FName: string;
     FNotes: string;
     FVersion: string;
+    procedure SetDownloadLocation(AValue: string);
     procedure SetName(AValue: string);
     procedure SetNotes(AValue: string);
     procedure SetVersion(AValue: string);
@@ -36,6 +38,7 @@ type
     property Notes: string read FNotes write SetNotes;
     property Version: string read FVersion write SetVersion;
     property DownloadLink: string read FDownloadLink;
+    property DownloadLocation: string read FDownloadLocation write SetDownloadLocation;
   end;
 
   { TRESTClient }
@@ -43,10 +46,10 @@ type
   TRESTClient = class
   private
     FHTTPREST: TFPHTTPClient;
+    procedure setDefaultHeaders;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure setDefaultHeaders;
     function getLatestRelease: TRelease;
     function getTagsList: string;
     function getBranchesList: string;
@@ -62,6 +65,12 @@ procedure TRelease.SetName(AValue: string);
 begin
   if FName = AValue then Exit;
   FName := AValue;
+end;
+
+procedure TRelease.SetDownloadLocation(AValue: string);
+begin
+  if FDownloadLocation = AValue then Exit;
+  FDownloadLocation := AValue;
 end;
 
 procedure TRelease.SetNotes(AValue: string);
@@ -81,6 +90,7 @@ end;
 constructor TRESTClient.Create;
 begin
   FHTTPREST := TFPHTTPClient.Create(nil);
+  FHTTPREST.AllowRedirect := True;
   setDefaultHeaders;
 end;
 
@@ -93,24 +103,28 @@ end;
 procedure TRESTClient.setDefaultHeaders;
 begin
   FHTTPREST.RequestHeaders.Clear;
-  FHTTPREST.AddHeader('User-Agent', USERAGENT);
-  FHTTPREST.AddHeader('Accept', '*/*');
-  FHTTPREST.AddHeader('Connection', 'keep-alive');
-  FHTTPREST.AddHeader('Content-Type', 'application/json; charset=UTF-8');
+  FHTTPREST.RequestHeaders.AddPair('User-Agent', USERAGENT);
+  //  FHTTPREST.RequestHeaders.AddPair('Accept', 'application/json');
+  //  FHTTPREST.RequestHeaders.AddPair('Accept-Encoding', 'gzip, deflate, br');
+  //  FHTTPREST.RequestHeaders.AddPair('Connection', 'keep-alive');
+  FHTTPREST.RequestHeaders.AddPair('Content-Type', 'application/json; charset=UTF-8');
 end;
 
 function TRESTClient.getLatestRelease: TRelease;
 var
   sstr: TStringStream;
+  JSONObj: TJSONObject;
 begin
   sstr := TStringStream.Create(FHTTPREST.Get(ReleaseAPI));
   try
     Result := TRelease.Create;
-    Result.FName := TJSONObject(GetJSON(sstr)).Get('name');
-    Result.FNotes := TJSONObject(GetJSON(sstr)).Get('body');
-    Result.FVersion := TJSONObject(GetJSON(sstr)).Get('tag_name');
-    Result.FDownloadLink := TJSONObject(GetJSON(sstr)).Get('zipball_url');
+    JSONObj := TJSONObject(GetJSON(sstr));
+    Result.Name := JSONObj.Get('name', '');
+    Result.Notes := JSONObj.Get('body', '');
+    Result.Version := JSONObj.Get('tag_name', '');
+    Result.FDownloadLink := JSONObj.Get('zipball_url', '');
   finally
+    JSONObj.Free;
     sstr.Free;
   end;
 end;

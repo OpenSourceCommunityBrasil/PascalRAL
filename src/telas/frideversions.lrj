@@ -1,0 +1,4 @@
+{"version":1,"strings":[
+{"hash":180404946,"name":"tfframe_ide_versions.lbname.caption","sourcebytes":[76,97,122,97,114,117,115,32,50,46,50,46,54,32,45,32,70,80,67,32,51,46,50,46,50],"value":"Lazarus 2.2.6 - FPC 3.2.2"},
+{"hash":43387379,"name":"tfframe_ide_versions.lbpath.caption","sourcebytes":[100,58,92,108,97,122,97,114,117,115],"value":"d:\\lazarus"}
+]}

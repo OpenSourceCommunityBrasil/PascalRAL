@@ -10,55 +10,54 @@ msgctxt "install_types.themelight"
 msgid "Claro"
 msgstr ""
 
-#: tfframe_config_recursos.baddlazpath.hint
+#: tfconfigrecursos.baddlazpath.hint
+msgctxt "tfconfigrecursos.baddlazpath.hint"
 msgid "Apontar a pasta onde o Lazarus está instalado"
 msgstr ""
 
-#: tfframe_config_recursos.bfindlazpaths.hint
+#: tfconfigrecursos.bfindlazpaths.hint
+msgctxt "tfconfigrecursos.bfindlazpaths.hint"
 msgid "Buscar automaticamente (muito lento)"
 msgstr ""
 
-#: tfframe_config_recursos.lbsubtitle.caption
+#: tfconfigrecursos.epathfolder.texthint
+msgctxt "tfconfigrecursos.epathfolder.texthint"
+msgid "Escolha o caminho onde baixar os fontes"
+msgstr ""
+
+#: tfconfigrecursos.lbsubtitle.caption
+msgctxt "tfconfigrecursos.lbsubtitle.caption"
 msgid "Caminho da Instalação"
 msgstr ""
 
-#: tfframe_config_recursos.llatestversion.caption
+#: tfconfigrecursos.llatestversion.caption
+msgctxt "tfconfigrecursos.llatestversion.caption"
 msgid "Versão mais recente dos fontes:"
 msgstr ""
 
-#: tfframe_config_recursos.lpathideversion.caption
-msgid "Versão da IDE"
+#: tfconfigrecursos.lpathideversion.caption
+msgctxt "tfconfigrecursos.lpathideversion.caption"
+msgid "IDEs Instaladas"
 msgstr ""
 
-#: tfframe_config_recursos.lrepoversion.caption
+#: tfconfigrecursos.lrepoversion.caption
+msgctxt "tfconfigrecursos.lrepoversion.caption"
 msgid "lRepoVersion"
 msgstr ""
 
-#: tfframe_config_recursos.lversionnotes.caption
+#: tfconfigrecursos.lversionnotes.caption
+msgctxt "tfconfigrecursos.lversionnotes.caption"
 msgid "Notas da versão:"
 msgstr ""
 
-#: tfframe_config_recursos.lversionnotes1.caption
-msgctxt "tfframe_config_recursos.lversionnotes1.caption"
+#: tfconfigrecursos.lversionnotes1.caption
+msgctxt "tfconfigrecursos.lversionnotes1.caption"
 msgid "Caminho para baixar os fontes"
 msgstr ""
 
-#: tfframe_confirm_recursos.lbsubtitle.caption
+#: tfconfirmrecursos.lbsubtitle.caption
+msgctxt "tfconfirmrecursos.lbsubtitle.caption"
 msgid "Resumo dos recursos escolhidos"
-msgstr ""
-
-#: tfframe_ide.lbdelphi.caption
-msgctxt "tfframe_ide.lbdelphi.caption"
-msgid "Delphi"
-msgstr ""
-
-#: tfframe_ide.lblazarus.caption
-msgctxt "tfframe_ide.lblazarus.caption"
-msgid "Lazarus"
-msgstr ""
-
-#: tfframe_ide.lbsubtitle.caption
-msgid "Escolha a IDE"
 msgstr ""
 
 #: tfframe_ide_versions.lbname.caption
@@ -71,39 +70,63 @@ msgctxt "tfframe_ide_versions.lbpath.caption"
 msgid "d:\\lazarus"
 msgstr ""
 
-#: tfframe_idioma.lbsubtitle.caption
+#: tfide.lbdelphi.caption
+msgctxt "tfide.lbdelphi.caption"
+msgid "Delphi"
+msgstr ""
+
+#: tfide.lblazarus.caption
+msgctxt "tfide.lblazarus.caption"
+msgid "Lazarus"
+msgstr ""
+
+#: tfide.lbsubtitle.caption
+msgctxt "tfide.lbsubtitle.caption"
+msgid "Escolha a IDE"
+msgstr ""
+
+#: tfidioma.lbsubtitle.caption
+msgctxt "tfidioma.lbsubtitle.caption"
 msgid "Escolha o Idioma"
 msgstr ""
 
-#: tfframe_install.button1.caption
+#: tfinstall.button1.caption
+msgctxt "tfinstall.button1.caption"
 msgid "test logo anim"
 msgstr ""
 
-#: tfframe_install.lbnext.caption
+#: tfinstall.lbnext.caption
+msgctxt "tfinstall.lbnext.caption"
 msgid "Instalar"
 msgstr ""
 
-#: tfframe_install.lbsubtitle.caption
+#: tfinstall.lbsubtitle.caption
+msgctxt "tfinstall.lbsubtitle.caption"
 msgid "Instalação"
 msgstr ""
 
-#: tfframe_install_recursos.checkbox1.caption
+#: tfinstallrecursos.checkbox1.caption
+msgctxt "tfinstallrecursos.checkbox1.caption"
 msgid "Instalar Dependências"
 msgstr ""
 
-#: tfframe_install_recursos.lbsubtitle.caption
+#: tfinstallrecursos.lbsubtitle.caption
+msgctxt "tfinstallrecursos.lbsubtitle.caption"
 msgid "Escolha os recursos a instalar"
 msgstr ""
 
-#: tfframe_modelo.lbback.caption
+#: tfmodelo.lbback.caption
+msgctxt "tfmodelo.lbback.caption"
 msgid "< Anterior"
 msgstr ""
 
-#: tfframe_modelo.lbnext.caption
+#: tfmodelo.lbnext.caption
+msgctxt "tfmodelo.lbnext.caption"
 msgid "Próximo >"
 msgstr ""
 
-#: tfframe_modelo.lbsubtitle.caption
+#: tfmodelo.lbsubtitle.caption
+msgctxt "tfmodelo.lbsubtitle.caption"
 msgid "Título"
 msgstr ""
 

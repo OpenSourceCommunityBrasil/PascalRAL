@@ -1,18 +1,125 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
-#: principal.themedark
+#: install_types.themedark
+msgctxt "install_types.themedark"
 msgid "Escuro"
 msgstr ""
 
-#: principal.themelight
-msgctxt "principal.themelight"
+#: install_types.themelight
+msgctxt "install_types.themelight"
 msgid "Claro"
 msgstr ""
 
-#: tfprincipal.button1.caption
-msgctxt "tfprincipal.button1.caption"
+#: tfconfigrecursos.baddlazpath.hint
+msgctxt "tfconfigrecursos.baddlazpath.hint"
+msgid "Apontar a pasta onde o Lazarus está instalado"
+msgstr ""
+
+#: tfconfigrecursos.bfindlazpaths.hint
+msgid "Buscar automaticamente (muito lento)"
+msgstr ""
+
+#: tfconfigrecursos.epathfolder.texthint
+msgid "Escolha o caminho onde baixar os fontes"
+msgstr ""
+
+#: tfconfigrecursos.lbsubtitle.caption
+msgctxt "tfconfigrecursos.lbsubtitle.caption"
+msgid "Caminho da Instalação"
+msgstr ""
+
+#: tfconfigrecursos.llatestversion.caption
+msgctxt "tfconfigrecursos.llatestversion.caption"
+msgid "Versão mais recente dos fontes:"
+msgstr ""
+
+#: tfconfigrecursos.lpathideversion.caption
+msgid "IDEs Instaladas"
+msgstr ""
+
+#: tfconfigrecursos.lrepoversion.caption
+msgctxt "tfconfigrecursos.lrepoversion.caption"
+msgid "lRepoVersion"
+msgstr ""
+
+#: tfconfigrecursos.lversionnotes.caption
+msgctxt "tfconfigrecursos.lversionnotes.caption"
+msgid "Notas da versão:"
+msgstr ""
+
+#: tfconfigrecursos.lversionnotes1.caption
+msgctxt "tfconfigrecursos.lversionnotes1.caption"
+msgid "Caminho para baixar os fontes"
+msgstr ""
+
+#: tfconfirmrecursos.lbsubtitle.caption
+msgctxt "tfconfirmrecursos.lbsubtitle.caption"
+msgid "Resumo dos recursos escolhidos"
+msgstr ""
+
+#: tfframe_ide_versions.lbname.caption
+msgid "Lazarus 2.2.6 - FPC 3.2.2"
+msgstr ""
+
+#: tfframe_ide_versions.lbpath.caption
+msgid "d:\\lazarus"
+msgstr ""
+
+#: tfide.lbdelphi.caption
+msgid "Delphi"
+msgstr ""
+
+#: tfide.lblazarus.caption
+msgid "Lazarus"
+msgstr ""
+
+#: tfide.lbsubtitle.caption
+msgctxt "tfide.lbsubtitle.caption"
+msgid "Escolha a IDE"
+msgstr ""
+
+#: tfidioma.lbsubtitle.caption
+msgctxt "tfidioma.lbsubtitle.caption"
+msgid "Escolha o Idioma"
+msgstr ""
+
+#: tfinstall.button1.caption
+msgctxt "tfinstall.button1.caption"
 msgid "test logo anim"
+msgstr ""
+
+#: tfinstall.lbnext.caption
+msgid "Instalar"
+msgstr ""
+
+#: tfinstall.lbsubtitle.caption
+msgctxt "tfinstall.lbsubtitle.caption"
+msgid "Instalação"
+msgstr ""
+
+#: tfinstallrecursos.checkbox1.caption
+msgctxt "tfinstallrecursos.checkbox1.caption"
+msgid "Instalar Dependências"
+msgstr ""
+
+#: tfinstallrecursos.lbsubtitle.caption
+msgctxt "tfinstallrecursos.lbsubtitle.caption"
+msgid "Escolha os recursos a instalar"
+msgstr ""
+
+#: tfmodelo.lbback.caption
+msgctxt "tfmodelo.lbback.caption"
+msgid "< Anterior"
+msgstr ""
+
+#: tfmodelo.lbnext.caption
+msgctxt "tfmodelo.lbnext.caption"
+msgid "Próximo >"
+msgstr ""
+
+#: tfmodelo.lbsubtitle.caption
+msgid "Título"
 msgstr ""
 
 #: tfprincipal.caption
@@ -20,155 +127,8 @@ msgctxt "tfprincipal.caption"
 msgid "PascalRAL Instalador"
 msgstr ""
 
-#: tfprincipal.checkbox1.caption
-msgctxt "tfprincipal.checkbox1.caption"
-msgid "Instalar Dependências"
-msgstr ""
-
-#: tfprincipal.epathfolder.editlabel.caption
-msgctxt "tfprincipal.epathfolder.editlabel.caption"
-msgid "Caminho para baixar os fontes"
-msgstr ""
-
-#: tfprincipal.epathfolder.texthint
-msgctxt "tfprincipal.epathfolder.texthint"
-msgid "Escolha um local pra baixar os fontes"
-msgstr ""
-
-#: tfprincipal.epathlazarussearch.texthint
-msgid "Escolha a pasta onde o Lazarus está instalado"
-msgstr ""
-
-#: tfprincipal.folderdialog.title
-msgctxt "tfprincipal.folderdialog.title"
-msgid "Escolha a pasta pra baixar os fontes"
-msgstr ""
-
-#: tfprincipal.lconfirmback.caption
-msgctxt "tfprincipal.lconfirmback.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tfprincipal.lconfirmnext.caption
-msgctxt "tfprincipal.lconfirmnext.caption"
-msgid "Instalar >"
-msgstr ""
-
-#: tfprincipal.lconfirmsubtitle.caption
-msgctxt "tfprincipal.lconfirmsubtitle.caption"
-msgid "Resumo dos recursos escolhidos"
-msgstr ""
-
-#: tfprincipal.ldataengine.caption
-msgctxt "tfprincipal.ldataengine.caption"
-msgid "Motor de dados"
-msgstr ""
-
-#: tfprincipal.ldataengine1.caption
-msgctxt "tfprincipal.ldataengine1.caption"
-msgid "Pré-visualização"
-msgstr ""
-
-#: tfprincipal.lidenext.caption
-msgctxt "tfprincipal.lidenext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tfprincipal.lideprevious.caption
-msgctxt "tfprincipal.lideprevious.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tfprincipal.lidesubtitle.caption
-msgctxt "tfprincipal.lidesubtitle.caption"
-msgid "Escolha a IDE"
-msgstr ""
-
-#: tfprincipal.linstallback.caption
-msgctxt "tfprincipal.linstallback.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tfprincipal.linstallclose.caption
-msgctxt "tfprincipal.linstallclose.caption"
-msgid "Fechar"
-msgstr ""
-
-#: tfprincipal.linstallsubtitle.caption
-msgctxt "tfprincipal.linstallsubtitle.caption"
-msgid "Instalação"
-msgstr ""
-
-#: tfprincipal.llanguagenext.caption
-msgctxt "tfprincipal.llanguagenext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tfprincipal.llanguagesubtitle.caption
-msgctxt "tfprincipal.llanguagesubtitle.caption"
-msgid "Escolha o Idioma"
-msgstr ""
-
-#: tfprincipal.llatestversion.caption
-msgctxt "tfprincipal.llatestversion.caption"
-msgid "Versão mais recente dos fontes:"
-msgstr ""
-
-#: tfprincipal.lpathideversion.caption
-msgctxt "tfprincipal.lpathideversion.caption"
-msgid "Versão da IDE"
-msgstr ""
-
-#: tfprincipal.lpathnext.caption
-msgctxt "tfprincipal.lpathnext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tfprincipal.lpathprevious.caption
-msgctxt "tfprincipal.lpathprevious.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tfprincipal.lpathsubtitle.caption
-msgctxt "tfprincipal.lpathsubtitle.caption"
-msgid "Caminho da Instalação"
-msgstr ""
-
-#: tfprincipal.lrepoversion.caption
-msgctxt "tfprincipal.lrepoversion.caption"
-msgid "lRepoVersion"
-msgstr ""
-
-#: tfprincipal.lresourcesnext.caption
-msgctxt "tfprincipal.lresourcesnext.caption"
-msgid "Próximo >"
-msgstr ""
-
-#: tfprincipal.lresourcesprevious.caption
-msgctxt "tfprincipal.lresourcesprevious.caption"
-msgid "< Anterior"
-msgstr ""
-
-#: tfprincipal.lresourcessubtitle.caption
-msgctxt "tfprincipal.lresourcessubtitle.caption"
-msgid "Escolha os recursos a instalar"
-msgstr ""
-
 #: tfprincipal.lversion.caption
 msgctxt "tfprincipal.lversion.caption"
 msgid "Instalador Versão 1.0"
-msgstr ""
-
-#: tfprincipal.lversionnotes.caption
-msgctxt "tfprincipal.lversionnotes.caption"
-msgid "Notas da versão:"
-msgstr ""
-
-#: tfprincipal.radiobutton1.caption
-msgid "Apontar a pasta onde o Lazarus está instalado"
-msgstr ""
-
-#: tfprincipal.radiobutton2.caption
-msgid "Deixar o RAL pesquisar (muito lento)"
 msgstr ""
 

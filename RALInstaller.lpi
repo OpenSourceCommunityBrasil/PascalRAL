@@ -6,6 +6,7 @@
     <General>
       <Flags>
         <AlwaysBuild Value="True"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <Title Value="RALInstaller"/>
@@ -35,9 +36,9 @@
         <Item3 Value="tfprincipal.lidelazarus.caption"/>
       </ExcludedIdentifiers>
     </i18n>
-    <BuildModes>
-      <Item Name="Debug" Default="True"/>
-      <Item Name="Release">
+    <BuildModes Count="7">
+      <Item1 Name="Debug" Default="True"/>
+      <Item2 Name="Release">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -68,8 +69,8 @@
             </Options>
           </Linking>
         </CompilerOptions>
-      </Item>
-      <Item Name="Win32">
+      </Item2>
+      <Item3 Name="Win32">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -102,8 +103,8 @@
             </Options>
           </Linking>
         </CompilerOptions>
-      </Item>
-      <Item Name="Win64">
+      </Item3>
+      <Item4 Name="Win64">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -117,6 +118,7 @@
           </SearchPaths>
           <CodeGeneration>
             <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
             <TargetOS Value="win64"/>
             <Optimizations>
               <OptimizationLevel Value="3"/>
@@ -124,7 +126,9 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
-              <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf3"/>
+              <UseHeaptrc Value="True"/>
+              <UseExternalDbgSyms Value="True"/>
             </Debugging>
             <LinkSmart Value="True"/>
             <Options>
@@ -134,8 +138,8 @@
             </Options>
           </Linking>
         </CompilerOptions>
-      </Item>
-      <Item Name="Linux64">
+      </Item4>
+      <Item5 Name="Linux64">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -163,8 +167,8 @@
             <LinkSmart Value="True"/>
           </Linking>
         </CompilerOptions>
-      </Item>
-      <Item Name="OSX64">
+      </Item5>
+      <Item6 Name="OSX64">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -191,8 +195,8 @@
             <LinkSmart Value="True"/>
           </Linking>
         </CompilerOptions>
-      </Item>
-      <Item Name="OSXArm64">
+      </Item6>
+      <Item7 Name="OSXArm64">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -219,7 +223,7 @@
             <LinkSmart Value="True"/>
           </Linking>
         </CompilerOptions>
-      </Item>
+      </Item7>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -228,120 +232,120 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages>
-      <Item>
+    <RequiredPackages Count="3">
+      <Item1>
         <PackageName Value="FCL"/>
-      </Item>
-      <Item>
+      </Item1>
+      <Item2>
         <PackageName Value="weblaz"/>
-      </Item>
-      <Item>
+      </Item2>
+      <Item3>
         <PackageName Value="LCL"/>
-      </Item>
+      </Item3>
     </RequiredPackages>
-    <Units>
-      <Unit>
+    <Units Count="18">
+      <Unit0>
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
+      </Unit0>
+      <Unit1>
         <Filename Value="src\telas\principal.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="fprincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
+      </Unit1>
+      <Unit2>
         <Filename Value="src\funcoes\configdatabase.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
+      </Unit2>
+      <Unit3>
         <Filename Value="src\funcoes\imagefunctions.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="fprincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
+      </Unit3>
+      <Unit4>
         <Filename Value="src\funcoes\lclfunctions.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
+      </Unit4>
+      <Unit5>
         <Filename Value="src\funcoes\ghrepofunctions.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
+      </Unit5>
+      <Unit6>
         <Filename Value="src\funcoes\delphiutils.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
+      </Unit6>
+      <Unit7>
         <Filename Value="src\funcoes\lazarusutils.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_ide_versions.pas"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="src\telas\frideversions.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="fframe_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_modelo.pas"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="src\telas\frmodelo.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_modelo"/>
+        <ComponentName Value="fmodelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_ide.pas"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="src\telas\fride.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_ide"/>
+        <ComponentName Value="fide"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_idioma.pas"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="src\telas\fridioma.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_idioma"/>
+        <ComponentName Value="fidioma"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_config_recursos.pas"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="src\telas\frconfigrecursos.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_config_recursos"/>
+        <ComponentName Value="fconfigrecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_install_recursos.pas"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="src\telas\frinstallrecursos.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_install_recursos"/>
+        <ComponentName Value="finstallrecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_install.pas"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="src\telas\frinstall.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_install"/>
+        <ComponentName Value="finstall"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\telas\frame_confirm_recursos.pas"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="src\telas\frconfirmrecursos.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_confirm_recursos"/>
+        <ComponentName Value="fconfirmrecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\install_types.pas"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="src\funcoes\install_types.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src\install_tools.pas"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="src\funcoes\install_tools.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
+      </Unit17>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -384,16 +388,16 @@
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <Exceptions>
-      <Item>
+    <Exceptions Count="3">
+      <Item1>
         <Name Value="EAbort"/>
-      </Item>
-      <Item>
+      </Item1>
+      <Item2>
         <Name Value="ECodetoolError"/>
-      </Item>
-      <Item>
+      </Item2>
+      <Item3>
         <Name Value="EFOpenError"/>
-      </Item>
+      </Item3>
     </Exceptions>
   </Debugging>
 </CONFIG>

@@ -214,7 +214,7 @@
 				"depedancy": {
 					"name": "mORMot2",
 					"min-version": "2.1",
-					"repository": "https://github.com/blablablabla",
+					"repository": "https://github.com/synopse/mORMot2",
 					"base-path": "/src",
 					"has-dpk": false,
 					"library-paths": [
@@ -263,5 +263,21 @@
 			}
 		]
 	},
-	"Lazarus": {}
+	"Lazarus": {
+		"base-package": {
+			"version": "1.0",
+			"install-order": [
+				{
+					"name": "PascalRAL",
+					"is-compile": true,
+					"is-install": true
+				}
+			],
+			"library-paths": [
+				"/src/base",
+				"/src/utils"
+			]
+		},
+		"data-engines": []
+	}
 }
