@@ -112,5 +112,8 @@ begin
   Result := rctAPPLICATIONJSON;
 end;
 
+initialization
+  RegisterClass(TRALStorageJSONLink);
+
 end.
 

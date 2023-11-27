@@ -25,7 +25,7 @@ end;
 function StreamToString(AStream : TStream) : StringRAL;
 begin
   Result := '';
-  if AStream = nil then
+  if (AStream = nil) or (AStream.Size = 0) then
     Exit;
 
   AStream.Position := 0;

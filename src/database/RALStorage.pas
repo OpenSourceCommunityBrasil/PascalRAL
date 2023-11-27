@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB, Variants,
-  RALCustomObjects, RALTypes, RALBase64;
+  RALCustomObjects, RALTypes, RALBase64, RALStream, RALTools;
 
 type
   TRALStorageMode = (smRead, smWrite);
@@ -20,35 +20,72 @@ type
     FRequired : boolean;
     FReadOnly : boolean;
     FFlags : TProviderFlags;
-    FValue : Variant;
-    function GetFlagsByte : Byte;
-    procedure SetFlagsByte(AValue : Byte);
+    FValue : TStream;
+    FIsNull : boolean;
   protected
-    function GetAsBoolean : boolean;
+    procedure WriteString(const AValue : StringRAL);
+    procedure WriteInteger(const AValue : IntegerRAL);
+    procedure WriteSmallint(const AValue : SmallInt);
+    procedure WriteWord(const AValue : Word);
+    procedure WriteInt64(const AValue : Int64RAL);
+    procedure WriteLongWord(const AValue : LongWord);
+    procedure WriteShortInt(const AValue : ShortInt);
+    procedure WriteByte(const AValue : Byte);
+    procedure WriteDouble(const AValue : Double);
+    procedure WriteDateTime(const AValue : TDateTime);
+    procedure WriteBoolean(const AValue : Boolean);
+    procedure WriteBytes(const AValue : TBytes);
+
+    function ReadString : StringRAL;
+    function ReadInteger : IntegerRAL;
+    function ReadSmallint : SmallInt;
+    function ReadWord : Word;
+    function ReadInt64 : Int64RAL;
+    function ReadLongWord : LongWord;
+    function ReadShortInt : ShortInt;
+    function ReadByte : Byte;
+    function ReadDouble : Double;
+    function ReadDateTime : TDateTime;
+    function ReadBoolean : Boolean;
+    function ReadBytes : TBytes;
+
+    function GetAsBoolean : Boolean;
     function GetAsDateTime : TDateTime;
-    function GetAsDouble : double;
-    function GetAsInteger : integer;
-    function GetAsLargeInt : int64;
+    function GetAsDouble : Double;
+    function GetAsInteger : IntegerRAL;
+    function GetAsLargeInt : Int64RAL;
     function GetAsString : StringRAL;
-    procedure SetAsBoolean(AValue : boolean);
+    function GetAsBytes : TBytes;
+    procedure SetAsBoolean(AValue : Boolean);
     procedure SetAsDateTime(AValue : TDateTime);
-    procedure SetAsDouble(AValue : double);
-    procedure SetAsInteger(AValue : integer);
-    procedure SetAsLargeInt(AValue : int64);
+    procedure SetAsDouble(AValue : Double);
+    procedure SetAsInteger(AValue : IntegerRAL);
+    procedure SetAsLargeInt(AValue : Int64RAL);
     procedure SetAsString(AValue : StringRAL);
+    procedure SetAsBytes(AValue : TBytes);
+    procedure SetAsStream(AValue : TStream);
 
     function GetAsJSON : StringRAL;
 
     function GetDataTypeByte : Byte;
     procedure SetDataTypeByte(AValue : Byte);
+    function GetFlagsByte : Byte;
+    procedure SetFlagsByte(AValue : Byte);
+
+    procedure SetDataType(AValue : TFieldType);
+    procedure SetSize(AValue : integer);
+    procedure SetPrecision(AValue : integer);
+    procedure SetIsNull(AValue : Boolean);
   public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+
     procedure Clear;
-    function IsNull : boolean;
   published
     property Name : string read FName write FName;
-    property DataType : TFieldType read FDataType write FDataType;
-    property Size : integer read FSize write FSize;
-    property Precision : integer read FPrecision write FPrecision;
+    property DataType : TFieldType read FDataType write SetDataType;
+    property Size : integer read FSize write SetSize;
+    property Precision : integer read FPrecision write SetPrecision;
     property Required : boolean read FRequired write FRequired;
     property ReadOnly : boolean read FReadOnly write FReadOnly;
     property Flags : TProviderFlags read FFlags write FFlags;
@@ -57,11 +94,14 @@ type
     property FlagByte : Byte read GetFlagsByte write SetFlagsByte;
 
     property AsString : StringRAL read GetAsString write SetAsString;
-    property AsInteger : integer read GetAsInteger write SetAsInteger;
-    property AsDouble : double read GetAsDouble write SetAsDouble;
-    property AsLargeInt : int64 read GetAsLargeInt write SetAsLargeInt;
+    property AsInteger : IntegerRAL read GetAsInteger write SetAsInteger;
+    property AsDouble : Double read GetAsDouble write SetAsDouble;
+    property AsLargeInt : Int64RAL read GetAsLargeInt write SetAsLargeInt;
     property AsDateTime : TDateTime read GetAsDateTime write SetAsDateTime;
-    property AsBoolean : boolean read GetAsBoolean write SetAsBoolean;
+    property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
+    property AsBytes : TBytes read GetAsBytes write SetAsBytes;
+    property AsStream : TStream read FValue write SetAsStream;
+    property IsNull : Boolean read FIsNull write SetIsNull;
 
     property AsJSON : StringRAL read GetAsJSON;
   end;
@@ -101,7 +141,7 @@ type
     property Stream : TStream read FStream;
     property FieldDefs : TRALStorageFields read FFieldDefs;
   public
-    constructor Create;
+    constructor Create; virtual;
     destructor Destroy; override;
 
     procedure Open;
@@ -111,6 +151,7 @@ type
     procedure Load(AFileName : string; AMode : TRALStorageMode); virtual;
 
     procedure WriteField(AField : TField);
+    procedure ReadField(AField : TField);
 
     procedure ClearFields;
 
@@ -120,6 +161,7 @@ type
     function EOF : boolean; virtual;
 
     procedure AssignFieldsDefs(AFieldDefs : TFieldDefs);
+    procedure CreateFieldsDefs(AFieldDefs : TFieldDefs);
     procedure AssignFields(AField : TFields);
 
     function AddField(const AName: string; ADataType: TFieldType; ASize: Integer) : TRALStorageField; overload;
@@ -135,16 +177,20 @@ type
 
   TRALStorageLink = class(TRALComponent)
   protected
-    function GetStorageClass : TRALStorageClass; virtual; abstract;
-    function GetContentType : StringRAL; virtual; abstract;
+    function GetStorageClass : TRALStorageClass; virtual;
+    function GetContentType : StringRAL; virtual;
   public
     procedure SaveDataset(ADataset : TDataSet; AStream : TStream); overload;
     procedure SaveDataset(ADataset : TDataSet; AFileName : string); overload;
     function SaveDataset(ADataset : TDataSet) : TStream; overload;
 
+    procedure LoadDataset(ADataset : TDataSet; AFileName : string); overload;
+
     property StorageClass : TRALStorageClass read GetStorageClass;
     property ContentType : StringRAL read GetContentType;
   end;
+
+  TRALStorageClassLink = class of TRALStorageLink;
 
 implementation
 
@@ -259,124 +305,100 @@ end;
 procedure TRALStorageField.SetDataTypeByte(AValue : Byte);
 begin
   case AValue of
-    01 : FDataType := ftUnknown;
-    02 : FDataType := ftString;
-    03 : FDataType := ftSmallint;
-    04 : FDataType := ftInteger;
-    05 : FDataType := ftWord;
-    06 : FDataType := ftBoolean;
-    07 : FDataType := ftFloat;
-    08 : FDataType := ftCurrency;
-    09 : FDataType := ftBCD;
-    10 : FDataType := ftDate;
-
-    11 : FDataType := ftTime;
-    12 : FDataType := ftDateTime;
-    13 : FDataType := ftBytes;
-    14 : FDataType := ftVarBytes;
-    15 : FDataType := ftAutoInc;
-    16 : FDataType := ftBlob;
-    17 : FDataType := ftMemo;
-    18 : FDataType := ftGraphic;
-    19 : FDataType := ftFmtMemo;
-    20 : FDataType := ftParadoxOle;
-
-    21 : FDataType := ftDBaseOle;
-    22 : FDataType := ftTypedBinary;
-    23 : FDataType := ftCursor;
-    24 : FDataType := ftFixedChar;
-    25 : FDataType := ftWideString;
-    26 : FDataType := ftLargeint;
-    27 : FDataType := ftADT;
-    28 : FDataType := ftArray;
-    29 : FDataType := ftReference;
-    30 : FDataType := ftDataSet;
-
-    31 : FDataType := ftOraBlob;
-    32 : FDataType := ftOraClob;
-    33 : FDataType := ftVariant;
-    34 : FDataType := ftInterface;
-    35 : FDataType := ftIDispatch;
-    36 : FDataType := ftGuid;
-    37 : FDataType := ftTimeStamp;
-    38 : FDataType := ftFMTBcd;
-    39 : FDataType := ftFixedWideChar;
-    40 : FDataType := ftWideMemo;
+    01 : DataType := ftUnknown;
+    02 : DataType := ftString;
+    03 : DataType := ftSmallint;
+    04 : DataType := ftInteger;
+    05 : DataType := ftWord;
+    06 : DataType := ftBoolean;
+    07 : DataType := ftFloat;
+    08 : DataType := ftCurrency;
+    09 : DataType := ftBCD;
+    10 : DataType := ftDate;
+    11 : DataType := ftTime;
+    12 : DataType := ftDateTime;
+    13 : DataType := ftBytes;
+    14 : DataType := ftVarBytes;
+    15 : DataType := ftAutoInc;
+    16 : DataType := ftBlob;
+    17 : DataType := ftMemo;
+    18 : DataType := ftGraphic;
+    19 : DataType := ftFmtMemo;
+    20 : DataType := ftParadoxOle;
+    21 : DataType := ftDBaseOle;
+    22 : DataType := ftTypedBinary;
+    23 : DataType := ftCursor;
+    24 : DataType := ftFixedChar;
+    25 : DataType := ftWideString;
+    26 : DataType := ftLargeint;
+    27 : DataType := ftADT;
+    28 : DataType := ftArray;
+    29 : DataType := ftReference;
+    30 : DataType := ftDataSet;
+    31 : DataType := ftOraBlob;
+    32 : DataType := ftOraClob;
+    33 : DataType := ftVariant;
+    34 : DataType := ftInterface;
+    35 : DataType := ftIDispatch;
+    36 : DataType := ftGuid;
+    37 : DataType := ftTimeStamp;
+    38 : DataType := ftFMTBcd;
+    39 : DataType := ftFixedWideChar;
+    40 : DataType := ftWideMemo;
 
     {$IFNDEF FPC}
-      41 : FDataType := ftOraTimeStamp;
-      42 : FDataType := ftOraInterval;
-      43 : FDataType := ftLongWord;
-      44 : FDataType := ftShortint;
-      45 : FDataType := ftByte;
-      46 : FDataType := ftExtended;
-      47 : FDataType := ftConnection;
-      48 : FDataType := ftParams;
-      49 : FDataType := ftStream;
-      50 : FDataType := ftTimeStampOffset;
-      51 : FDataType := ftObject;
-      52 : FDataType := ftSingle;
+      41 : DataType := ftOraTimeStamp;
+      42 : DataType := ftOraInterval;
+      43 : DataType := ftLongWord;
+      44 : DataType := ftShortint;
+      45 : DataType := ftByte;
+      46 : DataType := ftExtended;
+      47 : DataType := ftConnection;
+      48 : DataType := ftParams;
+      49 : DataType := ftStream;
+      50 : DataType := ftTimeStampOffset;
+      51 : DataType := ftObject;
+      52 : DataType := ftSingle;
     {$ELSE}
-      41 : FDataType := ftDateTime;
-      42 : FDataType := ftDateTime;
-      43 : FDataType := ftLargeint;
-      44 : FDataType := ftInteger;
-      45 : FDataType := ftSmallint;
-      46 : FDataType := ftFloat;
-      47 : FDataType := ftVariant;
-      48 : FDataType := ftVariant;
-      49 : FDataType := ftBlob;
-      50 : FDataType := ftDateTime;
-      51 : FDataType := ftVariant;
-      52 : FDataType := ftFloat;
+      41 : DataType := ftDateTime;
+      42 : DataType := ftDateTime;
+      43 : DataType := ftLargeint;
+      44 : DataType := ftInteger;
+      45 : DataType := ftSmallint;
+      46 : DataType := ftFloat;
+      47 : DataType := ftVariant;
+      48 : DataType := ftVariant;
+      49 : DataType := ftBlob;
+      50 : DataType := ftDateTime;
+      51 : DataType := ftVariant;
+      52 : DataType := ftFloat;
     {$ENDIF}
   end;
 end;
 
 procedure TRALStorageField.Clear;
 begin
-  FValue := Null;
-end;
-
-function TRALStorageField.IsNull : boolean;
-begin
-  Result := FValue = null;
+  FValue.Size := 0;
+  FValue.Position := 0;
+  FIsNull := True;
 end;
 
 function TRALStorageField.GetAsJSON : StringRAL;
 
-  function GetFieldBlob : StringRAL;
-  var
-    vMem : TMemoryStream;
+  function GetFieldBytes : StringRAL;
   begin
     if IsNull then
-    begin
-      GetFieldBlob := 'null';
-    end
-    else begin
-      vMem := TMemoryStream.Create;
-      try
-//        TBlobField(AField).SaveToStream(vMem);
-        GetFieldBlob := Format('"%s"',[TRALBase64.Encode(vMem)]);
-      finally
-        vMem.Free;
-      end;
-    end;
+      GetFieldBytes := 'null'
+    else
+      GetFieldBytes := Format('"%s"',[TRALBase64.Encode(AsBytes)]);
   end;
 
   function GetFieldMemo : StringRAL;
-  var
-    vVal : StringRAL;
   begin
     if IsNull then
-    begin
-      GetFieldMemo := 'null';
-    end
+      GetFieldMemo := 'null'
     else
-    begin
-//      vVal := TBlobField(AField).AsUTF8String;
-      GetFieldMemo := Format('"%s"',[TRALBase64.Encode(vVal)]);
-    end;
+      GetFieldMemo := Format('"%s"',[TRALBase64.Encode(AsString)]);
   end;
 
   function GetFieldString : StringRAL;
@@ -456,12 +478,12 @@ begin
     ftDate            : Result := GetFieldDateTime(1);
     ftTime            : Result := GetFieldDateTime(2);
     ftDateTime        : Result := GetFieldDateTime(3);
-    ftBytes           : Result := 'null';
-    ftVarBytes        : Result := 'null';
+    ftBytes           : Result := GetFieldBytes;
+    ftVarBytes        : Result := GetFieldBytes;
     ftAutoInc         : Result := GetFieldInteger;
-    ftBlob            : Result := GetFieldBlob;
+    ftBlob            : Result := GetFieldBytes;
     ftMemo            : Result := GetFieldMemo;
-    ftGraphic         : Result := 'null';
+    ftGraphic         : Result := GetFieldBytes;
     ftFmtMemo         : Result := GetFieldMemo;
     ftParadoxOle      : Result := 'null';
     ftDBaseOle        : Result := 'null';
@@ -474,9 +496,9 @@ begin
     ftArray           : Result := 'null';
     ftReference       : Result := 'null';
     ftDataSet         : Result := 'null';
-    ftOraBlob         : Result := GetFieldBlob;
+    ftOraBlob         : Result := GetFieldBytes;
     ftOraClob         : Result := GetFieldMemo;
-    ftVariant         : Result := 'null';
+    ftVariant         : Result := GetFieldBytes;
     ftInterface       : Result := 'null';
     ftIDispatch       : Result := 'null';
     ftGuid            : Result := GetFieldString;
@@ -493,7 +515,7 @@ begin
       ftExtended        : Result := GetFieldFloat;
       ftConnection      : Result := 'null';
       ftParams          : Result := 'null';
-      ftStream          : Result := 'null';
+      ftStream          : Result := GetFieldBytes;
       ftTimeStampOffset : Result := GetFieldDateTime(3);
       ftObject          : Result := 'null';
       ftSingle          : Result := GetFieldFloat;
@@ -524,6 +546,11 @@ begin
   {$ENDIF}
 end;
 
+function TRALStorageField.GetAsBytes : TBytes;
+begin
+  Result := ReadBytes;
+end;
+
 procedure TRALStorageField.SetFlagsByte(AValue : Byte);
 begin
   FReadOnly := AValue and 1 > 0;
@@ -545,70 +572,378 @@ begin
   {$ENDIF}
 end;
 
-function TRALStorageField.GetAsBoolean : boolean;
+constructor TRALStorageField.Create(ACollection : TCollection);
+begin
+  inherited Create(ACollection);
+  FName := '';
+  FDataType := ftUnknown;
+  FSize := 0;
+  FPrecision := 0;
+  FRequired := False;
+  FReadOnly := False;
+  FFlags := [];
+  FValue := TMemoryStream.Create;
+  FIsNull := True;
+end;
+
+destructor TRALStorageField.Destroy;
+begin
+  FreeAndNil(FValue);
+  inherited Destroy;
+end;
+
+procedure TRALStorageField.SetAsBytes(AValue : TBytes);
+begin
+  WriteBytes(AValue);
+end;
+
+procedure TRALStorageField.SetDataType(AValue : TFieldType);
+
+  procedure FillZeroSize(const ASize : integer = 0);
+  begin
+    FSize := ASize;
+    FPrecision := 0;
+  end;
+
+begin
+  if FDataType = AValue then
+    Exit;
+
+  FDataType := AValue;
+
+  case FDataType of
+    ftUnknown         : FillZeroSize;
+    ftString          : FPrecision := 0;
+    ftSmallint        : FSize := SizeOf(SmallInt);
+    ftInteger         : FSize := SizeOf(Integer);
+    ftWord            : FSize := SizeOf(Word);
+    ftBoolean         : FSize := SizeOf(Boolean);
+    ftFloat           : FSize := SizeOf(Double);
+    ftCurrency        : FSize := SizeOf(Double);
+    ftBCD             : FSize := SizeOf(Double);
+    ftDate            : FSize := SizeOf(TDateTime);
+    ftTime            : FSize := SizeOf(TDateTime);
+    ftDateTime        : FSize := SizeOf(TDateTime);
+    ftBytes           : FillZeroSize;
+    ftVarBytes        : FillZeroSize;
+    ftAutoInc         : FSize := SizeOf(Int64);
+    ftBlob            : FillZeroSize;
+    ftMemo            : FillZeroSize;
+    ftGraphic         : FillZeroSize;
+    ftFmtMemo         : FillZeroSize;
+    ftParadoxOle      : FillZeroSize;
+    ftDBaseOle        : FillZeroSize;
+    ftTypedBinary     : FillZeroSize;
+    ftCursor          : FillZeroSize;
+    ftFixedChar       : FPrecision := 0;
+    ftWideString      : FPrecision := 0;
+    ftLargeint        : FSize := SizeOf(Int64);
+    ftADT             : FillZeroSize;
+    ftArray           : FillZeroSize;
+    ftReference       : FillZeroSize;
+    ftDataSet         : FillZeroSize;
+    ftOraBlob         : FillZeroSize;
+    ftOraClob         : FillZeroSize;
+    ftVariant         : FillZeroSize;
+    ftInterface       : FillZeroSize;
+    ftIDispatch       : FillZeroSize;
+    ftGuid            : FillZeroSize(38); // '{81DB70A9-82C1-4303-9E7B-356044316D71}'
+    ftTimeStamp       : FSize := SizeOf(TDateTime);
+    ftFMTBcd          : FSize := SizeOf(TDateTime);
+    ftFixedWideChar   : FPrecision := 0;
+    ftWideMemo        : FillZeroSize;
+    {$IFNDEF FPC}
+      ftOraTimeStamp    : FSize := SizeOf(TDateTime);
+      ftOraInterval     : FSize := SizeOf(TDateTime);
+      ftLongWord        : FSize := Size(LongWord);
+      ftShortint        : FSize := Size(Shortint);
+      ftByte            : FSize := Size(Byte);
+      ftExtended        : FSize := SizeOf(Double);
+      ftConnection      : FillZeroSize;
+      ftParams          : FillZeroSize;
+      ftStream          : FillZeroSize;
+      ftTimeStampOffset : FSize := SizeOf(TDateTime);
+      ftObject          : FillZeroSize;
+      ftSingle          : FSize := SizeOf(Double);
+    {$ENDIF}
+  end;
+end;
+
+procedure TRALStorageField.SetPrecision(AValue : integer);
+begin
+  if FPrecision = AValue then
+    Exit;
+
+  if FDataType in [
+        {$IFNDEF FPC}
+          ftExtended,
+          ftSingle,
+        {$ENDIF}
+        ftFloat,
+        ftCurrency,
+        ftBCD,
+        ftFMTBcd] then
+    FPrecision := AValue;
+end;
+
+procedure TRALStorageField.SetSize(AValue : integer);
+begin
+  if FSize = AValue then
+    Exit;
+
+  if FDataType in [
+        ftString,
+        ftFixedChar,
+        ftWideString,
+        ftFixedWideChar] then
+    FSize := AValue;
+end;
+
+procedure TRALStorageField.SetIsNull(AValue : Boolean);
+begin
+  if FIsNull = AValue then
+    Exit;
+
+  if AValue then
+    Clear
+  else
+    FIsNull := False;
+end;
+
+procedure TRALStorageField.SetAsStream(AValue : TStream);
+begin
+  Clear;
+  if (AValue <> nil) and (AValue.Size > 0) then
+  begin
+    AValue.Position := 0;
+    FValue.Size := AValue.Size;
+    FValue.CopyFrom(AValue, AValue.Size);
+  end;
+end;
+
+procedure TRALStorageField.WriteString(const AValue : StringRAL);
+begin
+  Clear;
+  if AValue <> '' then
+    FValue.Write(AValue[PosIniStr], Length(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteInteger(const AValue : IntegerRAL);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteSmallint(const AValue : SmallInt);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteWord(const AValue : Word);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteInt64(const AValue : Int64RAL);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteLongWord(const AValue : LongWord);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteShortInt(const AValue : ShortInt);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteByte(const AValue : Byte);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteDouble(const AValue : Double);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteDateTime(const AValue : TDateTime);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteBoolean(const AValue : Boolean);
+begin
+  Clear;
+  FValue.Write(AValue, SizeOf(AValue));
+  FIsNull := False;
+end;
+
+procedure TRALStorageField.WriteBytes(const AValue : TBytes);
+begin
+  Clear;
+  if Length(AValue) > 0 then
+    FValue.Write(AValue[0], Length(AValue));
+  FIsNull := False;
+end;
+
+function TRALStorageField.ReadString : StringRAL;
+begin
+  FValue.Position := 0;
+  Result := StreamToString(FValue);
+end;
+
+function TRALStorageField.ReadInteger : IntegerRAL;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadSmallint : SmallInt;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadWord : Word;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadInt64 : Int64RAL;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadLongWord : LongWord;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadShortInt : ShortInt;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadByte : Byte;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadDouble : Double;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadDateTime : TDateTime;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadBoolean : Boolean;
+begin
+  FValue.Position := 0;
+  FValue.Read(Result, SizeOf(Result));
+end;
+
+function TRALStorageField.ReadBytes : TBytes;
+begin
+  FValue.Position := 0;
+  SetLength(Result, FValue.Size);
+  if FValue.Size > 0 then
+    FValue.Read(Result[0], FValue.Size);
+end;
+
+function TRALStorageField.GetAsBoolean : Boolean;
 
   function StringToBoolean : boolean;
+  var
+    vStr : StringRAL;
   begin
-    Result := (StringRAL(FValue) = 'S') or (StringRAL(FValue) = 'V') or
-              (StringRAL(FValue) = 'T') or (StringRAL(FValue) = '1');
+    if FValue.Size < 20 then
+    begin
+      vStr := ReadString;
+      StringToBoolean := (vStr = 'S') or (vStr = 'V') or
+                         (vStr = 'T') or (vStr = '1');
+    end
+    else
+    begin
+      StringToBoolean := False;
+    end;
+  end;
+
+  function BytesToBoolean : boolean;
+  begin
+    if FValue.Size = SizeOf(Boolean) then
+      BytesToBoolean := ReadBoolean
+    else
+      BytesToBoolean := False;
   end;
 
 begin
   case FDataType of
     ftUnknown         : Result := False;
     ftString          : Result := StringToBoolean;
-    ftSmallint        : Result := SmallInt(FValue) = 1;
-    ftInteger         : Result := Integer(FValue) = 1;
-    ftWord            : Result := Word(FValue) = 1;
-    ftBoolean         : Result := FValue;
-    ftFloat           : Result := Double(FValue) = 1.0;
-    ftCurrency        : Result := Double(FValue) = 1.0;
-    ftBCD             : Result := Double(FValue) = 1.0;
-    ftDate            : Result := False;
-    ftTime            : Result := False;
-    ftDateTime        : Result := False;
-    ftBytes           : Result := False;
-    ftVarBytes        : Result := False;
-    ftAutoInc         : Result := Int64(FValue) = 1;
-    ftBlob            : Result := False;
-    ftMemo            : Result := False;
-    ftGraphic         : Result := False;
-    ftFmtMemo         : Result := False;
-    ftParadoxOle      : Result := False;
-    ftDBaseOle        : Result := False;
-    ftTypedBinary     : Result := False;
-    ftCursor          : Result := False;
+    ftSmallint        : Result := ReadSmallint = 1;
+    ftInteger         : Result := ReadInteger = 1;
+    ftWord            : Result := ReadWord = 1;
+    ftBoolean         : Result := ReadBoolean;
+    ftFloat           : Result := ReadDouble = 1.0;
+    ftCurrency        : Result := ReadDouble = 1.0;
+    ftBCD             : Result := ReadDouble = 1.0;
+    ftBytes           : Result := BytesToBoolean;
+    ftVarBytes        : Result := BytesToBoolean;
+    ftAutoInc         : Result := ReadInt64 = 1;
+    ftBlob            : Result := BytesToBoolean;
+    ftMemo            : Result := StringToBoolean;
+    ftFmtMemo         : Result := StringToBoolean;
     ftFixedChar       : Result := StringToBoolean;
     ftWideString      : Result := StringToBoolean;
-    ftLargeint        : Result := Int64(FValue) = 1;
-    ftADT             : Result := False;
-    ftArray           : Result := False;
-    ftReference       : Result := False;
-    ftDataSet         : Result := False;
-    ftOraBlob         : Result := False;
-    ftOraClob         : Result := False;
-    ftVariant         : Result := False;
-    ftInterface       : Result := False;
-    ftIDispatch       : Result := False;
-    ftGuid            : Result := False;
-    ftTimeStamp       : Result := False;
-    ftFMTBcd          : Result := False;
+    ftLargeint        : Result := ReadInt64 = 1;
+    ftOraBlob         : Result := BytesToBoolean;
+    ftOraClob         : Result := StringToBoolean;
+    ftVariant         : Result := ReadBoolean;
+    ftGuid            : Result := StringToBoolean;
+    ftFMTBcd          : Result := ReadDouble = 1.0;
     ftFixedWideChar   : Result := StringToBoolean;
     ftWideMemo        : Result := StringToBoolean;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := False;
-      ftOraInterval     : Result := False;
-      ftLongWord        : Result := LongWord(FValue) = 1;
-      ftShortint        : Result := ShortInt(FValue) = 1;
-      ftByte            : Result := Byte(FValue) = 1;
-      ftExtended        : Result := Double(FValue) = 1.0;
-      ftConnection      : Result := False;
-      ftParams          : Result := False;
-      ftStream          : Result := False;
-      ftTimeStampOffset : Result := False;
-      ftObject          : Result := False;
-      ftSingle          : Result := Double(FValue) = 1.0;
+      ftLongWord        : Result := ReadLongWord = 1;
+      ftShortint        : Result := ReadShortInt = 1;
+      ftByte            : Result := ReadByte = 1;
+      ftExtended        : Result := ReadDouble = 1.0;
+      ftStream          : Result := BytesToBoolean;
+      ftSingle          : Result := ReadDouble = 1.0;
     {$ENDIF}
+    else
+      Result := False;
   end;
 end;
 
@@ -616,337 +951,382 @@ function TRALStorageField.GetAsDateTime : TDateTime;
 
   function StringToDateTime : TDateTime;
   var
-    vResDate : TDateTime;
-    vResDouble : double;
-    vFormat : TFormatSettings;
+    vFormat : StringRAL;
+    vString, vNumbers : StringRAL;
   begin
-    if not TryStrToDateTime(StringRAL(FValue), vResDate) then
+    if FValue.Size < 50 then
     begin
-      vFormat.ShortDateFormat := 'yyyyMMdd';
-      vFormat.ShortTimeFormat := 'hhnnsszzz';
-      vFormat.DateSeparator := #0;
-      vFormat.TimeSeparator := #0;
-
-      if not TryStrToDateTime(StringRAL(FValue), vResDate, vFormat) then
-      begin
-        if not TryStrToFloat(StringRAL(FValue), vResDouble) then
-          Result := 0
-        else
-          Result := TDateTime(vResDouble);
-      end
+      vFormat := 'yyyyMMddhhnnsszzz';
+      vString := ReadString;
+      vNumbers := OnlyNumbers(vString);
+      if vNumbers = vString then
+        StringToDateTime := RALStringToDateTime(vNumbers, vFormat)
       else
-      begin
-        Result := vResDate;
-      end;
+        StringToDateTime := TDateTime(0);
     end
-    else
-    begin
-      Result := vResDate;
+    else begin
+      StringToDateTime := TDateTime(0);
     end;
   end;
 
+  function BytesToDateTime : TDateTime;
+  begin
+    if FValue.Size = SizeOf(TDateTime) then
+      BytesToDateTime := ReadDateTime
+    else
+      BytesToDateTime := TDateTime(0);
+  end;
+
 begin
   case FDataType of
-    ftUnknown         : Result := 0;
     ftString          : Result := StringToDateTime;
-    ftSmallint        : Result := FValue;
-    ftInteger         : Result := FValue;
-    ftWord            : Result := FValue;
-    ftBoolean         : Result := 0;
-    ftFloat           : Result := FValue;
-    ftCurrency        : Result := FValue;
-    ftBCD             : Result := FValue;
-    ftDate            : Result := FValue;
-    ftTime            : Result := FValue;
-    ftDateTime        : Result := FValue;
-    ftBytes           : Result := 0;
-    ftVarBytes        : Result := 0;
-    ftAutoInc         : Result := FValue;
-    ftBlob            : Result := 0;
-    ftMemo            : Result := 0;
-    ftGraphic         : Result := 0;
-    ftFmtMemo         : Result := 0;
-    ftParadoxOle      : Result := 0;
-    ftDBaseOle        : Result := 0;
-    ftTypedBinary     : Result := 0;
-    ftCursor          : Result := 0;
+    ftSmallint        : Result := TDateTime(ReadSmallint);
+    ftInteger         : Result := TDateTime(ReadInteger);
+    ftWord            : Result := TDateTime(ReadWord);
+    ftFloat           : Result := TDateTime(ReadDouble);
+    ftCurrency        : Result := TDateTime(ReadDouble);
+    ftBCD             : Result := TDateTime(ReadDouble);
+    ftDate            : Result := ReadDateTime;
+    ftTime            : Result := ReadDateTime;
+    ftDateTime        : Result := ReadDateTime;
+    ftBytes           : Result := BytesToDateTime;
+    ftVarBytes        : Result := BytesToDateTime;
+    ftAutoInc         : Result := TDateTime(ReadInt64);
+    ftBlob            : Result := BytesToDateTime;
+    ftMemo            : Result := StringToDateTime;
+    ftFmtMemo         : Result := StringToDateTime;
     ftFixedChar       : Result := StringToDateTime;
     ftWideString      : Result := StringToDateTime;
-    ftLargeint        : Result := FValue;
-    ftADT             : Result := 0;
-    ftArray           : Result := 0;
-    ftReference       : Result := 0;
-    ftDataSet         : Result := 0;
-    ftOraBlob         : Result := 0;
-    ftOraClob         : Result := 0;
-    ftVariant         : Result := 0;
-    ftInterface       : Result := 0;
-    ftIDispatch       : Result := 0;
-    ftGuid            : Result := 0;
-    ftTimeStamp       : Result := FValue;
-    ftFMTBcd          : Result := FValue;
+    ftLargeint        : Result := TDateTime(ReadInt64);
+    ftOraBlob         : Result := BytesToDateTime;
+    ftOraClob         : Result := StringToDateTime;
+    ftVariant         : Result := ReadDateTime;
+    ftGuid            : Result := StringToDateTime;
+    ftTimeStamp       : Result := ReadDateTime;
+    ftFMTBcd          : Result := TDateTime(ReadDouble);
     ftFixedWideChar   : Result := StringToDateTime;
     ftWideMemo        : Result := StringToDateTime;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := FValue;
-      ftOraInterval     : Result := FValue;
-      ftLongWord        : Result := FValue;
-      ftShortint        : Result := FValue;
-      ftByte            : Result := FValue;
-      ftExtended        : Result := FValue;
-      ftConnection      : Result := 0;
-      ftParams          : Result := 0;
-      ftStream          : Result := 0;
-      ftTimeStampOffset : Result := FValue;
-      ftObject          : Result := 0;
-      ftSingle          : Result := FValue;
+      ftOraTimeStamp    : Result := ReadDateTime;
+      ftOraInterval     : Result := ReadDateTime;
+      ftLongWord        : Result := TDateTime(ReadLongWord);
+      ftShortint        : Result := TDateTime(ReadShortInt);
+      ftByte            : Result := TDateTime(ReadByte);
+      ftExtended        : Result := TDateTime(ReadDouble);
+      ftStream          : Result := BytesToDateTime;
+      ftTimeStampOffset : Result := ReadDateTime;
+      ftSingle          : Result := TDateTime(ReadDouble);
     {$ENDIF}
+    else
+      Result := TDateTime(0);
   end;
 end;
 
-function TRALStorageField.GetAsDouble : double;
+function TRALStorageField.GetAsDouble : Double;
+
+  function StringToDouble : Double;
+  var
+    vString : StringRAL;
+  begin
+    if FValue.Size < 50 then
+    begin
+      vString := ReadString;
+      StringToDouble := StrToFloatDef(vString, 0);
+    end
+    else begin
+      StringToDouble := 0;
+    end;
+  end;
+
+  function BooleanToDouble : Double;
+  var
+    vBool : boolean;
+  begin
+    vBool := ReadBoolean;
+    if vBool then
+      BooleanToDouble := 1
+    else
+      BooleanToDouble := 0;
+  end;
+
+  function BytesToDouble : Double;
+  begin
+    if FValue.Size = SizeOf(Double) then
+      BytesToDouble := ReadDouble
+    else
+      BytesToDouble := 0;
+  end;
+
 begin
   case FDataType of
-    ftUnknown         : Result := 0;
-    ftString          : Result := StrToFloatDef(FValue,0);
-    ftSmallint        : Result := FValue;
-    ftInteger         : Result := FValue;
-    ftWord            : Result := FValue;
-    ftBoolean         : Result := 0;
-    ftFloat           : Result := FValue;
-    ftCurrency        : Result := FValue;
-    ftBCD             : Result := FValue;
-    ftDate            : Result := FValue;
-    ftTime            : Result := FValue;
-    ftDateTime        : Result := FValue;
-    ftBytes           : Result := 0;
-    ftVarBytes        : Result := 0;
-    ftAutoInc         : Result := FValue;
-    ftBlob            : Result := 0;
-    ftMemo            : Result := 0;
-    ftGraphic         : Result := 0;
-    ftFmtMemo         : Result := 0;
-    ftParadoxOle      : Result := 0;
-    ftDBaseOle        : Result := 0;
-    ftTypedBinary     : Result := 0;
-    ftCursor          : Result := 0;
-    ftFixedChar       : Result := StrToFloatDef(FValue,0);
-    ftWideString      : Result := StrToFloatDef(FValue,0);
-    ftLargeint        : Result := FValue;
-    ftADT             : Result := 0;
-    ftArray           : Result := 0;
-    ftReference       : Result := 0;
-    ftDataSet         : Result := 0;
-    ftOraBlob         : Result := 0;
-    ftOraClob         : Result := 0;
-    ftVariant         : Result := 0;
-    ftInterface       : Result := 0;
-    ftIDispatch       : Result := 0;
-    ftGuid            : Result := 0;
-    ftTimeStamp       : Result := FValue;
-    ftFMTBcd          : Result := FValue;
-    ftFixedWideChar   : Result := StrToFloatDef(FValue,0);
-    ftWideMemo        : Result := StrToFloatDef(FValue,0);
+    ftString          : Result := StringToDouble;
+    ftSmallint        : Result := ReadSmallint;
+    ftInteger         : Result := ReadInteger;
+    ftWord            : Result := ReadWord;
+    ftBoolean         : Result := BooleanToDouble;
+    ftFloat           : Result := ReadDouble;
+    ftCurrency        : Result := ReadDouble;
+    ftBCD             : Result := ReadDouble;
+    ftDate            : Result := Double(ReadDateTime);
+    ftTime            : Result := Double(ReadDateTime);
+    ftDateTime        : Result := Double(ReadDateTime);
+    ftBytes           : Result := BytesToDouble;
+    ftVarBytes        : Result := BytesToDouble;
+    ftAutoInc         : Result := ReadInt64;
+    ftBlob            : Result := BytesToDouble;
+    ftMemo            : Result := StringToDouble;
+    ftFmtMemo         : Result := StringToDouble;
+    ftFixedChar       : Result := StringToDouble;
+    ftWideString      : Result := StringToDouble;
+    ftLargeint        : Result := ReadInt64;
+    ftOraBlob         : Result := BytesToDouble;
+    ftOraClob         : Result := StringToDouble;
+    ftVariant         : Result := ReadDouble;
+    ftGuid            : Result := StringToDouble;
+    ftTimeStamp       : Result := Double(ReadDateTime);
+    ftFMTBcd          : Result := ReadDouble;
+    ftFixedWideChar   : Result := StringToDouble;
+    ftWideMemo        : Result := StringToDouble;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := FValue;
-      ftOraInterval     : Result := FValue;
-      ftLongWord        : Result := FValue;
-      ftShortint        : Result := FValue;
-      ftByte            : Result := FValue;
-      ftExtended        : Result := FValue;
-      ftConnection      : Result := 0;
-      ftParams          : Result := 0;
-      ftStream          : Result := 0;
-      ftTimeStampOffset : Result := FValue;
-      ftObject          : Result := 0;
-      ftSingle          : Result := FValue;
+      ftOraTimeStamp    : Result := Double(ReadDateTime);
+      ftOraInterval     : Result := Double(ReadDateTime);
+      ftLongWord        : Result := ReadLongWord;
+      ftShortint        : Result := ReadShortInt;
+      ftByte            : Result := ReadByte;
+      ftExtended        : Result := ReadDouble;
+      ftStream          : Result := BytesToDouble;
+      ftTimeStampOffset : Result := Double(ReadDateTime);
+      ftSingle          : Result := ReadDouble;
     {$ENDIF}
+    else
+      Result := 0;
   end;
 end;
 
-function TRALStorageField.GetAsInteger : integer;
+function TRALStorageField.GetAsInteger : IntegerRAL;
+
+  function StringToInteger : IntegerRAL;
+  var
+    vString : StringRAL;
+  begin
+    if FValue.Size < 50 then
+    begin
+      vString := ReadString;
+      StringToInteger := StrToIntDef(vString, 0);
+    end
+    else begin
+      StringToInteger := 0;
+    end;
+  end;
+
+  function BooleanToInteger : IntegerRAL;
+  var
+    vBool : Boolean;
+  begin
+    vBool := ReadBoolean;
+    if vBool then
+      BooleanToInteger := 1
+    else
+      BooleanToInteger := 0;
+  end;
+
+  function BytesToInteger : IntegerRAL;
+  begin
+    if FValue.Size = SizeOf(IntegerRAL) then
+      BytesToInteger := ReadInteger
+    else
+      BytesToInteger := 0;
+  end;
+
 begin
   case FDataType of
-    ftUnknown         : Result := 0;
-    ftString          : Result := StrToIntDef(FValue,0);
-    ftSmallint        : Result := FValue;
-    ftInteger         : Result := FValue;
-    ftWord            : Result := FValue;
-    ftBoolean         : Result := 0;
-    ftFloat           : Result := Trunc(FValue);
-    ftCurrency        : Result := Trunc(FValue);
-    ftBCD             : Result := Trunc(FValue);
-    ftDate            : Result := Trunc(FValue);
-    ftTime            : Result := Trunc(FValue);
-    ftDateTime        : Result := Trunc(FValue);
-    ftBytes           : Result := 0;
-    ftVarBytes        : Result := 0;
-    ftAutoInc         : Result := FValue;
-    ftBlob            : Result := 0;
-    ftMemo            : Result := 0;
-    ftGraphic         : Result := 0;
-    ftFmtMemo         : Result := 0;
-    ftParadoxOle      : Result := 0;
-    ftDBaseOle        : Result := 0;
-    ftTypedBinary     : Result := 0;
-    ftCursor          : Result := 0;
-    ftFixedChar       : Result := StrToIntDef(FValue,0);
-    ftWideString      : Result := StrToIntDef(FValue,0);
-    ftLargeint        : Result := FValue;
-    ftADT             : Result := 0;
-    ftArray           : Result := 0;
-    ftReference       : Result := 0;
-    ftDataSet         : Result := 0;
-    ftOraBlob         : Result := 0;
-    ftOraClob         : Result := 0;
-    ftVariant         : Result := 0;
-    ftInterface       : Result := 0;
-    ftIDispatch       : Result := 0;
-    ftGuid            : Result := 0;
-    ftTimeStamp       : Result := Trunc(FValue);
-    ftFMTBcd          : Result := Trunc(FValue);
-    ftFixedWideChar   : Result := StrToIntDef(FValue,0);
-    ftWideMemo        : Result := StrToIntDef(FValue,0);
+    ftString          : Result := StringToInteger;
+    ftSmallint        : Result := IntegerRAL(ReadSmallint);
+    ftInteger         : Result := ReadInteger;
+    ftWord            : Result := IntegerRAL(ReadWord);
+    ftBoolean         : Result := BooleanToInteger;
+    ftFloat           : Result := IntegerRAL(Trunc(ReadDouble));
+    ftCurrency        : Result := IntegerRAL(Trunc(ReadDouble));
+    ftBCD             : Result := IntegerRAL(Trunc(ReadDouble));
+    ftDate            : Result := IntegerRAL(Trunc(ReadDateTime));
+    ftTime            : Result := IntegerRAL(Trunc(ReadDateTime));
+    ftDateTime        : Result := IntegerRAL(Trunc(ReadDateTime));
+    ftBytes           : Result := BytesToInteger;
+    ftVarBytes        : Result := BytesToInteger;
+    ftAutoInc         : Result := IntegerRAL(ReadInt64);
+    ftBlob            : Result := BytesToInteger;
+    ftMemo            : Result := StringToInteger;
+    ftFmtMemo         : Result := StringToInteger;
+    ftFixedChar       : Result := StringToInteger;
+    ftWideString      : Result := StringToInteger;
+    ftLargeint        : Result := IntegerRAL(ReadInt64);
+    ftOraBlob         : Result := BytesToInteger;
+    ftOraClob         : Result := StringToInteger;
+    ftVariant         : Result := ReadInteger;
+    ftGuid            : Result := StringToInteger;
+    ftTimeStamp       : Result := IntegerRAL(Trunc(ReadDateTime));
+    ftFMTBcd          : Result := IntegerRAL(Trunc(ReadDouble));
+    ftFixedWideChar   : Result := StringToInteger;
+    ftWideMemo        : Result := StringToInteger;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := Trunc(FValue);
-      ftOraInterval     : Result := Trunc(FValue);
-      ftLongWord        : Result := FValue;
-      ftShortint        : Result := FValue;
-      ftByte            : Result := FValue;
-      ftExtended        : Result := Trunc(FValue);
-      ftConnection      : Result := 0;
-      ftParams          : Result := 0;
-      ftStream          : Result := 0;
-      ftTimeStampOffset : Result := Trunc(FValue);
-      ftObject          : Result := 0;
-      ftSingle          : Result := Trunc(FValue);
+      ftOraTimeStamp    : Result := IntegerRAL(Trunc(ReadDateTime));
+      ftOraInterval     : Result := IntegerRAL(Trunc(ReadDateTime));
+      ftLongWord        : Result := IntegerRAL(ReadLongWord);
+      ftShortint        : Result := IntegerRAL(ReadShortInt);
+      ftByte            : Result := IntegerRAL(ReadByte);
+      ftExtended        : Result := IntegerRAL(Trunc(ReadDouble));
+      ftStream          : Result := BytesToInteger;
+      ftTimeStampOffset : Result := IntegerRAL(Trunc(ReadDateTime));
+      ftSingle          : Result := IntegerRAL(Trunc(ReadDouble));
     {$ENDIF}
+    else
+      Result := 0;
   end;
 end;
 
-function TRALStorageField.GetAsLargeInt : int64;
+function TRALStorageField.GetAsLargeInt : Int64RAL;
+
+  function StringToInteger : Int64RAL;
+  var
+    vString : StringRAL;
+  begin
+    if FValue.Size < 50 then
+    begin
+      vString := ReadString;
+      StringToInteger := StrToInt64Def(vString, 0);
+    end
+    else begin
+      StringToInteger := 0;
+    end;
+  end;
+
+  function BooleanToInteger : Int64RAL;
+  var
+    vBool : Boolean;
+  begin
+    vBool := ReadBoolean;
+    if vBool then
+      BooleanToInteger := 1
+    else
+      BooleanToInteger := 0;
+  end;
+
+  function BytesToInteger : Int64RAL;
+  begin
+    if FValue.Size = SizeOf(Int64RAL) then
+      BytesToInteger := ReadInt64
+    else
+      BytesToInteger := 0;
+  end;
+
 begin
   case FDataType of
-    ftUnknown         : Result := 0;
-    ftString          : Result := StrToInt64Def(FValue,0);
-    ftSmallint        : Result := FValue;
-    ftInteger         : Result := FValue;
-    ftWord            : Result := FValue;
-    ftBoolean         : Result := 0;
-    ftFloat           : Result := Trunc(FValue);
-    ftCurrency        : Result := Trunc(FValue);
-    ftBCD             : Result := Trunc(FValue);
-    ftDate            : Result := Trunc(FValue);
-    ftTime            : Result := Trunc(FValue);
-    ftDateTime        : Result := Trunc(FValue);
-    ftBytes           : Result := 0;
-    ftVarBytes        : Result := 0;
-    ftAutoInc         : Result := FValue;
-    ftBlob            : Result := 0;
-    ftMemo            : Result := 0;
-    ftGraphic         : Result := 0;
-    ftFmtMemo         : Result := 0;
-    ftParadoxOle      : Result := 0;
-    ftDBaseOle        : Result := 0;
-    ftTypedBinary     : Result := 0;
-    ftCursor          : Result := 0;
-    ftFixedChar       : Result := StrToInt64Def(FValue,0);
-    ftWideString      : Result := StrToInt64Def(FValue,0);
-    ftLargeint        : Result := FValue;
-    ftADT             : Result := 0;
-    ftArray           : Result := 0;
-    ftReference       : Result := 0;
-    ftDataSet         : Result := 0;
-    ftOraBlob         : Result := 0;
-    ftOraClob         : Result := 0;
-    ftVariant         : Result := 0;
-    ftInterface       : Result := 0;
-    ftIDispatch       : Result := 0;
-    ftGuid            : Result := 0;
-    ftTimeStamp       : Result := Trunc(FValue);
-    ftFMTBcd          : Result := Trunc(FValue);
-    ftFixedWideChar   : Result := StrToInt64Def(FValue,0);
-    ftWideMemo        : Result := StrToInt64Def(FValue,0);
+    ftString          : Result := StringToInteger;
+    ftSmallint        : Result := Int64RAL(ReadSmallint);
+    ftInteger         : Result := Int64RAL(ReadInteger);
+    ftWord            : Result := Int64RAL(ReadWord);
+    ftBoolean         : Result := BooleanToInteger;
+    ftFloat           : Result := Int64RAL(Trunc(ReadDouble));
+    ftCurrency        : Result := Int64RAL(Trunc(ReadDouble));
+    ftBCD             : Result := Int64RAL(Trunc(ReadDouble));
+    ftDate            : Result := Int64RAL(Trunc(ReadDateTime));
+    ftTime            : Result := Int64RAL(Trunc(ReadDateTime));
+    ftDateTime        : Result := Int64RAL(Trunc(ReadDateTime));
+    ftBytes           : Result := BytesToInteger;
+    ftVarBytes        : Result := BytesToInteger;
+    ftAutoInc         : Result := ReadInt64;
+    ftBlob            : Result := BytesToInteger;
+    ftMemo            : Result := StringToInteger;
+    ftFmtMemo         : Result := StringToInteger;
+    ftFixedChar       : Result := StringToInteger;
+    ftWideString      : Result := StringToInteger;
+    ftLargeint        : Result := ReadInt64;
+    ftOraBlob         : Result := BytesToInteger;
+    ftOraClob         : Result := StringToInteger;
+    ftVariant         : Result := ReadInt64;
+    ftGuid            : Result := StringToInteger;
+    ftTimeStamp       : Result := Int64RAL(Trunc(ReadDateTime));
+    ftFMTBcd          : Result := Int64RAL(Trunc(ReadDouble));
+    ftFixedWideChar   : Result := StringToInteger;
+    ftWideMemo        : Result := StringToInteger;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := Trunc(FValue);
-      ftOraInterval     : Result := Trunc(FValue);
-      ftLongWord        : Result := FValue;
-      ftShortint        : Result := FValue;
-      ftByte            : Result := FValue;
-      ftExtended        : Result := Trunc(FValue);
-      ftConnection      : Result := 0;
-      ftParams          : Result := 0;
-      ftStream          : Result := 0;
-      ftTimeStampOffset : Result := Trunc(FValue);
-      ftObject          : Result := 0;
-      ftSingle          : Result := Trunc(FValue);
+      ftOraTimeStamp    : Result := Int64RAL(Trunc(ReadDateTime));
+      ftOraInterval     : Result := Int64RAL(Trunc(ReadDateTime));
+      ftLongWord        : Result := Int64RAL(ReadLongWord);
+      ftShortint        : Result := Int64RAL(ReadShortInt);
+      ftByte            : Result := Int64RAL(ReadByte);
+      ftExtended        : Result := Int64RAL(Trunc(ReadDouble));
+      ftStream          : Result := BytesToInteger;
+      ftTimeStampOffset : Result := Int64RAL(Trunc(ReadDateTime));
+      ftSingle          : Result := Int64RAL(Trunc(ReadDouble));
     {$ENDIF}
+    else
+      Result := 0;
   end;
 end;
 
 function TRALStorageField.GetAsString : StringRAL;
+
+  function BooleanToString : StringRAL;
+  var
+    vBool : Boolean;
+  begin
+    vBool := ReadBoolean;
+    if vBool then
+      Result := 'S'
+    else
+      Result := 'N';
+  end;
+
 begin
   case FDataType of
-    ftUnknown         : Result := '';
-    ftString          : Result := FValue;
-    ftSmallint        : Result := IntToStr(FValue);
-    ftInteger         : Result := IntToStr(FValue);
-    ftWord            : Result := IntToStr(FValue);
-    ftBoolean         : Result := '';
-    ftFloat           : Result := FloatToStr(FValue);
-    ftCurrency        : Result := FloatToStr(FValue);
-    ftBCD             : Result := FloatToStr(FValue);
-    ftDate            : Result := FormatDateTime('yyyyMMdd',FValue);
-    ftTime            : Result := FormatDateTime('hhnnsszzz',FValue);
-    ftDateTime        : Result := FormatDateTime('yyyyMMddhhnnsszzz',FValue);
-    ftBytes           : Result := '';
-    ftVarBytes        : Result := '';
-    ftAutoInc         : Result := IntToStr(FValue);
-    ftBlob            : Result := '';
-    ftMemo            : Result := '';
-    ftGraphic         : Result := '';
-    ftFmtMemo         : Result := '';
-    ftParadoxOle      : Result := '';
-    ftDBaseOle        : Result := '';
-    ftTypedBinary     : Result := '';
-    ftCursor          : Result := '';
-    ftFixedChar       : Result := FValue;
-    ftWideString      : Result := FValue;
-    ftLargeint        : Result := IntToStr(FValue);
-    ftADT             : Result := '';
-    ftArray           : Result := '';
-    ftReference       : Result := '';
-    ftDataSet         : Result := '';
-    ftOraBlob         : Result := '';
-    ftOraClob         : Result := '';
-    ftVariant         : Result := '';
-    ftInterface       : Result := '';
-    ftIDispatch       : Result := '';
-    ftGuid            : Result := '';
-    ftTimeStamp       : Result := FormatDateTime('yyyyMMddhhnnsszzz',FValue);
-    ftFMTBcd          : Result := FloatToStr(FValue);
-    ftFixedWideChar   : Result := FValue;
-    ftWideMemo        : Result := FValue;
+    ftString          : Result := ReadString;
+    ftSmallint        : Result := IntToStr(ReadSmallint);
+    ftInteger         : Result := IntToStr(ReadInteger);
+    ftWord            : Result := IntToStr(ReadWord);
+    ftBoolean         : Result := BooleanToString;
+    ftFloat           : Result := FloatToStr(ReadDouble);
+    ftCurrency        : Result := FloatToStr(ReadDouble);
+    ftBCD             : Result := FloatToStr(ReadDouble);
+    ftDate            : Result := FormatDateTime('yyyyMMdd',ReadDateTime);
+    ftTime            : Result := FormatDateTime('hhnnsszzz',ReadDateTime);
+    ftDateTime        : Result := FormatDateTime('yyyyMMddhhnnsszzz',ReadDateTime);
+    ftBytes           : Result := ReadString;
+    ftVarBytes        : Result := ReadString;
+    ftAutoInc         : Result := IntToStr(ReadInt64);
+    ftBlob            : Result := ReadString;
+    ftMemo            : Result := ReadString;
+    ftFmtMemo         : Result := ReadString;
+    ftFixedChar       : Result := ReadString;
+    ftWideString      : Result := ReadString;
+    ftLargeint        : Result := IntToStr(ReadInt64);
+    ftOraBlob         : Result := ReadString;
+    ftOraClob         : Result := ReadString;
+    ftVariant         : Result := ReadString;
+    ftGuid            : Result := ReadString;
+    ftTimeStamp       : Result := FormatDateTime('yyyyMMddhhnnsszzz',ReadDateTime);
+    ftFMTBcd          : Result := FloatToStr(ReadDouble);
+    ftFixedWideChar   : Result := ReadString;
+    ftWideMemo        : Result := ReadString;
     {$IFNDEF FPC}
-      ftOraTimeStamp    : Result := FormatDateTime('yyyyMMddhhnnsszzz',FValue);
-      ftOraInterval     : Result := FormatDateTime('yyyyMMddhhnnsszzz',FValue);
-      ftLongWord        : Result := IntToStr(FValue);
-      ftShortint        : Result := IntToStr(FValue);
-      ftByte            : Result := '';
-      ftExtended        : Result := FloatToStr(FValue);
-      ftConnection      : Result := '';
-      ftParams          : Result := '';
-      ftStream          : Result := '';
-      ftTimeStampOffset : Result := FormatDateTime('yyyyMMddhhnnsszzz',FValue);
-      ftObject          : Result := '';
-      ftSingle          : Result := FloatToStr(FValue);
+      ftOraTimeStamp    : Result := FormatDateTime('yyyyMMddhhnnsszzz',ReadDateTime);
+      ftOraInterval     : Result := FormatDateTime('yyyyMMddhhnnsszzz',ReadDateTime);
+      ftLongWord        : Result := IntToStr(ReadLongWord);
+      ftShortint        : Result := IntToStr(ReadShortInt);
+      ftByte            : Result := IntToStr(ReadByte);
+      ftExtended        : Result := FloatToStr(ReadDouble);
+      ftStream          : Result := ReadString;
+      ftTimeStampOffset : Result := FormatDateTime('yyyyMMddhhnnsszzz',ReadDateTime);
+      ftSingle          : Result := FloatToStr(ReadDouble);
     {$ENDIF}
+    else
+      Result := '';
   end;
 end;
 
-procedure TRALStorageField.SetAsBoolean(AValue : boolean);
+procedure TRALStorageField.SetAsBoolean(AValue : Boolean);
 
-  function BooleanToString : string;
+  function BooleanToString : StringRAL;
   begin
     if AValue then
       Result := 'S'
@@ -954,7 +1334,7 @@ procedure TRALStorageField.SetAsBoolean(AValue : boolean);
       Result := 'N';
   end;
 
-  function BooleanToInteger : integer;
+  function BooleanToInteger : IntegerRAL;
   begin
     if AValue then
       Result := 1
@@ -962,7 +1342,7 @@ procedure TRALStorageField.SetAsBoolean(AValue : boolean);
       Result := 0;
   end;
 
-  function BooleanToFloat : double;
+  function BooleanToDouble : Double;
   begin
     if AValue then
       Result := 1.0
@@ -970,428 +1350,428 @@ procedure TRALStorageField.SetAsBoolean(AValue : boolean);
       Result := 0.0;
   end;
 
+  function BooleanToBytes : TBytes;
+  begin
+    SetLength(Result, SizeOf(AValue));
+    Move(AValue, Result[0], SizeOf(AValue));
+  end;
+
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := BooleanToString;
-    ftSmallint        : FValue := BooleanToInteger;
-    ftInteger         : FValue := BooleanToInteger;
-    ftWord            : FValue := BooleanToInteger;
-    ftBoolean         : FValue := AValue;
-    ftFloat           : FValue := BooleanToFloat;
-    ftCurrency        : FValue := BooleanToFloat;
-    ftBCD             : FValue := BooleanToFloat;
-    ftDate            : FValue := Null;
-    ftTime            : FValue := Null;
-    ftDateTime        : FValue := Null;
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := BooleanToInteger;
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := Null;
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := BooleanToString;
-    ftWideString      : FValue := BooleanToString;
-    ftLargeint        : FValue := BooleanToInteger;
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := Null;
-    ftFMTBcd          : FValue := False;
-    ftFixedWideChar   : FValue := BooleanToString;
-    ftWideMemo        : FValue := BooleanToString;
+    ftString          : WriteString(BooleanToString);
+    ftSmallint        : WriteSmallint(SmallInt(BooleanToInteger));
+    ftInteger         : WriteInteger(BooleanToInteger);
+    ftWord            : WriteWord(Word(BooleanToInteger));
+    ftBoolean         : WriteBoolean(AValue);
+    ftFloat           : WriteDouble(BooleanToDouble);
+    ftCurrency        : WriteDouble(BooleanToDouble);
+    ftBCD             : WriteDouble(BooleanToDouble);
+    ftBytes           : WriteBytes(BooleanToBytes);
+    ftVarBytes        : WriteBytes(BooleanToBytes);
+    ftAutoInc         : WriteInt64(Int64RAL(BooleanToInteger));
+    ftBlob            : WriteBytes(BooleanToBytes);
+    ftMemo            : WriteString(BooleanToString);
+    ftFmtMemo         : WriteString(BooleanToString);
+    ftFixedChar       : WriteString(BooleanToString);
+    ftWideString      : WriteString(BooleanToString);
+    ftLargeint        : WriteInt64(Int64RAL(BooleanToInteger));
+    ftOraBlob         : WriteBytes(BooleanToBytes);
+    ftOraClob         : WriteString(BooleanToString);
+    ftVariant         : WriteBoolean(AValue);
+    ftGuid            : WriteString(BooleanToString);
+    ftFMTBcd          : WriteDouble(BooleanToDouble);
+    ftFixedWideChar   : WriteString(BooleanToString);
+    ftWideMemo        : WriteString(BooleanToString);
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := Null;
-      ftOraInterval     : FValue := Null;
-      ftLongWord        : FValue := BooleanToInteger;
-      ftShortint        : FValue := BooleanToInteger;
-      ftByte            : FValue := BooleanToInteger;
-      ftExtended        : FValue := BooleanToFloat;
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := Null;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := BooleanToFloat;
+      ftLongWord        : WriteLongWord(LongWord(BooleanToInteger));
+      ftShortint        : WriteShortInt(ShortInt(BooleanToInteger));
+      ftByte            : WriteByte(Byte(BooleanToInteger));
+      ftExtended        : WriteDouble(BooleanToDouble);
+      ftStream          : WriteBytes(BooleanToBytes);
+      ftSingle          : WriteDouble(BooleanToDouble);
     {$ENDIF}
   end;
 end;
 
 procedure TRALStorageField.SetAsDateTime(AValue : TDateTime);
+
+  function DateTimeToString : StringRAL;
+  begin
+    Result := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
+  end;
+
+  function DateTimeToInteger : IntegerRAL;
+  begin
+    Result := Trunc(AValue);
+  end;
+
+  function DateTimeToBytes : TBytes;
+  begin
+    SetLength(Result, SizeOf(AValue));
+    Move(AValue, Result[0], SizeOf(AValue));
+  end;
+
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
-    ftSmallint        : FValue := SmallInt(Trunc(AValue));
-    ftInteger         : FValue := Trunc(AValue);
-    ftWord            : FValue := Word(Trunc(AValue));
-    ftBoolean         : FValue := null;
-    ftFloat           : FValue := Double(AValue);
-    ftCurrency        : FValue := Double(AValue);
-    ftBCD             : FValue := Double(AValue);
-    ftDate            : FValue := Trunc(AValue);
-    ftTime            : FValue := Frac(AValue);
-    ftDateTime        : FValue := AValue;
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := Trunc(AValue);
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
-    ftWideString      : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
-    ftLargeint        : FValue := Trunc(AValue);
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := AValue;
-    ftFMTBcd          : FValue := Double(AValue);
-    ftFixedWideChar   : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
-    ftWideMemo        : FValue := FormatDateTime('yyyyMMddhhnnsszzz',AValue);
+    ftString          : WriteString(DateTimeToString);
+    ftSmallint        : WriteSmallint(SmallInt(DateTimeToInteger));
+    ftInteger         : WriteInteger(DateTimeToInteger);
+    ftWord            : WriteWord(Word(DateTimeToInteger));
+    ftFloat           : WriteDouble(Double(AValue));
+    ftCurrency        : WriteDouble(Double(AValue));
+    ftBCD             : WriteDouble(Double(AValue));
+    ftDate            : WriteDateTime(TDateTime(Trunc(AValue)));
+    ftTime            : WriteDateTime(TDateTime(Frac(AValue)));
+    ftDateTime        : WriteDateTime(AValue);
+    ftBytes           : WriteBytes(DateTimeToBytes);
+    ftVarBytes        : WriteBytes(DateTimeToBytes);
+    ftAutoInc         : WriteInt64(Int64RAL(DateTimeToInteger));
+    ftBlob            : WriteBytes(DateTimeToBytes);
+    ftMemo            : WriteString(DateTimeToString);
+    ftFmtMemo         : WriteString(DateTimeToString);
+    ftFixedChar       : WriteString(DateTimeToString);
+    ftWideString      : WriteString(DateTimeToString);
+    ftLargeint        : WriteInt64(Int64RAL(DateTimeToInteger));
+    ftOraBlob         : WriteBytes(DateTimeToBytes);
+    ftOraClob         : WriteString(DateTimeToString);
+    ftVariant         : WriteDateTime(AValue);
+    ftGuid            : WriteString(DateTimeToString);
+    ftTimeStamp       : WriteDateTime(AValue);
+    ftFMTBcd          : WriteDouble(Double(AValue));
+    ftFixedWideChar   : WriteString(DateTimeToString);
+    ftWideMemo        : WriteString(DateTimeToString);
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := AValue;
-      ftOraInterval     : FValue := AValue;
-      ftLongWord        : FValue := Trunc(AValue);
-      ftShortint        : FValue := ShortInt(Trunc(AValue));
-      ftByte            : FValue := Byte(Trunc(AValue));
-      ftExtended        : FValue := Double(AValue);
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := AValue;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := Double(AValue);
+      ftOraTimeStamp    : WriteDateTime(AValue);
+      ftOraInterval     : WriteDateTime(AValue);
+      ftLongWord        : WriteLongWord(LongWord(DateTimeToInteger));
+      ftShortint        : WriteShortInt(ShortInt(DateTimeToInteger));
+      ftByte            : WriteByte(Byte(DateTimeToInteger));
+      ftExtended        : WriteDouble(Double(AValue));
+      ftStream          : WriteBytes(DateTimeToBytes);
+      ftTimeStampOffset : WriteString(DateTimeToString);
+      ftSingle          : WriteDouble(Double(AValue));
     {$ENDIF}
   end;
 end;
 
-procedure TRALStorageField.SetAsDouble(AValue : double);
+procedure TRALStorageField.SetAsDouble(AValue : Double);
+
+  function DoubleToBoolean : boolean;
+  begin
+    Result := AValue = 1.0;
+  end;
+
+  function DoubleToBytes : TBytes;
+  begin
+    SetLength(Result, SizeOf(AValue));
+    Move(AValue, Result[0], SizeOf(AValue));
+  end;
+
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := FloatToStr(AValue);
-    ftSmallint        : FValue := SmallInt(Trunc(AValue));
-    ftInteger         : FValue := Trunc(AValue);
-    ftWord            : FValue := Word(Trunc(AValue));
-    ftBoolean         : FValue := AValue = 1.0;
-    ftFloat           : FValue := AValue;
-    ftCurrency        : FValue := AValue;
-    ftBCD             : FValue := AValue;
-    ftDate            : FValue := TDateTime(Trunc(AValue));
-    ftTime            : FValue := TDateTime(Frac(AValue));
-    ftDateTime        : FValue := TDateTime(AValue);
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := Trunc(AValue);
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := FloatToStr(AValue);
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := FloatToStr(AValue);
-    ftWideString      : FValue := FloatToStr(AValue);
-    ftLargeint        : FValue := Trunc(AValue);
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := TDateTime(AValue);
-    ftFMTBcd          : FValue := AValue;
-    ftFixedWideChar   : FValue := FloatToStr(AValue);
-    ftWideMemo        : FValue := FloatToStr(AValue);
+    ftString          : WriteString(FloatToStr(AValue));
+    ftSmallint        : WriteSmallint(SmallInt(Trunc(AValue)));
+    ftInteger         : WriteInteger(Trunc(AValue));
+    ftWord            : WriteWord(Word(Trunc(AValue)));
+    ftBoolean         : WriteBoolean(DoubleToBoolean);
+    ftFloat           : WriteDouble(AValue);
+    ftCurrency        : WriteDouble(AValue);
+    ftBCD             : WriteDouble(AValue);
+    ftDate            : WriteDateTime(TDateTime(Trunc(AValue)));
+    ftTime            : WriteDateTime(TDateTime(Frac(AValue)));
+    ftDateTime        : WriteDateTime(TDateTime(AValue));
+    ftBytes           : WriteBytes(DoubleToBytes);
+    ftVarBytes        : WriteBytes(DoubleToBytes);
+    ftAutoInc         : WriteInt64(Trunc(AValue));
+    ftBlob            : WriteBytes(DoubleToBytes);
+    ftMemo            : WriteString(FloatToStr(AValue));
+    ftFmtMemo         : WriteString(FloatToStr(AValue));
+    ftFixedChar       : WriteString(FloatToStr(AValue));
+    ftWideString      : WriteString(FloatToStr(AValue));
+    ftLargeint        : WriteInt64(Trunc(AValue));
+    ftOraBlob         : WriteBytes(DoubleToBytes);
+    ftOraClob         : WriteString(FloatToStr(AValue));
+    ftVariant         : WriteDouble(AValue);
+    ftGuid            : WriteString(FloatToStr(AValue));
+    ftTimeStamp       : WriteDateTime(TDateTime(AValue));
+    ftFMTBcd          : WriteDouble(AValue);
+    ftFixedWideChar   : WriteString(FloatToStr(AValue));
+    ftWideMemo        : WriteString(FloatToStr(AValue));
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := AValue;
-      ftOraInterval     : FValue := AValue;
-      ftLongWord        : FValue := Trunc(AValue);
-      ftShortint        : FValue := ShortInt(Trunc(AValue));
-      ftByte            : FValue := Byte(Trunc(AValue));
-      ftExtended        : FValue := AValue;
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := AValue;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := AValue;
+      ftOraTimeStamp    : WriteDateTime(TDateTime(AValue));
+      ftOraInterval     : WriteDateTime(TDateTime(AValue));
+      ftLongWord        : WriteLongWord(LongWord(Trunc(AValue)));
+      ftShortint        : WriteShortInt(ShortInt(Trunc(AValue)))
+      ftByte            : WriteByte(Byte(Trunc(AValue)))
+      ftExtended        : WriteDouble(AValue);
+      ftStream          : WriteBytes(DoubleToBytes);
+      ftTimeStampOffset : WriteDateTime(TDateTime(AValue));
+      ftSingle          : WriteDouble(AValue);
     {$ENDIF}
   end;
 end;
 
-procedure TRALStorageField.SetAsInteger(AValue : integer);
+procedure TRALStorageField.SetAsInteger(AValue : IntegerRAL);
+
+  function IntegerToBoolean : boolean;
+  begin
+    Result := AValue = 1;
+  end;
+
+  function IntegerToBytes : TBytes;
+  begin
+    SetLength(Result, SizeOf(AValue));
+    Move(AValue, Result[0], SizeOf(AValue));
+  end;
+
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := IntToStr(AValue);
-    ftSmallint        : FValue := SmallInt(AValue);
-    ftInteger         : FValue := AValue;
-    ftWord            : FValue := Word(AValue);
-    ftBoolean         : FValue := AValue = 1;
-    ftFloat           : FValue := AValue;
-    ftCurrency        : FValue := AValue;
-    ftBCD             : FValue := AValue;
-    ftDate            : FValue := TDateTime(AValue);
-    ftTime            : FValue := TDateTime(AValue);
-    ftDateTime        : FValue := TDateTime(AValue);
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := AValue;
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := IntToStr(AValue);
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := IntToStr(AValue);
-    ftWideString      : FValue := IntToStr(AValue);
-    ftLargeint        : FValue := AValue;
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := TDateTime(AValue);
-    ftFMTBcd          : FValue := AValue;
-    ftFixedWideChar   : FValue := IntToStr(AValue);
-    ftWideMemo        : FValue := IntToStr(AValue);
+    ftString          : WriteString(IntToStr(AValue));
+    ftSmallint        : WriteSmallint(SmallInt(AValue));
+    ftInteger         : WriteInteger(AValue);
+    ftWord            : WriteWord(Word(AValue));
+    ftBoolean         : WriteBoolean(IntegerToBoolean);
+    ftFloat           : WriteDouble(Double(AValue));
+    ftCurrency        : WriteDouble(Double(AValue));
+    ftBCD             : WriteDouble(Double(AValue));
+    ftDate            : WriteDateTime(TDateTime(AValue));
+    ftTime            : WriteDateTime(TDateTime(0));
+    ftDateTime        : WriteDateTime(TDateTime(AValue));
+    ftBytes           : WriteBytes(IntegerToBytes);
+    ftVarBytes        : WriteBytes(IntegerToBytes);
+    ftAutoInc         : WriteInt64(Int64RAL(AValue));
+    ftBlob            : WriteBytes(IntegerToBytes);
+    ftMemo            : WriteString(IntToStr(AValue));
+    ftFmtMemo         : WriteString(IntToStr(AValue));
+    ftFixedChar       : WriteString(IntToStr(AValue));
+    ftWideString      : WriteString(IntToStr(AValue));
+    ftLargeint        : WriteInt64(Int64RAL(AValue));
+    ftOraBlob         : WriteBytes(IntegerToBytes);
+    ftOraClob         : WriteString(IntToStr(AValue));
+    ftVariant         : WriteInteger(AValue);
+    ftGuid            : WriteString(IntToStr(AValue));
+    ftTimeStamp       : WriteDateTime(TDateTime(AValue));
+    ftFMTBcd          : WriteDouble(Double(AValue));
+    ftFixedWideChar   : WriteString(IntToStr(AValue));
+    ftWideMemo        : WriteString(IntToStr(AValue));
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := AValue;
-      ftOraInterval     : FValue := AValue;
-      ftLongWord        : FValue := AValue;
-      ftShortint        : FValue := ShortInt(AValue);
-      ftByte            : FValue := Byte(AValue);
-      ftExtended        : FValue := AValue;
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := AValue;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := AValue;
+      ftOraTimeStamp    : WriteDateTime(TDateTime(AValue));
+      ftOraInterval     : WriteDateTime(TDateTime(AValue));
+      ftLongWord        : WriteLongWord(LongWord(AValue));
+      ftShortint        : WriteShortInt(ShortInt(AValue));
+      ftByte            : WriteByte(Byte(AValue));
+      ftExtended        : WriteDouble(Double(AValue));
+      ftStream          : WriteBytes(IntegerToBytes);
+      ftTimeStampOffset : WriteDateTime(TDateTime(AValue));
+      ftSingle          : WriteDouble(Double(AValue));
     {$ENDIF}
   end;
 end;
 
-procedure TRALStorageField.SetAsLargeInt(AValue : int64);
+procedure TRALStorageField.SetAsLargeInt(AValue : Int64RAL);
+
+  function IntegerToBoolean : boolean;
+  begin
+    Result := AValue = 1;
+  end;
+
+  function IntegerToBytes : TBytes;
+  begin
+    SetLength(Result, SizeOf(AValue));
+    Move(AValue, Result[0], SizeOf(AValue));
+  end;
+
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := IntToStr(AValue);
-    ftSmallint        : FValue := SmallInt(AValue);
-    ftInteger         : FValue := Integer(AValue);
-    ftWord            : FValue := Word(AValue);
-    ftBoolean         : FValue := AValue = 1;
-    ftFloat           : FValue := AValue;
-    ftCurrency        : FValue := AValue;
-    ftBCD             : FValue := AValue;
-    ftDate            : FValue := TDateTime(AValue);
-    ftTime            : FValue := TDateTime(AValue);
-    ftDateTime        : FValue := TDateTime(AValue);
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := AValue;
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := IntToStr(AValue);
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := IntToStr(AValue);
-    ftWideString      : FValue := IntToStr(AValue);
-    ftLargeint        : FValue := AValue;
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := TDateTime(AValue);
-    ftFMTBcd          : FValue := AValue;
-    ftFixedWideChar   : FValue := IntToStr(AValue);
-    ftWideMemo        : FValue := IntToStr(AValue);
+    ftString          : WriteString(IntToStr(AValue));
+    ftSmallint        : WriteSmallint(SmallInt(AValue));
+    ftInteger         : WriteInteger(IntegerRAL(AValue));
+    ftWord            : WriteWord(Word(AValue));
+    ftBoolean         : WriteBoolean(IntegerToBoolean);
+    ftFloat           : WriteDouble(Double(AValue));
+    ftCurrency        : WriteDouble(Double(AValue));
+    ftBCD             : WriteDouble(Double(AValue));
+    ftDate            : WriteDateTime(TDateTime(AValue));
+    ftTime            : WriteDateTime(TDateTime(0));
+    ftDateTime        : WriteDateTime(TDateTime(AValue));
+    ftBytes           : WriteBytes(IntegerToBytes);
+    ftVarBytes        : WriteBytes(IntegerToBytes);
+    ftAutoInc         : WriteInt64(AValue);
+    ftBlob            : WriteBytes(IntegerToBytes);
+    ftMemo            : WriteString(IntToStr(AValue));
+    ftFmtMemo         : WriteString(IntToStr(AValue));
+    ftFixedChar       : WriteString(IntToStr(AValue));
+    ftWideString      : WriteString(IntToStr(AValue));
+    ftLargeint        : WriteInt64(AValue);
+    ftOraBlob         : WriteBytes(IntegerToBytes);
+    ftOraClob         : WriteString(IntToStr(AValue));
+    ftVariant         : WriteInteger(AValue);
+    ftGuid            : WriteString(IntToStr(AValue));
+    ftTimeStamp       : WriteDateTime(TDateTime(AValue));
+    ftFMTBcd          : WriteDouble(Double(AValue));
+    ftFixedWideChar   : WriteString(IntToStr(AValue));
+    ftWideMemo        : WriteString(IntToStr(AValue));
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := AValue;
-      ftOraInterval     : FValue := AValue;
-      ftLongWord        : FValue := AValue;
-      ftShortint        : FValue := ShortInt(AValue);
-      ftByte            : FValue := Byte(AValue);
-      ftExtended        : FValue := AValue;
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := AValue;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := AValue;
+      ftOraTimeStamp    : WriteDateTime(TDateTime(AValue));
+      ftOraInterval     : WriteDateTime(TDateTime(AValue));
+      ftLongWord        : WriteLongWord(LongWord(AValue));
+      ftShortint        : WriteShortInt(ShortInt(AValue));
+      ftByte            : WriteByte(Byte(AValue));
+      ftExtended        : WriteDouble(Double(AValue));
+      ftStream          : WriteBytes(IntegerToBytes);
+      ftTimeStampOffset : WriteDateTime(TDateTime(AValue));
+      ftSingle          : WriteDouble(Double(AValue));
     {$ENDIF}
   end;
 end;
 
 procedure TRALStorageField.SetAsString(AValue : StringRAL);
 
-  function StringToInteger : variant;
-  var
-    vRes : int64;
+  function StringToInteger : Int64RAL;
   begin
-    if not TryStrToInt64(AValue, vRes) then
-      Result := null
-    else
-      Result := vRes;
+    if not TryStrToInt64(AValue, Result) then
+      Result := 0
   end;
 
-  function StringToBoolean : variant;
+  function StringToBoolean : Boolean;
   begin
-    if (AValue = 'S') or (AValue = 'T') or (AValue = 'V') or (AValue = '1') then
-      Result := True
-    else if (AValue = 'N') or (AValue = 'F') or (AValue = '0') then
-      Result := False
-    else
-      Result := Null;
+    Result := (AValue = 'S') or (AValue = 'T') or
+              (AValue = 'V') or (AValue = '1');
   end;
 
-  function StringToDouble : variant;
-  var
-    vRes : double;
+  function StringToDouble : Double;
   begin
-    if not TryStrToFloat(AValue, vRes) then
-      Result := null
-    else
-      Result := vRes;
+    if not TryStrToFloat(AValue, Result) then
+      Result := 0
   end;
 
-  function StringToDateTime : variant;
+  function StringToDateTime : TDateTime;
   var
-    vResDate : TDateTime;
-    vResDouble : double;
-    vFormat : TFormatSettings;
+    vFormat : StringRAL;
+    vNumber : StringRAL;
   begin
-    if not TryStrToDateTime(AValue, vResDate) then
-    begin
-      vFormat.ShortDateFormat := 'yyyyMMdd';
-      vFormat.ShortTimeFormat := 'hhnnsszzz';
-      vFormat.DateSeparator := #0;
-      vFormat.TimeSeparator := #0;
-
-      if not TryStrToDateTime(AValue, vResDate, vFormat) then
-      begin
-        if not TryStrToFloat(AValue, vResDouble) then
-          Result := null
-        else
-          Result := TDateTime(vResDouble);
-      end
-      else
-      begin
-        Result := vResDate;
-      end;
-    end
+    vFormat := 'yyyyMMddhhnnsszzz';
+    vNumber := OnlyNumbers(AValue);
+    if vNumber <> '' then
+      Result := RALStringToDateTime(vNumber, vFormat)
     else
-    begin
-      Result := vResDate;
-    end;
+      Result := TDateTime(0);
+  end;
+
+  function StringToBytes : TBytes;
+  begin
+    SetLength(Result, Length(AValue));
+    if AValue <> '' then
+      Move(AValue[PosIniStr], Result[0], Length(AValue))
   end;
 
 begin
+  Clear;
+
   case FDataType of
-    ftUnknown         : FValue := Null;
-    ftString          : FValue := AValue;
-    ftSmallint        : FValue := SmallInt(StringToInteger);
-    ftInteger         : FValue := Integer(StringToInteger);
-    ftWord            : FValue := Word(StringToInteger);
-    ftBoolean         : FValue := StringToBoolean;
-    ftFloat           : FValue := StringToDouble;
-    ftCurrency        : FValue := StringToDouble;
-    ftBCD             : FValue := StringToDouble;
-    ftDate            : FValue := StringToDateTime;
-    ftTime            : FValue := StringToDateTime;
-    ftDateTime        : FValue := StringToDateTime;
-    ftBytes           : FValue := Null;
-    ftVarBytes        : FValue := Null;
-    ftAutoInc         : FValue := StringToInteger;
-    ftBlob            : FValue := Null;
-    ftMemo            : FValue := Null;
-    ftGraphic         : FValue := Null;
-    ftFmtMemo         : FValue := AValue;
-    ftParadoxOle      : FValue := Null;
-    ftDBaseOle        : FValue := Null;
-    ftTypedBinary     : FValue := Null;
-    ftCursor          : FValue := Null;
-    ftFixedChar       : FValue := AValue;
-    ftWideString      : FValue := AValue;
-    ftLargeint        : FValue := StringToInteger;
-    ftADT             : FValue := Null;
-    ftArray           : FValue := Null;
-    ftReference       : FValue := Null;
-    ftDataSet         : FValue := Null;
-    ftOraBlob         : FValue := Null;
-    ftOraClob         : FValue := Null;
-    ftVariant         : FValue := Null;
-    ftInterface       : FValue := Null;
-    ftIDispatch       : FValue := Null;
-    ftGuid            : FValue := Null;
-    ftTimeStamp       : FValue := StringToDateTime;
-    ftFMTBcd          : FValue := AValue;
-    ftFixedWideChar   : FValue := AValue;
-    ftWideMemo        : FValue := AValue;
+    ftString          : WriteString(AValue);
+    ftSmallint        : WriteSmallint(SmallInt(StringToInteger));
+    ftInteger         : WriteInteger(IntegerRAL(StringToInteger));
+    ftWord            : WriteWord(Word(StringToInteger));
+    ftBoolean         : WriteBoolean(StringToBoolean);
+    ftFloat           : WriteDouble(StringToDouble);
+    ftCurrency        : WriteDouble(StringToDouble);
+    ftBCD             : WriteDouble(StringToDouble);
+    ftDate            : WriteDateTime(StringToDateTime);
+    ftTime            : WriteDateTime(StringToDateTime);
+    ftDateTime        : WriteDateTime(StringToDateTime);
+    ftBytes           : WriteBytes(StringToBytes);
+    ftVarBytes        : WriteBytes(StringToBytes);
+    ftAutoInc         : WriteInt64(StringToInteger);
+    ftBlob            : WriteBytes(StringToBytes);
+    ftMemo            : WriteString(AValue);
+    ftFmtMemo         : WriteString(AValue);
+    ftFixedChar       : WriteString(AValue);
+    ftWideString      : WriteString(AValue);
+    ftLargeint        : WriteInt64(StringToInteger);
+    ftOraBlob         : WriteBytes(StringToBytes);
+    ftOraClob         : WriteString(AValue);
+    ftVariant         : WriteString(AValue);
+    ftGuid            : WriteString(AValue);
+    ftTimeStamp       : WriteDateTime(StringToDateTime);
+    ftFMTBcd          : WriteDouble(StringToDouble);
+    ftFixedWideChar   : WriteString(AValue);
+    ftWideMemo        : WriteString(AValue);
     {$IFNDEF FPC}
-      ftOraTimeStamp    : FValue := StringToDateTime;
-      ftOraInterval     : FValue := StringToDateTime;
-      ftLongWord        : FValue := LongWord(StringToInteger);
-      ftShortint        : FValue := ShortInt(StringToInteger);
-      ftByte            : FValue := Byte(StringToInteger);
-      ftExtended        : FValue := StringToDouble;
-      ftConnection      : FValue := Null;
-      ftParams          : FValue := Null;
-      ftStream          : FValue := Null;
-      ftTimeStampOffset : FValue := StringToDateTime;
-      ftObject          : FValue := Null;
-      ftSingle          : FValue := StringToDouble;
+      ftOraTimeStamp    : WriteDateTime(StringToDateTime);
+      ftOraInterval     : WriteDateTime(StringToDateTime);
+      ftLongWord        : WriteLongWord(LongWord(StringToInteger));
+      ftShortint        : WriteShortInt(ShortInt(StringToInteger));
+      ftByte            : WriteByte(Byte(StringToInteger));
+      ftExtended        : WriteDouble(StringToDouble);
+      ftStream          : WriteBytes(StringToBytes);
+      ftTimeStampOffset : WriteDateTime(StringToDateTime);
+      ftSingle          : WriteDouble(StringToDouble);
     {$ENDIF}
   end;
 end;
 
 { TRALStorageLink }
+
+function TRALStorageLink.GetStorageClass : TRALStorageClass;
+var
+  vClassStor : TRALStorageClassLink;
+  vStor : TRALStorageLink;
+begin
+  if Self = nil then begin
+    vClassStor := TRALStorageClassLink(FindClass('TRALStorageBINLink'));
+    if vClassStor = nil then
+      vClassStor := TRALStorageClassLink(FindClass('TRALStorageJSONLink'));
+
+    if vClassStor <> nil then
+    begin
+      vStor := vClassStor.Create(nil);
+      try
+        Result := vStor.StorageClass;
+      finally
+        FreeAndNil(vStor);
+      end;
+    end
+    else begin
+      raise Exception.Create('TRALStorageLink not found');
+    end;
+  end;
+end;
+
+function TRALStorageLink.GetContentType : StringRAL;
+var
+  vClassStor : TRALStorageClassLink;
+  vStor : TRALStorageLink;
+begin
+  if Self = nil then begin
+    vClassStor := TRALStorageClassLink(FindClass('TRALStorageBINLink'));
+    if vClassStor = nil then
+      vClassStor := TRALStorageClassLink(FindClass('TRALStorageJSONLink'));
+
+    if vClassStor <> nil then
+    begin
+      vStor := vClassStor.Create(nil);
+      try
+        Result := vStor.ContentType;
+      finally
+        FreeAndNil(vStor);
+      end;
+    end
+    else begin
+      raise Exception.Create('TRALStorageLink not found');
+    end;
+  end;
+end;
 
 procedure TRALStorageLink.SaveDataset(ADataset : TDataSet; AStream : TStream);
 var
@@ -1425,6 +1805,20 @@ function TRALStorageLink.SaveDataset(ADataset : TDataSet) : TStream;
 begin
   Result := TMemoryStream.Create;
   SaveDataset(ADataset, Result);
+end;
+
+procedure TRALStorageLink.LoadDataset(ADataset : TDataSet; AFileName : string);
+var
+  vStor : TRALDatasetStorage;
+begin
+  vStor := TRALDatasetStorage.Create;
+  try
+    vStor.Dataset := ADataset;
+    vStor.StorageLink := Self;
+    vStor.LoadFromFile(AFileName);
+  finally
+    FreeAndNil(vStor);
+  end;
 end;
 
 { TRALStorage }
@@ -1521,65 +1915,160 @@ end;
 procedure TRALStorage.WriteField(AField : TField);
 var
   vField : TRALStorageField;
+
+  procedure SaveAsStream;
+  var
+    vMem : TMemoryStream;
+  begin
+    vMem := TMemoryStream.Create;
+    try
+      TBlobField(AField).SaveToStream(vMem);
+      vField.AsStream := vMem;
+    finally
+      FreeAndNil(vMem);
+    end;
+  end;
+
 begin
   vField := FieldByName[AField.FieldName];
-  if vField <> nil then
+
+  if vField <> nil then begin
+    vField.Clear;
+
+    if (not AField.IsNull) then
+    begin
+      case AField.DataType of
+        ftUnknown         : vField.Clear;
+        ftString          : vField.AsString := AField.AsString;
+        ftSmallint        : vField.AsInteger := AField.AsInteger;
+        ftInteger         : vField.AsInteger := AField.AsInteger;
+        ftWord            : vField.AsInteger := AField.AsInteger;
+        ftBoolean         : vField.AsBoolean := AField.AsBoolean;
+        ftFloat           : vField.AsDouble := AField.AsFloat;
+        ftCurrency        : vField.AsDouble := AField.AsFloat;
+        ftBCD             : vField.AsDouble := AField.AsFloat;
+        ftDate            : vField.AsDateTime := AField.AsDateTime;
+        ftTime            : vField.AsDateTime := AField.AsDateTime;
+        ftDateTime        : vField.AsDateTime := AField.AsDateTime;
+        ftBytes           : vField.AsBytes := AField.AsBytes;
+        ftVarBytes        : vField.AsBytes := AField.AsBytes;
+        ftAutoInc         : vField.AsInteger := AField.AsInteger;
+        ftBlob            : SaveAsStream;
+        ftMemo            : vField.AsString := AField.AsString;
+        ftGraphic         : SaveAsStream;
+        ftFmtMemo         : vField.AsString := AField.AsString;
+        ftParadoxOle      : vField.Clear;
+        ftDBaseOle        : vField.Clear;
+        ftTypedBinary     : vField.Clear;
+        ftCursor          : vField.Clear;
+        ftFixedChar       : vField.AsString := AField.AsString;
+        ftWideString      : vField.AsString := AField.AsString;
+        ftLargeint        : vField.AsInteger := AField.AsInteger;
+        ftADT             : vField.Clear;
+        ftArray           : vField.Clear;
+        ftReference       : vField.Clear;
+        ftDataSet         : vField.Clear;
+        ftOraBlob         : SaveAsStream;
+        ftOraClob         : vField.AsString := AField.AsString;
+        ftVariant         : vField.Clear;
+        ftInterface       : vField.Clear;
+        ftIDispatch       : vField.Clear;
+        ftGuid            : vField.AsString := AField.AsString;
+        ftTimeStamp       : vField.AsDateTime := AField.AsDateTime;
+        ftFMTBcd          : vField.AsDouble := AField.AsFloat;
+        ftFixedWideChar   : vField.AsString := AField.AsString;
+        ftWideMemo        : vField.AsString := AField.AsString;
+        {$IFNDEF FPC}
+          ftOraTimeStamp    : vField.AsDateTime := AField.AsDateTime;
+          ftOraInterval     : vField.AsDateTime := AField.AsDateTime;
+          ftLongWord        : vField.AsInteger := AField.AsInteger;
+          ftShortint        : vField.AsInteger := AField.AsInteger;
+          ftByte            : vField.AsInteger := AField.AsInteger;
+          ftExtended        : vField.AsDouble := AField.AsFloat;
+          ftConnection      : vField.Clear;
+          ftParams          : vField.Clear;
+          ftStream          : SaveAsStream;
+          ftTimeStampOffset : vField.AsDateTime := AField.AsDateTime;
+          ftObject          : vField.Clear;
+          ftSingle          : vField.AsDouble := AField.AsFloat;
+        {$ENDIF}
+      end;
+    end;
+  end;
+end;
+
+procedure TRALStorage.ReadField(AField : TField);
+var
+  vField : TRALStorageField;
+
+  procedure ReadAsStream;
   begin
-    case AField.DataType of
-      ftUnknown         : vField.Clear;
-      ftString          : vField.AsString := AField.AsString;
-      ftSmallint        : vField.AsInteger := AField.AsInteger;
-      ftInteger         : vField.AsInteger := AField.AsInteger;
-      ftWord            : vField.AsInteger := AField.AsInteger;
-      ftBoolean         : vField.AsBoolean := AField.AsBoolean;
-      ftFloat           : vField.AsDouble := AField.AsFloat;
-      ftCurrency        : vField.AsDouble := AField.AsFloat;
-      ftBCD             : vField.AsDouble := AField.AsFloat;
-      ftDate            : vField.AsDateTime := AField.AsDateTime;
-      ftTime            : vField.AsDateTime := AField.AsDateTime;
-      ftDateTime        : vField.AsDateTime := AField.AsDateTime;
-      ftBytes           : vField.Clear;
-      ftVarBytes        : vField.Clear;
-      ftAutoInc         : vField.AsInteger := AField.AsInteger;
-      ftBlob            : vField.Clear;
-      ftMemo            : vField.Clear;
-      ftGraphic         : vField.Clear;
-      ftFmtMemo         : vField.AsString := AField.AsString;
-      ftParadoxOle      : vField.Clear;
-      ftDBaseOle        : vField.Clear;
-      ftTypedBinary     : vField.Clear;
-      ftCursor          : vField.Clear;
-      ftFixedChar       : vField.AsString := AField.AsString;
-      ftWideString      : vField.AsString := AField.AsString;
-      ftLargeint        : vField.AsInteger := AField.AsInteger;
-      ftADT             : vField.Clear;
-      ftArray           : vField.Clear;
-      ftReference       : vField.Clear;
-      ftDataSet         : vField.Clear;
-      ftOraBlob         : vField.Clear;
-      ftOraClob         : vField.Clear;
-      ftVariant         : vField.Clear;
-      ftInterface       : vField.Clear;
-      ftIDispatch       : vField.Clear;
-      ftGuid            : vField.AsString := AField.AsString;
-      ftTimeStamp       : vField.AsDateTime := AField.AsDateTime;
-      ftFMTBcd          : vField.AsDouble := AField.AsFloat;
-      ftFixedWideChar   : vField.AsString := AField.AsString;
-      ftWideMemo        : vField.AsString := AField.AsString;
-      {$IFNDEF FPC}
-        ftOraTimeStamp    : vField.AsDateTime := AField.AsDateTime;
-        ftOraInterval     : vField.AsDateTime := AField.AsDateTime;
-        ftLongWord        : vField.AsInteger := AField.AsInteger;
-        ftShortint        : vField.AsInteger := AField.AsInteger;
-        ftByte            : vField.AsInteger := AField.AsInteger;
-        ftExtended        : vField.AsDouble := AField.AsFloat;
-        ftConnection      : vField.Clear;
-        ftParams          : vField.Clear;
-        ftStream          : vField.Clear;
-        ftTimeStampOffset : vField.AsDateTime := AField.AsDateTime;
-        ftObject          : vField.Clear;
-        ftSingle          : vField.AsDouble := AField.AsFloat;
-      {$ENDIF}
+    vField.AsStream.Position := 0;
+    TBlobField(AField).LoadFromStream(vField.AsStream);
+  end;
+
+begin
+  if AField <> nil then
+  begin
+    AField.Clear;
+    vField := FieldByName[AField.FieldName];
+    if (vField <> nil) and (not vField.IsNull) then
+    begin
+      case AField.DataType of
+        ftString          : AField.AsString := vField.AsString;
+        ftSmallint        : AField.AsInteger := vField.AsInteger;
+        ftInteger         : AField.AsInteger := vField.AsInteger;
+        ftWord            : AField.AsInteger := vField.AsInteger;
+        ftBoolean         : AField.AsBoolean := vField.AsBoolean;
+        ftFloat           : AField.AsFloat := vField.AsDouble;
+        ftCurrency        : AField.AsFloat := vField.AsDouble;
+        ftBCD             : AField.AsFloat := vField.AsDouble;
+        ftDate            : AField.AsDateTime := vField.AsDateTime;
+        ftTime            : AField.AsDateTime := vField.AsDateTime;
+        ftDateTime        : AField.AsDateTime := vField.AsDateTime;
+        ftBytes           : AField.AsBytes := vField.AsBytes;
+        ftVarBytes        : AField.AsBytes := vField.AsBytes;
+        ftAutoInc         : AField.AsLargeInt := vField.AsLargeInt;
+        ftBlob            : ReadAsStream;
+        ftMemo            : AField.AsString := vField.AsString;
+        ftGraphic         : ReadAsStream;
+        ftFmtMemo         : AField.AsString := vField.AsString;
+        ftParadoxOle      : AField.Clear;
+        ftDBaseOle        : AField.Clear;
+        ftTypedBinary     : AField.Clear;
+        ftCursor          : AField.Clear;
+        ftFixedChar       : AField.AsString := vField.AsString;
+        ftWideString      : AField.AsString := vField.AsString;
+        ftLargeint        : AField.AsLargeInt := vField.AsLargeInt;
+        ftADT             : AField.Clear;
+        ftArray           : AField.Clear;
+        ftReference       : AField.Clear;
+        ftDataSet         : AField.Clear;
+        ftOraBlob         : ReadAsStream;
+        ftOraClob         : AField.AsString := vField.AsString;
+        ftVariant         : AField.AsBytes := vField.AsBytes;
+        ftInterface       : AField.Clear;
+        ftIDispatch       : AField.Clear;
+        ftGuid            : AField.AsString := vField.AsString;
+        ftTimeStamp       : AField.AsDateTime := vField.AsDateTime;
+        ftFMTBcd          : AField.AsFloat := vField.AsDouble;
+        ftFixedWideChar   : AField.AsString := vField.AsString;
+        ftWideMemo        : AField.AsString := vField.AsString;
+        {$IFNDEF FPC}
+          ftOraTimeStamp    : AField.AsDateTime := vField.AsDateTime;
+          ftOraInterval     : AField.AsDateTime := vField.AsDateTime;
+          ftLongWord        : AField.AsInteger := vField.AsInteger;
+          ftShortint        : AField.AsInteger := vField.AsInteger;
+          ftByte            : AField.AsInteger := vField.AsInteger;
+          ftExtended        : AField.AsDouble := vField.AsFloat;
+          ftConnection      : AField.Clear;
+          ftParams          : AField.Clear;
+          ftStream          : ReadAsStream;
+          ftTimeStampOffset : AField.AsDateTime := vField.AsDateTime;
+          ftObject          : AField.Clear;
+          ftSingle          : AField.AsDouble := vField.AsFloat;
+        {$ENDIF}
+      end;
     end;
   end;
 end;
@@ -1618,9 +2107,36 @@ begin
   end;
 end;
 
+procedure TRALStorage.CreateFieldsDefs(AFieldDefs : TFieldDefs);
+var
+  vInt : IntegerRAL;
+  vField : TFieldDef;
+begin
+  AFieldDefs.Clear;
+  for vInt := 0 to Pred(FFieldDefs.Count) do
+  begin
+    vField := TFieldDef(AFieldDefs.Add);
+    vField.Name := Fields[vInt].Name;
+    vField.DataType := Fields[vInt].DataType;
+    if vField.DataType in [ftString, ftFixedChar,
+                           ftFixedWideChar, ftWideString] then
+      vField.Size := Fields[vInt].Size;
+    if vField.DataType in [{$IFNDEF FPC} ftSingle, ftExtended, {$ENDIF}
+                           ftFloat, ftBCD, ftFMTBcd, ftCurrency] then
+      vField.Precision := Fields[vInt].Precision;
+    vField.Required := Fields[vInt].Required;
+
+    vField.Attributes := [];
+    if Fields[vInt].Required then
+      vField.Attributes := vField.Attributes + [faRequired];
+    if Fields[vInt].ReadOnly then
+      vField.Attributes := vField.Attributes + [faReadonly];
+  end;
+end;
+
 procedure TRALStorage.AssignFields(AField : TFields);
 var
-  vInt : integer;
+  vInt : IntegerRAL;
   vField : TRALStorageField;
 begin
   FFieldDefs.Clear;

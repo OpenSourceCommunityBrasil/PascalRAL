@@ -127,7 +127,7 @@ type
     procedure AddSubRoute(ASubRoute : TRALSubRoutes);
     procedure DelSubRoute(ASubRoute : TRALSubRoutes);
 
-    procedure AddBlockList(AClientIP: StringRAL);
+    procedure AddBlockList(const AClientIP: StringRAL);
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
     function ClientIsBlocked(AClientIP: StringRAL) : boolean;
@@ -204,7 +204,6 @@ type
   published
     property Server : TRALServer read FServer write SetServer;
   end;
-
 
 implementation
 
@@ -357,7 +356,7 @@ begin
   Result.Description.Text := ADescription;
 end;
 
-procedure TRALServer.AddBlockList(AClientIP: StringRAL);
+procedure TRALServer.AddBlockList(const AClientIP: StringRAL);
 var
   vInt: IntegerRAL;
   vClient: TRALClientBlockList;

@@ -42,19 +42,20 @@ begin
     vStorLink.Load(AStream, smRead);
 
     FDataset.Close;
-    if FDataset.FieldCount = 0 then begin
-
-    end;
+    if FDataset.FieldCount = 0 then
+      vStorLink.CreateFieldsDefs(FDataset.FieldDefs);
     FDataset.Open;
 
     FDataset.DisableControls;
     while not vStorLink.EOF do begin
-      for vInt := 0 to Pred(FDataset.FieldCount) do begin
-
-      end;
+      FDataset.Append;
+      for vInt := 0 to Pred(FDataset.FieldCount) do
+        vStorLink.ReadField(FDataset.Fields[vInt]);
+      FDataset.Post;
       vStorLink.Next;
     end;
     FDataset.EnableControls;
+    FDataset.First;
   finally
     FreeAndNil(vStorLink);
   end;
@@ -107,6 +108,7 @@ begin
   begin
     vStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
     try
+      vStream.Position := 0;
       LoadFromStream(vStream);
     finally
       FreeAndNil(vStream);

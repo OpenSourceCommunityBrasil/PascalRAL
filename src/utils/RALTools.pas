@@ -3,7 +3,7 @@
 interface
 
 uses
-  Classes, SysUtils, Variants, StrUtils, TypInfo,
+  Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts;
 
 function FixRoute(ARoute: StringRAL): StringRAL;
@@ -12,11 +12,12 @@ function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALLowStr(AStr : StringRAL) : IntegerRAL;
 function RALHighStr(AStr : StringRAL) : IntegerRAL;
-function StrIsUTF8(AStr : StringRAL) : boolean;
 function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
 function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
 function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
 function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
+function OnlyNumbers(const AValue : StringRAL) : StringRAL;
+function RALStringToDateTime(const AValue : StringRAL; const AFormat : StringRAL = 'yyyyMMddhhnnsszzz') : TDateTime;
 
 implementation
 
@@ -85,40 +86,6 @@ begin
   {$ENDIF}
 end;
 
-function StrIsUTF8(AStr : StringRAL) : boolean;
-var
-  vStr : TStringStream;
-  ySeq, nSeq, i : integer;
-  pvByte, nwByte : byte;
-begin
-  vStr := TStringStream.Create(AStr);
-  try
-    vStr.Position := 0;
-
-    ySeq := 0;
-    nseq := 0;
-    if vStr.Size > 1 then begin
-      vStr.Read(pvByte,1);
-      for i := 1 to vStr.Size do begin
-        vStr.Read(nwByte,1);
-        if ((nwByte and $c0) = $80) then begin
-          if ((pvByte and $c0) = $c0) then begin
-            Inc(ySeq)
-          end
-          else  begin
-            if ((pvByte and $80) = $0) then
-              Inc(nSeq);
-          end;
-        end;
-        pvByte := nwByte;
-      end;
-    end;
-    Result := ySeq > nSeq;
-  finally
-    FreeAndNil(vStr);
-  end;
-end;
-
 function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
 begin
   if SameText(AStr,'gzip') then
@@ -160,6 +127,76 @@ begin
     crAES128 : Result := 'aes128cbc_pkcs7';
     crAES192 : Result := 'aes192cbc_pkcs7';
     crAES256 : Result := 'aes256cbc_pkcs7';
+  end;
+end;
+
+function OnlyNumbers(const AValue : StringRAL) : StringRAL;
+var
+  vInt : IntegerRAL;
+begin
+  Result := '';
+  for vInt := RALLowStr(AValue) to RALHighStr(AValue) do
+  begin
+    if AValue[vInt] in ['0'..'9'] then
+      Result := Result + AValue[vInt];
+  end;
+end;
+
+function RALStringToDateTime(const AValue : StringRAL; const AFormat : StringRAL) : TDateTime;
+var
+  vInt1, vInt2 : integer;
+  sAno, sMes, sDia, sHor, sMin, sSeg, sMil : StringRAL;
+  wAno, wMes, wDia, wHor, wMin, wSeg, wMil : Word;
+begin
+  sAno := '0';
+  sMes := '0';
+  sDia := '0';
+  sHor := '0';
+  sMin := '0';
+  sSeg := '0';
+  sMil := '0';
+
+  vInt2 := RALLowStr(AValue);
+  for vInt1 := RALLowStr(AFormat) to RALHighStr(AFormat) do
+  begin
+    if vInt2 <= RALHighStr(AValue) then
+    begin
+      case UpCase(AFormat[vInt1]) of
+        'D' : sDia := sDia + AValue[vInt2];
+        'M' : sMes := sMes + AValue[vInt2];
+        'A' : sAno := sAno + AValue[vInt2];
+        'Y' : sAno := sAno + AValue[vInt2];
+        'H' : sHor := sHor + AValue[vInt2];
+        'N' : sMin := sMin + AValue[vInt2];
+        'I' : sMin := sMin + AValue[vInt2]; // php
+        'S' : sSeg := sSeg + AValue[vInt2];
+        'Z' : sMil := sMil + AValue[vInt2];
+      end;
+      vInt2 := vInt2 + 1;
+    end
+    else
+    begin
+      Break;
+    end;
+  end;
+
+  wAno := StrToInt(sAno);
+  wMes := StrToInt(sMes);
+  wDia := StrToInt(sDia);
+  wHor := StrToInt(sHor);
+  wMin := StrToInt(sMin);
+  wSeg := StrToInt(sSeg);
+  wMil := StrToInt(sMil);
+
+  if (wAno = 0) or (wMes = 0) or (wDia = 0) then
+  begin
+    if not TryEncodeTime(wHor, wMin, wSeg, wMil, Result) then
+      Result := TDateTime(0)
+  end
+  else
+  begin
+    if not TryEncodeDateTime(wAno, wMes, wDia, wHor, wMin, wSeg, wMil, Result) then
+      Result := TDateTime(0)
   end;
 end;
 

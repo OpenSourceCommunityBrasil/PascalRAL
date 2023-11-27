@@ -612,10 +612,13 @@ begin
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
   begin
     vDecoder := TRALMultipartDecoder.Create;
-    vDecoder.ContentType := AContentType;
-    vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-    vDecoder.ProcessMultiPart(Result);
-    vDecoder.Free;
+    try
+      vDecoder.ContentType := AContentType;
+      vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
+      vDecoder.ProcessMultiPart(Result);
+    finally
+      FreeAndNil(vDecoder);
+    end;
   end
   else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
   begin
