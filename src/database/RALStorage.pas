@@ -385,20 +385,54 @@ end;
 
 function TRALStorageField.GetAsJSON : StringRAL;
 
+  function StringToJSONString(AValue : StringRAL) : StringRAL;
+  var
+    vRes : StringRAL;
+    vInt : IntegerRAL;
+  begin
+    vRes := '';
+    for vInt := RALLowStr(AValue) to RALHighStr(AValue) do begin
+      if AValue[vInt] in ['"','/','\',#0..#31] then
+      begin
+        case AValue[vInt] of
+          '\' : vRes := vRes + '\\';
+          '/' : vRes := vRes + '\/';
+          '"' : vRes := vRes + '\"';
+          #8  : vRes := vRes + '\b';
+          #9  : vRes := vRes + '\t';
+          #10 : vRes := vRes + '\n';
+          #12 : vRes := vRes + '\f';
+          #13 : vRes := vRes + '\r';
+          else
+            vRes := vRes + '\u' + HexStr(Ord(AValue[vInt]),4);
+        end;
+      end
+      else begin
+        vRes := vRes + AValue[vInt];
+      end;
+    end;
+    StringToJSONString := vRes;
+  end;
+
   function GetFieldBytes : StringRAL;
   begin
     if IsNull then
       GetFieldBytes := 'null'
     else
-      GetFieldBytes := Format('"%s"',[TRALBase64.Encode(AsBytes)]);
+      GetFieldBytes := Format('"%s"', [TRALBase64.Encode(AsBytes)]);
   end;
 
   function GetFieldMemo : StringRAL;
+  var
+    vVal : StringRAL;
   begin
-    if IsNull then
+    if IsNull then begin
       GetFieldMemo := 'null'
-    else
-      GetFieldMemo := Format('"%s"',[TRALBase64.Encode(AsString)]);
+    end
+    else begin
+      vVal := StringToJSONString(AsString);
+      GetFieldMemo := Format('"%s"', [vVal]);
+    end;
   end;
 
   function GetFieldString : StringRAL;
@@ -411,8 +445,8 @@ function TRALStorageField.GetAsJSON : StringRAL;
     end
     else
     begin
-      vVal := TRALBase64.Encode(AsString);
-      GetFieldString := Format('"%s"',[vVal]);
+      vVal := StringToJSONString(AsString);
+      GetFieldString := Format('"%s"', [vVal]);
     end;
   end;
 
@@ -429,7 +463,7 @@ function TRALStorageField.GetAsJSON : StringRAL;
     if IsNull then
       GetFieldFloat := 'null'
     else
-      GetFieldFloat := Format('"%s"',[AsString]);
+      GetFieldFloat := Format('"%s"', [AsString]);
   end;
 
   function GetFieldBoolean : StringRAL;
@@ -460,7 +494,7 @@ function TRALStorageField.GetAsJSON : StringRAL;
         vStrMask := vStrMask + 'yyyyMMdd';
       if AMask and 2 > 0 then
         vStrMask := vStrMask + 'hhnnsszzz';
-      GetFieldDateTime := Format('"%s"',[FormatDateTime(vStrMask, AsDateTime)]);
+      GetFieldDateTime := Format('"%s"', [FormatDateTime(vStrMask, AsDateTime)]);
     end;
   end;
 
@@ -505,7 +539,7 @@ begin
     ftTimeStamp       : Result := GetFieldDateTime(3);
     ftFMTBcd          : Result := GetFieldFloat;
     ftFixedWideChar   : Result := GetFieldString;
-    ftWideMemo        : Result := GetFieldString;
+    ftWideMemo        : Result := GetFieldMemo;
     {$IFNDEF FPC}
       ftOraTimeStamp    : Result := GetFieldDateTime(3);
       ftOraInterval     : Result := GetFieldDateTime(3);
