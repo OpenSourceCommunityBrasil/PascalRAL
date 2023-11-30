@@ -14,9 +14,9 @@ type
 
   TRoutes = class
   private
-    procedure PingRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure FileRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure TextRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure PingRoute(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure FileRoute(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure TextRoute(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     procedure CreateRoutes(AServer: TRALServer);
   end;
@@ -28,14 +28,12 @@ implementation
 
 { TRoutes }
 
-procedure TRoutes.PingRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRoutes.PingRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(200, 'pong', rctTEXTPLAIN);
 end;
 
-procedure TRoutes.FileRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRoutes.FileRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   I: integer;
   vBody: TList;
@@ -57,8 +55,7 @@ begin
 
 end;
 
-procedure TRoutes.TextRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRoutes.TextRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   case ARequest.Method of
     amGET:

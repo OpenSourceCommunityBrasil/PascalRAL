@@ -65,10 +65,8 @@ type
     procedure SetupServer;
     procedure ClearControls(AControlName: array of TComponent);
     function GetSelectedMethods: string;
-    procedure LogRequest(Sender: TObject; ARequest: TRALRequest;
-      AResponse: TRALResponse);
-    procedure LogResponse(Sender: TObject; ARequest: TRALRequest;
-      AResponse: TRALResponse);
+    procedure LogRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure LogResponse(ARequest: TRALRequest; AResponse: TRALResponse);
   public
 
   end;
@@ -226,15 +224,13 @@ begin
     Delete(Result, 1, 2);
 end;
 
-procedure TForm1.LogRequest(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TForm1.LogRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   mLog.Lines.Append('REQUEST: ' + ARequest.Query);
   mLog.Lines.Append('--------------------------------------------------');
 end;
 
-procedure TForm1.LogResponse(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TForm1.LogResponse(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   mLog.Lines.Append('RESPONSE: ' + AResponse.ResponseText);
 end;
