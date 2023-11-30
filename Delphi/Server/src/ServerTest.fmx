@@ -27,6 +27,7 @@ object Form1: TForm1
       CustomIcon = <
         item
         end>
+      TextSettings.Trimming = None
       IsSelected = True
       Size.Width = 63.000000000000000000
       Size.Height = 26.000000000000000000
@@ -61,6 +62,7 @@ object Form1: TForm1
             CustomIcon = <
               item
               end>
+            TextSettings.Trimming = None
             IsSelected = True
             Size.Width = 93.000000000000000000
             Size.Height = 26.000000000000000000
@@ -103,6 +105,7 @@ object Form1: TForm1
                     Size.Width = 100.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'Port'
                     TabOrder = 0
                   end
@@ -166,6 +169,7 @@ object Form1: TForm1
             CustomIcon = <
               item
               end>
+            TextSettings.Trimming = None
             IsSelected = False
             Size.Width = 98.000000000000000000
             Size.Height = 26.000000000000000000
@@ -216,6 +220,7 @@ object Form1: TForm1
                     Size.Width = 100.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'Authentication'
                     TabOrder = 0
                   end
@@ -232,6 +237,7 @@ object Form1: TForm1
                     Size.Width = 100.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'User'
                     TabOrder = 0
                   end
@@ -248,6 +254,7 @@ object Form1: TForm1
                     Size.Width = 100.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'Password'
                     TabOrder = 0
                   end
@@ -264,6 +271,7 @@ object Form1: TForm1
                     Size.Width = 100.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'Token'
                     TabOrder = 0
                   end
@@ -275,6 +283,7 @@ object Form1: TForm1
             CustomIcon = <
               item
               end>
+            TextSettings.Trimming = None
             IsSelected = False
             Size.Width = 39.000000000000000000
             Size.Height = 26.000000000000000000
@@ -325,6 +334,7 @@ object Form1: TForm1
                     Size.Width = 156.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'CertFile'
                     TabOrder = 0
                   end
@@ -344,6 +354,7 @@ object Form1: TForm1
                     Size.Width = 150.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'CertKeyFile'
                     TabOrder = 0
                   end
@@ -363,6 +374,7 @@ object Form1: TForm1
                     Size.Width = 172.000000000000000000
                     Size.Height = 17.000000000000000000
                     Size.PlatformDefault = False
+                    TextSettings.Trimming = None
                     Text = 'Token'
                     TabOrder = 0
                   end
@@ -393,6 +405,7 @@ object Form1: TForm1
           Size.PlatformDefault = False
           TabOrder = 5
           Text = 'Start Server'
+          TextSettings.Trimming = None
           OnClick = bStartClick
         end
       end
@@ -414,14 +427,17 @@ object Form1: TForm1
           Viewport.Height = 147.000000000000000000
           object sgcRouteName: TStringColumn
             Header = 'Route'
+            HeaderSettings.TextSettings.WordWrap = False
             Size.Width = 118.000000000000000000
           end
           object sgcDescription: TStringColumn
             Header = 'Description'
+            HeaderSettings.TextSettings.WordWrap = False
             Size.Width = 300.000000000000000000
           end
           object sgcSkipAuth: TStringColumn
             Header = 'SkipAuth'
+            HeaderSettings.TextSettings.WordWrap = False
             Size.Width = 141.000000000000000000
           end
         end
@@ -446,6 +462,7 @@ object Form1: TForm1
               Size.Width = 249.000000000000000000
               Size.Height = 17.000000000000000000
               Size.PlatformDefault = False
+              TextSettings.Trimming = None
               Text = 'Description'
               TabOrder = 0
             end
@@ -537,6 +554,7 @@ object Form1: TForm1
             Position.Y = 8.000000000000000000
             TabOrder = 4
             Text = 'Add'
+            TextSettings.Trimming = None
             OnClick = bAddClick
           end
           object bDelete: TButton
@@ -544,6 +562,7 @@ object Form1: TForm1
             Position.Y = 38.000000000000000000
             TabOrder = 3
             Text = 'Delete Last'
+            TextSettings.Trimming = None
           end
           object cbRoute: TComboBox
             Items.Strings = (
@@ -560,6 +579,7 @@ object Form1: TForm1
               Size.Width = 100.000000000000000000
               Size.Height = 17.000000000000000000
               Size.PlatformDefault = False
+              TextSettings.Trimming = None
               Text = 'Route'
               TabOrder = 0
             end
@@ -571,6 +591,7 @@ object Form1: TForm1
       CustomIcon = <
         item
         end>
+      TextSettings.Trimming = None
       IsSelected = False
       Size.Width = 40.000000000000000000
       Size.Height = 26.000000000000000000
@@ -623,6 +644,7 @@ object Form1: TForm1
               Size.PlatformDefault = False
               StyleLookup = 'organizetoolbutton'
               Text = 'SpeedButton1'
+              TextSettings.Trimming = None
             end
           end
         end

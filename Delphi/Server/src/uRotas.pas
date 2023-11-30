@@ -9,9 +9,9 @@ uses
 type
   TRotas = class
   private
-    procedure TextRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure FileRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure PingRoute(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure TextRoute(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure FileRoute(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure PingRoute(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     procedure CreateRoutes(AServer: TRALServer);
   end;
@@ -31,8 +31,7 @@ begin
   AServer.CreateRoute('ping', PingRoute);
 end;
 
-procedure TRotas.TextRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRotas.TextRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   case ARequest.Method of
     amGET:
@@ -48,8 +47,7 @@ begin
   end;
 end;
 
-procedure TRotas.FileRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRotas.FileRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   I: Integer;
   vBody: TList;
@@ -67,8 +65,7 @@ begin
   end;
 end;
 
-procedure TRotas.PingRoute(Sender: TObject; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRotas.PingRoute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(200, 'pong', rctTEXTPLAIN);
 end;
