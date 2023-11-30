@@ -50,7 +50,11 @@ type
 
 const
   {$IFDEF HAS_FMX}
-    PosIniStr = 0;
+    {$IFNDEF DELPHI12UP}
+      PosIniStr = 0;
+    {$ELSE}
+      PosIniStr = 1;
+    {$ENDIF}
   {$ELSE}
     PosIniStr = 1;
   {$ENDIF}

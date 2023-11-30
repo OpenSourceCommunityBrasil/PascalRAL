@@ -54,7 +54,7 @@ type
 
     function Count : integer;
 
-    function Get(AName : string) : TRALJSONValue; overload;
+    function Get(const AName : StringRAL) : TRALJSONValue; overload;
     function Get(AIndex : integer) : TRALJSONValue; overload;
     function GetName(AIndex : integer) : string;
   end;
@@ -84,7 +84,7 @@ type
 
   TRALJSON = class
   public
-    class function ParseJSON(AJSON : String) : TRALJSONValue; overload;
+    class function ParseJSON(const AJSON : StringRAL) : TRALJSONValue; overload;
     class function ParseJSON(AStream : TStream) : TRALJSONValue; overload;
   end;
 
@@ -414,7 +414,7 @@ begin
     Result := vObj.JsonString.Value
 end;
 
-function TRALJSONObject.Get(AName: string): TRALJSONValue;
+function TRALJSONObject.Get(const AName: StringRAL): TRALJSONValue;
 var
   {$IFNDEF DELPHI10_0UP}
     vPair : TJSONPair;
@@ -467,7 +467,7 @@ end;
 
 { TRALJSON }
 
-class function TRALJSON.ParseJSON(AJSON: String): TRALJSONValue;
+class function TRALJSON.ParseJSON(const AJSON: StringRAL): TRALJSONValue;
 var
   vObj : TJSONValue;
 begin

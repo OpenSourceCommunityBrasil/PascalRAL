@@ -11,11 +11,11 @@ type
   { TRALHTTPCoder }
 
   TRALHTTPCoder = class
-    class function DecodeURL(AUrl : StringRAL) : StringRAL;
-    class function EncodeURL(AUrl : StringRAL) : StringRAL;
+    class function DecodeURL(const AUrl : StringRAL) : StringRAL;
+    class function EncodeURL(const AUrl : StringRAL) : StringRAL;
 
-    class function DecodeHTML(AHtml : StringRAL) : StringRAL;
-    class function EncodeHTML(AHtml : StringRAL) : StringRAL;
+    class function DecodeHTML(const AHtml : StringRAL) : StringRAL;
+    class function EncodeHTML(const AHtml : StringRAL) : StringRAL;
   end;
 
 implementation
@@ -93,7 +93,7 @@ const
 
 { TRALHTTPCoder }
 
-class function TRALHTTPCoder.DecodeURL(AUrl : StringRAL) : StringRAL;
+class function TRALHTTPCoder.DecodeURL(const AUrl : StringRAL) : StringRAL;
 var
   vInt, vChr, vLen : IntegerRAL;
   vStr : StringRAL;
@@ -134,7 +134,7 @@ begin
   end;
 end;
 
-class function TRALHTTPCoder.EncodeURL(AUrl : StringRAL) : StringRAL;
+class function TRALHTTPCoder.EncodeURL(const AUrl : StringRAL) : StringRAL;
 var
   vInt, vChr : IntegerRAL;
 begin
@@ -148,7 +148,7 @@ begin
   end;
 end;
 
-class function TRALHTTPCoder.DecodeHTML(AHtml : StringRAL) : StringRAL;
+class function TRALHTTPCoder.DecodeHTML(const AHtml : StringRAL) : StringRAL;
 var
   vEsc : boolean;
   vCode : StringRAL;
@@ -194,7 +194,7 @@ begin
     Result := Result + vCode;
 end;
 
-class function TRALHTTPCoder.EncodeHTML(AHtml : StringRAL) : StringRAL;
+class function TRALHTTPCoder.EncodeHTML(const AHtml : StringRAL) : StringRAL;
 var
   vInt, vChr : IntegerRAL;
 begin

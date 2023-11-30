@@ -14,8 +14,8 @@ type
     class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
     class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
   public
-    class function Encode(AValue: StringRAL): StringRAL; overload;
-    class function Decode(AValue: StringRAL): StringRAL; overload;
+    class function Encode(const AValue: StringRAL): StringRAL; overload;
+    class function Decode(const AValue: StringRAL): StringRAL; overload;
 
     class function Encode(AValue: TStream): StringRAL; overload;
     class function Decode(AValue: TStream): StringRAL; overload;
@@ -23,8 +23,8 @@ type
     class function Encode(AValue: TBytes): StringRAL; overload;
     class function Decode(AValue: TBytes): StringRAL; overload;
 
-    class function EncodeAsBytes(AValue: StringRAL): TBytes; overload;
-    class function DecodeAsBytes(AValue: StringRAL): TBytes; overload;
+    class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
 
     class function EncodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
@@ -32,8 +32,8 @@ type
     class function EncodeAsStream(AValue: TStream): TStream; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
 
-    class function ToBase64Url(AValue: StringRAL): StringRAL;
-    class function FromBase64Url(AValue: StringRAL): StringRAL;
+    class function ToBase64Url(const AValue: StringRAL): StringRAL;
+    class function FromBase64Url(const AValue: StringRAL): StringRAL;
   end;
 
 implementation
@@ -67,7 +67,7 @@ const
 
 { TRALBase64 }
 
-class function TRALBase64.Decode(AValue: StringRAL): StringRAL;
+class function TRALBase64.Decode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
@@ -139,14 +139,14 @@ begin
   Result.Position := 0;
 end;
 
-class function TRALBase64.ToBase64Url(AValue: StringRAL): StringRAL;
+class function TRALBase64.ToBase64Url(const AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, '+', '-', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
   Result := StringReplace(Result, '=', '', [rfReplaceAll]);
 end;
 
-class function TRALBase64.FromBase64Url(AValue: StringRAL): StringRAL;
+class function TRALBase64.FromBase64Url(const AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, '-', '+', [rfReplaceAll]);
   Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
@@ -154,7 +154,7 @@ begin
     Result := Result + '=';
 end;
 
-class function TRALBase64.DecodeAsBytes(AValue: StringRAL): TBytes;
+class function TRALBase64.DecodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStream;
 begin
@@ -267,7 +267,7 @@ begin
   end;
 end;
 
-class function TRALBase64.Encode(AValue: StringRAL): StringRAL;
+class function TRALBase64.Encode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
@@ -279,7 +279,7 @@ begin
   end;
 end;
 
-class function TRALBase64.EncodeAsBytes(AValue: StringRAL): TBytes;
+class function TRALBase64.EncodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStream;
 begin

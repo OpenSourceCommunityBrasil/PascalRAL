@@ -11,10 +11,10 @@ function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALLowStr(AStr : StringRAL) : IntegerRAL;
-function RALHighStr(AStr : StringRAL) : IntegerRAL;
-function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
+function RALHighStr(const AStr : StringRAL) : IntegerRAL;
+function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
 function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
-function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
+function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
 function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
 function OnlyNumbers(const AValue : StringRAL) : StringRAL;
 function RALStringToDateTime(const AValue : StringRAL; const AFormat : StringRAL = 'yyyyMMddhhnnsszzz') : TDateTime;
@@ -73,10 +73,10 @@ begin
   {$ENDIF}
 end;
 
-function RALHighStr(AStr : StringRAL) : integer;
+function RALHighStr(const AStr : StringRAL) : integer;
 begin
   {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2}
+    {$IFNDEF DELPHIXE2UP}
       Result := Length(AStr);
     {$ELSE}
       Result := High(AStr);
@@ -86,7 +86,7 @@ begin
   {$ENDIF}
 end;
 
-function StrCompressToCompress(AStr : StringRAL) : TRALCompressType;
+function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
 begin
   if SameText(AStr,'gzip') then
     Result := ctGZip
@@ -108,7 +108,7 @@ begin
   end;
 end;
 
-function StrCriptoToCripto(AStr : StringRAL) : TRALCriptoType;
+function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
 begin
   if SameText(AStr,'aes128cbc_pkcs7') then
     Result := crAES128

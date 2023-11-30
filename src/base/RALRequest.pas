@@ -61,12 +61,12 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function AddHeader(AName, AValue: StringRAL): TRALRequest; reintroduce;
-    function AddField(AName, AValue: StringRAL): TRALRequest; reintroduce;
-    function AddCookie(AName, AValue: StringRAL): TRALRequest; reintroduce;
-    function AddFile(AFileName: StringRAL): TRALRequest; reintroduce; overload;
-    function AddFile(AStream: TStream; AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
-    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    function AddFile(const AFileName: StringRAL): TRALRequest; reintroduce; overload;
+    function AddFile(AStream: TStream; const AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
+    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
 
     property URL: StringRAL read GetURL;
     property Stream : TStream read FStream write FStream;
@@ -118,37 +118,37 @@ begin
   inherited;
 end;
 
-function TRALRequest.AddHeader(AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddHeader(const AName, AValue : StringRAL) : TRALRequest;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddBody(AText : StringRAL; AContextType : StringRAL) : TRALRequest;
+function TRALRequest.AddBody(const AText : StringRAL; const AContextType : StringRAL) : TRALRequest;
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALRequest.AddField(AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddField(const AName, AValue : StringRAL) : TRALRequest;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddCookie(AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddCookie(const AName, AValue : StringRAL) : TRALRequest;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddFile(AFileName : StringRAL) : TRALRequest;
+function TRALRequest.AddFile(const AFileName : StringRAL) : TRALRequest;
 begin
   inherited AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALRequest.AddFile(AStream : TStream; AFileName : StringRAL) : TRALRequest;
+function TRALRequest.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALRequest;
 begin
   inherited AddFile(AStream,AFileName);
   Result := Self;

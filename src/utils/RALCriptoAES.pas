@@ -40,7 +40,7 @@ type
 
     FLogAES : TStringList;
   protected
-    procedure LogAES(ALog : StringRAL; AInput : PByte);
+    procedure LogAES(const ALog : StringRAL; AInput : PByte);
 
     procedure Initialize;
     function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
@@ -74,7 +74,7 @@ type
     function WordToBytes(AInt : Cardinal) : TBytes;
 
     procedure SetAESType(AValue : TRALAESType);
-    procedure SetKey(AValue : StringRAL); override;
+    procedure SetKey(const AValue : StringRAL); override;
 
     procedure KeyExpansion;
   public
@@ -571,7 +571,7 @@ begin
   KeyExpansion;
 end;
 
-procedure TRALCriptoAES.SetKey(AValue : StringRAL);
+procedure TRALCriptoAES.SetKey(const AValue : StringRAL);
 begin
   inherited SetKey(AValue);
   KeyExpansion;
@@ -790,7 +790,7 @@ begin
   end;
 end;
 
-procedure TRALCriptoAES.LogAES(ALog: StringRAL; AInput: PByte);
+procedure TRALCriptoAES.LogAES(const ALog: StringRAL; AInput: PByte);
 var
   vInt : IntegerRAL;
   vStr : StringRAL;

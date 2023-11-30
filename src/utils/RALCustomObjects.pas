@@ -41,21 +41,21 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function AddHeader(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddQuery(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
-    function AddFile(AStream: TStream; AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
-    function AddBody(AText: StringRAL; AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
+    function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     procedure Clear;
-    function GetHeader(AName: StringRAL): StringRAL; virtual;
-    function GetQuery(AName: StringRAL): StringRAL; virtual;
-    function GetField(AName: StringRAL): StringRAL; virtual;
-    function GetCookie(AName: StringRAL): StringRAL; virtual;
+    function GetHeader(const AName: StringRAL): StringRAL; virtual;
+    function GetQuery(const AName: StringRAL): StringRAL; virtual;
+    function GetField(const AName: StringRAL): StringRAL; virtual;
+    function GetCookie(const AName: StringRAL): StringRAL; virtual;
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
 
-    function ParamByName(AParamName: StringRAL): TRALParam;
+    function ParamByName(const AParamName: StringRAL): TRALParam;
     function Body : TRALParam;
 
     function HasValidContentEncoding: boolean;
@@ -159,19 +159,19 @@ begin
   inherited Destroy;
 end;
 
-function TRALHTTPHeaderInfo.AddHeader(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddHeader(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkHEADER);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddQuery(AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddQuery(const AName, AValue : StringRAL) : TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkQUERY);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddBody(AText : StringRAL; AContextType : StringRAL) : TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddBody(const AText : StringRAL; const AContextType : StringRAL) : TRALHTTPHeaderInfo;
 var
   vParam: TRALParam;
 begin
@@ -180,25 +180,25 @@ begin
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddField(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddField(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkFIELD);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddCookie(AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddCookie(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddFile(AFileName: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddFile(AStream: TStream; AFileName: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddFile(AStream: TStream; const AFileName: StringRAL): TRALHTTPHeaderInfo;
 var
   vParam: TRALParam;
 begin
@@ -207,7 +207,7 @@ begin
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.GetHeader(AName: StringRAL): StringRAL;
+function TRALHTTPHeaderInfo.GetHeader(const AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
 begin
@@ -217,7 +217,7 @@ begin
     Result := vParam.AsString;
 end;
 
-function TRALHTTPHeaderInfo.GetQuery(AName : StringRAL) : StringRAL;
+function TRALHTTPHeaderInfo.GetQuery(const AName : StringRAL) : StringRAL;
 var
   vParam: TRALParam;
 begin
@@ -227,7 +227,7 @@ begin
     Result := vParam.AsString;
 end;
 
-function TRALHTTPHeaderInfo.GetField(AName: StringRAL): StringRAL;
+function TRALHTTPHeaderInfo.GetField(const AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
 begin
@@ -252,7 +252,7 @@ begin
     Result := ctNone;
 end;
 
-function TRALHTTPHeaderInfo.GetCookie(AName: StringRAL): StringRAL;
+function TRALHTTPHeaderInfo.GetCookie(const AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
 begin
@@ -286,7 +286,7 @@ begin
   end;
 end;
 
-function TRALHTTPHeaderInfo.ParamByName(AParamName: StringRAL): TRALParam;
+function TRALHTTPHeaderInfo.ParamByName(const AParamName: StringRAL): TRALParam;
 begin
   Result := FParams.Get[aParamName];
 end;

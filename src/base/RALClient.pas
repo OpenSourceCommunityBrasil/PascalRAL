@@ -33,7 +33,7 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
-    function BeforeSendUrl(AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
+    function BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL; virtual;
     function GetURL(ARoute: StringRAL): StringRAL;
 
@@ -69,13 +69,13 @@ type
     function Patch: IntegerRAL;
 
     function SetRoute(ARoute : StringRAL) : TRALClient;
-    function AddHeader(AName, AValue : StringRAL) : TRALClient;
-    function AddQuery(AName, AValue : StringRAL) : TRALClient;
-    function AddField(AName, AValue : StringRAL) : TRALClient;
-    function AddCookie(AName, AValue : StringRAL) : TRALClient;
-    function AddFile(AFileName : StringRAL) : TRALClient; overload;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALClient; overload;
-    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
+    function AddHeader(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
+    function AddQuery(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
+    function AddField(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
+    function AddCookie(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
+    function AddFile(const AFileName : StringRAL) : TRALClient; overload;
+    function AddFile(AStream : TStream; const AFileName : StringRAL = '') : TRALClient; overload;
+    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
 
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
@@ -109,7 +109,7 @@ begin
     FUserAgent := AValue;
 end;
 
-function TRALClient.BeforeSendUrl(AURL : StringRAL; AMethod : TRALMethod) : IntegerRAL;
+function TRALClient.BeforeSendUrl(const AURL : StringRAL; AMethod : TRALMethod) : IntegerRAL;
 var
   vConta, vInt : IntegerRAL;
   vParams : TStringList;
@@ -437,43 +437,43 @@ begin
   Result := Self;
 end;
 
-function TRALClient.AddHeader(AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddHeader(const AName, AValue : StringRAL) : TRALClient;
 begin
   FLastRequest.AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddQuery(AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddQuery(const AName, AValue : StringRAL) : TRALClient;
 begin
   FLastRequest.AddQuery(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddBody(AText : StringRAL; AContextType : StringRAL) : TRALClient;
+function TRALClient.AddBody(const AText : StringRAL; const AContextType : StringRAL) : TRALClient;
 begin
   FLastRequest.AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALClient.AddField(AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddField(const AName, AValue : StringRAL) : TRALClient;
 begin
   FLastRequest.AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddCookie(AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddCookie(const AName, AValue : StringRAL) : TRALClient;
 begin
   FLastRequest.AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddFile(AFileName : StringRAL) : TRALClient;
+function TRALClient.AddFile(const AFileName : StringRAL) : TRALClient;
 begin
   FLastRequest.AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALClient.AddFile(AStream : TStream; AFileName : StringRAL) : TRALClient;
+function TRALClient.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALClient;
 begin
   FLastRequest.AddFile(AStream, AFileName);
   Result := Self;

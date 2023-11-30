@@ -147,8 +147,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function GetMIMEType(aFileName: StringRAL): StringRAL;
-    function GetMIMEContentExt(aContentType: StringRAL): StringRAL;
+    function GetMIMEType(const aFileName: StringRAL): StringRAL;
+    function GetMIMEContentExt(const aContentType: StringRAL): StringRAL;
   end;
 
 const
@@ -175,7 +175,7 @@ begin
   inherited;
 end;
 
-function TRALMIMEType.GetMIMEContentExt(aContentType: StringRAL): StringRAL;
+function TRALMIMEType.GetMIMEContentExt(const aContentType: StringRAL): StringRAL;
 var
   vInt : IntegerRAL;
 begin
@@ -194,7 +194,7 @@ begin
   end;
 end;
 
-function TRALMIMEType.GetMIMEType(aFileName: StringRAL): StringRAL;
+function TRALMIMEType.GetMIMEType(const aFileName: StringRAL): StringRAL;
 begin
   Result := FInternalMIMEList.Values[ExtractFileExt(aFileName)];
 end;

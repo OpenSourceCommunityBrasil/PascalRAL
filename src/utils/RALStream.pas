@@ -6,17 +6,17 @@ uses
   Classes, SysUtils,
   RALTypes;
 
-function StringToStream(AStr : StringRAL) : TStream;
+function StringToStream(const AStr : StringRAL) : TStream;
 function StreamToString(AStream : TStream) : StringRAL;
 
 function BytesToStream(ABytes : TBytes) : TStream;
 function StreamToBytes(AStream : TStream) : TBytes;
 
-procedure SaveStream(AStream : TStream; AFileName : StringRAL);
+procedure SaveStream(AStream : TStream; const AFileName : StringRAL);
 
 implementation
 
-function StringToStream(AStr : StringRAL) : TStream;
+function StringToStream(const AStr : StringRAL) : TStream;
 begin
   Result := TStringStream.Create(AStr);
   Result.Position := 0;
@@ -69,7 +69,7 @@ begin
   end;
 end;
 
-procedure SaveStream(AStream : TStream; AFileName : StringRAL);
+procedure SaveStream(AStream : TStream; const AFileName : StringRAL);
 var
   vFile : TFileStream;
 begin

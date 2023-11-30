@@ -33,25 +33,25 @@ type
     function DigestToBase64Url(AValue: TBytes): StringRAL;
 
     procedure UpdateBuffer(AValue: TStream); overload; virtual;
-    procedure UpdateBuffer(AValue: StringRAL); overload; virtual;
+    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
     procedure UpdateBuffer(AValue: TBytes); overload; virtual;
 
     function GetDigest(AValue: TStream): TBytes; overload; virtual;
-    function GetDigest(AValue: StringRAL): TBytes; overload; virtual;
+    function GetDigest(const AValue: StringRAL): TBytes; overload; virtual;
     function GetDigest(AValue: TBytes): TBytes; overload; virtual;
 
     function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
   public
     constructor Create;
 
-    function HashAsString(AValue: StringRAL): StringRAL; overload; virtual;
+    function HashAsString(const AValue: StringRAL): StringRAL; overload; virtual;
     function HashAsString(AValue: TStream): StringRAL; overload; virtual;
 
     function HashAsStream(AValue: TStream): TStream;
 
-    function HMACAsString(AValue, AKey: StringRAL): StringRAL; overload; virtual;
-    function HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL; overload; virtual;
-    function HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL; overload; virtual;
+    function HMACAsString(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;
+    function HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;
+    function HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;
   published
     property OutputType: TRALHashOutputType read FOutputType write FOutputType;
   end;
@@ -104,7 +104,7 @@ begin
   Result := Finalize;
 end;
 
-function TRALHashes.GetDigest(AValue: StringRAL): TBytes;
+function TRALHashes.GetDigest(const AValue: StringRAL): TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
@@ -158,7 +158,7 @@ begin
   end;
 end;
 
-function TRALHashes.HashAsString(AValue: StringRAL): StringRAL;
+function TRALHashes.HashAsString(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
@@ -230,7 +230,7 @@ begin
   Result := Finalize;
 end;
 
-function TRALHashes.HMACAsString(AValue, AKey: StringRAL): StringRAL;
+function TRALHashes.HMACAsString(const AValue, AKey: StringRAL): StringRAL;
 var
   vStream: TStringStream;
 begin
@@ -243,7 +243,7 @@ begin
   end;
 end;
 
-function TRALHashes.HMACAsString(AValue: TStream; AKey: StringRAL): StringRAL;
+function TRALHashes.HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL;
 var
   vKey, vDigest: TBytes;
 begin
@@ -259,7 +259,7 @@ begin
   end;
 end;
 
-function TRALHashes.HMACAsString(AValue: TBytes; AKey: StringRAL): StringRAL;
+function TRALHashes.HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL;
 var
   vStream: TStringStream;
 begin
@@ -297,7 +297,7 @@ begin
   end;
 end;
 
-procedure TRALHashes.UpdateBuffer(AValue: StringRAL);
+procedure TRALHashes.UpdateBuffer(const AValue: StringRAL);
 var
   vStream: TStringStream;
 begin

@@ -130,9 +130,9 @@ type
     procedure AddBlockList(const AClientIP: StringRAL);
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
-    function ClientIsBlocked(AClientIP: StringRAL) : boolean;
+    function ClientIsBlocked(const AClientIP: StringRAL) : boolean;
     function CreateRALSSL: TRALSSL; virtual;
-    procedure DelBlockList(AClientIP: StringRAL);
+    procedure DelBlockList(const AClientIP: StringRAL);
     function IPv6IsImplemented: boolean; virtual;
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
@@ -158,7 +158,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
+    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply; const ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
   published
     property Active: boolean read FActive write SetActive;
@@ -194,7 +194,7 @@ type
     procedure SetServer(AValue : TRALServer);
 
     function GetRouteAddress(ARoute : StringRAL) : TRALRoute;
-    function CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply; ADescription: StringRAL = ''): TRALRoute;
+    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply; const ADescription: StringRAL = ''): TRALRoute;
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
@@ -347,8 +347,8 @@ begin
   Result := nil;
 end;
 
-function TRALServer.CreateRoute(ARouteName: StringRAL; AReplyProc: TRALOnReply;
-  ADescription: StringRAL): TRALRoute;
+function TRALServer.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+  const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.RouteName := ARouteName;
@@ -380,7 +380,7 @@ begin
     FOnClientTryBlocked(Self, AClientIP, vClient.NumTry);
 end;
 
-procedure TRALServer.DelBlockList(AClientIP: StringRAL);
+procedure TRALServer.DelBlockList(const AClientIP: StringRAL);
 var
   vInt: IntegerRAL;
 begin
@@ -390,7 +390,7 @@ begin
   FBlockedList.Remove(AClientIP, True);
 end;
 
-function TRALServer.ClientIsBlocked(AClientIP: StringRAL): boolean;
+function TRALServer.ClientIsBlocked(const AClientIP: StringRAL): boolean;
 var
   vClient: TRALClientBlockList;
   vDelete: boolean;
@@ -678,7 +678,7 @@ begin
   end;
 
   if Assigned(FOnRequest) then
-    FOnRequest(vRoute, ARequest, Result);
+    FOnRequest(ARequest, Result);
 
   if (vRoute = nil) then
   begin
@@ -729,7 +729,7 @@ begin
   end;
 
   if Assigned(FOnResponse) then
-    FOnResponse(vRoute, ARequest, Result);
+    FOnResponse(ARequest, Result);
 
   ARequest.Params.ClearParams;
 
@@ -827,7 +827,7 @@ begin
   end;
 end;
 
-function TRALSubRoutes.CreateRoute(ARouteName : StringRAL; AReplyProc : TRALOnReply; ADescription : StringRAL) : TRALRoute;
+function TRALSubRoutes.CreateRoute(const ARouteName : StringRAL; AReplyProc : TRALOnReply; const ADescription : StringRAL) : TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.RouteName := ARouteName;

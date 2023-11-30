@@ -22,16 +22,16 @@ type
     procedure SetBufferStream(AValue: TStream);
     function GetBufferStream: TStream;
     function GetBufferString: StringRAL;
-    procedure SetBufferString(AValue: StringRAL);
+    procedure SetBufferString(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
     procedure ProcessHeader(AHeader: StringRAL);
 
-    procedure SaveToFile(AFileName: StringRAL);
+    procedure SaveToFile(const AFileName: StringRAL);
     procedure SaveToStream(var AStream: TStream);
-    procedure OpenFile(AFileName: StringRAL);
+    procedure OpenFile(const AFileName: StringRAL);
 
     property AsStream: TStream read GetBufferStream write SetBufferStream;
     property AsString: StringRAL read GetBufferString write SetBufferString;
@@ -75,7 +75,7 @@ type
     function FormDataCount: IntegerRAL;
 
     procedure ProcessMultiPart(AStream: TStream); overload;
-    procedure ProcessMultiPart(AString: StringRAL); overload;
+    procedure ProcessMultiPart(const AString: StringRAL); overload;
 
     property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
   published
@@ -101,12 +101,12 @@ type
 
     function FormDataCount: IntegerRAL;
 
-    procedure AddField(AName, AValue: StringRAL);
-    procedure AddStream(AName: StringRAL; const AFileStream: TStream;
-                        AFileName: StringRAL = ''; AContentType: StringRAL = '');
-    procedure AddFile(AName, AFileName: StringRAL; AContentType: StringRAL = '');
+    procedure AddField(const AName: StringRAL; const AValue: StringRAL);
+    procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
+                        const AFileName: StringRAL = ''; const AContentType: StringRAL = '');
+    procedure AddFile(const AName: StringRAL; const AFileName: StringRAL; const AContentType: StringRAL = '');
 
-    procedure SaveToFile(AFileName: StringRAL);
+    procedure SaveToFile(const AFileName: StringRAL);
     function AsStream: TStringStream;
   published
     property Boundary: StringRAL read GetBoundary write FBoundary;
@@ -149,7 +149,7 @@ begin
   Result := FFormData.Count;
 end;
 
-procedure TRALMultipartEncoder.AddField(AName, AValue: StringRAL);
+procedure TRALMultipartEncoder.AddField(const AName, AValue: StringRAL);
 var
   vField: TRALMultipartFormData;
 begin
@@ -161,8 +161,8 @@ begin
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.AddStream(AName: StringRAL; const AFileStream: TStream;
-                                         AFileName: StringRAL; AContentType: StringRAL);
+procedure TRALMultipartEncoder.AddStream(const AName: StringRAL; const AFileStream: TStream;
+                                         const AFileName: StringRAL; const AContentType: StringRAL);
 var
   vField: TRALMultipartFormData;
 begin
@@ -180,7 +180,7 @@ begin
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.AddFile(AName, AFileName: StringRAL; AContentType: StringRAL);
+procedure TRALMultipartEncoder.AddFile(const AName, AFileName: StringRAL; const AContentType: StringRAL);
 var
   vField: TRALMultipartFormData;
 begin
@@ -197,7 +197,7 @@ begin
   FFormData.Add(vField);
 end;
 
-procedure TRALMultipartEncoder.SaveToFile(AFileName: StringRAL);
+procedure TRALMultipartEncoder.SaveToFile(const AFileName: StringRAL);
 var
   vFile: TStringStream;
 begin
@@ -275,7 +275,7 @@ begin
   end;
 end;
 
-procedure TRALMultipartFormData.SetBufferString(AValue: StringRAL);
+procedure TRALMultipartFormData.SetBufferString(const AValue: StringRAL);
 begin
   if (FBufferStream <> nil) and (FFreeBuffer) then
     FBufferStream.Free;
@@ -376,7 +376,7 @@ begin
   end;
 end;
 
-procedure TRALMultipartFormData.SaveToFile(AFileName: StringRAL);
+procedure TRALMultipartFormData.SaveToFile(const AFileName: StringRAL);
 begin
   if FBufferStream.InheritsFrom(TCustomMemoryStream) then
     TCustomMemoryStream(FBufferStream).SaveToFile(AFileName)
@@ -393,7 +393,7 @@ begin
   FBufferStream.Position := 0;
 end;
 
-procedure TRALMultipartFormData.OpenFile(AFileName: StringRAL);
+procedure TRALMultipartFormData.OpenFile(const AFileName: StringRAL);
 begin
   if (FBufferStream <> nil) and (FFreeBuffer) then
     FBufferStream.Free;
@@ -588,7 +588,7 @@ begin
   end;
 end;
 
-procedure TRALMultipartDecoder.ProcessMultiPart(AString: StringRAL);
+procedure TRALMultipartDecoder.ProcessMultiPart(const AString: StringRAL);
 var
   vInBuf: array [0 .. 4095] of Byte;
   vBytesRead: IntegerRAL;

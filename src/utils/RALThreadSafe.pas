@@ -8,7 +8,7 @@
 interface
 
 uses
-  Classes, SysUtils, syncobjs;
+  Classes, SysUtils, syncobjs, RALTypes;
 
 type
 
@@ -31,28 +31,28 @@ type
   private
     FValue: TStringList;
   protected
-    function GetValue(const AName: string): string;
-    procedure SetValue(const AName: string; AValue: string);
+    function GetValue(const AName: StringRAL): StringRAL;
+    procedure SetValue(const AName: StringRAL; const AValue: StringRAL);
   public
     constructor Create; override;
     destructor Destroy; override;
-    procedure Add(const AItem: string);
-    procedure AddObject(const AItem: string; AObject: TObject);
+    procedure Add(const AItem: StringRAL);
+    procedure AddObject(const AItem: StringRAL; AObject: TObject);
     procedure Clear(AFreeObjects : boolean = false);
     function Empty: Boolean;
     function Lock: TStringList; reintroduce;
-    function Exists(AItem : string) : boolean;
-    function ObjectByItem(const AItem: string): TObject;
-    procedure Remove(const AItem: string; AFreeObjects : boolean = false);
+    function Exists(const AItem : StringRAL) : boolean;
+    function ObjectByItem(const AItem: StringRAL): TObject;
+    procedure Remove(const AItem: StringRAL; AFreeObjects : boolean = false);
     procedure Unlock; reintroduce;
-    property Values[const AName: string]: string read GetValue write SetValue;
+    property Values[const AName: StringRAL]: StringRAL read GetValue write SetValue;
   end;
 
 implementation
 
 { TRALStringListSafe }
 
-procedure TRALStringListSafe.SetValue(const AName: string; AValue: string);
+procedure TRALStringListSafe.SetValue(const AName: StringRAL; const AValue: StringRAL);
 begin
   Lock;
   try
@@ -62,7 +62,7 @@ begin
   end;
 end;
 
-function TRALStringListSafe.GetValue(const AName: string): string;
+function TRALStringListSafe.GetValue(const AName: StringRAL): StringRAL;
 begin
   Lock;
   try
@@ -91,7 +91,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALStringListSafe.Add(const AItem: string);
+procedure TRALStringListSafe.Add(const AItem: StringRAL);
 begin
   Lock;
   try
@@ -101,7 +101,7 @@ begin
   end;
 end;
 
-procedure TRALStringListSafe.AddObject(const AItem: string; AObject: TObject);
+procedure TRALStringListSafe.AddObject(const AItem: StringRAL; AObject: TObject);
 begin
   Lock;
   try
@@ -147,7 +147,7 @@ begin
   Result := FValue;
 end;
 
-function TRALStringListSafe.Exists(AItem: string): boolean;
+function TRALStringListSafe.Exists(const AItem: StringRAL): boolean;
 begin
   Result := False;
   Lock;
@@ -158,7 +158,7 @@ begin
   end;
 end;
 
-function TRALStringListSafe.ObjectByItem(const AItem: string): TObject;
+function TRALStringListSafe.ObjectByItem(const AItem: StringRAL): TObject;
 var
   i : Integer;
 begin
@@ -174,7 +174,7 @@ begin
   end;
 end;
 
-procedure TRALStringListSafe.Remove(const AItem: string; AFreeObjects: boolean);
+procedure TRALStringListSafe.Remove(const AItem: StringRAL; AFreeObjects: boolean);
 var
   i: Integer;
 begin

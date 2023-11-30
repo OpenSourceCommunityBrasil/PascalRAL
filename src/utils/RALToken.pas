@@ -53,9 +53,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    procedure AddClaim(AKey : StringRAL; AValue : StringRAL);
-    procedure DelClaim(AKey : StringRAL);
-    function GetClaim(AKey : StringRAL) : StringRAL;
+    procedure AddClaim(const AKey : StringRAL; const AValue : StringRAL);
+    procedure DelClaim(const AKey : StringRAL);
+    function GetClaim(const AKey : StringRAL) : StringRAL;
     procedure Clear;
 
     procedure createNewId;
@@ -77,9 +77,9 @@ type
     FSignature: StringRAL;
     FSecret : StringRAL;
   protected
-    function signHS256(ASource : StringRAL) : StringRAL;
-    function signHS384(ASource : StringRAL) : StringRAL;
-    function signHS512(ASource : StringRAL) : StringRAL;
+    function signHS256(const ASource : StringRAL) : StringRAL;
+    function signHS384(const ASource : StringRAL) : StringRAL;
+    function signHS512(const ASource : StringRAL) : StringRAL;
 
     function CreateToken(AHeader,APayload : StringRAL;
                          var ASignature : StringRAL) : StringRAL;
@@ -120,7 +120,7 @@ type
     function GetSignature : StringRAL;
 
     function AlgorithmToStr(AAlg: TRALOAuthAlgorithm) : StringRAL;
-    function StrToAlgorithm(AStr: StringRAL) : TRALOAuthAlgorithm;
+    function StrToAlgorithm(const AStr: StringRAL) : TRALOAuthAlgorithm;
   public
     constructor Create;
     function Validate : boolean;
@@ -354,7 +354,7 @@ begin
   end;
 end;
 
-function TRALOAuth.StrToAlgorithm(AStr : StringRAL) : TRALOAuthAlgorithm;
+function TRALOAuth.StrToAlgorithm(const AStr : StringRAL) : TRALOAuthAlgorithm;
 begin
   if AStr = 'HMAC-SHA256' then
     Result := toaHSHA256
@@ -594,7 +594,7 @@ end;
 
 { TRALJWTParams }
 
-procedure TRALJWTParams.AddClaim(AKey, AValue: StringRAL);
+procedure TRALJWTParams.AddClaim(const AKey, AValue: StringRAL);
 begin
   FCustomClaims.Add(AKey + '=' + AValue);
 end;
@@ -615,7 +615,7 @@ begin
   FId := TRALBase64.Encode(vBytes);
 end;
 
-procedure TRALJWTParams.DelClaim(AKey: StringRAL);
+procedure TRALJWTParams.DelClaim(const AKey: StringRAL);
 var
   vInt : IntegerRAL;
 begin
@@ -679,7 +679,7 @@ begin
   end;
 end;
 
-function TRALJWTParams.GetClaim(AKey: StringRAL): StringRAL;
+function TRALJWTParams.GetClaim(const AKey: StringRAL): StringRAL;
 begin
   Result := FCustomClaims.Values[AKey];
 end;
@@ -842,7 +842,7 @@ begin
   Result := CreateToken(FHeader.AsJSON, FPayload.AsJSON, FSignature);
 end;
 
-function TRALJWT.signHS256(ASource: StringRAL): StringRAL;
+function TRALJWT.signHS256(const ASource: StringRAL): StringRAL;
 var
   vHash : TRALSHA2_32;
 begin
@@ -856,7 +856,7 @@ begin
   end;
 end;
 
-function TRALJWT.signHS384(ASource: StringRAL): StringRAL;
+function TRALJWT.signHS384(const ASource: StringRAL): StringRAL;
 var
   vHash : TRALSHA2_64;
 begin
@@ -870,7 +870,7 @@ begin
   end;
 end;
 
-function TRALJWT.signHS512(ASource: StringRAL): StringRAL;
+function TRALJWT.signHS512(const ASource: StringRAL): StringRAL;
 var
   vHash : TRALSHA2_64;
 begin

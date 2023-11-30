@@ -9,7 +9,7 @@ uses
 
 type
   TRALRoutes = class;
-  TRALOnReply = procedure(Sender: TObject; ARequest: TRALRequest; AResponse: TRALResponse) of object;
+  TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
 
   { TRALRoute }
 
@@ -27,8 +27,8 @@ type
     function GetDisplayName: string; override;
 
     procedure SetRouteName(AValue: StringRAL);
-    procedure SetRouteDomain(AValue: StringRAL);
-    function RouteExists(ARoute: StringRAL): boolean;
+    procedure SetRouteDomain(const AValue: StringRAL);
+    function RouteExists(const ARoute: StringRAL): boolean;
 
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
@@ -94,7 +94,7 @@ end;
 procedure TRALRoute.Execute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if Assigned(OnReply) then
-    OnReply(Self, ARequest, AResponse)
+    OnReply(ARequest, AResponse)
   else
     AResponse.Answer(404, RAL404Page);
 end;
@@ -116,7 +116,7 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetRouteDomain(AValue: StringRAL);
+procedure TRALRoute.SetRouteDomain(const AValue: StringRAL);
 var
   vRouteStr: StringRAL;
 begin
@@ -129,7 +129,7 @@ begin
     FRouteDomain := FixRoute(AValue);
 end;
 
-function TRALRoute.RouteExists(ARoute: StringRAL): boolean;
+function TRALRoute.RouteExists(const ARoute: StringRAL): boolean;
 var
   vRoute: TRALRoute;
 begin

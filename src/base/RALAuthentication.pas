@@ -62,8 +62,8 @@ type
     FPassword: StringRAL;
   public
     constructor Create(AOwner: TComponent); overload; override;
-    constructor Create(AOwner: TComponent; AUser: StringRAL;
-                       APassword: StringRAL); overload;
+    constructor Create(AOwner: TComponent; const AUser: StringRAL;
+                       const APassword: StringRAL); overload;
 
     procedure GetHeader(AVars: TStringList; AParams: TRALParams); override;
   published
@@ -79,8 +79,8 @@ type
     FOnValidate: TRALOnValidate;
   public
     constructor Create(AOwner: TComponent); overload; override;
-    constructor Create(AOwner: TComponent; AUser: StringRAL;
-                       APassword: StringRAL); overload;
+    constructor Create(AOwner: TComponent; const AUser: StringRAL;
+                       const APassword: StringRAL); overload;
 
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     procedure AuthQuery(AQuery: StringRAL; ARequest: TRALRequest;
@@ -130,7 +130,7 @@ type
     procedure SetRoute(const AValue: StringRAL);
 
     function GetToken(var AJSONParams: StringRAL): StringRAL;
-    function RenewToken(AToken : StringRAL; var AJSONParams: StringRAL): StringRAL;
+    function RenewToken(const AToken : StringRAL; var AJSONParams: StringRAL): StringRAL;
 
     procedure Validate(ARequest: TRALRequest;
                        AResponse: TRALResponse); override;
@@ -533,7 +533,7 @@ begin
   FKey := 'token';
 end;
 
-function TRALServerJWTAuth.RenewToken(AToken : StringRAL; var AJSONParams: StringRAL): StringRAL;
+function TRALServerJWTAuth.RenewToken(const AToken : StringRAL; var AJSONParams: StringRAL): StringRAL;
 var
   vJWT : TRALJWT;
 begin
@@ -630,7 +630,7 @@ begin
   AResponse.Answer(404, RAL404Page);
 end;
 
-constructor TRALServerBasicAuth.Create(AOwner: TComponent; AUser, APassword: StringRAL);
+constructor TRALServerBasicAuth.Create(AOwner: TComponent; const AUser, APassword: StringRAL);
 begin
   Create(AOwner);
   UserName := AUser;
@@ -681,7 +681,7 @@ begin
   SetAuthType(ratBasic);
 end;
 
-constructor TRALClientBasicAuth.Create(AOwner: TComponent; AUser,
+constructor TRALClientBasicAuth.Create(AOwner: TComponent; const AUser,
   APassword: StringRAL);
 begin
   Create(AOwner);

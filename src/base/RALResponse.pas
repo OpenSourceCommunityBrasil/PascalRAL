@@ -25,17 +25,17 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-                     AContentType: StringRAL = rctAPPLICATIONJSON); overload;
-    procedure Answer(AFileName: StringRAL); overload;
-    procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; AFileName: StringRAL); overload;
+    procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
+                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    procedure Answer(const AFileName: StringRAL); overload;
+    procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; const AFileName: StringRAL); overload;
 
-    function AddHeader(AName, AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddField(AName, AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddCookie(AName, AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddFile(AFileName : StringRAL) : TRALResponse; reintroduce; overload;
-    function AddFile(AStream : TStream; AFileName : StringRAL = '') : TRALResponse; reintroduce; overload;
-    function AddBody(AText: StringRAL; AContextType : StringRAL = rctTEXTPLAIN) : TRALResponse; reintroduce;
+    function AddHeader(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddField(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddCookie(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
+    function AddFile(const AFileName : StringRAL) : TRALResponse; reintroduce; overload;
+    function AddFile(AStream : TStream; const AFileName : StringRAL = '') : TRALResponse; reintroduce; overload;
+    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALResponse; reintroduce;
   published
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
@@ -49,57 +49,57 @@ implementation
 
 { TRALResponse }
 
-procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AMessage: StringRAL;
-  AContentType: StringRAL);
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
+  const AContentType: StringRAL);
 begin
   StatusCode := AStatusCode;
   ContentType := AContentType;
   ResponseText := AMessage;
 end;
 
-procedure TRALResponse.Answer(AFileName: StringRAL);
+procedure TRALResponse.Answer(const AFileName: StringRAL);
 begin
   AddFile(AFileName);
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AFile: TStream;
-  AFileName: StringRAL);
+  const AFileName: StringRAL);
 begin
   StatusCode := AStatusCode;
   AddFile(AFile, AFileName);
 end;
 
-function TRALResponse.AddHeader(AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddHeader(const AName, AValue : StringRAL) : TRALResponse;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddField(AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddField(const AName, AValue : StringRAL) : TRALResponse;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddBody(AText, AContextType: StringRAL): TRALResponse;
+function TRALResponse.AddBody(const AText, AContextType: StringRAL): TRALResponse;
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALResponse.AddCookie(AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddCookie(const AName, AValue : StringRAL) : TRALResponse;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddFile(AFileName : StringRAL) : TRALResponse;
+function TRALResponse.AddFile(const AFileName : StringRAL) : TRALResponse;
 begin
   inherited AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALResponse.AddFile(AStream : TStream; AFileName : StringRAL) : TRALResponse;
+function TRALResponse.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALResponse;
 begin
   inherited AddFile(AStream, AFileName);
   Result := Self;

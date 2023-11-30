@@ -19,9 +19,9 @@ type
     class procedure UpdateCRC32(var ACRC32 : LongWord; AOctet: Byte);
   public
     class function Compress(AStream: TStream; AFormat: TRALCompressType = ctDeflate): TStream; overload;
-    class function Compress(AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
+    class function Compress(const AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
     class function Decompress(AStream: TStream; AFormat: TRALCompressType = ctDeflate): TStream; overload;
-    class function Decompress(AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
+    class function Decompress(const AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
   end;
 
 implementation
@@ -175,7 +175,7 @@ begin
   end;
 end;
 
-class function TRALCompressZLib.Compress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
+class function TRALCompressZLib.Compress(const AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
   vStr, vRes: TStream;
 begin
@@ -192,7 +192,7 @@ begin
   end;
 end;
 
-class function TRALCompressZLib.Decompress(AString: StringRAL; AFormat: TRALCompressType): StringRAL;
+class function TRALCompressZLib.Decompress(const AString: StringRAL; AFormat: TRALCompressType): StringRAL;
 var
   vStr, vRes: TStream;
 begin
