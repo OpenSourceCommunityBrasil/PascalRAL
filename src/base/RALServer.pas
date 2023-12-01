@@ -495,7 +495,7 @@ procedure TRALServer.AnalizeRoute(ARoute : TRALRoute; ARequest : TRALRequest; AR
 begin
   if FCORSOptions.Enabled then
   begin
-    AResponse.Params.AddParam('Access-Control-Allow-Origin',FCORSOptions.AllowOrigin);
+    AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin);
     if ARequest.Method = amOPTIONS then begin
       AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods);
       AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders);

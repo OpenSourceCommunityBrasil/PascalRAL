@@ -1,4 +1,4 @@
-unit RALStorage;
+﻿unit RALStorage;
 
 interface
 
@@ -147,8 +147,8 @@ type
     procedure Open;
     procedure Close; virtual;
 
-    procedure Load(AStream : TStream; AMode : TRALStorageMode); virtual;
-    procedure Load(AFileName : string; AMode : TRALStorageMode); virtual;
+    procedure Load(AStream : TStream; AMode : TRALStorageMode); overload; virtual;
+    procedure Load(const AFileName : StringRAL; AMode : TRALStorageMode); overload; virtual;
 
     procedure WriteField(AField : TField);
     procedure ReadField(AField : TField);
@@ -404,7 +404,7 @@ function TRALStorageField.GetAsJSON : StringRAL;
           #12 : vRes := vRes + '\f';
           #13 : vRes := vRes + '\r';
           else
-            vRes := vRes + '\u' + HexStr(Ord(AValue[vInt]),4);
+            vRes := vRes + '\u' + IntToHex(Ord(AValue[vInt]), 4);
         end;
       end
       else begin
@@ -689,9 +689,9 @@ begin
     {$IFNDEF FPC}
       ftOraTimeStamp    : FSize := SizeOf(TDateTime);
       ftOraInterval     : FSize := SizeOf(TDateTime);
-      ftLongWord        : FSize := Size(LongWord);
-      ftShortint        : FSize := Size(Shortint);
-      ftByte            : FSize := Size(Byte);
+      ftLongWord        : FSize := SizeOf(LongWord);
+      ftShortint        : FSize := SizeOf(Shortint);
+      ftByte            : FSize := SizeOf(Byte);
       ftExtended        : FSize := SizeOf(Double);
       ftConnection      : FillZeroSize;
       ftParams          : FillZeroSize;
@@ -1541,8 +1541,8 @@ begin
       ftOraTimeStamp    : WriteDateTime(TDateTime(AValue));
       ftOraInterval     : WriteDateTime(TDateTime(AValue));
       ftLongWord        : WriteLongWord(LongWord(Trunc(AValue)));
-      ftShortint        : WriteShortInt(ShortInt(Trunc(AValue)))
-      ftByte            : WriteByte(Byte(Trunc(AValue)))
+      ftShortint        : WriteShortInt(ShortInt(Trunc(AValue)));
+      ftByte            : WriteByte(Byte(Trunc(AValue)));
       ftExtended        : WriteDouble(AValue);
       ftStream          : WriteBytes(DoubleToBytes);
       ftTimeStampOffset : WriteDateTime(TDateTime(AValue));
@@ -1934,7 +1934,7 @@ begin
   end;
 end;
 
-procedure TRALStorage.Load(AFileName: string; AMode : TRALStorageMode);
+procedure TRALStorage.Load(const AFileName: StringRAL; AMode : TRALStorageMode);
 var
   vStream : TFileStream;
 begin
@@ -2094,13 +2094,13 @@ begin
           ftLongWord        : AField.AsInteger := vField.AsInteger;
           ftShortint        : AField.AsInteger := vField.AsInteger;
           ftByte            : AField.AsInteger := vField.AsInteger;
-          ftExtended        : AField.AsDouble := vField.AsFloat;
+          ftExtended        : AField.AsExtended := vField.AsDouble;
           ftConnection      : AField.Clear;
           ftParams          : AField.Clear;
           ftStream          : ReadAsStream;
           ftTimeStampOffset : AField.AsDateTime := vField.AsDateTime;
           ftObject          : AField.Clear;
-          ftSingle          : AField.AsDouble := vField.AsFloat;
+          ftSingle          : AField.AsSingle := vField.AsDouble;
         {$ENDIF}
       end;
     end;
@@ -2149,7 +2149,7 @@ begin
   AFieldDefs.Clear;
   for vInt := 0 to Pred(FFieldDefs.Count) do
   begin
-    vField := TFieldDef(AFieldDefs.Add);
+    vField := TFieldDef(AFieldDefs.AddFieldDef);
     vField.Name := Fields[vInt].Name;
     vField.DataType := Fields[vInt].DataType;
     if vField.DataType in [ftString, ftFixedChar,

@@ -8,3 +8,7 @@ set path_brcc32="D:\IDE\Embarcadero\Studio\7\Bin\brcc32.exe"
 %path_brcc32% -fo "..\..\pkg\Delphi\IndyRAL.dcr" "Indy.rc"
 %path_brcc32% -fo "..\..\pkg\Delphi\NetHttpRAL.dcr" "NetHttp.rc"
 %path_brcc32% -fo "..\..\pkg\Delphi\SynopseRAL.dcr" "Synopse.rc"
+
+# DBWare
+%path_brcc32% -fo "..\..\pkg\Delphi\DBLinks\RALDBFireDACLink.dcr" "DBFireDACLink.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DBLinks\RALDBZeosLink.dcr" "DBZeosLink.rc"

@@ -11,7 +11,7 @@ type
 const
   // Versionamento
   VERSION_MAJOR = 0;
-  VERSION_MINOR = 8;
+  VERSION_MINOR = 9;
   VERSION_RELEASE = 0;
   VERSION_ADDITIVE = ' - alpha';
   RALVERSION = char(48 + VERSION_MAJOR) + '.'
@@ -75,8 +75,9 @@ const
   // am = alert messages
 
   // em = error messages
-  emRouteAlreadyExists = 'Route already exists!';
   emContentCheckError = 'Content check error';
+  emDBLinkMissing = 'DBLink Property missing';
+  emRouteAlreadyExists = 'Route already exists!';
 
   // wm = warning messages
   wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';

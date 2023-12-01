@@ -24,7 +24,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="34">
+    <Files Count="35">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -162,6 +162,10 @@
         <Filename Value="PascalRAL.lrs"/>
         <Type Value="LRS"/>
       </Item34>
+      <Item35>
+        <Filename Value="..\..\src\database\RALStorageBIN.pas"/>
+        <UnitName Value="RALStorageBIN"/>
+      </Item35>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

@@ -88,11 +88,11 @@ end;
 
 function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
 begin
-  if SameText(AStr,'gzip') then
+  if SameText(AStr, 'gzip') then
     Result := ctGZip
-  else if SameText(AStr,'zlib') then
+  else if SameText(AStr, 'zlib') then
     Result := ctZLib
-  else if SameText(AStr,'deflate') then
+  else if SameText(AStr, 'deflate') then
     Result := ctDeflate
   else
     Result := ctNone;
@@ -110,11 +110,11 @@ end;
 
 function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
 begin
-  if SameText(AStr,'aes128cbc_pkcs7') then
+  if SameText(AStr, 'aes128cbc_pkcs7') then
     Result := crAES128
-  else if SameText(AStr,'aes192cbc_pkcs7') then
+  else if SameText(AStr, 'aes192cbc_pkcs7') then
     Result := crAES192
-  else if SameText(AStr,'aes256cbc_pkcs7') then
+  else if SameText(AStr, 'aes256cbc_pkcs7') then
     Result := crAES256
   else
     Result := crNone;

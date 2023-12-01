@@ -30,8 +30,8 @@ type
     procedure RALParamJSONToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
     procedure RALParamBinaryToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
 
-    procedure OpenSQL(Sender : TObject; ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure ExecSQL(Sender : TObject; ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure OpenSQL(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure ExecSQL(ARequest : TRALRequest; AResponse : TRALResponse);
   public
     constructor Create(AOwner : TComponent); override;
   published
@@ -100,7 +100,7 @@ begin
     Result.StorageOutPut := FStorageOutPut;
   end
   else begin
-    raise Exception.Create('Propriedade DBLink deve ser informada');
+    raise Exception.Create(emDBLinkMissing);
   end;
 end;
 
@@ -136,7 +136,7 @@ begin
 
 end;
 
-procedure TRALDBWare.OpenSQL(Sender : TObject; ARequest : TRALRequest; AResponse : TRALResponse);
+procedure TRALDBWare.OpenSQL(ARequest : TRALRequest; AResponse : TRALResponse);
 var
   vDB : TRALDBBase;
   vParam : TRALParam;
@@ -211,7 +211,7 @@ begin
   end;
 end;
 
-procedure TRALDBWare.ExecSQL(Sender : TObject; ARequest : TRALRequest; AResponse : TRALResponse);
+procedure TRALDBWare.ExecSQL(ARequest : TRALRequest; AResponse : TRALResponse);
 var
   vDB : TRALDBBase;
   vParam : TRALParam;
