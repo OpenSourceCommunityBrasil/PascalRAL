@@ -67,7 +67,8 @@ type
     property IPv6Enabled: boolean read FIPv6Enabled write SetIPv6Enabled;
   end;
 
-  TRALOnClientTryBlocked = procedure(Sender: TObject; AClientIP: StringRAL; ANumTry: IntegerRAL) of object;
+  TRALOnClientTryBlocked = procedure(Sender: TObject; AClientIP: StringRAL;
+                                     ANumTry: IntegerRAL) of object;
   TRALOnClientWasBlocked = procedure(Sender: TObject; AClientIP: StringRAL) of object;
 
   { TRALCORSOptions }
@@ -79,12 +80,12 @@ type
     FAllowHeaders: TStringList;
     FMaxAge: IntegerRAL;
   protected
-    procedure SetAllowHeaders(AValue : TStringList);
+    procedure SetAllowHeaders(AValue: TStringList);
   public
     constructor Create;
     destructor Destroy; override;
 
-    function GetAllowHeaders : StringRAL;
+    function GetAllowHeaders: StringRAL;
   published
     property Enabled: boolean read FEnabled write FEnabled;
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
@@ -109,7 +110,7 @@ type
     FSSL: TRALSSL;
     FIPConfig: TRALIPConfig;
     FCompressType: TRALCompressType;
-    FCORSOptions : TRALCORSOptions;
+    FCORSOptions: TRALCORSOptions;
     FCriptoOptions: TRALCriptoOptions;
 
     FBlackIPList: TRALStringListSafe;
@@ -121,16 +122,16 @@ type
     FOnClientTryBlocked: TRALOnClientTryBlocked;
     FOnClientWasBlocked: TRALOnClientWasBlocked;
     FOptions: TRALServerOptions;
-    FListSubRoutes : TList;
+    FListSubRoutes: TList;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure AddSubRoute(ASubRoute : TRALSubRoutes);
-    procedure DelSubRoute(ASubRoute : TRALSubRoutes);
+    procedure AddSubRoute(ASubRoute: TRALSubRoutes);
+    procedure DelSubRoute(ASubRoute: TRALSubRoutes);
 
     procedure AddBlockList(const AClientIP: StringRAL);
     procedure CleanBlockedList;
     procedure CleanExpiredBlockedList;
-    function ClientIsBlocked(const AClientIP: StringRAL) : boolean;
+    function ClientIsBlocked(const AClientIP: StringRAL): boolean;
     function CreateRALSSL: TRALSSL; virtual;
     procedure DelBlockList(const AClientIP: StringRAL);
     function IPv6IsImplemented: boolean; virtual;
@@ -151,19 +152,24 @@ type
     function ValidateAuth(ARequest: TRALRequest;
                           var AResponse: TRALResponse): boolean;
 
-    function GetDefaultSSL : TRALSSL;
-    procedure LoadFavIcon(AResponse : TRALResponse);
-    procedure AnalizeRoute(ARoute : TRALRoute; ARequest : TRALRequest; AResponse : TRALResponse);
+    function GetDefaultSSL: TRALSSL;
+    procedure LoadFavIcon(AResponse: TRALResponse);
+    procedure AnalizeRoute(ARoute: TRALRoute; ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply; const ADescription: StringRAL = ''): TRALRoute;
+    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+                         const ADescription: StringRAL = ''): TRALRoute;
     function ProcessCommands(ARequest: TRALRequest): TRALResponse;
+
+    procedure Start;
+    procedure Stop;
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
+    property BruteForceProtection: TRALBruteForceProtection
+             read FBruteForceProtection write FBruteForceProtection;
     property Engine: StringRAL read FEngine;
     property FavIcon: TFileName read FFavIcon write FFavIcon;
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
@@ -171,52 +177,56 @@ type
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
+    property SessionTimeout: IntegerRAL read FSessionTimeout
+             write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
-    property CompressType : TRALCompressType read FCompressType write FCompressType;
-    property CORSOptions : TRALCORSOptions read FCORSOptions write FCORSOptions;
-    property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
 
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
-    property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
-    property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
+    property OnClientTryBlocked: TRALOnClientTryBlocked
+             read FOnClientTryBlocked write FOnClientTryBlocked;
+    property OnClientWasBlocked: TRALOnClientWasBlocked
+             read FOnClientWasBlocked write FOnClientWasBlocked;
   end;
 
   TRALSubRoutes = class(TRALComponent)
   private
-    FServer : TRALServer;
-    FRoutes : TRALRoutes;
+    FServer: TRALServer;
+    FRoutes: TRALRoutes;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetServer(AValue : TRALServer);
+    procedure SetServer(AValue: TRALServer);
 
-    function GetRouteAddress(ARoute : StringRAL) : TRALRoute;
-    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply; const ADescription: StringRAL = ''): TRALRoute;
+    function GetRouteAddress(ARoute: StringRAL): TRALRoute;
+    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+                         const ADescription: StringRAL = ''): TRALRoute;
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
-    property Routes : TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write FRoutes;
   published
-    property Server : TRALServer read FServer write SetServer;
+    property Server: TRALServer read FServer write SetServer;
   end;
 
 implementation
 
 { TRALCORSOptions }
 
-procedure TRALCORSOptions.SetAllowHeaders(AValue : TStringList);
+procedure TRALCORSOptions.SetAllowHeaders(AValue: TStringList);
 begin
   if FAllowHeaders = AValue then
     Exit;
 
   if Trim(AValue.Text) <> '' then
   begin
-    FAllowHeaders.Text := AValue.Text
+    FAllowHeaders.Text := AValue.Text;
   end
   else
   begin
@@ -251,9 +261,9 @@ begin
   inherited;
 end;
 
-function TRALCORSOptions.GetAllowHeaders : StringRAL;
+function TRALCORSOptions.GetAllowHeaders: StringRAL;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := '';
   for vInt := 0 to Pred(FAllowHeaders.Count) do
@@ -348,7 +358,7 @@ begin
 end;
 
 function TRALServer.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
-  const ADescription: StringRAL): TRALRoute;
+                                const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.RouteName := ARouteName;
@@ -362,7 +372,7 @@ var
   vClient: TRALClientBlockList;
 begin
   // nao adiciona o ip se ele estiver liberado ou bloqueado
-  if (FWhiteIPList.Exists(AClientIP)) or
+  if (FWhiteIPList.Exists(AClientIP)) or 
      (FBlackIPList.Exists(AClientIP)) then
     Exit;
 
@@ -397,12 +407,13 @@ var
   vTimeMax: TDateTime;
 begin
   Result := False;
-  if (FBlockedList.Empty) and (FBlackIPList.Empty) and
+  if (FBlockedList.Empty) and 
+     (FBlackIPList.Empty) and
      (FWhiteIPList.Empty) then
     Exit;
 
   // verifica ip se ele estiver bloquedo e nao liberado
-  Result := (FBlackIPList.Exists(AClientIP)) and
+  Result := (FBlackIPList.Exists(AClientIP)) and 
             (not FWhiteIPList.Exists(AClientIP));
 
   if Result then
@@ -463,14 +474,15 @@ end;
 
 procedure TRALServer.LoadFavIcon(AResponse: TRALResponse);
 var
-  vFile : TMemoryStream;
+  vFile: TMemoryStream;
   vMime: TRALMIMEType;
 begin
   if (FFavIcon = '') or (not FileExists(FFavIcon)) then
   begin
     AResponse.Answer(404, RAL404Page, rctTEXTHTML);
   end
-  else begin
+  else
+  begin
     vFile := TMemoryStream.Create;
     try
       vFile.LoadFromFile(FFavIcon);
@@ -491,12 +503,13 @@ begin
   end;
 end;
 
-procedure TRALServer.AnalizeRoute(ARoute : TRALRoute; ARequest : TRALRequest; AResponse : TRALResponse);
+procedure TRALServer.AnalizeRoute(ARoute: TRALRoute; ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if FCORSOptions.Enabled then
   begin
     AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin);
-    if ARequest.Method = amOPTIONS then begin
+    if ARequest.Method = amOPTIONS then
+    begin
       AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods);
       AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders);
       if FCORSOptions.MaxAge > 0 then
@@ -507,7 +520,8 @@ begin
       ARoute.Execute(ARequest, AResponse);
     end;
   end
-  else begin
+  else
+  begin
     ARoute.Execute(ARequest, AResponse);
   end;
 end;
@@ -537,8 +551,8 @@ end;
 
 function TRALServer.GetBlackIPList: TStringList;
 var
-  vInt : IntegerRAL;
-  vList : TStringList;
+  vInt: IntegerRAL;
+  vList: TStringList;
 begin
   Result := TStringList.Create;
   vList := FBlackIPList.Lock;
@@ -554,8 +568,8 @@ end;
 
 function TRALServer.GetWhiteIPList: TStringList;
 var
-  vInt : IntegerRAL;
-  vList : TStringList;
+  vInt: IntegerRAL;
+  vList: TStringList;
 begin
   Result := TStringList.Create;
   vList := FWhiteIPList.Lock;
@@ -577,7 +591,7 @@ end;
 
 procedure TRALServer.SetBlackIPList(AValue: TStringList);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   FBlackIPList.Clear;
   for vInt := 0 to Pred(AValue.Count) do
@@ -586,30 +600,29 @@ end;
 
 procedure TRALServer.SetWhiteIPList(AValue: TStringList);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   FWhiteIPList.Clear;
   for vInt := 0 to Pred(AValue.Count) do
     FWhiteIPList.Add(AValue.Strings[vInt]);
 end;
 
-procedure TRALServer.Notification(AComponent: TComponent;
-  Operation: TOperation);
+procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FAuthentication) then
     FAuthentication := nil;
   inherited;
 end;
 
-procedure TRALServer.AddSubRoute(ASubRoute : TRALSubRoutes);
+procedure TRALServer.AddSubRoute(ASubRoute: TRALSubRoutes);
 begin
   if FListSubRoutes.IndexOf(ASubRoute) < 0 then
     FListSubRoutes.Add(ASubRoute);
 end;
 
-procedure TRALServer.DelSubRoute(ASubRoute : TRALSubRoutes);
+procedure TRALServer.DelSubRoute(ASubRoute: TRALSubRoutes);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   vInt := FListSubRoutes.IndexOf(ASubRoute);
   if vInt >= 0 then
@@ -620,8 +633,8 @@ function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
   vString: StringRAL;
-  vInt : integer;
-  vSubRoute : TRALSubRoutes;
+  vInt: integer;
+  vSubRoute: TRALSubRoutes;
 begin
   Result := TRALResponse.Create;
 
@@ -702,7 +715,6 @@ begin
     else
     begin
       Result.Answer(404, RAL404Page, rctTEXTHTML);
-//      AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end;
   end
   else
@@ -715,9 +727,10 @@ begin
     begin
       Result.Answer(404, RAL404Page, rctTEXTHTML);
     end
-    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
-            (not(ARequest.Method in vRoute.SkipAuthMethods)) and
-            (not(ValidateAuth(ARequest, Result))) then
+    else if (FAuthentication <> nil) and 
+            (not (amALL in vRoute.SkipAuthMethods)) and
+            (not (ARequest.Method in vRoute.SkipAuthMethods)) and
+            (not (ValidateAuth(ARequest, Result))) then
     begin
       AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end
@@ -736,8 +749,19 @@ begin
   CleanExpiredBlockedList;
 end;
 
+procedure TRALServer.Start;
+begin
+  SetActive(True);
+end;
+
+procedure TRALServer.Stop;
+begin
+  SetActive(False);
+end;
+
 procedure TRALServer.SetActive(const AValue: boolean);
 begin
+  if FActive = AValue then Exit;
   FActive := AValue;
 end;
 
@@ -783,7 +807,7 @@ end;
 
 { TRALSubRoutes }
 
-procedure TRALSubRoutes.SetServer(AValue : TRALServer);
+procedure TRALSubRoutes.SetServer(AValue: TRALServer);
 begin
   if AValue <> FServer then
   begin
@@ -800,7 +824,7 @@ begin
   end;
 end;
 
-procedure TRALSubRoutes.Notification(AComponent : TComponent; Operation : TOperation);
+procedure TRALSubRoutes.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FServer) then
     FServer := nil;
@@ -808,26 +832,28 @@ begin
   inherited;
 end;
 
-function TRALSubRoutes.GetRouteAddress(ARoute : StringRAL) : TRALRoute;
+function TRALSubRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
 var
-  vInt : integer;
-  vRouteName : string;
+  vInt: integer;
+  vRouteName: string;
 begin
   Result := nil;
 
   if ARoute[PosIniStr] = '/' then
     Delete(ARoute, 1, 1);
 
-  vInt := Pos('/',ARoute);
+  vInt := Pos('/', ARoute);
   if vInt > 0 then
   begin
     vRouteName := Copy(ARoute, 1, vInt - 1);
-    if SameText(vRouteName,Name) then
+    if SameText(vRouteName, Name) then
       Result := Routes.RouteAddress[ARoute];
   end;
 end;
 
-function TRALSubRoutes.CreateRoute(const ARouteName : StringRAL; AReplyProc : TRALOnReply; const ADescription : StringRAL) : TRALRoute;
+function TRALSubRoutes.CreateRoute(const ARouteName: StringRAL;
+                                   AReplyProc: TRALOnReply; 
+                                   const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.RouteName := ARouteName;
@@ -835,7 +861,7 @@ begin
   Result.Description.Text := ADescription;
 end;
 
-constructor TRALSubRoutes.Create(AOwner : TComponent);
+constructor TRALSubRoutes.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FRoutes := TRALRoutes.Create(Self);

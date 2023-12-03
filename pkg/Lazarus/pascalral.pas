@@ -8,13 +8,12 @@ unit PascalRAL;
 interface
 
 uses
-  RALAuthentication, RALClient, RALConsts, RALRoutes, RALServer,
-  RALTypes, RALRequest, RALResponse, RALParams, RALRegister, RALBase64,
-  RALHashes, RALMD5, RALMIMETypes, RALSHA2_32, RALSHA2_64,
-  RALToken, RALTools, RALJson, RALThreadSafe, RALMultipartCoder,
-  RALCustomObjects, RALUrlCoder, RALCripto, RALCriptoAES, RALSHA1,
-  RALCompressZLib, RALDatasetStorage, RALDBBase, RALDBWare,
-  RALStorage, RALStorageJSON, LazarusPackageIntf;
+  RALAuthentication, RALClient, RALConsts, RALRoutes, RALServer, RALTypes, RALRequest, 
+  RALResponse, RALParams, RALRegister, RALBase64, RALHashes, RALMD5, RALMIMETypes, 
+  RALSHA2_32, RALSHA2_64, RALToken, RALTools, RALJson, RALThreadSafe, RALMultipartCoder, 
+  RALCustomObjects, RALUrlCoder, RALCripto, RALCriptoAES, RALSHA1, RALCompressZLib, 
+  RALDatasetStorage, RALDBBase, RALDBWare, RALStorage, RALStorageJSON, RALStorageBIN, 
+  LazarusPackageIntf;
 
 implementation
 
