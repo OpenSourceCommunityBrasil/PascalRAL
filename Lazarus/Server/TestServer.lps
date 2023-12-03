@@ -3,7 +3,7 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Debug"/>
+    <BuildModes Active="Linux64"/>
     <Units>
       <Unit>
         <Filename Value="TestServer.lpr"/>
@@ -22,8 +22,8 @@
         <UnitName Value="Main"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="213"/>
-        <CursorPos X="3" Y="229"/>
+        <TopLine Value="211"/>
+        <CursorPos X="58" Y="220"/>
         <UsageCount Value="80"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>

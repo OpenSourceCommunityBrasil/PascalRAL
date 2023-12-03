@@ -79,6 +79,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="fphttpral"/>
+      </Item>
+      <Item>
         <PackageName Value="IndyRAL"/>
       </Item>
       <Item>

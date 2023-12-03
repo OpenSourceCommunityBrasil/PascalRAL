@@ -3,27 +3,34 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Linux64"/>
+    <BuildModes Active="Release"/>
     <Units>
       <Unit>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="25"/>
-        <CursorPos X="56" Y="43"/>
+        <TopLine Value="10"/>
+        <CursorPos X="54" Y="24"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\base\RALServer.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="743"/>
+        <CursorPos X="70" Y="755"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\utils\RALBase64.pas"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="681"/>
-        <CursorPos X="17" Y="696"/>
+        <TopLine Value="317"/>
+        <CursorPos X="36" Y="327"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="4">
+    <JumpHistory HistoryIndex="15">
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="28" Column="22" TopLine="6"/>
@@ -37,12 +44,56 @@
         <Caret Line="42" Column="46" TopLine="27"/>
       </Position>
       <Position>
-        <Filename Value="..\..\..\PascalRAL\src\base\RALServer.pas"/>
-        <Caret Line="156" Column="20" TopLine="142"/>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="48" Column="3" TopLine="28"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="48" Column="3" TopLine="28"/>
+        <Caret Line="49" Column="42" TopLine="25"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="24" Column="38" TopLine="7"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="56" Column="42" TopLine="38"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="41" Column="25" TopLine="30"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="9" Column="11"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="38" Column="19" TopLine="25"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="27" Column="20" TopLine="27"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="55" Column="18" TopLine="43"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="72" Column="18" TopLine="59"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="23" Column="19" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="24" Column="54" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\utils\RALBase64.pas"/>
+        <Caret Line="328" Column="13" TopLine="317"/>
       </Position>
     </JumpHistory>
     <RunParams>
