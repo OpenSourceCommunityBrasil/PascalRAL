@@ -34,6 +34,6 @@ requires
 
 contains
   RALDBZeos in '..\..\..\src\database\RALDBZeos.pas',
-  raldbzeosreg in '..\..\..\src\database\links\raldbzeosreg.pas';
+  RALDBZeosLinkReg in '..\..\..\src\database\links\RALDBZeosLinkReg.pas';
 
 end.

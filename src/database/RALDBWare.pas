@@ -132,8 +132,48 @@ begin
 end;
 
 procedure TRALDBWare.RALParamBinaryToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
-begin
+var
+  vStream : TStream;
+  vParam : TParam;
 
+  vInt1, vInt2 : Int64RAL;
+  vByte : Byte;
+  vString : StringRAL;
+  vBool : boolean;
+  vBytes : TBytes;
+begin
+  vStream := ARALParam.AsStream;
+  try
+    vStream.Position := 5;
+    vStream.Read(vInt1, SizeOf(vInt1));
+
+    // pegando o texto do SQL
+    SetLength(ASQL, vInt1);
+    vStream.Read(ASQL[PosIniStr], vInt1);
+
+    // total de pametros
+    vStream.Read(vInt1, SizeOf(vInt1));
+    for vInt2 := 1 to vInt1 do
+    begin
+      vParam := TParam(AParams.Add);
+
+      // name
+      vStream.Read(vByte, SizeOf(vByte));
+      SetLength(vString, vByte);
+      vStream.Read(vString[PosIniStr], vByte);
+      vParam.Name := vString;
+
+      // datatype
+      vStream.Read(vByte, SizeOf(vByte));
+      //vParam.DataType := vByte;
+
+      vInt1 := vParam.GetDataSize;
+      // valor
+//      vParam.AsBytes;
+    end;
+  finally
+    FreeAndNil(vStream);
+  end;
 end;
 
 procedure TRALDBWare.OpenSQL(ARequest : TRALRequest; AResponse : TRALResponse);

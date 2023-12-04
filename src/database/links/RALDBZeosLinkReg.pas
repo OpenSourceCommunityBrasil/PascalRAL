@@ -1,6 +1,8 @@
-unit raldbsqldbreg;
+unit raldbzeoslinkreg;
 
+{$IFDEF FPC}
 {$mode ObjFPC}{$H+}
+{$ENDIF}
 
 interface
 
@@ -8,7 +10,7 @@ uses
   {$IFDEF FPC}
   LResources,
   {$ENDIF}
-  Classes, SysUtils, raldbsqldb;
+  Classes, SysUtils, RALDBZeos;
 
 procedure Register;
 
@@ -16,10 +18,12 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWareLinks', [TRALDBSQLDBLink]);
+  RegisterComponents('RAL - DBWare Links', [TRALDBZeosLink]);
 end;
 
+{$IFDEF FPC}
 initialization
 {$I RALDBLinks.lrs}
+{$ENDIF}
 
 end.

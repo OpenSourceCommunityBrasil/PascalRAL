@@ -21,13 +21,13 @@
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\src\database\raldbsqldb.pas"/>
-        <UnitName Value="raldbsqldb"/>
+        <Filename Value="..\..\src\database\RALDBSQLDB.pas"/>
+        <UnitName Value="RALDBSQLDB"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\src\database\links\raldbsqldbreg.pas"/>
+        <Filename Value="..\..\src\database\links\RALDBSQLDBLinkReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="raldbsqldbreg"/>
+        <UnitName Value="RALDBSQLDBLinkReg"/>
       </Item2>
       <Item3>
         <Filename Value="RALDBLinks.lrs"/>
@@ -35,13 +35,16 @@
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="2">
+    <RequiredPkgs Count="3">
       <Item1>
-        <PackageName Value="LCL"/>
+        <PackageName Value="PascalRAL"/>
       </Item1>
       <Item2>
-        <PackageName Value="FCL"/>
+        <PackageName Value="LCL"/>
       </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

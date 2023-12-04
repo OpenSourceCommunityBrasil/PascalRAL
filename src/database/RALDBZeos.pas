@@ -21,8 +21,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-
-    function Open(ASQL : string; AParams : TParams) : TDataset; override;
+    function Open(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
   end;
@@ -82,7 +81,7 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBZeos.Open(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBZeos.Open(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
   vQuery : TZReadOnlyQuery;
   vInt : integer;

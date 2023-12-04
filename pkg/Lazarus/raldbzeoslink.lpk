@@ -16,9 +16,9 @@
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\src\database\links\raldbzeosreg.pas"/>
+        <Filename Value="..\..\src\database\links\RALDBZeosLinkReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="raldbzeosreg"/>
+        <UnitName Value="RALDBZeosLinkReg"/>
       </Item1>
       <Item2>
         <Filename Value="..\..\src\database\RALDBZeos.pas"/>
@@ -30,13 +30,16 @@
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="2">
+    <RequiredPkgs Count="3">
       <Item1>
-        <PackageName Value="zcomponent"/>
+        <PackageName Value="LCL"/>
       </Item1>
       <Item2>
-        <PackageName Value="FCL"/>
+        <PackageName Value="zcomponent"/>
       </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

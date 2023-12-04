@@ -1,4 +1,4 @@
-unit raldbsqldb;
+unit RALDBSQLDB;
 
 {$mode ObjFPC}{$H+}
 
