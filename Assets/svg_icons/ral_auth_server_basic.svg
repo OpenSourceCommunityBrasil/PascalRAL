@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="32.499985mm"
+   height="32.500004mm"
+   viewBox="0 0 32.499985 32.500004"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm" /><defs
+     id="defs1"><linearGradient
+       id="swatch1"
+       inkscape:swatch="solid"><stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop1" /></linearGradient></defs><g
+     inkscape:label="Camada 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-68.681253,-192.29078)"><path
+       id="path356-8-8"
+       d="m 100.43124,208.54078 c 0,8.56043 -6.939575,15.5 -15.499975,15.5 -8.56043,0 -15.500009,-6.93957 -15.500009,-15.5 0,-8.5604 6.939579,-15.5 15.500009,-15.5 8.5604,0 15.499975,6.9396 15.499975,15.5 z"
+       style="fill:#2e84ff;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:1.5;stroke-dasharray:none;stroke-opacity:1"
+       inkscape:label="circulo" /><path
+       id="path359"
+       d="m 79.762013,203.86383 c 0,-2.8549 2.31434,-5.16924 5.169231,-5.16924 v 0 c 2.85488,0 5.16924,2.31434 5.16924,5.16924 v 3.91951 H 79.762013 Z"
+       style="fill:#3be200;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:1.3;stroke-dasharray:none;stroke-opacity:1" /><path
+       id="path362"
+       d="m 76.315876,207.72317 c 0,-0.80332 0.651211,-1.45455 1.454539,-1.45455 h 14.321679 c 0.80332,0 1.45453,0.65123 1.45453,1.45455 v 9.20925 c 0,0.80331 -0.65121,1.45453 -1.45453,1.45453 H 77.770416 c -0.803328,0 -1.454539,-0.65122 -1.454539,-1.45453 z"
+       style="fill:#3be200;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:1.3;stroke-dasharray:none;stroke-opacity:1" /></g></svg>
