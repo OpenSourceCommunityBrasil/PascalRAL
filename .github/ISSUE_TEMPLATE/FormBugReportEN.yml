@@ -63,7 +63,8 @@ body:
       label: "IDE:"
       description: "Choose the IDE Version where the issue occurs."
       options:
-        - Delphi 11.+
+        - Delphi 12+
+        - Delphi 11.3
         - Delphi 10.0~10.4
         - Delphi XE~XE8
         - Delphi 2006~2010
@@ -83,7 +84,7 @@ body:
         - MacOS
         - Android
         - iOS
-        - Outro
+        - Other
     validations:
       required: true
   - type: input
@@ -91,6 +92,6 @@ body:
     attributes:
       label: "Referral"
       description: "In case you're posting an issue found by someone else, state here his/hers telegram account tag so we can contact him/her if needed."
-      placeholder: "ex. FulanoDeTal @fulanodt"
+      placeholder: "ex. JohnDoe @johndoe"
     validations:
       required: false
