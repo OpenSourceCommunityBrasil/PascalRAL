@@ -63,7 +63,8 @@ body:
       label: "IDE:"
       description: "Informe a IDE usada."
       options:
-        - Delphi 11.+
+        - Delphi 12
+        - Delphi 11.3
         - Delphi 10.0~10.4
         - Delphi XE~XE8
         - Delphi 2006~2010
