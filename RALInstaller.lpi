@@ -243,7 +243,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="18">
+    <Units Count="19">
       <Unit0>
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -346,6 +346,10 @@
         <Filename Value="src\funcoes\install_tools.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit17>
+      <Unit18>
+        <Filename Value="src\funcoes\ralinstallparser.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit18>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

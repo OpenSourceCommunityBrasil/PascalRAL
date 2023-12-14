@@ -21,6 +21,7 @@ msgid "Buscar automaticamente (muito lento)"
 msgstr ""
 
 #: tfconfigrecursos.epathfolder.texthint
+msgctxt "tfconfigrecursos.epathfolder.texthint"
 msgid "Escolha o caminho onde baixar os fontes"
 msgstr ""
 
@@ -103,9 +104,22 @@ msgctxt "tfinstallrecursos.checkbox1.caption"
 msgid "Instalar Dependências"
 msgstr ""
 
+#: tfinstallrecursos.epathfolder.texthint
+msgctxt "tfinstallrecursos.epathfolder.texthint"
+msgid "Escolha o caminho onde baixar os fontes"
+msgstr ""
+
+#: tfinstallrecursos.label1.caption
+msgid "Motor de Dados"
+msgstr ""
+
 #: tfinstallrecursos.lbsubtitle.caption
 msgctxt "tfinstallrecursos.lbsubtitle.caption"
 msgid "Escolha os recursos a instalar"
+msgstr ""
+
+#: tfinstallrecursos.lversionnotes1.caption
+msgid "Caminho para baixar os fontes das dependências"
 msgstr ""
 
 #: tfmodelo.lbback.caption
