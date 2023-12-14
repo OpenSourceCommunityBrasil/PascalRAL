@@ -8,9 +8,10 @@
       <Unit>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="10"/>
-        <CursorPos X="54" Y="24"/>
-        <UsageCount Value="20"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="52"/>
+        <CursorPos X="61" Y="55"/>
+        <UsageCount Value="23"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -22,15 +23,13 @@
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\utils\RALBase64.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="317"/>
-        <CursorPos X="36" Y="327"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="257"/>
+        <CursorPos X="48" Y="326"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="15">
+    <JumpHistory HistoryIndex="14">
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="28" Column="22" TopLine="6"/>
@@ -90,10 +89,6 @@
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="24" Column="54" TopLine="10"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\utils\RALBase64.pas"/>
-        <Caret Line="328" Column="13" TopLine="317"/>
       </Position>
     </JumpHistory>
     <RunParams>

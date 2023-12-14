@@ -6,6 +6,7 @@ program RALTestServerDelphiConsole;
 uses
   Classes,
   RALIndyServer,
+  RALSynopseServer,
   RALServer,
   RALRequest,
   RALResponse;
@@ -13,41 +14,50 @@ uses
 type
   TRALApplication = class(TComponent)
   private
-    FServer: TRALIndyServer;
+    FServer: TRALServer;
   protected
     procedure Ping(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure Run;
-    Procedure Terminate;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
   end;
 
 constructor TRALApplication.Create(TheOwner: TComponent);
+var
+  opt: integer;
 begin
-  inherited;
-  FServer := TRALIndyServer.Create(nil);
+  WriteLn('Choose the engine:');
+  WriteLn('1 - Synopse mORMot2');
+  WriteLn('2 - Indy');
+  ReadLn(opt);
+  case opt of
+    1: FServer := TRALSynopseServer.Create(nil);
+    2: FServer := TRALIndyServer.Create(nil);
+  end;
   FServer.Port := 8083;
-  FServer.ShowServerStatus := true;
+  FServer.CreateRoute('ping', Ping);
+  FServer.Start;
 
 end;
 
 destructor TRALApplication.Destroy;
 begin
+  FServer.Stop;
   FServer.Free;
   inherited;
 end;
 
 procedure TRALApplication.Run;
+var
+  input: string;
 begin
-  inherited;
-  FServer.CreateRoute('ping', Ping);
-  FServer.Active := true;
-end;
-
-procedure TRALApplication.Terminate;
-begin
-  FServer.Active := false;
+  while not(input = 'exit') do
+  begin
+    WriteLn('Server online on port 8083');
+    WriteLn('type exit to close');
+    ReadLn(input);
+  end
 end;
 
 procedure TRALApplication.Ping(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -61,9 +71,5 @@ var
 begin
   Application := TRALApplication.Create(nil);
   Application.Run;
-  WriteLn('Server is running on port 8083');
-  WriteLn('press any key to close the app...');
-  Readln;
-  Application.Terminate;
   Application.Free;
 end.
