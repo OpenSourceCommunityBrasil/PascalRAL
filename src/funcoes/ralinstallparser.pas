@@ -5,7 +5,7 @@ unit ralinstallparser;
 interface
 
 uses
-  Classes, SysUtils, fpJSON, fpjsonrtti, Contnrs, ghrepofunctions;
+  Classes, SysUtils, fpJSON, fpjsonrtti, ghrepofunctions;
 
 const
   FILEPATH = '\install.json';
@@ -14,150 +14,129 @@ type
 
   { TJSONLanguage }
 
-  TJSONLanguage = class(TJSONObject)
+  TJSONLanguage = class(TCollectionItem)
   private
     FName: string;
     FPicture: string;
     FPoFile: string;
-    procedure SetName(AValue: string);
-    procedure SetPicture(AValue: string);
-    procedure SetPoFile(AValue: string);
-  public
-    property Name: string read FName write SetName;
-    property Picture: string read FPicture write SetPicture;
-    property PoFile: string read FPoFile write SetPoFile;
+  published
+    property Name: string read FName write FName;
+    property Picture: string read FPicture write FPicture;
+    property PoFile: string read FPoFile write FPoFile;
   end;
 
   { TJSONDPK }
 
-  TJSONDPK = class(TJSONObject)
+  TJSONDPK = class(TCollectionItem)
   private
     FIDEVersion: string;
     FLocation: string;
     FName: string;
     FVersionCode: integer;
-    procedure SetIDEVersion(AValue: string);
-    procedure SetLocation(AValue: string);
-    procedure SetName(AValue: string);
-    procedure SetVersionCode(AValue: integer);
-  public
-    property IDEVersion: string read FIDEVersion write SetIDEVersion;
-    property Location: string read FLocation write SetLocation;
-    property Name: string read FName write SetName;
-    property VersionCode: integer read FVersionCode write SetVersionCode;
+  published
+    property IDEVersion: string read FIDEVersion write FIDEVersion;
+    property Location: string read FLocation write FLocation;
+    property Name: string read FName write FName;
+    property VersionCode: integer read FVersionCode write FVersionCode;
   end;
 
   { TJSONInstallOrder }
 
-  TJSONInstallOrder = class(TJSONObject)
+  TJSONInstallOrder = class(TCollectionItem)
   private
     FIsCompile: boolean;
     FIsInstall: boolean;
     FName: string;
-    procedure SetIsCompile(AValue: boolean);
-    procedure SetIsInstall(AValue: boolean);
-    procedure SetName(AValue: string);
-  public
-    property IsCompile: boolean read FIsCompile write SetIsCompile;
-    property IsInstall: boolean read FIsInstall write SetIsInstall;
-    property Name: string read FName write SetName;
+  published
+    property IsCompile: boolean read FIsCompile write FIsCompile;
+    property IsInstall: boolean read FIsInstall write FIsInstall;
+    property Name: string read FName write FName;
   end;
 
   { TJSONDepedancy }
 
-  TJSONDepedancy = class(TJSONObject)
+  TJSONDepedancy = class(TPersistent)
   private
     FBasePath: string;
-    FDPK: TFPObjectList;
+    FDPK: TCollection;
     FHasDPK: boolean;
     FHasLPK: boolean;
-    FInstallOrder: TFPObjectList;
-    FLibraryPaths: TJSONArray;
-    FLpkLocation: string;
+    FInstallOrder: TCollection;
+    FLibraryPaths: TStrings;
+    FLPKLocation: string;
     FMinVersion: string;
     FName: string;
     FPaid: boolean;
     FRepository: string;
-    procedure SetBasePath(AValue: string);
-    procedure SetDPK(AValue: TFPObjectList);
-    procedure SetHasDPK(AValue: boolean);
-    procedure SetHasLPK(AValue: boolean);
-    procedure SetInstallOrder(AValue: TFPObjectList);
-    procedure SetLibraryPaths(AValue: TJSONArray);
-    procedure SetLpkLocation(AValue: string);
-    procedure SetMinVersion(AValue: string);
-    procedure SetName(AValue: string);
-    procedure SetPaid(AValue: boolean);
-    procedure SetRepository(AValue: string);
   public
-    property BasePath: string read FBasePath write SetBasePath;
-    property DPK: TFPObjectList read FDPK write SetDPK;
-    property HasDPK: boolean read FHasDPK write SetHasDPK;
-    property HasLPK: boolean read FHasLPK write SetHasLPK;
-    property InstallOrder: TFPObjectList read FInstallOrder write SetInstallOrder;
-    property LibraryPaths: TJSONArray read FLibraryPaths write SetLibraryPaths;
-    property LpkLocation: string read FLpkLocation write SetLpkLocation;
-    property MinVersion: string read FMinVersion write SetMinVersion;
-    property Name: string read FName write SetName;
-    property Paid: boolean read FPaid write SetPaid;
-    property Repository: string read FRepository write SetRepository;
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property BasePath: string read FBasePath write FBasePath;
+    property DPK: TCollection read FDPK;
+    property HasDPK: boolean read FHasDPK write FHasDPK;
+    property HasLPK: boolean read FHasLPK write FHasLPK;
+    property InstallOrder: TCollection read FInstallOrder;
+    property LibraryPaths: TStrings read FLibraryPaths;
+    property LPKLocation: string read FLPKLocation write FLPKLocation;
+    property MinVersion: string read FMinVersion write FMinVersion;
+    property Name: string read FName write FName;
+    property Paid: boolean read FPaid write FPaid;
+    property Repository: string read FRepository write FRepository;
   end;
 
   { TJSONDataEngine }
 
-  TJSONDataEngine = class(TJSONObject)
+  TJSONDataEngine = class(TCollectionItem)
   private
     FDepedancy: TJSONDepedancy;
     FHasDepedancy: boolean;
-    FInstallOrder: TFPObjectList;
+    FInstallOrder: TCollection;
     FIsClient: boolean;
     FIsServer: boolean;
-    FLibraryPaths: TJSONArray;
+    FLibraryPaths: TStrings;
     FName: string;
-    procedure SetDepedancy(AValue: TJSONDepedancy);
-    procedure SetHasDepedancy(AValue: boolean);
-    procedure SetInstallOrder(AValue: TFPObjectList);
-    procedure SetIsClient(AValue: boolean);
-    procedure SetIsServer(AValue: boolean);
-    procedure SetLibraryPaths(AValue: TJSONArray);
-    procedure SetName(AValue: string);
   public
-    property Depedancy: TJSONDepedancy read FDepedancy write SetDepedancy;
-    property HasDepedancy: boolean read FHasDepedancy write SetHasDepedancy;
-    property InstallOrder: TFPObjectList read FInstallOrder write SetInstallOrder;
-    property IsClient: boolean read FIsClient write SetIsClient;
-    property IsServer: boolean read FIsServer write SetIsServer;
-    property LibraryPaths: TJSONArray read FLibraryPaths write SetLibraryPaths;
-    property Name: string read FName write SetName;
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+  published
+    property Depedancy: TJSONDepedancy read FDepedancy;
+    property HasDepedancy: boolean read FHasDepedancy write FHasDepedancy;
+    property InstallOrder: TCollection read FInstallOrder;
+    property IsClient: boolean read FIsClient write FIsClient;
+    property IsServer: boolean read FIsServer write FIsServer;
+    property LibraryPaths: TStrings read FLibraryPaths;
+    property Name: string read FName write FName;
   end;
 
   { TJSONBasePackage }
 
-  TJSONBasePackage = class(TJSONObject)
+  TJSONBasePackage = class(TPersistent)
   private
-    FInstallOrder: TFPObjectList;
-    FLibraryPaths: TJSONArray;
+    FInstallOrder: TCollection;
+    FLibraryPaths: TStrings;
     FVersion: string;
-    procedure SetInstallOrder(AValue: TFPObjectList);
-    procedure SetLibraryPaths(AValue: TJSONArray);
-    procedure SetVersion(AValue: string);
   public
-    property Version: string read FVersion write SetVersion;
-    property InstallOrder: TFPObjectList read FInstallOrder write SetInstallOrder;
-    property LibraryPaths: TJSONArray read FLibraryPaths write SetLibraryPaths;
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property Version: string read FVersion write FVersion;
+    property InstallOrder: TCollection read FInstallOrder;
+    property LibraryPaths: TStrings read FLibraryPaths;
   end;
 
   { TJSONIDE }
 
-  TJSONIDE = class(TJSONObject)
+  TJSONIDE = class(TPersistent)
   private
     FBasePackage: TJSONBasePackage;
-    FDataEngines: TFPObjectList;
-    procedure SetBasePackage(AValue: TJSONBasePackage);
-    procedure SetDataEngines(AValue: TFPObjectList);
+    FDataEngines: TCollection;
   public
-    property BasePackage: TJSONBasePackage read FBasePackage write SetBasePackage;
-    property DataEngines: TFPObjectList read FDataEngines write SetDataEngines;
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property BasePackage: TJSONBasePackage read FBasePackage;
+    property DataEngines: TCollection read FDataEngines;
   end;
 
   { TJSONInstaller }
@@ -166,57 +145,23 @@ type
   private
     FDelphi: TJSONIDE;
     FEula: string;
-    FLanguages: TFPObjectList;
+    FLanguages: TCollection;
     FLazarus: TJSONIDE;
     FVersion: integer;
-    procedure SetDelphi(AValue: TJSONIDE);
-    procedure SetEula(AValue: string);
-    procedure SetLanguages(AValue: TFPObjectList);
-    procedure SetLazarus(AValue: TJSONIDE);
-    procedure SetVersion(AValue: integer);
   public
     constructor Create;
     destructor Destroy; override;
-    property Version: integer read FVersion write SetVersion;
-    property Languages: TFPObjectList read FLanguages write SetLanguages;
-    property Eula: string read FEula write SetEula;
-    property Delphi: TJSONIDE read FDelphi write SetDelphi;
-    property Lazarus: TJSONIDE read FLazarus write SetLazarus;
+  published
+    property Version: integer read FVersion write FVersion;
+    property Languages: TCollection read FLanguages;
+    property Eula: string read FEula write FEula;
+    property Delphi: TJSONIDE read FDelphi;
+    property Lazarus: TJSONIDE read FLazarus;
   end;
 
 implementation
 
 { TJSONInstaller }
-
-procedure TJSONInstaller.SetDelphi(AValue: TJSONIDE);
-begin
-  if FDelphi = AValue then Exit;
-  FDelphi := AValue;
-end;
-
-procedure TJSONInstaller.SetEula(AValue: string);
-begin
-  if FEula = AValue then Exit;
-  FEula := AValue;
-end;
-
-procedure TJSONInstaller.SetLanguages(AValue: TFPObjectList);
-begin
-  if FLanguages = AValue then Exit;
-  FLanguages := AValue;
-end;
-
-procedure TJSONInstaller.SetLazarus(AValue: TJSONIDE);
-begin
-  if FLazarus = AValue then Exit;
-  FLazarus := AValue;
-end;
-
-procedure TJSONInstaller.SetVersion(AValue: integer);
-begin
-  if FVersion = AValue then Exit;
-  FVersion := AValue;
-end;
 
 constructor TJSONInstaller.Create;
 var
@@ -226,7 +171,7 @@ var
   jsonds: TJSONDeStreamer;
   teste: string;
 begin
-  FLanguages := TFPObjectList.Create;
+  FLanguages := TCollection.Create(TJSONLanguage);
   FDelphi := TJSONIDE.Create;
   FLazarus := TJSONIDE.Create;
 
@@ -242,6 +187,8 @@ begin
     jsonds.JSONToObject(json.DataString, Self);
     jsonds.Free;
     json.Free;
+
+    teste := TJSONLanguage(FLanguages.Items[0]).Name;
   finally
     HTTPClient.Free;
   end;
@@ -249,222 +196,73 @@ end;
 
 destructor TJSONInstaller.Destroy;
 begin
-  FLanguages.Free;
-  FDelphi.Free;
-  FLazarus.Free;
+  FreeAndNil(FLanguages);
+  FreeAndNil(FDelphi);
+  FreeAndNil(FLazarus);
   inherited Destroy;
 end;
 
 { TJSONIDE }
 
-procedure TJSONIDE.SetBasePackage(AValue: TJSONBasePackage);
+constructor TJSONIDE.Create;
 begin
-  if FBasePackage = AValue then Exit;
-  FBasePackage := AValue;
+  FBasePackage := TJSONBasePackage.Create;
+  FDataEngines := TCollection.Create(TJSONDataEngine);
 end;
 
-procedure TJSONIDE.SetDataEngines(AValue: TFPObjectList);
+destructor TJSONIDE.Destroy;
 begin
-  if FDataEngines = AValue then Exit;
-  FDataEngines := AValue;
+  FreeAndNil(FBasePackage);
+  FreeAndNil(FDataEngines);
+  inherited Destroy;
 end;
 
 { TJSONBasePackage }
 
-procedure TJSONBasePackage.SetInstallOrder(AValue: TFPObjectList);
+constructor TJSONBasePackage.Create;
 begin
-  if FInstallOrder = AValue then Exit;
-  FInstallOrder := AValue;
+  FInstallOrder := TCollection.Create(TJSONInstallOrder);
+  FLibraryPaths := TStringList.Create;
 end;
 
-procedure TJSONBasePackage.SetLibraryPaths(AValue: TJSONArray);
+destructor TJSONBasePackage.Destroy;
 begin
-  if FLibraryPaths = AValue then Exit;
-  FLibraryPaths := AValue;
-end;
-
-procedure TJSONBasePackage.SetVersion(AValue: string);
-begin
-  if FVersion = AValue then Exit;
-  FVersion := AValue;
+  inherited Destroy;
 end;
 
 { TJSONDataEngine }
 
-procedure TJSONDataEngine.SetDepedancy(AValue: TJSONDepedancy);
+constructor TJSONDataEngine.Create(ACollection: TCollection);
 begin
-  if FDepedancy = AValue then Exit;
-  FDepedancy := AValue;
+  inherited Create(ACollection);
+  FDepedancy := TJSONDepedancy.Create;
+  FInstallOrder := TCollection.Create(TJSONInstallOrder);
+  FLibraryPaths := TStringList.Create;
 end;
 
-procedure TJSONDataEngine.SetHasDepedancy(AValue: boolean);
+destructor TJSONDataEngine.Destroy;
 begin
-  if FHasDepedancy = AValue then Exit;
-  FHasDepedancy := AValue;
-end;
-
-procedure TJSONDataEngine.SetInstallOrder(AValue: TFPObjectList);
-begin
-  if FInstallOrder = AValue then Exit;
-  FInstallOrder := AValue;
-end;
-
-procedure TJSONDataEngine.SetIsClient(AValue: boolean);
-begin
-  if FIsClient = AValue then Exit;
-  FIsClient := AValue;
-end;
-
-procedure TJSONDataEngine.SetIsServer(AValue: boolean);
-begin
-  if FIsServer = AValue then Exit;
-  FIsServer := AValue;
-end;
-
-procedure TJSONDataEngine.SetLibraryPaths(AValue: TJSONArray);
-begin
-  if FLibraryPaths = AValue then Exit;
-  FLibraryPaths := AValue;
-end;
-
-procedure TJSONDataEngine.SetName(AValue: string);
-begin
-  if FName = AValue then Exit;
-  FName := AValue;
+  FreeAndNil(FDepedancy);
+  FreeAndNil(FInstallOrder);
+  FreeAndNil(FLibraryPaths);
+  inherited Destroy;
 end;
 
 { TJSONDepedancy }
 
-procedure TJSONDepedancy.SetBasePath(AValue: string);
+constructor TJSONDepedancy.Create;
 begin
-  if FBasePath = AValue then Exit;
-  FBasePath := AValue;
+  FDPK := TCollection.Create(TJSONDPK);
+  FInstallOrder := TCollection.Create(TJSONInstallOrder);
+  FLibraryPaths := TStringList.Create;
 end;
 
-procedure TJSONDepedancy.SetDPK(AValue: TFPObjectList);
+destructor TJSONDepedancy.Destroy;
 begin
-  if FDPK = AValue then Exit;
-  FDPK := AValue;
-end;
-
-procedure TJSONDepedancy.SetHasDPK(AValue: boolean);
-begin
-  if FHasDPK = AValue then Exit;
-  FHasDPK := AValue;
-end;
-
-procedure TJSONDepedancy.SetHasLPK(AValue: boolean);
-begin
-  if FHasLPK = AValue then Exit;
-  FHasLPK := AValue;
-end;
-
-procedure TJSONDepedancy.SetInstallOrder(AValue: TFPObjectList);
-begin
-  if FInstallOrder = AValue then Exit;
-  FInstallOrder := AValue;
-end;
-
-procedure TJSONDepedancy.SetLibraryPaths(AValue: TJSONArray);
-begin
-  if FLibraryPaths = AValue then Exit;
-  FLibraryPaths := AValue;
-end;
-
-procedure TJSONDepedancy.SetLpkLocation(AValue: string);
-begin
-  if FLpkLocation = AValue then Exit;
-  FLpkLocation := AValue;
-end;
-
-procedure TJSONDepedancy.SetMinVersion(AValue: string);
-begin
-  if FMinVersion = AValue then Exit;
-  FMinVersion := AValue;
-end;
-
-procedure TJSONDepedancy.SetName(AValue: string);
-begin
-  if FName = AValue then Exit;
-  FName := AValue;
-end;
-
-procedure TJSONDepedancy.SetPaid(AValue: boolean);
-begin
-  if FPaid = AValue then Exit;
-  FPaid := AValue;
-end;
-
-procedure TJSONDepedancy.SetRepository(AValue: string);
-begin
-  if FRepository = AValue then Exit;
-  FRepository := AValue;
-end;
-
-{ TJSONInstallOrder }
-
-procedure TJSONInstallOrder.SetIsCompile(AValue: boolean);
-begin
-  if FIsCompile = AValue then Exit;
-  FIsCompile := AValue;
-end;
-
-procedure TJSONInstallOrder.SetIsInstall(AValue: boolean);
-begin
-  if FIsInstall = AValue then Exit;
-  FIsInstall := AValue;
-end;
-
-procedure TJSONInstallOrder.SetName(AValue: string);
-begin
-  if FName = AValue then Exit;
-  FName := AValue;
-end;
-
-{ TJSONDPK }
-
-procedure TJSONDPK.SetIDEVersion(AValue: string);
-begin
-  if FIDEVersion = AValue then Exit;
-  FIDEVersion := AValue;
-end;
-
-procedure TJSONDPK.SetLocation(AValue: string);
-begin
-  if FLocation = AValue then Exit;
-  FLocation := AValue;
-end;
-
-procedure TJSONDPK.SetName(AValue: string);
-begin
-  if FName = AValue then Exit;
-  FName := AValue;
-end;
-
-procedure TJSONDPK.SetVersionCode(AValue: integer);
-begin
-  if FVersionCode = AValue then Exit;
-  FVersionCode := AValue;
-end;
-
-{ TJSONLanguage }
-
-procedure TJSONLanguage.SetName(AValue: string);
-begin
-  if FName = AValue then Exit;
-  FName := AValue;
-end;
-
-procedure TJSONLanguage.SetPicture(AValue: string);
-begin
-  if FPicture = AValue then Exit;
-  FPicture := AValue;
-end;
-
-procedure TJSONLanguage.SetPoFile(AValue: string);
-begin
-  if FPoFile = AValue then Exit;
-  FPoFile := AValue;
+  FreeAndNil(FDPK);
+  FreeAndNil(FInstallOrder);
+  FreeAndNil(FLibraryPaths);
+  inherited Destroy;
 end;
 
 end.
