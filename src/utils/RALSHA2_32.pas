@@ -153,6 +153,8 @@ begin
 
   SetLength(Result, FHashSize);
   Move(FHash, Result[0], FHashSize);
+
+  inherited;
 end;
 
 function TRALSHA2_32.GetBuffer(AIndex: IntegerRAL): Pointer;

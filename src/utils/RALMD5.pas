@@ -142,7 +142,6 @@ end;
 
 constructor TRALMD5.Create;
 begin
-  FHashSize := 64;
   Initialize;
 end;
 
@@ -163,6 +162,8 @@ begin
 
   SetLength(Result, FHashSize);
   Move(FHash, Result[0], FHashSize);
+
+  inherited;
 end;
 
 function TRALMD5.GetBuffer(AIndex: IntegerRAL): Pointer;

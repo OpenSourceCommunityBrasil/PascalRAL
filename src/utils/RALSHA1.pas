@@ -144,6 +144,8 @@ begin
 
   SetLength(Result, FHashSize);
   Move(FHash, Result[0], FHashSize);
+
+  inherited;
 end;
 
 constructor TRALSHA1.Create;

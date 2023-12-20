@@ -7,7 +7,7 @@ uses
   RALBase64, RALTypes, RALTools, RALStream;
 
 type
-  TRALHashOutputType = (rhotHex, rhotBase64, rhotBase64Url);
+  TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
 
   { TRALHashes }
 
@@ -16,25 +16,28 @@ type
     FOutputType: TRALHashOutputType;
     FLenBit: uint64;
     FIndex: IntegerRAL;
+    FInitialized : boolean;
+    FFinalized : boolean;
   protected
     function GetBufLength: IntegerRAL; virtual; abstract;
     function GetBuffer(AIndex: IntegerRAL): Pointer; virtual; abstract;
     function GetIndex: integer;
     function GetLenBit: uint64;
 
-    procedure Initialize; virtual;
     procedure Compress; virtual;
-    function Finalize: TBytes; virtual; abstract;
+
+    procedure Initialize; virtual;
+    function Finalize: TBytes; virtual;
+
+    procedure UpdateBuffer(AValue: TStream); overload; virtual;
+    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
+    procedure UpdateBuffer(AValue: TBytes); overload; virtual;
 
     procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
 
     function DigestToHex(AValue: TBytes): StringRAL;
     function DigestToBase64(AValue: TBytes): StringRAL;
     function DigestToBase64Url(AValue: TBytes): StringRAL;
-
-    procedure UpdateBuffer(AValue: TStream); overload; virtual;
-    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
-    procedure UpdateBuffer(AValue: TBytes); overload; virtual;
 
     function GetDigest(AValue: TStream): TBytes; overload; virtual;
     function GetDigest(const AValue: StringRAL): TBytes; overload; virtual;
@@ -83,8 +86,8 @@ end;
 
 function TRALHashes.DigestToHex(AValue: TBytes): StringRAL;
 const
-  HexChar: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                                      'a', 'b', 'c', 'd', 'e', 'f');
+  HexChar: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7',
+                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
 var
   vInt: IntegerRAL;
 begin
@@ -95,6 +98,11 @@ begin
     Result := Result + HexChar[(AValue[vInt] and $0f)];
     Inc(vInt);
   end;
+end;
+
+function TRALHashes.Finalize: TBytes;
+begin
+  FFinalized := True;
 end;
 
 function TRALHashes.GetDigest(AValue: TStream): TBytes;
@@ -130,20 +138,19 @@ end;
 
 function TRALHashes.HashAsStream(AValue: TStream): TStream;
 var
-  vDigest: TBytes;
   vResult: StringRAL;
+  vDigest : TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   vDigest := Finalize;
 
   case OutputType of
-    rhotHex: vResult := DigestToHex(vDigest);
-    rhotBase64: vResult := DigestToBase64(vDigest);
-    rhotBase64Url: vResult := DigestToBase64Url(vDigest);
+    rhotNone: Result := TStringStream.Create(vDigest);
+    rhotHex: Result := StringToStream(DigestToHex(vDigest));
+    rhotBase64: Result := StringToStream(DigestToBase64(vDigest));
+    rhotBase64Url: Result := StringToStream(DigestToBase64Url(vDigest));
   end;
-
-  Result := StringToStream(vResult);
 end;
 
 function TRALHashes.HashAsString(AValue: TStream): StringRAL;
@@ -245,7 +252,7 @@ end;
 
 function TRALHashes.HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL;
 var
-  vKey, vDigest: TBytes;
+  vKey, vDigest : TBytes;
 begin
   SetLength(vKey, Length(AKey));
   Move(AKey[PosIniStr], vKey[0], Length(AKey));
@@ -253,6 +260,10 @@ begin
   vDigest := HMACAsDigest(AValue, vKey);
 
   case OutputType of
+    rhotNone: begin
+      SetLength(Result, Length(vDigest));
+      Move(vDigest[0], Result[PosIniStr], Length(vDigest));
+    end;
     rhotHex: Result := DigestToHex(vDigest);
     rhotBase64: Result := DigestToBase64(vDigest);
     rhotBase64Url: Result := DigestToBase64Url(vDigest);
@@ -276,6 +287,8 @@ procedure TRALHashes.Initialize;
 begin
   FIndex := 0;
   FLenBit := 0;
+  FInitialized := True;
+  FFinalized := False;
 end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TStream);
@@ -284,6 +297,9 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
+  if (not FInitialized) or (FFinalized) then
+    Exit;
+
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
