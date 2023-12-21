@@ -4,6 +4,9 @@ interface
 
 uses
   Classes,
+  {$IFNDEF FPC}
+    DesignEditors, DesignIntf,
+  {$ENDIF}
   RALUniGUIServer;
 
 procedure Register;
