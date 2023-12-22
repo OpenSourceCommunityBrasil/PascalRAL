@@ -4,7 +4,7 @@ interface
 
 uses
   {$IFDEF FPC}
-    ZLib, ZStream,
+    ZLib, ZStream, bufstream,
   {$ELSE}
     ZLib,
   {$ENDIF}
