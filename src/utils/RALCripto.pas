@@ -10,47 +10,43 @@ type
 
   { TRALCriptoOptions }
 
+  /// Class for the cryptographic definitions
   TRALCriptoOptions = class(TPersistent)
   private
-    FCriptType : TRALCriptoType;
-    FKey : StringRAL;
+    FCriptType: TRALCriptoType;
+    FKey: StringRAL;
   public
     constructor Create;
   published
-    property Key : StringRAL read FKey write FKey;
-    property CriptType : TRALCriptoType read FCriptType write FCriptType;
+    property Key: StringRAL read FKey write FKey;
+    property CriptType: TRALCriptoType read FCriptType write FCriptType;
   end;
 
   { TRALCripto }
 
+  /// Base class for all crypto functions
   TRALCripto = class
   private
-    FKey : StringRAL;
+    FKey: StringRAL;
   protected
-    procedure SetKey(const AValue : StringRAL); virtual;
+    procedure SetKey(const AValue: StringRAL); virtual;
   public
-    function Encode(const AValue: StringRAL): StringRAL; overload;
     function Decode(const AValue: StringRAL): StringRAL; overload;
-
-    function Encode(AValue: TStream): StringRAL; overload;
     function Decode(AValue: TStream): StringRAL; overload;
-
-    function Encode(AValue: TBytes): StringRAL; overload;
     function Decode(AValue: TBytes): StringRAL; overload;
-
-    function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
     function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
-
-    function EncodeAsBytes(AValue: TStream): TBytes; overload;
     function DecodeAsBytes(AValue: TStream): TBytes; overload;
-
-    function EncodeAsBytes(AValue: TBytes): TBytes; overload;
     function DecodeAsBytes(AValue: TBytes): TBytes; overload;
-
-    function EncodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
     function DecodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function Encode(const AValue: StringRAL): StringRAL; overload;
+    function Encode(AValue: TStream): StringRAL; overload;
+    function Encode(AValue: TBytes): StringRAL; overload;
+    function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    function EncodeAsBytes(AValue: TBytes): TBytes; overload;
+    function EncodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
   published
-    property Key : StringRAL read FKey write SetKey;
+    property Key: StringRAL read FKey write SetKey;
   end;
 
 implementation
@@ -66,15 +62,15 @@ end;
 
 { TRALCripto }
 
-procedure TRALCripto.SetKey(const AValue : StringRAL);
+procedure TRALCripto.SetKey(const AValue: StringRAL);
 begin
   if FKey = AValue then
     Exit;
 
-  FKey :=AValue;
+  FKey := AValue;
 end;
 
-function TRALCripto.Encode(const AValue : StringRAL) : StringRAL;
+function TRALCripto.Encode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
@@ -86,7 +82,7 @@ begin
   end;
 end;
 
-function TRALCripto.Decode(const AValue : StringRAL) : StringRAL;
+function TRALCripto.Decode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStringStream;
 begin
@@ -98,7 +94,7 @@ begin
   end;
 end;
 
-function TRALCripto.Encode(AValue : TStream) : StringRAL;
+function TRALCripto.Encode(AValue: TStream): StringRAL;
 var
   vResult: TStream;
 begin
@@ -110,7 +106,7 @@ begin
   end;
 end;
 
-function TRALCripto.Decode(AValue : TStream) : StringRAL;
+function TRALCripto.Decode(AValue: TStream): StringRAL;
 var
   vResult: TStringStream;
 begin
@@ -122,7 +118,7 @@ begin
   end;
 end;
 
-function TRALCripto.Encode(AValue : TBytes) : StringRAL;
+function TRALCripto.Encode(AValue: TBytes): StringRAL;
 var
   vStream: TStream;
 begin
@@ -134,7 +130,7 @@ begin
   end;
 end;
 
-function TRALCripto.Decode(AValue : TBytes) : StringRAL;
+function TRALCripto.Decode(AValue: TBytes): StringRAL;
 var
   vStream: TStream;
 begin
@@ -146,7 +142,7 @@ begin
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(const AValue : StringRAL) : TBytes;
+function TRALCripto.EncodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStringStream;
 begin
@@ -158,7 +154,7 @@ begin
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(const AValue : StringRAL) : TBytes;
+function TRALCripto.DecodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStringStream;
 begin
@@ -170,7 +166,7 @@ begin
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(AValue : TStream) : TBytes;
+function TRALCripto.EncodeAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
@@ -182,7 +178,7 @@ begin
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(AValue : TStream) : TBytes;
+function TRALCripto.DecodeAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
@@ -194,7 +190,7 @@ begin
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(AValue : TBytes) : TBytes;
+function TRALCripto.EncodeAsBytes(AValue: TBytes): TBytes;
 var
   vStream: TStream;
 begin
@@ -206,7 +202,7 @@ begin
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(AValue : TBytes) : TBytes;
+function TRALCripto.DecodeAsBytes(AValue: TBytes): TBytes;
 var
   vStream: TStream;
 begin
@@ -219,4 +215,3 @@ begin
 end;
 
 end.
-

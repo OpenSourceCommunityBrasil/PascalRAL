@@ -1,3 +1,4 @@
+/// Base unit for all client component implementations.
 unit RALClient;
 
 interface
@@ -11,6 +12,7 @@ type
 
   { TRALClient }
 
+  /// Base class of client components.
   TRALClient = class(TRALComponent)
   private
     FAuthentication: TRALAuthClient;
@@ -22,85 +24,108 @@ type
     FUseSSL: boolean;
     FUserAgent: StringRAL;
     FEngine: StringRAL;
-    FKeepAlive : boolean;
+    FKeepAlive: boolean;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
 
-    FLastRoute : StringRAL;
+    FLastRoute: StringRAL;
     FLastRequest: TRALHTTPHeaderInfo;
     FLastResponse: TRALHTTPHeaderInfo;
     FLastResponseStream: TStream;
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-
+    /// allows manipulation of params before executing request.
     function BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL; virtual;
+    /// returns the complete URL of a given route.
     function GetURL(ARoute: StringRAL): StringRAL;
-
-    procedure ResetToken;
-
-    function GetToken(AVars: TStringList; AParams: TRALParams) : boolean;
-
-    function GetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
-    function GetTokenJWT(AVars: TStringList; AParams: TRALParams): boolean;
-    function GetTokenOAuth1(AVars: TStringList; AParams: TRALParams): boolean;
-    function GetTokenOAuth2(AVars: TStringList; AParams: TRALParams): boolean;
-    function GetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
-
+    /// Returns LastResponse of the client in an UTF8 String.
     function GetResponseText: StringRAL;
-    procedure SetLastResponseStream(AValue : TStream);
-
+    /// needed to properly remove assignment in design-time.
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// clears authentication token property.
+    procedure ResetToken;
+    /// core method of the client. Must override on children.
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; virtual;
     procedure SetAuthentication(const AValue: TRALAuthClient);
+    /// Configures the Request header with proper authentication info based on the assigned
+    ///  authenticator.
+    function SetAuthToken(AVars: TStringList; AParams: TRALParams): boolean;
     procedure SetBaseURL(const AValue: StringRAL);
-    procedure SetEngine(const AValue: StringRAL);
-    procedure SetUserAgent(const AValue : StringRAL); virtual;
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
-    procedure SetUseSSL(const AValue: boolean); virtual;
+    procedure SetEngine(const AValue: StringRAL);
     procedure SetKeepAlive(const AValue: boolean); virtual;
+    procedure SetLastResponseStream(AValue: TStream);
+    procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
+    /// used by SetAuthToken to set authentication on the header: Basic.
+    function SetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
+    /// used by SetAuthToken to set authentication on the header: DigestAuth.
+    function SetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
+    /// used by SetAuthToken to set authentication on the header: JWT.
+    function SetTokenJWT(AVars: TStringList; AParams: TRALParams): boolean;
+    /// used by SetAuthToken to set authentication on the header: OAuth1.
+    function SetTokenOAuth1(AVars: TStringList; AParams: TRALParams): boolean;
+    /// placeholder
+    function SetTokenOAuth2(AVars: TStringList; AParams: TRALParams): boolean;
+    procedure SetUserAgent(const AValue: StringRAL); virtual;
+    procedure SetUseSSL(const AValue: boolean); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-
+    /// Adds a string on the body param.
+    function AddBody(const AText: StringRAL;
+                     const AContextType: StringRAL = rctTEXTPLAIN): TRALClient; overload;
+    /// Adds a header param as "Cookie" type.
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Adds a header param as "Field" type.
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Adds a File into body param from the given 'AFileName'.
+    function AddFile(const AFileName: StringRAL): TRALClient; overload;
+    /// Adds a custom File into body param from the given TStream.
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALClient; overload;
+    /// Adds a custom header param.
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Adds a header param as "Query" type.
+    function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Defines method on the client: Delete.
     function Delete: IntegerRAL;
+    /// Defines method on the client: Get.
     function Get: IntegerRAL;
-    function Post: IntegerRAL;
-    function Put: IntegerRAL;
+    /// Defines method on the client: Patch.
     function Patch: IntegerRAL;
+    /// Defines method on the client: Post.
+    function Post: IntegerRAL;
+    /// Defines method on the client: Put.
+    function Put: IntegerRAL;
+    /// Sets the baseURL of client.
+    function SetRoute(ARoute: StringRAL): TRALClient;
 
-    function SetRoute(ARoute : StringRAL) : TRALClient;
-    function AddHeader(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
-    function AddQuery(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
-    function AddField(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
-    function AddCookie(const AName: StringRAL; const AValue : StringRAL) : TRALClient;
-    function AddFile(const AFileName : StringRAL) : TRALClient; overload;
-    function AddFile(AStream : TStream; const AFileName : StringRAL = '') : TRALClient; overload;
-    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALClient; overload;
-
+    property Request: TRALHTTPHeaderInfo read FLastRequest;
+    property Response: TRALHTTPHeaderInfo read FLastResponse;
+    /// StatusCode of the response.
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
+    /// Response as text.
     property ResponseText: StringRAL read GetResponseText;
+    /// Response as stream
     property ResponseStream: TStream read FLastResponseStream write SetLastResponseStream;
-
-    property Request : TRALHTTPHeaderInfo read FLastRequest;
-    property Response : TRALHTTPHeaderInfo read FLastResponse;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
-    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout default 5000;
-    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
+    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
+      default 5000;
+    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout
+      default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
-    property CompressType : TRALCompressType read FCompressType write FCompressType;
-    property CriptoOptions : TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
   end;
 
 implementation
 
 { TRALClient }
 
-procedure TRALClient.SetUserAgent(const AValue : StringRAL);
+procedure TRALClient.SetUserAgent(const AValue: StringRAL);
 begin
   if FUserAgent = AValue then
     Exit;
@@ -109,11 +134,11 @@ begin
     FUserAgent := AValue;
 end;
 
-function TRALClient.BeforeSendUrl(const AURL : StringRAL; AMethod : TRALMethod) : IntegerRAL;
+function TRALClient.BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL;
 var
-  vConta, vInt : IntegerRAL;
-  vParams : TStringList;
-  vContinue : boolean;
+  vConta, vInt: IntegerRAL;
+  vParams: TStringList;
+  vContinue: boolean;
 begin
   vParams := TStringList.Create;
   try
@@ -128,9 +153,9 @@ begin
       if (FAuthentication <> nil) then
       begin
         if (FAuthentication.AutoGetToken) then
-          vContinue := GetToken(vParams, FLastRequest.Params)
+          vContinue := SetAuthToken(vParams, FLastRequest.Params)
         else
-          FAuthentication.GetHeader(vParams,FLastRequest.Params);
+          FAuthentication.SetAuthHeader(vParams, FLastRequest.Params);
       end;
 
       if vContinue then
@@ -147,7 +172,8 @@ begin
         else if (Result = 401) and (vConta > 1) then
           Break;
       end
-      else begin
+      else
+      begin
         vConta := vConta + 1;
         ResetToken;
       end;
@@ -170,7 +196,7 @@ begin
   FUseSSL := False;
   FResponseCode := 0;
   FResponseError := '';
-  FUserAgent := 'RALClient '+RALVERSION;
+  FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
   FConnectTimeout := 30000;
   FRequestTimeout := 10000;
@@ -195,7 +221,7 @@ begin
   inherited;
 end;
 
-function TRALClient.Get : IntegerRAL;
+function TRALClient.Get: IntegerRAL;
 begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
 end;
@@ -205,38 +231,38 @@ begin
   Result := StreamToString(FLastResponseStream);
 end;
 
-function TRALClient.GetToken(AVars: TStringList; AParams: TRALParams): boolean;
+function TRALClient.SetAuthToken(AVars: TStringList; AParams: TRALParams): boolean;
 begin
   Result := False;
   if FAuthentication is TRALClientBasicAuth then
-    Result := GetTokenBasic(AVars, AParams)
+    Result := SetTokenBasic(AVars, AParams)
   else if FAuthentication is TRALClientJWTAuth then
-    Result := GetTokenJWT(AVars, AParams)
+    Result := SetTokenJWT(AVars, AParams)
   else if FAuthentication is TRALClientOAuth then
-    Result := GetTokenOAuth1(AVars, AParams)
+    Result := SetTokenOAuth1(AVars, AParams)
   else if FAuthentication is TRALClientOAuth2 then
-    Result := GetTokenOAuth2(AVars, AParams)
+    Result := SetTokenOAuth2(AVars, AParams)
   else if FAuthentication is TRALClientDigest then
-    Result := GetTokenDigest(AVars, AParams)
+    Result := SetTokenDigest(AVars, AParams)
 end;
 
-function TRALClient.GetTokenBasic(AVars: TStringList; AParams: TRALParams) : boolean;
+function TRALClient.SetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
 var
-  vObjAuth : TRALClientBasicAuth;
+  vObjAuth: TRALClientBasicAuth;
 begin
   vObjAuth := TRALClientBasicAuth(FAuthentication);
-  vObjAuth.GetHeader(AVars, AParams);
+  vObjAuth.SetAuthHeader(AVars, AParams);
   Result := True;
 end;
 
-function TRALClient.GetTokenJWT(AVars: TStringList; AParams: TRALParams) : boolean;
+function TRALClient.SetTokenJWT(AVars: TStringList; AParams: TRALParams): boolean;
 var
   vBody: TRALParams;
   vResult, vConta: IntegerRAL;
   vJson: TRALJSONObject;
   vValue: TRALJSONValue;
-  vParam : TRALParam;
-  vObjAuth : TRALClientJWTAuth;
+  vParam: TRALParam;
+  vObjAuth: TRALClientJWTAuth;
 begin
   vObjAuth := TRALClientJWTAuth(FAuthentication);
   if vObjAuth.Token = '' then
@@ -280,24 +306,24 @@ begin
           vJson.Free;
         end;
 
-        vObjAuth.GetHeader(AVars,AParams);
+        vObjAuth.SetAuthHeader(AVars, AParams);
       end;
     end;
   end
   else
   begin
-    vObjAuth.GetHeader(AVars,AParams);
+    vObjAuth.SetAuthHeader(AVars, AParams);
     Result := True;
   end;
 end;
 
-function TRALClient.GetTokenOAuth1(AVars: TStringList; AParams: TRALParams) : boolean;
+function TRALClient.SetTokenOAuth1(AVars: TStringList; AParams: TRALParams): boolean;
 var
   vObjAuth: TRALClientOAuth;
   vConta: Integer;
   vBody: TRALParams;
-  vTempAccess, vTempSecret : StringRAL;
-  vResult : IntegerRAL;
+  vTempAccess, vTempSecret: StringRAL;
+  vResult: IntegerRAL;
 begin
   vObjAuth := TRALClientOAuth(FAuthentication);
   if (vObjAuth.TokenAccess = '') or (vObjAuth.TokenSecret = '') then
@@ -306,7 +332,7 @@ begin
     repeat
       vBody := TRALParams.Create;
       try
-        vObjAuth.GetHeader(AVars, AParams);
+        vObjAuth.SetAuthHeader(AVars, AParams);
         vResult := SendUrl(GetURL(vObjAuth.RouteInitialize), amPOST, vBody);
       finally
         vBody.Free;
@@ -325,7 +351,7 @@ begin
       repeat
         vBody := TRALParams.Create;
         try
-          vBody.AddParam('oauth_token',vTempAccess,rpkQUERY);
+          vBody.AddParam('oauth_token', vTempAccess, rpkQUERY);
           vResult := SendUrl(GetURL(vObjAuth.RouteAuthorize), amGET, vBody);
         finally
           vBody.Free;
@@ -338,14 +364,14 @@ begin
   end;
 end;
 
-function TRALClient.GetTokenOAuth2(AVars: TStringList; AParams: TRALParams) : boolean;
+function TRALClient.SetTokenOAuth2(AVars: TStringList; AParams: TRALParams): boolean;
 begin
 
 end;
 
-function TRALClient.GetTokenDigest(AVars: TStringList; AParams: TRALParams) : boolean;
+function TRALClient.SetTokenDigest(AVars: TStringList; AParams: TRALParams): boolean;
 var
-  vObjAuth : TRALClientDigest;
+  vObjAuth: TRALClientDigest;
   vConta, vResult: IntegerRAL;
   vBody: TRALParams;
   vURL, vAuth: StringRAL;
@@ -376,17 +402,17 @@ begin
         vDigest.Load(vAuth);
         vObjAuth.DigestParams.Assign(vDigest.Params);
         vObjAuth.DigestParams.NC := 0;
-        vObjAuth.GetHeader(AVars, AParams);
+        vObjAuth.SetAuthHeader(AVars, AParams);
       finally
         vDigest.Free;
       end;
     end;
   end
-  else begin
-    vObjAuth.GetHeader(AVars, AParams);
+  else
+  begin
+    vObjAuth.SetAuthHeader(AVars, AParams);
   end;
-  Result := (vObjAuth.DigestParams.Nonce <> '') and
-            (vObjAuth.DigestParams.Opaque <> '')
+  Result := (vObjAuth.DigestParams.Nonce <> '') and (vObjAuth.DigestParams.Opaque <> '')
 end;
 
 function TRALClient.GetURL(ARoute: StringRAL): StringRAL;
@@ -403,17 +429,15 @@ begin
     Result := Result + '?' + FLastRequest.Params.AssignParamsUrl(rpkQUERY);
 end;
 
-procedure TRALClient.SetLastResponseStream(AValue : TStream);
+procedure TRALClient.SetLastResponseStream(AValue: TStream);
 begin
   FreeAndNil(FLastResponseStream);
   FLastResponseStream := AValue;
 end;
 
-procedure TRALClient.Notification(AComponent: TComponent;
-  Operation: TOperation);
+procedure TRALClient.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  if (Operation  = opRemove) and
-     (AComponent = FAuthentication) then
+  if (Operation = opRemove) and (AComponent = FAuthentication) then
     FAuthentication := nil;
   inherited;
 end;
@@ -423,11 +447,11 @@ begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amPATCH);
 end;
 
-function TRALClient.SetRoute(ARoute : StringRAL) : TRALClient;
+function TRALClient.SetRoute(ARoute: StringRAL): TRALClient;
 var
   vInt: IntegerRAL;
 begin
-  FLastRequest.Params.AppendParamsUrl(ARoute,rpkQUERY);
+  FLastRequest.Params.AppendParamsUrl(ARoute, rpkQUERY);
 
   vInt := Pos('?', ARoute);
   if vInt > 0 then
@@ -437,49 +461,50 @@ begin
   Result := Self;
 end;
 
-function TRALClient.AddHeader(const AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddHeader(const AName, AValue: StringRAL): TRALClient;
 begin
   FLastRequest.AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddQuery(const AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddQuery(const AName, AValue: StringRAL): TRALClient;
 begin
   FLastRequest.AddQuery(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddBody(const AText : StringRAL; const AContextType : StringRAL) : TRALClient;
+function TRALClient.AddBody(const AText: StringRAL; const AContextType: StringRAL)
+  : TRALClient;
 begin
   FLastRequest.AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALClient.AddField(const AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddField(const AName, AValue: StringRAL): TRALClient;
 begin
   FLastRequest.AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddCookie(const AName, AValue : StringRAL) : TRALClient;
+function TRALClient.AddCookie(const AName, AValue: StringRAL): TRALClient;
 begin
   FLastRequest.AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALClient.AddFile(const AFileName : StringRAL) : TRALClient;
+function TRALClient.AddFile(const AFileName: StringRAL): TRALClient;
 begin
   FLastRequest.AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALClient.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALClient;
+function TRALClient.AddFile(AStream: TStream; const AFileName: StringRAL): TRALClient;
 begin
   FLastRequest.AddFile(AStream, AFileName);
   Result := Self;
 end;
 
-function TRALClient.Post : IntegerRAL;
+function TRALClient.Post: IntegerRAL;
 begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amPOST);
 end;
@@ -495,7 +520,8 @@ begin
     TRALClientJWTAuth(Authentication).Token := '';
 end;
 
-function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams : TRALParams): IntegerRAL;
+function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
+  : IntegerRAL;
 begin
   Result := -1;
 end;
@@ -526,10 +552,10 @@ begin
   end;
 end;
 
-procedure TRALClient.SetEngine(const AValue : StringRAL);
+procedure TRALClient.SetEngine(const AValue: StringRAL);
 begin
   FEngine := AValue;
-  UserAgent := 'RALClient '+RALVERSION+'; Engine '+FEngine;
+  UserAgent := 'RALClient ' + RALVERSION + '; Engine ' + FEngine;
 end;
 
 procedure TRALClient.SetKeepAlive(const AValue: boolean);

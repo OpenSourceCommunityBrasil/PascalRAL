@@ -1,3 +1,4 @@
+/// Unit for the unidirectional encryption algorithms
 unit RALHashes;
 
 interface

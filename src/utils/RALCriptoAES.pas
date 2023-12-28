@@ -1,10 +1,4 @@
-{
-  https://github.com/rishidewan33/Advanced-Encryption-Standard-Algorithm/blob/master/src/AES.java
-  https://cryptoid.com.br/criptografia/aes-padrao-de-criptografia-avancado-o-que-e-e-como-funciona/
-  https://www.simplilearn.com/tutorials/cryptography-tutorial/aes-encryption
-  https://www.cryptool.org/en/cto/aes-step-by-step
-}
-
+/// Unit for AES Criptography sources
 unit RALCriptoAES;
 
 {$I ..\base\PascalRAL.inc}
@@ -23,125 +17,123 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FWordKeys : array of Cardinal; //UInt32;
+    FWordKeys: array of Cardinal; // UInt32;
 
     // encode
-    FMulti02: array[0..255] of byte;
-    FMulti03: array[0..255] of byte;
+    FMulti02: array [0 .. 255] of byte;
+    FMulti03: array [0 .. 255] of byte;
 
     // decode
-    FMulti09: array[0..255] of byte; // 09
-    FMulti11: array[0..255] of byte; // 0b
-    FMulti13: array[0..255] of byte; // 0d
-    FMulti14: array[0..255] of byte; // 0e
+    FMulti09: array [0 .. 255] of byte; // 09
+    FMulti11: array [0 .. 255] of byte; // 0b
+    FMulti13: array [0 .. 255] of byte; // 0d
+    FMulti14: array [0 .. 255] of byte; // 0e
 
-    FEncSBOX: array[0..255] of byte;
-    FDecSBOX: array[0..255] of byte;
+    FEncSBOX: array [0 .. 255] of byte;
+    FDecSBOX: array [0 .. 255] of byte;
 
-    FLogAES : TStringList;
+    FLogAES: TStringList;
   protected
-    procedure LogAES(const ALog : StringRAL; AInput : PByte);
+    procedure LogAES(const ALog: StringRAL; AInput: PByte);
 
     procedure Initialize;
     function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
     function DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 
-    function Multi02(AValue : Byte) : Byte;
-    function Multi(AMult : integer; AByte : Byte) : Byte;
+    function Multi02(AValue: byte): byte;
+    function Multi(AMult: integer; AByte: byte): byte;
 
     // usado do keyexpansion
-    function RCON(AInt : integer) : Cardinal; //UInt32;
+    function RCON(AInt: integer): Cardinal; // UInt32;
 
     // cipher encode and decode
     procedure GenerateSBox;
-    procedure RoundKey(AInput, AOutput : PByte; AKey : PCardinal); // PUInt32);
+    procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal); // PUInt32);
 
     // cipher encode
-    procedure EncSubBytes(AInput, AOutput : PByte);
-    procedure EncShiftRows(AInput, AOutput : PByte);
-    procedure EncMixColumns(AInput, AOutput : PByte);
-    procedure EncSubShiftRows(AInput, AOutput : PByte);
+    procedure EncSubBytes(AInput, AOutput: PByte);
+    procedure EncShiftRows(AInput, AOutput: PByte);
+    procedure EncMixColumns(AInput, AOutput: PByte);
+    procedure EncSubShiftRows(AInput, AOutput: PByte);
 
     // cipher decode
-    procedure DecSubBytes(AInput, AOutput : PByte);
-    procedure DecShiftRows(AInput, AOutput : PByte);
-    procedure DecMixColumns(AInput, AOutput : PByte);
-    procedure DecSubShiftRows(AInput, AOutput : PByte);
+    procedure DecSubBytes(AInput, AOutput: PByte);
+    procedure DecShiftRows(AInput, AOutput: PByte);
+    procedure DecMixColumns(AInput, AOutput: PByte);
+    procedure DecSubShiftRows(AInput, AOutput: PByte);
 
     // key expansion
-    function RotWord(AInt : Cardinal) : Cardinal;
-    function SubWord(AInt : Cardinal) : Cardinal;
-    function WordToBytes(AInt : Cardinal) : TBytes;
+    function RotWord(AInt: Cardinal): Cardinal;
+    function SubWord(AInt: Cardinal): Cardinal;
+    function WordToBytes(AInt: Cardinal): TBytes;
 
-    procedure SetAESType(AValue : TRALAESType);
-    procedure SetKey(const AValue : StringRAL); override;
+    procedure SetAESType(AValue: TRALAESType);
+    procedure SetKey(const AValue: StringRAL); override;
 
     procedure KeyExpansion;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function EncodeAsStream(AValue : TStream) : TStream; override;
-    function DecodeAsStream(AValue : TStream) : TStream; override;
+    function EncodeAsStream(AValue: TStream): TStream; override;
+    function DecodeAsStream(AValue: TStream): TStream; override;
 
-    function AESKeys(AIndex : integer) : TBytes;
-    function CountKeys : integer;
-    function KeysToList : TStringList;
+    function AESKeys(AIndex: integer): TBytes;
+    function CountKeys: integer;
+    function KeysToList: TStringList;
   published
-    property AESType : TRALAESType read FAESType write SetAESType;
+    property AESType: TRALAESType read FAESType write SetAESType;
   end;
 
 implementation
 
 const
-  cNumberRounds : array[TRALAESType] of integer = (10, 12, 14);  // nr
-  cKeyLength : array[TRALAESType] of integer = (4, 6, 8);        // nk
-  cBlockSize : integer = 4;                                      // nb
+  cNumberRounds: array [TRALAESType] of integer = (10, 12, 14); // nr
+  cKeyLength: array [TRALAESType] of integer = (4, 6, 8); // nk
+  cBlockSize: integer = 4; // nb
 
   // constantes de substituicao no encode S-BOX
-  cEncSBOX : array[0..255] of Byte = (
-         $63, $7c, $77, $7b, $f2, $6b, $6f, $c5, $30, $01, $67, $2b, $fe, $d7, $ab, $76,
-         $ca, $82, $c9, $7d, $fa, $59, $47, $f0, $ad, $d4, $a2, $af, $9c, $a4, $72, $c0,
-         $b7, $fd, $93, $26, $36, $3f, $f7, $cc, $34, $a5, $e5, $f1, $71, $d8, $31, $15,
-         $04, $c7, $23, $c3, $18, $96, $05, $9a, $07, $12, $80, $e2, $eb, $27, $b2, $75,
-         $09, $83, $2c, $1a, $1b, $6e, $5a, $a0, $52, $3b, $d6, $b3, $29, $e3, $2f, $84,
-         $53, $d1, $00, $ed, $20, $fc, $b1, $5b, $6a, $cb, $be, $39, $4a, $4c, $58, $cf,
-         $d0, $ef, $aa, $fb, $43, $4d, $33, $85, $45, $f9, $02, $7f, $50, $3c, $9f, $a8,
-         $51, $a3, $40, $8f, $92, $9d, $38, $f5, $bc, $b6, $da, $21, $10, $ff, $f3, $d2,
-         $cd, $0c, $13, $ec, $5f, $97, $44, $17, $c4, $a7, $7e, $3d, $64, $5d, $19, $73,
-         $60, $81, $4f, $dc, $22, $2a, $90, $88, $46, $ee, $b8, $14, $de, $5e, $0b, $db,
-         $e0, $32, $3a, $0a, $49, $06, $24, $5c, $c2, $d3, $ac, $62, $91, $95, $e4, $79,
-         $e7, $c8, $37, $6d, $8d, $d5, $4e, $a9, $6c, $56, $f4, $ea, $65, $7a, $ae, $08,
-         $ba, $78, $25, $2e, $1c, $a6, $b4, $c6, $e8, $dd, $74, $1f, $4b, $bd, $8b, $8a,
-         $70, $3e, $b5, $66, $48, $03, $f6, $0e, $61, $35, $57, $b9, $86, $c1, $1d, $9e,
-         $e1, $f8, $98, $11, $69, $d9, $8e, $94, $9b, $1e, $87, $e9, $ce, $55, $28, $df,
-         $8c, $a1, $89, $0d, $bf, $e6, $42, $68, $41, $99, $2d, $0f, $b0, $54, $bb, $16);
+  cEncSBOX: array [0 .. 255] of byte = ($63, $7C, $77, $7B, $F2, $6B, $6F, $C5, $30, $01,
+    $67, $2B, $FE, $D7, $AB, $76, $CA, $82, $C9, $7D, $FA, $59, $47, $F0, $AD, $D4, $A2,
+    $AF, $9C, $A4, $72, $C0, $B7, $FD, $93, $26, $36, $3F, $F7, $CC, $34, $A5, $E5, $F1,
+    $71, $D8, $31, $15, $04, $C7, $23, $C3, $18, $96, $05, $9A, $07, $12, $80, $E2, $EB,
+    $27, $B2, $75, $09, $83, $2C, $1A, $1B, $6E, $5A, $A0, $52, $3B, $D6, $B3, $29, $E3,
+    $2F, $84, $53, $D1, $00, $ED, $20, $FC, $B1, $5B, $6A, $CB, $BE, $39, $4A, $4C, $58,
+    $CF, $D0, $EF, $AA, $FB, $43, $4D, $33, $85, $45, $F9, $02, $7F, $50, $3C, $9F, $A8,
+    $51, $A3, $40, $8F, $92, $9D, $38, $F5, $BC, $B6, $DA, $21, $10, $FF, $F3, $D2, $CD,
+    $0C, $13, $EC, $5F, $97, $44, $17, $C4, $A7, $7E, $3D, $64, $5D, $19, $73, $60, $81,
+    $4F, $DC, $22, $2A, $90, $88, $46, $EE, $B8, $14, $DE, $5E, $0B, $DB, $E0, $32, $3A,
+    $0A, $49, $06, $24, $5C, $C2, $D3, $AC, $62, $91, $95, $E4, $79, $E7, $C8, $37, $6D,
+    $8D, $D5, $4E, $A9, $6C, $56, $F4, $EA, $65, $7A, $AE, $08, $BA, $78, $25, $2E, $1C,
+    $A6, $B4, $C6, $E8, $DD, $74, $1F, $4B, $BD, $8B, $8A, $70, $3E, $B5, $66, $48, $03,
+    $F6, $0E, $61, $35, $57, $B9, $86, $C1, $1D, $9E, $E1, $F8, $98, $11, $69, $D9, $8E,
+    $94, $9B, $1E, $87, $E9, $CE, $55, $28, $DF, $8C, $A1, $89, $0D, $BF, $E6, $42, $68,
+    $41, $99, $2D, $0F, $B0, $54, $BB, $16);
 
   // constantes de substituicao no decode S-BOX
-  cDecSBOX : array[0..255] of Byte = (
-         $52, $09, $6a, $d5, $30, $36, $a5, $38, $bf, $40, $a3, $9e, $81, $f3, $d7, $fb,
-         $7c, $e3, $39, $82, $9b, $2f, $ff, $87, $34, $8e, $43, $44, $c4, $de, $e9, $cb,
-         $54, $7b, $94, $32, $a6, $c2, $23, $3d, $ee, $4c, $95, $0b, $42, $fa, $c3, $4e,
-         $08, $2e, $a1, $66, $28, $d9, $24, $b2, $76, $5b, $a2, $49, $6d, $8b, $d1, $25,
-         $72, $f8, $f6, $64, $86, $68, $98, $16, $d4, $a4, $5c, $cc, $5d, $65, $b6, $92,
-         $6c, $70, $48, $50, $fd, $ed, $b9, $da, $5e, $15, $46, $57, $a7, $8d, $9d, $84,
-         $90, $d8, $ab, $00, $8c, $bc, $d3, $0a, $f7, $e4, $58, $05, $b8, $b3, $45, $06,
-         $d0, $2c, $1e, $8f, $ca, $3f, $0f, $02, $c1, $af, $bd, $03, $01, $13, $8a, $6b,
-         $3a, $91, $11, $41, $4f, $67, $dc, $ea, $97, $f2, $cf, $ce, $f0, $b4, $e6, $73,
-         $96, $ac, $74, $22, $e7, $ad, $35, $85, $e2, $f9, $37, $e8, $1c, $75, $df, $6e,
-         $47, $f1, $1a, $71, $1d, $29, $c5, $89, $6f, $b7, $62, $0e, $aa, $18, $be, $1b,
-         $fc, $56, $3e, $4b, $c6, $d2, $79, $20, $9a, $db, $c0, $fe, $78, $cd, $5a, $f4,
-         $1f, $dd, $a8, $33, $88, $07, $c7, $31, $b1, $12, $10, $59, $27, $80, $ec, $5f,
-         $60, $51, $7f, $a9, $19, $b5, $4a, $0d, $2d, $e5, $7a, $9f, $93, $c9, $9c, $ef,
-         $a0, $e0, $3b, $4d, $ae, $2a, $f5, $b0, $c8, $eb, $bb, $3c, $83, $53, $99, $61,
-         $17, $2b, $04, $7e, $ba, $77, $d6, $26, $e1, $69, $14, $63, $55, $21, $0c, $7d);
+  cDecSBOX: array [0 .. 255] of byte = ($52, $09, $6A, $D5, $30, $36, $A5, $38, $BF, $40,
+    $A3, $9E, $81, $F3, $D7, $FB, $7C, $E3, $39, $82, $9B, $2F, $FF, $87, $34, $8E, $43,
+    $44, $C4, $DE, $E9, $CB, $54, $7B, $94, $32, $A6, $C2, $23, $3D, $EE, $4C, $95, $0B,
+    $42, $FA, $C3, $4E, $08, $2E, $A1, $66, $28, $D9, $24, $B2, $76, $5B, $A2, $49, $6D,
+    $8B, $D1, $25, $72, $F8, $F6, $64, $86, $68, $98, $16, $D4, $A4, $5C, $CC, $5D, $65,
+    $B6, $92, $6C, $70, $48, $50, $FD, $ED, $B9, $DA, $5E, $15, $46, $57, $A7, $8D, $9D,
+    $84, $90, $D8, $AB, $00, $8C, $BC, $D3, $0A, $F7, $E4, $58, $05, $B8, $B3, $45, $06,
+    $D0, $2C, $1E, $8F, $CA, $3F, $0F, $02, $C1, $AF, $BD, $03, $01, $13, $8A, $6B, $3A,
+    $91, $11, $41, $4F, $67, $DC, $EA, $97, $F2, $CF, $CE, $F0, $B4, $E6, $73, $96, $AC,
+    $74, $22, $E7, $AD, $35, $85, $E2, $F9, $37, $E8, $1C, $75, $DF, $6E, $47, $F1, $1A,
+    $71, $1D, $29, $C5, $89, $6F, $B7, $62, $0E, $AA, $18, $BE, $1B, $FC, $56, $3E, $4B,
+    $C6, $D2, $79, $20, $9A, $DB, $C0, $FE, $78, $CD, $5A, $F4, $1F, $DD, $A8, $33, $88,
+    $07, $C7, $31, $B1, $12, $10, $59, $27, $80, $EC, $5F, $60, $51, $7F, $A9, $19, $B5,
+    $4A, $0D, $2D, $E5, $7A, $9F, $93, $C9, $9C, $EF, $A0, $E0, $3B, $4D, $AE, $2A, $F5,
+    $B0, $C8, $EB, $BB, $3C, $83, $53, $99, $61, $17, $2B, $04, $7E, $BA, $77, $D6, $26,
+    $E1, $69, $14, $63, $55, $21, $0C, $7D);
 
-{ TRALCriptoAES }
+  { TRALCriptoAES }
 
-function TRALCriptoAES.RotWord(AInt : Cardinal) : Cardinal;
+function TRALCriptoAES.RotWord(AInt: Cardinal): Cardinal;
 var
-  vNum : TBytes;
-  vByte : Byte;
+  vNum: TBytes;
+  vByte: byte;
 begin
   vNum := WordToBytes(AInt);
 
@@ -154,9 +146,9 @@ begin
   Move(vNum[0], Result, 4);
 end;
 
-function TRALCriptoAES.SubWord(AInt : Cardinal) : Cardinal;
+function TRALCriptoAES.SubWord(AInt: Cardinal): Cardinal;
 var
-  vNum : TBytes;
+  vNum: TBytes;
 begin
   vNum := WordToBytes(AInt);
   vNum[0] := cEncSBOX[vNum[0]];
@@ -167,15 +159,15 @@ begin
   Move(vNum[0], Result, 4);
 end;
 
-function TRALCriptoAES.WordToBytes(AInt : Cardinal) : TBytes;
+function TRALCriptoAES.WordToBytes(AInt: Cardinal): TBytes;
 begin
   SetLength(Result, 4);
   Move(AInt, Result[0], 4);
 end;
 
-function TRALCriptoAES.RCON(AInt : integer) : Cardinal;
+function TRALCriptoAES.RCON(AInt: integer): Cardinal;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   AInt := AInt - 1;
   if AInt < 0 then
@@ -190,17 +182,18 @@ begin
   end;
 end;
 
-procedure TRALCriptoAES.RoundKey(AInput, AOutput : PByte; AKey : PCardinal);
+procedure TRALCriptoAES.RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   vInt := 0;
   while vInt < 16 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PCardinal(PByte(LongInt(AInput) + vInt))^ := PCardinal(PByte(LongInt(AInput) + vInt))^ xor AKey^;
+    PCardinal(PByte(LongInt(AInput) + vInt))^ := PCardinal(PByte(LongInt(AInput) + vInt))
+      ^ xor AKey^;
     {$ELSE}
-      PCardinal(AInput + vInt)^ := PCardinal(AInput + vInt)^ xor AKey^;
+    PCardinal(AInput + vInt)^ := PCardinal(AInput + vInt)^ xor AKey^;
     {$IFEND}
     vInt := vInt + 4;
     Inc(AKey);
@@ -212,8 +205,8 @@ procedure TRALCriptoAES.GenerateSBox;
 var
   vInt: IntegerRAL;
   vMult: Cardinal;
-  vBytes: array[0..255] of Byte;
-  vByte: Byte;
+  vBytes: array [0 .. 255] of byte;
+  vByte: byte;
 begin
   vByte := 1;
   for vInt := 0 to 255 do
@@ -231,51 +224,52 @@ begin
   begin
     vMult := vBytes[255 - vInt];
     vMult := vMult or (vMult shl 8);
-    vMult := vMult xor (vMult shr 4) xor (vMult shr 5) xor
-                       (vMult shr 6) xor (vMult shr 7);
+    vMult := vMult xor (vMult shr 4) xor (vMult shr 5) xor (vMult shr 6)
+      xor (vMult shr 7);
 
     FEncSBOX[vBytes[vInt]] := (vMult xor 99) and 255;
     FDecSBOX[FEncSBOX[vBytes[vInt]]] := vBytes[vInt];
   end;
 end;
 
-procedure TRALCriptoAES.EncSubBytes(AInput, AOutput : PByte);
+procedure TRALCriptoAES.EncSubBytes(AInput, AOutput: PByte);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vInt)^];
+    PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vInt)^];
     {$ELSE}
-      PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vInt)^];
+    PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vInt)^];
     {$IFEND}
   end;
 
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.EncShiftRows(AInput, AOutput : PByte);
+procedure TRALCriptoAES.EncShiftRows(AInput, AOutput: PByte);
 const
-  vShift : array[0..15] of Byte = (00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11);
+  vShift: array [0 .. 15] of byte = (00, 05, 10, 15, 04, 09, 14, 03, 08, 13, 02, 07, 12,
+    01, 06, 11);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
+    PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
     {$ELSE}
-      PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
+    PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.EncMixColumns(AInput, AOutput : PByte);
+procedure TRALCriptoAES.EncMixColumns(AInput, AOutput: PByte);
 var
-  vInt : IntegerRAL;
-  vPosMix, vProx : IntegerRAL;
+  vInt: IntegerRAL;
+  vPosMix, vProx: IntegerRAL;
 begin
 
   for vInt := 0 to 15 do
@@ -285,54 +279,56 @@ begin
 
     case vPosMix of
       {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-        0 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti02[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             FMulti03[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             PByte(LongInt(AInput) + vProx + 2)^ xor
-                                             PByte(LongInt(AInput) + vProx + 3)^;
+      0:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti02[PByte(LongInt(AInput) + vProx + 0)^]
+            xor FMulti03[PByte(LongInt(AInput) + vProx + 1)^]
+            xor PByte(LongInt(AInput) + vProx + 2)
+            ^ xor PByte(LongInt(AInput) + vProx + 3)^;
         end;
-        1 : begin
-          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)^ xor
-                                             FMulti02[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             FMulti03[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             PByte(LongInt(AInput) + vProx + 3)^;
+      1:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)
+            ^ xor FMulti02[PByte(LongInt(AInput) + vProx + 1)^] xor FMulti03
+            [PByte(LongInt(AInput) + vProx + 2)^] xor PByte(LongInt(AInput) + vProx + 3)^;
         end;
-        2 : begin
-          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)^ xor
-                                             PByte(LongInt(AInput) + vProx + 1)^ xor
-                                             FMulti02[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             FMulti03[PByte(LongInt(AInput) + vProx + 3)^];
+      2:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vProx + 0)
+            ^ xor PByte(LongInt(AInput) + vProx + 1)^ xor FMulti02
+            [PByte(LongInt(AInput) + vProx + 2)^] xor FMulti03
+            [PByte(LongInt(AInput) + vProx + 3)^];
         end;
-        3 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti03[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             PByte(LongInt(AInput) + vProx + 1)^ xor
-                                             PByte(LongInt(AInput) + vProx + 2)^ xor
-                                             FMulti02[PByte(LongInt(AInput) + vProx + 3)^];
+      3:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti03[PByte(LongInt(AInput) + vProx + 0)^]
+            xor PByte(LongInt(AInput) + vProx + 1)^ xor PByte(LongInt(AInput) + vProx + 2)
+            ^ xor FMulti02[PByte(LongInt(AInput) + vProx + 3)^];
         end;
       {$ELSE}
-        0 : begin
-          PByte(AOutput + vInt)^ := FMulti02[PByte(AInput + vProx + 0)^] xor
-                                    FMulti03[PByte(AInput + vProx + 1)^] xor
-                                    PByte(AInput + vProx + 2)^ xor
-                                    PByte(AInput + vProx + 3)^;
+      0:
+        begin
+          PByte(AOutput + vInt)^ := FMulti02[PByte(AInput + vProx + 0)^] xor FMulti03
+            [PByte(AInput + vProx + 1)^] xor PByte(AInput + vProx + 2)
+            ^ xor PByte(AInput + vProx + 3)^;
         end;
-        1 : begin
-          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)^ xor
-                                    FMulti02[PByte(AInput + vProx + 1)^] xor
-                                    FMulti03[PByte(AInput + vProx + 2)^] xor
-                                    PByte(AInput + vProx + 3)^;
+      1:
+        begin
+          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)^ xor FMulti02
+            [PByte(AInput + vProx + 1)^] xor FMulti03[PByte(AInput + vProx + 2)^]
+            xor PByte(AInput + vProx + 3)^;
         end;
-        2 : begin
-          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)^ xor
-                                    PByte(AInput + vProx + 1)^ xor
-                                    FMulti02[PByte(AInput + vProx + 2)^] xor
-                                    FMulti03[PByte(AInput + vProx + 3)^];
+      2:
+        begin
+          PByte(AOutput + vInt)^ := PByte(AInput + vProx + 0)
+            ^ xor PByte(AInput + vProx + 1)^ xor FMulti02[PByte(AInput + vProx + 2)^]
+            xor FMulti03[PByte(AInput + vProx + 3)^];
         end;
-        3 : begin
-          PByte(AOutput + vInt)^ := FMulti03[PByte(AInput + vProx + 0)^] xor
-                                    PByte(AInput + vProx + 1)^ xor
-                                    PByte(AInput + vProx + 2)^ xor
-                                    FMulti02[PByte(AInput + vProx + 3)^];
+      3:
+        begin
+          PByte(AOutput + vInt)^ := FMulti03[PByte(AInput + vProx + 0)^]
+            xor PByte(AInput + vProx + 1)^ xor PByte(AInput + vProx + 2)^ xor FMulti02
+            [PByte(AInput + vProx + 3)^];
         end;
       {$IFEND}
     end;
@@ -340,59 +336,61 @@ begin
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.EncSubShiftRows(AInput, AOutput : PByte);
+procedure TRALCriptoAES.EncSubShiftRows(AInput, AOutput: PByte);
 const
-  vShift : array[0..15] of Byte = (00,05,10,15,04,09,14,03,08,13,02,07,12,01,06,11);
+  vShift: array [0 .. 15] of byte = (00, 05, 10, 15, 04, 09, 14, 03, 08, 13, 02, 07, 12,
+    01, 06, 11);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
     {$ELSE}
-      PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vShift[vInt])^];
+    PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vShift[vInt])^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.DecSubBytes(AInput, AOutput : PByte);
+procedure TRALCriptoAES.DecSubBytes(AInput, AOutput: PByte);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vInt)^];
+    PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vInt)^];
     {$ELSE}
-      PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vInt)^];
+    PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vInt)^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.DecShiftRows(AInput, AOutput : PByte);
+procedure TRALCriptoAES.DecShiftRows(AInput, AOutput: PByte);
 const
-  vShift : array[0..15] of Byte = (00,13,10,07,04,01,14,11,08,05,02,15,12,09,06,03);
+  vShift: array [0 .. 15] of byte = (00, 13, 10, 07, 04, 01, 14, 11, 08, 05, 02, 15, 12,
+    09, 06, 03);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
+    PByte(LongInt(AOutput) + vInt)^ := PByte(LongInt(AInput) + vShift[vInt])^;
     {$ELSE}
-      PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
+    PByte(AOutput + vInt)^ := PByte(AInput + vShift[vInt])^;
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.DecMixColumns(AInput, AOutput : PByte);
+procedure TRALCriptoAES.DecMixColumns(AInput, AOutput: PByte);
 var
-  vInt : IntegerRAL;
-  vPosMix, vProx : IntegerRAL;
+  vInt: IntegerRAL;
+  vPosMix, vProx: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
@@ -401,73 +399,78 @@ begin
 
     case vPosMix of
       {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-        0 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti14[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             FMulti11[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             FMulti13[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             FMulti09[PByte(LongInt(AInput) + vProx + 3)^];
+      0:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti14[PByte(LongInt(AInput) + vProx + 0)^]
+            xor FMulti11[PByte(LongInt(AInput) + vProx + 1)^] xor FMulti13
+            [PByte(LongInt(AInput) + vProx + 2)^] xor FMulti09
+            [PByte(LongInt(AInput) + vProx + 3)^];
         end;
-        1 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti09[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             FMulti14[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             FMulti11[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             FMulti13[PByte(LongInt(AInput) + vProx + 3)^];
+      1:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti09[PByte(LongInt(AInput) + vProx + 0)^]
+            xor FMulti14[PByte(LongInt(AInput) + vProx + 1)^] xor FMulti11
+            [PByte(LongInt(AInput) + vProx + 2)^] xor FMulti13
+            [PByte(LongInt(AInput) + vProx + 3)^];
         end;
-        2 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti13[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             FMulti09[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             FMulti14[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             FMulti11[PByte(LongInt(AInput) + vProx + 3)^];
+      2:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti13[PByte(LongInt(AInput) + vProx + 0)^]
+            xor FMulti09[PByte(LongInt(AInput) + vProx + 1)^] xor FMulti14
+            [PByte(LongInt(AInput) + vProx + 2)^] xor FMulti11
+            [PByte(LongInt(AInput) + vProx + 3)^];
         end;
-        3 : begin
-          PByte(LongInt(AOutput) + vInt)^ := FMulti11[PByte(LongInt(AInput) + vProx + 0)^] xor
-                                             FMulti13[PByte(LongInt(AInput) + vProx + 1)^] xor
-                                             FMulti09[PByte(LongInt(AInput) + vProx + 2)^] xor
-                                             FMulti14[PByte(LongInt(AInput) + vProx + 3)^];
-         end;
+      3:
+        begin
+          PByte(LongInt(AOutput) + vInt)^ := FMulti11[PByte(LongInt(AInput) + vProx + 0)^]
+            xor FMulti13[PByte(LongInt(AInput) + vProx + 1)^] xor FMulti09
+            [PByte(LongInt(AInput) + vProx + 2)^] xor FMulti14
+            [PByte(LongInt(AInput) + vProx + 3)^];
+        end;
       {$ELSE}
-        0 : begin
-          PByte(AOutput + vInt)^ := FMulti14[PByte(AInput + vProx + 0)^] xor
-                                    FMulti11[PByte(AInput + vProx + 1)^] xor
-                                    FMulti13[PByte(AInput + vProx + 2)^] xor
-                                    FMulti09[PByte(AInput + vProx + 3)^];
+      0:
+        begin
+          PByte(AOutput + vInt)^ := FMulti14[PByte(AInput + vProx + 0)^] xor FMulti11
+            [PByte(AInput + vProx + 1)^] xor FMulti13[PByte(AInput + vProx + 2)^]
+            xor FMulti09[PByte(AInput + vProx + 3)^];
         end;
-        1 : begin
-          PByte(AOutput + vInt)^ := FMulti09[PByte(AInput + vProx + 0)^] xor
-                                    FMulti14[PByte(AInput + vProx + 1)^] xor
-                                    FMulti11[PByte(AInput + vProx + 2)^] xor
-                                    FMulti13[PByte(AInput + vProx + 3)^];
+      1:
+        begin
+          PByte(AOutput + vInt)^ := FMulti09[PByte(AInput + vProx + 0)^] xor FMulti14
+            [PByte(AInput + vProx + 1)^] xor FMulti11[PByte(AInput + vProx + 2)^]
+            xor FMulti13[PByte(AInput + vProx + 3)^];
         end;
-        2 : begin
-          PByte(AOutput + vInt)^ := FMulti13[PByte(AInput + vProx + 0)^] xor
-                                    FMulti09[PByte(AInput + vProx + 1)^] xor
-                                    FMulti14[PByte(AInput + vProx + 2)^] xor
-                                    FMulti11[PByte(AInput + vProx + 3)^];
+      2:
+        begin
+          PByte(AOutput + vInt)^ := FMulti13[PByte(AInput + vProx + 0)^] xor FMulti09
+            [PByte(AInput + vProx + 1)^] xor FMulti14[PByte(AInput + vProx + 2)^]
+            xor FMulti11[PByte(AInput + vProx + 3)^];
         end;
-        3 : begin
-          PByte(AOutput + vInt)^ := FMulti11[PByte(AInput + vProx + 0)^] xor
-                                    FMulti13[PByte(AInput + vProx + 1)^] xor
-                                    FMulti09[PByte(AInput + vProx + 2)^] xor
-                                    FMulti14[PByte(AInput + vProx + 3)^];
-         end;
+      3:
+        begin
+          PByte(AOutput + vInt)^ := FMulti11[PByte(AInput + vProx + 0)^] xor FMulti13
+            [PByte(AInput + vProx + 1)^] xor FMulti09[PByte(AInput + vProx + 2)^]
+            xor FMulti14[PByte(AInput + vProx + 3)^];
+        end;
       {$IFEND}
     end;
   end;
   Move(AOutput^, AInput^, 16);
 end;
 
-procedure TRALCriptoAES.DecSubShiftRows(AInput, AOutput : PByte);
+procedure TRALCriptoAES.DecSubShiftRows(AInput, AOutput: PByte);
 const
-  vShift : array[0..15] of Byte = (00,13,10,07,04,01,14,11,08,05,02,15,12,09,06,03);
+  vShift: array [0 .. 15] of byte = (00, 13, 10, 07, 04, 01, 14, 11, 08, 05, 02, 15, 12,
+    09, 06, 03);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-      PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
     {$ELSE}
-      PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vShift[vInt])^];
+    PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vShift[vInt])^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
@@ -475,26 +478,27 @@ end;
 
 procedure TRALCriptoAES.Initialize;
 var
-  vByte : Byte;
+  vByte: byte;
 begin
-  for vByte := 0 to 255 do begin
+  for vByte := 0 to 255 do
+  begin
     // encode
     FMulti02[vByte] := Multi02(vByte);
-    FMulti03[vByte] := Multi(3,vByte);
+    FMulti03[vByte] := Multi(3, vByte);
 
     // decode
-    FMulti09[vByte] := Multi(09,vByte);
-    FMulti11[vByte] := Multi(11,vByte);
-    FMulti13[vByte] := Multi(13,vByte);
-    FMulti14[vByte] := Multi(14,vByte);
+    FMulti09[vByte] := Multi(09, vByte);
+    FMulti11[vByte] := Multi(11, vByte);
+    FMulti13[vByte] := Multi(13, vByte);
+    FMulti14[vByte] := Multi(14, vByte);
   end;
-  
+
   GenerateSBox;
 end;
 
-function TRALCriptoAES.EncodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
+function TRALCriptoAES.EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 var
-  vPosKey, vNb, vNr : IntegerRAL;
+  vPosKey, vNb, vNr: IntegerRAL;
 begin
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
@@ -523,9 +527,9 @@ begin
   end;
 end;
 
-function TRALCriptoAES.DecodeAES(AInput, AOutput : PByte; AInputLen : integer) : integer;
+function TRALCriptoAES.DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 var
-  vPosKey, vNb, vNr : IntegerRAL;
+  vPosKey, vNb, vNr: IntegerRAL;
 begin
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
@@ -557,12 +561,12 @@ begin
   end;
 end;
 
-function TRALCriptoAES.Multi02(AValue : Byte) : Byte;
+function TRALCriptoAES.Multi02(AValue: byte): byte;
 begin
   Result := (AValue shl 1) xor ((AValue shr 7) * 283);
 end;
 
-procedure TRALCriptoAES.SetAESType(AValue : TRALAESType);
+procedure TRALCriptoAES.SetAESType(AValue: TRALAESType);
 begin
   if FAESType = AValue then
     Exit;
@@ -571,7 +575,7 @@ begin
   KeyExpansion;
 end;
 
-procedure TRALCriptoAES.SetKey(const AValue : StringRAL);
+procedure TRALCriptoAES.SetKey(const AValue: StringRAL);
 begin
   inherited SetKey(AValue);
   KeyExpansion;
@@ -579,9 +583,9 @@ end;
 
 procedure TRALCriptoAES.KeyExpansion;
 var
-  vTemp : Cardinal;
-  vInt, vNk, vNb, vNr : IntegerRAL;
-  vKey : TBytes;
+  vTemp: Cardinal;
+  vInt, vNk, vNb, vNr: IntegerRAL;
+  vKey: TBytes;
 begin
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
@@ -627,10 +631,10 @@ begin
   inherited Destroy;
 end;
 
-function TRALCriptoAES.Multi(AMult : integer; AByte : Byte) : Byte;
+function TRALCriptoAES.Multi(AMult: integer; AByte: byte): byte;
 var
-  vInt1, vInt2 : integer;
-  vByte, vCalc : Byte;
+  vInt1, vInt2: integer;
+  vByte, vCalc: byte;
 begin
   Result := 0;
   vInt1 := 0;
@@ -651,13 +655,13 @@ begin
   end;
 end;
 
-function TRALCriptoAES.EncodeAsStream(AValue : TStream) : TStream;
+function TRALCriptoAES.EncodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..8191] of Byte;
-  vOutBuf: array[0..8191] of Byte;
+  vInBuf: array [0 .. 8191] of byte;
+  vOutBuf: array [0 .. 8191] of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
-  vPosition, vSize : Int64RAL;
-  vPaddind : IntegerRAL;
+  vPosition, vSize: Int64RAL;
+  vPaddind: IntegerRAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -665,7 +669,7 @@ begin
 
   Result := TMemoryStream.Create;
   Result.Size := AValue.Size + 32;
-  
+
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
@@ -674,13 +678,13 @@ begin
     vPaddind := vBytesRead mod 16;
     if vPaddind <> 0 then
     begin
-      FillChar(vInBuf[vBytesRead], 16 - (vBytesRead mod 16),16 - (vPaddind mod 16));
+      FillChar(vInBuf[vBytesRead], 16 - (vBytesRead mod 16), 16 - (vPaddind mod 16));
       vBytesRead := vBytesRead + (16 - (vBytesRead mod 16));
     end;
 
     vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    Result.Write(vOutbuf[0], vBytesWrite);
+    Result.Write(vOutBuf[0], vBytesWrite);
 
     vPosition := vPosition + vBytesWrite;
   end;
@@ -692,7 +696,7 @@ begin
     vBytesRead := 16;
     vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    Result.Write(vOutbuf[0], vBytesWrite);
+    Result.Write(vOutBuf[0], vBytesWrite);
 
     vPosition := vPosition + vBytesRead;
   end;
@@ -701,13 +705,13 @@ begin
   Result.Position := 0;
 end;
 
-function TRALCriptoAES.DecodeAsStream(AValue : TStream) : TStream;
+function TRALCriptoAES.DecodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..4095] of Byte;
-  vOutBuf: array[0..4095] of Byte;
+  vInBuf: array [0 .. 4095] of byte;
+  vOutBuf: array [0 .. 4095] of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
-  vPosition, vSize : Int64RAL;
-  vPad1, vPad2  : Byte;
+  vPosition, vSize: Int64RAL;
+  vPad1, vPad2: byte;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -723,18 +727,18 @@ begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
     vBytesWrite := DecodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
-    Result.Write(vOutbuf[0], vBytesWrite);
+    Result.Write(vOutBuf[0], vBytesWrite);
 
     vPosition := vPosition + vBytesRead;
   end;
 
   // verificando paddind
   Result.Position := Result.Size - 1;
-  Result.Read(vPad1,1);
+  Result.Read(vPad1, 1);
   Result.Position := Result.Size - vPad1;
   while Result.Position < Result.Size do
   begin
-    Result.Read(vPad2,1);
+    Result.Read(vPad2, 1);
     if vPad2 <> vPad1 then
       Break;
   end;
@@ -746,10 +750,10 @@ begin
   Result.Position := 0;
 end;
 
-function TRALCriptoAES.AESKeys(AIndex : integer) : TBytes;
+function TRALCriptoAES.AESKeys(AIndex: integer): TBytes;
 var
-  vInt : IntegerRAL;
-  vBytes : TBytes;
+  vInt: IntegerRAL;
+  vBytes: TBytes;
 begin
   Result := nil;
   if (AIndex >= 0) and (AIndex < CountKeys) then
@@ -763,16 +767,16 @@ begin
   end;
 end;
 
-function TRALCriptoAES.CountKeys : integer;
+function TRALCriptoAES.CountKeys: integer;
 begin
   Result := cNumberRounds[FAESType] + 1;
 end;
 
-function TRALCriptoAES.KeysToList : TStringList;
+function TRALCriptoAES.KeysToList: TStringList;
 var
-  vInt1, vInt2 : integer;
-  vStr : StringRAL;
-  vKey : TBytes;
+  vInt1, vInt2: integer;
+  vStr: StringRAL;
+  vKey: TBytes;
 begin
   Result := TStringList.Create;
 
@@ -792,8 +796,8 @@ end;
 
 procedure TRALCriptoAES.LogAES(const ALog: StringRAL; AInput: PByte);
 var
-  vInt : IntegerRAL;
-  vStr : StringRAL;
+  vInt: IntegerRAL;
+  vStr: StringRAL;
 begin
   FLogAES.Add(ALog);
   vStr := '';
@@ -813,4 +817,3 @@ begin
 end;
 
 end.
-

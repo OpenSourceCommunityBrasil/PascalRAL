@@ -18,13 +18,13 @@
         <Projects Include="Delphi\NetHttpRAL.dproj">
             <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
         </Projects>
+        <Projects Include="Delphi\UniGUIRAL.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="Delphi\DBLinks\RALDBFireDACLink.dproj">
             <Dependencies/>
         </Projects>
         <Projects Include="Delphi\DBLinks\RALDBZeosLink.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="Delphi\UniGUIRAL.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -80,6 +80,15 @@
     <Target Name="NetHttpRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Make"/>
     </Target>
+    <Target Name="UniGUIRAL">
+        <MSBuild Projects="Delphi\UniGUIRAL.dproj"/>
+    </Target>
+    <Target Name="UniGUIRAL:Clean">
+        <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="UniGUIRAL:Make">
+        <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Make"/>
+    </Target>
     <Target Name="RALDBFireDACLink">
         <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj"/>
     </Target>
@@ -98,23 +107,14 @@
     <Target Name="RALDBZeosLink:Make">
         <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj" Targets="Make"/>
     </Target>
-    <Target Name="UniGUIRAL">
-        <MSBuild Projects="Delphi\UniGUIRAL.dproj"/>
-    </Target>
-    <Target Name="UniGUIRAL:Clean">
-        <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="UniGUIRAL:Make">
-        <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Make"/>
-    </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL;RALDBFireDACLink;RALDBZeosLink;UniGUIRAL"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL;UniGUIRAL;RALDBFireDACLink;RALDBZeosLink"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean;UniGUIRAL:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean;UniGUIRAL:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make;UniGUIRAL:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make;UniGUIRAL:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

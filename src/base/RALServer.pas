@@ -708,7 +708,7 @@ begin
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
-      FAuthentication.AuthQuery(ARequest.Query, ARequest, Result);
+      FAuthentication.BeforeValidate(ARequest, Result);
       if Result.StatusCode >= 400 then
         AddBlockList(ARequest.ClientInfo.IP); // adicionando tentativas
     end

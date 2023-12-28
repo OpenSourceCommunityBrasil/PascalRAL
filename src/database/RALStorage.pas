@@ -1972,59 +1972,36 @@ begin
     if (not AField.IsNull) then
     begin
       case AField.DataType of
-        ftUnknown         : vField.Clear;
-        ftString          : vField.AsString := AField.AsString;
-        ftSmallint        : vField.AsInteger := AField.AsInteger;
-        ftInteger         : vField.AsInteger := AField.AsInteger;
+        ftSmallint, ftInteger, ftAutoInc, ftLargeint,
         ftWord            : vField.AsInteger := AField.AsInteger;
         ftBoolean         : vField.AsBoolean := AField.AsBoolean;
-        ftFloat           : vField.AsDouble := AField.AsFloat;
-        ftCurrency        : vField.AsDouble := AField.AsFloat;
-        ftBCD             : vField.AsDouble := AField.AsFloat;
-        ftDate            : vField.AsDateTime := AField.AsDateTime;
-        ftTime            : vField.AsDateTime := AField.AsDateTime;
-        ftDateTime        : vField.AsDateTime := AField.AsDateTime;
-        ftBytes           : vField.AsBytes := AField.AsBytes;
-        ftVarBytes        : vField.AsBytes := AField.AsBytes;
-        ftAutoInc         : vField.AsInteger := AField.AsInteger;
-        ftBlob            : SaveAsStream;
-        ftMemo            : vField.AsString := AField.AsString;
-        ftGraphic         : SaveAsStream;
-        ftFmtMemo         : vField.AsString := AField.AsString;
-        ftParadoxOle      : vField.Clear;
-        ftDBaseOle        : vField.Clear;
-        ftTypedBinary     : vField.Clear;
-        ftCursor          : vField.Clear;
-        ftFixedChar       : vField.AsString := AField.AsString;
-        ftWideString      : vField.AsString := AField.AsString;
-        ftLargeint        : vField.AsInteger := AField.AsInteger;
-        ftADT             : vField.Clear;
-        ftArray           : vField.Clear;
-        ftReference       : vField.Clear;
-        ftDataSet         : vField.Clear;
-        ftOraBlob         : SaveAsStream;
-        ftOraClob         : vField.AsString := AField.AsString;
-        ftVariant         : vField.Clear;
-        ftInterface       : vField.Clear;
-        ftIDispatch       : vField.Clear;
-        ftGuid            : vField.AsString := AField.AsString;
-        ftTimeStamp       : vField.AsDateTime := AField.AsDateTime;
+        ftFloat, ftCurrency, ftBCD,
         ftFMTBcd          : vField.AsDouble := AField.AsFloat;
-        ftFixedWideChar   : vField.AsString := AField.AsString;
-        ftWideMemo        : vField.AsString := AField.AsString;
+        ftTimeStamp, ftDate, ftTime,
+        ftDateTime        : vField.AsDateTime := AField.AsDateTime;
+        ftBytes,
+        ftVarBytes        : vField.AsBytes := AField.AsBytes;
+        ftBlob, ftGraphic,
+        ftOraBlob         : SaveAsStream;
+        ftUnknown, ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor, ftADT,
+        ftArray, ftReference, ftDataSet, ftVariant, ftInterface,
+        ftIDispatch       : vField.Clear;
+        ftMemo, ftFmtMemo, ftFixedChar, ftWideString, ftOraClob, ftGuid,
+        ftFixedWideChar, ftWideMemo,
+        ftString          : vField.AsString := AField.AsString;
         {$IFNDEF FPC}
-          ftOraTimeStamp    : vField.AsDateTime := AField.AsDateTime;
-          ftOraInterval     : vField.AsDateTime := AField.AsDateTime;
-          ftLongWord        : vField.AsInteger := AField.AsInteger;
-          ftShortint        : vField.AsInteger := AField.AsInteger;
-          ftByte            : vField.AsInteger := AField.AsInteger;
-          ftExtended        : vField.AsDouble := AField.AsFloat;
-          ftConnection      : vField.Clear;
-          ftParams          : vField.Clear;
-          ftStream          : SaveAsStream;
+          ftOraTimeStamp,
+          ftOraInterval,
           ftTimeStampOffset : vField.AsDateTime := AField.AsDateTime;
-          ftObject          : vField.Clear;
+          ftLongWord,
+          ftShortint,
+          ftByte            : vField.AsInteger := AField.AsInteger;
+          ftExtended,
           ftSingle          : vField.AsDouble := AField.AsFloat;
+          ftConnection,
+          ftParams,
+          ftObject          : vField.Clear;
+          ftStream          : SaveAsStream;
         {$ENDIF}
       end;
     end;

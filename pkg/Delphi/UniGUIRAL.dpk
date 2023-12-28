@@ -26,7 +26,7 @@ package UniGUIRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Synopse Components'}
+{$DESCRIPTION 'PascalRAL | UniGUI Components'}
 {$IMPLICITBUILD ON}
 
 requires

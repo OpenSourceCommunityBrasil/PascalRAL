@@ -1,4 +1,5 @@
-﻿unit RALRequest;
+﻿/// Unit that contains everything related to the "Request" part of the communication.
+unit RALRequest;
 
 interface
 
@@ -11,6 +12,7 @@ type
 
   { TRALClientInfo }
 
+  /// Class that stores information from the client. Some of them can only be obtained with RALClient
   TRALClientInfo = class
   private
     FMACAddress: StringRAL;
@@ -24,6 +26,7 @@ type
 
   { TRALAuthorization }
 
+  /// Class to define which kind of authentication is used on the data
   TRALAuthorization = class
   private
     FAuthType: TRALAuthTypes;
@@ -42,6 +45,7 @@ type
 
   { TRALRequest }
 
+  /// Class that stores everything regarding REQUEST data
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
     FAuthorization: TRALAuthorization;
@@ -52,10 +56,12 @@ type
     FQuery: StringRAL;
     FHost: StringRAL;
     FProtocol: StringRAL;
-    FHttpVersion : StringRAL;
-    FStream : TStream;
+    FHttpVersion: StringRAL;
+    FStream: TStream;
   protected
-    function GetURL : StringRAL;
+    /// Grabs the full URL of the request
+    function GetURL: StringRAL;
+    /// Grabs only the params after the "?" key and records it in FQuery attribute
     procedure SetQuery(const Value: StringRAL);
   public
     constructor Create;
@@ -65,11 +71,11 @@ type
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
     function AddFile(const AFileName: StringRAL): TRALRequest; reintroduce; overload;
-    function AddFile(AStream: TStream; const AFileName: StringRAL = '') : TRALRequest; reintroduce; overload;
-    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALRequest; reintroduce;
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALRequest; reintroduce; overload;
+    function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
 
     property URL: StringRAL read GetURL;
-    property Stream : TStream read FStream write FStream;
+    property Stream: TStream read FStream write FStream;
   published
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentType: StringRAL read FContentType write FContentType;
@@ -79,26 +85,26 @@ type
     property Host: StringRAL read FHost write FHost;
     property Protocol: StringRAL read FProtocol write FProtocol;
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
-    property Authorization : TRALAuthorization read FAuthorization write FAuthorization;
+    property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
   end;
 
 implementation
 
 { TRALRequest }
 
-function TRALRequest.GetURL : StringRAL;
+function TRALRequest.GetURL: StringRAL;
 begin
   Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
 end;
 
 procedure TRALRequest.SetQuery(const Value: StringRAL);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   FQuery := Value;
-  vInt := Pos('?',FQuery);
+  vInt := Pos('?', FQuery);
   if vInt > 0 then
-    Delete(FQuery,vInt,Length(FQuery));
+    Delete(FQuery, vInt, Length(FQuery));
 end;
 
 constructor TRALRequest.Create;
@@ -118,39 +124,40 @@ begin
   inherited;
 end;
 
-function TRALRequest.AddHeader(const AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddHeader(const AName, AValue: StringRAL): TRALRequest;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddBody(const AText : StringRAL; const AContextType : StringRAL) : TRALRequest;
+function TRALRequest.AddBody(const AText: StringRAL; const AContextType: StringRAL)
+  : TRALRequest;
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALRequest.AddField(const AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddField(const AName, AValue: StringRAL): TRALRequest;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddCookie(const AName, AValue : StringRAL) : TRALRequest;
+function TRALRequest.AddCookie(const AName, AValue: StringRAL): TRALRequest;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddFile(const AFileName : StringRAL) : TRALRequest;
+function TRALRequest.AddFile(const AFileName: StringRAL): TRALRequest;
 begin
   inherited AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALRequest.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALRequest;
+function TRALRequest.AddFile(AStream: TStream; const AFileName: StringRAL): TRALRequest;
 begin
-  inherited AddFile(AStream,AFileName);
+  inherited AddFile(AStream, AFileName);
   Result := Self;
 end;
 
@@ -193,4 +200,3 @@ begin
 end;
 
 end.
-

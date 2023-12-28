@@ -88,7 +88,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function ValidToken(const AValue: StringRAL) : boolean;
+    function isValidToken(const AValue: StringRAL): boolean;
 
     property Token: StringRAL read GetToken write SetToken;
   published
@@ -884,7 +884,7 @@ begin
   end;
 end;
 
-function TRALJWT.ValidToken(const AValue: StringRAL) : boolean;
+function TRALJWT.isValidToken(const AValue: StringRAL) : boolean;
 var
   vSignature : StringRAL;
   vAlgorithm : TRALJWTAlgorithm;
