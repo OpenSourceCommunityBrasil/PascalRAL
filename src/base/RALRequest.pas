@@ -66,26 +66,31 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
-    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
-    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
-    function AddFile(const AFileName: StringRAL): TRALRequest; reintroduce; overload;
-    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALRequest; reintroduce; overload;
+    /// Adds an UTF8 String to the body of the request.
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
+    /// Adds a string cookie to the body of the request.
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    /// Adds a string param with the "Field" kind to the request.
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    /// Adds a file to the body of the request based on the given AFileName.
+    function AddFile(const AFileName: StringRAL): TRALRequest; reintroduce; overload;
+    /// Adds a custom file to the body of the request from the given AStream.
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALRequest; reintroduce; overload;
+    /// Adds an UTF8 String to the header of the request.
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
 
-    property URL: StringRAL read GetURL;
     property Stream: TStream read FStream write FStream;
+    property URL: StringRAL read GetURL;
   published
-    property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
-    property ContentType: StringRAL read FContentType write FContentType;
-    property ContentSize: Int64RAL read FContentSize write FContentSize;
-    property Method: TRALMethod read FMethod write FMethod;
-    property Query: StringRAL read FQuery write SetQuery;
-    property Host: StringRAL read FHost write FHost;
-    property Protocol: StringRAL read FProtocol write FProtocol;
-    property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
+    property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
+    property ContentSize: Int64RAL read FContentSize write FContentSize;
+    property ContentType: StringRAL read FContentType write FContentType;
+    property Host: StringRAL read FHost write FHost;
+    property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
+    property Method: TRALMethod read FMethod write FMethod;
+    property Protocol: StringRAL read FProtocol write FProtocol;
+    property Query: StringRAL read FQuery write SetQuery;
   end;
 
 implementation
