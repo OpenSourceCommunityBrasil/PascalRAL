@@ -1,4 +1,5 @@
-﻿unit RALBase64;
+﻿/// Unit that stores Base64 encode and decode functions
+unit RALBase64;
 
 interface
 
@@ -11,29 +12,23 @@ type
 
   TRALBase64 = class
   protected
-    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
     class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
+    class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
   public
-    class function Encode(const AValue: StringRAL): StringRAL; overload;
     class function Decode(const AValue: StringRAL): StringRAL; overload;
-
-    class function Encode(AValue: TStream): StringRAL; overload;
-    class function Decode(AValue: TStream): StringRAL; overload;
-
-    class function Encode(AValue: TBytes): StringRAL; overload;
     class function Decode(AValue: TBytes): StringRAL; overload;
-
-    class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    class function Decode(AValue: TStream): StringRAL; overload;
     class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
-
-    class function EncodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
-
-    class function EncodeAsStream(AValue: TStream): TStream; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
-
-    class function ToBase64Url(const AValue: StringRAL): StringRAL;
+    class function Encode(const AValue: StringRAL): StringRAL; overload;
+    class function Encode(AValue: TBytes): StringRAL; overload;
+    class function Encode(AValue: TStream): StringRAL; overload;
+    class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    class function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    class function EncodeAsStream(AValue: TStream): TStream; overload;
     class function FromBase64Url(const AValue: StringRAL): StringRAL;
+    class function ToBase64Url(const AValue: StringRAL): StringRAL;
   end;
 
 implementation

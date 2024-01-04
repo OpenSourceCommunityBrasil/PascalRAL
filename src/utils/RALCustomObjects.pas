@@ -11,7 +11,7 @@ type
 
   { TRALComponent }
 
-  /// base class of visual components
+  /// Base class of visual components
   TRALComponent = class(TComponent)
   private
     function getVersion: string;
@@ -21,7 +21,7 @@ type
 
   { TRALHTTPHeaderInfo }
 
-  /// base class of REQUEST and RESPONSE classes
+  /// Base class of REQUEST and RESPONSE classes
   TRALHTTPHeaderInfo = class
   private
     FAcceptEncoding: StringRAL;

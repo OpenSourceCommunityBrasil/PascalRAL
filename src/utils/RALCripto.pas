@@ -1,3 +1,4 @@
+/// Unit that stores cryptographic functions used in PascalRAL
 unit RALCripto;
 
 interface
@@ -18,8 +19,8 @@ type
   public
     constructor Create;
   published
-    property Key: StringRAL read FKey write FKey;
     property CriptType: TRALCriptoType read FCriptType write FCriptType;
+    property Key: StringRAL read FKey write FKey;
   end;
 
   { TRALCripto }
@@ -31,20 +32,20 @@ type
   protected
     procedure SetKey(const AValue: StringRAL); virtual;
   public
-    function Decode(const AValue: StringRAL): StringRAL; overload;
-    function Decode(AValue: TStream): StringRAL; overload;
-    function Decode(AValue: TBytes): StringRAL; overload;
-    function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
-    function DecodeAsBytes(AValue: TStream): TBytes; overload;
-    function DecodeAsBytes(AValue: TBytes): TBytes; overload;
-    function DecodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
-    function Encode(const AValue: StringRAL): StringRAL; overload;
-    function Encode(AValue: TStream): StringRAL; overload;
-    function Encode(AValue: TBytes): StringRAL; overload;
-    function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
-    function EncodeAsBytes(AValue: TStream): TBytes; overload;
-    function EncodeAsBytes(AValue: TBytes): TBytes; overload;
-    function EncodeAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function Decrypt(const AValue: StringRAL): StringRAL; overload;
+    function Decrypt(AValue: TBytes): StringRAL; overload;
+    function Decrypt(AValue: TStream): StringRAL; overload;
+    function DecryptAsBytes(const AValue: StringRAL): TBytes; overload;
+    function DecryptAsBytes(AValue: TBytes): TBytes; overload;
+    function DecryptAsBytes(AValue: TStream): TBytes; overload;
+    function DecryptAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function Encrypt(const AValue: StringRAL): StringRAL; overload;
+    function Encrypt(AValue: TBytes): StringRAL; overload;
+    function Encrypt(AValue: TStream): StringRAL; overload;
+    function EncryptAsBytes(const AValue: StringRAL): TBytes; overload;
+    function EncryptAsBytes(AValue: TBytes): TBytes; overload;
+    function EncryptAsBytes(AValue: TStream): TBytes; overload;
+    function EncryptAsStream(AValue: TStream): TStream; overload; virtual; abstract;
   published
     property Key: StringRAL read FKey write SetKey;
   end;
@@ -70,35 +71,35 @@ begin
   FKey := AValue;
 end;
 
-function TRALCripto.Encode(const AValue: StringRAL): StringRAL;
+function TRALCripto.Encrypt(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
   vStream := StringToStream(AValue);
   try
-    Result := Encode(vStream);
+    Result := Encrypt(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.Decode(const AValue: StringRAL): StringRAL;
+function TRALCripto.Decrypt(const AValue: StringRAL): StringRAL;
 var
   vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
-    Result := Decode(vStream);
+    Result := Decrypt(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.Encode(AValue: TStream): StringRAL;
+function TRALCripto.Encrypt(AValue: TStream): StringRAL;
 var
   vResult: TStream;
 begin
-  vResult := EncodeAsStream(AValue);
+  vResult := EncryptAsStream(AValue);
   try
     Result := StreamToString(vResult);
   finally
@@ -106,11 +107,11 @@ begin
   end;
 end;
 
-function TRALCripto.Decode(AValue: TStream): StringRAL;
+function TRALCripto.Decrypt(AValue: TStream): StringRAL;
 var
   vResult: TStringStream;
 begin
-  vResult := TStringStream(DecodeAsStream(AValue));
+  vResult := TStringStream(DecryptAsStream(AValue));
   try
     Result := vResult.DataString;
   finally
@@ -118,59 +119,59 @@ begin
   end;
 end;
 
-function TRALCripto.Encode(AValue: TBytes): StringRAL;
+function TRALCripto.Encrypt(AValue: TBytes): StringRAL;
 var
   vStream: TStream;
 begin
   vStream := BytesToStream(AValue);
   try
-    Result := Encode(vStream);
+    Result := Encrypt(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.Decode(AValue: TBytes): StringRAL;
+function TRALCripto.Decrypt(AValue: TBytes): StringRAL;
 var
   vStream: TStream;
 begin
   vStream := BytesToStream(AValue);
   try
-    Result := Decode(vStream);
+    Result := Decrypt(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(const AValue: StringRAL): TBytes;
+function TRALCripto.EncryptAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
-    Result := EncodeAsBytes(vStream);
+    Result := EncryptAsBytes(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(const AValue: StringRAL): TBytes;
+function TRALCripto.DecryptAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStringStream;
 begin
   vStream := TStringStream.Create(AValue);
   try
-    Result := DecodeAsBytes(vStream);
+    Result := DecryptAsBytes(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(AValue: TStream): TBytes;
+function TRALCripto.EncryptAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
-  vResult := EncodeAsStream(AValue);
+  vResult := EncryptAsStream(AValue);
   try
     Result := StreamToBytes(vResult);
   finally
@@ -178,11 +179,11 @@ begin
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(AValue: TStream): TBytes;
+function TRALCripto.DecryptAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
-  vResult := DecodeAsStream(AValue);
+  vResult := DecryptAsStream(AValue);
   try
     Result := StreamToBytes(vResult);
   finally
@@ -190,25 +191,25 @@ begin
   end;
 end;
 
-function TRALCripto.EncodeAsBytes(AValue: TBytes): TBytes;
+function TRALCripto.EncryptAsBytes(AValue: TBytes): TBytes;
 var
   vStream: TStream;
 begin
   vStream := BytesToStream(AValue);
   try
-    Result := EncodeAsBytes(vStream);
+    Result := EncryptAsBytes(vStream);
   finally
     FreeAndNil(vStream);
   end;
 end;
 
-function TRALCripto.DecodeAsBytes(AValue: TBytes): TBytes;
+function TRALCripto.DecryptAsBytes(AValue: TBytes): TBytes;
 var
   vStream: TStream;
 begin
   vStream := BytesToStream(AValue);
   try
-    Result := DecodeAsBytes(vStream);
+    Result := DecryptAsBytes(vStream);
   finally
     FreeAndNil(vStream);
   end;

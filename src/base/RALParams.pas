@@ -1039,7 +1039,7 @@ begin
 
   try
     vCript.Key := FCriptoOptions.Key;
-    Result := vCript.EncodeAsStream(AStream);
+    Result := vCript.EncryptAsStream(AStream);
   finally
     FreeAndNil(vCript);
   end;
@@ -1088,7 +1088,7 @@ begin
 
   try
     vCript.Key := FCriptoOptions.Key;
-    Result := vCript.DecodeAsStream(AStream);
+    Result := vCript.DecryptAsStream(AStream);
   finally
     FreeAndNil(vCript);
   end;
@@ -1119,7 +1119,7 @@ begin
 
   try
     vCript.Key := FCriptoOptions.Key;
-    Result := vCript.Decode(ASource);
+    Result := vCript.Decrypt(ASource);
   finally
     FreeAndNil(vCript);
   end;

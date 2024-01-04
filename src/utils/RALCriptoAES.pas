@@ -1,4 +1,4 @@
-/// Unit for AES Criptography sources
+/// Unit for AES Criptography functions
 unit RALCriptoAES;
 
 {$I ..\base\PascalRAL.inc}
@@ -14,72 +14,57 @@ type
 
   { TRALCriptoAES }
 
+  /// AES Criptography class
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FWordKeys: array of Cardinal; // UInt32;
-
-    // encode
+    FDecSBOX: array [0 .. 255] of byte;
+    FEncSBOX: array [0 .. 255] of byte;
+    FLogAES: TStringList;
     FMulti02: array [0 .. 255] of byte;
     FMulti03: array [0 .. 255] of byte;
-
-    // decode
     FMulti09: array [0 .. 255] of byte; // 09
     FMulti11: array [0 .. 255] of byte; // 0b
     FMulti13: array [0 .. 255] of byte; // 0d
     FMulti14: array [0 .. 255] of byte; // 0e
-
-    FEncSBOX: array [0 .. 255] of byte;
-    FDecSBOX: array [0 .. 255] of byte;
-
-    FLogAES: TStringList;
+    FWordKeys: array of Cardinal; // UInt32;
   protected
-    procedure LogAES(const ALog: StringRAL; AInput: PByte);
-
-    procedure Initialize;
-    function EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
-    function DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
-
-    function Multi02(AValue: byte): byte;
-    function Multi(AMult: integer; AByte: byte): byte;
-
-    // usado do keyexpansion
-    function RCON(AInt: integer): Cardinal; // UInt32;
-
-    // cipher encode and decode
-    procedure GenerateSBox;
-    procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal); // PUInt32);
-
-    // cipher encode
-    procedure EncSubBytes(AInput, AOutput: PByte);
-    procedure EncShiftRows(AInput, AOutput: PByte);
-    procedure EncMixColumns(AInput, AOutput: PByte);
-    procedure EncSubShiftRows(AInput, AOutput: PByte);
-
-    // cipher decode
+    /// Decrypt cipher
+    procedure DecMixColumns(AInput, AOutput: PByte);
     procedure DecSubBytes(AInput, AOutput: PByte);
     procedure DecShiftRows(AInput, AOutput: PByte);
-    procedure DecMixColumns(AInput, AOutput: PByte);
     procedure DecSubShiftRows(AInput, AOutput: PByte);
-
-    // key expansion
+    function DecryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
+    /// Encrypt cipher
+    procedure EncMixColumns(AInput, AOutput: PByte);
+    procedure EncShiftRows(AInput, AOutput: PByte);
+    procedure EncSubBytes(AInput, AOutput: PByte);
+    procedure EncSubShiftRows(AInput, AOutput: PByte);
+    function EncryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
+    /// Cypher Encrypt and Decrypt
+    procedure GenerateSBox;
+    procedure KeyExpansion;
+    procedure Initialize;
+    procedure LogAES(const ALog: StringRAL; AInput: PByte);
+    function Multi(AMult: integer; AByte: byte): byte;
+    function Multi02(AValue: byte): byte;
+    /// Used on keyexpansion
+    function RCON(AInt: integer): Cardinal;
+    /// key expansion
     function RotWord(AInt: Cardinal): Cardinal;
-    function SubWord(AInt: Cardinal): Cardinal;
-    function WordToBytes(AInt: Cardinal): TBytes;
-
+    procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
-
-    procedure KeyExpansion;
+    function SubWord(AInt: Cardinal): Cardinal;
+    function WordToBytes(AInt: Cardinal): TBytes;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function EncodeAsStream(AValue: TStream): TStream; override;
-    function DecodeAsStream(AValue: TStream): TStream; override;
-
     function AESKeys(AIndex: integer): TBytes;
     function CountKeys: integer;
+    function DecryptAsStream(AValue: TStream): TStream; override;
+    function EncryptAsStream(AValue: TStream): TStream; override;
     function KeysToList: TStringList;
   published
     property AESType: TRALAESType read FAESType write SetAESType;
@@ -92,7 +77,7 @@ const
   cKeyLength: array [TRALAESType] of integer = (4, 6, 8); // nk
   cBlockSize: integer = 4; // nb
 
-  // constantes de substituicao no encode S-BOX
+  // constantes de substituicao no Encrypt S-BOX
   cEncSBOX: array [0 .. 255] of byte = ($63, $7C, $77, $7B, $F2, $6B, $6F, $C5, $30, $01,
     $67, $2B, $FE, $D7, $AB, $76, $CA, $82, $C9, $7D, $FA, $59, $47, $F0, $AD, $D4, $A2,
     $AF, $9C, $A4, $72, $C0, $B7, $FD, $93, $26, $36, $3F, $F7, $CC, $34, $A5, $E5, $F1,
@@ -110,7 +95,7 @@ const
     $94, $9B, $1E, $87, $E9, $CE, $55, $28, $DF, $8C, $A1, $89, $0D, $BF, $E6, $42, $68,
     $41, $99, $2D, $0F, $B0, $54, $BB, $16);
 
-  // constantes de substituicao no decode S-BOX
+  // constantes de substituicao no Decrypt S-BOX
   cDecSBOX: array [0 .. 255] of byte = ($52, $09, $6A, $D5, $30, $36, $A5, $38, $BF, $40,
     $A3, $9E, $81, $F3, $D7, $FB, $7C, $E3, $39, $82, $9B, $2F, $FF, $87, $34, $8E, $43,
     $44, $C4, $DE, $E9, $CB, $54, $7B, $94, $32, $A6, $C2, $23, $3D, $EE, $4C, $95, $0B,
@@ -482,11 +467,11 @@ var
 begin
   for vByte := 0 to 255 do
   begin
-    // encode
+    // Encrypt
     FMulti02[vByte] := Multi02(vByte);
     FMulti03[vByte] := Multi(3, vByte);
 
-    // decode
+    // Decrypt
     FMulti09[vByte] := Multi(09, vByte);
     FMulti11[vByte] := Multi(11, vByte);
     FMulti13[vByte] := Multi(13, vByte);
@@ -496,7 +481,7 @@ begin
   GenerateSBox;
 end;
 
-function TRALCriptoAES.EncodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
+function TRALCriptoAES.EncryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 var
   vPosKey, vNb, vNr: IntegerRAL;
 begin
@@ -527,7 +512,7 @@ begin
   end;
 end;
 
-function TRALCriptoAES.DecodeAES(AInput, AOutput: PByte; AInputLen: integer): integer;
+function TRALCriptoAES.DecryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
 var
   vPosKey, vNb, vNr: IntegerRAL;
 begin
@@ -655,7 +640,7 @@ begin
   end;
 end;
 
-function TRALCriptoAES.EncodeAsStream(AValue: TStream): TStream;
+function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
 var
   vInBuf: array [0 .. 8191] of byte;
   vOutBuf: array [0 .. 8191] of byte;
@@ -682,7 +667,7 @@ begin
       vBytesRead := vBytesRead + (16 - (vBytesRead mod 16));
     end;
 
-    vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
+    vBytesWrite := EncryptAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
     Result.Write(vOutBuf[0], vBytesWrite);
 
@@ -694,7 +679,7 @@ begin
   begin
     FillChar(vInBuf[0], 16, 16);
     vBytesRead := 16;
-    vBytesWrite := EncodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
+    vBytesWrite := EncryptAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
     Result.Write(vOutBuf[0], vBytesWrite);
 
@@ -705,7 +690,7 @@ begin
   Result.Position := 0;
 end;
 
-function TRALCriptoAES.DecodeAsStream(AValue: TStream): TStream;
+function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
 var
   vInBuf: array [0 .. 4095] of byte;
   vOutBuf: array [0 .. 4095] of byte;
@@ -725,7 +710,7 @@ begin
     FillChar(vInBuf[0], Length(vInBuf), 0);
 
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
-    vBytesWrite := DecodeAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
+    vBytesWrite := DecryptAES(@vInBuf[0], @vOutBuf[0], vBytesRead);
 
     Result.Write(vOutBuf[0], vBytesWrite);
 
