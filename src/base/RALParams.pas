@@ -386,19 +386,22 @@ function TRALParams.AddFile(const AFileName: StringRAL): TRALParam;
 var
   vMime: TRALMIMEType;
 begin
-  Result := NewParam;
-  Result.ParamName := NextParamStr;
-  Result.FileName := ExtractFileName(AFileName);
-  Result.OpenFile(AFileName);
-  Result.Kind := rpkBODY;
+  if AFileName <> '' then
+  begin
+    Result := NewParam;
+    Result.ParamName := NextParamStr;
+    Result.FileName := ExtractFileName(AFileName);
+    Result.OpenFile(AFileName);
+    Result.Kind := rpkBODY;
 
-  vMime := TRALMIMEType.Create;
-  try
-    Result.ContentType := vMime.GetMIMEType(AFileName);
-    if Result.ContentType = '' then
-      Result.ContentType := rctAPPLICATIONOCTETSTREAM;
-  finally
-    FreeAndNil(vMime);
+    vMime := TRALMIMEType.Create;
+    try
+      Result.ContentType := vMime.GetMIMEType(AFileName);
+      if Result.ContentType = '' then
+        Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+    finally
+      FreeAndNil(vMime);
+    end;
   end;
 end;
 

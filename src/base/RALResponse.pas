@@ -1,4 +1,5 @@
-﻿unit RALResponse;
+﻿/// Unit that contains everything related to the HTTP response of the traffic
+unit RALResponse;
 
 interface
 
@@ -9,7 +10,7 @@ uses
 type
 
   { TRALResponse }
-
+  /// Base class for everything related to data respnse
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     FContentType: StringRAL;
@@ -19,30 +20,38 @@ type
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
+    procedure SetContentType(const AValue: StringRAL);
     procedure SetResponseStream(const AValue: TStream);
     procedure SetResponseText(const AValue: StringRAL);
-    procedure SetContentType(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
+    /// Append an UTF8 String to the response
+    function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;
+    /// Append a name:value cookie to the response
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    /// Append a custom param of type "Field" to the response
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    /// Loads and append a file to the response from given AFileName
+    function AddFile(const AFileName: StringRAL): TRALResponse; reintroduce; overload;
+    /// Append a file to the response from given AStream
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALResponse; reintroduce; overload;
+    /// Append a name:value param to the header of the response
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    /// Sets the response with the given status code, UTF8 String and Content-Type
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Loads and set a file to the response with the given AFileName
     procedure Answer(const AFileName: StringRAL); overload;
+    /// Sets a file to the response with the given status code, FileStream and an AFileName
     procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; const AFileName: StringRAL); overload;
-
-    function AddHeader(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddField(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddCookie(const AName: StringRAL; const AValue : StringRAL) : TRALResponse; reintroduce;
-    function AddFile(const AFileName : StringRAL) : TRALResponse; reintroduce; overload;
-    function AddFile(AStream : TStream; const AFileName : StringRAL = '') : TRALResponse; reintroduce; overload;
-    function AddBody(const AText: StringRAL; const AContextType : StringRAL = rctTEXTPLAIN) : TRALResponse; reintroduce;
   published
-    property ResponseText: StringRAL read GetResponseText write SetResponseText;
-    property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     property FreeContent: boolean read FFreeContent;
+    property ResponseText: StringRAL read GetResponseText write SetResponseText;
+    property ResponseStream: TStream read GetResponseStream write SetResponseStream;
+    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
   end;
 
 implementation
@@ -69,13 +78,13 @@ begin
   AddFile(AFile, AFileName);
 end;
 
-function TRALResponse.AddHeader(const AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddHeader(const AName, AValue: StringRAL): TRALResponse;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddField(const AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddField(const AName, AValue: StringRAL): TRALResponse;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
@@ -87,19 +96,19 @@ begin
   Result := Self;
 end;
 
-function TRALResponse.AddCookie(const AName, AValue : StringRAL) : TRALResponse;
+function TRALResponse.AddCookie(const AName, AValue: StringRAL): TRALResponse;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddFile(const AFileName : StringRAL) : TRALResponse;
+function TRALResponse.AddFile(const AFileName: StringRAL): TRALResponse;
 begin
   inherited AddFile(AFileName);
   Result := Self;
 end;
 
-function TRALResponse.AddFile(AStream : TStream; const AFileName : StringRAL) : TRALResponse;
+function TRALResponse.AddFile(AStream: TStream; const AFileName: StringRAL): TRALResponse;
 begin
   inherited AddFile(AStream, AFileName);
   Result := Self;
@@ -151,7 +160,8 @@ var
   vParam: TRALParam;
 begin
   Params.ClearParams(rpkBODY);
-  if AValue.Size > 0 then begin
+  if AValue.Size > 0 then
+  begin
     vParam := Params.AddValue(AValue, rpkBODY);
     vParam.ContentType := ContentType;
   end;
@@ -162,7 +172,8 @@ var
   vParam: TRALParam;
 begin
   Params.ClearParams(rpkBODY);
-  if AValue <> '' then begin
+  if AValue <> '' then
+  begin
     vParam := Params.AddValue(AValue);
     vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
@@ -170,4 +181,3 @@ begin
 end;
 
 end.
-

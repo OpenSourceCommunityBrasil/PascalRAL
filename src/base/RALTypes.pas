@@ -1,27 +1,24 @@
+{
+@abstract Unit for all type definitions used within PascalRAL
+  These definitions are meant to keep same code across all versions of the IDE
+  or IDEs that might differ on the charset code or basic type length.
+  Expect heavy usage of IFDEFs at this unit
+}
 unit RALTypes;
 
 interface
 
 {$I ..\base\PascalRAL.inc}
 
-// compatibility types
-{
-  These definitions are meant to keep same code across all versions of the IDE
-  or IDEs that might differ on the charset code or basic type length.
-  Expect heavy usage of IFDEFs at this unit
-}
-
 uses
   Classes, SysUtils,
   RALConsts;
 
 type
-  // numeric types
   IntegerRAL = integer;
   Int64RAL = int64;
   DoubleRAL = double;
 
-  // text types
   {$IFDEF FPC}
   StringRAL = string;
   CharRAL = Char;
@@ -31,8 +28,6 @@ type
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
-  // nao foi encontrado TBytes no Delphi7
-  // encontrado no Delphi 2010
   {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
   TBytes = array of byte;
   {$IFEND}

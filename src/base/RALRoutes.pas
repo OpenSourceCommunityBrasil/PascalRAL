@@ -1,4 +1,5 @@
-﻿unit RALRoutes;
+﻿/// Base unit for everything related to server Routing
+unit RALRoutes;
 
 interface
 
@@ -13,54 +14,55 @@ type
 
   { TRALRoute }
 
+  /// Base class for individual route definition
   TRALRoute = class(TCollectionItem)
   private
+    FAllowedMethods: TRALMethods;
+    FCallback: boolean;
+    FDescription: TStringList;
+    FOnReply: TRALOnReply;
     FRouteDomain: StringRAL;
     FRouteName: StringRAL;
-    FDescription: TStringList;
-    FAllowedMethods: TRALMethods;
     FSkipAuthMethods: TRALMethods;
-    FCallback: boolean;
-    FOnReply: TRALOnReply;
   protected
-    function GetRoute: StringRAL;
     function GetDisplayName: string; override;
-
-    procedure SetRouteName(AValue: StringRAL);
-    procedure SetRouteDomain(const AValue: StringRAL);
+    function GetRoute: StringRAL;
+    /// checks if the route already exists on the list
     function RouteExists(const ARoute: StringRAL): boolean;
-
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
+    procedure SetRouteDomain(const AValue: StringRAL);
+    procedure SetRouteName(AValue: StringRAL);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
-
-    function GetNamePath: string; override;
+    /// Runs the OnReply event
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse);
-    function GetAllowMethods : StringRAL;
+    /// Returns methods that this route will answer
+    function GetAllowMethods: StringRAL;
+    /// Returns internal name of the route
+    function GetNamePath: string; override;
 
     property Route: StringRAL read GetRoute;
   published
+    property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
+    property Callback: boolean read FCallback write FCallback;
+    property Description: TStringList read FDescription write SetDescription;
     property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
     property RouteName: StringRAL read FRouteName write SetRouteName;
-    property Description: TStringList read FDescription write SetDescription;
-    // verbos que a rota responde
-    property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
-    // verbos que vão ignorar autenticação
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
-    // se for uma rota de callback pra OAuth
-    property Callback: boolean read FCallback write FCallback;
+
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   end;
 
   { TRALRoutes }
-
+  /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
     function GetRouteAddress(ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
+    /// Returns a list of routes separated by CRLF (#13#10)
     function AsString: StringRAL;
 
     property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
@@ -99,15 +101,15 @@ begin
     AResponse.Answer(404, RAL404Page);
 end;
 
-function TRALRoute.GetAllowMethods : StringRAL;
+function TRALRoute.GetAllowMethods: StringRAL;
 var
-  vMethod : TRALMethod;
+  vMethod: TRALMethod;
 begin
   Result := '';
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or
-       (amALL in FAllowedMethods)) then
+    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or (amALL in FAllowedMethods))
+    then
     begin
       if Result <> '' then
         Result := Result + ', ';
@@ -192,7 +194,6 @@ begin
   if (Collection.Owner <> nil) and (Collection.Owner is TComponent) then
     vName := TComponent(Collection.Owner).Name;
   {$ENDIF}
-
   if (FRouteDomain <> '') and (FRouteDomain <> '/') then
     vName := vName + '_' + StringReplace(FRouteDomain, '/', '_', [rfReplaceAll]);
 
