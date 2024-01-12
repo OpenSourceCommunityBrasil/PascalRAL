@@ -10,8 +10,6 @@ function FixRoute(ARoute: StringRAL): StringRAL;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
-function RALLowStr(AStr : StringRAL) : IntegerRAL;
-function RALHighStr(const AStr : StringRAL) : IntegerRAL;
 function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
 function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
 function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
@@ -58,32 +56,6 @@ function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
   Result := GetEnumName(TypeInfo(TRALMethod), ord(AMethod));
   Delete(Result, 1, 2); // delete 'am'
-end;
-
-function RALLowStr(AStr : StringRAL) : integer;
-begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2}
-      Result := 1;
-    {$ELSE}
-      Result := Low(AStr);
-    {$ENDIF}
-  {$ELSE}
-    Result := Low(AStr);
-  {$ENDIF}
-end;
-
-function RALHighStr(const AStr : StringRAL) : integer;
-begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2UP}
-      Result := Length(AStr);
-    {$ELSE}
-      Result := High(AStr);
-    {$ENDIF}
-  {$ELSE}
-    Result := High(AStr);
-  {$ENDIF}
 end;
 
 function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
