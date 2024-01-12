@@ -243,7 +243,7 @@ begin
         end;
       end
       else begin
-        AResponse.Answer(404, RAL404Page);
+        AResponse.Answer(404, RAL404Page, rctTEXTHTML);
       end;
     end;
   finally
@@ -335,7 +335,7 @@ begin
         end;
       end
       else begin
-        AResponse.Answer(404, RAL404Page);
+        AResponse.Answer(404, RAL404Page, rctTEXTHTML);
       end;
     end;
   finally
