@@ -298,7 +298,7 @@ begin
         try
           if vJson <> nil then
           begin
-            vValue := vJson.Get(vObjAuth.Key);
+            vValue := vJson.Get(vObjAuth.JSONKey);
             if vValue <> nil then
               vObjAuth.Token := vValue.AsString;
           end;
