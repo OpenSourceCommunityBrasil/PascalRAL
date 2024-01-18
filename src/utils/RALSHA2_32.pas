@@ -1,3 +1,4 @@
+/// Unit for SHA2 Hash - 32 bits sources
 unit RALSHA2_32;
 
 interface
@@ -17,6 +18,8 @@ type
     FHashSize: byte;
   protected
     procedure SetVersion(const Value: TRALSHA32Versions);
+
+    /// returns swaps bits of a value
     function Swap(AValue: cardinal): cardinal;
 
     function GetBufLength: IntegerRAL; override;

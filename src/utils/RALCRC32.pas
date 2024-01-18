@@ -15,7 +15,9 @@ type
     function GetBufLength: IntegerRAL; override;
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
 
+    // update crc32 hash
     procedure UpdateCRC32(AOctet: Byte);
+    // calculate hash crc32 of content
     procedure HashCRC32(AIndex : integer);
 
     procedure Initialize; override;

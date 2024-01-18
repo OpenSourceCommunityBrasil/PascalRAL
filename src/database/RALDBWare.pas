@@ -153,7 +153,8 @@ begin
 
     // total de pametros
     vStream.Read(vInt1, SizeOf(vInt1));
-    for vInt2 := 1 to vInt1 do
+    vInt2 := 1;
+    while vInt2 <= vInt1 do
     begin
       vParam := TParam(AParams.Add);
 
@@ -170,6 +171,7 @@ begin
       vInt1 := vParam.GetDataSize;
       // valor
 //      vParam.AsBytes;
+      vInt2 := vInt2 + 1;
     end;
   finally
     FreeAndNil(vStream);

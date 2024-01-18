@@ -94,7 +94,7 @@ type
   /// JWT Authenticator for Client components
   TRALClientJWTAuth = class(TRALAuthClient)
   private
-    FKey: StringRAL;
+    FJSONKey: StringRAL;
     FToken: StringRAL;
     FPayload: TRALJWTParams;
     FRoute: StringRAL;
@@ -107,7 +107,7 @@ type
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
   published
     property OnBeforeGetToken;
-    property Key: StringRAL read FKey write FKey;
+    property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property Token: StringRAL read FToken write SetToken;
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Route: StringRAL read FRoute write SetRoute;
@@ -119,8 +119,8 @@ type
     FAlgorithm: TRALJWTAlgorithm;
     FExpSecs: IntegerRAL;
     FRoute: StringRAL;
-    FKey: StringRAL;
-    FSecret: StringRAL;
+    FJSONKey: StringRAL;
+    FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnValidate: TRALOnTokenJWT;
     /// Sets the default route on server to do JWT Authentication
@@ -137,8 +137,8 @@ type
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property Route: StringRAL read FRoute write SetRoute;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
-    property Key: StringRAL read FKey write FKey;
-    property Secret: StringRAL read FSecret;
+    property JSONKey: StringRAL read FJSONKey write FJSONKey;
+    property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
     property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
   end;
@@ -505,7 +505,7 @@ begin
 
     if vResult then
     begin
-      vStrResult := Format('{"%s":"%s"}', [FKey, vToken]);
+      vStrResult := Format('{"%s":"%s"}', [FJSONKey, vToken]);
 
       AResponse.StatusCode := 200;
       AResponse.ContentType := rctAPPLICATIONJSON;
@@ -529,7 +529,7 @@ begin
   SetAuthType(ratBearer);
   FRoute := '/gettoken/';
   FExpSecs := 1800;
-  FKey := 'token';
+  FJSONKey := 'token';
 end;
 
 function TRALServerJWTAuth.RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL)
@@ -697,7 +697,7 @@ end;
 constructor TRALClientJWTAuth.Create(AOwner: TComponent);
 begin
   inherited;
-  FKey := 'token';
+  FJSONKey := 'token';
   FToken := '';
   FPayload := TRALJWTParams.Create;
   FRoute := '/gettoken/';

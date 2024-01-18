@@ -1,3 +1,4 @@
+/// Unit for MD5 Hash sources
 unit RALMD5;
 
 interface
@@ -16,6 +17,7 @@ type
     function GetBufLength: IntegerRAL; override;
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
 
+    // returns the left rotation of one value by the other
     function LRot32(AValue1, AValue2: Cardinal): Cardinal;
 
     procedure Initialize; override;
@@ -190,7 +192,7 @@ end;
 
 function TRALMD5.LRot32(AValue1, AValue2 : Cardinal): Cardinal;
 begin
- Result:= (AValue1 shl AValue2) or (AValue1 shr (32 - AValue2));
+  Result:= (AValue1 shl AValue2) or (AValue1 shr (32 - AValue2));
 end;
 
 end.

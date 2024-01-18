@@ -1,3 +1,4 @@
+/// Unit for SHA2 Hash - 64 bits sources
 unit RALSHA2_64;
 
 interface
@@ -20,6 +21,7 @@ type
     function GetBufLength: IntegerRAL; override;
     function GetBuffer(AIndex: IntegerRAL): Pointer; override;
 
+    /// returns swaps bits of a value
     function Swap(AValue: Cardinal): Cardinal; overload;
     function Swap(AValue: UInt64): UInt64; overload;
 
