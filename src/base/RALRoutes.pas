@@ -98,7 +98,7 @@ begin
   if Assigned(OnReply) then
     OnReply(ARequest, AResponse)
   else
-    AResponse.Answer(404, RAL404Page);
+    AResponse.Answer(404, RAL404Page, rctTEXTHTML);
 end;
 
 function TRALRoute.GetAllowMethods: StringRAL;

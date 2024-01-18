@@ -624,12 +624,13 @@ var
   I: IntegerRAL;
 begin
   Result := '';
-  for I := 0 to Pred(FParams.Count) do
-  begin
-    Result := Result + TRALParam(FParams.Items[I]).AsString;
-    if FParams.Count > 0 then
-      Result := Result + ', ';
-  end;
+  if (FParams <> nil) and (FParams.count > 0) then
+    for I := 0 to Pred(FParams.Count) do
+    begin
+      Result := Result + TRALParam(FParams.Items[I]).AsString;
+      if FParams.Count > 0 then
+        Result := Result + ', ';
+    end;
 end;
 
 function TRALParams.DecodeBody(ASource: TStream; const AContentType: StringRAL): TStream;

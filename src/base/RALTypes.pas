@@ -23,8 +23,8 @@ type
   StringRAL = string;
   CharRAL = Char;
   {$ELSE}
-  StringRAL = UTF8String;
-  CharRAL = WideChar;
+  StringRAL = utf8string;
+  CharRAL = widechar;
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
@@ -37,8 +37,9 @@ type
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
-  TRALServerOption = (rsoBruteForceProtection, rsoDDoSProtection, rsoEnableBlackList, rsoEnableBlockList,
-    rsoEnableWhiteList, rsoIPBroadcastProtection, rsoPathTransvBlackList);
+  TRALServerOption = (rsoBruteForceProtection, rsoDDoSProtection, rsoEnableBlackList,
+    rsoEnableBlockList, rsoEnableWhiteList, rsoIPBroadcastProtection,
+    rsoPathTransvBlackList);
   TRALServerOptions = set of TRALServerOption;
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip);
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
@@ -54,7 +55,35 @@ const
     PosIniStr = 1;
   {$ENDIF}
 
+function RALLowStr(AStr: StringRAL): IntegerRAL;
+function RALHighStr(const AStr: StringRAL): IntegerRAL;
 
 implementation
+
+function RALLowStr(AStr: StringRAL): integer;
+begin
+  {$IFNDEF FPC}
+    {$IFNDEF DELPHIXE2UP}
+      Result := 1;
+    {$ELSE}
+      Result := Low(AStr);
+    {$ENDIF}
+  {$ELSE}
+    Result := Low(AStr);
+  {$ENDIF}
+end;
+
+function RALHighStr(const AStr: StringRAL): integer;
+begin
+  {$IFNDEF FPC}
+    {$IFNDEF DELPHIXE2UP}
+      Result := Length(AStr);
+    {$ELSE}
+      Result := High(AStr);
+    {$ENDIF}
+  {$ELSE}
+    Result := High(AStr);
+  {$ENDIF}
+end;
 
 end.
