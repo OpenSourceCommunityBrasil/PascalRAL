@@ -331,7 +331,7 @@ begin
   AResponse.StatusCode := 200;
   if (ARequest.Authorization.AuthType <> ratOAuth) then
   begin
-    AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+    AResponse.Answer(401);
     Exit;
   end;
 
@@ -371,7 +371,7 @@ begin
   end;
 
   if not vResult then
-    AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+    AResponse.Answer(401);
 end;
 
 procedure TRALServerOAuth.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -514,12 +514,12 @@ begin
     else
     begin
       if AResponse.StatusCode < 400 then
-        AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+        AResponse.Answer(401);
     end;
   end
   else
   begin
-    AResponse.Answer(404, RAL404Page, rctTEXTHTML);
+    AResponse.Answer(404);
   end;
 end;
 
@@ -571,7 +571,7 @@ begin
   AResponse.StatusCode := 200;
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
-    AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+    AResponse.Answer(401);
     Exit;
   end;
 
@@ -589,7 +589,7 @@ begin
   end;
 
   if (not vResult) and (AResponse.StatusCode < 400) then
-    AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+    AResponse.Answer(401);
 end;
 
 function TRALServerJWTAuth.GetToken(var AJSONParams: StringRAL): StringRAL;
@@ -639,7 +639,7 @@ var
   procedure Error401;
   begin
     if AResponse.StatusCode < 400 then
-      AResponse.Answer(401, RAL401Page, rctTEXTHTML);
+      AResponse.Answer(401);
     if FAuthDialog then
       AResponse.AddHeader('WWW-Authenticate', 'Basic realm="RAL Basic"');
   end;
@@ -758,7 +758,7 @@ end;
 
 procedure TRALAuthServer.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
-  AResponse.Answer(404, RAL404Page, rctTEXTHTML);
+  AResponse.Answer(404);
 end;
 
 end.

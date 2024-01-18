@@ -12,45 +12,45 @@ type
 
   TRALDBWare = class(TRALSubRoutes)
   private
-    FDatabase : StringRAL;
-    FHostname : StringRAL;
-    FUsername : StringRAL;
-    FPassword : StringRAL;
-    FPort     : IntegerRAL;
+    FDatabase: StringRAL;
+    FHostname: StringRAL;
+    FUsername: StringRAL;
+    FPassword: StringRAL;
+    FPort: IntegerRAL;
 
-    FDataBaseLink : TRALDBLink;
-    FDatabaseType : TRALDatabaseType;
-    FStorageOutPut : TRALStorageLink;
+    FDataBaseLink: TRALDBLink;
+    FDatabaseType: TRALDatabaseType;
+    FStorageOutPut: TRALStorageLink;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetDataBaseLink(AValue : TRALDBLink);
-    procedure SetStorageOutPut(AValue : TRALStorageLink);
+    procedure SetDataBaseLink(AValue: TRALDBLink);
+    procedure SetStorageOutPut(AValue: TRALStorageLink);
 
-    function FindDatabaseDriver : TRALDBBase;
-    procedure RALParamJSONToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
-    procedure RALParamBinaryToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
+    function FindDatabaseDriver: TRALDBBase;
+    procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL; var AParams: TParams);
+    procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL; var AParams: TParams);
 
-    procedure OpenSQL(ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure ExecSQL(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
   published
-    property Database : StringRAL read FDatabase write FDatabase;
-    property Hostname : StringRAL read FHostname write FHostname;
-    property Username : StringRAL read FUsername write FUsername;
-    property Password : StringRAL read FPassword write FPassword;
-    property Port     : IntegerRAL read FPort write FPort;
+    property Database: StringRAL read FDatabase write FDatabase;
+    property Hostname: StringRAL read FHostname write FHostname;
+    property Username: StringRAL read FUsername write FUsername;
+    property Password: StringRAL read FPassword write FPassword;
+    property Port: IntegerRAL read FPort write FPort;
 
-    property DataBaseLink : TRALDBLink read FDataBaseLink write SetDataBaseLink;
-    property DatabaseType  : TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property StorageOutPut : TRALStorageLink read FStorageOutPut write SetStorageOutPut;
+    property DataBaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
+    property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
+    property StorageOutPut: TRALStorageLink read FStorageOutPut write SetStorageOutPut;
   end;
 
 implementation
 
 { TRALDBWare }
 
-procedure TRALDBWare.SetStorageOutPut(AValue : TRALStorageLink);
+procedure TRALDBWare.SetStorageOutPut(AValue: TRALStorageLink);
 begin
   if AValue <> FStorageOutPut then
     FStorageOutPut := AValue;
@@ -59,7 +59,7 @@ begin
     FStorageOutPut.FreeNotification(Self);
 end;
 
-procedure TRALDBWare.Notification(AComponent : TComponent; Operation : TOperation);
+procedure TRALDBWare.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FDataBaseLink) then
     FDataBaseLink := nil
@@ -68,7 +68,7 @@ begin
   inherited Notification(AComponent, Operation);
 end;
 
-procedure TRALDBWare.SetDataBaseLink(AValue : TRALDBLink);
+procedure TRALDBWare.SetDataBaseLink(AValue: TRALDBLink);
 begin
   if AValue <> FDataBaseLink then
     FDataBaseLink := AValue;
@@ -77,10 +77,10 @@ begin
     FDataBaseLink.FreeNotification(Self);
 end;
 
-function TRALDBWare.FindDatabaseDriver : TRALDBBase;
+function TRALDBWare.FindDatabaseDriver: TRALDBBase;
 var
-  vClass : TRALDBClass;
-  vUnit : StringRAL;
+  vClass: TRALDBClass;
+  vUnit: StringRAL;
 begin
   Result := nil;
   vClass := nil;
@@ -95,21 +95,23 @@ begin
     Result.Hostname := FHostname;
     Result.Username := FUsername;
     Result.Password := FPassword;
-    Result.Port     := FPort;
+    Result.Port := FPort;
     Result.DatabaseType := FDatabaseType;
     Result.StorageOutPut := FStorageOutPut;
   end
-  else begin
+  else
+  begin
     raise Exception.Create(emDBLinkMissing);
   end;
 end;
 
-procedure TRALDBWare.RALParamJSONToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
+procedure TRALDBWare.RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
+  var AParams: TParams);
 var
-  vJSON, vObj : TRALJSONObject;
-  vParams : TRALJSONArray;
-  vInt : integer;
-  vParam : TParam;
+  vJSON, vObj: TRALJSONObject;
+  vParams: TRALJSONArray;
+  vInt: integer;
+  vParam: TParam;
 begin
   vJSON := TRALJSONObject(TRALJSON.ParseJSON(ARALParam.AsString));
   try
@@ -118,7 +120,8 @@ begin
     AParams := TParams.Create(nil);
 
     vParams := TRALJSONArray(vJSON.Get('params'));
-    for vInt := 0 to Pred(vParams.Count) do begin
+    for vInt := 0 to Pred(vParams.Count) do
+    begin
       vObj := TRALJSONObject(vParams.Get(vInt));
 
       vParam := TParam(AParams.Add);
@@ -131,16 +134,17 @@ begin
   end;
 end;
 
-procedure TRALDBWare.RALParamBinaryToQuery(ARALParam : TRALParam; var ASQL : StringRAL; var AParams : TParams);
+procedure TRALDBWare.RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
+  var AParams: TParams);
 var
-  vStream : TStream;
-  vParam : TParam;
+  vStream: TStream;
+  vParam: TParam;
 
-  vInt1, vInt2 : Int64RAL;
-  vByte : Byte;
-  vString : StringRAL;
-  vBool : boolean;
-  vBytes : TBytes;
+  vInt1, vInt2: Int64RAL;
+  vByte: Byte;
+  vString: StringRAL;
+  vBool: boolean;
+  vBytes: TBytes;
 begin
   vStream := ARALParam.AsStream;
   try
@@ -166,11 +170,11 @@ begin
 
       // datatype
       vStream.Read(vByte, SizeOf(vByte));
-      //vParam.DataType := vByte;
+      // vParam.DataType := vByte;
 
       vInt1 := vParam.GetDataSize;
       // valor
-//      vParam.AsBytes;
+      // vParam.AsBytes;
       vInt2 := vInt2 + 1;
     end;
   finally
@@ -178,16 +182,16 @@ begin
   end;
 end;
 
-procedure TRALDBWare.OpenSQL(ARequest : TRALRequest; AResponse : TRALResponse);
+procedure TRALDBWare.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vDB : TRALDBBase;
-  vParam : TRALParam;
-  vSQL : StringRAL;
-  vParams : TParams;
-  vQuery : TDataSet;
-  vResult : TStream;
-  vString : StringRAL;
-  vInt : IntegerRAL;
+  vDB: TRALDBBase;
+  vParam: TRALParam;
+  vSQL: StringRAL;
+  vParams: TParams;
+  vQuery: TDataSet;
+  vResult: TStream;
+  vString: StringRAL;
+  vInt: IntegerRAL;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -215,7 +219,7 @@ begin
           try
             vQuery := vDB.Open(vSQL, vParams);
           except
-            on e : Exception do
+            on e: Exception do
             begin
               vString := TRALBase64.Encode(e.Message);
             end;
@@ -244,8 +248,9 @@ begin
           FreeAndNil(vQuery);
         end;
       end
-      else begin
-        AResponse.Answer(404, RAL404Page, rctTEXTHTML);
+      else
+      begin
+        AResponse.Answer(404);
       end;
     end;
   finally
@@ -253,16 +258,16 @@ begin
   end;
 end;
 
-procedure TRALDBWare.ExecSQL(ARequest : TRALRequest; AResponse : TRALResponse);
+procedure TRALDBWare.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vDB : TRALDBBase;
-  vParam : TRALParam;
-  vSQL : StringRAL;
-  vParams : TParams;
-  vString : StringRAL;
-  vResult : TStream;
-  vInt : IntegerRAL;
-  vRowsAffect, vLastId : Int64RAL;
+  vDB: TRALDBBase;
+  vParam: TRALParam;
+  vSQL: StringRAL;
+  vParams: TParams;
+  vString: StringRAL;
+  vResult: TStream;
+  vInt: IntegerRAL;
+  vRowsAffect, vLastId: Int64RAL;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -287,7 +292,7 @@ begin
           try
             vDB.ExecSQL(vSQL, vParams, vRowsAffect, vLastId);
           except
-            on e : Exception do
+            on e: Exception do
             begin
               vString := TRALBase64.Encode(e.Message);
             end;
@@ -319,7 +324,8 @@ begin
                 vResult.Write(vInt, SizeOf(vInt));
                 vResult.Write(vString[PosIniStr], Length(vString));
               end
-              else begin
+              else
+              begin
                 vInt := 0;
                 vResult.Write(vInt, SizeOf(vInt));
               end;
@@ -336,8 +342,9 @@ begin
           FreeAndNil(vParams);
         end;
       end
-      else begin
-        AResponse.Answer(404, RAL404Page, rctTEXTHTML);
+      else
+      begin
+        AResponse.Answer(404);
       end;
     end;
   finally
@@ -345,12 +352,11 @@ begin
   end;
 end;
 
-constructor TRALDBWare.Create(AOwner : TComponent);
+constructor TRALDBWare.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  CreateRoute('opensql',{$IFDEF FPC}@{$ENDIF}OpenSQL);
-  CreateRoute('execsql',{$IFDEF FPC}@{$ENDIF}ExecSQL);
+  CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
+  CreateRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
 end;
 
 end.
-

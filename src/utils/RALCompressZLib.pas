@@ -5,11 +5,9 @@ interface
 
 uses
   {$IFDEF FPC}
-    ZLib, ZStream, bufstream,
-  {$ELSE}
-    ZLib,
+    ZStream, bufstream,
   {$ENDIF}
-  Classes, SysUtils,
+  Classes, SysUtils, ZLib,
   RALTypes, RALConsts, RALStream, RALCRC32, RALHashes;
 
 type

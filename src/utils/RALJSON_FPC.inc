@@ -1,7 +1,9 @@
-{
-  RALJSON_FPC
-  Unit criada para ser utilizar RAL com Lazarus
+{ @abstract Partial unit used to map JSON with the fpJSON library
+  This unit is defined under RALJson.pas unit to be used with Lazarus/FPC
 }
+
+uses
+  fpjson, Variants, Classes, SysUtils, RALTypes;
 
 type
 
@@ -9,91 +11,84 @@ type
 
   TRALJSONValue = class
   private
-    FJsonObj : TJSONData;
-    FFreeObj : boolean;
+    FJsonObj: TJSONData;
+    FFreeObj: Boolean;
     FListObj: TList;
-    FMarkFree : boolean;
+    FMarkFree: Boolean;
   protected
-    procedure SetJsonObj(AObj : TJSONData; AFree : boolean = True);
-    function GetJsonObj : TJSONData;
-
     procedure AddObj(AObj: TRALJSONValue);
     procedure ClearObjs;
+    function GetJsonObj: TJSONData;
+    procedure SetJsonObj(AObj: TJSONData; AFree: Boolean = True);
   public
     constructor Create; virtual;
     destructor Destroy; override;
 
-    function JsonType : TRALJSONType;
-    function IsNull : boolean;
-
-    function AsValue: variant;
-    function AsString : string;
-    function AsInteger : int64;
-    function AsFloat : double;
-    function AsBoolean : boolean;
-
-    function ToJson : string;
+    function AsValue: Variant;
+    function AsString: StringRAL;
+    function AsInteger: Int64RAL;
+    function AsFloat: DoubleRAL;
+    function AsBoolean: Boolean;
+    function JsonType: TRALJSONType;
+    function IsNull: Boolean;
+    function ToJson: StringRAL;
   end;
 
   { TRALJSONObject }
 
   TRALJSONObject = class(TRALJSONValue)
   protected
-    function JsonObject : TJSONObject;
+    function JsonObject: TJSONObject;
   public
     constructor Create; override;
 
-    function Add(const AStr: string; const AValue: TRALJSONValue): TRALJSONObject; overload;
-    function Add(const AStr: string; const AValue: string): TRALJSONObject; overload;
-    function Add(const AStr: string; const AValue: int64): TRALJSONObject; overload;
-    function Add(const AStr: string; const AValue: integer): TRALJSONObject; overload;
-    function Add(const AStr: string; const AValue: double): TRALJSONObject; overload;
-    function Add(const AStr: string; const AValue: boolean): TRALJSONObject; overload;
-    function Add(const AStr: string): TRALJSONObject; overload;
-
-    function Count : integer;
-
-    function Get(AName : string) : TRALJSONValue; overload;
-    function Get(AIndex : integer) : TRALJSONValue; overload;
-    function GetName(AIndex : integer) : string;
+    function Add(const AStr: StringRAL; const AValue: TRALJSONValue): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL; const AValue: StringRAL): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL; const AValue: Int64RAL): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL; const AValue: IntegerRAL): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL; const AValue: DoubleRAL): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL; const AValue: Boolean): TRALJSONObject; overload;
+    function Add(const AStr: StringRAL): TRALJSONObject; overload;
+    function Count: IntegerRAL;
+    function Get(AName: StringRAL): TRALJSONValue; overload;
+    function Get(AIndex: IntegerRAL): TRALJSONValue; overload;
+    function GetName(AIndex: IntegerRAL): StringRAL;
   end;
 
   { TRALJSONArray }
 
   TRALJSONArray = class(TRALJSONValue)
   protected
-    function JsonObject : TJSONArray;
+    function JsonObject: TJSONArray;
   public
     constructor Create; override;
 
     function Add(const AValue: TRALJSONValue): TRALJSONArray; overload;
-    function Add(const AValue: string): TRALJSONArray; overload;
-    function Add(const AValue: int64): TRALJSONArray; overload;
-    function Add(const AValue: integer): TRALJSONArray; overload;
-    function Add(const AValue: double): TRALJSONArray; overload;
-    function Add(const AValue: boolean): TRALJSONArray; overload;
-    function Add : TRALJSONArray; overload;
-
-    function Get(AIndex : integer) : TRALJSONValue;
-
-    function Count : integer;
+    function Add(const AValue: StringRAL): TRALJSONArray; overload;
+    function Add(const AValue: Int64RAL): TRALJSONArray; overload;
+    function Add(const AValue: IntegerRAL): TRALJSONArray; overload;
+    function Add(const AValue: DoubleRAL): TRALJSONArray; overload;
+    function Add(const AValue: Boolean): TRALJSONArray; overload;
+    function Add: TRALJSONArray; overload;
+    function Count: IntegerRAL;
+    function Get(AIndex: IntegerRAL): TRALJSONValue;
   end;
 
   { TRALJSONFPC }
 
   TRALJSON = class
   public
-    class function ParseJSON(AJson : String) : TRALJSONValue;
-    class function ParseJSON(AStream : TStream) : TRALJSONValue;
+    class function ParseJSON(AJson: StringRAL): TRALJSONValue;
+    class function ParseJSON(AStream: TStream): TRALJSONValue;
   end;
 
 implementation
 
 { TRALJSON }
 
-class function TRALJSON.ParseJSON(AJson: String): TRALJSONValue;
+class function TRALJSON.ParseJSON(AJson: StringRAL): TRALJSONValue;
 var
-  jObj : TJSONData;
+  jObj: TJSONData;
 begin
   Result := nil;
 
@@ -111,9 +106,9 @@ begin
   end;
 end;
 
-class function TRALJSON.ParseJSON(AStream : TStream) : TRALJSONValue;
+class function TRALJSON.ParseJSON(AStream: TStream): TRALJSONValue;
 var
-  jObj : TJSONData;
+  jObj: TJSONData;
 begin
   Result := nil;
 
@@ -140,7 +135,7 @@ end;
 
 constructor TRALJSONArray.Create;
 var
-  jObj : TJSONArray;
+  jObj: TJSONArray;
 begin
   inherited;
   jObj := TJSONArray.Create;
@@ -161,31 +156,31 @@ begin
   Result := Self;
 end;
 
-function TRALJSONArray.Add(const AValue: string): TRALJSONArray;
+function TRALJSONArray.Add(const AValue: StringRAL): TRALJSONArray;
 begin
   JsonObject.Add(AValue);
   Result := Self;
 end;
 
-function TRALJSONArray.Add(const AValue: int64): TRALJSONArray;
+function TRALJSONArray.Add(const AValue: Int64RAL): TRALJSONArray;
 begin
   JsonObject.Add(AValue);
   Result := Self;
 end;
 
-function TRALJSONArray.Add(const AValue: integer): TRALJSONArray;
+function TRALJSONArray.Add(const AValue: IntegerRAL): TRALJSONArray;
 begin
   JsonObject.Add(AValue);
   Result := Self;
 end;
 
-function TRALJSONArray.Add(const AValue: double): TRALJSONArray;
+function TRALJSONArray.Add(const AValue: DoubleRAL): TRALJSONArray;
 begin
   JsonObject.Add(AValue);
   Result := Self;
 end;
 
-function TRALJSONArray.Add(const AValue: boolean): TRALJSONArray;
+function TRALJSONArray.Add(const AValue: Boolean): TRALJSONArray;
 begin
   JsonObject.Add(AValue);
   Result := Self;
@@ -197,9 +192,9 @@ begin
   Result := Self;
 end;
 
-function TRALJSONArray.Get(AIndex: integer): TRALJSONValue;
+function TRALJSONArray.Get(AIndex: IntegerRAL): TRALJSONValue;
 var
-  vObj : TJSONData;
+  vObj: TJSONData;
 begin
   Result := nil;
 
@@ -215,12 +210,12 @@ begin
       Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
-    Result.SetJsonObj(vObj,False);
+    Result.SetJsonObj(vObj, False);
     AddObj(Result);
   end;
 end;
 
-function TRALJSONArray.Count: integer;
+function TRALJSONArray.Count: IntegerRAL;
 begin
   if (Self <> nil) and (JsonObject <> nil) then
     Result := JsonObject.Count
@@ -237,64 +232,65 @@ end;
 
 constructor TRALJSONObject.Create;
 var
-  jObj : TJSONObject;
+  jObj: TJSONObject;
 begin
   inherited;
   jObj := TJSONObject.Create;
   SetJsonObj(jObj);
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: TRALJSONValue): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: TRALJSONValue)
+  : TRALJSONObject;
 begin
   if AValue <> nil then
   begin
-    JsonObject.Add(AStr,AValue.GetJsonObj);
+    JsonObject.Add(AStr, AValue.GetJsonObj);
     AddObj(AValue);
   end
   else
   begin
-    JsonObject.Add(AStr,TJSONNull.Create);
+    JsonObject.Add(AStr, TJSONNull.Create);
   end;
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: string): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: StringRAL): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,AValue);
+  JsonObject.Add(AStr, AValue);
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: int64): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: Int64RAL): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,AValue);
+  JsonObject.Add(AStr, AValue);
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: integer): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: IntegerRAL): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,AValue);
+  JsonObject.Add(AStr, AValue);
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: double): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: DoubleRAL): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,AValue);
+  JsonObject.Add(AStr, AValue);
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string; const AValue: boolean): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL; const AValue: Boolean): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,AValue);
+  JsonObject.Add(AStr, AValue);
   Result := Self;
 end;
 
-function TRALJSONObject.Add(const AStr: string): TRALJSONObject;
+function TRALJSONObject.Add(const AStr: StringRAL): TRALJSONObject;
 begin
-  JsonObject.Add(AStr,TJSONNull.Create);
+  JsonObject.Add(AStr, TJSONNull.Create);
   Result := Self;
 end;
 
-function TRALJSONObject.Count: integer;
+function TRALJSONObject.Count: IntegerRAL;
 begin
   if (Self <> nil) and (JsonObject <> nil) then
     Result := JsonObject.Count
@@ -302,9 +298,9 @@ begin
     Result := 0;
 end;
 
-function TRALJSONObject.Get(AName: string): TRALJSONValue;
+function TRALJSONObject.Get(AName: StringRAL): TRALJSONValue;
 var
-  vObj : TJSONData;
+  vObj: TJSONData;
 begin
   Result := nil;
 
@@ -314,20 +310,20 @@ begin
   vObj := JsonObject.Find(AName);
   if vObj <> nil then
   begin
-    if vObj is TJSONobject then
+    if vObj is TJSONObject then
       Result := TRALJSONObject.Create
     else if vObj is TJSONArray then
       Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
-    Result.SetJsonObj(vObj,False);
+    Result.SetJsonObj(vObj, False);
     AddObj(Result);
   end;
 end;
 
-function TRALJSONObject.Get(AIndex: integer): TRALJSONValue;
+function TRALJSONObject.Get(AIndex: IntegerRAL): TRALJSONValue;
 var
-  vObj : TJSONData;
+  vObj: TJSONData;
 begin
   Result := nil;
 
@@ -337,18 +333,18 @@ begin
   vObj := JsonObject.Items[AIndex];
   if vObj <> nil then
   begin
-    if vObj is TJSONobject then
+    if vObj is TJSONObject then
       Result := TRALJSONObject.Create
     else if vObj is TJSONArray then
       Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
-    Result.SetJsonObj(vObj,False);
+    Result.SetJsonObj(vObj, False);
     AddObj(Result);
   end;
 end;
 
-function TRALJSONObject.GetName(AIndex: integer): string;
+function TRALJSONObject.GetName(AIndex: IntegerRAL): StringRAL;
 begin
   if (Self <> nil) and (JsonObject <> nil) then
     Result := JsonObject.Names[AIndex]
@@ -358,7 +354,7 @@ end;
 
 { TRALJSONValue }
 
-procedure TRALJSONValue.SetJsonObj(AObj: TJSONData; AFree: boolean);
+procedure TRALJSONValue.SetJsonObj(AObj: TJSONData; AFree: Boolean);
 begin
   if (FJsonObj <> nil) and (FFreeObj) then
     FreeAndNil(FJsonObj);
@@ -386,8 +382,8 @@ procedure TRALJSONValue.ClearObjs;
 begin
   while FListObj.Count > 0 do
   begin
-    TObject(FListObj.Items[FListObj.Count-1]).Free;
-    FListObj.Delete(FListObj.Count-1);
+    TObject(FListObj.Items[FListObj.Count - 1]).Free;
+    FListObj.Delete(FListObj.Count - 1);
   end;
 end;
 
@@ -409,7 +405,7 @@ begin
   inherited;
 end;
 
-function TRALJSONValue.JsonType : TRALJSONType;
+function TRALJSONValue.JsonType: TRALJSONType;
 begin
   Result := rjtString;
 
@@ -426,7 +422,7 @@ begin
     Result := rjtArray;
 end;
 
-function TRALJSONValue.IsNull : boolean;
+function TRALJSONValue.IsNull: Boolean;
 begin
   if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj is TJSONNull
@@ -434,7 +430,7 @@ begin
     Result := True;
 end;
 
-function TRALJSONValue.ToJson: string;
+function TRALJSONValue.ToJson: StringRAL;
 begin
   if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj.AsJSON
@@ -442,7 +438,7 @@ begin
     Result := '';
 end;
 
-function TRALJSONValue.AsValue: variant;
+function TRALJSONValue.AsValue: Variant;
 begin
   if (Self <> nil) and (FJsonObj <> nil) then
     Result := FJsonObj.Value
@@ -450,7 +446,7 @@ begin
     Result := Variants.Null;
 end;
 
-function TRALJSONValue.AsString : string;
+function TRALJSONValue.AsString: StringRAL;
 begin
   if Self = nil then
     Result := ''
@@ -460,7 +456,7 @@ begin
     Result := 'null';
 end;
 
-function TRALJSONValue.AsInteger : int64;
+function TRALJSONValue.AsInteger: Int64RAL;
 begin
   Result := -1;
 
@@ -473,7 +469,7 @@ begin
   end
   else if JsonType = rjtString then
   begin
-    Result := StrToInt64Def(FJsonObj.Value,-1)
+    Result := StrToInt64Def(FJsonObj.Value, -1)
   end
   else if JsonType = rjtBoolean then
   begin
@@ -484,7 +480,7 @@ begin
   end;
 end;
 
-function TRALJSONValue.AsFloat : double;
+function TRALJSONValue.AsFloat: DoubleRAL;
 begin
   Result := -1;
   if (Self = nil) or (FJsonObj = nil) then
@@ -496,11 +492,11 @@ begin
   end
   else if JsonType = rjtString then
   begin
-    Result := StrToFloatDef(FJsonObj.Value,-1)
+    Result := StrToFloatDef(FJsonObj.Value, -1)
   end;
 end;
 
-function TRALJSONValue.AsBoolean : boolean;
+function TRALJSONValue.AsBoolean: Boolean;
 begin
   Result := False;
   if (Self = nil) or (FJsonObj = nil) then
@@ -513,7 +509,7 @@ begin
   else if JsonType = rjtString then
   begin
     Result := (FJsonObj.AsString = '1') or (FJsonObj.AsString = 'S') or
-              (FJsonObj.AsString = 's') or (SameText(FJsonObj.AsString,'true'));
+      (FJsonObj.AsString = 's') or (SameText(FJsonObj.AsString, 'true'));
   end
   else if JsonType = rjtBoolean then
   begin

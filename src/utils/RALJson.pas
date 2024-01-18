@@ -1,60 +1,27 @@
+{ @abstract Base unit for JSON Mapping
+  Native JSON Libraries are depending on IDE version, older Delphi Versions don't have
+  a native JSON library, for those older versions there are 2 libraries that are
+  supported by PascalRAL, which you enable/disable within PascalRAL.inc
+}
 unit RALJSON;
 
 interface
 
 {$I ../base/PascalRAL.inc}
 
-{$DEFINE RALlkJSON}
-{.$DEFINE RALuJSON}
-
-// DBXJSON
-// 2010  - CompVersion 21 - Tested OK
-// XE    - CompVersion 22 - Tested OK
-// XE2   - CompVersion 23 - Tested OK
-// XE3   - CompVersion 24 - NOT Tested
-// XE4   - CompVersion 25 - Tested OK
-// XE5   - CompVersion 26 - Tested OK
-
-// System.JSON
-// XE6   - CompVersion 27 - Tested OK
-// XE7   - CompVersion 28 - Tested OK
-// XE8   - CompVersion 29 - Tested OK
-// XE10  - 29 > - Em Testes
-
-uses
-  {$IFNDEF FPC}
-    {$IFDEF DELPHI2010UP}
-      {$IFDEF DELPHIXE6UP}
-        System.JSON,
-      {$ELSE}
-        DBXJSON,
-      {$ENDIF}
-    {$ELSE}
-       {$IFDEF RALlkJSON}
-         ulkJSON,
-       {$ENDIF}
-       {$IFDEF RALuJSON}
-         uJSON,
-       {$ENDIF}
-    {$ENDIF}
-  {$ELSE}
-    fpjson,
-  {$ENDIF}
-  Variants, RALTypes, Classes, SysUtils;
-
-{$IFNDEF FPC}
+{$IFDEF FPC}
+  {$I RALJSON_FPC.inc}
+{$ELSE}
   {$IFDEF DELPHI2010UP}
     {$I RALJSON_Delphi.inc}
   {$ELSE}
     {$IFDEF RALlkJSON}
       {$I RALJSON_lkJSON.inc}
-    {$ENDIF}
-    {$IFDEF RALuJSON}
-      {$I RALJSON_uJSON.inc}
+    {$ELSE}
+      {$IFDEF RALuJSON}
+        {$I RALJSON_uJSON.inc}
     {$ENDIF}
   {$ENDIF}
-{$ELSE}
-  {$I RALJSON_FPC.inc}
 {$ENDIF}
 
 end.

@@ -621,14 +621,14 @@ begin
 
   if not ARequest.HasValidContentEncoding then
   begin
-    Result.Answer(415, RAL415Page, rctTEXTHTML);
+    Result.Answer(415);
     Result.ContentEncoding := ARequest.ContentEncoding;
     Result.AcceptEncoding := SupportedCompressKind;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    Result.Answer(415, RAL415Page, rctTEXTHTML);
+    Result.Answer(415);
     Result.ContentEncoding := ARequest.AcceptEncoding;
     Result.AcceptEncoding := SupportedCompressKind;
     Exit;
@@ -652,13 +652,13 @@ begin
     if Assigned(FOnClientWasBlocked) then
       FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
 
-    Result.Answer(404, RAL404Page, rctTEXTHTML);
+    Result.Answer(404);
     Exit;
   end
   else if Pos('../', ARequest.Query) > 0 then
   begin
     AddBlockList(ARequest.ClientInfo.IP);
-    Result.Answer(404, RAL404Page, rctTEXTHTML);
+    Result.Answer(404);
     Exit;
   end;
 
@@ -696,7 +696,7 @@ begin
     end
     else
     begin
-      Result.Answer(404, RAL404Page, rctTEXTHTML);
+      Result.Answer(404);
     end;
   end
   else
@@ -706,7 +706,7 @@ begin
     if (not(amALL in vRoute.AllowedMethods)) and
       (not(ARequest.Method in vRoute.AllowedMethods)) then
     begin
-      Result.Answer(404, RAL404Page, rctTEXTHTML);
+      Result.Answer(404);
     end
     else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
             (not(ARequest.Method in vRoute.SkipAuthMethods)) and

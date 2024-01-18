@@ -34,7 +34,7 @@ type
 implementation
 
 const
-  // nessa tabela esta os 64 chars possivels na base64
+  // Table with all 64 possible base64 characters
   TEncode64 : array[0..63] of Byte = (
                  065,066,067,068,069,070,071,072,073,074,075,076,077,078,
                  079,080,081,082,083,084,085,086,087,088,089,090,097,098,
@@ -42,8 +42,7 @@ const
                  113,114,115,116,117,118,119,120,121,122,048,049,050,051,
                  052,053,054,055,056,057,043,047);
 
-  // nessa tabela os 64 chars da base64 estao posicionados conforme a
-  // tabela ascii, ou seja, "A" = 65 - posicao = 01
+  // Table with all 64 base64 characters in a ASCII table (255 characters)
   TDecode64 : array[0..255] of Byte = (
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00, //019
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00, //038

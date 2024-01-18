@@ -81,26 +81,19 @@ begin
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
-var
-  vMsg, vType : StringRAL;
 begin
-  vMsg := '';
-  vType := rctAPPLICATIONJSON;
+  StatusCode := AStatusCode;
+  ContentType := rctTEXTHTML;
   case AStatusCode of
-    400 : vMsg := RAL400Page;
-    401 : vMsg := RAL401Page;
-    403 : vMsg := RAL403Page;
-    404 : vMsg := RAL404Page;
-    415 : vMsg := RAL415Page;
-    500 : vMsg := RAL500Page;
-    501 : vMsg := RAL501Page;
-    503 : vMsg := RAL503Page;
+    400 : ResponseText := RAL400Page;
+    401 : ResponseText := RAL401Page;
+    403 : ResponseText := RAL403Page;
+    404 : ResponseText := RAL404Page;
+    415 : ResponseText := RAL415Page;
+    500 : ResponseText := RAL500Page;
+    501 : ResponseText := RAL501Page;
+    503 : ResponseText := RAL503Page;
   end;
-
-  if vMsg <> '' then
-    vType := rctTEXTHTML;
-
-  Answer(AStatusCode, vMsg, vType);
 end;
 
 function TRALResponse.AddHeader(const AName, AValue: StringRAL): TRALResponse;

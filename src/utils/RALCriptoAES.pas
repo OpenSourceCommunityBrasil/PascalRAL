@@ -50,7 +50,7 @@ type
     function Multi02(AValue: byte): byte;
     /// Used on keyexpansion
     function RCON(AInt: integer): Cardinal;
-    /// key expansion
+    /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     procedure SetAESType(AValue: TRALAESType);

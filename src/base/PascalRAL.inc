@@ -1,6 +1,7 @@
 {$DEFINE PascalRAL}
 
 (* IFEND Directives - HAS TO STAY ON TOP OF THE FILE!*)
+
 {$IFNDEF FPC}
   {$IF CompilerVersion > 23}
     {$LEGACYIFEND ON}
@@ -8,6 +9,13 @@
 {$ENDIF}
 
 (* End of IFEND Directives *)
+(******************************************************************************)
+(* 3rd Party directives definition *)
+
+{$DEFINE RALlkJSON}
+{.$DEFINE RALuJSON}
+
+(* End of 3rd Party directives definition *)
 (******************************************************************************)
 (*  Compiler Directives for IDE Version *)
 

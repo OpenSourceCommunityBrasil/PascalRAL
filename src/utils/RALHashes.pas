@@ -1,4 +1,4 @@
-/// Unit for the unidirectional hashes algorithms
+/// Unit for the unidirectional hash algorithms
 unit RALHashes;
 
 interface
@@ -20,61 +20,58 @@ type
     FInitialized : boolean;
     FFinalized : boolean;
   protected
-    /// returns the length of the buffer
-    function GetBufLength: IntegerRAL; virtual; abstract;
-    /// returns the buffer pointer at a given position
-    function GetBuffer(AIndex: IntegerRAL): Pointer; virtual; abstract;
-    /// returns the position of buffer
-    function GetIndex: integer;
-    /// returns the total buffer in bits
-    function GetLenBit: uint64;
-
-    /// used to compress the content, generating the hash
+    /// Used to compress the content, generating the hash
     procedure Compress; virtual;
-    /// used to initialize the hash
-    procedure Initialize; virtual;
-    /// finalize the hash ans returns it
-    function Finalize: TBytes; virtual;
-
-    /// used to insert more content that will generate the hash
-    procedure UpdateBuffer(AValue: TStream); overload; virtual;
-    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
-    procedure UpdateBuffer(AValue: TBytes); overload; virtual;
-
-    /// picks up incoming and compact content according to buffer length
-    procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
-
-    /// convert hash (return Finalize) in hexadecimal
-    function DigestToHex(AValue: TBytes): StringRAL;
-    /// convert hash (return Finalize) in base64
+    /// Convert hash (return Finalize) to base64
     function DigestToBase64(AValue: TBytes): StringRAL;
-    /// convert hash (return Finalize) in base64-url
+    /// Convert hash (return Finalize) to base64-url
     function DigestToBase64Url(AValue: TBytes): StringRAL;
-
-    /// generates a hash of a given piece of content
+    /// Convert hash (return Finalize) to hexadecimal
+    function DigestToHex(AValue: TBytes): StringRAL;
+    /// Finalize the hash and returns it
+    function Finalize: TBytes; virtual;
+    /// Returns the buffer pointer at a given position
+    function GetBuffer(AIndex: IntegerRAL): Pointer; virtual; abstract;
+    /// Returns the length of the buffer
+    function GetBufLength: IntegerRAL; virtual; abstract;
+    /// Generates a hash of a given piece of Stream content
     function GetDigest(AValue: TStream): TBytes; overload; virtual;
+    /// Generates a hash of a given piece of UTF8String content
     function GetDigest(const AValue: StringRAL): TBytes; overload; virtual;
+    /// Generates a hash of a given piece of Array of Bytes content
     function GetDigest(AValue: TBytes): TBytes; overload; virtual;
-
-    /// generates an HMAC hash of a given content
+    /// Returns the position of the buffer
+    function GetIndex: integer;
+    /// Returns the total buffer in bits
+    function GetLenBit: uint64;
+    /// Picks up incoming and compact content according to buffer length
+    procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
+    /// Generates an HMAC hash of a given content
     function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
+    /// Used to initialize the hash
+    procedure Initialize; virtual;
+    /// Used to insert more content that will generate the hash
+    procedure UpdateBuffer(AValue: TStream); overload; virtual;
+    /// Used to insert more content that will generate the hash
+    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
+    /// Used to insert more content that will generate the hash
+    procedure UpdateBuffer(AValue: TBytes); overload; virtual;
   public
     constructor Create;
-
-    /// returns a string hash from a string
+    /// Returns a string hash from a string
     function HashAsString(const AValue: StringRAL): StringRAL; overload; virtual;
-    /// returns a string hash from a stream
+    /// Returns a string hash from a stream
     function HashAsString(AValue: TStream): StringRAL; overload; virtual;
-
-    /// returns a stream hash from a stream
+    /// Returns a stream hash from a stream
     function HashAsStream(AValue: TStream): TStream;
-
-    /// returns a string of a HMAC generated
+    /// Returns a string of a HMAC generated given an UTF8String
     function HMACAsString(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;
+    /// Returns a string of a HMAC generated given a Stream
     function HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;
+    /// Returns a string of a HMAC generated given an Array of bytes
     function HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;
   published
-    /// identifies the formatting of the hash
+    /// Identifies the formatting of the hash
     property OutputType: TRALHashOutputType read FOutputType write FOutputType;
   end;
 
