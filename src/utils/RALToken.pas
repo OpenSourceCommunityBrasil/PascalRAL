@@ -75,7 +75,7 @@ type
     FHeader: TRALJWTHeader;
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
-    FSecret : StringRAL;
+    FSignSecretKey : StringRAL;
   protected
     function signHS256(const ASource : StringRAL) : StringRAL;
     function signHS384(const ASource : StringRAL) : StringRAL;
@@ -95,7 +95,7 @@ type
     property Header: TRALJWTHeader read FHeader write FHeader;
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
-    property Secret: StringRAL read FSecret write FSecret;
+    property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
   end;
 
   { TRALOAuth }
@@ -850,7 +850,7 @@ begin
   try
     vHash.Version := rsv256;
     vHash.OutputType := rhotBase64Url;
-    Result := vHash.HMACAsString(ASource, FSecret);
+    Result := vHash.HMACAsString(ASource, FSignSecretKey);
   finally
     FreeAndNil(vHash);
   end;
@@ -864,7 +864,7 @@ begin
   try
     vHash.Version := rsv384;
     vHash.OutputType := rhotBase64Url;
-    Result := vHash.HMACAsString(ASource, FSecret);
+    Result := vHash.HMACAsString(ASource, FSignSecretKey);
   finally
     FreeAndNil(vHash);
   end;
@@ -878,7 +878,7 @@ begin
   try
     vHash.Version := rsv512;
     vHash.OutputType := rhotBase64Url;
-    Result := vHash.HMACAsString(ASource, FSecret);
+    Result := vHash.HMACAsString(ASource, FSignSecretKey);
   finally
     FreeAndNil(vHash);
   end;

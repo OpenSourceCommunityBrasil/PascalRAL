@@ -541,7 +541,7 @@ begin
   vJWT := TRALJWT.Create;
   try
     vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.Secret := FSecret;
+    vJWT.SignSecretKey := FSignSecretKey;
     if vJWT.isValidToken(AToken) then
     begin
       vJWT.Payload.AsJSON := AJSONParams;
@@ -580,7 +580,7 @@ begin
   vJWT := TRALJWT.Create;
   try
     vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.Secret := FSecret;
+    vJWT.SignSecretKey := FSignSecretKey;
     vResult := vJWT.isValidToken(ARequest.Authorization.AuthString);
     if vResult and Assigned(FOnValidate) then
       FOnValidate(ARequest, AResponse, vJWT.Payload, vResult);
@@ -599,7 +599,7 @@ begin
   vJWT := TRALJWT.Create;
   try
     vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.Secret := FSecret;
+    vJWT.SignSecretKey := FSignSecretKey;
 
     // vJWT.Header.createKeyID;
 
