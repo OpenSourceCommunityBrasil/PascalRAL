@@ -223,7 +223,7 @@ type
   protected
     function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
-    function GetRouteAddress(ARoute: StringRAL): TRALRoute;
+    function GetRouteAddress(ARoute: StringRAL): TRALRoute; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);
   public

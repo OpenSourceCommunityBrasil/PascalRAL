@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream;
+  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream, RALConsts;
 
 type
 
@@ -41,6 +41,8 @@ type
     /// Sets the response with the given status code, UTF8 String and Content-Type
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Sets the response with the given status code
+    procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Loads and set a file to the response with the given AFileName
     procedure Answer(const AFileName: StringRAL); overload;
     /// Sets a file to the response with the given status code, FileStream and an AFileName
@@ -76,6 +78,29 @@ procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AFile: TStream;
 begin
   StatusCode := AStatusCode;
   AddFile(AFile, AFileName);
+end;
+
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
+var
+  vMsg, vType : StringRAL;
+begin
+  vMsg := '';
+  vType := rctAPPLICATIONJSON;
+  case AStatusCode of
+    400 : vMsg := RAL400Page;
+    401 : vMsg := RAL401Page;
+    403 : vMsg := RAL403Page;
+    404 : vMsg := RAL404Page;
+    415 : vMsg := RAL415Page;
+    500 : vMsg := RAL500Page;
+    501 : vMsg := RAL501Page;
+    503 : vMsg := RAL503Page;
+  end;
+
+  if vMsg <> '' then
+    vType := rctTEXTHTML;
+
+  Answer(AStatusCode, vMsg, vType);
 end;
 
 function TRALResponse.AddHeader(const AName, AValue: StringRAL): TRALResponse;
