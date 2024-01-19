@@ -251,7 +251,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
     end;
   end;
 
-{$IFEND}
+{$ENDIF}
 {$IFDEF RALLinux}
   procedure LoadFile(const aFileName: string);
   var
@@ -288,7 +288,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LTypes.Free;
     end;
   end;
-{$IFEND}
+{$ENDIF}
 {$IFDEF RALApple}
   procedure LoadFile(const aFileName: string);
   const
@@ -367,30 +367,30 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LItems.Free;
     end;
   end;
-{$IFEND}
+{$ENDIF}
 {$IFDEF RALLinux}
 
 const
   CTypeFile = 'mime.types';
-  {$IFEND}
+  {$ENDIF}
   {$IFDEF RALApple}
 const
   CTypeFile = '/Applications/Safari.app/Contents/Info.plist';
-  {$IFEND}
+  {$ENDIF}
 begin
   FInternalMIMEList.Clear;
   Result := False;
   try
     {$IFDEF RALWindows}
     LoadRegistry;
-    {$IFEND}
+    {$ENDIF}
     {$IFDEF RALLinux}
     //LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
     LoadFile('/etc/' + CTypeFile);
-    {$IFEND}
+    {$ENDIF}
     {$IFDEF RALApple}
     LoadFile(CTypeFile);
-    {$IFEND}
+    {$ENDIF}
     Result := True;
   except
     Result := False;
