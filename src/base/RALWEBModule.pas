@@ -67,21 +67,12 @@ procedure TRALWebModule.WebModFile(ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
   vFile : StringRAL;
-  vStream : TFileStream;
 begin
   vFile := GetFileRoute(ARequest);
   if vFile <> '' then
-  begin
-    vStream := TFileStream.Create(vFile, fmOpenRead or fmShareDenyWrite);
-    try
-      AResponse.ResponseStream := vStream;
-    finally
-      FreeAndNil(vStream);
-    end;
-  end
-  else begin
+    AResponse.Answer(vFile)
+  else
     AResponse.Answer(404);
-  end;
 end;
 
 end.
