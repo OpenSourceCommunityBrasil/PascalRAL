@@ -11,7 +11,7 @@ uses
 
 type
   TRALServer = class;
-  TRALSubRoutes = class;
+  TRALModuleRoutes = class;
 
   { TRALSSL }
 
@@ -137,7 +137,7 @@ type
     /// Adds IPs to the internal blocked list if blocking function is enabled
     procedure AddBlockList(const AClientIP: StringRAL);
     /// Adds a fixed subroute from other components into server routes
-    procedure AddSubRoute(ASubRoute: TRALSubRoutes);
+    procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
     procedure CheckCORS(ARoute: TRALRoute; ARequest: TRALRequest; AResponse: TRALResponse);
     /// Used by inherited members to set SSL settings
@@ -149,7 +149,7 @@ type
     /// Checks if given AClientIP is currently on internal blocked IPs list
     function ClientIsBlocked(const AClientIP: StringRAL): boolean;
     /// Removes a fixed subroute used by other components
-    procedure DelSubRoute(ASubRoute: TRALSubRoutes);
+    procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
     /// Removes a given AClientIP from the internal blocked IP list
     procedure DelBlockList(const AClientIP: StringRAL);
     /// Returns a list of forbidden IPs to communicate with the server
@@ -216,7 +216,7 @@ type
   end;
 
   /// Used by other components to add fixed routes to the RAL Server
-  TRALSubRoutes = class(TRALComponent)
+  TRALModuleRoutes = class(TRALComponent)
   private
     FServer: TRALServer;
     FRoutes: TRALRoutes;
@@ -595,13 +595,13 @@ begin
   inherited;
 end;
 
-procedure TRALServer.AddSubRoute(ASubRoute: TRALSubRoutes);
+procedure TRALServer.AddSubRoute(ASubRoute: TRALModuleRoutes);
 begin
   if FListSubRoutes.IndexOf(ASubRoute) < 0 then
     FListSubRoutes.Add(ASubRoute);
 end;
 
-procedure TRALServer.DelSubRoute(ASubRoute: TRALSubRoutes);
+procedure TRALServer.DelSubRoute(ASubRoute: TRALModuleRoutes);
 var
   vInt: IntegerRAL;
 begin
@@ -615,7 +615,7 @@ var
   vRoute: TRALRoute;
   vString: StringRAL;
   vInt: integer;
-  vSubRoute: TRALSubRoutes;
+  vSubRoute: TRALModuleRoutes;
 begin
   Result := TRALResponse.Create;
 
@@ -667,7 +667,7 @@ begin
   vInt := 0;
   while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
   begin
-    vSubRoute := TRALSubRoutes(FListSubRoutes.Items[vInt]);
+    vSubRoute := TRALModuleRoutes(FListSubRoutes.Items[vInt]);
     vRoute := vSubRoute.CanResponseRoute(ARequest);
     vInt := vInt + 1;
   end;
@@ -786,9 +786,9 @@ begin
   end;
 end;
 
-{ TRALSubRoutes }
+{ TRALModuleRoutes }
 
-procedure TRALSubRoutes.SetServer(AValue: TRALServer);
+procedure TRALModuleRoutes.SetServer(AValue: TRALServer);
 begin
   if AValue <> FServer then
   begin
@@ -805,7 +805,7 @@ begin
   end;
 end;
 
-procedure TRALSubRoutes.Notification(AComponent: TComponent; Operation: TOperation);
+procedure TRALModuleRoutes.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FServer) then
     FServer := nil;
@@ -813,7 +813,7 @@ begin
   inherited;
 end;
 
-function TRALSubRoutes.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+function TRALModuleRoutes.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
                                    const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
@@ -822,7 +822,7 @@ begin
   Result.Description.Text := ADescription;
 end;
 
-function TRALSubRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
+function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
 var
   vInt: integer;
   vRoute, vRouteName : string;
@@ -842,13 +842,13 @@ begin
   end;
 end;
 
-constructor TRALSubRoutes.Create(AOwner: TComponent);
+constructor TRALModuleRoutes.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FRoutes := TRALRoutes.Create(Self);
 end;
 
-destructor TRALSubRoutes.Destroy;
+destructor TRALModuleRoutes.Destroy;
 begin
   if FServer <> nil then
     FServer.DelSubRoute(Self);

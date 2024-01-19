@@ -1,4 +1,4 @@
-unit RALWEBModule;
+unit RALWebModule;
 
 interface
 
@@ -9,7 +9,7 @@ uses
 type
   { TRALWebModule }
 
-  TRALWebModule = class(TRALSubRoutes)
+  TRALWebModule = class(TRALModuleRoutes)
   private
     FDocumentRoot : StringRAL;
   protected
@@ -70,7 +70,6 @@ var
   vStream : TFileStream;
 begin
   vFile := GetFileRoute(ARequest);
-  // verificando se a base folder (document root) é o mesmo
   if vFile <> '' then
   begin
     vStream := TFileStream.Create(vFile, fmOpenRead or fmShareDenyWrite);
