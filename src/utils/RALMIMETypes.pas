@@ -2,19 +2,19 @@
 
 {$I ..\base\PascalRAL.inc}
 {$IFDEF FPC}
-{$mode Delphi}
+  {$mode Delphi}
 {$ENDIF}
 
 interface
 
 uses
-  {$IFDEF MACOS}
-  Macapi.CoreFoundation,
+  {$IFDEF RALApple}
+    Macapi.CoreFoundation,
   {$ENDIF}
-  {$IF Defined(MSWINDOWS) OR Defined(WINDOWS)}
-  Windows, Registry,
-  {$IFEND}
-  {$IFDEF POSIX}
+  {$IFDEF RALWindows}
+    Windows, Registry,
+  {$ENDIF}
+  {$IFDEF RALLinux}
   System.IOUtils,
   {$ENDIF}
   Classes, SysUtils,
@@ -147,8 +147,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function GetMIMEType(const aFileName: StringRAL): StringRAL;
     function GetMIMEContentExt(const aContentType: StringRAL): StringRAL;
+    function GetMIMEType(const aFileName: StringRAL): StringRAL;
   end;
 
 const
@@ -200,7 +200,7 @@ begin
 end;
 
 function TRALMIMEType.GetSystemTypes: boolean;
-{$IF DEFINED(MSWINDOWS) OR DEFINED(WINDOWS)}
+{$IFDEF RALWindows}
   procedure LoadRegistry;
   const
     CExtsKey = '\';
@@ -252,7 +252,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
   end;
 
 {$IFEND}
-{$IF DEFINED(LINUX)}
+{$IFDEF RALLinux}
   procedure LoadFile(const aFileName: string);
   var
     LTypes: TStringList;
@@ -289,7 +289,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
     end;
   end;
 {$IFEND}
-{$IF DEFINED(MACOS) and not DEFINED(IOS)}
+{$IFDEF RALApple}
   procedure LoadFile(const aFileName: string);
   const
     CBinary: RawByteString = 'bplist';
@@ -368,12 +368,12 @@ function TRALMIMEType.GetSystemTypes: boolean;
     end;
   end;
 {$IFEND}
-{$IF DEFINED(LINUX)}
+{$IFDEF RALLinux}
 
 const
   CTypeFile = 'mime.types';
   {$IFEND}
-  {$IF DEFINED(MACOS) and not DEFINED(IOS)}
+  {$IFDEF RALApple}
 const
   CTypeFile = '/Applications/Safari.app/Contents/Info.plist';
   {$IFEND}
@@ -381,14 +381,14 @@ begin
   FInternalMIMEList.Clear;
   Result := False;
   try
-    {$IF DEFINED(MSWINDOWS)}
+    {$IFDEF RALWindows}
     LoadRegistry;
     {$IFEND}
-    {$IF DEFINED(LINUX)}
+    {$IFDEF RALLinux}
     //LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
     LoadFile('/etc/' + CTypeFile);
     {$IFEND}
-    {$IF DEFINED(MACOS) and not DEFINED(IOS)}
+    {$IFDEF RALApple}
     LoadFile(CTypeFile);
     {$IFEND}
     Result := True;

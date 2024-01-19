@@ -189,8 +189,11 @@ type
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection
-                                                           write FBruteForceProtection;
+    property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
+    property BruteForceProtection: TRALBruteForceProtection read FBruteForceProtection write FBruteForceProtection;
+    property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
     property FavIcon: TFileName read FFavIcon write FFavIcon;
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
@@ -198,21 +201,14 @@ type
     property Port: IntegerRAL read FPort write SetPort;
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout
-                                     default 30000;
+    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
-    property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
-    property CompressType: TRALCompressType read FCompressType write FCompressType;
-    property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
 
+    property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked write FOnClientTryBlocked;
+    property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked write FOnClientWasBlocked;
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
-    property OnClientTryBlocked: TRALOnClientTryBlocked read FOnClientTryBlocked
-                                                       write FOnClientTryBlocked;
-    property OnClientWasBlocked: TRALOnClientWasBlocked read FOnClientWasBlocked
-                                                       write FOnClientWasBlocked;
   end;
 
   /// Used by other components to add fixed routes to the RAL Server
@@ -229,8 +225,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CanResponseRoute(ARequest : TRALRequest) : TRALRoute; virtual;
-
+    function CanResponseRoute(ARequest: TRALRequest): TRALRoute; virtual;
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
     property Server: TRALServer read FServer write SetServer;
@@ -614,7 +609,7 @@ function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
 var
   vRoute: TRALRoute;
   vString: StringRAL;
-  vInt: integer;
+  vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
 begin
   Result := TRALResponse.Create;
@@ -703,14 +698,15 @@ begin
   begin
     ARequest.Params.AppendParamsUri(ARequest.Query, vRoute.Route, rpkFIELD);
 
-    if (not(amALL in vRoute.AllowedMethods)) and
-      (not(ARequest.Method in vRoute.AllowedMethods)) then
+    if (not (amALL in vRoute.AllowedMethods)) and
+      (not (ARequest.Method in vRoute.AllowedMethods)) then
     begin
       Result.Answer(404);
     end
-    else if (FAuthentication <> nil) and (not(amALL in vRoute.SkipAuthMethods)) and
-            (not(ARequest.Method in vRoute.SkipAuthMethods)) and
-            (not(ValidateAuth(ARequest, Result))) then
+    else if (FAuthentication <> nil) and 
+            (not (amALL in vRoute.SkipAuthMethods)) and
+            (not (ARequest.Method in vRoute.SkipAuthMethods)) and
+            (not (ValidateAuth(ARequest, Result))) then
     begin
       AddBlockList(ARequest.ClientInfo.IP);
     end
@@ -814,7 +810,7 @@ begin
 end;
 
 function TRALModuleRoutes.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
-                                   const ADescription: StringRAL): TRALRoute;
+                                      const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.RouteName := ARouteName;
@@ -824,8 +820,8 @@ end;
 
 function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
 var
-  vInt: integer;
-  vRoute, vRouteName : string;
+  vInt: IntegerRAL;
+  vRoute, vRouteName: StringRAL;
 begin
   Result := nil;
 

@@ -24,7 +24,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="35">
+    <Files Count="36">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -143,29 +143,33 @@
         <UnitName Value="RALDBBase"/>
       </Item29>
       <Item30>
-        <Filename Value="..\..\src\database\RALDBWare.pas"/>
-        <UnitName Value="RALDBWare"/>
-      </Item30>
-      <Item31>
         <Filename Value="..\..\src\database\RALStorage.pas"/>
         <UnitName Value="RALStorage"/>
-      </Item31>
-      <Item32>
+      </Item30>
+      <Item31>
         <Filename Value="..\..\src\database\RALStorageJSON.pas"/>
         <UnitName Value="RALStorageJSON"/>
-      </Item32>
-      <Item33>
+      </Item31>
+      <Item32>
         <Filename Value="..\..\src\base\PascalRAL.inc"/>
         <Type Value="Include"/>
-      </Item33>
-      <Item34>
+      </Item32>
+      <Item33>
         <Filename Value="PascalRAL.lrs"/>
         <Type Value="LRS"/>
-      </Item34>
-      <Item35>
+      </Item33>
+      <Item34>
         <Filename Value="..\..\src\database\RALStorageBIN.pas"/>
         <UnitName Value="RALStorageBIN"/>
+      </Item34>
+      <Item35>
+        <Filename Value="..\..\src\base\RALWEBModule.pas"/>
+        <UnitName Value="RALWEBModule"/>
       </Item35>
+      <Item36>
+        <Filename Value="..\..\src\database\RALDBModule.pas"/>
+        <UnitName Value="RALDBModule"/>
+      </Item36>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

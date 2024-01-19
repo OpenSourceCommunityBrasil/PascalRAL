@@ -373,14 +373,17 @@
 
 {$IF Defined(IOS) or Defined(IOS64) or Defined(DCCIOS32) or Defined(MACOS) or
   Defined(MACOS32)}
+  {$DEFINE RALApple}
   {$DEFINE HAS_UTF8}
 {$IFEND}
 
-{$IF Defined(ANDROID) or Defined(Android64)}
+{$IF Defined(ANDROID) or Defined(Android64) or Defined(Android32)}
+  {$DEFINE RALAndroid}
   {$DEFINE HAS_UTF8}
 {$IFEND}
 
 {$IF Defined(LINUX) or Defined(LINUX32) or Defined(LINUX64) or Defined(UNIX)}
+  {$DEFINE RALLinux}
   {$DEFINE HAS_UTF8}
   {$IFDEF HAS_FMX}
     {$DEFINE LINUXFMX}
@@ -388,17 +391,21 @@
 {$IFEND}
 
 {$IF Defined(POSIX)}
-  {$DEFINE APPLE}
-  {$DEFINE LINUX}
+  {$DEFINE RALApple}
+  {$DEFINE RALLinux}
 {$IFEND}
 
 {$IF Defined(NEXTGEN)}
-  {$DEFINE ANDROID}
-  {$DEFINE APPLE}
+  {$DEFINE RALAndroid}
+  {$DEFINE RALApple}
 {$IFEND}
 
 {$IF (Defined(IOS) or Defined(ANDROID)) AND Defined(HAS_FMX)}
-  {$DEFINE MOBILE}
+  {$DEFINE RALFMXMobile}
+{$IFEND}
+
+{$IF (Defined(MSWindows)) or Defined(WINDOWS)}
+  {$DEFINE RALWindows}
 {$IFEND}
 
 (* End of OS Architecture Directives *)
