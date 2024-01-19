@@ -155,6 +155,8 @@ begin
   if FRouteName = AValue then
     Exit;
 
+  AValue := Trim(AValue);
+
   if (AValue <> '') and (AValue[Length(AValue)] = '/') then
     Delete(AValue, Length(AValue), 1);
 

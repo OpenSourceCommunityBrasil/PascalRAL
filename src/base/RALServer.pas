@@ -223,14 +223,14 @@ type
   protected
     function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
-    function GetRouteAddress(ARoute: StringRAL): TRALRoute; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
+    function CanResponseRoute(ARequest : TRALRequest) : TRALRoute; virtual;
+
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
     property Server: TRALServer read FServer write SetServer;
@@ -668,7 +668,7 @@ begin
   while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
   begin
     vSubRoute := TRALSubRoutes(FListSubRoutes.Items[vInt]);
-    vRoute := vSubRoute.RouteAddress[ARequest.Query];
+    vRoute := vSubRoute.CanResponseRoute(ARequest);
     vInt := vInt + 1;
   end;
 
@@ -813,25 +813,6 @@ begin
   inherited;
 end;
 
-function TRALSubRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
-var
-  vInt: integer;
-  vRouteName: string;
-begin
-  Result := nil;
-
-  if ARoute[PosIniStr] = '/' then
-    Delete(ARoute, 1, 1);
-
-  vInt := Pos('/', ARoute);
-  if vInt > 0 then
-  begin
-    vRouteName := Copy(ARoute, 1, vInt - 1);
-    if SameText(vRouteName, Name) then
-      Result := Routes.RouteAddress[ARoute];
-  end;
-end;
-
 function TRALSubRoutes.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
                                    const ADescription: StringRAL): TRALRoute;
 begin
@@ -839,6 +820,26 @@ begin
   Result.RouteName := ARouteName;
   Result.OnReply := AReplyProc;
   Result.Description.Text := ADescription;
+end;
+
+function TRALSubRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
+var
+  vInt: integer;
+  vRoute, vRouteName : string;
+begin
+  Result := nil;
+
+  vRoute := ARequest.Query;
+  if (vRoute <> '') and (vRoute[PosIniStr] = '/') then
+    Delete(vRoute, 1, 1);
+
+  vInt := Pos('/', vRoute);
+  if vInt > 0 then
+  begin
+    vRouteName := Copy(vRoute, 1, vInt - 1);
+    if SameText(vRouteName, Name) then
+      Result := Routes.RouteAddress[vRoute];
+  end;
 end;
 
 constructor TRALSubRoutes.Create(AOwner: TComponent);

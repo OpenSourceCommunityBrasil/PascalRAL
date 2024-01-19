@@ -1,4 +1,5 @@
-{ @abstract Base unit for JSON Mapping
+{
+  @abstract Base unit for JSON Mapping
   Native JSON Libraries are depending on IDE version, older Delphi Versions don't have
   a native JSON library, for those older versions there are 2 libraries that are
   supported by PascalRAL, which you enable/disable within PascalRAL.inc
@@ -20,6 +21,7 @@ interface
     {$ELSE}
       {$IFDEF RALuJSON}
         {$I RALJSON_uJSON.inc}
+      {$ENDIF}
     {$ENDIF}
   {$ENDIF}
 {$ENDIF}
