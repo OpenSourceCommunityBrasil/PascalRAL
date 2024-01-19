@@ -176,7 +176,9 @@ end;
 function TRALRoute.GetRoute: StringRAL;
 begin
   Result := '';
-  if (Collection.Owner <> nil) and (Collection.Owner.InheritsFrom(TRALModuleRoutes)) then
+  if (Collection <> nil) and (Collection.Owner <> nil) and
+     (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
+     (TRALModuleRoutes(Collection.Owner).IsDomain) then
     Result := TRALModuleRoutes(Collection.Owner).Name;
   Result := FixRoute(Result + '/' + FRouteDomain + '/' + FRouteName);
 end;

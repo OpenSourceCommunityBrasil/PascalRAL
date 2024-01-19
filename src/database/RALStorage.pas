@@ -7,8 +7,25 @@ uses
   RALCustomObjects, RALTypes, RALBase64, RALStream, RALTools;
 
 type
+{
+  ShortInt : 1 - Low: -128                 High: 127
+  Byte     : 1 - Low: 0                    High: 255
+  SmallInt : 2 - Low: -32768               High: 32767
+  Word     : 2 - Low: 0                    High: 65535
+  Integer  : 4 - Low: -2147483648          High: 2147483647
+  LongInt  : 4 - Low: -2147483648          High: 2147483647
+  Cardinal : 4 - Low: 0                    High: 4294967295
+  LongWord : 4 - Low: 0                    High: 4294967295
+  Int64    : 8 - Low: -9223372036854775808 High: 9223372036854775807
+  QWord    : 8 - Low: 0                    High: 18446744073709551615
+}
+
   TRALStorageMode = (smRead, smWrite);
 
+  TRALStorageFieldType = (sftInt1, sftInt2, sftInt4, sftInt8,
+                          sftuInt1, sftuInt2, sftuInt4, sftuInt8,
+                          sftDouble, sftBoolean, sftString,
+                          sftBlob, sftDateTime);
   { TRALStorageField }
 
   TRALStorageField = class(TCollectionItem)

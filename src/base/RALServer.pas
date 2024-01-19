@@ -217,15 +217,18 @@ type
     FServer: TRALServer;
     FRoutes: TRALRoutes;
   protected
-    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
-                         const ADescription: StringRAL = ''): TRALRoute;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CanResponseRoute(ARequest: TRALRequest): TRALRoute; virtual;
+    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+                         const ADescription: StringRAL = ''): TRALRoute;
+
+    function CanResponseRoute(ARequest : TRALRequest) : TRALRoute; virtual;
+    function IsDomain : boolean; virtual;
+
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
     property Server: TRALServer read FServer write SetServer;
@@ -851,6 +854,11 @@ begin
 
   FRoutes.Free;
   inherited Destroy;
+end;
+
+function TRALModuleRoutes.IsDomain: boolean;
+begin
+  Result := True;
 end;
 
 end.
