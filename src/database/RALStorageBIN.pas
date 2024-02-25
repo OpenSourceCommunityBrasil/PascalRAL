@@ -11,13 +11,13 @@ type
 
   TRALStorageBIN = class(TRALStorage)
   private
-    FRecords : Int64RAL;
-    FPosRecords : Int64RAL;
+    FRecords: Int64RAL;
+    FPosRecords: Int64RAL;
   protected
-    function WriteFields : boolean; override;
+    function WriteFields: boolean; override;
     function ReadFields: boolean; override;
     procedure Next; override;
-    function EOF : boolean; override;
+    function EOF: boolean; override;
   public
     constructor Create; override;
 
@@ -29,20 +29,20 @@ type
 
   TRALStorageBINLink = class(TRALStorageLink)
   protected
-    function GetStorageClass : TRALStorageClass; override;
-    function GetContentType : StringRAL; override;
+    function GetStorageClass: TRALStorageClass; override;
+    function GetContentType: StringRAL; override;
   end;
 
 implementation
 
 { TRALDataStorageBIN }
 
-function TRALStorageBIN.WriteFields : boolean;
+function TRALStorageBIN.WriteFields: boolean;
 var
-  vInt : IntegerRAL;
-  vIntAux : IntegerRAL;
-  vByte : Byte;
-  vStr : StringRAL;
+  vInt: IntegerRAL;
+  vIntAux: IntegerRAL;
+  vByte: Byte;
+  vStr: StringRAL;
 begin
   Result := inherited WriteFields;
 
@@ -74,7 +74,7 @@ begin
     Stream.Write(vIntAux, SizeOf(vIntAux));
 
     // flags
-    vByte :=  Fields[vInt].FlagByte;
+    vByte := Fields[vInt].FlagByte;
     Stream.Write(vByte, SizeOf(vByte));
   end;
 
@@ -85,13 +85,13 @@ begin
   Result := True;
 end;
 
-function TRALStorageBIN.ReadFields : boolean;
+function TRALStorageBIN.ReadFields: boolean;
 var
-  vFields : IntegerRAL;
-  vField : TRALStorageField;
-  vInt, vIntAux : IntegerRAL;
-  vByte : Byte;
-  vStr : StringRAL;
+  vFields: IntegerRAL;
+  vField: TRALStorageField;
+  vInt, vIntAux: IntegerRAL;
+  vByte: Byte;
+  vStr: StringRAL;
 begin
   FieldDefs.Clear;
 
@@ -137,10 +137,10 @@ end;
 
 procedure TRALStorageBIN.Next;
 var
-  vInt : IntegerRAL;
-  vInt64 : Int64RAL;
-  vBool : boolean;
-  vBytes : TBytes;
+  vInt: IntegerRAL;
+  vInt64: Int64RAL;
+  vBool: boolean;
+  vBytes: TBytes;
 begin
   if FRecords < 0 then
     Exit;
@@ -155,20 +155,11 @@ begin
     begin
       vInt64 := Fields[vInt].Size;
       if Fields[vInt].DataType in [
-            {$IFNDEF FPC}
-              ftStream,
-            {$ENDIF}
-            ftString,
-            ftBlob,
-            ftMemo,
-            ftFmtMemo,
-            ftFixedChar,
-            ftWideString,
-            ftOraBlob,
-            ftOraClob,
-            ftGuid,
-            ftFixedWideChar,
-            ftWideMemo] then
+      {$IFNDEF FPC}
+        ftStream,
+      {$ENDIF}
+      ftString, ftBlob, ftMemo, ftFmtMemo, ftFixedChar, ftWideString, ftOraBlob,
+        ftOraClob, ftGuid, ftFixedWideChar, ftWideMemo] then
         Stream.Read(vInt64, SizeOf(vInt64));
 
       if vInt64 > 0 then
@@ -182,7 +173,7 @@ begin
   FRecords := FRecords - 1;
 end;
 
-function TRALStorageBIN.EOF : boolean;
+function TRALStorageBIN.EOF: boolean;
 begin
   Result := FRecords = -1;
 end;
@@ -196,10 +187,10 @@ end;
 
 procedure TRALStorageBIN.Post;
 var
-  vInt : Integer;
-  vInt64 : Int64;
-  vBytes : TBytes;
-  vBool : boolean;
+  vInt: Integer;
+  vInt64: Int64;
+  vBytes: TBytes;
+  vBool: boolean;
 begin
   for vInt := 0 to Pred(FieldDefs.Count) do
   begin
@@ -212,20 +203,11 @@ begin
 
       vInt64 := Length(vBytes);
       if Fields[vInt].DataType in [
-            {$IFNDEF FPC}
-              ftStream,
-            {$ENDIF}
-            ftString,
-            ftBlob,
-            ftMemo,
-            ftFmtMemo,
-            ftFixedChar,
-            ftWideString,
-            ftOraBlob,
-            ftOraClob,
-            ftGuid,
-            ftFixedWideChar,
-            ftWideMemo] then
+      {$IFNDEF FPC}
+        ftStream,
+      {$ENDIF}
+      ftString, ftBlob, ftMemo, ftFmtMemo, ftFixedChar, ftWideString, ftOraBlob,
+        ftOraClob, ftGuid, ftFixedWideChar, ftWideMemo] then
         Stream.Write(vInt64, SizeOf(vInt64));
 
       if vInt64 > 0 then
@@ -255,13 +237,13 @@ begin
   Result := TRALStorageBIN;
 end;
 
-function TRALStorageBINLink.GetContentType : StringRAL;
+function TRALStorageBINLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONOCTETSTREAM;
 end;
 
 initialization
-  RegisterClass(TRALStorageBINLink);
+
+RegisterClass(TRALStorageBINLink);
 
 end.
-

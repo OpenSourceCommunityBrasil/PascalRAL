@@ -6,30 +6,30 @@ uses
   Classes, SysUtils,
   RALTypes;
 
-function StringToStream(const AStr : StringRAL) : TStream;
-function StreamToString(AStream : TStream) : StringRAL;
+function StringToStream(const AStr: StringRAL): TStream;
+function StreamToString(AStream: TStream): StringRAL;
 
-function BytesToStream(ABytes : TBytes) : TStream;
-function StreamToBytes(AStream : TStream) : TBytes;
+function BytesToStream(ABytes: TBytes): TStream;
+function StreamToBytes(AStream: TStream): TBytes;
 
-procedure SaveStream(AStream : TStream; const AFileName : StringRAL);
+procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
 
 implementation
 
-function StringToStream(const AStr : StringRAL) : TStream;
+function StringToStream(const AStr: StringRAL): TStream;
 begin
   Result := TStringStream.Create(AStr);
   Result.Position := 0;
 end;
 
-function StreamToString(AStream : TStream) : StringRAL;
+function StreamToString(AStream: TStream): StringRAL;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
     Exit;
 
   AStream.Position := 0;
-  
+
   if AStream is TStringStream then
   begin
     Result := TStringStream(AStream).DataString;
@@ -46,14 +46,14 @@ begin
   end;
 end;
 
-function BytesToStream(ABytes : TBytes) : TStream;
+function BytesToStream(ABytes: TBytes): TStream;
 begin
   Result := TMemoryStream.Create;
   Result.Write(ABytes[0], Length(ABytes));
   Result.Position := 0;
 end;
 
-function StreamToBytes(AStream : TStream) : TBytes;
+function StreamToBytes(AStream: TStream): TBytes;
 begin
   AStream.Position := 0;
 
@@ -69,12 +69,12 @@ begin
   end;
 end;
 
-procedure SaveStream(AStream : TStream; const AFileName : StringRAL);
+procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
 var
-  vFile : TFileStream;
+  vFile: TFileStream;
 begin
   AStream.Position := 0;
-  
+
   vFile := TFileStream.Create(AFileName, fmCreate);
   try
     vFile.Size := AStream.Size;

@@ -314,7 +314,7 @@ var
   vInBuf: array[0..4589] of Byte;
   vOutBuf: array[0..6119] of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
-  vPosition, vSize : Int64RAL;
+  vPosition, vSize: Int64RAL;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -333,6 +333,5 @@ begin
   end;
   Result.Position := 0;
 end;
-
 
 end.

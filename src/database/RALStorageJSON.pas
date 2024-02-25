@@ -11,9 +11,9 @@ type
 
   TRALStorageJSON = class(TRALStorage)
   private
-    FRecords : int64;
+    FRecords: int64;
   protected
-    function WriteFields : boolean; override;
+    function WriteFields: boolean; override;
     function ReadFields: boolean; override;
   public
     procedure Post; override;
@@ -24,18 +24,18 @@ type
 
   TRALStorageJSONLink = class(TRALStorageLink)
   protected
-    function GetStorageClass : TRALStorageClass; override;
-    function GetContentType : StringRAL; override;
+    function GetStorageClass: TRALStorageClass; override;
+    function GetContentType: StringRAL; override;
   end;
 
 implementation
 
 { TRALDataStorageJSON }
 
-function TRALStorageJSON.WriteFields : boolean;
+function TRALStorageJSON.WriteFields: boolean;
 var
-  vStr : string;
-  vInt : integer;
+  vStr: string;
+  vInt: integer;
 begin
   Result := inherited WriteFields;
 
@@ -48,10 +48,9 @@ begin
     if vInt > 0 then
       vStr := vStr + ',';
 
-    vStr := vStr + Format('["%s",%d,%d,%d]',[Fields[vInt].Name,
-                                             Fields[vInt].DataTypeByte,
-                                             Fields[vInt].Size,
-                                             Fields[vInt].FlagByte]);
+    vStr := vStr + Format('["%s",%d,%d,%d]',
+      [Fields[vInt].Name, Fields[vInt].DataTypeByte, Fields[vInt].Size,
+      Fields[vInt].FlagByte]);
   end;
   vStr := vStr + '],"ln":[';
 
@@ -60,15 +59,15 @@ begin
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
 
-function TRALStorageJSON.ReadFields : boolean;
+function TRALStorageJSON.ReadFields: boolean;
 begin
   Result := False;
 end;
 
 procedure TRALStorageJSON.Post;
 var
-  vStr : StringRAL;
-  vInt : Integer;
+  vStr: StringRAL;
+  vInt: integer;
 begin
   vStr := '';
 
@@ -90,7 +89,7 @@ end;
 
 procedure TRALStorageJSON.Close;
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 begin
   if (Stream <> nil) and (Stream.Position > 0) then
   begin
@@ -107,13 +106,13 @@ begin
   Result := TRALStorageJSON;
 end;
 
-function TRALStorageJSONLink.GetContentType : StringRAL;
+function TRALStorageJSONLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONJSON;
 end;
 
 initialization
-  RegisterClass(TRALStorageJSONLink);
+
+RegisterClass(TRALStorageJSONLink);
 
 end.
-

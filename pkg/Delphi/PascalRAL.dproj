@@ -151,7 +151,7 @@
         <DCCReference Include="..\..\src\utils\RALUrlCoder.pas"/>
         <DCCReference Include="..\..\src\database\RALDatasetStorage.pas"/>
         <DCCReference Include="..\..\src\database\RALDBBase.pas"/>
-        <DCCReference Include="..\..\src\database\RALDBWare.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBModule.pas"/>
         <DCCReference Include="..\..\src\database\RALStorage.pas"/>
         <DCCReference Include="..\..\src\database\RALStorageBIN.pas"/>
         <DCCReference Include="..\..\src\database\RALStorageJSON.pas"/>
@@ -1059,13 +1059,7 @@
             <Platforms>
                 <Platform value="Android">True</Platform>
                 <Platform value="Android64">True</Platform>
-                <Platform value="iOSDevice32">True</Platform>
-                <Platform value="iOSDevice64">True</Platform>
-                <Platform value="iOSSimARM64">True</Platform>
                 <Platform value="Linux64">True</Platform>
-                <Platform value="OSX32">True</Platform>
-                <Platform value="OSX64">True</Platform>
-                <Platform value="OSXARM64">True</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>

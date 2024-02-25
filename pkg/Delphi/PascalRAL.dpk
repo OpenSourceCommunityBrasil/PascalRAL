@@ -63,7 +63,7 @@ contains
   RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas',
   RALDatasetStorage in '..\..\src\database\RALDatasetStorage.pas',
   RALDBBase in '..\..\src\database\RALDBBase.pas',
-  RALDBWare in '..\..\src\database\RALDBWare.pas',
+  RALDBModule in '..\..\src\database\RALDBModule.pas',
   RALStorage in '..\..\src\database\RALStorage.pas',
   RALStorageBIN in '..\..\src\database\RALStorageBIN.pas',
   RALStorageJSON in '..\..\src\database\RALStorageJSON.pas';

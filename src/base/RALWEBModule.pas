@@ -33,7 +33,7 @@ implementation
 
 function TRALWebModule.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
 var
-  vRoute : string;
+  vRoute : StringRAL;
 begin
   Result := nil;
 

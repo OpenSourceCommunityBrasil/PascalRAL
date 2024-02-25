@@ -17,8 +17,8 @@ type
     FOutputType: TRALHashOutputType;
     FLenBit: uint64;
     FIndex: IntegerRAL;
-    FInitialized : boolean;
-    FFinalized : boolean;
+    FInitialized: boolean;
+    FFinalized: boolean;
   protected
     /// Used to compress the content, generating the hash
     procedure Compress; virtual;
