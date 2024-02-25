@@ -515,17 +515,17 @@ var
   vLine: StringRAL;
   vIndex: IntegerRAL;
 begin
-  vLine := '';
-
-  vIndex := Pos(ALineSeparator, AText);
-  if vIndex = 0 then
-    AppendParamLine(AText, ANameSeparator, AKind)
-  else
   repeat
     vIndex := Pos(ALineSeparator, AText);
-    vLine := Copy(AText, PosIniStr, vIndex);
-    AppendParamLine(vLine, ANameSeparator, AKind);
-    Delete(AText, RALLowStr(AText), vIndex);
+    if vIndex > 0 then
+      vLine := Copy(AText, PosIniStr, vIndex - 1)
+    else
+      vLine := AText;
+    if vLine <> '' then
+    begin
+      AppendParamLine(vLine, ANameSeparator, AKind);
+      Delete(AText, RALLowStr(AText), vIndex);
+    end
   until vIndex = 0;
 end;
 
