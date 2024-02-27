@@ -9,8 +9,8 @@
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="52"/>
-        <CursorPos X="61" Y="55"/>
+        <TopLine Value="59"/>
+        <CursorPos X="41" Y="78"/>
         <UsageCount Value="23"/>
         <Loaded Value="True"/>
       </Unit>
@@ -29,7 +29,7 @@
         <UsageCount Value="10"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="14">
+    <JumpHistory HistoryIndex="17">
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="28" Column="22" TopLine="6"/>
@@ -89,6 +89,18 @@
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="24" Column="54" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="42" Column="54" TopLine="54"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="36" Column="6" TopLine="28"/>
+      </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="30" Column="16" TopLine="16"/>
       </Position>
     </JumpHistory>
     <RunParams>

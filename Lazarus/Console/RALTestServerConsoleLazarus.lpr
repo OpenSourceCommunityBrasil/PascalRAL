@@ -3,7 +3,7 @@ program RALTestServerConsoleLazarus;
 {$mode objfpc}{$H+}
 
 uses
- {$IFDEF UNIX} cthreads,  {$ENDIF}
+  {$IFDEF UNIX} cthreads,  {$ENDIF}
   Classes,
   SysUtils,
   CustApp,
@@ -34,18 +34,17 @@ type
 
   procedure TRALApplication.Run;
   var
-    ErrorMsg: string;
     input: string;
   begin
     while not (input = 'exit') do
     begin
-      WriteLn('Server online on port 8083');
+      WriteLn('Server online on port ' + FServer.Port.ToString);
       WriteLn('type exit to close');
       ReadLn(input);
     end;
   end;
 
-    procedure TRALApplication.Ping(Request: TRALRequest; Response: TRALResponse);
+  procedure TRALApplication.Ping(Request: TRALRequest; Response: TRALResponse);
   begin
     Response.Answer(200, 'pong');
   end;

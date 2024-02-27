@@ -8,9 +8,8 @@
       <Unit>
         <Filename Value="TestServer.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="2"/>
-        <CursorPos X="16" Y="19"/>
-        <UsageCount Value="80"/>
+        <CursorPos X="45" Y="21"/>
+        <UsageCount Value="81"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -21,10 +20,10 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Main"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="1"/>
         <TopLine Value="211"/>
-        <CursorPos X="45" Y="219"/>
-        <UsageCount Value="80"/>
+        <CursorPos X="59" Y="235"/>
+        <UsageCount Value="81"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -32,11 +31,10 @@
         <Filename Value="uroutes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uRoutes"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="2"/>
         <CursorPos X="25" Y="19"/>
-        <UsageCount Value="51"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="52"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>
@@ -285,65 +283,20 @@
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="201"/>
         <CursorPos X="30" Y="214"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="12">
+    <JumpHistory HistoryIndex="1">
       <Position>
-        <Filename Value="TestServer.lpr"/>
-        <Caret Line="28" TopLine="2"/>
-      </Position>
-      <Position>
-        <Filename Value="TestServer.lpr"/>
-        <Caret Line="17" Column="41" TopLine="2"/>
-      </Position>
-      <Position>
-        <Filename Value="TestServer.lpr"/>
-        <Caret Line="28" TopLine="2"/>
-      </Position>
-      <Position>
-        <Filename Value="TestServer.lpr"/>
-        <Caret Line="19" Column="16" TopLine="2"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <Caret Line="309" Column="53" TopLine="287"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <Caret Line="311" Column="46" TopLine="287"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <Caret Line="139" Column="26" TopLine="134"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <Caret Line="34" Column="23" TopLine="23"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL\src\database\RALDBWare.pas"/>
-        <Caret Line="214" Column="30" TopLine="201"/>
-      </Position>
-      <Position>
-        <Filename Value="uroutes.pas"/>
-        <Caret Line="19" Column="25" TopLine="2"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="202" Column="49" TopLine="184"/>
       </Position>
       <Position>
         <Filename Value="main.pas"/>
-        <Caret Line="68" Column="22" TopLine="54"/>
-      </Position>
-      <Position>
-        <Filename Value="main.pas"/>
-        <Caret Line="227" Column="29" TopLine="215"/>
-      </Position>
-      <Position>
-        <Filename Value="main.pas"/>
-        <Caret Line="68" Column="16" TopLine="68"/>
+        <Caret Line="65" Column="19" TopLine="56"/>
       </Position>
     </JumpHistory>
     <RunParams>

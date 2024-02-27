@@ -86,7 +86,7 @@ begin
   begin
     if FServer.Active then
     begin
-      FServer.Active := False;
+      FServer.Stop;
       Sleep(500);
     end;
     FreeAndNil(FServer);
@@ -126,7 +126,7 @@ begin
     end
     else if FServer.Active then
     begin
-      FServer.Active := False;
+      FServer.Stop;
       FreeAndNil(FServer);
       bStart.Caption := 'Start Server';
     end;
@@ -189,7 +189,7 @@ begin
     FServer.OnResponse := @LogResponse;
   end;
 
-  FServer.Active := True;
+  FServer.Start;
 end;
 
 procedure TForm1.ClearControls(AControlName: array of TComponent);

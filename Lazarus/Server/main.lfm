@@ -8,7 +8,6 @@ object Form1: TForm1
   ClientWidth = 485
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '2.2.6.0'
   object PageControl1: TPageControl
     Left = 0
     Height = 433
@@ -49,8 +48,8 @@ object Form1: TForm1
           Top = 8
           Width = 75
           Caption = 'Add'
-          OnClick = bAddClick
           TabOrder = 1
+          OnClick = bAddClick
         end
         object bDelete: TButton
           Left = 400
@@ -86,7 +85,7 @@ object Form1: TForm1
           Height = 105
           Top = 8
           Width = 185
-          Caption = 'GroupBox4'
+          Caption = 'Skip Authentication'
           ClientHeight = 85
           ClientWidth = 181
           TabOrder = 4
@@ -94,7 +93,7 @@ object Form1: TForm1
             Left = 8
             Height = 19
             Top = 8
-            Width = 40
+            Width = 38
             Caption = 'GET'
             TabOrder = 0
           end
@@ -102,7 +101,7 @@ object Form1: TForm1
             Left = 8
             Height = 19
             Top = 32
-            Width = 48
+            Width = 46
             Caption = 'POST'
             TabOrder = 1
           end
@@ -110,7 +109,7 @@ object Form1: TForm1
             Left = 8
             Height = 19
             Top = 56
-            Width = 41
+            Width = 39
             Caption = 'PUT'
             TabOrder = 2
           end
@@ -118,7 +117,7 @@ object Form1: TForm1
             Left = 80
             Height = 19
             Top = 8
-            Width = 58
+            Width = 56
             Caption = 'PATCH'
             TabOrder = 3
           end
@@ -126,7 +125,7 @@ object Form1: TForm1
             Left = 80
             Height = 19
             Top = 32
-            Width = 58
+            Width = 56
             Caption = 'DELETE'
             TabOrder = 4
           end
@@ -134,7 +133,7 @@ object Form1: TForm1
             Left = 80
             Height = 19
             Top = 56
-            Width = 40
+            Width = 38
             Caption = 'ALL'
             TabOrder = 5
           end
@@ -155,8 +154,8 @@ object Form1: TForm1
           Top = 5
           Width = 128
           Caption = 'Start Server'
-          OnClick = bStartClick
           TabOrder = 0
+          OnClick = bStartClick
         end
       end
       object sgRoutes: TStringGrid
@@ -209,7 +208,7 @@ object Form1: TForm1
               Left = 8
               Height = 19
               Top = 48
-              Width = 83
+              Width = 81
               Caption = 'Enable Log?'
               TabOrder = 1
             end
@@ -360,7 +359,7 @@ object Form1: TForm1
               Left = 8
               Height = 19
               Top = 48
-              Width = 65
+              Width = 63
               Caption = 'Use SSL?'
               TabOrder = 3
             end
