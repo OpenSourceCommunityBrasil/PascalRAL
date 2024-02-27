@@ -62,10 +62,10 @@ implementation
 
 { TRALSynopseServer }
 
-procedure TRALSynopseServer.SetActive(const AValue : boolean);
+procedure TRALSynopseServer.SetActive(const AValue: boolean);
 var
   vAddr: StringRAL;
-  vOptions : THttpServerOptions;
+  vOptions: THttpServerOptions;
 begin
   if AValue = Active then
     Exit;
@@ -86,17 +86,18 @@ begin
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
-    FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '',
-                                     FPoolCount, SessionTimeout, vOptions);
+    FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := FQueueSize;
     FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';
-//    FHttp.RegisterCompressGzStatic := True;
+    //    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then
     begin
-      with SSL as TRALSynopseSSL do begin
-        FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile, PrivateKeyPassword, CACertificatesFile);
+      with SSL as TRALSynopseSSL do
+      begin
+        FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile,
+          PrivateKeyPassword, CACertificatesFile);
         FHttp.InitializeTlsAfterBind;
       end;
     end
@@ -169,7 +170,7 @@ procedure TRALSynopseServer.DecodeAuth(AResult: TRALRequest);
 var
   vStr, vAux: StringRAL;
   vInt: IntegerRAL;
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   if Authentication = nil then
     Exit;
@@ -178,9 +179,11 @@ begin
   AResult.Authorization.AuthString := '';
 
   vParam := AResult.Params.GetKind['Authorization', rpkHEADER];
-  if not vParam.IsNilOrEmpty then begin
+  if not vParam.IsNilOrEmpty then
+  begin
     vStr := vParam.AsString;
-    if vStr <> '' then begin
+    if vStr <> '' then
+    begin
       vInt := Pos(' ', vStr);
       vAux := Trim(Copy(vStr, 1, vInt - 1));
       if SameText(vAux, 'Basic') then
@@ -218,18 +221,18 @@ begin
       ContentSize := Length(AContext.InContent);
 
       Query := AContext.Url;
-      Params.AppendParamsUrl(AContext.Url,rpkQUERY);
+      Params.AppendParamsUrl(AContext.Url, rpkQUERY);
 
       Method := HTTPMethodToRALMethod(AContext.Method);
 
-      Params.AppendParamsListText(AContext.InHeaders,rpkHEADER);
+      Params.AppendParamsListText(AContext.InHeaders, rpkHEADER);
       DecodeAuth(vRequest);
 
       ContentEncoding := Params.Get['Content-Encoding'].AsString;
       AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
       ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;
 
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
