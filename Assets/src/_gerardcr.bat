@@ -13,6 +13,7 @@ if NOT EXIST %path_brcc32% (
 %path_brcc32% -fo "..\..\pkg\Delphi\NetHttpRAL.dcr" "NetHttp.rc"
 %path_brcc32% -fo "..\..\pkg\Delphi\SynopseRAL.dcr" "Synopse.rc"
 %path_brcc32% -fo "..\..\pkg\Delphi\UniGUIRAL.dcr" "UniGUI.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\BrookRAL.dcr" "Brook.rc"
 
 # DBWare
 %path_brcc32% -fo "..\..\pkg\Delphi\DBLinks\RALDBFireDACLink.dcr" "DBFireDACLink.rc"
