@@ -85,6 +85,8 @@ type
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Returns a copy of the current TRALClient object
+    function Clone: TRALClient;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL;
     /// Defines method on the client: Get.
@@ -181,6 +183,27 @@ begin
   finally
     FreeAndNil(vParams);
   end;
+end;
+
+function TRALClient.Clone: TRALClient;
+begin
+  Result := TRALClient.Create(nil);
+  Result.FAuthentication := Self.FAuthentication;
+  Result.FBaseURL := self.FBaseURL;
+  result.FConnectTimeout := Self.FConnectTimeout;
+  Result.FRequestTimeout := self.FRequestTimeout;
+  Result.FResponseCode := self.FResponseCode;
+  Result.FResponseError := self.FResponseError;
+  Result.FUseSSL := Self.FUseSSL;
+  Result.FUserAgent := Self.UserAgent;
+  Result.FEngine := Self.FEngine;
+  Result.FKeepAlive := Self.FKeepAlive;
+  Result.FCompressType := self.FCompressType;
+  Result.FCriptoOptions := self.FCriptoOptions;
+  Result.FLastRoute := Result.FLastRoute;
+  Result.FLastRequest := Result.FLastRequest;
+  Result.FLastResponse := Result.FLastResponse;
+  Result.FLastResponseStream := Result.FLastResponseStream;
 end;
 
 constructor TRALClient.Create(AOwner: TComponent);
