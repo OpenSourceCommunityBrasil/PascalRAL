@@ -203,11 +203,12 @@ begin
   Result.FEngine := Self.FEngine;
   Result.FKeepAlive := Self.FKeepAlive;
   Result.FCompressType := Self.FCompressType;
-  Result.FCriptoOptions := Self.FCriptoOptions;
-  Result.FLastRoute := Result.FLastRoute;
-  Result.FLastRequest := Result.FLastRequest;
-  Result.FLastResponse := Result.FLastResponse;
-  Result.FLastResponseStream := Result.FLastResponseStream;
+
+  Result.FCriptoOptions := TRALCriptoOptions.Create;
+  Result.FCriptoOptions.CriptType := Self.FCriptoOptions.CriptType;
+  Result.FCriptoOptions.Key := Self.FCriptoOptions.Key;
+
+  Result.FLastRoute := Self.FLastRoute;
 end;
 
 constructor TRALClient.Create(AOwner: TComponent);
@@ -237,9 +238,6 @@ end;
 
 destructor TRALClient.Destroy;
 begin
-  if Assigned(FAuthentication) then
-    FreeAndNil(FAuthentication);
-
   FreeAndNil(FLastRequest);
   FreeAndNil(FLastResponse);
   FreeAndNil(FCriptoOptions);
