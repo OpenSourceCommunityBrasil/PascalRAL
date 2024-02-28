@@ -87,7 +87,7 @@ type
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Returns a copy of the current TRALClient object
-    function Clone(AOwner: TComponent): TRALClient; virtual;
+    procedure Clone(ADest: TRALClient);
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL;
     /// Defines method on the client: Get.
@@ -186,29 +186,25 @@ begin
   end;
 end;
 
-function TRALClient.Clone(AOwner: TComponent): TRALClient;
+procedure TRALClient.Clone(ADest: TRALClient);
 begin
-  if Assigned(AOwner) then
-    Result := TRALClient.Create(AOwner)
-  else
-    Result := TRALClient.Create(Self.Owner);
-  Result.FAuthentication := Self.FAuthentication;
-  Result.FBaseURL := Self.FBaseURL;
-  Result.FConnectTimeout := Self.FConnectTimeout;
-  Result.FRequestTimeout := Self.FRequestTimeout;
-  Result.FResponseCode := Self.FResponseCode;
-  Result.FResponseError := Self.FResponseError;
-  Result.FUseSSL := Self.FUseSSL;
-  Result.FUserAgent := Self.UserAgent;
-  Result.FEngine := Self.FEngine;
-  Result.FKeepAlive := Self.FKeepAlive;
-  Result.FCompressType := Self.FCompressType;
+  ADest.FAuthentication := Self.FAuthentication;
+  ADest.FBaseURL := Self.FBaseURL;
+  ADest.FConnectTimeout := Self.FConnectTimeout;
+  ADest.FRequestTimeout := Self.FRequestTimeout;
+  ADest.FResponseCode := Self.FResponseCode;
+  ADest.FResponseError := Self.FResponseError;
+  ADest.FUseSSL := Self.FUseSSL;
+  ADest.FUserAgent := Self.UserAgent;
+  ADest.FEngine := Self.FEngine;
+  ADest.FKeepAlive := Self.FKeepAlive;
+  ADest.FCompressType := Self.FCompressType;
 
-  Result.FCriptoOptions := TRALCriptoOptions.Create;
-  Result.FCriptoOptions.CriptType := Self.FCriptoOptions.CriptType;
-  Result.FCriptoOptions.Key := Self.FCriptoOptions.Key;
+  ADest.FCriptoOptions := TRALCriptoOptions.Create;
+  ADest.FCriptoOptions.CriptType := Self.FCriptoOptions.CriptType;
+  ADest.FCriptoOptions.Key := Self.FCriptoOptions.Key;
 
-  Result.FLastRoute := Self.FLastRoute;
+  ADest.FLastRoute := Self.FLastRoute;
 end;
 
 constructor TRALClient.Create(AOwner: TComponent);

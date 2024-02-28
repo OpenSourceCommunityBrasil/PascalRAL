@@ -20,9 +20,10 @@ type
     procedure SetUseSSL(const Value: boolean); override;
     procedure SetConnectTimeout(const AValue: IntegerRAL); override;
     procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUserAgent(const AValue : StringRAL); override;
+    procedure SetUserAgent(const AValue: StringRAL); override;
 
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
+    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
+      : IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -35,9 +36,12 @@ implementation
 
 function TRALIndyClient.Clone(AOwner: TComponent): TRALIndyClient;
 begin
-  Result := TRALIndyClient(inherited Clone(AOwner));
-  Result.FHttp := Self.FHttp;
-  Result.FHandlerSSL := self.FHandlerSSL;
+  if Assigned(AOwner) then
+    Result := TRALIndyClient.Create(AOwner)
+  else
+    Result := TRALIndyClient.Create(Self.Owner);
+
+    inherited Clone(Result);
 end;
 
 constructor TRALIndyClient.Create(AOwner: TComponent);
@@ -55,12 +59,13 @@ begin
   inherited;
 end;
 
-function TRALIndyClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
+function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
+  : IntegerRAL;
 var
-  vSource, vResult : TStream;
-  vContentType : StringRAL;
-  vFree : boolean;
-  vInt : Integer;
+  vSource, vResult: TStream;
+  vContentType: StringRAL;
+  vFree: boolean;
+  vInt: Integer;
 begin
   inherited;
   FHttp.Request.Clear;
@@ -103,14 +108,22 @@ begin
     vResult := TStringStream.Create;
     try
       case AMethod of
-        amGET     : FHttp.Get(AURL, vResult);
-        amPOST    : FHttp.Post(AURL, vSource, vResult);
-        amPUT     : FHttp.Put(AURL, vSource, vResult);
-        amPATCH   : FHttp.Patch(AURL, vSource, vResult);
-        amDELETE  : FHttp.Delete(AURL, vResult);
-        amTRACE   : FHttp.Trace(AURL, vResult);
-        amHEAD    : FHttp.Head(AURL);
-        amOPTIONS : FHttp.Options(AURL, vResult);
+        amGET:
+          FHttp.Get(AURL, vResult);
+        amPOST:
+          FHttp.Post(AURL, vSource, vResult);
+        amPUT:
+          FHttp.Put(AURL, vSource, vResult);
+        amPATCH:
+          FHttp.Patch(AURL, vSource, vResult);
+        amDELETE:
+          FHttp.Delete(AURL, vResult);
+        amTRACE:
+          FHttp.Trace(AURL, vResult);
+        amHEAD:
+          FHttp.Head(AURL);
+        amOPTIONS:
+          FHttp.Options(AURL, vResult);
       end;
       Response.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
       Response.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
@@ -147,7 +160,7 @@ begin
   FHttp.ReadTimeout := AValue;
 end;
 
-procedure TRALIndyClient.SetUserAgent(const AValue : StringRAL);
+procedure TRALIndyClient.SetUserAgent(const AValue: StringRAL);
 begin
   inherited;
   FHttp.Request.UserAgent := AValue;
