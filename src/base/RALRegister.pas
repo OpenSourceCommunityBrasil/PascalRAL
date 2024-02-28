@@ -10,11 +10,12 @@ uses
   {$IFDEF DELPHI2005UP}
   ToolsAPI,
   {$ENDIF}
-  {$IFDEF RALWindows}
+  {$IFDEF MSWINDOWS}
   Windows,
   {$ENDIF}
   Classes, SysUtils,
-  RALConsts, RALAuthentication, RALWebModule;
+  RALConsts, RALAuthentication, RALDBModule, RALStorageBIN, RALStorageJSON,
+  RALWebModule;
 
 procedure Register;
 
@@ -42,8 +43,10 @@ begin
       RALPACKAGENAME + sLineBreak + sLineBreak + RALPACKAGESITE,
       loadbitmap(HInstance, RALPACKAGESHORT), false, RALPACKAGELICENSE);
   {$ENDIF}
-  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth, TRALWebModule]);
-  RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
+  RegisterComponents('RAL - ServerAuths', [TRALServerBasicAuth, TRALServerJWTAuth]);
+  RegisterComponents('RAL - ClientAuths', [TRALClientBasicAuth, TRALClientJWTAuth]);
+  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALStorageJSONLink, TRALStorageBINLink]);
+  RegisterComponents('RAL - Modules', [TRALWebModule]);
 end;
 
 {$IFDEF FPC}

@@ -30,7 +30,7 @@ package RALDBFireDACLink;
 
 requires
   rtl,
-  PascalRAL,
+  PascalRALDsgn,
   FireDAC,
   FireDACCommonDriver,
   FireDACCommon,
