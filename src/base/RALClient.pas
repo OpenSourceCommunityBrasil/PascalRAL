@@ -6,7 +6,8 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALAuthentication, RALJson, RALTools, RALParams,
-  RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream;
+  RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream,
+  RALResponse, RALRequest;
 
 type
 
@@ -29,8 +30,8 @@ type
     FCriptoOptions: TRALCriptoOptions;
 
     FLastRoute: StringRAL;
-    FLastRequest: TRALHTTPHeaderInfo;
-    FLastResponse: TRALHTTPHeaderInfo;
+    FLastRequest: TRALRequest;
+    FLastResponse: TRALResponse;
     FLastResponseStream: TStream;
   protected
     /// allows manipulation of params before executing request.
@@ -100,8 +101,8 @@ type
     /// Sets the baseURL of client.
     function SetRoute(ARoute: StringRAL): TRALClient;
 
-    property Request: TRALHTTPHeaderInfo read FLastRequest;
-    property Response: TRALHTTPHeaderInfo read FLastResponse;
+    property Request: TRALRequest read FLastRequest;
+    property Response: TRALResponse read FLastResponse;
     /// StatusCode of the response.
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
@@ -213,8 +214,8 @@ constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAuthentication := nil;
-  FLastRequest := TRALHTTPHeaderInfo.Create;
-  FLastResponse := TRALHTTPHeaderInfo.Create;
+  FLastRequest := TRALRequest.Create;
+  FLastResponse := TRALResponse.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
   FLastResponseStream := nil;
 
@@ -546,8 +547,7 @@ begin
     TRALClientJWTAuth(Authentication).Token := '';
 end;
 
-function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
-  : IntegerRAL;
+function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL;
 begin
   Result := -1;
 end;
