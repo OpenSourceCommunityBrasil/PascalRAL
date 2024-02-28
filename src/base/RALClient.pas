@@ -86,7 +86,7 @@ type
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Returns a copy of the current TRALClient object
-    function Clone: TRALClient;
+    function Clone: TRALClient; virtual;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL;
     /// Defines method on the client: Get.
@@ -187,7 +187,7 @@ end;
 
 function TRALClient.Clone: TRALClient;
 begin
-  Result := TRALClient.Create(nil);
+  Result := TRALClient.Create(Self.Owner);
   Result.FAuthentication := Self.FAuthentication;
   Result.FBaseURL := self.FBaseURL;
   result.FConnectTimeout := Self.FConnectTimeout;

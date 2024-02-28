@@ -26,11 +26,19 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function Clone: TRALIndyClient;
   end;
 
 implementation
 
 { TRALIndyClient }
+
+function TRALIndyClient.Clone: TRALIndyClient;
+begin
+  Result := TRALIndyClient(inherited Clone);
+  Result.FHttp := Self.FHttp;
+  Result.FHandlerSSL := self.FHandlerSSL;
+end;
 
 constructor TRALIndyClient.Create(AOwner: TComponent);
 begin

@@ -22,11 +22,18 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function Clone: TRALnetHTTPClient;
   end;
 
 implementation
 
 { TRALnetHTTPClient }
+function TRALnetHTTPClient.Clone: TRALnetHTTPClient;
+begin
+  Result := TRALnetHTTPClient(inherited Clone);
+  Result.FHttp := Self.FHttp;
+end;
+
 constructor TRALnetHTTPClient.Create(AOwner: TComponent);
 begin
   inherited;
