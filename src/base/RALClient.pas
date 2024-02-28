@@ -86,7 +86,7 @@ type
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Returns a copy of the current TRALClient object
-    function Clone: TRALClient; virtual;
+    function Clone(AOwner: TComponent): TRALClient; virtual;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL;
     /// Defines method on the client: Get.
@@ -185,21 +185,24 @@ begin
   end;
 end;
 
-function TRALClient.Clone: TRALClient;
+function TRALClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  Result := TRALClient.Create(Self.Owner);
+  if Assigned(AOwner) then
+    Result := TRALClient.Create(AOwner)
+  else
+    Result := TRALClient.Create(Self.Owner);
   Result.FAuthentication := Self.FAuthentication;
-  Result.FBaseURL := self.FBaseURL;
-  result.FConnectTimeout := Self.FConnectTimeout;
-  Result.FRequestTimeout := self.FRequestTimeout;
-  Result.FResponseCode := self.FResponseCode;
-  Result.FResponseError := self.FResponseError;
+  Result.FBaseURL := Self.FBaseURL;
+  Result.FConnectTimeout := Self.FConnectTimeout;
+  Result.FRequestTimeout := Self.FRequestTimeout;
+  Result.FResponseCode := Self.FResponseCode;
+  Result.FResponseError := Self.FResponseError;
   Result.FUseSSL := Self.FUseSSL;
   Result.FUserAgent := Self.UserAgent;
   Result.FEngine := Self.FEngine;
   Result.FKeepAlive := Self.FKeepAlive;
-  Result.FCompressType := self.FCompressType;
-  Result.FCriptoOptions := self.FCriptoOptions;
+  Result.FCompressType := Self.FCompressType;
+  Result.FCriptoOptions := Self.FCriptoOptions;
   Result.FLastRoute := Result.FLastRoute;
   Result.FLastRequest := Result.FLastRequest;
   Result.FLastResponse := Result.FLastResponse;
