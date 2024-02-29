@@ -25,7 +25,7 @@ type
                           sftBlob, sftMemo, sftDateTime);
 
 
-  TRALDBStorage = class(TRALComponent)
+  TRALDBStorage = class(TPersistent)
   private
     FStream : TStream;
   protected
@@ -61,22 +61,93 @@ type
     procedure WriteRecordMemo(AValue : TStream); virtual; abstract;
 
     // read
+    procedure BeginRead; virtual; abstract;
+    function BeginReadFields : IntegerRAL; virtual; abstract;
+    procedure ReadField(ADataset : TDataSet); virtual; abstract;
+    procedure EndReadFields; virtual; abstract;
+    function BeginReadRecords : Int64RAL; virtual; abstract;
+    procedure ReadRecordField(ADataset : TDataSet; AField : IntegerRAL); virtual; abstract;
+    procedure EndReadRecords; virtual; abstract;
+    procedure EndRead; virtual; abstract;
 
     // outhers
-    function GetContentType: StringRAL; virtual; abstract;
     property Stream : TStream read FStream;
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream);
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
-  published
-    property ContentType: StringRAL read GetContentType;
+
+    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream);
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
 
+  TRALDBStorageLink = class(TRALComponent)
+  protected
+    function GetContentType: StringRAL; virtual;
+  public
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
+    function SaveToStream(ADataset: TDataSet): TStream; overload;
+    procedure SaveToFile(ADataset: TDataSet; AFileName: string);
+
+    procedure LoadFromFile(ADataset: TDataSet; AFileName: string); overload;
+
+    class function GetStorageClass : TRALDBStorageClass; virtual;
+
+    property ContentType: StringRAL read GetContentType;
+  end;
+
+  TRALDBStorageClassLink = class of TRALDBStorageLink;
+
 implementation
 
 { TRALDBStorage }
+
+procedure TRALDBStorage.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+var
+  vInt, vFields: IntegerRAL;
+  vInt64, vRecords: Int64RAL;
+begin
+  BeginRead;
+  vFields := BeginReadFields;
+  if vFields > 0 then
+  begin
+    for vInt := 0 to Pred(vFields) do
+      ReadField(ADataset);
+  end
+  else
+  begin
+    vFields := 0;
+    while not ReadFieldEof(ADataset) do
+      vFields := vFields + 1;
+  end;
+  EndReadFields;
+
+  vRecords := BeginReadRecords;
+  if vRecords > 0 then
+  begin
+    vInt64 := 0;
+    while vInt64 < vRecords do
+    begin
+      ADataset.Append;
+      for vInt := 0 to Pred(vFields) do
+        ReadRecordField(ADataset, vInt);
+      ADataset.Post;
+      vInt64 := vInt64 + 1;
+    end;
+  end
+  else
+  begin
+//    repeat
+//      ReadFieldEof(ADataset) do
+
+
+//    until ;
+  end;
+  ADataset.First;
+
+  EndReadRecords;
+  EndRead;
+end;
 
 procedure TRALDBStorage.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 var
@@ -320,6 +391,84 @@ begin
   }
     end;
   end;
+end;
+
+{ TRALDBStorageLink }
+
+function TRALDBStorageLink.GetContentType: StringRAL;
+var
+  vClassStor: TRALDBStorageClassLink;
+  vStor: TRALDBStorageLink;
+begin
+  if Self = nil then
+  begin
+    vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageBINLink'));
+    if vClassStor = nil then
+      vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageJSONLink'));
+
+    if vClassStor <> nil then
+    begin
+      vStor := vClassStor.Create(nil);
+      try
+        Result := vStor.ContentType;
+      finally
+        FreeAndNil(vStor);
+      end;
+    end
+    else
+    begin
+      raise Exception.Create('TRALStorageLink not found');
+    end;
+  end;
+end;
+
+class function TRALDBStorageLink.GetStorageClass: TRALDBStorageClass;
+var
+  vClassStor: TRALDBStorageClassLink;
+begin
+  vClassStor := TRALDBStorageClassLink(FindClass('TRALDBStorageBINLink'));
+  if vClassStor = nil then
+    vClassStor := TRALDBStorageClassLink(FindClass('TRALDBStorageJSONLink'));
+
+  if vClassStor <> nil then
+    Result := vClassStor.GetStorageClass
+  else
+    Result := nil;
+end;
+
+procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: string);
+begin
+
+end;
+
+procedure TRALDBStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
+var
+  vStor: TRALDBStorage;
+begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.SaveToStream(ADataset, AStream);
+  finally
+    FreeAndNil(vStor);
+  end;
+end;
+
+procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: string);
+var
+  vStor: TRALDBStorage;
+begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.SaveToFile(ADataset, AFileName);
+  finally
+    FreeAndNil(vStor);
+  end;
+end;
+
+function TRALDBStorageLink.SaveToStream(ADataset: TDataSet): TStream;
+begin
+  Result := TMemoryStream.Create;
+  SaveToStream(ADataset, Result);
 end;
 
 end.

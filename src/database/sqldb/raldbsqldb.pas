@@ -24,9 +24,14 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function Open(ASQL : string; AParams : TParams) : TDataset; override;
+    function OpenNative(ASQL : string; AParams : TParams) : TDataset; override;
+    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
+    function GetDriverName: StringRAL; override;
+
+    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
+                             AFormat: TRALFormatStorage); override;
   end;
 
   { TRALDBSQLDBLink }
@@ -73,6 +78,11 @@ begin
   end;
 end;
 
+function TRALDBSQLDB.GetDriverName: StringRAL;
+begin
+  Result := 'laz_sqldb';
+end;
+
 constructor TRALDBSQLDB.Create;
 begin
   FConnector := TSQLConnector.Create(nil);
@@ -89,7 +99,38 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBSQLDB.Open(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBSQLDB.OpenNative(ASQL : string; AParams : TParams) : TDataset;
+var
+  vQuery : TSQLQuery;
+  vInt : integer;
+begin
+  Result := nil;
+
+  Conectar;
+
+  vQuery := TSQLQuery.Create(nil);
+  vQuery.UniDirectional := True;
+  vQuery.DataBase := FConnector;
+  vQuery.Close;
+  vQuery.SQL.Text := ASQL;
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+  end;
+  vQuery.Open;
+
+  Result := vQuery;
+end;
+
+procedure TRALDBSQLDB.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+  AFormat: TRALFormatStorage);
+begin
+  inherited;
+  // todo
+end;
+
+function TRALDBSQLDB.OpenCompatible(ASQL : string; AParams : TParams) : TDataset;
 var
   vQuery : TSQLQuery;
   vInt : integer;

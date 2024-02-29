@@ -21,7 +21,7 @@ type
     FPort: IntegerRAL;
 
     FDatabaseType: TRALDatabaseType;
-    FStorageOutPut: TRALDBStorage;
+    FStorageOutPut: TRALDBStorageLink;
   protected
     procedure Conectar; virtual; abstract;
   public
@@ -43,7 +43,7 @@ type
     property Port: IntegerRAL read FPort write FPort;
 
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property StorageOutPut: TRALDBStorage read FStorageOutPut write FStorageOutPut;
+    property StorageOutPut: TRALDBStorageLink read FStorageOutPut write FStorageOutPut;
     property DriverName : StringRAL read GetDriverName;
   end;
 
