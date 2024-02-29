@@ -21,9 +21,13 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function Open(ASQL : StringRAL; AParams : TParams) : TDataset; override;
+    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
+    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
+    function GetDriverName: StringRAL; override;
+    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
+                             AFormat: TRALFormatStorage); override;
   end;
 
   { TRALDBZeosLink }
@@ -70,6 +74,11 @@ begin
   end;
 end;
 
+function TRALDBZeos.GetDriverName: StringRAL;
+begin
+  Result := 'zeos';
+end;
+
 constructor TRALDBZeos.Create;
 begin
   FConnector := TZConnection.Create(nil);
@@ -81,7 +90,38 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBZeos.Open(ASQL : StringRAL; AParams : TParams) : TDataset;
+function TRALDBZeos.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;
+var
+  vQuery : TZReadOnlyQuery;
+  vInt : integer;
+begin
+  Result := nil;
+
+  Conectar;
+
+  vQuery := TZReadOnlyQuery.Create(nil);
+  vQuery.IsUniDirectional := True;
+  vQuery.Connection := FConnector;
+  vQuery.Close;
+  vQuery.SQL.Text := ASQL;
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+  end;
+  vQuery.Open;
+
+  Result := vQuery;
+end;
+
+procedure TRALDBZeos.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+  AFormat: TRALFormatStorage);
+begin
+  inherited;
+  // todo
+end;
+
+function TRALDBZeos.OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
   vQuery : TZReadOnlyQuery;
   vInt : integer;

@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALJSON, RALStorage, RALBase64;
+  RALConsts, RALTypes, RALJSON, RALDBStorage, RALBase64;
 
 type
   { TRALDBModule }
@@ -20,15 +20,17 @@ type
 
     FDataBaseLink: TRALDBLink;
     FDatabaseType: TRALDatabaseType;
-    FStorageOutPut: TRALStorageLink;
+    FStorageOutPut: TRALDBStorage;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetDataBaseLink(AValue: TRALDBLink);
-    procedure SetStorageOutPut(AValue: TRALStorageLink);
+    procedure SetStorageOutPut(AValue: TRALDBStorage);
 
     function FindDatabaseDriver: TRALDBBase;
-    procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL; var AParams: TParams);
-    procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL; var AParams: TParams);
+    procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
+                                  var AParams: TParams; var AType : StringRAL);
+    procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
+                                    var AParams: TParams; var AType : StringRAL);
 
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -43,14 +45,14 @@ type
 
     property DataBaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property StorageOutPut: TRALStorageLink read FStorageOutPut write SetStorageOutPut;
+    property StorageOutPut: TRALDBStorage read FStorageOutPut write SetStorageOutPut;
   end;
 
 implementation
 
 { TRALDBModule }
 
-procedure TRALDBModule.SetStorageOutPut(AValue: TRALStorageLink);
+procedure TRALDBModule.SetStorageOutPut(AValue: TRALDBStorage);
 begin
   if AValue <> FStorageOutPut then
     FStorageOutPut := AValue;
@@ -106,7 +108,7 @@ begin
 end;
 
 procedure TRALDBModule.RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-  var AParams: TParams);
+                                           var AParams: TParams; var AType : StringRAL);
 var
   vJSON, vObj: TRALJSONObject;
   vParams: TRALJSONArray;
@@ -115,6 +117,7 @@ var
 begin
   vJSON := TRALJSONObject(TRALJSON.ParseJSON(ARALParam.AsString));
   try
+    AType := vJSON.Get('type').AsString;
     ASQL := vJSON.Get('sql').AsString;
 
     AParams := TParams.Create(nil);
@@ -135,7 +138,7 @@ begin
 end;
 
 procedure TRALDBModule.RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-  var AParams: TParams);
+                                             var AParams: TParams; var AType : StringRAL);
 var
   vStream: TStream;
   vParam: TParam;
@@ -186,6 +189,7 @@ procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
   vParam: TRALParam;
+  vType : StringRAL;
   vSQL: StringRAL;
   vParams: TParams;
   vQuery: TDataSet;
@@ -212,12 +216,15 @@ begin
 
         try
           if vParam.ContentType = rctAPPLICATIONJSON then
-            RALParamJSONToQuery(vParam, vSQL, vParams)
+            RALParamJSONToQuery(vParam, vSQL, vParams, vType)
           else
-            RALParamBinaryToQuery(vParam, vSQL, vParams);
+            RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
 
           try
-            vQuery := vDB.Open(vSQL, vParams);
+            if SameText(vType, vDB.DriverName) then
+              vQuery := vDB.OpenNative(vSQL, vParams)
+            else
+              vQuery := vDB.OpenCompatible(vSQL, vParams);
           except
             on e: Exception do
             begin
@@ -233,10 +240,18 @@ begin
               vString := Format('{"erro":"%s"}', [vString]);
               vResult.Write(vString[PosIniStr], Length(vString));
             end
+            else if SameText(vType, vDB.DriverName) then
+            begin
+              AResponse.ContentType := vParam.ContentType;
+              if vParam.ContentType = rctAPPLICATIONJSON then
+                vDB.SaveFromStream(vQuery, vResult, fsJSON)
+              else
+                vDB.SaveFromStream(vQuery, vResult, fsBIN);
+            end
             else
             begin
               AResponse.ContentType := FStorageOutPut.ContentType;
-              FStorageOutPut.SaveDataset(vQuery, vResult);
+              FStorageOutPut.SaveToStream(vQuery, vResult);
             end;
             vResult.Position := 0;
             AResponse.ResponseStream := vResult;
@@ -262,6 +277,7 @@ procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
   vParam: TRALParam;
+  vType: StringRAL;
   vSQL: StringRAL;
   vParams: TParams;
   vString: StringRAL;
@@ -285,9 +301,9 @@ begin
         vLastId := 0;
         try
           if vParam.ContentType = rctAPPLICATIONJSON then
-            RALParamJSONToQuery(vParam, vSQL, vParams)
+            RALParamJSONToQuery(vParam, vSQL, vParams, vType)
           else
-            RALParamBinaryToQuery(vParam, vSQL, vParams);
+            RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
 
           try
             vDB.ExecSQL(vSQL, vParams, vRowsAffect, vLastId);

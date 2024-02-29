@@ -6,7 +6,8 @@ uses
   Classes, SysUtils, DB,
   FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI,
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
-  FireDAC.Phys.PG,
+  FireDAC.Phys.PG, Firedac.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
+  FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
   RALDBBase, RALTypes;
 
 type
@@ -23,9 +24,14 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function Open(ASQL : StringRAL; AParams : TParams) : TDataset; override;
+    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
+    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
+    function GetDriverName: StringRAL; override;
+
+    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
+                             AFormat: TRALFormatStorage); override;
   end;
 
   { TRALDBFireDACLink }
@@ -69,6 +75,11 @@ begin
   end;
 end;
 
+function TRALDBFireDAC.GetDriverName: StringRAL;
+begin
+  Result := 'firedac';
+end;
+
 constructor TRALDBFireDAC.Create;
 begin
   inherited;
@@ -81,7 +92,7 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBFireDAC.Open(ASQL : StringRAL; AParams : TParams) : TDataset;
+function TRALDBFireDAC.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
   vQuery : TFDQuery;
   vInt : integer;
@@ -103,6 +114,43 @@ begin
   vQuery.Open;
 
   Result := vQuery;
+end;
+
+function TRALDBFireDAC.OpenNative(ASQL: StringRAL; AParams: TParams): TDataset;
+var
+  vQuery : TFDQuery;
+  vInt : integer;
+begin
+  Result := nil;
+
+  Conectar;
+
+  vQuery := TFDQuery.Create(nil);
+  vQuery.Connection := FConnector;
+  vQuery.Close;
+  vQuery.SQL.Text := ASQL;
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+  end;
+  vQuery.Open;
+
+  Result := vQuery;
+end;
+
+procedure TRALDBFireDAC.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+  AFormat: TRALFormatStorage);
+var
+  vFdFormat : TFDStorageFormat;
+begin
+  inherited;
+  case AFormat of
+    fsJSON : vFdFormat := sfJSON;
+    fsBIN  : vFdFormat := sfBinary;
+  end;
+
+  TFDDataSet(ADataset).SaveToStream(AStream, vFdFormat)
 end;
 
 procedure TRALDBFireDAC.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;

@@ -4,10 +4,11 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALStorage;
+  RALTypes, RALCustomObjects, RALDBStorage;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
+  TRALFormatStorage = (fsJSON, fsBIN);
 
   { TRALDBBase }
 
@@ -20,15 +21,20 @@ type
     FPort: IntegerRAL;
 
     FDatabaseType: TRALDatabaseType;
-    FStorageOutPut: TRALStorageLink;
+    FStorageOutPut: TRALDBStorage;
   protected
     procedure Conectar; virtual; abstract;
   public
     constructor Create; virtual; abstract;
 
-    function Open(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
-                  var ALastInsertId: Int64RAL); virtual; abstract;
+                      var ALastInsertId: Int64RAL); virtual; abstract;
+    function GetDriverName: StringRAL; virtual; abstract;
+
+    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
+                             AFormat: TRALFormatStorage); virtual; abstract;
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property Hostname: StringRAL read FHostname write FHostname;
@@ -37,7 +43,8 @@ type
     property Port: IntegerRAL read FPort write FPort;
 
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property StorageOutPut: TRALStorageLink read FStorageOutPut write FStorageOutPut;
+    property StorageOutPut: TRALDBStorage read FStorageOutPut write FStorageOutPut;
+    property DriverName : StringRAL read GetDriverName;
   end;
 
   TRALDBClass = class of TRALDBBase;
@@ -48,5 +55,7 @@ type
   end;
 
 implementation
+
+{ TRALDBBase }
 
 end.
