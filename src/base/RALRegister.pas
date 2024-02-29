@@ -45,7 +45,7 @@ begin
   {$ENDIF}
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
-  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALDBStorageJSON, TRALDBStorageBIN]);
+  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALDBStorageJSONLink, TRALDBStorageBINLink]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);
 end;
 
