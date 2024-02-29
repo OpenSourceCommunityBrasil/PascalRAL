@@ -129,9 +129,9 @@ begin
 
   {$IFDEF FPC}
   if AFormat = ctZLib then
-    vZip := TCompressionStream.Create(clmax, AOutStream)
+    vZip := TCompressionStream.Create(clfastest, AOutStream)
   else
-    vZip := TCompressionStream.Create(clmax, AOutStream, True);
+    vZip := TCompressionStream.Create(clfastest, AOutStream, True);
   {$ELSE}
   if AFormat = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
