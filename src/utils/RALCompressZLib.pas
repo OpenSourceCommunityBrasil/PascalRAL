@@ -134,9 +134,9 @@ begin
     vZip := TCompressionStream.Create(clmax, AOutStream, True);
   {$ELSE}
   if AFormat = ctZLib then
-    vZip := TCompressionStream.Create(AOutStream, zcMax, 15)
+    vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
   else
-    vZip := TCompressionStream.Create(AOutStream, zcMax, -15);
+    vZip := TCompressionStream.Create(AOutStream, zcFastest, -15);
   {$ENDIF}
   try
     repeat
