@@ -28,10 +28,15 @@ type
 implementation
 
 { TRALnetHTTPClient }
+
 function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALnetHTTPClient;
 begin
-  Result := TRALnetHTTPClient(inherited Clone(AOwner));
-  Result.FHttp := Self.FHttp;
+  if Assigned(AOwner) then
+    Result := TRALnetHTTPClient.Create(AOwner)
+  else
+    Result := TRALnetHTTPClient.Create(Self.Owner);
+
+    inherited Clone(Result);
 end;
 
 constructor TRALnetHTTPClient.Create(AOwner: TComponent);

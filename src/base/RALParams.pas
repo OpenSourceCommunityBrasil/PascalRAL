@@ -23,9 +23,15 @@ type
     FContent: TStream;
     FFileName: StringRAL;
     FKind: TRALParamKind;
+    procedure SetAsBoolean(const Value: Boolean);
+    procedure SetAsDouble(const Value: DoubleRAL);
+    procedure SetAsInteger(const Value: IntegerRAL);
   protected
     function GetAsStream: TStream;
     function GetAsString: StringRAL;
+    function GetAsInteger: IntegerRAL;
+    function GetAsDouble: DoubleRAL;
+    function GetAsBoolean: Boolean;
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
     function GetContentSize: Int64RAL;
@@ -46,6 +52,9 @@ type
     procedure SaveToStream(var AStream: TStream); overload;
     function Size: Int64;
 
+    property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
+    property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
+    property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
@@ -231,6 +240,36 @@ begin
   end;
 end;
 
+function TRALParam.GetAsBoolean: Boolean;
+begin
+  Result := false;
+  try
+    Result := StrToBool(StreamToString(FContent));
+  except
+    Result := false;
+  end;
+end;
+
+function TRALParam.GetAsDouble: DoubleRAL;
+begin
+  Result := 0;
+  try
+    Result := StrToFloat(StreamToString(FContent));
+  except
+    Result := 0;
+  end;
+end;
+
+function TRALParam.GetAsInteger: IntegerRAL;
+begin
+  Result := 0;
+  try
+    Result := StrToInt(StreamToString(FContent));
+  except
+    Result := 0;
+  end;
+end;
+
 function TRALParam.GetAsStream: TStream;
 begin
   Result := nil;
@@ -309,6 +348,21 @@ begin
   end;
 
   SaveToFile(AFolderName + AFileName);
+end;
+
+procedure TRALParam.SetAsBoolean(const Value: Boolean);
+begin
+
+end;
+
+procedure TRALParam.SetAsDouble(const Value: DoubleRAL);
+begin
+
+end;
+
+procedure TRALParam.SetAsInteger(const Value: IntegerRAL);
+begin
+
 end;
 
 procedure TRALParam.SetAsStream(const AValue: TStream);
