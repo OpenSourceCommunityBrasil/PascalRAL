@@ -43,8 +43,9 @@ type
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
   protected
-    function GetStorageClass: TRALDBStorageClass; override;
     function GetContentType: StringRAL; override;
+  public
+    class function GetStorageClass: TRALDBStorageClass; override;
   end;
 
 implementation
@@ -341,7 +342,7 @@ begin
   Result := rctAPPLICATIONJSON;
 end;
 
-function TRALDBStorageJSONLink.GetStorageClass: TRALDBStorageClass;
+class function TRALDBStorageJSONLink.GetStorageClass: TRALDBStorageClass;
 begin
   Result := TRALDBStorageJSON;
 end;

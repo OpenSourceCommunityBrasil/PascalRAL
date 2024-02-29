@@ -41,8 +41,9 @@ type
 
   TRALDBStorageBINLink = class(TRALDBStorageLink)
   protected
-    function GetStorageClass: TRALDBStorageClass; override;
     function GetContentType: StringRAL; override;
+  public
+    class function GetStorageClass : TRALDBStorageClass; override;
   end;
 
 implementation
@@ -229,12 +230,12 @@ begin
   Result := rctAPPLICATIONOCTETSTREAM;
 end;
 
-function TRALDBStorageBINLink.GetStorageClass: TRALDBStorageClass;
+class function TRALDBStorageBINLink.GetStorageClass: TRALDBStorageClass;
 begin
   Result := TRALDBStorageBIN;
 end;
 
 initialization
-  RegisterClass(TRALDBStorageBIN);
+  RegisterClass(TRALDBStorageBINLink);
 
 end.
