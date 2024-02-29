@@ -1,2 +1,2 @@
-TRALDBZeosLink BITMAP "..\components\DBLinks\TRALDBZeosLink.bmp"
-TRALDBZeosLink16 BITMAP "..\components\DBLinks\TRALDBZeosLink16.bmp"
+TRALDBZeosLink BITMAP "..\components\database\dblinks\TRALDBZeosLink.bmp"
+TRALDBZeosLink16 BITMAP "..\components\database\dblinks\TRALDBZeosLink16.bmp"

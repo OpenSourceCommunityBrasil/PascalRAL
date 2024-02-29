@@ -18,7 +18,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWare Links', [TRALDBZeosLink]);
+  RegisterComponents('RAL - DBWare', [TRALDBZeosLink]);
 end;
 
 {$IFDEF FPC}

@@ -11,7 +11,7 @@ implementation
 
 procedure register;
 begin
-  RegisterComponents('RAL - DBWare Links', [TRALDBFireDACLink])
+  RegisterComponents('RAL - DBWare', [TRALDBFireDACLink])
 end;
 
 end.

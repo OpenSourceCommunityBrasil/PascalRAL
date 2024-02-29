@@ -40,7 +40,7 @@ requires
   FireDACSqliteDriver;
 
 contains
-  RALDBFireDAC in '..\..\..\src\database\RALDBFireDAC.pas',
-  RALDBFireDACLinkReg in '..\..\..\src\database\links\RALDBFireDACLinkReg.pas';
+  RALDBFireDAC in '..\..\..\src\database\FireDAC\RALDBFireDAC.pas',
+  RALDBFireDACLinkReg in '..\..\..\src\database\FireDAC\RALDBFireDACLinkReg.pas';
 
 end.

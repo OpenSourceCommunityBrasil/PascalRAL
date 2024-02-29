@@ -118,8 +118,8 @@
         <DCCReference Include="RALDBZeosLink.dcr"/>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="PascalRAL.dcp"/>
-        <DCCReference Include="..\..\..\src\database\RALDBZeos.pas"/>
-        <DCCReference Include="..\..\..\src\database\links\RALDBZeosLinkReg.pas"/>
+        <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeos.pas"/>
+        <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeosLinkReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -1024,13 +1024,7 @@
             <Platforms>
                 <Platform value="Android">True</Platform>
                 <Platform value="Android64">True</Platform>
-                <Platform value="iOSDevice32">True</Platform>
-                <Platform value="iOSDevice64">True</Platform>
-                <Platform value="iOSSimARM64">True</Platform>
                 <Platform value="Linux64">True</Platform>
-                <Platform value="OSX32">True</Platform>
-                <Platform value="OSX64">True</Platform>
-                <Platform value="OSXARM64">True</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>

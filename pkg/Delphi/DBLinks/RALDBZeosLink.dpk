@@ -33,7 +33,7 @@ requires
   PascalRAL;
 
 contains
-  RALDBZeos in '..\..\..\src\database\RALDBZeos.pas',
-  RALDBZeosLinkReg in '..\..\..\src\database\links\RALDBZeosLinkReg.pas';
+  RALDBZeos in '..\..\..\src\database\Zeos\RALDBZeos.pas',
+  RALDBZeosLinkReg in '..\..\..\src\database\Zeos\RALDBZeosLinkReg.pas';
 
 end.

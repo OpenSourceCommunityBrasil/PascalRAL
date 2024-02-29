@@ -149,6 +149,11 @@
         <DCCReference Include="..\..\src\utils\RALToken.pas"/>
         <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <DCCReference Include="..\..\src\utils\RALUrlCoder.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBBase.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBModule.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBStorage.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBStorageBIN.pas"/>
+        <DCCReference Include="..\..\src\database\RALDBStorageJSON.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

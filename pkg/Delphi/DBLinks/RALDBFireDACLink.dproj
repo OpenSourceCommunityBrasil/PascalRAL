@@ -137,8 +137,8 @@
         <DCCReference Include="FireDACIBDriver.dcp"/>
         <DCCReference Include="FireDACMySQLDriver.dcp"/>
         <DCCReference Include="FireDACSqliteDriver.dcp"/>
-        <DCCReference Include="..\..\..\src\database\RALDBFireDAC.pas"/>
-        <DCCReference Include="..\..\..\src\database\links\RALDBFireDACLinkReg.pas"/>
+        <DCCReference Include="..\..\..\src\database\FireDAC\RALDBFireDAC.pas"/>
+        <DCCReference Include="..\..\..\src\database\FireDAC\RALDBFireDACLinkReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

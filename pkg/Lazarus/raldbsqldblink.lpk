@@ -9,7 +9,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\database;..\..\src\database\links"/>
+        <OtherUnitFiles Value="..\..\src\database;..\..\src\database\links;..\..\src\database\sqldb"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
       <Other>
@@ -21,17 +21,17 @@
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\src\database\RALDBSQLDB.pas"/>
-        <UnitName Value="RALDBSQLDB"/>
-      </Item1>
-      <Item2>
-        <Filename Value="..\..\src\database\links\RALDBSQLDBLinkReg.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBSQLDBLinkReg"/>
-      </Item2>
-      <Item3>
         <Filename Value="RALDBLinks.lrs"/>
         <Type Value="LRS"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\src\database\sqldb\raldbsqldb.pas"/>
+        <UnitName Value="RALDBSQLDB"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\src\database\sqldb\RALDBSQLDBLinkReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALDBSQLDBLinkReg"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>

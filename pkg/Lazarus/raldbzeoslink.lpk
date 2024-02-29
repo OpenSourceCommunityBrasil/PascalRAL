@@ -9,24 +9,24 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\database\links;..\..\src\database"/>
+        <OtherUnitFiles Value="..\..\src\database\links;..\..\src\database;..\..\src\database\Zeos"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\src\database\links\RALDBZeosLinkReg.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBZeosLinkReg"/>
+        <Filename Value="RALDBLinks.lrs"/>
+        <Type Value="LRS"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\src\database\RALDBZeos.pas"/>
+        <Filename Value="..\..\src\database\Zeos\RALDBZeos.pas"/>
         <UnitName Value="RALDBZeos"/>
       </Item2>
       <Item3>
-        <Filename Value="RALDBLinks.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="..\..\src\database\Zeos\RALDBZeosLinkReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="raldbzeoslinkreg"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
