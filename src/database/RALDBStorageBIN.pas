@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage;
+  RALTypes, RALDBStorage, RALMIMETypes;
 
 type
   TRALDBStorageBIN = class(TRALDBStorage)
@@ -37,7 +37,11 @@ type
     procedure WriteRecordDateTime(AValue : TDateTime); override;
     procedure WriteRecordBlob(AValue : TStream); override;
     procedure WriteRecordMemo(AValue : TStream); override;
+  end;
 
+  TRALDBStorageBINLink = class(TRALDBStorageLink)
+  protected
+    function GetStorageClass: TRALDBStorageClass; override;
     function GetContentType: StringRAL; override;
   end;
 
@@ -100,11 +104,6 @@ begin
   Stream.Position := FPosRecs;
   Stream.Write(ARecords, SizeOf(ARecords));
   Stream.Position := vPos;
-end;
-
-function TRALDBStorageBIN.GetContentType: StringRAL;
-begin
-//
 end;
 
 procedure TRALDBStorageBIN.WriteField(AName: StringRAL;
@@ -222,5 +221,20 @@ begin
   Stream.Write(vInt64, SizeOf(vInt64));
   Stream.Write(AValue[PosIniStr], vInt64);
 end;
+
+{ TRALDBStorageBINLink }
+
+function TRALDBStorageBINLink.GetContentType: StringRAL;
+begin
+  Result := rctAPPLICATIONOCTETSTREAM;
+end;
+
+function TRALDBStorageBINLink.GetStorageClass: TRALDBStorageClass;
+begin
+  Result := TRALDBStorageBIN;
+end;
+
+initialization
+  RegisterClass(TRALDBStorageBIN);
 
 end.

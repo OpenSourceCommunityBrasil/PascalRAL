@@ -14,7 +14,7 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils,
-  RALConsts, RALAuthentication, RALDBModule, RALStorageBIN, RALStorageJSON,
+  RALConsts, RALAuthentication, RALDBModule, RALDBStorageBIN, RALDBStorageJSON,
   RALWebModule;
 
 procedure Register;
@@ -45,7 +45,7 @@ begin
   {$ENDIF}
   RegisterComponents('RAL - ServerAuths', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - ClientAuths', [TRALClientBasicAuth, TRALClientJWTAuth]);
-  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALStorageJSONLink, TRALStorageBINLink]);
+  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALDBStorageJSONLink, TRALDBStorageBINLink]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);
 end;
 

@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage, RALBase64, RALStream;
+  RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes;
 
 type
   TRALDBStorageJSON = class(TRALDBStorage)
@@ -39,7 +39,11 @@ type
     procedure WriteRecordDateTime(AValue : TDateTime); override;
     procedure WriteRecordBlob(AValue : TStream); override;
     procedure WriteRecordMemo(AValue : TStream); override;
+  end;
 
+  TRALDBStorageJSONLink = class(TRALDBStorageLink)
+  protected
+    function GetStorageClass: TRALDBStorageClass; override;
     function GetContentType: StringRAL; override;
   end;
 
@@ -125,11 +129,6 @@ begin
   inherited;
   vStr := ']';
   Stream.Write(vStr[PosIniStr], Length(vStr));
-end;
-
-function TRALDBStorageJSON.GetContentType: StringRAL;
-begin
-//
 end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: TStream): TStream;
@@ -334,5 +333,20 @@ begin
     vStream1.Free;
   end;
 end;
+
+{ TRALDBStorageJSONLink }
+
+function TRALDBStorageJSONLink.GetContentType: StringRAL;
+begin
+  Result := rctAPPLICATIONJSON;
+end;
+
+function TRALDBStorageJSONLink.GetStorageClass: TRALDBStorageClass;
+begin
+  Result := TRALDBStorageJSON;
+end;
+
+initialization
+  RegisterClass(TRALDBStorageJSONLink);
 
 end.

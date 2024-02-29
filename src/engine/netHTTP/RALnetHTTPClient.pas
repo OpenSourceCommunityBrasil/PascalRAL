@@ -36,7 +36,7 @@ begin
   else
     Result := TRALnetHTTPClient.Create(Self.Owner);
 
-    inherited Clone(Result);
+  inherited Clone(Result);
 end;
 
 constructor TRALnetHTTPClient.Create(AOwner: TComponent);

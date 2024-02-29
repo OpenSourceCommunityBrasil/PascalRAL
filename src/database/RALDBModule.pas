@@ -20,11 +20,11 @@ type
 
     FDataBaseLink: TRALDBLink;
     FDatabaseType: TRALDatabaseType;
-    FStorageOutPut: TRALDBStorage;
+    FStorageOutPut: TRALDBStorageLink;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetDataBaseLink(AValue: TRALDBLink);
-    procedure SetStorageOutPut(AValue: TRALDBStorage);
+    procedure SetStorageOutPut(AValue: TRALDBStorageLink);
 
     function FindDatabaseDriver: TRALDBBase;
     procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
@@ -45,14 +45,14 @@ type
 
     property DataBaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property StorageOutPut: TRALDBStorage read FStorageOutPut write SetStorageOutPut;
+    property StorageOutPut: TRALDBStorageLink read FStorageOutPut write SetStorageOutPut;
   end;
 
 implementation
 
 { TRALDBModule }
 
-procedure TRALDBModule.SetStorageOutPut(AValue: TRALDBStorage);
+procedure TRALDBModule.SetStorageOutPut(AValue: TRALDBStorageLink);
 begin
   if AValue <> FStorageOutPut then
     FStorageOutPut := AValue;

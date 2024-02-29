@@ -25,7 +25,7 @@ type
                           sftBlob, sftMemo, sftDateTime);
 
 
-  TRALDBStorage = class(TRALComponent)
+  TRALDBStorage = class(TPersistent)
   private
     FStream : TStream;
   protected
@@ -63,16 +63,30 @@ type
     // read
 
     // outhers
-    function GetContentType: StringRAL; virtual; abstract;
     property Stream : TStream read FStream;
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream);
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
-  published
-    property ContentType: StringRAL read GetContentType;
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
+
+  TRALDBStorageLink = class(TRALComponent)
+  protected
+    function GetStorageClass: TRALDBStorageClass; virtual;
+    function GetContentType: StringRAL; virtual;
+  public
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
+    function SaveToStream(ADataset: TDataSet): TStream; overload;
+    procedure SaveToFile(ADataset: TDataSet; AFileName: string);
+
+    procedure LoadFromFile(ADataset: TDataSet; AFileName: string); overload;
+
+    property StorageClass: TRALDBStorageClass read GetStorageClass;
+    property ContentType: StringRAL read GetContentType;
+  end;
+
+  TRALDBStorageClassLink = class of TRALDBStorageLink;
 
 implementation
 
@@ -320,6 +334,97 @@ begin
   }
     end;
   end;
+end;
+
+{ TRALDBStorageLink }
+
+function TRALDBStorageLink.GetContentType: StringRAL;
+var
+  vClassStor: TRALDBStorageClassLink;
+  vStor: TRALDBStorageLink;
+begin
+  if Self = nil then
+  begin
+    vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageBINLink'));
+    if vClassStor = nil then
+      vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageJSONLink'));
+
+    if vClassStor <> nil then
+    begin
+      vStor := vClassStor.Create(nil);
+      try
+        Result := vStor.ContentType;
+      finally
+        FreeAndNil(vStor);
+      end;
+    end
+    else
+    begin
+      raise Exception.Create('TRALStorageLink not found');
+    end;
+  end;
+end;
+
+function TRALDBStorageLink.GetStorageClass: TRALDBStorageClass;
+var
+  vClassStor: TRALDBStorageClassLink;
+  vStor: TRALDBStorageLink;
+begin
+  if Self = nil then
+  begin
+    vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageBINLink'));
+    if vClassStor = nil then
+      vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageJSONLink'));
+
+    if vClassStor <> nil then
+    begin
+      vStor := vClassStor.Create(nil);
+      try
+        Result := vStor.StorageClass;
+      finally
+        FreeAndNil(vStor);
+      end;
+    end
+    else
+    begin
+      raise Exception.Create('TRALStorageLink not found');
+    end;
+  end;
+end;
+
+procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: string);
+begin
+
+end;
+
+procedure TRALDBStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
+var
+  vStor: TRALDBStorage;
+begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.SaveToStream(ADataset, AStream);
+  finally
+    FreeAndNil(vStor);
+  end;
+end;
+
+procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: string);
+var
+  vStor: TRALDBStorage;
+begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.SaveToFile(ADataset, AFileName);
+  finally
+    FreeAndNil(vStor);
+  end;
+end;
+
+function TRALDBStorageLink.SaveToStream(ADataset: TDataSet): TStream;
+begin
+  Result := TMemoryStream.Create;
+  SaveToStream(ADataset, Result);
 end;
 
 end.
