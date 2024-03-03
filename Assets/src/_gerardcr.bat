@@ -7,7 +7,6 @@ if NOT EXIST %path_brcc32% (
 
 # Componentes gerais
 %path_brcc32% -fo "..\..\pkg\Delphi\PascalRAL.dcr" "PascalRAL.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\RALDBPackage.dcr" "RALDB.rc"
 
 # Motores
 %path_brcc32% -fo "..\..\pkg\Delphi\IndyRAL.dcr" "Indy.rc"
