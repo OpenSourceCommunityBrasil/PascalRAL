@@ -23,11 +23,22 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function Clone(AOwner: TComponent): TRALfpHttpClient;
   end;
 
 implementation
 
 { TRALfpHttpClient }
+
+function TRALfpHttpClient.Clone(AOwner: TComponent): TRALfpHttpClient;
+begin
+  if Assigned(AOwner) then
+    Result := TRALfpHttpClient.Create(AOwner)
+  else
+    Result := TRALfpHttpClient.Create(Self.Owner);
+
+    inherited Clone(Result);
+end;
 
 constructor TRALfpHttpClient.Create(AOwner: TComponent);
 begin

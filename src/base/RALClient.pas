@@ -6,7 +6,8 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALAuthentication, RALJson, RALTools, RALParams,
-  RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream;
+  RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream,
+  RALResponse, RALRequest;
 
 type
 
@@ -29,8 +30,8 @@ type
     FCriptoOptions: TRALCriptoOptions;
 
     FLastRoute: StringRAL;
-    FLastRequest: TRALHTTPHeaderInfo;
-    FLastResponse: TRALHTTPHeaderInfo;
+    FLastRequest: TRALRequest;
+    FLastResponse: TRALResponse;
     FLastResponseStream: TStream;
   protected
     /// allows manipulation of params before executing request.
@@ -85,21 +86,23 @@ type
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    /// Returns a copy of the current TRALClient object
+    procedure Clone(ADest: TRALClient);
     /// Defines method on the client: Delete.
-    function Delete: IntegerRAL;
+    function Delete: IntegerRAL; virtual;
     /// Defines method on the client: Get.
-    function Get: IntegerRAL;
+    function Get: IntegerRAL; virtual;
     /// Defines method on the client: Patch.
-    function Patch: IntegerRAL;
+    function Patch: IntegerRAL; virtual;
     /// Defines method on the client: Post.
-    function Post: IntegerRAL;
+    function Post: IntegerRAL; virtual;
     /// Defines method on the client: Put.
-    function Put: IntegerRAL;
+    function Put: IntegerRAL; virtual;
     /// Sets the baseURL of client.
     function SetRoute(ARoute: StringRAL): TRALClient;
 
-    property Request: TRALHTTPHeaderInfo read FLastRequest;
-    property Response: TRALHTTPHeaderInfo read FLastResponse;
+    property Request: TRALRequest read FLastRequest;
+    property Response: TRALResponse read FLastResponse;
     /// StatusCode of the response.
     property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
     property ResponseError: StringRAL read FResponseError write FResponseError;
@@ -183,12 +186,33 @@ begin
   end;
 end;
 
+procedure TRALClient.Clone(ADest: TRALClient);
+begin
+  ADest.FAuthentication := Self.FAuthentication;
+  ADest.FBaseURL := Self.FBaseURL;
+  ADest.FConnectTimeout := Self.FConnectTimeout;
+  ADest.FRequestTimeout := Self.FRequestTimeout;
+  ADest.FResponseCode := Self.FResponseCode;
+  ADest.FResponseError := Self.FResponseError;
+  ADest.FUseSSL := Self.FUseSSL;
+  ADest.FUserAgent := Self.UserAgent;
+  ADest.FEngine := Self.FEngine;
+  ADest.FKeepAlive := Self.FKeepAlive;
+  ADest.FCompressType := Self.FCompressType;
+
+  ADest.FCriptoOptions := TRALCriptoOptions.Create;
+  ADest.FCriptoOptions.CriptType := Self.FCriptoOptions.CriptType;
+  ADest.FCriptoOptions.Key := Self.FCriptoOptions.Key;
+
+  ADest.FLastRoute := Self.FLastRoute;
+end;
+
 constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAuthentication := nil;
-  FLastRequest := TRALHTTPHeaderInfo.Create;
-  FLastResponse := TRALHTTPHeaderInfo.Create;
+  FLastRequest := TRALRequest.Create;
+  FLastResponse := TRALResponse.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
   FLastResponseStream := nil;
 
@@ -210,9 +234,6 @@ end;
 
 destructor TRALClient.Destroy;
 begin
-  if Assigned(FAuthentication) then
-    FreeAndNil(FAuthentication);
-
   FreeAndNil(FLastRequest);
   FreeAndNil(FLastResponse);
   FreeAndNil(FCriptoOptions);
@@ -520,8 +541,7 @@ begin
     TRALClientJWTAuth(Authentication).Token := '';
 end;
 
-function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
-  : IntegerRAL;
+function TRALClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL;
 begin
   Result := -1;
 end;

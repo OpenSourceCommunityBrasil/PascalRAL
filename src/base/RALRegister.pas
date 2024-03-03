@@ -42,8 +42,9 @@ begin
       RALPACKAGENAME + sLineBreak + sLineBreak + RALPACKAGESITE,
       loadbitmap(HInstance, RALPACKAGESHORT), false, RALPACKAGELICENSE);
   {$ENDIF}
-  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth, TRALWebModule]);
+  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
+  RegisterComponents('RAL - Modules', [TRALWebModule]);
 end;
 
 {$IFDEF FPC}

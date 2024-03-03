@@ -1,2 +1,2 @@
-TRALDBFireDACLink BITMAP "..\components\DBLinks\TRALDBFireDACLink.bmp"
-TRALDBFireDACLink16 BITMAP "..\components\DBLinks\TRALDBFireDACLink16.bmp"
+TRALDBFireDACLink BITMAP "..\components\database\dblinks\TRALDBFireDACLink.bmp"
+TRALDBFireDACLink16 BITMAP "..\components\database\dblinks\TRALDBFireDACLink16.bmp"

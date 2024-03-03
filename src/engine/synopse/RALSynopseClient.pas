@@ -16,11 +16,22 @@ type
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
+    function Clone(AOwner: TComponent): TRALSynopseClient;
   end;
 
 implementation
 
 { TRALSynopseClient }
+
+function TRALSynopseClient.Clone(AOwner: TComponent): TRALSynopseClient;
+begin
+  if Assigned(AOwner) then
+    Result := TRALSynopseClient.Create(AOwner)
+  else
+    Result := TRALSynopseClient.Create(Self.Owner);
+
+    inherited Clone(Result);
+end;
 
 constructor TRALSynopseClient.Create(AOwner: TComponent);
 begin
