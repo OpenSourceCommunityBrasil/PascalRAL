@@ -128,8 +128,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="RALDBFireDACLink.dcr"/>
-        <DCCReference Include="rtl.dcp"/>
-        <DCCReference Include="PascalRALDsgn.dcp"/>
+        <DCCReference Include="RALDBPackage.dcp"/>
         <DCCReference Include="FireDAC.dcp"/>
         <DCCReference Include="FireDACCommonDriver.dcp"/>
         <DCCReference Include="FireDACCommon.dcp"/>

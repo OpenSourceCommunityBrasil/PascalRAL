@@ -60,11 +60,6 @@ contains
   RALThreadSafe in '..\..\src\utils\RALThreadSafe.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
   RALTools in '..\..\src\utils\RALTools.pas',
-  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas',
-  RALDBBase in '..\..\src\database\RALDBBase.pas',
-  RALDBModule in '..\..\src\database\RALDBModule.pas',
-  RALDBStorage in '..\..\src\database\RALDBStorage.pas',
-  RALDBStorageBIN in '..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\src\database\RALDBStorageJSON.pas';
+  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas';
 
 end.

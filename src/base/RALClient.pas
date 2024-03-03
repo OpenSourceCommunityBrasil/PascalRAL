@@ -89,15 +89,15 @@ type
     /// Returns a copy of the current TRALClient object
     procedure Clone(ADest: TRALClient);
     /// Defines method on the client: Delete.
-    function Delete: IntegerRAL;
+    function Delete: IntegerRAL; virtual;
     /// Defines method on the client: Get.
-    function Get: IntegerRAL;
+    function Get: IntegerRAL; virtual;
     /// Defines method on the client: Patch.
-    function Patch: IntegerRAL;
+    function Patch: IntegerRAL; virtual;
     /// Defines method on the client: Post.
-    function Post: IntegerRAL;
+    function Post: IntegerRAL; virtual;
     /// Defines method on the client: Put.
-    function Put: IntegerRAL;
+    function Put: IntegerRAL; virtual;
     /// Sets the baseURL of client.
     function SetRoute(ARoute: StringRAL): TRALClient;
 

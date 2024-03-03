@@ -10,22 +10,25 @@
             <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\IndyRAL.dproj">
-            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
-        </Projects>
-        <Projects Include="Delphi\SynopseRAL.dproj">
-            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
+            <Dependencies>Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\NetHttpRAL.dproj">
-            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
+            <Dependencies>Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Delphi\SynopseRAL.dproj">
+            <Dependencies>Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\UniGUIRAL.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="Delphi\RALDBPackage.dproj">
+            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
+        </Projects>
         <Projects Include="Delphi\DBLinks\RALDBFireDACLink.dproj">
-            <Dependencies/>
+            <Dependencies>Delphi\RALDBPackage.dproj;Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Delphi\DBLinks\RALDBZeosLink.dproj">
-            <Dependencies/>
+            <Dependencies>Delphi\RALDBPackage.dproj;Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -53,32 +56,32 @@
     <Target Name="PascalRALDsgn:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Delphi\PascalRALDsgn.dproj" Targets="Make"/>
     </Target>
-    <Target Name="IndyRAL" DependsOnTargets="PascalRAL">
+    <Target Name="IndyRAL" DependsOnTargets="PascalRAL;PascalRALDsgn">
         <MSBuild Projects="Delphi\IndyRAL.dproj"/>
     </Target>
-    <Target Name="IndyRAL:Clean" DependsOnTargets="PascalRAL:Clean">
+    <Target Name="IndyRAL:Clean" DependsOnTargets="PascalRAL:Clean;PascalRALDsgn:Clean">
         <MSBuild Projects="Delphi\IndyRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="IndyRAL:Make" DependsOnTargets="PascalRAL:Make">
+    <Target Name="IndyRAL:Make" DependsOnTargets="PascalRAL:Make;PascalRALDsgn:Make">
         <MSBuild Projects="Delphi\IndyRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="SynopseRAL" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Delphi\SynopseRAL.dproj"/>
-    </Target>
-    <Target Name="SynopseRAL:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="SynopseRAL:Make" DependsOnTargets="PascalRAL:Make">
-        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="NetHttpRAL" DependsOnTargets="PascalRAL">
+    <Target Name="NetHttpRAL" DependsOnTargets="PascalRAL;PascalRALDsgn">
         <MSBuild Projects="Delphi\NetHttpRAL.dproj"/>
     </Target>
-    <Target Name="NetHttpRAL:Clean" DependsOnTargets="PascalRAL:Clean">
+    <Target Name="NetHttpRAL:Clean" DependsOnTargets="PascalRAL:Clean;PascalRALDsgn:Clean">
         <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="NetHttpRAL:Make" DependsOnTargets="PascalRAL:Make">
+    <Target Name="NetHttpRAL:Make" DependsOnTargets="PascalRAL:Make;PascalRALDsgn:Make">
         <MSBuild Projects="Delphi\NetHttpRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SynopseRAL" DependsOnTargets="PascalRAL;PascalRALDsgn">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj"/>
+    </Target>
+    <Target Name="SynopseRAL:Clean" DependsOnTargets="PascalRAL:Clean;PascalRALDsgn:Clean">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SynopseRAL:Make" DependsOnTargets="PascalRAL:Make;PascalRALDsgn:Make">
+        <MSBuild Projects="Delphi\SynopseRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="UniGUIRAL">
         <MSBuild Projects="Delphi\UniGUIRAL.dproj"/>
@@ -89,32 +92,41 @@
     <Target Name="UniGUIRAL:Make">
         <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBFireDACLink">
+    <Target Name="RALDBPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Delphi\RALDBPackage.dproj"/>
+    </Target>
+    <Target Name="RALDBPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Delphi\RALDBPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALDBPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Delphi\RALDBPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALDBFireDACLink" DependsOnTargets="RALDBPackage;PascalRAL;PascalRALDsgn">
         <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Clean">
+    <Target Name="RALDBFireDACLink:Clean" DependsOnTargets="RALDBPackage:Clean;PascalRAL:Clean;PascalRALDsgn:Clean">
         <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Make">
+    <Target Name="RALDBFireDACLink:Make" DependsOnTargets="RALDBPackage:Make;PascalRAL:Make;PascalRALDsgn:Make">
         <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBZeosLink">
+    <Target Name="RALDBZeosLink" DependsOnTargets="RALDBPackage;PascalRAL;PascalRALDsgn">
         <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj"/>
     </Target>
-    <Target Name="RALDBZeosLink:Clean">
+    <Target Name="RALDBZeosLink:Clean" DependsOnTargets="RALDBPackage:Clean;PascalRAL:Clean;PascalRALDsgn:Clean">
         <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBZeosLink:Make">
+    <Target Name="RALDBZeosLink:Make" DependsOnTargets="RALDBPackage:Make;PascalRAL:Make;PascalRALDsgn:Make">
         <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;NetHttpRAL;UniGUIRAL;RALDBFireDACLink;RALDBZeosLink"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;SynopseRAL;UniGUIRAL;RALDBPackage;RALDBFireDACLink;RALDBZeosLink"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;NetHttpRAL:Clean;UniGUIRAL:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;SynopseRAL:Clean;UniGUIRAL:Clean;RALDBPackage:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;NetHttpRAL:Make;UniGUIRAL:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;SynopseRAL:Make;UniGUIRAL:Make;RALDBPackage:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

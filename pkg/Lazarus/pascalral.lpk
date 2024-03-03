@@ -24,7 +24,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="35">
+    <Files Count="30">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -146,26 +146,6 @@
         <Filename Value="..\..\src\base\RALWEBModule.pas"/>
         <UnitName Value="RALWEBModule"/>
       </Item30>
-      <Item31>
-        <Filename Value="..\..\src\database\RALDBBase.pas"/>
-        <UnitName Value="RALDBBase"/>
-      </Item31>
-      <Item32>
-        <Filename Value="..\..\src\database\RALDBModule.pas"/>
-        <UnitName Value="RALDBModule"/>
-      </Item32>
-      <Item33>
-        <Filename Value="..\..\src\database\RALDBStorage.pas"/>
-        <UnitName Value="RALDBStorage"/>
-      </Item33>
-      <Item34>
-        <Filename Value="..\..\src\database\RALDBStorageBIN.pas"/>
-        <UnitName Value="RALDBStorageBIN"/>
-      </Item34>
-      <Item35>
-        <Filename Value="..\..\src\database\RALDBStorageJSON.pas"/>
-        <UnitName Value="RALDBStorageJSON"/>
-      </Item35>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

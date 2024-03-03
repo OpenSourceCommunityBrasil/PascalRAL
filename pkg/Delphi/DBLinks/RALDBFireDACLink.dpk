@@ -26,11 +26,11 @@ package RALDBFireDACLink;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | FireDAC Database Linker Component'}
 {$IMPLICITBUILD ON}
 
 requires
-  rtl,
-  PascalRALDsgn,
+  RALDBPackage,
   FireDAC,
   FireDACCommonDriver,
   FireDACCommon,
