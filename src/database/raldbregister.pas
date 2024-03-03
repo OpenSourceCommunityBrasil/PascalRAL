@@ -1,9 +1,13 @@
 unit RALDBRegister;
-{$I PascalRAL.inc}
+
+{$I ../base/PascalRAL.inc}
 
 interface
 
 uses
+  {$IFDEF FPC}
+    LResources,
+  {$ENDIF}
   Classes, SysUtils, RALDBModule, RALDBStorageJSON, RALDBStorageBIN;
 
 procedure Register;

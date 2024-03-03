@@ -56,7 +56,6 @@ procedure TRALDBStorageJSON.BeginWrite;
 var
   vStr : StringRAL;
 begin
-  inherited;
   FFields := False;
   FRecords := False;
 
@@ -68,7 +67,6 @@ procedure TRALDBStorageJSON.BeginWriteFields(AFields : IntegerRAL);
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '"fd":[';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -77,7 +75,6 @@ procedure TRALDBStorageJSON.BeginWriteRecord;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '';
   if FRecords then
     vStr := ',';
@@ -91,7 +88,6 @@ procedure TRALDBStorageJSON.BeginWriteRecords;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '"ln":[';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -100,7 +96,6 @@ procedure TRALDBStorageJSON.EndWrite;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '}';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -109,7 +104,6 @@ procedure TRALDBStorageJSON.EndWriteFields;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '],';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -118,7 +112,6 @@ procedure TRALDBStorageJSON.EndWriteRecord;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := ']';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -127,7 +120,6 @@ procedure TRALDBStorageJSON.EndWriteRecords(ARecords : Int64RAL);
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := ']';
   Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
@@ -167,7 +159,6 @@ procedure TRALDBStorageJSON.WriteField(AName: StringRAL;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '';
   if FFields then
     vStr := ',';
@@ -181,7 +172,6 @@ var
   vStr : StringRAL;
   vStream : TStream;
 begin
-  inherited;
   vStream := TRALBase64.EncodeAsStream(AValue);
   try
     vStr := '';
@@ -205,7 +195,6 @@ procedure TRALDBStorageJSON.WriteRecordBoolean(AValue: Boolean);
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '';
   if FFields then
     vStr := ',';
@@ -222,7 +211,6 @@ procedure TRALDBStorageJSON.WriteRecordDateTime(AValue: TDateTime);
 var
   vMask, vStr : StringRAL;
 begin
-  inherited;
   if Trunc(AValue) > 0 then
     vMask := vMask + 'yyyyMMdd';
   if Frac(AValue) > 0 then
@@ -241,7 +229,6 @@ procedure TRALDBStorageJSON.WriteRecordDouble(AValue: DoubleRAL);
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '';
   if FFields then
     vStr := ',';
@@ -255,7 +242,6 @@ procedure TRALDBStorageJSON.WriteRecordInteger(AValue: Int64RAL;
 var
   vStr : StringRAL;
 begin
-  inherited;
   vStr := '';
   if FFields then
     vStr := ',';
@@ -269,7 +255,6 @@ var
   vStr : StringRAL;
   vStream : TStream;
 begin
-  inherited;
   vStream := StringToJSONString(AValue);
   try
     vStr := '';
@@ -293,7 +278,6 @@ procedure TRALDBStorageJSON.WriteRecordNull(AIsNull: Boolean);
 var
   vStr : StringRAL;
 begin
-  inherited;
   if AIsNull then
   begin
     vStr := '';
@@ -310,7 +294,6 @@ var
   vStr : StringRAL;
   vStream1, vStream2 : TStream;
 begin
-  inherited;
   vStream1 := StringToStream(AValue);
   try
     vStream2 := StringToJSONString(vStream1);

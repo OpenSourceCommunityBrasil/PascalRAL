@@ -3,6 +3,9 @@ unit RALDBStorage;
 interface
 
 uses
+  {$IFDEF FPC}
+    bufstream,
+  {$ENDIF}
   Classes, SysUtils, DB,
   RALTypes, RALCustomObjects;
 
@@ -63,10 +66,10 @@ type
     // read
     procedure BeginRead; virtual; abstract;
     function BeginReadFields : IntegerRAL; virtual; abstract;
-    procedure ReadField(ADataset : TDataSet); virtual; abstract;
+    function ReadField(ADataset : TDataSet) : boolean; virtual; abstract;
     procedure EndReadFields; virtual; abstract;
     function BeginReadRecords : Int64RAL; virtual; abstract;
-    procedure ReadRecordField(ADataset : TDataSet; AField : IntegerRAL); virtual; abstract;
+    function ReadRecordField(ADataset : TDataSet; AField : IntegerRAL) : boolean; virtual; abstract;
     procedure EndReadRecords; virtual; abstract;
     procedure EndRead; virtual; abstract;
 
@@ -117,7 +120,7 @@ begin
   else
   begin
     vFields := 0;
-    while not ReadFieldEof(ADataset) do
+    while not ReadField(ADataset) do
       vFields := vFields + 1;
   end;
   EndReadFields;
@@ -137,11 +140,10 @@ begin
   end
   else
   begin
-//    repeat
-//      ReadFieldEof(ADataset) do
-
-
-//    until ;
+    vInt64 := 0;
+    while ReadRecordField(ADataset, vInt) do begin
+      vInt := vInt + 1;
+    end;
   end;
   ADataset.First;
 
@@ -222,33 +224,41 @@ begin
     ftWideString,
     ftString   : vType := sftString;
 
-    ftShortint : vType := sftInt1;
-    ftByte     : vType := sftuInt1;
+    {$IFNDEF FPC}
+      ftShortint : vType := sftInt1;
+      ftLongWord : vType := sftuInt4;
+      ftByte     : vType := sftuInt1;
+    {$ENDIF}
     ftSmallint : vType := sftInt2;
     ftWord     : vType := sftuInt2;
     ftInteger  : vType := sftInt4;
-    ftLongWord : vType := sftuInt4;
     ftLargeint,
     ftAutoInc  : vType := sftInt8;
 
     ftBoolean  : vType := sftBoolean;
 
-    ftSingle,
-    ftExtended,
+    {$IFNDEF FPC}
+      ftSingle,
+      ftExtended,
+    {$ENDIF}
     ftFMTBcd,
     ftFloat,
     ftCurrency,
     ftBCD      : vType := sftDouble;
 
-    ftTimeStampOffset,
-    ftOraTimeStamp,
-    ftOraInterval,
+    {$IFNDEF FPC}
+      ftTimeStampOffset,
+      ftOraTimeStamp,
+      ftOraInterval,
+    {$ENDIF}
     ftTimeStamp,
     ftDate,
     ftTime,
     ftDateTime : vType := sftDateTime;
 
-    ftStream,
+    {$IFNDEF FPC}
+      ftStream,
+    {$ENDIF}
     ftOraBlob,
     ftTypedBinary,
     ftGraphic,
@@ -316,33 +326,42 @@ begin
       ftWideString,
       ftString   : WriteRecordString(AField.AsString);
 
-      ftShortint : WriteRecordInteger(AField.AsInteger, -1);
-      ftByte     : WriteRecordInteger(AField.AsInteger, 1);
+      {$IFNDEF FPC}
+        ftShortint : WriteRecordInteger(AField.AsInteger, -1);
+        ftByte     : WriteRecordInteger(AField.AsInteger, 1);
+        ftLongWord : WriteRecordInteger(AField.AsLargeInt, 4);
+      {$ENDIF}
+
       ftSmallint : WriteRecordInteger(AField.AsInteger, -2);
       ftWord     : WriteRecordInteger(AField.AsInteger, 2);
       ftInteger  : WriteRecordInteger(AField.AsInteger, -4);
-      ftLongWord : WriteRecordInteger(AField.AsLargeInt, 4);
       ftLargeint,
       ftAutoInc  : WriteRecordInteger(AField.AsLargeInt, 8);
 
       ftBoolean  : WriteRecordBoolean(AField.AsBoolean);
 
-      ftSingle,
-      ftExtended,
+      {$IFNDEF FPC}
+        ftSingle,
+        ftExtended,
+      {$ENDIF}
       ftFMTBcd,
       ftFloat,
       ftCurrency,
       ftBCD      : WriteRecordDouble(AField.AsFloat);
 
-      ftTimeStampOffset,
-      ftOraTimeStamp,
-      ftOraInterval,
+      {$IFNDEF FPC}
+        ftTimeStampOffset,
+        ftOraTimeStamp,
+        ftOraInterval,
+      {$ENDIF}
       ftTimeStamp,
       ftDate,
       ftTime,
       ftDateTime : WriteRecordDateTime(AField.AsDateTime);
 
-      ftStream,
+      {$IFNDEF FPC}
+        ftStream,
+      {$ENDIF}
       ftOraBlob,
       ftTypedBinary,
       ftGraphic,

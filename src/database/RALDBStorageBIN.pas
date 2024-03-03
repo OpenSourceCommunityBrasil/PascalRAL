@@ -52,19 +52,16 @@ implementation
 
 procedure TRALDBStorageBIN.BeginWrite;
 begin
-  inherited;
  // header ??
 end;
 
 procedure TRALDBStorageBIN.BeginWriteFields(AFields : IntegerRAL);
 begin
-  inherited;
   Stream.Write(AFields, SizeOf(AFields));
 end;
 
 procedure TRALDBStorageBIN.BeginWriteRecord;
 begin
-  inherited;
   // nada
 end;
 
@@ -72,7 +69,6 @@ procedure TRALDBStorageBIN.BeginWriteRecords;
 var
   vRecords : Int64RAL;
 begin
-  inherited;
   FPosRecs := Stream.Position;
   vRecords := 0;
   Stream.Write(vRecords, SizeOf(vRecords));
@@ -80,19 +76,16 @@ end;
 
 procedure TRALDBStorageBIN.EndWrite;
 begin
-  inherited;
   // nada
 end;
 
 procedure TRALDBStorageBIN.EndWriteFields;
 begin
-  inherited;
   // nada
 end;
 
 procedure TRALDBStorageBIN.EndWriteRecord;
 begin
-  inherited;
   // nada
 end;
 
@@ -100,7 +93,6 @@ procedure TRALDBStorageBIN.EndWriteRecords(ARecords : Int64RAL);
 var
   vPos : Int64RAL;
 begin
-  inherited;
   vPos := Stream.Position;
   Stream.Position := FPosRecs;
   Stream.Write(ARecords, SizeOf(ARecords));
@@ -112,7 +104,6 @@ procedure TRALDBStorageBIN.WriteField(AName: StringRAL;
 var
   vByte : Byte;
 begin
-  inherited;
   vByte := Length(AName);
   Stream.Write(vByte, SizeOf(vByte));
   Stream.Write(AName[PosIniStr], vByte);
@@ -127,7 +118,6 @@ procedure TRALDBStorageBIN.WriteRecordBlob(AValue: TStream);
 var
   vInt64 : Int64RAL;
 begin
-  inherited;
   AValue.Position := 0;
 
   vInt64 := AValue.Size;
@@ -137,19 +127,16 @@ end;
 
 procedure TRALDBStorageBIN.WriteRecordBoolean(AValue: Boolean);
 begin
-  inherited;
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
 procedure TRALDBStorageBIN.WriteRecordDateTime(AValue: TDateTime);
 begin
-  inherited;
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
 procedure TRALDBStorageBIN.WriteRecordDouble(AValue: DoubleRAL);
 begin
-  inherited;
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
@@ -163,7 +150,6 @@ var
   vInteger : Integer;
   vLongWord : LongWord;
 begin
-  inherited;
   case ASize of
     -1 : begin
       vShortInt := AValue;
@@ -199,7 +185,6 @@ procedure TRALDBStorageBIN.WriteRecordMemo(AValue: TStream);
 var
   vInt64 : Int64RAL;
 begin
-  inherited;
   AValue.Position := 0;
 
   vInt64 := AValue.Size;
@@ -209,7 +194,6 @@ end;
 
 procedure TRALDBStorageBIN.WriteRecordNull(AIsNull : Boolean);
 begin
-  inherited;
   Stream.Write(AIsNull, SizeOf(AIsNull));
 end;
 
@@ -217,7 +201,6 @@ procedure TRALDBStorageBIN.WriteRecordString(AValue: StringRAL);
 var
   vInt64 : Int64RAL;
 begin
-  inherited;
   vInt64 := Length(AValue);
   Stream.Write(vInt64, SizeOf(vInt64));
   Stream.Write(AValue[PosIniStr], vInt64);

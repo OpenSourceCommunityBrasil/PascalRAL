@@ -55,6 +55,7 @@ type
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
+    function CheckKey : boolean;
     function SubWord(AInt: Cardinal): Cardinal;
     function WordToBytes(AInt: Cardinal): TBytes;
   public
@@ -566,12 +567,27 @@ begin
   KeyExpansion;
 end;
 
+function TRALCriptoAES.CheckKey: boolean;
+begin
+  if Length(FWordKeys) = 0 then begin
+    Result := False;
+    raise Exception.Create('Key deve ser preenchida');
+  end
+  else begin
+    Result := True;
+  end;
+end;
+
 procedure TRALCriptoAES.KeyExpansion;
 var
   vTemp: Cardinal;
   vInt, vNk, vNb, vNr: IntegerRAL;
   vKey: TBytes;
 begin
+  SetLength(FWordKeys, 0);
+  if Length(Key) = 0 then
+    Exit;
+
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
@@ -584,7 +600,8 @@ begin
   if Length(Key) < vInt then
     vInt := Length(Key);
 
-  Move(Key[PosIniStr], vKey[0], vInt);
+  if Length(Key) > 0 then
+    Move(Key[PosIniStr], vKey[0], vInt);
 
   for vInt := 0 to Pred(vNk) do
     FWordKeys[vInt] := PCardinal(@vKey[4 * vInt])^;
@@ -648,6 +665,9 @@ var
   vPosition, vSize: Int64RAL;
   vPaddind: IntegerRAL;
 begin
+  if not CheckKey then
+    Exit;
+
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
@@ -698,6 +718,9 @@ var
   vPosition, vSize: Int64RAL;
   vPad1, vPad2: byte;
 begin
+  if not CheckKey then
+    Exit;
+
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
@@ -740,6 +763,9 @@ var
   vInt: IntegerRAL;
   vBytes: TBytes;
 begin
+  if not CheckKey then
+    Exit;
+
   Result := nil;
   if (AIndex >= 0) and (AIndex < CountKeys) then
   begin
@@ -763,6 +789,9 @@ var
   vStr: StringRAL;
   vKey: TBytes;
 begin
+  if not CheckKey then
+    Exit;
+
   Result := TStringList.Create;
 
   for vInt1 := 0 to Pred(CountKeys) do
