@@ -98,7 +98,7 @@ begin
     AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);
+  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
   vFree := False;
   vSource := AParams.EncodeBody(vContentType, vFree);

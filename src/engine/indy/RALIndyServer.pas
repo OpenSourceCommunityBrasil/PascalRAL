@@ -187,7 +187,7 @@ begin
         if vResponse.ContentEncription <> '' then
           Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
-        Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER);
+        Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
 
         vCookies := TStringList.Create;
         try

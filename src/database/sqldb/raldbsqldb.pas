@@ -126,7 +126,6 @@ end;
 procedure TRALDBSQLDB.SaveFromStream(ADataset: TDataSet; AStream: TStream;
   AFormat: TRALFormatStorage);
 begin
-  inherited;
   // todo
 end;
 

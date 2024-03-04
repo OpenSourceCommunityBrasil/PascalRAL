@@ -636,9 +636,6 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
-  if AKind = rpkHEADER then
-    ASeparator := ':';
-
   for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
@@ -1000,7 +997,7 @@ begin
   vMin := Length(ASource);
   vPos := Pos('=', ASource);
   if (vPos > 0) and (vPos < vMin) then
-    Result := '=';
+    Result := '='
 
   vPos := Pos(': ', ASource);
   if (vPos > 0) and (vPos < vMin) then
