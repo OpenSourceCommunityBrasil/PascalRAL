@@ -103,7 +103,7 @@ begin
   vSource := AParams.EncodeBody(vContentType, vFree);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
-    AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ':');
+    AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
     FHttp.RequestBody := vSource;
     vResult := TStringStream.Create;
     try

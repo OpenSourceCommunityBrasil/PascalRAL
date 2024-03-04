@@ -624,9 +624,6 @@ end;
 procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
   ASeparator: StringRAL);
 begin
-  if AKind = rpkHEADER then
-    ASeparator := ':';
-
   AssignParams(TStrings(ADest), AKind, ASeparator);
 end;
 
@@ -997,7 +994,7 @@ begin
   vMin := Length(ASource);
   vPos := Pos('=', ASource);
   if (vPos > 0) and (vPos < vMin) then
-    Result := '='
+    Result := '=';
 
   vPos := Pos(': ', ASource);
   if (vPos > 0) and (vPos < vMin) then

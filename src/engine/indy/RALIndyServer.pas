@@ -101,6 +101,7 @@ var
   vInt: IntegerRAL;
   vIdCookie: TIdCookie;
   vCookies: TStringList;
+  vParam: TRALParam;
 begin
   vRequest := TRALRequest.Create;
   try
@@ -180,6 +181,13 @@ begin
 
         AResponseInfo.Server := 'RAL_Indy';
         AResponseInfo.ContentEncoding := ContentEncoding;
+
+        vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+        if vParam <> nil then
+        begin
+          AResponseInfo.WWWAuthenticate.Add(vParam.AsString);
+          vResponse.Params.DelParam('WWW-Authenticate');
+        end;
 
         if vResponse.AcceptEncoding <> '' then
           Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
