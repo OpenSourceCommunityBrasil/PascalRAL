@@ -122,6 +122,7 @@ begin
 
         Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
         Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+        Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
         ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
       except
