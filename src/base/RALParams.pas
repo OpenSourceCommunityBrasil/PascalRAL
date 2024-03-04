@@ -5,9 +5,9 @@ unit RALParams;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, TypInfo,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
-  RALCompressZLib, RALCripto, RALCriptoAES, RALStream;
+  RALCripto, RALCriptoAES, RALStream, RALCompress;
 
 type
 
@@ -1061,11 +1061,42 @@ begin
 end;
 
 function TRALParams.Compress(AStream: TStream): TStream;
+var
+  vCompress : TRALCompress;
+  vClass : TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
     ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Compress(AStream, FCompressType);
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          //SetEnumProp
+          //SetOrdProp
+          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
+//          TRALCompressZLib(vCompress).Format := FCompressType;
+          Result := vCompress.Compress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
+    ctZStd:
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          Result := vCompress.Compress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -1101,20 +1132,63 @@ begin
 end;
 
 function TRALParams.Decompress(AStream: TStream): TStream;
+var
+  vCompress : TRALCompress;
+  vClass : TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
     ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Decompress(AStream, FCompressType);
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          //SetEnumProp
+          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
+//          TRALCompressZLib(vCompress).Format := FCompressType;
+          Result := vCompress.Decompress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
+    ctZStd:
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          Result := vCompress.Decompress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
   end;
 end;
 
 function TRALParams.Decompress(const ASource: StringRAL): StringRAL;
+var
+  vStream, vResult : TStream;
 begin
   Result := '';
-  case FCompressType of
-    ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Decompress(ASource, FCompressType);
+  if Result <> '' then
+  begin
+    vStream := StringToStream(ASource);
+    try
+      vStream.Position := 0;
+      vResult := Decompress(vStream);
+      try
+        Result := StreamToString(vResult);
+      finally
+        vResult.Free;
+      end;
+    finally
+      vStream.Free;
+    end;
   end;
 end;
 

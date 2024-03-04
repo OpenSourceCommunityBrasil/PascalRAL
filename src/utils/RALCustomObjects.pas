@@ -242,14 +242,20 @@ end;
 function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
 var
   vStr: StringRAL;
+  vZLib, vZStd : boolean;
 begin
+  vZLib := GetClass('TRALCompressZLib') <> nil;
+  vZStd := GetClass('TRALCompressZStd') <> nil;
+
   vStr := LowerCase(FContentEncoding);
-  if (Pos('gzip', vStr) > 0) then
+  if vZLib and (Pos('gzip', vStr) > 0) then
     Result := ctGZip
-  else if (Pos('deflate', vStr) > 0) then
+  else if vZLib and (Pos('deflate', vStr) > 0) then
     Result := ctDeflate
-  else if (Pos('zlib', vStr) > 0) then
+  else if vZLib and (Pos('zlib', vStr) > 0) then
     Result := ctZLib
+  else if vZStd and (Pos('zstd', vStr) > 0) then
+    Result := ctZStd
   else
     Result := ctNone;
 end;

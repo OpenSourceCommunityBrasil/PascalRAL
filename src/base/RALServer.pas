@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALCripto;
+  RALCripto, RALCompress, RALCompressZLib;
 
 type
   TRALServer = class;
@@ -621,14 +621,14 @@ begin
   begin
     Result.Answer(415);
     Result.ContentEncoding := ARequest.ContentEncoding;
-    Result.AcceptEncoding := SupportedCompressKind;
+    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     Result.Answer(415);
     Result.ContentEncoding := ARequest.AcceptEncoding;
-    Result.AcceptEncoding := SupportedCompressKind;
+    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
   end;
 

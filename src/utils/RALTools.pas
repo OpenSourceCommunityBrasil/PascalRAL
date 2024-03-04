@@ -59,13 +59,20 @@ begin
 end;
 
 function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
+var
+  vZLib, vZStd : boolean;
 begin
-  if SameText(AStr, 'gzip') then
+  vZLib := GetClass('TRALCompressZLib') <> nil;
+  vZStd := GetClass('TRALCompressZStd') <> nil;
+
+  if vZLib and SameText(AStr, 'gzip') then
     Result := ctGZip
-  else if SameText(AStr, 'zlib') then
+  else if vZLib and SameText(AStr, 'zlib') then
     Result := ctZLib
-  else if SameText(AStr, 'deflate') then
+  else if vZLib and SameText(AStr, 'deflate') then
     Result := ctDeflate
+  else if vZStd and SameText(AStr, 'zstd') then
+    Result := ctZStd
   else
     Result := ctNone;
 end;
@@ -77,6 +84,7 @@ begin
     ctGZip    : Result := 'gzip';
     ctDeflate : Result := 'deflate';
     ctZLib    : Result := 'zlib';
+    ctZStd    : Result := 'zstd';
   end;
 end;
 
