@@ -138,10 +138,10 @@ type
     procedure AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
     /// Fills the 'ADest' StringList with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
-                           const ASeparator: StringRAL = '='); overload;
+                           ASeparator: StringRAL = '='); overload;
     /// Fills the 'ADest' Strings with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStrings; AKind: TRALParamKind;
-                           const ASeparator: StringRAL = '='); overload;
+                           ASeparator: StringRAL = '='); overload;
     /// Returns an UTF8 String with RALParams matching 'AKind'.
     function AssignParamsListText(AKind: TRALParamKind;
                                   const ANameSeparator: StringRAL = '='): StringRAL;
@@ -622,17 +622,23 @@ begin
 end;
 
 procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
-  const ASeparator: StringRAL);
+  ASeparator: StringRAL);
 begin
+  if AKind = rpkHEADER then
+    ASeparator := ':';
+
   AssignParams(TStrings(ADest), AKind, ASeparator);
 end;
 
 procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
-  const ASeparator: StringRAL);
+  ASeparator: StringRAL);
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
+  if AKind = rpkHEADER then
+    ASeparator := ':';
+
   for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
