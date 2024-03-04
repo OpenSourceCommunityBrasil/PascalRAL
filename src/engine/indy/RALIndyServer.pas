@@ -11,7 +11,12 @@ uses
 
 type
   TIdSSLOptionsRAL = class(TIdSSLOptions)
-
+  private
+    FKeyPassword: StringRAL;
+  public
+    procedure GetPassword(var Password: string);
+  published
+    property Key: StringRAL read FKeyPassword write FKeyPassword;
   end;
 
   TRALIndySSL = class(TRALSSL)
@@ -66,16 +71,19 @@ begin
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.KeepAlive := True;
 
+  FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
+
   {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
   FHttp.OnCommandOther := @OnCommandProcess;
   FHttp.OnParseAuthentication := @OnParseAuthentication;
+  FHandlerSSL.OnGetPassword := @Self.SSL.FSSLOptions.GetPassword;
   {$ELSE}
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
   FHttp.OnParseAuthentication := OnParseAuthentication;
+  FHandlerSSL.OnGetPassword := Self.SSL.FSSLOptions.GetPassword;
   {$ENDIF}
-  FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 end;
 
 function TRALIndyServer.CreateRALSSL: TRALSSL;
@@ -266,12 +274,14 @@ begin
 
   FHttp.Active := False;
 
-  if Assigned(SSL) then
+  if (Assigned(SSL) and (SSL.Enabled)) then
+  begin
     SSL.SSLOptions.AssignTo(FHandlerSSL.SSLOptions);
 
-  FHttp.IOHandler := nil;
-  if (Assigned(SSL)) and (SSL.Enabled) then
     FHttp.IOHandler := FHandlerSSL;
+  end
+  else
+    FHttp.IOHandler := nil;
 
   FHttp.Bindings.Clear;
   if IPConfig.IPv6Enabled then
@@ -333,13 +343,20 @@ end;
 constructor TRALIndySSL.Create;
 begin
   inherited;
-  FSSLOptions := TIdSSLOptions.Create;
+  FSSLOptions := TIdSSLOptionsRAL.Create;
 end;
 
 destructor TRALIndySSL.Destroy;
 begin
   FreeAndNil(FSSLOptions);
   inherited;
+end;
+
+{ TIdSSLOptionsRAL }
+
+procedure TIdSSLOptionsRAL.GetPassword(var Password: string);
+begin
+  Password := FKeyPassword;
 end;
 
 end.
