@@ -10,14 +10,18 @@ uses
   RALParams, RALTools;
 
 type
+  TIdSSLOptionsRAL = class(TIdSSLOptions)
+
+  end;
+
   TRALIndySSL = class(TRALSSL)
   private
-    FSSLOptions: TIdSSLOptions;
+    FSSLOptions: TIdSSLOptionsRAL;
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TIdSSLOptions read FSSLOptions write FSSLOptions;
+    property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write FSSLOptions;
   end;
 
   { TRALIndyServer }
@@ -263,7 +267,8 @@ begin
   FHttp.Active := False;
 
   if Assigned(SSL) then
-    FHandlerSSL.SSLOptions.Assign(TRALIndySSL(SSL).SSLOptions);
+    SSL.SSLOptions.AssignTo(FHandlerSSL.SSLOptions);
+
   FHttp.IOHandler := nil;
   if (Assigned(SSL)) and (SSL.Enabled) then
     FHttp.IOHandler := FHandlerSSL;
