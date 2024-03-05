@@ -1,2 +1,2 @@
-# PascalRAL
-Pascal REST API Lite é um repositório para uma suíte de componentes para a criação e consumo de servidores de APIs RESTFul.
+# PascalRAL - test apps branch
+This branch will have the testing sources used to verify functionalities on PascalRAL
