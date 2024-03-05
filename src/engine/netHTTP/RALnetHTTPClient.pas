@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils,
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
-  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts;
+  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
+  RALCompress;
 
 type
 
@@ -77,7 +78,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;

@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils,
   mormot.net.client, mormot.core.base,
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
+  RALCompress;
 
 type
 
@@ -74,7 +75,7 @@ begin
     if CompressType <> ctNone then
     begin
       AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-      AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+      AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
     end;
 
     Request.ContentCripto := CriptoOptions.CriptType;

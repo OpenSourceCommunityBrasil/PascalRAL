@@ -49,7 +49,7 @@ begin
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
 
   {$IFDEF FPC}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TCompressionStream.Create(clfastest, AOutStream)
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
@@ -112,7 +112,7 @@ begin
   end;
 
   {$IFDEF FPC}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream)
   else
     vZip := TDeCompressionStream.Create(AInStream, True);

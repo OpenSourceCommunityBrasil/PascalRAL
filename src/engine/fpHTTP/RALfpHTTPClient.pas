@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   fphttpclient, fphttp,
   RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
-  RALRequest;
+  RALRequest, RALCompress;
 
 type
 
@@ -88,7 +88,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;

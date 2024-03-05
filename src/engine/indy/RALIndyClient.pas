@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   IdCookie,
-  RALClient, RALParams, RALTypes, RALConsts;
+  RALClient, RALParams, RALTypes, RALConsts, RALCompress;
 
 type
 
@@ -88,7 +88,7 @@ begin
   if CompressType <> ctNone then
   begin
     FHttp.Request.ContentEncoding := Request.ContentEncoding;
-    FHttp.Request.AcceptEncoding := SupportedCompressKind;
+    FHttp.Request.AcceptEncoding := TRALCompress.GetSuportedCompress;
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;
