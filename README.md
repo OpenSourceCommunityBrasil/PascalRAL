@@ -2,7 +2,7 @@
 This branch will host precompiled files that are necessary for some modules.
 The files hosted here are from precompiled open source projects only. Any closed source or proprietary files must be acquired by their respective license providers.
 
-| depedancy | version | date of parse |
+| Depedancy | Version | Version Date |
 |-----------|:-------:|:-------------:|
 | **[brotli](https://github.com/eugeneilyin/mORMotBP)** | 2.4 | 06/10/2020 |
 | **[libsagui](https://github.com/risoflora/libsagui/releases)** | 3.5.0 | 26/02/2024 |
