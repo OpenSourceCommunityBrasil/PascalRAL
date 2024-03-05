@@ -37,21 +37,18 @@ type
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure SetActive(const AValue: boolean); override;
+    procedure SetActive(const AValue: Boolean); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
-    function IPv6IsImplemented : boolean; override;
-
+    function IPv6IsImplemented: Boolean; override;
     function GetSSL: TRALIndySSL;
     procedure SetSSL(const AValue: TRALIndySSL);
-
-    procedure OnCommandProcess(AContext: TIdContext;
-                               ARequestInfo: TIdHTTPRequestInfo;
-                               AResponseInfo: TIdHTTPResponseInfo);
+    procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
+      AResponseInfo: TIdHTTPResponseInfo);
     procedure OnParseAuthentication(AContext: TIdContext;
-                                    const AAuthType, AAuthData: String;
-                                    var VUsername, VPassword: String;
-                                    var VHandled: boolean);
+      const AAuthType, AAuthData: String; var VUsername, VPassword: String;
+      var VHandled: Boolean);
+    procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -73,17 +70,19 @@ begin
 
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 
-  {$IFDEF FPC}
+{$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
   FHttp.OnCommandOther := @OnCommandProcess;
   FHttp.OnParseAuthentication := @OnParseAuthentication;
   FHandlerSSL.OnGetPassword := @Self.SSL.FSSLOptions.GetPassword;
-  {$ELSE}
+  FHttp.OnQuerySSLPort := @QuerySSLPort;
+{$ELSE}
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
   FHttp.OnParseAuthentication := OnParseAuthentication;
+  FHttp.OnQuerySSLPort := QuerySSLPort;
   FHandlerSSL.OnGetPassword := Self.SSL.FSSLOptions.GetPassword;
-  {$ENDIF}
+{$ENDIF}
 end;
 
 function TRALIndyServer.CreateRALSSL: TRALSSL;
@@ -144,12 +143,14 @@ begin
       Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
       Params.AppendParams(ARequestInfo.Params, rpkQUERY);
 
-      if ARequestInfo.Params.Count = 0 then begin
+      if ARequestInfo.Params.Count = 0 then
+      begin
         Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
         Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
       end;
 
-      for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do begin
+      for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do
+      begin
         vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
         Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
       end;
@@ -166,10 +167,11 @@ begin
       vInt := Pos('/', ARequestInfo.Version);
       if vInt > 0 then
       begin
-        HttpVersion := Copy(ARequestInfo.Version, 1, vInt-1);
-        Protocol := Copy(ARequestInfo.Version, vInt+1, 3);
+        HttpVersion := Copy(ARequestInfo.Version, 1, vInt - 1);
+        Protocol := Copy(ARequestInfo.Version, vInt + 1, 3);
       end
-      else begin
+      else
+      begin
         HttpVersion := 'HTTP';
         Protocol := '1.0';
       end;
@@ -211,8 +213,9 @@ begin
 
         vCookies := TStringList.Create;
         try
-          Params.AssignParams(vCookies,rpkCOOKIE);
-          for vInt := 0 to Pred(vCookies.Count) do begin
+          Params.AssignParams(vCookies, rpkCOOKIE);
+          for vInt := 0 to Pred(vCookies.Count) do
+          begin
             vIdCookie := AResponseInfo.Cookies.Add;
             vIdCookie.CookieName := vCookies.Names[vInt];
             vIdCookie.Value := vCookies.ValueFromIndex[vInt];
@@ -227,7 +230,8 @@ begin
         AResponseInfo.ContentLength := 0;
         AResponseInfo.FreeContentStream := False;
 
-        if AResponseInfo.ContentStream <> nil then begin
+        if AResponseInfo.ContentStream <> nil then
+        begin
           AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
           AResponseInfo.FreeContentStream := FreeContent;
         end;
@@ -244,7 +248,7 @@ end;
 
 procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
   const AAuthType, AAuthData: String; var VUsername, VPassword: String;
-  var VHandled: boolean);
+  var VHandled: Boolean);
 var
   vAuth: TRALAuthorization;
 begin
@@ -252,8 +256,10 @@ begin
   if Authentication <> nil then
   begin
     case Authentication.AuthType of
-      ratBasic: VHandled := SameText(AAuthType, 'basic');
-      ratBearer: VHandled := SameText(AAuthType, 'bearer');
+      ratBasic:
+        VHandled := SameText(AAuthType, 'basic');
+      ratBearer:
+        VHandled := SameText(AAuthType, 'bearer');
     end;
 
     if VHandled then
@@ -267,7 +273,13 @@ begin
   end;
 end;
 
-procedure TRALIndyServer.SetActive(const AValue: boolean);
+procedure TRALIndyServer.QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
+begin
+  if APort = Self.Port then
+    VUseSSL := True;
+end;
+
+procedure TRALIndyServer.SetActive(const AValue: Boolean);
 begin
   if AValue = Active then
     Exit;
@@ -319,7 +331,7 @@ end;
 
 procedure TRALIndyServer.SetPort(const AValue: IntegerRAL);
 var
-  vActive: boolean;
+  vActive: Boolean;
 begin
   if AValue = Port then
     Exit;
@@ -333,7 +345,7 @@ begin
   inherited;
 end;
 
-function TRALIndyServer.IPv6IsImplemented : boolean;
+function TRALIndyServer.IPv6IsImplemented: Boolean;
 begin
   Result := True;
 end;
