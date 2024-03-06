@@ -3,11 +3,16 @@ unit RALFiredacDAO;
 interface
 
 uses
-  FireDAC.Stan.StorageBin, FireDAC.FMXUI.Wait,
+  FireDAC.Stan.StorageBin,
+  FireDAC.FMXUI.Wait,
   System.SysUtils, System.Classes, Data.DB,
-  FireDAC.Comp.Client, FireDAC.Stan.Intf,
-  System.TypInfo, System.Variants,
-  RALServer, RALWebModule, RALRequest, RALResponse, RALClient, RALTypes;
+  FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client, FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param,
+  FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf,
+  FireDAC.Stan.Async, FireDAC.DApt, FireDAC.UI.Intf,
+  FireDAC.Comp.UI,
+  FireDAC.Stan.Def, FireDAC.Stan.Pool, FireDAC.Phys, System.TypInfo, System.Variants,
+  RALCustomObjects, RALServer, RALWebModule, RALRequest, RALResponse, RALClient, RALTypes;
 
 type
 

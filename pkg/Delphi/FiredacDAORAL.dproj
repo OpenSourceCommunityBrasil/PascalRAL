@@ -132,7 +132,7 @@
         <DCCReference Include="IndyProtocols.dcp"/>
         <DCCReference Include="IndyCore.dcp"/>
         <DCCReference Include="IndyRAL.dcp"/>
-        <DCCReference Include="RALFiredacDAO.pas"/>
+        <DCCReference Include="..\..\src\dao\FireDAC\RALFiredacDAO.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
