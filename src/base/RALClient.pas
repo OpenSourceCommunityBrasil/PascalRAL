@@ -86,8 +86,10 @@ type
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
-    /// Returns a copy of the current TRALClient object
-    procedure Clone(ADest: TRALClient);
+    /// Copy all properties of current TRALClient object
+    procedure CopyProperties(ADest: TRALClient); virtual;
+    /// Creates a new TRALClient object and copy all properties of current TRALClient object
+    function Clone(AOwner: TComponent): TRALClient; virtual;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL; virtual;
     /// Defines method on the client: Get.
@@ -186,7 +188,13 @@ begin
   end;
 end;
 
-procedure TRALClient.Clone(ADest: TRALClient);
+function TRALClient.Clone(AOwner: TComponent): TRALClient;
+begin
+  Result := TRALClient.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+procedure TRALClient.CopyProperties(ADest: TRALClient);
 begin
   ADest.FAuthentication := Self.FAuthentication;
   ADest.FBaseURL := Self.FBaseURL;

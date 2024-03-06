@@ -13,25 +13,28 @@ type
   { TRALSynopseClient }
 
   TRALSynopseClient = class(TRALClient)
+  private
   protected
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent): TRALSynopseClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALSynopseClient }
 
-function TRALSynopseClient.Clone(AOwner: TComponent): TRALSynopseClient;
+function TRALSynopseClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALSynopseClient.Create(AOwner)
-  else
-    Result := TRALSynopseClient.Create(Self.Owner);
+  Result := TRALSynopseClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALSynopseClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALSynopseClient.Create(AOwner: TComponent);

@@ -27,21 +27,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALIndyClient;
+    function Clone(AOwner: TComponent): TRALClient;  override;
+    procedure CopyProperties(ADest: TRALClient);  override;
   end;
 
 implementation
 
 { TRALIndyClient }
 
-function TRALIndyClient.Clone(AOwner: TComponent): TRALIndyClient;
+function TRALIndyClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALIndyClient.Create(AOwner)
-  else
-    Result := TRALIndyClient.Create(Self.Owner);
+  Result := TRALIndyClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALIndyClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALIndyClient.Create(AOwner: TComponent);

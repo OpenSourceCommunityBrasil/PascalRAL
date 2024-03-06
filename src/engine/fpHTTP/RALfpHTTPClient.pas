@@ -23,21 +23,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALfpHttpClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALfpHttpClient }
 
-function TRALfpHttpClient.Clone(AOwner: TComponent): TRALfpHttpClient;
+function TRALfpHttpClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALfpHttpClient.Create(AOwner)
-  else
-    Result := TRALfpHttpClient.Create(Self.Owner);
+  Result := TRALfpHttpClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALfpHttpClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALfpHttpClient.Create(AOwner: TComponent);

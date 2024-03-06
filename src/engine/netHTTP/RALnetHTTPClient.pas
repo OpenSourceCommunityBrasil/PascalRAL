@@ -23,21 +23,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALnetHTTPClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALnetHTTPClient }
 
-function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALnetHTTPClient;
+function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALnetHTTPClient.Create(AOwner)
-  else
-    Result := TRALnetHTTPClient.Create(Self.Owner);
+  Result := TRALnetHTTPClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-  inherited Clone(Result);
+procedure TRALnetHTTPClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALnetHTTPClient.Create(AOwner: TComponent);
