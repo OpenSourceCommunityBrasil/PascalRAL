@@ -1,7 +1,7 @@
-package RALDBPackage;
+package RALDBFireDACObjects;
 
 {$R *.res}
-{$R 'RALDBPackage.dcr'}
+{$R 'RALDBFireDACObjects.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,20 +26,16 @@ package RALDBPackage;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | DataBase Components'}
+{$DESCRIPTION 'PascalRAL | Firedac DAO'}
 {$IMPLICITBUILD ON}
 
 requires
-  rtl,
-  PascalRAL,
-  PascalRALDsgn;
+  PascalRALDsgn,
+  FireDAC,
+  FireDACCommonDriver,
+  FireDACCommon;
 
 contains
-  RALDBBase in '..\..\src\database\RALDBBase.pas',
-  RALDBModule in '..\..\src\database\RALDBModule.pas',
-  raldbregister in '..\..\src\database\raldbregister.pas',
-  RALDBStorage in '..\..\src\database\RALDBStorage.pas',
-  RALDBStorageBIN in '..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\src\database\RALDBStorageJSON.pas';
+  RALDBFiredacDAO in '..\..\..\src\database\FireDAC\RALDBFiredacDAO.pas';
 
 end.

@@ -17,5 +17,6 @@ if NOT EXIST %path_brcc32% (
 %path_brcc32% -fo "..\..\pkg\Delphi\BrookRAL.dcr" "Brook.rc"
 
 # DBWare
-%path_brcc32% -fo "..\..\pkg\Delphi\DBLinks\RALDBFireDACLink.dcr" "DBFireDACLink.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\DBLinks\RALDBZeosLink.dcr" "DBZeosLink.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDACLink.dcr" "DBFireDACLink.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBZeosLink.dcr" "DBZeosLink.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDACObjects.dcr" "RALDBFireDACObjects.rc"

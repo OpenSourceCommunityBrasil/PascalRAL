@@ -21,16 +21,16 @@
         <Projects Include="Delphi\UniGUIRAL.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="Delphi\RALDBPackage.dproj">
-            <Dependencies>Delphi\PascalRAL.dproj</Dependencies>
+        <Projects Include="Delphi\DB\RALDBPackage.dproj">
+            <Dependencies/>
         </Projects>
-        <Projects Include="Delphi\DBLinks\RALDBFireDACLink.dproj">
-            <Dependencies>Delphi\RALDBPackage.dproj;Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
+        <Projects Include="Delphi\DB\RALDBFireDACLink.dproj">
+            <Dependencies/>
         </Projects>
-        <Projects Include="Delphi\DBLinks\RALDBZeosLink.dproj">
-            <Dependencies>Delphi\RALDBPackage.dproj;Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
+        <Projects Include="Delphi\DB\RALDBFireDACObjects.dproj">
+            <Dependencies>Delphi\PascalRAL.dproj;Delphi\PascalRALDsgn.dproj</Dependencies>
         </Projects>
-        <Projects Include="Delphi\FiredacDAORAL.dproj">
+        <Projects Include="Delphi\DB\RALDBZeosLink.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -95,50 +95,50 @@
     <Target Name="UniGUIRAL:Make">
         <MSBuild Projects="Delphi\UniGUIRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBPackage" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Delphi\RALDBPackage.dproj"/>
+    <Target Name="RALDBPackage">
+        <MSBuild Projects="Delphi\DB\RALDBPackage.dproj"/>
     </Target>
-    <Target Name="RALDBPackage:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Delphi\RALDBPackage.dproj" Targets="Clean"/>
+    <Target Name="RALDBPackage:Clean">
+        <MSBuild Projects="Delphi\DB\RALDBPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBPackage:Make" DependsOnTargets="PascalRAL:Make">
-        <MSBuild Projects="Delphi\RALDBPackage.dproj" Targets="Make"/>
+    <Target Name="RALDBPackage:Make">
+        <MSBuild Projects="Delphi\DB\RALDBPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBFireDACLink" DependsOnTargets="RALDBPackage;PascalRAL;PascalRALDsgn">
-        <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj"/>
+    <Target Name="RALDBFireDACLink">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACLink.dproj"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Clean" DependsOnTargets="RALDBPackage:Clean;PascalRAL:Clean;PascalRALDsgn:Clean">
-        <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj" Targets="Clean"/>
+    <Target Name="RALDBFireDACLink:Clean">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Make" DependsOnTargets="RALDBPackage:Make;PascalRAL:Make;PascalRALDsgn:Make">
-        <MSBuild Projects="Delphi\DBLinks\RALDBFireDACLink.dproj" Targets="Make"/>
+    <Target Name="RALDBFireDACLink:Make">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACLink.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBZeosLink" DependsOnTargets="RALDBPackage;PascalRAL;PascalRALDsgn">
-        <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj"/>
+    <Target Name="RALDBFireDACObjects" DependsOnTargets="PascalRAL;PascalRALDsgn">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACObjects.dproj"/>
     </Target>
-    <Target Name="RALDBZeosLink:Clean" DependsOnTargets="RALDBPackage:Clean;PascalRAL:Clean;PascalRALDsgn:Clean">
-        <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj" Targets="Clean"/>
+    <Target Name="RALDBFireDACObjects:Clean" DependsOnTargets="PascalRAL:Clean;PascalRALDsgn:Clean">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACObjects.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBZeosLink:Make" DependsOnTargets="RALDBPackage:Make;PascalRAL:Make;PascalRALDsgn:Make">
-        <MSBuild Projects="Delphi\DBLinks\RALDBZeosLink.dproj" Targets="Make"/>
+    <Target Name="RALDBFireDACObjects:Make" DependsOnTargets="PascalRAL:Make;PascalRALDsgn:Make">
+        <MSBuild Projects="Delphi\DB\RALDBFireDACObjects.dproj" Targets="Make"/>
     </Target>
-    <Target Name="FiredacDAORAL">
-        <MSBuild Projects="Delphi\FiredacDAORAL.dproj"/>
+    <Target Name="RALDBZeosLink">
+        <MSBuild Projects="Delphi\DB\RALDBZeosLink.dproj"/>
     </Target>
-    <Target Name="FiredacDAORAL:Clean">
-        <MSBuild Projects="Delphi\FiredacDAORAL.dproj" Targets="Clean"/>
+    <Target Name="RALDBZeosLink:Clean">
+        <MSBuild Projects="Delphi\DB\RALDBZeosLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="FiredacDAORAL:Make">
-        <MSBuild Projects="Delphi\FiredacDAORAL.dproj" Targets="Make"/>
+    <Target Name="RALDBZeosLink:Make">
+        <MSBuild Projects="Delphi\DB\RALDBZeosLink.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;SynopseRAL;UniGUIRAL;RALDBPackage;RALDBFireDACLink;RALDBZeosLink;FiredacDAORAL"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;SynopseRAL;UniGUIRAL;RALDBPackage;RALDBFireDACLink;RALDBFireDACObjects;RALDBZeosLink"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;SynopseRAL:Clean;UniGUIRAL:Clean;RALDBPackage:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean;FiredacDAORAL:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;SynopseRAL:Clean;UniGUIRAL:Clean;RALDBPackage:Clean;RALDBFireDACLink:Clean;RALDBFireDACObjects:Clean;RALDBZeosLink:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;SynopseRAL:Make;UniGUIRAL:Make;RALDBPackage:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make;FiredacDAORAL:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;SynopseRAL:Make;UniGUIRAL:Make;RALDBPackage:Make;RALDBFireDACLink:Make;RALDBFireDACObjects:Make;RALDBZeosLink:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

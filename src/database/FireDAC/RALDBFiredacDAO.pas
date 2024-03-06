@@ -1,18 +1,11 @@
-unit RALFiredacDAO;
+unit RALDBFiredacDAO;
 
 interface
 
 uses
-  FireDAC.Stan.StorageBin,
-  FireDAC.FMXUI.Wait,
-  System.SysUtils, System.Classes, Data.DB,
-  FireDAC.Comp.DataSet,
-  FireDAC.Comp.Client, FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param,
-  FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf,
-  FireDAC.Stan.Async, FireDAC.DApt, FireDAC.UI.Intf,
-  FireDAC.Comp.UI,
-  FireDAC.Stan.Def, FireDAC.Stan.Pool, FireDAC.Phys, System.TypInfo, System.Variants,
-  RALCustomObjects, RALServer, RALWebModule, RALRequest, RALResponse, RALClient, RALTypes;
+  System.SysUtils, System.Classes, Data.DB, System.TypInfo, System.Variants,
+  FireDAC.comp.Client, FireDAC.Stan.Intf,
+  RALClient, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse;
 
 type
 
@@ -21,13 +14,13 @@ type
   private
     vRALClient: TRALClient;
     vRALClientClone: TRALClient;
-    vRALFDConnectionServer: string;
+    vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
-    vIP: string;
-    vPort: string;
-    procedure SetRALFDConnectionServer(const value: string);
+    vIP: StringRAL;
+    vPort: StringRAL;
+    procedure SetRALFDConnectionServer(const value: StringRAL);
     procedure SetRALClient(const value: TRALClient);
-    procedure RebuildParams(ParamCount: integer);
+    procedure RebuildParams(ParamCount: IntegerRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -35,15 +28,13 @@ type
     procedure ApplyUpdatesRemote;
     procedure ExecSQLRemote;
   published
-    property IP: string read vIP write vIP;
-    property Port: string read vPort write vPort;
-    property RowsAffectedRemote: Int64 read vRowsAffectedRemote;
+    property IP: StringRAL read vIP write vIP;
+    property Port: StringRAL read vPort write vPort;
+    property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
     property RALClient: TRALClient read vRALClient write SetRALClient;
-    property RALFDConnectionServer: string read vRALFDConnectionServer
+    property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
   end;
-
-type
 
   TOnQueryError = procedure(ASender, AInitiator: TObject; var AException: Exception)
     of object;
@@ -56,11 +47,11 @@ type
     vRALWebModule: TRALWebModule;
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
-    vDriverName: String;
+    vDriverName: StringRAL;
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetRALServer(const value: TRALServer);
-    procedure SetDriverName(const value: string);
+    procedure SetDriverName(const value: StringRAL);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
@@ -70,8 +61,12 @@ type
     property OnQueryError: TOnQueryError read vOnQueryError write SetOnQueryError;
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
-    property DriverName: String read vDriverName write SetDriverName;
+    property DriverName: StringRAL read vDriverName write SetDriverName;
   end;
+
+resourcestring
+  emTypeNotImplemented = 'Type not Implemented.';
+  emInvalidServer = 'RALServer not configured.';
 
 procedure Register;
 
@@ -117,23 +112,18 @@ begin
       end;
 
       vRALClientClone := vRALClient.Clone(Self);
-
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-
       RebuildParams(Self.Params.Count);
-
       vStringStreamAux.Position := 0;
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
@@ -158,26 +148,19 @@ begin
           vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
-
         vBinaryWriter.Write(vBytesAux);
-
         vStreamAux.Position := 0;
-
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '2', rpkBODY);
-
       vRALClientClone.Post;
-
       if vRALClientClone.Response.StatusCode <> 200 then
       // Arrumar depois que os russos resolverem o problema do RESPONSE do Indy
       begin
         Self.CommitUpdates;
-
         Self.vRowsAffectedRemote := vRALClientClone.Response.ParamByName('AffectedRows')
           .AsInteger;
       end
@@ -187,7 +170,6 @@ begin
       on e: Exception do
       begin
         Self.Close;
-
         raise Exception.Create(e.Message);
       end;
     end;
@@ -221,31 +203,25 @@ begin
       end;
 
       vRALClientClone := vRALClient.Clone(Self);
-
       vAuxMemTable := TFDMemTable.Create(Self);
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-
       RebuildParams(Self.Params.Count);
-
       vStringStreamAux.Position := 0;
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
           (VarType(Self.Params[i].value) = varString)) then
         begin
           t := 0;
-
           for x := Self.Params[i].GetDataSize - 1 downto 0 do
           begin
             if vBytesAux[x] = 0 then
@@ -253,7 +229,6 @@ begin
             else
               break;
           end;
-
           SetLength(vBytesAux, Length(vBytesAux) - t);
         end;
 
@@ -263,28 +238,19 @@ begin
           vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
-
         vBinaryWriter.Write(vBytesAux);
-
         vStreamAux.Position := 0;
-
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '1', rpkBODY);
-
       vStreamAux.Clear;
-
       vAuxMemTable.Data := Self.Delta;
-
       vAuxMemTable.SaveToStream(vStreamAux, sfBinary);
-
       vStreamAux.Position := 0;
       vRALClientClone.Request.Params.AddParam('Stream', vStreamAux, rpkBODY);
-
       vRALClientClone.Post;
 
       if vRALClientClone.Response.StatusCode <> 200 then
@@ -301,7 +267,6 @@ begin
       on e: Exception do
       begin
         Self.Close;
-
         raise Exception.Create(e.Message);
       end;
     end;
@@ -334,30 +299,24 @@ begin
       end;
 
       vRALClientClone := vRALClient.Clone(Self);
-
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-
       RebuildParams(Self.Params.Count);
-
       vStringStreamAux.Position := 0;
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
           (VarType(Self.Params[i].value) = varString)) then
         begin
           t := 0;
-
           for x := Self.Params[i].GetDataSize - 1 downto 0 do
           begin
             if vBytesAux[x] = 0 then
@@ -365,7 +324,6 @@ begin
             else
               break;
           end;
-
           SetLength(vBytesAux, Length(vBytesAux) - t);
         end;
 
@@ -375,28 +333,21 @@ begin
           vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
-
         vBinaryWriter.Write(vBytesAux);
-
         vStreamAux.Position := 0;
-
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '0', rpkBODY);
-
       vRALClientClone.Post;
 
       if vRALClientClone.Response.StatusCode <> 200 then
       // Arrumar depois que os russos resolverem o problema do RESPONSE do Indy
       begin
         TMemoryStream(vStreamAux).Clear;
-
         vRALClientClone.Response.ParamByName('Stream').SaveToStream(vStreamAux);
-
         vStreamAux.Position := 0;
 
         if Assigned(Self.Connection) = false then
@@ -405,7 +356,6 @@ begin
         end;
 
         Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
-
         Self.CachedUpdates := true;
       end
       else
@@ -414,7 +364,6 @@ begin
       on e: Exception do
       begin
         Self.Close;
-
         raise Exception.Create(e.Message);
       end;
     end;
@@ -430,11 +379,10 @@ procedure TRALFDQuery.SetRALClient(const value: TRALClient);
 begin
   if Assigned(vRALClientClone) then
     FreeAndNil(vRALClientClone);
-
   vRALClient := value;
 end;
 
-procedure TRALFDQuery.SetRALFDConnectionServer(const value: string);
+procedure TRALFDQuery.SetRALFDConnectionServer(const value: StringRAL);
 begin
   vRALFDConnectionServer := value;
 end;
@@ -450,7 +398,6 @@ end;
 constructor TRALFDConnection.Create(AOwner: TComponent);
 begin
   vRALWebModule := nil;
-
   inherited;
 end;
 
@@ -460,7 +407,6 @@ begin
   begin
     FreeAndNil(vRALWebModule);
   end;
-
   inherited;
 end;
 
@@ -510,23 +456,15 @@ begin
         for i := 0 to ARequest.ParamByName('ParamCount').AsInteger - 1 do
         begin
           TMemoryStream(vAuxParamStream).Clear;
-
           vAuxParamStream.Position := 0;
-
           ARequest.ParamByName('P' + i.ToString).SaveToStream(vAuxParamStream);
-
           vAuxParamStream.Position := 0;
-
           vAuxPBytes := vBinaryReader.ReadBytes(vAuxParamStream.Size);
-
           vAuxParamStream.Position := 0;
-
           vQueryAux.Params.Add;
-
           vQueryAux.Params[i].DataType :=
             TFieldType(GetEnumValue(Typeinfo(TFieldType),
             ARequest.ParamByName('F' + i.ToString).AsString));
-
           vQueryAux.Params[i].SetData(PByte(vAuxPBytes), Length(vAuxPBytes));
 
           if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
@@ -535,11 +473,9 @@ begin
           if ARequest.ParamByName('Type').AsString = '1' then
           begin
             vQueryAux2.Params.Add;
-
             vQueryAux2.Params[i].DataType :=
               TFieldType(GetEnumValue(Typeinfo(TFieldType),
               ARequest.ParamByName('F' + i.ToString).AsString));
-
             vQueryAux2.Params[i].SetData(PByte(vAuxPBytes), Length(vAuxPBytes));
 
             if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
@@ -558,60 +494,41 @@ begin
       begin
         vQueryAux.Close;
         vQueryAux2.Close;
-
         vQueryAux.CachedUpdates := true;
         vQueryAux2.CachedUpdates := true;
-
         vQueryAux.Open;
-
         TMemoryStream(vAuxStream).Clear;
-
         ARequest.ParamByName('Stream').SaveToStream(vAuxStream);
-
         vAuxStream.Position := 0;
-
         vQueryAux2.LoadFromStream(vAuxStream);
-
         vQueryAux.MergeDataSet(vQueryAux2, dmDeltaMerge);
-
         vQueryAux.ApplyUpdates;
-
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux2.Delta.DataView.Rows.Count.ToString, rpkBODY);
-
         vQueryAux.CommitUpdates;
-
         vQueryAux.CachedUpdates := false;
       end
       else if ARequest.ParamByName('Type').AsString = '0' then
       begin
         vQueryAux.Open;
-
         vQueryAux.SaveToStream(vAuxStream, TFDStorageFormat.sfBinary);
-
         vAuxStream.Position := 0;
-
         AResponse.Params.AddParam('Stream', vAuxStream, rpkBODY);
-
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);
-
         vQueryAux.Close;
       end
       else if ARequest.ParamByName('Type').AsString = '2' then
       begin
         vQueryAux.ExecSQL;
-
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);
-
         vQueryAux.Close;
       end
       else
       begin
         AResponse.StatusCode := 501;
-
-        raise Exception.Create('Type not implemented.');
+        raise Exception.Create(emTypeNotImplemented);
       end;
 
       AResponse.StatusCode := 200;
@@ -633,7 +550,7 @@ begin
   end;
 end;
 
-procedure TRALFDConnection.SetDriverName(const value: string);
+procedure TRALFDConnection.SetDriverName(const value: StringRAL);
 begin
   TFDConnection(Self).DriverName := value;
 end;
@@ -657,7 +574,7 @@ begin
   if not(csDesigning in Self.Owner.ComponentState) then
   begin
     if not(Assigned(vRALServer)) then
-      raise Exception.Create('RALServer not configured.');
+      raise Exception.Create(emInvalidServer);
 
     if Assigned(vRALWebModule) then
     begin
