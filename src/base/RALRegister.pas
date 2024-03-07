@@ -1,3 +1,4 @@
+/// Class to create(register) components on pallete
 unit RALRegister;
 {$I PascalRAL.inc}
 
@@ -42,6 +43,8 @@ begin
       RALPACKAGENAME + sLineBreak + sLineBreak + RALPACKAGESITE,
       loadbitmap(HInstance, RALPACKAGESHORT), false, RALPACKAGELICENSE);
   {$ENDIF}
+
+  // component registration process
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);

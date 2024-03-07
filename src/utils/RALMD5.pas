@@ -10,8 +10,8 @@ uses
 type
   TRALMD5 = class(TRALHashes)
   private
-    FHash: array[0..3] of Cardinal;
     FBuffer: array[0..63] of Byte;
+    FHash: array[0..3] of Cardinal;
     FHashSize: Byte;
   protected
     procedure Compress; override;

@@ -19,17 +19,16 @@ type
     FAuthentication: TRALAuthClient;
     FBaseURL: StringRAL;
     FConnectTimeout: IntegerRAL;
-    FRequestTimeout: IntegerRAL;
-    FUseSSL: boolean;
-    FUserAgent: StringRAL;
-    FEngine: StringRAL;
-    FKeepAlive: boolean;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
-
+    FEngine: StringRAL;
+    FKeepAlive: boolean;
     FLastRoute: StringRAL;
     FLastRequest: TRALRequest;
     FLastResponse: TRALResponse;
+    FRequestTimeout: IntegerRAL;
+    FUserAgent: StringRAL;
+    FUseSSL: boolean;
   protected
     /// allows manipulation of params before executing request.
     function BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
@@ -84,10 +83,10 @@ type
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
-    /// Copy all properties of current TRALClient object
-    procedure CopyProperties(ADest: TRALClient); virtual;
     /// Creates a new TRALClient object and copy all properties of current TRALClient object
     function Clone(AOwner: TComponent): TRALClient; virtual;
+    /// Copy all properties of current TRALClient object
+    procedure CopyProperties(ADest: TRALClient); virtual;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL; virtual;
     /// Defines method on the client: Get.
@@ -112,13 +111,13 @@ type
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
       default 5000;
+    property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout
       default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
-    property CompressType: TRALCompressType read FCompressType write FCompressType;
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
   end;
 
 implementation

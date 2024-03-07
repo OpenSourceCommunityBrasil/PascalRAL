@@ -1,9 +1,5 @@
-﻿unit RALThreadSafe;
-
-{
-  ver fonts unit : IdThreadSafe
-}
-
+﻿/// Class for Threading definitions and critical session controllers
+unit RALThreadSafe;
 
 interface
 
@@ -36,15 +32,17 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
+
     procedure Add(const AItem: StringRAL);
     procedure AddObject(const AItem: StringRAL; AObject: TObject);
     procedure Clear(AFreeObjects : boolean = false);
     function Empty: Boolean;
-    function Lock: TStringList; reintroduce;
     function Exists(const AItem : StringRAL) : boolean;
+    function Lock: TStringList; reintroduce;
     function ObjectByItem(const AItem: StringRAL): TObject;
     procedure Remove(const AItem: StringRAL; AFreeObjects : boolean = false);
     procedure Unlock; reintroduce;
+
     property Values[const AName: StringRAL]: StringRAL read GetValue write SetValue;
   end;
 

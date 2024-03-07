@@ -18,23 +18,23 @@ type
   /// (String) or a bytearray (Stream)
   TRALParam = class
   private
-    FParamName: StringRAL;
     FContentType: StringRAL;
     FContent: TStream;
     FFileName: StringRAL;
     FKind: TRALParamKind;
+    FParamName: StringRAL;
+  protected
+    function GetAsBoolean: Boolean;
+    function GetAsDouble: DoubleRAL;
+    function GetAsInteger: IntegerRAL;
+    function GetAsStream: TStream;
+    function GetAsString: StringRAL;
+    function GetContentSize: Int64RAL;
     procedure SetAsBoolean(const Value: Boolean);
     procedure SetAsDouble(const Value: DoubleRAL);
     procedure SetAsInteger(const Value: IntegerRAL);
-  protected
-    function GetAsStream: TStream;
-    function GetAsString: StringRAL;
-    function GetAsInteger: IntegerRAL;
-    function GetAsDouble: DoubleRAL;
-    function GetAsBoolean: Boolean;
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
-    function GetContentSize: Int64RAL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -52,8 +52,8 @@ type
     procedure SaveToStream(var AStream: TStream); overload;
     function Size: Int64;
 
-    property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
+    property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
@@ -70,10 +70,10 @@ type
   /// Collection of TRALParam objects
   TRALParams = class
   private
-    FNextParam: IntegerRAL;
-    FParams: TList;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
+    FNextParam: IntegerRAL;
+    FParams: TList;
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;

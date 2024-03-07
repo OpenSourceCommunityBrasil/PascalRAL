@@ -214,8 +214,8 @@ type
   /// Used by other components to add fixed routes to the RAL Server
   TRALModuleRoutes = class(TRALComponent)
   private
-    FServer: TRALServer;
     FRoutes: TRALRoutes;
+    FServer: TRALServer;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);

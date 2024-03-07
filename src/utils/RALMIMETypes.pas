@@ -1,4 +1,5 @@
-﻿unit RALMIMETypes;
+﻿/// Class for mapping default MIMETypes according to IANA
+unit RALMIMETypes;
 
 {$I ..\base\PascalRAL.inc}
 {$IFDEF FPC}

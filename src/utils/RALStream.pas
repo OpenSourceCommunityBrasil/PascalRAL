@@ -1,3 +1,4 @@
+/// Class with all the functions related to Stream on RAL
 unit RALStream;
 
 interface
@@ -6,13 +7,16 @@ uses
   Classes, SysUtils,
   RALTypes;
 
-function StringToStream(const AStr: StringRAL): TStream;
-function StreamToString(AStream: TStream): StringRAL;
-
+/// Creates a TStream and write ABytes on it
 function BytesToStream(ABytes: TBytes): TStream;
-function StreamToBytes(AStream: TStream): TBytes;
-
+/// Saves the stream into a file given the AFileName
 procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
+/// Converts a given AStream to TBytes
+function StreamToBytes(AStream: TStream): TBytes;
+/// Converts a given AStream to an UTF8String
+function StreamToString(AStream: TStream): StringRAL;
+/// Creates a TStream and writes the given AStr into it
+function StringToStream(const AStr: StringRAL): TStream;
 
 implementation
 

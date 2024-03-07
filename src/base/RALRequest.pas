@@ -15,8 +15,8 @@ type
   /// Class that stores information from the client. Some of them can only be obtained with RALClient
   TRALClientInfo = class
   private
-    FMACAddress: StringRAL;
     FIP: StringRAL;
+    FMACAddress: StringRAL;
     FUserAgent: StringRAL;
   public
     property IP: StringRAL read FIP write FIP;
@@ -29,8 +29,8 @@ type
   /// Class to define which kind of authentication is used on the data
   TRALAuthorization = class
   private
-    FAuthType: TRALAuthTypes;
     FAuthString: StringRAL;
+    FAuthType: TRALAuthTypes;
   protected
     function GetPassword: StringRAL;
     function GetUserName: StringRAL;
@@ -52,11 +52,11 @@ type
     FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
-    FMethod: TRALMethod;
-    FQuery: StringRAL;
     FHost: StringRAL;
-    FProtocol: StringRAL;
     FHttpVersion: StringRAL;
+    FMethod: TRALMethod;
+    FProtocol: StringRAL;
+    FQuery: StringRAL;
     FStream: TStream;
   protected
     /// Grabs the full URL of the request

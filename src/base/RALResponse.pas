@@ -10,19 +10,23 @@ uses
 type
 
   { TRALResponse }
-  /// Base class for everything related to data respnse
+  /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     FContentType: StringRAL;
-    FStatusCode: IntegerRAL;
-    FFreeContent: boolean;
     FCriptoKey: StringRAL;
+    FFreeContent: boolean;
+    FStatusCode: IntegerRAL;
   protected
-    procedure SetContentType(const AValue: StringRAL);
-
+    /// Returns the response in TStream format
     function GetResponseStream: TStream; virtual; abstract;
+    /// Returns the response in UTF8String format
     function GetResponseText: StringRAL; virtual; abstract;
+    /// Assign an UTF8String into the Response's ContentType
+    procedure SetContentType(const AValue: StringRAL);
+    /// Assign a Stream into the Response
     procedure SetResponseStream(const AValue: TStream); virtual; abstract;
+    /// Assign an UTF8String into the Response
     procedure SetResponseText(const AValue: StringRAL); virtual; abstract;
   public
     constructor Create;
@@ -57,6 +61,7 @@ type
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
   end;
 
+  /// Derived class to handle ServerResponse
   TRALServerResponse = class(TRALResponse)
   protected
     function GetResponseStream: TStream; override;
@@ -65,9 +70,10 @@ type
     procedure SetResponseText(const AValue: StringRAL); override;
   end;
 
+  /// Derived class to handle ClientResponse
   TRALClientResponse = class(TRALResponse)
   private
-    FStream : TStream;
+    FStream: TStream;
   public
     constructor Create;
     destructor Destroy; override;
@@ -199,7 +205,7 @@ end;
 
 procedure TRALServerResponse.SetResponseStream(const AValue: TStream);
 var
-  vParam : TRALParam;
+  vParam: TRALParam;
 begin
   Params.ClearParams(rpkBODY);
   if AValue.Size > 0 then
