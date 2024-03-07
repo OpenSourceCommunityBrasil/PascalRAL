@@ -161,7 +161,8 @@ begin
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
       Params.CriptoOptions.Key := CriptoOptions.Key;
-      Stream := Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
+
+      Stream := ARequestInfo.PostStream;
 
       Host := ARequestInfo.Host;
       vInt := Pos('/', ARequestInfo.Version);

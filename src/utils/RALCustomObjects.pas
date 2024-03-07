@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALParams, RALTypes, RALConsts, RALMIMETypes, RALTools;
+  RALParams, RALTypes, RALConsts, RALMIMETypes, RALTools, RALCompress;
 
 type
 

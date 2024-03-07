@@ -10,6 +10,9 @@ uses
   RALTypes, RALStream;
 
 type
+  TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd);
+  TRALCompressLibs = (clZLib, clZStd);
+
   { TRALCompress }
 
   /// Compression class for PascalRAL
@@ -29,6 +32,12 @@ type
   end;
 
   TRALCompressClass = class of TRALCompress;
+
+const
+  cCompressTypeStr : array[TRALCompressType] of string = (
+                          '','deflate','zlib','gzip','zstd');
+  cCompressLibsClass : array[TRALCompressLibs] of string = (
+                          'TRALCompressZLib','TRALCompressZStd');
 
 implementation
 

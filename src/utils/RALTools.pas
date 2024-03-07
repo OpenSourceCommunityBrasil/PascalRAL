@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
-  RALTypes, RALConsts;
+  RALTypes, RALConsts, RALCompress;
 
 function FixRoute(ARoute: StringRAL): StringRAL;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
