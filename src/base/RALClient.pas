@@ -7,7 +7,7 @@ uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALAuthentication, RALJson, RALTools, RALParams,
   RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream,
-  RALResponse, RALRequest, RALCompressZLib;
+  RALResponse, RALRequest, RALCompressZLib, RALCompress;
 
 type
 
