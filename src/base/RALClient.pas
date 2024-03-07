@@ -20,8 +20,6 @@ type
     FBaseURL: StringRAL;
     FConnectTimeout: IntegerRAL;
     FRequestTimeout: IntegerRAL;
-    FResponseCode: IntegerRAL;
-    FResponseError: StringRAL;
     FUseSSL: boolean;
     FUserAgent: StringRAL;
     FEngine: StringRAL;
@@ -32,7 +30,6 @@ type
     FLastRoute: StringRAL;
     FLastRequest: TRALRequest;
     FLastResponse: TRALResponse;
-    FLastResponseStream: TStream;
   protected
     /// allows manipulation of params before executing request.
     function BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
@@ -40,6 +37,8 @@ type
     function GetURL(ARoute: StringRAL): StringRAL;
     /// Returns LastResponse of the client in an UTF8 String.
     function GetResponseText: StringRAL;
+    /// Returns LastResponse of the client stream.
+    function GetResponseStream: TStream;
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// clears authentication token property.
@@ -54,7 +53,6 @@ type
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetEngine(const AValue: StringRAL);
     procedure SetKeepAlive(const AValue: boolean); virtual;
-    procedure SetLastResponseStream(AValue: TStream);
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
     /// used by SetAuthToken to set authentication on the header: Basic.
     function SetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
@@ -105,13 +103,10 @@ type
 
     property Request: TRALRequest read FLastRequest;
     property Response: TRALResponse read FLastResponse;
-    /// StatusCode of the response.
-    property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
-    property ResponseError: StringRAL read FResponseError write FResponseError;
     /// Response as text.
     property ResponseText: StringRAL read GetResponseText;
-    /// Response as stream
-    property ResponseStream: TStream read FLastResponseStream write SetLastResponseStream;
+    /// Response as stream.
+    property ResponseStream: TStream read GetResponseStream;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
@@ -200,8 +195,6 @@ begin
   ADest.FBaseURL := Self.FBaseURL;
   ADest.FConnectTimeout := Self.FConnectTimeout;
   ADest.FRequestTimeout := Self.FRequestTimeout;
-  ADest.FResponseCode := Self.FResponseCode;
-  ADest.FResponseError := Self.FResponseError;
   ADest.FUseSSL := Self.FUseSSL;
   ADest.FUserAgent := Self.UserAgent;
   ADest.FEngine := Self.FEngine;
@@ -220,14 +213,11 @@ begin
   inherited;
   FAuthentication := nil;
   FLastRequest := TRALRequest.Create;
-  FLastResponse := TRALResponse.Create;
+  FLastResponse := TRALClientResponse.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
-  FLastResponseStream := nil;
 
   FBaseURL := '';
   FUseSSL := False;
-  FResponseCode := 0;
-  FResponseError := '';
   FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
   FConnectTimeout := 30000;
@@ -245,7 +235,6 @@ begin
   FreeAndNil(FLastRequest);
   FreeAndNil(FLastResponse);
   FreeAndNil(FCriptoOptions);
-  FreeAndNil(FLastResponseStream);
 
   inherited;
 end;
@@ -255,9 +244,14 @@ begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
 end;
 
+function TRALClient.GetResponseStream: TStream;
+begin
+  Result := FLastResponse.ResponseStream;
+end;
+
 function TRALClient.GetResponseText: StringRAL;
 begin
-  Result := StreamToString(FLastResponseStream);
+  Result := FLastResponse.ResponseText;
 end;
 
 function TRALClient.SetAuthToken(AVars: TStringList; AParams: TRALParams): boolean;
@@ -456,12 +450,6 @@ begin
 
   if FLastRequest.Params.Count(rpkQUERY) > 0 then
     Result := Result + '?' + FLastRequest.Params.AssignParamsUrl(rpkQUERY);
-end;
-
-procedure TRALClient.SetLastResponseStream(AValue: TStream);
-begin
-  FreeAndNil(FLastResponseStream);
-  FLastResponseStream := AValue;
 end;
 
 procedure TRALClient.Notification(AComponent: TComponent; Operation: TOperation);

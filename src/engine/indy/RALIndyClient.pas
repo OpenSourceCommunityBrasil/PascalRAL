@@ -78,8 +78,8 @@ begin
   FHttp.Response.Clear;
 
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   if KeepAlive then
     FHttp.Request.Connection := 'keep-alive'
@@ -137,13 +137,14 @@ begin
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResult, FHttp.Response.ContentType);
+      Response.ContentType := FHttp.Response.ContentType;
+      Response.StatusCode := FHttp.ResponseCode;
+      Response.ResponseStream := vResult;
     except
-      ResponseError := FHttp.ResponseText;
+      Response.ResponseText := FHttp.ResponseText;
     end;
     FreeAndNil(vResult);
 
-    ResponseCode := FHttp.ResponseCode;
     Result := FHttp.ResponseCode;
   finally
     if vFree then

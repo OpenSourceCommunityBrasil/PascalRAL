@@ -76,8 +76,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
@@ -131,12 +131,13 @@ begin
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
+      Response.ContentType := vContentType;
+      Response.StatusCode := FHttp.ResponseStatusCode;
+      Response.ResponseStream := vResult;
     except
-      ResponseError := FHttp.ResponseStatusText;
+      Response.ResponseText := FHttp.ResponseStatusText;
     end;
     FreeAndNil(vResult);
-    ResponseCode := FHttp.ResponseStatusCode;
     Result := FHttp.ResponseStatusCode;
   finally
     if vFree then

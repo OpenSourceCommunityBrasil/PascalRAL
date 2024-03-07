@@ -615,7 +615,7 @@ var
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
 begin
-  Result := TRALResponse.Create;
+  Result := TRALServerResponse.Create;
 
   if not ARequest.HasValidContentEncoding then
   begin

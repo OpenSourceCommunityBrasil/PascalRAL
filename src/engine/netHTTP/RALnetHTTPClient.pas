@@ -68,8 +68,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   if KeepALive then
     AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
@@ -133,14 +133,15 @@ begin
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResponse.ContentStream, vContentType);
-      ResponseCode := vResponse.GetStatusCode;
+      Response.ContentType := vContentType;
+      Response.StatusCode := vResponse.GetStatusCode;
+      Response.ResponseStream := vResponse.ContentStream;
     except
       on e : ENetHTTPClientException do begin
-        ResponseError := e.Message;
+        Response.ResponseText := e.Message;
       end;
     end;
-    Result := ResponseCode;
+    Result := Response.StatusCode;
   finally
     if vFree then
       FreeAndNil(vSource);

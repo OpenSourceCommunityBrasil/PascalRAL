@@ -55,8 +55,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   vHttp := THttpClientSocket.OpenUri(AUrl,vAddress,'',ConnectTimeout);
   try
@@ -128,13 +128,14 @@ begin
         Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
         Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-        ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
+        Response.ContentType := vContentType;
+        Response.StatusCode := Result;
+        Response.ResponseStream := vResult;
       except
         on e : Exception do
-          ResponseError := e.Message;
+          Response.ResponseText := e.Message;
       end;
       FreeAndNil(vResult);
-      ResponseCode := Result;
     finally
       if vFree then
         FreeAndNil(vSource);
