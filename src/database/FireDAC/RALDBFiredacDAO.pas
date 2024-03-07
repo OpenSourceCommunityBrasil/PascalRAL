@@ -451,9 +451,9 @@ begin
         vQueryAux2.SQL.Text := TStringStream(vAuxStringStream).DataString;
       end;
 
-      if ARequest.ParamByName('ParamCount').AsInteger > 0 then
+      if StrToInt(ARequest.ParamByName('ParamCount').AsString) > 0 then
       begin
-        for i := 0 to ARequest.ParamByName('ParamCount').AsInteger - 1 do
+        for i := 0 to StrToInt(ARequest.ParamByName('ParamCount').AsString) - 1 do
         begin
           TMemoryStream(vAuxParamStream).Clear;
           vAuxParamStream.Position := 0;
