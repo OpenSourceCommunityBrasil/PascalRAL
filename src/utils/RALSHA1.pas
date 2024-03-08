@@ -1,3 +1,4 @@
+/// Class for SHA1 cryptographic definitions
 unit RALSHA1;
 
 interface
@@ -12,19 +13,19 @@ type
 
   TRALSHA1 = class(TRALHashes)
   private
-    FHash : array[0..4] of Cardinal;
-    FBuffer : array[0..63] of Byte;
-    FHashSize : Byte;
+    FBuffer: array[0..63] of byte;
+    FHash: array[0..4] of cardinal;
+    FHashSize: byte;
   protected
-    function Swap(AValue : Cardinal) : Cardinal;
+    function Swap(AValue: cardinal): cardinal;
 
-    function GetBufLength : IntegerRAL; override;
-    function GetBuffer(AIndex : IntegerRAL) : Pointer; override;
+    function GetBufLength: IntegerRAL; override;
+    function GetBuffer(AIndex: IntegerRAL): Pointer; override;
 
     procedure Compress; override;
     procedure Initialize; override;
 
-    function Finalize : TBytes; override;
+    function Finalize: TBytes; override;
   public
     constructor Create;
   end;
@@ -33,7 +34,7 @@ implementation
 
 { TRALSHA1 }
 
-function TRALSHA1.Swap(AValue : Cardinal) : Cardinal;
+function TRALSHA1.Swap(AValue: cardinal): cardinal;
 begin
   Result := ((AValue and $FF) shl 24) or
             ((AValue and $FF00) shl 8) or
@@ -41,34 +42,35 @@ begin
             ((AValue and $FF000000) shr 24);
 end;
 
-function TRALSHA1.GetBufLength : IntegerRAL;
+function TRALSHA1.GetBufLength: IntegerRAL;
 begin
   Result := 64;
 end;
 
-function TRALSHA1.GetBuffer(AIndex : IntegerRAL) : Pointer;
+function TRALSHA1.GetBuffer(AIndex: IntegerRAL): Pointer;
 begin
   Result := Pointer(@FBuffer[AIndex]);
 end;
 
 procedure TRALSHA1.Compress;
 const
-  K: array[0..3] of Cardinal = ($5A827999, $6ED9EBA1, $8F1BBCDC, $CA62C1D6);
+  K: array[0..3] of cardinal = ($5A827999, $6ED9EBA1, $8F1BBCDC, $CA62C1D6);
 var
-  A, B, C, D, E: Cardinal;
-  W: array[0..79] of Cardinal;
-  i: Integer;
+  A, B, C, D, E: cardinal;
+  W: array[0..79] of cardinal;
+  i: integer;
 
-  procedure F1(x1,x2,x3 : Cardinal;var x4 : Cardinal; var x5 : Cardinal);
+  procedure F1(x1, x2, x3: Cardinal; var x4: Cardinal; var x5: Cardinal);
   begin
     case i of
-      00..19 : Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x2 xor (x5 and (x3 xor x2))) + K[0] + W[i]);
-      20..39 : Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x5 xor x3 xor x2) + K[1] + W[i]);
-      40..59 : Inc(x4,((x1 shl 5) or (x1 shr 27)) + ((x5 and x3) or (x2 and (x5 or x3))) + K[2]+ W[i]);
-      60..79 : Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x5 xor x3 xor x2) + K[3] + W[i]);
+      00..19: Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x2 xor (x5 and (x3 xor x2))) + K[0] + W[i]);
+      20..39: Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x5 xor x3 xor x2) + K[1] + W[i]);
+      40..59: Inc(x4,((x1 shl 5) or (x1 shr 27)) + ((x5 and x3) or (x2 and (x5 or x3))) + K[2]+ W[i]);
+      60..79: Inc(x4,((x1 shl 5) or (x1 shr 27)) + (x5 xor x3 xor x2) + K[3] + W[i]);
     end;
     x5 := (x5 shl 30) or (x5 shr 2);
   end;
+
 begin
   FillChar(W, SizeOf(W), 0);
   Move(FBuffer, W, GetBufLength);
@@ -76,8 +78,8 @@ begin
     W[i] := Swap(W[i]);
 
   for i := 16 to 79 do
-    W[i] := ((W[i-3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shl 1) or
-            ((W[i-3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shr 31);
+    W[i] := ((W[i - 3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shl 1) or
+      ((W[i - 3] xor W[i - 8] xor W[i - 14] xor W[i - 16]) shr 31);
 
   A := FHash[0];
   B := FHash[1];
@@ -88,21 +90,21 @@ begin
   for i := 0 to 79 do
   begin
     case i mod 5 of
-      0 : F1(A, D, C, E, B);
-      1 : F1(E, C, B, D, A);
-      2 : F1(D, B, A, C, E);
-      3 : F1(C, A, E, B, D);
-      4 : F1(B, E, D, A, C);
+      0: F1(A, D, C, E, B);
+      1: F1(E, C, B, D, A);
+      2: F1(D, B, A, C, E);
+      3: F1(C, A, E, B, D);
+      4: F1(B, E, D, A, C);
     end;
   end;
 
-  FHash[0]:= FHash[0] + A;
-  FHash[1]:= FHash[1] + B;
-  FHash[2]:= FHash[2] + C;
-  FHash[3]:= FHash[3] + D;
-  FHash[4]:= FHash[4] + E;
+  FHash[0] := FHash[0] + A;
+  FHash[1] := FHash[1] + B;
+  FHash[2] := FHash[2] + C;
+  FHash[3] := FHash[3] + D;
+  FHash[4] := FHash[4] + E;
 
-  FillChar(FBuffer, Sizeof(FBuffer),0);
+  FillChar(FBuffer, Sizeof(FBuffer), 0);
 
   inherited Compress;
 end;
@@ -116,14 +118,14 @@ begin
   FHash[4] := $C3D2E1F0;
 
   FHashSize := 20;
-  FillChar(FBuffer, Sizeof(FBuffer),0);
+  FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited Initialize;
 end;
 
-function TRALSHA1.Finalize : TBytes;
+function TRALSHA1.Finalize: TBytes;
 var
-  vIndex : IntegerRAL;
-  vLenBit : UInt64;
+  vIndex: IntegerRAL;
+  vLenBit: uint64;
 begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
@@ -133,7 +135,7 @@ begin
     Compress;
 
   PCardinal(@FBuffer[56])^ := 0;
-  PCardinal(@FBuffer[60])^ := Swap(Cardinal(vLenBit));
+  PCardinal(@FBuffer[60])^ := Swap(cardinal(vLenBit));
   Compress;
 
   FHash[0] := Swap(FHash[0]);
@@ -154,4 +156,3 @@ begin
 end;
 
 end.
-

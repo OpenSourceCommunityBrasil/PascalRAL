@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   fphttpclient, fphttp,
   RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
-  RALRequest;
+  RALRequest, RALCompress;
 
 type
 
@@ -23,21 +23,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALfpHttpClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALfpHttpClient }
 
-function TRALfpHttpClient.Clone(AOwner: TComponent): TRALfpHttpClient;
+function TRALfpHttpClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALfpHttpClient.Create(AOwner)
-  else
-    Result := TRALfpHttpClient.Create(Self.Owner);
+  Result := TRALfpHttpClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALfpHttpClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALfpHttpClient.Create(AOwner: TComponent);
@@ -74,8 +76,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
@@ -88,7 +90,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;
@@ -103,7 +105,7 @@ begin
   vSource := AParams.EncodeBody(vContentType, vFree);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
-    AParams.AssignParams(FHttp.RequestHeaders,rpkHEADER);
+    AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
     FHttp.RequestBody := vSource;
     vResult := TStringStream.Create;
     try
@@ -127,13 +129,15 @@ begin
 
       Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+      Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
+      Response.ContentType := vContentType;
+      Response.StatusCode := FHttp.ResponseStatusCode;
+      Response.ResponseStream := vResult;
     except
-      ResponseError := FHttp.ResponseStatusText;
+      Response.ResponseText := FHttp.ResponseStatusText;
     end;
     FreeAndNil(vResult);
-    ResponseCode := FHttp.ResponseStatusCode;
     Result := FHttp.ResponseStatusCode;
   finally
     if vFree then

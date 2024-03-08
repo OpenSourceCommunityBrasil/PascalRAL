@@ -10,19 +10,24 @@ uses
 type
 
   { TRALResponse }
-  /// Base class for everything related to data respnse
+  /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     FContentType: StringRAL;
-    FStatusCode: IntegerRAL;
-    FFreeContent: boolean;
     FCriptoKey: StringRAL;
+    FFreeContent: boolean;
+    FStatusCode: IntegerRAL;
   protected
-    function GetResponseStream: TStream;
-    function GetResponseText: StringRAL;
+    /// Returns the response in TStream format
+    function GetResponseStream: TStream; virtual; abstract;
+    /// Returns the response in UTF8String format
+    function GetResponseText: StringRAL; virtual; abstract;
+    /// Assign an UTF8String into the Response's ContentType
     procedure SetContentType(const AValue: StringRAL);
-    procedure SetResponseStream(const AValue: TStream);
-    procedure SetResponseText(const AValue: StringRAL);
+    /// Assign a Stream into the Response
+    procedure SetResponseStream(const AValue: TStream); virtual; abstract;
+    /// Assign an UTF8String into the Response
+    procedure SetResponseText(const AValue: StringRAL); virtual; abstract;
   public
     constructor Create;
     destructor Destroy; override;
@@ -54,6 +59,29 @@ type
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+  end;
+
+  /// Derived class to handle ServerResponse
+  TRALServerResponse = class(TRALResponse)
+  protected
+    function GetResponseStream: TStream; override;
+    function GetResponseText: StringRAL; override;
+    procedure SetResponseStream(const AValue: TStream); override;
+    procedure SetResponseText(const AValue: StringRAL); override;
+  end;
+
+  /// Derived class to handle ClientResponse
+  TRALClientResponse = class(TRALResponse)
+  private
+    FStream: TStream;
+  public
+    constructor Create;
+    destructor Destroy; override;
+  protected
+    function GetResponseStream: TStream; override;
+    function GetResponseText: StringRAL; override;
+    procedure SetResponseStream(const AValue: TStream); override;
+    procedure SetResponseText(const AValue: StringRAL); override;
   end;
 
 implementation
@@ -134,7 +162,7 @@ end;
 
 constructor TRALResponse.Create;
 begin
-  inherited;
+  inherited Create;
   ContentType := rctAPPLICATIONJSON;
   FFreeContent := False;
 end;
@@ -144,7 +172,16 @@ begin
   inherited;
 end;
 
-function TRALResponse.GetResponseStream: TStream;
+procedure TRALResponse.SetContentType(const AValue: StringRAL);
+begin
+  FContentType := AValue;
+  if Pos('charset=', FContentType) = 0 then
+    FContentType := FContentType + '; charset=utf-8';
+end;
+
+{ TRALServerResponse }
+
+function TRALServerResponse.GetResponseStream: TStream;
 begin
   Params.CriptoOptions.CriptType := ContentCripto;
   Params.CriptoOptions.Key := CriptoKey;
@@ -152,7 +189,7 @@ begin
   Result := Params.EncodeBody(FContentType, FFreeContent);
 end;
 
-function TRALResponse.GetResponseText: StringRAL;
+function TRALServerResponse.GetResponseText: StringRAL;
 var
   vStream: TStream;
 begin
@@ -166,14 +203,7 @@ begin
   end;
 end;
 
-procedure TRALResponse.SetContentType(const AValue: StringRAL);
-begin
-  FContentType := AValue;
-  if Pos('charset=', FContentType) = 0 then
-    FContentType := FContentType + '; charset=utf-8';
-end;
-
-procedure TRALResponse.SetResponseStream(const AValue: TStream);
+procedure TRALServerResponse.SetResponseStream(const AValue: TStream);
 var
   vParam: TRALParam;
 begin
@@ -185,7 +215,7 @@ begin
   end;
 end;
 
-procedure TRALResponse.SetResponseText(const AValue: StringRAL);
+procedure TRALServerResponse.SetResponseText(const AValue: StringRAL);
 var
   vParam: TRALParam;
 begin
@@ -196,6 +226,47 @@ begin
     vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;
+end;
+
+{ TRALClientResponse }
+
+constructor TRALClientResponse.Create;
+begin
+  inherited;
+  FStream := nil;
+end;
+
+destructor TRALClientResponse.Destroy;
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+  inherited;
+end;
+
+function TRALClientResponse.GetResponseStream: TStream;
+begin
+  Result := FStream;
+end;
+
+function TRALClientResponse.GetResponseText: StringRAL;
+begin
+  Result := StreamToString(FStream);
+end;
+
+procedure TRALClientResponse.SetResponseStream(const AValue: TStream);
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+
+  FStream := Params.DecodeBody(AValue, FContentType)
+end;
+
+procedure TRALClientResponse.SetResponseText(const AValue: StringRAL);
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+
+  FStream := Params.DecodeBody(AValue, FContentType)
 end;
 
 end.

@@ -85,9 +85,9 @@ end;
 
 function TRALCripto.Decrypt(const AValue: StringRAL): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := Decrypt(vStream);
   finally
@@ -109,11 +109,11 @@ end;
 
 function TRALCripto.Decrypt(AValue: TStream): StringRAL;
 var
-  vResult: TStringStream;
+  vResult: TStream;
 begin
-  vResult := TStringStream(DecryptAsStream(AValue));
+  vResult := DecryptAsStream(AValue);
   try
-    Result := vResult.DataString;
+    Result := StreamToString(vResult);
   finally
     FreeAndNil(vResult);
   end;
@@ -145,9 +145,9 @@ end;
 
 function TRALCripto.EncryptAsBytes(const AValue: StringRAL): TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := EncryptAsBytes(vStream);
   finally
@@ -157,9 +157,9 @@ end;
 
 function TRALCripto.DecryptAsBytes(const AValue: StringRAL): TBytes;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := DecryptAsBytes(vStream);
   finally

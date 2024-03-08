@@ -7,7 +7,7 @@ uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALAuthentication, RALJson, RALTools, RALParams,
   RALMIMETypes, RALCustomObjects, RALToken, RALCripto, RALStream,
-  RALResponse, RALRequest;
+  RALResponse, RALRequest, RALCompressZLib, RALCompress;
 
 type
 
@@ -19,20 +19,16 @@ type
     FAuthentication: TRALAuthClient;
     FBaseURL: StringRAL;
     FConnectTimeout: IntegerRAL;
-    FRequestTimeout: IntegerRAL;
-    FResponseCode: IntegerRAL;
-    FResponseError: StringRAL;
-    FUseSSL: boolean;
-    FUserAgent: StringRAL;
-    FEngine: StringRAL;
-    FKeepAlive: boolean;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
-
+    FEngine: StringRAL;
+    FKeepAlive: boolean;
     FLastRoute: StringRAL;
     FLastRequest: TRALRequest;
     FLastResponse: TRALResponse;
-    FLastResponseStream: TStream;
+    FRequestTimeout: IntegerRAL;
+    FUserAgent: StringRAL;
+    FUseSSL: boolean;
   protected
     /// allows manipulation of params before executing request.
     function BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL; virtual;
@@ -40,6 +36,8 @@ type
     function GetURL(ARoute: StringRAL): StringRAL;
     /// Returns LastResponse of the client in an UTF8 String.
     function GetResponseText: StringRAL;
+    /// Returns LastResponse of the client stream.
+    function GetResponseStream: TStream;
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// clears authentication token property.
@@ -54,7 +52,6 @@ type
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetEngine(const AValue: StringRAL);
     procedure SetKeepAlive(const AValue: boolean); virtual;
-    procedure SetLastResponseStream(AValue: TStream);
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
     /// used by SetAuthToken to set authentication on the header: Basic.
     function SetTokenBasic(AVars: TStringList; AParams: TRALParams): boolean;
@@ -86,8 +83,10 @@ type
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
     /// Adds a header param as "Query" type.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALClient;
-    /// Returns a copy of the current TRALClient object
-    procedure Clone(ADest: TRALClient);
+    /// Creates a new TRALClient object and copy all properties of current TRALClient object
+    function Clone(AOwner: TComponent): TRALClient; virtual;
+    /// Copy all properties of current TRALClient object
+    procedure CopyProperties(ADest: TRALClient); virtual;
     /// Defines method on the client: Delete.
     function Delete: IntegerRAL; virtual;
     /// Defines method on the client: Get.
@@ -103,25 +102,22 @@ type
 
     property Request: TRALRequest read FLastRequest;
     property Response: TRALResponse read FLastResponse;
-    /// StatusCode of the response.
-    property ResponseCode: IntegerRAL read FResponseCode write FResponseCode;
-    property ResponseError: StringRAL read FResponseError write FResponseError;
     /// Response as text.
     property ResponseText: StringRAL read GetResponseText;
-    /// Response as stream
-    property ResponseStream: TStream read FLastResponseStream write SetLastResponseStream;
+    /// Response as stream.
+    property ResponseStream: TStream read GetResponseStream;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
       default 5000;
+    property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout
       default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
-    property CompressType: TRALCompressType read FCompressType write FCompressType;
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
   end;
 
 implementation
@@ -186,14 +182,18 @@ begin
   end;
 end;
 
-procedure TRALClient.Clone(ADest: TRALClient);
+function TRALClient.Clone(AOwner: TComponent): TRALClient;
+begin
+  Result := TRALClient.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+procedure TRALClient.CopyProperties(ADest: TRALClient);
 begin
   ADest.FAuthentication := Self.FAuthentication;
   ADest.FBaseURL := Self.FBaseURL;
   ADest.FConnectTimeout := Self.FConnectTimeout;
   ADest.FRequestTimeout := Self.FRequestTimeout;
-  ADest.FResponseCode := Self.FResponseCode;
-  ADest.FResponseError := Self.FResponseError;
   ADest.FUseSSL := Self.FUseSSL;
   ADest.FUserAgent := Self.UserAgent;
   ADest.FEngine := Self.FEngine;
@@ -212,14 +212,11 @@ begin
   inherited;
   FAuthentication := nil;
   FLastRequest := TRALRequest.Create;
-  FLastResponse := TRALResponse.Create;
+  FLastResponse := TRALClientResponse.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
-  FLastResponseStream := nil;
 
   FBaseURL := '';
   FUseSSL := False;
-  FResponseCode := 0;
-  FResponseError := '';
   FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
   FConnectTimeout := 30000;
@@ -237,7 +234,6 @@ begin
   FreeAndNil(FLastRequest);
   FreeAndNil(FLastResponse);
   FreeAndNil(FCriptoOptions);
-  FreeAndNil(FLastResponseStream);
 
   inherited;
 end;
@@ -247,9 +243,14 @@ begin
   Result := BeforeSendUrl(GetURL(FLastRoute), amGET);
 end;
 
+function TRALClient.GetResponseStream: TStream;
+begin
+  Result := FLastResponse.ResponseStream;
+end;
+
 function TRALClient.GetResponseText: StringRAL;
 begin
-  Result := StreamToString(FLastResponseStream);
+  Result := FLastResponse.ResponseText;
 end;
 
 function TRALClient.SetAuthToken(AVars: TStringList; AParams: TRALParams): boolean;
@@ -448,12 +449,6 @@ begin
 
   if FLastRequest.Params.Count(rpkQUERY) > 0 then
     Result := Result + '?' + FLastRequest.Params.AssignParamsUrl(rpkQUERY);
-end;
-
-procedure TRALClient.SetLastResponseStream(AValue: TStream);
-begin
-  FreeAndNil(FLastResponseStream);
-  FLastResponseStream := AValue;
 end;
 
 procedure TRALClient.Notification(AComponent: TComponent; Operation: TOperation);

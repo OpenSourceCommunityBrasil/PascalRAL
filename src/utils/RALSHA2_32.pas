@@ -12,23 +12,19 @@ type
 
   TRALSHA2_32 = class(TRALHashes)
   private
-    FVersion: TRALSHA32Versions;
-    FHash: array[0..7] of cardinal;
     FBuffer: array[0..63] of byte;
+    FHash: array[0..7] of cardinal;
     FHashSize: byte;
+    FVersion: TRALSHA32Versions;
   protected
+    procedure Compress; override;
+    function Finalize: TBytes; override;
+    function GetBuffer(AIndex: IntegerRAL): Pointer; override;
+    function GetBufLength: IntegerRAL; override;
+    procedure Initialize; override;
     procedure SetVersion(const Value: TRALSHA32Versions);
-
     /// returns swaps bits of a value
     function Swap(AValue: cardinal): cardinal;
-
-    function GetBufLength: IntegerRAL; override;
-    function GetBuffer(AIndex: IntegerRAL): Pointer; override;
-
-    procedure Compress; override;
-    procedure Initialize; override;
-
-    function Finalize: TBytes; override;
   public
     constructor Create;
   published
@@ -52,7 +48,7 @@ const
     $90befffa, $a4506ceb, $bef9a3f7, $c67178f2);
 
 
-{ TRALSHA2_32 }
+  { TRALSHA2_32 }
 
 procedure TRALSHA2_32.Compress;
 var

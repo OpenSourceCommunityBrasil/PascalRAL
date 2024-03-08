@@ -68,7 +68,6 @@ const
              + ' should try later</p>'
              + '</body></html>';
 
-  SupportedCompressKind = 'gzip, deflate';
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
 
   // constant internal messages

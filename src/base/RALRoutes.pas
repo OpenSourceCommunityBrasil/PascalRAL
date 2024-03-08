@@ -20,10 +20,11 @@ type
     FAllowedMethods: TRALMethods;
     FCallback: boolean;
     FDescription: TStringList;
-    FOnReply: TRALOnReply;
     FRouteDomain: StringRAL;
     FRouteName: StringRAL;
     FSkipAuthMethods: TRALMethods;
+
+    FOnReply: TRALOnReply;
   protected
     function GetDisplayName: string; override;
     function GetRoute: StringRAL;

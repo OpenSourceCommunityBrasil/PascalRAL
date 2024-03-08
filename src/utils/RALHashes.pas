@@ -14,11 +14,11 @@ type
 
   TRALHashes = class
   private
-    FOutputType: TRALHashOutputType;
-    FLenBit: uint64;
+    FFinalized: boolean;
     FIndex: IntegerRAL;
     FInitialized: boolean;
-    FFinalized: boolean;
+    FLenBit: uint64;
+    FOutputType: TRALHashOutputType;
   protected
     /// Used to compress the content, generating the hash
     procedure Compress; virtual;

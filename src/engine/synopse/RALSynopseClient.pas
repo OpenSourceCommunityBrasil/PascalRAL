@@ -5,32 +5,36 @@ interface
 uses
   Classes, SysUtils,
   mormot.net.client, mormot.core.base,
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest;
+  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
+  RALCompress;
 
 type
 
   { TRALSynopseClient }
 
   TRALSynopseClient = class(TRALClient)
+  private
   protected
     function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent): TRALSynopseClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALSynopseClient }
 
-function TRALSynopseClient.Clone(AOwner: TComponent): TRALSynopseClient;
+function TRALSynopseClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALSynopseClient.Create(AOwner)
-  else
-    Result := TRALSynopseClient.Create(Self.Owner);
+  Result := TRALSynopseClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALSynopseClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALSynopseClient.Create(AOwner: TComponent);
@@ -51,8 +55,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   vHttp := THttpClientSocket.OpenUri(AUrl,vAddress,'',ConnectTimeout);
   try
@@ -74,7 +78,7 @@ begin
     if CompressType <> ctNone then
     begin
       AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-      AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+      AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
     end;
 
     Request.ContentCripto := CriptoOptions.CriptType;
@@ -122,14 +126,16 @@ begin
 
         Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
         Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+        Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-        ResponseStream := Response.Params.DecodeBody(vResult, vContentType);
+        Response.ContentType := vContentType;
+        Response.StatusCode := Result;
+        Response.ResponseStream := vResult;
       except
         on e : Exception do
-          ResponseError := e.Message;
+          Response.ResponseText := e.Message;
       end;
       FreeAndNil(vResult);
-      ResponseCode := Result;
     finally
       if vFree then
         FreeAndNil(vSource);

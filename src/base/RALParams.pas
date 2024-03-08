@@ -5,9 +5,9 @@ unit RALParams;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, TypInfo,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
-  RALCompressZLib, RALCripto, RALCriptoAES, RALStream;
+  RALCripto, RALCriptoAES, RALStream, RALCompress;
 
 type
 
@@ -18,17 +18,23 @@ type
   /// (String) or a bytearray (Stream)
   TRALParam = class
   private
-    FParamName: StringRAL;
     FContentType: StringRAL;
     FContent: TStream;
     FFileName: StringRAL;
     FKind: TRALParamKind;
+    FParamName: StringRAL;
   protected
+    function GetAsBoolean: Boolean;
+    function GetAsDouble: DoubleRAL;
+    function GetAsInteger: IntegerRAL;
     function GetAsStream: TStream;
     function GetAsString: StringRAL;
+    function GetContentSize: Int64RAL;
+    procedure SetAsBoolean(const Value: Boolean);
+    procedure SetAsDouble(const Value: DoubleRAL);
+    procedure SetAsInteger(const Value: IntegerRAL);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
-    function GetContentSize: Int64RAL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -46,6 +52,9 @@ type
     procedure SaveToStream(var AStream: TStream); overload;
     function Size: Int64;
 
+    property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
+    property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
+    property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
@@ -61,10 +70,10 @@ type
   /// Collection of TRALParam objects
   TRALParams = class
   private
-    FNextParam: IntegerRAL;
-    FParams: TList;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
+    FNextParam: IntegerRAL;
+    FParams: TList;
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
@@ -129,10 +138,10 @@ type
     procedure AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
     /// Fills the 'ADest' StringList with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
-                           const ASeparator: StringRAL = '='); overload;
+                           ASeparator: StringRAL = '='); overload;
     /// Fills the 'ADest' Strings with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStrings; AKind: TRALParamKind;
-                           const ASeparator: StringRAL = '='); overload;
+                           ASeparator: StringRAL = '='); overload;
     /// Returns an UTF8 String with RALParams matching 'AKind'.
     function AssignParamsListText(AKind: TRALParamKind;
                                   const ANameSeparator: StringRAL = '='): StringRAL;
@@ -568,13 +577,13 @@ begin
 end;
 
 procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
-  const ASeparator: StringRAL);
+  ASeparator: StringRAL);
 begin
   AssignParams(TStrings(ADest), AKind, ASeparator);
 end;
 
 procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
-  const ASeparator: StringRAL);
+  ASeparator: StringRAL);
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -1007,11 +1016,42 @@ begin
 end;
 
 function TRALParams.Compress(AStream: TStream): TStream;
+var
+  vCompress : TRALCompress;
+  vClass : TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
     ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Compress(AStream, FCompressType);
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          //SetEnumProp
+          //SetOrdProp
+          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
+//          TRALCompressZLib(vCompress).Format := FCompressType;
+          Result := vCompress.Compress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
+    ctZStd:
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          Result := vCompress.Compress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -1047,20 +1087,63 @@ begin
 end;
 
 function TRALParams.Decompress(AStream: TStream): TStream;
+var
+  vCompress : TRALCompress;
+  vClass : TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
     ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Decompress(AStream, FCompressType);
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          //SetEnumProp
+          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
+//          TRALCompressZLib(vCompress).Format := FCompressType;
+          Result := vCompress.Decompress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
+    ctZStd:
+    begin
+      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
+      if vClass <> nil then
+      begin
+        vCompress := vClass.Create;
+        try
+          Result := vCompress.Decompress(AStream);
+        finally
+          vCompress.Free;
+        end;
+      end;
+    end;
   end;
 end;
 
 function TRALParams.Decompress(const ASource: StringRAL): StringRAL;
+var
+  vStream, vResult : TStream;
 begin
   Result := '';
-  case FCompressType of
-    ctDeflate, ctGZip, ctZLib:
-      Result := TRALCompressZLib.Decompress(ASource, FCompressType);
+  if Result <> '' then
+  begin
+    vStream := StringToStream(ASource);
+    try
+      vStream.Position := 0;
+      vResult := Decompress(vStream);
+      try
+        Result := StreamToString(vResult);
+      finally
+        vResult.Free;
+      end;
+    finally
+      vStream.Free;
+    end;
   end;
 end;
 

@@ -12,22 +12,20 @@ type
 
   TRALSHA2_64 = class(TRALHashes)
   private
-    FVersion: TRALSHA64Versions;
-    FHash: array[0..7] of UInt64;
     FBuffer: array[0..127] of byte;
+    FHash: array[0..7] of UInt64;
     FHashSize: byte;
+    FVersion: TRALSHA64Versions;
   protected
-    procedure SetVersion(const Value: TRALSHA64Versions);
-    function GetBufLength: IntegerRAL; override;
+    procedure Compress; override;
     function GetBuffer(AIndex: IntegerRAL): Pointer; override;
-
+    function GetBufLength: IntegerRAL; override;
+    function Finalize: TBytes; override;
+    procedure Initialize; override;
+    procedure SetVersion(const Value: TRALSHA64Versions);
     /// returns swaps bits of a value
     function Swap(AValue: Cardinal): Cardinal; overload;
     function Swap(AValue: UInt64): UInt64; overload;
-
-    procedure Compress; override;
-    procedure Initialize; override;
-    function Finalize: TBytes; override;
   public
     constructor Create;
   published

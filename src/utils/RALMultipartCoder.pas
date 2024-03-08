@@ -446,6 +446,9 @@ begin
     Delete(AValue, 1, vInt - 1);
     vInt := Pos('=', AValue);
     Delete(AValue, 1, vInt);
+    vInt := Pos(';', AValue);
+    if vInt > 0 then
+      Delete(AValue, vInt, Length(AValue));
     FBoundary := AValue;
   end;
 end;

@@ -1,21 +1,23 @@
-﻿unit RALTools;
+﻿/// Class for General public functions
+unit RALTools;
 
 interface
 
 uses
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
-  RALTypes, RALConsts;
+  RALTypes, RALConsts, RALCompress;
 
+function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
+function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
-function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
+function OnlyNumbers(const AValue: StringRAL): StringRAL;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
-function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
-function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
-function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
-function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
-function OnlyNumbers(const AValue : StringRAL) : StringRAL;
-function RALStringToDateTime(const AValue : StringRAL; const AFormat : StringRAL = 'yyyyMMddhhnnsszzz') : TDateTime;
+function RALStringToDateTime(const AValue: StringRAL;
+                             const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
+function RandomBytes(numOfBytes: IntegerRAL): TBytes;
+function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
+function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
 implementation
 
@@ -54,33 +56,41 @@ end;
 
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
-  Result := GetEnumName(TypeInfo(TRALMethod), ord(AMethod));
+  Result := GetEnumName(TypeInfo(TRALMethod), Ord(AMethod));
   Delete(Result, 1, 2); // delete 'am'
 end;
 
-function StrCompressToCompress(const AStr : StringRAL) : TRALCompressType;
+function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
+var
+  vZLib, vZStd: boolean;
 begin
-  if SameText(AStr, 'gzip') then
+  vZLib := GetClass('TRALCompressZLib') <> nil;
+  vZStd := GetClass('TRALCompressZStd') <> nil;
+
+  if vZLib and SameText(AStr, 'gzip') then
     Result := ctGZip
-  else if SameText(AStr, 'zlib') then
+  else if vZLib and SameText(AStr, 'zlib') then
     Result := ctZLib
-  else if SameText(AStr, 'deflate') then
+  else if vZLib and SameText(AStr, 'deflate') then
     Result := ctDeflate
+  else if vZStd and SameText(AStr, 'zstd') then
+    Result := ctZStd
   else
     Result := ctNone;
 end;
 
-function CompressToStrCompress(ACompress : TRALCompressType) : StringRAL;
+function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
 begin
   case ACompress of
-    ctNone    : Result := '';
-    ctGZip    : Result := 'gzip';
-    ctDeflate : Result := 'deflate';
-    ctZLib    : Result := 'zlib';
+    ctNone: Result := '';
+    ctGZip: Result := 'gzip';
+    ctDeflate: Result := 'deflate';
+    ctZLib: Result := 'zlib';
+    ctZStd: Result := 'zstd';
   end;
 end;
 
-function StrCriptoToCripto(const AStr : StringRAL) : TRALCriptoType;
+function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 begin
   if SameText(AStr, 'aes128cbc_pkcs7') then
     Result := crAES128
@@ -92,19 +102,19 @@ begin
     Result := crNone;
 end;
 
-function CriptoToStrCripto(ACripto : TRALCriptoType) : StringRAL;
+function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
 begin
   case ACripto of
-    crNone   : Result := '';
-    crAES128 : Result := 'aes128cbc_pkcs7';
-    crAES192 : Result := 'aes192cbc_pkcs7';
-    crAES256 : Result := 'aes256cbc_pkcs7';
+    crNone: Result := '';
+    crAES128: Result := 'aes128cbc_pkcs7';
+    crAES192: Result := 'aes192cbc_pkcs7';
+    crAES256: Result := 'aes256cbc_pkcs7';
   end;
 end;
 
-function OnlyNumbers(const AValue : StringRAL) : StringRAL;
+function OnlyNumbers(const AValue: StringRAL): StringRAL;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := '';
   for vInt := RALLowStr(AValue) to RALHighStr(AValue) do
@@ -114,11 +124,12 @@ begin
   end;
 end;
 
-function RALStringToDateTime(const AValue : StringRAL; const AFormat : StringRAL) : TDateTime;
+function RALStringToDateTime(const AValue: StringRAL;
+  const AFormat: StringRAL): TDateTime;
 var
-  vInt1, vInt2 : integer;
-  sAno, sMes, sDia, sHor, sMin, sSeg, sMil : StringRAL;
-  wAno, wMes, wDia, wHor, wMin, wSeg, wMil : Word;
+  vInt1, vInt2: integer;
+  sAno, sMes, sDia, sHor, sMin, sSeg, sMil: StringRAL;
+  wAno, wMes, wDia, wHor, wMin, wSeg, wMil: word;
 begin
   sAno := '0';
   sMes := '0';
@@ -134,15 +145,15 @@ begin
     if vInt2 <= RALHighStr(AValue) then
     begin
       case UpCase(AFormat[vInt1]) of
-        'D' : sDia := sDia + AValue[vInt2];
-        'M' : sMes := sMes + AValue[vInt2];
-        'A' : sAno := sAno + AValue[vInt2];
-        'Y' : sAno := sAno + AValue[vInt2];
-        'H' : sHor := sHor + AValue[vInt2];
-        'N' : sMin := sMin + AValue[vInt2];
-        'I' : sMin := sMin + AValue[vInt2]; // php
-        'S' : sSeg := sSeg + AValue[vInt2];
-        'Z' : sMil := sMil + AValue[vInt2];
+        'D': sDia := sDia + AValue[vInt2];
+        'M': sMes := sMes + AValue[vInt2];
+        'A': sAno := sAno + AValue[vInt2];
+        'Y': sAno := sAno + AValue[vInt2];
+        'H': sHor := sHor + AValue[vInt2];
+        'N': sMin := sMin + AValue[vInt2];
+        'I': sMin := sMin + AValue[vInt2]; // php
+        'S': sSeg := sSeg + AValue[vInt2];
+        'Z': sMil := sMil + AValue[vInt2];
       end;
       vInt2 := vInt2 + 1;
     end
@@ -163,12 +174,12 @@ begin
   if (wAno = 0) or (wMes = 0) or (wDia = 0) then
   begin
     if not TryEncodeTime(wHor, wMin, wSeg, wMil, Result) then
-      Result := TDateTime(0)
+      Result := TDateTime(0);
   end
   else
   begin
     if not TryEncodeDateTime(wAno, wMes, wDia, wHor, wMin, wSeg, wMil, Result) then
-      Result := TDateTime(0)
+      Result := TDateTime(0);
   end;
 end;
 

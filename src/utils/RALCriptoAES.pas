@@ -18,15 +18,7 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FDecSBOX: array [0 .. 255] of byte;
-    FEncSBOX: array [0 .. 255] of byte;
     FLogAES: TStringList;
-    FMulti02: array [0 .. 255] of byte;
-    FMulti03: array [0 .. 255] of byte;
-    FMulti09: array [0 .. 255] of byte; // 09
-    FMulti11: array [0 .. 255] of byte; // 0b
-    FMulti13: array [0 .. 255] of byte; // 0d
-    FMulti14: array [0 .. 255] of byte; // 0e
     FWordKeys: array of Cardinal; // UInt32;
   protected
     /// Decrypt cipher
@@ -42,19 +34,14 @@ type
     procedure EncSubShiftRows(AInput, AOutput: PByte);
     function EncryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
     /// Cypher Encrypt and Decrypt
-    procedure GenerateSBox;
     procedure KeyExpansion;
-    procedure Initialize;
     procedure LogAES(const ALog: StringRAL; AInput: PByte);
-    function Multi(AMult: integer; AByte: byte): byte;
-    function Multi02(AValue: byte): byte;
-    /// Used on keyexpansion
-    function RCON(AInt: integer): Cardinal;
     /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
+    function CheckKey : boolean;
     function SubWord(AInt: Cardinal): Cardinal;
     function WordToBytes(AInt: Cardinal): TBytes;
   public
@@ -77,43 +64,18 @@ const
   cKeyLength: array [TRALAESType] of integer = (4, 6, 8); // nk
   cBlockSize: integer = 4; // nb
 
-  // constantes de substituicao no Encrypt S-BOX
-  cEncSBOX: array [0 .. 255] of byte = ($63, $7C, $77, $7B, $F2, $6B, $6F, $C5, $30, $01,
-    $67, $2B, $FE, $D7, $AB, $76, $CA, $82, $C9, $7D, $FA, $59, $47, $F0, $AD, $D4, $A2,
-    $AF, $9C, $A4, $72, $C0, $B7, $FD, $93, $26, $36, $3F, $F7, $CC, $34, $A5, $E5, $F1,
-    $71, $D8, $31, $15, $04, $C7, $23, $C3, $18, $96, $05, $9A, $07, $12, $80, $E2, $EB,
-    $27, $B2, $75, $09, $83, $2C, $1A, $1B, $6E, $5A, $A0, $52, $3B, $D6, $B3, $29, $E3,
-    $2F, $84, $53, $D1, $00, $ED, $20, $FC, $B1, $5B, $6A, $CB, $BE, $39, $4A, $4C, $58,
-    $CF, $D0, $EF, $AA, $FB, $43, $4D, $33, $85, $45, $F9, $02, $7F, $50, $3C, $9F, $A8,
-    $51, $A3, $40, $8F, $92, $9D, $38, $F5, $BC, $B6, $DA, $21, $10, $FF, $F3, $D2, $CD,
-    $0C, $13, $EC, $5F, $97, $44, $17, $C4, $A7, $7E, $3D, $64, $5D, $19, $73, $60, $81,
-    $4F, $DC, $22, $2A, $90, $88, $46, $EE, $B8, $14, $DE, $5E, $0B, $DB, $E0, $32, $3A,
-    $0A, $49, $06, $24, $5C, $C2, $D3, $AC, $62, $91, $95, $E4, $79, $E7, $C8, $37, $6D,
-    $8D, $D5, $4E, $A9, $6C, $56, $F4, $EA, $65, $7A, $AE, $08, $BA, $78, $25, $2E, $1C,
-    $A6, $B4, $C6, $E8, $DD, $74, $1F, $4B, $BD, $8B, $8A, $70, $3E, $B5, $66, $48, $03,
-    $F6, $0E, $61, $35, $57, $B9, $86, $C1, $1D, $9E, $E1, $F8, $98, $11, $69, $D9, $8E,
-    $94, $9B, $1E, $87, $E9, $CE, $55, $28, $DF, $8C, $A1, $89, $0D, $BF, $E6, $42, $68,
-    $41, $99, $2D, $0F, $B0, $54, $BB, $16);
+var
+  FDecSBOX: array [0 .. 255] of byte;
+  FEncSBOX: array [0 .. 255] of byte;
+  FMulti02: array [0 .. 255] of byte;
+  FMulti03: array [0 .. 255] of byte;
+  FMulti09: array [0 .. 255] of byte; // 09
+  FMulti11: array [0 .. 255] of byte; // 0b
+  FMulti13: array [0 .. 255] of byte; // 0d
+  FMulti14: array [0 .. 255] of byte; // 0e
+  FRCON: array [0 .. 255] of cardinal;
 
-  // constantes de substituicao no Decrypt S-BOX
-  cDecSBOX: array [0 .. 255] of byte = ($52, $09, $6A, $D5, $30, $36, $A5, $38, $BF, $40,
-    $A3, $9E, $81, $F3, $D7, $FB, $7C, $E3, $39, $82, $9B, $2F, $FF, $87, $34, $8E, $43,
-    $44, $C4, $DE, $E9, $CB, $54, $7B, $94, $32, $A6, $C2, $23, $3D, $EE, $4C, $95, $0B,
-    $42, $FA, $C3, $4E, $08, $2E, $A1, $66, $28, $D9, $24, $B2, $76, $5B, $A2, $49, $6D,
-    $8B, $D1, $25, $72, $F8, $F6, $64, $86, $68, $98, $16, $D4, $A4, $5C, $CC, $5D, $65,
-    $B6, $92, $6C, $70, $48, $50, $FD, $ED, $B9, $DA, $5E, $15, $46, $57, $A7, $8D, $9D,
-    $84, $90, $D8, $AB, $00, $8C, $BC, $D3, $0A, $F7, $E4, $58, $05, $B8, $B3, $45, $06,
-    $D0, $2C, $1E, $8F, $CA, $3F, $0F, $02, $C1, $AF, $BD, $03, $01, $13, $8A, $6B, $3A,
-    $91, $11, $41, $4F, $67, $DC, $EA, $97, $F2, $CF, $CE, $F0, $B4, $E6, $73, $96, $AC,
-    $74, $22, $E7, $AD, $35, $85, $E2, $F9, $37, $E8, $1C, $75, $DF, $6E, $47, $F1, $1A,
-    $71, $1D, $29, $C5, $89, $6F, $B7, $62, $0E, $AA, $18, $BE, $1B, $FC, $56, $3E, $4B,
-    $C6, $D2, $79, $20, $9A, $DB, $C0, $FE, $78, $CD, $5A, $F4, $1F, $DD, $A8, $33, $88,
-    $07, $C7, $31, $B1, $12, $10, $59, $27, $80, $EC, $5F, $60, $51, $7F, $A9, $19, $B5,
-    $4A, $0D, $2D, $E5, $7A, $9F, $93, $C9, $9C, $EF, $A0, $E0, $3B, $4D, $AE, $2A, $F5,
-    $B0, $C8, $EB, $BB, $3C, $83, $53, $99, $61, $17, $2B, $04, $7E, $BA, $77, $D6, $26,
-    $E1, $69, $14, $63, $55, $21, $0C, $7D);
-
-  { TRALCriptoAES }
+{ TRALCriptoAES }
 
 function TRALCriptoAES.RotWord(AInt: Cardinal): Cardinal;
 var
@@ -136,10 +98,10 @@ var
   vNum: TBytes;
 begin
   vNum := WordToBytes(AInt);
-  vNum[0] := cEncSBOX[vNum[0]];
-  vNum[1] := cEncSBOX[vNum[1]];
-  vNum[2] := cEncSBOX[vNum[2]];
-  vNum[3] := cEncSBOX[vNum[3]];
+  vNum[0] := FEncSBOX[vNum[0]];
+  vNum[1] := FEncSBOX[vNum[1]];
+  vNum[2] := FEncSBOX[vNum[2]];
+  vNum[3] := FEncSBOX[vNum[3]];
 
   Move(vNum[0], Result, 4);
 end;
@@ -148,23 +110,6 @@ function TRALCriptoAES.WordToBytes(AInt: Cardinal): TBytes;
 begin
   SetLength(Result, 4);
   Move(AInt, Result[0], 4);
-end;
-
-function TRALCriptoAES.RCON(AInt: integer): Cardinal;
-var
-  vInt: IntegerRAL;
-begin
-  AInt := AInt - 1;
-  if AInt < 0 then
-    AInt := 0;
-
-  Result := 1;
-  for vInt := 1 to AInt do
-  begin
-    Result := Result * 2;
-    if Result > 255 then
-      Result := (Result - 256) xor 27;
-  end;
 end;
 
 procedure TRALCriptoAES.RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
@@ -186,37 +131,6 @@ begin
   Move(AInput^, AOutput^, 16);
 end;
 
-procedure TRALCriptoAES.GenerateSBox;
-var
-  vInt: IntegerRAL;
-  vMult: Cardinal;
-  vBytes: array [0 .. 255] of byte;
-  vByte: byte;
-begin
-  vByte := 1;
-  for vInt := 0 to 255 do
-  begin
-    vBytes[vInt] := vByte;
-    vByte := vByte xor Multi02(vByte);
-  end;
-
-  // DecSBOX é a posicao do byte no EncSBOX
-  FEncSBOX[0] := 99; // 0x63;
-  FDecSBOX[99] := 0; // 0x00
-
-  FillChar(FDecSBOX, 256, 0);
-  for vInt := 0 to 254 do
-  begin
-    vMult := vBytes[255 - vInt];
-    vMult := vMult or (vMult shl 8);
-    vMult := vMult xor (vMult shr 4) xor (vMult shr 5) xor (vMult shr 6)
-      xor (vMult shr 7);
-
-    FEncSBOX[vBytes[vInt]] := (vMult xor 99) and 255;
-    FDecSBOX[FEncSBOX[vBytes[vInt]]] := vBytes[vInt];
-  end;
-end;
-
 procedure TRALCriptoAES.EncSubBytes(AInput, AOutput: PByte);
 var
   vInt: IntegerRAL;
@@ -224,9 +138,9 @@ begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-    PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vInt)^];
+    PByte(LongInt(AOutput) + vInt)^ := FEncSBOX[PByte(LongInt(AInput) + vInt)^];
     {$ELSE}
-    PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vInt)^];
+    PByte(AOutput + vInt)^ := FEncSBOX[PByte(AInput + vInt)^];
     {$IFEND}
   end;
 
@@ -331,9 +245,9 @@ begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-    PByte(LongInt(AOutput) + vInt)^ := cEncSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    PByte(LongInt(AOutput) + vInt)^ := FEncSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
     {$ELSE}
-    PByte(AOutput + vInt)^ := cEncSBOX[PByte(AInput + vShift[vInt])^];
+    PByte(AOutput + vInt)^ := FEncSBOX[PByte(AInput + vShift[vInt])^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
@@ -346,9 +260,9 @@ begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-    PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vInt)^];
+    PByte(LongInt(AOutput) + vInt)^ := FDecSBOX[PByte(LongInt(AInput) + vInt)^];
     {$ELSE}
-    PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vInt)^];
+    PByte(AOutput + vInt)^ := FDecSBOX[PByte(AInput + vInt)^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
@@ -453,32 +367,12 @@ begin
   for vInt := 0 to 15 do
   begin
     {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
-    PByte(LongInt(AOutput) + vInt)^ := cDecSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
+    PByte(LongInt(AOutput) + vInt)^ := FDecSBOX[PByte(LongInt(AInput) + vShift[vInt])^];
     {$ELSE}
-    PByte(AOutput + vInt)^ := cDecSBOX[PByte(AInput + vShift[vInt])^];
+    PByte(AOutput + vInt)^ := FDecSBOX[PByte(AInput + vShift[vInt])^];
     {$IFEND}
   end;
   Move(AOutput^, AInput^, 16);
-end;
-
-procedure TRALCriptoAES.Initialize;
-var
-  vByte: byte;
-begin
-  for vByte := 0 to 255 do
-  begin
-    // Encrypt
-    FMulti02[vByte] := Multi02(vByte);
-    FMulti03[vByte] := Multi(3, vByte);
-
-    // Decrypt
-    FMulti09[vByte] := Multi(09, vByte);
-    FMulti11[vByte] := Multi(11, vByte);
-    FMulti13[vByte] := Multi(13, vByte);
-    FMulti14[vByte] := Multi(14, vByte);
-  end;
-
-  GenerateSBox;
 end;
 
 function TRALCriptoAES.EncryptAES(AInput, AOutput: PByte; AInputLen: integer): integer;
@@ -546,11 +440,6 @@ begin
   end;
 end;
 
-function TRALCriptoAES.Multi02(AValue: byte): byte;
-begin
-  Result := (AValue shl 1) xor ((AValue shr 7) * 283);
-end;
-
 procedure TRALCriptoAES.SetAESType(AValue: TRALAESType);
 begin
   if FAESType = AValue then
@@ -566,12 +455,27 @@ begin
   KeyExpansion;
 end;
 
+function TRALCriptoAES.CheckKey: boolean;
+begin
+  if Length(FWordKeys) = 0 then begin
+    Result := False;
+    raise Exception.Create('Key deve ser preenchida');
+  end
+  else begin
+    Result := True;
+  end;
+end;
+
 procedure TRALCriptoAES.KeyExpansion;
 var
   vTemp: Cardinal;
   vInt, vNk, vNb, vNr: IntegerRAL;
   vKey: TBytes;
 begin
+  SetLength(FWordKeys, 0);
+  if Length(Key) = 0 then
+    Exit;
+
   vNk := cKeyLength[FAESType];
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
@@ -584,7 +488,8 @@ begin
   if Length(Key) < vInt then
     vInt := Length(Key);
 
-  Move(Key[PosIniStr], vKey[0], vInt);
+  if Length(Key) > 0 then
+    Move(Key[PosIniStr], vKey[0], vInt);
 
   for vInt := 0 to Pred(vNk) do
     FWordKeys[vInt] := PCardinal(@vKey[4 * vInt])^;
@@ -594,7 +499,7 @@ begin
     vTemp := FWordKeys[vInt - 1];
 
     if (vInt mod vNk = 0) then
-      vTemp := SubWord(RotWord(vTemp)) xor (RCON(vInt div vNk))
+      vTemp := SubWord(RotWord(vTemp)) xor (FRCON[vInt div vNk])
     else if (vNk > 6) and (vInt mod vNk = 4) then
       vTemp := SubWord(vTemp);
 
@@ -607,37 +512,12 @@ begin
   inherited;
   FLogAES := TStringList.Create;
   FAESType := tAES128;
-  Initialize;
 end;
 
 destructor TRALCriptoAES.Destroy;
 begin
   FLogAES.Free;
   inherited Destroy;
-end;
-
-function TRALCriptoAES.Multi(AMult: integer; AByte: byte): byte;
-var
-  vInt1, vInt2: integer;
-  vByte, vCalc: byte;
-begin
-  Result := 0;
-  vInt1 := 0;
-  while AMult > 0 do
-  begin
-    vByte := AMult and 1;
-
-    if vByte = 1 then
-    begin
-      vCalc := AByte;
-      for vInt2 := 1 to vInt1 do
-        vCalc := Multi02(vCalc);
-      Result := Result xor vCalc;
-    end;
-
-    AMult := AMult shr 1;
-    vInt1 := vInt1 + 1;
-  end;
 end;
 
 function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
@@ -648,6 +528,9 @@ var
   vPosition, vSize: Int64RAL;
   vPaddind: IntegerRAL;
 begin
+  if not CheckKey then
+    Exit;
+
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
@@ -698,6 +581,9 @@ var
   vPosition, vSize: Int64RAL;
   vPad1, vPad2: byte;
 begin
+  if not CheckKey then
+    Exit;
+
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
@@ -740,6 +626,9 @@ var
   vInt: IntegerRAL;
   vBytes: TBytes;
 begin
+  if not CheckKey then
+    Exit;
+
   Result := nil;
   if (AIndex >= 0) and (AIndex < CountKeys) then
   begin
@@ -763,6 +652,9 @@ var
   vStr: StringRAL;
   vKey: TBytes;
 begin
+  if not CheckKey then
+    Exit;
+
   Result := TStringList.Create;
 
   for vInt1 := 0 to Pred(CountKeys) do
@@ -800,5 +692,105 @@ begin
   end;
   FLogAES.Add('');
 end;
+
+// auxiliares do AES
+
+function Multi02(AValue: byte): byte;
+begin
+  Result := (AValue shl 1) xor ((AValue shr 7) * 283);
+end;
+
+function Multi(AMult: integer; AByte: byte): byte;
+var
+  vInt1, vInt2: integer;
+  vByte, vCalc: byte;
+begin
+  Result := 0;
+  vInt1 := 0;
+  while AMult > 0 do
+  begin
+    vByte := AMult and 1;
+
+    if vByte = 1 then
+    begin
+      vCalc := AByte;
+      for vInt2 := 1 to vInt1 do
+        vCalc := Multi02(vCalc);
+      Result := Result xor vCalc;
+    end;
+
+    AMult := AMult shr 1;
+    vInt1 := vInt1 + 1;
+  end;
+end;
+
+procedure GenerateSBox;
+var
+  vInt: IntegerRAL;
+  vMult: Cardinal;
+  vBytes: array [0 .. 255] of byte;
+  vByte: byte;
+begin
+  vByte := 1;
+  for vInt := 0 to 255 do
+  begin
+    vBytes[vInt] := vByte;
+    vByte := vByte xor Multi02(vByte);
+  end;
+
+  // DecSBOX é a posicao do byte no EncSBOX
+  FEncSBOX[0] := 99; // 0x63;
+  FDecSBOX[99] := 0; // 0x00
+
+  FillChar(FDecSBOX, 256, 0);
+  for vInt := 0 to 254 do
+  begin
+    vMult := vBytes[255 - vInt];
+    vMult := vMult or (vMult shl 8);
+    vMult := vMult xor (vMult shr 4) xor (vMult shr 5) xor (vMult shr 6)
+      xor (vMult shr 7);
+
+    FEncSBOX[vBytes[vInt]] := (vMult xor 99) and 255;
+    FDecSBOX[FEncSBOX[vBytes[vInt]]] := vBytes[vInt];
+  end;
+end;
+
+procedure GenerateRCON;
+var
+  vInt: IntegerRAL;
+  vMult: Cardinal;
+begin
+  FRCON[0] := 141;
+  for vInt := 1 to 255 do
+  begin
+    vMult := FRCON[vInt - 1] * 2;
+    if vMult > 255 then
+      vMult := (vMult - 256) xor 27;
+    FRCON[vInt] := vMult;
+  end;
+end;
+
+procedure InitializeAESArrays;
+var
+  vByte: byte;
+begin
+  for vByte := 0 to 255 do
+  begin
+    // Encrypt
+    FMulti02[vByte] := Multi02(vByte);
+    FMulti03[vByte] := Multi(3, vByte);
+
+    // Decrypt
+    FMulti09[vByte] := Multi(09, vByte);
+    FMulti11[vByte] := Multi(11, vByte);
+    FMulti13[vByte] := Multi(13, vByte);
+    FMulti14[vByte] := Multi(14, vByte);
+  end;
+  GenerateRCON;
+  GenerateSBox;
+end;
+
+initialization
+  InitializeAESArrays;
 
 end.

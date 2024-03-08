@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils,
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
-  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts;
+  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
+  RALCompress;
 
 type
 
@@ -22,21 +23,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALnetHTTPClient;
+    function Clone(AOwner: TComponent): TRALClient; override;
+    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
 { TRALnetHTTPClient }
 
-function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALnetHTTPClient;
+function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALnetHTTPClient.Create(AOwner)
-  else
-    Result := TRALnetHTTPClient.Create(Self.Owner);
+  Result := TRALnetHTTPClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-  inherited Clone(Result);
+procedure TRALnetHTTPClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALnetHTTPClient.Create(AOwner: TComponent);
@@ -65,8 +68,8 @@ var
 begin
   inherited;
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   if KeepALive then
     AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
@@ -77,7 +80,7 @@ begin
   if CompressType <> ctNone then
   begin
     AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', SupportedCompressKind, rpkHEADER);
+    AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;
@@ -128,15 +131,17 @@ begin
 
       Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+      Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResponse.ContentStream, vContentType);
-      ResponseCode := vResponse.GetStatusCode;
+      Response.ContentType := vContentType;
+      Response.StatusCode := vResponse.GetStatusCode;
+      Response.ResponseStream := vResponse.ContentStream;
     except
       on e : ENetHTTPClientException do begin
-        ResponseError := e.Message;
+        Response.ResponseText := e.Message;
       end;
     end;
-    Result := ResponseCode;
+    Result := Response.StatusCode;
   finally
     if vFree then
       FreeAndNil(vSource);

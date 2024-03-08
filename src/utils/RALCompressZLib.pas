@@ -1,30 +1,30 @@
-/// Unit that stores Compression algorithms
+/// Unit that stores Compression ZLIB algorithms
 unit RALCompressZLib;
+
+{$M+}
 
 interface
 
 uses
   {$IFDEF FPC}
-    ZStream, bufstream,
+    ZStream,
   {$ENDIF}
   Classes, SysUtils, ZLib,
-  RALTypes, RALConsts, RALStream, RALCRC32, RALHashes;
+  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashes;
 
 type
   { TRALCompressZLib }
 
-  /// Compression class for PascalRAL
-  TRALCompressZLib = class
+  /// Compression class ZLIB for PascalRAL
+  TRALCompressZLib = class(TRALCompress)
+  private
+    FFormat : TRALCompressType;
+    procedure SetFormat(const AValue: TRALCompressType);
   protected
-    class procedure InitCompress(AInStream, AOutStream: TStream; AFormat: TRALCompressType = ctDeflate);
-    class procedure InitDeCompress(AInStream, AOutStream: TStream; AFormat: TRALCompressType = ctDeflate);
-  public
-    class function Compress(AStream: TStream; AFormat: TRALCompressType = ctDeflate): TStream; overload;
-    class function Compress(const AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
-    class procedure CompressFile(AInFile, AOutFile: StringRAL; AFormat: TRALCompressType = ctDeflate);
-    class function Decompress(AStream: TStream; AFormat: TRALCompressType = ctDeflate): TStream; overload;
-    class function Decompress(const AString: StringRAL; AFormat: TRALCompressType = ctDeflate): StringRAL; overload;
-    class procedure DecompressFile(AInFile, AOutFile: StringRAL; AFormat: TRALCompressType = ctDeflate);
+    procedure InitCompress(AInStream, AOutStream: TStream); override;
+    procedure InitDeCompress(AInStream, AOutStream: TStream); override;
+  published
+    property Format : TRALCompressType read FFormat write SetFormat;
   end;
 
 implementation
@@ -32,90 +32,11 @@ implementation
 const
   GZipHeader: array [0 .. 9] of byte = ($1F, $8B, $08, $00, $00, $00, $00, $00, $00, $00);
 
-  { TRALCompressZLib }
+{ TRALCompressZLib }
 
-class function TRALCompressZLib.Compress(AStream: TStream; AFormat: TRALCompressType): TStream;
-begin
-  Result := TMemoryStream.Create;
-  InitCompress(AStream, Result, AFormat);
-end;
-
-class function TRALCompressZLib.Decompress(AStream: TStream; AFormat: TRALCompressType): TStream;
-begin
-  Result := TMemoryStream.Create;
-  InitDeCompress(AStream, Result, AFormat);
-end;
-
-class function TRALCompressZLib.Compress(const AString: StringRAL; AFormat: TRALCompressType): StringRAL;
+procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
-  vStr, vRes: TStream;
-begin
-  vStr := StringToStream(AString);
-  try
-    vRes := Compress(vStr, AFormat);
-    try
-      Result := StreamToString(vRes);
-    finally
-      FreeAndNil(vRes);
-    end;
-  finally
-    FreeAndNil(vStr);
-  end;
-end;
-
-class procedure TRALCompressZLib.CompressFile(AInFile, AOutFile: StringRAL; AFormat: TRALCompressType);
-var
-  vInStream: TFileStream;
-  vOutStream: TBufferedFileStream;
-begin
-  vInStream := TFileStream.Create(AInFile, fmOpenRead or fmShareDenyWrite);
-  vOutStream := TBufferedFileStream.Create(AOutFile, fmCreate);
-  try
-    vInStream.Position := 0;
-    InitCompress(vInStream, vOutStream, AFormat);
-  finally
-    FreeAndNil(vInStream);
-    FreeAndNil(vOutStream);
-  end;
-end;
-
-class function TRALCompressZLib.Decompress(const AString: StringRAL; AFormat: TRALCompressType): StringRAL;
-var
-  vStr, vRes: TStream;
-begin
-  vStr := StringToStream(AString);
-  try
-    vRes := Decompress(vStr, AFormat);
-    try
-      Result := StreamToString(vRes);
-    finally
-      FreeAndNil(vRes);
-    end;
-  finally
-    FreeAndNil(vStr);
-  end;
-end;
-
-class procedure TRALCompressZLib.DecompressFile(AInFile, AOutFile: StringRAL; AFormat: TRALCompressType);
-var
-  vInStream: TFileStream;
-  vOutStream: TBufferedFileStream;
-begin
-  vInStream := TFileStream.Create(AInFile, fmOpenReadWrite);
-  vOutStream := TBufferedFileStream.Create(AOutFile, fmCreate);
-  try
-    vInStream.Position := 0;
-    InitDeCompress(vInStream, vOutStream, AFormat);
-  finally
-    FreeAndNil(vInStream);
-    FreeAndNil(vOutStream);
-  end;
-end;
-
-class procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream;
-  AFormat: TRALCompressType);
-var
-  vBuf: array [0 .. 4095] of byte;
+  vBuf: array[0..4095] of byte;
   vZip: TCompressionStream;
   vCount, vInt: Integer;
   vSize: LongWord;
@@ -124,16 +45,16 @@ var
 begin
   vSize := AInStream.Size;
 
-  if AFormat = ctGZip then
+  if FFormat = ctGZip then
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
 
   {$IFDEF FPC}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TCompressionStream.Create(clfastest, AOutStream)
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
   {$ELSE}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
   else
     vZip := TCompressionStream.Create(AOutStream, zcFastest, -15);
@@ -147,7 +68,7 @@ begin
     FreeAndNil(vZip);
   end;
 
-  if AFormat = ctGZip then
+  if FFormat = ctGZip then
   begin
     vCRC32 := TRALCRC32.Create;
     vCRC32.OutputType := rhotNone;
@@ -171,17 +92,16 @@ begin
   AOutStream.Position := 0;
 end;
 
-class procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream;
-  AFormat: TRALCompressType);
+procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array [0 .. 4095] of byte;
+  vBuf: array[0..4095] of byte;
   vZip: TDeCompressionStream;
   vCount, vInt: Integer;
   vCRCFile, vCRCFinal, vFileSize: LongWord;
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
 begin
-  if AFormat = ctGZip then
+  if FFormat = ctGZip then
   begin
     AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
     AInStream.Read(vCRCFile, SizeOf(vCRCFile));
@@ -192,12 +112,12 @@ begin
   end;
 
   {$IFDEF FPC}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream)
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
   {$ELSE}
-  if AFormat = ctZLib then
+  if FFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
   else
     vZip := TDeCompressionStream.Create(AInStream, -15);
@@ -213,7 +133,7 @@ begin
 
   AOutStream.Position := 0;
 
-  if AFormat = ctGZip then
+  if FFormat = ctGZip then
   begin
     vCRC32 := TRALCRC32.Create;
     vCRC32.OutputType := rhotNone;
@@ -232,11 +152,28 @@ begin
     end;
   end;
 
-  if (AFormat = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
+  if (FFormat = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
   begin
     AOutStream.Size := 0;
     raise Exception.Create(emContentCheckError);
   end;
 end;
+
+procedure TRALCompressZLib.SetFormat(const AValue: TRALCompressType);
+begin
+  if AValue = FFormat then
+    Exit;
+
+  if not (AValue in [ctDeflate, ctGZip, ctZLib]) then
+  begin
+    raise Exception.Create('Format is invalid!');
+    Exit;
+  end;
+
+  FFormat := AValue;
+end;
+
+initialization
+  RegisterClass(TRALCompressZLib);
 
 end.

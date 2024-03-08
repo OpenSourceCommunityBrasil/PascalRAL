@@ -286,7 +286,7 @@ begin
         if vConnClose then
           AResponse.Connection := 'close';
 
-        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER);
+        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
         Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
 
         AResponse.ContentStream := ResponseStream;

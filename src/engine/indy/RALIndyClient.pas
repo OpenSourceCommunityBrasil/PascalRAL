@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   IdCookie,
-  RALClient, RALParams, RALTypes, RALConsts;
+  RALClient, RALParams, RALTypes, RALConsts, RALCompress;
 
 type
 
@@ -27,21 +27,23 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALIndyClient;
+    function Clone(AOwner: TComponent): TRALClient;  override;
+    procedure CopyProperties(ADest: TRALClient);  override;
   end;
 
 implementation
 
 { TRALIndyClient }
 
-function TRALIndyClient.Clone(AOwner: TComponent): TRALIndyClient;
+function TRALIndyClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  if Assigned(AOwner) then
-    Result := TRALIndyClient.Create(AOwner)
-  else
-    Result := TRALIndyClient.Create(Self.Owner);
+  Result := TRALIndyClient.Create(AOwner);
+  CopyProperties(Result);
+end;
 
-    inherited Clone(Result);
+procedure TRALIndyClient.CopyProperties(ADest: TRALClient);
+begin
+  inherited;
 end;
 
 constructor TRALIndyClient.Create(AOwner: TComponent);
@@ -76,8 +78,8 @@ begin
   FHttp.Response.Clear;
 
   Response.Clear;
-  ResponseCode := -1;
-  ResponseError := '';
+  Response.StatusCode := -1;
+  Response.ResponseText := '';
 
   if KeepAlive then
     FHttp.Request.Connection := 'keep-alive'
@@ -88,7 +90,7 @@ begin
   if CompressType <> ctNone then
   begin
     FHttp.Request.ContentEncoding := Request.ContentEncoding;
-    FHttp.Request.AcceptEncoding := SupportedCompressKind;
+    FHttp.Request.AcceptEncoding := TRALCompress.GetSuportedCompress;
   end;
 
   Request.ContentCripto := CriptoOptions.CriptType;
@@ -98,7 +100,7 @@ begin
     AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER);
+  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
   vFree := False;
   vSource := AParams.EncodeBody(vContentType, vFree);
@@ -133,14 +135,16 @@ begin
 
       Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
+      Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      ResponseStream := Response.Params.DecodeBody(vResult, FHttp.Response.ContentType);
+      Response.ContentType := FHttp.Response.ContentType;
+      Response.StatusCode := FHttp.ResponseCode;
+      Response.ResponseStream := vResult;
     except
-      ResponseError := FHttp.ResponseText;
+      Response.ResponseText := FHttp.ResponseText;
     end;
     FreeAndNil(vResult);
 
-    ResponseCode := FHttp.ResponseCode;
     Result := FHttp.ResponseCode;
   finally
     if vFree then

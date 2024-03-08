@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALCripto;
+  RALCripto, RALCompress, RALCompressZLib;
 
 type
   TRALServer = class;
@@ -214,8 +214,8 @@ type
   /// Used by other components to add fixed routes to the RAL Server
   TRALModuleRoutes = class(TRALComponent)
   private
-    FServer: TRALServer;
     FRoutes: TRALRoutes;
+    FServer: TRALServer;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);
@@ -615,20 +615,20 @@ var
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
 begin
-  Result := TRALResponse.Create;
+  Result := TRALServerResponse.Create;
 
   if not ARequest.HasValidContentEncoding then
   begin
     Result.Answer(415);
     Result.ContentEncoding := ARequest.ContentEncoding;
-    Result.AcceptEncoding := SupportedCompressKind;
+    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     Result.Answer(415);
     Result.ContentEncoding := ARequest.AcceptEncoding;
-    Result.AcceptEncoding := SupportedCompressKind;
+    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
   end;
 
