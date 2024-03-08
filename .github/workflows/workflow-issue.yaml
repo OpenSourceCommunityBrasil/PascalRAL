@@ -1,8 +1,8 @@
-name: "Atualizar issues"
+name: "Atualizar variáveis de issue"
 
 on:
-  issues:
-    types: [opened, closed]
+  - issues:
+      types: [opened, closed]
 
 jobs:
   update-variables:
@@ -10,10 +10,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: "Executar script YAML"
-        run: |
-          issue_number=${{ github.event.issue.number }}
-          issue_title=${{ github.event.issue.title }}
-          gh project add-card --project-id {{ github.repository.project.id }} --content "Issue #${issue_number}: ${issue_title}"
-          gh project update-variable --project-id {{ github.repository.project.id }} --name StartDate --value "${{ github.event.issue.created_at }}"
-          gh project update-variable --project-id {{ github.repository.project.id }} --name FinishDate --value "${{ github.event.issue.closed_at }}"
+
+      - name: "Adicionar issue ao projeto"
+        uses: "actions/add-card@latest"
+        with:
+          project_id: 5  # Substitua pelo ID do seu projeto
+          content: "Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+
+      - name: "Atualizar variável StartDate"
+        uses: "actions/update-variable@latest"
+        with:
+          name: "StartDate"
+          value: "{{ github.event.issue.created_at }}"
+
+      - name: "Atualizar variável FinishDate"
+        uses: "actions/update-variable@latest"
+        with:
+          name: "FinishDate"
+          value: "{{ github.event.issue.closed_at }}"	
