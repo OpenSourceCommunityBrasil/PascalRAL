@@ -48,7 +48,7 @@ const
     $90befffa, $a4506ceb, $bef9a3f7, $c67178f2);
 
 
-{ TRALSHA2_32 }
+  { TRALSHA2_32 }
 
 procedure TRALSHA2_32.Compress;
 var
