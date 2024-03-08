@@ -1,30 +1,13 @@
 name: "Atualizar variáveis de issue"
-
-on:
-  issues:
-    types: [opened, closed]
-
+on: [issues]
 jobs:
-  update-variables:
+  github-actions-automate-projects:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-
-      - name: "Adicionar issue ao projeto"
-        uses: "actions/add-card@latest"
-        with:
-          project_id: 5  # Substitua pelo ID do seu projeto
-          content: "Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
-
-      - name: "Atualizar variável StartDate"
-        uses: "actions/update-variable@latest"
-        with:
-          name: "StartDate"
-          value: "{{ github.event.issue.created_at }}"
-
-      - name: "Atualizar variável FinishDate"
-        uses: "actions/update-variable@latest"
-        with:
-          name: "FinishDate"
-          value: "{{ github.event.issue.closed_at }}"	
+    - name: add-new-issues-to-repository-based-project-column
+      uses: docker://takanabe/github-actions-automate-projects@latest
+      if: github.event_name == 'issues' && github.event.action == 'opened'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_PROJECT_URL: https://github.com/OpenSourceCommunityBrasil/PascalRAL
+        GITHUB_PROJECT_COLUMN_NAME: Todo
