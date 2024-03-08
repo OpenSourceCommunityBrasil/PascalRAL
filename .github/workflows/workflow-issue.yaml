@@ -1,0 +1,19 @@
+name: "Atualizar issues"
+
+on:
+  issues:
+    types: [opened, closed]
+
+jobs:
+  update-variables:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Executar script YAML"
+        run: |
+          issue_number=${{ github.event.issue.number }}
+          issue_title=${{ github.event.issue.title }}
+          gh project add-card --project-id {{ github.repository.project.id }} --content "Issue #${issue_number}: ${issue_title}"
+          gh project update-variable --project-id {{ github.repository.project.id }} --name StartDate --value "${{ github.event.issue.created_at }}"
+          gh project update-variable --project-id {{ github.repository.project.id }} --name FinishDate --value "${{ github.event.issue.closed_at }}"
