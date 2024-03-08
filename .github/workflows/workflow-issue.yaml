@@ -1,8 +1,8 @@
 name: "Atualizar variáveis de issue"
 
 on:
-  - issues:
-      types: [opened, closed]
+  issues:
+    types: [opened, closed]
 
 jobs:
   update-variables:
