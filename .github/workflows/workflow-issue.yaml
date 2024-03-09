@@ -11,3 +11,24 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_PROJECT_URL: https://github.com/OpenSourceCommunityBrasil/PascalRAL
         GITHUB_PROJECT_COLUMN_NAME: Todo
+        
+    - name: Atualizar StartDate
+      uses: austenstone/project-update@v1
+      with:
+        project-number: 5
+        item-id: ${{ github.event.issue.number }}
+        # CSV fields to modify.
+        fields: StartDate
+        # CSV fields values.
+        fields-value: ${{ github.event.issue.created_at }}
+
+    - name: Atualizar FinishDate
+      uses: austenstone/project-update@v1
+      with:
+        project-number: 5
+        item-id: ${{ github.event.issue.number }}
+        # CSV fields to modify.
+        fields: FinishDate
+        # CSV fields values.
+        fields-value: ${{ github.event.issue.closed_at }}        
+          
