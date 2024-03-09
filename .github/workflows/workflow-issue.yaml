@@ -4,31 +4,21 @@ jobs:
   github-actions-automate-projects:
     runs-on: ubuntu-latest
     steps:
-    - name: add-new-issues-to-repository-based-project-column
-      uses: takanabe/github-actions-automate-projects@v0.0.2
-      if: github.event_name == 'issues' && github.event.action == 'opened'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_PROJECT_URL: https://github.com/OpenSourceCommunityBrasil/PascalRAL
-        GITHUB_PROJECT_COLUMN_NAME: Todo
-        
-    - name: Atualizar StartDate
-      uses: austenstone/project-update@v1
+    - name: "Adicionar Issue ao projeto"
+      uses: austenstone/project-add@main
       with:
-        project-number: 5
-        item-id: ${{ github.event.issue.number }}
-        # CSV fields to modify.
-        fields: StartDate
-        # CSV fields values.
-        fields-value: ${{ github.event.issue.created_at }}
-
-    - name: Atualizar FinishDate
-      uses: austenstone/project-update@v1
+          user: ${{ github.repository_owner }}
+          project-number: 5
+          github-token: "${{ secrets.MY_TOKEN }}"
+          id: project-add
+          
+    - name: "Definir variáveis StartDate e FinishDate"
+      uses: austenstone/project-update@main
       with:
-        project-number: 5
-        item-id: ${{ github.event.issue.number }}
-        # CSV fields to modify.
-        fields: FinishDate
-        # CSV fields values.
-        fields-value: ${{ github.event.issue.closed_at }}        
+          user: ${{ github.repository_owner }}
+          project-number: 5
+          github-token: "${{ secrets.MY_TOKEN }}"
+          item-id: ${{ steps.project-add.outputs.id }}
+          field-names: StartDate, FinishDate
+          field-values: ${{ github.event.issue.created_at }}, ${{ github.event.issue.closed_at }}
           
