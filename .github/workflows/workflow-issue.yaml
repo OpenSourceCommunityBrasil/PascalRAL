@@ -10,7 +10,6 @@ jobs:
           user: ${{ github.repository_owner }}
           project-number: 5
           github-token: "${{ secrets.MY_TOKEN }}"
-          id: project-add
           
     - name: "Definir variáveis StartDate e FinishDate"
       uses: austenstone/project-update@main
