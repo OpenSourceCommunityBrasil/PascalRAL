@@ -17,7 +17,7 @@ jobs:
       with:
           user: ${{ github.repository_owner }}
           project-number: 5
-          github-token: "${{ secrets.MY_TOKEN }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           item-id: ${{ steps.project-add.outputs.id }}
           field-names: StartDate, FinishDate
           field-values: ${{ github.event.issue.created_at }}, ${{ github.event.issue.closed_at }}
