@@ -5,11 +5,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: "Adicionar Issue ao projeto"
-      uses: austenstone/project-add@main
-      with:
-          user: ${{ github.repository_owner }}
-          project-number: 5
-          github-token: "${{ secrets.MY_TOKEN }}"
+      uses: takanabe/github-actions-automate-projects@v0.0.2
+      if: github.event_name == 'issues' && github.event.action == 'opened'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_PROJECT_URL: https://github.com/OpenSourceCommunityBrasil/PascalRAL
+        GITHUB_PROJECT_COLUMN_NAME: Todo
           
     - name: "Definir variáveis StartDate e FinishDate"
       uses: austenstone/project-update@main
