@@ -16,7 +16,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWare Links', [TRALDBSQLDBLink]);
+  RegisterComponents('RAL - DBWare', [TRALDBSQLDBLink]);
 end;
 
 initialization

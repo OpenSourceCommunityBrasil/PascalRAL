@@ -33,7 +33,7 @@ LazarusResources.Add('TRALDBModule','PNG',[
   +#199'['#214#215#215#167'F'#211#253#247#129#166#219#127'[~'#1#26#182#24#252'E'
   +'V'''#167#0#0#0#0'IEND'#174'B`'#130
 ]);
-LazarusResources.Add('TRALDBStorageBIN','PNG',[
+LazarusResources.Add('TRALDBStorageBINLink','PNG',[
   #137'PNG'#13#10#26#10#0#0#0#13'IHDR'#0#0#0#24#0#0#0#24#8#6#0#0#0#224'w='#248#0
   +#0#0#9'pHYs'#0#0#11#19#0#0#11#19#1#0#154#156#24#0#0#0#1'sRGB'#0#174#206#28
   +#233#0#0#0#4'gAMA'#0#0#177#143#11#252'a'#5#0#0#1#243'IDATx'#1#237'V;L*A'#20
@@ -60,7 +60,7 @@ LazarusResources.Add('TRALDBStorageBIN','PNG',[
   +#250#170#176't'#233#127#2't'#233#11#203#254'ly'#1#164#194#161'Y'#200'z'#239
   +#17#0#0#0#0'IEND'#174'B`'#130
 ]);
-LazarusResources.Add('TRALDBStorageJSON','PNG',[
+LazarusResources.Add('TRALDBStorageJSONLink','PNG',[
   #137'PNG'#13#10#26#10#0#0#0#13'IHDR'#0#0#0#24#0#0#0#24#8#6#0#0#0#224'w='#248#0
   +#0#0#9'pHYs'#0#0#11#19#0#0#11#19#1#0#154#156#24#0#0#0#1'sRGB'#0#174#206#28
   +#233#0#0#0#4'gAMA'#0#0#177#143#11#252'a'#5#0#0#1#192'IDATx'#1#237#150'=O'#194

@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects, RALTools,
-  RALMIMETypes;
+  RALMIMETypes, RALStream;
 
 type
 
@@ -57,13 +57,16 @@ type
     FMethod: TRALMethod;
     FProtocol: StringRAL;
     FQuery: StringRAL;
-    FStream: TStream;
+    FRawStream: TStream;
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
     /// Grabs only the params after the "?" key and records it in FQuery attribute
     procedure SetQuery(const AValue: StringRAL);
     procedure SetStream(const AValue: TStream);
+
+    function GetRawText: StringRAL;
+    procedure SetRawStream(const Value: TStream);
   public
     constructor Create;
     destructor Destroy; override;
@@ -90,13 +93,19 @@ type
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Method: TRALMethod read FMethod write FMethod;
     property Protocol: StringRAL read FProtocol write FProtocol;
-    property Stream: TStream read FStream write SetStream;
+    property RawStream: TStream read FRawStream write SetRawStream;
+    property RawText: StringRAL read GetRawText;
     property Query: StringRAL read FQuery write SetQuery;
   end;
 
 implementation
 
 { TRALRequest }
+
+function TRALRequest.GetRawText: StringRAL;
+begin
+  Result := StreamToString(FRawStream);
+end;
 
 function TRALRequest.GetURL: StringRAL;
 begin
@@ -113,12 +122,17 @@ begin
     Delete(FQuery, vInt, Length(FQuery));
 end;
 
+procedure TRALRequest.SetRawStream(const Value: TStream);
+begin
+  FRawStream := Value;
+end;
+
 procedure TRALRequest.SetStream(const AValue: TStream);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
+  if FRawStream <> nil then
+    FreeAndNil(FRawStream);
 
-  FStream := Params.DecodeBody(AValue, FContentType);
+  FRawStream := Params.DecodeBody(AValue, FContentType);
 end;
 
 constructor TRALRequest.Create;
@@ -127,15 +141,15 @@ begin
   FAuthorization := TRALAuthorization.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
-  FStream := nil;
+  FRawStream := nil;
 end;
 
 destructor TRALRequest.Destroy;
 begin
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
-  if FStream <> nil then
-    FreeAndNil(FStream);
+  if FRawStream <> nil then
+    FreeAndNil(FRawStream);
   inherited;
 end;
 
