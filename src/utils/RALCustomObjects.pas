@@ -28,6 +28,8 @@ type
     FAcceptEncription: StringRAL;
     FContentEncoding: StringRAL;
     FContentEncription: StringRAL;
+    FContentType: StringRAL;
+    FCriptoKey: StringRAL;
     FParams: TRALParams;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
@@ -41,6 +43,7 @@ type
     function GetParams: TRALParams;
     procedure SetContentCompress(const AValue: TRALCompressType);
     procedure SetContentCripto(AValue: TRALCriptoType);
+    procedure SetContentType(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -73,6 +76,8 @@ type
     property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
+    property ContentType: StringRAL read FContentType write SetContentType;
+    property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     property Params: TRALParams read GetParams;
   end;
 
@@ -120,6 +125,13 @@ end;
 procedure TRALHTTPHeaderInfo.SetContentCripto(AValue: TRALCriptoType);
 begin
   FContentEncription := CriptoToStrCripto(AValue);
+end;
+
+procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
+begin
+  FContentType := AValue;
+  if Pos('charset=', FContentType) = 0 then
+    FContentType := FContentType + '; charset=utf-8';
 end;
 
 function TRALHTTPHeaderInfo.GetAcceptCripto: TRALCriptoType;

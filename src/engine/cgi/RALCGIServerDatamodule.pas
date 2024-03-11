@@ -129,7 +129,7 @@ end;
   begin
     AHandled := True;
 
-    vRequest := TRALRequest.Create;
+    vRequest := TRALServerRequest.Create;
     try
       with vRequest do
       begin
@@ -226,7 +226,7 @@ end;
 
           AResponse.ContentStream := ResponseStream;
 
-          AResponse.FreeContentStream := vResponse.FreeContent;
+          AResponse.FreeContentStream := True;
           AResponse.ContentType := ContentType;
 
           AResponse.SendContent;
@@ -247,7 +247,7 @@ end;
   begin
     AHandled := True;
 
-    vRequest := TRALRequest.Create;
+    vRequest := TRALServerRequest.Create;
     try
       with vRequest do
       begin
@@ -270,7 +270,7 @@ end;
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
         Params.CriptoOptions.Key := FRALServer.CriptoOptions.Key;
-        Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
+        RequestStream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
 
         Host := Request.Host;
         HttpVersion := 'HTTP';
@@ -281,7 +281,7 @@ end;
       try
         Response.ContentStream := vResponse.ResponseStream;
         Response.ContentLength := Response.ContentStream.Size;
-        Response.FreeContentStream := vResponse.FreeContent;
+        Response.FreeContentStream := True;
       finally
         vResponse.Free;
       end;

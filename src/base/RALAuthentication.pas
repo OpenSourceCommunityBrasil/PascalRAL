@@ -255,7 +255,7 @@ var
 begin
   Result := '';
   vFreeContent := False;
-  vStream := AParams.EncodeBody(vContentType, vFreeContent);
+  vStream := AParams.EncodeBody(vContentType);
   if vStream <> nil then
   begin
     vStream.Position := 0;

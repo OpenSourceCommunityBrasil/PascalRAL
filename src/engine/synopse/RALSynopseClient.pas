@@ -47,7 +47,6 @@ function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; APara
 var
   vSource, vResult : TStream;
   vContentType: StringRAL;
-  vFree : boolean;
   vHeader : StringRAL;
   vHttp : THttpClientSocket;
   vAddress : UTF8String;
@@ -88,9 +87,8 @@ begin
       AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
     end;
 
-    vFree := False;
     vContentType := '';
-    vSource := AParams.EncodeBody(vContentType, vFree);
+    vSource := AParams.EncodeBody(vContentType);
     try
       if vContentType <> '' then
         AParams.AddParam('Content-Type', vContentType, rpkHEADER);
@@ -137,8 +135,7 @@ begin
       end;
       FreeAndNil(vResult);
     finally
-      if vFree then
-        FreeAndNil(vSource);
+      FreeAndNil(vSource);
     end;
   finally
     FreeAndNil(vHttp);

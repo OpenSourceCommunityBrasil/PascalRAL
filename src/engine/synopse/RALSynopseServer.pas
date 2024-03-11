@@ -206,7 +206,7 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
 begin
-  vRequest := TRALRequest.Create;
+  vRequest := TRALServerRequest.Create;
   try
     with vRequest do
     begin
@@ -237,7 +237,7 @@ begin
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
       Params.CriptoOptions.Key := CriptoOptions.Key;
-      Stream := Params.DecodeBody(AContext.InContent, AContext.InContentType);
+      RequestText := AContext.InContent;
 
       Host := AContext.Host;
       Protocol := '1.1';

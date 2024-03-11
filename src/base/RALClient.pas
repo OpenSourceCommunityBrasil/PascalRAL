@@ -211,7 +211,7 @@ constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAuthentication := nil;
-  FLastRequest := TRALRequest.Create;
+  FLastRequest := TRALClientRequest.Create;
   FLastResponse := TRALClientResponse.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
 

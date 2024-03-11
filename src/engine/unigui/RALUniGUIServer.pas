@@ -86,7 +86,7 @@ begin
 
   Handled := True;
 
-  vRequest := TRALRequest.Create;
+  vRequest := TRALServerRequest.Create;
   try
     with vRequest do
     begin
@@ -121,7 +121,7 @@ begin
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
       Params.CriptoOptions.Key := CriptoOptions.Key;
-      Stream := Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
+      RequestStream := ARequestInfo.PostStream;
 
       Host := ARequestInfo.Host;
       vInt := Pos('/', ARequestInfo.Version);
@@ -179,7 +179,7 @@ begin
 
         if AResponseInfo.ContentStream <> nil then begin
           AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
-          AResponseInfo.FreeContentStream := FreeContent;
+          AResponseInfo.FreeContentStream := True;
         end;
 
         AResponseInfo.WriteContent;

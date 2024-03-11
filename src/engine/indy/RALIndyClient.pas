@@ -66,7 +66,6 @@ function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: T
 var
   vSource, vResult: TStream;
   vContentType: StringRAL;
-  vFree: boolean;
   vInt: Integer;
 begin
   inherited;
@@ -102,8 +101,7 @@ begin
 
   AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
-  vFree := False;
-  vSource := AParams.EncodeBody(vContentType, vFree);
+  vSource := AParams.EncodeBody(vContentType);
   try
     FHttp.AllowCookies := True;
     FHttp.Request.ContentType := vContentType;
@@ -147,8 +145,7 @@ begin
 
     Result := FHttp.ResponseCode;
   finally
-    if vFree then
-      FreeAndNil(vSource);
+    FreeAndNil(vSource);
   end;
 end;
 

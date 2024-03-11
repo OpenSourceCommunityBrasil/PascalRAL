@@ -194,7 +194,7 @@ var
   vStr1, vStr2: StringRAL;
   vConnClose : boolean;
 begin
-  vRequest := TRALRequest.Create;
+  vRequest := TRALServerRequest.Create;
   try
     with vRequest do
     begin
@@ -239,7 +239,7 @@ begin
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
       Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
-      Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
+      RequestText := ARequest.Content;
 
       Host := ARequest.Host;
       vInt := Pos('/', ARequest.ProtocolVersion);
@@ -291,7 +291,7 @@ begin
 
         AResponse.ContentStream := ResponseStream;
 
-        AResponse.FreeContentStream := vResponse.FreeContent;
+        AResponse.FreeContentStream := True;
         AResponse.ContentType := ContentType;
 
         AResponse.SendContent;

@@ -60,7 +60,6 @@ function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams
 var
   vInt: IntegerRAL;
   vSource : TStream;
-  vFree: boolean;
   vContentType : StringRAL;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
@@ -93,13 +92,12 @@ begin
   SetLength(vHeaders, AParams.Count(rpkHEADER));
   for vInt := 0 to Pred(AParams.Count) do
   begin
-    vParam := AParams.Param[vInt];
+    vParam := AParams.Index[vInt];
     if vParam.Kind = rpkHEADER then
       vHeaders[vInt] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
   end;
 
-  vFree := False;
-  vSource := AParams.EncodeBody(vContentType, vFree);
+  vSource := AParams.EncodeBody(vContentType);
   try
     FHttp.ContentType := vContentType;
     try
@@ -143,8 +141,7 @@ begin
     end;
     Result := Response.StatusCode;
   finally
-    if vFree then
-      FreeAndNil(vSource);
+    FreeAndNil(vSource);
   end;
 end;
 

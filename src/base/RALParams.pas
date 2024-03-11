@@ -171,7 +171,7 @@ type
     /// Removes a RALParam matching the given AName and AKind.
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
     /// Returns a TStream with all RALParams that matches 'Body' Kind.
-    function EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
+    function EncodeBody(var AContentType: StringRAL): TStream;
     /// creates and returns an empty param for a more flexible way of coding.
     function NewParam: TRALParam;
     /// converts a HTML encoded URL into a TStringList.
@@ -736,17 +736,15 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
+function TRALParams.EncodeBody(var AContentType: StringRAL): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
   vString, vValor: StringRAL;
-  vResult, vTemp: TStream;
+  vTemp: TStream;
 begin
-  AFreeContent := False;
   Result := nil;
-  vResult := nil;
 
   vInt1 := Count(rpkBODY);
   vInt2 := Count(rpkFIELD);
@@ -757,9 +755,8 @@ begin
 
   if vInt1 + vInt2 = 1 then
   begin
-    vResult := Index[0].SaveToStream;
+    Result := Index[0].SaveToStream;
     AContentType := Index[0].ContentType;
-    AFreeContent := True;
   end
 }
   if (vInt2 > 0) and (vInt1 = 0) then
@@ -780,10 +777,9 @@ begin
         vString := vString + vValor;
       end;
     end;
-    vResult := TStringStream.Create(vString);
-    vResult.Position := 0;
+    Result := TStringStream.Create(vString);
+    Result.Position := 0;
 
-    AFreeContent := True;
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
   else if vInt1 + vInt2 >= 1 then
@@ -799,34 +795,27 @@ begin
             Index[vInt1].FileName, Index[vInt1].ContentType);
         end;
       end;
-      vResult := vMultPart.AsStream;
+      Result := vMultPart.AsStream;
       AContentType := vMultPart.ContentType;
-      AFreeContent := True;
     finally
       FreeAndNil(vMultPart);
     end;
   end;
 
-  if (FCompressType <> ctNone) and (vResult <> nil) then
+  if (FCompressType <> ctNone) and (Result <> nil) then
   begin
-    vTemp := Compress(vResult);
-    if AFreeContent then
-      FreeAndNil(vResult);
-    AFreeContent := True;
-    vResult := vTemp;
+    vTemp := Compress(Result);
+    FreeAndNil(Result);
+    Result := vTemp;
   end;
 
   if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
-    (vResult <> nil) then
+     (Result <> nil) then
   begin
-    vTemp := Encrypt(vResult);
-    if AFreeContent then
-      FreeAndNil(vResult);
-    AFreeContent := True;
-    vResult := vTemp;
+    vTemp := Encrypt(Result);
+    FreeAndNil(Result);
+    Result := vTemp;
   end;
-
-  Result := vResult;
 end;
 
 function TRALParams.URLEncodedToList(ASource: StringRAL): TStringList;

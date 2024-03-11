@@ -114,7 +114,7 @@ var
   vCookies: TStringList;
   vParam: TRALParam;
 begin
-  vRequest := TRALRequest.Create;
+  vRequest := TRALServerRequest.Create;
   try
     with vRequest do
     begin
@@ -162,7 +162,7 @@ begin
       Params.CriptoOptions.CriptType := ContentCripto;
       Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      Stream := ARequestInfo.PostStream;
+      RequestStream := ARequestInfo.PostStream;
 
       Host := ARequestInfo.Host;
       vInt := Pos('/', ARequestInfo.Version);
@@ -234,7 +234,7 @@ begin
         if AResponseInfo.ContentStream <> nil then
         begin
           AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
-          AResponseInfo.FreeContentStream := FreeContent;
+          AResponseInfo.FreeContentStream := True;
         end;
 
         AResponseInfo.WriteContent;

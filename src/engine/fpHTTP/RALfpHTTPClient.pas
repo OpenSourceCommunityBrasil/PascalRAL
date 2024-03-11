@@ -72,7 +72,6 @@ var
   vInt: IntegerRAL;
   vSource, vResult : TStream;
   vContentType : StringRAL;
-  vFree : boolean;
 begin
   inherited;
   Response.Clear;
@@ -102,7 +101,7 @@ begin
 
   AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
-  vSource := AParams.EncodeBody(vContentType, vFree);
+  vSource := AParams.EncodeBody(vContentType);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
     AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
@@ -140,8 +139,7 @@ begin
     FreeAndNil(vResult);
     Result := FHttp.ResponseStatusCode;
   finally
-    if vFree then
-      FreeAndNil(vSource);
+    FreeAndNil(vSource);
   end;
 end;
 
