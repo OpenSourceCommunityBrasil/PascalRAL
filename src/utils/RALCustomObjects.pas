@@ -278,7 +278,7 @@ begin
   Result := nil;
   for vInt := 0 to FParams.Count do
   begin
-    vParam := FParams.Param[vInt];
+    vParam := FParams.Index[vInt];
     if vParam.Kind = rpkBODY then
     begin
       if AIdx > 0 then

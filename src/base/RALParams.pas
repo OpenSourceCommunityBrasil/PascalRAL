@@ -182,7 +182,7 @@ type
     /// Grabs only the body kind of params, excluding headers and cookies.
     property Body: TList read GetBody;
     /// Grabs a param by its index on the TRALParams list.
-    property Param[AIndex: IntegerRAL]: TRALParam read GetParam;
+    property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
     /// Grabs a param by its name.
     property Get[AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
@@ -236,38 +236,23 @@ begin
   end
   else
   begin
-    FContent := TMemoryStream.Create
+    FContent := TMemoryStream.Create;
   end;
 end;
 
 function TRALParam.GetAsBoolean: Boolean;
 begin
-  Result := false;
-  try
-    Result := StrToBool(StreamToString(FContent));
-  except
-    Result := false;
-  end;
+  Result := StrToBoolDef(StreamToString(FContent), False);
 end;
 
 function TRALParam.GetAsDouble: DoubleRAL;
 begin
-  Result := 0;
-  try
-    Result := StrToFloat(StreamToString(FContent));
-  except
-    Result := 0;
-  end;
+  Result := StrToFloatDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.GetAsInteger: IntegerRAL;
 begin
-  Result := 0;
-  try
-    Result := StrToInt(StreamToString(FContent));
-  except
-    Result := 0;
-  end;
+  Result := StrToIntDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.GetAsStream: TStream;
@@ -387,8 +372,7 @@ end;
 
 { TRALParams }
 
-function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind)
-  : TRALParam;
+function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
   Result := GetKind[AName, AKind];
   if Result = nil then
@@ -400,8 +384,7 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddParam(const AName: StringRAL; AContent: TStream;
-  AKind: TRALParamKind): TRALParam;
+function TRALParams.AddParam(const AName: StringRAL; AContent: TStream; AKind: TRALParamKind): TRALParam;
 begin
   Result := GetKind[AName, AKind];
   if Result = nil then
@@ -459,8 +442,7 @@ begin
   end;
 end;
 
-function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE)
-  : TRALParam;
+function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
@@ -469,8 +451,7 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE)
-  : TRALParam;
+function TRALParams.AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
@@ -530,9 +511,9 @@ var
   vLine: StringRAL;
   vIs13: boolean;
 begin
-{$IFNDEF FPC}
+  {$IFNDEF FPC}
   ASource := UTF8ToString(ASource);
-{$ENDIF}
+  {$ENDIF}
   if (ASource <> '') and (ANameSeparator = '') then
     ANameSeparator := FindNameSeparator(ASource);
 
@@ -583,8 +564,7 @@ begin
   until vIndex = 0;
 end;
 
-procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL;
-  AKind: TRALParamKind);
+procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
 var
   vInt, vIdx: IntegerRAL;
 begin
@@ -627,8 +607,7 @@ begin
   AssignParams(TStrings(ADest), AKind, ASeparator);
 end;
 
-procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
-  ASeparator: StringRAL);
+procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL);
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
@@ -647,8 +626,8 @@ begin
   Result := AssignParamsText(AKind, ANameSeparator, #13#10);
 end;
 
-function TRALParams.AssignParamsText(AKind: TRALParamKind;
-  const ANameSeparator: StringRAL; const ALineSeparator: StringRAL): StringRAL;
+function TRALParams.AssignParamsText(AKind: TRALParamKind; const ANameSeparator: StringRAL;
+  const ALineSeparator: StringRAL): StringRAL;
 var
   vInt: integer;
   vParam: TRALParam;
@@ -678,7 +657,7 @@ var
   I: IntegerRAL;
 begin
   Result := '';
-  if (FParams <> nil) and (FParams.count > 0) then
+  if (FParams <> nil) and (FParams.Count > 0) then
     for I := 0 to Pred(FParams.Count) do
     begin
       Result := Result + TRALParam(FParams.Items[I]).AsString;
@@ -741,8 +720,7 @@ begin
   end;
 end;
 
-function TRALParams.DecodeBody(const ASource: StringRAL;
-  const AContentType: StringRAL): TStream;
+function TRALParams.DecodeBody(const ASource: StringRAL; const AContentType: StringRAL): TStream;
 var
   vStream: TStream;
 begin
@@ -758,8 +736,7 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL;
-  var AFreeContent: boolean): TStream;
+function TRALParams.EncodeBody(var AContentType: StringRAL; var AFreeContent: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
@@ -775,8 +752,8 @@ begin
   vInt2 := Count(rpkFIELD);
   if vInt1 + vInt2 = 1 then
   begin
-    vResult := Param[0].SaveToStream;
-    AContentType := Param[0].ContentType;
+    vResult := Index[0].SaveToStream;
+    AContentType := Index[0].ContentType;
     AFreeContent := True;
   end
   else if (vInt2 > 0) and (vInt1 = 0) then
@@ -784,7 +761,7 @@ begin
     vString := '';
     for vInt1 := 0 to Pred(Count) do
     begin
-      vItem := Param[vInt1];
+      vItem := Index[vInt1];
       if vItem.Kind in [rpkFIELD] then
       begin
         if vString <> '' then
@@ -809,11 +786,11 @@ begin
     try
       for vInt1 := 0 to Pred(Count) do
       begin
-        vItem := Param[vInt1];
+        vItem := Index[vInt1];
         if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
-          vMultPart.AddStream(Param[vInt1].ParamName, Param[vInt1].Content,
-            Param[vInt1].FileName, Param[vInt1].ContentType);
+          vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
+            Index[vInt1].FileName, Index[vInt1].ContentType);
         end;
       end;
       vResult := vMultPart.AsStream;
@@ -857,8 +834,7 @@ begin
   Result.Text := ASource;
 end;
 
-procedure TRALParams.DecodeFields(const ASource: StringRAL;
-  AKind: TRALParamKind = rpkFIELD);
+procedure TRALParams.DecodeFields(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
 var
   vStringList: TStringList;
 begin
@@ -978,7 +954,7 @@ function TRALParams.NewParam: TRALParam;
 begin
   Result := TRALParam.Create;
   Result.Kind := rpkNONE;
-  FParams.Add(Result)
+  FParams.Add(Result);
 end;
 
 function TRALParams.NextParamStr: StringRAL;
@@ -1042,10 +1018,10 @@ var
   vParam: TRALParam;
 begin
   vParam := NewParam;
-  if AFormData.name = '' then
+  if AFormData.Name = '' then
     vParam.ParamName := 'ral_body' + IntToStr(NextParamInt)
   else
-    vParam.ParamName := AFormData.name;
+    vParam.ParamName := AFormData.Name;
 
   vParam.AsStream := AFormData.AsStream;
   vParam.FileName := AFormData.FileName;
@@ -1062,8 +1038,8 @@ end;
 
 function TRALParams.Compress(AStream: TStream): TStream;
 var
-  vCompress : TRALCompress;
-  vClass : TRALCompressClass;
+  vCompress: TRALCompress;
+  vClass: TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
@@ -1077,7 +1053,7 @@ begin
           //SetEnumProp
           //SetOrdProp
           SetOrdProp(vCompress, 'Format', Ord(FCompressType));
-//          TRALCompressZLib(vCompress).Format := FCompressType;
+          //          TRALCompressZLib(vCompress).Format := FCompressType;
           Result := vCompress.Compress(AStream);
         finally
           vCompress.Free;
@@ -1107,20 +1083,20 @@ begin
   Result := nil;
   case FCriptoOptions.CriptType of
     crAES128:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES128;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
     crAES192:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES192;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
     crAES256:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES256;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
   end;
 
   try
@@ -1133,8 +1109,8 @@ end;
 
 function TRALParams.Decompress(AStream: TStream): TStream;
 var
-  vCompress : TRALCompress;
-  vClass : TRALCompressClass;
+  vCompress: TRALCompress;
+  vClass: TRALCompressClass;
 begin
   Result := nil;
   case FCompressType of
@@ -1147,7 +1123,7 @@ begin
         try
           //SetEnumProp
           SetOrdProp(vCompress, 'Format', Ord(FCompressType));
-//          TRALCompressZLib(vCompress).Format := FCompressType;
+          //          TRALCompressZLib(vCompress).Format := FCompressType;
           Result := vCompress.Decompress(AStream);
         finally
           vCompress.Free;
@@ -1172,7 +1148,7 @@ end;
 
 function TRALParams.Decompress(const ASource: StringRAL): StringRAL;
 var
-  vStream, vResult : TStream;
+  vStream, vResult: TStream;
 begin
   Result := '';
   if Result <> '' then
@@ -1199,20 +1175,20 @@ begin
   Result := nil;
   case FCriptoOptions.CriptType of
     crAES128:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES128;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
     crAES192:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES192;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
     crAES256:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES256;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
   end;
 
   try
@@ -1230,20 +1206,20 @@ begin
   Result := '';
   case FCriptoOptions.CriptType of
     crAES128:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES128;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES128;
+    end;
     crAES192:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES192;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES192;
+    end;
     crAES256:
-      begin
-        vCript := TRALCriptoAES.Create;
-        TRALCriptoAES(vCript).AESType := tAES256;
-      end;
+    begin
+      vCript := TRALCriptoAES.Create;
+      TRALCriptoAES(vCript).AESType := tAES256;
+    end;
   end;
 
   try

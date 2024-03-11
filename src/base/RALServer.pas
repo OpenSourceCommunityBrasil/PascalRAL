@@ -227,7 +227,7 @@ type
                          const ADescription: StringRAL = ''): TRALRoute;
 
     function CanResponseRoute(ARequest : TRALRequest) : TRALRoute; virtual;
-    function IsDomain : boolean; virtual;
+    function IsDomain: boolean; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
