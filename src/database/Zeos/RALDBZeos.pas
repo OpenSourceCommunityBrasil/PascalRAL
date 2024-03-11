@@ -117,7 +117,6 @@ end;
 procedure TRALDBZeos.SaveFromStream(ADataset: TDataSet; AStream: TStream;
   AFormat: TRALFormatStorage);
 begin
-  inherited;
   // todo
 end;
 

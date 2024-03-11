@@ -750,13 +750,19 @@ begin
 
   vInt1 := Count(rpkBODY);
   vInt2 := Count(rpkFIELD);
+{
+  TODO:
+  usar o Content-Disposition, com ele pode-se responder file
+  mas como identicar de um jeito facil se eh file
+
   if vInt1 + vInt2 = 1 then
   begin
     vResult := Index[0].SaveToStream;
     AContentType := Index[0].ContentType;
     AFreeContent := True;
   end
-  else if (vInt2 > 0) and (vInt1 = 0) then
+}
+  if (vInt2 > 0) and (vInt1 = 0) then
   begin
     vString := '';
     for vInt1 := 0 to Pred(Count) do
@@ -780,7 +786,7 @@ begin
     AFreeContent := True;
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
-  else if vInt1 + vInt2 > 1 then
+  else if vInt1 + vInt2 >= 1 then
   begin
     vMultPart := TRALMultipartEncoder.Create;
     try

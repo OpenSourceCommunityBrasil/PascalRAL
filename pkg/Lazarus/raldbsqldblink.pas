@@ -8,13 +8,13 @@ unit raldbsqldblink;
 interface
 
 uses
-  raldbsqldb, raldbsqldbreg, LazarusPackageIntf;
+  RALDBSQLDB, RALDBSQLDBLinkReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('raldbsqldbreg', @raldbsqldbreg.Register);
+  RegisterUnit('RALDBSQLDBLinkReg', @RALDBSQLDBLinkReg.Register);
 end;
 
 initialization
