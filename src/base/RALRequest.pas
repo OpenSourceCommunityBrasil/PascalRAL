@@ -275,7 +275,7 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, ContentType)
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
 end;
 
 procedure TRALServerRequest.SetRequestText(const AValue: StringRAL);
@@ -283,14 +283,14 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, ContentType)
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
 end;
 
 { TRALClientRequest }
 
 function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
-  vContentType : StringRAL;
+  vContentType, vContentDisposition : StringRAL;
 begin
   if not AEncode then
   begin
@@ -304,8 +304,9 @@ begin
     Params.CriptoOptions.Key := CriptoKey;
     Params.CompressType := ContentCompress;
   end;
-  Result := Params.EncodeBody(vContentType);
+  Result := Params.EncodeBody(vContentType, vContentDisposition);
   ContentType := vContentType;
+  ContentDisposition := vContentDisposition;
 end;
 
 function TRALClientRequest.GetRequestEncText(const AEncode: boolean): StringRAL;

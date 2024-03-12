@@ -60,7 +60,7 @@ function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams
 var
   vInt: IntegerRAL;
   vSource : TStream;
-  vContentType : StringRAL;
+  vContentType, vContentDisposition : StringRAL;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vParam : TRALParam;
@@ -89,17 +89,20 @@ begin
     AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  SetLength(vHeaders, AParams.Count(rpkHEADER));
-  for vInt := 0 to Pred(AParams.Count) do
-  begin
-    vParam := AParams.Index[vInt];
-    if vParam.Kind = rpkHEADER then
-      vHeaders[vInt] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
-  end;
-
-  vSource := AParams.EncodeBody(vContentType);
+  vSource := AParams.EncodeBody(vContentType, vContentDisposition);
   try
     FHttp.ContentType := vContentType;
+    if vContentDisposition <> '' then
+      AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
+
+    SetLength(vHeaders, AParams.Count(rpkHEADER));
+    for vInt := 0 to Pred(AParams.Count) do
+    begin
+      vParam := AParams.Index[vInt];
+      if vParam.Kind = rpkHEADER then
+        vHeaders[vInt] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+    end;
+
     try
       case AMethod of
         amGET:

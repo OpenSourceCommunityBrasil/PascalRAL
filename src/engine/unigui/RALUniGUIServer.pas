@@ -95,6 +95,7 @@ begin
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
       ContentType := ARequestInfo.ContentType;
+      ContentDisposition := ARequestInfo.ContentDisposition;
       ContentEncoding := ARequestInfo.ContentEncoding;
       AcceptEncoding := ARequestInfo.AcceptEncoding;
       ContentSize := ARequestInfo.ContentLength;
@@ -154,6 +155,7 @@ begin
 
         AResponseInfo.Server := 'RAL_UniGUI';
         AResponseInfo.ContentEncoding := ContentEncoding;
+        AResponseInfo.ContentDisposition := ContentDisposition;
 
         vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
         if vParam <> nil then

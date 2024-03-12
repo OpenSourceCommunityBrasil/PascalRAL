@@ -31,6 +31,7 @@ type
     FContentType: StringRAL;
     FCriptoKey: StringRAL;
     FParams: TRALParams;
+    FContentDisposition: StringRAL;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -77,6 +78,7 @@ type
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
     property ContentType: StringRAL read FContentType write SetContentType;
+    property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     property Params: TRALParams read GetParams;
   end;

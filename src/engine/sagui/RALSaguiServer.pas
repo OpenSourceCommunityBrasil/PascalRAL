@@ -56,6 +56,8 @@ type
 
     class procedure DoClientConnectionCallback(Acls: Pcvoid;
       const Aclient: Pcvoid; Aclosed: Pcbool); cdecl; static;
+
+    class function GetSaguiIP(AReq : Psg_httpreq) : StringRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
@@ -76,6 +78,78 @@ type
     destructor Destroy; override;
   published
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
+  end;
+
+  TRALSaguiStringMap = class(TPersistent)
+  private
+    FHandle: PPsg_strmap;
+    FCurrent: PPsg_strmap;
+  protected
+    function GetCount: Integer;
+  public
+    constructor Create(AHandle: Pointer);
+    destructor Destroy; override;
+
+    function First : boolean;
+    function Next : boolean;
+    procedure GetPair(var AName, AValue : StringRAL);
+    function MapList : TStringList;
+    procedure AppendToParams(AParams : TRALParams; AKind : TRALParamKind);
+
+    // Counts the total pairs present in the map.
+    property Count: Integer read GetCount;
+  end;
+
+  TRALSaguiUploadFile = class(TPersistent)
+  private
+    FHandle: Psg_httpupld;
+    FStreamHandle: Pointer;
+    FDirectory: string;
+    FField: string;
+    FName: string;
+    FMime: string;
+    FEncoding: string;
+    FSize: UInt64;
+  protected
+    function GetHandle: Pointer;
+  public
+    constructor Create(AHandle : Pointer);
+    /// Handle of an upload.
+    property Handle: Pointer read GetHandle;
+    /// Stream handle of the upload. }
+    property StreamHandle: Pointer read FStreamHandle;
+  published
+    /// Directory of the uploaded file.
+    property Directory: string read FDirectory;
+    /// Field name of the upload.
+    property Field: string read FField;
+    /// Name of the uploaded file.
+    property Name: string read FName;
+    /// MIME (content-type) of the upload.
+    property Mime: string read FMime;
+    /// Encoding (transfer-encoding) of the upload.
+    property Encoding: string read FEncoding;
+    /// Size of the upload.
+    property Size: UInt64 read FSize;
+  end;
+
+  TRALSaguiUploadMap = class(TPersistent)
+  private
+    FHandle: Psg_httpupld;
+    FCurrent: Psg_httpupld;
+  protected
+    function GetCount: Integer;
+  public
+    constructor Create(AHandle: Pointer);
+    destructor Destroy; override;
+
+    function First : boolean;
+    function Next : boolean;
+    function GetFile : TRALSaguiUploadFile;
+    procedure AppendToParams(AParams : TRALParams);
+
+    // Counts the total pairs present in the map.
+    property Count: Integer read GetCount;
   end;
 
 implementation
@@ -110,6 +184,7 @@ end;
 
 destructor TRALSaguiServer.Destroy;
 begin
+  Active := False;
   inherited;
 end;
 
@@ -137,60 +212,96 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vServer : TRALSaguiServer;
+  vStrMap : TRALSaguiStringMap;
+  vFileMap : TRALSaguiUploadMap;
+  vStr : StringRAL;
+  vInt : IntegerRAL;
 begin
   vServer := Acls;
-  vRequest := TRALRequest.Create;
+  vRequest := TRALServerRequest.Create;
   try
     with vRequest do
     begin
-      ClientInfo.IP := 'localhost';
+      // headers
+      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_headers(Areq));
+      try
+        vStrMap.AppendToParams(Params, rpkHEADER);
+      finally
+        vStrMap.Free;
+      end;
+
+      // fields
+      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));
+      try
+        vStrMap.AppendToParams(Params, rpkFIELD);
+      finally
+        vStrMap.Free;
+      end;
+
+      // cookies
+      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_cookies(Areq));
+      try
+        vStrMap.AppendToParams(Params, rpkCOOKIE);
+      finally
+        vStrMap.Free;
+      end;
+
+      // query
+      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_params(Areq));
+      try
+        vStrMap.AppendToParams(Params, rpkQUERY);
+      finally
+        vStrMap.Free;
+      end;
+
+      // body
+      vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
+      try
+        vFileMap.AppendToParams(Params);
+      finally
+        vStrMap.Free;
+      end;
+
+{
+  FPayload := CreatePayload(sg_httpreq_payload(FHandle));
+  FServerHandle := sg_httpreq_srv(FHandle);
+  FIsUploading := sg_httpreq_is_uploading(FHandle);
+  if Assigned(sg_httpreq_tls_session) then
+    FTLSSession := sg_httpreq_tls_session(FHandle);
+}
+
+
+      ClientInfo.IP := GetSaguiIP(Areq);
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := '';
 
-      ContentType := '';
-      ContentEncoding := '';
-      AcceptEncoding := '';
       ContentSize := 0;
 
-      Query := '/ping';
+      Query := sg_httpreq_path(Areq);
+      Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
-      Method := amGET;
-
-{
-      Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
-      Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
-      Params.AppendParams(ARequestInfo.Params, rpkQUERY);
-
-      if ARequestInfo.Params.Count = 0 then begin
-        Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
-        Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
-      end;
-
-      for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do begin
-        vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
-        Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
-      end;
-
+      ContentType := ParamByName('Content-Type').AsString;
+      ContentEncoding := ParamByName('Content-Encoding').AsString;
+//      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
       ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;
+      Host := ParamByName('Host').AsString;
 
       Params.CompressType := ContentCompress;
       Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := CriptoOptions.Key;
-      Stream := Params.DecodeBody(ARequestInfo.PostStream, ARequestInfo.ContentType);
+      Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
-      Host := ARequestInfo.Host;
-      vInt := Pos('/', ARequestInfo.Version);
+      vStr := sg_httpreq_version(Areq);
+      vInt := Pos('/', vStr);
       if vInt > 0 then
       begin
-        HttpVersion := Copy(ARequestInfo.Version, 1, vInt-1);
-        Protocol := Copy(ARequestInfo.Version, vInt+1, 3);
+        HttpVersion := Copy(vStr, 1, vInt-1);
+        Protocol := Copy(vStr, vInt+1, 3);
       end
       else begin
         HttpVersion := 'HTTP';
         Protocol := '1.0';
       end;
-}
     end;
 
     vResponse := vServer.ProcessCommands(vRequest);
@@ -216,6 +327,9 @@ end;
 class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
   Abuf: Pcchar; Asize: csize_t): cssize_t;
 begin
+  if Acls = nil then
+    Exit;
+
   Result := TStream(Acls).Read(Abuf^, Asize);
   if Result = 0 then
     Exit(sg_eor(False));
@@ -228,6 +342,25 @@ begin
   if FHandle <> nil then
     sg_httpsrv_free(FHandle);
   FHandle := nil;
+end;
+
+class function TRALSaguiServer.GetSaguiIP(AReq: Psg_httpreq): StringRAL;
+var
+  vIP: array[0..45] of cchar;
+  vClient: Pcvoid;
+begin
+  Result := '';
+
+  SgLib.Check;
+  vClient := sg_httpreq_client(AReq);
+  if not Assigned(vClient) then
+    Exit;
+
+  FillChar(vIP, Length(vIP), 0);
+  SgLib.CheckLastError(sg_ip(vClient, @vIP[0], Length(vIP)));
+  SetLength(Result, Length(vIP));
+  Move(vIP[0], Result[PosIniStr], Length(vIP));
+  Result := Trim(Result);
 end;
 
 function TRALSaguiServer.GetSSL: TRALSaguiSSL;
@@ -289,8 +422,8 @@ function TRALSaguiServer.InitilizeServer : boolean;
 begin
   if SSL.Enabled then
   begin
-//    if not Assigned(sg_httpsrv_tls_listen3) then
-//      raise ENotSupportedException.Create(SBrookTLSNotAvailable);
+    if not Assigned(sg_httpsrv_tls_listen3) then
+      raise ENotSupportedException.Create('DLL não possui TLS implementado');
 
     Result := sg_httpsrv_tls_listen3(FHandle,
       PAnsiChar(SSL.PrivateKey),
@@ -321,6 +454,162 @@ end;
 destructor TRALSaguiSSL.Destroy;
 begin
   inherited;
+end;
+
+{ TRALSaguiStringMap }
+
+procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams;
+  AKind: TRALParamKind);
+var
+  vName, vValue : StringRAL;
+begin
+  if not Assigned(FHandle^) then
+    Exit;
+
+  First;
+  repeat
+    GetPair(vName, vValue);
+    AParams.AddParam(vName, vValue, AKind);
+  until not Next;
+end;
+
+constructor TRALSaguiStringMap.Create(AHandle: Pointer);
+begin
+  inherited Create;
+  FHandle := AHandle;
+  FCurrent := AHandle;
+end;
+
+destructor TRALSaguiStringMap.Destroy;
+begin
+  FCurrent := nil;
+
+  SgLib.Check;
+  sg_strmap_cleanup(FHandle);
+  inherited;
+end;
+
+function TRALSaguiStringMap.First: boolean;
+begin
+  FCurrent := FHandle;
+  Result := True;
+end;
+
+function TRALSaguiStringMap.GetCount: Integer;
+begin
+  SgLib.Check;
+  Result := sg_strmap_count(FHandle^);
+end;
+
+procedure TRALSaguiStringMap.GetPair(var AName, AValue: StringRAL);
+begin
+  SgLib.Check;
+  AName := sg_strmap_name(FCurrent^);
+  AValue := sg_strmap_val(FCurrent^);
+end;
+
+function TRALSaguiStringMap.MapList: TStringList;
+var
+  vName, vValue : StringRAL;
+begin
+  Result := TStringList.Create;
+
+  First;
+  repeat
+    GetPair(vName, vValue);
+    Result.Add(vName + '=' + vValue);
+  until not Next;
+end;
+
+function TRALSaguiStringMap.Next: boolean;
+begin
+  SgLib.Check;
+  SgLib.CheckLastError(sg_strmap_next(FCurrent));
+  Result := Assigned(FCurrent^);
+end;
+
+{ TRALSaguiUploadMap }
+
+procedure TRALSaguiUploadMap.AppendToParams(AParams: TRALParams);
+var
+  vFile : TRALSaguiUploadFile;
+  vParam : TRALParam;
+begin
+  First;
+  repeat
+    vFile := GetFile;
+    try
+      if Assigned(vFile.StreamHandle) then
+      begin
+        vParam := AParams.NewParam;
+        vParam.ParamName := vFile.Field;
+        vParam.FileName := vFile.Name;
+        vParam.AsStream := TStream(vFile.StreamHandle);
+        vParam.ContentType := vFile.Mime;
+        vParam.Kind := rpkBODY;
+      end;
+    finally
+      vFile.Free;
+    end;
+  until not Next;
+end;
+
+constructor TRALSaguiUploadMap.Create(AHandle: Pointer);
+begin
+  inherited Create;
+  FHandle := AHandle;
+  FCurrent := AHandle;
+end;
+
+destructor TRALSaguiUploadMap.Destroy;
+begin
+  FCurrent := nil;
+  inherited;
+end;
+
+function TRALSaguiUploadMap.First: boolean;
+begin
+  FCurrent := FHandle;
+  Result := True;
+end;
+
+function TRALSaguiUploadMap.GetCount: Integer;
+begin
+  SgLib.Check;
+  Result := sg_httpuplds_count(FHandle);
+end;
+
+function TRALSaguiUploadMap.GetFile : TRALSaguiUploadFile;
+begin
+  Result := TRALSaguiUploadFile.Create(FCurrent);
+end;
+
+function TRALSaguiUploadMap.Next: boolean;
+begin
+  SgLib.Check;
+  SgLib.CheckLastError(sg_httpuplds_next(@FCurrent));
+  Result := Assigned(FCurrent);
+end;
+
+{ TRALSaguiUploadFile }
+
+constructor TRALSaguiUploadFile.Create(AHandle: Pointer);
+begin
+  FHandle := AHandle;
+
+  SgLib.Check;
+  FStreamHandle := sg_httpupld_handle(FHandle);
+  FDirectory := sg_httpupld_dir(FHandle);
+  FField := sg_httpupld_field(FHandle);
+  FName := sg_httpupld_name(FHandle);
+  FMime := sg_httpupld_mime(FHandle);
+  FEncoding := sg_httpupld_encoding(FHandle);
+  FSize := sg_httpupld_size(FHandle);
+end;
+
+function TRALSaguiUploadFile.GetHandle: Pointer;
+begin
+  Result := FHandle;
 end;
 
 end.

@@ -186,7 +186,7 @@ end;
 
 function TRALServerResponse.GetResponseEncStream(const AEncode: boolean): TStream;
 var
-  vContentType : StringRAL;
+  vContentType, vContentDisposition : StringRAL;
 begin
   if not AEncode then
   begin
@@ -200,8 +200,9 @@ begin
     Params.CriptoOptions.Key := CriptoKey;
     Params.CompressType := ContentCompress;
   end;
-  Result := Params.EncodeBody(vContentType);
+  Result := Params.EncodeBody(vContentType, vContentDisposition);
   ContentType := vContentType;
+  ContentDisposition := vContentDisposition;
 end;
 
 function TRALServerResponse.GetResponseEncText(

@@ -228,6 +228,7 @@ begin
       Params.AppendParamsListText(AContext.InHeaders, rpkHEADER);
       DecodeAuth(vRequest);
 
+      ContentDisposition := Params.Get['Content-Disposition'].AsString;
       ContentEncoding := Params.Get['Content-Encoding'].AsString;
       AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
@@ -257,6 +258,9 @@ begin
       begin
         AContext.OutContent := ResponseText;
         AContext.OutContentType := ContentType;
+
+        if vResponse.ContentDisposition <> '' then
+          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
         if vResponse.ContentEncoding <> '' then
           Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);

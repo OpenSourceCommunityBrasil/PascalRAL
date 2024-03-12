@@ -35,6 +35,8 @@ type
     procedure SetAsInteger(const Value: IntegerRAL);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
+    function GetContentDisposition: StringRAL;
+    procedure SetContentDisposition(AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -60,6 +62,7 @@ type
     property Content: TStream read FContent;
     property ContentSize: Int64RAL read GetContentSize;
     property ContentType: StringRAL read FContentType write FContentType;
+    property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
     property FileName: StringRAL read FFileName write FFileName;
     property Kind: TRALParamKind read FKind write FKind;
     property ParamName: StringRAL read FParamName write FParamName;
@@ -161,9 +164,11 @@ type
     /// Returns total ammount of RALParams matching multiple kinds.
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
     /// Returns a TStream with the filtered Stream body contents.
-    function DecodeBody(ASource: TStream; const AContentType: StringRAL): TStream; overload;
+    function DecodeBody(ASource: TStream; const AContentType : StringRAL;
+                        const AContentDisposition: StringRAL = ''): TStream; overload;
     /// Returns a TStream with the filtered String body contents.
-    function DecodeBody(const ASource: StringRAL; const AContentType: StringRAL): TStream; overload;
+    function DecodeBody(const ASource, AContentType : StringRAL;
+                        const AContentDisposition: StringRAL = '' ): TStream; overload;
     /// Decode and append RALParams based on the ASource input.
     procedure DecodeFields(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
     /// Removes a RALParam matching the given AName.
@@ -171,7 +176,7 @@ type
     /// Removes a RALParam matching the given AName and AKind.
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
     /// Returns a TStream with all RALParams that matches 'Body' Kind.
-    function EncodeBody(var AContentType: StringRAL): TStream;
+    function EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
     /// creates and returns an empty param for a more flexible way of coding.
     function NewParam: TRALParam;
     /// converts a HTML encoded URL into a TStringList.
@@ -268,6 +273,14 @@ begin
   Result := '';
   if (Self <> nil) then
     Result := StreamToString(FContent);
+end;
+
+function TRALParam.GetContentDisposition: StringRAL;
+begin
+  if FFileName <> '' then
+    Result := Format('attachment; name="%s"; filename="%s"',[FParamName, FFileName])
+  else
+    Result := Format('form-data; name="%s"', [FParamName])
 end;
 
 function TRALParam.GetContentSize: Int64RAL;
@@ -368,6 +381,60 @@ begin
     FreeAndNil(FContent);
 
   FContent := StringToStream(AValue);
+end;
+
+procedure TRALParam.SetContentDisposition(AValue: StringRAL);
+var
+  vStr : StringRAL;
+
+  function GetWord(var AStr: StringRAL): StringRAL;
+  var
+    vInt, vLen: Integer;
+    vQuoted: boolean;
+    vChr: CharRAL;
+  begin
+    Result := '';
+    vLen := Length(AStr);
+    vQuoted := False;
+    for vInt := 1 to vLen do
+    begin
+      vChr := Char(AStr[vInt]);
+      if (vChr = '"') then
+      begin
+        vQuoted := not vQuoted;
+      end
+      else if not(CharInSet(vChr, [' ', '=', ';', ':'])) or vQuoted then
+      begin
+        Result := Result + vChr;
+      end
+      else if (CharInSet(vChr, [';', ':', '='])) and (not vQuoted) then
+      begin
+        Delete(AStr, 1, vInt);
+        Exit;
+      end;
+    end;
+    AStr := '';
+  end;
+
+  function ProcessVar(const AHeader, AValue: StringRAL): boolean;
+  begin
+    Result := True;
+    if SameText(AHeader, 'name') then
+      FParamName := AValue
+    else if SameText(AHeader, 'filename') then
+      FFilename := AValue
+    else
+      Result := False;
+  end;
+
+begin
+  AValue := Trim(AValue);
+  vStr := GetWord(AValue);
+  while (vStr <> '') do
+  begin
+    ProcessVar(vStr, GetWord(AValue));
+    vStr := GetWord(AValue);
+  end;
 end;
 
 { TRALParams }
@@ -666,7 +733,7 @@ begin
     end;
 end;
 
-function TRALParams.DecodeBody(ASource: TStream; const AContentType: StringRAL): TStream;
+function TRALParams.DecodeBody(ASource: TStream; const AContentType, AContentDisposition : StringRAL): TStream;
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
@@ -714,13 +781,15 @@ begin
   begin
     vParam := NewParam;
     vParam.ParamName := 'ral_body';
+    vParam.FileName := '';
+    vParam.ContentDisposition := AContentDisposition;
     vParam.AsStream := Result;
     vParam.ContentType := AContentType;
     vParam.Kind := rpkBODY;
   end;
 end;
 
-function TRALParams.DecodeBody(const ASource: StringRAL; const AContentType: StringRAL): TStream;
+function TRALParams.DecodeBody(const ASource, AContentType, AContentDisposition: StringRAL): TStream;
 var
   vStream: TStream;
 begin
@@ -736,7 +805,7 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType: StringRAL): TStream;
+function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
@@ -748,18 +817,23 @@ begin
 
   vInt1 := Count(rpkBODY);
   vInt2 := Count(rpkFIELD);
+
+  AContentDisposition := '';
+
 {
   TODO:
+  Content-Disposition: form-data; name="fieldName"; filename="filename.jpg"
   usar o Content-Disposition, com ele pode-se responder file
   mas como identicar de um jeito facil se eh file
+}
 
   if vInt1 + vInt2 = 1 then
   begin
     Result := Index[0].SaveToStream;
     AContentType := Index[0].ContentType;
+    AContentDisposition := Index[0].ContentDisposition;
   end
-}
-  if (vInt2 > 0) and (vInt1 = 0) then
+  else if (vInt2 > 0) and (vInt1 = 0) then
   begin
     vString := '';
     for vInt1 := 0 to Pred(Count) do

@@ -47,7 +47,7 @@ function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; APara
 var
   vSource, vResult : TStream;
   vContentType: StringRAL;
-  vHeader : StringRAL;
+  vHeader, vContentDisposition : StringRAL;
   vHttp : THttpClientSocket;
   vAddress : UTF8String;
   vKeepAlive : Cardinal;
@@ -88,11 +88,15 @@ begin
     end;
 
     vContentType := '';
-    vSource := AParams.EncodeBody(vContentType);
+    vSource := AParams.EncodeBody(vContentType, vContentDisposition);
     try
       if vContentType <> '' then
         AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+      if vContentType <> '' then
+        AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
+
       vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
+
       try
         case AMethod of
           amGET:

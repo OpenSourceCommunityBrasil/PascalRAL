@@ -251,11 +251,11 @@ function TRALClientDigest.GetEntityBody(AParams: TRALParams): StringRAL;
 var
   vStream: TStream;
   vFreeContent: boolean;
-  vContentType: StringRAL;
+  vContentType, vContentDisposition: StringRAL;
 begin
   Result := '';
   vFreeContent := False;
-  vStream := AParams.EncodeBody(vContentType);
+  vStream := AParams.EncodeBody(vContentType, vContentDisposition);
   if vStream <> nil then
   begin
     vStream.Position := 0;
