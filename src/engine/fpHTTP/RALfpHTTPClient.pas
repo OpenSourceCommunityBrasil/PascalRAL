@@ -71,7 +71,7 @@ function TRALfpHttpClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParam
 var
   vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vContentType : StringRAL;
+  vContentType, vContentDisposition : StringRAL;
 begin
   inherited;
   Response.Clear;
@@ -101,9 +101,10 @@ begin
 
   AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
 
-  vSource := AParams.EncodeBody(vContentType);
+  vSource := AParams.EncodeBody(vContentType, vContentDisposition);
   try
     AParams.AddParam('Content-Type', vContentType, rpkHEADER);
+    AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
     AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
     FHttp.RequestBody := vSource;
     vResult := TStringStream.Create;
