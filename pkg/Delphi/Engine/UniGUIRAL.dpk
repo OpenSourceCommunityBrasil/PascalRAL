@@ -1,7 +1,7 @@
-package IndyRAL;
+package UniGUIRAL;
 
 {$R *.res}
-{$R 'IndyRAL.dcr'}
+{$R 'UniGUIRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,16 +26,21 @@ package IndyRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Indy Components'}
+{$DESCRIPTION 'PascalRAL | UniGUI Components'}
 {$IMPLICITBUILD ON}
 
 requires
   PascalRAL,
-  rtl;
+  Vcl,
+  vclimg,
+  designide,
+  uIndy26,
+  uniTools26,
+  uniGUI26Core,
+  soaprtl;
 
 contains
-  RALIndyServer in '..\..\src\engine\indy\RALIndyServer.pas',
-  RALIndyClient in '..\..\src\engine\indy\RALIndyClient.pas',
-  RALIndyRegister in '..\..\src\engine\indy\RALIndyRegister.pas';
+  RALUniGUIRegister in '..\..\..\src\engine\unigui\RALUniGUIRegister.pas',
+  RALUniGUIServer in '..\..\..\src\engine\unigui\RALUniGUIServer.pas';
 
 end.

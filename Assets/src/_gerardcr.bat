@@ -10,11 +10,11 @@ if NOT EXIST %path_brcc32% (
 %path_brcc32% -fo "..\..\pkg\Delphi\RALDBPackage.dcr" "RALDB.rc"
 
 # Motores
-%path_brcc32% -fo "..\..\pkg\Delphi\IndyRAL.dcr" "Indy.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\NetHttpRAL.dcr" "NetHttp.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\SynopseRAL.dcr" "Synopse.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\UniGUIRAL.dcr" "UniGUI.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\BrookRAL.dcr" "Brook.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\IndyRAL.dcr" "Indy.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\NetHttpRAL.dcr" "NetHttp.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\SynopseRAL.dcr" "Synopse.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\UniGUIRAL.dcr" "UniGUI.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\SaguiRAL.dcr" "Brook.rc"
 
 # DBWare
 %path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDACLink.dcr" "DBFireDACLink.rc"

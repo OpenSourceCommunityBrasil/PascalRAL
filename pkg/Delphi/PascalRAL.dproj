@@ -120,7 +120,6 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="..\..\src\base\RALAuthentication.pas"/>
         <DCCReference Include="..\..\src\base\RALClient.pas"/>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="IndyRAL"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\src\engine\indy;..\..\src\base;..\..\src\utils;..\..\..\src\engine\indy"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShoLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Version Major="1"/>
+    <Files Count="4">
+      <Item1>
+        <Filename Value="IndyRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\engine\indy\RALIndyClient.pas"/>
+        <UnitName Value="RALIndyClient"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\engine\indy\RALIndyRegister.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALIndyRegister"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>
+        <UnitName Value="RALIndyServer"/>
+      </Item4>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="indylaz"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="PascalRAL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

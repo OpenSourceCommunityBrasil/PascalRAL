@@ -9,8 +9,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\database"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <OtherUnitFiles Value="..\..\src\database;..\..\..\src\database"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Other>
         <Verbosity>
@@ -19,32 +19,36 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="6">
+    <Files Count="7">
       <Item1>
-        <Filename Value="..\..\src\database\RALDBBase.pas"/>
+        <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\src\database\RALDBModule.pas"/>
+        <Filename Value="..\..\..\src\database\RALDBModule.pas"/>
         <UnitName Value="RALDBModule"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\src\database\RALDBStorage.pas"/>
-        <UnitName Value="RALDBStorage"/>
-      </Item3>
-      <Item4>
-        <Filename Value="..\..\src\database\RALDBStorageBIN.pas"/>
-        <UnitName Value="RALDBStorageBIN"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\src\database\RALDBStorageJSON.pas"/>
-        <UnitName Value="RALDBStorageJSON"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\src\database\raldbregister.pas"/>
+        <Filename Value="..\..\..\src\database\raldbregister.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALDBRegister"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\database\RALDBStorage.pas"/>
+        <UnitName Value="RALDBStorage"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\database\RALDBStorageBIN.pas"/>
+        <UnitName Value="RALDBStorageBIN"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\database\RALDBStorageJSON.pas"/>
+        <UnitName Value="RALDBStorageJSON"/>
       </Item6>
+      <Item7>
+        <Filename Value="raldbpackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item7>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

@@ -30,7 +30,6 @@ package PascalRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  dbrtl,
   rtl;
 
 contains

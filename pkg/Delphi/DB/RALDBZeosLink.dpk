@@ -26,7 +26,6 @@ package RALDBZeosLink;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Zeos Database Linker Component'}
 {$IMPLICITBUILD ON}
 
 requires

@@ -70,15 +70,23 @@ const
 
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
 
-  // constant internal messages
-  // am = alert messages
-
-  // em = error messages
+resourcestring
+{ @abstract constant internal messages
+  am = alert messages
+  em = error messages
+  wm = warning messages
+  these are strings that are present through the internal code of RAL, stored here
+  for localization purposes, allowing the user to customise their side of the component
+}
+  // general error messages
   emContentCheckError = 'Content check error';
   emDBLinkMissing = 'DBLink Property missing';
   emRouteAlreadyExists = 'Route already exists!';
 
-  // wm = warning messages
+   // sagui error messages
+  emSaguiServerCreateError = 'Error while attempting to create the server';
+  emSaguiServerUnsupportedTLS = 'This version of TLS is not supported by the lib';
+
   wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
 
 implementation

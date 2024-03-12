@@ -1,7 +1,7 @@
-package NetHttpRAL;
+package SynopseRAL;
 
 {$R *.res}
-{$R 'NetHttpRAL.dcr'}
+{$R 'SynopseRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,15 +26,15 @@ package NetHttpRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | NetHttp Components'}
+{$DESCRIPTION 'PascalRAL | Synopse Components'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL,
-  rtl;
+  PascalRAL;
 
 contains
-  RALnetHTTPClient in '..\..\src\engine\netHTTP\RALnetHTTPClient.pas',
-  RALNetHTTPRegister in '..\..\src\engine\netHTTP\RALNetHTTPRegister.pas';
+  RALSynopseClient in '..\..\..\src\engine\synopse\RALSynopseClient.pas',
+  RALSynopseRegister in '..\..\..\src\engine\synopse\RALSynopseRegister.pas',
+  RALSynopseServer in '..\..\..\src\engine\synopse\RALSynopseServer.pas';
 
 end.

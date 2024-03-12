@@ -1,7 +1,7 @@
-package RALDBPackage;
+package IndyRAL;
 
 {$R *.res}
-{$R 'RALDBPackage.dcr'}
+{$R 'IndyRAL.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,19 +26,15 @@ package RALDBPackage;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'Pascal RAL | Database Components'}
+{$DESCRIPTION 'PascalRAL | Indy Components'}
 {$IMPLICITBUILD ON}
 
 requires
-  dbrtl,
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
-  RALDBBase in '..\..\..\src\database\RALDBBase.pas',
-  RALDBModule in '..\..\..\src\database\RALDBModule.pas',
-  raldbregister in '..\..\..\src\database\raldbregister.pas',
-  RALDBStorage in '..\..\..\src\database\RALDBStorage.pas',
-  RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas';
+  RALIndyClient in '..\..\..\src\engine\indy\RALIndyClient.pas',
+  RALIndyRegister in '..\..\..\src\engine\indy\RALIndyRegister.pas',
+  RALIndyServer in '..\..\..\src\engine\indy\RALIndyServer.pas';
 
 end.

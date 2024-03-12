@@ -55,7 +55,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
+        <DCC_DcuOutput>..\..\..\compiled</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -129,14 +129,14 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="RALDBPackage.dcr"/>
-        <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\src\database\RALDBBase.pas"/>
-        <DCCReference Include="..\..\src\database\RALDBModule.pas"/>
-        <DCCReference Include="..\..\src\database\raldbregister.pas"/>
-        <DCCReference Include="..\..\src\database\RALDBStorage.pas"/>
-        <DCCReference Include="..\..\src\database\RALDBStorageBIN.pas"/>
-        <DCCReference Include="..\..\src\database\RALDBStorageJSON.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
+        <DCCReference Include="..\..\..\src\database\raldbregister.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBStorage.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBStorageBIN.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBStorageJSON.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -178,7 +178,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBPackage.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBPackage.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>RALDBPackage.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

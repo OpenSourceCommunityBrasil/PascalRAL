@@ -1,4 +1,4 @@
-unit RALIndyRegister;
+unit RALSaguiRegister;
 
 interface
 
@@ -7,7 +7,7 @@ uses
   LResources,
   {$ENDIF}
   Classes,
-  RALIndyServer, RALIndyClient;
+  RALSaguiServer;
 
 procedure Register;
 
@@ -15,13 +15,12 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALIndyServer]);
-  RegisterComponents('RAL - Client', [TRALIndyClient]);
+  RegisterComponents('RAL - Server', [TRALSaguiServer]);
 end;
 
 {$IFDEF FPC}
 initialization
-{$I IndyRAL.lrs}
+{$I SaguiRAL.lrs}
 {$ENDIF}
 
 end.

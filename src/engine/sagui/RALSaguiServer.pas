@@ -44,25 +44,24 @@ type
 
     class function DoAuthenticationCallback(Acls: Pcvoid; Aauth: Psg_httpauth;
       Areq: Psg_httpreq; Ares: Psg_httpres): cbool; cdecl; static;
-    class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
-      Ares: Psg_httpres); cdecl; static;
-    class procedure DoErrorCallback(Acls: Pcvoid;
-      const Aerr: Pcchar); cdecl; static;
+    class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
+      cdecl; static;
+    class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
 
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
 
-    class procedure DoClientConnectionCallback(Acls: Pcvoid;
-      const Aclient: Pcvoid; Aclosed: Pcbool); cdecl; static;
+    class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
+      Aclosed: Pcbool); cdecl; static;
 
-    class function GetSaguiIP(AReq : Psg_httpreq) : StringRAL;
+    class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
-    function IPv6IsImplemented : boolean; override;
+    function IPv6IsImplemented: boolean; override;
 
     function GetSSL: TRALSaguiSSL;
     procedure SetSSL(const AValue: TRALSaguiSSL);
@@ -71,7 +70,7 @@ type
     procedure ShutdownServerHandle;
     procedure FreeServerHandle;
 
-    function InitilizeServer : boolean;
+    function InitilizeServer: boolean;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -88,24 +87,24 @@ type
   private
     FHandle: PPsg_strmap;
     FCurrent: PPsg_strmap;
-    FFreeOnDestroy : boolean;
+    FFreeOnDestroy: boolean;
   protected
-    function GetCount: Integer;
+    function GetCount: integer;
   public
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
-    function First : boolean;
-    function Next : boolean;
+    function First: boolean;
+    function Next: boolean;
     procedure Add(const AName, AValue: StringRAL);
-    procedure GetPair(var AName, AValue : StringRAL);
-    function MapList : TStringList;
-    procedure AppendToParams(AParams : TRALParams; AKind : TRALParamKind);
-    procedure AssignFromParams(AParams : TRALParams; AKind : TRALParamKind);
+    procedure GetPair(var AName, AValue: StringRAL);
+    function MapList: TStringList;
+    procedure AppendToParams(AParams: TRALParams; AKind: TRALParamKind);
+    procedure AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
 
     // Counts the total pairs present in the map.
-    property Count: Integer read GetCount;
-    property FreeOnDestroy : boolean read FFreeOnDestroy write FFreeOnDestroy;
+    property Count: integer read GetCount;
+    property FreeOnDestroy: boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
 
   { TRALSaguiUploadFile }
@@ -119,11 +118,11 @@ type
     FName: string;
     FMime: string;
     FEncoding: string;
-    FSize: UInt64;
+    FSize: uint64;
   protected
     function GetHandle: Pointer;
   public
-    constructor Create(AHandle : Pointer);
+    constructor Create(AHandle: Pointer);
     /// Handle of an upload.
     property Handle: Pointer read GetHandle;
     /// Stream handle of the upload. }
@@ -140,7 +139,7 @@ type
     /// Encoding (transfer-encoding) of the upload.
     property Encoding: string read FEncoding;
     /// Size of the upload.
-    property Size: UInt64 read FSize;
+    property Size: uint64 read FSize;
   end;
 
   { TRALSaguiUploadMap }
@@ -150,21 +149,21 @@ type
     FHandle: Psg_httpupld;
     FCurrent: Psg_httpupld;
   protected
-    function GetCount: Integer;
+    function GetCount: integer;
   public
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
-    function First : boolean;
-    function Next : boolean;
-    function GetFile : TRALSaguiUploadFile;
-    procedure AppendToParams(AParams : TRALParams);
+    function First: boolean;
+    function Next: boolean;
+    function GetFile: TRALSaguiUploadFile;
+    procedure AppendToParams(AParams: TRALParams);
 
     // Counts the total pairs present in the map.
-    property Count: Integer read GetCount;
+    property Count: integer read GetCount;
   end;
 
-{ TRALSaguiServer }
+  { TRALSaguiServer }
 
 constructor TRALSaguiServer.Create(AOwner: TComponent);
 begin
@@ -181,7 +180,7 @@ end;
 
 procedure TRALSaguiServer.CreateServerHandle;
 var
-  vAuth : sg_httpauth_cb;
+  vAuth: sg_httpauth_cb;
 begin
   if Authentication <> nil then
     vAuth := DoAuthenticationCallback
@@ -189,7 +188,7 @@ begin
     vAuth := nil;
   FHandle := sg_httpsrv_new2(vAuth, DoRequestCallback, DoErrorCallback, Self);
   if not Assigned(FHandle) then
-    raise Exception.Create('Erro ao instanciar servidor');
+    raise Exception.Create(emSaguiServerCreateError);
 end;
 
 destructor TRALSaguiServer.Destroy;
@@ -210,24 +209,23 @@ begin
 
 end;
 
-class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid;
-  const Aerr: Pcchar);
+class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
 begin
 
 end;
 
-class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid;
-  Areq: Psg_httpreq; Ares: Psg_httpres);
+class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
+  Ares: Psg_httpres);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vServer : TRALSaguiServer;
-  vStrMap : TRALSaguiStringMap;
-  vFileMap : TRALSaguiUploadMap;
-  vPayLoad : Psg_str;
-  vStr : StringRAL;
-  vInt : IntegerRAL;
-  vParam : TRALParam;
+  vServer: TRALSaguiServer;
+  vStrMap: TRALSaguiStringMap;
+  vFileMap: TRALSaguiUploadMap;
+  vPayLoad: Psg_str;
+  vStr: StringRAL;
+  vInt: IntegerRAL;
+  vParam: TRALParam;
 begin
   vServer := Acls;
   vRequest := TRALServerRequest.Create;
@@ -305,10 +303,11 @@ begin
       vInt := Pos('/', vStr);
       if vInt > 0 then
       begin
-        HttpVersion := Copy(vStr, 1, vInt-1);
-        Protocol := Copy(vStr, vInt+1, 3);
+        HttpVersion := Copy(vStr, 1, vInt - 1);
+        Protocol := Copy(vStr, vInt + 1, 3);
       end
-      else begin
+      else
+      begin
         HttpVersion := 'HTTP';
         Protocol := '1.0';
       end;
@@ -395,12 +394,14 @@ begin
 
   SgLib.Check;
 
-  if AValue then begin
+  if AValue then
+  begin
     CreateServerHandle;
     if not InitilizeServer then
       FreeServerHandle;
   end
-  else begin
+  else
+  begin
     ShutdownServerHandle;
     FreeServerHandle;
   end;
@@ -438,12 +439,12 @@ begin
   inherited;
 end;
 
-function TRALSaguiServer.InitilizeServer : boolean;
+function TRALSaguiServer.InitilizeServer: boolean;
 begin
   if SSL.Enabled then
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
-      raise Exception.Create('DLL não possui TLS implementado');
+      raise Exception.Create(emSaguiServerUnsupportedTLS);
 
     Result := sg_httpsrv_tls_listen3(FHandle,
       PAnsiChar(SSL.PrivateKey),
@@ -459,7 +460,7 @@ begin
   end;
 end;
 
-function TRALSaguiServer.IPv6IsImplemented : boolean;
+function TRALSaguiServer.IPv6IsImplemented: boolean;
 begin
   Result := True;
 end;
@@ -469,14 +470,13 @@ end;
 procedure TRALSaguiStringMap.Add(const AName, AValue: StringRAL);
 begin
   SgLib.Check;
-  SgLib.CheckLastError(sg_strmap_add(FHandle, PAnsiChar(AName),
-                       PAnsiChar(AValue)));
+  SgLib.CheckLastError(sg_strmap_add(FHandle, pansichar(AName),
+    pansichar(AValue)));
 end;
 
-procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams;
-  AKind: TRALParamKind);
+procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams; AKind: TRALParamKind);
 var
-  vName, vValue : StringRAL;
+  vName, vValue: StringRAL;
 begin
   if not Assigned(FHandle^) then
     Exit;
@@ -488,10 +488,9 @@ begin
   until not Next;
 end;
 
-procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams;
-  AKind: TRALParamKind);
+procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
 var
-  vInt: Integer;
+  vInt: integer;
 begin
   for vInt := 0 to Pred(AParams.Count) do
   begin
@@ -526,7 +525,7 @@ begin
   Result := True;
 end;
 
-function TRALSaguiStringMap.GetCount: Integer;
+function TRALSaguiStringMap.GetCount: integer;
 begin
   SgLib.Check;
   Result := sg_strmap_count(FHandle^);
@@ -541,7 +540,7 @@ end;
 
 function TRALSaguiStringMap.MapList: TStringList;
 var
-  vName, vValue : StringRAL;
+  vName, vValue: StringRAL;
 begin
   Result := TStringList.Create;
 
@@ -563,25 +562,25 @@ end;
 
 procedure TRALSaguiUploadMap.AppendToParams(AParams: TRALParams);
 var
-  vFile : TRALSaguiUploadFile;
-  vParam : TRALParam;
+  vFile: TRALSaguiUploadFile;
+  vParam: TRALParam;
 begin
   First;
   repeat
     vFile := GetFile;
-    try
-      if Assigned(vFile.StreamHandle) then
-      begin
-        vParam := AParams.NewParam;
-        vParam.ParamName := vFile.Field;
-        vParam.FileName := vFile.Name;
-        vParam.AsStream := TStream(vFile.StreamHandle);
-        vParam.ContentType := vFile.Mime;
-        vParam.Kind := rpkBODY;
-      end;
-    finally
-      vFile.Free;
+  try
+    if Assigned(vFile.StreamHandle) then
+    begin
+      vParam := AParams.NewParam;
+      vParam.ParamName := vFile.Field;
+      vParam.FileName := vFile.Name;
+      vParam.AsStream := TStream(vFile.StreamHandle);
+      vParam.ContentType := vFile.Mime;
+      vParam.Kind := rpkBODY;
     end;
+  finally
+    vFile.Free;
+  end;
   until not Next;
 end;
 
@@ -605,13 +604,13 @@ begin
   Result := True;
 end;
 
-function TRALSaguiUploadMap.GetCount: Integer;
+function TRALSaguiUploadMap.GetCount: integer;
 begin
   SgLib.Check;
   Result := sg_httpuplds_count(FHandle);
 end;
 
-function TRALSaguiUploadMap.GetFile : TRALSaguiUploadFile;
+function TRALSaguiUploadMap.GetFile: TRALSaguiUploadFile;
 begin
   Result := TRALSaguiUploadFile.Create(FCurrent);
 end;
