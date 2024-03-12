@@ -172,6 +172,7 @@ constructor TRALSaguiServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHandle := nil;
+  SetEngine('Sagui');
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
