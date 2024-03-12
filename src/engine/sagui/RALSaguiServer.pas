@@ -41,6 +41,7 @@ type
   TRALSaguiServer = class(TRALServer)
   private
     FHandle: Psg_httpsrv;
+    FLibPath : StringRAL;
 
     class function DoAuthenticationCallback(Acls: Pcvoid; Aauth: Psg_httpauth;
       Areq: Psg_httpreq; Ares: Psg_httpres): cbool; cdecl; static;
@@ -71,11 +72,13 @@ type
     procedure FreeServerHandle;
 
     function InitilizeServer: boolean;
+    procedure SetLibPath(const AValue: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
+    property LibPath : StringRAL read FLibPath write SetLibPath;
   end;
 
 implementation
@@ -168,8 +171,6 @@ type
 constructor TRALSaguiServer.Create(AOwner: TComponent);
 begin
   inherited;
-  SgLib.Check;
-  SetEngine('Sagui ' + sg_version_str);
   FHandle := nil;
 end;
 
@@ -392,10 +393,14 @@ begin
   if AValue = Active then
     Exit;
 
+  if FLibPath <> '' then
+    SgLib.Load(FLibPath);
+
   SgLib.Check;
 
   if AValue then
   begin
+    SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
     if not InitilizeServer then
       FreeServerHandle;
@@ -407,6 +412,15 @@ begin
   end;
 
   inherited;
+end;
+
+procedure TRALSaguiServer.SetLibPath(const AValue: StringRAL);
+begin
+  if AValue = FLibPath then
+    Exit;
+
+  if FileExists(AValue) then
+    FLibPath := AValue;
 end;
 
 procedure TRALSaguiServer.SetSessionTimeout(const AValue: IntegerRAL);
