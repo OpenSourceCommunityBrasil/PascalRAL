@@ -19,30 +19,29 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="4">
+    <Files Count="3">
       <Item1>
-        <Filename Value="..\..\..\src\engine\sagui\libsagui.pas"/>
-        <UnitName Value="libsagui"/>
-      </Item1>
-      <Item2>
         <Filename Value="..\..\..\src\engine\sagui\RALSaguiServer.pas"/>
         <UnitName Value="RALSaguiServer"/>
-      </Item2>
-      <Item3>
+      </Item1>
+      <Item2>
         <Filename Value="..\..\..\src\engine\sagui\RALSaguiRegister.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALSaguiRegister"/>
-      </Item3>
-      <Item4>
+      </Item2>
+      <Item3>
         <Filename Value="SaguiRAL.lrs"/>
         <Type Value="LRS"/>
-      </Item4>
+      </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="1">
+    <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="FCL"/>
+        <PackageName Value="PascalRAL"/>
       </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

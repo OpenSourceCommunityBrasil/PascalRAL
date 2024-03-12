@@ -185,10 +185,13 @@ var
   vAuth: sg_httpauth_cb;
 begin
   if Authentication <> nil then
-    vAuth := DoAuthenticationCallback
+    vAuth := {$IFDEF FPC}@{$ENDIF}DoAuthenticationCallback
   else
     vAuth := nil;
-  FHandle := sg_httpsrv_new2(vAuth, DoRequestCallback, DoErrorCallback, Self);
+  FHandle := sg_httpsrv_new2(vAuth,
+                            {$IFDEF FPC}@{$ENDIF}DoRequestCallback,
+                            {$IFDEF FPC}@{$ENDIF}DoErrorCallback,
+                            Self);
   if not Assigned(FHandle) then
     raise Exception.Create(emSaguiServerCreateError);
 end;
@@ -200,24 +203,25 @@ begin
 end;
 
 class function TRALSaguiServer.DoAuthenticationCallback(Acls: Pcvoid;
-  Aauth: Psg_httpauth; Areq: Psg_httpreq; Ares: Psg_httpres): cbool;
+  Aauth: Psg_httpauth; Areq: Psg_httpreq; Ares: Psg_httpres): cbool;{$IFDEF FPC} cdecl;{$ENDIF}
 begin
 
 end;
 
 class procedure TRALSaguiServer.DoClientConnectionCallback(Acls: Pcvoid;
-  const Aclient: Pcvoid; Aclosed: Pcbool);
+  const Aclient: Pcvoid; Aclosed: Pcbool);{$IFDEF FPC} cdecl;{$ENDIF}
 begin
 
 end;
 
-class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
+class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar
+  );{$IFDEF FPC} cdecl;{$ENDIF}
 begin
 
 end;
 
-class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
-  Ares: Psg_httpres);
+class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid;
+  Areq: Psg_httpreq; Ares: Psg_httpres);{$IFDEF FPC} cdecl;{$ENDIF}
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -229,7 +233,7 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
-  vServer := Acls;
+  vServer := TRALSaguiServer(Acls);
   vRequest := TRALServerRequest.Create;
   try
     with vRequest do
@@ -320,8 +324,11 @@ begin
       vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
       vStrMap.FreeOnDestroy := False;
 
-      sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream,
-                            DoStreamFree, vResponse.StatusCode);
+      sg_httpres_sendstream(Ares, 0,
+                            {$IFDEF FPC}@{$ENDIF}DoStreamRead,
+                            vResponse.ResponseStream,
+                            {$IFDEF FPC}@{$ENDIF}DoStreamFree,
+                            vResponse.StatusCode);
 
       vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
 
@@ -340,13 +347,13 @@ begin
   end;
 end;
 
-class procedure TRALSaguiServer.DoStreamFree(Acls: Pcvoid);
+class procedure TRALSaguiServer.DoStreamFree(Acls: Pcvoid);{$IFDEF FPC} cdecl;{$ENDIF}
 begin
   TStream(Acls).Free;
 end;
 
 class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
-  Abuf: Pcchar; Asize: csize_t): cssize_t;
+  Abuf: Pcchar; Asize: csize_t): cssize_t;{$IFDEF FPC} cdecl;{$ENDIF}
 begin
   if Acls = nil then
     Exit;
@@ -401,7 +408,7 @@ begin
 
   if AValue then
   begin
-    SetEngine('Sagui ' + sg_version_str);
+    SetEngine('Sagui ' + StringRAL(sg_version_str));
     CreateServerHandle;
     if not InitilizeServer then
       FreeServerHandle;
