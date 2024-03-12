@@ -9,6 +9,8 @@ uses
   RALParams, RALTools;
 
 type
+  { TRALSaguiSSL }
+
   TRALSaguiSSL = class(TRALSSL)
   private
     FPrivateKey: StringRAL;
@@ -77,6 +79,11 @@ type
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
   end;
 
+implementation
+
+type
+  { TRALSaguiStringMap }
+
   TRALSaguiStringMap = class(TPersistent)
   private
     FHandle: PPsg_strmap;
@@ -100,6 +107,8 @@ type
     property Count: Integer read GetCount;
     property FreeOnDestroy : boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
+
+  { TRALSaguiUploadFile }
 
   TRALSaguiUploadFile = class(TPersistent)
   private
@@ -134,6 +143,8 @@ type
     property Size: UInt64 read FSize;
   end;
 
+  { TRALSaguiUploadMap }
+
   TRALSaguiUploadMap = class(TPersistent)
   private
     FHandle: Psg_httpupld;
@@ -152,8 +163,6 @@ type
     // Counts the total pairs present in the map.
     property Count: Integer read GetCount;
   end;
-
-implementation
 
 { TRALSaguiServer }
 
@@ -179,8 +188,8 @@ begin
   else
     vAuth := nil;
   FHandle := sg_httpsrv_new2(vAuth, DoRequestCallback, DoErrorCallback, Self);
-//  if not Assigned(FHandle) then
-//    raise EInvalidPointer.Create(SBrookCannotCreateServerHandle);
+  if not Assigned(FHandle) then
+    raise Exception.Create('Erro ao instanciar servidor');
 end;
 
 destructor TRALSaguiServer.Destroy;
@@ -215,8 +224,10 @@ var
   vServer : TRALSaguiServer;
   vStrMap : TRALSaguiStringMap;
   vFileMap : TRALSaguiUploadMap;
+  vPayLoad : Psg_str;
   vStr : StringRAL;
   vInt : IntegerRAL;
+  vParam : TRALParam;
 begin
   vServer := Acls;
   vRequest := TRALServerRequest.Create;
@@ -255,7 +266,7 @@ begin
         FreeAndNil(vStrMap);
       end;
 
-      // body
+      // body - stream (files)
       vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
       try
         vFileMap.AppendToParams(Params);
@@ -263,17 +274,16 @@ begin
         FreeAndNil(vFileMap);
       end;
 
-{
-  FPayload := CreatePayload(sg_httpreq_payload(FHandle));
-  FServerHandle := sg_httpreq_srv(FHandle);
-  FIsUploading := sg_httpreq_is_uploading(FHandle);
-  if Assigned(sg_httpreq_tls_session) then
-    FTLSSession := sg_httpreq_tls_session(FHandle);
-}
+      vPayLoad := sg_httpreq_payload(Areq);
+      if Assigned(vPayLoad) then
+      begin
+        vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
+        vParam.ContentType := ParamByName('Content-Type').AsString;
+      end;
 
       ClientInfo.IP := GetSaguiIP(Areq);
       ClientInfo.MACAddress := '';
-      ClientInfo.UserAgent := '';
+      ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 
       ContentSize := 0;
 
@@ -433,7 +443,7 @@ begin
   if SSL.Enabled then
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
-      raise ENotSupportedException.Create('DLL não possui TLS implementado');
+      raise Exception.Create('DLL não possui TLS implementado');
 
     Result := sg_httpsrv_tls_listen3(FHandle,
       PAnsiChar(SSL.PrivateKey),
