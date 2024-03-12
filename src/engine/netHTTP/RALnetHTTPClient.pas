@@ -125,8 +125,6 @@ begin
       for vInt := 0 to Pred(Length(vResponse.Headers)) do
         Response.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 
-      vContentType := vResponse.MimeType;
-
       Response.ContentEncoding := vResponse.ContentEncoding;
       Response.Params.CompressType := Response.ContentCompress;
 
@@ -134,7 +132,8 @@ begin
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      Response.ContentType := vContentType;
+      Response.ContentType := vResponse.MimeType;
+      Response.ContentDisposition := Response.ParamByName('Content-Disposition').AsString;
       Response.StatusCode := vResponse.GetStatusCode;
       Response.ResponseStream := vResponse.ContentStream;
     except

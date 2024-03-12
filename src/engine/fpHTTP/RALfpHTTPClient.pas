@@ -118,8 +118,6 @@ begin
         amHEAD    : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
         amOPTIONS : FHttp.Options(AURL, vResult);
       end;
-      vContentType := FHttp.ResponseHeaders.Values['Content-Type'];
-
       Response.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       Response.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
 
@@ -130,7 +128,8 @@ begin
       Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-      Response.ContentType := vContentType;
+      Response.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
+      Response.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
       Response.StatusCode := FHttp.ResponseStatusCode;
       Response.ResponseStream := vResult;
     except

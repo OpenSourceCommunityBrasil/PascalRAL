@@ -45,7 +45,7 @@ end;
 
 function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
 var
-  vSource, vResult : TStream;
+  vSource : TStream;
   vContentType: StringRAL;
   vHeader, vContentDisposition : StringRAL;
   vHttp : THttpClientSocket;
@@ -116,10 +116,6 @@ begin
           amOPTIONS:
             Result := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', False, vSource, nil);
         end;
-        vContentType := vHttp.ContentType;
-
-        vResult := TStringStream.Create(vHttp.Content);
-        vResult.Position := 0;
 
         Response.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
@@ -130,14 +126,14 @@ begin
         Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
         Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
-        Response.ContentType := vContentType;
+        Response.ContentType := vHttp.ContentType;
+        Response.ContentDisposition := Response.ParamByName('Content-Disposition').AsString;
         Response.StatusCode := Result;
-        Response.ResponseStream := vResult;
+        Response.ResponseText := vHttp.Content;
       except
         on e : Exception do
           Response.ResponseText := e.Message;
       end;
-      FreeAndNil(vResult);
     finally
       FreeAndNil(vSource);
     end;

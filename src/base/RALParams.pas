@@ -429,6 +429,9 @@ var
 
 begin
   AValue := Trim(AValue);
+  // captura o tipo de content-disposition (inline, attachment, form-data)
+  vStr := GetWord(AValue);
+  // captura o primeiro param
   vStr := GetWord(AValue);
   while (vStr <> '') do
   begin

@@ -137,6 +137,7 @@ begin
       Response.Params.CriptoOptions.Key := CriptoOptions.Key;
 
       Response.ContentType := FHttp.Response.ContentType;
+      Response.ContentDisposition := FHttp.Response.ContentDisposition;
       Response.StatusCode := FHttp.ResponseCode;
       Response.ResponseStream := vResult;
     except
