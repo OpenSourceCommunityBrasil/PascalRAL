@@ -280,7 +280,7 @@ begin
   if FFileName <> '' then
     Result := Format('attachment; name="%s"; filename="%s"',[FParamName, FFileName])
   else
-    Result := Format('form-data; name="%s"', [FParamName])
+    Result := Format('inline; name="%s"', [FParamName])
 end;
 
 function TRALParam.GetContentSize: Int64RAL;

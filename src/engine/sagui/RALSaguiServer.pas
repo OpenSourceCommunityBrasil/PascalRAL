@@ -11,30 +11,27 @@ uses
 type
   TRALSaguiSSL = class(TRALSSL)
   private
-    FPrivateKey: string;
-    FPrivatePassword: string;
-    FCertificate: string;
-    FTrust: string;
-    FDHParams: string;
-    FPriorities: string;
-  public
-    constructor Create;
-    destructor Destroy; override;
+    FPrivateKey: StringRAL;
+    FPrivatePassword: StringRAL;
+    FCertificate: StringRAL;
+    FTrust: StringRAL;
+    FDHParams: StringRAL;
+    FPriorities: StringRAL;
   published
     /// Content of the private key (key.pem) to be used by the HTTPS server.
-    property PrivateKey: string read FPrivateKey write FPrivateKey;
+    property PrivateKey: StringRAL read FPrivateKey write FPrivateKey;
     /// { Password of the private key.
-    property PrivatePassword: string read FPrivatePassword write FPrivatePassword;
+    property PrivatePassword: StringRAL read FPrivatePassword write FPrivatePassword;
     /// Content of the certificate (cert.pem) to be used by the HTTPS server.
-    property Certificate: string read FCertificate write FCertificate;
+    property Certificate: StringRAL read FCertificate write FCertificate;
     /// Content of the certificate (ca.pem) to be used by the HTTPS server for
     ///  client authentication.
-    property Trust: string read FTrust write FTrust;
+    property Trust: StringRAL read FTrust write FTrust;
     /// Content of the Diffie-Hellman parameters (dh.pem) to be used by the HTTPS
     ///  server for key exchange.
-    property DHParams: string read FDHParams write FDHParams;
+    property DHParams: StringRAL read FDHParams write FDHParams;
     /// Content of the cipher algorithm. Default: @code(NORMAL).
-    property Priorities: string read FPriorities write FPriorities;
+    property Priorities: StringRAL read FPriorities write FPriorities;
   end;
 
   { TRALSaguiServer }
@@ -84,6 +81,7 @@ type
   private
     FHandle: PPsg_strmap;
     FCurrent: PPsg_strmap;
+    FFreeOnDestroy : boolean;
   protected
     function GetCount: Integer;
   public
@@ -92,12 +90,15 @@ type
 
     function First : boolean;
     function Next : boolean;
+    procedure Add(const AName, AValue: StringRAL);
     procedure GetPair(var AName, AValue : StringRAL);
     function MapList : TStringList;
     procedure AppendToParams(AParams : TRALParams; AKind : TRALParamKind);
+    procedure AssignFromParams(AParams : TRALParams; AKind : TRALParamKind);
 
     // Counts the total pairs present in the map.
     property Count: Integer read GetCount;
+    property FreeOnDestroy : boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
 
   TRALSaguiUploadFile = class(TPersistent)
@@ -227,7 +228,7 @@ begin
       try
         vStrMap.AppendToParams(Params, rpkHEADER);
       finally
-        vStrMap.Free;
+        FreeAndNil(vStrMap);
       end;
 
       // fields
@@ -235,7 +236,7 @@ begin
       try
         vStrMap.AppendToParams(Params, rpkFIELD);
       finally
-        vStrMap.Free;
+        FreeAndNil(vStrMap);
       end;
 
       // cookies
@@ -243,7 +244,7 @@ begin
       try
         vStrMap.AppendToParams(Params, rpkCOOKIE);
       finally
-        vStrMap.Free;
+        FreeAndNil(vStrMap);
       end;
 
       // query
@@ -251,7 +252,7 @@ begin
       try
         vStrMap.AppendToParams(Params, rpkQUERY);
       finally
-        vStrMap.Free;
+        FreeAndNil(vStrMap);
       end;
 
       // body
@@ -259,7 +260,7 @@ begin
       try
         vFileMap.AppendToParams(Params);
       finally
-        vStrMap.Free;
+        FreeAndNil(vFileMap);
       end;
 
 {
@@ -269,7 +270,6 @@ begin
   if Assigned(sg_httpreq_tls_session) then
     FTLSSession := sg_httpreq_tls_session(FHandle);
 }
-
 
       ClientInfo.IP := GetSaguiIP(Areq);
       ClientInfo.MACAddress := '';
@@ -282,7 +282,7 @@ begin
 
       ContentType := ParamByName('Content-Type').AsString;
       ContentEncoding := ParamByName('Content-Encoding').AsString;
-//      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
+      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
       Host := ParamByName('Host').AsString;
@@ -305,14 +305,24 @@ begin
     end;
 
     vResponse := vServer.ProcessCommands(vRequest);
-
     try
-      with vResponse do
-      begin
-        sg_httpres_sendstream(Ares, 0, DoStreamRead, ResponseStream, DoStreamFree, StatusCode);
-      end;
+      vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
+      vStrMap.FreeOnDestroy := False;
+
+      sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream,
+                            DoStreamFree, vResponse.StatusCode);
+
+      vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
+
+      vStrMap.Add('Server', 'RAL_Sagui');
+      vStrMap.Add('Content-Type', vResponse.ContentType);
+      vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
+      vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
+      vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
+      vStrMap.Add('Content-Encription', vResponse.ContentEncription);
     finally
       FreeAndNil(vResponse);
+      FreeAndNil(vStrMap);
     end;
   finally
     FreeAndNil(vRequest);
@@ -444,19 +454,14 @@ begin
   Result := True;
 end;
 
-{ TRALSaguiSSL }
-
-constructor TRALSaguiSSL.Create;
-begin
-  inherited;
-end;
-
-destructor TRALSaguiSSL.Destroy;
-begin
-  inherited;
-end;
-
 { TRALSaguiStringMap }
+
+procedure TRALSaguiStringMap.Add(const AName, AValue: StringRAL);
+begin
+  SgLib.Check;
+  SgLib.CheckLastError(sg_strmap_add(FHandle, PAnsiChar(AName),
+                       PAnsiChar(AValue)));
+end;
 
 procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams;
   AKind: TRALParamKind);
@@ -473,19 +478,35 @@ begin
   until not Next;
 end;
 
+procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams;
+  AKind: TRALParamKind);
+var
+  vInt: Integer;
+begin
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    if AParams.Index[vInt].Kind = AKind then
+      Add(AParams.Index[vInt].ParamName, AParams.Index[vInt].AsString);
+  end;
+end;
+
 constructor TRALSaguiStringMap.Create(AHandle: Pointer);
 begin
   inherited Create;
   FHandle := AHandle;
   FCurrent := AHandle;
+  FFreeOnDestroy := True;
 end;
 
 destructor TRALSaguiStringMap.Destroy;
 begin
   FCurrent := nil;
-
-  SgLib.Check;
-  sg_strmap_cleanup(FHandle);
+  if FFreeOnDestroy then
+  begin
+    SgLib.Check;
+    sg_strmap_cleanup(FHandle);
+  end;
+  FHandle := nil;
   inherited;
 end;
 
@@ -564,6 +585,7 @@ end;
 destructor TRALSaguiUploadMap.Destroy;
 begin
   FCurrent := nil;
+  FHandle := nil;
   inherited;
 end;
 
