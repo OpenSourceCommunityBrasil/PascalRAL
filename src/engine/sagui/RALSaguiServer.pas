@@ -1,5 +1,9 @@
 unit RALSaguiServer;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 interface
 
 uses
@@ -41,7 +45,7 @@ type
   TRALSaguiServer = class(TRALServer)
   private
     FHandle: Psg_httpsrv;
-    FLibPath : StringRAL;
+    FLibPath: StringRAL;
 
     class function DoAuthenticationCallback(Acls: Pcvoid; Aauth: Psg_httpauth;
       Areq: Psg_httpreq; Ares: Psg_httpres): cbool; cdecl; static;
@@ -78,7 +82,7 @@ type
     destructor Destroy; override;
   published
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
-    property LibPath : StringRAL read FLibPath write SetLibPath;
+    property LibPath: StringRAL read FLibPath write SetLibPath;
   end;
 
 implementation
@@ -185,13 +189,10 @@ var
   vAuth: sg_httpauth_cb;
 begin
   if Authentication <> nil then
-    vAuth := {$IFDEF FPC}@{$ENDIF}DoAuthenticationCallback
+    vAuth := DoAuthenticationCallback
   else
     vAuth := nil;
-  FHandle := sg_httpsrv_new2(vAuth,
-                            {$IFDEF FPC}@{$ENDIF}DoRequestCallback,
-                            {$IFDEF FPC}@{$ENDIF}DoErrorCallback,
-                            Self);
+  FHandle := sg_httpsrv_new2(vAuth, DoRequestCallback, DoErrorCallback, Self);
   if not Assigned(FHandle) then
     raise Exception.Create(emSaguiServerCreateError);
 end;
@@ -203,25 +204,24 @@ begin
 end;
 
 class function TRALSaguiServer.DoAuthenticationCallback(Acls: Pcvoid;
-  Aauth: Psg_httpauth; Areq: Psg_httpreq; Ares: Psg_httpres): cbool;{$IFDEF FPC} cdecl;{$ENDIF}
+  Aauth: Psg_httpauth; Areq: Psg_httpreq; Ares: Psg_httpres): cbool;
 begin
 
 end;
 
 class procedure TRALSaguiServer.DoClientConnectionCallback(Acls: Pcvoid;
-  const Aclient: Pcvoid; Aclosed: Pcbool);{$IFDEF FPC} cdecl;{$ENDIF}
+  const Aclient: Pcvoid; Aclosed: Pcbool);
 begin
 
 end;
 
-class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar
-  );{$IFDEF FPC} cdecl;{$ENDIF}
+class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
 begin
 
 end;
 
-class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid;
-  Areq: Psg_httpreq; Ares: Psg_httpres);{$IFDEF FPC} cdecl;{$ENDIF}
+class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
+  Ares: Psg_httpres);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -324,11 +324,8 @@ begin
       vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
       vStrMap.FreeOnDestroy := False;
 
-      sg_httpres_sendstream(Ares, 0,
-                            {$IFDEF FPC}@{$ENDIF}DoStreamRead,
-                            vResponse.ResponseStream,
-                            {$IFDEF FPC}@{$ENDIF}DoStreamFree,
-                            vResponse.StatusCode);
+      sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream, DoStreamFree,
+        vResponse.StatusCode);
 
       vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
 
@@ -347,13 +344,13 @@ begin
   end;
 end;
 
-class procedure TRALSaguiServer.DoStreamFree(Acls: Pcvoid);{$IFDEF FPC} cdecl;{$ENDIF}
+class procedure TRALSaguiServer.DoStreamFree(Acls: Pcvoid);
 begin
   TStream(Acls).Free;
 end;
 
 class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
-  Abuf: Pcchar; Asize: csize_t): cssize_t;{$IFDEF FPC} cdecl;{$ENDIF}
+  Abuf: Pcchar; Asize: csize_t): cssize_t;
 begin
   if Acls = nil then
     Exit;
@@ -402,21 +399,25 @@ begin
     Exit;
 
   if FLibPath <> '' then
+  try
     SgLib.Load(FLibPath);
+    SgLib.Check;
 
-  SgLib.Check;
-
-  if AValue then
-  begin
-    SetEngine('Sagui ' + StringRAL(sg_version_str));
-    CreateServerHandle;
-    if not InitilizeServer then
+    if AValue then
+    begin
+      SetEngine('Sagui ' + sg_version_str);
+      CreateServerHandle;
+      if not InitilizeServer then
+        FreeServerHandle;
+    end
+    else
+    begin
+      ShutdownServerHandle;
       FreeServerHandle;
-  end
-  else
-  begin
-    ShutdownServerHandle;
-    FreeServerHandle;
+    end;
+
+  except
+    raise Exception.Create(emSaguiLibraryLoadError);
   end;
 
   inherited;
@@ -468,13 +469,9 @@ begin
     if not Assigned(sg_httpsrv_tls_listen3) then
       raise Exception.Create(emSaguiServerUnsupportedTLS);
 
-    Result := sg_httpsrv_tls_listen3(FHandle,
-      PAnsiChar(SSL.PrivateKey),
-      PAnsiChar(SSL.PrivatePassword),
-      PAnsiChar(SSL.Certificate),
-      PAnsiChar(SSL.Trust),
-      PAnsiChar(SSL.DHParams),
-      PAnsiChar(SSL.Priorities), Port, False);
+    Result := sg_httpsrv_tls_listen3(FHandle, pansichar(SSL.PrivateKey),
+      pansichar(SSL.PrivatePassword), pansichar(SSL.Certificate),
+      pansichar(SSL.Trust), pansichar(SSL.DHParams), pansichar(SSL.Priorities), Port, False);
   end
   else
   begin
@@ -492,8 +489,7 @@ end;
 procedure TRALSaguiStringMap.Add(const AName, AValue: StringRAL);
 begin
   SgLib.Check;
-  SgLib.CheckLastError(sg_strmap_add(FHandle, pansichar(AName),
-    pansichar(AValue)));
+  SgLib.CheckLastError(sg_strmap_add(FHandle, pansichar(AName), pansichar(AValue)));
 end;
 
 procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams; AKind: TRALParamKind);

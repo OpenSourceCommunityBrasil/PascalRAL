@@ -79,13 +79,14 @@ resourcestring
   for localization purposes, allowing the user to customise their side of the component
 }
   // general error messages
-  emContentCheckError = 'Content check error';
-  emDBLinkMissing = 'DBLink Property missing';
+  emContentCheckError = 'Content check error.';
+  emDBLinkMissing = 'DBLink Property missing.';
   emRouteAlreadyExists = 'Route already exists!';
 
    // sagui error messages
-  emSaguiServerCreateError = 'Error while attempting to create the server';
-  emSaguiServerUnsupportedTLS = 'This version of TLS is not supported by the lib';
+  emSaguiServerCreateError = 'Error while attempting to create the server.';
+  emSaguiServerUnsupportedTLS = 'This version of TLS is not supported by the lib.';
+  emSaguiLibraryLoadError = 'Error while trying to load libsagui.';
 
   wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
 
