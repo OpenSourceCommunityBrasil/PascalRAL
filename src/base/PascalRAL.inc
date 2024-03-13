@@ -373,20 +373,34 @@
 
 {$IF Defined(IOS) or Defined(IOS64) or Defined(DCCIOS32) or Defined(MACOS) or
   Defined(MACOS32)}
-  {$DEFINE RALApple}
-  {$DEFINE HAS_UTF8}
+  {$IFDEF FPC}
+    {$DEFIN RALAppleFPC}
+  {$ELSE}
+    {$DEFINE RALApple}
+    {$DEFINE HAS_UTF8}
+    {$DEFINE HAS_FMX}
+  {$IFEND}
 {$IFEND}
 
 {$IF Defined(ANDROID) or Defined(Android64) or Defined(Android32)}
-  {$DEFINE RALAndroid}
-  {$DEFINE HAS_UTF8}
+  {$IFDEF FPC}
+    {$DEFINE RALAndroidFPC}
+  {$ELSE}
+    {$DEFINE RALAndroid}
+    {$DEFINE HAS_UTF8}
+    {$DEFINE HAS_FMX}
+  {$ENDIF}
 {$IFEND}
 
 {$IF Defined(LINUX) or Defined(LINUX32) or Defined(LINUX64) or Defined(UNIX)}
-  {$DEFINE RALLinux}
-  {$DEFINE HAS_UTF8}
-  {$IFDEF HAS_FMX}
-    {$DEFINE LINUXFMX}
+  {$IFDEF FPC}
+    {$DEFINE RALLinuxFPC}
+  {$ELSE}
+    {$DEFINE RALLinux}
+    {$DEFINE HAS_UTF8}
+    {$IFDEF HAS_FMX}
+      {$DEFINE RALLinuxFMX}
+    {$ENDIF}
   {$ENDIF}
 {$IFEND}
 

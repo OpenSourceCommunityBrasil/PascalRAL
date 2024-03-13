@@ -12,7 +12,7 @@ const
   // Versionamento
   VERSION_MAJOR = 0;
   VERSION_MINOR = 9;
-  VERSION_RELEASE = 0;
+  VERSION_RELEASE = 2;
   VERSION_ADDITIVE = ' - alpha';
   RALVERSION = char(48 + VERSION_MAJOR) + '.'
              + char(48 + VERSION_MINOR) + '.'
