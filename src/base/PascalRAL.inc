@@ -374,12 +374,12 @@
 {$IF Defined(IOS) or Defined(IOS64) or Defined(DCCIOS32) or Defined(MACOS) or
   Defined(MACOS32)}
   {$IFDEF FPC}
-    {$DEFIN RALAppleFPC}
+    {$DEFINE RALAppleFPC}
   {$ELSE}
     {$DEFINE RALApple}
     {$DEFINE HAS_UTF8}
     {$DEFINE HAS_FMX}
-  {$IFEND}
+  {$ENDIF}
 {$IFEND}
 
 {$IF Defined(ANDROID) or Defined(Android64) or Defined(Android32)}
@@ -405,13 +405,11 @@
 {$IFEND}
 
 {$IF Defined(POSIX)}
-  {$DEFINE RALApple}
-  {$DEFINE RALLinux}
+  {$DEFINE RALPosix}
 {$IFEND}
 
 {$IF Defined(NEXTGEN)}
-  {$DEFINE RALAndroid}
-  {$DEFINE RALApple}
+  {$DEFINE RALNextGen}
 {$IFEND}
 
 {$IF (Defined(IOS) or Defined(ANDROID)) AND Defined(HAS_FMX)}
