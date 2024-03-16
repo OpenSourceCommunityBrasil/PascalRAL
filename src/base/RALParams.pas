@@ -18,8 +18,8 @@ type
   /// (String) or a bytearray (Stream)
   TRALParam = class
   private
-    FContentType: StringRAL;
     FContent: TStream;
+    FContentType: StringRAL;
     FFileName: StringRAL;
     FKind: TRALParamKind;
     FParamName: StringRAL;
@@ -29,14 +29,13 @@ type
     function GetAsInteger: IntegerRAL;
     function GetAsStream: TStream;
     function GetAsString: StringRAL;
+    function GetContentDisposition: StringRAL;
     function GetContentSize: Int64RAL;
     procedure SetAsBoolean(const Value: Boolean);
     procedure SetAsDouble(const Value: DoubleRAL);
     procedure SetAsInteger(const Value: IntegerRAL);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
-
-    function GetContentDisposition: StringRAL;
     procedure SetContentDisposition(AValue: StringRAL);
   public
     constructor Create;
@@ -61,9 +60,9 @@ type
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
+    property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;    
     property ContentSize: Int64RAL read GetContentSize;
-    property ContentType: StringRAL read FContentType write FContentType;
-    property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
+    property ContentType: StringRAL read FContentType write FContentType;    
     property FileName: StringRAL read FFileName write FFileName;
     property Kind: TRALParamKind read FKind write FKind;
     property ParamName: StringRAL read FParamName write FParamName;

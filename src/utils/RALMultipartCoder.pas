@@ -11,13 +11,13 @@ type
 
   TRALMultipartFormData = class
   private
-    FFreeBuffer: boolean;
-    FDisposition: StringRAL;
-    FName: StringRAL;
-    FFilename: StringRAL;
+    FBufferStream: TStream;
     FContentType: StringRAL;
     FDescription: StringRAL;
-    FBufferStream: TStream;
+    FDisposition: StringRAL;
+    FFilename: StringRAL;
+    FFreeBuffer: boolean;
+    FName: StringRAL;
   protected
     procedure SetBufferStream(AValue: TStream);
     function GetBufferStream: TStream;
@@ -28,7 +28,6 @@ type
     destructor Destroy; override;
 
     procedure ProcessHeader(AHeader: StringRAL);
-
     procedure SaveToFile(const AFileName: StringRAL);
     procedure SaveToStream(var AStream: TStream);
     procedure OpenFile(const AFileName: StringRAL);
@@ -36,11 +35,11 @@ type
     property AsStream: TStream read GetBufferStream write SetBufferStream;
     property AsString: StringRAL read GetBufferString write SetBufferString;
   published
-    property Disposition: StringRAL read FDisposition write FDisposition;
-    property Description: StringRAL read FDescription write FDescription;
-    property Name: StringRAL read FName write FName;
-    property Filename: StringRAL read FFilename write FFilename;
     property ContentType: StringRAL read FContentType write FContentType;
+    property Description: StringRAL read FDescription write FDescription;
+    property Disposition: StringRAL read FDisposition write FDisposition;
+    property Filename: StringRAL read FFilename write FFilename;
+    property Name: StringRAL read FName write FName;
   end;
 
   TRALMultipartFormDataComplete = procedure(Sender: TObject; AFormData: TRALMultipartFormData; var AFreeData: boolean) of object;
@@ -51,30 +50,26 @@ type
   private
     FBoundary: StringRAL;
     FBuffer: array [0 .. 4095] of Byte;
+    FFormData: TList;
     FIndex: IntegerRAL;
     FItemForm: TRALMultipartFormData;
-    FWaitSepEnd: boolean;
     FIs13: boolean;
-    FFormData: TList;
+    FWaitSepEnd: boolean;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
   protected
-    procedure SetContentType(AValue: StringRAL);
-
+    function BurnBuffer: PByte;
+    procedure ClearItems;
+    procedure FinalizeItem;
+    function GetFormData(idx: Integer): TRALMultipartFormData;
     procedure ProcessBuffer(AInput: PByte; AInputLen: IntegerRAL);
     function ProcessLine : PByte;
-    procedure ClearItems;
-
-    function BurnBuffer: PByte;
     function ResetBuffer: PByte;
-    function GetFormData(idx: Integer): TRALMultipartFormData;
-
-    procedure FinalizeItem;
+    procedure SetContentType(AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
     function FormDataCount: IntegerRAL;
-
     procedure ProcessMultiPart(AStream: TStream); overload;
     procedure ProcessMultiPart(const AString: StringRAL); overload;
 
@@ -92,23 +87,20 @@ type
     FBoundary: StringRAL;
     FFormData: TList;
   protected
+    procedure ClearItems;
     function GetBoundary: StringRAL;
     function GetContentType: StringRAL;
-
-    procedure ClearItems;
   public
     constructor Create;
     destructor Destroy; override;
-
-    function FormDataCount: IntegerRAL;
 
     procedure AddField(const AName: StringRAL; const AValue: StringRAL);
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
                         const AFileName: StringRAL = ''; const AContentType: StringRAL = '');
     procedure AddFile(const AName: StringRAL; const AFileName: StringRAL; const AContentType: StringRAL = '');
-
-    procedure SaveToFile(const AFileName: StringRAL);
     function AsStream: TStringStream;
+    function FormDataCount: IntegerRAL;
+    procedure SaveToFile(const AFileName: StringRAL);    
   published
     property Boundary: StringRAL read GetBoundary write FBoundary;
     property ContentType: StringRAL read GetContentType;

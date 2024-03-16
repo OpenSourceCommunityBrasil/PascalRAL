@@ -1,4 +1,5 @@
 {$DEFINE PascalRAL}
+{.$DEFINE RAL_DEBUG} (* Internal debugging directive *)
 
 (* IFEND Directives - HAS TO STAY ON TOP OF THE FILE!*)
 
