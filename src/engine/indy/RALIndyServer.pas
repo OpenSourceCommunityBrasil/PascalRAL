@@ -229,6 +229,7 @@ begin
         AResponseInfo.ContentText := '';
         AResponseInfo.ContentStream := ResponseStream;
         AResponseInfo.ContentType := ContentType;
+        AResponseInfo.ContentDisposition := ContentDisposition;
 
         AResponseInfo.ContentLength := 0;
         AResponseInfo.FreeContentStream := False;

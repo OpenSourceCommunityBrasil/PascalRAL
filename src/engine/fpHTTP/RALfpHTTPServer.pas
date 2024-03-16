@@ -273,26 +273,30 @@ begin
       begin
         AResponse.Code := StatusCode;
 
-        if vResponse.ContentEncoding <> '' then
-          AResponse.ContentEncoding := vResponse.ContentEncoding;
+        if ContentEncoding <> '' then
+          AResponse.ContentEncoding := ContentEncoding;
 
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+        if AcceptEncoding <> '' then
+          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
+        if ContentEncription <> '' then
+          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
         AResponse.Server := 'RAL_fpHTTP';
         if vConnClose then
           AResponse.Connection := 'close';
 
-        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
         Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
 
         AResponse.ContentStream := ResponseStream;
 
         AResponse.FreeContentStream := True;
         AResponse.ContentType := ContentType;
+
+        if ContentDisposition <> '' then
+          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+
+        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
 
         AResponse.SendContent;
       end;

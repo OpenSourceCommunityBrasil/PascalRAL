@@ -35,6 +35,7 @@ type
     procedure SetAsInteger(const Value: IntegerRAL);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
+
     function GetContentDisposition: StringRAL;
     procedure SetContentDisposition(AValue: StringRAL);
   public
@@ -349,18 +350,27 @@ begin
 end;
 
 procedure TRALParam.SetAsBoolean(const Value: Boolean);
+var
+  vStr : StringRAL;
 begin
-
+  vStr := BoolToStr(Value);
+  SetAsString(vStr);
 end;
 
 procedure TRALParam.SetAsDouble(const Value: DoubleRAL);
+var
+  vStr : StringRAL;
 begin
-
+  vStr := FloatToStr(Value);
+  SetAsString(vStr);
 end;
 
 procedure TRALParam.SetAsInteger(const Value: IntegerRAL);
+var
+  vStr : StringRAL;
 begin
-
+  vStr := IntToStr(Value);
+  SetAsString(vStr);
 end;
 
 procedure TRALParam.SetAsStream(const AValue: TStream);

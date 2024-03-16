@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALMIMETypes;
+  RALTypes, RALMIMETypes, RALStream;
 
 type
   { TRALMultipartFormData }
@@ -379,8 +379,7 @@ end;
 
 procedure TRALMultipartFormData.SaveToFile(const AFileName: StringRAL);
 begin
-  if FBufferStream.InheritsFrom(TCustomMemoryStream) then
-    TCustomMemoryStream(FBufferStream).SaveToFile(AFileName)
+  SaveStream(FBufferStream, AFileName);
 end;
 
 procedure TRALMultipartFormData.SaveToStream(var AStream: TStream);
@@ -444,9 +443,8 @@ begin
   vInt := Pos('boundary', LowerCase(AValue));
   if vInt > 0 then
   begin
-    Delete(AValue, 1, vInt - 1);
-    vInt := Pos('=', AValue);
     Delete(AValue, 1, vInt);
+    Delete(AValue, 1, Pos('=', AValue));
     vInt := Pos(';', AValue);
     if vInt > 0 then
       Delete(AValue, vInt, Length(AValue));
@@ -457,6 +455,9 @@ end;
 procedure TRALMultipartDecoder.ProcessBuffer(AInput: PByte; AInputLen: IntegerRAL);
 var
   vBuffer: PByte;
+  {$IFDEF RAL_DEBUG}
+    vLine : StringRAL;
+  {$ENDIF}
 begin
   vBuffer := @FBuffer[FIndex];
   while AInputLen > 0 do
@@ -480,7 +481,13 @@ begin
     end;
 
     if FIndex = 4096 then
+    begin
+      {$IFDEF RAL_DEBUG}
+        SetLength(vLine, FIndex);
+        Move(FBuffer[0], vLine[PosIniStr], FIndex);
+      {$ENDIF}
       vBuffer := BurnBuffer;
+    end;
     Dec(AInputLen);
     Inc(AInput);
   end;
@@ -530,8 +537,10 @@ begin
   // se o buffer tiver mais q 500 chars significa q o conteudo do
   // buffer eh o parte do arquivo e nao um novo boundary
   begin
-    SetLength(vLine, FIndex);
-    Move(FBuffer[0], vLine[PosIniStr], FIndex);
+    {$IFDEF RAL_DEBUG}
+      SetLength(vLine, FIndex);
+      Move(FBuffer[0], vLine[PosIniStr], FIndex);
+    {$ENDIF}
     Result := BurnBuffer;
   end;
 end;
