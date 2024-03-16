@@ -157,12 +157,11 @@ begin
 
       vRALClientClone.Request.Params.AddParam('Type', '2', rpkBODY);
       vRALClientClone.Post;
-      if vRALClientClone.Response.StatusCode <> 200 then
-      // Arrumar depois que os russos resolverem o problema do RESPONSE do Indy
+      if vRALClientClone.Response.StatusCode = 200 then
       begin
         Self.CommitUpdates;
-        Self.vRowsAffectedRemote := vRALClientClone.Response.ParamByName('AffectedRows')
-          .AsInteger;
+        Self.vRowsAffectedRemote :=
+          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
       end
       else
         raise Exception.Create(vRALClientClone.Response.ResponseText);
@@ -253,13 +252,12 @@ begin
       vRALClientClone.Request.Params.AddParam('Stream', vStreamAux, rpkBODY);
       vRALClientClone.Post;
 
-      if vRALClientClone.Response.StatusCode <> 200 then
-      // Arrumar depois que os russos resolverem o problema do RESPONSE do Indy
+      if vRALClientClone.Response.StatusCode = 200 then
       begin
         Self.CommitUpdates;
 
-        Self.vRowsAffectedRemote := vRALClientClone.Response.ParamByName('AffectedRows')
-          .AsInteger;
+        Self.vRowsAffectedRemote :=
+          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
       end
       else
         raise Exception.Create(vRALClientClone.Response.ResponseText);
@@ -343,8 +341,7 @@ begin
       vRALClientClone.Request.Params.AddParam('Type', '0', rpkBODY);
       vRALClientClone.Post;
 
-      if vRALClientClone.Response.StatusCode <> 200 then
-      // Arrumar depois que os russos resolverem o problema do RESPONSE do Indy
+      if vRALClientClone.Response.StatusCode = 200 then
       begin
         TMemoryStream(vStreamAux).Clear;
         vRALClientClone.Response.ParamByName('Stream').SaveToStream(vStreamAux);
@@ -356,6 +353,8 @@ begin
         end;
 
         Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
+        Self.vRowsAffectedRemote :=
+          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
         Self.CachedUpdates := true;
       end
       else
