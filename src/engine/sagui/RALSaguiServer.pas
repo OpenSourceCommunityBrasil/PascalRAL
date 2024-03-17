@@ -45,13 +45,11 @@ type
   TRALSaguiServer = class(TRALServer)
   private
     FHandle: Psg_httpsrv;
-    FLibPath: StringRAL;
+    FLibPath: TFileName;
 
-    class function DoAuthenticationCallback(Acls: Pcvoid; Aauth: Psg_httpauth;
-      Areq: Psg_httpreq; Ares: Psg_httpres): cbool; cdecl; static;
+    class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
     class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
       cdecl; static;
-    class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
 
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
@@ -61,6 +59,7 @@ type
       Aclosed: Pcbool); cdecl; static;
 
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
+    class procedure DecodeAuth(AAuthorization : StringRAL; AResult: TRALRequest);
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
@@ -76,13 +75,13 @@ type
     procedure FreeServerHandle;
 
     function InitilizeServer: boolean;
-    procedure SetLibPath(const AValue: StringRAL);
+    procedure SetLibPath(const AValue: TFileName);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
-    property LibPath: StringRAL read FLibPath write SetLibPath;
+    property LibPath: TFileName read FLibPath write SetLibPath;
   end;
 
 implementation
@@ -176,7 +175,19 @@ constructor TRALSaguiServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHandle := nil;
-  SetEngine('Sagui');
+  FLibPath := '';
+
+  if SgLib.Handle <> 0 then
+    SetEngine('Sagui ' + sg_version_str)
+  else
+    SetEngine('Sagui');
+
+  {$IFDEF MSWINDOWS}
+    if SgLib.Handle <> 0 then
+      FLibPath := GetModuleName(SgLib.Handle);
+  {$ELSE}
+    FLibPath := SgLib.GetLastName;
+  {$ENDIF}
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -185,14 +196,8 @@ begin
 end;
 
 procedure TRALSaguiServer.CreateServerHandle;
-var
-  vAuth: sg_httpauth_cb;
 begin
-  if Authentication <> nil then
-    vAuth := DoAuthenticationCallback
-  else
-    vAuth := nil;
-  FHandle := sg_httpsrv_new2(vAuth, DoRequestCallback, DoErrorCallback, Self);
+  FHandle := sg_httpsrv_new2(nil, DoRequestCallback, DoErrorCallback, Self);
   if not Assigned(FHandle) then
     raise Exception.Create(emSaguiServerCreateError);
 end;
@@ -203,12 +208,6 @@ begin
   inherited;
 end;
 
-class function TRALSaguiServer.DoAuthenticationCallback(Acls: Pcvoid;
-  Aauth: Psg_httpauth; Areq: Psg_httpreq; Ares: Psg_httpres): cbool;
-begin
-
-end;
-
 class procedure TRALSaguiServer.DoClientConnectionCallback(Acls: Pcvoid;
   const Aclient: Pcvoid; Aclosed: Pcbool);
 begin
@@ -217,11 +216,11 @@ end;
 
 class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
 begin
-
+  // procedure obrigatoria para instanciar o server (CreateServerHandle)
 end;
 
-class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
-  Ares: Psg_httpres);
+class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid;
+  Areq: Psg_httpreq; Ares: Psg_httpres);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -284,6 +283,9 @@ begin
         vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
         vParam.ContentType := ParamByName('Content-Type').AsString;
       end;
+
+      if vServer.Authentication <> nil then
+        DecodeAuth(ParamByName('Authorization').AsString, vRequest);
 
       ClientInfo.IP := GetSaguiIP(Areq);
       ClientInfo.MACAddress := '';
@@ -388,6 +390,26 @@ begin
   Result := Trim(Result);
 end;
 
+class procedure TRALSaguiServer.DecodeAuth(AAuthorization: StringRAL;
+  AResult: TRALRequest);
+var
+  vInt: IntegerRAL;
+  vAux: StringRAL;
+begin
+  AResult.Authorization.AuthType := ratNone;
+  AResult.Authorization.AuthString := '';
+
+  if AAuthorization <> '' then begin
+    vInt := Pos(' ', AAuthorization);
+    vAux := Trim(Copy(AAuthorization, 1, vInt - 1));
+    if SameText(vAux, 'Basic') then
+      AResult.Authorization.AuthType := ratBasic
+    else if SameText(vAux, 'Bearer') then
+      AResult.Authorization.AuthType := ratBearer;
+    AResult.Authorization.AuthString := Copy(AAuthorization, vInt + 1, Length(AAuthorization));
+  end;
+end;
+
 function TRALSaguiServer.GetSSL: TRALSaguiSSL;
 begin
   Result := TRALSaguiSSL(GetDefaultSSL);
@@ -423,7 +445,7 @@ begin
   inherited;
 end;
 
-procedure TRALSaguiServer.SetLibPath(const AValue: StringRAL);
+procedure TRALSaguiServer.SetLibPath(const AValue: TFileName);
 begin
   if AValue = FLibPath then
     Exit;
