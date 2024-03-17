@@ -179,9 +179,16 @@ type
     /// Shortcut to create routes on the server
     function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
-    /// Core function of the server, every request will pass through here to be
+    /// Core procedure of the server, every request will pass through here to be
     ///  processed into response that will be answered to the client
-    function ProcessCommands(ARequest: TRALRequest): TRALResponse;
+    procedure ProcessCommands(ARequest: TRALRequest; AResponse : TRALResponse);
+    /// Validate requests headers before ProcessCommands
+    procedure ValidadeRequest(ARequest: TRALRequest; AResponse : TRALResponse);
+    /// create handle request of server
+    function CreateRequest : TRALRequest;
+    /// create handle response of server
+    function CreateResponse : TRALResponse;
+
     /// Shortcut to start the server
     procedure Start;
     /// Shortcut to stop the server
@@ -608,56 +615,25 @@ begin
     FListSubRoutes.Delete(vInt);
 end;
 
-function TRALServer.ProcessCommands(ARequest: TRALRequest): TRALResponse;
+procedure TRALServer.ProcessCommands(ARequest: TRALRequest; AResponse : TRALResponse);
 var
   vRoute: TRALRoute;
   vString: StringRAL;
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
 begin
-  Result := TRALServerResponse.Create;
-
-  if not ARequest.HasValidContentEncoding then
-  begin
-    Result.Answer(415);
-    Result.ContentEncoding := ARequest.ContentEncoding;
-    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
+  if AResponse.StatusCode >= 400 then
     Exit;
-  end
-  else if not ARequest.HasValidAcceptEncoding then
-  begin
-    Result.Answer(415);
-    Result.ContentEncoding := ARequest.AcceptEncoding;
-    Result.AcceptEncoding := TRALCompress.GetSuportedCompress;
-    Exit;
-  end;
 
-  Result.StatusCode := 200;
+  AResponse.ContentCompress := ARequest.AcceptCompress;
+  if AResponse.ContentCompress = ctNone then
+    AResponse.ContentCompress := FCompressType;
 
-  Result.ContentCompress := ARequest.AcceptCompress;
-  if Result.ContentCompress = ctNone then
-    Result.ContentCompress := FCompressType;
-
-  Result.ContentCripto := crNone;
+  AResponse.ContentCripto := crNone;
   if CriptoOptions.Key <> '' then
   begin
-    Result.ContentCripto := ARequest.AcceptCripto;
-    Result.CriptoKey := CriptoOptions.Key;
-  end;
-
-  if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
-  begin
-    if Assigned(FOnClientWasBlocked) then
-      FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
-
-    Result.Answer(404);
-    Exit;
-  end
-  else if Pos('../', ARequest.Query) > 0 then
-  begin
-    AddBlockList(ARequest.ClientInfo.IP);
-    Result.Answer(404);
-    Exit;
+    AResponse.ContentCripto := ARequest.AcceptCripto;
+    AResponse.CriptoKey := CriptoOptions.Key;
   end;
 
   vRoute := FRoutes.RouteAddress[ARequest.Query];
@@ -671,30 +647,30 @@ begin
   end;
 
   if Assigned(FOnRequest) then
-    FOnRequest(ARequest, Result);
+    FOnRequest(ARequest, AResponse);
 
   if (vRoute = nil) then
   begin
     if (ARequest.Query = '/') and (FShowServerStatus) then
     begin
-      Result.ContentType := rctTEXTHTML;
+      AResponse.ContentType := rctTEXTHTML;
       vString := FServerStatus.Text;
       vString := ReplaceText(vString, '%ralengine%', FEngine);
-      Result.ResponseText := vString;
+      AResponse.ResponseText := vString;
     end
     else if (ARequest.Query = '/favicon.ico') and (FShowServerStatus) then
     begin
-      Result.Answer(FFavIcon);
+      AResponse.Answer(FFavIcon);
     end
     else if (ARequest.Query <> '/') and (FAuthentication <> nil) then
     begin
-      FAuthentication.BeforeValidate(ARequest, Result);
-      if Result.StatusCode >= 400 then
+      FAuthentication.BeforeValidate(ARequest, AResponse);
+      if AResponse.StatusCode >= 400 then
         AddBlockList(ARequest.ClientInfo.IP);
     end
     else
     begin
-      Result.Answer(404);
+      AResponse.Answer(404);
     end;
   end
   else
@@ -704,28 +680,72 @@ begin
     if (not (amALL in vRoute.AllowedMethods)) and
       (not (ARequest.Method in vRoute.AllowedMethods)) then
     begin
-      Result.Answer(404);
+      AResponse.Answer(404);
     end
     else if (FAuthentication <> nil) and 
             (not (amALL in vRoute.SkipAuthMethods)) and
             (not (ARequest.Method in vRoute.SkipAuthMethods)) and
-            (not (ValidateAuth(ARequest, Result))) then
+            (not (ValidateAuth(ARequest, AResponse))) then
     begin
       AddBlockList(ARequest.ClientInfo.IP);
     end
     else
     begin
       DelBlockList(ARequest.ClientInfo.IP);
-      CheckCORS(vRoute, ARequest, Result);
+      CheckCORS(vRoute, ARequest, AResponse);
     end;
   end;
 
   if Assigned(FOnResponse) then
-    FOnResponse(ARequest, Result);
+    FOnResponse(ARequest, AResponse);
 
   ARequest.Params.ClearParams;
 
   CleanExpiredBlockedList;
+end;
+
+procedure TRALServer.ValidadeRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  if not ARequest.HasValidContentEncoding then
+  begin
+    AResponse.Answer(415);
+    AResponse.ContentEncoding := ARequest.ContentEncoding;
+    AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
+    Exit;
+  end
+  else if not ARequest.HasValidAcceptEncoding then
+  begin
+    AResponse.Answer(415);
+    AResponse.ContentEncoding := ARequest.AcceptEncoding;
+    AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
+    Exit;
+  end;
+
+  if (ClientIsBlocked(ARequest.ClientInfo.IP)) then
+  begin
+    if Assigned(FOnClientWasBlocked) then
+      FOnClientWasBlocked(Self, ARequest.ClientInfo.IP);
+
+    AResponse.Answer(404);
+    Exit;
+  end
+  else if Pos('../', ARequest.Query) > 0 then
+  begin
+    AddBlockList(ARequest.ClientInfo.IP);
+    AResponse.Answer(404);
+    Exit;
+  end;
+end;
+
+function TRALServer.CreateRequest: TRALRequest;
+begin
+  Result := TRALServerRequest.Create;
+end;
+
+function TRALServer.CreateResponse: TRALResponse;
+begin
+  Result := TRALServerResponse.Create;
+  Result.StatusCode := 200;
 end;
 
 procedure TRALServer.Start;

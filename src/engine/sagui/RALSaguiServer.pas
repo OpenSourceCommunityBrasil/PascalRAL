@@ -233,7 +233,8 @@ var
   vParam: TRALParam;
 begin
   vServer := TRALSaguiServer(Acls);
-  vRequest := TRALServerRequest.Create;
+  vRequest := vServer.CreateRequest;
+  vResponse := vServer.CreateResponse;
   try
     with vRequest do
     begin
@@ -245,44 +246,12 @@ begin
         FreeAndNil(vStrMap);
       end;
 
-      // fields
-      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));
-      try
-        vStrMap.AppendToParams(Params, rpkFIELD);
-      finally
-        FreeAndNil(vStrMap);
-      end;
-
-      // cookies
-      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_cookies(Areq));
-      try
-        vStrMap.AppendToParams(Params, rpkCOOKIE);
-      finally
-        FreeAndNil(vStrMap);
-      end;
-
-      // query
-      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_params(Areq));
-      try
-        vStrMap.AppendToParams(Params, rpkQUERY);
-      finally
-        FreeAndNil(vStrMap);
-      end;
-
-      // body - stream (files)
-      vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
-      try
-        vFileMap.AppendToParams(Params);
-      finally
-        FreeAndNil(vFileMap);
-      end;
-
-      vPayLoad := sg_httpreq_payload(Areq);
-      if Assigned(vPayLoad) then
-      begin
-        vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
-        vParam.ContentType := ParamByName('Content-Type').AsString;
-      end;
+      ContentType := ParamByName('Content-Type').AsString;
+      ContentEncoding := ParamByName('Content-Encoding').AsString;
+      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
+      ContentEncription := ParamByName('Content-Encription').AsString;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;
+      Host := ParamByName('Host').AsString;
 
       if vServer.Authentication <> nil then
         DecodeAuth(ParamByName('Authorization').AsString, vRequest);
@@ -291,57 +260,91 @@ begin
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 
-      ContentSize := 0;
-
       Query := sg_httpreq_path(Areq);
       Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
-      ContentType := ParamByName('Content-Type').AsString;
-      ContentEncoding := ParamByName('Content-Encoding').AsString;
-      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
-      ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;
-      Host := ParamByName('Host').AsString;
-
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
-
-      vStr := sg_httpreq_version(Areq);
-      vInt := Pos('/', vStr);
-      if vInt > 0 then
+      vServer.ValidadeRequest(vRequest, vResponse);
+      if vResponse.StatusCode < 400 then
       begin
-        HttpVersion := Copy(vStr, 1, vInt - 1);
-        Protocol := Copy(vStr, vInt + 1, 3);
-      end
-      else
-      begin
-        HttpVersion := 'HTTP';
-        Protocol := '1.0';
+        // fields
+        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));
+        try
+          vStrMap.AppendToParams(Params, rpkFIELD);
+        finally
+          FreeAndNil(vStrMap);
+        end;
+
+        // cookies
+        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_cookies(Areq));
+        try
+          vStrMap.AppendToParams(Params, rpkCOOKIE);
+        finally
+          FreeAndNil(vStrMap);
+        end;
+
+        // query
+        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_params(Areq));
+        try
+          vStrMap.AppendToParams(Params, rpkQUERY);
+        finally
+          FreeAndNil(vStrMap);
+        end;
+
+        // body - stream (files)
+        vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
+        try
+          vFileMap.AppendToParams(Params);
+        finally
+          FreeAndNil(vFileMap);
+        end;
+
+        vPayLoad := sg_httpreq_payload(Areq);
+        if Assigned(vPayLoad) then
+        begin
+          vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
+          vParam.ContentType := ParamByName('Content-Type').AsString;
+        end;
+
+        ContentSize := 0;
+
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
+
+        vStr := sg_httpreq_version(Areq);
+        vInt := Pos('/', vStr);
+        if vInt > 0 then
+        begin
+          HttpVersion := Copy(vStr, 1, vInt - 1);
+          Protocol := Copy(vStr, vInt + 1, 3);
+        end
+        else
+        begin
+          HttpVersion := 'HTTP';
+          Protocol := '1.0';
+        end;
       end;
     end;
 
-    vResponse := vServer.ProcessCommands(vRequest);
-    try
-      vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
-      vStrMap.FreeOnDestroy := False;
+    vServer.ProcessCommands(vRequest, vResponse);
 
-      sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream, DoStreamFree,
-        vResponse.StatusCode);
+    vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
+    vStrMap.FreeOnDestroy := False;
 
-      vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
+    sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream, DoStreamFree,
+      vResponse.StatusCode);
 
-      vStrMap.Add('Server', 'RAL_Sagui');
-      vStrMap.Add('Content-Type', vResponse.ContentType);
-      vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
-      vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
-      vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
-      vStrMap.Add('Content-Encription', vResponse.ContentEncription);
-    finally
-      FreeAndNil(vResponse);
-      FreeAndNil(vStrMap);
-    end;
+    vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
+
+    vStrMap.Add('Server', 'RAL_Sagui');
+    vStrMap.Add('Content-Type', vResponse.ContentType);
+    vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
+    vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
+    vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
+    vStrMap.Add('Content-Encription', vResponse.ContentEncription);
   finally
+    FreeAndNil(vStrMap);
+    FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
 end;

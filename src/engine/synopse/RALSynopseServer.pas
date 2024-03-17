@@ -206,7 +206,9 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
 begin
-  vRequest := TRALServerRequest.Create;
+  vRequest := CreateRequest;
+  vResponse := CreateResponse;
+
   try
     with vRequest do
     begin
@@ -235,50 +237,50 @@ begin
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := CriptoOptions.Key;
-      RequestText := AContext.InContent;
+      ValidadeRequest(vRequest, vResponse);
+      if vResponse.StatusCode < 400 then
+      begin
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := CriptoOptions.Key;
+        RequestText := AContext.InContent;
 
-      Host := AContext.Host;
-      Protocol := '1.1';
-      if SSL.Enabled then
-        HttpVersion := 'HTTPS'
-      else
-        HttpVersion := 'HTTP';
+        Host := AContext.Host;
+        Protocol := '1.1';
+        if SSL.Enabled then
+          HttpVersion := 'HTTPS'
+        else
+          HttpVersion := 'HTTP';
 
-      AContext.InContent := '';
-      AContext.InHeaders := '';
+        AContext.InContent := '';
+        AContext.InHeaders := '';
+      end;
     end;
 
-    vResponse := ProcessCommands(vRequest);
+    ProcessCommands(vRequest, vResponse);
+    with vResponse do
+    begin
+      AContext.OutContent := ResponseText;
+      AContext.OutContentType := ContentType;
 
-    try
-      with vResponse do
-      begin
-        AContext.OutContent := ResponseText;
-        AContext.OutContentType := ContentType;
+      if vResponse.ContentDisposition <> '' then
+        Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
-        if vResponse.ContentDisposition <> '' then
-          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+      if vResponse.ContentEncoding <> '' then
+        Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
 
-        if vResponse.ContentEncoding <> '' then
-          Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+      if vResponse.AcceptEncoding <> '' then
+        Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+      if vResponse.ContentEncription <> '' then
+        Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+      AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
 
-        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
-
-        Result := StatusCode;
-      end;
-    finally
-      FreeAndNil(vResponse);
+      Result := StatusCode;
     end;
   finally
+    FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
 end;

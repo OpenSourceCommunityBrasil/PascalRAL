@@ -32,7 +32,6 @@ type
   TBytes = array of byte;
   {$IFEND}
 
-  TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd);
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS, amHEAD, amTRACE);

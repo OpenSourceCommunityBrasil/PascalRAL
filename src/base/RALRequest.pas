@@ -261,7 +261,25 @@ begin
 end;
 
 function TRALServerRequest.GetRequestEncStream(const AEncode: boolean): TStream;
+var
+  vContentType, vContentDisposition : StringRAL;
+  vCompress : TRALCompressType;
+  vCripto : TRALCriptoType;
 begin
+  // caso acontece com a Sagui, pois a mesma ja vem params separados
+  if FStream = nil then
+  begin
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
+
+    Params.CompressType := ctNone;
+    Params.CriptoOptions.CriptType := crNone;
+
+    FStream := Params.EncodeBody(vContentType, vContentDisposition);
+
+    Params.CompressType := vCompress;
+    Params.CriptoOptions.CriptType := vCripto;
+  end;
   Result := FStream;
 end;
 

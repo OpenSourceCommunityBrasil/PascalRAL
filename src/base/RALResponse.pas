@@ -275,7 +275,7 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 procedure TRALClientResponse.SetResponseText(const AValue: StringRAL);

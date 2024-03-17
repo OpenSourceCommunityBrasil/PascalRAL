@@ -68,5 +68,6 @@ end;
 
 initialization
   RegisterClass(TRALCompressZStd);
+  TRALCompress.UpdateDeclaredClasses;
 
 end.

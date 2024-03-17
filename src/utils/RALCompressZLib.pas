@@ -175,5 +175,6 @@ end;
 
 initialization
   RegisterClass(TRALCompressZLib);
+  TRALCompress.UpdateDeclaredClasses;
 
 end.

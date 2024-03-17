@@ -7,7 +7,6 @@ uses
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
-function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
 function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
@@ -16,7 +15,6 @@ function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALStringToDateTime(const AValue: StringRAL;
                              const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
-function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
 implementation
@@ -58,36 +56,6 @@ function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
   Result := GetEnumName(TypeInfo(TRALMethod), Ord(AMethod));
   Delete(Result, 1, 2); // delete 'am'
-end;
-
-function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
-var
-  vZLib, vZStd: boolean;
-begin
-  vZLib := GetClass('TRALCompressZLib') <> nil;
-  vZStd := GetClass('TRALCompressZStd') <> nil;
-
-  if vZLib and SameText(AStr, 'gzip') then
-    Result := ctGZip
-  else if vZLib and SameText(AStr, 'zlib') then
-    Result := ctZLib
-  else if vZLib and SameText(AStr, 'deflate') then
-    Result := ctDeflate
-  else if vZStd and SameText(AStr, 'zstd') then
-    Result := ctZStd
-  else
-    Result := ctNone;
-end;
-
-function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
-begin
-  case ACompress of
-    ctNone: Result := '';
-    ctGZip: Result := 'gzip';
-    ctDeflate: Result := 'deflate';
-    ctZLib: Result := 'zlib';
-    ctZStd: Result := 'zstd';
-  end;
 end;
 
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;

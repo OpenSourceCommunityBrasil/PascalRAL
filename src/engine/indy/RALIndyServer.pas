@@ -114,7 +114,9 @@ var
   vCookies: TStringList;
   vParam: TRALParam;
 begin
-  vRequest := TRALServerRequest.Create;
+  vRequest := CreateRequest;
+  vResponse := CreateResponse;
+
   try
     with vRequest do
     begin
@@ -129,7 +131,6 @@ begin
       ContentSize := ARequestInfo.ContentLength;
 
       Query := ARequestInfo.Document;
-
       Method := HTTPMethodToRALMethod(ARequestInfo.Command);
 
       if AContext.Data is TRALAuthorization then
@@ -142,110 +143,112 @@ begin
 
       Params.AppendParams(ARequestInfo.RawHeaders, rpkHEADER);
       Params.AppendParams(ARequestInfo.CustomHeaders, rpkHEADER);
-      Params.AppendParams(ARequestInfo.Params, rpkQUERY);
-
-      if ARequestInfo.Params.Count = 0 then
-      begin
-        Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
-        Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
-      end;
-
-      for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do
-      begin
-        vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
-        Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
-      end;
 
       ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := CriptoOptions.Key;
-
-      RequestStream := ARequestInfo.PostStream;
-
-      Host := ARequestInfo.Host;
-      vInt := Pos('/', ARequestInfo.Version);
-      if vInt > 0 then
+      ValidadeRequest(vRequest, vResponse);
+      if vResponse.StatusCode < 400 then
       begin
-        HttpVersion := Copy(ARequestInfo.Version, 1, vInt - 1);
-        Protocol := Copy(ARequestInfo.Version, vInt + 1, 3);
-      end
-      else
-      begin
-        HttpVersion := 'HTTP';
-        Protocol := '1.0';
+        Params.AppendParams(ARequestInfo.Params, rpkQUERY);
+
+        if ARequestInfo.Params.Count = 0 then
+        begin
+          Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
+          Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
+        end;
+
+        for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do
+        begin
+          vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
+          Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
+        end;
+
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := CriptoOptions.Key;
+
+        RequestStream := ARequestInfo.PostStream;
+
+        Host := ARequestInfo.Host;
+        vInt := Pos('/', ARequestInfo.Version);
+        if vInt > 0 then
+        begin
+          HttpVersion := Copy(ARequestInfo.Version, 1, vInt - 1);
+          Protocol := Copy(ARequestInfo.Version, vInt + 1, 3);
+        end
+        else
+        begin
+          HttpVersion := 'HTTP';
+          Protocol := '1.0';
+        end;
+
+        // limpando para economia de memoria
+        if (ARequestInfo.PostStream <> nil) then
+          ARequestInfo.PostStream.Size := 0;
+
+        ARequestInfo.RawHeaders.Clear;
+        ARequestInfo.CustomHeaders.Clear;
+        ARequestInfo.Cookies.Clear;
+        ARequestInfo.Params.Clear;
       end;
-
-      // limpando para economia de memoria
-      if (ARequestInfo.PostStream <> nil) then
-        ARequestInfo.PostStream.Size := 0;
-
-      ARequestInfo.RawHeaders.Clear;
-      ARequestInfo.CustomHeaders.Clear;
-      ARequestInfo.Cookies.Clear;
-      ARequestInfo.Params.Clear;
     end;
 
-    vResponse := ProcessCommands(vRequest);
+    ProcessCommands(vRequest, vResponse);
 
-    try
-      with vResponse do
+    with vResponse do
+    begin
+      AResponseInfo.ResponseNo := StatusCode;
+
+      AResponseInfo.Server := 'RAL_Indy';
+      AResponseInfo.ContentEncoding := ContentEncoding;
+      AResponseInfo.ContentDisposition := ContentDisposition;
+
+      vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+      if vParam <> nil then
       begin
-        AResponseInfo.ResponseNo := StatusCode;
-
-        AResponseInfo.Server := 'RAL_Indy';
-        AResponseInfo.ContentEncoding := ContentEncoding;
-        AResponseInfo.ContentDisposition := ContentDisposition;
-
-        vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
-        if vParam <> nil then
-        begin
-          AResponseInfo.WWWAuthenticate.Add(vParam.AsString);
-          vResponse.Params.DelParam('WWW-Authenticate');
-        end;
-
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
-
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
-
-        Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
-
-        vCookies := TStringList.Create;
-        try
-          Params.AssignParams(vCookies, rpkCOOKIE);
-          for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            vIdCookie := AResponseInfo.Cookies.Add;
-            vIdCookie.CookieName := vCookies.Names[vInt];
-            vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-          end;
-        finally
-          FreeAndNil(vCookies);
-        end;
-        AResponseInfo.ContentText := '';
-        AResponseInfo.ContentStream := ResponseStream;
-        AResponseInfo.ContentType := ContentType;
-        AResponseInfo.ContentDisposition := ContentDisposition;
-
-        AResponseInfo.ContentLength := 0;
-        AResponseInfo.FreeContentStream := False;
-
-        if AResponseInfo.ContentStream <> nil then
-        begin
-          AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
-          AResponseInfo.FreeContentStream := True;
-        end;
-
-        AResponseInfo.WriteContent;
+        AResponseInfo.WWWAuthenticate.Add(vParam.AsString);
+        vResponse.Params.DelParam('WWW-Authenticate');
       end;
-    finally
-      FreeAndNil(vResponse);
+
+      if vResponse.AcceptEncoding <> '' then
+        Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+
+      if vResponse.ContentEncription <> '' then
+        Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
+
+      Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
+
+      vCookies := TStringList.Create;
+      try
+        Params.AssignParams(vCookies, rpkCOOKIE);
+        for vInt := 0 to Pred(vCookies.Count) do
+        begin
+          vIdCookie := AResponseInfo.Cookies.Add;
+          vIdCookie.CookieName := vCookies.Names[vInt];
+          vIdCookie.Value := vCookies.ValueFromIndex[vInt];
+        end;
+      finally
+        FreeAndNil(vCookies);
+      end;
+      AResponseInfo.ContentText := '';
+      AResponseInfo.ContentStream := ResponseStream;
+      AResponseInfo.ContentType := ContentType;
+      AResponseInfo.ContentDisposition := ContentDisposition;
+
+      AResponseInfo.ContentLength := 0;
+      AResponseInfo.FreeContentStream := False;
+
+      if AResponseInfo.ContentStream <> nil then
+      begin
+        AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
+        AResponseInfo.FreeContentStream := True;
+      end;
+
+      AResponseInfo.WriteContent;
     end;
   finally
+    FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
 end;

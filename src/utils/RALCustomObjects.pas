@@ -95,18 +95,8 @@ end;
 { TRALHTTPHeaderInfo }
 
 function TRALHTTPHeaderInfo.GetAcceptCompress: TRALCompressType;
-var
-  vStr: StringRAL;
 begin
-  vStr := LowerCase(FAcceptEncoding);
-  if (Pos('gzip', vStr) > 0) then
-    Result := ctGZip
-  else if (Pos('deflate', vStr) > 0) then
-    Result := ctDeflate
-  else if (Pos('zlib', vStr) > 0) then
-    Result := ctZLib
-  else
-    Result := ctNone;
+  Result := TRALCompress.GetBestCompress(FAcceptEncoding);
 end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
@@ -254,24 +244,8 @@ begin
 end;
 
 function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
-var
-  vStr: StringRAL;
-  vZLib, vZStd : boolean;
 begin
-  vZLib := GetClass('TRALCompressZLib') <> nil;
-  vZStd := GetClass('TRALCompressZStd') <> nil;
-
-  vStr := LowerCase(FContentEncoding);
-  if vZLib and (Pos('gzip', vStr) > 0) then
-    Result := ctGZip
-  else if vZLib and (Pos('deflate', vStr) > 0) then
-    Result := ctDeflate
-  else if vZLib and (Pos('zlib', vStr) > 0) then
-    Result := ctZLib
-  else if vZStd and (Pos('zstd', vStr) > 0) then
-    Result := ctZStd
-  else
-    Result := ctNone;
+  Result := TRALCompress.GetBestCompress(FContentEncoding);
 end;
 
 function TRALHTTPHeaderInfo.GetCookie(const AName: StringRAL): StringRAL;
@@ -315,7 +289,7 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  FContentEncoding := CompressToStrCompress(AValue);
+  FContentEncoding := TRALCompress.CompressToString(AValue);
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;
@@ -341,7 +315,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if StrCompressToCompress(vEnc) <> ctNone then
+    if TRALCompress.StringToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;
@@ -369,7 +343,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if StrCompressToCompress(vEnc) <> ctNone then
+    if TRALCompress.StringToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;
