@@ -149,8 +149,9 @@ begin
     fsJSON : vFdFormat := sfJSON;
     fsBIN  : vFdFormat := sfBinary;
   end;
-
-  TFDDataSet(ADataset).SaveToStream(AStream, vFdFormat)
+  AStream.Size := 0;
+  TFDQuery(ADataset).SaveToStream(AStream, vFdFormat);
+  AStream.Position := 0;
 end;
 
 procedure TRALDBFireDAC.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;

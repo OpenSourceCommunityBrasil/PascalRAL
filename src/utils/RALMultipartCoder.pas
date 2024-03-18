@@ -98,7 +98,7 @@ type
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
                         const AFileName: StringRAL = ''; const AContentType: StringRAL = '');
     procedure AddFile(const AName: StringRAL; const AFileName: StringRAL; const AContentType: StringRAL = '');
-    function AsStream: TStringStream;
+    function AsStream: TStream;
     function FormDataCount: IntegerRAL;
     procedure SaveToFile(const AFileName: StringRAL);    
   published
@@ -192,21 +192,22 @@ end;
 
 procedure TRALMultipartEncoder.SaveToFile(const AFileName: StringRAL);
 var
-  vFile: TStringStream;
+  vFile: TStream;
 begin
   vFile := AsStream;
   try
-    vFile.SaveToFile(AFileName);
+    SaveStream(vFile, AFileName);
   finally
     vFile.Free;
   end;
 end;
 
-function TRALMultipartEncoder.AsStream: TStringStream;
+function TRALMultipartEncoder.AsStream: TStream;
 var
   vInt: IntegerRAL;
   vHeaderFile, vHeaderField, vHeaderEnd: StringRAL;
   vItem: TRALMultipartFormData;
+  vString : StringRAL;
 begin
   vHeaderFile := '----------------------------%s' + #13#10
                + 'Content-Disposition: %s; name="%s"; filename="%s"' + #13#10
@@ -218,25 +219,29 @@ begin
 
   vHeaderEnd := '----------------------------%s--';
 
-  Result := TStringStream.Create;
+  Result := TMemoryStream.Create;
   for vInt := 0 to Pred(FFormData.Count) do
   begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
     if vItem.Filename <> '' then
     begin
-      Result.WriteString(Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
-                         vItem.Filename, vItem.ContentType]));
+      vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
+                        vItem.Filename, vItem.ContentType]);
     end
     else
     begin
-      Result.WriteString(Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
-                         vItem.ContentType]));
+      vString := Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
+                        vItem.ContentType]);
     end;
+    Result.Write(vString[PosIniStr], Length(vString));
     vItem.AsStream.Position := 0;
     Result.CopyFrom(vItem.AsStream, vItem.AsStream.Size);
-    Result.WriteString(#13#10);
+
+    vString := #13#10;
+    Result.Write(vString[PosIniStr], Length(vString));
   end;
-  Result.WriteString(Format(vHeaderEnd, [Boundary]));
+  vString := Format(vHeaderEnd, [Boundary]);
+  Result.Write(vString[PosIniStr], Length(vString));
   Result.Position := 0;
 end;
 
@@ -256,16 +261,7 @@ end;
 
 function TRALMultipartFormData.GetBufferString: StringRAL;
 begin
-  if FBufferStream.InheritsFrom(TStringStream) then
-  begin
-    Result := TStringStream(FBufferStream).DataString;
-  end
-  else
-  begin
-    FBufferStream.Position := 0;
-    SetLength(Result, FBufferStream.Size);
-    FBufferStream.Write(Result[PosIniStr], FBufferStream.Size);
-  end;
+  Result := StreamToString(FBufferStream);
 end;
 
 procedure TRALMultipartFormData.SetBufferString(const AValue: StringRAL);
@@ -273,7 +269,7 @@ begin
   if (FBufferStream <> nil) and (FFreeBuffer) then
     FBufferStream.Free;
 
-  FBufferStream := TStringStream.Create(AValue);
+  FBufferStream := StringToStream(AValue);
   FFreeBuffer := True;
 end;
 
@@ -293,7 +289,7 @@ end;
 constructor TRALMultipartFormData.Create;
 begin
   inherited;
-  FBufferStream := TStringStream.Create;
+  FBufferStream := TMemoryStream.Create;
   FDisposition := 'form-data';
   FDescription := '';
   FName := '';
@@ -393,7 +389,7 @@ begin
   if FileExists(AFileName) then
     FBufferStream := TFileStream.Create(AFileName, fmOpenRead)
   else
-    FBufferStream := TStringStream.Create;
+    FBufferStream := TMemoryStream.Create;
   FFreeBuffer := True;
 end;
 

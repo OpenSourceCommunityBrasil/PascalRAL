@@ -198,7 +198,6 @@ begin
               AResponse.ContentType := FStorageOutPut.ContentType;
               FStorageOutPut.SaveToStream(vQuery, vResult);
             end;
-            vResult.Position := 0;
             AResponse.Params.AddParam('Stream', vResult, rpkBODY);
             AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
           finally
