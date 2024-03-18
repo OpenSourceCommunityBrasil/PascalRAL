@@ -147,7 +147,7 @@ begin
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      ValidadeRequest(vRequest, vResponse);
+      ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < 400 then
       begin
         Params.AppendParams(ARequestInfo.Params, rpkQUERY);

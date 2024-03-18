@@ -10,6 +10,9 @@ type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
   TRALFormatStorage = (fsJSON, fsBIN);
 
+  // sempre jogar a qtOther pra frente, ela tem valor igual a 255
+  TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
+
   { TRALDBBase }
 
   TRALDBBase = class(TPersistent)
@@ -31,7 +34,7 @@ type
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
-    function GetDriverName: StringRAL; virtual; abstract;
+    function GetDriverName: TRALDBDriverType; virtual; abstract;
 
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
                              AFormat: TRALFormatStorage); virtual; abstract;
@@ -44,7 +47,7 @@ type
 
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property StorageOutPut: TRALDBStorageLink read FStorageOutPut write FStorageOutPut;
-    property DriverName : StringRAL read GetDriverName;
+    property DriverName : TRALDBDriverType read GetDriverName;
   end;
 
   TRALDBClass = class of TRALDBBase;

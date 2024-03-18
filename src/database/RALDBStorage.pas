@@ -80,6 +80,9 @@ type
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
 
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream);
+
+    class function FieldTypeToStorageFieldType(AFieldType : TFieldType) : TRALStorageFieldType;
+    class function StorageFieldTypeToFieldType(AFieldType : TRALStorageFieldType) : TFieldType;
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
@@ -104,6 +107,82 @@ type
 implementation
 
 { TRALDBStorage }
+
+class function TRALDBStorage.FieldTypeToStorageFieldType(
+  AFieldType: TFieldType): TRALStorageFieldType;
+begin
+  case AFieldType of
+    ftFixedWideChar,
+    ftGuid,
+    ftFixedChar,
+    ftWideString,
+    ftString   : Result := sftString;
+
+    {$IFNDEF FPC}
+      ftShortint : Result := sftInt1;
+      ftLongWord : Result := sftuInt4;
+      ftByte     : Result := sftuInt1;
+    {$ENDIF}
+    ftSmallint : Result := sftInt2;
+    ftWord     : Result := sftuInt2;
+    ftInteger  : Result := sftInt4;
+    ftLargeint,
+    ftAutoInc  : Result := sftInt8;
+
+    ftBoolean  : Result := sftBoolean;
+
+    {$IFNDEF FPC}
+      ftSingle,
+      ftExtended,
+    {$ENDIF}
+    ftFMTBcd,
+    ftFloat,
+    ftCurrency,
+    ftBCD      : Result := sftDouble;
+
+    {$IFNDEF FPC}
+      ftTimeStampOffset,
+      ftOraTimeStamp,
+      ftOraInterval,
+    {$ENDIF}
+    ftTimeStamp,
+    ftDate,
+    ftTime,
+    ftDateTime : Result := sftDateTime;
+
+    {$IFNDEF FPC}
+      ftStream,
+    {$ENDIF}
+    ftOraBlob,
+    ftTypedBinary,
+    ftGraphic,
+    ftBlob,
+    ftBytes,
+    ftVarBytes : Result := sftBlob;
+
+    ftWideMemo,
+    ftOraClob,
+    ftMemo,
+    ftFmtMemo  : Result := sftMemo;
+
+// ignorados
+{
+    ftObject: ;
+    ftConnection: ;
+    ftParams: ;
+    ftParadoxOle: ;
+    ftDBaseOle: ;
+    ftCursor: ;
+    ftADT: ;
+    ftArray: ;
+    ftReference: ;
+    ftDataSet: ;
+    ftVariant: ;
+    ftInterface: ;
+    ftIDispatch: ;
+}
+  end;
+end;
 
 procedure TRALDBStorage.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
@@ -212,83 +291,39 @@ begin
   EndWrite;
 end;
 
+class function TRALDBStorage.StorageFieldTypeToFieldType(
+  AFieldType: TRALStorageFieldType): TFieldType;
+begin
+  case AFieldType of
+    {$IFNDEF FPC}
+      sftInt1    : Result := ftShortint;
+      sftuInt1   : Result := ftByte;
+      sftuInt4   : Result := ftLongWord;
+    {$ELSE}
+      sftInt1    : Result := ftSmallint;
+      sftuInt1   : Result := ftSmallint;
+      sftuInt4   : Result := ftLargeint;
+    {$ENDIF}
+    sftInt2    : Result := ftSmallint;
+    sftInt4    : Result := ftInteger;
+    sftInt8    : Result := ftLargeint;
+    sftuInt2   : Result := ftWord;
+    sftuInt8   : Result := ftLargeint;
+    sftDouble  : Result := ftFloat;
+    sftBoolean : Result := ftBoolean;
+    sftString  : Result := ftString;
+    sftBlob    : Result := ftBlob;
+    sftMemo    : Result := ftMemo;
+    sftDateTime: Result := ftDateTime;
+  end;
+end;
+
 procedure TRALDBStorage.WriteField(AField: TField);
 var
   vType : TRALStorageFieldType;
   vFlags : Byte;
 begin
-  case AField.DataType of
-    ftFixedWideChar,
-    ftGuid,
-    ftFixedChar,
-    ftWideString,
-    ftString   : vType := sftString;
-
-    {$IFNDEF FPC}
-      ftShortint : vType := sftInt1;
-      ftLongWord : vType := sftuInt4;
-      ftByte     : vType := sftuInt1;
-    {$ENDIF}
-    ftSmallint : vType := sftInt2;
-    ftWord     : vType := sftuInt2;
-    ftInteger  : vType := sftInt4;
-    ftLargeint,
-    ftAutoInc  : vType := sftInt8;
-
-    ftBoolean  : vType := sftBoolean;
-
-    {$IFNDEF FPC}
-      ftSingle,
-      ftExtended,
-    {$ENDIF}
-    ftFMTBcd,
-    ftFloat,
-    ftCurrency,
-    ftBCD      : vType := sftDouble;
-
-    {$IFNDEF FPC}
-      ftTimeStampOffset,
-      ftOraTimeStamp,
-      ftOraInterval,
-    {$ENDIF}
-    ftTimeStamp,
-    ftDate,
-    ftTime,
-    ftDateTime : vType := sftDateTime;
-
-    {$IFNDEF FPC}
-      ftStream,
-    {$ENDIF}
-    ftOraBlob,
-    ftTypedBinary,
-    ftGraphic,
-    ftBlob,
-    ftBytes,
-    ftVarBytes : vType := sftBlob;
-
-    ftWideMemo,
-    ftOraClob,
-    ftMemo,
-    ftFmtMemo  : vType := sftMemo;
-
-// ignorados
-{
-    ftObject: ;
-    ftConnection: ;
-    ftParams: ;
-    ftParadoxOle: ;
-    ftDBaseOle: ;
-    ftCursor: ;
-    ftADT: ;
-    ftArray: ;
-    ftReference: ;
-    ftDataSet: ;
-    ftVariant: ;
-    ftInterface: ;
-    ftIDispatch: ;
-}
-  end;
-
+  vType := FieldTypeToStorageFieldType(AField.DataType);
   vFlags := 0;
   if AField.ReadOnly then
     vFlags := vFlags + 1;

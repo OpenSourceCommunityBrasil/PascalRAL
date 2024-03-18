@@ -222,7 +222,7 @@ begin
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      FParent.ValidadeRequest(vRequest, vResponse);
+      FParent.ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < 400 then
       begin
         // fields tambem

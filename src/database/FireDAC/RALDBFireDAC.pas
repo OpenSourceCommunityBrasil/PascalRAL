@@ -28,7 +28,7 @@ type
     function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
-    function GetDriverName: StringRAL; override;
+    function GetDriverName: TRALDBDriverType; override;
 
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
                              AFormat: TRALFormatStorage); override;
@@ -75,9 +75,9 @@ begin
   end;
 end;
 
-function TRALDBFireDAC.GetDriverName: StringRAL;
+function TRALDBFireDAC.GetDriverName: TRALDBDriverType;
 begin
-  Result := 'firedac';
+  Result := qtFiredac;
 end;
 
 constructor TRALDBFireDAC.Create;

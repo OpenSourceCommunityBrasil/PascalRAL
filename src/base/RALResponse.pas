@@ -262,6 +262,7 @@ function TRALClientResponse.GetResponseEncStream(
   const AEncode: boolean): TStream;
 begin
   Result := FStream;
+  Result.Position := 0;
 end;
 
 function TRALClientResponse.GetResponseEncText(

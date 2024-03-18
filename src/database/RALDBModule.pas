@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALJSON, RALDBStorage, RALBase64;
+  RALConsts, RALTypes, RALDBStorage, RALBase64, RALQueryStructure;
 
 type
   { TRALDBModule }
@@ -28,9 +28,9 @@ type
 
     function FindDatabaseDriver: TRALDBBase;
     procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                  var AParams: TParams; var AType : StringRAL);
+                                  var AParams: TParams; var AType : TRALDBDriverType);
     procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                    var AParams: TParams; var AType : StringRAL);
+                                    var AParams: TParams; var AType : TRALDBDriverType);
 
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -108,80 +108,28 @@ begin
 end;
 
 procedure TRALDBModule.RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                           var AParams: TParams; var AType : StringRAL);
+                                           var AParams: TParams; var AType : TRALDBDriverType);
 var
-  vJSON, vObj: TRALJSONObject;
-  vParams: TRALJSONArray;
-  vInt: integer;
-  vParam: TParam;
+  vQryStruc : TRALQueryStructure;
 begin
-  vJSON := TRALJSONObject(TRALJSON.ParseJSON(ARALParam.AsString));
+  vQryStruc := TRALQueryStructure.Create;
   try
-    AType := vJSON.Get('type').AsString;
-    ASQL := vJSON.Get('sql').AsString;
-
-    AParams := TParams.Create(nil);
-
-    vParams := TRALJSONArray(vJSON.Get('params'));
-    for vInt := 0 to Pred(vParams.Count) do
-    begin
-      vObj := TRALJSONObject(vParams.Get(vInt));
-
-      vParam := TParam(AParams.Add);
-      vParam.Name := vObj.Get('name').AsString;
-      vParam.Size := vObj.Get('size').AsInteger;
-      vParam.DataType := TFieldType(vObj.Get('type').AsInteger);
-    end;
+    vQryStruc.ImportFromJSON(ARALParam.AsStream, ASQL, AParams, AType);
   finally
-    vJSON.Free;
+    FreeAndNil(vQryStruc);
   end;
 end;
 
 procedure TRALDBModule.RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                             var AParams: TParams; var AType : StringRAL);
+                                             var AParams: TParams; var AType : TRALDBDriverType);
 var
-  vStream: TStream;
-  vParam: TParam;
-
-  vInt1, vInt2: Int64RAL;
-  vByte: Byte;
-  vString: StringRAL;
-  vBool: boolean;
-  vBytes: TBytes;
+  vQryStruc : TRALQueryStructure;
 begin
-  vStream := ARALParam.AsStream;
+  vQryStruc := TRALQueryStructure.Create;
   try
-    vStream.Position := 5;
-    vStream.Read(vInt1, SizeOf(vInt1));
-
-    // pegando o texto do SQL
-    SetLength(ASQL, vInt1);
-    vStream.Read(ASQL[PosIniStr], vInt1);
-
-    // total de pametros
-    vStream.Read(vInt1, SizeOf(vInt1));
-    vInt2 := 1;
-    while vInt2 <= vInt1 do
-    begin
-      vParam := TParam(AParams.Add);
-
-      // name
-      vStream.Read(vByte, SizeOf(vByte));
-      SetLength(vString, vByte);
-      vStream.Read(vString[PosIniStr], vByte);
-      vParam.Name := vString;
-
-      // datatype
-      vStream.Read(vByte, SizeOf(vByte));
-      // vParam.DataType := vByte;
-
-      vInt1 := vParam.GetDataSize;
-      // valor
-      // vParam.AsBytes;
-      vInt2 := vInt2 + 1;
-    end;
+    vQryStruc.ImportFromBinary(ARALParam.AsStream, ASQL, AParams, AType);
   finally
-    FreeAndNil(vStream);
+    FreeAndNil(vQryStruc);
   end;
 end;
 
@@ -189,7 +137,7 @@ procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
   vParam: TRALParam;
-  vType : StringRAL;
+  vType : TRALDBDriverType;
   vSQL: StringRAL;
   vParams: TParams;
   vQuery: TDataSet;
@@ -201,10 +149,7 @@ begin
   try
     if vDB <> nil then
     begin
-      vParam := ARequest.ParamByName('query');
-
-      if vParam = nil then
-        vParam := ARequest.Body;
+      vParam := ARequest.Body;
 
       if vParam <> nil then
       begin
@@ -221,7 +166,7 @@ begin
             RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
 
           try
-            if SameText(vType, vDB.DriverName) then
+            if vType = vDB.DriverName then
               vQuery := vDB.OpenNative(vSQL, vParams)
             else
               vQuery := vDB.OpenCompatible(vSQL, vParams);
@@ -240,7 +185,7 @@ begin
               vString := Format('{"erro":"%s"}', [vString]);
               vResult.Write(vString[PosIniStr], Length(vString));
             end
-            else if SameText(vType, vDB.DriverName) then
+            else if vType = vDB.DriverName then
             begin
               AResponse.ContentType := vParam.ContentType;
               if vParam.ContentType = rctAPPLICATIONJSON then
@@ -254,7 +199,8 @@ begin
               FStorageOutPut.SaveToStream(vQuery, vResult);
             end;
             vResult.Position := 0;
-            AResponse.ResponseStream := vResult;
+            AResponse.Params.AddParam('Stream', vResult, rpkBODY);
+            AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
           finally
             FreeAndNil(vResult)
           end;
@@ -277,7 +223,7 @@ procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
   vParam: TRALParam;
-  vType: StringRAL;
+  vType: TRALDBDriverType;
   vSQL: StringRAL;
   vParams: TParams;
   vString: StringRAL;

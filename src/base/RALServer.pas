@@ -183,7 +183,7 @@ type
     ///  processed into response that will be answered to the client
     procedure ProcessCommands(ARequest: TRALRequest; AResponse : TRALResponse);
     /// Validate requests headers before ProcessCommands
-    procedure ValidadeRequest(ARequest: TRALRequest; AResponse : TRALResponse);
+    procedure ValidateRequest(ARequest: TRALRequest; AResponse : TRALResponse);
     /// create handle request of server
     function CreateRequest : TRALRequest;
     /// create handle response of server
@@ -704,7 +704,7 @@ begin
   CleanExpiredBlockedList;
 end;
 
-procedure TRALServer.ValidadeRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALServer.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if not ARequest.HasValidContentEncoding then
   begin

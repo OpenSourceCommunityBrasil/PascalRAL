@@ -263,7 +263,7 @@ begin
       Query := sg_httpreq_path(Areq);
       Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
-      vServer.ValidadeRequest(vRequest, vResponse);
+      vServer.ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < 400 then
       begin
         // fields

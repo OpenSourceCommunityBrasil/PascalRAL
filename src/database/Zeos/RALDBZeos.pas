@@ -25,7 +25,7 @@ type
     function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
-    function GetDriverName: StringRAL; override;
+    function GetDriverName: TRALDBDriverType; override;
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
                              AFormat: TRALFormatStorage); override;
   end;
@@ -74,9 +74,9 @@ begin
   end;
 end;
 
-function TRALDBZeos.GetDriverName: StringRAL;
+function TRALDBZeos.GetDriverName: TRALDBDriverType;
 begin
-  Result := 'zeos';
+  Result := qtZeos;
 end;
 
 constructor TRALDBZeos.Create;
