@@ -28,6 +28,8 @@ type
                           sftBlob, sftMemo, sftDateTime);
 
 
+  { TRALDBStorage }
+
   TRALDBStorage = class(TPersistent)
   private
     FStream : TStream;
@@ -80,6 +82,7 @@ type
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
 
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream);
+    procedure LoadFromFile(ADataset : TDataSet; AFileName: StringRAL);
 
     class function FieldTypeToStorageFieldType(AFieldType : TFieldType) : TRALStorageFieldType;
     class function StorageFieldTypeToFieldType(AFieldType : TRALStorageFieldType) : TFieldType;
@@ -87,15 +90,18 @@ type
 
   TRALDBStorageClass = class of TRALDBStorage;
 
+  { TRALDBStorageLink }
+
   TRALDBStorageLink = class(TRALComponent)
   protected
     function GetContentType: StringRAL; virtual;
   public
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
-    procedure SaveToFile(ADataset: TDataSet; AFileName: string);
+    procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 
-    procedure LoadFromFile(ADataset: TDataSet; AFileName: string); overload;
+    procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
 
     class function GetStorageClass : TRALDBStorageClass; virtual;
 
@@ -228,6 +234,18 @@ begin
 
   EndReadRecords;
   EndRead;
+end;
+
+procedure TRALDBStorage.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
+var
+  vStream : TFileStream;
+begin
+  vStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    LoadFromStream(ADataset, vStream);
+  finally
+    vStream.Free;
+  end;
 end;
 
 procedure TRALDBStorage.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
@@ -490,9 +508,28 @@ begin
     Result := nil;
 end;
 
-procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: string);
+procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
+var
+  vStor: TRALDBStorage;
 begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.LoadFromFile(ADataset, AFileName);
+  finally
+    FreeAndNil(vStor);
+  end;
+end;
 
+procedure TRALDBStorageLink.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+var
+  vStor: TRALDBStorage;
+begin
+  vStor := GetStorageClass.Create;
+  try
+    vStor.LoadFromStream(ADataset, AStream);
+  finally
+    FreeAndNil(vStor);
+  end;
 end;
 
 procedure TRALDBStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
@@ -507,7 +544,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: string);
+procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 var
   vStor: TRALDBStorage;
 begin

@@ -71,9 +71,7 @@ begin
   Response.ResponseText := '';
 
   if KeepALive then
-    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
-  else
-    AParams.AddParam('Connection', 'close', rpkHEADER);
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER);
 
   Request.ContentCompress := CompressType;
   if CompressType <> ctNone then

@@ -81,9 +81,7 @@ begin
   AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
   if KeepAlive then
-    AParams.AddParam('Connection', 'keep-alive', rpkHEADER)
-  else
-    AParams.AddParam('Connection', 'close', rpkHEADER);
+    AParams.AddParam('Connection', 'keep-alive', rpkHEADER);
 
   Request.ContentCompress := CompressType;
   if CompressType <> ctNone then

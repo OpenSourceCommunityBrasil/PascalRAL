@@ -9,7 +9,7 @@ uses
 type
   { TRALQueryStructure }
 
-  TRALQueryStructure = class(TPersistent)
+  TRALQueryStructure = class
   protected
     function GetQuerySQL(ADataset : TDataSet): StringRAL;
     function GetQueryClass(ADataset : TDataSet): TRALDBDriverType;
@@ -253,7 +253,11 @@ begin
           Result.Write(vWord, SizeOf(vWord));
         end;
         sftuInt4   : begin
-          vCardinal := vParams.Items[vInt].AsLongWord;
+          {$IFDEF FPC}
+            vCardinal := vParams.Items[vInt].AsLargeInt;
+          {$ELSE}
+            vCardinal := vParams.Items[vInt].AsLongWord;
+          {$ENDIF}
           Result.Write(vCardinal, SizeOf(vCardinal));
         end;
         sftuInt8   : begin

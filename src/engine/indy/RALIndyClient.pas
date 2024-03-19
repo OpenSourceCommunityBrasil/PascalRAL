@@ -50,6 +50,7 @@ constructor TRALIndyClient.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := TIdHTTP.Create(nil);
+  FHttp.HTTPOptions := [hoKeepOrigProtocol];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   SetEngine('Indy ' + gsIdVersion);
 end;
@@ -81,9 +82,7 @@ begin
   Response.ResponseText := '';
 
   if KeepAlive then
-    FHttp.Request.Connection := 'keep-alive'
-  else
-    FHttp.Request.Connection := 'close';
+    FHttp.Request.Connection := 'keep-alive';
 
   Request.ContentCompress := CompressType;
   if CompressType <> ctNone then

@@ -51,7 +51,7 @@ type
     /// Save FContent with the given Filename and the foldername.
     procedure SaveToFile(AFolderName, AFileName: StringRAL); overload;
     function SaveToStream: TStream; overload;
-    procedure SaveToStream(var AStream: TStream); overload;
+    procedure SaveToStream(AStream: TStream); overload;
     function Size: Int64;
 
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
@@ -298,22 +298,21 @@ begin
   SaveToFile('', '');
 end;
 
-procedure TRALParam.SaveToStream(var AStream: TStream);
+procedure TRALParam.SaveToStream(AStream: TStream);
 begin
-  AStream.Size := 0;
-
   if (FContent = nil) or (FContent.Size = 0) then
     Exit;
 
   FContent.Position := 0;
   AStream.CopyFrom(FContent, FContent.Size);
-  AStream.Position := 0;
 end;
 
 function TRALParam.SaveToStream: TStream;
 begin
   Result := TMemoryStream.Create;
   SaveToStream(Result);
+
+  Result.Position := 0;
 end;
 
 procedure TRALParam.SaveToFile(AFolderName, AFileName: StringRAL);
@@ -328,7 +327,7 @@ begin
 
   if AFileName = '' then
   begin
-    if FileName = '' then
+    if FFileName = '' then
     begin
       vMime := TRALMIMEType.Create;
       try
@@ -341,7 +340,7 @@ begin
     end
     else
     begin
-      AFileName := FileName;
+      AFileName := FFileName;
     end;
   end;
 
@@ -831,13 +830,6 @@ begin
   vInt2 := Count(rpkFIELD);
 
   AContentDisposition := '';
-
-{
-  TODO:
-  Content-Disposition: form-data; name="fieldName"; filename="filename.jpg"
-  usar o Content-Disposition, com ele pode-se responder file
-  mas como identicar de um jeito facil se eh file
-}
 
   if vInt1 + vInt2 = 1 then
   begin
