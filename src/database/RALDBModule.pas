@@ -201,7 +201,7 @@ begin
             AResponse.Params.AddParam('Stream', vResult, rpkBODY);
             AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
           finally
-            FreeAndNil(vResult)
+            FreeAndNil(vResult);
           end;
         finally
           FreeAndNil(vParams);

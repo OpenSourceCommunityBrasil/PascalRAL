@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, DB,
   FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI,
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
-  FireDAC.Phys.PG, Firedac.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
+  FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
   RALDBBase, RALTypes;
 
@@ -16,31 +16,30 @@ type
 
   TRALDBFireDAC = class(TRALDBBase)
   private
-    FConnector : TFDConnection;
+    FConnector: TFDConnection;
   protected
     procedure Conectar; override;
-    function FindProtocol : StringRAL;
+    function FindProtocol: StringRAL;
   public
     constructor Create; override;
     destructor Destroy; override;
 
-    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
-    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
-    procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                      var ALastInsertId : Int64RAL); override;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                      var ALastInsertId: Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
 
-    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             AFormat: TRALFormatStorage); override;
+    procedure SaveFromStream(ADataset: TDataset; AStream: TStream;
+      AFormat: TRALFormatStorage); override;
   end;
 
   { TRALDBFireDACLink }
 
   TRALDBFireDACLink = class(TRALDBLink)
   public
-    function GetDBClass : TRALDBClass; override;
+    function GetDBClass: TRALDBClass; override;
   end;
-
 
 implementation
 
@@ -61,17 +60,21 @@ begin
     FConnector.Params.Add('Password=' + Password);
   if Port <> 0 then
     FConnector.Params.Add('Port=' + IntToStr(Port));
-  FConnector.LoginPrompt   := False;
+  FConnector.LoginPrompt := False;
   FConnector.Open;
 end;
 
-function TRALDBFireDAC.FindProtocol : StringRAL;
+function TRALDBFireDAC.FindProtocol: StringRAL;
 begin
   case DatabaseType of
-    dtFirebird   : Result := 'FB';
-    dtSQLite     : Result := 'SQLite';
-    dtMySQL      : Result := 'MySQL';
-    dtPostgreSQL : Result := 'PG';
+    dtFirebird:
+      Result := 'FB';
+    dtSQLite:
+      Result := 'SQLite';
+    dtMySQL:
+      Result := 'MySQL';
+    dtPostgreSQL:
+      Result := 'PG';
   end;
 end;
 
@@ -94,8 +97,8 @@ end;
 
 function TRALDBFireDAC.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery : TFDQuery;
-  vInt : integer;
+  vQuery: TFDQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -118,8 +121,8 @@ end;
 
 function TRALDBFireDAC.OpenNative(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery : TFDQuery;
-  vInt : integer;
+  vQuery: TFDQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -139,26 +142,28 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBFireDAC.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+procedure TRALDBFireDAC.SaveFromStream(ADataset: TDataset; AStream: TStream;
   AFormat: TRALFormatStorage);
 var
-  vFdFormat : TFDStorageFormat;
+  vFdFormat: TFDStorageFormat;
 begin
   inherited;
   case AFormat of
-    fsJSON : vFdFormat := sfJSON;
-    fsBIN  : vFdFormat := sfBinary;
+    fsJSON:
+      vFdFormat := sfJSON;
+    fsBIN:
+      vFdFormat := sfBinary;
   end;
   AStream.Size := 0;
   TFDQuery(ADataset).SaveToStream(AStream, vFdFormat);
   AStream.Position := 0;
 end;
 
-procedure TRALDBFireDAC.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                                var ALastInsertId : Int64RAL);
+procedure TRALDBFireDAC.ExecSQL(ASQL: StringRAL; AParams: TParams;
+  var ARowsAffected: Int64RAL; var ALastInsertId: Int64RAL);
 var
-  vQuery : TFDQuery;
-  vInt : integer;
+  vQuery: TFDQuery;
+  vInt: integer;
 begin
   Conectar;
 
@@ -172,7 +177,8 @@ begin
     vQuery.SQL.Text := ASQL;
     for vInt := 0 to Pred(AParams.Count) do
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+      vQuery.ParamByName(AParams.Items[vInt].Name).DataType :=
+        AParams.Items[vInt].DataType;
       vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
     end;
     vQuery.ExecSQL;
@@ -206,4 +212,3 @@ begin
 end;
 
 end.
-

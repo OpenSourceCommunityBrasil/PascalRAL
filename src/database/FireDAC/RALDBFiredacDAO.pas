@@ -12,28 +12,28 @@ type
   [ComponentPlatforms(pidAllPlatforms)]
   TRALFDQuery = class(TFDQuery)
   private
+    vIP: StringRAL;
+    vPort: StringRAL;
     vRALClient: TRALClient;
     vRALClientClone: TRALClient;
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
-    vIP: StringRAL;
-    vPort: StringRAL;
     procedure SetRALFDConnectionServer(const value: StringRAL);
     procedure SetRALClient(const value: TRALClient);
     procedure RebuildParams(ParamCount: IntegerRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure OpenRemote;
     procedure ApplyUpdatesRemote;
     procedure ExecSQLRemote;
+    procedure OpenRemote;
   published
     property IP: StringRAL read vIP write vIP;
     property Port: StringRAL read vPort write vPort;
-    property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
     property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
+    property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
   end;
 
   TOnQueryError = procedure(ASender, AInitiator: TObject; var AException: Exception)
@@ -43,25 +43,25 @@ type
   [ComponentPlatforms(pidAllPlatforms)]
   TRALFDConnection = class(TFDConnection)
   private
+    vDriverName: StringRAL;
     vRALServer: TRALServer;
     vRALWebModule: TRALWebModule;
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
-    vDriverName: StringRAL;
+    procedure SetDriverName(const value: StringRAL);
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetRALServer(const value: TRALServer);
-    procedure SetDriverName(const value: StringRAL);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property RALServer: TRALServer read vRALServer write SetRALServer;
+    property DriverName: StringRAL read vDriverName write SetDriverName;
     property OnQueryError: TOnQueryError read vOnQueryError write SetOnQueryError;
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
-    property DriverName: StringRAL read vDriverName write SetDriverName;
+    property RALServer: TRALServer read vRALServer write SetRALServer;
   end;
 
 resourcestring
