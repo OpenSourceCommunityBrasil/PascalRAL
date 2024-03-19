@@ -58,7 +58,7 @@ end;
 
 function TRALnetHTTPClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL;
 var
-  vInt: IntegerRAL;
+  vInt, vIdx: IntegerRAL;
   vSource : TStream;
   vContentType, vContentDisposition : StringRAL;
   vHeaders: TNetHeaders;
@@ -95,12 +95,16 @@ begin
     if vContentDisposition <> '' then
       AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
 
+    vIdx := 0;
     SetLength(vHeaders, AParams.Count(rpkHEADER));
     for vInt := 0 to Pred(AParams.Count) do
     begin
       vParam := AParams.Index[vInt];
       if vParam.Kind = rpkHEADER then
-        vHeaders[vInt] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+      begin
+        vHeaders[vIdx] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+        vIdx := vIdx + 1;
+      end;
     end;
 
     try

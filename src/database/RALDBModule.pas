@@ -160,7 +160,7 @@ begin
         vResult := nil;
 
         try
-          if vParam.ContentType = rctAPPLICATIONJSON then
+          if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
             RALParamJSONToQuery(vParam, vSQL, vParams, vType)
           else
             RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
@@ -245,7 +245,7 @@ begin
         vRowsAffect := 0;
         vLastId := 0;
         try
-          if vParam.ContentType = rctAPPLICATIONJSON then
+          if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
             RALParamJSONToQuery(vParam, vSQL, vParams, vType)
           else
             RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
@@ -261,7 +261,7 @@ begin
 
           vResult := TMemoryStream.Create;
           try
-            if vParam.ContentType = rctAPPLICATIONJSON then
+            if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
             begin
               AResponse.ContentType := rctAPPLICATIONJSON;
               if vString <> '' then
