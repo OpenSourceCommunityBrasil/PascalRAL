@@ -132,7 +132,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="SynopseRAL.dcr"/>
-        <DCCReference Include="PascalRAL.dcp"/>
+        <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseRegister.pas"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>

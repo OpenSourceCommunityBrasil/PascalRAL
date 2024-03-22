@@ -30,7 +30,7 @@ package SynopseRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRALDsgn;
 
 contains
   RALSynopseClient in '..\..\..\src\engine\synopse\RALSynopseClient.pas',

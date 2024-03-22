@@ -30,7 +30,7 @@ package NetHttpRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRALDsgn;
 
 contains
   RALnetHTTPClient in '..\..\..\src\engine\netHTTP\RALnetHTTPClient.pas',

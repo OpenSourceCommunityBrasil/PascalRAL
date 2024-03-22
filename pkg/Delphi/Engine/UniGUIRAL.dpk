@@ -30,7 +30,7 @@ package UniGUIRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL,
+  PascalRALDsgn,
   Vcl,
   vclimg,
   designide,

@@ -30,7 +30,7 @@ package SaguiRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRALDsgn;
 
 contains
   RALSaguiRegister in '..\..\..\src\engine\sagui\RALSaguiRegister.pas',

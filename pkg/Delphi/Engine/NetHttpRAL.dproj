@@ -130,7 +130,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="NetHttpRAL.dcr"/>
-        <DCCReference Include="PascalRAL.dcp"/>
+        <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\engine\netHTTP\RALnetHTTPClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\netHTTP\RALNetHTTPRegister.pas"/>
         <BuildConfiguration Include="Base">
