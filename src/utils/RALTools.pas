@@ -85,7 +85,7 @@ var
   vInt: IntegerRAL;
 begin
   Result := '';
-  for vInt := RALLowStr(AValue) to RALHighStr(AValue) do
+  for vInt := POSINISTR to RALHighStr(AValue) do
   begin
     if AValue[vInt] in ['0'..'9'] then
       Result := Result + AValue[vInt];
@@ -107,8 +107,8 @@ begin
   sSeg := '0';
   sMil := '0';
 
-  vInt2 := RALLowStr(AValue);
-  for vInt1 := RALLowStr(AFormat) to RALHighStr(AFormat) do
+  vInt2 := POSINISTR;
+  for vInt1 := POSINISTR to RALHighStr(AFormat) do
   begin
     if vInt2 <= RALHighStr(AValue) then
     begin

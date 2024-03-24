@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes;
+  RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes;
 
 type
   TRALDBStorageJSON = class(TRALDBStorage)
@@ -21,7 +21,7 @@ type
     procedure BeginWriteRecords; override;
 
     procedure WriteField(AName : StringRAL;
-                         AType : TRALStorageFieldType;
+                         AType : TRALFieldType;
                          AFlags : Byte;
                          ASize : IntegerRAL); override;
 
@@ -155,7 +155,7 @@ begin
 end;
 
 procedure TRALDBStorageJSON.WriteField(AName: StringRAL;
-  AType: TRALStorageFieldType; AFlags: Byte; ASize: IntegerRAL);
+  AType: TRALFieldType; AFlags: Byte; ASize: IntegerRAL);
 var
   vStr : StringRAL;
 begin

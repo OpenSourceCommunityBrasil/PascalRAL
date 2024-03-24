@@ -99,7 +99,7 @@ var
   vStr: StringRAL;
 begin
   Result := '';
-  vInt := RALLowStr(AUrl);
+  vInt := POSINISTR;
   vLen := RALHighStr(AUrl);
   while vInt <= vLen do
   begin
@@ -140,7 +140,7 @@ var
   vInt, vChr: IntegerRAL;
 begin
   Result := '';
-  vInt := RALLowStr(AUrl);
+  vInt := POSINISTR;
   while vInt <= RALHighStr(AUrl) do
   begin
     vChr := Ord(AUrl[vInt]);
@@ -159,7 +159,7 @@ begin
   vCode := '';
   vEsc := False;
 
-  vInt := RALLowStr(AHtml);
+  vInt := POSINISTR;
   while vInt <= RALHighStr(AHtml) do
   begin
     if AHtml[vInt] = '&' then
@@ -206,7 +206,7 @@ var
   vInt, vChr: IntegerRAL;
 begin
   Result := '';
-  vInt := RALLowStr(AHtml);
+  vInt := POSINISTR;
   while vInt <= RALHighStr(AHtml) do
   begin
     vChr := Ord(AHtml[vInt]);

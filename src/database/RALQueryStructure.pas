@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB, TypInfo,
-  RALTypes, RALDBBase, RALJSON, RALBase64, RALDBStorage;
+  RALTypes, RALDBBase, RALJSON, RALBase64, RALDBStorage, RALDBTypes;
 
 type
   { TRALQueryStructure }
@@ -29,12 +29,11 @@ type
                                var AParams : TParams;
                                var AQueryType : TRALDBDriverType); overload;
     procedure ImportFromBinary(AStream: TStream; ADataset : TDataSet); overload;
+
+    function GetStructureVersion : byte;
   end;
 
 implementation
-
-const
-  cStructureVersion: byte = 1;
 
 { TRALQueryStructure }
 
@@ -114,14 +113,14 @@ var
   vParams: TParams;
   vInt : IntegerRAL;
   vString : StringRAL;
-  vStorType : TRALStorageFieldType;
+  vStorType : TRALFieldType;
 begin
   Result := TMemoryStream.Create;
   vString := '';
 
   vjObj := TRALJSONObject.Create;
   try
-    vjObj.Add('version', cStructureVersion);
+    vjObj.Add('version', GetStructureVersion);
     vjObj.Add('class', Ord(GetQueryClass(ADataset)));
     vjObj.Add('sql', GetQuerySQL(ADataset));
 
@@ -135,21 +134,21 @@ begin
 
         vjParam.Add('name', vParams.Items[vInt].Name);
 
-        vStorType := TRALDBStorage.FieldTypeToStorageFieldType(vParams.Items[vInt].DataType);
+        vStorType := TRALDB.FieldTypeToRALFieldType(vParams.Items[vInt].DataType);
         vjParam.Add('datatype', Ord(vStorType));
 
         vjParam.Add('size', vParams.Items[vInt].Size);
 
         // values
         case vStorType of
-          sftInt1,
-          sftInt2,
-          sftInt4,
-          sftInt8,
-          sftuInt1,
-          sftuInt2,
-          sftuInt4,
-          sftuInt8   : vjParam.Add('value', vParams.Items[vInt].AsLargeInt);
+          sftShortInt,
+          sftSmallInt,
+          sftInteger,
+          sftInt64,
+          sftByte,
+          sftWord,
+          sftCardinal,
+          sftQWord   : vjParam.Add('value', vParams.Items[vInt].AsLargeInt);
           sftDouble  : vjParam.Add('value', vParams.Items[vInt].AsFloat);
           sftBoolean : vjParam.Add('value', vParams.Items[vInt].AsBoolean);
           sftString  : vjParam.Add('value', vParams.Items[vInt].AsString);
@@ -182,7 +181,7 @@ var
   vFloat: Double;
   vInt64 : Int64RAL;
   vBytes : TBytes;
-  vStorType : TRALStorageFieldType;
+  vStorType : TRALFieldType;
   vBool : boolean;
   vShort : ShortInt;
   vSmallInt : SmallInt;
@@ -192,7 +191,8 @@ var
 begin
   Result := TMemoryStream.Create;
   // version
-  Result.Write(cStructureVersion, SizeOf(cStructureVersion));
+  vByte := GetStructureVersion;
+  Result.Write(vByte, SizeOf(vByte));
 
   // class dataset
   vByte := Ord(GetQueryClass(ADataset));
@@ -218,7 +218,7 @@ begin
       Result.Write(vString[PosIniStr], vByte);
 
       // datatype
-      vStorType := TRALDBStorage.FieldTypeToStorageFieldType(vParams.Items[vInt].DataType);
+      vStorType := TRALDB.FieldTypeToRALFieldType(vParams.Items[vInt].DataType);
       vByte := Ord(vStorType);
       Result.Write(vByte, SizeOf(vByte));
 
@@ -228,31 +228,31 @@ begin
 
       // values
       case vStorType of
-        sftInt1    : begin
+        sftShortInt : begin
           vShort := vParams.Items[vInt].AsInteger;
           Result.Write(vShort, SizeOf(vShort));
         end;
-        sftInt2    : begin
+        sftSmallInt : begin
           vSmallInt := vParams.Items[vInt].AsInteger;
           Result.Write(vSmallInt, SizeOf(vSmallInt));
         end;
-        sftInt4    : begin
+        sftInteger : begin
           vSize := vParams.Items[vInt].AsInteger;
           Result.Write(vSize, SizeOf(vSize));
         end;
-        sftInt8    : begin
+        sftInt64 : begin
           vInt64 := vParams.Items[vInt].AsLargeInt;
           Result.Write(vInt64, SizeOf(vInt64));
         end;
-        sftuInt1   : begin
+        sftByte : begin
           vByte := vParams.Items[vInt].AsInteger;
           Result.Write(vByte, SizeOf(vByte));
         end;
-        sftuInt2   : begin
+        sftWord : begin
           vWord := vParams.Items[vInt].AsInteger;
           Result.Write(vWord, SizeOf(vWord));
         end;
-        sftuInt4   : begin
+        sftCardinal : begin
           {$IFDEF FPC}
             vCardinal := vParams.Items[vInt].AsLargeInt;
           {$ELSE}
@@ -260,7 +260,7 @@ begin
           {$ENDIF}
           Result.Write(vCardinal, SizeOf(vCardinal));
         end;
-        sftuInt8   : begin
+        sftQWord : begin
           vQWord := vParams.Items[vInt].AsLargeInt;
           Result.Write(vQWord, SizeOf(vQWord));
         end;
@@ -312,7 +312,7 @@ var
   vInt64 : Int64RAL;
   vBytes : TBytes;
   vParam : TParam;
-  vStorType : TRALStorageFieldType;
+  vStorType : TRALFieldType;
   vBool : boolean;
   vShort : ShortInt;
   vSmallInt : SmallInt;
@@ -324,7 +324,7 @@ begin
 
   // version
   AStream.Read(vByte, SizeOf(vByte));
-  if vByte <> cStructureVersion then
+  if vByte <> GetStructureVersion then
     raise Exception.Create('Versão da estrutura não confere');
 
   // class dataset
@@ -352,8 +352,8 @@ begin
 
     // datatype
     AStream.Read(vByte, SizeOf(vByte));
-    vStorType := TRALStorageFieldType(vByte);
-    vParam.DataType := TRALDBStorage.StorageFieldTypeToFieldType(vStorType);
+    vStorType := TRALFieldType(vByte);
+    vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
     // size
     AStream.Read(vSize, SizeOf(vSize));
@@ -361,39 +361,39 @@ begin
 
     // values
     case vStorType of
-      sftInt1    : begin
+      sftShortInt : begin
         AStream.Read(vShort, SizeOf(vShort));
         vParam.AsInteger := vShort;
       end;
-      sftInt2    : begin
+      sftSmallInt : begin
         AStream.Read(vSmallInt, SizeOf(vSmallInt));
         vParam.AsInteger := vSmallInt;
       end;
-      sftInt4    : begin
+      sftInteger : begin
         AStream.Read(vSize, SizeOf(vSize));
         vParam.AsInteger := vSize;
       end;
-      sftInt8    : begin
+      sftInt64 : begin
         AStream.Read(vInt64, SizeOf(vInt64));
         vParam.AsLargeInt := vInt64;
       end;
-      sftuInt1   : begin
+      sftByte : begin
         AStream.Read(vByte, SizeOf(vByte));
         vParam.AsInteger := vByte;
       end;
-      sftuInt2   : begin
+      sftWord : begin
         AStream.Read(vWord, SizeOf(vWord));
         vParam.AsInteger := vWord;
       end;
-      sftuInt4   : begin
+      sftCardinal : begin
         AStream.Read(vCardinal, SizeOf(vCardinal));
         vParam.AsLargeInt := vCardinal;
       end;
-      sftuInt8   : begin
+      sftQWord : begin
         AStream.Read(vQWord, SizeOf(vQWord));
         vParam.AsLargeInt := vQWord;
       end;
-      sftDouble  : begin
+      sftDouble : begin
         AStream.Read(vFloat, SizeOf(vFloat));
         vParam.AsFloat := vFloat;
       end;
@@ -401,13 +401,13 @@ begin
         AStream.Read(vBool, SizeOf(vBool));
         vParam.AsBoolean := vBool;
       end;
-      sftString  : begin
+      sftString : begin
         AStream.Read(vInt64, SizeOf(vInt64));
         SetLength(vString, vInt64);
         AStream.Read(vString[PosIniStr], vInt64);
         vParam.AsString := vString;
       end;
-      sftBlob    : begin
+      sftBlob : begin
         AStream.Read(vInt64, SizeOf(vInt64));
         SetLength(vBytes, vInt64);
         AStream.Read(vBytes[0], vInt64);
@@ -440,6 +440,11 @@ begin
   //TODO SetQueryParams
 end;
 
+function TRALQueryStructure.GetStructureVersion: byte;
+begin
+  Result := 1;
+end;
+
 procedure TRALQueryStructure.ImportFromJSON(AStream: TStream;
   ADataset: TDataSet);
 var
@@ -460,7 +465,7 @@ var
   vjArr : TRALJSONArray;
   vjParam : TRALJSONObject;
   vParam : TParam;
-  vStorType : TRALStorageFieldType;
+  vStorType : TRALFieldType;
   vBytes : TBytes;
 begin
   vjObj := TRALJSONObject(TRALJSON.ParseJSON(AStream));
@@ -468,7 +473,7 @@ begin
     if vjObj <> nil then
     begin
       vInt := vjObj.Get('version').AsInteger;
-      if vInt <> cStructureVersion then
+      if vInt <> GetStructureVersion then
         raise Exception.Create('Versão da estrutura não confere');
 
       vInt := vjObj.Get('class').AsInteger;
@@ -487,20 +492,20 @@ begin
           vParam := TParam(AParams.Add);
           vParam.Name := vjParam.Get('name').AsString;
 
-          vStorType := TRALStorageFieldType(vjParam.Get('datatype').AsInteger);
-          vParam.DataType := TRALDBStorage.StorageFieldTypeToFieldType(vStorType);
+          vStorType := TRALFieldType(vjParam.Get('datatype').AsInteger);
+          vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
           vParam.Size := vjParam.Get('size').AsInteger;
 
           case vStorType of
-            sftInt1,
-            sftInt2,
-            sftInt4,
-            sftuInt1,
-            sftuInt2    : vParam.AsInteger := vjParam.Get('value').AsInteger;
-            sftInt8,
-            sftuInt4,
-            sftuInt8    : vParam.AsLargeInt := vjParam.Get('value').AsInteger;
+            sftShortInt,
+            sftSmallInt,
+            sftInteger,
+            sftByte,
+            sftWord     : vParam.AsInteger := vjParam.Get('value').AsInteger;
+            sftInt64,
+            sftCardinal,
+            sftQWord    : vParam.AsLargeInt := vjParam.Get('value').AsInteger;
             sftDouble   : vParam.AsFloat := vjParam.Get('value').AsFloat;
             sftBoolean  : vParam.AsBoolean := vjParam.Get('value').AsBoolean;
             sftString   : vParam.AsString := vjParam.Get('value').AsString;

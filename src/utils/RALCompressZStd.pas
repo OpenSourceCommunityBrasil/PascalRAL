@@ -26,7 +26,7 @@ implementation
 
 procedure TRALCompressZStd.InitCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array[0..4095] of byte;
+  vBuf: array of byte;
   vZip: TStream;
   vCount: Integer;
   vOptions: TZSTDCompressOptions;
@@ -35,6 +35,11 @@ begin
   vOptions.CompressionLevel := 3;
   vOptions.Workers := 0;
   vOptions.Check;
+
+  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vBuf, AInStream.Size);
 
   vZip := TZSTDCompressStream.Create(AOutStream, vOptions);
   try
@@ -49,11 +54,16 @@ end;
 
 procedure TRALCompressZStd.InitDeCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array[0..4095] of byte;
+  vBuf: array of byte;
   vOption: TZSTDDecompressOptions;
   vZip : TZSTDDecompressStream;
   vCount: Integer;
 begin
+  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vBuf, AInStream.Size);
+
   vOption.Init;
   vZip := TZSTDDecompressStream.Create(AInStream, vOption);
   try

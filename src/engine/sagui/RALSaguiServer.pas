@@ -4,6 +4,8 @@ unit RALSaguiServer;
   {$MODE DELPHI}
 {$ENDIF}
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -182,7 +184,7 @@ begin
   else
     SetEngine('Sagui');
 
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWINDOWS}
     if SgLib.Handle <> 0 then
       FLibPath := GetModuleName(SgLib.Handle);
   {$ELSE}

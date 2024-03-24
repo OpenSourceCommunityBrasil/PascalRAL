@@ -596,7 +596,7 @@ begin
     ANameSeparator := FindNameSeparator(ASource);
 
   vLine := '';
-  for vInt := RALLowStr(ASource) to RALHighStr(ASource) do
+  for vInt := POSINISTR to RALHighStr(ASource) do
   begin
     if ASource[vInt] = #13 then
     begin
@@ -631,13 +631,13 @@ begin
   repeat
     vIndex := Pos(ALineSeparator, AText);
     if vIndex > 0 then
-      vLine := Copy(AText, PosIniStr, vIndex - 1)
+      vLine := Copy(AText, POSINISTR, vIndex - 1)
     else
       vLine := AText;
     if vLine <> '' then
     begin
       AppendParamLine(vLine, ANameSeparator, AKind);
-      Delete(AText, RALLowStr(AText), vIndex);
+      Delete(AText, POSINISTR, vIndex);
     end
   until vIndex = 0;
 end;
@@ -1063,7 +1063,7 @@ begin
   vPos := Pos(ANameSeparator, ALine);
   if vPos > 0 then
   begin
-    vName := Copy(ALine, RALLowStr(ALine), vPos - 1);
+    vName := Copy(ALine, POSINISTR, vPos - 1);
     vName := TRALHTTPCoder.DecodeURL(vName);
 
     vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));

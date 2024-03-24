@@ -44,33 +44,16 @@ type
   TRALServerOptions = set of TRALServerOption;
 
 const
-  {$IFDEF HAS_FMX}
-    {$IFNDEF DELPHI12UP}
-      PosIniStr = 0;
-    {$ELSE}
-      PosIniStr = 1;
-    {$ENDIF}
+  {$IF DEFINED(FPC) or DEFINED(DELPHIXE3UP)}
+    POSINISTR = Low(String);
   {$ELSE}
-    PosIniStr = 1;
-  {$ENDIF}
+    POSINISTR = 1;
+  {$IFEND}
+  DEFAULTBUFFERSTREAMSIZE = 52428800;
 
-function RALLowStr(AStr: StringRAL): IntegerRAL;
-function RALHighStr(const AStr: StringRAL): IntegerRAL;
+function RALHighStr(const AStr: StringRAL): integer;
 
 implementation
-
-function RALLowStr(AStr: StringRAL): integer;
-begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2UP}
-      Result := 1;
-    {$ELSE}
-      Result := Low(AStr);
-    {$ENDIF}
-  {$ELSE}
-    Result := Low(AStr);
-  {$ENDIF}
-end;
 
 function RALHighStr(const AStr: StringRAL): integer;
 begin

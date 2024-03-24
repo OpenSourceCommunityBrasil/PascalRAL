@@ -4,9 +4,12 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage, RALMIMETypes;
+  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes;
 
 type
+
+  { TRALDBStorageBIN }
+
   TRALDBStorageBIN = class(TRALDBStorage)
   private
     FPosRecs : Int64RAL;
@@ -19,7 +22,7 @@ type
     procedure BeginWriteRecords; override;
 
     procedure WriteField(AName : StringRAL;
-                         AType : TRALStorageFieldType;
+                         AType : TRALFieldType;
                          AFlags : Byte;
                          ASize : IntegerRAL); override;
 
@@ -37,6 +40,8 @@ type
     procedure WriteRecordDateTime(AValue : TDateTime); override;
     procedure WriteRecordBlob(AValue : TStream); override;
     procedure WriteRecordMemo(AValue : TStream); override;
+
+    procedure BeginRead; override;
   end;
 
   TRALDBStorageBINLink = class(TRALDBStorageLink)
@@ -51,8 +56,16 @@ implementation
 { TRALDBStorageBIN }
 
 procedure TRALDBStorageBIN.BeginWrite;
+var
+  vHeader : TBytes;
 begin
- // header ??
+  SetLength(vHeader, 4);
+  vHeader[0] := 18; // R
+  vHeader[1] := 01; // A
+  vHeader[2] := 12; // L
+  vHeader[3] := GetStoreVersion; // version
+
+  Stream.Write(vHeader, Length(vHeader));
 end;
 
 procedure TRALDBStorageBIN.BeginWriteFields(AFields : IntegerRAL);
@@ -100,7 +113,7 @@ begin
 end;
 
 procedure TRALDBStorageBIN.WriteField(AName: StringRAL;
-  AType: TRALStorageFieldType; AFlags: Byte; ASize: IntegerRAL);
+  AType: TRALFieldType; AFlags: Byte; ASize: IntegerRAL);
 var
   vByte : Byte;
 begin
@@ -190,6 +203,18 @@ begin
   vInt64 := AValue.Size;
   Stream.Write(vInt64, SizeOf(vInt64));
   Stream.CopyFrom(AValue, AValue.Size);
+end;
+
+procedure TRALDBStorageBIN.BeginRead;
+var
+  vBytes : TBytes;
+begin
+  SetLength(vBytes, 4);
+  Stream.Read(vBytes[0], 4);
+  // header
+  if (vBytes[0] <> 18) or (vBytes[1] <> 1) and (vBytes[2] <> 12) and
+     (vBytes[3] <> GetStoreVersion) then
+    raise Exception.Create('Arquivo não é um Storage RAL Binary');
 end;
 
 procedure TRALDBStorageBIN.WriteRecordNull(AIsNull : Boolean);

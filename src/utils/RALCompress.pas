@@ -41,7 +41,7 @@ implementation
 
 const
   cCompressTypeStr : array[TRALCompressType] of StringRAL = (
-                          '','deflate','zlib','gzip','zstd');
+                          '', 'deflate', 'zlib', 'gzip', 'zstd');
   cCompressLibsClass : array[TRALCompressLibs] of StringRAL = (
                           'TRALCompressZLib','TRALCompressZStd');
 

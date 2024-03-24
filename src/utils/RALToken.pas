@@ -298,7 +298,7 @@ begin
     vParams.Sorted := True;
     vParam := '';
     vAuth := AValue + ',';
-    vIni := RALLowStr(vAuth);
+    vIni := POSINISTR;
     vLen := RALHighStr(vAuth);
     vQuoted := False;
     while vIni <= vLen do
@@ -474,7 +474,7 @@ begin
     vParams.Sorted := True;
     vParam := '';
     vAuth := AValue + ',';
-    vIni := RALLowStr(vAuth);
+    vIni := POSINISTR;
     vLen := RALHighStr(vAuth);
     while vIni <= vLen do
     begin
@@ -618,7 +618,7 @@ procedure TRALJWTParams.createNewId;
 var
   vBytes: TBytes;
 begin
-  vBytes := randomBytes(10);
+  vBytes := RandomBytes(10);
   FId := TRALBase64.Encode(vBytes);
 end;
 

@@ -36,7 +36,7 @@ const
 
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array[0..4095] of byte;
+  vBuf: array of byte;
   vZip: TCompressionStream;
   vCount, vInt: Integer;
   vSize: LongWord;
@@ -44,6 +44,11 @@ var
   vStreamCRC32: TStream;
 begin
   vSize := AInStream.Size;
+
+  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vBuf, AInStream.Size);
 
   if FFormat = ctGZip then
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
@@ -94,7 +99,7 @@ end;
 
 procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array[0..4095] of byte;
+  vBuf: array of byte;
   vZip: TDeCompressionStream;
   vCount, vInt: Integer;
   vCRCFile, vCRCFinal, vFileSize: LongWord;
@@ -110,6 +115,11 @@ begin
     AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
     AInStream.Position := Length(GZipHeader);
   end;
+
+  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vBuf, AInStream.Size);
 
   {$IFDEF FPC}
   if FFormat = ctZLib then

@@ -1,5 +1,7 @@
 unit RALMultipartCoder;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -49,7 +51,7 @@ type
   TRALMultipartDecoder = class
   private
     FBoundary: StringRAL;
-    FBuffer: array [0 .. 4095] of Byte;
+    FBuffer: array of Byte;
     FFormData: TList;
     FIndex: IntegerRAL;
     FItemForm: TRALMultipartFormData;
@@ -468,7 +470,7 @@ begin
       FIs13 := False;
     end;
 
-    if FIndex = 4096 then
+    if FIndex = Length(FBuffer) then
     begin
       {$IFDEF RAL_DEBUG}
         SetLength(vLine, FIndex);
@@ -559,6 +561,7 @@ constructor TRALMultipartDecoder.Create;
 begin
   inherited;
   FFormData := TList.Create;
+  SetLength(FBuffer, 65536);
 end;
 
 destructor TRALMultipartDecoder.Destroy;
@@ -571,13 +574,18 @@ end;
 
 procedure TRALMultipartDecoder.ProcessMultiPart(AStream: TStream);
 var
-  vInBuf: array [0 .. 4095] of Byte;
+  vInBuf: array of Byte;
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
   AStream.Position := 0;
   vPosition := 0;
   vSize := AStream.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vInBuf, vSize);
 
   FIndex := 0;
   FWaitSepEnd := False;
@@ -597,12 +605,17 @@ end;
 
 procedure TRALMultipartDecoder.ProcessMultiPart(const AString: StringRAL);
 var
-  vInBuf: array [0 .. 4095] of Byte;
+  vInBuf: array of Byte;
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
   vPosition := 0;
   vSize := Length(AString);
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vInBuf, vSize);
 
   FIndex := 0;
   FWaitSepEnd := False;
@@ -611,11 +624,11 @@ begin
 
   while vPosition < vSize do
   begin
-    vBytesRead := 4096;
-    if vSize - vPosition < 4096 then
+    vBytesRead := Length(vInBuf);
+    if vSize - vPosition < Length(vInBuf) then
       vBytesRead := vSize - vPosition;
 
-    Move(AString[vPosition + PosIniStr], vInBuf[0], vBytesRead);
+    Move(AString[vPosition + POSINISTR], vInBuf[0], vBytesRead);
     ProcessBuffer(@vInBuf[0], vBytesRead);
 
     vPosition := vPosition + vBytesRead;

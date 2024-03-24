@@ -7,27 +7,9 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects;
+  RALTypes, RALCustomObjects, RALDBTypes;
 
 type
-  {
-    ShortInt : 1 - Low: -128                 High: 127
-    Byte     : 1 - Low: 0                    High: 255
-    SmallInt : 2 - Low: -32768               High: 32767
-    Word     : 2 - Low: 0                    High: 65535
-    Integer  : 4 - Low: -2147483648          High: 2147483647
-    LongInt  : 4 - Low: -2147483648          High: 2147483647
-    Cardinal : 4 - Low: 0                    High: 4294967295
-    LongWord : 4 - Low: 0                    High: 4294967295
-    Int64    : 8 - Low: -9223372036854775808 High: 9223372036854775807
-    QWord    : 8 - Low: 0                    High: 18446744073709551615
-  }
-
-  TRALStorageFieldType = (sftInt1, sftInt2, sftInt4, sftInt8, sftuInt1, sftuInt2,
-                          sftuInt4, sftuInt8, sftDouble, sftBoolean, sftString,
-                          sftBlob, sftMemo, sftDateTime);
-
-
   { TRALDBStorage }
 
   TRALDBStorage = class(TPersistent)
@@ -40,7 +22,7 @@ type
 
     procedure WriteField(AField : TField); overload;
     procedure WriteField(AName : StringRAL;
-                         AType : TRALStorageFieldType;
+                         AType : TRALFieldType;
                          AFlags : Byte;
                          ASize : IntegerRAL); overload; virtual; abstract;
 
@@ -77,15 +59,14 @@ type
 
     // outhers
     property Stream : TStream read FStream;
+
+    function GetStoreVersion : byte;
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream);
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
 
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream);
     procedure LoadFromFile(ADataset : TDataSet; AFileName: StringRAL);
-
-    class function FieldTypeToStorageFieldType(AFieldType : TFieldType) : TRALStorageFieldType;
-    class function StorageFieldTypeToFieldType(AFieldType : TRALStorageFieldType) : TFieldType;
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
@@ -113,82 +94,6 @@ type
 implementation
 
 { TRALDBStorage }
-
-class function TRALDBStorage.FieldTypeToStorageFieldType(
-  AFieldType: TFieldType): TRALStorageFieldType;
-begin
-  case AFieldType of
-    ftFixedWideChar,
-    ftGuid,
-    ftFixedChar,
-    ftWideString,
-    ftString   : Result := sftString;
-
-    {$IFNDEF FPC}
-      ftShortint : Result := sftInt1;
-      ftLongWord : Result := sftuInt4;
-      ftByte     : Result := sftuInt1;
-    {$ENDIF}
-    ftSmallint : Result := sftInt2;
-    ftWord     : Result := sftuInt2;
-    ftInteger  : Result := sftInt4;
-    ftLargeint,
-    ftAutoInc  : Result := sftInt8;
-
-    ftBoolean  : Result := sftBoolean;
-
-    {$IFNDEF FPC}
-      ftSingle,
-      ftExtended,
-    {$ENDIF}
-    ftFMTBcd,
-    ftFloat,
-    ftCurrency,
-    ftBCD      : Result := sftDouble;
-
-    {$IFNDEF FPC}
-      ftTimeStampOffset,
-      ftOraTimeStamp,
-      ftOraInterval,
-    {$ENDIF}
-    ftTimeStamp,
-    ftDate,
-    ftTime,
-    ftDateTime : Result := sftDateTime;
-
-    {$IFNDEF FPC}
-      ftStream,
-    {$ENDIF}
-    ftOraBlob,
-    ftTypedBinary,
-    ftGraphic,
-    ftBlob,
-    ftBytes,
-    ftVarBytes : Result := sftBlob;
-
-    ftWideMemo,
-    ftOraClob,
-    ftMemo,
-    ftFmtMemo  : Result := sftMemo;
-
-// ignorados
-{
-    ftObject: ;
-    ftConnection: ;
-    ftParams: ;
-    ftParadoxOle: ;
-    ftDBaseOle: ;
-    ftCursor: ;
-    ftADT: ;
-    ftArray: ;
-    ftReference: ;
-    ftDataSet: ;
-    ftVariant: ;
-    ftInterface: ;
-    ftIDispatch: ;
-}
-  end;
-end;
 
 procedure TRALDBStorage.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
@@ -309,39 +214,12 @@ begin
   EndWrite;
 end;
 
-class function TRALDBStorage.StorageFieldTypeToFieldType(
-  AFieldType: TRALStorageFieldType): TFieldType;
-begin
-  case AFieldType of
-    {$IFNDEF FPC}
-      sftInt1    : Result := ftShortint;
-      sftuInt1   : Result := ftByte;
-      sftuInt4   : Result := ftLongWord;
-    {$ELSE}
-      sftInt1    : Result := ftSmallint;
-      sftuInt1   : Result := ftSmallint;
-      sftuInt4   : Result := ftLargeint;
-    {$ENDIF}
-    sftInt2    : Result := ftSmallint;
-    sftInt4    : Result := ftInteger;
-    sftInt8    : Result := ftLargeint;
-    sftuInt2   : Result := ftWord;
-    sftuInt8   : Result := ftLargeint;
-    sftDouble  : Result := ftFloat;
-    sftBoolean : Result := ftBoolean;
-    sftString  : Result := ftString;
-    sftBlob    : Result := ftBlob;
-    sftMemo    : Result := ftMemo;
-    sftDateTime: Result := ftDateTime;
-  end;
-end;
-
 procedure TRALDBStorage.WriteField(AField: TField);
 var
-  vType : TRALStorageFieldType;
+  vType : TRALFieldType;
   vFlags : Byte;
 begin
-  vType := FieldTypeToStorageFieldType(AField.DataType);
+  vType := TRALDB.FieldTypeToRALFieldType(AField.DataType);
   vFlags := 0;
   if AField.ReadOnly then
     vFlags := vFlags + 1;
@@ -463,6 +341,11 @@ begin
   }
     end;
   end;
+end;
+
+function TRALDBStorage.GetStoreVersion: byte;
+begin
+  Result := 1;
 end;
 
 { TRALDBStorageLink }

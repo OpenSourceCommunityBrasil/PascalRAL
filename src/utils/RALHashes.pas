@@ -309,7 +309,7 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TStream);
 var
-  vInBuf: array[0..4095] of byte;
+  vInBuf: array of byte;
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
@@ -319,6 +319,11 @@ begin
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vInBuf, vSize);
 
   while vPosition < vSize do
   begin

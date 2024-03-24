@@ -522,8 +522,8 @@ end;
 
 function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array [0 .. 8191] of byte;
-  vOutBuf: array [0 .. 8191] of byte;
+  vInBuf: array of byte;
+  vOutBuf: array of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize: Int64RAL;
   vPaddind: IntegerRAL;
@@ -534,6 +534,17 @@ begin
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+  begin
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE);
+    SetLength(vOutBuf, DEFAULTBUFFERSTREAMSIZE);
+  end
+  else
+  begin
+    SetLength(vInBuf, vSize);
+    SetLength(vOutBuf, vSize);
+  end;
 
   Result := TMemoryStream.Create;
   Result.Size := AValue.Size + 32;
@@ -575,8 +586,8 @@ end;
 
 function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array [0 .. 4095] of byte;
-  vOutBuf: array [0 .. 4095] of byte;
+  vInBuf: array of byte;
+  vOutBuf: array of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize: Int64RAL;
   vPad1, vPad2: byte;
@@ -587,6 +598,17 @@ begin
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+  begin
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE);
+    SetLength(vOutBuf, DEFAULTBUFFERSTREAMSIZE);
+  end
+  else
+  begin
+    SetLength(vInBuf, vSize);
+    SetLength(vOutBuf, vSize);
+  end;
 
   Result := TMemoryStream.Create;
   Result.Size := AValue.Size;

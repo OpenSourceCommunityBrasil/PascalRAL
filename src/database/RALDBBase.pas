@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALDBStorage;
+  RALTypes, RALCustomObjects, RALDBTypes, RALDBStorage;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
@@ -12,6 +12,7 @@ type
 
   // sempre jogar a qtOther pra frente, ela tem valor igual a 255
   TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
+
 
   { TRALDBBase }
 
@@ -58,7 +59,5 @@ type
   end;
 
 implementation
-
-{ TRALDBBase }
 
 end.
