@@ -4,7 +4,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, Data.DB, System.TypInfo, System.Variants,
-  FireDAC.comp.Client, FireDAC.Stan.Intf,
+  FireDAC.comp.Client, FireDAC.comp.DataSet, FireDAC.Stan.Intf,
   RALClient, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse;
 
 type
@@ -20,7 +20,7 @@ type
     vRowsAffectedRemote: Int64;
     procedure SetRALFDConnectionServer(const value: StringRAL);
     procedure SetRALClient(const value: TRALClient);
-    procedure RebuildParams(ParamCount: IntegerRAL);
+    procedure ClientConfig;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -98,7 +98,7 @@ var
   vStreamAux: TMemoryStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
-  i, x, t, id: integer;
+  i, x, t: integer;
 begin
   try
     try
@@ -115,15 +115,19 @@ begin
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      RebuildParams(Self.Params.Count);
       vStringStreamAux.Position := 0;
+
+      ClientConfig;
+
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
+
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
@@ -150,16 +154,19 @@ begin
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
+
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '2', rpkBODY);
+
       vRALClientClone.Post;
+
       if vRALClientClone.Response.StatusCode = 200 then
       begin
-        Self.CommitUpdates;
         Self.vRowsAffectedRemote :=
           StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
       end
@@ -177,6 +184,7 @@ begin
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
+    Finalize(vBytesAux);
   end;
 end;
 
@@ -187,7 +195,7 @@ var
   vStreamAux: TMemoryStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
-  i, x, t, id: integer;
+  i, x, t: integer;
 begin
   try
     try
@@ -206,15 +214,19 @@ begin
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      RebuildParams(Self.Params.Count);
       vStringStreamAux.Position := 0;
+
+      ClientConfig;
+
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
+
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
@@ -239,17 +251,23 @@ begin
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
+
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '1', rpkBODY);
+
       vStreamAux.Clear;
+
       vAuxMemTable.Data := Self.Delta;
       vAuxMemTable.SaveToStream(vStreamAux, sfBinary);
       vStreamAux.Position := 0;
+
       vRALClientClone.Request.Params.AddParam('Stream', vStreamAux, rpkBODY);
+
       vRALClientClone.Post;
 
       if vRALClientClone.Response.StatusCode = 200 then
@@ -274,6 +292,7 @@ begin
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
+    Finalize(vBytesAux);
   end;
 end;
 
@@ -283,7 +302,7 @@ var
   vStreamAux: TStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
-  i, x, t, id: integer;
+  i, x, t: integer;
 begin
   try
     try
@@ -300,15 +319,19 @@ begin
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      RebuildParams(Self.Params.Count);
       vStringStreamAux.Position := 0;
+
+      ClientConfig;
+
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+
       vRALClientClone.Request.Params.AddParam('ParamCount',
         Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
         SetLength(vBytesAux, Self.Params[i].GetDataSize);
+
         Self.Params[i].GetData(PByte(vBytesAux));
 
         if ((Self.Params[i].IsNull = false) and
@@ -333,17 +356,21 @@ begin
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
+
         vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+
         vRALClientClone.Request.Params.AddParam('F' + i.ToString,
           GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
       vRALClientClone.Request.Params.AddParam('Type', '0', rpkBODY);
+
       vRALClientClone.Post;
 
       if vRALClientClone.Response.StatusCode = 200 then
       begin
         TMemoryStream(vStreamAux).Clear;
+
         vRALClientClone.Response.ParamByName('Stream').SaveToStream(vStreamAux);
         vStreamAux.Position := 0;
 
@@ -353,8 +380,10 @@ begin
         end;
 
         Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
+
         Self.vRowsAffectedRemote :=
           StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
+
         Self.CachedUpdates := true;
       end
       else
@@ -371,6 +400,7 @@ begin
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
+    Finalize(vBytesAux);
   end;
 end;
 
@@ -386,7 +416,7 @@ begin
   vRALFDConnectionServer := value;
 end;
 
-procedure TRALFDQuery.RebuildParams(ParamCount: integer);
+procedure TRALFDQuery.ClientConfig;
 begin
   vRALClientClone.BaseURL := vIP + ':' + vPort;
   vRALClientClone.SetRoute(vRALFDConnectionServer + 'Route/Query');
@@ -416,7 +446,9 @@ var
   vBinaryReader: TBinaryReader;
   vAuxParamStream: TStream;
   vAuxStringStream: TStream;
-  vAuxPBytes: TArray<Byte>;
+  vBytesAux: TArray<Byte>;
+  vNeedAddParam: boolean;
+  vAuxException: string;
   i: integer;
   vAuxConnClone: TFDConnection;
 begin
@@ -429,6 +461,8 @@ begin
       vAuxStringStream := nil;
       vAuxParamStream := nil;
       vAuxConnClone := nil;
+      vAuxException := '';
+      vNeedAddParam := true;
 
       vAuxConnClone := TFDConnection(Self.CloneConnection);
       vAuxStream := TMemoryStream.Create;
@@ -452,30 +486,42 @@ begin
 
       if StrToInt(ARequest.ParamByName('ParamCount').AsString) > 0 then
       begin
+        if vQueryAux.Params.Count > 0 then
+          vNeedAddParam := false;
+
         for i := 0 to StrToInt(ARequest.ParamByName('ParamCount').AsString) - 1 do
         begin
           TMemoryStream(vAuxParamStream).Clear;
           vAuxParamStream.Position := 0;
+
           ARequest.ParamByName('P' + i.ToString).SaveToStream(vAuxParamStream);
           vAuxParamStream.Position := 0;
-          vAuxPBytes := vBinaryReader.ReadBytes(vAuxParamStream.Size);
+
+          vBytesAux := vBinaryReader.ReadBytes(vAuxParamStream.Size);
           vAuxParamStream.Position := 0;
-          vQueryAux.Params.Add;
+
+          if vNeedAddParam then
+            vQueryAux.Params.Add;
+
           vQueryAux.Params[i].DataType :=
             TFieldType(GetEnumValue(Typeinfo(TFieldType),
             ARequest.ParamByName('F' + i.ToString).AsString));
-          vQueryAux.Params[i].SetData(PByte(vAuxPBytes), Length(vAuxPBytes));
+
+          vQueryAux.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
 
           if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
             vQueryAux.Params[i].Clear;
 
           if ARequest.ParamByName('Type').AsString = '1' then
           begin
-            vQueryAux2.Params.Add;
+            if vNeedAddParam then
+              vQueryAux2.Params.Add;
+
             vQueryAux2.Params[i].DataType :=
               TFieldType(GetEnumValue(Typeinfo(TFieldType),
               ARequest.ParamByName('F' + i.ToString).AsString));
-            vQueryAux2.Params[i].SetData(PByte(vAuxPBytes), Length(vAuxPBytes));
+
+            vQueryAux2.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
 
             if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
               vQueryAux2.Params[i].Clear;
@@ -492,36 +538,71 @@ begin
       if ARequest.ParamByName('Type').AsString = '1' then
       begin
         vQueryAux.Close;
-        vQueryAux2.Close;
         vQueryAux.CachedUpdates := true;
+
+        vQueryAux2.Close;
         vQueryAux2.CachedUpdates := true;
+
         vQueryAux.Open;
+
         TMemoryStream(vAuxStream).Clear;
+
         ARequest.ParamByName('Stream').SaveToStream(vAuxStream);
         vAuxStream.Position := 0;
+
         vQueryAux2.LoadFromStream(vAuxStream);
+
         vQueryAux.MergeDataSet(vQueryAux2, dmDeltaMerge);
-        vQueryAux.ApplyUpdates;
+
+        if vQueryAux.ApplyUpdates > 0 then
+        begin
+          vQueryAux.FilterChanges := [rtModified, rtInserted, rtDeleted, rtHasErrors];
+
+          vQueryAux.First;
+
+          while not(vQueryAux.Eof) do
+          begin
+            if Assigned(vQueryAux.RowError) then
+            begin
+              vAuxException := vQueryAux.RowError.Message;
+
+              AResponse.Params.AddParam('AffectedRows', '0', rpkBODY);
+
+              vQueryAux.CancelUpdates;
+
+              vQueryAux.CachedUpdates := false;
+
+              raise Exception.Create(vAuxException);
+            end;
+
+            vQueryAux.Next;
+          end;
+        end;
+
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux2.Delta.DataView.Rows.Count.ToString, rpkBODY);
-        vQueryAux.CommitUpdates;
-        vQueryAux.CachedUpdates := false;
       end
       else if ARequest.ParamByName('Type').AsString = '0' then
       begin
         vQueryAux.Open;
+
         vQueryAux.SaveToStream(vAuxStream, TFDStorageFormat.sfBinary);
         vAuxStream.Position := 0;
+
         AResponse.Params.AddParam('Stream', vAuxStream, rpkBODY);
+
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);
+
         vQueryAux.Close;
       end
       else if ARequest.ParamByName('Type').AsString = '2' then
       begin
         vQueryAux.ExecSQL;
+
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);
+
         vQueryAux.Close;
       end
       else
@@ -541,11 +622,14 @@ begin
     end
   finally
     FreeAndNil(vQueryAux);
+    FreeAndNil(vQueryAux2);
     FreeAndNil(vAuxStream);
     FreeAndNil(vBinaryReader);
     FreeAndNil(vAuxStringStream);
     FreeAndNil(vAuxParamStream);
     FreeAndNil(vAuxConnClone);
+    Finalize(vAuxException);
+    Finalize(vBytesAux);
   end;
 end;
 
