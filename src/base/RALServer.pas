@@ -30,27 +30,34 @@ type
   private
     FExpirationTime: IntegerRAL;
     FMaxTry: IntegerRAL;
-    FCurrentTries: IntegerRAL;
   public
     constructor Create;
-
-    property CurrentTries: IntegerRAL read FCurrentTries write FCurrentTries;
   published
     property ExpirationTime: IntegerRAL read FExpirationTime write FExpirationTime;
     property MaxTry: IntegerRAL read FMaxTry write FMaxTry;
   end;
 
+  { TRALClientList }
+
+  /// Internal List of clients of RALServer Component
+  TRALClientList = class
+  private
+    FLastAccess: TDateTime;
+  public
+    constructor Create; virtual;
+  published
+    property LastAccess: TDateTime read FLastAccess write FLastAccess;
+  end;
+
   { TRALClientBlockList }
 
   /// Internal List of blocked IPs of RALServer Component
-  TRALClientBlockList = class(TPersistent)
+  TRALClientBlockList = class(TRALClientList)
   private
-    FLastAccess: TDateTime;
     FNumTry: IntegerRAL;
   public
-    constructor Create;
+    constructor Create; override;
   published
-    property LastAccess: TDateTime read FLastAccess write FLastAccess;
     property NumTry: IntegerRAL read FNumTry write FNumTry;
   end;
 
@@ -110,7 +117,7 @@ type
     FBlockedList: TRALStringListSafe;
     FBruteForce: TRALBruteForceProtection;
     FFloodTimeInterval: IntegerRAL;
-    FFloodLastRequestTime: TDateTime;
+    FFloodList: TRALStringListSafe;
     FWhiteIPList: TRALStringListSafe;
     FOptions: TRALSecurityOptions;
     /// Creates and returns the internal Blacklisted IPs
@@ -130,20 +137,26 @@ type
     /// Adds the Client IP to the internal blocked IP list
     procedure BlockClient(const AClientIP: StringRAL);
     /// Verifies if the Client IP is blacklisted
-    function CheckClientIP(const AClientIP: StringRAL): boolean;
+    function CheckBlockClientIP(const AClientIP: StringRAL): boolean;
     /// Verifies if the incomming IP is known for a DDoS attack
     function CheckFlood(const AClientIP: StringRAL): boolean;
     /// Removes the IPs that are stored longer than the preconfigured duration
     procedure ClearExpiredIPs;
-    /// Fills the internal Blocked IP list with Blacklisted IPs
-    procedure FillBlockList;
     /// Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
+    /// Get a client block object from the list of blocked IPs
+    function GetBlockClient(const AClientIP: StringRAL) : TRALClientBlockList;
+    /// Get a client object from the list of blocked IPs
+    function GetClientList(const AClientIP: StringRAL) : TRALClientList;
+    /// Get the number tries of block of client, case client do not blocked
+    /// return zero
+    function GetBlockClientTry(const AClientIP: StringRAL) : Integer;
+    /// Check if the number de tries of client exceed the established limit
+    function CheckBlockClientTry(const AClienteIP : StringRAL) : boolean;
   published
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
-    property FloodTimeInterval: IntegerRAL read FFloodTimeInterval
-      write SetFloodTimeInterval;
+    property FloodTimeInterval: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;
     property Options: TRALSecurityOptions read FOptions write SetOptions;
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
   end;
@@ -153,13 +166,6 @@ type
   /// Base class for HTTP Server components
   TRALServer = class(TRALComponent)
   private
-    // security flags
-    CONDITION_ROUTE_EXISTS, CONDITION_ROUTE_STATUS, CONDITION_METHOD_ALLOWED,
-      CONDITION_AUTHENTICATION, CONDITION_METHOD_SKIPPED, CONDITION_AUTHENTICATED,
-      CONDITION_BRUTEFORCEPROT, CONDITION_FLOODPROT, CONDITION_PATHTRANSVERSALPROT,
-      CONDITION_CHECKFLOOD, CONDITION_CHECKBLOCK, CONDITION_CHECKPATHTRANSVERSAL,
-      CONDITION_TRIES: boolean;
-    // ------------------------------------------------------------------------
     FActive: boolean;
     FAuthentication: TRALAuthServer;
     FCompressType: TRALCompressType;
@@ -357,7 +363,6 @@ end;
 constructor TRALClientBlockList.Create;
 begin
   inherited;
-  FLastAccess := Now;
   FNumTry := 0;
 end;
 
@@ -366,9 +371,8 @@ end;
 constructor TRALBruteForceProtection.Create;
 begin
   inherited;
-  FExpirationTime := 30 * 60 * 1000;
+  FExpirationTime := 30 * 60 * 1000; // 30 minutos
   FMaxTry := 3;
-  FCurrentTries := 0;
 end;
 
 { TRALServer }
@@ -384,20 +388,6 @@ begin
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
   FSecurity := TRALSecurity.Create;
-  // security flags
-  CONDITION_ROUTE_EXISTS := False;
-  CONDITION_ROUTE_STATUS := False;
-  CONDITION_METHOD_ALLOWED := False;
-  CONDITION_AUTHENTICATION := False;
-  CONDITION_METHOD_SKIPPED := False;
-  CONDITION_AUTHENTICATED := False;
-  CONDITION_BRUTEFORCEPROT := False;
-  CONDITION_FLOODPROT := False;
-  CONDITION_PATHTRANSVERSALPROT := False;
-  CONDITION_CHECKFLOOD := False;
-  CONDITION_CHECKBLOCK := False;
-  CONDITION_CHECKPATHTRANSVERSAL := False;
-  // --------------------------------------------------------------------------
 
   FAuthentication := nil;
   FCompressType := ctNone;
@@ -515,8 +505,10 @@ var
   vRoute: TRALRoute;
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
-
-  CONDITION_OK, CONDITION_STATUS, CONDITION_401, CONDITION_403, CONDITION_404: boolean;
+  vString : StringRAL;
+  vCheckBruteForce : boolean;
+  vCheckBruteForceTries : boolean;
+  vCheck_Authentication : boolean;
 
 label aSTATUS, aOK, a401, a403, a404, aFIM;
 
@@ -548,32 +540,29 @@ begin
   if Assigned(FOnRequest) then
     FOnRequest(ARequest, AResponse);
 
-  CONDITION_ROUTE_EXISTS := vRoute <> nil;
-  CONDITION_ROUTE_STATUS := (ARequest.Query = '/') and FShowServerStatus;
-  if CONDITION_ROUTE_EXISTS then
+  if Assigned(vRoute) then
   begin
-    CONDITION_METHOD_ALLOWED := vRoute.isMethodAllowed(ARequest.Method);
-    if CONDITION_METHOD_ALLOWED then
+    if vRoute.isMethodAllowed(ARequest.Method) then
     begin
-      CONDITION_AUTHENTICATION := CONDITION_METHOD_ALLOWED and (FAuthentication <> nil);
-      if CONDITION_AUTHENTICATION then
+      if FAuthentication <> nil then
       begin
-        CONDITION_METHOD_SKIPPED := vRoute.isMethodSkipped(ARequest.Method);
-        if CONDITION_METHOD_SKIPPED then
+        if vRoute.isMethodSkipped(ARequest.Method) then
+        begin
           goto aOK
+        end
         else
         begin
-          CONDITION_TRIES := not CONDITION_BRUTEFORCEPROT or
-            (CONDITION_BRUTEFORCEPROT and (Security.BruteForce.CurrentTries <
-            Security.BruteForce.MaxTry));
+          vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
+          vCheckBruteForceTries := (not vCheckBruteForce) or
+                                   (vCheckBruteForce and
+                                   (Security.CheckBlockClientTry(ARequest.ClientInfo.IP)));
 
-          CONDITION_AUTHENTICATED := CONDITION_AUTHENTICATION and
-            not CONDITION_METHOD_SKIPPED and
-            ((not CONDITION_BRUTEFORCEPROT and ValidateAuth(ARequest, AResponse)) or
-            (CONDITION_TRIES and ValidateAuth(ARequest, AResponse)));
-          if CONDITION_AUTHENTICATED then
+          vCheck_Authentication := (vCheckBruteForceTries) and
+                                   (ValidateAuth(ARequest, AResponse));
+
+          if vCheck_Authentication then
             goto aOK
-          else if CONDITION_TRIES then
+          else if vCheckBruteForceTries then
             goto a401
           else
             goto a403;
@@ -585,14 +574,15 @@ begin
     else
       goto a403;
   end
-  else if CONDITION_ROUTE_STATUS then
+  else if (ARequest.Query = '/') and (FShowServerStatus) then
     goto aSTATUS
   else
     goto a404;
 
 aSTATUS:
   begin
-    AResponse.Answer(200, Format(FServerStatus.Text, [FEngine]), rctTEXTHTML);
+    vString := ReplaceStr(FServerStatus.Text, '%ralengine%', FEngine);
+    AResponse.Answer(200, vString, rctTEXTHTML);
     goto aFIM;
   end;
 
@@ -605,7 +595,7 @@ aOK:
 
 a401:
   begin
-    Security.BruteForce.CurrentTries := Security.BruteForce.CurrentTries + 1;
+    Security.BlockClient(ARequest.ClientInfo.IP);
     AResponse.Answer(401);
     goto aFIM;
   end;
@@ -635,6 +625,10 @@ aFIM:
 end;
 
 procedure TRALServer.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vCheckPathTransversal: boolean;
+  vCheckClientBlock: boolean;
+  vCheckFlood: boolean;
 begin
   if not ARequest.HasValidContentEncoding then
   begin
@@ -649,30 +643,34 @@ begin
     AResponse.ContentEncoding := ARequest.AcceptEncoding;
     AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
-  end;
-
-  CONDITION_BRUTEFORCEPROT := rsoBruteForceProtection in Security.Options;
-  CONDITION_PATHTRANSVERSALPROT := rsoPathTransvBlackList in Security.Options;
-  CONDITION_CHECKBLOCK := Security.CheckClientIP(ARequest.ClientInfo.IP);
-  CONDITION_CHECKFLOOD := Security.CheckFlood(ARequest.ClientInfo.IP);
-
-  // redundant, requires intense testing to check if it ever happens
-  CONDITION_CHECKPATHTRANSVERSAL := CONDITION_PATHTRANSVERSALPROT and
-    (Pos('../', ARequest.Query) > 0);
-
-  // Security Protections
-  if CONDITION_CHECKFLOOD or CONDITION_CHECKBLOCK or CONDITION_CHECKPATHTRANSVERSAL then
-  begin
-    Security.BlockClient(ARequest.ClientInfo.IP);
-
-    if Assigned(FOnClientBlock) then
-      FOnClientBlock(Self, ARequest.ClientInfo.IP);
-
-    AResponse.Answer(403);
-    Exit;
   end
   else
-    Security.ClearExpiredIPs;
+  begin
+    vCheckClientBlock := Security.CheckBlockClientIP(ARequest.ClientInfo.IP);
+    if not vCheckClientBlock then
+    begin
+      vCheckFlood := Security.CheckFlood(ARequest.ClientInfo.IP);
+
+      // redundant, requires intense testing to check if it ever happens
+      vCheckPathTransversal := (rsoPathTransvBlackList in Security.Options) and
+                               (Pos('../', ARequest.Query) > 0);
+
+      // Security Protections
+      if vCheckFlood or vCheckPathTransversal then
+      begin
+        Security.BlockClient(ARequest.ClientInfo.IP);
+
+        if Assigned(FOnClientBlock) then
+          FOnClientBlock(Self, ARequest.ClientInfo.IP);
+
+        AResponse.Answer(403);
+      end;
+    end
+    else begin
+      AResponse.Answer(403);
+    end;
+  end;
+  Security.ClearExpiredIPs;
 end;
 
 function TRALServer.CreateRequest: TRALRequest;
@@ -819,48 +817,74 @@ end;
 { TRALSecurity }
 
 procedure TRALSecurity.BlockClient(const AClientIP: StringRAL);
+var
+  vBlock : TRALClientBlockList;
 begin
-  if (not FBlockedList.Exists(AClientIP)) and (not FWhiteIPList.Exists(AClientIP)) then
-    FBlockedList.Add(AClientIP);
+  if (not FWhiteIPList.Exists(AClientIP)) then
+  begin
+    vBlock := GetBlockClient(AClientIP);
+    if (vBlock = nil) then
+    begin
+      vBlock := TRALClientBlockList.Create;
+      vBlock.LastAccess := Now;
+      FBlockedList.AddObject(AClientIP, vBlock);
+    end;
+    vBlock.NumTry := vBlock.NumTry + 1;
+  end;
 end;
 
-function TRALSecurity.CheckClientIP(const AClientIP: StringRAL): boolean;
+function TRALSecurity.CheckBlockClientTry(const AClienteIP: StringRAL) : boolean;
 begin
-  Result := False;
-  if rsoBruteForceProtection in Options then
-    Result := FBlockedList.Exists(AClientIP);
+  Result := GetBlockClientTry(AClienteIP) > FBruteForce.MaxTry;
+end;
+
+function TRALSecurity.CheckBlockClientIP(const AClientIP: StringRAL): boolean;
+begin
+  Result := (((rsoBruteForceProtection in Options) and FBlockedList.Exists(AClientIP)) or
+            (FBlackIPList.Exists(AClientIP))) and (not FWhiteIPList.Exists(AClientIP));
 end;
 
 function TRALSecurity.CheckFlood(const AClientIP: StringRAL): boolean;
 var
-  interval: Int64RAL;
+  vInterval: Int64RAL;
+  vFlood: TRALClientList;
 begin
   Result := False;
   if rsoFloodProtection in Options then
   begin
-    interval := MilliSecondsBetween(TimeOf(Now), TimeOf(FFloodLastRequestTime));
+    vFlood := GetClientList(AClientIP);
+    if vFlood = nil then
+    begin
+      vFlood := TRALClientList.Create;
+      FFloodList.AddObject(AClientIP, vFlood);
+    end;
 
-    if (FBlockedList.Exists(AClientIP)) and (not FWhiteIPList.Exists(AClientIP)) or
-      (interval <= FFloodTimeInterval) then
+    vInterval := MilliSecondsBetween(Now, vFlood.LastAccess);
+
+    if (CheckBlockClientIP(AClientIP)) or (vInterval <= FFloodTimeInterval) then
       Result := True;
 
-    FFloodLastRequestTime := TimeOf(Now);
+    vFlood.LastAccess := Now;
   end;
 end;
 
 procedure TRALSecurity.ClearExpiredIPs;
 var
-  I: Integer;
-  currenttime: TDateTime;
+  vInt: Integer;
+  vBlock: TRALClientBlockList;
 begin
   if rsoBruteForceProtection in Options then
   begin
-    currenttime := Now;
-    if BruteForce.ExpirationTime > 0 then // 0 means no expiration
-      for I := pred(FBlockedList.Count) downto 0 do
-        if MilliSecondsBetween(StrToDateTimeDef(FBlockedList.Get(I), 0), currenttime) >=
-          BruteForce.ExpirationTime then
-          FBlockedList.Remove(I, True);
+    // 0 means no expiration
+    if BruteForce.ExpirationTime > 0 then
+    begin
+      for vInt := Pred(FBlockedList.Count) downto 0 do
+      begin
+        vBlock := TRALClientBlockList(FBlockedList.GetObject(vInt));
+        if MilliSecondsBetween(Now, vBlock.LastAccess) >= BruteForce.ExpirationTime then
+          FBlockedList.Remove(vInt, True);
+      end;
+    end;
   end;
 end;
 
@@ -870,9 +894,8 @@ begin
   FBlackIPList := TRALStringListSafe.Create;
   FBlockedList := TRALStringListSafe.Create;
   FWhiteIPList := TRALStringListSafe.Create;
+  FFloodList := TRALStringListSafe.Create;
 
-  FillBlockList;
-  FFloodLastRequestTime := 0;
   FFloodTimeInterval := 30; // miliseconds
 end;
 
@@ -881,21 +904,14 @@ begin
   FBlackIPList.Clear(True);
   FBlockedList.Clear(True);
   FWhiteIPList.Clear(True);
+  FFloodList.Clear(True);
 
   FreeAndNil(FBlackIPList);
   FreeAndNil(FBlockedList);
   FreeAndNil(FWhiteIPList);
   FreeAndNil(FBruteForce);
+  FreeAndNil(FFloodList);
   inherited;
-end;
-
-procedure TRALSecurity.FillBlockList;
-var
-  I: IntegerRAL;
-begin
-  For I := 0 to pred(FBlackIPList.Count) do
-    if not FWhiteIPList.Exists(FBlackIPList.Get(I)) then
-      FBlockedList.Add(FBlackIPList.Get(I));
 end;
 
 function TRALSecurity.GetBlackIPList: TStringList;
@@ -908,6 +924,27 @@ begin
   for vInt := 0 to pred(vList.Count) do
     Result.Add(vList.Strings[vInt]);
   FBlackIPList.Unlock;
+end;
+
+function TRALSecurity.GetBlockClient(
+  const AClientIP: StringRAL): TRALClientBlockList;
+begin
+  Result := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
+end;
+
+function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): Integer;
+var
+  vBlock : TRALClientBlockList;
+begin
+  Result := 0;
+  vBlock := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
+  if vBlock <> nil then
+    Result := vBlock.NumTry;
+end;
+
+function TRALSecurity.GetClientList(const AClientIP: StringRAL): TRALClientList;
+begin
+  Result := TRALClientList(FFloodList.ObjectByItem(AClientIP));
 end;
 
 function TRALSecurity.GetWhiteIPList: TStringList;
@@ -958,6 +995,13 @@ end;
 procedure TRALSecurity.UnblockClient(const AClientIP: StringRAL);
 begin
   FBlockedList.Remove(AClientIP, True);
+end;
+
+{ TRALClientsList }
+
+constructor TRALClientList.Create;
+begin
+  FLastAccess := Now;
 end;
 
 end.
