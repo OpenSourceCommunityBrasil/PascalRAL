@@ -97,6 +97,7 @@ type
     /// Results either = or : if found on the input text.
     function FindNameSeparator(const ASource: StringRAL): StringRAL;
     function GetBody: TList;
+    function GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam; overload;
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
     function GetParam(AName: StringRAL): TRALParam; overload;
     function GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam; overload;
@@ -188,6 +189,8 @@ type
     property Body: TList read GetBody;
     /// Grabs a param by its index on the TRALParams list.
     property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
+    /// Grabs a param by its index on the TRALParams list.
+    property IndexKind[AIndex: IntegerRAL; AKind: TRALParamKind]: TRALParam read GetParam;
     /// Grabs a param by its name.
     property Get[AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
@@ -833,9 +836,13 @@ begin
 
   if vInt1 + vInt2 = 1 then
   begin
-    Result := Index[0].SaveToStream;
-    AContentType := Index[0].ContentType;
-    AContentDisposition := Index[0].ContentDisposition;
+    if vInt1 > 0 then
+      Result := Index[0, rpkBODY]
+    else
+      Result := Index[0, rpkFIELD];
+    Result := vItem.SaveToStream;
+    AContentType := vItem.ContentType;
+    AContentDisposition := vItem.ContentDisposition;
   end
   else if (vInt2 > 0) and (vInt1 = 0) then
   begin
@@ -984,6 +991,32 @@ begin
     begin
       Result := vParam;
       Break;
+    end;
+  end;
+end;
+
+function TRALParams.GetParam(AIndex: IntegerRAL;
+  AKind: TRALParamKind): TRALParam;
+var
+  vInt, vIdxParam : IntegerRAL;
+  vParam: TRALParam;
+begin
+  Result := nil;
+  vIdxParam := 0;
+
+  for vInt := 0 to FParams.Count - 1 do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if (vParam.Kind = AKind) then
+    begin
+      if (vIdxParam = AIndex) then
+      begin
+        Result := vParam;
+        Break;
+      end
+      else begin
+        vIdxParam := vIdxParam + 1;
+      end;
     end;
   end;
 end;

@@ -553,12 +553,12 @@ begin
         else
         begin
           vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
-          vCheckBruteForceTries := (not vCheckBruteForce) or
-                                   (vCheckBruteForce and
+          // client e valido se o numero de tentativas <= ao max de tentativas
+          vCheckBruteForceTries := (vCheckBruteForce and
                                    (Security.CheckBlockClientTry(ARequest.ClientInfo.IP)));
 
-          vCheck_Authentication := (vCheckBruteForceTries) and
-                                   (ValidateAuth(ARequest, AResponse));
+          // devido algumas auths que adiciona o header realm
+          vCheck_Authentication := ValidateAuth(ARequest, AResponse);
 
           if vCheck_Authentication then
             goto aOK
@@ -835,7 +835,7 @@ end;
 
 function TRALSecurity.CheckBlockClientTry(const AClienteIP: StringRAL) : boolean;
 begin
-  Result := GetBlockClientTry(AClienteIP) > FBruteForce.MaxTry;
+  Result := GetBlockClientTry(AClienteIP) <= FBruteForce.MaxTry;
 end;
 
 function TRALSecurity.CheckBlockClientIP(const AClientIP: StringRAL): boolean;
