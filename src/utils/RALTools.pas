@@ -87,7 +87,7 @@ begin
   Result := '';
   for vInt := POSINISTR to RALHighStr(AValue) do
   begin
-    if AValue[vInt] in ['0'..'9'] then
+    if CharInSet(AValue[vInt], ['0'..'9']) then
       Result := Result + AValue[vInt];
   end;
 end;

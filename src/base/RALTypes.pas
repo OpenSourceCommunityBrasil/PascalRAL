@@ -23,8 +23,8 @@ type
   StringRAL = string;
   CharRAL = Char;
   {$ELSE}
-  StringRAL = utf8string;
-  CharRAL = widechar;
+  StringRAL = UTF8String;
+  CharRAL = Widechar;
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
@@ -38,10 +38,8 @@ type
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
-  TRALServerOption = (rsoBruteForceProtection, rsoDDoSProtection, rsoEnableBlackList,
-    rsoEnableBlockList, rsoEnableWhiteList, rsoIPBroadcastProtection,
-    rsoPathTransvBlackList);
-  TRALServerOptions = set of TRALServerOption;
+  TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection, rsoPathTransvBlackList);
+  TRALSecurityOptions = set of TRALSecurityOption;
 
 const
   {$IF DEFINED(FPC) or DEFINED(DELPHIXE3UP)}

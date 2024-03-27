@@ -154,12 +154,12 @@ end;
 
 function TRALHashes.HashAsStream(AValue: TStream): TStream;
 var
-  vResult: StringRAL;
   vDigest : TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   vDigest := Finalize;
+  Result := nil;
 
   case OutputType of
     rhotNone: Result := TStringStream.Create(vDigest);

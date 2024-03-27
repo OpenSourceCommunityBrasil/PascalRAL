@@ -94,8 +94,6 @@ begin
 end;
 
 function TRALCRC32.Finalize: TBytes;
-var
-  vInt : IntegerRAL;
 begin
   HashCRC32(GetIndex);
   FCRC32 := not FCRC32;

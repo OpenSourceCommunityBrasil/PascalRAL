@@ -30,10 +30,12 @@ type
     function GetRoute: StringRAL;
     /// checks if the route already exists on the list
     function RouteExists(const ARoute: StringRAL): boolean;
+    procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
     procedure SetRouteDomain(const AValue: StringRAL);
     procedure SetRouteName(AValue: StringRAL);
+    procedure SetSkipAuthMethods(const AValue: TRALMethods);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -43,15 +45,19 @@ type
     function GetAllowMethods: StringRAL;
     /// Returns internal name of the route
     function GetNamePath: string; override;
+    /// Returns true or false wether the method is allowed in route
+    function isMethodAllowed(const AMethod: TRALMethod): boolean;
+    /// Returns true or false wether the method is skipped in authentication
+    function isMethodSkipped(const AMethod: TRALMethod): boolean;
 
     property Route: StringRAL read GetRoute;
   published
-    property AllowedMethods: TRALMethods read FAllowedMethods write FAllowedMethods;
+    property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property Callback: boolean read FCallback write FCallback;
     property Description: TStringList read FDescription write SetDescription;
     property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
     property RouteName: StringRAL read FRouteName write SetRouteName;
-    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
+    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   end;
@@ -174,14 +180,39 @@ begin
     FRouteName := AValue;
 end;
 
+procedure TRALRoute.SetSkipAuthMethods(const AValue: TRALMethods);
+begin
+  if FSkipAuthMethods <> AValue then
+  begin
+    if amALL in AValue then
+      FSkipAuthMethods := [amALL]
+    else if amALL in FSkipAuthMethods then
+      FSkipAuthMethods := AValue - [amALL]
+    else
+      FSkipAuthMethods := AValue;
+  end;
+end;
+
 function TRALRoute.GetRoute: StringRAL;
 begin
   Result := '';
   if (Collection <> nil) and (Collection.Owner <> nil) and
-     (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
-     (TRALModuleRoutes(Collection.Owner).IsDomain) then
+    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
+    (TRALModuleRoutes(Collection.Owner).IsDomain) then
     Result := TRALModuleRoutes(Collection.Owner).Name;
   Result := FixRoute(Result + '/' + FRouteDomain + '/' + FRouteName);
+end;
+
+function TRALRoute.isMethodAllowed(const AMethod: TRALMethod): boolean;
+begin
+  Result := (amALL in AllowedMethods) or
+    (not(amALL in AllowedMethods) and (AMethod in AllowedMethods));
+end;
+
+function TRALRoute.isMethodSkipped(const AMethod: TRALMethod): boolean;
+begin
+  Result := (amALL in SkipAuthMethods) or
+    (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
 end;
 
 function TRALRoute.GetDisplayName: string;
@@ -205,6 +236,19 @@ begin
   Result := vName + '_' + FRouteName;
   while Pos('__', Result) > 0 do
     Result := StringReplace(Result, '__', '_', [rfReplaceAll]);
+end;
+
+procedure TRALRoute.SetAllowedMethods(const AValue: TRALMethods);
+begin
+  if FAllowedMethods <> AValue then
+  begin
+    if amALL in AValue then
+      FAllowedMethods := [amALL]
+    else if amALL in FAllowedMethods then
+      FAllowedMethods := AValue - [amALL]
+    else
+      FAllowedMethods := AValue;
+  end;
 end;
 
 procedure TRALRoute.SetDescription(const AValue: TStringList);

@@ -560,7 +560,7 @@ var
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
-  vPairName, vAux1: StringRAL;
+  vAux1: StringRAL;
 begin
   vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
   try
@@ -707,7 +707,6 @@ procedure TRALJWTParams.SetAsJSON(const AValue: StringRAL);
 var
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
-  vInt64: Int64RAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
 begin

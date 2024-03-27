@@ -10,14 +10,7 @@ type
 
 const
   // Versionamento
-  VERSION_MAJOR = 0;
-  VERSION_MINOR = 9;
-  VERSION_RELEASE = 2;
-  VERSION_ADDITIVE = ' - alpha';
-  RALVERSION = char(48 + VERSION_MAJOR) + '.'
-             + char(48 + VERSION_MINOR) + '.'
-             + char(48 + VERSION_RELEASE)
-             + VERSION_ADDITIVE;
+  RALVERSION = '0.9.4 - alpha';
   // IOTA Constants
   RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
   RALPACKAGESHORT          = 'PascalRAL';
@@ -26,11 +19,11 @@ const
   RALPACKAGELICENSE        = 'OpenSource';
   RALPACKAGELICENSEVERSION = 'OpenSource - v' + RALVERSION;
 
-  // respostas de erro
+  // html pages
   RALDefaultPage = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
                  + '</head><body><h1>Server OnLine</h1>'
                  + '<h4>Version: ' + RALVERSION + '</h4>'
-                 + '<h4>Engine: %ralengine%</h4>'
+                 + '<h4>Engine: %s</h4>'
                  + '</body></html>';
   RAL400Page = '<html><head><title>RALServer - ' + RALVERSION + '</title>'
              + '</head><body><h1>400 - BadRequest</h1>'

@@ -135,7 +135,7 @@ end;
 
 function TRALClient.BeforeSendUrl(const AURL: StringRAL; AMethod: TRALMethod): IntegerRAL;
 var
-  vConta, vInt: IntegerRAL;
+  vConta: IntegerRAL;
   vParams: TStringList;
   vContinue: boolean;
 begin

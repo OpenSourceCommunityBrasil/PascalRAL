@@ -1,6 +1,8 @@
 unit RALDBTypes;
 
+{$IFDEF FPC}
 {$mode ObjFPC}{$H+}
+{$ENDIF}
 
 interface
 

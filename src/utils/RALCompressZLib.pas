@@ -38,7 +38,7 @@ procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
   vBuf: array of byte;
   vZip: TCompressionStream;
-  vCount, vInt: Integer;
+  vCount: Integer;
   vSize: LongWord;
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
@@ -101,7 +101,7 @@ procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
   vBuf: array of byte;
   vZip: TDeCompressionStream;
-  vCount, vInt: Integer;
+  vCount: Integer;
   vCRCFile, vCRCFinal, vFileSize: LongWord;
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
