@@ -17,20 +17,20 @@ type
   /// Base class of engine
   TRALClientHTTP = class
   private
-    FParent : TRALClientBase;
+    FParent: TRALClientBase;
   protected
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual; abstract;
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual; abstract;
     procedure SetUseSSL(const AValue: boolean); virtual; abstract;
     procedure SetUserAgent(const AValue: StringRAL); virtual; abstract;
 
-    property Parent : TRALClientBase read FParent write FParent;
+    property Parent: TRALClientBase read FParent write FParent;
 
     /// returns the complete URL of a given route.
-    function GetURL(ARoute: StringRAL; ARequest : TRALRequest = nil): StringRAL;
+    function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil): StringRAL;
     /// allows manipulation of params before executing request.
-    procedure BeforeSendUrl(ARoute : StringRAL; ARequest : TRALRequest;
-                            AResponse : TRALResponse; AMethod: TRALMethod);
+    procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
+      AResponse: TRALResponse; AMethod: TRALMethod);
     /// clears authentication token property.
     procedure ResetToken;
     /// Configures the Request header with proper authentication info based on the assigned
@@ -48,47 +48,45 @@ type
     /// placeholder
     procedure SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest);
   public
-    constructor Create(AOwner : TRALClientBase); virtual;
+    constructor Create(AOwner: TRALClientBase); virtual;
 
-    procedure SendUrl(AURL: StringRAL; ARequest : TRALRequest;
-                     AResponse : TRALResponse; AMethod: TRALMethod); virtual; abstract;
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+      AMethod: TRALMethod); virtual; abstract;
   end;
 
   { TRALThreadClient }
 
-  TRALThreadClientResponse = procedure(Sender : TObject; AResponse : TRALResponse) of object;
+  TRALThreadClientResponse = procedure(Sender: TObject; AResponse: TRALResponse;
+    AException: StringRAL) of object;
 
   /// Base class of engines multi-threads
   TRALThreadClient = class(TThread)
   private
-    FParent : TRALClientBase;
-    FEvent : TSimpleEvent;
-    FFinish : boolean;
-    FClient : TRALClientHTTP;
+    FParent: TRALClientBase;
+    FClient: TRALClientHTTP;
 
-    FRoute : StringRAL;
-    FRequest : TRALRequest;
-    FResponse : TRALResponse;
-    FMethod : TRALMethod;
-    FOnResponse : TRALThreadClientResponse;
+    FRoute: StringRAL;
+    FRequest: TRALRequest;
+    FResponse: TRALResponse;
+    FMethod: TRALMethod;
+    FException: StringRAL;
+    FOnResponse: TRALThreadClientResponse;
   protected
-    function CreateClient : TRALClientHTTP;
+    function CreateClient: TRALClientHTTP;
 
     procedure Execute; override;
-    procedure DoResponse;
+    procedure OnTerminateThread(Sender: TObject);
 
-    property Parent : TRALClientBase read FParent write FParent;
+    property Parent: TRALClientBase read FParent write FParent;
 
-    property Route : StringRAL read FRoute write FRoute;
-    property Request : TRALRequest read FRequest write FRequest;
-    property Method : TRALMethod read FMethod write FMethod;
+    property Route: StringRAL read FRoute write FRoute;
+    property Request: TRALRequest read FRequest write FRequest;
+    property Method: TRALMethod read FMethod write FMethod;
 
-    property OnResponse : TRALThreadClientResponse read FOnResponse write FOnResponse;
+    property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   public
-    constructor Create(AOwner : TRALClientBase); virtual;
+    constructor Create(AOwner: TRALClientBase); virtual;
     destructor Destroy; override;
-
-    procedure DoExecute;
   end;
 
   { TRALClientBase }
@@ -130,11 +128,13 @@ type
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: StringRAL read FBaseURL write SetBaseURL;
-    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout default 5000;
+    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
+      default 5000;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
-    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
+    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout
+      default 30000;
     property UseSSL: boolean read FUseSSL write SetUseSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
@@ -142,39 +142,40 @@ type
 
   TRALClientThreaded = class(TRALClientBase)
   private
-    FOnResponse : TRALThreadClientResponse;
-    FCritSession : TCriticalSection;
+    FOnResponse: TRALThreadClientResponse;
+    FCritSession: TCriticalSection;
   protected
-    procedure OnThreadResponse(Sender : TObject; AResponse : TRALResponse);
+    procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
+      AException: StringRAL);
 
     procedure LockSession;
     procedure UnLockSession;
 
     /// core method of the client. Must override on children.
-    procedure ExecuteThread(ARoute : StringRAL; ARequest : TRALRequest;
-                            AMethod: TRALMethod; AOnResponse : TRALThreadClientResponse = nil);
+    procedure ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest; AMethod: TRALMethod;
+      AOnResponse: TRALThreadClientResponse = nil);
   public
     destructor Destroy; override;
 
-    function NewRequest : TRALRequest;
+    function NewRequest: TRALRequest;
 
     function Clone(AOwner: TComponent = nil): TRALClientThreaded; virtual; abstract;
 
     /// Defines method on the client: Delete.
-    procedure Delete(ARoute : StringRAL; ARequest : TRALRequest;
-                     AOnResponse : TRALThreadClientResponse = nil); virtual;
+    procedure Delete(ARoute: StringRAL; ARequest: TRALRequest;
+      AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Get.
-    procedure Get(ARoute : StringRAL; ARequest : TRALRequest;
-                  AOnResponse : TRALThreadClientResponse = nil); virtual;
+    procedure Get(ARoute: StringRAL; ARequest: TRALRequest;
+      AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Patch.
-    procedure Patch(ARoute : StringRAL; ARequest : TRALRequest;
-                    AOnResponse : TRALThreadClientResponse = nil); virtual;
+    procedure Patch(ARoute: StringRAL; ARequest: TRALRequest;
+      AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Post.
-    procedure Post(ARoute : StringRAL; ARequest : TRALRequest;
-                   AOnResponse : TRALThreadClientResponse = nil); virtual;
+    procedure Post(ARoute: StringRAL; ARequest: TRALRequest;
+      AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Put.
-    procedure Put(ARoute : StringRAL; ARequest : TRALRequest;
-                  AOnResponse : TRALThreadClientResponse = nil); virtual;
+    procedure Put(ARoute: StringRAL; ARequest: TRALRequest;
+      AOnResponse: TRALThreadClientResponse = nil); virtual;
   published
     property Authentication;
     property BaseURL;
@@ -186,7 +187,7 @@ type
     property UserAgent;
     property KeepAlive;
 
-    property OnResponse : TRALThreadClientResponse read FOnResponse write FOnResponse;
+    property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   end;
 
   { TRALClient }
@@ -197,7 +198,7 @@ type
     FRoute: StringRAL;
     FRequest: TRALRequest;
     FResponse: TRALResponse;
-    FClient : TRALClientHTTP; // single
+    FClient: TRALClientHTTP; // single
   protected
     /// Returns LastResponse of the client in an UTF8 String.
     function GetResponseText: StringRAL;
@@ -209,7 +210,7 @@ type
     procedure SetUserAgent(const AValue: StringRAL); override;
     procedure SetUseSSL(const AValue: boolean); override;
 
-    property Client : TRALClientHTTP read FClient;
+    property Client: TRALClientHTTP read FClient;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -244,7 +245,7 @@ type
     property UserAgent;
     property KeepAlive;
 
-    property Route : StringRAL read FRoute write FRoute;
+    property Route: StringRAL read FRoute write FRoute;
   end;
 
 implementation
@@ -329,15 +330,15 @@ end;
 
 { TRALThreadClient }
 
-constructor TRALThreadClient.Create(AOwner : TRALClientBase);
+constructor TRALThreadClient.Create(AOwner: TRALClientBase);
 begin
-  inherited Create(False);
+  inherited Create(True);
 
+  OnTerminate := OnTerminateThread;
   FParent := AOwner;
   FreeOnTerminate := True;
-  FEvent := TSimpleEvent.Create;
-  FFinish := False;
   FRoute := '';
+  FException := '';
   FRequest := nil;
   FResponse := nil;
   FClient := CreateClient;
@@ -350,39 +351,18 @@ end;
 
 destructor TRALThreadClient.Destroy;
 begin
-  FFinish := True;
-  FEvent.SetEvent;
-
-  FreeAndNil(FEvent);
-  FreeAndNil(FClient);
-
-  if FResponse <> nil then
+  if Assigned(FResponse) then
     FreeAndNil(FResponse);
 
-  if FRequest <> nil then
+  if Assigned(FRequest) then
     FreeAndNil(FRequest);
 
   inherited;
 end;
 
-procedure TRALThreadClient.DoExecute;
-begin
-  FEvent.SetEvent;
-end;
-
-procedure TRALThreadClient.DoResponse;
-begin
-  if Assigned(FOnResponse) then
-    FOnResponse(Self, FResponse);
-end;
-
 procedure TRALThreadClient.Execute;
 begin
-  // esperando pra comecar;
-  FEvent.WaitFor(High(Cardinal));
-
-  if not FFinish then
-  begin
+  try
     FResponse := TRALClientResponse.Create;
 
     FClient.SetConnectTimeout(Parent.ConnectTimeout);
@@ -391,9 +371,21 @@ begin
     FClient.SetUserAgent(Parent.UserAgent);
 
     FClient.BeforeSendUrl(FRoute, FRequest, FResponse, FMethod);
+  except
+    on e: exception do
+    begin
+      if Assigned(FResponse) then
+        FreeAndNil(FResponse);
 
-    Synchronize(DoResponse);
+      FException := e.Message;
+    end;
   end;
+end;
+
+procedure TRALThreadClient.OnTerminateThread(Sender: TObject);
+begin
+  if Assigned(FOnResponse) then
+    FOnResponse(Self, FResponse, FException);
 end;
 
 { TRALClientBase }
@@ -507,7 +499,7 @@ end;
 { TRALClientThreaded }
 
 procedure TRALClientThreaded.Delete(ARoute: StringRAL; ARequest: TRALRequest;
-                                    AOnResponse : TRALThreadClientResponse);
+  AOnResponse: TRALThreadClientResponse);
 begin
   ExecuteThread(ARoute, ARequest, amDELETE, AOnResponse);
 end;
@@ -519,9 +511,9 @@ begin
 end;
 
 procedure TRALClientThreaded.ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest;
-                             AMethod: TRALMethod; AOnResponse : TRALThreadClientResponse);
+  AMethod: TRALMethod; AOnResponse: TRALThreadClientResponse);
 var
-  vThread : TRALThreadClient;
+  vThread: TRALThreadClient;
 begin
   vThread := TRALThreadClient.Create(Self);
   vThread.Route := ARoute;
@@ -533,18 +525,18 @@ begin
   else
     vThread.OnResponse := OnThreadResponse;
 
-  vThread.DoExecute;
+  vThread.Start;
 end;
 
 procedure TRALClientThreaded.Get(ARoute: StringRAL; ARequest: TRALRequest;
-                                 AOnResponse : TRALThreadClientResponse);
+  AOnResponse: TRALThreadClientResponse);
 begin
   ExecuteThread(ARoute, ARequest, amGET, AOnResponse);
 end;
 
 procedure TRALClientThreaded.LockSession;
 begin
-  FCritSession.Enter;
+  FCritSession.Acquire;
 end;
 
 function TRALClientThreaded.NewRequest: TRALRequest;
@@ -556,33 +548,34 @@ begin
   Result.CriptoKey := Self.CriptoOptions.Key;
 end;
 
-procedure TRALClientThreaded.OnThreadResponse(Sender: TObject; AResponse: TRALResponse);
+procedure TRALClientThreaded.OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 begin
   if Assigned(FOnResponse) then
-    FOnResponse(Self, AResponse);
+    FOnResponse(Self, AResponse, AException);
 end;
 
 procedure TRALClientThreaded.Patch(ARoute: StringRAL; ARequest: TRALRequest;
-                                   AOnResponse : TRALThreadClientResponse);
+  AOnResponse: TRALThreadClientResponse);
 begin
   ExecuteThread(ARoute, ARequest, amPATCH, AOnResponse);
 end;
 
 procedure TRALClientThreaded.Post(ARoute: StringRAL; ARequest: TRALRequest;
-                                  AOnResponse : TRALThreadClientResponse);
+  AOnResponse: TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amPost, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amPOST, AOnResponse);
 end;
 
 procedure TRALClientThreaded.Put(ARoute: StringRAL; ARequest: TRALRequest;
-                                 AOnResponse : TRALThreadClientResponse);
+  AOnResponse: TRALThreadClientResponse);
 begin
   ExecuteThread(ARoute, ARequest, amPUT, AOnResponse);
 end;
 
 procedure TRALClientThreaded.UnLockSession;
 begin
-  FCritSession.Leave;
+  FCritSession.Release;
 end;
 
 { TRALClientHTTP }
@@ -598,9 +591,8 @@ begin
 
   vConta := 0;
   repeat
-    if (FParent.Authentication <> nil) and
-       (not FParent.Authentication.IsAuthenticated) and
-       (FParent.Authentication.AutoGetToken) then
+    if (FParent.Authentication <> nil) and (not FParent.Authentication.IsAuthenticated)
+      and (FParent.Authentication.AutoGetToken) then
     begin
       if FParent.InheritsFrom(TRALClientThreaded) then
         TRALClientThreaded(FParent).LockSession;
@@ -635,7 +627,8 @@ begin
 
     vConta := vConta + 1;
     vResp := 200;
-    if Assigned(AResponse) then begin
+    if Assigned(AResponse) then
+    begin
       vResp := AResponse.StatusCode;
 
       if (vResp = 401) and (vConta = 1) then
@@ -672,8 +665,7 @@ begin
     TRALClientJWTAuth(FParent.Authentication).Token := '';
 end;
 
-procedure TRALClientHTTP.SetAuthToken(AVars: TStringList;
-  ARequest: TRALRequest);
+procedure TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest);
 begin
   if FParent.Authentication is TRALClientBasicAuth then
     SetTokenBasic(AVars, ARequest)
@@ -687,8 +679,7 @@ begin
     SetTokenDigest(AVars, ARequest)
 end;
 
-procedure TRALClientHTTP.SetTokenBasic(AVars: TStringList;
-  ARequest: TRALRequest);
+procedure TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest);
 var
   vObjAuth: TRALClientBasicAuth;
 begin
@@ -700,8 +691,8 @@ procedure TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALReques
 var
   vObjAuth: TRALClientDigest;
   vConta, vResult: IntegerRAL;
-  vResponse : TRALClientResponse;
-  vRequest : TRALClientRequest;
+  vResponse: TRALClientResponse;
+  vRequest: TRALClientRequest;
   vURL, vAuth: StringRAL;
   vDigest: TRALDigest;
   vMethod: TRALMethod;
@@ -845,8 +836,7 @@ begin
   end;
 end;
 
-procedure TRALClientHTTP.SetTokenOAuth2(AVars: TStringList;
-  ARequest: TRALRequest);
+procedure TRALClientHTTP.SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest);
 begin
 
 end;

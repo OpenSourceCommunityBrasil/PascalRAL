@@ -22,18 +22,18 @@ type
     procedure SetUseSSL(const AValue: boolean); override;
     procedure SetUserAgent(const AValue: StringRAL); override;
   public
-    constructor Create(AOwner : TRALClientBase); override;
+    constructor Create(AOwner: TRALClientBase); override;
     destructor Destroy; override;
 
-    procedure SendUrl(AURL: StringRAL; ARequest : TRALRequest;
-                     AResponse : TRALResponse; AMethod: TRALMethod); override;
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+      AMethod: TRALMethod); override;
   end;
 
   { TRALIndyClientThreaded }
 
   TRALIndyClientThreaded = class(TRALClientThreaded)
   protected
-    function CreateClient : TRALClientHTTP; override;
+    function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
     function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
@@ -73,13 +73,13 @@ end;
 
 { TRALIndyClientHTTP }
 
-constructor TRALIndyClientHTTP.Create(AOwner : TRALClientBase);
+constructor TRALIndyClientHTTP.Create(AOwner: TRALClientBase);
 begin
   inherited Create(AOwner);
 
   FHttp := TIdHTTP.Create(nil);
   FHttp.HTTPOptions := [hoKeepOrigProtocol, hoNoProtocolErrorException,
-                        hoWantProtocolErrorContent];
+    hoWantProtocolErrorContent];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
 end;
 
@@ -169,6 +169,8 @@ begin
     except
       AResponse.StatusCode := FHttp.ResponseCode;
       AResponse.ResponseText := FHttp.ResponseText;
+
+      raise;
     end;
     FreeAndNil(vResult);
   finally
