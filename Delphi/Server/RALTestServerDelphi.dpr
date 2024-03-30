@@ -1,4 +1,4 @@
-program RALServerTest;
+program RALTestServerDelphi;
 
 uses
   System.StartUpCopy,

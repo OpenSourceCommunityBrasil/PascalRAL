@@ -139,6 +139,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="saguiral"/>
+      </Item>
+      <Item>
         <PackageName Value="fphttpral"/>
       </Item>
       <Item>

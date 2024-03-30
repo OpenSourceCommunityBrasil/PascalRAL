@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, ComCtrls,
   StdCtrls, Grids, LazUTF8,
   RALServer, RALIndyServer, RALFpHttpServer, RALSynopseServer, RALResponse,
-  RALRequest, RALRoutes, RALAuthentication, RALConsts, RALTools,
+  RALRequest, RALRoutes, RALAuthentication, RALConsts, RALTools, RALSaguiServer,
   uroutes;
 
 type
@@ -18,6 +18,7 @@ type
   TForm1 = class(TForm)
     bAdd: TButton;
     bDelete: TButton;
+    Button1: TButton;
     cbUseSSL: TCheckBox;
     cbGET: TCheckBox;
     cbPOST: TCheckBox;
@@ -26,6 +27,9 @@ type
     cbDELETE: TCheckBox;
     cbALL: TCheckBox;
     cbLog: TCheckBox;
+    eExternalLib: TEdit;
+    GroupBox5: TGroupBox;
+    OpenDialog1: TOpenDialog;
     saAuthType: TComboBox;
     cbRoute: TComboBox;
     Engine: TRadioGroup;
@@ -57,6 +61,7 @@ type
     TabSheet5: TTabSheet;
     bStart: TToggleBox;
     procedure bAddClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure bStartClick(Sender: TObject);
@@ -84,11 +89,8 @@ procedure TForm1.FormDestroy(Sender: TObject);
 begin
   if Assigned(FServer) then
   begin
-    if FServer.Active then
-    begin
-      FServer.Stop;
-      Sleep(500);
-    end;
+    FServer.Stop;
+    Sleep(1000);
     FreeAndNil(FServer);
   end;
 end;
@@ -112,8 +114,13 @@ begin
     Cells[1, pred(RowCount)] := eRouteDescription.Text;
     Cells[2, pred(RowCount)] := GetSelectedMethods;
   end;
-  ClearControls([eRouteDescription, cbGET, cbPOST, cbPUT, cbPATCH,
-    cbDELETE, cbALL, cbRoute]);
+  ClearControls([eRouteDescription, cbGET, cbPOST, cbPUT, cbPATCH, cbDELETE, cbALL, cbRoute]);
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  if OpenDialog1.Execute then
+    eExternalLib.Text := OpenDialog1.FileName;
 end;
 
 procedure TForm1.bStartClick(Sender: TObject);
@@ -153,6 +160,15 @@ begin
     2: begin
       FServer := TRALSynopseServer.Create(Self);
       TRALSynopseServer(FServer).SSL.Enabled := cbUseSSL.Checked;
+      TRALSynopseServer(FServer).SSL.CertificateFile := esslCertFile.Text;
+      TRALSynopseServer(FServer).SSL.PrivateKeyFile := esslCertKeyFile.Text;
+    end;
+    3: begin
+      FServer := TRALSaguiServer.Create(Self);
+      TRALSaguiServer(FServer).SSL.Enabled := cbUseSSL.Checked;
+      TRALSaguiServer(FServer).SSL.Certificate := esslCertFile.Text;
+      TRALSaguiServer(FServer).SSL.PrivateKey := esslCertKeyFile.Text;
+      TRALSaguiServer(FServer).LibPath := eExternalLib.Text;
     end;
   end;
 
@@ -164,7 +180,7 @@ begin
     end;
     1:
       FServer.Authentication :=
-        TRALServerBasicAuth.Create(nil, saUser.Text, saPassword.Text);
+        TRALServerBasicAuth.Create(self, saUser.Text, saPassword.Text);
   end;
 
   FServer.Port := StrToInt(spPort.Text);

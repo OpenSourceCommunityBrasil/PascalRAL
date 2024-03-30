@@ -1,15 +1,25 @@
 program RALTestServerDelphiConsole;
 
+{$I PascalRAL.inc}
 {$APPTYPE CONSOLE}
 {$R *.res}
 
 uses
-  Classes,
-  RALIndyServer,
+  Classes, SysUtils,
+  // base classes
+  RALServer, RALRequest, RALResponse, RALConsts,
+  // engines
+  {$IFNDEF RALLinux}
   RALSynopseServer,
-  RALServer,
-  RALRequest,
-  RALResponse;
+  {$ENDIF}
+  RALIndyServer, RALSaguiServer;
+
+const
+  {$IFDEF RALWindows}
+  LIBSAGUI = 'libsagui-3.dll';
+  {$ELSE}
+  LIBSAGUI = 'libsagui-3.so';
+  {$ENDIF}
 
 type
   TRALApplication = class(TComponent)
@@ -27,18 +37,30 @@ constructor TRALApplication.Create(TheOwner: TComponent);
 var
   opt: integer;
 begin
+  WriteLn('RALTestServer Delphi Console v' + RALVERSION);
   WriteLn('Choose the engine:');
+  {$IFNDEF RALLinux}
   WriteLn('1 - Synopse mORMot2');
+  {$ENDIF}
   WriteLn('2 - Indy');
+  WriteLn('3 - Sagui (libsagui.dll or libsagui.so required)');
   ReadLn(opt);
   case opt of
-    1: FServer := TRALSynopseServer.Create(nil);
-    2: FServer := TRALIndyServer.Create(nil);
+    {$IFNDEF RALLinux}
+    1:
+      FServer := TRALSynopseServer.Create(nil);
+    {$ENDIF}
+    2:
+      FServer := TRALIndyServer.Create(nil);
+    3:
+      begin
+        FServer := TRALSaguiServer.Create(nil);
+        TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + LIBSAGUI;
+      end;
   end;
   FServer.Port := 8083;
   FServer.CreateRoute('ping', Ping);
   FServer.Start;
-
 end;
 
 destructor TRALApplication.Destroy;
@@ -72,4 +94,5 @@ begin
   Application := TRALApplication.Create(nil);
   Application.Run;
   Application.Free;
+
 end.

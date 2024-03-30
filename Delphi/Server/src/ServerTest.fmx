@@ -122,39 +122,43 @@ object Form1: TForm1
               TabOrder = 1
               object FlowLayout2: TFlowLayout
                 Align = Client
-                Padding.Left = 5.000000000000000000
-                Padding.Top = 10.000000000000000000
-                Padding.Right = 5.000000000000000000
-                Padding.Bottom = 5.000000000000000000
                 Margins.Left = 5.000000000000000000
-                Margins.Top = 15.000000000000000000
+                Margins.Top = 20.000000000000000000
                 Margins.Right = 5.000000000000000000
                 Margins.Bottom = 5.000000000000000000
                 Size.Width = 101.000000000000000000
-                Size.Height = 83.000000000000000000
+                Size.Height = 78.000000000000000000
                 Size.PlatformDefault = False
                 TabOrder = 38
                 Justify = Center
                 JustifyLastLine = Center
                 FlowDirection = LeftToRight
-                VerticalGap = 5.000000000000000000
+                VerticalGap = 3.000000000000000000
                 object rbIndy: TRadioButton
                   Position.X = 2.500000000000000000
-                  Position.Y = 10.000000000000000000
-                  Size.Width = 96.000000000000000000
-                  Size.Height = 19.000000000000000000
-                  Size.PlatformDefault = False
-                  TabOrder = 40
-                  Text = 'Indy'
-                end
-                object rbSynopse: TRadioButton
-                  Position.X = 2.500000000000000000
-                  Position.Y = 34.000000000000000000
                   Size.Width = 96.000000000000000000
                   Size.Height = 19.000000000000000000
                   Size.PlatformDefault = False
                   TabOrder = 39
+                  Text = 'Indy'
+                end
+                object rbSynopse: TRadioButton
+                  Position.X = 2.500000000000000000
+                  Position.Y = 22.000000000000000000
+                  Size.Width = 96.000000000000000000
+                  Size.Height = 19.000000000000000000
+                  Size.PlatformDefault = False
+                  TabOrder = 41
                   Text = 'Synopse'
+                end
+                object rbSagui: TRadioButton
+                  Position.X = 2.500000000000000000
+                  Position.Y = 44.000000000000000000
+                  Size.Width = 96.000000000000000000
+                  Size.Height = 19.000000000000000000
+                  Size.PlatformDefault = False
+                  TabOrder = 40
+                  Text = 'Sagui'
                 end
               end
             end
@@ -163,6 +167,37 @@ object Form1: TForm1
               Position.Y = 65.000000000000000000
               TabOrder = 3
               Text = 'Enable Log?'
+            end
+            object GroupBox7: TGroupBox
+              Align = Client
+              Margins.Right = 3.000000000000000000
+              Size.Width = 347.000000000000000000
+              Size.Height = 103.000000000000000000
+              Size.PlatformDefault = False
+              Text = 'External Lib Location'
+              TabOrder = 4
+              object eExternalLib: TEdit
+                Touch.InteractiveGestures = [LongTap, DoubleTap]
+                Align = Top
+                TabOrder = 38
+                Position.X = 10.000000000000000000
+                Position.Y = 20.000000000000000000
+                Margins.Left = 10.000000000000000000
+                Margins.Top = 20.000000000000000000
+                Margins.Right = 10.000000000000000000
+                Margins.Bottom = 5.000000000000000000
+                Size.Width = 327.000000000000000000
+                Size.Height = 22.000000000000000000
+                Size.PlatformDefault = False
+              end
+              object Button1: TButton
+                Position.X = 10.000000000000000000
+                Position.Y = 51.000000000000000000
+                TabOrder = 39
+                Text = 'Open'
+                TextSettings.Trimming = None
+                OnClick = Button1Click
+              end
             end
           end
           object TabItem4: TTabItem
@@ -650,5 +685,10 @@ object Form1: TForm1
         end
       end
     end
+  end
+  object OpenDialog1: TOpenDialog
+    Filter = 'libraries|*.dll'
+    Left = 407
+    Top = 116
   end
 end

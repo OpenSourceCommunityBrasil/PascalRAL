@@ -15,7 +15,7 @@ uses
   uRotas,
 
   RALServer, RALRequest, RALResponse, RALRoutes, RALIndyServer, RALSynopseServer,
-  RALTools, RALAuthentication, RALConsts
+  RALTools, RALAuthentication, RALConsts, RALSaguiServer
 
     ;
 
@@ -79,14 +79,20 @@ type
     spPort: TEdit;
     Label1: TLabel;
     GroupBox2: TGroupBox;
-    FlowLayout2: TFlowLayout;
-    rbIndy: TRadioButton;
-    rbSynopse: TRadioButton;
     cbLog: TCheckBox;
+    FlowLayout2: TFlowLayout;
+    rbSynopse: TRadioButton;
+    rbSagui: TRadioButton;
+    rbIndy: TRadioButton;
+    GroupBox7: TGroupBox;
+    eExternalLib: TEdit;
+    Button1: TButton;
+    OpenDialog1: TOpenDialog;
     procedure bStartClick(Sender: TObject);
     procedure bAddClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
     FServer: TRALServer;
@@ -130,10 +136,16 @@ begin
     end
     else if FServer.Active then
     begin
-      FServer.Active := false;
+      FServer.Stop;
       FreeAndNil(FServer);
       bStart.Text := 'Start Server';
     end;
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  if OpenDialog1.Execute then
+    eExternalLib.Text := OpenDialog1.FileName;
 end;
 
 procedure TForm1.ClearControls(AControlName: array of TComponent);
@@ -171,6 +183,12 @@ begin
   begin
     FServer := TRALSynopseServer.Create(self);
     TRALSynopseServer(FServer).SSL.Enabled := cbUseSSL.IsChecked;
+  end
+  else if rbSagui.IsChecked then
+  begin
+    FServer := TRALSaguiServer.Create(self);
+    TRALSaguiServer(FServer).SSL.Enabled := cbUseSSL.IsChecked;
+    TRALSaguiServer(FServer).LibPath := eExternalLib.Text;
   end;
 
   case saAuthType.ItemIndex of
@@ -203,7 +221,7 @@ begin
     FServer.OnResponse := LogResponse;
   end;
 
-  FServer.Active := true;
+  FServer.Start;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -216,7 +234,7 @@ procedure TForm1.FormDestroy(Sender: TObject);
 begin
   if Assigned(FServer) then
   begin
-    FServer.Active := false;
+    FServer.Stop;
     FreeAndNil(FServer);
     sleep(500);
   end;

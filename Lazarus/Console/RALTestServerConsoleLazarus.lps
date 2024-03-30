@@ -3,16 +3,25 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Release"/>
+    <BuildModes Active="Debug"/>
     <Units>
       <Unit>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="59"/>
-        <CursorPos X="41" Y="78"/>
-        <UsageCount Value="23"/>
+        <TopLine Value="60"/>
+        <CursorPos X="25" Y="75"/>
+        <UsageCount Value="26"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\base\PascalRAL.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\base\RALServer.pas"/>
@@ -28,79 +37,167 @@
         <CursorPos X="48" Y="326"/>
         <UsageCount Value="10"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="435"/>
+        <CursorPos X="8" Y="442"/>
+        <UsageCount Value="11"/>
+        <Bookmarks Count="1">
+          <Item0 X="11" Y="241" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\libsagui.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="427"/>
+        <CursorPos X="3" Y="441"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\IDE\lazarus\3.0\fpcsrc\rtl\objpas\sysutils\sysutilh.inc"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="27"/>
+        <CursorPos X="4" Y="41"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\engine\fpHTTP\RALfpHTTPRegister.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="75" Y="16"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\..\PascalRAL\src\engine\fpHTTP\RALfpHTTPClient.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="153"/>
+        <CursorPos X="28" Y="170"/>
+        <UsageCount Value="10"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="17">
+    <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="28" Column="22" TopLine="6"/>
+        <Caret Line="73" Column="87" TopLine="62"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="38" Column="19" TopLine="14"/>
+        <Caret Line="75" Column="34" TopLine="59"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="86" Column="14" TopLine="72"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="241" Column="11" TopLine="235"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="316" Column="28" TopLine="295"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="202" Column="21" TopLine="195"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="428" Column="10" TopLine="420"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="435" Column="13" TopLine="419"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="427" Column="60" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="428" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="429" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="430" TopLine="418"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="42" Column="46" TopLine="27"/>
+        <Caret Line="71" Column="44" TopLine="59"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="48" Column="3" TopLine="28"/>
+        <Caret Line="76" TopLine="59"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="49" Column="42" TopLine="25"/>
+        <Caret Line="77" TopLine="59"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="24" Column="38" TopLine="7"/>
+        <Caret Line="78" TopLine="59"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="56" Column="42" TopLine="38"/>
+        <Caret Line="79" TopLine="60"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="431" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="433" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="434" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="433" TopLine="418"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="440" TopLine="420"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="442" TopLine="432"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="431" Column="22" TopLine="419"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="433" TopLine="419"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="439" Column="16" TopLine="419"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="41" Column="25" TopLine="30"/>
+        <Caret Line="76" TopLine="60"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="9" Column="11"/>
+        <Caret Line="77" TopLine="60"/>
       </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="38" Column="19" TopLine="25"/>
+        <Caret Line="78" TopLine="60"/>
       </Position>
       <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="27" Column="20" TopLine="27"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="55" Column="18" TopLine="43"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="72" Column="18" TopLine="59"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="23" Column="19" TopLine="10"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="24" Column="54" TopLine="10"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="42" Column="54" TopLine="54"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="36" Column="6" TopLine="28"/>
-      </Position>
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="30" Column="16" TopLine="16"/>
+        <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
+        <Caret Line="442" Column="8" TopLine="435"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -108,4 +205,20 @@
       <Modes ActiveMode=""/>
     </RunParams>
   </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="RALTestServerConsoleLazarus.lpr"/>
+        <Line Value="76"/>
+      </Item>
+    </BreakPoints>
+    <Watches>
+      <Item>
+        <Expression Value="FLibPath"/>
+      </Item>
+    </Watches>
+  </Debugging>
 </CONFIG>
