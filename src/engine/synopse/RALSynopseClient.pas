@@ -6,20 +6,43 @@ uses
   Classes, SysUtils,
   mormot.net.client, mormot.core.base,
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
-  RALCompress;
+  RALCompress, RALResponse;
 
 type
+  { TRALSynopseClientHTTP }
+
+  TRALSynopseClientHTTP = class(TRALClientHTTP)
+  protected
+    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
+    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
+    procedure SetUseSSL(const AValue: boolean); override;
+    procedure SetUserAgent(const AValue: StringRAL); override;
+  public
+    constructor Create(AOwner: TRALClientBase); override;
+    destructor Destroy; override;
+
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+      AMethod: TRALMethod); override;
+  end;
+
+  { TRALSynopseClientThreaded }
+
+  TRALSynopseClientThreaded = class(TRALClientThreaded)
+  protected
+    function CreateClient: TRALClientHTTP; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+  end;
 
   { TRALSynopseClient }
 
   TRALSynopseClient = class(TRALClient)
-  private
   protected
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
+    function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
     function Clone(AOwner: TComponent): TRALClient; override;
-    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
@@ -32,107 +55,120 @@ begin
   CopyProperties(Result);
 end;
 
-procedure TRALSynopseClient.CopyProperties(ADest: TRALClient);
-begin
-  inherited;
-end;
-
 constructor TRALSynopseClient.Create(AOwner: TComponent);
 begin
   inherited;
   SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
-function TRALSynopseClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
-var
-  vSource : TStream;
-  vContentType: StringRAL;
-  vHeader, vContentDisposition : StringRAL;
-  vHttp : THttpClientSocket;
-  vAddress : UTF8String;
-  vKeepAlive : Cardinal;
+function TRALSynopseClient.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALSynopseClientHTTP.Create(Self);
+end;
+
+{ TRALSynopseClientHTTP }
+
+constructor TRALSynopseClientHTTP.Create(AOwner: TRALClientBase);
 begin
   inherited;
-  Response.Clear;
-  Response.StatusCode := -1;
-  Response.ResponseText := '';
 
-  vHttp := THttpClientSocket.OpenUri(AUrl,vAddress,'',ConnectTimeout);
+end;
+
+destructor TRALSynopseClientHTTP.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod);
+var
+  vSource : TStream;
+  vHeader : StringRAL;
+  vHttp : THttpClientSocket;
+  vAddress : UTF8String;
+  vResult : IntegerRAL;
+  vKeepAlive : Cardinal;
+begin
+  AResponse.Clear;
+  AResponse.StatusCode := -1;
+  AResponse.ResponseText := '';
+
+  vHttp := THttpClientSocket.OpenUri(AUrl ,vAddress, '', Parent.ConnectTimeout);
   try
-    vHttp.TLS.Enabled := UseSSL;
-    vHttp.SendTimeout := ConnectTimeout;
-    vHttp.ReceiveTimeout := RequestTimeout;
-    vHttp.UserAgent := UserAgent;
+    vHttp.TLS.Enabled := Parent.UseSSL;
+    vHttp.SendTimeout := Parent.ConnectTimeout;
+    vHttp.ReceiveTimeout := Parent.RequestTimeout;
+    vHttp.UserAgent := Parent.UserAgent;
     vHttp.Accept := '*/*';
-    vHttp.KeepAlive := KeepAlive;
+    vHttp.KeepAlive := Parent.KeepAlive;
 
-    if KeepAlive then
-      vKeepAlive := ConnectTimeout
+    if Parent.KeepAlive then
+      vKeepAlive := Parent.ConnectTimeout
     else
       vKeepAlive := 0;
 
-    AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+    ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
-    Request.ContentCompress := CompressType;
-    if CompressType <> ctNone then
+    ARequest.ContentCompress := Parent.CompressType;
+    if Parent.CompressType <> ctNone then
     begin
-      AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-      AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
+      ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
+      ARequest.Params.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
     end;
 
-    Request.ContentCripto := CriptoOptions.CriptType;
-    if CriptoOptions.CriptType <> crNone then
+    ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
+    if Parent.CriptoOptions.CriptType <> crNone then
     begin
-      AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
-      AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+      ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
+      ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
     end;
 
-    vContentType := '';
-    vSource := AParams.EncodeBody(vContentType, vContentDisposition);
+    vSource := ARequest.RequestStream;
     try
-      if vContentType <> '' then
-        AParams.AddParam('Content-Type', vContentType, rpkHEADER);
-      if vContentType <> '' then
-        AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
+      if ARequest.ContentType <> '' then
+        ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
+      if ARequest.ContentType <> '' then
+        ARequest.Params.AddParam('Content-Disposition', ARequest.ContentType, rpkHEADER);
 
-      vHeader := AParams.AssignParamsListText(rpkHEADER, ': ');
+      vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 
       try
         case AMethod of
           amGET:
-            Result := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPOST:
-            Result := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPUT:
-            Result := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amPATCH:
-            Result := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amDELETE:
-            Result := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amTRACE:
-            Result := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amHEAD:
-            Result := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
           amOPTIONS:
-            Result := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', False, vSource, nil);
         end;
 
-        Response.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
+        AResponse.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
-        Response.ContentEncoding := Response.ParamByName('Content-Encoding').AsString;
-        Response.Params.CompressType := Response.ContentCompress;
+        AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
+        AResponse.Params.CompressType := AResponse.ContentCompress;
 
-        Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
-        Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
-        Response.Params.CriptoOptions.Key := CriptoOptions.Key;
+        AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
+        AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+        AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-        Response.ContentType := vHttp.ContentType;
-        Response.ContentDisposition := Response.ParamByName('Content-Disposition').AsString;
-        Response.StatusCode := Result;
-        Response.ResponseText := vHttp.Content;
+        AResponse.ContentType := vHttp.ContentType;
+        AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
+        AResponse.StatusCode := vResult;
+        AResponse.ResponseText := vHttp.Content;
       except
         on e : Exception do
-          Response.ResponseText := e.Message;
+          AResponse.ResponseText := e.Message;
       end;
     finally
       FreeAndNil(vSource);
@@ -140,6 +176,46 @@ begin
   finally
     FreeAndNil(vHttp);
   end;
+end;
+
+procedure TRALSynopseClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
+begin
+
+end;
+
+procedure TRALSynopseClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
+begin
+
+end;
+
+procedure TRALSynopseClientHTTP.SetUserAgent(const AValue: StringRAL);
+begin
+
+end;
+
+procedure TRALSynopseClientHTTP.SetUseSSL(const AValue: boolean);
+begin
+
+end;
+
+{ TRALSynopseClientThreaded }
+
+function TRALSynopseClientThreaded.Clone(
+  AOwner: TComponent): TRALClientThreaded;
+begin
+  Result := TRALSynopseClientThreaded.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+constructor TRALSynopseClientThreaded.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
+end;
+
+function TRALSynopseClientThreaded.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALSynopseClientHTTP.Create(Self);
 end;
 
 end.

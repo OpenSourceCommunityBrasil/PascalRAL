@@ -24,8 +24,6 @@ type
     procedure SetUseSSL(const AValue: boolean); virtual; abstract;
     procedure SetUserAgent(const AValue: StringRAL); virtual; abstract;
 
-    property Parent: TRALClientBase read FParent write FParent;
-
     /// returns the complete URL of a given route.
     function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil): StringRAL;
     /// allows manipulation of params before executing request.
@@ -47,6 +45,8 @@ type
     procedure SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest);
     /// placeholder
     procedure SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest);
+
+    property Parent: TRALClientBase read FParent write FParent;
   public
     constructor Create(AOwner: TRALClientBase); virtual;
 
@@ -57,7 +57,7 @@ type
   { TRALThreadClient }
 
   TRALThreadClientResponse = procedure(Sender: TObject; AResponse: TRALResponse;
-    AException: StringRAL) of object;
+                                       AException: StringRAL) of object;
 
   /// Base class of engines multi-threads
   TRALThreadClient = class(TThread)
@@ -334,7 +334,7 @@ constructor TRALThreadClient.Create(AOwner: TRALClientBase);
 begin
   inherited Create(True);
 
-  OnTerminate := OnTerminateThread;
+  OnTerminate := {$IFDEF FPC}@{$ENDIF}OnTerminateThread;
   FParent := AOwner;
   FreeOnTerminate := True;
   FRoute := '';
@@ -351,6 +351,8 @@ end;
 
 destructor TRALThreadClient.Destroy;
 begin
+  FreeAndNil(FClient);
+
   if Assigned(FResponse) then
     FreeAndNil(FResponse);
 
@@ -364,7 +366,6 @@ procedure TRALThreadClient.Execute;
 begin
   try
     FResponse := TRALClientResponse.Create;
-
     FClient.SetConnectTimeout(Parent.ConnectTimeout);
     FClient.SetRequestTimeout(Parent.RequestTimeout);
     FClient.SetUseSSL(Parent.UseSSL);
@@ -523,7 +524,7 @@ begin
   if Assigned(AOnResponse) then
     vThread.OnResponse := AOnResponse
   else
-    vThread.OnResponse := OnThreadResponse;
+    vThread.OnResponse := {$IFDEF FPC}@{$ENDIF}OnThreadResponse;
 
   vThread.Start;
 end;
@@ -636,7 +637,7 @@ begin
       else if (vResp = 401) and (vConta > 1) then
         Break;
     end;
-  until (Self.InheritsFrom(TRALClientThreaded)) or (vResp < 400) or (vConta > 3);
+  until (vResp < 400) or (vConta > 3);
 end;
 
 constructor TRALClientHTTP.Create(AOwner: TRALClientBase);

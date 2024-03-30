@@ -444,6 +444,7 @@ begin
     SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
     if not InitilizeServer then
+    begin
       FreeServerHandle;
     end
     else

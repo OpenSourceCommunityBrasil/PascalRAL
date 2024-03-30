@@ -96,7 +96,6 @@ var
   vSource, vResult: TStream;
   vInt: Integer;
 begin
-  inherited;
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
@@ -181,25 +180,21 @@ end;
 
 procedure TRALIndyClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
 begin
-  inherited;
   FHttp.ConnectTimeout := AValue;
 end;
 
 procedure TRALIndyClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
 begin
-  inherited;
   FHttp.ReadTimeout := AValue;
 end;
 
 procedure TRALIndyClientHTTP.SetUserAgent(const AValue: StringRAL);
 begin
-  inherited;
   FHttp.Request.UserAgent := AValue;
 end;
 
 procedure TRALIndyClientHTTP.SetUseSSL(const AValue: boolean);
 begin
-  inherited;
   FHttp.IOHandler := nil;
   if AValue then
     FHttp.IOHandler := FHandlerSSL;

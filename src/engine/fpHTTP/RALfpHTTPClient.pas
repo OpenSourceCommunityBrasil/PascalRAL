@@ -6,105 +6,126 @@ uses
   Classes, SysUtils,
   fphttpclient, fphttp,
   RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
-  RALRequest, RALCompress;
+  RALRequest, RALCompress, RALResponse;
 
 type
+  { TRALfpHttpClientHTTP }
+
+  TRALfpHttpClientHTTP = class(TRALClientHTTP)
+  private
+    FHttp : TFPHTTPClient;
+  protected
+    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
+    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
+    procedure SetUseSSL(const AValue: boolean); override;
+    procedure SetUserAgent(const AValue: StringRAL); override;
+  public
+    constructor Create(AOwner: TRALClientBase); override;
+    destructor Destroy; override;
+
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+      AMethod: TRALMethod); override;
+  end;
+
+  { TRALfpHttpCClientThreaded }
+
+  { TRALfpHttpClientThreaded }
+
+  TRALfpHttpClientThreaded = class(TRALClientThreaded)
+  protected
+    function CreateClient: TRALClientHTTP; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+  end;
 
   { TRALfpHttpClient }
 
   TRALfpHttpClient = class(TRALClient)
-  private
-    FHttp : TFPHTTPClient;
   protected
-    procedure SetConnectTimeout(const Value: IntegerRAL); override;
-    procedure SetRequestTimeout(const Value: IntegerRAL); override;
-
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams): IntegerRAL; override;
+    function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
     function Clone(AOwner: TComponent): TRALClient; override;
-    procedure CopyProperties(ADest: TRALClient); override;
   end;
 
 implementation
 
-{ TRALfpHttpClient }
+{ TRALfpHttpClientHTTP }
 
-function TRALfpHttpClient.Clone(AOwner: TComponent): TRALClient;
+procedure TRALfpHttpClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
 begin
-  Result := TRALfpHttpClient.Create(AOwner);
-  CopyProperties(Result);
+  FHttp.ConnectTimeout := AValue;
 end;
 
-procedure TRALfpHttpClient.CopyProperties(ADest: TRALClient);
+procedure TRALfpHttpClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
 begin
-  inherited;
+  FHttp.IOTimeout := AValue;
 end;
 
-constructor TRALfpHttpClient.Create(AOwner: TComponent);
+procedure TRALfpHttpClientHTTP.SetUseSSL(const AValue: boolean);
 begin
-  inherited;
+
+end;
+
+procedure TRALfpHttpClientHTTP.SetUserAgent(const AValue: StringRAL);
+begin
+
+end;
+
+constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClientBase);
+begin
+  inherited Create(AOwner);
   FHttp := TFPHTTPClient.Create(nil);
-  SetEngine('fpHTTP');
 end;
 
-destructor TRALfpHttpClient.Destroy;
+destructor TRALfpHttpClientHTTP.Destroy;
 begin
   FreeAndNil(FHttp);
-  inherited;
+  inherited Destroy;
 end;
 
-procedure TRALfpHttpClient.SetConnectTimeout(const Value: IntegerRAL);
-begin
-  inherited;
-  FHttp.ConnectTimeout := Value;
-end;
-
-procedure TRALfpHttpClient.SetRequestTimeout(const Value: IntegerRAL);
-begin
-  inherited;
-  FHttp.IOTimeout := Value;
-end;
-
-function TRALfpHttpClient.SendUrl(AURL : StringRAL; AMethod : TRALMethod; AParams : TRALParams) : IntegerRAL;
+procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vInt: IntegerRAL;
   vSource, vResult : TStream;
-  vContentType, vContentDisposition : StringRAL;
 begin
-  inherited;
-  Response.Clear;
-  Response.StatusCode := -1;
-  Response.ResponseText := '';
+  AResponse.Clear;
+  AResponse.StatusCode := -1;
+  AResponse.ResponseText := '';
 
-  AParams.AssignParams(FHttp.Cookies,rpkCOOKIE);
+  ARequest.Params.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
-  if KeepAlive then
-    AParams.AddParam('Connection', 'keep-alive', rpkHEADER);
+  if Parent.KeepAlive then
+    ARequest.Params.AddParam('Connection', 'keep-alive', rpkHEADER);
 
-  Request.ContentCompress := CompressType;
-  if CompressType <> ctNone then
+  ARequest.ContentCompress := Parent.CompressType;
+  if Parent.CompressType <> ctNone then
   begin
-    AParams.AddParam('Content-Encoding', Request.ContentEncoding, rpkHEADER);
-    AParams.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
+    ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
   end;
 
-  Request.ContentCripto := CriptoOptions.CriptType;
-  if CriptoOptions.CriptType <> crNone then
+  ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
+  if Parent.CriptoOptions.CriptType <> crNone then
   begin
-    AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
-    AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+    ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  AParams.AddParam('User-Agent', UserAgent, rpkHEADER);
+  ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
-  vSource := AParams.EncodeBody(vContentType, vContentDisposition);
+  vSource := ARequest.RequestStream;
   try
-    AParams.AddParam('Content-Type', vContentType, rpkHEADER);
-    AParams.AddParam('Content-Disposition', vContentDisposition, rpkHEADER);
-    AParams.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
+    if ARequest.ContentType <> '' then
+      ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
+    if ARequest.ContentDisposition <> '' then
+      ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
+
+    ARequest.Params.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
+
     FHttp.RequestBody := vSource;
+
     vResult := TStringStream.Create;
     try
       case AMethod of
@@ -117,28 +138,65 @@ begin
         amHEAD    : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
         amOPTIONS : FHttp.Options(AURL, vResult);
       end;
-      Response.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
-      Response.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
+      AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
+      AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
 
-      Response.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
-      Response.Params.CompressType := Response.ContentCompress;
+      AResponse.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
+      AResponse.Params.CompressType := AResponse.ContentCompress;
 
-      Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
-      Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
-      Response.Params.CriptoOptions.Key := CriptoOptions.Key;
+      AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
+      AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+      AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-      Response.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
-      Response.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
-      Response.StatusCode := FHttp.ResponseStatusCode;
-      Response.ResponseStream := vResult;
+      AResponse.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
+      AResponse.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
+      AResponse.StatusCode := FHttp.ResponseStatusCode;
+      AResponse.ResponseStream := vResult;
     except
-      Response.ResponseText := FHttp.ResponseStatusText;
+      AResponse.ResponseText := FHttp.ResponseStatusText;
     end;
     FreeAndNil(vResult);
-    Result := FHttp.ResponseStatusCode;
   finally
     FreeAndNil(vSource);
   end;
+end;
+
+{ TRALfpHttpClientThreaded }
+
+function TRALfpHttpClientThreaded.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALfpHttpClientHTTP.Create(Self);
+end;
+
+constructor TRALfpHttpClientThreaded.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetEngine('fpHTTP');
+end;
+
+function TRALfpHttpClientThreaded.Clone(AOwner: TComponent): TRALClientThreaded;
+begin
+  Result := TRALfpHttpClientThreaded.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+{ TRALfpHttpClient }
+
+function TRALfpHttpClient.Clone(AOwner: TComponent): TRALClient;
+begin
+  Result := TRALfpHttpClient.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+function TRALfpHttpClient.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALfpHttpClientHTTP.Create(Self);
+end;
+
+constructor TRALfpHttpClient.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetEngine('fpHTTP');
 end;
 
 end.
