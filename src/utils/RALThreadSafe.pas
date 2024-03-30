@@ -4,7 +4,8 @@ unit RALThreadSafe;
 interface
 
 uses
-  Classes, SysUtils, syncobjs, RALTypes;
+  Classes, SysUtils, SyncObjs,
+  RALTypes;
 
 type
 
@@ -33,7 +34,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    procedure Add(const AItem: StringRAL; const ATime: TDateTime = -1);
+    procedure Add(const AItem: StringRAL);
     procedure AddObject(const AItem: StringRAL; AObject: TObject);
     procedure Clear(AFreeObjects: boolean = false);
     function Count: IntegerRAL;
@@ -41,7 +42,7 @@ type
     function Get(const AIndex: IntegerRAL): StringRAL;
     function GetName(const AIndex: IntegerRAL): StringRAL;
     function GetObject(const AIndex: IntegerRAL): TObject;
-    function isEmpty: boolean;
+    function IsEmpty: boolean;
     function Lock: TStringList; reintroduce;
     function ObjectByItem(const AItem: StringRAL): TObject;
     procedure Remove(const AItem: StringRAL; AFreeObjects: boolean = false); overload;
@@ -124,20 +125,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALStringListSafe.Add(const AItem: StringRAL; const ATime: TDateTime);
-var
-  input: TStringBuilder;
+procedure TRALStringListSafe.Add(const AItem: StringRAL);
 begin
   Lock;
   try
-    input := TStringBuilder.Create;
-    if ATime = -1 then
-      input.Append(AItem).Append(FValue.NameValueSeparator).Append(DateTimeToStr(now))
-    else
-      input.Append(AItem).Append(FValue.NameValueSeparator).Append(DateTimeToStr(ATime));
-
-    FValue.Add(input.ToString);
-    FreeAndNil(input);
+    FValue.Add(AItem);
   finally
     Unlock;
   end;
@@ -176,10 +168,15 @@ end;
 
 function TRALStringListSafe.Count: IntegerRAL;
 begin
-  Result := FValue.Count;
+  Lock;
+  try
+    Result := FValue.Count;
+  finally
+    Unlock;
+  end;
 end;
 
-function TRALStringListSafe.isEmpty: boolean;
+function TRALStringListSafe.IsEmpty: boolean;
 begin
   Lock;
   try
@@ -215,9 +212,7 @@ begin
   try
     i := FValue.IndexOf(AItem);
     if i > -1 then
-    begin
       Result := FValue.Objects[i];
-    end;
   finally
     Unlock;
   end;
