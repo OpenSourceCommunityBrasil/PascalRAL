@@ -69,8 +69,9 @@ body:
         - Delphi XE~XE8
         - Delphi 2006~2010
         - Delphi 7
-        - Lazarus 2.2+
-        - Lazarus < 2.2 
+        - Lazarus 3.0 - 3.2+
+        - Lazarus 2.0 - 2.2.6
+        - Lazarus < 2.0 
     validations:
       required: true
   - type: dropdown
