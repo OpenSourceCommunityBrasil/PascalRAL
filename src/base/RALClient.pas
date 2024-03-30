@@ -151,7 +151,8 @@ type
     procedure UnLockSession;
 
     /// core method of the client. Must override on children.
-    procedure ExecuteThread(ARoute : StringRAL; ARequest : TRALRequest; AMethod: TRALMethod);
+    procedure ExecuteThread(ARoute : StringRAL; ARequest : TRALRequest;
+                            AMethod: TRALMethod; AOnResponse : TRALThreadClientResponse = nil);
   public
     destructor Destroy; override;
 
@@ -160,15 +161,20 @@ type
     function Clone(AOwner: TComponent = nil): TRALClientThreaded; virtual; abstract;
 
     /// Defines method on the client: Delete.
-    procedure Delete(ARoute : StringRAL; ARequest : TRALRequest); virtual;
+    procedure Delete(ARoute : StringRAL; ARequest : TRALRequest;
+                     AOnResponse : TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Get.
-    procedure Get(ARoute : StringRAL; ARequest : TRALRequest); virtual;
+    procedure Get(ARoute : StringRAL; ARequest : TRALRequest;
+                  AOnResponse : TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Patch.
-    procedure Patch(ARoute : StringRAL; ARequest : TRALRequest); virtual;
+    procedure Patch(ARoute : StringRAL; ARequest : TRALRequest;
+                    AOnResponse : TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Post.
-    procedure Post(ARoute : StringRAL; ARequest : TRALRequest); virtual;
+    procedure Post(ARoute : StringRAL; ARequest : TRALRequest;
+                   AOnResponse : TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Put.
-    procedure Put(ARoute : StringRAL; ARequest : TRALRequest); virtual;
+    procedure Put(ARoute : StringRAL; ARequest : TRALRequest;
+                  AOnResponse : TRALThreadClientResponse = nil); virtual;
   published
     property Authentication;
     property BaseURL;
@@ -500,9 +506,10 @@ end;
 
 { TRALClientThreaded }
 
-procedure TRALClientThreaded.Delete(ARoute: StringRAL; ARequest: TRALRequest);
+procedure TRALClientThreaded.Delete(ARoute: StringRAL; ARequest: TRALRequest;
+                                    AOnResponse : TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amDELETE);
+  ExecuteThread(ARoute, ARequest, amDELETE, AOnResponse);
 end;
 
 destructor TRALClientThreaded.Destroy;
@@ -511,8 +518,8 @@ begin
   inherited;
 end;
 
-procedure TRALClientThreaded.ExecuteThread(ARoute: StringRAL;
-  ARequest: TRALRequest; AMethod: TRALMethod);
+procedure TRALClientThreaded.ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest;
+                             AMethod: TRALMethod; AOnResponse : TRALThreadClientResponse);
 var
   vThread : TRALThreadClient;
 begin
@@ -520,13 +527,19 @@ begin
   vThread.Route := ARoute;
   vThread.Request := ARequest;
   vThread.Method := AMethod;
-  vThread.OnResponse := OnThreadResponse;
+
+  if Assigned(AOnResponse) then
+    vThread.OnResponse := AOnResponse
+  else
+    vThread.OnResponse := OnThreadResponse;
+
   vThread.DoExecute;
 end;
 
-procedure TRALClientThreaded.Get(ARoute: StringRAL; ARequest: TRALRequest);
+procedure TRALClientThreaded.Get(ARoute: StringRAL; ARequest: TRALRequest;
+                                 AOnResponse : TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amGET);
+  ExecuteThread(ARoute, ARequest, amGET, AOnResponse);
 end;
 
 procedure TRALClientThreaded.LockSession;
@@ -549,19 +562,22 @@ begin
     FOnResponse(Self, AResponse);
 end;
 
-procedure TRALClientThreaded.Patch(ARoute: StringRAL; ARequest: TRALRequest);
+procedure TRALClientThreaded.Patch(ARoute: StringRAL; ARequest: TRALRequest;
+                                   AOnResponse : TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amPATCH);
+  ExecuteThread(ARoute, ARequest, amPATCH, AOnResponse);
 end;
 
-procedure TRALClientThreaded.Post(ARoute: StringRAL; ARequest: TRALRequest);
+procedure TRALClientThreaded.Post(ARoute: StringRAL; ARequest: TRALRequest;
+                                  AOnResponse : TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amPost);
+  ExecuteThread(ARoute, ARequest, amPost, AOnResponse);
 end;
 
-procedure TRALClientThreaded.Put(ARoute: StringRAL; ARequest: TRALRequest);
+procedure TRALClientThreaded.Put(ARoute: StringRAL; ARequest: TRALRequest;
+                                 AOnResponse : TRALThreadClientResponse);
 begin
-  ExecuteThread(ARoute, ARequest, amPUT);
+  ExecuteThread(ARoute, ARequest, amPUT, AOnResponse);
 end;
 
 procedure TRALClientThreaded.UnLockSession;
