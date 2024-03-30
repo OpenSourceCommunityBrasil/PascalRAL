@@ -837,9 +837,9 @@ begin
   if vInt1 + vInt2 = 1 then
   begin
     if vInt1 > 0 then
-      Result := Index[0, rpkBODY]
+      vItem := IndexKind[0, rpkBODY]
     else
-      Result := Index[0, rpkFIELD];
+      vItem := IndexKind[0, rpkFIELD];
     Result := vItem.SaveToStream;
     AContentType := vItem.ContentType;
     AContentDisposition := vItem.ContentDisposition;
@@ -867,7 +867,7 @@ begin
 
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
-  else if vInt1 + vInt2 >= 1 then
+  else if vInt1 + vInt2 > 1 then
   begin
     vMultPart := TRALMultipartEncoder.Create;
     try
@@ -1007,16 +1007,14 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if (vParam.Kind = AKind) then
+    if (vParam.Kind = AKind) and (vIdxParam = AIndex) then
     begin
-      if (vIdxParam = AIndex) then
-      begin
-        Result := vParam;
-        Break;
-      end
-      else begin
-        vIdxParam := vIdxParam + 1;
-      end;
+      Result := vParam;
+      Break;
+    end
+    else if (vParam.Kind = AKind) then
+    begin
+      vIdxParam := vIdxParam + 1;
     end;
   end;
 end;

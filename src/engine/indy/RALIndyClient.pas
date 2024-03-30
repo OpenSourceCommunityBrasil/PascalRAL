@@ -6,29 +6,48 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   IdCookie,
-  RALClient, RALParams, RALTypes, RALConsts, RALCompress;
+  RALClient, RALParams, RALTypes, RALConsts, RALCompress, RALRequest,
+  RALResponse;
 
 type
+  { TRALIndyClientHTTP }
 
-  { TRALIndyClient }
-
-  TRALIndyClient = class(TRALClient)
+  TRALIndyClientHTTP = class(TRALClientHTTP)
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
   protected
-    procedure SetUseSSL(const Value: boolean); override;
     procedure SetConnectTimeout(const AValue: IntegerRAL); override;
     procedure SetRequestTimeout(const AValue: IntegerRAL); override;
+    procedure SetUseSSL(const AValue: boolean); override;
     procedure SetUserAgent(const AValue: StringRAL); override;
+  public
+    constructor Create(AOwner : TRALClientBase); override;
+    destructor Destroy; override;
 
-    function SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
-      : IntegerRAL; override;
+    procedure SendUrl(AURL: StringRAL; ARequest : TRALRequest;
+                     AResponse : TRALResponse; AMethod: TRALMethod); override;
+  end;
+
+  { TRALIndyClientThreaded }
+
+  TRALIndyClientThreaded = class(TRALClientThreaded)
+  protected
+    function CreateClient : TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-    function Clone(AOwner: TComponent): TRALClient;  override;
-    procedure CopyProperties(ADest: TRALClient);  override;
+    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+  end;
+
+  { TRALIndyClient }
+
+  TRALIndyClient = class(TRALClient)
+  protected
+    function CreateClient: TRALClientHTTP; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+
+    function Clone(AOwner: TComponent = nil): TRALClient; override;
   end;
 
 implementation
@@ -41,70 +60,78 @@ begin
   CopyProperties(Result);
 end;
 
-procedure TRALIndyClient.CopyProperties(ADest: TRALClient);
-begin
-  inherited;
-end;
-
 constructor TRALIndyClient.Create(AOwner: TComponent);
 begin
   inherited;
-  FHttp := TIdHTTP.Create(nil);
-  FHttp.HTTPOptions := [hoKeepOrigProtocol];
-  FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   SetEngine('Indy ' + gsIdVersion);
 end;
 
-destructor TRALIndyClient.Destroy;
+function TRALIndyClient.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALIndyClientHTTP.Create(Self);
+end;
+
+{ TRALIndyClientHTTP }
+
+constructor TRALIndyClientHTTP.Create(AOwner : TRALClientBase);
+begin
+  inherited Create(AOwner);
+
+  FHttp := TIdHTTP.Create(nil);
+  FHttp.HTTPOptions := [hoKeepOrigProtocol, hoNoProtocolErrorException,
+                        hoWantProtocolErrorContent];
+  FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
+end;
+
+destructor TRALIndyClientHTTP.Destroy;
 begin
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
 end;
 
-function TRALIndyClient.SendUrl(AURL: StringRAL; AMethod: TRALMethod; AParams: TRALParams)
-  : IntegerRAL;
+procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
-  vContentType, vContentDisposition: StringRAL;
   vInt: Integer;
 begin
   inherited;
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
-  FHttp.Request.UserAgent := UserAgent;
+  FHttp.Request.UserAgent := Parent.UserAgent;
 
   FHttp.Response.Clear;
 
-  Response.Clear;
-  Response.StatusCode := -1;
-  Response.ResponseText := '';
+  AResponse.Clear;
+  AResponse.StatusCode := -1;
+  AResponse.ResponseText := '';
 
-  if KeepAlive then
+  if Parent.KeepAlive then
     FHttp.Request.Connection := 'keep-alive';
 
-  Request.ContentCompress := CompressType;
-  if CompressType <> ctNone then
+  ARequest.ContentCompress := Parent.CompressType;
+  if Parent.CompressType <> ctNone then
   begin
-    FHttp.Request.ContentEncoding := Request.ContentEncoding;
+    FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
     FHttp.Request.AcceptEncoding := TRALCompress.GetSuportedCompress;
   end;
 
-  Request.ContentCripto := CriptoOptions.CriptType;
-  if CriptoOptions.CriptType <> crNone then
+  ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
+  if Parent.CriptoOptions.CriptType <> crNone then
   begin
-    AParams.AddParam('Content-Encription', Request.ContentEncription, rpkHEADER);
-    AParams.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
+    ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  AParams.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
+  ARequest.Params.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
-  vSource := AParams.EncodeBody(vContentType, vContentDisposition);
+  vSource := ARequest.RequestStream;
   try
     FHttp.AllowCookies := True;
-    FHttp.Request.ContentType := vContentType;
-    FHttp.Request.ContentDisposition := vContentDisposition;
+    FHttp.Request.ContentType := ARequest.ContentType;
+    FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
     vResult := TStringStream.Create;
     try
       case AMethod of
@@ -125,55 +152,74 @@ begin
         amOPTIONS:
           FHttp.Options(AURL, vResult);
       end;
-      Response.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
-      Response.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
+      AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
+      AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
 
-      Response.ContentEncoding := FHttp.Response.ContentEncoding;
-      Response.Params.CompressType := Response.ContentCompress;
+      AResponse.ContentEncoding := FHttp.Response.ContentEncoding;
+      AResponse.Params.CompressType := AResponse.ContentCompress;
 
-      Response.ContentEncription := Response.ParamByName('Content-Encription').AsString;
-      Response.Params.CriptoOptions.CriptType := Response.ContentCripto;
-      Response.Params.CriptoOptions.Key := CriptoOptions.Key;
+      AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
+      AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+      AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-      Response.ContentType := FHttp.Response.ContentType;
-      Response.ContentDisposition := FHttp.Response.ContentDisposition;
-      Response.StatusCode := FHttp.ResponseCode;
-      Response.ResponseStream := vResult;
+      AResponse.ContentType := FHttp.Response.ContentType;
+      AResponse.ContentDisposition := FHttp.Response.ContentDisposition;
+      AResponse.StatusCode := FHttp.ResponseCode;
+      AResponse.ResponseStream := vResult;
     except
-      Response.ResponseText := FHttp.ResponseText;
+      AResponse.StatusCode := FHttp.ResponseCode;
+      AResponse.ResponseText := FHttp.ResponseText;
     end;
     FreeAndNil(vResult);
-
-    Result := FHttp.ResponseCode;
   finally
-    FreeAndNil(vSource);
+    if vSource <> nil then
+      FreeAndNil(vSource);
   end;
 end;
 
-procedure TRALIndyClient.SetConnectTimeout(const AValue: IntegerRAL);
+procedure TRALIndyClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttp.ConnectTimeout := AValue;
 end;
 
-procedure TRALIndyClient.SetRequestTimeout(const AValue: IntegerRAL);
+procedure TRALIndyClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
 begin
   inherited;
   FHttp.ReadTimeout := AValue;
 end;
 
-procedure TRALIndyClient.SetUserAgent(const AValue: StringRAL);
+procedure TRALIndyClientHTTP.SetUserAgent(const AValue: StringRAL);
 begin
   inherited;
   FHttp.Request.UserAgent := AValue;
 end;
 
-procedure TRALIndyClient.SetUseSSL(const Value: boolean);
+procedure TRALIndyClientHTTP.SetUseSSL(const AValue: boolean);
 begin
   inherited;
   FHttp.IOHandler := nil;
-  if Value then
+  if AValue then
     FHttp.IOHandler := FHandlerSSL;
+end;
+
+{ TRALIndyClientThreaded }
+
+function TRALIndyClientThreaded.Clone(AOwner: TComponent): TRALClientThreaded;
+begin
+  Result := TRALIndyClientThreaded.Create(AOwner);
+  CopyProperties(Result);
+end;
+
+constructor TRALIndyClientThreaded.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetEngine('Indy ' + gsIdVersion);
+end;
+
+function TRALIndyClientThreaded.CreateClient: TRALClientHTTP;
+begin
+  Result := TRALIndyClientHTTP.Create(Self);
 end;
 
 end.

@@ -14,7 +14,7 @@ type
                              var AResult: boolean) of object;
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              AParams: TRALJWTParams; var AResult: boolean) of object;
-  TRALOnBeforeGetToken = procedure(AParams: TRALParams) of object;
+  TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
   TRALOnGetTokenSecret = procedure(ATokenAccess: StringRAL; var ATokenSecret: StringRAL) of object;
@@ -40,6 +40,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
+    function IsAuthenticated : boolean; virtual;
+
     property OnBeforeGetToken: TRALOnBeforeGetToken read FOnBeforeGetToken
       write FOnBeforeGetToken;
   published
@@ -66,6 +68,7 @@ type
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
       const APassword: StringRAL); overload;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
+    function IsAuthenticated : boolean; override;
   published
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
@@ -105,6 +108,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
+    function IsAuthenticated : boolean; override;
   published
     property OnBeforeGetToken;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
@@ -161,6 +165,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
+    function IsAuthenticated : boolean; override;
   published
     property Algorithm: TRALOAuthAlgorithm read FAlgorithm write FAlgorithm;
     property ConsumerKey: StringRAL read FConsumerKey write FConsumerKey;
@@ -221,6 +226,8 @@ type
     function GetEntityBody(AParams: TRALParams): StringRAL;
   public
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
+    function IsAuthenticated : boolean; override;
+
     property DigestParams: TRALDigestParams read FDigestParams write FDigestParams;
   published
     property UserName: StringRAL read FUserName write FUserName;
@@ -243,6 +250,11 @@ constructor TRALAuthClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAutoGetToken := True;
+end;
+
+function TRALAuthClient.IsAuthenticated: boolean;
+begin
+  Result := False;
 end;
 
 { TRALClientDigest }
@@ -272,6 +284,11 @@ begin
     if vFreeContent then
       vStream.Free;
   end;
+end;
+
+function TRALClientDigest.IsAuthenticated: boolean;
+begin
+  Result := (FDigestParams.Nonce <> '') and (FDigestParams.Opaque <> '')
 end;
 
 procedure TRALClientDigest.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
@@ -394,6 +411,11 @@ begin
   FAlgorithm := toaHSHA256;
   FRouteInitialize := '/initialize/';
   FRouteAuthorize := '/authorize/';
+end;
+
+function TRALClientOAuth.IsAuthenticated: boolean;
+begin
+  Result := (FTokenAccess <> '') and (FTokenSecret = '')
 end;
 
 procedure TRALClientOAuth.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
@@ -684,6 +706,11 @@ begin
   UserName := AUser;
 end;
 
+function TRALClientBasicAuth.IsAuthenticated: boolean;
+begin
+  Result := True;
+end;
+
 procedure TRALClientBasicAuth.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
 var
   vBase64: StringRAL;
@@ -707,6 +734,11 @@ destructor TRALClientJWTAuth.Destroy;
 begin
   FreeAndNil(FPayload);
   inherited;
+end;
+
+function TRALClientJWTAuth.IsAuthenticated: boolean;
+begin
+  Result := FToken <> '';
 end;
 
 procedure TRALClientJWTAuth.SetAuthHeader(AVars: TStringList; AParams: TRALParams);

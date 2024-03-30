@@ -360,7 +360,10 @@ class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
   Abuf: Pcchar; Asize: csize_t): cssize_t;
 begin
   if Acls = nil then
+  begin
+    sg_eor(True);
     Exit;
+  end;
 
   Result := TStream(Acls).Read(Abuf^, Asize);
   if Result = 0 then
@@ -426,27 +429,29 @@ begin
     Exit;
 
   if FLibPath <> '' then
-  try
-    SgLib.Load(FLibPath);
-    SgLib.Check;
+  begin
+    try
+      SgLib.Load(FLibPath);
+    except
+      raise Exception.Create(emSaguiLibraryLoadError);
+    end;
+  end;
+    
+  SgLib.Check;
 
-    if AValue then
-    begin
-      SetEngine('Sagui ' + sg_version_str);
-      CreateServerHandle;
-      if not InitilizeServer then
-        FreeServerHandle;
+  if AValue then
+  begin
+    SetEngine('Sagui ' + sg_version_str);
+    CreateServerHandle;
+    if not InitilizeServer then
+      FreeServerHandle;
     end
     else
     begin
       ShutdownServerHandle;
       FreeServerHandle;
     end;
-
-  except
-    raise Exception.Create(emSaguiLibraryLoadError);
   end;
-
   inherited;
 end;
 
