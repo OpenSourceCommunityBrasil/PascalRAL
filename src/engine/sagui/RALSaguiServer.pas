@@ -233,6 +233,7 @@ var
   vStr: StringRAL;
   vInt: IntegerRAL;
   vParam: TRALParam;
+  vRespStream: TStream;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -333,8 +334,7 @@ begin
     vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
     vStrMap.FreeOnDestroy := False;
 
-    sg_httpres_sendstream(Ares, 0, DoStreamRead, vResponse.ResponseStream, DoStreamFree,
-      vResponse.StatusCode);
+    vRespStream := vResponse.ResponseStream;
 
     vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
 
@@ -344,6 +344,9 @@ begin
     vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
     vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
     vStrMap.Add('Content-Encription', vResponse.ContentEncription);
+
+    sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
+                          DoStreamFree, vResponse.StatusCode);
   finally
     FreeAndNil(vStrMap);
     FreeAndNil(vResponse);
