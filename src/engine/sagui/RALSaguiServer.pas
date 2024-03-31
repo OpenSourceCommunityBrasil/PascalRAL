@@ -428,7 +428,7 @@ begin
   if AValue = Active then
     Exit;
 
-  if FLibPath <> '' then
+  if (AValue) and (FLibPath <> '') then
   begin
     try
       SgLib.Load(FLibPath);
@@ -436,7 +436,7 @@ begin
       raise Exception.Create(emSaguiLibraryLoadError);
     end;
   end;
-    
+
   SgLib.Check;
 
   if AValue then
@@ -444,14 +444,12 @@ begin
     SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
     if not InitilizeServer then
-    begin
       FreeServerHandle;
-    end
-    else
-    begin
-      ShutdownServerHandle;
-      FreeServerHandle;
-    end;
+  end
+  else
+  begin
+    ShutdownServerHandle;
+    FreeServerHandle;
   end;
   inherited;
 end;
