@@ -66,8 +66,6 @@ begin
   SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
-  FHttp.KeepAlive := True;
-
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 
 {$IFDEF FPC}
@@ -113,6 +111,7 @@ var
   vIdCookie: TIdCookie;
   vCookies: TStringList;
   vParam: TRALParam;
+  vKeepAlive: boolean;
 begin
   vRequest := CreateRequest;
   vResponse := CreateResponse;
@@ -146,6 +145,8 @@ begin
 
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
+
+      vKeepAlive := SameText(ARequestInfo.Connection, 'keep-alive');
 
       ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < 400 then
@@ -235,6 +236,7 @@ begin
       AResponseInfo.ContentStream := ResponseStream;
       AResponseInfo.ContentType := ContentType;
       AResponseInfo.ContentDisposition := ContentDisposition;
+      AResponseInfo.CloseConnection := not vKeepAlive;
 
       AResponseInfo.ContentLength := 0;
       AResponseInfo.FreeContentStream := False;
