@@ -27,9 +27,9 @@ type
       AMethod: TRALMethod); override;
   end;
 
-  { TRALnetHTTPClientThreaded }
+  { TRALnetHTTPClientMT }
 
-  TRALnetHTTPClientThreaded = class(TRALClientThreaded)
+  TRALnetHTTPClientMT = class(TRALClientThreaded)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
@@ -201,21 +201,21 @@ begin
 
 end;
 
-{ TRALnetHTTPClientThreaded }
+{ TRALnetHTTPClientMT }
 
-function TRALnetHTTPClientThreaded.Clone(AOwner: TComponent): TRALClientThreaded;
+function TRALnetHTTPClientMT.Clone(AOwner: TComponent): TRALClientThreaded;
 begin
-  Result := TRALnetHTTPClientThreaded.Create(AOwner);
+  Result := TRALnetHTTPClientMT.Create(AOwner);
   CopyProperties(Result);
 end;
 
-constructor TRALnetHTTPClientThreaded.Create(AOwner: TComponent);
+constructor TRALnetHTTPClientMT.Create(AOwner: TComponent);
 begin
   inherited;
   SetEngine('NetHTTP');
 end;
 
-function TRALnetHTTPClientThreaded.CreateClient: TRALClientHTTP;
+function TRALnetHTTPClientMT.CreateClient: TRALClientHTTP;
 begin
   Result := TRALnetHTTPClientHTTP.Create(Self);
 end;

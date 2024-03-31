@@ -16,7 +16,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Server', [TRALIndyServer]);
-  RegisterComponents('RAL - Client', [TRALIndyClient]);
+  RegisterComponents('RAL - Client', [TRALIndyClient, TRALIndyClientMT]);
 end;
 
 {$IFDEF FPC}

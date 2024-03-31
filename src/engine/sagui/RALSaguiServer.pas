@@ -61,7 +61,7 @@ type
       Aclosed: Pcbool); cdecl; static;
 
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
-    class procedure DecodeAuth(AAuthorization : StringRAL; AResult: TRALRequest);
+    class procedure DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure SetActive(const AValue: boolean); override;
@@ -221,8 +221,8 @@ begin
   // procedure obrigatoria para instanciar o server (CreateServerHandle)
 end;
 
-class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid;
-  Areq: Psg_httpreq; Ares: Psg_httpres);
+class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;
+  Ares: Psg_httpres);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -401,8 +401,7 @@ begin
   Result := Trim(Result);
 end;
 
-class procedure TRALSaguiServer.DecodeAuth(AAuthorization: StringRAL;
-  AResult: TRALRequest);
+class procedure TRALSaguiServer.DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
 var
   vInt: IntegerRAL;
   vAux: StringRAL;
@@ -410,7 +409,8 @@ begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
 
-  if AAuthorization <> '' then begin
+  if AAuthorization <> '' then
+  begin
     vInt := Pos(' ', AAuthorization);
     vAux := Trim(Copy(AAuthorization, 1, vInt - 1));
     if SameText(vAux, 'Basic') then
@@ -441,7 +441,6 @@ begin
   end;
 
   SgLib.Check;
-
   if AValue then
   begin
     SetEngine('Sagui ' + sg_version_str);

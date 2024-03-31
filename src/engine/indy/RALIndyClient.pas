@@ -29,9 +29,9 @@ type
       AMethod: TRALMethod); override;
   end;
 
-  { TRALIndyClientThreaded }
+  { TRALIndyClientMT }
 
-  TRALIndyClientThreaded = class(TRALClientThreaded)
+  TRALIndyClientMT = class(TRALClientThreaded)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
@@ -200,21 +200,21 @@ begin
     FHttp.IOHandler := FHandlerSSL;
 end;
 
-{ TRALIndyClientThreaded }
+{ TRALIndyClientMT }
 
-function TRALIndyClientThreaded.Clone(AOwner: TComponent): TRALClientThreaded;
+function TRALIndyClientMT.Clone(AOwner: TComponent): TRALClientThreaded;
 begin
-  Result := TRALIndyClientThreaded.Create(AOwner);
+  Result := TRALIndyClientMT.Create(AOwner);
   CopyProperties(Result);
 end;
 
-constructor TRALIndyClientThreaded.Create(AOwner: TComponent);
+constructor TRALIndyClientMT.Create(AOwner: TComponent);
 begin
   inherited;
   SetEngine('Indy ' + gsIdVersion);
 end;
 
-function TRALIndyClientThreaded.CreateClient: TRALClientHTTP;
+function TRALIndyClientMT.CreateClient: TRALClientHTTP;
 begin
   Result := TRALIndyClientHTTP.Create(Self);
 end;

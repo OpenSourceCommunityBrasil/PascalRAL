@@ -25,9 +25,9 @@ type
       AMethod: TRALMethod); override;
   end;
 
-  { TRALSynopseClientThreaded }
+  { TRALSynopseClientMT }
 
-  TRALSynopseClientThreaded = class(TRALClientThreaded)
+  TRALSynopseClientMT = class(TRALClientThreaded)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
@@ -198,22 +198,22 @@ begin
 
 end;
 
-{ TRALSynopseClientThreaded }
+{ TRALSynopseClientMT }
 
-function TRALSynopseClientThreaded.Clone(
+function TRALSynopseClientMT.Clone(
   AOwner: TComponent): TRALClientThreaded;
 begin
-  Result := TRALSynopseClientThreaded.Create(AOwner);
+  Result := TRALSynopseClientMT.Create(AOwner);
   CopyProperties(Result);
 end;
 
-constructor TRALSynopseClientThreaded.Create(AOwner: TComponent);
+constructor TRALSynopseClientMT.Create(AOwner: TComponent);
 begin
   inherited;
   SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
-function TRALSynopseClientThreaded.CreateClient: TRALClientHTTP;
+function TRALSynopseClientMT.CreateClient: TRALClientHTTP;
 begin
   Result := TRALSynopseClientHTTP.Create(Self);
 end;
