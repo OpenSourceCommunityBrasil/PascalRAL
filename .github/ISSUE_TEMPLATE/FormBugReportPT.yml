@@ -7,43 +7,6 @@ body:
     attributes:
       value: |
         Preencha todos os campos requeridos abaixo para reportar um erro.
-  - type: textarea
-    id: descricao-bug
-    attributes:
-      label: "Descrição do bug"
-      description: "Descreva de forma específica como quando e onde ocorre o bug."
-      placeholder: "Descreva de forma específica como quando e onde ocorre o bug."
-    validations:
-      required: true
-  - type: textarea
-    id: passos-bug
-    attributes:
-      label: "Passos para reproduzir o problema"
-      description: "Descreva os passos pra conseguir reproduzir o problema que você achou."
-      placeholder: |
-        exemplo
-        1. Vá para '...'
-        2. Clique em '....'
-        3. Faça '....'
-        4. Erro
-    validations:
-      required: true      
-  - type: textarea
-    id: expectativa-bug
-    attributes:
-      label: "Comportamento esperado"
-      description: "Descreva o que você espera que acontecesse e faça aqui suas sugestões de melhorias."
-      placeholder: "Descreva o que você espera que acontecesse e faça aqui suas sugestões de melhorias."
-    validations:
-      required: false       
-  - type: textarea
-    id: imagens-bug
-    attributes:
-      label: "Imagens do problema"
-      description: "Cole ou arraste aqui as imagens pra ajudar a informar o problema."
-      placeholder: "Cole ou arraste aqui as imagens."
-    validations:
-      required: false
   - type: markdown
     attributes:
       value: |
@@ -87,7 +50,44 @@ body:
         - iOS
         - Outro
     validations:
+      required: true        
+  - type: textarea
+    id: descricao-bug
+    attributes:
+      label: "Descrição do bug"
+      description: "Descreva de forma específica como quando e onde ocorre o bug."
+      placeholder: "Descreva de forma específica como quando e onde ocorre o bug."
+    validations:
       required: true
+  - type: textarea
+    id: passos-bug
+    attributes:
+      label: "Passos para reproduzir o problema"
+      description: "Descreva os passos pra conseguir reproduzir o problema que você achou."
+      placeholder: |
+        exemplo
+        1. Vá para '...'
+        2. Clique em '....'
+        3. Faça '....'
+        4. Erro
+    validations:
+      required: true      
+  - type: textarea
+    id: expectativa-bug
+    attributes:
+      label: "Comportamento esperado"
+      description: "Descreva o que você espera que acontecesse e faça aqui suas sugestões de melhorias."
+      placeholder: "Descreva o que você espera que acontecesse e faça aqui suas sugestões de melhorias."
+    validations:
+      required: false       
+  - type: textarea
+    id: imagens-bug
+    attributes:
+      label: "Imagens do problema"
+      description: "Cole ou arraste aqui as imagens pra ajudar a informar o problema."
+      placeholder: "Cole ou arraste aqui as imagens."
+    validations:
+      required: false
   - type: input
     id: relator
     attributes:
