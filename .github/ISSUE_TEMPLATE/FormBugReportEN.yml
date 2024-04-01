@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Fill all the required fields below to report an error.
-- type: markdown
+  - type: markdown
     attributes:
       value: |
         Required technical informations:
