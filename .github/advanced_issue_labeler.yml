@@ -1,0 +1,27 @@
+---
+# syntax - https://github.com/redhat-plumbers-in-action/advanced-issue-labeler#policy
+
+policy:
+  - template: [FormBugReportEN.yml, FormBugReportPT.yml]
+    section:
+      - id: [IDE]
+        block-list: []
+        label:
+          - name: "ide: Delphi"
+            keys: ["Delphi 12+", "Delphi 11.3", "Delphi 10.0~10.4", "Delphi XE~XE8", "Delphi 2006~2010", "Delphi 7"]
+
+          - name: "ide: Lazarus"
+            keys: ["Lazarus 3.0 - 3.2+", "Lazarus 2.0 - 2.2.6", "Lazarus < 2.0"]
+      - id: [OS]
+        block-list: [Other]
+        label:
+          - name: "os: Android"
+            keys: [Android]
+          - name: "os: Windows"
+            keys: [Windows]
+          - name: "os: Linux"
+            keys: [Linux]
+          - name: "os: MacOS"
+            keys: [MacOS]
+          - name: "os: iOS"
+            keys: [iOS]
