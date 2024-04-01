@@ -7,44 +7,7 @@ body:
     attributes:
       value: |
         Fill all the required fields below to report an error.
-  - type: textarea
-    id: descricao-bug
-    attributes:
-      label: "Bug Description"
-      description: "Describe in details how, when and where the bug happens."
-      placeholder: "Describe in details how, when and where the bug happens."
-    validations:
-      required: true
-  - type: textarea
-    id: passos-bug
-    attributes:
-      label: "Steps to reproduce the bug"
-      description: "Describe the steps required to reproduce the issue found."
-      placeholder: |
-        example
-        1. Go to '...'
-        2. Click on '....'
-        3. do '....'
-        4. Error
-    validations:
-      required: true      
-  - type: textarea
-    id: expectativa-bug
-    attributes:
-      label: "Expected behavior"
-      description: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
-      placeholder: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
-    validations:
-      required: false       
-  - type: textarea
-    id: imagens-bug
-    attributes:
-      label: "Pictures of the issue"
-      description: "Paste or drag here pictures of the issue."
-      placeholder: "Paste or drag here pictures of the issue."
-    validations:
-      required: false
-  - type: markdown
+- type: markdown
     attributes:
       value: |
         Required technical informations:
@@ -87,7 +50,44 @@ body:
         - iOS
         - Other
     validations:
+      required: true        
+  - type: textarea
+    id: descricao-bug
+    attributes:
+      label: "Bug Description"
+      description: "Describe in details how, when and where the bug happens."
+      placeholder: "Describe in details how, when and where the bug happens."
+    validations:
       required: true
+  - type: textarea
+    id: passos-bug
+    attributes:
+      label: "Steps to reproduce the bug"
+      description: "Describe the steps required to reproduce the issue found."
+      placeholder: |
+        example
+        1. Go to '...'
+        2. Click on '....'
+        3. do '....'
+        4. Error
+    validations:
+      required: true      
+  - type: textarea
+    id: expectativa-bug
+    attributes:
+      label: "Expected behavior"
+      description: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
+      placeholder: "Describe the expected behavior of the action and provide here your insights on how to improve on the issue."
+    validations:
+      required: false       
+  - type: textarea
+    id: imagens-bug
+    attributes:
+      label: "Pictures of the issue"
+      description: "Paste or drag here pictures of the issue."
+      placeholder: "Paste or drag here pictures of the issue."
+    validations:
+      required: false
   - type: input
     id: relator
     attributes:
