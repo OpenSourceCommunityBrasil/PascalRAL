@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        template: [ bug_report.yml, feature_request.yml ]
+        template: [ FormBugReportEN.yml, FormBugReportPT.yml ]
 
     steps:
       - uses: actions/checkout@v4
