@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream;
+  RALTypes, RALStream, RALConsts;
 
 type
   { TRALBase64 }

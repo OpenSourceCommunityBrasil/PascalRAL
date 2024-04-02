@@ -69,7 +69,7 @@ type
     function GetRouteAddress(ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
-    /// Returns a list of routes separated by CRLF (#13#10)
+    /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
 
     property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
@@ -318,7 +318,7 @@ begin
     if I = 0 then
       Result := Result + TRALRoute(Self.Items[I]).Route
     else
-      Result := Result + #13#10 + TRALRoute(Self.Items[I]).Route;
+      Result := Result + sLineBreak + TRALRoute(Self.Items[I]).Route;
 end;
 
 end.

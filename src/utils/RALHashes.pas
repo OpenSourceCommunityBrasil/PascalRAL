@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALBase64, RALTypes, RALTools, RALStream;
+  RALBase64, RALTypes, RALTools, RALStream, RALConsts;
 
 type
   TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);

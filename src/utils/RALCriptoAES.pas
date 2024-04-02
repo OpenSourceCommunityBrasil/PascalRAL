@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALCripto, RALTypes;
+  RALCripto, RALTypes, RALConsts;
 
 type
   TRALAESType = (tAES128, tAES192, tAES256);

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, TypInfo,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
-  RALCripto, RALCriptoAES, RALStream, RALCompress;
+  RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
 type
 
@@ -704,7 +704,7 @@ end;
 function TRALParams.AssignParamsListText(AKind: TRALParamKind;
   const ANameSeparator: StringRAL): StringRAL;
 begin
-  Result := AssignParamsText(AKind, ANameSeparator, #13#10);
+  Result := AssignParamsText(AKind, ANameSeparator, HTTPLineBreak);
 end;
 
 function TRALParams.AssignParamsText(AKind: TRALParamKind; const ANameSeparator: StringRAL;
@@ -910,7 +910,7 @@ begin
     Exit;
 
   ASource := StringReplace(ASource, '&amp;', '%26', [rfReplaceAll]);
-  ASource := StringReplace(ASource, '&', #13#10, [rfReplaceAll]);
+  ASource := StringReplace(ASource, '&', HTTPLineBreak, [rfReplaceAll]);
   Result.Text := ASource;
 end;
 

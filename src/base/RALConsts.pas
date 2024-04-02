@@ -10,7 +10,7 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.9.4 - alpha';
+  RALVERSION = '0.9.5 - alpha';
   // IOTA Constants
   RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
   RALPACKAGESHORT          = 'PascalRAL';
@@ -80,6 +80,10 @@ const
              + '</body></html>';
 
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
+  MultipartLineLength = 500;
+  DEFAULTBUFFERSTREAMSIZE = 52428800;
+  DEFAULTDECODERBUFFERSIZE = 65536;
+  HTTPLineBreak = #13#10;
 
 resourcestring
 { @abstract constant internal messages

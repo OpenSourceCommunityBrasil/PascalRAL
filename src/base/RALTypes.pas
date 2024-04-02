@@ -47,7 +47,9 @@ const
   {$ELSE}
     POSINISTR = 1;
   {$IFEND}
-  DEFAULTBUFFERSTREAMSIZE = 52428800;
+  {$IF not Defined(FPC) AND not Defined(DELPHI7UP)}
+    sLineBreak = #13#10;
+  {$IFEND}
 
 function RALHighStr(const AStr: StringRAL): integer;
 
@@ -55,15 +57,11 @@ implementation
 
 function RALHighStr(const AStr: StringRAL): integer;
 begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2UP}
-      Result := Length(AStr);
-    {$ELSE}
-      Result := High(AStr);
-    {$ENDIF}
+  {$IF not Defined(FPC) and not Defined(DELPHIXE2UP)}
+    Result := Length(AStr);
   {$ELSE}
     Result := High(AStr);
-  {$ENDIF}
+  {$IFEND}
 end;
 
 end.
