@@ -7,19 +7,12 @@ program RALTestServerDelphiConsole;
 uses
   Classes, SysUtils,
   // base classes
-  RALServer, RALRequest, RALResponse, RALConsts,
+  RALServer, RALRequest, RALResponse, RALConsts, libsagui, IdGlobal,
   // engines
   {$IFNDEF RALLinux}
-  RALSynopseServer,
+  RALSynopseServer, mormot.core.base,
   {$ENDIF}
   RALIndyServer, RALSaguiServer;
-
-const
-  {$IFDEF RALWindows}
-  LIBSAGUI = 'libsagui-3.dll';
-  {$ELSE}
-  LIBSAGUI = 'libsagui-3.so';
-  {$ENDIF}
 
 type
   TRALApplication = class(TComponent)
@@ -29,21 +22,22 @@ type
     procedure Ping(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure Run;
   public
-    constructor Create(TheOwner: TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   end;
 
-constructor TRALApplication.Create(TheOwner: TComponent);
+constructor TRALApplication.Create(AOwner: TComponent);
 var
   opt: integer;
 begin
   WriteLn('RALTestServer Delphi Console v' + RALVERSION);
   WriteLn('Choose the engine:');
   {$IFNDEF RALLinux}
-  WriteLn('1 - Synopse mORMot2');
+  WriteLn('1 - Synopse mORMot2 ' + SYNOPSE_FRAMEWORK_VERSION);
   {$ENDIF}
-  WriteLn('2 - Indy');
-  WriteLn('3 - Sagui (libsagui.dll or libsagui.so required)');
+  WriteLn('2 - Indy ' + gsIdVersion);
+  WriteLn('3 - Sagui ' + Format('%d.%d.%d', [SG_VERSION_MAJOR, SG_VERSION_MINOR,
+    SG_VERSION_PATCH]) + ' (' + SG_LIB_NAME + ' required)');
   ReadLn(opt);
   case opt of
     {$IFNDEF RALLinux}
@@ -55,7 +49,7 @@ begin
     3:
       begin
         FServer := TRALSaguiServer.Create(nil);
-        TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + LIBSAGUI;
+        TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + SG_LIB_NAME;
       end;
   end;
   FServer.Port := 8083;
