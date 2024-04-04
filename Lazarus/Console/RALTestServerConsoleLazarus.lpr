@@ -8,15 +8,12 @@ uses
   SysUtils,
   CustApp,
   { you can add units after this }
-  libsagui,
-  RALServer,
-  RALSynopseServer,
-  RALIndyServer,
-  RALfpHTTPServer,
-  RALSaguiServer,
-  RALRequest,
-  RALResponse,
-  RALConsts;
+  // engine version units
+  libsagui, IdGlobal, mormot.core.base,
+  // engine components
+  RALSynopseServer, RALIndyServer, RALfpHTTPServer, RALSaguiServer,
+  // general base components
+  RALServer, RALRequest, RALResponse, RALConsts;
 
 type
 
@@ -62,10 +59,11 @@ type
 
     WriteLn('RAL TestServer Lazarus - v' + RALVERSION);
     WriteLn('Choose the engine:');
-    WriteLn('1 - Synopse mORMot2');
-    WriteLn('2 - Indy');
+    WriteLn('1 - Synopse mORMot2 ' + SYNOPSE_FRAMEWORK_VERSION);
+    WriteLn('2 - Indy ' + gsIdVersion);
     WriteLn('3 - FpHttp');
-    WriteLn('4 - Sagui');
+    WriteLn('4 - Sagui ' + Format('%d.%d.%d', [SG_VERSION_MAJOR, SG_VERSION_MINOR,
+    SG_VERSION_PATCH]) + ' (' + SG_LIB_NAME + ' required)');
     ReadLn(opt);
     case opt of
       1: FServer := TRALSynopseServer.Create(nil);
@@ -74,9 +72,6 @@ type
       4: begin
         FServer := TRALSaguiServer.Create(nil);
         TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + SG_LIB_NAME;
-        WriteLn('library -----------------');
-        test := TRALSaguiServer(FServer).LibPath;
-        WriteLn(test);
       end;
     end;
     FServer.Port := 8083;

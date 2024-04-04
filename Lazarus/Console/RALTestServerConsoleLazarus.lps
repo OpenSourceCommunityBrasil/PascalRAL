@@ -3,15 +3,15 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Debug"/>
+    <BuildModes Active="Release"/>
     <Units>
       <Unit>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="60"/>
-        <CursorPos X="25" Y="75"/>
-        <UsageCount Value="26"/>
+        <TopLine Value="31"/>
+        <CursorPos X="30" Y="45"/>
+        <UsageCount Value="32"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -21,28 +21,28 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="29"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\base\RALServer.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="743"/>
         <CursorPos X="70" Y="755"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\utils\RALBase64.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="257"/>
         <CursorPos X="48" Y="326"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="435"/>
-        <CursorPos X="8" Y="442"/>
-        <UsageCount Value="11"/>
+        <TopLine Value="425"/>
+        <CursorPos X="17" Y="448"/>
+        <UsageCount Value="14"/>
         <Bookmarks Count="1">
           <Item0 X="11" Y="241" ID="1"/>
         </Bookmarks>
@@ -53,7 +53,7 @@
         <EditorIndex Value="3"/>
         <TopLine Value="427"/>
         <CursorPos X="3" Y="441"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="14"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -61,28 +61,24 @@
         <EditorIndex Value="2"/>
         <TopLine Value="27"/>
         <CursorPos X="4" Y="41"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="14"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\engine\fpHTTP\RALfpHTTPRegister.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="75" Y="16"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL\src\engine\fpHTTP\RALfpHTTPClient.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="153"/>
         <CursorPos X="28" Y="170"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
-        <Caret Line="73" Column="87" TopLine="62"/>
-      </Position>
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="75" Column="34" TopLine="59"/>
@@ -199,6 +195,10 @@
         <Filename Value="..\..\..\PascalRAL\src\engine\sagui\RALSaguiServer.pas"/>
         <Caret Line="442" Column="8" TopLine="435"/>
       </Position>
+      <Position>
+        <Filename Value="RALTestServerConsoleLazarus.lpr"/>
+        <Caret Line="75" Column="25" TopLine="60"/>
+      </Position>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>
@@ -206,15 +206,6 @@
     </RunParams>
   </ProjectSession>
   <Debugging>
-    <BreakPoints>
-      <Item>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="RALTestServerConsoleLazarus.lpr"/>
-        <Line Value="76"/>
-      </Item>
-    </BreakPoints>
     <Watches>
       <Item>
         <Expression Value="FLibPath"/>
