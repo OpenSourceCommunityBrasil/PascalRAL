@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fphttpclient, fphttp,
+  fphttpclient, fphttp, ssockets, opensslsockets,
   RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
   RALRequest, RALCompress, RALResponse;
 
@@ -15,10 +15,7 @@ type
   private
     FHttp : TFPHTTPClient;
   protected
-    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUseSSL(const AValue: boolean); override;
-    procedure SetUserAgent(const AValue: StringRAL); override;
+    procedure OnGetSSLHandler(Sender : TObject; Const UseSSL : Boolean; Out AHandler : TSocketHandler);
   public
     constructor Create(AOwner: TRALClientBase); override;
     destructor Destroy; override;
@@ -29,12 +26,12 @@ type
 
   { TRALfpHttpClientMT }
 
-  TRALfpHttpClientMT = class(TRALClientThreaded)
+  TRALfpHttpClientMT = class(TRALClientMT)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
   end;
 
   { TRALfpHttpClient }
@@ -51,30 +48,18 @@ implementation
 
 { TRALfpHttpClientHTTP }
 
-procedure TRALfpHttpClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
+procedure TRALfpHttpClientHTTP.OnGetSSLHandler(Sender: TObject;
+  const UseSSL: Boolean; out AHandler: TSocketHandler);
 begin
-  FHttp.ConnectTimeout := AValue;
-end;
-
-procedure TRALfpHttpClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
-begin
-  FHttp.IOTimeout := AValue;
-end;
-
-procedure TRALfpHttpClientHTTP.SetUseSSL(const AValue: boolean);
-begin
-
-end;
-
-procedure TRALfpHttpClientHTTP.SetUserAgent(const AValue: StringRAL);
-begin
-
+  if UseSSL then
+    AHandler := TOpenSSLSocketHandler.create;
 end;
 
 constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClientBase);
 begin
   inherited Create(AOwner);
   FHttp := TFPHTTPClient.Create(nil);
+  FHttp.OnGetSocketHandler := @OnGetSSLHandler;
 end;
 
 destructor TRALfpHttpClientHTTP.Destroy;
@@ -91,6 +76,9 @@ begin
   AResponse.Clear;
   AResponse.StatusCode := -1;
   AResponse.ResponseText := '';
+
+  FHttp.ConnectTimeout := Parent.ConnectTimeout;
+  FHttp.IOTimeout := Parent.RequestTimeout;
 
   ARequest.Params.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
@@ -130,10 +118,10 @@ begin
         amGET     : FHttp.Get(AURL, vResult);
         amPOST    : FHttp.Post(AURL, vResult);
         amPUT     : FHttp.Put(AURL, vResult);
-        amPATCH   : FHttp.HTTPMethod('PATCH',AURL,vResult,[]); // sem funcao
+        amPATCH   : FHttp.HTTPMethod('PATCH', AURL, vResult, []); // sem funcao
         amDELETE  : FHttp.Delete(AURL, vResult);
-        amTRACE   : FHttp.HTTPMethod('TRACE',AURL,vResult,[]); // sem funcao
-        amHEAD    : FHttp.HTTPMethod('HEAD',AURL,vResult,[]); // trata diferente
+        amTRACE   : FHttp.HTTPMethod('TRACE', AURL, vResult, []); // sem funcao
+        amHEAD    : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
         amOPTIONS : FHttp.Options(AURL, vResult);
       end;
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
@@ -151,7 +139,12 @@ begin
       AResponse.StatusCode := FHttp.ResponseStatusCode;
       AResponse.ResponseStream := vResult;
     except
-      AResponse.ResponseText := FHttp.ResponseStatusText;
+      on e : ESocketError do
+      begin
+        AResponse.ResponseText := FHttp.ResponseStatusText;
+        if e.Code = seConnectTimeOut then
+          AResponse.ErrorCode := 10061;
+      end;
     end;
     FreeAndNil(vResult);
   finally
@@ -172,7 +165,7 @@ begin
   SetEngine('fpHTTP');
 end;
 
-function TRALfpHttpClientMT.Clone(AOwner: TComponent): TRALClientThreaded;
+function TRALfpHttpClientMT.Clone(AOwner: TComponent): TRALClientMT;
 begin
   Result := TRALfpHttpClientMT.Create(AOwner);
   CopyProperties(Result);

@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  mormot.net.client, mormot.core.base,
+  mormot.net.client, mormot.core.base, mormot.net.sock,
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
   RALCompress, RALResponse;
 
@@ -12,11 +12,6 @@ type
   { TRALSynopseClientHTTP }
 
   TRALSynopseClientHTTP = class(TRALClientHTTP)
-  protected
-    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUseSSL(const AValue: boolean); override;
-    procedure SetUserAgent(const AValue: StringRAL); override;
   public
     constructor Create(AOwner: TRALClientBase); override;
     destructor Destroy; override;
@@ -27,12 +22,12 @@ type
 
   { TRALSynopseClientMT }
 
-  TRALSynopseClientMT = class(TRALClientThreaded)
+  TRALSynopseClientMT = class(TRALClientMT)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
   end;
 
   { TRALSynopseClient }
@@ -94,9 +89,12 @@ begin
   AResponse.StatusCode := -1;
   AResponse.ResponseText := '';
 
-  vHttp := THttpClientSocket.OpenUri(AUrl ,vAddress, '', Parent.ConnectTimeout);
+  vHttp := nil;
+
   try
-    vHttp.TLS.Enabled := Parent.UseSSL;
+    vHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout);
+
+    vHttp.TLS.Enabled := SameText(Copy(AURL, 1, 5), 'https');
     vHttp.SendTimeout := Parent.ConnectTimeout;
     vHttp.ReceiveTimeout := Parent.RequestTimeout;
     vHttp.UserAgent := Parent.UserAgent;
@@ -167,41 +165,34 @@ begin
         AResponse.StatusCode := vResult;
         AResponse.ResponseText := vHttp.Content;
       except
-        on e : Exception do
+        on e : ENetSock do
+        begin
+          AResponse.Params.CompressType := ctNone;
+          AResponse.Params.CriptoOptions.CriptType := crNone;
           AResponse.ResponseText := e.Message;
+          if e.LastError in [nrFatalError, nrConnectTimeout]  then
+            AResponse.ErrorCode := 10061;
+        end;
       end;
     finally
       FreeAndNil(vSource);
     end;
-  finally
-    FreeAndNil(vHttp);
+  except
+    on e : ENetSock do
+    begin
+      FreeAndNil(vHttp);
+      AResponse.Params.CompressType := ctNone;
+      AResponse.Params.CriptoOptions.CriptType := crNone;
+      AResponse.ResponseText := e.Message;
+      if e.LastError in [nrFatalError, nrConnectTimeout]  then
+        AResponse.ErrorCode := 10061;
+    end;
   end;
-end;
-
-procedure TRALSynopseClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
-begin
-
-end;
-
-procedure TRALSynopseClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
-begin
-
-end;
-
-procedure TRALSynopseClientHTTP.SetUserAgent(const AValue: StringRAL);
-begin
-
-end;
-
-procedure TRALSynopseClientHTTP.SetUseSSL(const AValue: boolean);
-begin
-
 end;
 
 { TRALSynopseClientMT }
 
-function TRALSynopseClientMT.Clone(
-  AOwner: TComponent): TRALClientThreaded;
+function TRALSynopseClientMT.Clone(AOwner: TComponent): TRALClientMT;
 begin
   Result := TRALSynopseClientMT.Create(AOwner);
   CopyProperties(Result);

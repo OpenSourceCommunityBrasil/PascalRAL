@@ -14,11 +14,6 @@ type
   TRALnetHTTPClientHTTP = class(TRALClientHTTP)
   private
     FHttp: TNetHTTPClient;
-  protected
-    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUseSSL(const AValue: boolean); override;
-    procedure SetUserAgent(const AValue: StringRAL); override;
   public
     constructor Create(AOwner: TRALClientBase); override;
     destructor Destroy; override;
@@ -29,12 +24,12 @@ type
 
   { TRALnetHTTPClientMT }
 
-  TRALnetHTTPClientMT = class(TRALClientThreaded)
+  TRALnetHTTPClientMT = class(TRALClientMT)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
   end;
 
   { TRALnetHTTPClient }
@@ -97,6 +92,10 @@ begin
   AResponse.Clear;
   AResponse.StatusCode := -1;
   AResponse.ResponseText := '';
+
+  FHttp.ConnectionTimeout := Parent.ConnectTimeout;
+  FHttp.ResponseTimeout := Parent.RequestTimeout;
+  FHttp.UserAgent := Parent.UserAgent;
 
   if Parent.KeepALive then
     ARequest.Params.AddParam('Connection', 'keep-alive', rpkHEADER);
@@ -168,8 +167,15 @@ begin
       AResponse.StatusCode := vResponse.GetStatusCode;
       AResponse.ResponseStream := vResponse.ContentStream;
     except
-      on e : ENetHTTPClientException do
+      on e : ENetHTTPClientException do begin
+        AResponse.Params.CompressType := ctNone;
+        AResponse.Params.CriptoOptions.CriptType := crNone;
         AResponse.ResponseText := e.Message;
+        if Pos('12029', e.Message) > 0 then
+          AResponse.ErrorCode := 12029
+        else if Pos('10061', e.Message) > 0 then
+          AResponse.ErrorCode := 10061
+      end;
     end;
   finally
     if vSource <> nil then
@@ -177,33 +183,9 @@ begin
   end;
 end;
 
-procedure TRALnetHTTPClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
-begin
-  inherited;
-  FHttp.ConnectionTimeout := AValue;
-end;
-
-procedure TRALnetHTTPClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
-begin
-  inherited;
-  FHttp.ResponseTimeout := AValue;
-end;
-
-procedure TRALnetHTTPClientHTTP.SetUserAgent(const AValue: StringRAL);
-begin
-  inherited;
-  FHttp.UserAgent := AValue
-end;
-
-procedure TRALnetHTTPClientHTTP.SetUseSSL(const AValue: boolean);
-begin
-  inherited;
-
-end;
-
 { TRALnetHTTPClientMT }
 
-function TRALnetHTTPClientMT.Clone(AOwner: TComponent): TRALClientThreaded;
+function TRALnetHTTPClientMT.Clone(AOwner: TComponent): TRALClientMT;
 begin
   Result := TRALnetHTTPClientMT.Create(AOwner);
   CopyProperties(Result);

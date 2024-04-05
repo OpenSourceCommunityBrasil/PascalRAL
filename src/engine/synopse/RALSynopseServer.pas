@@ -86,7 +86,7 @@ begin
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
-    FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
+    FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := FQueueSize;
     FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';

@@ -58,7 +58,7 @@ type
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     /// Grabs the body of either the request or the response
     function Body: TRALParam;
-    procedure Clear;
+    procedure Clear; virtual;
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
     function GetCookie(const AName: StringRAL): StringRAL; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;

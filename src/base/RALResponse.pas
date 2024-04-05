@@ -15,6 +15,7 @@ type
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     FStatusCode: IntegerRAL;
+    FErrorCode: IntegerRAL;
   protected
     /// Returns the response in TStream format
     function GetResponseStream: TStream;
@@ -49,6 +50,8 @@ type
     /// Sets a file to the response with the given status code, FileStream and an AFileName
     procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; const AFileName: StringRAL); overload;
 
+    procedure Clear; override;
+
     /// Returns the response in TStream format
     function GetResponseEncStream(const AEncode : boolean = true): TStream; virtual; abstract;
     /// Returns the response in UTF8String format
@@ -58,6 +61,7 @@ type
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
   published
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
   end;
 
   /// Derived class to handle ServerResponse
@@ -109,6 +113,13 @@ begin
   AddFile(AFile, AFileName);
 end;
 
+procedure TRALResponse.Clear;
+begin
+  inherited Clear;
+  FStatusCode := -1;
+  FErrorCode := 0;
+end;
+
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
 begin
   StatusCode := AStatusCode;
@@ -125,25 +136,29 @@ begin
   end;
 end;
 
-function TRALResponse.AddHeader(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddField(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddField(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddBody(const AText, AContextType: StringRAL): TRALResponse;
+function TRALResponse.AddBody(const AText: StringRAL;
+  const AContextType: StringRAL): TRALResponse;
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALResponse.AddCookie(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddCookie(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;

@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
-  IdCookie,
+  IdCookie, IdException, IdExceptionCore, IdStack,
   RALClient, RALParams, RALTypes, RALConsts, RALCompress, RALRequest,
   RALResponse;
 
@@ -16,11 +16,6 @@ type
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
-  protected
-    procedure SetConnectTimeout(const AValue: IntegerRAL); override;
-    procedure SetRequestTimeout(const AValue: IntegerRAL); override;
-    procedure SetUseSSL(const AValue: boolean); override;
-    procedure SetUserAgent(const AValue: StringRAL); override;
   public
     constructor Create(AOwner: TRALClientBase); override;
     destructor Destroy; override;
@@ -31,12 +26,12 @@ type
 
   { TRALIndyClientMT }
 
-  TRALIndyClientMT = class(TRALClientThreaded)
+  TRALIndyClientMT = class(TRALClientMT)
   protected
     function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientThreaded; override;
+    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
   end;
 
   { TRALIndyClient }
@@ -78,8 +73,7 @@ begin
   inherited Create(AOwner);
 
   FHttp := TIdHTTP.Create(nil);
-  FHttp.HTTPOptions := [hoKeepOrigProtocol, hoNoProtocolErrorException,
-    hoWantProtocolErrorContent];
+  FHttp.HTTPOptions := [hoKeepOrigProtocol];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
 end;
 
@@ -94,18 +88,23 @@ procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
-  vInt: Integer;
 begin
+  AResponse.Clear;
+
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
   FHttp.Request.UserAgent := Parent.UserAgent;
 
-  FHttp.Response.Clear;
+  FHttp.ConnectTimeout := Parent.ConnectTimeout;
+  FHttp.ReadTimeout := Parent.RequestTimeout;
+  FHttp.Request.UserAgent := Parent.UserAgent;
 
-  AResponse.Clear;
-  AResponse.StatusCode := -1;
-  AResponse.ResponseText := '';
+  FHttp.IOHandler := nil;
+  if SameText(Copy(AURL, 1, 5), 'https') then
+    FHttp.IOHandler := FHandlerSSL;
+
+  FHttp.Response.Clear;
 
   if Parent.KeepAlive then
     FHttp.Request.Connection := 'keep-alive';
@@ -166,10 +165,13 @@ begin
       AResponse.StatusCode := FHttp.ResponseCode;
       AResponse.ResponseStream := vResult;
     except
-      AResponse.StatusCode := FHttp.ResponseCode;
-      AResponse.ResponseText := FHttp.ResponseText;
-
-      raise;
+      on e : EIdSocketError do begin
+        AResponse.Params.CompressType := ctNone;
+        AResponse.Params.CriptoOptions.CriptType := crNone;
+        AResponse.StatusCode := FHttp.ResponseCode;
+        AResponse.ResponseText := FHttp.ResponseText;
+        AResponse.ErrorCode := e.LastError;
+      end;
     end;
     FreeAndNil(vResult);
   finally
@@ -178,31 +180,9 @@ begin
   end;
 end;
 
-procedure TRALIndyClientHTTP.SetConnectTimeout(const AValue: IntegerRAL);
-begin
-  FHttp.ConnectTimeout := AValue;
-end;
-
-procedure TRALIndyClientHTTP.SetRequestTimeout(const AValue: IntegerRAL);
-begin
-  FHttp.ReadTimeout := AValue;
-end;
-
-procedure TRALIndyClientHTTP.SetUserAgent(const AValue: StringRAL);
-begin
-  FHttp.Request.UserAgent := AValue;
-end;
-
-procedure TRALIndyClientHTTP.SetUseSSL(const AValue: boolean);
-begin
-  FHttp.IOHandler := nil;
-  if AValue then
-    FHttp.IOHandler := FHandlerSSL;
-end;
-
 { TRALIndyClientMT }
 
-function TRALIndyClientMT.Clone(AOwner: TComponent): TRALClientThreaded;
+function TRALIndyClientMT.Clone(AOwner: TComponent): TRALClientMT;
 begin
   Result := TRALIndyClientMT.Create(AOwner);
   CopyProperties(Result);
