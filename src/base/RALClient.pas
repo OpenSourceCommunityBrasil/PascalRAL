@@ -81,6 +81,7 @@ type
     property Route: StringRAL read FRoute write FRoute;
     property Request: TRALRequest read FRequest write FRequest;
     property Method: TRALMethod read FMethod write FMethod;
+    property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
 
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   public
