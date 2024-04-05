@@ -12,15 +12,12 @@ type
   [ComponentPlatforms(pidAllPlatforms)]
   TRALFDQuery = class(TFDQuery)
   private
-    vIP: StringRAL;
-    vPort: StringRAL;
     vRALClient: TRALClient;
     vRALClientClone: TRALClient;
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
     procedure SetRALFDConnectionServer(const value: StringRAL);
     procedure SetRALClient(const value: TRALClient);
-    procedure ClientConfig;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -28,8 +25,6 @@ type
     procedure ExecSQLRemote;
     procedure OpenRemote;
   published
-    property IP: StringRAL read vIP write vIP;
-    property Port: StringRAL read vPort write vPort;
     property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
@@ -117,7 +112,7 @@ begin
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      ClientConfig;
+      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
 
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
 
@@ -216,7 +211,7 @@ begin
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      ClientConfig;
+      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
 
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
 
@@ -321,7 +316,7 @@ begin
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      ClientConfig;
+      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
 
       vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
 
@@ -408,18 +403,13 @@ procedure TRALFDQuery.SetRALClient(const value: TRALClient);
 begin
   if Assigned(vRALClientClone) then
     FreeAndNil(vRALClientClone);
+
   vRALClient := value;
 end;
 
 procedure TRALFDQuery.SetRALFDConnectionServer(const value: StringRAL);
 begin
   vRALFDConnectionServer := value;
-end;
-
-procedure TRALFDQuery.ClientConfig;
-begin
-  vRALClientClone.BaseURL := vIP + ':' + vPort;
-  vRALClientClone.SetRoute(vRALFDConnectionServer + 'Route/Query');
 end;
 
 { TRESTDWConnectionFD }
