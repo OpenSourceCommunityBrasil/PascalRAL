@@ -10,41 +10,22 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse;
+  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  System.SyncObjs;
 
 type
-
-  [ComponentPlatforms(pidAllPlatforms)]
-  TRALFDQuery = class(TFDQuery)
-  private
-    vRALClient: TRALClient;
-    vRALClientClone: TRALClient;
-    vRALFDConnectionServer: StringRAL;
-    vRowsAffectedRemote: Int64;
-    procedure SetRALFDConnectionServer(const value: StringRAL);
-    procedure SetRALClient(const value: TRALClient);
-  public
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-    procedure ApplyUpdatesRemote;
-    procedure ExecSQLRemote;
-    procedure OpenRemote;
-  published
-    property RALClient: TRALClient read vRALClient write SetRALClient;
-    property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
-      write SetRALFDConnectionServer;
-    property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
-  end;
 
   TOnQueryRemoteFinish = procedure(ASender: TObject; AException: Exception) of object;
 
   [ComponentPlatforms(pidAllPlatforms)]
-  TRALFDQueryMT = class(TFDQuery)
+  TRALFDQuery = class(TFDQuery)
   private
+    vQueryBehavior: TRALExecBehavior;
     vRALClient: TRALClientMT;
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
     vOnQueryRemoteFinish: TOnQueryRemoteFinish;
+    vException: Exception;
     procedure SetRALFDConnectionServer(const value: StringRAL);
     procedure SetRALClient(const value: TRALClientMT);
     procedure ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
@@ -61,6 +42,8 @@ type
     procedure ExecSQLRemote;
     procedure OpenRemote;
   published
+    property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
+      default ebMultiThread;
     property RALClient: TRALClientMT read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
@@ -105,394 +88,56 @@ procedure Register;
 
 implementation
 
-uses
-  RALRoutes;
-
-{ TRALFDQuery }
+{ TRALFDQueryMT }
 
 constructor TRALFDQuery.Create(AOwner: TComponent);
 begin
   vRALClient := nil;
+  vException := nil;
+
+  vQueryBehavior := ebMultiThread;
 
   inherited;
 end;
 
 destructor TRALFDQuery.Destroy;
 begin
-  if Assigned(vRALClientClone) then
-    FreeAndNil(vRALClientClone);
+  if Assigned(vException) then
+    FreeAndNil(vException);
 
   inherited;
 end;
 
-procedure TRALFDQuery.ExecSQLRemote;
-var
-  vBinaryWriter: TBinaryWriter;
-  vStreamAux: TMemoryStream;
-  vStringStreamAux: TStringStream;
-  vBytesAux: TArray<Byte>;
-  i, x, t: integer;
-begin
-  try
-    try
-      vBinaryWriter := nil;
-      vStreamAux := nil;
-      vStringStreamAux := nil;
-
-      if Assigned(vRALClientClone) then
-      begin
-        FreeAndNil(vRALClientClone);
-      end;
-
-      vRALClientClone := vRALClient.Clone(Self);
-      vStreamAux := TMemoryStream.Create;
-      vBinaryWriter := TBinaryWriter.Create(vStreamAux);
-      vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      vStringStreamAux.Position := 0;
-
-      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
-
-      vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRALClientClone.Request.Params.AddParam('ParamCount',
-        Self.Params.Count.ToString, rpkBODY);
-
-      for i := 0 to Self.Params.Count - 1 do
-      begin
-        SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
-        Self.Params[i].GetData(PByte(vBytesAux));
-
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
-        begin
-          t := 0;
-
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
-          end;
-
-          SetLength(vBytesAux, Length(vBytesAux) - t);
-        end;
-
-        if Self.Params[i].IsNull then
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
-        else
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
-
-        TMemoryStream(vStreamAux).Clear;
-        vBinaryWriter.Write(vBytesAux);
-        vStreamAux.Position := 0;
-
-        vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
-        vRALClientClone.Request.Params.AddParam('F' + i.ToString,
-          GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
-      end;
-
-      vRALClientClone.Request.Params.AddParam('Type', '2', rpkBODY);
-
-      vRALClientClone.Post;
-
-      if vRALClientClone.Response.StatusCode = 200 then
-      begin
-        Self.vRowsAffectedRemote :=
-          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
-      end
-      else
-        raise Exception.Create(vRALClientClone.Response.ResponseText);
-    except
-      on e: Exception do
-      begin
-        Self.Close;
-        raise Exception.Create(e.Message);
-      end;
-    end;
-  finally
-    FreeAndNil(vRALClientClone);
-    FreeAndNil(vBinaryWriter);
-    FreeAndNil(vStreamAux);
-    FreeAndNil(vStringStreamAux);
-    Finalize(vBytesAux);
-  end;
-end;
-
-procedure TRALFDQuery.ApplyUpdatesRemote;
-var
-  vAuxMemTable: TFDMemTable;
-  vBinaryWriter: TBinaryWriter;
-  vStreamAux: TMemoryStream;
-  vStringStreamAux: TStringStream;
-  vBytesAux: TArray<Byte>;
-  i, x, t: integer;
-begin
-  try
-    try
-      vBinaryWriter := nil;
-      vStreamAux := nil;
-      vStringStreamAux := nil;
-      vAuxMemTable := nil;
-
-      if Assigned(vRALClientClone) then
-      begin
-        FreeAndNil(vRALClientClone);
-      end;
-
-      vRALClientClone := vRALClient.Clone(Self);
-      vAuxMemTable := TFDMemTable.Create(Self);
-      vStreamAux := TMemoryStream.Create;
-      vBinaryWriter := TBinaryWriter.Create(vStreamAux);
-      vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      vStringStreamAux.Position := 0;
-
-      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
-
-      vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRALClientClone.Request.Params.AddParam('ParamCount',
-        Self.Params.Count.ToString, rpkBODY);
-
-      for i := 0 to Self.Params.Count - 1 do
-      begin
-        SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
-        Self.Params[i].GetData(PByte(vBytesAux));
-
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
-        begin
-          t := 0;
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
-          end;
-          SetLength(vBytesAux, Length(vBytesAux) - t);
-        end;
-
-        if Self.Params[i].IsNull then
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
-        else
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
-
-        TMemoryStream(vStreamAux).Clear;
-        vBinaryWriter.Write(vBytesAux);
-        vStreamAux.Position := 0;
-
-        vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
-        vRALClientClone.Request.Params.AddParam('F' + i.ToString,
-          GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
-      end;
-
-      vRALClientClone.Request.Params.AddParam('Type', '1', rpkBODY);
-
-      vStreamAux.Clear;
-
-      vAuxMemTable.Data := Self.Delta;
-      vAuxMemTable.SaveToStream(vStreamAux, sfBinary);
-      vStreamAux.Position := 0;
-
-      vRALClientClone.Request.Params.AddParam('Stream', vStreamAux, rpkBODY);
-
-      vRALClientClone.Post;
-
-      if vRALClientClone.Response.StatusCode = 200 then
-      begin
-        Self.CommitUpdates;
-
-        Self.vRowsAffectedRemote :=
-          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
-      end
-      else
-        raise Exception.Create(vRALClientClone.Response.ResponseText);
-    except
-      on e: Exception do
-      begin
-        Self.Close;
-        raise Exception.Create(e.Message);
-      end;
-    end;
-  finally
-    FreeAndNil(vRALClientClone);
-    FreeAndNil(vAuxMemTable);
-    FreeAndNil(vBinaryWriter);
-    FreeAndNil(vStreamAux);
-    FreeAndNil(vStringStreamAux);
-    Finalize(vBytesAux);
-  end;
-end;
-
-procedure TRALFDQuery.OpenRemote;
-var
-  vBinaryWriter: TBinaryWriter;
-  vStreamAux: TStream;
-  vStringStreamAux: TStringStream;
-  vBytesAux: TArray<Byte>;
-  i, x, t: integer;
-begin
-  try
-    try
-      vBinaryWriter := nil;
-      vStreamAux := nil;
-      vStringStreamAux := nil;
-
-      if Assigned(vRALClientClone) then
-      begin
-        FreeAndNil(vRALClientClone);
-      end;
-
-      vRALClientClone := vRALClient.Clone(Self);
-      vStreamAux := TMemoryStream.Create;
-      vBinaryWriter := TBinaryWriter.Create(vStreamAux);
-      vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
-      vStringStreamAux.Position := 0;
-
-      vRALClientClone.Route := vRALFDConnectionServer + 'Route/Query';
-
-      vRALClientClone.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRALClientClone.Request.Params.AddParam('ParamCount',
-        Self.Params.Count.ToString, rpkBODY);
-
-      for i := 0 to Self.Params.Count - 1 do
-      begin
-        SetLength(vBytesAux, Self.Params[i].GetDataSize);
-
-        Self.Params[i].GetData(PByte(vBytesAux));
-
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
-        begin
-          t := 0;
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
-          end;
-          SetLength(vBytesAux, Length(vBytesAux) - t);
-        end;
-
-        if Self.Params[i].IsNull then
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
-        else
-          vRALClientClone.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
-
-        TMemoryStream(vStreamAux).Clear;
-        vBinaryWriter.Write(vBytesAux);
-        vStreamAux.Position := 0;
-
-        vRALClientClone.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
-
-        vRALClientClone.Request.Params.AddParam('F' + i.ToString,
-          GetEnumName(Typeinfo(TFieldType), Ord(Self.Params[i].DataType)), rpkBODY);
-      end;
-
-      vRALClientClone.Request.Params.AddParam('Type', '0', rpkBODY);
-
-      vRALClientClone.Post;
-
-      if vRALClientClone.Response.StatusCode = 200 then
-      begin
-        TMemoryStream(vStreamAux).Clear;
-
-        vRALClientClone.Response.ParamByName('Stream').SaveToStream(vStreamAux);
-        vStreamAux.Position := 0;
-
-        if Assigned(Self.Connection) = false then
-        begin
-          Self.Connection := TFDConnection.Create(Self);
-        end;
-
-        Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
-
-        Self.vRowsAffectedRemote :=
-          StrToInt(vRALClientClone.Response.ParamByName('AffectedRows').AsString);
-
-        Self.CachedUpdates := true;
-      end
-      else
-        raise Exception.Create(vRALClientClone.Response.ResponseText);
-    except
-      on e: Exception do
-      begin
-        Self.Close;
-        raise Exception.Create(e.Message);
-      end;
-    end;
-  finally
-    FreeAndNil(vRALClientClone);
-    FreeAndNil(vBinaryWriter);
-    FreeAndNil(vStreamAux);
-    FreeAndNil(vStringStreamAux);
-    Finalize(vBytesAux);
-  end;
-end;
-
-procedure TRALFDQuery.SetRALClient(const value: TRALClient);
-begin
-  if Assigned(vRALClientClone) then
-    FreeAndNil(vRALClientClone);
-
-  vRALClient := value;
-end;
-
-procedure TRALFDQuery.SetRALFDConnectionServer(const value: StringRAL);
-begin
-  vRALFDConnectionServer := value;
-end;
-
-{ TRALFDQueryMT }
-
-constructor TRALFDQueryMT.Create(AOwner: TComponent);
-begin
-  vRALClient := nil;
-
-  inherited;
-end;
-
-destructor TRALFDQueryMT.Destroy;
-begin
-  inherited;
-end;
-
-procedure TRALFDQueryMT.ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
+procedure TRALFDQuery.ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
   AException: StringRAL);
 begin
   try
-    if AException <> '' then
-      raise Exception.Create(AException);
+    try
+      if AException <> '' then
+        raise Exception.Create(AException);
 
-    if AResponse.StatusCode = 200 then
-    begin
-      Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
-        .AsString);
+      if AResponse.StatusCode = 200 then
+      begin
+        Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
+          .AsString);
+      end
+      else
+        raise Exception.Create(AResponse.ResponseText);
+    except
+      on e: Exception do
+      begin
+        Self.Close;
 
-      if Assigned(OnQueryRemoteFinish) then
-        OnQueryRemoteFinish(Self, nil);
-    end
-    else
-      raise Exception.Create(AResponse.ResponseText);
-  except
-    on e: Exception do
-    begin
-      Self.Close;
-
-      if Assigned(OnQueryRemoteFinish) then
-        OnQueryRemoteFinish(Self, e);
+        vException := e.Create(e.Message);
+      end;
     end;
+  finally
+    if Assigned(OnQueryRemoteFinish) then
+      OnQueryRemoteFinish(Self, vException);
   end;
 end;
 
-procedure TRALFDQueryMT.ExecSQLRemote;
+procedure TRALFDQuery.ExecSQLRemote;
 var
   vBinaryWriter: TBinaryWriter;
   vStreamAux: TMemoryStream;
@@ -507,6 +152,9 @@ begin
       vStreamAux := nil;
       vStringStreamAux := nil;
       vRequest := nil;
+
+      if Assigned(vException) then
+        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -558,6 +206,8 @@ begin
 
       vRequest.Params.AddParam('Type', '2', rpkBODY);
 
+      vRALClient.ExecBehavior := Self.QueryBehavior;
+
       vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
         ExecSQLRemoteResponse);
     except
@@ -565,8 +215,7 @@ begin
       begin
         Self.Close;
 
-        if Assigned(OnQueryRemoteFinish) then
-          OnQueryRemoteFinish(Self, e);
+        vException := e.Create(e.Message);
       end;
     end;
   finally
@@ -575,40 +224,47 @@ begin
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
     Finalize(vBytesAux);
-  end;
-end;
 
-procedure TRALFDQueryMT.ApplyUpdatesRemoteResponse(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
-begin
-  try
-    if AException <> '' then
-      raise Exception.Create(AException);
-
-    if AResponse.StatusCode = 200 then
+    if QueryBehavior = ebSingleThread then
     begin
-      Self.CommitUpdates;
-
-      Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
-        .AsString);
-
-      if Assigned(OnQueryRemoteFinish) then
-        OnQueryRemoteFinish(Self, nil);
-    end
-    else
-      raise Exception.Create(AResponse.ResponseText);
-  except
-    on e: Exception do
-    begin
-      Self.Close;
-
-      if Assigned(OnQueryRemoteFinish) then
-        OnQueryRemoteFinish(Self, e);
+      if Assigned(vException) then
+        raise vException;
     end;
   end;
 end;
 
-procedure TRALFDQueryMT.ApplyUpdatesRemote;
+procedure TRALFDQuery.ApplyUpdatesRemoteResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
+begin
+  try
+    try
+      if AException <> '' then
+        raise Exception.Create(AException);
+
+      if AResponse.StatusCode = 200 then
+      begin
+        Self.CommitUpdates;
+
+        Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
+          .AsString);
+      end
+      else
+        raise Exception.Create(AResponse.ResponseText);
+    except
+      on e: Exception do
+      begin
+        Self.Close;
+
+        vException := e.Create(e.Message);
+      end;
+    end;
+  finally
+    if Assigned(OnQueryRemoteFinish) then
+      OnQueryRemoteFinish(Self, vException);
+  end;
+end;
+
+procedure TRALFDQuery.ApplyUpdatesRemote;
 var
   vAuxMemTable: TFDMemTable;
   vBinaryWriter: TBinaryWriter;
@@ -625,6 +281,9 @@ begin
       vStringStreamAux := nil;
       vAuxMemTable := nil;
       vRequest := nil;
+
+      if Assigned(vException) then
+        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -683,6 +342,8 @@ begin
 
       vRequest.Params.AddParam('Stream', vStreamAux, rpkBODY);
 
+      vRALClient.ExecBehavior := Self.QueryBehavior;
+
       vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
         ApplyUpdatesRemoteResponse);
     except
@@ -690,8 +351,7 @@ begin
       begin
         Self.Close;
 
-        if Assigned(OnQueryRemoteFinish) then
-          OnQueryRemoteFinish(Self, e);
+        vException := e.Create(e.Message);
       end;
     end;
   finally
@@ -701,10 +361,16 @@ begin
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
     Finalize(vBytesAux);
+
+    if QueryBehavior = ebSingleThread then
+    begin
+      if Assigned(vException) then
+        raise vException;
+    end;
   end;
 end;
 
-procedure TRALFDQueryMT.OpenRemoteResponse(Sender: TObject; AResponse: TRALResponse;
+procedure TRALFDQuery.OpenRemoteResponse(Sender: TObject; AResponse: TRALResponse;
   AException: StringRAL);
 var
   vStreamAux: TStream;
@@ -740,9 +406,6 @@ begin
           .AsString);
 
         Self.CachedUpdates := true;
-
-        if Assigned(OnQueryRemoteFinish) then
-          OnQueryRemoteFinish(Self, nil);
       end
       else
         raise Exception.Create(AResponse.ResponseText);
@@ -751,16 +414,18 @@ begin
       begin
         Self.Close;
 
-        if Assigned(OnQueryRemoteFinish) then
-          OnQueryRemoteFinish(Self, e);
+        vException := e.Create(e.Message);
       end;
     end;
   finally
     FreeAndNil(vStreamAux);
+
+    if Assigned(OnQueryRemoteFinish) then
+      OnQueryRemoteFinish(Self, vException);
   end;
 end;
 
-procedure TRALFDQueryMT.OpenRemote;
+procedure TRALFDQuery.OpenRemote;
 var
   vBinaryWriter: TBinaryWriter;
   vStreamAux: TStream;
@@ -775,6 +440,9 @@ begin
       vStreamAux := nil;
       vStringStreamAux := nil;
       vRequest := nil;
+
+      if Assigned(vException) then
+        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -824,6 +492,8 @@ begin
 
       vRequest.Params.AddParam('Type', '0', rpkBODY);
 
+      vRALClient.ExecBehavior := Self.QueryBehavior;
+
       vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
         OpenRemoteResponse);
     except
@@ -831,8 +501,7 @@ begin
       begin
         Self.Close;
 
-        if Assigned(OnQueryRemoteFinish) then
-          OnQueryRemoteFinish(Self, e);
+        vException := e.Create(e.Message);
       end;
     end;
   finally
@@ -841,20 +510,26 @@ begin
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
     Finalize(vBytesAux);
+
+    if QueryBehavior = ebSingleThread then
+    begin
+      if Assigned(vException) then
+        raise vException;
+    end;
   end;
 end;
 
-procedure TRALFDQueryMT.SetOnQueryRemoteFinish(const value: TOnQueryRemoteFinish);
+procedure TRALFDQuery.SetOnQueryRemoteFinish(const value: TOnQueryRemoteFinish);
 begin
   vOnQueryRemoteFinish := value;
 end;
 
-procedure TRALFDQueryMT.SetRALClient(const value: TRALClientMT);
+procedure TRALFDQuery.SetRALClient(const value: TRALClientMT);
 begin
   vRALClient := value;
 end;
 
-procedure TRALFDQueryMT.SetRALFDConnectionServer(const value: StringRAL);
+procedure TRALFDQuery.SetRALFDConnectionServer(const value: StringRAL);
 begin
   vRALFDConnectionServer := value;
 end;
@@ -1113,7 +788,7 @@ end;
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DAO', [TRALFDQueryMT, TRALFDQuery, TRALFDConnection]);
+  RegisterComponents('RAL - DAO', [TRALFDQuery, TRALFDConnection]);
 end;
 
 end.

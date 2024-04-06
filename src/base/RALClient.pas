@@ -21,7 +21,8 @@ type
     FIndexUrl: IntegerRAL; // cliente MT control
   protected
     /// returns the complete URL of a given route.
-    function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil; AIndexUrl : IntegerRAL = -1): StringRAL;
+    function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil;
+      AIndexUrl: IntegerRAL = -1): StringRAL;
     /// allows manipulation of params before executing request.
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
       AResponse: TRALResponse; AMethod: TRALMethod);
@@ -29,18 +30,18 @@ type
     procedure ResetToken;
     /// Configures the Request header with proper authentication info based on the assigned
     /// authenticator.
-    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 
     /// used by SetAuthToken to set authentication on the header: Basic.
-    function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: DigestAuth.
-    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: JWT.
-    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: OAuth1.
-    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// placeholder
-    function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+    function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 
     property Parent: TRALClientBase read FParent write FParent;
   public
@@ -49,13 +50,13 @@ type
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
       AMethod: TRALMethod); virtual; abstract;
   published
-    property IndexUrl : IntegerRAL read FIndexUrl write FIndexUrl;
+    property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
 
   { TRALThreadClient }
 
   TRALThreadClientResponse = procedure(Sender: TObject; AResponse: TRALResponse;
-                                       AException: StringRAL) of object;
+    AException: StringRAL) of object;
 
   /// Base class of engines multi-threads
   TRALThreadClient = class(TThread)
@@ -119,7 +120,7 @@ type
 
     function CreateClient: TRALClientHTTP; virtual; abstract;
 
-    property IndexUrl : IntegerRAL read FIndexUrl write FIndexUrl;
+    property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -144,6 +145,7 @@ type
   private
     FOnResponse: TRALThreadClientResponse;
     FCritSession: TCriticalSection;
+    FExecBehavior: TRALExecBehavior;
   protected
     procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
@@ -187,6 +189,8 @@ type
     property KeepAlive;
 
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
+    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior
+      default ebMultiThread;
   end;
 
   { TRALClient }
@@ -321,6 +325,8 @@ end;
 
 destructor TRALThreadClient.Destroy;
 begin
+  inherited;
+
   FreeAndNil(FClient);
 
   if Assigned(FResponse) then
@@ -328,8 +334,6 @@ begin
 
   if Assigned(FRequest) then
     FreeAndNil(FRequest);
-
-  inherited;
 end;
 
 procedure TRALThreadClient.Execute;
@@ -341,9 +345,6 @@ begin
   except
     on e: Exception do
     begin
-      if Assigned(FResponse) then
-        FreeAndNil(FResponse);
-
       FException := e.Message;
     end;
   end;
@@ -474,7 +475,13 @@ begin
   else
     vThread.OnResponse := {$IFDEF FPC}@{$ENDIF}OnThreadResponse;
 
-  vThread.Start;
+  if FExecBehavior = ebMultiThread then
+    vThread.Start
+  else
+  begin
+    vThread.Execute;
+    vThread.Free;
+  end;
 end;
 
 procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;
@@ -533,10 +540,10 @@ end;
 procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vConta, vMaxConta, vResp, vErrorCode : IntegerRAL;
+  vConta, vMaxConta, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL: StringRAL;
-  vConnTimeOut : boolean;
+  vConnTimeOut: boolean;
 begin
   vConta := 0;
 
@@ -615,9 +622,10 @@ begin
   FIndexUrl := FParent.IndexUrl;
 end;
 
-function TRALClientHTTP.GetURL(ARoute: StringRAL; ARequest: TRALRequest; AIndexUrl: IntegerRAL): StringRAL;
+function TRALClientHTTP.GetURL(ARoute: StringRAL; ARequest: TRALRequest;
+  AIndexUrl: IntegerRAL): StringRAL;
 var
-  vURL : StringRAL;
+  vURL: StringRAL;
 begin
   if AIndexUrl = -1 then
     AIndexUrl := FIndexUrl;
@@ -643,7 +651,8 @@ begin
     TRALClientJWTAuth(FParent.Authentication).Token := '';
 end;
 
-function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 begin
   if FParent.Authentication is TRALClientBasicAuth then
     Result := SetTokenBasic(AVars, ARequest)
@@ -657,7 +666,8 @@ begin
     Result := SetTokenDigest(AVars, ARequest);
 end;
 
-function TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 var
   vObjAuth: TRALClientBasicAuth;
 begin
@@ -666,7 +676,8 @@ begin
   Result := 0; // no http error code
 end;
 
-function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 var
   vObjAuth: TRALClientDigest;
   vConta, vStatus: IntegerRAL;
@@ -717,7 +728,8 @@ begin
   end;
 end;
 
-function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -773,11 +785,13 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or (Result > 0);
+    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or
+      (Result > 0);
   end;
 end;
 
-function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 var
   vObjAuth: TRALClientOAuth;
   vRequest: TRALRequest;
@@ -820,11 +834,13 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or (Result > 0);
+    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or
+      (Result > 0);
   end;
 end;
 
-function TRALClientHTTP.SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest) : IntegerRAL;
+function TRALClientHTTP.SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest)
+  : IntegerRAL;
 begin
   // TODO;
   Result := 0; // no http erros code

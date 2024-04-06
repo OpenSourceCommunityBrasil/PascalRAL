@@ -40,6 +40,7 @@ type
   TRALParamKinds = set of TRALParamKind;
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection, rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
+  TRALExecBehavior = (ebSingleThread, ebMultiThread);
 
 const
   {$IF DEFINED(FPC) or DEFINED(DELPHIXE3UP)}
