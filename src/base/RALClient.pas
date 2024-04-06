@@ -71,8 +71,11 @@ type
 
     FRequest: TRALRequest;
     FResponse: TRALResponse;
+    FRequestLifeCicle: boolean;
 
     FOnResponse: TRALThreadClientResponse;
+
+    procedure SetRequest(const AValue: TRALRequest);
   protected
     procedure Execute; override;
     procedure OnTerminateThread(Sender: TObject);
@@ -80,9 +83,10 @@ type
     property Parent: TRALClientBase read FParent write FParent;
 
     property Route: StringRAL read FRoute write FRoute;
-    property Request: TRALRequest read FRequest write FRequest;
+    property Request: TRALRequest read FRequest write SetRequest;
     property Method: TRALMethod read FMethod write FMethod;
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
+    property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle;
 
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   public
@@ -146,6 +150,7 @@ type
     FOnResponse: TRALThreadClientResponse;
     FCritSession: TCriticalSection;
     FExecBehavior: TRALExecBehavior;
+    FRequestLifeCicle: boolean;
   protected
     procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
@@ -188,9 +193,9 @@ type
     property UserAgent;
     property KeepAlive;
 
+    property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle default True;
+    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior default ebMultiThread;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
-    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior
-      default ebMultiThread;
   end;
 
   { TRALClient }
@@ -318,9 +323,10 @@ begin
   FRoute := '';
   FException := '';
   FRequest := nil;
-  FResponse := nil;
+  FResponse := TRALClientResponse.Create;
   FClient := FParent.CreateClient;
   FIndexUrl := AOwner.IndexUrl;
+  FRequestLifeCicle := True;
 end;
 
 destructor TRALThreadClient.Destroy;
@@ -328,9 +334,7 @@ begin
   inherited;
 
   FreeAndNil(FClient);
-
-  if Assigned(FResponse) then
-    FreeAndNil(FResponse);
+  FreeAndNil(FResponse);
 
   if Assigned(FRequest) then
     FreeAndNil(FRequest);
@@ -339,7 +343,6 @@ end;
 procedure TRALThreadClient.Execute;
 begin
   try
-    FResponse := TRALClientResponse.Create;
     FClient.BeforeSendUrl(FRoute, FRequest, FResponse, FMethod);
     FIndexUrl := FClient.IndexUrl;
   except
@@ -354,6 +357,19 @@ procedure TRALThreadClient.OnTerminateThread(Sender: TObject);
 begin
   if Assigned(FOnResponse) then
     FOnResponse(Self, FResponse, FException);
+end;
+
+procedure TRALThreadClient.SetRequest(const AValue: TRALRequest);
+begin
+  if FRequestLifeCicle then
+  begin
+    FRequest := TRALClientRequest.Create;
+    AValue.Clone(FRequest);
+  end
+  else
+  begin
+    FRequest := AValue;
+  end;
 end;
 
 { TRALClientBase }
@@ -466,6 +482,9 @@ var
   vThread: TRALThreadClient;
 begin
   vThread := TRALThreadClient.Create(Self);
+  // deve vir antes pra clonar o request
+  vThread.RequestLifeCicle := FRequestLifeCicle;
+
   vThread.Route := ARoute;
   vThread.Request := ARequest;
   vThread.Method := AMethod;

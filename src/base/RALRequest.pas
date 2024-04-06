@@ -87,6 +87,8 @@ type
     /// Returns the request in UTF8String format
     function GetRequestEncText(const AEncode : boolean = true): StringRAL; virtual; abstract;
 
+    procedure Clone(ASource : TRALRequest); reintroduce;
+
     property URL: StringRAL read GetURL;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
@@ -153,6 +155,20 @@ begin
   vInt := Pos('?', FQuery);
   if vInt > 0 then
     Delete(FQuery, vInt, Length(FQuery));
+end;
+
+procedure TRALRequest.Clone(ASource: TRALRequest);
+begin
+  inherited Clone(ASource);
+
+  ASource.Authorization := Self.Authorization;
+  ASource.ClientInfo := Self.ClientInfo;
+  ASource.ContentSize := Self.ContentSize;
+  ASource.Host := Self.Host;
+  ASource.HttpVersion := Self.HttpVersion;
+  ASource.Method := Self.Method;
+  ASource.Protocol := Self.Protocol;
+  ASource.Query := Self.Query;
 end;
 
 constructor TRALRequest.Create;

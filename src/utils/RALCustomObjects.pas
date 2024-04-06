@@ -68,6 +68,8 @@ type
     function HasValidContentEncoding: boolean;
     /// Grabs the param either on request or response by its name
     function ParamByName(const AParamName: StringRAL): TRALParam;
+
+    procedure Clone(ASource : TRALHTTPHeaderInfo);
   published
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;
@@ -149,6 +151,31 @@ end;
 procedure TRALHTTPHeaderInfo.Clear;
 begin
   FParams.ClearParams;
+end;
+
+procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);
+var
+  vInt : IntegerRAL;
+  vParamSource, vParamTarget : TRALParam;
+begin
+  if ASource = nil then
+    Exit;
+
+  ASource.AcceptEncoding := Self.AcceptEncoding;
+  ASource.ContentCompress := Self.ContentCompress;
+  ASource.AcceptEncription := Self.AcceptEncription;
+  ASource.ContentCripto := Self.ContentCripto;
+  ASource.ContentEncoding := Self.ContentEncoding;
+  ASource.ContentEncription := Self.ContentEncription;
+  ASource.ContentType := Self.ContentType;
+  ASource.ContentDisposition := Self.ContentDisposition;
+  ASource.CriptoKey := Self.CriptoKey;
+
+  for vInt := 0 to Pred(FParams.Count) do begin
+    vParamSource := FParams.Index[vInt];
+    vParamTarget := ASource.Params.NewParam;
+    vParamSource.Clone(vParamTarget);
+  end;
 end;
 
 constructor TRALHTTPHeaderInfo.Create;

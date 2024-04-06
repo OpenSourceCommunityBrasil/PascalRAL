@@ -54,15 +54,17 @@ type
     procedure SaveToStream(AStream: TStream); overload;
     function Size: Int64;
 
+    procedure Clone(ASource : TRALParam);
+
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
-    property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;    
+    property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
     property ContentSize: Int64RAL read GetContentSize;
-    property ContentType: StringRAL read FContentType write FContentType;    
+    property ContentType: StringRAL read FContentType write FContentType;
     property FileName: StringRAL read FFileName write FFileName;
     property Kind: TRALParamKind read FKind write FKind;
     property ParamName: StringRAL read FParamName write FParamName;
@@ -204,6 +206,16 @@ type
 implementation
 
 { TRALParam }
+
+procedure TRALParam.Clone(ASource: TRALParam);
+begin
+  ASource.ContentDisposition := Self.ContentDisposition;
+  ASource.ContentType := Self.ContentType;
+  ASource.FileName := Self.FileName;
+  ASource.Kind := Self.Kind;
+  ASource.ParamName := Self.ParamName;
+  ASource.AsStream := Self.Content;
+end;
 
 constructor TRALParam.Create;
 begin
