@@ -10,16 +10,21 @@ uses
   RALTypes, RALStream;
 
 type
-  TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd);
-  TRALCompressLibs = (clZLib, clZStd);
+  TRALCompressClass = class of TRALCompress;
+
+  TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd, ctBrotli);
+  TRALCompressLibs = (clZLib, clZStd, clBrotli);
 
   { TRALCompress }
 
   /// Compression class for PascalRAL
   TRALCompress = class(TPersistent)
+  private
+    FFormat : TRALCompressType;
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
+    procedure SetFormat(AValue: TRALCompressType); virtual;
   public
     function Compress(AStream: TStream): TStream; overload;
     function Compress(const AString: StringRAL): StringRAL; overload;
@@ -33,17 +38,18 @@ type
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
     class function GetBestCompress(const AEncoding : StringRAL) : TRALCompressType;
+    class function GetCompressClass(ACompress : TRALCompressType) : TRALCompressClass;
+    published
+    property Format : TRALCompressType read FFormat write SetFormat;
   end;
-
-  TRALCompressClass = class of TRALCompress;
 
 implementation
 
 const
   cCompressTypeStr : array[TRALCompressType] of StringRAL = (
-                          '', 'deflate', 'zlib', 'gzip', 'zstd');
+                          '', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
   cCompressLibsClass : array[TRALCompressLibs] of StringRAL = (
-                          'TRALCompressZLib','TRALCompressZStd');
+                          'TRALCompressZLib', 'TRALCompressZStd', 'TRALCompressBrotli');
 
 var
   vDeclaredCompressLibs : array[TRALCompressLibs] of boolean;
@@ -57,6 +63,11 @@ begin
 end;
 
 { TRALCompress }
+
+procedure TRALCompress.SetFormat(AValue: TRALCompressType);
+begin
+  FFormat := AValue;
+end;
 
 function TRALCompress.Compress(AStream: TStream): TStream;
 begin
@@ -148,6 +159,13 @@ begin
       Result := Result + ',';
     Result := Result + 'zstd';
   end;
+
+  if vDeclaredCompressLibs[clBrotli] then
+  begin
+    if Result <> '' then
+      Result := Result + ',';
+    Result := Result + 'br';
+  end;
 end;
 
 class procedure TRALCompress.UpdateDeclaredClasses;
@@ -165,6 +183,8 @@ begin
     Result := ctDeflate
   else if (vDeclaredCompressLibs[clZStd]) and SameText(AStr, 'zstd') then
     Result := ctZStd
+  else if (vDeclaredCompressLibs[clBrotli]) and SameText(AStr, 'br') then
+    Result := ctBrotli
   else
     Result := ctNone;
 end;
@@ -172,11 +192,12 @@ end;
 class function TRALCompress.CompressToString(ACompress: TRALCompressType): StringRAL;
 begin
   case ACompress of
-    ctNone: Result := '';
-    ctGZip: Result := 'gzip';
-    ctDeflate: Result := 'deflate';
-    ctZLib: Result := 'zlib';
-    ctZStd: Result := 'zstd';
+    ctNone    : Result := '';
+    ctGZip    : Result := 'gzip';
+    ctDeflate : Result := 'deflate';
+    ctZLib    : Result := 'zlib';
+    ctZStd    : Result := 'zstd';
+    ctBrotli  : Result := 'br';
   end;
 end;
 
@@ -187,6 +208,8 @@ begin
   vStr := LowerCase(AEncoding);
   if (vDeclaredCompressLibs[clZStd]) and (Pos('zstd', vStr) > 0) then
     Result := ctZStd
+  else if (vDeclaredCompressLibs[clBrotli]) and (Pos('br', vStr) > 0) then
+    Result := ctBrotli
   else if (vDeclaredCompressLibs[clZLib]) and (Pos('gzip', vStr) > 0) then
     Result := ctGZip
   else if (vDeclaredCompressLibs[clZLib]) and (Pos('deflate', vStr) > 0) then
@@ -195,6 +218,20 @@ begin
     Result := ctZLib
   else
     Result := ctNone;
+end;
+
+class function TRALCompress.GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
+begin
+  Result := nil;
+
+  case ACompress of
+    ctNone    : Result := nil;
+    ctGZip,
+    ctDeflate,
+    ctZLib    : Result := TRALCompressClass(GetClass(cCompressLibsClass[clZLib]));
+    ctZStd    : Result := TRALCompressClass(GetClass(cCompressLibsClass[clZStd]));
+    ctBrotli  : Result := TRALCompressClass(GetClass(cCompressLibsClass[clBrotli]));
+  end;
 end;
 
 initialization

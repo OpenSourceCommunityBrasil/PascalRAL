@@ -18,6 +18,7 @@ type
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
+    procedure SetFormat(AValue: TRALCompressType); override;
   end;
 
 implementation
@@ -26,9 +27,9 @@ implementation
 
 procedure TRALCompressZStd.InitCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array of byte;
-  vZip: TStream;
-  vCount: Integer;
+  vBuf: TBytes;
+  vZip: TZSTDCompressStream;
+  vCount: integer;
   vOptions: TZSTDCompressOptions;
 begin
   vOptions.Init;
@@ -54,10 +55,10 @@ end;
 
 procedure TRALCompressZStd.InitDeCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array of byte;
+  vBuf: TBytes;
   vOption: TZSTDDecompressOptions;
-  vZip : TZSTDDecompressStream;
-  vCount: Integer;
+  vZip: TZSTDDecompressStream;
+  vCount: integer;
 begin
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
@@ -74,6 +75,20 @@ begin
   finally
     FreeAndNil(vZip);
   end;
+end;
+
+procedure TRALCompressZStd.SetFormat(AValue: TRALCompressType);
+begin
+  if AValue = Format then
+    Exit;
+
+  if AValue <> ctZStd then
+  begin
+    raise Exception.Create('Format is invalid!');
+    Exit;
+  end;
+
+  inherited;
 end;
 
 initialization

@@ -1158,36 +1158,16 @@ var
   vClass: TRALCompressClass;
 begin
   Result := nil;
-  case FCompressType of
-    ctDeflate, ctGZip, ctZLib:
-    begin
-      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
-      if vClass <> nil then
-      begin
-        vCompress := vClass.Create;
-        try
-          //SetEnumProp
-          //SetOrdProp
-          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
-          //          TRALCompressZLib(vCompress).Format := FCompressType;
-          Result := vCompress.Compress(AStream);
-        finally
-          vCompress.Free;
-        end;
-      end;
-    end;
-    ctZStd:
-    begin
-      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
-      if vClass <> nil then
-      begin
-        vCompress := vClass.Create;
-        try
-          Result := vCompress.Compress(AStream);
-        finally
-          vCompress.Free;
-        end;
-      end;
+
+  vClass := TRALCompress.GetCompressClass(FCompressType);
+  if vClass <> nil then
+  begin
+    vCompress := vClass.Create;
+    try
+      vCompress.Format := FCompressType;
+      Result := vCompress.Compress(AStream);
+    finally
+      vCompress.Free;
     end;
   end;
 end;
@@ -1229,35 +1209,16 @@ var
   vClass: TRALCompressClass;
 begin
   Result := nil;
-  case FCompressType of
-    ctDeflate, ctGZip, ctZLib:
-    begin
-      vClass := TRALCompressClass(GetClass('TRALCompressZLib'));
-      if vClass <> nil then
-      begin
-        vCompress := vClass.Create;
-        try
-          //SetEnumProp
-          SetOrdProp(vCompress, 'Format', Ord(FCompressType));
-          //          TRALCompressZLib(vCompress).Format := FCompressType;
-          Result := vCompress.Decompress(AStream);
-        finally
-          vCompress.Free;
-        end;
-      end;
-    end;
-    ctZStd:
-    begin
-      vClass := TRALCompressClass(GetClass('TRALCompressZStd'));
-      if vClass <> nil then
-      begin
-        vCompress := vClass.Create;
-        try
-          Result := vCompress.Decompress(AStream);
-        finally
-          vCompress.Free;
-        end;
-      end;
+
+  vClass := TRALCompress.GetCompressClass(FCompressType);
+  if vClass <> nil then
+  begin
+    vCompress := vClass.Create;
+    try
+      vCompress.Format := FCompressType;
+      Result := vCompress.Decompress(AStream);
+    finally
+      vCompress.Free;
     end;
   end;
 end;

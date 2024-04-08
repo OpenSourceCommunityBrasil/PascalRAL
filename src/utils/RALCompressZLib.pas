@@ -17,14 +17,10 @@ type
 
   /// Compression class ZLIB for PascalRAL
   TRALCompressZLib = class(TRALCompress)
-  private
-    FFormat : TRALCompressType;
-    procedure SetFormat(const AValue: TRALCompressType);
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
-  published
-    property Format : TRALCompressType read FFormat write SetFormat;
+    procedure SetFormat(AValue: TRALCompressType); override;
   end;
 
 implementation
@@ -36,7 +32,7 @@ const
 
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array of byte;
+  vBuf: TBytes;
   vZip: TCompressionStream;
   vCount: Integer;
   vSize: LongWord;
@@ -50,11 +46,11 @@ begin
   else
     SetLength(vBuf, AInStream.Size);
 
-  if FFormat = ctGZip then
+  if Format = ctGZip then
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
 
   {$IFDEF FPC}
-  if FFormat = ctZLib then
+  if Format = ctZLib then
     vZip := TCompressionStream.Create(clfastest, AOutStream)
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
@@ -73,7 +69,7 @@ begin
     FreeAndNil(vZip);
   end;
 
-  if FFormat = ctGZip then
+  if Format = ctGZip then
   begin
     vCRC32 := TRALCRC32.Create;
     vCRC32.OutputType := rhotNone;
@@ -99,14 +95,14 @@ end;
 
 procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: array of byte;
+  vBuf: TBytes;
   vZip: TDeCompressionStream;
   vCount: Integer;
   vCRCFile, vCRCFinal, vFileSize: LongWord;
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
 begin
-  if FFormat = ctGZip then
+  if Format = ctGZip then
   begin
     AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
     AInStream.Read(vCRCFile, SizeOf(vCRCFile));
@@ -122,7 +118,7 @@ begin
     SetLength(vBuf, AInStream.Size);
 
   {$IFDEF FPC}
-  if FFormat = ctZLib then
+  if Format = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream)
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
@@ -143,7 +139,7 @@ begin
 
   AOutStream.Position := 0;
 
-  if FFormat = ctGZip then
+  if Format = ctGZip then
   begin
     vCRC32 := TRALCRC32.Create;
     vCRC32.OutputType := rhotNone;
@@ -162,16 +158,16 @@ begin
     end;
   end;
 
-  if (FFormat = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
+  if (Format = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
   begin
     AOutStream.Size := 0;
     raise Exception.Create(emContentCheckError);
   end;
 end;
 
-procedure TRALCompressZLib.SetFormat(const AValue: TRALCompressType);
+procedure TRALCompressZLib.SetFormat(AValue: TRALCompressType);
 begin
-  if AValue = FFormat then
+  if AValue = Format then
     Exit;
 
   if not (AValue in [ctDeflate, ctGZip, ctZLib]) then
@@ -180,7 +176,7 @@ begin
     Exit;
   end;
 
-  FFormat := AValue;
+  inherited;
 end;
 
 initialization
