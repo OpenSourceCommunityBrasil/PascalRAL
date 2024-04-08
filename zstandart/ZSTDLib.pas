@@ -10,12 +10,23 @@ unit ZSTDLib;
  * You may select, at your option, one of the above-listed licenses.
  *)
 
-{$DEFINE ZSTD_STATIC_LINKING}
+{.$DEFINE ZSTD_STATIC_LINKING}
+
+{$IFDEF FPC}
+ {$MODE DELPHI}
+ {$PACKRECORDS C}
+{$ENDIF}
 
 interface
 
 uses
-  Windows, SysUtils;
+  {$IFDEF MSWINDOWS}
+    Windows,
+  {$ENDIF}
+  {$IFDEF FPC}
+    DynLibs,
+  {$ENDIF}
+  SysUtils;
 
 {$Z4}
 
@@ -23,8 +34,8 @@ uses
 const
   ZSTDDllName = 'libzstd.dll';
 {$ELSE}
-var
-  ZSTDDllName: UnicodeString;
+const
+  ZSTDDllName = 'libzstd.dll';
 {$ENDIF}
 
 const
@@ -96,9 +107,9 @@ const
 type
   EZSTDException = class(Exception)
   public
-    constructor Create(const AFunctionName: string; ACode: ssize_t);
+    constructor Create(const AFunctionName: string; ACode: NativeInt);
   private
-    FCode: SSIZE_T
+    FCode: NativeInt
   end;
 
 procedure ZSTDError(const AFunctionName: string; ACode: size_t);
@@ -1018,12 +1029,12 @@ const
   ZSTD_error_srcSize_wrong                 = 72;
   ZSTD_error_dstBuffer_null                = 74;
 
-function GetExceptionMessage(const AFunctionName: string; ACode: ssize_t): string;
+function GetExceptionMessage(const AFunctionName: string; ACode: NativeInt): string;
 begin
   Result := AFunctionName + ' failed with error ' + IntToStr(ACode) + ': ' + string(ZSTD_getErrorName(ACode));
 end;
 
-constructor EZSTDException.Create(const AFunctionName: string; ACode: ssize_t);
+constructor EZSTDException.Create(const AFunctionName: string; ACode: NativeInt);
 begin
   FCode := ACode;
   inherited Create(GetExceptionMessage(AFunctionName, ACode));
@@ -1187,74 +1198,76 @@ procedure InitZSTD;
 begin
   EnterCriticalSection(ZSTDLock);
   try
-    if ZSTD <> 0 then Exit;
-    ZSTD := LoadLibraryW(PWideChar(ZSTDDllName));
-    if ZSTD = 0 then Exit;
+    if ZSTD <> 0 then
+      Exit;
+    ZSTD := SafeLoadLibrary(ZSTDDllName);
+    if ZSTD = 0 then
+      Exit;
 
-    @_ZSTD_versionNumber                       := GetProcAddress(ZSTD, sZSTD_versionNumber);
-    @_ZSTD_versionString                       := GetProcAddress(ZSTD, sZSTD_versionString);
-    @_ZSTD_compress                            := GetProcAddress(ZSTD, sZSTD_compress);
-    @_ZSTD_decompress                          := GetProcAddress(ZSTD, sZSTD_decompress);
-    @_ZSTD_getFrameContentSize                 := GetProcAddress(ZSTD, sZSTD_getFrameContentSize);
-    @_ZSTD_getDecompressedSize                 := GetProcAddress(ZSTD, sZSTD_getDecompressedSize);
-    @_ZSTD_findFrameCompressedSize             := GetProcAddress(ZSTD, sZSTD_findFrameCompressedSize);
-    @_ZSTD_compressBound                       := GetProcAddress(ZSTD, sZSTD_compressBound);
-    @_ZSTD_isError                             := GetProcAddress(ZSTD, sZSTD_isError);
-    @_ZSTD_getErrorName                        := GetProcAddress(ZSTD, sZSTD_getErrorName);
-    @_ZSTD_minCLevel                           := GetProcAddress(ZSTD, sZSTD_minCLevel);
-    @_ZSTD_maxCLevel                           := GetProcAddress(ZSTD, sZSTD_maxCLevel);
-    @_ZSTD_createCCtx                          := GetProcAddress(ZSTD, sZSTD_createCCtx);
-    @_ZSTD_freeCCtx                            := GetProcAddress(ZSTD, sZSTD_freeCCtx);
-    @_ZSTD_compressCCtx                        := GetProcAddress(ZSTD, sZSTD_compressCCtx);
-    @_ZSTD_createDCtx                          := GetProcAddress(ZSTD, sZSTD_createDCtx);
-    @_ZSTD_freeDCtx                            := GetProcAddress(ZSTD, sZSTD_freeDCtx);
-    @_ZSTD_decompressDCtx                      := GetProcAddress(ZSTD, sZSTD_decompressDCtx);
-    @_ZSTD_cParam_getBounds                    := GetProcAddress(ZSTD, sZSTD_cParam_getBounds);
-    @_ZSTD_CCtx_setParameter                   := GetProcAddress(ZSTD, sZSTD_CCtx_setParameter);
-    @_ZSTD_CCtx_setPledgedSrcSize              := GetProcAddress(ZSTD, sZSTD_CCtx_setPledgedSrcSize);
-    @_ZSTD_CCtx_reset                          := GetProcAddress(ZSTD, sZSTD_CCtx_reset);
-    @_ZSTD_compress2                           := GetProcAddress(ZSTD, sZSTD_compress2);
-    @_ZSTD_dParam_getBounds                    := GetProcAddress(ZSTD, sZSTD_dParam_getBounds);
-    @_ZSTD_DCtx_setParameter                   := GetProcAddress(ZSTD, sZSTD_DCtx_setParameter);
-    @_ZSTD_DCtx_reset                          := GetProcAddress(ZSTD, sZSTD_DCtx_reset);
-    @_ZSTD_createCStream                       := GetProcAddress(ZSTD, sZSTD_createCStream);
-    @_ZSTD_freeCStream                         := GetProcAddress(ZSTD, sZSTD_freeCStream);
-    @_ZSTD_compressStream2                     := GetProcAddress(ZSTD, sZSTD_compressStream2);
-    @_ZSTD_CStreamInSize                       := GetProcAddress(ZSTD, sZSTD_CStreamInSize);
-    @_ZSTD_CStreamOutSize                      := GetProcAddress(ZSTD, sZSTD_CStreamOutSize);
-    @_ZSTD_initCStream                         := GetProcAddress(ZSTD, sZSTD_initCStream);
-    @_ZSTD_compressStream                      := GetProcAddress(ZSTD, sZSTD_compressStream);
-    @_ZSTD_flushStream                         := GetProcAddress(ZSTD, sZSTD_flushStream);
-    @_ZSTD_endStream                           := GetProcAddress(ZSTD, sZSTD_endStream);
-    @_ZSTD_createDStream                       := GetProcAddress(ZSTD, sZSTD_createDStream);
-    @_ZSTD_freeDStream                         := GetProcAddress(ZSTD, sZSTD_freeDStream);
-    @_ZSTD_initDStream                         := GetProcAddress(ZSTD, sZSTD_initDStream);
-    @_ZSTD_decompressStream                    := GetProcAddress(ZSTD, sZSTD_decompressStream);
-    @_ZSTD_DStreamInSize                       := GetProcAddress(ZSTD, sZSTD_DStreamInSize);
-    @_ZSTD_DStreamOutSize                      := GetProcAddress(ZSTD, sZSTD_DStreamOutSize);
-    @_ZSTD_compress_usingDict                  := GetProcAddress(ZSTD, sZSTD_compress_usingDict);
-    @_ZSTD_decompress_usingDict                := GetProcAddress(ZSTD, sZSTD_decompress_usingDict);
-    @_ZSTD_createCDict                         := GetProcAddress(ZSTD, sZSTD_createCDict);
-    @_ZSTD_freeCDict                           := GetProcAddress(ZSTD, sZSTD_freeCDict);
-    @_ZSTD_compress_usingCDict                 := GetProcAddress(ZSTD, sZSTD_compress_usingCDict);
-    @_ZSTD_createDDict                         := GetProcAddress(ZSTD, sZSTD_createDDict);
-    @_ZSTD_freeDDict                           := GetProcAddress(ZSTD, sZSTD_freeDDict);
-    @_ZSTD_decompress_usingDDict               := GetProcAddress(ZSTD, sZSTD_decompress_usingDDict);
-    @_ZSTD_getDictID_fromDict                  := GetProcAddress(ZSTD, sZSTD_getDictID_fromDict);
-    @_ZSTD_getDictID_fromDDict                 := GetProcAddress(ZSTD, sZSTD_getDictID_fromDDict);
-    @_ZSTD_getDictID_fromFrame                 := GetProcAddress(ZSTD, sZSTD_getDictID_fromFrame);
-    @_ZSTD_CCtx_loadDictionary                 := GetProcAddress(ZSTD, sZSTD_CCtx_loadDictionary);
-    @_ZSTD_CCtx_refCDict                       := GetProcAddress(ZSTD, sZSTD_CCtx_refCDict);
-    @_ZSTD_CCtx_refPrefix                      := GetProcAddress(ZSTD, sZSTD_CCtx_refPrefix);
-    @_ZSTD_DCtx_loadDictionary                 := GetProcAddress(ZSTD, sZSTD_DCtx_loadDictionary);
-    @_ZSTD_DCtx_refDDict                       := GetProcAddress(ZSTD, sZSTD_DCtx_refDDict);
-    @_ZSTD_DCtx_refPrefix                      := GetProcAddress(ZSTD, sZSTD_DCtx_refPrefix);
-    @_ZSTD_sizeof_CCtx                         := GetProcAddress(ZSTD, sZSTD_sizeof_CCtx);
-    @_ZSTD_sizeof_DCtx                         := GetProcAddress(ZSTD, sZSTD_sizeof_DCtx);
-    @_ZSTD_sizeof_CStream                      := GetProcAddress(ZSTD, sZSTD_sizeof_CStream);
-    @_ZSTD_sizeof_DStream                      := GetProcAddress(ZSTD, sZSTD_sizeof_DStream);
-    @_ZSTD_sizeof_CDict                        := GetProcAddress(ZSTD, sZSTD_sizeof_CDict);
-    @_ZSTD_sizeof_DDict                        := GetProcAddress(ZSTD, sZSTD_sizeof_DDict);
+    _ZSTD_versionNumber                       := GetProcAddress(ZSTD, sZSTD_versionNumber);
+    _ZSTD_versionString                       := GetProcAddress(ZSTD, sZSTD_versionString);
+    _ZSTD_compress                            := GetProcAddress(ZSTD, sZSTD_compress);
+    _ZSTD_decompress                          := GetProcAddress(ZSTD, sZSTD_decompress);
+    _ZSTD_getFrameContentSize                 := GetProcAddress(ZSTD, sZSTD_getFrameContentSize);
+    _ZSTD_getDecompressedSize                 := GetProcAddress(ZSTD, sZSTD_getDecompressedSize);
+    _ZSTD_findFrameCompressedSize             := GetProcAddress(ZSTD, sZSTD_findFrameCompressedSize);
+    _ZSTD_compressBound                       := GetProcAddress(ZSTD, sZSTD_compressBound);
+    _ZSTD_isError                             := GetProcAddress(ZSTD, sZSTD_isError);
+    _ZSTD_getErrorName                        := GetProcAddress(ZSTD, sZSTD_getErrorName);
+    _ZSTD_minCLevel                           := GetProcAddress(ZSTD, sZSTD_minCLevel);
+    _ZSTD_maxCLevel                           := GetProcAddress(ZSTD, sZSTD_maxCLevel);
+    _ZSTD_createCCtx                          := GetProcAddress(ZSTD, sZSTD_createCCtx);
+    _ZSTD_freeCCtx                            := GetProcAddress(ZSTD, sZSTD_freeCCtx);
+    _ZSTD_compressCCtx                        := GetProcAddress(ZSTD, sZSTD_compressCCtx);
+    _ZSTD_createDCtx                          := GetProcAddress(ZSTD, sZSTD_createDCtx);
+    _ZSTD_freeDCtx                            := GetProcAddress(ZSTD, sZSTD_freeDCtx);
+    _ZSTD_decompressDCtx                      := GetProcAddress(ZSTD, sZSTD_decompressDCtx);
+    _ZSTD_cParam_getBounds                    := GetProcAddress(ZSTD, sZSTD_cParam_getBounds);
+    _ZSTD_CCtx_setParameter                   := GetProcAddress(ZSTD, sZSTD_CCtx_setParameter);
+    _ZSTD_CCtx_setPledgedSrcSize              := GetProcAddress(ZSTD, sZSTD_CCtx_setPledgedSrcSize);
+    _ZSTD_CCtx_reset                          := GetProcAddress(ZSTD, sZSTD_CCtx_reset);
+    _ZSTD_compress2                           := GetProcAddress(ZSTD, sZSTD_compress2);
+    _ZSTD_dParam_getBounds                    := GetProcAddress(ZSTD, sZSTD_dParam_getBounds);
+    _ZSTD_DCtx_setParameter                   := GetProcAddress(ZSTD, sZSTD_DCtx_setParameter);
+    _ZSTD_DCtx_reset                          := GetProcAddress(ZSTD, sZSTD_DCtx_reset);
+    _ZSTD_createCStream                       := GetProcAddress(ZSTD, sZSTD_createCStream);
+    _ZSTD_freeCStream                         := GetProcAddress(ZSTD, sZSTD_freeCStream);
+    _ZSTD_compressStream2                     := GetProcAddress(ZSTD, sZSTD_compressStream2);
+    _ZSTD_CStreamInSize                       := GetProcAddress(ZSTD, sZSTD_CStreamInSize);
+    _ZSTD_CStreamOutSize                      := GetProcAddress(ZSTD, sZSTD_CStreamOutSize);
+    _ZSTD_initCStream                         := GetProcAddress(ZSTD, sZSTD_initCStream);
+    _ZSTD_compressStream                      := GetProcAddress(ZSTD, sZSTD_compressStream);
+    _ZSTD_flushStream                         := GetProcAddress(ZSTD, sZSTD_flushStream);
+    _ZSTD_endStream                           := GetProcAddress(ZSTD, sZSTD_endStream);
+    _ZSTD_createDStream                       := GetProcAddress(ZSTD, sZSTD_createDStream);
+    _ZSTD_freeDStream                         := GetProcAddress(ZSTD, sZSTD_freeDStream);
+    _ZSTD_initDStream                         := GetProcAddress(ZSTD, sZSTD_initDStream);
+    _ZSTD_decompressStream                    := GetProcAddress(ZSTD, sZSTD_decompressStream);
+    _ZSTD_DStreamInSize                       := GetProcAddress(ZSTD, sZSTD_DStreamInSize);
+    _ZSTD_DStreamOutSize                      := GetProcAddress(ZSTD, sZSTD_DStreamOutSize);
+    _ZSTD_compress_usingDict                  := GetProcAddress(ZSTD, sZSTD_compress_usingDict);
+    _ZSTD_decompress_usingDict                := GetProcAddress(ZSTD, sZSTD_decompress_usingDict);
+    _ZSTD_createCDict                         := GetProcAddress(ZSTD, sZSTD_createCDict);
+    _ZSTD_freeCDict                           := GetProcAddress(ZSTD, sZSTD_freeCDict);
+    _ZSTD_compress_usingCDict                 := GetProcAddress(ZSTD, sZSTD_compress_usingCDict);
+    _ZSTD_createDDict                         := GetProcAddress(ZSTD, sZSTD_createDDict);
+    _ZSTD_freeDDict                           := GetProcAddress(ZSTD, sZSTD_freeDDict);
+    _ZSTD_decompress_usingDDict               := GetProcAddress(ZSTD, sZSTD_decompress_usingDDict);
+    _ZSTD_getDictID_fromDict                  := GetProcAddress(ZSTD, sZSTD_getDictID_fromDict);
+    _ZSTD_getDictID_fromDDict                 := GetProcAddress(ZSTD, sZSTD_getDictID_fromDDict);
+    _ZSTD_getDictID_fromFrame                 := GetProcAddress(ZSTD, sZSTD_getDictID_fromFrame);
+    _ZSTD_CCtx_loadDictionary                 := GetProcAddress(ZSTD, sZSTD_CCtx_loadDictionary);
+    _ZSTD_CCtx_refCDict                       := GetProcAddress(ZSTD, sZSTD_CCtx_refCDict);
+    _ZSTD_CCtx_refPrefix                      := GetProcAddress(ZSTD, sZSTD_CCtx_refPrefix);
+    _ZSTD_DCtx_loadDictionary                 := GetProcAddress(ZSTD, sZSTD_DCtx_loadDictionary);
+    _ZSTD_DCtx_refDDict                       := GetProcAddress(ZSTD, sZSTD_DCtx_refDDict);
+    _ZSTD_DCtx_refPrefix                      := GetProcAddress(ZSTD, sZSTD_DCtx_refPrefix);
+    _ZSTD_sizeof_CCtx                         := GetProcAddress(ZSTD, sZSTD_sizeof_CCtx);
+    _ZSTD_sizeof_DCtx                         := GetProcAddress(ZSTD, sZSTD_sizeof_DCtx);
+    _ZSTD_sizeof_CStream                      := GetProcAddress(ZSTD, sZSTD_sizeof_CStream);
+    _ZSTD_sizeof_DStream                      := GetProcAddress(ZSTD, sZSTD_sizeof_DStream);
+    _ZSTD_sizeof_CDict                        := GetProcAddress(ZSTD, sZSTD_sizeof_CDict);
+    _ZSTD_sizeof_DDict                        := GetProcAddress(ZSTD, sZSTD_sizeof_DDict);
   finally
     LeaveCriticalSection(ZSTDLock);
   end;
@@ -1842,8 +1855,8 @@ begin
 end;
 
 initialization
-  InitializeCriticalSection(ZSTDLock);
   ZSTD := 0;
+  InitializeCriticalSection(ZSTDLock);
 
 finalization
   DoneZSTD;

@@ -1,5 +1,10 @@
 unit ZSTD;
 
+{$IFDEF FPC}
+ {$MODE DELPHI}
+ {$PACKRECORDS C}
+{$ENDIF}
+
 interface
 
 uses
