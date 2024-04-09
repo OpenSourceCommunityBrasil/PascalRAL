@@ -427,8 +427,14 @@ begin
 end;
 
 procedure TRALSaguiServer.SetActive(const AValue: boolean);
+var
+  vActive : boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   if (AValue) and (FLibPath <> '') then
@@ -453,7 +459,6 @@ begin
     ShutdownServerHandle;
     FreeServerHandle;
   end;
-  inherited;
 end;
 
 procedure TRALSaguiServer.SetLibPath(const AValue: TFileName);

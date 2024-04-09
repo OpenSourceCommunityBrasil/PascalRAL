@@ -289,8 +289,14 @@ begin
 end;
 
 procedure TRALIndyServer.SetActive(const AValue: Boolean);
+var
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   FHttp.Active := False;
@@ -323,8 +329,6 @@ begin
   end;
 
   FHttp.Active := AValue;
-
-  inherited;
 end;
 
 procedure TRALIndyServer.SetSessionTimeout(const AValue: IntegerRAL);

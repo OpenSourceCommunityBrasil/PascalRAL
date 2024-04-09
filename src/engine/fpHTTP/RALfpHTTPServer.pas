@@ -344,8 +344,10 @@ end;
 procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do
+  begin
     if (FParent.Active) then
       FHttp.Active := FParent.Active;
+  end;
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
@@ -386,7 +388,7 @@ begin
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 
-  inherited Create(False);
+  inherited Create(True);
 end;
 
 destructor TRALfpHttpServerThread.Destroy;
@@ -445,13 +447,20 @@ begin
 end;
 
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
+var
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   FHttpThread.Active := AValue;
 
-  inherited;
+  if AValue then
+    FHttpThread.Start;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);

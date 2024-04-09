@@ -21,6 +21,8 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
+
+    class function CheckDependence : boolean; override;
   end;
 
 implementation
@@ -177,6 +179,12 @@ begin
   end;
 
   inherited;
+end;
+
+class function TRALCompressZLib.CheckDependence: boolean;
+begin
+  // zlib eh incorporado
+  Result := True;
 end;
 
 initialization

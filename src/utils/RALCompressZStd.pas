@@ -7,7 +7,7 @@ unit RALCompressZStd;
 interface
 
 uses
-  Classes, SysUtils, ZStd,
+  Classes, SysUtils, ZStd, ZSTDLib,
   RALCompress, RALTypes, RALConsts;
 
 type
@@ -19,6 +19,8 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
+
+    class function CheckDependence : boolean; override;
   end;
 
 implementation
@@ -50,6 +52,7 @@ begin
     until (vCount = 0);
   finally
     FreeAndNil(vZip);
+    AOutStream.Position := 0;
   end;
 end;
 
@@ -74,6 +77,7 @@ begin
     until (vCount = 0);
   finally
     FreeAndNil(vZip);
+    AOutStream.Position := 0;
   end;
 end;
 
@@ -89,6 +93,11 @@ begin
   end;
 
   inherited;
+end;
+
+class function TRALCompressZStd.CheckDependence: boolean;
+begin
+  Result := ZSTDIsLoaded;
 end;
 
 initialization

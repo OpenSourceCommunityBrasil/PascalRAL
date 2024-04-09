@@ -66,8 +66,13 @@ procedure TRALSynopseServer.SetActive(const AValue: boolean);
 var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   if AValue then
@@ -111,8 +116,6 @@ begin
     if FHttp <> nil then
       FreeAndNil(FHttp);
   end;
-
-  inherited;
 end;
 
 procedure TRALSynopseServer.SetPoolCount(const AValue: IntegerRAL);

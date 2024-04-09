@@ -698,9 +698,11 @@ procedure TRALServer.SetActive(const AValue: boolean);
 begin
   if FActive = AValue then
     Exit;
+
+  if AValue then
+    TRALCompress.CheckDependencies;
+
   FActive := AValue;
-  if ServerStatus.Text = RALDefaultPage then
-    ServerStatus.Text := Format(RALDefaultPage, [Engine]);
 end;
 
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);

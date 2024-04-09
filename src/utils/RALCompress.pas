@@ -20,11 +20,13 @@ type
   /// Compression class for PascalRAL
   TRALCompress = class(TPersistent)
   private
-    FFormat : TRALCompressType;
+    FFormat: TRALCompressType;
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
+
+    class function CheckDependence : boolean; virtual; abstract;
   public
     function Compress(AStream: TStream): TStream; overload;
     function Compress(const AString: StringRAL): StringRAL; overload;
@@ -37,10 +39,11 @@ type
     class procedure UpdateDeclaredClasses;
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
-    class function GetBestCompress(const AEncoding : StringRAL) : TRALCompressType;
-    class function GetCompressClass(ACompress : TRALCompressType) : TRALCompressClass;
-    published
-    property Format : TRALCompressType read FFormat write SetFormat;
+    class function GetBestCompress(const AEncoding : StringRAL): TRALCompressType;
+    class function GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
+    class procedure CheckDependencies;
+  published
+    property Format: TRALCompressType read FFormat write SetFormat;
   end;
 
 implementation
@@ -232,6 +235,28 @@ begin
     ctZStd    : Result := TRALCompressClass(GetClass(cCompressLibsClass[clZStd]));
     ctBrotli  : Result := TRALCompressClass(GetClass(cCompressLibsClass[clBrotli]));
   end;
+end;
+
+class procedure TRALCompress.CheckDependencies;
+var
+  vLib : TRALCompressLibs;
+  vCompress : TRALCompressClass;
+  vLibs : StringRAL;
+begin
+  vLibs := '';
+  for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
+  begin
+    vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
+    if (vCompress <> nil) and (not vCompress.CheckDependence) then
+    begin
+      if vLibs <> '' then
+        vLibs := vLibs + ', ';
+      vLibs := vLibs + cCompressLibsClass[vLib];
+    end;
+  end;
+
+  if vLibs <> '' then
+    raise Exception.CreateFmt('The classes %s - libraries files not found!', [vLibs]);
 end;
 
 initialization

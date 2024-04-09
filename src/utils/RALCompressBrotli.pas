@@ -3,7 +3,7 @@ unit RALCompressBrotli;
 interface
 
 uses
-  Classes, SysUtils, brotlistream,
+  Classes, SysUtils, brotlistream, brotlilib,
   RALCompress, RALTypes, RALConsts;
 
 type
@@ -15,6 +15,8 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
+
+    class function CheckDependence : boolean; override;
   end;
 
 implementation
@@ -40,6 +42,7 @@ begin
     until (vCount = 0);
   finally
     FreeAndNil(vZip);
+    AOutStream.Position := 0;
   end;
 end;
 
@@ -62,6 +65,7 @@ begin
     until (vCount = 0);
   finally
     FreeAndNil(vZip);
+    AOutStream.Position := 0;
   end;
 end;
 
@@ -77,6 +81,11 @@ begin
   end;
 
   inherited;
+end;
+
+class function TRALCompressBrotli.CheckDependence: boolean;
+begin
+  Result := TBrotli.IsLoaded;
 end;
 
 initialization
