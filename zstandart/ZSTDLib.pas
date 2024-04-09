@@ -1002,6 +1002,8 @@ function ZSTD_sizeof_DStream(zds: ZSTD_DStream): size_t; {$IFDEF ZSTD_STATIC_LIN
 function ZSTD_sizeof_CDict(cdict: ZSTD_CDict): size_t; {$IFDEF ZSTD_STATIC_LINKING}cdecl; external ZSTDDllName name sZSTD_sizeof_CDict;{$ENDIF}
 function ZSTD_sizeof_DDict(ddict: ZSTD_DDict): size_t; {$IFDEF ZSTD_STATIC_LINKING}cdecl; external ZSTDDllName name sZSTD_sizeof_DDict;{$ENDIF}
 
+function ZSTDIsLoaded : boolean;
+
 implementation
 
 const
@@ -1852,6 +1854,12 @@ begin
     Result := _ZSTD_sizeof_DDict(ddict)
   else
     begin Result := 0; RaiseLastOSError(ERROR_PROC_NOT_FOUND); end;
+end;
+
+function ZSTDIsLoaded: boolean;
+begin
+  InitZSTD;
+  Result := ZSTD <> 0;
 end;
 
 initialization
