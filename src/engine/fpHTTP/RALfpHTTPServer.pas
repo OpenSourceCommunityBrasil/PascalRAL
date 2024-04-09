@@ -430,8 +430,11 @@ end;
 
 destructor TRALfpHttpServer.Destroy;
 begin
-  FHttpThread.Terminate;
-  FHttpThread.WaitFor;
+  if Active then
+  begin
+    FHttpThread.Terminate;
+    FHttpThread.WaitFor;
+  end;
   FreeAndNil(FHttpThread);
   inherited;
 end;

@@ -200,8 +200,14 @@ begin
 end;
 
 procedure TRALUniGUIServer.SetActive(const AValue: boolean);
+var
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   if AValue then
@@ -212,7 +218,6 @@ begin
   else begin
     UniServerInstance.OnHTTPCommand := FOnHTTPCommand;
   end;
-  inherited;
 end;
 
 end.
