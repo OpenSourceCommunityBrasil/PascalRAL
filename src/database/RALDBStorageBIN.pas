@@ -1,4 +1,4 @@
-unit RALDBStorageBIN;
+﻿unit RALDBStorageBIN;
 
 interface
 
@@ -32,14 +32,14 @@ type
     procedure EndWriteRecords(ARecords : Int64RAL); override;
     procedure EndWrite; override;
 
-    procedure WriteRecordNull(AIsNull : Boolean); override;
-    procedure WriteRecordString(AValue : StringRAL); override;
-    procedure WriteRecordInteger(AValue : Int64RAL; ASize : IntegerRAL); override;
-    procedure WriteRecordBoolean(AValue : Boolean); override;
-    procedure WriteRecordDouble(AValue : DoubleRAL); override;
-    procedure WriteRecordDateTime(AValue : TDateTime); override;
-    procedure WriteRecordBlob(AValue : TStream); override;
-    procedure WriteRecordMemo(AValue : TStream); override;
+    procedure WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean); override;
+    procedure WriteRecordString(AFieldName : StringRAL; AValue : StringRAL); override;
+    procedure WriteRecordInteger(AFieldName : StringRAL; AValue : Int64RAL; ASize : IntegerRAL); override;
+    procedure WriteRecordBoolean(AFieldName : StringRAL; AValue : Boolean); override;
+    procedure WriteRecordDouble(AFieldName : StringRAL; AValue : DoubleRAL); override;
+    procedure WriteRecordDateTime(AFieldName : StringRAL; AValue : TDateTime); override;
+    procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
+    procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
 
     procedure BeginRead; override;
   end;
@@ -48,7 +48,7 @@ type
   protected
     function GetContentType: StringRAL; override;
   public
-    class function GetStorageClass : TRALDBStorageClass; override;
+    function GetStorage : TRALDBStorage; override;
   end;
 
 implementation
@@ -127,7 +127,7 @@ begin
   Stream.Write(ASize, SizeOf(ASize));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordBlob(AValue: TStream);
+procedure TRALDBStorageBIN.WriteRecordBlob(AFieldName : StringRAL; AValue: TStream);
 var
   vInt64 : Int64RAL;
 begin
@@ -138,22 +138,22 @@ begin
   Stream.CopyFrom(AValue, AValue.Size);
 end;
 
-procedure TRALDBStorageBIN.WriteRecordBoolean(AValue: Boolean);
+procedure TRALDBStorageBIN.WriteRecordBoolean(AFieldName : StringRAL; AValue: Boolean);
 begin
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordDateTime(AValue: TDateTime);
+procedure TRALDBStorageBIN.WriteRecordDateTime(AFieldName : StringRAL; AValue: TDateTime);
 begin
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordDouble(AValue: DoubleRAL);
+procedure TRALDBStorageBIN.WriteRecordDouble(AFieldName : StringRAL; AValue: DoubleRAL);
 begin
   Stream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordInteger(AValue: Int64RAL;
+procedure TRALDBStorageBIN.WriteRecordInteger(AFieldName : StringRAL; AValue: Int64RAL;
   ASize: IntegerRAL);
 var
   vByte : Byte;
@@ -194,7 +194,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBIN.WriteRecordMemo(AValue: TStream);
+procedure TRALDBStorageBIN.WriteRecordMemo(AFieldName : StringRAL; AValue: TStream);
 var
   vInt64 : Int64RAL;
 begin
@@ -217,12 +217,12 @@ begin
     raise Exception.Create('Arquivo não é um Storage RAL Binary');
 end;
 
-procedure TRALDBStorageBIN.WriteRecordNull(AIsNull : Boolean);
+procedure TRALDBStorageBIN.WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean);
 begin
   Stream.Write(AIsNull, SizeOf(AIsNull));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordString(AValue: StringRAL);
+procedure TRALDBStorageBIN.WriteRecordString(AFieldName : StringRAL; AValue: StringRAL);
 var
   vInt64 : Int64RAL;
 begin
@@ -238,9 +238,9 @@ begin
   Result := rctAPPLICATIONOCTETSTREAM;
 end;
 
-class function TRALDBStorageBINLink.GetStorageClass: TRALDBStorageClass;
+function TRALDBStorageBINLink.GetStorage: TRALDBStorage;
 begin
-  Result := TRALDBStorageBIN;
+  Result := TRALDBStorageBIN.Create;
 end;
 
 initialization

@@ -7,10 +7,13 @@ uses
   RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes;
 
 type
+  TRALJSONFormat = (jfRAL, jfCommon);
+
   TRALDBStorageJSON = class(TRALDBStorage)
   private
     FFields : Boolean;
     FRecords : Boolean;
+    FJSONFormat : TRALJSONFormat;
     function StringToJSONString(AValue: TStream): TStream;
   protected
     procedure BeginWrite; override;
@@ -31,21 +34,28 @@ type
     procedure EndWriteRecords(ARecords : Int64RAL); override;
     procedure EndWrite; override;
 
-    procedure WriteRecordNull(AIsNull : Boolean); override;
-    procedure WriteRecordString(AValue : StringRAL); override;
-    procedure WriteRecordInteger(AValue : Int64RAL; ASize : IntegerRAL); override;
-    procedure WriteRecordBoolean(AValue : Boolean); override;
-    procedure WriteRecordDouble(AValue : DoubleRAL); override;
-    procedure WriteRecordDateTime(AValue : TDateTime); override;
-    procedure WriteRecordBlob(AValue : TStream); override;
-    procedure WriteRecordMemo(AValue : TStream); override;
+    procedure WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean); override;
+    procedure WriteRecordString(AFieldName : StringRAL; AValue : StringRAL); override;
+    procedure WriteRecordInteger(AFieldName : StringRAL; AValue : Int64RAL; ASize : IntegerRAL); override;
+    procedure WriteRecordBoolean(AFieldName : StringRAL; AValue : Boolean); override;
+    procedure WriteRecordDouble(AFieldName : StringRAL; AValue : DoubleRAL); override;
+    procedure WriteRecordDateTime(AFieldName : StringRAL; AValue : TDateTime); override;
+    procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
+    procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
+  published
+    property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat default jfCommon;
   end;
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
+  private
+    FJSONFormat : TRALJSONFormat;
   protected
     function GetContentType: StringRAL; override;
   public
-    class function GetStorageClass: TRALDBStorageClass; override;
+    constructor Create(AOwner : TComponent); override;
+    function GetStorage : TRALDBStorage; override;
+  published
+    property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
 implementation
@@ -59,69 +69,118 @@ begin
   FFields := False;
   FRecords := False;
 
-  vStr := '{';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '{';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end
+  else
+  begin
+    vStr := '[';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.BeginWriteFields(AFields : IntegerRAL);
 var
   vStr : StringRAL;
 begin
-  vStr := '"fd":[';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '"fd":[';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.BeginWriteRecord;
 var
   vStr : StringRAL;
 begin
-  vStr := '';
-  if FRecords then
-    vStr := ',';
-  vStr := vStr + '[';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
-  FRecords := True;
-  FFields := False;
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '';
+    if FRecords then
+      vStr := ',';
+    vStr := vStr + '[';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+    FRecords := True;
+    FFields := False;
+  end
+  else
+  begin
+    vStr := '';
+    if FRecords then
+      vStr := ',';
+    vStr := '{';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+    FRecords := True;
+    FFields := False;
+  end;
 end;
 
 procedure TRALDBStorageJSON.BeginWriteRecords;
 var
   vStr : StringRAL;
 begin
-  vStr := '"ln":[';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '"ln":[';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.EndWrite;
 var
   vStr : StringRAL;
 begin
-  vStr := '}';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '}';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end
+  else
+  begin
+    vStr := ']';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.EndWriteFields;
 var
   vStr : StringRAL;
 begin
-  vStr := '],';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '],';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.EndWriteRecord;
 var
   vStr : StringRAL;
 begin
-  vStr := ']';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := ']';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end
+  else
+  begin
+    vStr := '}';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 procedure TRALDBStorageJSON.EndWriteRecords(ARecords : Int64RAL);
 var
   vStr : StringRAL;
 begin
-  vStr := ']';
-  Stream.Write(vStr[PosIniStr], Length(vStr));
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := ']';
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+  end;
 end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: TStream): TStream;
@@ -159,15 +218,18 @@ procedure TRALDBStorageJSON.WriteField(AName: StringRAL;
 var
   vStr : StringRAL;
 begin
-  vStr := '';
-  if FFields then
-    vStr := ',';
-  vStr := vStr + Format('["%s",%d,%d,%d]',[AName, Ord(AType), AFlags, ASize]);
-  Stream.Write(vStr[PosIniStr], Length(vStr));
-  FFields := True;
+  if FJSONFormat = jfRAL then
+  begin
+    vStr := '';
+    if FFields then
+      vStr := ',';
+    vStr := vStr + Format('["%s",%d,%d,%d]',[AName, Ord(AType), AFlags, ASize]);
+    Stream.Write(vStr[PosIniStr], Length(vStr));
+    FFields := True;
+  end;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordBlob(AValue: TStream);
+procedure TRALDBStorageJSON.WriteRecordBlob(AFieldName : StringRAL; AValue: TStream);
 var
   vStr : StringRAL;
   vStream : TStream;
@@ -177,6 +239,9 @@ begin
     vStr := '';
     if FFields then
       vStr := ',';
+
+    if FJSONFormat <> jfRAL then
+      vStr := vStr + Format('"%s": ', [AFieldName]);
 
     vStr := vStr + '"';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -191,7 +256,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordBoolean(AValue: Boolean);
+procedure TRALDBStorageJSON.WriteRecordBoolean(AFieldName : StringRAL; AValue: Boolean);
 var
   vStr : StringRAL;
 begin
@@ -199,15 +264,19 @@ begin
   if FFields then
     vStr := ',';
 
+  if FJSONFormat <> jfRAL then
+    vStr := vStr + Format('"%s": ', [AFieldName]);
+
   if AValue then
     vStr := vStr + 'true'
   else
     vStr := vStr + 'false';
+
   Stream.Write(vStr[PosIniStr], Length(vStr));
   FFields := True;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordDateTime(AValue: TDateTime);
+procedure TRALDBStorageJSON.WriteRecordDateTime(AFieldName : StringRAL; AValue: TDateTime);
 var
   vMask, vStr : StringRAL;
 begin
@@ -220,24 +289,33 @@ begin
   if FFields then
     vStr := ',';
 
-  vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
+  case FJSONFormat of
+    jfRAL    : vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
+    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FormatDateTime(vMask, AValue)]);
+  end;
+
   Stream.Write(vStr[PosIniStr], Length(vStr));
   FFields := True;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordDouble(AValue: DoubleRAL);
+procedure TRALDBStorageJSON.WriteRecordDouble(AFieldName : StringRAL; AValue: DoubleRAL);
 var
   vStr : StringRAL;
 begin
   vStr := '';
   if FFields then
     vStr := ',';
-  vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
+
+  case FJSONFormat of
+    jfRAL    : vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
+    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FloatToStr(AValue)]);
+  end;
+
   Stream.Write(vStr[PosIniStr], Length(vStr));
   FFields := True;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordInteger(AValue: Int64RAL;
+procedure TRALDBStorageJSON.WriteRecordInteger(AFieldName : StringRAL; AValue: Int64RAL;
   ASize: IntegerRAL);
 var
   vStr : StringRAL;
@@ -245,12 +323,17 @@ begin
   vStr := '';
   if FFields then
     vStr := ',';
-  vStr := vStr + IntToStr(AValue);
+
+  case FJSONFormat of
+    jfRAL    : vStr := vStr + IntToStr(AValue);
+    jfCommon : vStr := vStr + Format('"%s": %d', [AFieldName, AValue]);
+  end;
+
   Stream.Write(vStr[PosIniStr], Length(vStr));
   FFields := True;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordMemo(AValue: TStream);
+procedure TRALDBStorageJSON.WriteRecordMemo(AFieldName : StringRAL; AValue: TStream);
 var
   vStr : StringRAL;
   vStream : TStream;
@@ -260,6 +343,9 @@ begin
     vStr := '';
     if FFields then
       vStr := ',';
+
+    if FJSONFormat <> jfRAL then
+      vStr := vStr + Format('"%s": ', [AFieldName]);
 
     vStr := vStr + '"';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -274,7 +360,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordNull(AIsNull: Boolean);
+procedure TRALDBStorageJSON.WriteRecordNull(AFieldName : StringRAL; AIsNull: Boolean);
 var
   vStr : StringRAL;
 begin
@@ -283,13 +369,18 @@ begin
     vStr := '';
     if FFields then
       vStr := ',';
-    vStr := vStr + 'null';
+
+    case FJSONFormat of
+      jfRAL    : vStr := vStr + 'null';
+      jfCommon : vStr := vStr + Format('"%s": null', [AFieldName]);
+    end;
+
     Stream.Write(vStr[PosIniStr], Length(vStr));
     FFields := True;
   end;
 end;
 
-procedure TRALDBStorageJSON.WriteRecordString(AValue: StringRAL);
+procedure TRALDBStorageJSON.WriteRecordString(AFieldName : StringRAL; AValue: StringRAL);
 var
   vStr : StringRAL;
   vStream1, vStream2 : TStream;
@@ -301,6 +392,9 @@ begin
       vStr := '';
       if FFields then
         vStr := ',';
+
+      if FJSONFormat <> jfRAL then
+        vStr := vStr + Format('"%s": ', [AFieldName]);
 
       vStr := vStr + '"';
       Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -320,14 +414,21 @@ end;
 
 { TRALDBStorageJSONLink }
 
+constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
+begin
+  inherited;
+  FJSONFormat := jfCommon;
+end;
+
 function TRALDBStorageJSONLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONJSON;
 end;
 
-class function TRALDBStorageJSONLink.GetStorageClass: TRALDBStorageClass;
+function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
 begin
-  Result := TRALDBStorageJSON;
+  Result := TRALDBStorageJSON.Create;
+  TRALDBStorageJSON(Result).JSONFormat := FJSONFormat;
 end;
 
 initialization

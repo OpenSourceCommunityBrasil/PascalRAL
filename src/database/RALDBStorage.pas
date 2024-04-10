@@ -38,14 +38,14 @@ type
     procedure EndWriteRecords(ARecords : Int64RAL); virtual; abstract;
     procedure EndWrite; virtual; abstract;
 
-    procedure WriteRecordNull(AIsNull : Boolean); virtual; abstract;
-    procedure WriteRecordString(AValue : StringRAL); virtual; abstract;
-    procedure WriteRecordInteger(AValue : Int64RAL; ASize : IntegerRAL); virtual; abstract;
-    procedure WriteRecordBoolean(AValue : Boolean); virtual; abstract;
-    procedure WriteRecordDouble(AValue : DoubleRAL); virtual; abstract;
-    procedure WriteRecordDateTime(AValue : TDateTime); virtual; abstract;
-    procedure WriteRecordBlob(AValue : TStream); virtual; abstract;
-    procedure WriteRecordMemo(AValue : TStream); virtual; abstract;
+    procedure WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean); virtual; abstract;
+    procedure WriteRecordString(AFieldName : StringRAL; AValue : StringRAL); virtual; abstract;
+    procedure WriteRecordInteger(AFieldName : StringRAL; AValue : Int64RAL; ASize : IntegerRAL); virtual; abstract;
+    procedure WriteRecordBoolean(AFieldName : StringRAL; AValue : Boolean); virtual; abstract;
+    procedure WriteRecordDouble(AFieldName : StringRAL; AValue : DoubleRAL); virtual; abstract;
+    procedure WriteRecordDateTime(AFieldName : StringRAL; AValue : TDateTime); virtual; abstract;
+    procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); virtual; abstract;
+    procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); virtual; abstract;
 
     // read
     procedure BeginRead; virtual; abstract;
@@ -70,12 +70,15 @@ type
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
+  TRALDBStorageClassLink = class of TRALDBStorageLink;
 
   { TRALDBStorageLink }
 
   TRALDBStorageLink = class(TRALComponent)
   protected
     function GetContentType: StringRAL; virtual;
+    class function GetDeclaredStorageLink : TRALDBStorageClassLink;
+    class function GetDefaultStorage : TRALDBStorage; virtual;
   public
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
@@ -84,14 +87,16 @@ type
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
 
-    class function GetStorageClass : TRALDBStorageClass; virtual;
+    function GetStorage : TRALDBStorage; virtual;
 
     property ContentType: StringRAL read GetContentType;
   end;
 
-  TRALDBStorageClassLink = class of TRALDBStorageLink;
-
 implementation
+
+const
+  cStorageLinkClass : array[0..1] of StringRAL = ('TRALStorageBINLink',
+                                                  'TRALStorageJSONLink');
 
 { TRALDBStorage }
 
@@ -247,7 +252,7 @@ procedure TRALDBStorage.WriteRecordField(AField: TField);
 var
   vMem : TMemoryStream;
 begin
-  WriteRecordNull(AField.IsNull);
+  WriteRecordNull(AField.FieldName, AField.IsNull);
   if not AField.IsNull then
   begin
     case AField.DataType of
@@ -255,21 +260,21 @@ begin
       ftGuid,
       ftFixedChar,
       ftWideString,
-      ftString   : WriteRecordString(AField.AsString);
+      ftString   : WriteRecordString(AField.FieldName, AField.AsString);
 
       {$IFNDEF FPC}
-        ftShortint : WriteRecordInteger(AField.AsInteger, -1);
-        ftByte     : WriteRecordInteger(AField.AsInteger, 1);
-        ftLongWord : WriteRecordInteger(AField.AsLargeInt, 4);
+        ftShortint : WriteRecordInteger(AField.FieldName, AField.AsInteger, -1);
+        ftByte     : WriteRecordInteger(AField.FieldName, AField.AsInteger, 1);
+        ftLongWord : WriteRecordInteger(AField.FieldName, AField.AsLargeInt, 4);
       {$ENDIF}
 
-      ftSmallint : WriteRecordInteger(AField.AsInteger, -2);
-      ftWord     : WriteRecordInteger(AField.AsInteger, 2);
-      ftInteger  : WriteRecordInteger(AField.AsInteger, -4);
+      ftSmallint : WriteRecordInteger(AField.FieldName, AField.AsInteger, -2);
+      ftWord     : WriteRecordInteger(AField.FieldName, AField.AsInteger, 2);
+      ftInteger  : WriteRecordInteger(AField.FieldName, AField.AsInteger, -4);
       ftLargeint,
-      ftAutoInc  : WriteRecordInteger(AField.AsLargeInt, 8);
+      ftAutoInc  : WriteRecordInteger(AField.FieldName, AField.AsLargeInt, 8);
 
-      ftBoolean  : WriteRecordBoolean(AField.AsBoolean);
+      ftBoolean  : WriteRecordBoolean(AField.FieldName, AField.AsBoolean);
 
       {$IFNDEF FPC}
         ftSingle,
@@ -278,7 +283,7 @@ begin
       ftFMTBcd,
       ftFloat,
       ftCurrency,
-      ftBCD      : WriteRecordDouble(AField.AsFloat);
+      ftBCD      : WriteRecordDouble(AField.FieldName, AField.AsFloat);
 
       {$IFNDEF FPC}
         ftTimeStampOffset,
@@ -288,7 +293,7 @@ begin
       ftTimeStamp,
       ftDate,
       ftTime,
-      ftDateTime : WriteRecordDateTime(AField.AsDateTime);
+      ftDateTime : WriteRecordDateTime(AField.FieldName, AField.AsDateTime);
 
       {$IFNDEF FPC}
         ftStream,
@@ -303,7 +308,7 @@ begin
         try
           TBlobField(AField).SaveToStream(vMem);
           vMem.Position := 0;
-          WriteRecordBlob(vMem);
+          WriteRecordBlob(AField.FieldName, vMem);
         finally
           vMem.Free
         end;
@@ -317,7 +322,7 @@ begin
         try
           TBlobField(AField).SaveToStream(vMem);
           vMem.Position := 0;
-          WriteRecordMemo(vMem);
+          WriteRecordMemo(AField.FieldName, vMem);
         finally
           vMem.Free
         end;
@@ -353,49 +358,71 @@ end;
 function TRALDBStorageLink.GetContentType: StringRAL;
 var
   vClassStor: TRALDBStorageClassLink;
-  vStor: TRALDBStorageLink;
+  vLink : TRALDBStorageLink;
 begin
   if Self = nil then
   begin
-    vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageBINLink'));
-    if vClassStor = nil then
-      vClassStor := TRALDBStorageClassLink(FindClass('TRALStorageJSONLink'));
-
+    vClassStor := GetDeclaredStorageLink;
     if vClassStor <> nil then
     begin
-      vStor := vClassStor.Create(nil);
+      vLink := vClassStor.Create(nil);
       try
-        Result := vStor.ContentType;
+        Result := vLink.ContentType;
       finally
-        FreeAndNil(vStor);
+        vLink.Free;
       end;
     end
     else
     begin
-      raise Exception.Create('TRALStorageLink not found');
+      raise Exception.Create('No TRALStorageLink found!');
     end;
   end;
 end;
 
-class function TRALDBStorageLink.GetStorageClass: TRALDBStorageClass;
+class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageClassLink;
+var
+  vLinks : IntegerRAL;
+begin
+  for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
+  begin
+    Result := TRALDBStorageClassLink(GetClass(cStorageLinkClass[vLinks]));
+    if Result <> nil then
+      Break;
+  end;
+end;
+
+class function TRALDBStorageLink.GetDefaultStorage: TRALDBStorage;
 var
   vClassStor: TRALDBStorageClassLink;
+  vLink : TRALDBStorageLink;
 begin
-  vClassStor := TRALDBStorageClassLink(FindClass('TRALDBStorageBINLink'));
-  if vClassStor = nil then
-    vClassStor := TRALDBStorageClassLink(FindClass('TRALDBStorageJSONLink'));
-
+  vClassStor := GetDeclaredStorageLink;
   if vClassStor <> nil then
-    Result := vClassStor.GetStorageClass
+  begin
+    vLink := vClassStor.Create(nil);
+    try
+      Result := vLink.GetStorage;
+    finally
+      vLink.Free;
+    end;
+  end
   else
-    Result := nil;
+  begin
+    raise Exception.Create('No TRALStorageLink found!');
+  end;
+end;
+
+function TRALDBStorageLink.GetStorage: TRALDBStorage;
+begin
+  if Self = nil then
+    Result := GetDefaultStorage;
 end;
 
 procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
 var
   vStor: TRALDBStorage;
 begin
-  vStor := GetStorageClass.Create;
+  vStor := GetStorage;
   try
     vStor.LoadFromFile(ADataset, AFileName);
   finally
@@ -407,7 +434,7 @@ procedure TRALDBStorageLink.LoadFromStream(ADataset: TDataSet; AStream: TStream)
 var
   vStor: TRALDBStorage;
 begin
-  vStor := GetStorageClass.Create;
+  vStor := GetStorage;
   try
     vStor.LoadFromStream(ADataset, AStream);
   finally
@@ -419,7 +446,7 @@ procedure TRALDBStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
 var
   vStor: TRALDBStorage;
 begin
-  vStor := GetStorageClass.Create;
+  vStor := GetStorage;
   try
     vStor.SaveToStream(ADataset, AStream);
   finally
@@ -431,7 +458,7 @@ procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL)
 var
   vStor: TRALDBStorage;
 begin
-  vStor := GetStorageClass.Create;
+  vStor := GetStorage;
   try
     vStor.SaveToFile(ADataset, AFileName);
   finally
