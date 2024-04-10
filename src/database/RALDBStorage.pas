@@ -95,8 +95,8 @@ type
 implementation
 
 const
-  cStorageLinkClass : array[0..1] of StringRAL = ('TRALStorageBINLink',
-                                                  'TRALStorageJSONLink');
+  cStorageLinkClass : array[0..1] of StringRAL = ('TRALDBStorageBINLink',
+                                                  'TRALDBStorageJSONLink');
 
 { TRALDBStorage }
 
@@ -360,22 +360,19 @@ var
   vClassStor: TRALDBStorageClassLink;
   vLink : TRALDBStorageLink;
 begin
-  if Self = nil then
+  vClassStor := GetDeclaredStorageLink;
+  if vClassStor <> nil then
   begin
-    vClassStor := GetDeclaredStorageLink;
-    if vClassStor <> nil then
-    begin
-      vLink := vClassStor.Create(nil);
-      try
-        Result := vLink.ContentType;
-      finally
-        vLink.Free;
-      end;
-    end
-    else
-    begin
-      raise Exception.Create('No TRALStorageLink found!');
+    vLink := vClassStor.Create(nil);
+    try
+      Result := vLink.ContentType;
+    finally
+      vLink.Free;
     end;
+  end
+  else
+  begin
+    raise Exception.Create('No TRALStorageLink found!');
   end;
 end;
 
@@ -383,6 +380,7 @@ class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageClassLink;
 var
   vLinks : IntegerRAL;
 begin
+  Result := nil;
   for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
   begin
     Result := TRALDBStorageClassLink(GetClass(cStorageLinkClass[vLinks]));
@@ -414,8 +412,7 @@ end;
 
 function TRALDBStorageLink.GetStorage: TRALDBStorage;
 begin
-  if Self = nil then
-    Result := GetDefaultStorage;
+  Result := GetDefaultStorage;
 end;
 
 procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);

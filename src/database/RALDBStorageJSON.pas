@@ -7,7 +7,7 @@ uses
   RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes;
 
 type
-  TRALJSONFormat = (jfRAL, jfCommon);
+  TRALJSONFormat = (jfDBWare, jfCommon);
 
   TRALDBStorageJSON = class(TRALDBStorage)
   private
@@ -43,7 +43,7 @@ type
     procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
     procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
   published
-    property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat default jfCommon;
+    property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
@@ -69,23 +69,19 @@ begin
   FFields := False;
   FRecords := False;
 
-  if FJSONFormat = jfRAL then
-  begin
-    vStr := '{';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
-  end
-  else
-  begin
-    vStr := '[';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
+  case FJSONFormat of
+    jfDBWare : vStr := '{';
+    jfCommon : vStr := '[';
   end;
+
+  Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
 
 procedure TRALDBStorageJSON.BeginWriteFields(AFields : IntegerRAL);
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
+  if FJSONFormat = jfDBWare then
   begin
     vStr := '"fd":[';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -96,33 +92,25 @@ procedure TRALDBStorageJSON.BeginWriteRecord;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
-  begin
-    vStr := '';
-    if FRecords then
-      vStr := ',';
-    vStr := vStr + '[';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
-    FRecords := True;
-    FFields := False;
-  end
-  else
-  begin
-    vStr := '';
-    if FRecords then
-      vStr := ',';
-    vStr := '{';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
-    FRecords := True;
-    FFields := False;
+  vStr := '';
+  if FRecords then
+    vStr := ',';
+
+  case FJSONFormat of
+    jfDBWare : vStr := vStr + '[';
+    jfCommon : vStr := vStr + '{';
   end;
+
+  Stream.Write(vStr[PosIniStr], Length(vStr));
+  FRecords := True;
+  FFields := False;
 end;
 
 procedure TRALDBStorageJSON.BeginWriteRecords;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
+  if FJSONFormat = jfDBWare then
   begin
     vStr := '"ln":[';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -133,23 +121,18 @@ procedure TRALDBStorageJSON.EndWrite;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
-  begin
-    vStr := '}';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
-  end
-  else
-  begin
-    vStr := ']';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
+  case FJSONFormat of
+    jfDBWare : vStr := '}';
+    jfCommon : vStr := ']';
   end;
+  Stream.Write(vStr[PosIniStr], Length(vStr))
 end;
 
 procedure TRALDBStorageJSON.EndWriteFields;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
+  if FJSONFormat = jfDBWare then
   begin
     vStr := '],';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -160,23 +143,18 @@ procedure TRALDBStorageJSON.EndWriteRecord;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
-  begin
-    vStr := ']';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
-  end
-  else
-  begin
-    vStr := '}';
-    Stream.Write(vStr[PosIniStr], Length(vStr));
+  case FJSONFormat of
+    jfDBWare : vStr := ']';
+    jfCommon : vStr := '}';
   end;
+  Stream.Write(vStr[PosIniStr], Length(vStr));
 end;
 
 procedure TRALDBStorageJSON.EndWriteRecords(ARecords : Int64RAL);
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
+  if FJSONFormat = jfDBWare then
   begin
     vStr := ']';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -218,7 +196,7 @@ procedure TRALDBStorageJSON.WriteField(AName: StringRAL;
 var
   vStr : StringRAL;
 begin
-  if FJSONFormat = jfRAL then
+  if FJSONFormat = jfDBWare then
   begin
     vStr := '';
     if FFields then
@@ -240,7 +218,7 @@ begin
     if FFields then
       vStr := ',';
 
-    if FJSONFormat <> jfRAL then
+    if FJSONFormat = jfCommon then
       vStr := vStr + Format('"%s": ', [AFieldName]);
 
     vStr := vStr + '"';
@@ -264,7 +242,7 @@ begin
   if FFields then
     vStr := ',';
 
-  if FJSONFormat <> jfRAL then
+  if FJSONFormat = jfCommon then
     vStr := vStr + Format('"%s": ', [AFieldName]);
 
   if AValue then
@@ -290,7 +268,7 @@ begin
     vStr := ',';
 
   case FJSONFormat of
-    jfRAL    : vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
+    jfDBWare : vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
     jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FormatDateTime(vMask, AValue)]);
   end;
 
@@ -307,7 +285,7 @@ begin
     vStr := ',';
 
   case FJSONFormat of
-    jfRAL    : vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
+    jfDBWare : vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
     jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FloatToStr(AValue)]);
   end;
 
@@ -325,7 +303,7 @@ begin
     vStr := ',';
 
   case FJSONFormat of
-    jfRAL    : vStr := vStr + IntToStr(AValue);
+    jfDBWare : vStr := vStr + IntToStr(AValue);
     jfCommon : vStr := vStr + Format('"%s": %d', [AFieldName, AValue]);
   end;
 
@@ -344,7 +322,7 @@ begin
     if FFields then
       vStr := ',';
 
-    if FJSONFormat <> jfRAL then
+    if FJSONFormat = jfCommon then
       vStr := vStr + Format('"%s": ', [AFieldName]);
 
     vStr := vStr + '"';
@@ -371,7 +349,7 @@ begin
       vStr := ',';
 
     case FJSONFormat of
-      jfRAL    : vStr := vStr + 'null';
+      jfDBWare : vStr := vStr + 'null';
       jfCommon : vStr := vStr + Format('"%s": null', [AFieldName]);
     end;
 
@@ -393,7 +371,7 @@ begin
       if FFields then
         vStr := ',';
 
-      if FJSONFormat <> jfRAL then
+      if FJSONFormat = jfCommon then
         vStr := vStr + Format('"%s": ', [AFieldName]);
 
       vStr := vStr + '"';
