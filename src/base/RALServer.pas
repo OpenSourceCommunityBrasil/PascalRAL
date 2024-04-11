@@ -424,15 +424,13 @@ procedure TRALServer.CheckCORS(ARoute: TRALRoute; ARequest: TRALRequest;
 begin
   if FCORSOptions.Enabled then
   begin
-    AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin);
+    AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin, rpkHEADER);
     if ARequest.Method = amOPTIONS then
     begin
-      AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods);
-      AResponse.Params.AddParam('Access-Control-Allow-Headers',
-        FCORSOptions.GetAllowHeaders);
+      AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods, rpkHEADER);
+      AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders, rpkHEADER);
       if FCORSOptions.MaxAge > 0 then
-        AResponse.Params.AddParam('Access-Control-Max-Age',
-          IntToStr(FCORSOptions.MaxAge));
+        AResponse.Params.AddParam('Access-Control-Max-Age', IntToStr(FCORSOptions.MaxAge), rpkHEADER);
     end
     else
     begin

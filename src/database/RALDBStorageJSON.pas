@@ -8,12 +8,14 @@ uses
 
 type
   TRALJSONFormat = (jfDBWare, jfCommon);
+  TRALJSONCharCase = (jcNone, jcUpper, jcLower);
 
   TRALDBStorageJSON = class(TRALDBStorage)
   private
     FFields : Boolean;
     FRecords : Boolean;
     FJSONFormat : TRALJSONFormat;
+    FCharCase : TRALJSONCharCase;
     function StringToJSONString(AValue: TStream): TStream;
   protected
     procedure BeginWrite; override;
@@ -43,18 +45,21 @@ type
     procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
     procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
   published
+    property CharCase : TRALJSONCharCase read FCharCase write FCharCase;
     property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
   private
     FJSONFormat : TRALJSONFormat;
+    FCharCase : TRALJSONCharCase;
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner : TComponent); override;
     function GetStorage : TRALDBStorage; override;
   published
+    property CharCase : TRALJSONCharCase read FCharCase write FCharCase;
     property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
@@ -218,6 +223,11 @@ begin
     if FFields then
       vStr := ',';
 
+    case FCharCase of
+      jcUpper : AFieldName := UpperCase(AFieldName);
+      jcLower : AFieldName := LowerCase(AFieldName);
+    end;
+
     if FJSONFormat = jfCommon then
       vStr := vStr + Format('"%s": ', [AFieldName]);
 
@@ -241,6 +251,11 @@ begin
   vStr := '';
   if FFields then
     vStr := ',';
+
+  case FCharCase of
+    jcUpper : AFieldName := UpperCase(AFieldName);
+    jcLower : AFieldName := LowerCase(AFieldName);
+  end;
 
   if FJSONFormat = jfCommon then
     vStr := vStr + Format('"%s": ', [AFieldName]);
@@ -267,6 +282,11 @@ begin
   if FFields then
     vStr := ',';
 
+  case FCharCase of
+    jcUpper : AFieldName := UpperCase(AFieldName);
+    jcLower : AFieldName := LowerCase(AFieldName);
+  end;
+
   case FJSONFormat of
     jfDBWare : vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
     jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FormatDateTime(vMask, AValue)]);
@@ -283,6 +303,11 @@ begin
   vStr := '';
   if FFields then
     vStr := ',';
+
+  case FCharCase of
+    jcUpper : AFieldName := UpperCase(AFieldName);
+    jcLower : AFieldName := LowerCase(AFieldName);
+  end;
 
   case FJSONFormat of
     jfDBWare : vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
@@ -301,6 +326,11 @@ begin
   vStr := '';
   if FFields then
     vStr := ',';
+
+  case FCharCase of
+    jcUpper : AFieldName := UpperCase(AFieldName);
+    jcLower : AFieldName := LowerCase(AFieldName);
+  end;
 
   case FJSONFormat of
     jfDBWare : vStr := vStr + IntToStr(AValue);
@@ -321,6 +351,11 @@ begin
     vStr := '';
     if FFields then
       vStr := ',';
+
+    case FCharCase of
+      jcUpper : AFieldName := UpperCase(AFieldName);
+      jcLower : AFieldName := LowerCase(AFieldName);
+    end;
 
     if FJSONFormat = jfCommon then
       vStr := vStr + Format('"%s": ', [AFieldName]);
@@ -348,6 +383,11 @@ begin
     if FFields then
       vStr := ',';
 
+    case FCharCase of
+      jcUpper : AFieldName := UpperCase(AFieldName);
+      jcLower : AFieldName := LowerCase(AFieldName);
+    end;
+
     case FJSONFormat of
       jfDBWare : vStr := vStr + 'null';
       jfCommon : vStr := vStr + Format('"%s": null', [AFieldName]);
@@ -370,6 +410,11 @@ begin
       vStr := '';
       if FFields then
         vStr := ',';
+
+      case FCharCase of
+        jcUpper : AFieldName := UpperCase(AFieldName);
+        jcLower : AFieldName := LowerCase(AFieldName);
+      end;
 
       if FJSONFormat = jfCommon then
         vStr := vStr + Format('"%s": ', [AFieldName]);
@@ -396,6 +441,7 @@ constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited;
   FJSONFormat := jfCommon;
+  FCharCase := jcLower;
 end;
 
 function TRALDBStorageJSONLink.GetContentType: StringRAL;
@@ -407,6 +453,7 @@ function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
 begin
   Result := TRALDBStorageJSON.Create;
   TRALDBStorageJSON(Result).JSONFormat := FJSONFormat;
+  TRALDBStorageJSON(Result).CharCase := FCharCase;
 end;
 
 initialization

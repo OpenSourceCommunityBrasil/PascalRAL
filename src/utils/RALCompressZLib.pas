@@ -57,7 +57,7 @@ begin
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
   {$ELSE}
-  if FFormat = ctZLib then
+  if Format = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
   else
     vZip := TCompressionStream.Create(AOutStream, zcFastest, -15);
@@ -125,7 +125,7 @@ begin
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
   {$ELSE}
-  if FFormat = ctZLib then
+  if Format = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
   else
     vZip := TDeCompressionStream.Create(AInStream, -15);
