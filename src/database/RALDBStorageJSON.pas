@@ -3,7 +3,7 @@ unit RALDBStorageJSON;
 interface
 
 uses
-  Classes, SysUtils, DB,
+  Classes, SysUtils, DB, DateUtils,
   RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes;
 
 type
@@ -271,33 +271,6 @@ end;
 
 procedure TRALDBStorageJSON.WriteRecordDateTime(AFieldName : StringRAL; AValue: TDateTime);
 var
-  vMask, vStr : StringRAL;
-begin
-  if Trunc(AValue) > 0 then
-    vMask := vMask + 'yyyyMMdd';
-  if Frac(AValue) > 0 then
-    vMask := vMask + 'hhnnsszzz';
-
-  vStr := '';
-  if FFields then
-    vStr := ',';
-
-  case FCharCase of
-    jcUpper : AFieldName := UpperCase(AFieldName);
-    jcLower : AFieldName := LowerCase(AFieldName);
-  end;
-
-  case FJSONFormat of
-    jfDBWare : vStr := vStr + Format('"%s"', [FormatDateTime(vMask, AValue)]);
-    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FormatDateTime(vMask, AValue)]);
-  end;
-
-  Stream.Write(vStr[PosIniStr], Length(vStr));
-  FFields := True;
-end;
-
-procedure TRALDBStorageJSON.WriteRecordDouble(AFieldName : StringRAL; AValue: DoubleRAL);
-var
   vStr : StringRAL;
 begin
   vStr := '';
@@ -310,8 +283,33 @@ begin
   end;
 
   case FJSONFormat of
-    jfDBWare : vStr := vStr + Format('"%s"', [FloatToStr(AValue)]);
-    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, FloatToStr(AValue)]);
+    jfDBWare : vStr := vStr + Format('"%s"', [DateToISO8601(AValue)]);
+    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, DateToISO8601(AValue)]);
+  end;
+
+  Stream.Write(vStr[PosIniStr], Length(vStr));
+  FFields := True;
+end;
+
+procedure TRALDBStorageJSON.WriteRecordDouble(AFieldName : StringRAL; AValue: DoubleRAL);
+var
+  vStr : StringRAL;
+  vFormat : TFormatSettings;
+begin
+  vStr := '';
+  if FFields then
+    vStr := ',';
+
+  case FCharCase of
+    jcUpper : AFieldName := UpperCase(AFieldName);
+    jcLower : AFieldName := LowerCase(AFieldName);
+  end;
+
+  vFormat.DecimalSeparator := '.';
+
+  case FJSONFormat of
+    jfDBWare : vStr := vStr + Format('%s', [FloatToStr(AValue, vFormat)]);
+    jfCommon : vStr := vStr + Format('"%s": %s', [AFieldName, FloatToStr(AValue, vFormat)]);
   end;
 
   Stream.Write(vStr[PosIniStr], Length(vStr));
