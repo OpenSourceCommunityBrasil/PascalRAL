@@ -8,14 +8,13 @@ uses
 
 type
   TRALJSONFormat = (jfDBWare, jfCommon);
-  TRALJSONCharCase = (jcNone, jcUpper, jcLower);
 
   TRALDBStorageJSON = class(TRALDBStorage)
   private
     FFields : Boolean;
     FRecords : Boolean;
     FJSONFormat : TRALJSONFormat;
-    FCharCase : TRALJSONCharCase;
+
     function StringToJSONString(AValue: TStream): TStream;
   protected
     procedure BeginWrite; override;
@@ -45,21 +44,18 @@ type
     procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
     procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
   published
-    property CharCase : TRALJSONCharCase read FCharCase write FCharCase;
     property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
   private
     FJSONFormat : TRALJSONFormat;
-    FCharCase : TRALJSONCharCase;
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner : TComponent); override;
     function GetStorage : TRALDBStorage; override;
   published
-    property CharCase : TRALJSONCharCase read FCharCase write FCharCase;
     property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
   end;
 
@@ -206,7 +202,7 @@ begin
     vStr := '';
     if FFields then
       vStr := ',';
-    vStr := vStr + Format('["%s",%d,%d,%d]',[AName, Ord(AType), AFlags, ASize]);
+    vStr := vStr + Format('["%s",%d,%d,%d]',[CharCaseValue(AName), Ord(AType), AFlags, ASize]);
     Stream.Write(vStr[PosIniStr], Length(vStr));
     FFields := True;
   end;
@@ -223,13 +219,8 @@ begin
     if FFields then
       vStr := ',';
 
-    case FCharCase of
-      jcUpper : AFieldName := UpperCase(AFieldName);
-      jcLower : AFieldName := LowerCase(AFieldName);
-    end;
-
     if FJSONFormat = jfCommon then
-      vStr := vStr + Format('"%s": ', [AFieldName]);
+      vStr := vStr + Format('"%s": ', [CharCaseValue(AFieldName)]);
 
     vStr := vStr + '"';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -252,13 +243,8 @@ begin
   if FFields then
     vStr := ',';
 
-  case FCharCase of
-    jcUpper : AFieldName := UpperCase(AFieldName);
-    jcLower : AFieldName := LowerCase(AFieldName);
-  end;
-
   if FJSONFormat = jfCommon then
-    vStr := vStr + Format('"%s": ', [AFieldName]);
+    vStr := vStr + Format('"%s": ', [CharCaseValue(AFieldName)]);
 
   if AValue then
     vStr := vStr + 'true'
@@ -277,14 +263,9 @@ begin
   if FFields then
     vStr := ',';
 
-  case FCharCase of
-    jcUpper : AFieldName := UpperCase(AFieldName);
-    jcLower : AFieldName := LowerCase(AFieldName);
-  end;
-
   case FJSONFormat of
     jfDBWare : vStr := vStr + Format('"%s"', [DateToISO8601(AValue)]);
-    jfCommon : vStr := vStr + Format('"%s": "%s"', [AFieldName, DateToISO8601(AValue)]);
+    jfCommon : vStr := vStr + Format('"%s": "%s"', [CharCaseValue(AFieldName), DateToISO8601(AValue)]);
   end;
 
   Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -300,16 +281,11 @@ begin
   if FFields then
     vStr := ',';
 
-  case FCharCase of
-    jcUpper : AFieldName := UpperCase(AFieldName);
-    jcLower : AFieldName := LowerCase(AFieldName);
-  end;
-
   vFormat.DecimalSeparator := '.';
 
   case FJSONFormat of
     jfDBWare : vStr := vStr + Format('%s', [FloatToStr(AValue, vFormat)]);
-    jfCommon : vStr := vStr + Format('"%s": %s', [AFieldName, FloatToStr(AValue, vFormat)]);
+    jfCommon : vStr := vStr + Format('"%s": %s', [CharCaseValue(AFieldName), FloatToStr(AValue, vFormat)]);
   end;
 
   Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -325,14 +301,9 @@ begin
   if FFields then
     vStr := ',';
 
-  case FCharCase of
-    jcUpper : AFieldName := UpperCase(AFieldName);
-    jcLower : AFieldName := LowerCase(AFieldName);
-  end;
-
   case FJSONFormat of
     jfDBWare : vStr := vStr + IntToStr(AValue);
-    jfCommon : vStr := vStr + Format('"%s": %d', [AFieldName, AValue]);
+    jfCommon : vStr := vStr + Format('"%s": %d', [CharCaseValue(AFieldName), AValue]);
   end;
 
   Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -350,13 +321,8 @@ begin
     if FFields then
       vStr := ',';
 
-    case FCharCase of
-      jcUpper : AFieldName := UpperCase(AFieldName);
-      jcLower : AFieldName := LowerCase(AFieldName);
-    end;
-
     if FJSONFormat = jfCommon then
-      vStr := vStr + Format('"%s": ', [AFieldName]);
+      vStr := vStr + Format('"%s": ', [CharCaseValue(AFieldName)]);
 
     vStr := vStr + '"';
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -381,14 +347,9 @@ begin
     if FFields then
       vStr := ',';
 
-    case FCharCase of
-      jcUpper : AFieldName := UpperCase(AFieldName);
-      jcLower : AFieldName := LowerCase(AFieldName);
-    end;
-
     case FJSONFormat of
       jfDBWare : vStr := vStr + 'null';
-      jfCommon : vStr := vStr + Format('"%s": null', [AFieldName]);
+      jfCommon : vStr := vStr + Format('"%s": null', [CharCaseValue(AFieldName)]);
     end;
 
     Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -409,13 +370,8 @@ begin
       if FFields then
         vStr := ',';
 
-      case FCharCase of
-        jcUpper : AFieldName := UpperCase(AFieldName);
-        jcLower : AFieldName := LowerCase(AFieldName);
-      end;
-
       if FJSONFormat = jfCommon then
-        vStr := vStr + Format('"%s": ', [AFieldName]);
+        vStr := vStr + Format('"%s": ', [CharCaseValue(AFieldName)]);
 
       vStr := vStr + '"';
       Stream.Write(vStr[PosIniStr], Length(vStr));
@@ -439,7 +395,6 @@ constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited;
   FJSONFormat := jfCommon;
-  FCharCase := jcLower;
 end;
 
 function TRALDBStorageJSONLink.GetContentType: StringRAL;
@@ -450,8 +405,8 @@ end;
 function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
 begin
   Result := TRALDBStorageJSON.Create;
+  Result.FieldCharCase := FieldCharCase;
   TRALDBStorageJSON(Result).JSONFormat := FJSONFormat;
-  TRALDBStorageJSON(Result).CharCase := FCharCase;
 end;
 
 initialization

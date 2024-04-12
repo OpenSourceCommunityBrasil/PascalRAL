@@ -17,10 +17,12 @@ type
   private
     FIP: StringRAL;
     FMACAddress: StringRAL;
+    FPorta: IntegerRAL;
     FUserAgent: StringRAL;
   public
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
+    property Porta: IntegerRAL read FPorta write FPorta;
     property UserAgent: StringRAL read FUserAgent write FUserAgent;
   end;
 

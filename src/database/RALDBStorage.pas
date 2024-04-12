@@ -10,11 +10,14 @@ uses
   RALTypes, RALCustomObjects, RALDBTypes;
 
 type
+  TRALFieldCharCase = (fcNone, fcUpper, fcLower);
+
   { TRALDBStorage }
 
   TRALDBStorage = class(TPersistent)
   private
     FStream : TStream;
+    FFieldCharCase : TRALFieldCharCase;
   protected
     // write
     procedure BeginWrite; virtual; abstract;
@@ -49,24 +52,29 @@ type
 
     // read
     procedure BeginRead; virtual; abstract;
+
     function BeginReadFields : IntegerRAL; virtual; abstract;
     function ReadField(ADataset : TDataSet) : boolean; virtual; abstract;
     procedure EndReadFields; virtual; abstract;
+
     function BeginReadRecords : Int64RAL; virtual; abstract;
     function ReadRecordField(ADataset : TDataSet; AField : IntegerRAL) : boolean; virtual; abstract;
     procedure EndReadRecords; virtual; abstract;
     procedure EndRead; virtual; abstract;
 
-    // outhers
+    // others
     property Stream : TStream read FStream;
 
     function GetStoreVersion : byte;
+    function CharCaseValue(AValue : StringRAL) : StringRAL;
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream);
     procedure SaveToFile(ADataset : TDataSet; AFileName : StringRAL);
 
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream);
     procedure LoadFromFile(ADataset : TDataSet; AFileName: StringRAL);
+
+    property FieldCharCase : TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
@@ -75,6 +83,8 @@ type
   { TRALDBStorageLink }
 
   TRALDBStorageLink = class(TRALComponent)
+  private
+    FFieldCharCase : TRALFieldCharCase;
   protected
     function GetContentType: StringRAL; virtual;
     class function GetDeclaredStorageLink : TRALDBStorageClassLink;
@@ -89,7 +99,9 @@ type
 
     function GetStorage : TRALDBStorage; virtual;
 
+  published
     property ContentType: StringRAL read GetContentType;
+    property FieldCharCase : TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
   end;
 
 implementation
@@ -346,6 +358,15 @@ begin
   }
     end;
   end;
+end;
+
+function TRALDBStorage.CharCaseValue(AValue: StringRAL): StringRAL;
+begin
+  case FieldCharCase of
+    fcUpper : AValue := UpperCase(AValue);
+    fcLower : AValue := LowerCase(AValue);
+  end;
+  Result := AValue;
 end;
 
 function TRALDBStorage.GetStoreVersion: byte;

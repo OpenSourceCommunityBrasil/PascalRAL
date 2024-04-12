@@ -218,6 +218,7 @@ begin
       ClientInfo.IP := AContext.RemoteIP;
       if ClientInfo.IP = '' then
         ClientInfo.IP := '127.0.0.1';
+      ClientInfo.Porta := 0;
 
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := AContext.UserAgent;

@@ -66,6 +66,8 @@ begin
   SetEngine('Indy ' + gsIdVersion);
 
   FHttp := TIdHTTPServer.Create(nil);
+  FHttp.SessionState := False;
+  FHttp.AutoStartSession := True;
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 
 {$IFDEF FPC}
@@ -112,6 +114,7 @@ var
   vCookies: TStringList;
   vParam: TRALParam;
   vKeepAlive: boolean;
+  aaa : StringRAL;
 begin
   vRequest := CreateRequest;
   vResponse := CreateResponse;
@@ -120,6 +123,7 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
+      ClientInfo.Porta := AContext.Binding.PeerPort;
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
@@ -159,9 +163,9 @@ begin
           Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
         end;
 
-        for vInt := 0 to Pred(AResponseInfo.Cookies.Count) do
+        for vInt := 0 to Pred(ARequestInfo.Cookies.Count) do
         begin
-          vIdCookie := AResponseInfo.Cookies.Cookies[vInt];
+          vIdCookie := ARequestInfo.Cookies.Cookies[vInt];
           Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
         end;
 
@@ -238,14 +242,10 @@ begin
       AResponseInfo.ContentDisposition := ContentDisposition;
       AResponseInfo.CloseConnection := not vKeepAlive;
 
-      AResponseInfo.ContentLength := 0;
-      AResponseInfo.FreeContentStream := False;
+      if AResponseInfo.ContentStream = nil then
+        AResponseInfo.ContentStream := TStringStream.Create;
 
-      if AResponseInfo.ContentStream <> nil then
-      begin
-        AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
-        AResponseInfo.FreeContentStream := True;
-      end;
+      AResponseInfo.FreeContentStream := True;
 
       AResponseInfo.WriteContent;
     end;

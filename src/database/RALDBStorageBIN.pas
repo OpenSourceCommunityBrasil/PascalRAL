@@ -117,6 +117,8 @@ procedure TRALDBStorageBIN.WriteField(AName: StringRAL;
 var
   vByte : Byte;
 begin
+  AName := CharCaseValue(AName);
+
   vByte := Length(AName);
   Stream.Write(vByte, SizeOf(vByte));
   Stream.Write(AName[PosIniStr], vByte);
@@ -241,6 +243,7 @@ end;
 function TRALDBStorageBINLink.GetStorage: TRALDBStorage;
 begin
   Result := TRALDBStorageBIN.Create;
+  Result.FieldCharCase := FieldCharCase;
 end;
 
 initialization
