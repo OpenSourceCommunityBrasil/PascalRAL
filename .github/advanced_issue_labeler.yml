@@ -8,8 +8,28 @@ policy:
         block-list: []
         label:
           - name: "ide: Delphi"
-            keys: ["Delphi 12+", "Delphi 11.3", "Delphi 10.0~10.4", "Delphi XE~XE8", "Delphi 2006~2010", "Delphi 7"]
-
+            keys: [
+              "Delphi 12+ Athens", 
+              "Delphi 11.3 Alexandria", 
+              "Delphi 10.4 Sydney", 
+              "Delphi 10.3 Rio", 
+              "Delphi 10.2 Tokyo", 
+              "Delphi 10.1 Berlin", 
+              "Delphi 10.0 Seattle",
+              "Delphi XE8",
+              "Delphi XE7",
+              "Delphi XE6",
+              "Delphi XE5",
+              "Delphi XE4",
+              "Delphi XE3",
+              "Delphi XE2",
+              "Delphi XE",
+              "Delphi 2010",
+              "Delphi 2009",
+              "Delphi 2008",
+              "Delphi 2007",
+              "Delphi 2006",
+              "Delphi 7"]
           - name: "ide: Lazarus"
             keys: ["Lazarus 3.0 - 3.2+", "Lazarus 2.0 - 2.2.6", "Lazarus < 2.0"]
       - id: [OS]
