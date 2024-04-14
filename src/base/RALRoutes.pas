@@ -267,7 +267,7 @@ begin
       vStr1 := 'ral_uriparam' + IntToStr(vParam);
       vStr2 := vStrQuery2.Strings[vInt];
       AURI.Add(vStr1 + '=' + vStr2);
-      AWeight := AWeight + 1;
+      AWeight := AWeight + 10;
       vParam := vParam + 1;
     end;
 

@@ -745,7 +745,10 @@ begin
   if AValue <> FServer then
   begin
     if FServer <> nil then
+    begin
       FServer.DelSubRoute(Self);
+      FServer.RemoveFreeNotification(Self);
+    end;
 
     FServer := AValue;
   end;
@@ -777,19 +780,18 @@ end;
 function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
 var
   vInt: IntegerRAL;
-  vRoute, vRouteName: StringRAL;
+  vName: StringRAL;
 begin
   Result := nil;
 
-  vRoute := ARequest.Query;
-  if (vRoute <> '') and (vRoute[PosIniStr] = '/') then
-    Delete(vRoute, 1, 1);
+  vName := ARequest.Query;
+  Delete(vName, 1, 1);
 
-  vInt := Pos('/', vRoute);
+  vInt := Pos('/', vName);
   if vInt > 0 then
   begin
-    vRouteName := Copy(vRoute, 1, vInt - 1);
-    if SameText(vRouteName, Name) then
+    vName := Copy(vName, 1, vInt - 1);
+    if SameText(vName, Name) then
       Result := Routes.CanResponseRoute(ARequest);
   end;
 end;
