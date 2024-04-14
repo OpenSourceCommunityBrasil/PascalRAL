@@ -660,6 +660,7 @@ end;
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
 var
   vInt, vIdx: IntegerRAL;
+  vParam : TRALParam;
 begin
   if SameText(AFullURI, APartialURI) then
     Exit;
@@ -675,7 +676,15 @@ begin
       vInt := Pos('/', AFullURI);
       if vInt > 0 then
       begin
-        AddParam('uri' + IntToStr(vIdx), Copy(AFullURI, 1, vInt - 1), AKind);
+        vParam := GetKind['ral_uriparam' + IntToStr(vIdx), AKind];
+        if vParam = nil then
+        begin
+          vParam := NewParam;
+          vParam.ParamName := 'ral_uriparam' + IntToStr(vIdx);
+        end;
+        vParam.AsString := Copy(AFullURI, 1, vInt - 1);
+        vParam.Kind := AKind;
+
         Delete(AFullURI, 1, vInt);
         vIdx := vIdx + 1;
       end;

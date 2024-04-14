@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, syncobjs, StrUtils,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
-  mormot.core.base, mormot.rest.http.server, mormot.rest.server,
+  mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALBase64;
 
@@ -88,6 +88,10 @@ begin
     vOptions := [hsoNoXPoweredHeader, hsoNoStats, hsoHeadersInterning,
                  hsoThreadSmooting, hsoHeadersUnfiltered];
     //                 hsoThreadCpuAffinity, hsoThreadSocketAffinity];
+
+    // variavel definida mormot.net.sock
+    RemoteIPLocalHostAsVoidInServers := False;
+
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
@@ -218,6 +222,7 @@ begin
       ClientInfo.IP := AContext.RemoteIP;
       if ClientInfo.IP = '' then
         ClientInfo.IP := '127.0.0.1';
+      //ClientInfo.Porta := StrToInt(AContext.RemotePort);
       ClientInfo.Porta := 0;
 
       ClientInfo.MACAddress := '';
