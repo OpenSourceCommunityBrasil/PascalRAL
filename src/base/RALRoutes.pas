@@ -20,21 +20,18 @@ type
     FAllowedMethods: TRALMethods;
     FCallback: boolean;
     FDescription: TStringList;
-    FRouteDomain: StringRAL;
-    FRouteName: StringRAL;
+    FName: StringRAL;
+    FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
 
     FOnReply: TRALOnReply;
   protected
     function GetDisplayName: string; override;
-    function GetRoute: StringRAL;
     /// checks if the route already exists on the list
-    function RouteExists(const ARoute: StringRAL): boolean;
     procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetDescription(const AValue: TStringList);
     procedure SetDisplayName(const AValue: string); override;
-    procedure SetRouteDomain(const AValue: StringRAL);
-    procedure SetRouteName(AValue: StringRAL);
+    procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
   public
     constructor Create(ACollection: TCollection); override;
@@ -50,13 +47,13 @@ type
     /// Returns true or false wether the method is skipped in authentication
     function isMethodSkipped(const AMethod: TRALMethod): boolean;
 
-    property Route: StringRAL read GetRoute;
+    function GetFullRoute: StringRAL;
   published
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property Callback: boolean read FCallback write FCallback;
     property Description: TStringList read FDescription write SetDescription;
-    property RouteDomain: StringRAL read FRouteDomain write SetRouteDomain;
-    property RouteName: StringRAL read FRouteName write SetRouteName;
+    property Name: StringRAL read FName write FName;
+    property Route: StringRAL read FRoute write SetRoute;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
@@ -66,13 +63,12 @@ type
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
-    function GetRouteAddress(ARoute: StringRAL): TRALRoute;
+    function CompareRoutes(AQuery1, AQuery2 : StringRAL; var AWeight : IntegerRAL; AURI : TStringList) : boolean;
   public
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
-
-    property RouteAddress[ARoute: StringRAL]: TRALRoute read GetRouteAddress;
+    function CanResponseRoute(ARequest : TRALRequest) : TRALRoute;
   end;
 
 implementation
@@ -88,8 +84,8 @@ begin
   FAllowedMethods := [amALL];
   FSkipAuthMethods := [];
   FCallback := False;
-  FRouteName := 'ralroute' + IntToStr(Index);
-  FRouteDomain := '/';
+  FName := 'ralroute' + IntToStr(Index);
+  FRoute := '/';
   FDescription := TStringList.Create;
   Changed(False);
 end;
@@ -125,59 +121,14 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetRouteDomain(const AValue: StringRAL);
-var
-  vRouteStr: StringRAL;
+procedure TRALRoute.SetRoute(AValue: StringRAL);
 begin
-  if FRouteDomain = AValue then
+  AValue := FixRoute(Trim(AValue));
+
+  if FRoute = AValue then
     Exit;
 
-  vRouteStr := AValue + '/' + FRouteName;
-
-  if not RouteExists(vRouteStr) then
-    FRouteDomain := FixRoute(AValue);
-end;
-
-function TRALRoute.RouteExists(const ARoute: StringRAL): boolean;
-var
-  vRoute: TRALRoute;
-begin
-  Result := False;
-  if Collection is TRALRoutes then
-  begin
-    vRoute := TRALRoutes(Collection).RouteAddress[ARoute];
-    if (vRoute <> nil) and (vRoute <> Self) then
-    begin
-      Result := True;
-      raise Exception.Create(emRouteAlreadyExists);
-    end;
-  end;
-end;
-
-procedure TRALRoute.SetRouteName(AValue: StringRAL);
-var
-  vRouteStr: StringRAL;
-  vPos: IntegerRAL;
-begin
-  if FRouteName = AValue then
-    Exit;
-
-  AValue := Trim(AValue);
-
-  if (AValue <> '') and (AValue[Length(AValue)] = '/') then
-    Delete(AValue, Length(AValue), 1);
-
-  vPos := LastDelimiter('/', AValue);
-  if (vPos > 1) and (vPos < Length(AValue)) then
-  begin
-    RouteDomain := Copy(AValue, 1, vPos);
-    Delete(AValue, 1, vPos);
-  end;
-
-  vRouteStr := FRouteDomain + '/' + AValue;
-
-  if not RouteExists(vRouteStr) then
-    FRouteName := AValue;
+  FRoute := AValue;
 end;
 
 procedure TRALRoute.SetSkipAuthMethods(const AValue: TRALMethods);
@@ -193,16 +144,6 @@ begin
   end;
 end;
 
-function TRALRoute.GetRoute: StringRAL;
-begin
-  Result := '';
-  if (Collection <> nil) and (Collection.Owner <> nil) and
-    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
-    (TRALModuleRoutes(Collection.Owner).IsDomain) then
-    Result := TRALModuleRoutes(Collection.Owner).Name;
-  Result := FixRoute(Result + '/' + FRouteDomain + '/' + FRouteName);
-end;
-
 function TRALRoute.isMethodAllowed(const AMethod: TRALMethod): boolean;
 begin
   Result := (amALL in AllowedMethods) or
@@ -215,9 +156,19 @@ begin
     (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
 end;
 
+function TRALRoute.GetFullRoute: StringRAL;
+begin
+  Result := '';
+  if (Collection <> nil) and (Collection.Owner <> nil) and
+    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
+    (TRALModuleRoutes(Collection.Owner).IsDomain) then
+    Result := TRALModuleRoutes(Collection.Owner).Name;
+  Result := FixRoute(Result + '/' + FRoute);
+end;
+
 function TRALRoute.GetDisplayName: string;
 begin
-  Result := FRouteName;
+  Result := FName;
   inherited;
 end;
 
@@ -230,12 +181,8 @@ begin
   if (Collection.Owner <> nil) and (Collection.Owner is TComponent) then
     vName := TComponent(Collection.Owner).Name;
   {$ENDIF}
-  if (FRouteDomain <> '') and (FRouteDomain <> '/') then
-    vName := vName + '_' + StringReplace(FRouteDomain, '/', '_', [rfReplaceAll]);
 
-  Result := vName + '_' + FRouteName;
-  while Pos('__', Result) > 0 do
-    Result := StringReplace(Result, '__', '_', [rfReplaceAll]);
+  Result := vName + '_' + FName;
 end;
 
 procedure TRALRoute.SetAllowedMethods(const AValue: TRALMethods);
@@ -262,46 +209,73 @@ end;
 procedure TRALRoute.SetDisplayName(const AValue: string);
 begin
   if Trim(AValue) <> '' then
-    FRouteName := AValue;
+    FName := AValue;
   inherited;
 end;
 
 { RALRoutes }
 
-function TRALRoutes.GetRouteAddress(ARoute: StringRAL): TRALRoute;
+function TRALRoutes.CompareRoutes(AQuery1, AQuery2: StringRAL;
+  var AWeight: IntegerRAL; AURI: TStringList): boolean;
 var
-  vInt: IntegerRAL;
-  vRoute, vPartialRoute: TRALRoute;
-  vPartial: StringRAL;
+  vStrQuery1, vStrQuery2: TStringList;
+  vStr1, vStr2: StringRAL;
+  vInt, vParam: IntegerRAL;
 begin
-  Result := nil;
-  vPartialRoute := nil;
-  ARoute := FixRoute(ARoute);
-  for vInt := 0 to Count - 1 do
-  begin
-    vRoute := TRALRoute(Items[vInt]);
-    vPartial := FixRoute(Copy(vRoute.Route, 1, Length(ARoute)));
-    if SameText(vRoute.Route, ARoute) then
+  Result := False;
+  AWeight := 0;
+  AURI.Clear;
+
+  System.Delete(AQuery1, 1, 1);
+  System.Delete(AQuery1, Length(AQuery1), 1);
+
+  System.Delete(AQuery2, 1, 1);
+  System.Delete(AQuery2, Length(AQuery2), 1);
+
+  vStrQuery1 := TStringList.Create;
+  vStrQuery2 := TStringList.Create;
+  try
+    vStrQuery1.LineBreak := '/';
+    vStrQuery1.Text := AQuery1;
+
+    vStrQuery2.LineBreak := '/';
+    vStrQuery2.Text := AQuery2;
+
+    if vStrQuery2.Count < vStrQuery1.Count then
+      Exit;
+
+    vInt := 0;
+    for vInt := 0 to Pred(vStrQuery1.Count) do
     begin
-      Result := vRoute;
-      Break;
-    end
-    else if (ARoute <> '/') and (SameText(vPartial, ARoute)) then
-    begin
-      if (vPartialRoute <> nil) then
+      vStr1 := vStrQuery1.Strings[vInt];
+      vStr2 := vStrQuery2.Strings[vInt];
+      if Copy(vStr1, 1, 1) = ':' then
       begin
-        if Length(vRoute.Route) > Length(vPartialRoute.Route) then
-          vPartialRoute := vRoute;
+        AURI.Add(Copy(vStr1, 2, Length(vStr1)) + '=' + vStr2);
+        AWeight := AWeight + 1;
       end
-      else
+      else if not SameText(vStr1, vStr2) then
       begin
-        vPartialRoute := vRoute;
+        Exit;
       end;
     end;
-  end;
 
-  if Result = nil then
-    Result := vPartialRoute;
+    vInt := vStrQuery1.Count;
+    vParam := 1;
+    for vInt := vInt to Pred(vStrQuery2.Count) do
+    begin
+      vStr1 := 'ral_uriparam' + IntToStr(vParam);
+      vStr2 := vStrQuery2.Strings[vInt];
+      AURI.Add(vStr1 + '=' + vStr2);
+      AWeight := AWeight + 1;
+      vParam := vParam + 1;
+    end;
+
+    Result := True;
+  finally
+    FreeAndNil(vStrQuery1);
+    FreeAndNil(vStrQuery2);
+  end;
 end;
 
 constructor TRALRoutes.Create(AOwner: TPersistent);
@@ -311,14 +285,60 @@ end;
 
 function TRALRoutes.AsString: StringRAL;
 var
-  I: integer;
+  vInt: IntegerRAL;
 begin
   Result := '';
-  for I := 0 to pred(Self.Count) do
-    if I = 0 then
-      Result := Result + TRALRoute(Self.Items[I]).Route
+  for vInt := 0 to Pred(Self.Count) do
+    if vInt = 0 then
+      Result := Result + TRALRoute(Self.Items[vInt]).GetFullRoute
     else
-      Result := Result + sLineBreak + TRALRoute(Self.Items[I]).Route;
+      Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
+end;
+
+function TRALRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
+var
+  vInt, vRouteWeight, vTempWeight: IntegerRAL;
+  vRoute: TRALRoute;
+  vQuery, vQueryRoute: StringRAL;
+  vUriRoute, vTempUriRoute: TStringList;
+  vParam: TRALParam;
+begin
+  vUriRoute := TStringList.Create;
+  vTempUriRoute := TStringList.Create;
+  try
+    vTempWeight := 0;
+    vRouteWeight := MaxInt;
+    Result := nil;
+    vQuery := FixRoute(ARequest.Query);
+    for vInt := 0 to Pred(Self.Count) do
+    begin
+      vRoute := TRALRoute(Items[vInt]);
+      vQueryRoute := vRoute.GetFullRoute;
+      if CompareRoutes(vQueryRoute, vQuery, vTempWeight, vTempUriRoute) then
+      begin
+        if vTempWeight < vRouteWeight then
+        begin
+          Result := vRoute;
+          vUriRoute.Assign(vTempUriRoute);
+          vRouteWeight := vTempWeight;
+        end;
+      end;
+    end;
+
+    if Result <> nil then
+    begin
+      for vInt := 0 to Pred(vUriRoute.Count) do
+      begin
+        vParam := ARequest.Params.NewParam;
+        vParam.ParamName := vUriRoute.Names[vInt];
+        vParam.AsString := vUriRoute.ValueFromIndex[vInt];
+        vParam.Kind := rpkQUERY;
+      end;
+    end;
+  finally
+    FreeAndNil(vUriRoute);
+    FreeAndNil(vTempUriRoute);
+  end;
 end;
 
 end.

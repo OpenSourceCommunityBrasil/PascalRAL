@@ -213,7 +213,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// Shortcut to create routes on the server
-    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+    function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
       const ADescription: StringRAL = ''): TRALRoute;
     /// Core procedure of the server, every request will pass through here to be
     /// processed into response that will be answered to the client
@@ -262,7 +262,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+    function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
       const ADescription: StringRAL = ''): TRALRoute;
 
     function CanResponseRoute(ARequest: TRALRequest): TRALRoute; virtual;
@@ -404,11 +404,11 @@ begin
   Result := nil;
 end;
 
-function TRALServer.CreateRoute(const ARouteName: StringRAL; AReplyProc: TRALOnReply;
+function TRALServer.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
   const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
-  Result.RouteName := ARouteName;
+  Result.Route := ARoute;
   Result.OnReply := AReplyProc;
   Result.Description.Text := ADescription;
 end;
@@ -525,7 +525,7 @@ begin
     AResponse.CriptoKey := CriptoOptions.Key;
   end;
 
-  vRoute := FRoutes.RouteAddress[ARequest.Query];
+  vRoute := FRoutes.CanResponseRoute(ARequest);
 
   vInt := 0;
   while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
@@ -579,7 +579,7 @@ begin
 
 aSTATUS:
   begin
-    vString := ReplaceStr(FServerStatus.Text, '%ralengine%', FEngine);
+    vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
     AResponse.Answer(200, vString, rctTEXTHTML);
     goto aFIM;
   end;
@@ -765,11 +765,11 @@ begin
   inherited;
 end;
 
-function TRALModuleRoutes.CreateRoute(const ARouteName: StringRAL;
+function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL;
   AReplyProc: TRALOnReply; const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
-  Result.RouteName := ARouteName;
+  Result.Route := ARoute;
   Result.OnReply := AReplyProc;
   Result.Description.Text := ADescription;
 end;
@@ -790,7 +790,7 @@ begin
   begin
     vRouteName := Copy(vRoute, 1, vInt - 1);
     if SameText(vRouteName, Name) then
-      Result := Routes.RouteAddress[vRoute];
+      Result := Routes.CanResponseRoute(ARequest);
   end;
 end;
 

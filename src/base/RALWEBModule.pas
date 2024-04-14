@@ -35,13 +35,11 @@ function TRALWebModule.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
 var
   vRoute : StringRAL;
 begin
-  Result := nil;
-
   vRoute := ARequest.Query;
   if (vRoute <> '') and (vRoute[PosIniStr] = '/') then
     Delete(vRoute, 1, 1);
 
-  Result := Routes.RouteAddress[vRoute];
+  Result := Routes.CanResponseRoute(ARequest);
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
     Result := FDefautRoute

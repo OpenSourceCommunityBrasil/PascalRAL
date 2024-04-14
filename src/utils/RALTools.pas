@@ -24,7 +24,7 @@ begin
   Result := '/' + ARoute + '/';
 
   // path transversal fix
-  ARoute := StringReplace(ARoute, '../', '', [rfReplaceAll]);
+  Result := StringReplace(Result, '../', '', [rfReplaceAll]);
 
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
