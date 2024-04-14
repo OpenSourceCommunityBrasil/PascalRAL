@@ -5,6 +5,7 @@ interface
 uses
   Classes, SysUtils,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
+  HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;
 
@@ -193,6 +194,8 @@ var
   vInt: integer;
   vStr1, vStr2: StringRAL;
   vConnClose : boolean;
+  vCookies : TStringList;
+  vCookie : TCookie;
 begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
@@ -237,8 +240,8 @@ begin
           vInt := vInt + 1;
         end;
 
-        Params.AppendParams(ARequest.QueryFields,rpkQUERY);
-        Params.AppendParams(ARequest.CookieFields,rpkCOOKIE);
+        Params.AppendParams(ARequest.QueryFields, rpkQUERY);
+        Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
@@ -289,7 +292,19 @@ begin
       if vConnClose then
         AResponse.Connection := 'close';
 
-      Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
+      vCookies := TStringList.Create;
+      try
+        Params.AssignParams(vCookies, rpkCOOKIE);
+        for vInt := 0 to Pred(vCookies.Count) do
+        begin
+          vCookie := AResponse.Cookies.Add;
+          vCookie.Name := vCookies.Names[vInt];
+          vCookie.Value := vCookies.ValueFromIndex[vInt];
+          vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
+        end;
+      finally
+        FreeAndNil(vCookies);
+      end;
 
       AResponse.ContentStream := ResponseStream;
 

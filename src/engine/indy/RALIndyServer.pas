@@ -3,7 +3,7 @@ unit RALIndyServer;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
   IdGlobalProtocols, IdGlobal, IdCookie,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
@@ -232,6 +232,7 @@ begin
           vIdCookie := AResponseInfo.Cookies.Add;
           vIdCookie.CookieName := vCookies.Names[vInt];
           vIdCookie.Value := vCookies.ValueFromIndex[vInt];
+          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
         end;
       finally
         FreeAndNil(vCookies);

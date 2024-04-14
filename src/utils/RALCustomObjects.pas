@@ -51,6 +51,7 @@ type
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookies(ACookies : StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
@@ -222,6 +223,25 @@ function TRALHTTPHeaderInfo.AddCookie(const AName, AValue: StringRAL): TRALHTTPH
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
   Result := Self;
+end;
+
+function TRALHTTPHeaderInfo.AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo;
+var
+  vInt1: IntegerRAL;
+  vStr: StringRAL;
+begin
+  while Trim(ACookies) <> '' do
+  begin
+    vInt1 := Pos(';', ACookies);
+    if vInt1 = 0 then
+      vInt1 := Length(ACookies) + 1;
+
+    vStr := Copy(ACookies, 1, vInt1 - 1);
+    Delete(ACookies, 1, vInt1);
+
+    vInt1 := Pos('=', vStr);
+    AddCookie(Trim(Copy(vStr, 1, vInt1 - 1)), Trim(Copy(vStr, vInt1 + 1, Length(vStr))));
+  end;
 end;
 
 function TRALHTTPHeaderInfo.AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo;

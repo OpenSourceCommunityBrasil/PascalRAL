@@ -1,6 +1,8 @@
 ﻿/// Class for General public functions
 unit RALTools;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -16,6 +18,8 @@ function RALStringToDateTime(const AValue: StringRAL;
                              const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
+
+function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
 
 implementation
 
@@ -149,6 +153,34 @@ begin
     if not TryEncodeDateTime(wAno, wMes, wDia, wHor, wMin, wSeg, wMil, Result) then
       Result := TDateTime(0);
   end;
+end;
+
+function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
+{$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+var
+  vTimeZone : TTimeZoneInformation;
+  vBias : Cardinal;
+{$IFEND}
+begin
+  {$IFDEF FPC}
+    Result := LocalTimeToUniversal(ADateTime);
+  {$ELSE}
+    {$IFDEF DELPHIXE2UP}
+      Result := TTimeZone.Local.ToUniversalTime(ADateTime);
+    {$ELSE}
+      case GetTimeZoneInformation(vTimeZone) of
+        TIME_ZONE_ID_UNKNOWN:
+          vBias := vTimeZone.Bias;
+        TIME_ZONE_ID_STANDARD:
+          vBias := vTimeZone.Bias + vTimeZone.StandardBias;
+        TIME_ZONE_ID_DAYLIGHT:
+          vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
+        else
+          vBias := 0;
+      end;
+      Result := IncMinute(ADateTime, -vBias);
+    {$ENDIF}
+  {$ENDIF}
 end;
 
 end.
