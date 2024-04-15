@@ -215,6 +215,9 @@ begin
     Params.CriptoOptions.Key := CriptoKey;
     Params.CompressType := ContentCompress;
   end;
+
+  Params.ContentDispositionInline := ContentDispositionInline;
+
   Result := Params.EncodeBody(vContentType, vContentDisposition);
   ContentType := vContentType;
   ContentDisposition := vContentDisposition;

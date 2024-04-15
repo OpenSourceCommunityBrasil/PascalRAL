@@ -32,6 +32,7 @@ type
     FCriptoKey: StringRAL;
     FParams: TRALParams;
     FContentDisposition: StringRAL;
+    FContentDispositionInline : Boolean;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -83,6 +84,7 @@ type
     property ContentType: StringRAL read FContentType write SetContentType;
     property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
   end;
 
@@ -183,6 +185,7 @@ constructor TRALHTTPHeaderInfo.Create;
 begin
   inherited;
   FParams := TRALParams.Create;
+  FContentDispositionInline := False;
 end;
 
 destructor TRALHTTPHeaderInfo.Destroy;

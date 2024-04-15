@@ -20,6 +20,7 @@ type
   private
     FContent: TStream;
     FContentType: StringRAL;
+    FContentDispositionInline : Boolean;
     FFileName: StringRAL;
     FKind: TRALParamKind;
     FParamName: StringRAL;
@@ -63,6 +64,7 @@ type
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
     property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
+    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property ContentSize: Int64RAL read GetContentSize;
     property ContentType: StringRAL read FContentType write FContentType;
     property FileName: StringRAL read FFileName write FFileName;
@@ -77,6 +79,7 @@ type
   private
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
+    FContentDispositionInline : Boolean;
     FNextParam: IntegerRAL;
     FParams: TList;
   protected
@@ -197,10 +200,12 @@ type
     property Get[AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
     property GetKind[AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
+  published
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     /// Configuration of the cryptography used on params for a secure P2P traffic.
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
   end;
 
 implementation
@@ -292,7 +297,7 @@ end;
 
 function TRALParam.GetContentDisposition: StringRAL;
 begin
-  if (FFileName <> '') and (Pos(rctTEXTHTML, FContentType) = 0) then
+  if (FFileName <> '') and (not FContentDispositionInline) then
     Result := Format('attachment; name="%s"; filename="%s"',[FParamName, FFileName])
   else
     Result := Format('inline; name="%s"', [FParamName])
@@ -861,7 +866,11 @@ begin
       vItem := IndexKind[0, rpkBODY]
     else
       vItem := IndexKind[0, rpkFIELD];
+
+    vItem.ContentDispositionInline := FContentDispositionInline;
+
     Result := vItem.SaveToStream;
+
     AContentType := vItem.ContentType;
     AContentDisposition := vItem.ContentDisposition;
   end

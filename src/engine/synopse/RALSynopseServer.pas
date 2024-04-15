@@ -277,7 +277,7 @@ begin
       AContext.OutContent := ResponseText;
       AContext.OutContentType := ContentType;
 
-      if vResponse.ContentDisposition <> '' then
+      if (vResponse.ContentDisposition <> '') then
         Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
       if vResponse.ContentEncoding <> '' then

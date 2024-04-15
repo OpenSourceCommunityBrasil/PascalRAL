@@ -615,6 +615,8 @@ a404:
 
 aFIM:
   begin
+    AResponse.ContentDispositionInline := ARequest.ContentDispositionInline;
+
     if Assigned(FOnResponse) then
       FOnResponse(ARequest, AResponse);
 

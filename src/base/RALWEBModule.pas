@@ -45,6 +45,9 @@ begin
     Result := FDefautRoute
   else if (Result <> nil) and (not Assigned(Result.OnReply)) then
     Result.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
+
+  if Result <> nil then
+    ARequest.ContentDispositionInline := True;
 end;
 
 constructor TRALWebModule.Create(AOwner: TComponent);
