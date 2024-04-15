@@ -292,7 +292,7 @@ end;
 
 function TRALParam.GetContentDisposition: StringRAL;
 begin
-  if FFileName <> '' then
+  if (FFileName <> '') and (Pos(rctTEXTHTML, FContentType) = 0) then
     Result := Format('attachment; name="%s"; filename="%s"',[FParamName, FFileName])
   else
     Result := Format('inline; name="%s"', [FParamName])
