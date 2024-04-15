@@ -251,6 +251,9 @@ type
   end;
 
   /// Used by other components to add fixed routes to the RAL Server
+
+  { TRALModuleRoutes }
+
   TRALModuleRoutes = class(TRALComponent)
   private
     FRoutes: TRALRoutes;
@@ -265,7 +268,7 @@ type
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
       const ADescription: StringRAL = ''): TRALRoute;
 
-    function CanResponseRoute(ARequest: TRALRequest): TRALRoute; virtual;
+    function CanResponseRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
     function IsDomain: boolean; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
@@ -531,7 +534,7 @@ begin
   while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
   begin
     vSubRoute := TRALModuleRoutes(FListSubRoutes.Items[vInt]);
-    vRoute := vSubRoute.CanResponseRoute(ARequest);
+    vRoute := vSubRoute.CanResponseRoute(ARequest, AResponse);
     vInt := vInt + 1;
   end;
 
@@ -779,7 +782,7 @@ begin
   Result.Description.Text := ADescription;
 end;
 
-function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
+function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
 var
   vInt: IntegerRAL;
   vName: StringRAL;

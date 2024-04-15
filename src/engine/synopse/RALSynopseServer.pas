@@ -293,7 +293,7 @@ begin
       try
         Params.AssignParams(vCookies, rpkCOOKIE);
         for vInt := 0 to Pred(vCookies.Count) do
-          Params.AddParam('Set-Cookie', vCookies.Strings[vInt] + GetCookieExpires(Now), rpkHEADER);
+          Params.AddParam('Set-Cookie', vCookies.Strings[vInt] + GetCookieExpires(Now) + '; path=/', rpkHEADER);
       finally
         FreeAndNil(vCookies);
       end;
