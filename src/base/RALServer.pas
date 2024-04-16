@@ -169,6 +169,7 @@ type
     FActive: boolean;
     FAuthentication: TRALAuthServer;
     FCompressType: TRALCompressType;
+    FCookieLife: IntegerRAL;
     FCORSOptions: TRALCORSOptions;
     FCriptoOptions: TRALCriptoOptions;
     FEngine: StringRAL;
@@ -233,6 +234,7 @@ type
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property CookieLife: integer read FCookieLife write FCookieLife;
     property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
@@ -399,6 +401,7 @@ begin
   FServerStatus.Text := RALDefaultPage;
   FSessionTimeout := 30000;
   FShowServerStatus := True;
+  FCookieLife := 30;
   FSSL := CreateRALSSL;
 end;
 

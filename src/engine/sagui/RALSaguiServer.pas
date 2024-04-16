@@ -68,7 +68,6 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetPort(const AValue: IntegerRAL); override;
     function IPv6IsImplemented: boolean; override;
-    function GetCookieExpires(ADateTime : TDateTime) : StringRAL;
 
     function GetSSL: TRALSaguiSSL;
     procedure SetSSL(const AValue: TRALSaguiSSL);
@@ -235,7 +234,7 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
   vRespStream: TStream;
-  vCookies : TStringList;
+  vCookies : TStrings;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -347,11 +346,11 @@ begin
     vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
     vStrMap.Add('Content-Encription', vResponse.ContentEncription);
 
-    vCookies := TStringList.Create;
+    vCookies := TStrings.Create;
     try
-      vResponse.Params.AssignParams(vCookies, rpkCOOKIE);
+      vResponse.Params.AssignCookies(vCookies, IncMinute(Now, vServer.CookieLife));
       for vInt := 0 to Pred(vCookies.Count) do
-        vStrMap.Add('Set-Cookie', vCookies.Strings[vInt] + vServer.GetCookieExpires(Now));
+        vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
     finally
       FreeAndNil(vCookies);
     end;
@@ -391,29 +390,6 @@ begin
   if FHandle <> nil then
     sg_httpsrv_free(FHandle);
   FHandle := nil;
-end;
-
-function TRALSaguiServer.GetCookieExpires(ADateTime: TDateTime): StringRAL;
-const
-  HTTPMonths : array[1..12] of string[3] = (
-    'Jan', 'Feb', 'Mar', 'Apr',
-    'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec');
-  HTTPDays: array[1..7] of string[3] = (
-    'Sun', 'Mon', 'Tue', 'Wed',
-    'Thu', 'Fri', 'Sat');
-
-  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
-  Expire     ='; Expires=%s GMT';
-var
-  vYear, vMonth, vDay: Word;
-begin
-  ADateTime := RALDateTimeToGMT(IncMinute(ADateTime, 30));
-  DecodeDate(ADateTime, vYear, vMonth, vDay);
-
-  Result := FormatDateTime(DateFormat, ADateTime);
-  Result := Format(Result, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
-  Result := Format(Expire, [Result]);
 end;
 
 class function TRALSaguiServer.GetSaguiIP(AReq: Psg_httpreq): StringRAL;

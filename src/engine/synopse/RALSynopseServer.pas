@@ -43,7 +43,6 @@ type
 
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetQueueSize(const AValue: IntegerRAL);
-    function GetCookieExpires(ADateTime : TDateTime) : StringRAL;
 
     function IPv6IsImplemented: boolean; override;
 
@@ -213,7 +212,7 @@ function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vCookies: TStringList;
+  vHeaders: StringRAL;
   vInt: IntegerRAL;
 begin
   vRequest := CreateRequest;
@@ -289,16 +288,11 @@ begin
       if vResponse.ContentEncription <> '' then
         Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
-      vCookies := TStringList.Create;
-      try
-        Params.AssignParams(vCookies, rpkCOOKIE);
-        for vInt := 0 to Pred(vCookies.Count) do
-          Params.AddParam('Set-Cookie', vCookies.Strings[vInt] + GetCookieExpires(Now) + '; path=/', rpkHEADER);
-      finally
-        FreeAndNil(vCookies);
-      end;
+      vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+      vHeaders := vHeaders + HTTPLineBreak;
+      vHeaders := vHeaders + Params.AssignCookiesText(IncMinute(Now, CookieLife));
 
-      AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+      AContext.OutCustomHeaders := Trim(vHeaders);
 
       Result := StatusCode;
     end;
@@ -332,29 +326,6 @@ begin
   if Assigned(FHttp) then
     FreeAndNil(FHttp);
   inherited;
-end;
-
-function TRALSynopseServer.GetCookieExpires(ADateTime: TDateTime): StringRAL;
-const
-  HTTPMonths : array[1..12] of string[3] = (
-    'Jan', 'Feb', 'Mar', 'Apr',
-    'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec');
-  HTTPDays: array[1..7] of string[3] = (
-    'Sun', 'Mon', 'Tue', 'Wed',
-    'Thu', 'Fri', 'Sat');
-
-  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
-  Expire     ='; Expires=%s GMT';
-var
-  vYear, vMonth, vDay: Word;
-begin
-  ADateTime := RALDateTimeToGMT(IncMinute(ADateTime, 30));
-  DecodeDate(ADateTime, vYear, vMonth, vDay);
-
-  Result := FormatDateTime(DateFormat, ADateTime);
-  Result := Format(Result, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
-  Result := Format(Expire, [Result]);
 end;
 
 function TRALSynopseServer.GetSSL: TRALSynopseSSL;

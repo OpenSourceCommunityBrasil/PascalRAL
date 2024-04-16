@@ -3,8 +3,8 @@ unit RALUniGUIServer;
 interface
 
 uses
-  Classes, SysUtils,
-  UniGUIServer, uIdCustomHTTPServer, uIdContext,
+  Classes, SysUtils, DateUtils,
+  UniGUIServer, uIdCustomHTTPServer, uIdContext, uIdCookie,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools;
 
@@ -74,6 +74,7 @@ var
   vInt: IntegerRAL;
   vCookies: TStringList;
   vParam : TRALParam;
+  vIdCookie: TIdCookie;
 begin
   if Assigned(FOnHTTPCommand) then
     FOnHTTPCommand(ARequestInfo, AResponseInfo, Handled);
@@ -123,6 +124,12 @@ begin
         if ARequestInfo.Params.Count = 0 then begin
           Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
           Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
+        end;
+
+        for vInt := 0 to Pred(ARequestInfo.Cookies.Count) do
+        begin
+          vIdCookie := ARequestInfo.Cookies.Cookies[vInt];
+          Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
         end;
 
         Params.CompressType := ContentCompress;
@@ -177,6 +184,21 @@ begin
         Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
       Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
+
+      vCookies := TStringList.Create;
+      try
+        Params.AssignParams(vCookies, rpkCOOKIE);
+        for vInt := 0 to Pred(vCookies.Count) do
+        begin
+          vIdCookie := AResponseInfo.Cookies.Add;
+          vIdCookie.CookieName := vCookies.Names[vInt];
+          vIdCookie.Value := vCookies.ValueFromIndex[vInt];
+          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
+          vIdCookie.Path := '/';
+        end;
+      finally
+        FreeAndNil(vCookies);
+      end;
 
       AResponseInfo.ContentText := '';
       AResponseInfo.ContentStream := ResponseStream;

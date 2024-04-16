@@ -232,11 +232,13 @@ begin
           vIdCookie := AResponseInfo.Cookies.Add;
           vIdCookie.CookieName := vCookies.Names[vInt];
           vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
+          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, CookieLife));
+          vIdCookie.Path := '/';
         end;
       finally
         FreeAndNil(vCookies);
       end;
+
       AResponseInfo.ContentText := '';
       AResponseInfo.ContentStream := ResponseStream;
       AResponseInfo.ContentType := ContentType;

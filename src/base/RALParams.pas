@@ -159,6 +159,10 @@ type
                               const ALineSeparator: StringRAL = '&'): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind' using default URL separators.
     function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
+    ///  Fills the 'ADest' Strings with RALParams Cookies Headers
+    procedure AssignCookies(ADest: TStrings; ADateTime : TDateTime);
+    /// Returns an UTF8 String with RALParams Cookies Headers
+    function AssignCookiesText(ADateTime : TDateTime; AHeader : StringRAL = 'Set-Cookie: ') : StringRAL;
     /// Clears all params.
     procedure ClearParams; overload;
     /// Clears all params matching AKind.
@@ -712,6 +716,63 @@ procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
   ASeparator: StringRAL);
 begin
   AssignParams(TStrings(ADest), AKind, ASeparator);
+end;
+
+procedure TRALParams.AssignCookies(ADest: TStrings; ADateTime: TDateTime);
+const
+  HTTPMonths : array[1..12] of string[3] = (
+    'Jan', 'Feb', 'Mar', 'Apr',
+    'May', 'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec');
+  HTTPDays: array[1..7] of string[3] = (
+    'Sun', 'Mon', 'Tue', 'Wed',
+    'Thu', 'Fri', 'Sat');
+
+  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
+  Expire     = '; Expires=%s GMT';
+var
+  vInt: integer;
+  vYear, vMonth, vDay: Word;
+  vExpire, vValue : StringRAL;
+  vParam: TRALParam;
+begin
+  ADateTime := RALDateTimeToGMT(ADateTime);
+  DecodeDate(ADateTime, vYear, vMonth, vDay);
+
+  vExpire := FormatDateTime(DateFormat, ADateTime);
+  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
+  vExpire := Format(Expire, [vExpire]);
+
+  for vInt := 0 to Pred(Count) do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if vParam.Kind = rpkCOOKIE then
+    begin
+      vValue := vParam.ParamName + '=' + vParam.AsString + ';';
+      vValue := vValue + vExpire + '; path=/';
+      ADest.Add(vValue);
+    end;
+  end;
+end;
+
+function TRALParams.AssignCookiesText(ADateTime: TDateTime; AHeader : StringRAL): StringRAL;
+var
+  vDest : TStrings;
+  vInt : integer;
+begin
+  Result := '';
+  vDest := TStrings.Create;
+  try
+    AssignCookies(vDest, ADateTime);
+    for vInt := 0 to Pred(vDest.Count) do
+    begin
+      if Result <> '' then
+        Result := Result + HTTPLineBreak;
+      Result := Result + AHeader + vDest.Strings[vInt];
+    end;
+  finally
+    FreeAndNil(vDest);
+  end;
 end;
 
 procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL);
