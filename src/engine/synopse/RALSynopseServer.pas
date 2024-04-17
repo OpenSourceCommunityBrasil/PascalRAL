@@ -290,7 +290,7 @@ begin
 
       vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
       vHeaders := vHeaders + HTTPLineBreak;
-      vHeaders := vHeaders + Params.AssignCookiesText(IncMinute(Now, CookieLife));
+      vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
 
       AContext.OutCustomHeaders := Trim(vHeaders);
 

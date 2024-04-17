@@ -83,7 +83,18 @@ var
   vHttp : THttpClientSocket;
   vAddress : UTF8String;
   vResult : IntegerRAL;
-  vKeepAlive : Cardinal;
+  vKeepAlive: Cardinal;
+  vCookies: TStringList;
+  vInt: IntegerRAL;
+
+  procedure tratarExcecao(AException : Exception);
+  begin
+    AResponse.Params.CompressType := ctNone;
+    AResponse.Params.CriptoOptions.CriptType := crNone;
+    AResponse.ResponseText := AException.Message;
+    AResponse.ErrorCode := 0;
+  end;
+
 begin
   AResponse.Clear;
   AResponse.StatusCode := -1;
@@ -131,6 +142,24 @@ begin
 
       vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 
+      // cookies
+      vCookies := TStringList.Create;
+      try
+        ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
+        if vCookies.Count > 0 then
+        begin
+          vHeader := vHeader + HTTPLineBreak + 'Cookie: ';
+          for vInt := 0 to Pred(vCookies.Count) do
+          begin
+            if vInt > 0 then
+               vHeader := vHeader + '; ';
+            vHeader := vHeader + vCookies.Strings[vInt];
+          end;
+        end;
+      finally
+        FreeAndNil(vCookies);
+      end;
+
       try
         case AMethod of
           amGET:
@@ -167,11 +196,13 @@ begin
       except
         on e : ENetSock do
         begin
-          AResponse.Params.CompressType := ctNone;
-          AResponse.Params.CriptoOptions.CriptType := crNone;
-          AResponse.ResponseText := e.Message;
+          tratarExcecao(e);
           if e.LastError in [nrFatalError, nrConnectTimeout]  then
             AResponse.ErrorCode := 10061;
+        end;
+        on e : Exception do
+        begin
+          tratarExcecao(e);
         end;
       end;
     finally
@@ -181,11 +212,14 @@ begin
     on e : ENetSock do
     begin
       FreeAndNil(vHttp);
-      AResponse.Params.CompressType := ctNone;
-      AResponse.Params.CriptoOptions.CriptType := crNone;
-      AResponse.ResponseText := e.Message;
+      tratarExcecao(e);
       if e.LastError in [nrFatalError, nrConnectTimeout]  then
         AResponse.ErrorCode := 10061;
+    end;
+    on e : Exception do
+    begin
+      FreeAndNil(vHttp);
+      tratarExcecao(e);
     end;
   end;
 end;

@@ -73,7 +73,8 @@ begin
   inherited Create(AOwner);
 
   FHttp := TIdHTTP.Create(nil);
-  FHttp.HTTPOptions := [hoKeepOrigProtocol];
+  FHttp.HTTPOptions := [hoKeepOrigProtocol, hoWantProtocolErrorContent,
+                        hoNoProtocolErrorException];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
 end;
 
@@ -88,6 +89,19 @@ procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
+  vCookie: TIdCookie;
+  vCookies: TStringList;
+  vInt: IntegerRAL;
+
+  procedure tratarExcecao(AException : Exception);
+  begin
+    AResponse.Params.CompressType := ctNone;
+    AResponse.Params.CriptoOptions.CriptType := crNone;
+    AResponse.StatusCode := FHttp.ResponseCode;
+    AResponse.ResponseText := AException.Message;
+    AResponse.ErrorCode := 0;
+  end;
+
 begin
   AResponse.Clear;
 
@@ -108,6 +122,20 @@ begin
 
   if Parent.KeepAlive then
     FHttp.Request.Connection := 'keep-alive';
+
+  // cookies
+  vCookies := TStringList.Create;
+  try
+    ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
+    for vInt := 0 to Pred(vCookies.Count) do
+    begin
+      vCookie := FHttp.CookieManager.CookieCollection.Add;
+      vCookie.CookieName := vCookies.Names[vInt];
+      vCookie.Value := vCookies.ValueFromIndex[vInt];
+    end;
+  finally
+    vCookies.Free;
+  end;
 
   ARequest.ContentCompress := Parent.CompressType;
   if Parent.CompressType <> ctNone then
@@ -166,11 +194,11 @@ begin
       AResponse.ResponseStream := vResult;
     except
       on e : EIdSocketError do begin
-        AResponse.Params.CompressType := ctNone;
-        AResponse.Params.CriptoOptions.CriptType := crNone;
-        AResponse.StatusCode := FHttp.ResponseCode;
-        AResponse.ResponseText := FHttp.ResponseText;
+        tratarExcecao(e);
         AResponse.ErrorCode := e.LastError;
+      end;
+      on e : Exception do begin
+        tratarExcecao(e);
       end;
     end;
     FreeAndNil(vResult);

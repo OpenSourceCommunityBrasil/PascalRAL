@@ -300,7 +300,8 @@ begin
           vCookie := AResponse.Cookies.Add;
           vCookie.Name := vCookies.Names[vInt];
           vCookie.Value := vCookies.ValueFromIndex[vInt];
-          vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
+          vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
+          vCookie.Path := '/';
         end;
       finally
         FreeAndNil(vCookies);

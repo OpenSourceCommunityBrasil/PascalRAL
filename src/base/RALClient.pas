@@ -628,7 +628,7 @@ begin
       ResetToken
     else if (vResp = 401) and (vConta > 1) then
       Break;
-  until ((vResp > 0) and (vResp < 400)) or (vConta > vMaxConta);
+  until (vResp > 0) or (vConta >= vMaxConta);
 
   if vConnTimeOut then
     raise Exception.Create('Connection TimeOut');
@@ -747,8 +747,7 @@ begin
   end;
 end;
 
-function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest)
-  : IntegerRAL;
+function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -805,7 +804,7 @@ begin
       end;
       vConta := vConta + 1;
     until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or
-      (Result > 0);
+          (Result > 0);
   end;
 end;
 

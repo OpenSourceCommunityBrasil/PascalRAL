@@ -59,6 +59,8 @@ constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClientBase);
 begin
   inherited Create(AOwner);
   FHttp := TFPHTTPClient.Create(nil);
+  FHttp.AllowRedirect := True;
+  FHttp.KeepConnection := True;
   FHttp.OnGetSocketHandler := @OnGetSSLHandler;
 end;
 
@@ -72,6 +74,16 @@ procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult : TStream;
+
+  procedure tratarExcecao(AException : Exception);
+  begin
+    AResponse.Params.CompressType := ctNone;
+    AResponse.Params.CriptoOptions.CriptType := crNone;
+    AResponse.StatusCode := FHttp.ResponseStatusCode;
+    AResponse.ResponseText := AException.Message;
+    AResponse.ErrorCode := 0;
+  end;
+
 begin
   AResponse.Clear;
   AResponse.StatusCode := -1;
@@ -79,6 +91,9 @@ begin
 
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.IOTimeout := Parent.RequestTimeout;
+
+  FHttp.ResponseHeaders.Clear;
+  FHttp.RequestHeaders.Clear;
 
   ARequest.Params.AssignParams(FHttp.Cookies,rpkCOOKIE);
 
@@ -99,6 +114,9 @@ begin
     ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
+  // cookies
+  ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE, '=');
+
   ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
   vSource := ARequest.RequestStream;
@@ -112,17 +130,20 @@ begin
 
     FHttp.RequestBody := vSource;
 
+    // nao deve ser usado o metodo direto e sim como HTTPMethod,
+    // devido o paramentro AllowedResponseCodes
+
     vResult := TStringStream.Create;
     try
       case AMethod of
-        amGET     : FHttp.Get(AURL, vResult);
-        amPOST    : FHttp.Post(AURL, vResult);
-        amPUT     : FHttp.Put(AURL, vResult);
+        amGET     : FHttp.HTTPMethod('GET', AURL, vResult, []);
+        amPOST    : FHttp.HTTPMethod('POST', AURL, vResult, []);
+        amPUT     : FHttp.HTTPMethod('PUT', AURL, vResult, []);
         amPATCH   : FHttp.HTTPMethod('PATCH', AURL, vResult, []); // sem funcao
-        amDELETE  : FHttp.Delete(AURL, vResult);
+        amDELETE  : FHttp.HTTPMethod('DELETE', AURL, vResult, []);
         amTRACE   : FHttp.HTTPMethod('TRACE', AURL, vResult, []); // sem funcao
         amHEAD    : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
-        amOPTIONS : FHttp.Options(AURL, vResult);
+        amOPTIONS : FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
       end;
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
@@ -141,9 +162,19 @@ begin
     except
       on e : ESocketError do
       begin
-        AResponse.ResponseText := FHttp.ResponseStatusText;
+        tratarExcecao(e);
         if e.Code = seConnectTimeOut then
           AResponse.ErrorCode := 10061;
+      end;
+      on e : EHTTPClient do
+      begin
+        tratarExcecao(e);
+        AResponse.ResponseText := e.StatusText;
+        AResponse.StatusCode := e.StatusCode;
+      end;
+      on e : Exception do
+      begin
+        tratarExcecao(e);
       end;
     end;
     FreeAndNil(vResult);

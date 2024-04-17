@@ -87,6 +87,17 @@ var
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vParam : TRALParam;
+  vCookies: StringRAL;
+
+  procedure tratarExcecao(AException : Exception);
+  begin
+    AResponse.Params.CompressType := ctNone;
+    AResponse.Params.CriptoOptions.CriptType := crNone;
+    AResponse.ResponseText := AException.Message;
+    AResponse.StatusCode := vResponse.GetStatusCode;
+    AResponse.ErrorCode := 0;
+  end;
+
 begin
   inherited;
   AResponse.Clear;
@@ -120,8 +131,9 @@ begin
     if ARequest.ContentDisposition <> '' then
       ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
 
+    vCookies := '';
     vIdx := 0;
-    SetLength(vHeaders, ARequest.Params.Count(rpkHEADER));
+    SetLength(vHeaders, ARequest.Params.Count([rpkHEADER, rpkCOOKIE]));
     for vInt := 0 to Pred(ARequest.Params.Count) do
     begin
       vParam := ARequest.Params.Index[vInt];
@@ -129,8 +141,22 @@ begin
       begin
         vHeaders[vIdx] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
         vIdx := vIdx + 1;
+      end
+      else if vParam.Kind = rpkCOOKIE then
+      begin
+        if vCookies <> '' then
+          vCookies := vCookies + '; ';
+        vCookies := vCookies + vParam.ParamName + '=' + vParam.AsString;
       end;
     end;
+
+    if vCookies <> '' then
+    begin
+      vHeaders[vIdx] := TNameValuePair.Create('Cookie', vCookies);
+      vIdx := vIdx + 1;
+    end;
+
+    SetLength(vHeaders, vIdx);
 
     try
       case AMethod of
@@ -168,13 +194,14 @@ begin
       AResponse.ResponseStream := vResponse.ContentStream;
     except
       on e : ENetHTTPClientException do begin
-        AResponse.Params.CompressType := ctNone;
-        AResponse.Params.CriptoOptions.CriptType := crNone;
-        AResponse.ResponseText := e.Message;
+        tratarExcecao(e);
         if Pos('12029', e.Message) > 0 then
           AResponse.ErrorCode := 12029
         else if Pos('10061', e.Message) > 0 then
           AResponse.ErrorCode := 10061
+      end;
+      on e : Exception do begin
+        tratarExcecao(e);
       end;
     end;
   finally

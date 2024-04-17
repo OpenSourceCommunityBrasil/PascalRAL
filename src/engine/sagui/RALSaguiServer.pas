@@ -234,7 +234,7 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
   vRespStream: TStream;
-  vCookies : TStrings;
+  vCookies : TStringList;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -346,9 +346,9 @@ begin
     vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
     vStrMap.Add('Content-Encription', vResponse.ContentEncription);
 
-    vCookies := TStrings.Create;
+    vCookies := TStringList.Create;
     try
-      vResponse.Params.AssignCookies(vCookies, IncMinute(Now, vServer.CookieLife));
+      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
       for vInt := 0 to Pred(vCookies.Count) do
         vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
     finally
