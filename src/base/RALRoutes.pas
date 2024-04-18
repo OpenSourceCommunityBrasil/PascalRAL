@@ -63,12 +63,13 @@ type
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
-    function CompareRoutes(AQuery1, AQuery2 : StringRAL; var AWeight : IntegerRAL; AURI : TStringList) : boolean;
+    function CompareRoutes(AQuery1, AQuery2 : StringRAL; AComplete : boolean;
+                           var AWeight : IntegerRAL; AURI : TStringList) : boolean;
   public
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
-    function CanResponseRoute(ARequest : TRALRequest) : TRALRoute;
+    function CanResponseRoute(ARequest : TRALRequest; AComplete : boolean = False) : TRALRoute;
   end;
 
 implementation
@@ -215,8 +216,8 @@ end;
 
 { RALRoutes }
 
-function TRALRoutes.CompareRoutes(AQuery1, AQuery2: StringRAL;
-  var AWeight: IntegerRAL; AURI: TStringList): boolean;
+function TRALRoutes.CompareRoutes(AQuery1, AQuery2: StringRAL; AComplete: boolean;
+                                  var AWeight: IntegerRAL; AURI: TStringList): boolean;
 var
   vStrQuery1, vStrQuery2: TStringList;
   vStr1, vStr2: StringRAL;
@@ -227,10 +228,7 @@ begin
   AURI.Clear;
 
   System.Delete(AQuery1, 1, 1);
-  System.Delete(AQuery1, Length(AQuery1), 1);
-
   System.Delete(AQuery2, 1, 1);
-  System.Delete(AQuery2, Length(AQuery2), 1);
 
   vStrQuery1 := TStringList.Create;
   vStrQuery2 := TStringList.Create;
@@ -241,7 +239,8 @@ begin
     vStrQuery2.LineBreak := '/';
     vStrQuery2.Text := AQuery2;
 
-    if vStrQuery2.Count < vStrQuery1.Count then
+    if (vStrQuery2.Count < vStrQuery1.Count) or
+       ((AComplete) and (vStrQuery2.Count <> vStrQuery1.Count)) then
       Exit;
 
     vInt := 0;
@@ -295,7 +294,7 @@ begin
       Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
 end;
 
-function TRALRoutes.CanResponseRoute(ARequest: TRALRequest): TRALRoute;
+function TRALRoutes.CanResponseRoute(ARequest: TRALRequest; AComplete: boolean): TRALRoute;
 var
   vInt, vRouteWeight, vTempWeight: IntegerRAL;
   vRoute: TRALRoute;
@@ -314,7 +313,7 @@ begin
     begin
       vRoute := TRALRoute(Items[vInt]);
       vQueryRoute := vRoute.GetFullRoute;
-      if CompareRoutes(vQueryRoute, vQuery, vTempWeight, vTempUriRoute) then
+      if CompareRoutes(vQueryRoute, vQuery, AComplete, vTempWeight, vTempUriRoute) then
       begin
         if vTempWeight < vRouteWeight then
         begin

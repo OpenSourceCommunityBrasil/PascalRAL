@@ -130,14 +130,8 @@ end;
 { TRALWebModule }
 
 function TRALWebModule.CanResponseRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
-var
-  vRoute : StringRAL;
 begin
-  vRoute := ARequest.Query;
-  if (vRoute <> '') and (vRoute[PosIniStr] = '/') then
-    Delete(vRoute, 1, 1);
-
-  Result := Routes.CanResponseRoute(ARequest);
+  Result := Routes.CanResponseRoute(ARequest, True);
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
     Result := FDefautRoute

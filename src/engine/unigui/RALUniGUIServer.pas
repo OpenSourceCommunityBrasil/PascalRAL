@@ -121,7 +121,8 @@ begin
       begin
         Params.AppendParams(ARequestInfo.Params, rpkQUERY);
 
-        if ARequestInfo.Params.Count = 0 then begin
+        if ARequestInfo.Params.Count = 0 then
+        begin
           Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
           Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
         end;

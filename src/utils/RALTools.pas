@@ -25,13 +25,16 @@ implementation
 
 function FixRoute(ARoute: StringRAL): StringRAL;
 begin
-  Result := '/' + ARoute + '/';
+  Result := '/' + ARoute;
 
   // path transversal fix
   Result := StringReplace(Result, '../', '', [rfReplaceAll]);
 
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+
+  if (Result <> '') and (Result[RALHighStr(Result)] = '/') then
+    Delete(Result, RALHighStr(Result), 1);
 end;
 
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
