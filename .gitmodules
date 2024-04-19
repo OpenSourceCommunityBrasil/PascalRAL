@@ -1,0 +1,6 @@
+[submodule "brotli/pascal_brotli"]
+	path = brotli/pascal_brotli
+	url = https://github.com/FernandoBanhos/pascal_brotli
+[submodule "zstandart/ZSTD"]
+	path = zstandart/ZSTD
+	url = https://github.com/DenisAnisimov/ZSTD.pas
