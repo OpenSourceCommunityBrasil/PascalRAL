@@ -270,7 +270,7 @@ type
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
       const ADescription: StringRAL = ''): TRALRoute;
 
-    function CanResponseRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
     function IsDomain: boolean; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
@@ -531,13 +531,13 @@ begin
     AResponse.CriptoKey := CriptoOptions.Key;
   end;
 
-  vRoute := FRoutes.CanResponseRoute(ARequest);
+  vRoute := FRoutes.CanAnswerRoute(ARequest);
 
   vInt := 0;
   while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
   begin
     vSubRoute := TRALModuleRoutes(FListSubRoutes.Items[vInt]);
-    vRoute := vSubRoute.CanResponseRoute(ARequest, AResponse);
+    vRoute := vSubRoute.CanAnswerRoute(ARequest, AResponse);
     vInt := vInt + 1;
   end;
 
@@ -785,7 +785,7 @@ begin
   Result.Description.Text := ADescription;
 end;
 
-function TRALModuleRoutes.CanResponseRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
+function TRALModuleRoutes.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
 var
   vInt: IntegerRAL;
   vName: StringRAL;
@@ -800,7 +800,7 @@ begin
   begin
     vName := Copy(vName, 1, vInt - 1);
     if SameText(vName, Name) then
-      Result := Routes.CanResponseRoute(ARequest);
+      Result := Routes.CanAnswerRoute(ARequest);
   end;
 end;
 

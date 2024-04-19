@@ -47,7 +47,7 @@ type
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function CanResponseRoute(ARequest : TRALRequest; AResponse : TRALResponse) : TRALRoute; override;
+    function CanAnswerRoute(ARequest : TRALRequest; AResponse : TRALResponse) : TRALRoute; override;
     function IsDomain : boolean; override;
 
     property Session[ARequest : TRALRequest] : TRALWebSession read GetWebSession;
@@ -129,9 +129,9 @@ end;
 
 { TRALWebModule }
 
-function TRALWebModule.CanResponseRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
+function TRALWebModule.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
 begin
-  Result := Routes.CanResponseRoute(ARequest, True);
+  Result := Routes.CanAnswerRoute(ARequest, True);
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
     Result := FDefautRoute

@@ -6,13 +6,14 @@ uses
   {$IFDEF FPC}
     bufstream,
   {$ENDIF}
-  Classes, SysUtils,
+  Classes, SysUtils, TypInfo,
   RALTypes, RALStream;
 
 type
   TRALCompressClass = class of TRALCompress;
 
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd, ctBrotli);
+  TRALCompressTypes = set of TRALCompressType;
   TRALCompressLibs = (clZLib, clZStd, clBrotli);
 
   { TRALCompress }
@@ -36,6 +37,7 @@ type
     procedure DecompressFile(AInFile, AOutFile: StringRAL);
 
     class function GetSuportedCompress : StringRAL;
+    class function GetInstaledList : TStringList;
     class procedure UpdateDeclaredClasses;
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
@@ -53,6 +55,8 @@ const
                           '', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
   cCompressLibsClass : array[TRALCompressLibs] of StringRAL = (
                           'TRALCompressZLib', 'TRALCompressZStd', 'TRALCompressBrotli');
+  cCompressLibsTypes : array[TRALCompressLibs] of TRALCompressTypes = (
+                          [ctDeflate, ctZLib, ctGZip], [ctZStd], [ctBrotli]);
 
 var
   vDeclaredCompressLibs : array[TRALCompressLibs] of boolean;
@@ -168,6 +172,36 @@ begin
     if Result <> '' then
       Result := Result + ',';
     Result := Result + 'br';
+  end;
+end;
+
+class function TRALCompress.GetInstaledList: TStringList;
+var
+  vLib: TRALCompressLibs;
+  vCompress: TRALCompressClass;
+  vTypes: TRALCompressTypes;
+  vType: TRALCompressType;
+  vStr: StringRAL;
+begin
+  Result := TStringList.Create;
+  Result.Add(GetEnumName(TypeInfo(TRALCompressType), 0));  // clNone
+
+  for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
+  begin
+    vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
+    if (vCompress <> nil) then
+    begin
+      vTypes := cCompressLibsTypes[vLib];
+      for vType := Low(TRALCompressType) to High(TRALCompressType) do
+      begin
+        if vType in vTypes then
+        begin
+          vStr := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
+          if Result.IndexOf(vStr) < 0 then
+            Result.Add(vStr);
+        end;
+      end;
+    end;
   end;
 end;
 

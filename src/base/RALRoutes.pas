@@ -69,7 +69,7 @@ type
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
-    function CanResponseRoute(ARequest : TRALRequest; AComplete : boolean = False) : TRALRoute;
+    function CanAnswerRoute(ARequest : TRALRequest; AComplete : boolean = False) : TRALRoute;
   end;
 
 implementation
@@ -294,7 +294,7 @@ begin
       Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
 end;
 
-function TRALRoutes.CanResponseRoute(ARequest: TRALRequest; AComplete: boolean): TRALRoute;
+function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest; AComplete: boolean): TRALRoute;
 var
   vInt, vRouteWeight, vTempWeight: IntegerRAL;
   vRoute: TRALRoute;

@@ -100,7 +100,7 @@ type
   TRALClientBase = class(TRALComponent)
   private
     FAuthentication: TRALAuthClient;
-    FBaseURL: TStringList;
+    FBaseURL: TStrings;
     FConnectTimeout: IntegerRAL;
     FCompressType: TRALCompressType;
     FCriptoOptions: TRALCriptoOptions;
@@ -114,7 +114,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
     procedure SetAuthentication(const AValue: TRALAuthClient);
-    procedure SetBaseURL(const AValue: TStringList);
+    procedure SetBaseURL(const AValue: TStrings);
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetKeepAlive(const AValue: boolean); virtual;
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
@@ -133,7 +133,7 @@ type
     procedure CopyProperties(ADest: TRALClientBase); virtual;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
-    property BaseURL: TStringList read FBaseURL write SetBaseURL;
+    property BaseURL: TStrings read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
       default 5000;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
@@ -427,7 +427,7 @@ begin
     FAuthentication.FreeNotification(Self);
 end;
 
-procedure TRALClientBase.SetBaseURL(const AValue: TStringList);
+procedure TRALClientBase.SetBaseURL(const AValue: TStrings);
 begin
   FBaseURL.Text := AValue.Text;
 end;
