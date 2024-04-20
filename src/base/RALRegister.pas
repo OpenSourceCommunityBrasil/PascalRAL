@@ -8,17 +8,20 @@ interface
 uses
   {$IFDEF FPC}
   LResources,
-  {$ENDIF}
-  {$IFDEF DELPHI2005UP}
-  ToolsAPI,
+  {$ELSE}
+    {$IFDEF DELPHI2005UP}
+    ToolsAPI,
+    {$ENDIF}
+  DesignEditors, DesignIntf, StringsEdit,
   {$ENDIF}
   {$IFDEF RALWindows}
   Windows,
   {$ENDIF}
-  Classes, SysUtils, DesignEditors, DesignIntf, StringsEdit,
+  Classes, SysUtils,
   RALConsts, RALAuthentication, RALWebModule, RALClient, RALCompress,
   RALTypes, RALServer;
 
+{$IFNDEF FPC}
 type
   TRALBaseURLEditor = class(TClassProperty)
   public
@@ -32,6 +35,7 @@ type
   public
     procedure GetValues(Proc: TGetStrProc); override;
   end;
+{$ENDIF}
 
 procedure Register;
 
@@ -64,11 +68,14 @@ begin
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);
+  {$IFNDEF FPC}
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClientBase, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
+  {$ENDIF}
 end;
 
+{$IFNDEF FPC}
 { TRALBaseURLEditor }
 
 procedure TRALBaseURLEditor.Edit;
@@ -116,6 +123,7 @@ begin
     FreeAndNil(vStr);
   end;
 end;
+{$ENDIF}
 
 {$IFDEF FPC}
 initialization

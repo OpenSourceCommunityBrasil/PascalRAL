@@ -1,20 +1,16 @@
-/// Unit that stores Compression ZStd algorithms
-// Links
-// https://github.com/facebook/zstd/releases
-// https://github.com/DenisAnisimov/ZSTD.pas
-unit RALCompressZStd;
+unit RALCompressBrotli;
 
 interface
 
 uses
-  Classes, SysUtils, ZStd, ZSTDLib,
+  Classes, SysUtils, brotlistream, brotlilib,
   RALCompress, RALTypes, RALConsts;
 
 type
-  { TRALCompressZStd }
+  { TRALCompressBrotli }
 
-  /// Compression class ZStd for PascalRAL
-  TRALCompressZStd = class(TRALCompress)
+  /// Compression class Brotli for PascalRAL
+  TRALCompressBrotli = class(TRALCompress)
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
@@ -25,26 +21,20 @@ type
 
 implementation
 
-{ TRALCompressZStd }
+{ TRALCompressBrotli }
 
-procedure TRALCompressZStd.InitCompress(AInStream, AOutStream: TStream);
+procedure TRALCompressBrotli.InitCompress(AInStream, AOutStream: TStream);
 var
   vBuf: TBytes;
-  vZip: TZSTDCompressStream;
-  vCount: integer;
-  vOptions: TZSTDCompressOptions;
+  vZip: TBrotliCompressionStream;
+  vCount: Integer;
 begin
-  vOptions.Init;
-  vOptions.CompressionLevel := 3;
-  vOptions.Workers := 0;
-  vOptions.Check;
-
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
   else
     SetLength(vBuf, AInStream.Size);
 
-  vZip := TZSTDCompressStream.Create(AOutStream, vOptions);
+  vZip := TBrotliCompressionStream.Create(5, AOutStream);
   try
     repeat
       vCount := AInStream.Read(vBuf[0], Length(vBuf));
@@ -56,20 +46,18 @@ begin
   end;
 end;
 
-procedure TRALCompressZStd.InitDeCompress(AInStream, AOutStream: TStream);
+procedure TRALCompressBrotli.InitDeCompress(AInStream, AOutStream: TStream);
 var
   vBuf: TBytes;
-  vOption: TZSTDDecompressOptions;
-  vZip: TZSTDDecompressStream;
-  vCount: integer;
+  vZip : TBrotliDecompressionStream;
+  vCount: Integer;
 begin
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
   else
     SetLength(vBuf, AInStream.Size);
 
-  vOption.Init;
-  vZip := TZSTDDecompressStream.Create(AInStream, vOption);
+  vZip := TBrotliDecompressionStream.Create(AInStream);
   try
     repeat
       vCount := vZip.Read(vBuf[0], Length(vBuf));
@@ -81,12 +69,12 @@ begin
   end;
 end;
 
-procedure TRALCompressZStd.SetFormat(AValue: TRALCompressType);
+procedure TRALCompressBrotli.SetFormat(AValue: TRALCompressType);
 begin
   if AValue = Format then
     Exit;
 
-  if AValue <> ctZStd then
+  if AValue <> ctBrotli then
   begin
     raise Exception.Create('Format is invalid!');
     Exit;
@@ -95,13 +83,13 @@ begin
   inherited;
 end;
 
-class function TRALCompressZStd.CheckDependence: boolean;
+class function TRALCompressBrotli.CheckDependence: boolean;
 begin
-  Result := ZSTDIsLoaded;
+  Result := TBrotli.IsLoaded;
 end;
 
 initialization
-  RegisterClass(TRALCompressZStd);
+  RegisterClass(TRALCompressBrotli);
   TRALCompress.UpdateDeclaredClasses;
 
 end.

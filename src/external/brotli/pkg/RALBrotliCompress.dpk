@@ -1,7 +1,6 @@
-package RALDBPackage;
+package RALBrotliCompress;
 
 {$R *.res}
-{$R 'RALDBPackage.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,19 +25,16 @@ package RALDBPackage;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Database Components'}
+{$DESCRIPTION 'PascalRAL | Brotli Compression Library'}
+{$RUNONLY}
 {$IMPLICITBUILD ON}
 
 requires
-  dbrtl,
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
-  RALDBBase in '..\..\..\src\database\RALDBBase.pas',
-  RALDBModule in '..\..\..\src\database\RALDBModule.pas',
-  raldbregister in '..\..\..\src\database\raldbregister.pas',
-  RALDBStorage in '..\..\..\src\database\RALDBStorage.pas',
-  RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas';
+  RALCompressBrotli in '..\RALCompressBrotli.pas',
+  brotlilib in '..\pascal_brotli\brotlilib.pas',
+  brotlistream in '..\pascal_brotli\brotlistream.pas';
 
 end.

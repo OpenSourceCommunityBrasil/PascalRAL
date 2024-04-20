@@ -7,16 +7,16 @@
             <Dependencies/>
         </Projects>
         <Projects Include="PascalRALDsgn.dproj">
-            <Dependencies/>
+            <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Engine\IndyRAL.dproj">
-            <Dependencies/>
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Engine\NetHttpRAL.dproj">
-            <Dependencies/>
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Engine\SynopseRAL.dproj">
-            <Dependencies/>
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Engine\SaguiRAL.dproj">
             <Dependencies>PascalRAL.dproj;PascalRALDsgn.dproj</Dependencies>
@@ -25,16 +25,16 @@
             <Dependencies/>
         </Projects>
         <Projects Include="DB\RALDBPackage.dproj">
-            <Dependencies/>
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="DB\RALDBFireDACObjects.dproj">
-            <Dependencies/>
+            <Dependencies>DB\RALDBPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="DB\RALDBFireDACLink.dproj">
-            <Dependencies/>
+            <Dependencies>DB\RALDBPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="DB\RALDBZeosLink.dproj">
-            <Dependencies/>
+            <Dependencies>DB\RALDBPackage.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -53,40 +53,40 @@
     <Target Name="PascalRAL:Make">
         <MSBuild Projects="PascalRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="PascalRALDsgn">
+    <Target Name="PascalRALDsgn" DependsOnTargets="PascalRAL">
         <MSBuild Projects="PascalRALDsgn.dproj"/>
     </Target>
-    <Target Name="PascalRALDsgn:Clean">
+    <Target Name="PascalRALDsgn:Clean" DependsOnTargets="PascalRAL:Clean">
         <MSBuild Projects="PascalRALDsgn.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="PascalRALDsgn:Make">
+    <Target Name="PascalRALDsgn:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="PascalRALDsgn.dproj" Targets="Make"/>
     </Target>
-    <Target Name="IndyRAL">
+    <Target Name="IndyRAL" DependsOnTargets="PascalRALDsgn">
         <MSBuild Projects="Engine\IndyRAL.dproj"/>
     </Target>
-    <Target Name="IndyRAL:Clean">
+    <Target Name="IndyRAL:Clean" DependsOnTargets="PascalRALDsgn:Clean">
         <MSBuild Projects="Engine\IndyRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="IndyRAL:Make">
+    <Target Name="IndyRAL:Make" DependsOnTargets="PascalRALDsgn:Make">
         <MSBuild Projects="Engine\IndyRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="NetHttpRAL">
+    <Target Name="NetHttpRAL" DependsOnTargets="PascalRALDsgn">
         <MSBuild Projects="Engine\NetHttpRAL.dproj"/>
     </Target>
-    <Target Name="NetHttpRAL:Clean">
+    <Target Name="NetHttpRAL:Clean" DependsOnTargets="PascalRALDsgn:Clean">
         <MSBuild Projects="Engine\NetHttpRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="NetHttpRAL:Make">
+    <Target Name="NetHttpRAL:Make" DependsOnTargets="PascalRALDsgn:Make">
         <MSBuild Projects="Engine\NetHttpRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="SynopseRAL">
+    <Target Name="SynopseRAL" DependsOnTargets="PascalRALDsgn">
         <MSBuild Projects="Engine\SynopseRAL.dproj"/>
     </Target>
-    <Target Name="SynopseRAL:Clean">
+    <Target Name="SynopseRAL:Clean" DependsOnTargets="PascalRALDsgn:Clean">
         <MSBuild Projects="Engine\SynopseRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="SynopseRAL:Make">
+    <Target Name="SynopseRAL:Make" DependsOnTargets="PascalRALDsgn:Make">
         <MSBuild Projects="Engine\SynopseRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="SaguiRAL" DependsOnTargets="PascalRAL;PascalRALDsgn">
@@ -107,40 +107,40 @@
     <Target Name="UniGUIRAL:Make">
         <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBPackage">
+    <Target Name="RALDBPackage" DependsOnTargets="PascalRALDsgn">
         <MSBuild Projects="DB\RALDBPackage.dproj"/>
     </Target>
-    <Target Name="RALDBPackage:Clean">
+    <Target Name="RALDBPackage:Clean" DependsOnTargets="PascalRALDsgn:Clean">
         <MSBuild Projects="DB\RALDBPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBPackage:Make">
+    <Target Name="RALDBPackage:Make" DependsOnTargets="PascalRALDsgn:Make">
         <MSBuild Projects="DB\RALDBPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBFireDACObjects">
+    <Target Name="RALDBFireDACObjects" DependsOnTargets="RALDBPackage">
         <MSBuild Projects="DB\RALDBFireDACObjects.dproj"/>
     </Target>
-    <Target Name="RALDBFireDACObjects:Clean">
+    <Target Name="RALDBFireDACObjects:Clean" DependsOnTargets="RALDBPackage:Clean">
         <MSBuild Projects="DB\RALDBFireDACObjects.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBFireDACObjects:Make">
+    <Target Name="RALDBFireDACObjects:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="DB\RALDBFireDACObjects.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBFireDACLink">
+    <Target Name="RALDBFireDACLink" DependsOnTargets="RALDBPackage">
         <MSBuild Projects="DB\RALDBFireDACLink.dproj"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Clean">
+    <Target Name="RALDBFireDACLink:Clean" DependsOnTargets="RALDBPackage:Clean">
         <MSBuild Projects="DB\RALDBFireDACLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBFireDACLink:Make">
+    <Target Name="RALDBFireDACLink:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="DB\RALDBFireDACLink.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBZeosLink">
+    <Target Name="RALDBZeosLink" DependsOnTargets="RALDBPackage">
         <MSBuild Projects="DB\RALDBZeosLink.dproj"/>
     </Target>
-    <Target Name="RALDBZeosLink:Clean">
+    <Target Name="RALDBZeosLink:Clean" DependsOnTargets="RALDBPackage:Clean">
         <MSBuild Projects="DB\RALDBZeosLink.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBZeosLink:Make">
+    <Target Name="RALDBZeosLink:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="DB\RALDBZeosLink.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">

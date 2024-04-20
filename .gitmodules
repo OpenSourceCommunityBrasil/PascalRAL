@@ -1,0 +1,6 @@
+[submodule "src/external/brotli/pascal_brotli"]
+	path = src/external/brotli/pascal_brotli
+	url = https://github.com/FernandoBanhos/pascal_brotli
+[submodule "src/external/zstd/ZSTD"]
+	path = src/external/zstd/ZSTD
+	url = https://github.com/DenisAnisimov/ZSTD.pas
