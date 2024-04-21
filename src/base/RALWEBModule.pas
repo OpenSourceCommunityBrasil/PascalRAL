@@ -131,7 +131,7 @@ end;
 
 function TRALWebModule.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
 begin
-  Result := Routes.CanAnswerRoute(ARequest, True);
+  Result := Routes.CanAnswerRoute(ARequest);
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
     Result := FDefautRoute

@@ -15,8 +15,6 @@ type
 
   /// Compression class ZStd for PascalRAL
   TRALCompressZStd = class(TRALCompress)
-  private
-    function ZSTDIsLoaded: boolean;
   protected
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
@@ -95,11 +93,6 @@ begin
   end;
 
   inherited;
-end;
-
-function TRALCompressZStd.ZSTDIsLoaded: boolean;
-begin
-  Result := ZSTD <> 0;
 end;
 
 class function TRALCompressZStd.CheckDependence: boolean;

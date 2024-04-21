@@ -18,21 +18,24 @@ type
   TRALRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
+    FAllowURIParams: boolean;
     FCallback: boolean;
-    FDescription: TStringList;
+    FDescription: TStrings;
     FName: StringRAL;
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
+    FURIParams: TStrings;
 
     FOnReply: TRALOnReply;
   protected
     function GetDisplayName: string; override;
     /// checks if the route already exists on the list
     procedure SetAllowedMethods(const AValue: TRALMethods);
-    procedure SetDescription(const AValue: TStringList);
+    procedure SetDescription(const AValue: TStrings);
     procedure SetDisplayName(const AValue: string); override;
     procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
+    procedure SetURIParams(AValue: TStrings);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -43,18 +46,20 @@ type
     /// Returns internal name of the route
     function GetNamePath: string; override;
     /// Returns true or false wether the method is allowed in route
-    function isMethodAllowed(const AMethod: TRALMethod): boolean;
+    function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// Returns true or false wether the method is skipped in authentication
-    function isMethodSkipped(const AMethod: TRALMethod): boolean;
+    function IsMethodSkipped(const AMethod: TRALMethod): boolean;
 
     function GetFullRoute: StringRAL;
   published
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
+    property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
     property Callback: boolean read FCallback write FCallback;
-    property Description: TStringList read FDescription write SetDescription;
+    property Description: TStrings read FDescription write SetDescription;
     property Name: StringRAL read FName write FName;
     property Route: StringRAL read FRoute write SetRoute;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
+    property URIParams: TStrings read FURIParams write SetURIParams;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   end;
@@ -63,13 +68,13 @@ type
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
-    function CompareRoutes(AQuery1, AQuery2 : StringRAL; AComplete : boolean;
-                           var AWeight : IntegerRAL; AURI : TStringList) : boolean;
+    function CompareRoutes(ARoute : TRALRoute; AQuery: StringRAL;
+                           var AWeight: IntegerRAL; AURI: TStringList): boolean;
   public
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
-    function CanAnswerRoute(ARequest : TRALRequest; AComplete : boolean = False) : TRALRoute;
+    function CanAnswerRoute(ARequest : TRALRequest) : TRALRoute;
   end;
 
 implementation
@@ -88,6 +93,7 @@ begin
   FName := 'ralroute' + IntToStr(Index);
   FRoute := '/';
   FDescription := TStringList.Create;
+  FUriParams := TStringList.Create;
   Changed(False);
 end;
 
@@ -145,16 +151,16 @@ begin
   end;
 end;
 
-function TRALRoute.isMethodAllowed(const AMethod: TRALMethod): boolean;
+function TRALRoute.IsMethodAllowed(const AMethod: TRALMethod): boolean;
 begin
   Result := (amALL in AllowedMethods) or
-    (not(amALL in AllowedMethods) and (AMethod in AllowedMethods));
+            (not(amALL in AllowedMethods) and (AMethod in AllowedMethods));
 end;
 
-function TRALRoute.isMethodSkipped(const AMethod: TRALMethod): boolean;
+function TRALRoute.IsMethodSkipped(const AMethod: TRALMethod): boolean;
 begin
   Result := (amALL in SkipAuthMethods) or
-    (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
+            (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
 end;
 
 function TRALRoute.GetFullRoute: StringRAL;
@@ -164,7 +170,19 @@ begin
     (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
     (TRALModuleRoutes(Collection.Owner).IsDomain) then
     Result := TRALModuleRoutes(Collection.Owner).Name;
+
   Result := FixRoute(Result + '/' + FRoute);
+end;
+
+procedure TRALRoute.SetURIParams(AValue: TStrings);
+begin
+  if FURIParams = AValue then
+    Exit;
+
+  if Trim(AValue.Text) <> ''
+    FAllowURIParams := True;
+
+  FURIParams.Text := AValue.Text;
 end;
 
 function TRALRoute.GetDisplayName: string;
@@ -199,7 +217,7 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetDescription(const AValue: TStringList);
+procedure TRALRoute.SetDescription(const AValue: TStrings);
 begin
   if FDescription = AValue then
     Exit;
@@ -216,31 +234,31 @@ end;
 
 { RALRoutes }
 
-function TRALRoutes.CompareRoutes(AQuery1, AQuery2: StringRAL; AComplete: boolean;
+function TRALRoutes.CompareRoutes(ARoute : TRALRoute; AQuery: StringRAL;
                                   var AWeight: IntegerRAL; AURI: TStringList): boolean;
 var
   vStrQuery1, vStrQuery2: TStringList;
-  vStr1, vStr2: StringRAL;
-  vInt, vParam: IntegerRAL;
+  vStr1, vStr2, vQuery: StringRAL;
+  vInt, vIdxParam, vIdxURI: IntegerRAL;
 begin
   Result := False;
   AWeight := 0;
   AURI.Clear;
 
-  System.Delete(AQuery1, 1, 1);
-  System.Delete(AQuery2, 1, 1);
+  vQuery := ARoute.GetFullRoute;
+  System.Delete(vQuery, 1, 1);
+  System.Delete(AQuery, 1, 1);
 
   vStrQuery1 := TStringList.Create;
   vStrQuery2 := TStringList.Create;
   try
     vStrQuery1.LineBreak := '/';
-    vStrQuery1.Text := AQuery1;
+    vStrQuery1.Text := vQuery;
 
     vStrQuery2.LineBreak := '/';
-    vStrQuery2.Text := AQuery2;
+    vStrQuery2.Text := AQuery;
 
-    if (vStrQuery2.Count < vStrQuery1.Count) or
-       ((AComplete) and (vStrQuery2.Count <> vStrQuery1.Count)) then
+    if (not ARoute.AllowURIParams) and (vStrQuery2.Count <> vStrQuery1.Count) then
       Exit;
 
     vInt := 0;
@@ -248,26 +266,30 @@ begin
     begin
       vStr1 := vStrQuery1.Strings[vInt];
       vStr2 := vStrQuery2.Strings[vInt];
-      if Copy(vStr1, 1, 1) = ':' then
-      begin
-        AURI.Add(Copy(vStr1, 2, Length(vStr1)) + '=' + vStr2);
-        AWeight := AWeight + 1;
-      end
-      else if not SameText(vStr1, vStr2) then
-      begin
+      if not SameText(vStr1, vStr2) then
         Exit;
-      end;
     end;
 
-    vInt := vStrQuery1.Count;
-    vParam := 1;
-    for vInt := vInt to Pred(vStrQuery2.Count) do
+    if ARoute.AllowURIParams then
     begin
-      vStr1 := 'ral_uriparam' + IntToStr(vParam);
-      vStr2 := vStrQuery2.Strings[vInt];
-      AURI.Add(vStr1 + '=' + vStr2);
-      AWeight := AWeight + 10;
-      vParam := vParam + 1;
+      vInt := vStrQuery1.Count;
+      vIdxParam := 1;
+      vIdxURI := 0;
+      for vInt := vInt to Pred(vStrQuery2.Count) do
+      begin
+        if vIdxURI < ARoute.URIParams.Count then
+        begin
+          vStr1 := ARoute.URIParams.Strings[vIdxURI];
+          vIdxURI := vIdxURI + 1;
+        end
+        else begin
+          vStr1 := 'ral_uriparam' + IntToStr(vIdxParam);
+          vIdxParam := vIdxParam + 1;
+        end;
+        vStr2 := vStrQuery2.Strings[vInt];
+        AURI.Add(vStr1 + '=' + vStr2);
+        AWeight := AWeight + 10;
+      end;
     end;
 
     Result := True;
@@ -294,11 +316,11 @@ begin
       Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
 end;
 
-function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest; AComplete: boolean): TRALRoute;
+function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
 var
   vInt, vRouteWeight, vTempWeight: IntegerRAL;
   vRoute: TRALRoute;
-  vQuery, vQueryRoute: StringRAL;
+  vQuery:  StringRAL;
   vUriRoute, vTempUriRoute: TStringList;
   vParam: TRALParam;
 begin
@@ -312,8 +334,7 @@ begin
     for vInt := 0 to Pred(Self.Count) do
     begin
       vRoute := TRALRoute(Items[vInt]);
-      vQueryRoute := vRoute.GetFullRoute;
-      if CompareRoutes(vQueryRoute, vQuery, AComplete, vTempWeight, vTempUriRoute) then
+      if CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
       begin
         if vTempWeight < vRouteWeight then
         begin
