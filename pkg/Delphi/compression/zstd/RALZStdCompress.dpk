@@ -33,8 +33,8 @@ requires
   PascalRAL;
 
 contains
-  RALCompressZStd in '..\RALCompressZStd.pas',
-  ZSTD in '..\ZSTD\ZSTD.pas',
-  ZSTDLib in '..\ZSTD\ZSTDLib.pas';
+  RALCompressZStd in '..\..\..\..\src\others\RALCompressZStd.pas',
+  ZSTD in '..\..\..\..\src\others\ZSTD\ZSTD.pas',
+  ZSTDLib in '..\..\..\..\src\others\ZSTD\ZSTDLib.pas';
 
 end.

@@ -33,8 +33,8 @@ requires
   PascalRAL;
 
 contains
-  RALCompressBrotli in '..\RALCompressBrotli.pas',
-  brotlilib in '..\pascal_brotli\brotlilib.pas',
-  brotlistream in '..\pascal_brotli\brotlistream.pas';
+  RALCompressBrotli in '..\..\..\..\src\others\RALCompressBrotli.pas',
+  brotlilib in '..\..\..\..\src\others\pascal_brotli\brotlilib.pas',
+  brotlistream in '..\..\..\..\src\others\pascal_brotli\brotlistream.pas';
 
 end.

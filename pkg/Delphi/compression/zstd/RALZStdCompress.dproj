@@ -100,7 +100,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>..\compiled</DCC_DcuOutput>
+        <DCC_DcuOutput>..\..\..\..\compiled</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -212,9 +212,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="PascalRAL.dcp"/>
-        <DCCReference Include="..\RALCompressZStd.pas"/>
-        <DCCReference Include="..\ZSTD\ZSTD.pas"/>
-        <DCCReference Include="..\ZSTD\ZSTDLib.pas"/>
+        <DCCReference Include="..\..\..\..\src\others\RALCompressZStd.pas"/>
+        <DCCReference Include="..\..\..\..\src\others\ZSTD\ZSTD.pas"/>
+        <DCCReference Include="..\..\..\..\src\others\ZSTD\ZSTDLib.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -256,7 +256,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALZStdCompress.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALZStdCompress.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>RALZStdCompress.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
