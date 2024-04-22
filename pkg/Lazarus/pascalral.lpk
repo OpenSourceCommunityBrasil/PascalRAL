@@ -9,7 +9,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils;..\..\src\database;..\..\..\external\zstandart"/>
+        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils;..\..\src\database"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
       <Linking>

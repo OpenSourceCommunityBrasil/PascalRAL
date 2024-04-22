@@ -82,8 +82,8 @@ end;
     vStr := TStringsPropEditorFrm.Create(nil);
     try
       vStr.Memo.Text := GetValue;
-      vStr.ShowModal;
-      SetValue(vStr.Memo.Text);
+      if vStr.ShowModal = 1 then // mrOK
+        SetValue(vStr.Memo.Text);
     finally
       FreeAndNil(vStr);
     end;
@@ -97,8 +97,8 @@ end;
     vStr := TStringsEditDlg.Create(nil);
     try
       vStr.Memo.Text := GetValue;
-      vStr.ShowModal;
-      SetValue(vStr.Memo.Text);
+      if vStr.ShowModal = 1 then // mrOK
+        SetValue(vStr.Memo.Text);
     finally
       FreeAndNil(vStr);
     end;
