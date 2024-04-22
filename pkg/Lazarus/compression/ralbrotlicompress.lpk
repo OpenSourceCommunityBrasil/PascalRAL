@@ -2,30 +2,30 @@
 <CONFIG>
   <Package Version="5">
     <PathDelim Value="\"/>
-    <Name Value="ralzstdcompress"/>
+    <Name Value="ralbrotlicompress"/>
     <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..;..\ZSTD"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+        <OtherUnitFiles Value="..\..\..\src\others;..\..\..\src\others\pascal_brotli"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\RALCompressZStd.pas"/>
-        <UnitName Value="RALCompressZStd"/>
+        <Filename Value="..\..\..\src\others\RALCompressBrotli.pas"/>
+        <UnitName Value="RALCompressBrotli"/>
       </Item1>
       <Item2>
-        <Filename Value="..\ZSTD\ZSTD.pas"/>
-        <UnitName Value="ZSTD"/>
+        <Filename Value="..\..\..\src\others\pascal_brotli\brotlilib.pas"/>
+        <UnitName Value="brotlilib"/>
       </Item2>
       <Item3>
-        <Filename Value="..\ZSTD\ZSTDLib.pas"/>
-        <UnitName Value="ZSTDLib"/>
+        <Filename Value="..\..\..\src\others\pascal_brotli\brotlistream.pas"/>
+        <UnitName Value="brotlistream"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
