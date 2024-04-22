@@ -88,7 +88,6 @@ type
   /// Internal CORS configuration of Server
   TRALCORSOptions = class(TPersistent)
   private
-    FEnabled: boolean;
     FAllowOrigin: StringRAL;
     FAllowHeaders: TStringList;
     FMaxAge: IntegerRAL;
@@ -104,7 +103,6 @@ type
   published
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
-    property Enabled: boolean read FEnabled write FEnabled;
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
@@ -190,8 +188,8 @@ type
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
-    procedure CheckCORS(ARoute: TRALRoute; ARequest: TRALRequest;
-      AResponse: TRALResponse);
+    procedure CheckCORS(AAllowOptions : boolean; AAllowMethods: StringRAL;
+                        ARequest: TRALRequest; AResponse: TRALResponse);
     /// Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
     /// Removes a fixed subroute used by other components
@@ -243,8 +241,7 @@ type
     property Routes: TRALRoutes read FRoutes write FRoutes;
     property Security: TRALSecurity read FSecurity write FSecurity;
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout
-      default 30000;
+    property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
 
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
@@ -306,7 +303,6 @@ end;
 constructor TRALCORSOptions.Create;
 begin
   inherited;
-  FEnabled := False;
   FAllowOrigin := '*';
   FMaxAge := 86400;
 
@@ -425,27 +421,17 @@ begin
   Result := False;
 end;
 
-procedure TRALServer.CheckCORS(ARoute: TRALRoute; ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALServer.CheckCORS(AAllowOptions : boolean; AAllowMethods: StringRAL;
+                              ARequest: TRALRequest; AResponse: TRALResponse);
 begin
-  if FCORSOptions.Enabled then
+  if AAllowOptions then
   begin
     AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin, rpkHEADER);
-    if ARequest.Method = amOPTIONS then
-    begin
-      AResponse.Params.AddParam('Access-Control-Allow-Methods', ARoute.GetAllowMethods, rpkHEADER);
-      AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders, rpkHEADER);
-      if FCORSOptions.MaxAge > 0 then
-        AResponse.Params.AddParam('Access-Control-Max-Age', IntToStr(FCORSOptions.MaxAge), rpkHEADER);
-    end
-    else
-    begin
-      ARoute.Execute(ARequest, AResponse);
-    end;
-  end
-  else
-  begin
-    ARoute.Execute(ARequest, AResponse);
+    AResponse.Params.AddParam('Access-Control-Allow-Methods', AAllowMethods, rpkHEADER);
+    AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders, rpkHEADER);
+
+    if FCORSOptions.MaxAge > 0 then
+      AResponse.Params.AddParam('Access-Control-Max-Age', IntToStr(FCORSOptions.MaxAge), rpkHEADER);
   end;
 end;
 
@@ -514,7 +500,7 @@ var
   vCheckBruteForceTries : boolean;
   vCheck_Authentication : boolean;
 
-label aSTATUS, aOK, a401, a403, a404, aFIM;
+label aSTATUS, aAUTH, aOK, a401, a403, a404, aFIM;
 
 begin
   if AResponse.StatusCode >= 400 then
@@ -546,11 +532,19 @@ begin
 
   if Assigned(vRoute) then
   begin
-    if vRoute.isMethodAllowed(ARequest.Method) then
+    CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods,  ARequest, AResponse);
+    if ARequest.Method = amOPTIONS then
+    begin
+      if vRoute.IsMethodAllowed(amOPTIONS) then
+        goto aFIM
+      else
+        goto a404
+    end
+    else if vRoute.IsMethodAllowed(ARequest.Method) then
     begin
       if FAuthentication <> nil then
       begin
-        if vRoute.isMethodSkipped(ARequest.Method) then
+        if vRoute.IsMethodSkipped(ARequest.Method) then
         begin
           goto aOK
         end
@@ -580,20 +574,33 @@ begin
   end
   else if (ARequest.Query = '/') and (FShowServerStatus) then
     goto aSTATUS
+  else if (ARequest.Query <> '/') and (Assigned(FAuthentication)) then
+    goto aAUTH
   else
     goto a404;
 
 aSTATUS:
   begin
-    vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
-    AResponse.Answer(200, vString, rctTEXTHTML);
+    CheckCORS(True, 'GET', ARequest, AResponse);
+    if ARequest.Method <> amOPTIONS then begin
+      vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
+      AResponse.Answer(200, vString, rctTEXTHTML);
+    end;
+    goto aFIM;
+  end;
+
+aAUTH:
+  begin
+    CheckCORS(True, 'GET, POST', ARequest, AResponse);
+    if ARequest.Method <> amOPTIONS then
+      FAuthentication.BeforeValidate(ARequest, AResponse);
     goto aFIM;
   end;
 
 aOK:
   begin
     Security.UnblockClient(ARequest.ClientInfo.IP);
-    CheckCORS(vRoute, ARequest, AResponse);
+    vRoute.Execute(ARequest, AResponse);
     goto aFIM;
   end;
 
@@ -621,8 +628,6 @@ a404:
 
 aFIM:
   begin
-    AResponse.ContentDispositionInline := ARequest.ContentDispositionInline;
-
     if Assigned(FOnResponse) then
       FOnResponse(ARequest, AResponse);
 

@@ -154,9 +154,12 @@ var
   vInt: IntegerRAL;
 begin
   FQuery := AValue;
+  
   vInt := Pos('?', FQuery);
   if vInt > 0 then
     Delete(FQuery, vInt, Length(FQuery));
+
+  FQuery := FixRoute(FQuery);
 end;
 
 procedure TRALRequest.Clone(ASource: TRALRequest);

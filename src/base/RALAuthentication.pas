@@ -55,6 +55,7 @@ type
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     /// Main method of authenticator, all validations must be done here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
+
     property AuthType: TRALAuthTypes read FAuthType;
   end;
 
@@ -623,11 +624,9 @@ begin
     vJWT.Header.Algorithm := FAlgorithm;
     vJWT.SignSecretKey := FSignSecretKey;
 
-    // vJWT.Header.createKeyID;
-
     vJWT.Payload.AsJSON := AJSONParams;
-    vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
-    // vJWT.Payload.createNewId;
+    if FExpSecs > 0 then
+      vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
 
     AJSONParams := vJWT.Payload.AsJSON;
 
