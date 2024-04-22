@@ -38,6 +38,7 @@
     <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="PascalRAL"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="LCL"/>

@@ -30,16 +30,21 @@
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="3">
+    <RequiredPkgs Count="4">
       <Item1>
-        <PackageName Value="LCL"/>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="zcomponent"/>
+        <PackageName Value="LCL"/>
       </Item2>
       <Item3>
-        <PackageName Value="FCL"/>
+        <PackageName Value="zcomponent"/>
+        <MinVersion Major="8" Valid="True"/>
       </Item3>
+      <Item4>
+        <PackageName Value="FCL"/>
+      </Item4>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
