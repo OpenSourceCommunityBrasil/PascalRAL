@@ -127,7 +127,7 @@ var
   vStr: TStringList;
   vInt: Integer;
 begin
-  vStr := TRALCompress.GetInstaledList;
+  vStr := TRALCompress.GetInstalledList;
   try
     for vInt := 0 to Pred(vStr.Count) do
       Proc(vStr.Strings[vInt]);

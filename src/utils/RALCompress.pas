@@ -37,7 +37,7 @@ type
     procedure DecompressFile(AInFile, AOutFile: StringRAL);
 
     class function GetSuportedCompress : StringRAL;
-    class function GetInstaledList : TStringList;
+    class function GetInstalledList : TStringList;
     class procedure UpdateDeclaredClasses;
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
@@ -175,7 +175,7 @@ begin
   end;
 end;
 
-class function TRALCompress.GetInstaledList: TStringList;
+class function TRALCompress.GetInstalledList: TStringList;
 var
   vLib: TRALCompressLibs;
   vCompress: TRALCompressClass;
