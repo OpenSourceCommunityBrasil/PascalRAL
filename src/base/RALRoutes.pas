@@ -179,7 +179,7 @@ begin
   if FURIParams = AValue then
     Exit;
 
-  if Trim(AValue.Text) <> ''
+  if Trim(AValue.Text) <> '' then
     FAllowURIParams := True;
 
   FURIParams.Text := AValue.Text;
