@@ -135,26 +135,29 @@
         <UnitName Value="RALCompressZLib"/>
       </Item27>
       <Item28>
-        <Filename Value="..\..\src\base\PascalRAL.inc"/>
-        <Type Value="Include"/>
-      </Item28>
-      <Item29>
-        <Filename Value="PascalRAL.lrs"/>
-        <Type Value="LRS"/>
-      </Item29>
-      <Item30>
         <Filename Value="..\..\src\base\RALWEBModule.pas"/>
         <UnitName Value="RALWEBModule"/>
+      </Item28>
+      <Item29>
+        <Filename Value="..\..\src\base\PascalRAL.inc"/>
+        <Type Value="Include"/>
+      </Item29>
+      <Item30>
+        <Filename Value="PascalRAL.lrs"/>
+        <Type Value="LRS"/>
       </Item30>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="2">
+    <RequiredPkgs Count="3">
       <Item1>
-        <PackageName Value="LCL"/>
+        <PackageName Value="IDEIntf"/>
       </Item1>
       <Item2>
-        <PackageName Value="FCL"/>
+        <PackageName Value="LCL"/>
       </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
