@@ -7,12 +7,12 @@ interface
 
 uses
   {$IFDEF FPC}
-  LResources,
+  LResources, PropEdits, StringsPropEditDlg,
   {$ELSE}
     {$IFDEF DELPHI2005UP}
     ToolsAPI,
     {$ENDIF}
-  DesignEditors, DesignIntf, StringsEdit,
+    DesignEditors, DesignIntf, StringsEdit,
   {$ENDIF}
   {$IFDEF RALWindows}
   Windows,
@@ -21,7 +21,6 @@ uses
   RALConsts, RALAuthentication, RALWebModule, RALClient, RALCompress,
   RALTypes, RALServer;
 
-{$IFNDEF FPC}
 type
   TRALBaseURLEditor = class(TClassProperty)
   public
@@ -35,7 +34,6 @@ type
   public
     procedure GetValues(Proc: TGetStrProc); override;
   end;
-{$ENDIF}
 
 procedure Register;
 
@@ -68,34 +66,48 @@ begin
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);
-  {$IFNDEF FPC}
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClientBase, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
-  {$ENDIF}
 end;
 
-{$IFNDEF FPC}
 { TRALBaseURLEditor }
 
-procedure TRALBaseURLEditor.Edit;
-var
-  vStr : TStringsEditDlg;
-begin
-  inherited;
-  vStr := TStringsEditDlg.Create(nil);
-  try
-    vStr.Memo.Text := GetValue;
-    vStr.ShowModal;
-    SetValue(vStr.Memo.Text);
-  finally
-    FreeAndNil(vStr);
+{$IFDEF FPC}
+  procedure TRALBaseURLEditor.Edit;
+  var
+    vStr : TStringsPropEditorFrm;
+  begin
+    inherited;
+    vStr := TStringsPropEditorFrm.Create(nil);
+    try
+      vStr.Memo.Text := GetValue;
+      vStr.ShowModal;
+      SetValue(vStr.Memo.Text);
+    finally
+      FreeAndNil(vStr);
+    end;
   end;
-end;
+{$ELSE}
+  procedure TRALBaseURLEditor.Edit;
+  var
+    vStr : TStringsEditDlg;
+  begin
+    inherited;
+    vStr := TStringsEditDlg.Create(nil);
+    try
+      vStr.Memo.Text := GetValue;
+      vStr.ShowModal;
+      SetValue(vStr.Memo.Text);
+    finally
+      FreeAndNil(vStr);
+    end;
+  end;
+{$ENDIF}
 
 function TRALBaseURLEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result := [paDialog, paValueEditable];
+  Result := [paDialog];
 end;
 
 function TRALBaseURLEditor.GetValue: string;
@@ -123,7 +135,6 @@ begin
     FreeAndNil(vStr);
   end;
 end;
-{$ENDIF}
 
 {$IFDEF FPC}
 initialization
