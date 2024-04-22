@@ -26,7 +26,6 @@ package RALZStdCompress;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'PascalRAL | ZStd Compression Library'}
-{$RUNONLY}
 {$IMPLICITBUILD ON}
 
 requires

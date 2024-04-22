@@ -111,7 +111,6 @@
         <GenPackage>true</GenPackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
-        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
         <SanitizedProjectName>RALZStdCompress</SanitizedProjectName>
         <DCC_UnitSearchPath>$(PascalRAL)\utils;$(PascalRAL)\base;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Description>PascalRAL | ZStd Compression Library</DCC_Description>

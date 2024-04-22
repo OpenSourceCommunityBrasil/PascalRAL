@@ -26,7 +26,6 @@ package RALBrotliCompress;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'PascalRAL | Brotli Compression Library'}
-{$RUNONLY}
 {$IMPLICITBUILD ON}
 
 requires

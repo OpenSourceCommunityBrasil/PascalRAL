@@ -90,7 +90,6 @@
         <SanitizedProjectName>RALBrotliCompress</SanitizedProjectName>
         <DCC_UnitSearchPath>$(PascalRAL)\base;$(PascalRAL)\utils;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Description>PascalRAL | Brotli Compression Library</DCC_Description>
-        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
