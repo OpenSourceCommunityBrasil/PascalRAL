@@ -52,18 +52,18 @@ type
     function ReadDateTime(AStream : TStream) : TDateTime;
     function ReadStream(AStream : TStream) : TStream;
 
-    procedure WriteFieldString(AField : TField; AValue : StringRAL);
-    procedure WriteFieldShortint(AField : TField; AValue : Shortint);
-    procedure WriteFieldByte(AField : TField; AValue : Byte);
-    procedure WriteFieldLongWord(AField : TField; AValue : LongWord);
-    procedure WriteFieldSmallint(AField : TField; AValue : Smallint);
-    procedure WriteFieldWord(AField : TField; AValue : Word);
-    procedure WriteFieldInteger(AField : TField; AValue : Integer);
-    procedure WriteFieldInt64(AField : TField; AValue : Int64RAL);
-    procedure WriteFieldBoolean(AField : TField; AValue : Boolean);
-    procedure WriteFieldFloat(AField : TField; AValue : Double);
-    procedure WriteFieldDateTime(AField : TField; AValue : TDateTime);
-    procedure WriteFieldStream(AField : TField; AValue : TStream);
+    procedure ReadFieldString(AField : TField; AValue : StringRAL);
+    procedure ReadFieldShortint(AField : TField; AValue : Shortint);
+    procedure ReadFieldByte(AField : TField; AValue : Byte);
+    procedure ReadFieldLongWord(AField : TField; AValue : LongWord);
+    procedure ReadFieldSmallint(AField : TField; AValue : Smallint);
+    procedure ReadFieldWord(AField : TField; AValue : Word);
+    procedure ReadFieldInteger(AField : TField; AValue : Integer);
+    procedure ReadFieldInt64(AField : TField; AValue : Int64RAL);
+    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
+    procedure ReadFieldFloat(AField : TField; AValue : Double);
+    procedure ReadFieldDateTime(AField : TField; AValue : TDateTime);
+    procedure ReadFieldStream(AField : TField; AValue : TStream);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -379,21 +379,21 @@ begin
       if not vIsNull then
       begin
         case FFieldsTypes[vInt] of
-          sftShortInt : WriteFieldShortint(FFieldsFounds[vInt], ReadShortint(AStream));
-          sftSmallInt : WriteFieldSmallint(FFieldsFounds[vInt], ReadSmallint(AStream));
-          sftInteger  : WriteFieldInteger(FFieldsFounds[vInt], ReadInteger(AStream));
-          sftInt64    : WriteFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftByte     : WriteFieldByte(FFieldsFounds[vInt], ReadByte(AStream));
-          sftWord     : WriteFieldWord(FFieldsFounds[vInt], ReadWord(AStream));
-          sftCardinal : WriteFieldLongWord(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftQWord    : WriteFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftDouble   : WriteFieldFloat(FFieldsFounds[vInt], ReadFloat(AStream));
-          sftBoolean  : WriteFieldBoolean(FFieldsFounds[vInt], ReadBoolean(AStream));
-          sftString   : WriteFieldString(FFieldsFounds[vInt], ReadString(AStream));
+          sftShortInt : ReadFieldShortint(FFieldsFounds[vInt], ReadShortint(AStream));
+          sftSmallInt : ReadFieldSmallint(FFieldsFounds[vInt], ReadSmallint(AStream));
+          sftInteger  : ReadFieldInteger(FFieldsFounds[vInt], ReadInteger(AStream));
+          sftInt64    : ReadFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftByte     : ReadFieldByte(FFieldsFounds[vInt], ReadByte(AStream));
+          sftWord     : ReadFieldWord(FFieldsFounds[vInt], ReadWord(AStream));
+          sftCardinal : ReadFieldLongWord(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftQWord    : ReadFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftDouble   : ReadFieldFloat(FFieldsFounds[vInt], ReadFloat(AStream));
+          sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt], ReadBoolean(AStream));
+          sftString   : ReadFieldString(FFieldsFounds[vInt], ReadString(AStream));
           sftBlob     : begin
             vMem := ReadStream(AStream);
             try
-              WriteFieldStream(FFieldsFounds[vInt], vMem);
+              ReadFieldStream(FFieldsFounds[vInt], vMem);
             finally
               vMem.Free
             end;
@@ -401,12 +401,12 @@ begin
           sftMemo     : begin
             vMem := ReadStream(AStream);
             try
-              WriteFieldStream(FFieldsFounds[vInt], vMem);
+              ReadFieldStream(FFieldsFounds[vInt], vMem);
             finally
               vMem.Free
             end;
           end;
-          sftDateTime : WriteFieldDateTime(FFieldsFounds[vInt], ReadDateTime(AStream));
+          sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt], ReadDateTime(AStream));
         end;
       end;
     end;
@@ -499,73 +499,73 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldString(AField: TField; AValue: StringRAL);
+procedure TRALDBStorageBIN.ReadFieldString(AField: TField; AValue: StringRAL);
 begin
   if AField <> nil then
     AField.AsString := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldShortint(AField: TField; AValue: Shortint);
+procedure TRALDBStorageBIN.ReadFieldShortint(AField: TField; AValue: Shortint);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldByte(AField: TField; AValue: Byte);
+procedure TRALDBStorageBIN.ReadFieldByte(AField: TField; AValue: Byte);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldLongWord(AField: TField; AValue: LongWord);
+procedure TRALDBStorageBIN.ReadFieldLongWord(AField: TField; AValue: LongWord);
 begin
   if AField <> nil then
     AField.AsLargeInt := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldSmallint(AField: TField; AValue: Smallint);
+procedure TRALDBStorageBIN.ReadFieldSmallint(AField: TField; AValue: Smallint);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldWord(AField: TField; AValue: Word);
+procedure TRALDBStorageBIN.ReadFieldWord(AField: TField; AValue: Word);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldInteger(AField: TField; AValue: Integer);
+procedure TRALDBStorageBIN.ReadFieldInteger(AField: TField; AValue: Integer);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldInt64(AField: TField; AValue: Int64RAL);
+procedure TRALDBStorageBIN.ReadFieldInt64(AField: TField; AValue: Int64RAL);
 begin
   if AField <> nil then
     AField.AsLargeInt := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldBoolean(AField: TField; AValue: Boolean);
+procedure TRALDBStorageBIN.ReadFieldBoolean(AField: TField; AValue: Boolean);
 begin
   if AField <> nil then
     AField.AsBoolean := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldFloat(AField: TField; AValue: Double);
+procedure TRALDBStorageBIN.ReadFieldFloat(AField: TField; AValue: Double);
 begin
   if AField <> nil then
     AField.AsFloat := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldDateTime(AField: TField; AValue: TDateTime);
+procedure TRALDBStorageBIN.ReadFieldDateTime(AField: TField; AValue: TDateTime);
 begin
   if AField <> nil then
     AField.AsDateTime := AValue;
 end;
 
-procedure TRALDBStorageBIN.WriteFieldStream(AField: TField; AValue: TStream);
+procedure TRALDBStorageBIN.ReadFieldStream(AField: TField; AValue: TStream);
 begin
   AValue.Position := 0;
   if AField <> nil then

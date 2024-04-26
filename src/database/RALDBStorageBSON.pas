@@ -70,8 +70,18 @@ procedure TRALDBStorageBJON.WriteRecords(ADataset: TDataSet; ADocument: TBSONDoc
 var
   vRecords, vRecord : PBSONItemArray;
   vInt : IntegerRAL;
+  vBookMark: TBookMark;
 begin
   vRecords := TBSONItemArray.Create('rc');
+
+  ADataset.DisableControls;
+
+  if not ADataset.IsUniDirectional then
+  begin
+    vBookMark := ADataset.GetBookmark;
+    ADataset.First;
+  end;
+
   while not(ADataset.Eof) do
   begin
     vRecord := TBSONItemArray.Create('');
@@ -85,6 +95,14 @@ begin
 
     ADataset.Next;
   end;
+
+  if not ADataset.IsUniDirectional then
+  begin
+    ADataset.GotoBookmark(vBookMark);
+    ADataset.FreeBookmark(vBookMark);
+  end;
+
+  ADataset.EnableControls;
 
   ADocument.Values.Add(vRecords);
 end;
@@ -175,7 +193,7 @@ end;
 
 function TRALDBStorageBJONLink.GetContentType: StringRAL;
 begin
-  Result := rctAPPLICATIONOCTETSTREAM;
+  Result := rctAPPLICATIONBSON;
 end;
 
 function TRALDBStorageBJONLink.GetStorage: TRALDBStorage;
