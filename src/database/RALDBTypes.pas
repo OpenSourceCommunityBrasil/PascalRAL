@@ -33,6 +33,7 @@ type
   public
     class function FieldTypeToRALFieldType(AFieldType : TFieldType) : TRALFieldType;
     class function RALFieldTypeToFieldType(AFieldType : TRALFieldType) : TFieldType;
+    class function FieldProviderFlags(AField : TField) : Byte;
   end;
 
 implementation
@@ -138,6 +139,29 @@ begin
     sftMemo     : Result := ftMemo;
     sftDateTime : Result := ftDateTime;
   end;
+end;
+
+class function TRALDB.FieldProviderFlags(AField: TField): Byte;
+begin
+  Result := 0;
+  if AField.ReadOnly then
+    Result := Result + 1;
+  if AField.Required then
+    Result := Result + 2;
+  if pfHidden in AField.ProviderFlags then
+    Result := Result + 4;
+  if pfInKey in AField.ProviderFlags then
+    Result := Result + 8;
+  if pfInUpdate in AField.ProviderFlags then
+    Result := Result + 16;
+  if pfInWhere in AField.ProviderFlags then
+    Result := Result + 32;
+  {$IFDEF FPC}
+  if pfRefreshOnInsert in AField.ProviderFlags then
+    Result := Result + 64;
+  if pfRefreshOnUpdate in AField.ProviderFlags then
+    Result := Result + 128;
+  {$ENDIF}
 end;
 
 end.

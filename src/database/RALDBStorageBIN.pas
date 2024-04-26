@@ -12,37 +12,64 @@ type
 
   TRALDBStorageBIN = class(TRALDBStorage)
   private
-    FPosRecs : Int64RAL;
+    FFieldsNames  : array of StringRAL;
+    FFieldsTypes  : array of TRALFieldType;
+    FFieldsFounds : array of TField;
   protected
-    procedure BeginWrite; override;
-    procedure BeginWriteFields(AFields : IntegerRAL); override;
+    // write
+    procedure WriteHeader(AStream : TStream);
+    procedure WriteFields(ADataset : TDataSet; AStream : TStream);
+    procedure WriteRecords(ADataset : TDataSet; AStream : TStream);
 
-    procedure EndWriteFields; override;
+    procedure WriteString(AStream : TStream; AValue : StringRAL);
+    procedure WriteShortint(AStream : TStream; AValue : Shortint);
+    procedure WriteByte(AStream : TStream; AValue : Byte);
+    procedure WriteLongWord(AStream : TStream; AValue : LongWord);
+    procedure WriteSmallint(AStream : TStream; AValue : Smallint);
+    procedure WriteWord(AStream : TStream; AValue : Word);
+    procedure WriteInteger(AStream : TStream; AValue : Integer);
+    procedure WriteInt64(AStream : TStream; AValue : Int64RAL);
+    procedure WriteBoolean(AStream : TStream; AValue : Boolean);
+    procedure WriteFloat(AStream : TStream; AValue : Double);
+    procedure WriteDateTime(AStream : TStream; AValue : TDateTime);
+    procedure WriteStream(AStream : TStream; AValue : TStream);
 
-    procedure BeginWriteRecords; override;
+    // read
+    function ReadHeader(AStream : TStream) : boolean;
+    procedure ReadFields(ADataset : TDataSet; AStream : TStream);
+    procedure ReadRecords(ADataset : TDataSet; AStream : TStream);
 
-    procedure WriteField(AName : StringRAL;
-                         AType : TRALFieldType;
-                         AFlags : Byte;
-                         ASize : IntegerRAL); override;
+    function ReadString(AStream : TStream) : StringRAL;
+    function ReadShortint(AStream : TStream) : Shortint;
+    function ReadByte(AStream : TStream) : Byte;
+    function ReadLongWord(AStream : TStream) : LongWord;
+    function ReadSmallint(AStream : TStream) : Smallint;
+    function ReadWord(AStream : TStream): Word;
+    function ReadInteger(AStream : TStream) : Integer;
+    function ReadInt64(AStream : TStream) : Int64RAL;
+    function ReadBoolean(AStream : TStream) : Boolean;
+    function ReadFloat(AStream : TStream) : Double;
+    function ReadDateTime(AStream : TStream) : TDateTime;
+    function ReadStream(AStream : TStream) : TStream;
 
-    procedure BeginWriteRecord; override;
-    procedure EndWriteRecord; override;
-
-    procedure EndWriteRecords(ARecords : Int64RAL); override;
-    procedure EndWrite; override;
-
-    procedure WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean); override;
-    procedure WriteRecordString(AFieldName : StringRAL; AValue : StringRAL); override;
-    procedure WriteRecordInteger(AFieldName : StringRAL; AValue : Int64RAL; ASize : IntegerRAL); override;
-    procedure WriteRecordBoolean(AFieldName : StringRAL; AValue : Boolean); override;
-    procedure WriteRecordDouble(AFieldName : StringRAL; AValue : DoubleRAL); override;
-    procedure WriteRecordDateTime(AFieldName : StringRAL; AValue : TDateTime); override;
-    procedure WriteRecordBlob(AFieldName : StringRAL; AValue : TStream); override;
-    procedure WriteRecordMemo(AFieldName : StringRAL; AValue : TStream); override;
-
-    procedure BeginRead; override;
+    procedure WriteFieldString(AField : TField; AValue : StringRAL);
+    procedure WriteFieldShortint(AField : TField; AValue : Shortint);
+    procedure WriteFieldByte(AField : TField; AValue : Byte);
+    procedure WriteFieldLongWord(AField : TField; AValue : LongWord);
+    procedure WriteFieldSmallint(AField : TField; AValue : Smallint);
+    procedure WriteFieldWord(AField : TField; AValue : Word);
+    procedure WriteFieldInteger(AField : TField; AValue : Integer);
+    procedure WriteFieldInt64(AField : TField; AValue : Int64RAL);
+    procedure WriteFieldBoolean(AField : TField; AValue : Boolean);
+    procedure WriteFieldFloat(AField : TField; AValue : Double);
+    procedure WriteFieldDateTime(AField : TField; AValue : TDateTime);
+    procedure WriteFieldStream(AField : TField; AValue : TStream);
+  public
+    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
   end;
+
+  { TRALDBStorageBINLink }
 
   TRALDBStorageBINLink = class(TRALDBStorageLink)
   protected
@@ -55,7 +82,7 @@ implementation
 
 { TRALDBStorageBIN }
 
-procedure TRALDBStorageBIN.BeginWrite;
+procedure TRALDBStorageBIN.WriteHeader(AStream: TStream);
 var
   vHeader : TBytes;
 begin
@@ -65,172 +92,500 @@ begin
   vHeader[2] := 12; // L
   vHeader[3] := GetStoreVersion; // version
 
-  Stream.Write(vHeader, Length(vHeader));
+  AStream.Write(vHeader[0], Length(vHeader));
 end;
 
-procedure TRALDBStorageBIN.BeginWriteFields(AFields : IntegerRAL);
-begin
-  Stream.Write(AFields, SizeOf(AFields));
-end;
-
-procedure TRALDBStorageBIN.BeginWriteRecord;
-begin
-  // nada
-end;
-
-procedure TRALDBStorageBIN.BeginWriteRecords;
+procedure TRALDBStorageBIN.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
-  vRecords : Int64RAL;
+  vInt: IntegerRAL;
+  vType: TRALFieldType;
+  vByte: Byte;
 begin
-  FPosRecs := Stream.Position;
+  // fieldscount
+  WriteInteger(AStream, ADataset.FieldCount);
+
+  SetLength(FFieldsTypes, ADataset.FieldCount);
+
+  for vInt := 0 to Pred(ADataset.FieldCount) do
+  begin
+    // name
+    WriteString(AStream, CharCaseValue(ADataset.Fields[vInt].FieldName));
+
+    // type
+    vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
+    WriteByte(AStream, Byte(Ord(vType)));
+    FFieldsTypes[vInt] := vType;
+
+    // flags
+    vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
+    WriteByte(AStream, Byte(Ord(vType)));
+
+    // size
+    WriteInteger(AStream, ADataset.Fields[vInt].Size);
+  end;
+end;
+
+procedure TRALDBStorageBIN.WriteRecords(ADataset: TDataSet; AStream: TStream);
+var
+  vRecords, vPosRecords, vPosTemp: Int64RAL;
+  vInt: IntegerRAL;
+  vBookMark : TBookMark;
+  vMem : TMemoryStream;
+begin
+  vPosRecords := AStream.Position;
+
+  // records count
   vRecords := 0;
-  Stream.Write(vRecords, SizeOf(vRecords));
+  WriteInt64(AStream, vRecords);
+
+  ADataset.DisableControls;
+
+  if not ADataset.IsUniDirectional then
+  begin
+    vBookMark := ADataset.GetBookmark;
+    ADataset.First;
+  end;
+
+  while not ADataset.EOF do
+  begin
+    for vInt := 0 to Pred(ADataset.FieldCount) do
+    begin
+      // is null
+      WriteBoolean(AStream, ADataset.Fields[vInt].IsNull);
+
+      if not ADataset.Fields[vInt].IsNull then
+      begin
+        case FFieldsTypes[vInt] of
+          sftShortInt : WriteShortint(AStream, ADataset.Fields[vInt].AsInteger);
+          sftSmallInt : WriteSmallint(AStream, ADataset.Fields[vInt].AsInteger);
+          sftInteger  : WriteInteger(AStream, ADataset.Fields[vInt].AsInteger);
+          sftInt64    : WriteInt64(AStream, ADataset.Fields[vInt].AsLargeInt);
+          sftByte     : WriteByte(AStream, ADataset.Fields[vInt].AsInteger);
+          sftWord     : WriteWord(AStream, ADataset.Fields[vInt].AsInteger);
+          sftCardinal : WriteLongWord(AStream, ADataset.Fields[vInt].AsLargeInt);
+          sftQWord    : WriteInt64(AStream, ADataset.Fields[vInt].AsLargeInt);
+          sftDouble   : WriteFloat(AStream, ADataset.Fields[vInt].AsFloat);
+          sftBoolean  : WriteBoolean(AStream, ADataset.Fields[vInt].AsBoolean);
+          sftString   : WriteString(AStream, ADataset.Fields[vInt].AsString);
+          sftBlob     : begin
+            vMem := TMemoryStream.Create;
+            try
+              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+              WriteStream(AStream, vMem);
+            finally
+              vMem.Free
+            end;
+          end;
+          sftMemo     : begin
+            vMem := TMemoryStream.Create;
+            try
+              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+              WriteStream(AStream, vMem);
+            finally
+              vMem.Free
+            end;
+          end;
+          sftDateTime : WriteDateTime(AStream, ADataset.Fields[vInt].AsDateTime);
+        end;
+      end;
+    end;
+    ADataset.Next;
+    vRecords := vRecords + 1;
+  end;
+
+  if not ADataset.IsUniDirectional then
+  begin
+    ADataset.GotoBookmark(vBookMark);
+    ADataset.FreeBookmark(vBookMark);
+  end;
+
+  ADataset.EnableControls;
+
+  // records count
+  vPosTemp := AStream.Position;
+  AStream.Position := vPosRecords;
+  WriteInt64(AStream, vRecords);
+  AStream.Position := vPosTemp;
+
+  SetLength(FFieldsTypes, 0);
 end;
 
-procedure TRALDBStorageBIN.EndWrite;
-begin
-  // nada
-end;
-
-procedure TRALDBStorageBIN.EndWriteFields;
-begin
-  // nada
-end;
-
-procedure TRALDBStorageBIN.EndWriteRecord;
-begin
-  // nada
-end;
-
-procedure TRALDBStorageBIN.EndWriteRecords(ARecords : Int64RAL);
+procedure TRALDBStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
 var
-  vPos : Int64RAL;
+  vSize : IntegerRAL;
 begin
-  vPos := Stream.Position;
-  Stream.Position := FPosRecs;
-  Stream.Write(ARecords, SizeOf(ARecords));
-  Stream.Position := vPos;
+  vSize := Length(AValue);
+  AStream.Write(vSize, SizeOf(vSize));
+  AStream.Write(AValue[POSINISTR], vSize);
 end;
 
-procedure TRALDBStorageBIN.WriteField(AName: StringRAL;
-  AType: TRALFieldType; AFlags: Byte; ASize: IntegerRAL);
-var
-  vByte : Byte;
+procedure TRALDBStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
 begin
-  AName := CharCaseValue(AName);
-
-  vByte := Length(AName);
-  Stream.Write(vByte, SizeOf(vByte));
-  Stream.Write(AName[PosIniStr], vByte);
-
-  vByte := Ord(AType);
-  Stream.Write(vByte, SizeOf(vByte));
-  Stream.Write(AFlags, SizeOf(AFlags));
-  Stream.Write(ASize, SizeOf(ASize));
+  AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteRecordBlob(AFieldName : StringRAL; AValue: TStream);
+procedure TRALDBStorageBIN.WriteByte(AStream: TStream; AValue: Byte);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteLongWord(AStream: TStream; AValue: LongWord);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteSmallint(AStream: TStream; AValue: Smallint);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteWord(AStream: TStream; AValue: Word);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteInteger(AStream: TStream; AValue: Integer);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteInt64(AStream: TStream; AValue: Int64RAL);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteBoolean(AStream: TStream; AValue: Boolean);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteFloat(AStream: TStream; AValue: Double);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteDateTime(AStream: TStream; AValue: TDateTime);
+begin
+  AStream.Write(AValue, SizeOf(AValue));
+end;
+
+procedure TRALDBStorageBIN.WriteStream(AStream: TStream; AValue: TStream);
 var
-  vInt64 : Int64RAL;
+  vSize: Int64RAL;
 begin
   AValue.Position := 0;
 
-  vInt64 := AValue.Size;
-  Stream.Write(vInt64, SizeOf(vInt64));
-  Stream.CopyFrom(AValue, AValue.Size);
+  vSize := AStream.Size;
+  AStream.Write(vSize, SizeOf(vSize));
+  AStream.CopyFrom(AValue, vSize);
 end;
 
-procedure TRALDBStorageBIN.WriteRecordBoolean(AFieldName : StringRAL; AValue: Boolean);
-begin
-  Stream.Write(AValue, SizeOf(AValue));
-end;
-
-procedure TRALDBStorageBIN.WriteRecordDateTime(AFieldName : StringRAL; AValue: TDateTime);
-begin
-  Stream.Write(AValue, SizeOf(AValue));
-end;
-
-procedure TRALDBStorageBIN.WriteRecordDouble(AFieldName : StringRAL; AValue: DoubleRAL);
-begin
-  Stream.Write(AValue, SizeOf(AValue));
-end;
-
-procedure TRALDBStorageBIN.WriteRecordInteger(AFieldName : StringRAL; AValue: Int64RAL;
-  ASize: IntegerRAL);
+function TRALDBStorageBIN.ReadHeader(AStream: TStream): boolean;
 var
-  vByte : Byte;
-  vShortInt : ShortInt;
-  vSmallInt : SmallInt;
-  vWord : Word;
-  vInteger : Integer;
-  vLongWord : LongWord;
+  vHeader : TBytes;
 begin
-  case ASize of
-    -1 : begin
-      vShortInt := AValue;
-      Stream.Write(vShortInt, SizeOf(vShortInt));
-    end;
-    1 : begin
-      vByte := AValue;
-      Stream.Write(vByte, SizeOf(vByte));
-    end;
-    -2 : begin
-      vSmallInt := AValue;
-      Stream.Write(vSmallInt, SizeOf(vSmallInt));
-    end;
-    2 : begin
-      vWord := AValue;
-      Stream.Write(vWord, SizeOf(vWord));
-    end;
-    -4 : begin
-      vInteger := AValue;
-      Stream.Write(vInteger, SizeOf(vInteger));
-    end;
-    4 : begin
-      vLongWord := AValue;
-      Stream.Write(vLongWord, SizeOf(vLongWord));
-    end;
-    8 : begin
-      Stream.Write(AValue, SizeOf(AValue));
+  Result := False;
+  SetLength(vHeader, 4);
+  AStream.Read(vHeader[0], 4);
+
+  if (vHeader[0] <> 18) or (vHeader[1] <> 01) or (vHeader[2] <> 12) or
+     (vHeader[3] <> GetStoreVersion) then
+    raise Exception.Create('Invalid Binary Format!');
+
+  Result := True;
+end;
+
+procedure TRALDBStorageBIN.ReadFields(ADataset: TDataSet; AStream: TStream);
+var
+  vInt, vFields, vSize: IntegerRAL;
+  vName: StringRAL;
+  vType: TFieldType;
+  vByte: Byte;
+begin
+  if ADataset.Active then
+    ADataset.Close;
+
+  ADataset.FieldDefs.Clear;
+
+  // fieldscount
+  vFields := ReadInteger(AStream);
+
+  SetLength(FFieldsNames, vFields);
+  SetLength(FFieldsTypes, vFields);
+  SetLength(FFieldsFounds, vFields);
+
+  for vInt := 0 to Pred(vFields) do
+  begin
+    // name
+    vName := ReadString(AStream);
+    FFieldsNames[vInt] := vName;
+
+    // type
+    vByte := ReadByte(AStream);
+    vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
+    FFieldsTypes[vInt] := TRALFieldType(vByte);
+
+    // flags
+    vByte := ReadByte(AStream);
+
+    // size
+    vSize := ReadInteger(AStream);
+
+    ADataset.FieldDefs.Add(vName, vType, vSize);
+    FFieldsFounds[vInt] := nil;
+  end;
+
+  ADataset.Open;
+
+  for vInt := 0 to Pred(ADataset.FieldCount) do
+  begin
+    vName := ADataset.Fields[vInt].FieldName;
+
+    for vSize := 0 to Pred(vFields) do
+    begin
+      if SameText(vName, FFieldsNames[vSize]) then
+      begin
+        FFieldsFounds[vSize] := ADataset.Fields[vInt];
+        Break;
+      end;
     end;
   end;
 end;
 
-procedure TRALDBStorageBIN.WriteRecordMemo(AFieldName : StringRAL; AValue: TStream);
+procedure TRALDBStorageBIN.ReadRecords(ADataset: TDataSet; AStream: TStream);
 var
-  vInt64 : Int64RAL;
+  vRecords, vInt64: Int64RAL;
+  vIsNull: boolean;
+  vMem: TStream;
+  vInt, vFields: IntegerRAL;
+begin
+  // records count
+  vRecords := ReadInt64(AStream);
+  vFields := Length(FFieldsTypes);
+
+  ADataset.DisableControls;
+
+  vInt64 := 1;
+  while vInt64 <= vRecords do
+  begin
+
+    ADataset.Append;
+
+    for vInt := 0 to Pred(vFields) do
+    begin
+      // is null
+      vIsNull := ReadBoolean(AStream);
+
+      if not vIsNull then
+      begin
+        case FFieldsTypes[vInt] of
+          sftShortInt : WriteFieldShortint(FFieldsFounds[vInt], ReadShortint(AStream));
+          sftSmallInt : WriteFieldSmallint(FFieldsFounds[vInt], ReadSmallint(AStream));
+          sftInteger  : WriteFieldInteger(FFieldsFounds[vInt], ReadInteger(AStream));
+          sftInt64    : WriteFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftByte     : WriteFieldByte(FFieldsFounds[vInt], ReadByte(AStream));
+          sftWord     : WriteFieldWord(FFieldsFounds[vInt], ReadWord(AStream));
+          sftCardinal : WriteFieldLongWord(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftQWord    : WriteFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
+          sftDouble   : WriteFieldFloat(FFieldsFounds[vInt], ReadFloat(AStream));
+          sftBoolean  : WriteFieldBoolean(FFieldsFounds[vInt], ReadBoolean(AStream));
+          sftString   : WriteFieldString(FFieldsFounds[vInt], ReadString(AStream));
+          sftBlob     : begin
+            vMem := ReadStream(AStream);
+            try
+              WriteFieldStream(FFieldsFounds[vInt], vMem);
+            finally
+              vMem.Free
+            end;
+          end;
+          sftMemo     : begin
+            vMem := ReadStream(AStream);
+            try
+              WriteFieldStream(FFieldsFounds[vInt], vMem);
+            finally
+              vMem.Free
+            end;
+          end;
+          sftDateTime : WriteFieldDateTime(FFieldsFounds[vInt], ReadDateTime(AStream));
+        end;
+      end;
+    end;
+    ADataset.Post;
+    vInt64 := vInt64 + 1;
+  end;
+
+  ADataset.EnableControls;
+
+  SetLength(FFieldsNames, 0);
+  SetLength(FFieldsTypes, 0);
+  SetLength(FFieldsFounds, 0);
+end;
+
+function TRALDBStorageBIN.ReadString(AStream: TStream): StringRAL;
+var
+  vSize: IntegerRAL;
+begin
+  Result := '';
+  vSize := 0;
+  AStream.Read(vSize, SizeOf(vSize));
+  if vSize > 0 then
+  begin
+    SetLength(Result, vSize);
+    AStream.Read(Result[POSINISTR], vSize);
+  end;
+end;
+
+function TRALDBStorageBIN.ReadShortint(AStream: TStream): Shortint;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadByte(AStream: TStream): Byte;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadLongWord(AStream: TStream): LongWord;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadSmallint(AStream: TStream): Smallint;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadWord(AStream: TStream): Word;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadInteger(AStream: TStream): Integer;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadInt64(AStream: TStream): Int64RAL;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadBoolean(AStream: TStream): Boolean;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadFloat(AStream: TStream): Double;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadDateTime(AStream: TStream): TDateTime;
+begin
+  AStream.Read(Result, SizeOf(Result));
+end;
+
+function TRALDBStorageBIN.ReadStream(AStream: TStream): TStream;
+var
+  vSize : Int64RAL;
+begin
+  Result := TMemoryStream.Create;
+  AStream.Read(vSize, SizeOf(vSize));
+  if vSize > 0 then
+  begin
+    Result.Size := vSize;
+    Result.Position := 0;
+    Result.CopyFrom(AStream, vSize);
+  end;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldString(AField: TField; AValue: StringRAL);
+begin
+  if AField <> nil then
+    AField.AsString := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldShortint(AField: TField; AValue: Shortint);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldByte(AField: TField; AValue: Byte);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldLongWord(AField: TField; AValue: LongWord);
+begin
+  if AField <> nil then
+    AField.AsLargeInt := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldSmallint(AField: TField; AValue: Smallint);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldWord(AField: TField; AValue: Word);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldInteger(AField: TField; AValue: Integer);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldInt64(AField: TField; AValue: Int64RAL);
+begin
+  if AField <> nil then
+    AField.AsLargeInt := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldBoolean(AField: TField; AValue: Boolean);
+begin
+  if AField <> nil then
+    AField.AsBoolean := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldFloat(AField: TField; AValue: Double);
+begin
+  if AField <> nil then
+    AField.AsFloat := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldDateTime(AField: TField; AValue: TDateTime);
+begin
+  if AField <> nil then
+    AField.AsDateTime := AValue;
+end;
+
+procedure TRALDBStorageBIN.WriteFieldStream(AField: TField; AValue: TStream);
 begin
   AValue.Position := 0;
-
-  vInt64 := AValue.Size;
-  Stream.Write(vInt64, SizeOf(vInt64));
-  Stream.CopyFrom(AValue, AValue.Size);
+  if AField <> nil then
+    TBlobField(AField).LoadFromStream(AValue);
 end;
 
-procedure TRALDBStorageBIN.BeginRead;
-var
-  vBytes : TBytes;
+procedure TRALDBStorageBIN.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
-  SetLength(vBytes, 4);
-  Stream.Read(vBytes[0], 4);
-  // header
-  if (vBytes[0] <> 18) or (vBytes[1] <> 1) and (vBytes[2] <> 12) and
-     (vBytes[3] <> GetStoreVersion) then
-    raise Exception.Create('Arquivo não é um Storage RAL Binary');
+  WriteHeader(AStream);
+  WriteFields(ADataset, AStream);
+  WriteRecords(ADataset, AStream);
 end;
 
-procedure TRALDBStorageBIN.WriteRecordNull(AFieldName : StringRAL; AIsNull : Boolean);
+procedure TRALDBStorageBIN.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 begin
-  Stream.Write(AIsNull, SizeOf(AIsNull));
-end;
-
-procedure TRALDBStorageBIN.WriteRecordString(AFieldName : StringRAL; AValue: StringRAL);
-var
-  vInt64 : Int64RAL;
-begin
-  vInt64 := Length(AValue);
-  Stream.Write(vInt64, SizeOf(vInt64));
-  Stream.Write(AValue[PosIniStr], vInt64);
+  if ReadHeader(AStream) then
+  begin
+    ReadFields(ADataset, AStream);
+    ReadRecords(ADataset, AStream);
+  end;
 end;
 
 { TRALDBStorageBINLink }
