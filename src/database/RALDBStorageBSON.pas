@@ -23,9 +23,9 @@ type
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
   end;
 
-  { TRALDBStorageBJONLink }
+  { TRALDBStorageBSONLink }
 
-  TRALDBStorageBJONLink = class(TRALDBStorageLink)
+  TRALDBStorageBSONLink = class(TRALDBStorageLink)
   protected
     function GetContentType: StringRAL; override;
   public
@@ -43,7 +43,7 @@ var
   vType: TRALFieldType;
   vByte: Byte;
 begin
-  SetLength(FFieldsTypes, ADataset.FieldCount);
+  SetLength(FFieldTypes, ADataset.FieldCount);
 
   vFields := TBSONItemArray.Create('fd');
   for vInt := 0 to Pred(ADataset.FieldCount) do
@@ -54,7 +54,7 @@ begin
 
     vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
     vField^.Values.Add(TBSONItemInt32.Create('', Ord(vType)));
-    FFieldsTypes[vInt] := vType;
+    FFieldTypes[vInt] := vType;
 
     vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
     vField^.Values.Add(TBSONItemInt32.Create('', vByte));
@@ -92,7 +92,7 @@ begin
     begin
       if not ADataset.Fields[vInt].IsNull then
       begin
-        case FFieldsTypes[vInt] of
+        case FFieldTypes[vInt] of
           sftShortInt,
           sftSmallInt,
           sftInteger,
@@ -154,25 +154,25 @@ begin
 
   vFields := ADocument.Values.ByName('fd');
 
-  SetLength(FFieldsNames, vFields^.Values.Count);
-  SetLength(FFieldsTypes, vFields^.Values.Count);
-  SetLength(FFieldsFounds, vFields^.Values.Count);
+  SetLength(FFieldNames, vFields^.Values.Count);
+  SetLength(FFieldTypes, vFields^.Values.Count);
+  SetLength(FFoundFields, vFields^.Values.Count);
 
   for vInt := 0 to Pred(vFields^.Values.Count) do
   begin
     vField := vFields^.Values.Item[vInt]^.PBSONArray;
 
     vName := vField^.Values[0]^.ToString;
-    FFieldsNames[vInt] := vName;
+    FFieldNames[vInt] := vName;
 
-    FFieldsTypes[vInt] := TRALFieldType(vField^.Values[1]^.ToInt);
-    vType := TRALDB.RALFieldTypeToFieldType(FFieldsTypes[vInt]);
+    FFieldTypes[vInt] := TRALFieldType(vField^.Values[1]^.ToInt);
+    vType := TRALDB.RALFieldTypeToFieldType(FFieldTypes[vInt]);
 
     vFlags := vField^.Values[2]^.ToInt;
     vSize := vField^.Values[3]^.ToInt;
 
     ADataset.FieldDefs.Add(vName, vType, vSize);
-    FFieldsFounds[vInt] := nil;
+    FFoundFields[vInt] := nil;
   end;
 
   ADataset.Open;
@@ -184,9 +184,9 @@ begin
 
     for vSize := 0 to Pred(vFields^.Values.Count) do
     begin
-      if SameText(vName, FFieldsNames[vSize]) then
+      if SameText(vName, FFieldNames[vSize]) then
       begin
-        FFieldsFounds[vSize] := ADataset.Fields[vInt];
+        FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
       end;
     end;
@@ -219,21 +219,21 @@ begin
     begin
       if vRecord^.Values[vInt2]^.BSONType <> BSON_TYPE_NULL then
       begin
-        case FFieldsTypes[vInt2] of
+        case FFieldTypes[vInt2] of
           sftShortInt,
           sftSmallInt,
           sftInteger,
           sftByte,
-          sftWord     : ReadFieldInteger(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt);
+          sftWord     : ReadFieldInteger(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToInt);
           sftCardinal,
           sftInt64,
-          sftQWord    : ReadFieldInt64(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt64);
-          sftDouble   : ReadFieldFloat(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToDouble);
-          sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
+          sftQWord    : ReadFieldInt64(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToInt64);
+          sftDouble   : ReadFieldFloat(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToDouble);
+          sftBoolean  : ReadFieldBoolean(FFoundFields[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
           sftString,
-          sftMemo     : ReadFieldString(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
-          sftBlob     : ReadFieldStream(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
-          sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
+          sftMemo     : ReadFieldString(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToString);
+          sftBlob     : ReadFieldStream(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToString);
+          sftDateTime : ReadFieldDateTime(FFoundFields[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
         end;
       end;
     end;
@@ -279,18 +279,21 @@ begin
   end;
 end;
 
-{ TRALDBStorageBJONLink }
+{ TRALDBStorageBSONLink }
 
-function TRALDBStorageBJONLink.GetContentType: StringRAL;
+function TRALDBStorageBSONLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONBSON;
 end;
 
-function TRALDBStorageBJONLink.GetStorage: TRALDBStorage;
+function TRALDBStorageBSONLink.GetStorage: TRALDBStorage;
 begin
   Result := TRALDBStorageBJON.Create;
   Result.FieldCharCase := FieldCharCase;
 end;
+
+initialization
+  RegisterClass(TRALDBStorageBSONLink);
 
 end.
 

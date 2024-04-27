@@ -19,9 +19,9 @@ type
     FFieldCharCase : TRALFieldCharCase;
   protected
     // variaveis para uso nas units filhas como controle
-    FFieldsNames  : array of StringRAL;
-    FFieldsTypes  : array of TRALFieldType;
-    FFieldsFounds : array of TField;
+    FFieldNames : array of StringRAL;
+    FFieldTypes : array of TRALFieldType;
+    FFoundFields : array of TField;
 
     function GetStoreVersion : byte;
     function CharCaseValue(AValue : StringRAL) : StringRAL;
@@ -76,8 +76,9 @@ type
 implementation
 
 const
-  cStorageLinkClass : array[0..1] of StringRAL = ('TRALDBStorageBINLink',
-                                                  'TRALDBStorageJSONLink');
+  cStorageLinkClass : array[0..2] of StringRAL = ('TRALDBStorageBINLink',
+                                                  'TRALDBStorageJSONLink',
+                                                  'TRALDBStorageBSONLink');
 
 { TRALDBStorage }
 

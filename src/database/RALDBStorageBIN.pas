@@ -87,7 +87,7 @@ begin
   // fieldscount
   WriteInteger(AStream, ADataset.FieldCount);
 
-  SetLength(FFieldsTypes, ADataset.FieldCount);
+  SetLength(FFieldTypes, ADataset.FieldCount);
 
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
@@ -97,7 +97,7 @@ begin
     // type
     vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
     WriteByte(AStream, Byte(Ord(vType)));
-    FFieldsTypes[vInt] := vType;
+    FFieldTypes[vInt] := vType;
 
     // flags
     vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
@@ -138,7 +138,7 @@ begin
 
       if not ADataset.Fields[vInt].IsNull then
       begin
-        case FFieldsTypes[vInt] of
+        case FFieldTypes[vInt] of
           sftShortInt : WriteShortint(AStream, ADataset.Fields[vInt].AsInteger);
           sftSmallInt : WriteSmallint(AStream, ADataset.Fields[vInt].AsInteger);
           sftInteger  : WriteInteger(AStream, ADataset.Fields[vInt].AsInteger);
@@ -190,7 +190,7 @@ begin
   WriteInt64(AStream, vRecords);
   AStream.Position := vPosTemp;
 
-  SetLength(FFieldsTypes, 0);
+  SetLength(FFieldTypes, 0);
 end;
 
 procedure TRALDBStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
@@ -293,20 +293,20 @@ begin
   // fieldscount
   vFields := ReadInteger(AStream);
 
-  SetLength(FFieldsNames, vFields);
-  SetLength(FFieldsTypes, vFields);
-  SetLength(FFieldsFounds, vFields);
+  SetLength(FFieldNames, vFields);
+  SetLength(FFieldTypes, vFields);
+  SetLength(FFoundFields, vFields);
 
   for vInt := 0 to Pred(vFields) do
   begin
     // name
     vName := ReadString(AStream);
-    FFieldsNames[vInt] := vName;
+    FFieldNames[vInt] := vName;
 
     // type
     vByte := ReadByte(AStream);
     vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
-    FFieldsTypes[vInt] := TRALFieldType(vByte);
+    FFieldTypes[vInt] := TRALFieldType(vByte);
 
     // flags
     vByte := ReadByte(AStream);
@@ -315,7 +315,7 @@ begin
     vSize := ReadInteger(AStream);
 
     ADataset.FieldDefs.Add(vName, vType, vSize);
-    FFieldsFounds[vInt] := nil;
+    FFoundFields[vInt] := nil;
   end;
 
   ADataset.Open;
@@ -327,9 +327,9 @@ begin
 
     for vSize := 0 to Pred(vFields) do
     begin
-      if SameText(vName, FFieldsNames[vSize]) then
+      if SameText(vName, FFieldNames[vSize]) then
       begin
-        FFieldsFounds[vSize] := ADataset.Fields[vInt];
+        FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
       end;
     end;
@@ -345,7 +345,7 @@ var
 begin
   // records count
   vRecords := ReadInt64(AStream);
-  vFields := Length(FFieldsTypes);
+  vFields := Length(FFieldTypes);
 
   ADataset.DisableControls;
 
@@ -362,22 +362,22 @@ begin
 
       if not vIsNull then
       begin
-        case FFieldsTypes[vInt] of
-          sftShortInt : ReadFieldShortint(FFieldsFounds[vInt], ReadShortint(AStream));
-          sftSmallInt : ReadFieldSmallint(FFieldsFounds[vInt], ReadSmallint(AStream));
-          sftInteger  : ReadFieldInteger(FFieldsFounds[vInt], ReadInteger(AStream));
-          sftInt64    : ReadFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftByte     : ReadFieldByte(FFieldsFounds[vInt], ReadByte(AStream));
-          sftWord     : ReadFieldWord(FFieldsFounds[vInt], ReadWord(AStream));
-          sftCardinal : ReadFieldLongWord(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftQWord    : ReadFieldInt64(FFieldsFounds[vInt], ReadInt64(AStream));
-          sftDouble   : ReadFieldFloat(FFieldsFounds[vInt], ReadFloat(AStream));
-          sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt], ReadBoolean(AStream));
-          sftString   : ReadFieldString(FFieldsFounds[vInt], ReadString(AStream));
+        case FFieldTypes[vInt] of
+          sftShortInt : ReadFieldShortint(FFoundFields[vInt], ReadShortint(AStream));
+          sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], ReadSmallint(AStream));
+          sftInteger  : ReadFieldInteger(FFoundFields[vInt], ReadInteger(AStream));
+          sftInt64    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
+          sftByte     : ReadFieldByte(FFoundFields[vInt], ReadByte(AStream));
+          sftWord     : ReadFieldWord(FFoundFields[vInt], ReadWord(AStream));
+          sftCardinal : ReadFieldLongWord(FFoundFields[vInt], ReadInt64(AStream));
+          sftQWord    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
+          sftDouble   : ReadFieldFloat(FFoundFields[vInt], ReadFloat(AStream));
+          sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], ReadBoolean(AStream));
+          sftString   : ReadFieldString(FFoundFields[vInt], ReadString(AStream));
           sftBlob     : begin
             vMem := ReadStream(AStream);
             try
-              ReadFieldStream(FFieldsFounds[vInt], vMem);
+              ReadFieldStream(FFoundFields[vInt], vMem);
             finally
               vMem.Free
             end;
@@ -385,12 +385,12 @@ begin
           sftMemo     : begin
             vMem := ReadStream(AStream);
             try
-              ReadFieldStream(FFieldsFounds[vInt], vMem);
+              ReadFieldStream(FFoundFields[vInt], vMem);
             finally
               vMem.Free
             end;
           end;
-          sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt], ReadDateTime(AStream));
+          sftDateTime : ReadFieldDateTime(FFoundFields[vInt], ReadDateTime(AStream));
         end;
       end;
     end;
@@ -400,9 +400,9 @@ begin
 
   ADataset.EnableControls;
 
-  SetLength(FFieldsNames, 0);
-  SetLength(FFieldsTypes, 0);
-  SetLength(FFieldsFounds, 0);
+  SetLength(FFieldNames, 0);
+  SetLength(FFieldTypes, 0);
+  SetLength(FFoundFields, 0);
 end;
 
 function TRALDBStorageBIN.ReadString(AStream: TStream): StringRAL;

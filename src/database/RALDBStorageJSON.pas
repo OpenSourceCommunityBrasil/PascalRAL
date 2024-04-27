@@ -240,13 +240,13 @@ procedure TRALDBStorageJSON_RAW.WriteFields(ADataset: TDataSet; AStream: TStream
 var
   vInt: IntegerRAL;
 begin
-  SetLength(FFieldsNames, ADataset.FieldCount);
-  SetLength(FFieldsTypes, ADataset.FieldCount);
+  SetLength(FFieldNames, ADataset.FieldCount);
+  SetLength(FFieldTypes, ADataset.FieldCount);
 
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    FFieldsNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
-    FFieldsTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
+    FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
+    FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
   end;
 end;
 
@@ -280,7 +280,7 @@ begin
     begin
       if not ADataset.Fields[vInt].IsNull then
       begin
-        case FFieldsTypes[vInt] of
+        case FFieldTypes[vInt] of
           sftShortInt,
           sftSmallInt,
           sftInteger,
@@ -288,15 +288,15 @@ begin
           sftByte,
           sftWord,
           sftCardinal,
-          sftQWord     : vValue := WriteFieldInt64(FFieldsNames[vInt], ADataset.Fields[vInt].AsLargeInt);
-          sftDouble    : vValue := WriteFieldFloat(FFieldsNames[vInt], ADataset.Fields[vInt].AsFloat);
-          sftBoolean   : vValue := WriteFieldBoolean(FFieldsNames[vInt], ADataset.Fields[vInt].AsBoolean);
-          sftString    : vValue := WriteFieldString(FFieldsNames[vInt], ADataset.Fields[vInt].AsString);
+          sftQWord     : vValue := WriteFieldInt64(FFieldNames[vInt], ADataset.Fields[vInt].AsLargeInt);
+          sftDouble    : vValue := WriteFieldFloat(FFieldNames[vInt], ADataset.Fields[vInt].AsFloat);
+          sftBoolean   : vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
+          sftString    : vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsString);
           sftBlob      : begin
             vMem := TMemoryStream.Create;
             try
               TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteFieldBlob(FFieldsNames[vInt], vMem);
+              vValue := WriteFieldBlob(FFieldNames[vInt], vMem);
             finally
               vMem.Free
             end;
@@ -305,17 +305,17 @@ begin
             vMem := TMemoryStream.Create;
             try
               TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteFieldMemo(FFieldsNames[vInt], vMem);
+              vValue := WriteFieldMemo(FFieldNames[vInt], vMem);
             finally
               vMem.Free
             end;
           end;
-          sftDateTime  : vValue := WriteFieldDateTime(FFieldsNames[vInt], ADataset.Fields[vInt].AsDateTime);
+          sftDateTime  : vValue := WriteFieldDateTime(FFieldNames[vInt], ADataset.Fields[vInt].AsDateTime);
         end;
       end
       else
       begin
-        vValue := WriteFieldNull(FFieldsNames[vInt]);
+        vValue := WriteFieldNull(FFieldNames[vInt]);
       end;
 
       if vVirg2 then
@@ -378,8 +378,8 @@ var
 begin
   vJson := ',"fd":[';
 
-  SetLength(FFieldsNames, ADataset.FieldCount);
-  SetLength(FFieldsTypes, ADataset.FieldCount);
+  SetLength(FFieldNames, ADataset.FieldCount);
+  SetLength(FFieldTypes, ADataset.FieldCount);
 
   vVirg1 := False;
   for vInt := 0 to Pred(ADataset.FieldCount) do
@@ -389,13 +389,13 @@ begin
     vJson := vJson + '[';
 
     // name
-    FFieldsNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
-    vJson := vJson + WriteString(FFieldsNames[vInt]) + ',';
+    FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
+    vJson := vJson + WriteString(FFieldNames[vInt]) + ',';
 
     // type
     vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
     vJson := vJson + WriteInt64(Ord(vType)) + ',';
-    FFieldsTypes[vInt] := vType;
+    FFieldTypes[vInt] := vType;
 
     // flags
     vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
@@ -443,7 +443,7 @@ begin
     vVirg2 := False;
     for vInt := 0 to Pred(ADataset.FieldCount) do
     begin
-      case FFieldsTypes[vInt] of
+      case FFieldTypes[vInt] of
         sftShortInt,
         sftSmallInt,
         sftInteger,
@@ -538,9 +538,9 @@ begin
   vjArr1 := TRALJSONArray(AJSON.Get('fd'));
   if vjArr1 <> nil then
   begin
-    SetLength(FFieldsNames, vjArr1.Count);
-    SetLength(FFieldsTypes, vjArr1.Count);
-    SetLength(FFieldsFounds, vjArr1.Count);
+    SetLength(FFieldNames, vjArr1.Count);
+    SetLength(FFieldTypes, vjArr1.Count);
+    SetLength(FFoundFields, vjArr1.Count);
 
     for vInt := 0 to Pred(vjArr1.Count) do
     begin
@@ -548,12 +548,12 @@ begin
 
       // name
       vName := vjArr2.Get(0).AsString;
-      FFieldsNames[vInt] := vName;
+      FFieldNames[vInt] := vName;
 
       // type
       vByte := vjArr2.Get(1).AsInteger;
       vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
-      FFieldsTypes[vInt] := TRALFieldType(vByte);
+      FFieldTypes[vInt] := TRALFieldType(vByte);
 
       // flags
       vByte := vjArr2.Get(2).AsInteger;
@@ -562,7 +562,7 @@ begin
       vSize := vjArr2.Get(3).AsInteger;
 
       ADataset.FieldDefs.Add(vName, vType, vSize);
-      FFieldsFounds[vInt] := nil;
+      FFoundFields[vInt] := nil;
     end;
 
     ADataset.Open;
@@ -573,9 +573,9 @@ begin
 
       for vSize := 0 to Pred(vjArr1.Count) do
       begin
-        if SameText(vName, FFieldsNames[vSize]) then
+        if SameText(vName, FFieldNames[vSize]) then
         begin
-          FFieldsFounds[vSize] := ADataset.Fields[vInt];
+          FFoundFields[vSize] := ADataset.Fields[vInt];
           Break;
         end;
       end;
@@ -610,21 +610,21 @@ begin
 
         if not vIsNull then
         begin
-          case FFieldsTypes[vInt] of
-            sftShortInt : ReadFieldShortint(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftSmallInt : ReadFieldSmallint(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftInteger  : ReadFieldInteger(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftInt64    : ReadFieldInt64(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftByte     : ReadFieldByte(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftWord     : ReadFieldWord(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftCardinal : ReadFieldLongWord(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftQWord    : ReadFieldInt64(FFieldsFounds[vInt], vjArr2.Get(vInt).AsInteger);
-            sftDouble   : ReadFieldFloat(FFieldsFounds[vInt], vjArr2.Get(vInt).AsFloat);
-            sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt], vjArr2.Get(vInt).AsBoolean);
-            sftString   : ReadFieldString(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
-            sftBlob     : ReadFieldStream(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
-            sftMemo     : ReadFieldString(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
-            sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
+          case FFieldTypes[vInt] of
+            sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftInt64    : ReadFieldInt64(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftByte     : ReadFieldByte(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftWord     : ReadFieldWord(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
+            sftDouble   : ReadFieldFloat(FFoundFields[vInt], vjArr2.Get(vInt).AsFloat);
+            sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjArr2.Get(vInt).AsBoolean);
+            sftString   : ReadFieldString(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
+            sftBlob     : ReadFieldStream(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
+            sftMemo     : ReadFieldString(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
+            sftDateTime : ReadFieldDateTime(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
           end;
         end;
       end;
@@ -635,9 +635,9 @@ begin
     ADataset.EnableControls;
   end;
 
-  SetLength(FFieldsNames, 0);
-  SetLength(FFieldsTypes, 0);
-  SetLength(FFieldsFounds, 0);
+  SetLength(FFieldNames, 0);
+  SetLength(FFieldTypes, 0);
+  SetLength(FFoundFields, 0);
 end;
 
 procedure TRALDBStorageJSON_DBWare.SaveToStream(ADataset: TDataSet;
