@@ -6,8 +6,8 @@ uses
   {$IFDEF FPC}
     bufstream,
   {$ENDIF}
-  Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALDBTypes;
+  Classes, SysUtils, DB, DateUtils,
+  RALTypes, RALCustomObjects, RALDBTypes, RALBase64;
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
@@ -20,6 +20,21 @@ type
   protected
     function GetStoreVersion : byte;
     function CharCaseValue(AValue : StringRAL) : StringRAL;
+
+    procedure ReadFieldString(AField : TField; AValue : StringRAL);
+    procedure ReadFieldShortint(AField : TField; AValue : Shortint);
+    procedure ReadFieldByte(AField : TField; AValue : Byte);
+    procedure ReadFieldLongWord(AField : TField; AValue : LongWord);
+    procedure ReadFieldSmallint(AField : TField; AValue : Smallint);
+    procedure ReadFieldWord(AField : TField; AValue : Word);
+    procedure ReadFieldInteger(AField : TField; AValue : Integer);
+    procedure ReadFieldInt64(AField : TField; AValue : Int64RAL);
+    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
+    procedure ReadFieldFloat(AField : TField; AValue : Double);
+    procedure ReadFieldDateTime(AField : TField; AValue : TDateTime); overload;
+    procedure ReadFieldDateTime(AField : TField; AValue : StringRAL); overload;
+    procedure ReadFieldStream(AField : TField; AValue : StringRAL); overload;
+    procedure ReadFieldStream(AField : TField; AValue : TStream); overload;
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); virtual; abstract;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); virtual; abstract;
@@ -73,6 +88,102 @@ begin
     fcLower : AValue := LowerCase(AValue);
   end;
   Result := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldString(AField: TField; AValue: StringRAL);
+begin
+  if AField <> nil then
+    AField.AsString := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldShortint(AField: TField; AValue: Shortint);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldByte(AField: TField; AValue: Byte);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldLongWord(AField: TField; AValue: LongWord);
+begin
+  if AField <> nil then
+    AField.AsLargeInt := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldSmallint(AField: TField; AValue: Smallint);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldWord(AField: TField; AValue: Word);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldInteger(AField: TField; AValue: Integer);
+begin
+  if AField <> nil then
+    AField.AsInteger := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldInt64(AField: TField; AValue: Int64RAL);
+begin
+  if AField <> nil then
+    AField.AsLargeInt := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldBoolean(AField: TField; AValue: Boolean);
+begin
+  if AField <> nil then
+    AField.AsBoolean := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldFloat(AField: TField; AValue: Double);
+begin
+  if AField <> nil then
+    AField.AsFloat := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);
+begin
+  if AField <> nil then
+    AField.AsDateTime := AValue;
+end;
+
+procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
+begin
+  if AField <> nil then
+    AField.AsDateTime := ISO8601ToDate(AValue);
+end;
+
+procedure TRALDBStorage.ReadFieldStream(AField: TField; AValue: StringRAL);
+var
+  vMem: TStream;
+begin
+  if AField <> nil then
+  begin
+    vMem := TRALBase64.DecodeAsStream(AValue);
+    try
+      TBlobField(AField).LoadFromStream(vMem);
+    finally
+      FreeAndNil(vMem);
+    end;
+  end;
+end;
+
+procedure TRALDBStorage.ReadFieldStream(AField: TField; AValue: TStream);
+begin
+  if AField <> nil then
+  begin
+    AValue.Position := 0;
+    TBlobField(AField).LoadFromStream(AValue);
+  end;
 end;
 
 { TRALDBStorageLink }

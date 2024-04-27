@@ -63,19 +63,6 @@ type
     function ReadHeaders(AJSON : TRALJSONObject) : boolean;
     procedure ReadFields(ADataset: TDataSet; AJSON : TRALJSONObject);
     procedure ReadRecords(ADataset: TDataSet; AJSON : TRALJSONObject);
-
-    procedure ReadFieldShortint(AField : TField; AValue : ShortInt);
-    procedure ReadFieldSmallint(AField : TField; AValue : Smallint);
-    procedure ReadFieldInteger(AField : TField; AValue : Integer);
-    procedure ReadFieldInt64(AField : TField; AValue : Int64);
-    procedure ReadFieldByte(AField : TField; AValue : Byte);
-    procedure ReadFieldWord(AField : TField; AValue : Word);
-    procedure ReadFieldLongWord(AField : TField; AValue : LongWord);
-    procedure ReadFieldFloat(AField : TField; AValue : Double);
-    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
-    procedure ReadFieldString(AField : TField; AValue : StringRAL);
-    procedure ReadFieldBlob(AField : TField; AValue : StringRAL);
-    procedure ReadFieldDateTime(AField : TField; AValue : StringRAL);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -639,7 +626,7 @@ begin
             sftDouble   : ReadFieldFloat(FFieldsFounds[vInt], vjArr2.Get(vInt).AsFloat);
             sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt], vjArr2.Get(vInt).AsBoolean);
             sftString   : ReadFieldString(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
-            sftBlob     : ReadFieldBlob(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
+            sftBlob     : ReadFieldStream(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
             sftMemo     : ReadFieldString(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
             sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt], vjArr2.Get(vInt).AsString);
           end;
@@ -655,88 +642,6 @@ begin
   SetLength(FFieldsNames, 0);
   SetLength(FFieldsTypes, 0);
   SetLength(FFieldsFounds, 0);
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldShortint(AField: TField;
-  AValue: ShortInt);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldSmallint(AField: TField;
-  AValue: Smallint);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldInteger(AField: TField;
-  AValue: Integer);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldInt64(AField: TField; AValue: Int64
-  );
-begin
-  if AField <> nil then
-    AField.AsLargeInt := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldByte(AField: TField; AValue: Byte);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldWord(AField: TField; AValue: Word);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldLongWord(AField: TField;
-  AValue: LongWord);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldFloat(AField: TField; AValue: Double
-  );
-begin
-  if AField <> nil then
-    AField.AsFloat := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldBoolean(AField: TField;
-  AValue: Boolean);
-begin
-  if AField <> nil then
-    AField.AsBoolean := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldString(AField: TField;
-  AValue: StringRAL);
-begin
-  if AField <> nil then
-    AField.AsString := AValue;
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldBlob(AField: TField;
-  AValue: StringRAL);
-begin
-  if AField <> nil then
-    AField.AsString := TRALBase64.Decode(AValue);
-end;
-
-procedure TRALDBStorageJSON_DBWare.ReadFieldDateTime(AField: TField;
-  AValue: StringRAL);
-begin
-  if AField <> nil then
-    AField.AsDateTime := ISO8601ToDate(AValue);
 end;
 
 procedure TRALDBStorageJSON_DBWare.SaveToStream(ADataset: TDataSet;

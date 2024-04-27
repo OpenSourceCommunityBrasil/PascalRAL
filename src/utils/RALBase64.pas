@@ -21,6 +21,7 @@ type
     class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
+    class function DecodeAsStream(AValue: StringRAL): TStream; overload;
     class function Encode(const AValue: StringRAL): StringRAL; overload;
     class function Encode(AValue: TBytes): StringRAL; overload;
     class function Encode(AValue: TStream): StringRAL; overload;
@@ -146,6 +147,18 @@ begin
   end;
   Result.Size := Result.Position;
   Result.Position := 0;
+end;
+
+class function TRALBase64.DecodeAsStream(AValue: StringRAL): TStream;
+var
+  vStream: TStream;
+begin
+  vStream := StringToStream(AValue);
+  try
+    Result := DecodeAsStream(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
 end;
 
 class function TRALBase64.ToBase64Url(const AValue: StringRAL): StringRAL;

@@ -22,14 +22,6 @@ type
 
     procedure ReadFields(ADataset : TDataSet; ADocument : TBSONDocument);
     procedure ReadRecords(ADataset : TDataSet; ADocument : TBSONDocument);
-
-    procedure ReadFieldInteger(AField : TField; AValue : Integer);
-    procedure ReadFieldInt64(AField : TField; AValue : Integer);
-    procedure ReadFieldString(AField : TField; AValue : StringRAL);
-    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
-    procedure ReadFieldFloat(AField : TField; AValue : Double);
-    procedure ReadFieldBlob(AField : TField; AValue : StringRAL);
-    procedure ReadFieldDateTime(AField : TField; AValue : TDateTime);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -244,7 +236,7 @@ begin
           sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
           sftString,
           sftMemo     : ReadFieldString(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
-          sftBlob     : ReadFieldBlob(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
+          sftBlob     : ReadFieldStream(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
           sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
         end;
       end;
@@ -259,57 +251,6 @@ begin
   end;
 
   ADataset.EnableControls;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldInteger(AField: TField; AValue: Integer);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldInt64(AField: TField; AValue: Integer);
-begin
-  if AField <> nil then
-    AField.AsLargeInt := AValue;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldString(AField: TField; AValue: StringRAL);
-begin
-  if AField <> nil then
-    AField.AsString := AValue;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldBoolean(AField: TField; AValue: Boolean);
-begin
-  if AField <> nil then
-    AField.AsBoolean := AValue;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldFloat(AField: TField; AValue: Double);
-begin
-  if AField <> nil then
-    AField.AsFloat := AValue;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldBlob(AField: TField; AValue: StringRAL);
-var
-  vMem: TStream;
-begin
-  if AField <> nil then
-  begin
-    vMem := TRALBase64.DecodeAsStream(AValue);
-    try
-      TBlobField(AField).LoadFromStream(vMem);
-    finally
-      FreeAndNil(vMem);
-    end;
-  end;
-end;
-
-procedure TRALDBStorageBJON.ReadFieldDateTime(AField: TField; AValue: TDateTime);
-begin
-  if AField <> nil then
-    AField.AsDateTime := AValue;
 end;
 
 procedure TRALDBStorageBJON.SaveToStream(ADataset: TDataSet; AStream: TStream);

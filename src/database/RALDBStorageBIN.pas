@@ -51,19 +51,6 @@ type
     function ReadFloat(AStream : TStream) : Double;
     function ReadDateTime(AStream : TStream) : TDateTime;
     function ReadStream(AStream : TStream) : TStream;
-
-    procedure ReadFieldString(AField : TField; AValue : StringRAL);
-    procedure ReadFieldShortint(AField : TField; AValue : Shortint);
-    procedure ReadFieldByte(AField : TField; AValue : Byte);
-    procedure ReadFieldLongWord(AField : TField; AValue : LongWord);
-    procedure ReadFieldSmallint(AField : TField; AValue : Smallint);
-    procedure ReadFieldWord(AField : TField; AValue : Word);
-    procedure ReadFieldInteger(AField : TField; AValue : Integer);
-    procedure ReadFieldInt64(AField : TField; AValue : Int64RAL);
-    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
-    procedure ReadFieldFloat(AField : TField; AValue : Double);
-    procedure ReadFieldDateTime(AField : TField; AValue : TDateTime);
-    procedure ReadFieldStream(AField : TField; AValue : TStream);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -498,79 +485,6 @@ begin
     Result.Position := 0;
     Result.CopyFrom(AStream, vSize);
   end;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldString(AField: TField; AValue: StringRAL);
-begin
-  if AField <> nil then
-    AField.AsString := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldShortint(AField: TField; AValue: Shortint);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldByte(AField: TField; AValue: Byte);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldLongWord(AField: TField; AValue: LongWord);
-begin
-  if AField <> nil then
-    AField.AsLargeInt := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldSmallint(AField: TField; AValue: Smallint);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldWord(AField: TField; AValue: Word);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldInteger(AField: TField; AValue: Integer);
-begin
-  if AField <> nil then
-    AField.AsInteger := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldInt64(AField: TField; AValue: Int64RAL);
-begin
-  if AField <> nil then
-    AField.AsLargeInt := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldBoolean(AField: TField; AValue: Boolean);
-begin
-  if AField <> nil then
-    AField.AsBoolean := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldFloat(AField: TField; AValue: Double);
-begin
-  if AField <> nil then
-    AField.AsFloat := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldDateTime(AField: TField; AValue: TDateTime);
-begin
-  if AField <> nil then
-    AField.AsDateTime := AValue;
-end;
-
-procedure TRALDBStorageBIN.ReadFieldStream(AField: TField; AValue: TStream);
-begin
-  AValue.Position := 0;
-  if AField <> nil then
-    TBlobField(AField).LoadFromStream(AValue);
 end;
 
 procedure TRALDBStorageBIN.SaveToStream(ADataset: TDataSet; AStream: TStream);
