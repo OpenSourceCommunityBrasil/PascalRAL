@@ -102,29 +102,36 @@ begin
 
     for vInt := 0 to Pred(ADataset.FieldCount) do
     begin
-      case FFieldsTypes[vInt] of
-        sftShortInt,
-        sftSmallInt,
-        sftInteger,
-        sftByte,
-        sftWord     : vRecord^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].AsInteger));
-        sftCardinal,
-        sftInt64,
-        sftQWord    : vRecord^.Values.Add(TBSONItemInt64.Create('', ADataset.Fields[vInt].AsLargeInt));
-        sftDouble   : vRecord^.Values.Add(TBSONItemDouble.Create('', ADataset.Fields[vInt].AsFloat));
-        sftBoolean  : vRecord^.Values.Add(TBSONItemBoolean.Create('', ADataset.Fields[vInt].AsBoolean));
-        sftString,
-        sftMemo     : vRecord^.Values.Add(TBSONItemString.Create('', ADataset.Fields[vInt].AsString));
-        sftBlob     : begin
-          vMem := TMemoryStream.Create;
-          try
-            TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-            vRecord^.Values.Add(TBSONItemString.Create('', TRALBase64.Encode(vMem)));
-          finally
-            FreeAndNil(vMem);
+      if not ADataset.Fields[vInt].IsNull then
+      begin
+        case FFieldsTypes[vInt] of
+          sftShortInt,
+          sftSmallInt,
+          sftInteger,
+          sftByte,
+          sftWord     : vRecord^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].AsInteger));
+          sftCardinal,
+          sftInt64,
+          sftQWord    : vRecord^.Values.Add(TBSONItemInt64.Create('', ADataset.Fields[vInt].AsLargeInt));
+          sftDouble   : vRecord^.Values.Add(TBSONItemDouble.Create('', ADataset.Fields[vInt].AsFloat));
+          sftBoolean  : vRecord^.Values.Add(TBSONItemBoolean.Create('', ADataset.Fields[vInt].AsBoolean));
+          sftString,
+          sftMemo     : vRecord^.Values.Add(TBSONItemString.Create('', ADataset.Fields[vInt].AsString));
+          sftBlob     : begin
+            vMem := TMemoryStream.Create;
+            try
+              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+              vRecord^.Values.Add(TBSONItemString.Create('', TRALBase64.Encode(vMem)));
+            finally
+              FreeAndNil(vMem);
+            end;
           end;
+          sftDateTime : vRecord^.Values.Add(TBSONItemDateTime.Create('', ADataset.Fields[vInt].AsDateTime));
         end;
-        sftDateTime : vRecord^.Values.Add(TBSONItemDateTime.Create('', ADataset.Fields[vInt].AsDateTime));
+      end
+      else
+      begin
+        vRecord^.Values.Add(TBSONItemNull.Create(''));
       end;
     end;
 
@@ -222,21 +229,24 @@ begin
     ADataset.Append;
     for vInt2 := 0 to Pred(vRecord^.Values.Count) do
     begin
-      case FFieldsTypes[vInt2] of
-        sftShortInt,
-        sftSmallInt,
-        sftInteger,
-        sftByte,
-        sftWord     : ReadFieldInteger(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt);
-        sftCardinal,
-        sftInt64,
-        sftQWord    : ReadFieldInt64(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt64);
-        sftDouble   : ReadFieldFloat(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToDouble);
-        sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
-        sftString,
-        sftMemo     : ReadFieldString(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
-        sftBlob     : ReadFieldBlob(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
-        sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
+      if vRecord^.Values[vInt2]^.BSONType <> BSON_TYPE_NULL then
+      begin
+        case FFieldsTypes[vInt2] of
+          sftShortInt,
+          sftSmallInt,
+          sftInteger,
+          sftByte,
+          sftWord     : ReadFieldInteger(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt);
+          sftCardinal,
+          sftInt64,
+          sftQWord    : ReadFieldInt64(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToInt64);
+          sftDouble   : ReadFieldFloat(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToDouble);
+          sftBoolean  : ReadFieldBoolean(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
+          sftString,
+          sftMemo     : ReadFieldString(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
+          sftBlob     : ReadFieldBlob(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.ToString);
+          sftDateTime : ReadFieldDateTime(FFieldsFounds[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
+        end;
       end;
     end;
     ADataset.Post;
