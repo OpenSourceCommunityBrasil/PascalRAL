@@ -275,7 +275,7 @@ var
 begin
   AValue.Position := 0;
 
-  vSize := AStream.Size;
+  vSize := AValue.Size;
   AStream.Write(vSize, SizeOf(vSize));
   AStream.CopyFrom(AValue, vSize);
 end;
@@ -337,6 +337,7 @@ begin
 
   ADataset.Open;
 
+  // as vezes os fields ja estao carregados e o fieldsdefs nao funciona direito
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
     vName := ADataset.Fields[vInt].FieldName;
