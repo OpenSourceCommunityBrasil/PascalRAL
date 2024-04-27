@@ -11,10 +11,6 @@ type
   { TRALDBStorageBIN }
 
   TRALDBStorageBIN = class(TRALDBStorage)
-  private
-    FFieldsNames  : array of StringRAL;
-    FFieldsTypes  : array of TRALFieldType;
-    FFieldsFounds : array of TField;
   protected
     // write
     procedure WriteHeader(AStream : TStream);

@@ -18,6 +18,11 @@ type
   private
     FFieldCharCase : TRALFieldCharCase;
   protected
+    // variaveis para uso nas units filhas como controle
+    FFieldsNames  : array of StringRAL;
+    FFieldsTypes  : array of TRALFieldType;
+    FFieldsFounds : array of TField;
+
     function GetStoreVersion : byte;
     function CharCaseValue(AValue : StringRAL) : StringRAL;
 

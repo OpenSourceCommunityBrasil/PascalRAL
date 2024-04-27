@@ -12,10 +12,6 @@ type
   { TRALDBStorageBJON }
 
   TRALDBStorageBJON = class(TRALDBStorage)
-  private
-    FFieldsNames  : array of StringRAL;
-    FFieldsTypes  : array of TRALFieldType;
-    FFieldsFounds : array of TField;
   protected
     procedure WriteFields(ADataset : TDataSet; ADocument : TBSONDocument);
     procedure WriteRecords(ADataset : TDataSet; ADocument : TBSONDocument);

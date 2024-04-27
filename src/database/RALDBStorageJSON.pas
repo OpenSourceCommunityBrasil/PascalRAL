@@ -13,10 +13,6 @@ type
   { TRALDBStorageJSON }
 
   TRALDBStorageJSON = class(TRALDBStorage)
-  private
-    FFieldsNames  : array of StringRAL;
-    FFieldsTypes  : array of TRALFieldType;
-    FFieldsFounds : array of TField;
   protected
     function StringToJSONString(AValue: TStream): StringRAL; overload;
     function StringToJSONString(AValue: StringRAL): StringRAL; overload;
