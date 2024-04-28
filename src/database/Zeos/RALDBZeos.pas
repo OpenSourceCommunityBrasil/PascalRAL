@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, DB,
   ZConnection, ZDataset, ZDbcIntfs, ZAbstractRODataset,
-  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON;
+  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON,
+  RALMIMETypes;
 
 type
 

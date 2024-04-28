@@ -20,7 +20,7 @@ type
     FModuleRoute: StringRAL;
     FSQL: TStrings;
     FParams: TParams;
-    FStorage: TRALDBStorage;
+    FStorage: TRALDBStorageLink;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -40,7 +40,8 @@ type
     property Client : TRALClientMT read FClient write SetClient;
     property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
     property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorage read FStorage write FStorage;
+    property Storage : TRALDBStorageLink read FStorage write FStorage;
+    property Params : TParams read FParams write FParams;
   end;
 
 implementation

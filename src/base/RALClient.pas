@@ -145,6 +145,8 @@ type
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
   end;
 
+  { TRALClientMT }
+
   TRALClientMT = class(TRALClientBase)
   private
     FOnResponse: TRALThreadClientResponse;
@@ -162,6 +164,7 @@ type
     procedure ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest; AMethod: TRALMethod;
       AOnResponse: TRALThreadClientResponse = nil);
   public
+    constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
     function NewRequest: TRALRequest;
@@ -194,7 +197,7 @@ type
     property KeepAlive;
 
     property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle default True;
-    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior default ebMultiThread;
+    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   end;
 
@@ -501,6 +504,12 @@ begin
     vThread.Execute;
     vThread.Free;
   end;
+end;
+
+constructor TRALClientMT.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FExecBehavior := ebMultiThread;
 end;
 
 procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;

@@ -33,7 +33,7 @@ begin
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
 
-  if (Result <> '') and (Result[RALHighStr(Result)] = '/') then
+  if (Result <> '')  and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
     Delete(Result, RALHighStr(Result), 1);
 end;
 
