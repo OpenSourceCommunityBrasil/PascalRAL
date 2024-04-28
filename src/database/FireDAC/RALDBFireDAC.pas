@@ -8,7 +8,7 @@ uses
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
-  RALDBBase, RALTypes;
+  RALDBBase, RALTypes, RALMimeTypes;
 
 type
 
@@ -31,7 +31,9 @@ type
     function GetDriverName: TRALDBDriverType; override;
 
     procedure SaveFromStream(ADataset: TDataset; AStream: TStream;
-      AFormat: TRALFormatStorage); override;
+                             var AContentType: StringRAL;
+                             var ANative: boolean); override;
+    function CanExportNative : boolean; override;
   end;
 
   { TRALDBFireDACLink }
@@ -143,20 +145,24 @@ begin
 end;
 
 procedure TRALDBFireDAC.SaveFromStream(ADataset: TDataset; AStream: TStream;
-  AFormat: TRALFormatStorage);
+  var AContentType: StringRAL; var ANative: boolean);
 var
   vFdFormat: TFDStorageFormat;
 begin
   inherited;
-  case AFormat of
-    fsJSON:
-      vFdFormat := sfJSON;
-    fsBIN:
-      vFdFormat := sfBinary;
-  end;
+  if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
+    vFdFormat := sfJSON
+  else
+    vFdFormat := sfBinary;
+
   AStream.Size := 0;
   TFDQuery(ADataset).SaveToStream(AStream, vFdFormat);
   AStream.Position := 0;
+end;
+
+function TRALDBFireDAC.CanExportNative: boolean;
+begin
+  Result := True;
 end;
 
 procedure TRALDBFireDAC.ExecSQL(ASQL: StringRAL; AParams: TParams;

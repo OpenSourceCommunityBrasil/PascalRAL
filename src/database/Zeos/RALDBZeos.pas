@@ -1,11 +1,13 @@
 unit RALDBZeos;
 
+//{$I ZComponent.inc}
+
 interface
 
 uses
   Classes, SysUtils, DB,
-  ZConnection, ZDataset, ZDbcIntfs,
-  RALDBBase, RALTypes;
+  ZConnection, ZDataset, ZDbcIntfs, ZAbstractRODataset,
+  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON;
 
 type
 
@@ -27,7 +29,9 @@ type
                       var ALastInsertId : Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             AFormat: TRALFormatStorage); override;
+                             var AContentType: StringRAL;
+                             var ANative : boolean); override;
+    function CanExportNative : boolean; override;
   end;
 
   { TRALDBZeosLink }
@@ -115,9 +119,32 @@ begin
 end;
 
 procedure TRALDBZeos.SaveFromStream(ADataset: TDataSet; AStream: TStream;
-  AFormat: TRALFormatStorage);
+  var AContentType: StringRAL; var ANative: boolean);
+var
+  vStor : TRALDBStorageLink;
 begin
-  // todo
+  {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
+
+  {$ELSE}
+    if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
+      vStor := TRALDBStorageJSONLink.Create(nil)
+    else
+      vStor := TRALDBStorageBINLink.Create(nil);
+
+    try
+      AContentType := vStor.ContentType;
+      vStor.SaveToStream(ADataset, AStream);
+    finally
+      FreeAndNil(vStor);
+    end;
+
+    ANative := False;
+  {$ENDIF}
+end;
+
+function TRALDBZeos.CanExportNative: boolean;
+begin
+  Result := True;
 end;
 
 function TRALDBZeos.OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset;

@@ -142,8 +142,8 @@ var
   vParams: TParams;
   vQuery: TDataSet;
   vResult: TStream;
-  vString: StringRAL;
-  vInt: IntegerRAL;
+  vString, vContentType: StringRAL;
+  vNative: boolean;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -177,29 +177,33 @@ begin
             end;
           end;
 
-          vResult := TMemoryStream.Create;
           try
             if vString <> '' then
             begin
+              AResponse.StatusCode := 500;
               AResponse.ContentType := rctAPPLICATIONJSON;
-              vString := Format('{"erro":"%s"}', [vString]);
-              vResult.Write(vString[PosIniStr], Length(vString));
-            end
-            else if vType = vDB.DriverName then
-            begin
-              AResponse.ContentType := vParam.ContentType;
-              if vParam.ContentType = rctAPPLICATIONJSON then
-                vDB.SaveFromStream(vQuery, vResult, fsJSON)
-              else
-                vDB.SaveFromStream(vQuery, vResult, fsBIN);
+              AResponse.Params.AddParam('Exception', vString, rpkBODY);
             end
             else
             begin
-              AResponse.ContentType := FStorageOutPut.ContentType;
-              FStorageOutPut.SaveToStream(vQuery, vResult);
+              vResult := TMemoryStream.Create;
+              if (vDB.CanExportNative) and (vType = vDB.DriverName) then
+              begin
+                vContentType := vParam.ContentType;
+                vNative := True;
+                vDB.SaveFromStream(vQuery, vResult, vContentType, vNative);
+              end
+              else
+              begin
+                vNative := False;
+                vContentType := FStorageOutPut.ContentType;
+                FStorageOutPut.SaveToStream(vQuery, vResult);
+              end;
+              AResponse.ContentType := vContentType;
+              AResponse.Params.AddParam('Stream', vResult, rpkBODY);
+              AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
+              AResponse.Params.AddParam('ResultType', IntToStr(Ord(vNative)), rpkBODY);
             end;
-            AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-            AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
           finally
             FreeAndNil(vResult);
           end;

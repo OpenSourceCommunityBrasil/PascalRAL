@@ -31,7 +31,9 @@ type
     function GetDriverName: TRALDBDriverType; override;
 
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             AFormat: TRALFormatStorage); override;
+                             var AContentType: StringRAL;
+                             var ANative: boolean); override;
+    function CanExportNative : boolean; override;
   end;
 
   { TRALDBSQLDBLink }
@@ -124,12 +126,32 @@ begin
 end;
 
 procedure TRALDBSQLDB.SaveFromStream(ADataset: TDataSet; AStream: TStream;
-  AFormat: TRALFormatStorage);
+  var AContentType: StringRAL; var ANative: boolean);
+var
+  vStor : TRALDBStorageLink;
 begin
-  // todo
+  if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
+    vStor := TRALDBStorageJSONLink.Create(nil)
+  else
+    vStor := TRALDBStorageBINLink.Create(nil);
+
+  try
+    AContentType := vStor.ContentType;
+    vStor.SaveToStream(ADataset, AStream);
+  finally
+    FreeAndNil(vStor);
+  end;
+
+  ANative := False;
 end;
 
-function TRALDBSQLDB.OpenCompatible(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBSQLDB.CanExportNative: boolean;
+begin
+  Result := True;
+end;
+
+function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams
+  ): TDataset;
 var
   vQuery : TSQLQuery;
   vInt : integer;

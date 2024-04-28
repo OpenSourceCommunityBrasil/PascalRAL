@@ -38,7 +38,9 @@ type
     function GetDriverName: TRALDBDriverType; virtual; abstract;
 
     procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             AFormat: TRALFormatStorage); virtual; abstract;
+                             var AContentType: StringRAL;
+                             var ANative : boolean); virtual; abstract;
+    function CanExportNative : boolean; virtual;
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property Hostname: StringRAL read FHostname write FHostname;
@@ -59,5 +61,12 @@ type
   end;
 
 implementation
+
+{ TRALDBBase }
+
+function TRALDBBase.CanExportNative: boolean;
+begin
+  Result := False;
+end;
 
 end.
