@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, DB,
   SQLDB, PQConnection, SQLite3Conn, IBConnection, mysql51conn,
-  RALDBBase, RALTypes;
+  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON;
 
 type
 
@@ -131,9 +131,14 @@ var
   vStor : TRALDBStorageLink;
 begin
   if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
-    vStor := TRALDBStorageJSONLink.Create(nil)
+  begin
+    vStor := TRALDBStorageJSONLink.Create(nil);
+    TRALDBStorageJSONLink(vStor).JSONFormat := jfDBWare;
+  end
   else
+  begin
     vStor := TRALDBStorageBINLink.Create(nil);
+  end;
 
   try
     AContentType := vStor.ContentType;

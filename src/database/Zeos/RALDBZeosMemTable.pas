@@ -11,7 +11,7 @@ uses
   RALResponse, RALMIMETypes, RALDBStorageBIN, RALDBStorageJSON;
 
 type
-
+  TRALDBOnError = procedure(Sender : TObject; AException : StringRAL) of object;
   { TRALDBZeosMemTable }
 
   TRALDBZeosMemTable = class(TZMemTable)
@@ -21,6 +21,7 @@ type
     FSQL: TStrings;
     FParams: TParams;
     FStorage: TRALDBStorageLink;
+    FOnError: TRALDBOnError;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -42,6 +43,7 @@ type
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write FStorage;
     property Params : TParams read FParams write FParams;
+    property OnError : TRALDBOnError read FOnError write FOnError;
   end;
 
 implementation
@@ -92,10 +94,9 @@ begin
       if vNative then
       begin
         if Pos(rctAPPLICATIONJSON, AResponse.ContentType) > 0 then
-          vStor := TRALDBStorageJSON.Create
+          vStor := TRALDBStorageJSON_DBWare.Create;
         else
           vStor := TRALDBStorageBIN.Create;
-
         try
           vStor.LoadFromStream(Self, vMem);
         finally
@@ -113,21 +114,32 @@ begin
   else if AResponse.StatusCode = 500 then
   begin
     vException := AResponse.ParamByName('Exception').AsString;
-    if vException <> '' then
-      raise Exception.Create(vException)
+    if Assigned(FOnError) then
+      FOnError(Self, vException);
   end
   else
   begin
-    if AException <> '' then
-      raise Exception.Create(AException)
+    if Assigned(FOnError) then
+      FOnError(Self, AException);
   end;
 end;
 
 procedure TRALDBZeosMemTable.OnExecSQLResponse(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
+var
+  vException : StringRAL;
 begin
-  if AException <> '' then
-    raise Exception.Create(AException)
+  if AResponse.StatusCode = 500 then
+  begin
+    vException := AResponse.ParamByName('Exception').AsString;
+    if Assigned(FOnError) then
+      FOnError(Self, vException);
+  end
+  else if AException <> '' then
+  begin
+    if Assigned(FOnError) then
+      FOnError(Self, AException);
+  end;
 end;
 
 constructor TRALDBZeosMemTable.Create(AOwner: TComponent);

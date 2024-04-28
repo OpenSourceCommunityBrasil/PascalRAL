@@ -334,13 +334,13 @@ end;
 
 destructor TRALThreadClient.Destroy;
 begin
-  inherited;
-
   FreeAndNil(FClient);
   FreeAndNil(FResponse);
 
   if Assigned(FRequest) then
     FreeAndNil(FRequest);
+
+  inherited;
 end;
 
 procedure TRALThreadClient.Execute;
@@ -483,26 +483,53 @@ procedure TRALClientMT.ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest;
   AMethod: TRALMethod; AOnResponse: TRALThreadClientResponse);
 var
   vThread: TRALThreadClient;
+  vClient: TRALClientHTTP;
+  vResponse: TRALResponse;
+  vException: StringRAL;
 begin
-  vThread := TRALThreadClient.Create(Self);
-  // deve vir antes pra clonar o request
-  vThread.RequestLifeCicle := FRequestLifeCicle;
-
-  vThread.Route := ARoute;
-  vThread.Request := ARequest;
-  vThread.Method := AMethod;
-
-  if Assigned(AOnResponse) then
-    vThread.OnResponse := AOnResponse
-  else
-    vThread.OnResponse := {$IFDEF FPC}@{$ENDIF}OnThreadResponse;
-
   if FExecBehavior = ebMultiThread then
-    vThread.Start
+  begin
+    vThread := TRALThreadClient.Create(Self);
+    // deve vir antes pra clonar o request
+    vThread.RequestLifeCicle := FRequestLifeCicle;
+
+    vThread.Route := ARoute;
+    vThread.Request := ARequest;
+    vThread.Method := AMethod;
+
+    if Assigned(AOnResponse) then
+      vThread.OnResponse := AOnResponse
+    else
+      vThread.OnResponse := {$IFDEF FPC}@{$ENDIF}OnThreadResponse;
+
+    vThread.Start;
+  end
   else
   begin
-    vThread.Execute;
-    vThread.Free;
+    vResponse := TRALClientResponse.Create;
+    vClient := CreateClient;
+    try
+      try
+        vClient.BeforeSendUrl(ARoute, ARequest, vResponse, AMethod);
+        FIndexUrl := vClient.IndexUrl;
+      except
+        on e: Exception do
+        begin
+          vException := e.Message;
+        end;
+      end;
+    finally
+      FreeAndNil(vClient);
+      if not FRequestLifeCicle then
+        FreeAndNil(ARequest);
+
+      if Assigned(AOnResponse) then
+        AOnResponse(Self, vResponse, vException)
+      else if Assigned(FOnResponse) then
+        FOnResponse(Self, vResponse, vException);
+
+      FreeAndNil(vResponse);
+    end;
   end;
 end;
 
