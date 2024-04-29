@@ -9,8 +9,6 @@ uses
   RALResponse, RALMIMETypes, RALDBStorageBIN, RALDBStorageJSON, RALDBTypes;
 
 type
-  TRALDBOnError = procedure(Sender : TObject; AException : StringRAL) of object;
-
   { TRALDBZMemTable }
 
   TRALDBZMemTable = class(TZMemTable)
@@ -27,6 +25,7 @@ type
 
     procedure SetSQL(AValue: TStrings);
     procedure SetClient(AValue: TRALClientMT);
+    procedure SetStorage(AValue: TRALDBStorageLink);
     procedure OnChangeSQL(Sender : TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
@@ -43,7 +42,7 @@ type
     property Client : TRALClientMT read FClient write SetClient;
     property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
     property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorageLink read FStorage write FStorage;
+    property Storage : TRALDBStorageLink read FStorage write SetStorage;
     property Params : TParams read FParams write FParams;
     property OnError : TRALDBOnError read FOnError write FOnError;
   end;
@@ -52,11 +51,25 @@ implementation
 
 { TRALDBZMemTable }
 
+procedure TRALDBZMemTable.SetStorage(AValue: TRALDBStorageLink);
+begin
+  if FStorage <> nil then
+    FStorage.RemoveFreeNotification(Self);
+
+  if AValue <> FStorage then
+    FStorage := AValue;
+
+  if FStorage <> nil then
+    FStorage.FreeNotification(Self);
+end;
+
 procedure TRALDBZMemTable.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FClient) then
-    FClient := nil;
+    FClient := nil
+  else if (Operation = opRemove) and (AComponent = FStorage) then
+    FStorage := nil;
   inherited;
 end;
 
