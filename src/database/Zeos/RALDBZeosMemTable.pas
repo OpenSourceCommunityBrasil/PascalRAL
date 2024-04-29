@@ -63,8 +63,7 @@ begin
     FStorage.FreeNotification(Self);
 end;
 
-procedure TRALDBZMemTable.Notification(AComponent: TComponent;
-  Operation: TOperation);
+procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FClient) then
     FClient := nil
