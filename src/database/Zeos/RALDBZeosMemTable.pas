@@ -157,8 +157,7 @@ constructor TRALDBZMemTable.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FSQL := TStringList.Create;
-//  TStringList(FSQL).OnChanging := @OnChangeSQL;
-  TStringList(FSQL).OnChange := @OnChangeSQL;
+  TStringList(FSQL).OnChange := {$IFDEF FPC}@{$ENDIF}OnChangeSQL;
 
   FParams := TParams.Create(Self);
 end;
@@ -190,7 +189,7 @@ begin
       vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
       vReq.AddFile(vMem);
 
-      FClient.Post(FModuleRoute + '/opensql', vReq, @OnQueryResponse);
+      FClient.Post(FModuleRoute + '/opensql', vReq, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
     finally
       if FClient.RequestLifeCicle then
         FreeAndNil(vReq);
@@ -215,7 +214,7 @@ begin
       vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
       vReq.AddFile(vMem);
 
-      FClient.Post(FModuleRoute + '/execsql', vReq, @OnExecSQLResponse);
+      FClient.Post(FModuleRoute + '/execsql', vReq, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
     finally
       if FClient.RequestLifeCicle then
         FreeAndNil(vReq);

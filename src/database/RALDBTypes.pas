@@ -170,7 +170,7 @@ class procedure TRALDB.ParseSQLParams(ASQL: StringRAL; AParams: TParams);
 var
   vParamName: StringRAL;
   vEscapeQuote, vEspaceDoubleQuote : boolean;
-  vParam : boolean;
+  vParam: boolean;
   vChar: UTF8Char;
   vInt: IntegerRAL;
   vOldParams: TStringList;
@@ -199,6 +199,7 @@ const
 begin
   vOldParams := TStringList.Create;
   try
+    AParams.BeginUpdate;
     for vInt := 0 to Pred(AParams.Count) do
       vOldParams.Add(AParams.Items[vInt].Name);
 
@@ -243,8 +244,12 @@ begin
     begin
       vObjParam := AParams.FindParam(vOldParams.Strings[vInt]);
       if vObjParam <> nil then
-        AParams.Delete(vObjParam.Index);
+      begin
+        AParams.RemoveParam(vObjParam);
+        FreeAndNil(vObjParam);
+      end;
     end;
+    AParams.EndUpdate;
   finally
     FreeAndNil(vOldParams)
   end;
