@@ -1,20 +1,19 @@
 unit RALDBZeosMemTable;
 
-{$mode ObjFPC}{$H+}
-
 interface
 
 uses
   Classes, SysUtils, DB,
   ZDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALQueryStructure,
-  RALResponse, RALMIMETypes, RALDBStorageBIN, RALDBStorageJSON;
+  RALResponse, RALMIMETypes, RALDBStorageBIN, RALDBStorageJSON, RALDBTypes;
 
 type
   TRALDBOnError = procedure(Sender : TObject; AException : StringRAL) of object;
-  { TRALDBZeosMemTable }
 
-  TRALDBZeosMemTable = class(TZMemTable)
+  { TRALDBZMemTable }
+
+  TRALDBZMemTable = class(TZMemTable)
   private
     FClient: TRALClientMT;
     FModuleRoute: StringRAL;
@@ -28,12 +27,15 @@ type
 
     procedure SetSQL(AValue: TStrings);
     procedure SetClient(AValue: TRALClientMT);
+    procedure OnChangeSQL(Sender : TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+
+    function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
     procedure OpenRemote;
     procedure ExecSQLRemote;
@@ -48,9 +50,9 @@ type
 
 implementation
 
-{ TRALDBZeosMemTable }
+{ TRALDBZMemTable }
 
-procedure TRALDBZeosMemTable.Notification(AComponent: TComponent;
+procedure TRALDBZMemTable.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FClient) then
@@ -58,7 +60,7 @@ begin
   inherited;
 end;
 
-procedure TRALDBZeosMemTable.SetSQL(AValue: TStrings);
+procedure TRALDBZMemTable.SetSQL(AValue: TStrings);
 begin
   if FSQL = AValue then
     Exit;
@@ -66,7 +68,7 @@ begin
   FSQL.Text := AValue.Text;
 end;
 
-procedure TRALDBZeosMemTable.SetClient(AValue: TRALClientMT);
+procedure TRALDBZMemTable.SetClient(AValue: TRALClientMT);
 begin
   if FClient <> nil then
     FClient.RemoveFreeNotification(Self);
@@ -78,7 +80,15 @@ begin
     FClient.FreeNotification(Self);
 end;
 
-procedure TRALDBZeosMemTable.OnQueryResponse(Sender: TObject;
+procedure TRALDBZMemTable.OnChangeSQL(Sender: TObject);
+var
+  vSQL : StringRAL;
+begin
+  vSQL := TStringList(Sender).Text;
+  TRALDB.ParseSQLParams(vSQL, FParams);
+end;
+
+procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
 var
   vMem : TStream;
@@ -94,9 +104,10 @@ begin
       if vNative then
       begin
         if Pos(rctAPPLICATIONJSON, AResponse.ContentType) > 0 then
-          vStor := TRALDBStorageJSON_DBWare.Create;
+          vStor := TRALDBStorageJSON_DBWare.Create
         else
           vStor := TRALDBStorageBIN.Create;
+
         try
           vStor.LoadFromStream(Self, vMem);
         finally
@@ -124,7 +135,7 @@ begin
   end;
 end;
 
-procedure TRALDBZeosMemTable.OnExecSQLResponse(Sender: TObject;
+procedure TRALDBZMemTable.OnExecSQLResponse(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
 var
   vException : StringRAL;
@@ -142,21 +153,29 @@ begin
   end;
 end;
 
-constructor TRALDBZeosMemTable.Create(AOwner: TComponent);
+constructor TRALDBZMemTable.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FSQL := TStringList.Create;
+//  TStringList(FSQL).OnChanging := @OnChangeSQL;
+  TStringList(FSQL).OnChange := @OnChangeSQL;
+
   FParams := TParams.Create(Self);
 end;
 
-destructor TRALDBZeosMemTable.Destroy;
+destructor TRALDBZMemTable.Destroy;
 begin
   FreeAndNil(FSQL);
   FreeAndNil(FParams);
   inherited Destroy;
 end;
 
-procedure TRALDBZeosMemTable.OpenRemote;
+function TRALDBZMemTable.ParamByName(const AValue: StringRAL): TParam;
+begin
+  Result := FParams.FindParam(AValue);
+end;
+
+procedure TRALDBZMemTable.OpenRemote;
 var
   vQueryStructure: TRALQueryStructure;
   vMem : TStream;
@@ -181,7 +200,7 @@ begin
   end;
 end;
 
-procedure TRALDBZeosMemTable.ExecSQLRemote;
+procedure TRALDBZMemTable.ExecSQLRemote;
 var
   vQueryStructure: TRALQueryStructure;
   vMem : TStream;
