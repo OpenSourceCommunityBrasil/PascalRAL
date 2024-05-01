@@ -47,19 +47,31 @@ begin
 end;
 
 function TRALQueryStructure.GetQueryClass(ADataset : TDataSet): TRALDBDriverType;
+var
+  vComp : TClass;
 begin
-  if SameText(ADataset.ClassName, 'TFDQuery') then
-    Result := qtFiredac
-  else if SameText(ADataset.ClassName, 'TZQuery') or
-          SameText(ADataset.ClassName, 'TZReadOnlyQuery') then
-    Result := qtZeos
-  {$IFDEF FPC}
-    // evitando conflito com dbexpress
-    else if SameText(ADataset.ClassName, 'TSQLQuery') then
-      Result := qtLazSQL
-  {$ENDIF}
-  else
-    Result := qtOther;
+  vComp := ADataset.ClassType;
+  Result := qtOther;
+  while vComp <> nil do begin
+    if SameText(vComp.ClassName, 'TFDQuery') then
+    begin
+      Result := qtFiredac
+    end
+    else if SameText(vComp.ClassName, 'TZQuery') or
+            SameText(vComp.ClassName, 'TZReadOnlyQuery') or
+            SameText(vComp.ClassName, 'TZMemTable') then
+    begin
+      Result := qtZeos
+    end
+    {$IFDEF FPC}
+      // evitando conflito com dbexpress
+      else if SameText(vComp.ClassName, 'TSQLQuery') then
+      begin
+        Result := qtLazSQL;
+      end
+    {$ENDIF};
+    vComp := vComp.ClassParent;
+  end;
 end;
 
 function TRALQueryStructure.GetQueryParams(ADataset : TDataSet): TParams;

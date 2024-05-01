@@ -142,8 +142,8 @@ var
   vParams: TParams;
   vQuery: TDataSet;
   vResult: TStream;
-  vString: StringRAL;
-  vInt: IntegerRAL;
+  vString, vContentType: StringRAL;
+  vNative: boolean;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -177,29 +177,33 @@ begin
             end;
           end;
 
-          vResult := TMemoryStream.Create;
           try
             if vString <> '' then
             begin
+              AResponse.StatusCode := 500;
               AResponse.ContentType := rctAPPLICATIONJSON;
-              vString := Format('{"erro":"%s"}', [vString]);
-              vResult.Write(vString[PosIniStr], Length(vString));
-            end
-            else if vType = vDB.DriverName then
-            begin
-              AResponse.ContentType := vParam.ContentType;
-              if vParam.ContentType = rctAPPLICATIONJSON then
-                vDB.SaveFromStream(vQuery, vResult, fsJSON)
-              else
-                vDB.SaveFromStream(vQuery, vResult, fsBIN);
+              AResponse.Params.AddParam('Exception', vString, rpkBODY);
             end
             else
             begin
-              AResponse.ContentType := FStorageOutPut.ContentType;
-              FStorageOutPut.SaveToStream(vQuery, vResult);
+              vResult := TMemoryStream.Create;
+              if (vDB.CanExportNative) and (vType = vDB.DriverName) then
+              begin
+                vContentType := vParam.ContentType;
+                vNative := True;
+                vDB.SaveFromStream(vQuery, vResult, vContentType, vNative);
+              end
+              else
+              begin
+                vNative := False;
+                vContentType := FStorageOutPut.ContentType;
+                FStorageOutPut.SaveToStream(vQuery, vResult);
+              end;
+              AResponse.ContentType := vContentType;
+              AResponse.Params.AddParam('Stream', vResult, rpkBODY);
+              AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
+              AResponse.Params.AddParam('ResultType', IntToStr(Ord(vNative)), rpkBODY);
             end;
-            AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-            AResponse.Params.AddParam('RowsAffected', '0', rpkBODY);
           finally
             FreeAndNil(vResult);
           end;
@@ -226,7 +230,6 @@ var
   vSQL: StringRAL;
   vParams: TParams;
   vString: StringRAL;
-  vResult: TStream;
   vInt: IntegerRAL;
   vRowsAffect, vLastId: Int64RAL;
 begin
@@ -255,49 +258,23 @@ begin
           except
             on e: Exception do
             begin
-              vString := TRALBase64.Encode(e.Message);
+              vString := e.Message;
             end;
           end;
 
-          vResult := TMemoryStream.Create;
-          try
-            if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
-            begin
-              AResponse.ContentType := rctAPPLICATIONJSON;
-              if vString <> '' then
-              begin
-                vString := Format('{"erro":"%s"}', [vString]);
-                vResult.Write(vString[PosIniStr], Length(vString));
-              end
-              else
-              begin
-                vString := Format('{"rows":%d,"lastid":%d}', [vRowsAffect, vLastId]);
-                vResult.Write(vString[PosIniStr], Length(vString));
-              end;
-            end
-            else
-            begin
-              AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+          if vString <> '' then
+          begin
+            AResponse.StatusCode := 500;
+            AResponse.ContentType := rctAPPLICATIONJSON;
+            AResponse.Params.AddParam('Exception', vString, rpkBODY);
+          end
+          else
+          begin
+            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+            AResponse.StatusCode := 200;
 
-              if vString <> '' then
-              begin
-                vInt := Length(vString);
-                vResult.Write(vInt, SizeOf(vInt));
-                vResult.Write(vString[PosIniStr], Length(vString));
-              end
-              else
-              begin
-                vInt := 0;
-                vResult.Write(vInt, SizeOf(vInt));
-              end;
-              vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
-              vResult.Write(vLastId, SizeOf(vLastId));
-            end;
-
-            vResult.Position := 0;
-            AResponse.ResponseStream := vResult;
-          finally
-            FreeAndNil(vResult);
+            AResponse.Params.AddParam('RowsAffected', IntToStr(vRowsAffect), rpkBODY);
+            AResponse.Params.AddParam('LastID', IntToStr(vLastId), rpkBODY);
           end;
         finally
           FreeAndNil(vParams);

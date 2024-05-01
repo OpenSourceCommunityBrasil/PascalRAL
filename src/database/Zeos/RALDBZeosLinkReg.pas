@@ -10,7 +10,7 @@ uses
   {$IFDEF FPC}
   LResources,
   {$ENDIF}
-  Classes, SysUtils, RALDBZeos;
+  Classes, SysUtils, RALDBZeos, RALDBZeosMemTable;
 
 procedure Register;
 
@@ -19,11 +19,12 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - DBWare', [TRALDBZeosLink]);
+  RegisterComponents('RAL - DBWare', [TRALDBZMemTable]);
 end;
 
 {$IFDEF FPC}
 initialization
-{$I RALDBLinks.lrs}
+//{$I RALDBLinks.lrs}
 {$ENDIF}
 
 end.

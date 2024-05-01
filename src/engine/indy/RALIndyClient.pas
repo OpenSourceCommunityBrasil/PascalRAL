@@ -214,6 +214,7 @@ function TRALIndyClientMT.Clone(AOwner: TComponent): TRALClientMT;
 begin
   Result := TRALIndyClientMT.Create(AOwner);
   CopyProperties(Result);
+  Result.RequestLifeCicle := Self.RequestLifeCicle;
 end;
 
 constructor TRALIndyClientMT.Create(AOwner: TComponent);

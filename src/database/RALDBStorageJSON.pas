@@ -677,7 +677,7 @@ end;
 constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FJSONFormat := jfRAW;
+  FJSONFormat := jfDBWare;
 end;
 
 function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;

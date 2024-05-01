@@ -7,7 +7,8 @@ unit RALDBTypes;
 interface
 
 uses
-  Classes, SysUtils, DB;
+  Classes, SysUtils, DB,
+  RALTypes;
 
 type
   {
@@ -27,6 +28,8 @@ type
                    sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
                    sftString, sftBlob, sftMemo, sftDateTime);
 
+  TRALDBOnError = procedure(Sender : TObject; AException : StringRAL) of object;
+
   { TRALDB }
 
   TRALDB = class
@@ -34,6 +37,7 @@ type
     class function FieldTypeToRALFieldType(AFieldType : TFieldType) : TRALFieldType;
     class function RALFieldTypeToFieldType(AFieldType : TRALFieldType) : TFieldType;
     class function FieldProviderFlags(AField : TField) : Byte;
+    class procedure ParseSQLParams(ASQL : StringRAL; AParams : TParams);
   end;
 
 implementation
@@ -162,6 +166,95 @@ begin
   if pfRefreshOnUpdate in AField.ProviderFlags then
     Result := Result + 128;
   {$ENDIF}
+end;
+
+class procedure TRALDB.ParseSQLParams(ASQL: StringRAL; AParams: TParams);
+var
+  vParamName: StringRAL;
+  vEscapeQuote, vEspaceDoubleQuote : boolean;
+  vParam: boolean;
+  vChar: UTF8Char;
+  vInt: IntegerRAL;
+  vOldParams: TStringList;
+  vObjParam: TParam;
+const
+  cEndParam : set of Char = [';', '=', '>', '<', ' ', ',', '(', ')', '-', '+',
+                            '/', '*', '!', '''', '"', '|', #0..#31, #127..#255];
+
+  procedure AddParamSQL;
+  var
+    vIdxParam : IntegerRAL;
+  begin
+    vParamName := Trim(vParamName);
+    if vParamName <> '' then
+    begin
+      if AParams.FindParam(vParamName) = nil then
+        AParams.CreateParam(ftUnknown, vParamName, ptInput);
+
+      vIdxParam := vOldParams.IndexOf(vParamName);
+      if vIdxParam >= 0 then
+        vOldParams.Delete(vIdxParam);
+    end;
+    vParam := False;
+    vParamName := '';
+  end;
+begin
+  vOldParams := TStringList.Create;
+  try
+    AParams.BeginUpdate;
+    for vInt := 0 to Pred(AParams.Count) do
+      vOldParams.Add(AParams.Items[vInt].Name);
+
+    vEscapeQuote := False;
+    vEspaceDoubleQuote := False;
+    vParam := False;
+    vChar := #0;
+    vParamName := '';
+
+    for vInt := POSINISTR to RALHighStr(ASQL) do
+    begin
+      if (ASQL[vInt] = '''') and (not vEspaceDoubleQuote) and
+         (not (vEscapeQuote and (vChar = '\'))) then
+      begin
+        AddParamSQL;
+        vEscapeQuote := not vEscapeQuote;
+      end
+      else if (ASQL[vInt] = '"') and (not vEscapeQuote) and
+              (not (vEspaceDoubleQuote and (vChar = '\'))) then
+      begin
+        AddParamSQL;
+        vEspaceDoubleQuote := not vEspaceDoubleQuote;
+      end
+      else if (ASQL[vInt] = ':') and (not vEscapeQuote) and
+              (not vEspaceDoubleQuote) then
+      begin
+        AddParamSQL;
+        vParam := CharInSet(vChar, cEndParam);
+      end
+      else if (vParam) then
+      begin
+        if (not CharInSet(ASQL[vInt], cEndParam)) then
+          vParamName := vParamName + ASQL[vInt]
+        else
+          AddParamSQL;
+      end;
+      vChar := ASQL[vInt];
+    end;
+    AddParamSQL;
+
+    for vInt := 0 to Pred(vOldParams.Count) do
+    begin
+      vObjParam := AParams.FindParam(vOldParams.Strings[vInt]);
+      if vObjParam <> nil then
+      begin
+        AParams.RemoveParam(vObjParam);
+        FreeAndNil(vObjParam);
+      end;
+    end;
+    AParams.EndUpdate;
+  finally
+    FreeAndNil(vOldParams)
+  end;
 end;
 
 end.
