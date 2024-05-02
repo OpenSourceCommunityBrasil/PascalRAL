@@ -488,9 +488,6 @@ var
   vInt: IntegerRAL;
   vjValue : TRALJSONValue;
 begin
-  if AJSON.Count = 0 then
-    Exit;
-
   vInt64 := 0;
   while vInt64 < AJSON.Count do
   begin
@@ -515,9 +512,9 @@ begin
         sftMemo     : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
         sftDateTime : begin
           if vjValue.JsonType = rjtNumber then
-            ReadFieldDateTime(FFoundFields[vInt], vjObj.Get(vInt).AsInteger)
+            ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
           else
-            ReadFieldDateTime(FFoundFields[vInt], vjObj.Get(vInt).AsString)
+            ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
         end;
       end;
     end;
