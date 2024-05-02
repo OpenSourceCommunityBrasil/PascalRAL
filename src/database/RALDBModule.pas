@@ -191,7 +191,7 @@ begin
               begin
                 vContentType := vParam.ContentType;
                 vNative := True;
-                vDB.SaveFromStream(vQuery, vResult, vContentType, vNative);
+                vDB.SaveToStream(vQuery, vResult, vContentType, vNative);
               end
               else
               begin

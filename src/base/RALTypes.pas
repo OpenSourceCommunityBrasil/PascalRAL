@@ -41,6 +41,7 @@ type
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection, rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
+  TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
 const
   {$IF DEFINED(FPC) or DEFINED(DELPHIXE3UP)}

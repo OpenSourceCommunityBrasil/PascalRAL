@@ -40,6 +40,26 @@ type
     class procedure ParseSQLParams(ASQL : StringRAL; AParams : TParams);
   end;
 
+  { TRALDBUpdateSQL }
+
+  TRALDBUpdateSQL = class(TPersistent)
+  private
+    FDeleteSQL: TStrings;
+    FInsertSQL: TStrings;
+    FUpdateSQL: TStrings;
+  protected
+    procedure SetDeleteSQL(AValue: TStrings);
+    procedure SetInsertSQL(AValue: TStrings);
+    procedure SetUpdateSQL(AValue: TStrings);
+  public
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property DeleteSQL : TStrings read FDeleteSQL write SetDeleteSQL;
+    property InsertSQL : TStrings read FInsertSQL write SetInsertSQL;
+    property UpdateSQL : TStrings read FUpdateSQL write SetUpdateSQL;
+  end;
+
 implementation
 
 { TRALDB }
@@ -255,6 +275,38 @@ begin
   finally
     FreeAndNil(vOldParams)
   end;
+end;
+
+{ TRALDBUpdateSQL }
+
+procedure TRALDBUpdateSQL.SetDeleteSQL(AValue: TStrings);
+begin
+  FDeleteSQL.Assign(AValue);
+end;
+
+procedure TRALDBUpdateSQL.SetInsertSQL(AValue: TStrings);
+begin
+  FInsertSQL.Assign(AValue);
+end;
+
+procedure TRALDBUpdateSQL.SetUpdateSQL(AValue: TStrings);
+begin
+  FUpdateSQL.Assign(AValue);
+end;
+
+constructor TRALDBUpdateSQL.Create;
+begin
+  FDeleteSQL := TStringList.Create;
+  FInsertSQL := TStringList.Create;
+  FUpdateSQL := TStringList.Create;
+end;
+
+destructor TRALDBUpdateSQL.Destroy;
+begin
+  FreeAndNil(FDeleteSQL);
+  FreeAndNil(FInsertSQL);
+  FreeAndNil(FUpdateSQL);
+  inherited Destroy;
 end;
 
 end.

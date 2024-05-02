@@ -18,6 +18,7 @@ type
     FModuleRoute: StringRAL;
     FSQL: TStrings;
     FParams: TParams;
+    FParamCheck: boolean;
     FStorage: TRALDBStorageLink;
     FOnError: TRALDBOnError;
   protected
@@ -44,6 +45,7 @@ type
     property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write SetStorage;
+    property ParamCheck : boolean read FParamCheck write FParamCheck;
     property Params : TParams read FParams write FParams;
     property OnError : TRALDBOnError read FOnError write FOnError;
   end;
@@ -98,8 +100,15 @@ procedure TRALDBBufDataset.OnChangeSQL(Sender: TObject);
 var
   vSQL : StringRAL;
 begin
-  vSQL := TStringList(Sender).Text;
-  TRALDB.ParseSQLParams(vSQL, FParams);
+  if FParamCheck then
+  begin
+    vSQL := TStringList(Sender).Text;
+    TRALDB.ParseSQLParams(vSQL, FParams);
+  end
+  else
+  begin
+    FParams.Clear;
+  end;
 end;
 
 procedure TRALDBBufDataset.OnQueryResponse(Sender: TObject;
@@ -116,22 +125,9 @@ begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
       if vNative then
-      begin
-        if Pos(rctAPPLICATIONJSON, AResponse.ContentType) > 0 then
-          vStor := TRALDBStorageJSON_DBWare.Create
-        else
-          vStor := TRALDBStorageBIN.Create;
-
-        try
-          vStor.LoadFromStream(Self, vMem);
-        finally
-          FreeAndNil(vStor);
-        end;
-      end
+        Self.LoadFromStream(vMem, dfBinary)
       else
-      begin
         FStorage.LoadFromStream(Self, vMem);
-      end;
     finally
       FreeAndNil(vMem);
     end;
@@ -173,6 +169,7 @@ begin
   FSQL := TStringList.Create;
   TStringList(FSQL).OnChange := @OnChangeSQL;
 
+  FParamCheck := True;
   FParams := TParams.Create(Self);
 end;
 

@@ -8,14 +8,33 @@ uses
   RALJSON;
 
 type
-  TRALJSONFormat = (jfDBWare, jfRAW);
+  TRALJSONType = (jtDBWare, jtRAW);
+
+  { TRALJSONOptions }
+
+  TRALJSONFormatOptions = class(TPersistent)
+  private
+    FDateTimeFormat : TRALDateTimeFormat;
+    FCustomDateTimeFormat : StringRAL;
+  public
+    constructor Create;
+  published
+    property DateTimeFormat : TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
+    property CustomDateTimeFormat : StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
+  end;
 
   { TRALDBStorageJSON }
 
   TRALDBStorageJSON = class(TRALDBStorage)
+  private
+    FFormatOptions : TRALJSONFormatOptions;
+  public
+    constructor Create;
+    destructor Destroy; override;
   protected
     function StringToJSONString(AValue: TStream): StringRAL; overload;
     function StringToJSONString(AValue: StringRAL): StringRAL; overload;
+    function JSONFormatDateTime(AValue: TDateTime) : StringRAL;
 
     procedure WriteStringToStream(AStream : TStream; AValue : StringRAL);
 
@@ -35,6 +54,8 @@ type
     function WriteBlob(AValue : TStream) : StringRAL;
     function WriteMemo(AValue : TStream) : StringRAL;
     function WriteDateTime(AValue : TDateTime) : StringRAL;
+  published
+    property FormatOptions : TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
   end;
 
   { TRALDBStorageJSON_RAW }
@@ -68,19 +89,43 @@ type
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
   private
-    FJSONFormat : TRALJSONFormat;
+    FJSONType : TRALJSONType;
+    FFormatOptions : TRALJSONFormatOptions;
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner : TComponent); override;
+    destructor Destroy; override;
+
     function GetStorage : TRALDBStorage; override;
   published
-    property JSONFormat : TRALJSONFormat read FJSONFormat write FJSONFormat;
+    property JSONType : TRALJSONType read FJSONType write FJSONType;
+    property FormatOptions : TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
   end;
 
 implementation
 
+{ TRALJSONOptions }
+
+constructor TRALJSONFormatOptions.Create;
+begin
+  FDateTimeFormat := dtfISO8601;
+  FCustomDateTimeFormat := 'dd/mm/yyyy hh:nn:ss:zzz';
+end;
+
 { TRALDBStorageJSON }
+
+constructor TRALDBStorageJSON.Create;
+begin
+  inherited;
+  FFormatOptions := TRALJSONFormatOptions.Create;
+end;
+
+destructor TRALDBStorageJSON.Destroy;
+begin
+  FreeAndNil(FFormatOptions);
+  inherited Destroy;
+end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
 var
@@ -139,6 +184,15 @@ begin
   end;
 end;
 
+function TRALDBStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
+begin
+  case FFormatOptions.DateTimeFormat of
+    dtfUnix    : Result := IntToStr(DateTimeToUnix(AValue));
+    dtfISO8601 : Result := DateToISO8601(AValue);
+    dtfCustom  : Result := FormatDateTime(FFormatOptions.CustomDateTimeFormat, AValue);
+  end;
+end;
+
 procedure TRALDBStorageJSON.WriteStringToStream(AStream: TStream; AValue: StringRAL);
 begin
   AStream.Write(AValue[POSINISTR], Length(AValue));
@@ -185,7 +239,10 @@ end;
 
 function TRALDBStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
 begin
-  Result := Format('"%s":"%s"', [AFieldName, DateToISO8601(AValue)]);
+  if FFormatOptions.DateTimeFormat = dtfUnix then
+    Result := Format('"%s":%s', [AFieldName, JSONFormatDateTime(AValue)])
+  else
+    Result := Format('"%s":"%s"', [AFieldName, JSONFormatDateTime(AValue)])
 end;
 
 function TRALDBStorageJSON.WriteFieldNull(AFieldName: StringRAL): StringRAL;
@@ -231,7 +288,10 @@ end;
 
 function TRALDBStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
 begin
-  Result := Format('"%s"', [DateToISO8601(AValue)]);
+  if FFormatOptions.DateTimeFormat = dtfUnix then
+    Result := Format('%s', [JSONFormatDateTime(AValue)])
+  else
+    Result := Format('"%s"', [JSONFormatDateTime(AValue)]);
 end;
 
 { TRALDBStorageJSON_RAW }
@@ -677,16 +737,30 @@ end;
 constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FJSONFormat := jfDBWare;
+  FJSONType := jtDBWare;
+  FFormatOptions := TRALJSONFormatOptions.Create;
+end;
+
+destructor TRALDBStorageJSONLink.Destroy;
+begin
+  FreeAndNil(FFormatOptions);
+  inherited Destroy;
 end;
 
 function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
 begin
-  case FJSONFormat of
-    jfRAW    : Result := TRALDBStorageJSON_RAW.Create;
-    jfDBWare : Result := TRALDBStorageJSON_DBWare.Create;
+  case FJSONType of
+    jtRAW    : Result := TRALDBStorageJSON_RAW.Create;
+    jtDBWare : Result := TRALDBStorageJSON_DBWare.Create;
   end;
+
   Result.FieldCharCase := FieldCharCase;
+
+  with TRALDBStorageJSON(Result) do
+  begin
+    FormatOptions.CustomDateTimeFormat := FFormatOptions.CustomDateTimeFormat;
+    FormatOptions.DateTimeFormat := FFormatOptions.DateTimeFormat;
+  end;
 end;
 
 initialization

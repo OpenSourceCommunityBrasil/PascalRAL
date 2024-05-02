@@ -1,14 +1,15 @@
 unit RALDBZeos;
 
-//{$I ZComponent.inc}
+{$IFNDEF FPC}
+  {$I ZComponent.inc}
+{$ENDIF}
 
 interface
 
 uses
   Classes, SysUtils, DB,
-  ZConnection, ZDataset, ZDbcIntfs, ZAbstractRODataset,
-  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON,
-  RALMIMETypes;
+  ZConnection, ZDataset, ZDbcIntfs, ZAbstractRODataset, ZMemTable,
+  RALDBBase, RALTypes, RALMIMETypes;
 
 type
 
@@ -29,9 +30,9 @@ type
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
-    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             var AContentType: StringRAL;
-                             var ANative : boolean); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
+                           var AContentType: StringRAL;
+                           var ANative : boolean); override;
     function CanExportNative : boolean; override;
   end;
 
@@ -119,33 +120,41 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBZeos.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+procedure TRALDBZeos.SaveToStream(ADataset: TDataSet; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
-var
-  vStor : TRALDBStorageLink;
+{$IFDEF FPC}
+  type
+    TSaveToStream = procedure (AStream: TStream) of object;
+  var
+    vMethod : TMethod;
+    vProc : TSaveToStream;
+{$ENDIF}
 begin
-  {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
-
+  {$IFNDEF FPC}
+    {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
+      TZAbstractMemTable(ADataset).SaveToStream(AStream);
+      AContentType := rctAPPLICATIONOCTETSTREAM;
+    {$ENDIF}
   {$ELSE}
-    if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
-      vStor := TRALDBStorageJSONLink.Create(nil)
-    else
-      vStor := TRALDBStorageBINLink.Create(nil);
-
-    try
-      AContentType := vStor.ContentType;
-      vStor.SaveToStream(ADataset, AStream);
-    finally
-      FreeAndNil(vStor);
+    vMethod.Data := Pointer(ADataset);
+    vMethod.Code := ADataset.MethodAddress('SaveToStream');
+    if vMethod.Code <> nil then
+    begin
+      vProc := TSaveToStream(vMethod);
+      vProc(AStream);
     end;
-
-    ANative := False;
   {$ENDIF}
 end;
 
 function TRALDBZeos.CanExportNative: boolean;
 begin
-  Result := True;
+  {$IFNDEF FPC}
+    {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
+      Result := True;
+    {$ENDIF}
+  {$ELSE}
+    Result := TZAbstractMemTable.MethodAddress('SaveToStream') <> nil;
+  {$ENDIF}
 end;
 
 function TRALDBZeos.OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset;

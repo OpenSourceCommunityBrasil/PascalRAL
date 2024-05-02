@@ -30,7 +30,7 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
 
-    procedure SaveFromStream(ADataset: TDataset; AStream: TStream;
+    procedure SaveToStream(ADataset: TDataset; AStream: TStream;
                              var AContentType: StringRAL;
                              var ANative: boolean); override;
     function CanExportNative : boolean; override;
@@ -144,7 +144,7 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBFireDAC.SaveFromStream(ADataset: TDataset; AStream: TStream;
+procedure TRALDBFireDAC.SaveToStream(ADataset: TDataset; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
 var
   vFdFormat: TFDStorageFormat;

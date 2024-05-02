@@ -6,9 +6,8 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  SQLDB, PQConnection, SQLite3Conn, IBConnection, mysql51conn,
-  RALDBBase, RALTypes, RALDBStorage, RALDBStorageBIN, RALDBStorageJSON,
-  RALMIMETypes;
+  SQLDB, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
+  RALDBBase, RALTypes, RALMIMETypes;
 
 type
 
@@ -31,7 +30,7 @@ type
                       var ALastInsertId : Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
 
-    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                              var AContentType: StringRAL;
                              var ANative: boolean); override;
     function CanExportNative : boolean; override;
@@ -126,29 +125,11 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBSQLDB.SaveFromStream(ADataset: TDataSet; AStream: TStream;
+procedure TRALDBSQLDB.SaveToStream(ADataset: TDataSet; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
-var
-  vStor : TRALDBStorageLink;
 begin
-  if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
-  begin
-    vStor := TRALDBStorageJSONLink.Create(nil);
-    TRALDBStorageJSONLink(vStor).JSONFormat := jfDBWare;
-  end
-  else
-  begin
-    vStor := TRALDBStorageBINLink.Create(nil);
-  end;
-
-  try
-    AContentType := vStor.ContentType;
-    vStor.SaveToStream(ADataset, AStream);
-  finally
-    FreeAndNil(vStor);
-  end;
-
-  ANative := False;
+  TSQLQuery(ADataset).SaveToStream(AStream, dfBinary);
+  AContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
 function TRALDBSQLDB.CanExportNative: boolean;

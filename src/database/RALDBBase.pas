@@ -37,9 +37,9 @@ type
                       var ALastInsertId: Int64RAL); virtual; abstract;
     function GetDriverName: TRALDBDriverType; virtual; abstract;
 
-    procedure SaveFromStream(ADataset: TDataSet; AStream: TStream;
-                             var AContentType: StringRAL;
-                             var ANative : boolean); virtual; abstract;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
+                           var AContentType: StringRAL;
+                           var ANative : boolean); virtual; abstract;
     function CanExportNative : boolean; virtual;
   published
     property Database: StringRAL read FDatabase write FDatabase;

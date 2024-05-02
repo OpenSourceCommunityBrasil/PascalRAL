@@ -57,9 +57,10 @@ begin
     begin
       Result := qtFiredac
     end
-    else if SameText(vComp.ClassName, 'TZQuery') or
-            SameText(vComp.ClassName, 'TZReadOnlyQuery') or
-            SameText(vComp.ClassName, 'TZMemTable') then
+    else if (SameText(vComp.ClassName, 'TZQuery') or
+             SameText(vComp.ClassName, 'TZReadOnlyQuery') or
+             SameText(vComp.ClassName, 'TZMemTable')) and
+            (ADataset.MethodAddress('SaveToStream') <> nil) then
     begin
       Result := qtZeos
     end

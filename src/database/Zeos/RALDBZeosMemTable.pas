@@ -1,12 +1,16 @@
 unit RALDBZeosMemTable;
 
+{$IFNDEF FPC}
+  {$I ZComponent.inc}
+{$ENDIF}
+
 interface
 
 uses
   Classes, SysUtils, DB,
   ZDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALQueryStructure,
-  RALResponse, RALMIMETypes, RALDBStorageBIN, RALDBStorageJSON, RALDBTypes;
+  RALResponse, RALMIMETypes, RALDBTypes;
 
 type
   { TRALDBZMemTable }
@@ -30,6 +34,7 @@ type
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure ZeosLoadFromStream(AStream : TStream);
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
@@ -114,22 +119,9 @@ begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
       if vNative then
-      begin
-        if Pos(rctAPPLICATIONJSON, AResponse.ContentType) > 0 then
-          vStor := TRALDBStorageJSON_DBWare.Create
-        else
-          vStor := TRALDBStorageBIN.Create;
-
-        try
-          vStor.LoadFromStream(Self, vMem);
-        finally
-          FreeAndNil(vStor);
-        end;
-      end
+        ZeosLoadFromStream(vMem)
       else
-      begin
         FStorage.LoadFromStream(Self, vMem);
-      end;
     finally
       FreeAndNil(vMem);
     end;
@@ -163,6 +155,30 @@ begin
     if Assigned(FOnError) then
       FOnError(Self, AException);
   end;
+end;
+
+procedure TRALDBZMemTable.ZeosLoadFromStream(AStream: TStream);
+{$IFDEF FPC}
+  type
+    TLoadFromStream = procedure (AStream: TStream) of object;
+  var
+    vMethod : TMethod;
+    vProc : TLoadFromStream;
+{$ENDIF}
+begin
+  {$IFNDEF FPC}
+    {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
+      Self.LoadFromStream(AStream);
+    {$ENDIF}
+  {$ELSE}
+    vMethod.Data := Pointer(Self);
+    vMethod.Code := Self.MethodAddress('LoadFromStream');
+    if vMethod.Code <> nil then
+    begin
+      vProc := TLoadFromStream(vMethod);
+      vProc(AStream);
+    end;
+  {$ENDIF}
 end;
 
 constructor TRALDBZMemTable.Create(AOwner: TComponent);
