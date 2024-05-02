@@ -43,12 +43,13 @@ type
     /// Sets the response with the given status code, UTF8 String and Content-Type
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Sets the response with the given status code, Data Stream and Content-Type
+    procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
     /// Sets the response with the given status code
     procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Loads and set a file to the response with the given AFileName
     procedure Answer(const AFileName: StringRAL); overload;
-    /// Sets a file to the response with the given status code, FileStream and an AFileName
-    procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; const AFileName: StringRAL); overload;
 
     ///  Fills the 'ADest' Strings with RALParams Cookies Headers
     procedure GetParamsCookies(ADest: TStringList; ADateTime : TDateTime);
@@ -112,11 +113,12 @@ begin
   AddFile(AFileName);
 end;
 
-procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AFile: TStream;
-  const AFileName: StringRAL);
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+  const AContentType: StringRAL);
 begin
   StatusCode := AStatusCode;
-  AddFile(AFile, AFileName);
+  ResponseStream := AStream;
+  ContentType := AContentType;
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
