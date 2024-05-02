@@ -64,6 +64,9 @@ type
   protected
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+
+    procedure ReadFields(ADataset: TDataSet; AJSON : TRALJSONArray);
+    procedure ReadRecords(ADataset: TDataSet; AJSON : TRALJSONArray);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -402,6 +405,127 @@ begin
   ADataset.EnableControls;
 end;
 
+procedure TRALDBStorageJSON_RAW.ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
+const
+  MAX_JSONSTRING = 4096;
+var
+  vjObj: TRALJSONObject;
+  vInt, vSize: IntegerRAL;
+  vName: StringRAL;
+  vField: TField;
+  vType: TFieldType;
+  vjValue : TRALJSONValue;
+begin
+  if ADataset.Active then
+    ADataset.Close;
+
+  if AJSON.Count = 0 then
+    Exit;
+
+  ADataset.FieldDefs.Clear;
+
+  vjObj := TRALJSONObject(AJSON.Get(0));
+
+  SetLength(FFieldNames, vjObj.Count);
+  SetLength(FFieldTypes, vjObj.Count);
+  SetLength(FFoundFields, vjObj.Count);
+
+  for vInt := 0 to Pred(vjObj.Count) do
+  begin
+    vName := vjObj.GetName(vInt);
+    vField := ADataset.Fields.FindField(vName);
+    if vField <> nil then
+    begin
+      vType := vField.DataType;
+      vSize := vField.Size;
+    end
+    else begin
+      vjValue := vjObj.Get(vInt);
+      vSize := 0;
+      case vjValue.JsonType of
+        rjtString : begin
+          vType := ftString;
+          if Length(vjValue.AsString) > MAX_JSONSTRING then
+            vType := ftBlob
+          else
+            vSize := MAX_JSONSTRING;
+        end;
+        rjtNumber : begin
+          vType := ftFloat;
+          if Frac(vjValue.AsFloat) = 0 then
+            vType := ftLargeint;
+        end;
+        rjtBoolean : vType := ftBoolean;
+      end;
+    end;
+    FFieldNames[vInt] := vName;
+    FFoundFields[vInt] := nil;
+    FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(vType);
+    ADataset.FieldDefs.Add(vName, vType, vSize);
+  end;
+
+  ADataset.Open;
+
+  for vInt := 0 to Pred(ADataset.FieldCount) do
+  begin
+    vName := ADataset.Fields[vInt].FieldName;
+
+    for vSize := 0 to Pred(vjObj.Count) do
+    begin
+      if SameText(vName, FFieldNames[vSize]) then
+      begin
+        FFoundFields[vSize] := ADataset.Fields[vInt];
+        Break;
+      end;
+    end;
+  end;
+end;
+
+procedure TRALDBStorageJSON_RAW.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
+var
+  vjObj: TRALJSONObject;
+  vInt64: Int64RAL;
+  vInt: IntegerRAL;
+  vjValue : TRALJSONValue;
+begin
+  if AJSON.Count = 0 then
+    Exit;
+
+  vInt64 := 0;
+  while vInt64 < AJSON.Count do
+  begin
+    vjObj := TRALJSONObject(AJSON.Get(vInt64));
+    ADataset.Append;;
+    for vInt := 0 to vjObj.Count do
+    begin
+      vjValue := vjObj.Get(vInt);
+      case FFieldTypes[vInt] of
+        sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
+        sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
+        sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
+        sftInt64    : ReadFieldInt64(FFoundFields[vInt],vjValue.AsInteger);
+        sftByte     : ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
+        sftWord     : ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
+        sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
+        sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+        sftDouble   : ReadFieldFloat(FFoundFields[vInt],vjValue.AsFloat);
+        sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
+        sftString   : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+        sftBlob     : ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
+        sftMemo     : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+        sftDateTime : begin
+          if vjValue.JsonType = rjtNumber then
+            ReadFieldDateTime(FFoundFields[vInt], vjObj.Get(vInt).AsInteger)
+          else
+            ReadFieldDateTime(FFoundFields[vInt], vjObj.Get(vInt).AsString)
+        end;
+      end;
+    end;
+    ADataset.Post;
+    vInt64 := vInt64 + 1;
+  end;
+end;
+
 procedure TRALDBStorageJSON_RAW.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
   WriteStringToStream(AStream, '[');
@@ -412,8 +536,19 @@ end;
 
 procedure TRALDBStorageJSON_RAW.LoadFromStream(ADataset: TDataSet;
   AStream: TStream);
+var
+  vjArr : TRALJSONArray;
 begin
-  raise Exception.Create('Format not accept import');
+  vjArr := TRALJSONArray(TRALJSON.ParseJSON(AStream));
+  try
+    if vjArr <> nil then
+    begin
+      ReadFields(ADataset, vjArr);
+      ReadRecords(ADataset, vjArr);
+    end;
+  finally
+    FreeAndNil(vjArr);
+  end;
 end;
 
 { TRALDBStorageJSON_DBWare }

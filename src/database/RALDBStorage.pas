@@ -37,6 +37,7 @@ type
     procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
     procedure ReadFieldFloat(AField : TField; AValue : Double);
     procedure ReadFieldDateTime(AField : TField; AValue : TDateTime); overload;
+    procedure ReadFieldDateTime(AField : TField; AValue : Int64RAL); overload;
     procedure ReadFieldDateTime(AField : TField; AValue : StringRAL); overload;
     procedure ReadFieldStream(AField : TField; AValue : StringRAL); overload;
     procedure ReadFieldStream(AField : TField; AValue : TStream); overload;
@@ -162,10 +163,22 @@ begin
     AField.AsDateTime := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
+procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: Int64RAL);
 begin
   if AField <> nil then
-    AField.AsDateTime := ISO8601ToDate(AValue);
+    AField.AsDateTime := UnixToDateTime(AValue);
+end;
+
+procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
+var
+  vDate : TDateTime;
+begin
+  if AField <> nil then
+  begin
+    if not TryStrToDateTime(AValue, vDate) then
+      vDate := ISO8601ToDate(AValue);
+    AField.AsDateTime := vDate;
+  end;
 end;
 
 procedure TRALDBStorage.ReadFieldStream(AField: TField; AValue: StringRAL);
