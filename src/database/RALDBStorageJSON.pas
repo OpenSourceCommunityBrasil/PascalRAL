@@ -446,7 +446,7 @@ begin
         rjtString : begin
           vType := ftString;
           if Length(vjValue.AsString) > MAX_JSONSTRING then
-            vType := ftBlob
+            vType := ftMemo
           else
             vSize := MAX_JSONSTRING;
         end;
