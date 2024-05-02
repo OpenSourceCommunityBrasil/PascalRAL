@@ -208,20 +208,13 @@ end;
 
 function TRALJSONValue.AsString: StringRAL;
 begin
-  if Self = nil then
-  begin
-    Result := '';
-  end
-  else if FJsonObj <> nil then
+  Result := '';
+  if FJsonObj <> nil then
   begin
     if (FJsonObj is TJSONObject) or (FJsonObj is TJSONArray) then
       Result := ToJSON
     else
       Result := FJsonObj.Value
-  end
-  else
-  begin
-    Result := 'null';
   end;
 end;
 

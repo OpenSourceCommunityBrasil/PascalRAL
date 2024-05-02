@@ -407,7 +407,7 @@ end;
 
 procedure TRALDBStorageJSON_RAW.ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
 const
-  MAX_JSONSTRING = 4096;
+  MAX_JSONSTRING = 255;
 var
   vjObj: TRALJSONObject;
   vInt, vSize: IntegerRAL;
@@ -489,11 +489,13 @@ var
   vjValue : TRALJSONValue;
 begin
   vInt64 := 0;
+  ADataset.DisableControls;
+
   while vInt64 < AJSON.Count do
   begin
     vjObj := TRALJSONObject(AJSON.Get(vInt64));
     ADataset.Append;;
-    for vInt := 0 to vjObj.Count do
+    for vInt := 0 to Pred(vjObj.Count) do
     begin
       vjValue := vjObj.Get(vInt);
       case FFieldTypes[vInt] of
@@ -521,6 +523,8 @@ begin
     ADataset.Post;
     vInt64 := vInt64 + 1;
   end;
+
+  ADataset.EnableControls;
 
   SetLength(FFieldNames, 0);
   SetLength(FFieldTypes, 0);
