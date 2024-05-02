@@ -100,6 +100,7 @@ end;
 destructor TRALRoute.Destroy;
 begin
   FreeAndNil(FDescription);
+  FreeAndNil(FURIParams);
   inherited Destroy;
 end;
 

@@ -409,7 +409,7 @@ end;
 function TRALServer.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
   const ADescription: StringRAL): TRALRoute;
 begin
-  Result := TRALRoute.Create(Self.Routes);
+  Result := TRALRoute(FRoutes.Add);
   Result.Route := ARoute;
   Result.OnReply := AReplyProc;
   Result.Description.Text := ADescription;
