@@ -521,6 +521,10 @@ begin
     ADataset.Post;
     vInt64 := vInt64 + 1;
   end;
+
+  SetLength(FFieldNames, 0);
+  SetLength(FFieldTypes, 0);
+  SetLength(FFoundFields, 0);
 end;
 
 procedure TRALDBStorageJSON_RAW.SaveToStream(ADataset: TDataSet; AStream: TStream);
@@ -782,6 +786,7 @@ var
   vIsNull: boolean;
   vInt: IntegerRAL;
   vjArr1, vjArr2 : TRALJSONArray;
+  vjValue : TRALJSONValue;
 begin
   vjArr1 := TRALJSONArray(AJSON.Get('rc'));
   if vjArr1 <> nil then
@@ -797,26 +802,32 @@ begin
 
       for vInt := 0 to Pred(vjArr2.Count) do
       begin
-        // is null
-        vIsNull := vjArr2.Get(vInt).IsNull;
+        vjValue := vjArr2.Get(vInt);
 
+        // is null
+        vIsNull := vjValue.IsNull;
         if not vIsNull then
         begin
           case FFieldTypes[vInt] of
-            sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftInt64    : ReadFieldInt64(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftByte     : ReadFieldByte(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftWord     : ReadFieldWord(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjArr2.Get(vInt).AsInteger);
-            sftDouble   : ReadFieldFloat(FFoundFields[vInt], vjArr2.Get(vInt).AsFloat);
-            sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjArr2.Get(vInt).AsBoolean);
-            sftString   : ReadFieldString(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
-            sftBlob     : ReadFieldStream(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
-            sftMemo     : ReadFieldString(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
-            sftDateTime : ReadFieldDateTime(FFoundFields[vInt], vjArr2.Get(vInt).AsString);
+            sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
+            sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
+            sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
+            sftInt64    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+            sftByte     : ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
+            sftWord     : ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
+            sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
+            sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+            sftDouble   : ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
+            sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
+            sftString   : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+            sftBlob     : ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
+            sftMemo     : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+            sftDateTime : begin
+              if vjValue.JsonType = rjtNumber then
+                ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
+              else
+                ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
+            end;
           end;
         end;
       end;
