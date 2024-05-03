@@ -39,6 +39,8 @@ contains
   raldbregister in '..\..\..\src\database\raldbregister.pas',
   RALDBStorage in '..\..\..\src\database\RALDBStorage.pas',
   RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas';
+  RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas',
+  RALDBTypes in '..\..\..\src\database\RALDBTypes.pas',
+  RALQueryStructure in '..\..\..\src\database\RALQueryStructure.pas';
 
 end.

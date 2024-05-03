@@ -175,7 +175,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="RALDBFireDACObjects.dcr"/>
+        <DCCReference Include="RALDBFireDAC.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="FireDAC.dcp"/>
         <DCCReference Include="FireDACCommonDriver.dcp"/>

@@ -180,7 +180,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="RALDBFireDACLink.dcr"/>
+        <DCCReference Include="RALDBFireDAC.dcr"/>
         <DCCReference Include="RALDBPackage.dcp"/>
         <DCCReference Include="FireDAC.dcp"/>
         <DCCReference Include="FireDACCommonDriver.dcp"/>
@@ -191,6 +191,7 @@
         <DCCReference Include="FireDACSqliteDriver.dcp"/>
         <DCCReference Include="..\..\..\src\database\FireDAC\RALDBFireDAC.pas"/>
         <DCCReference Include="..\..\..\src\database\FireDAC\RALDBFireDACLinkReg.pas"/>
+        <DCCReference Include="..\..\..\src\database\FireDAC\RALDBFiredacMemTable.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -232,7 +233,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACLink.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACLink.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>RALDBFireDACLink.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

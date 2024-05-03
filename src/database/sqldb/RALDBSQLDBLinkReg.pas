@@ -20,6 +20,6 @@ begin
 end;
 
 initialization
-{$I RALDBLinks.lrs}
+{$I RALDBPackage.lrs}
 
 end.

@@ -7,7 +7,7 @@ if NOT EXIST %path_brcc32% (
 
 # Componentes gerais
 %path_brcc32% -fo "..\..\pkg\Delphi\PascalRAL.dcr" "PascalRAL.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\RALDBPackage.dcr" "RALDB.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBPackage.dcr" "RALDB.rc"
 
 # Motores
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\IndyRAL.dcr" "Indy.rc"
@@ -17,6 +17,5 @@ if NOT EXIST %path_brcc32% (
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\SaguiRAL.dcr" "Sagui.rc"
 
 # DBWare
-%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDACLink.dcr" "DBFireDACLink.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBZeosLink.dcr" "DBZeosLink.rc"
-%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDACObjects.dcr" "RALDBFireDACObjects.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDAC.dcr" "RALDBFireDAC.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBZeos.dcr" "RALDBZeos.rc"

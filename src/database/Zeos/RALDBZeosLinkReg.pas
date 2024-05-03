@@ -24,7 +24,7 @@ end;
 
 {$IFDEF FPC}
 initialization
-//{$I RALDBLinks.lrs}
+{$I RALDBPackage.lrs}
 {$ENDIF}
 
 end.

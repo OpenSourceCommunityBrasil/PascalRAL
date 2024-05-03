@@ -168,7 +168,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="RALDBZeosLink.dcr"/>
+        <DCCReference Include="RALDBZeos.dcr"/>
         <DCCReference Include="RALDBPackage.dcp"/>
         <DCCReference Include="ZComponent.dcp"/>
         <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeos.pas"/>

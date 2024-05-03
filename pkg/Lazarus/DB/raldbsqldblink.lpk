@@ -21,17 +21,17 @@
     <Version Major="1"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="RALDBLinks.lrs"/>
-        <Type Value="LRS"/>
-      </Item1>
-      <Item2>
         <Filename Value="..\..\..\src\database\sqldb\raldbsqldb.pas"/>
         <UnitName Value="RALDBSQLDB"/>
-      </Item2>
-      <Item3>
+      </Item1>
+      <Item2>
         <Filename Value="..\..\..\src\database\sqldb\RALDBSQLDBLinkReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALDBSQLDBLinkReg"/>
+      </Item2>
+      <Item3>
+        <Filename Value="raldbpackage.lrs"/>
+        <Type Value="LRS"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>

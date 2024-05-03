@@ -1,0 +1,4 @@
+TRALDBFireDACLink BITMAP "..\components\database\FireDAC\TRALDBFireDACLink.bmp"
+TRALDBFDMemTable BITMAP "..\components\database\FireDAC\TRALDBFDMemTable.bmp"
+TRALFDQuery BITMAP "..\components\database\FireDAC\TRALFDQuery.bmp"
+TRALFDConnection BITMAP "..\components\database\FireDAC\TRALFDConnection.bmp"
