@@ -4,3 +4,6 @@
 [submodule "src/others/pascal_brotli"]
 	path = src/others/pascal_brotli
 	url = https://github.com/FernandoBanhos/pascal_brotli
+[submodule "src/others/brookframework"]
+	path = src/others/brookframework
+	url = https://github.com/risoflora/brookframework.git
