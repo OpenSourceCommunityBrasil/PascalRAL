@@ -10,7 +10,7 @@ uses
 type
   TRALJSONType = (jtDBWare, jtRAW);
 
-  { TRALJSONOptions }
+  { TRALJSONFormatOptions }
 
   TRALJSONFormatOptions = class(TPersistent)
   private
@@ -33,7 +33,7 @@ type
     destructor Destroy; override;
   protected
     function StringToJSONString(AValue: TStream): StringRAL; overload;
-    function StringToJSONString(AValue: StringRAL): StringRAL; overload;
+    function StringToJSONString(AValue: string): StringRAL; overload;
     function JSONFormatDateTime(AValue: TDateTime) : StringRAL;
 
     procedure WriteStringToStream(AStream : TStream; AValue : StringRAL);
@@ -41,7 +41,7 @@ type
     function WriteFieldInt64(AFieldName : StringRAL; AValue : Int64RAL) : StringRAL;
     function WriteFieldFloat(AFieldName : StringRAL; AValue : Double) : StringRAL;
     function WriteFieldBoolean(AFieldName : StringRAL; AValue : Boolean) : StringRAL;
-    function WriteFieldString(AFieldName : StringRAL; AValue : StringRAL) : StringRAL;
+    function WriteFieldString(AFieldName : StringRAL; AValue : string) : StringRAL;
     function WriteFieldBlob(AFieldName : StringRAL; AValue : TStream) : StringRAL;
     function WriteFieldMemo(AFieldName : StringRAL; AValue : TStream) : StringRAL;
     function WriteFieldDateTime(AFieldName : StringRAL; AValue : TDateTime) : StringRAL;
@@ -50,7 +50,7 @@ type
     function WriteInt64(AValue : Int64RAL) : StringRAL;
     function WriteFloat(AValue : Double) : StringRAL;
     function WriteBoolean(AValue : Boolean) : StringRAL;
-    function WriteString(AValue : StringRAL) : StringRAL;
+    function WriteString(AValue : string) : StringRAL;
     function WriteBlob(AValue : TStream) : StringRAL;
     function WriteMemo(AValue : TStream) : StringRAL;
     function WriteDateTime(AValue : TDateTime) : StringRAL;
@@ -132,7 +132,7 @@ end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
 var
-  vChr: UTF8Char;
+  vChr: Char;
 begin
   Result := '';
   while AValue.Position < AValue.Size do
@@ -148,7 +148,7 @@ begin
       #12: Result := Result + '\f';
       #13: Result := Result + '\r';
       else begin
-        if vChr in [#0..#31] then
+        if vChr in [#0..#31,#127..#255] then
           Result := Result + '\u' + IntToHex(Ord(vChr), 4)
         else
           Result := Result + vChr;
@@ -157,9 +157,9 @@ begin
   end;
 end;
 
-function TRALDBStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
+function TRALDBStorageJSON.StringToJSONString(AValue: string): StringRAL;
 var
-  vChr: UTF8Char;
+  vChr: Char;
   vInt64: Int64RAL;
 begin
   Result := '';
@@ -177,7 +177,7 @@ begin
       #12: Result := Result + '\f';
       #13: Result := Result + '\r';
       else begin
-        if vChr in [#0..#31] then
+        if vChr in [#0..#31,#127..#255] then
           Result := Result + '\u' + IntToHex(Ord(vChr), 4)
         else
           Result := Result + vChr;
@@ -225,7 +225,7 @@ begin
 end;
 
 function TRALDBStorageJSON.WriteFieldString(AFieldName: StringRAL;
-  AValue: StringRAL): StringRAL;
+  AValue: string): StringRAL;
 begin
   Result := Format('"%s":"%s"',[AFieldName, StringToJSONString(AValue)]);
 end;
@@ -274,19 +274,19 @@ begin
     Result := 'false';
 end;
 
-function TRALDBStorageJSON.WriteString(AValue: StringRAL): StringRAL;
+function TRALDBStorageJSON.WriteString(AValue: string): StringRAL;
 begin
-  Result := Format('"%s"',[StringToJSONString(AValue)]);
+  Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
 function TRALDBStorageJSON.WriteBlob(AValue: TStream): StringRAL;
 begin
-  Result := Format('"%s"',[TRALBase64.Encode(AValue)]);
+  Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
 end;
 
 function TRALDBStorageJSON.WriteMemo(AValue: TStream): StringRAL;
 begin
-  Result := Format('"%s"',[StringToJSONString(AValue)]);
+  Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
 function TRALDBStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
