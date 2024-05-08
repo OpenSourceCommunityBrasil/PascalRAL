@@ -51,6 +51,11 @@ type
     function CSVFormatString(AValue : StringRAL) : StringRAL;
 
     procedure WriteStringToStream(AStream : TStream; AValue : StringRAL);
+
+    function ReadLine(AStream : TStream) : TStringList;
+
+    procedure ReadFields(ADataset : TDataSet; AStream : TStream);
+    procedure ReadRecords(ADataset : TDataSet; AStream : TStream);
   public
     constructor Create;
     destructor Destroy; override;
@@ -176,8 +181,8 @@ end;
 
 procedure TRALDBStorageCSV.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 begin
-  inherited;
-
+  ReadFields(ADataset, AStream);
+  ReadRecords(ADataset, AStream);
 end;
 
 procedure TRALDBStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
@@ -288,6 +293,168 @@ end;
 procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringRAL);
 begin
   AStream.Write(AValue[POSINISTR], Length(AValue));
+end;
+
+function TRALDBStorageCSV.ReadLine(AStream: TStream): TStringList;
+var
+  vChr1, vChr2 : Char;
+  vDoubleQuote, v13 : boolean;
+  vStr : StringRAL;
+
+  procedure addString;
+  begin
+    Result.Add(vStr);
+    vStr := '';
+  end;
+
+begin
+  Result := TStringList.Create;
+
+  vDoubleQuote := False;
+  vStr := '';
+  vChr2 := #0;
+
+  while AStream.Position < AStream.Size do
+  begin
+    AStream.Read(vChr1, SizeOf(vChr1));
+    if (vChr1 = '"') and (vChr2 <> '\') then
+    begin
+      vDoubleQuote := not vDoubleQuote;
+      vStr := vStr + vChr1;
+    end
+    else if (vChr1 = ';') and (not vDoubleQuote) then
+    begin
+      addString;
+    end
+    // mac ou windows
+    else if (vChr1 = #13) and (not vDoubleQuote) then
+    begin
+      addString;
+      v13 := True;
+    end
+    // windows final
+    else if (vChr1 = #10) and (not vDoubleQuote) and (v13) then
+    begin
+      Break;
+    end
+    // unix
+    else if (vChr1 = #10) and (not vDoubleQuote) and (not v13) then
+    begin
+      addString;
+      Break;
+    end
+    // mac final
+    else if (not vDoubleQuote) and (v13) then
+    begin
+      AStream.Position := AStream.Position - SizeOf(vChr1);
+      Break;
+    end
+    else
+    begin
+      vStr := vStr + vChr1;
+    end;
+    vChr2 := vChr1;
+  end;
+end;
+
+procedure TRALDBStorageCSV.ReadFields(ADataset: TDataSet; AStream: TStream);
+var
+  vLine1, vLine2: TStringList;
+  vInt, vSize: IntegerRAL;
+  vInt64: Int64RAL;
+  vFloat: Extended;
+  vName, vValue: StringRAL;
+  vField: TField;
+  vType: TFieldType;
+  vFormat : TFormatSettings;
+begin
+  if ADataset.Active then
+    ADataset.Close;
+
+  ADataset.FieldDefs.Clear;
+
+  // capturando cabecalho
+  vLine1 := ReadLine(AStream);
+  vInt64 := AStream.Position;
+
+  // capturando primeira linha de valores
+  vLine2 := ReadLine(AStream);
+  AStream.Position := vInt64;
+
+  try
+    vFormat.DecimalSeparator := FFormatOptions.DecimalSeparator;
+    vFormat.ThousandSeparator := FFormatOptions.ThousandSeparator;
+
+    SetLength(FFieldNames, vLine1.Count);
+    SetLength(FFieldTypes, vLine1.Count);
+    SetLength(FFoundFields, vLine1.Count);
+
+    for vInt := 0 to Pred(vLine1.Count) do
+    begin
+      vName := vLine1.Strings[vInt];
+      vField := ADataset.Fields.FindField(vName);
+      if vField <> nil then
+      begin
+        vType := vField.DataType;
+        vSize := vField.Size;
+      end
+      else begin
+        vValue := vLine2.Strings[vInt];
+        vSize := 0;
+        if (vValue = FFormatOptions.BoolTrueStr) or
+           (vValue = FFormatOptions.BoolFalseStr) then
+        begin
+          vType := ftBoolean;
+        end
+        else if TryStrToInt64(vValue, vInt64) then
+        begin
+          vType := ftLargeInt;
+        end
+        else if TryStrToFloat(vValue, vFloat, vFormat) then
+        begin
+          vType := ftFloat;
+        end
+        else
+        begin
+          vType := ftString;
+          vSize := 255;
+          if Length(vValue) - 2 > 255 then
+          begin
+            vType := ftMemo;
+            vSize := 0;
+          end;
+        end
+      end;
+      FFieldNames[vInt] := vName;
+      FFoundFields[vInt] := nil;
+      FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(vType);
+      ADataset.FieldDefs.Add(vName, vType, vSize);
+    end;
+
+    ADataset.Open;
+
+    for vInt := 0 to Pred(ADataset.FieldCount) do
+    begin
+      vName := ADataset.Fields[vInt].FieldName;
+
+      for vSize := 0 to Pred(vLine1.Count) do
+      begin
+        if SameText(vName, FFieldNames[vSize]) then
+        begin
+          FFoundFields[vSize] := ADataset.Fields[vInt];
+          Break;
+        end;
+      end;
+    end;
+  finally
+    FreeAndNil(vLine1);
+    FreeAndNil(vLine2);
+  end;
+end;
+
+procedure TRALDBStorageCSV.ReadRecords(ADataset: TDataSet; AStream: TStream);
+begin
+
 end;
 
 { TRALCSVFormatOptions }

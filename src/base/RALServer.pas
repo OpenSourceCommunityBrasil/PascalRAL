@@ -172,7 +172,7 @@ type
     FCriptoOptions: TRALCriptoOptions;
     FEngine: StringRAL;
     FIPConfig: TRALIPConfig;
-    FListSubRoutes: TList;
+    FListSubModules: TList;
     FPort: IntegerRAL;
     FRoutes: TRALRoutes;
     FSecurity: TRALSecurity;
@@ -208,6 +208,7 @@ type
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+    function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -223,11 +224,14 @@ type
     function CreateRequest: TRALRequest;
     /// create handle response of server
     function CreateResponse: TRALResponse;
-
     /// Shortcut to start the server
     procedure Start;
     /// Shortcut to stop the server
     procedure Stop;
+
+    function CountSubModules : IntegerRAL;
+
+    property SubModule[AIndex : IntegerRAL] : TRALModuleRoutes read GetSubModule;
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -269,6 +273,7 @@ type
 
     function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
     function IsDomain: boolean; virtual;
+    function GetListRoutes : TList; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
@@ -385,7 +390,7 @@ begin
   FCORSOptions := TRALCORSOptions.Create;
   FCriptoOptions := TRALCriptoOptions.Create;
   FIPConfig := TRALIPConfig.Create(Self);
-  FListSubRoutes := TList.Create;
+  FListSubModules := TList.Create;
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
   FSecurity := TRALSecurity.Create;
@@ -435,6 +440,11 @@ begin
   end;
 end;
 
+function TRALServer.CountSubModules: IntegerRAL;
+begin
+  Result := FListSubModules.Count;
+end;
+
 destructor TRALServer.Destroy;
 begin
   if Assigned(FSSL) then
@@ -446,7 +456,7 @@ begin
   FreeAndNil(FIPConfig);
   FreeAndNil(FCORSOptions);
   FreeAndNil(FCriptoOptions);
-  FreeAndNil(FListSubRoutes);
+  FreeAndNil(FListSubModules);
 
   FreeAndNil(FSecurity);
   inherited;
@@ -455,6 +465,13 @@ end;
 function TRALServer.GetDefaultSSL: TRALSSL;
 begin
   Result := FSSL;
+end;
+
+function TRALServer.GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
+begin
+  Result := nil;
+  if (AIndex >= 0) and (AIndex < FListSubModules.Count) then
+    Result := TRALModuleRoutes(FListSubModules.Items[AIndex]);
 end;
 
 procedure TRALServer.SetServerStatus(AValue: TStringList);
@@ -477,17 +494,17 @@ end;
 
 procedure TRALServer.AddSubRoute(ASubRoute: TRALModuleRoutes);
 begin
-  if FListSubRoutes.IndexOf(ASubRoute) < 0 then
-    FListSubRoutes.Add(ASubRoute);
+  if FListSubModules.IndexOf(ASubRoute) < 0 then
+    FListSubModules.Add(ASubRoute);
 end;
 
 procedure TRALServer.DelSubRoute(ASubRoute: TRALModuleRoutes);
 var
   vInt: IntegerRAL;
 begin
-  vInt := FListSubRoutes.IndexOf(ASubRoute);
+  vInt := FListSubModules.IndexOf(ASubRoute);
   if vInt >= 0 then
-    FListSubRoutes.Delete(vInt);
+    FListSubModules.Delete(vInt);
 end;
 
 procedure TRALServer.ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -520,9 +537,9 @@ begin
   vRoute := FRoutes.CanAnswerRoute(ARequest);
 
   vInt := 0;
-  while (vRoute = nil) and (vInt < FListSubRoutes.Count) do
+  while (vRoute = nil) and (vInt < FListSubModules.Count) do
   begin
-    vSubRoute := TRALModuleRoutes(FListSubRoutes.Items[vInt]);
+    vSubRoute := TRALModuleRoutes(FListSubModules.Items[vInt]);
     vRoute := vSubRoute.CanAnswerRoute(ARequest, AResponse);
     vInt := vInt + 1;
   end;
@@ -822,6 +839,16 @@ begin
 
   FRoutes.Free;
   inherited Destroy;
+end;
+
+function TRALModuleRoutes.GetListRoutes: TList;
+var
+  vInt : IntegerRAL;
+begin
+  Result := TList.Create;
+
+  for vInt := 0 to Pred(FRoutes.Count) do
+    Result.Add(FRoutes.Items[vInt]);
 end;
 
 function TRALModuleRoutes.IsDomain: boolean;
