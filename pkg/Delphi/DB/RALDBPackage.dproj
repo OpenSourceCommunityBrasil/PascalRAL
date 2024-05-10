@@ -197,6 +197,7 @@
         <DCCReference Include="..\..\..\src\database\RALDBStorageJSON.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBTypes.pas"/>
         <DCCReference Include="..\..\..\src\database\RALQueryStructure.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBStorageCSV.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

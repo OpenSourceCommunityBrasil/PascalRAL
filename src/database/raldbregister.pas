@@ -8,7 +8,7 @@ uses
   {$IFDEF FPC}
     LResources,
   {$ENDIF}
-  Classes, SysUtils, RALDBModule, RALDBStorageJSON, RALDBStorageBIN;
+  Classes, SysUtils, RALDBModule, RALDBStorageJSON, RALDBStorageBIN, RALDBStorageCSV;
 
 procedure Register;
 
@@ -17,7 +17,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - DBWare', [TRALDBModule, TRALDBStorageJSONLink,
-    TRALDBStorageBINLink]);
+    TRALDBStorageBINLink, TRALDBStorageCSVLink]);
 end;
 
 {$IFDEF FPC}

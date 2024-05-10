@@ -41,6 +41,7 @@ contains
   RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
   RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas',
   RALDBTypes in '..\..\..\src\database\RALDBTypes.pas',
-  RALQueryStructure in '..\..\..\src\database\RALQueryStructure.pas';
+  RALQueryStructure in '..\..\..\src\database\RALQueryStructure.pas',
+  RALDBStorageCSV in '..\..\..\src\database\RALDBStorageCSV.pas';
 
 end.

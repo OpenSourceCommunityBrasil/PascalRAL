@@ -19,7 +19,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1"/>
-    <Files Count="7">
+    <Files Count="8">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
@@ -49,6 +49,10 @@
         <Filename Value="raldbpackage.lrs"/>
         <Type Value="LRS"/>
       </Item7>
+      <Item8>
+        <Filename Value="..\..\..\src\database\RALDBStorageCSV.pas"/>
+        <UnitName Value="RALDBStorageCSV"/>
+      </Item8>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
