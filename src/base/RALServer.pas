@@ -577,7 +577,8 @@ begin
 
           if vCheck_Authentication then
             goto aOK
-          else if vCheckBruteForceTries then
+          else if (vCheckBruteForceTries) or
+                  (AResponse.StatusCode = 401) then
             goto a401
           else
             goto a403;
