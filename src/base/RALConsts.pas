@@ -10,7 +10,7 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.9.5 - alpha';
+  RALVERSION = '0.9.6 - alpha';
   // IOTA Constants
   RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
   RALPACKAGESHORT          = 'PascalRAL';
