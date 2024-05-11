@@ -3,9 +3,9 @@
 interface
 
 uses
-  Classes, SysUtils, syncobjs, StrUtils,
+  Classes, SysUtils, syncobjs, StrUtils, DateUtils,
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
-  mormot.core.base, mormot.rest.http.server, mormot.rest.server,
+  mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALBase64;
 
@@ -66,8 +66,13 @@ procedure TRALSynopseServer.SetActive(const AValue: boolean);
 var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   if AValue then
@@ -83,10 +88,14 @@ begin
     vOptions := [hsoNoXPoweredHeader, hsoNoStats, hsoHeadersInterning,
                  hsoThreadSmooting, hsoHeadersUnfiltered];
     //                 hsoThreadCpuAffinity, hsoThreadSocketAffinity];
+
+    // variavel definida mormot.net.sock
+    RemoteIPLocalHostAsVoidInServers := False;
+
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
-    FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
+    FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := FQueueSize;
     FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';
@@ -111,8 +120,6 @@ begin
     if FHttp <> nil then
       FreeAndNil(FHttp);
   end;
-
-  inherited;
 end;
 
 procedure TRALSynopseServer.SetPoolCount(const AValue: IntegerRAL);
@@ -205,14 +212,20 @@ function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
+  vHeaders: StringRAL;
+  vInt: IntegerRAL;
 begin
-  vRequest := TRALRequest.Create;
+  vRequest := CreateRequest;
+  vResponse := CreateResponse;
+
   try
     with vRequest do
     begin
       ClientInfo.IP := AContext.RemoteIP;
       if ClientInfo.IP = '' then
         ClientInfo.IP := '127.0.0.1';
+      //ClientInfo.Porta := StrToInt(AContext.RemotePort);
+      ClientInfo.Porta := 0;
 
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := AContext.UserAgent;
@@ -228,53 +241,63 @@ begin
       Params.AppendParamsListText(AContext.InHeaders, rpkHEADER);
       DecodeAuth(vRequest);
 
+      ContentDisposition := Params.Get['Content-Disposition'].AsString;
       ContentEncoding := Params.Get['Content-Encoding'].AsString;
       AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := CriptoOptions.Key;
-      Stream := Params.DecodeBody(AContext.InContent, AContext.InContentType);
+      AddCookies(ParamByName('Cookie').AsString);
 
-      Host := AContext.Host;
-      Protocol := '1.1';
-      if SSL.Enabled then
-        HttpVersion := 'HTTPS'
-      else
-        HttpVersion := 'HTTP';
+      ValidateRequest(vRequest, vResponse);
+      if vResponse.StatusCode < 400 then
+      begin
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := CriptoOptions.Key;
+        RequestText := AContext.InContent;
 
-      AContext.InContent := '';
-      AContext.InHeaders := '';
+        Host := AContext.Host;
+        Protocol := '1.1';
+        if SSL.Enabled then
+          HttpVersion := 'HTTPS'
+        else
+          HttpVersion := 'HTTP';
+
+        AContext.InContent := '';
+        AContext.InHeaders := '';
+      end;
     end;
 
-    vResponse := ProcessCommands(vRequest);
+    ProcessCommands(vRequest, vResponse);
+    with vResponse do
+    begin
+      AContext.OutContent := ResponseText;
+      AContext.OutContentType := ContentType;
 
-    try
-      with vResponse do
-      begin
-        AContext.OutContent := ResponseText;
-        AContext.OutContentType := ContentType;
+      if (vResponse.ContentDisposition <> '') then
+        Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
-        if vResponse.ContentEncoding <> '' then
-          Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+      if vResponse.ContentEncoding <> '' then
+        Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
 
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+      if vResponse.AcceptEncoding <> '' then
+        Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+      if vResponse.ContentEncription <> '' then
+        Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
-        AContext.OutCustomHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+      vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+      vHeaders := vHeaders + HTTPLineBreak;
+      vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
 
-        Result := StatusCode;
-      end;
-    finally
-      FreeAndNil(vResponse);
+      AContext.OutCustomHeaders := Trim(vHeaders);
+
+      Result := StatusCode;
     end;
   finally
+    FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
 end;

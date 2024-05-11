@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream;
+  RALTypes, RALStream, RALConsts;
 
 type
   { TRALBase64 }
@@ -21,6 +21,7 @@ type
     class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
+    class function DecodeAsStream(AValue: StringRAL): TStream; overload;
     class function Encode(const AValue: StringRAL): StringRAL; overload;
     class function Encode(AValue: TBytes): StringRAL; overload;
     class function Encode(AValue: TStream): StringRAL; overload;
@@ -29,6 +30,9 @@ type
     class function EncodeAsStream(AValue: TStream): TStream; overload;
     class function FromBase64Url(const AValue: StringRAL): StringRAL;
     class function ToBase64Url(const AValue: StringRAL): StringRAL;
+
+    class function GetSizeEncode(ASize : Int64RAL) : Int64RAL;
+    class function GetSizeDecode(ASize : Int64RAL) : Int64RAL;
   end;
 
 implementation
@@ -112,8 +116,8 @@ end;
 
 class function TRALBase64.DecodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..6119] of Byte;
-  vOutBuf: array[0..4589] of Byte;
+  vInBuf: array of Byte;
+  vOutBuf: array of Byte;
   vBytesRead, vBytesWrite: Integer;
   vPosition, vSize: Int64RAL;
 begin
@@ -121,7 +125,18 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    vBytesRead := DEFAULTBUFFERSTREAMSIZE
+  else
+    vBytesRead := AValue.Size;
+
+  vBytesWrite := GetSizeDecode(vBytesRead);
+
+  SetLength(vInBuf, vBytesRead);
+  SetLength(vOutBuf, vBytesWrite);
+
   Result := TMemoryStream.Create;
+  Result.Size := GetSizeDecode(AValue.Size);
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
@@ -130,7 +145,20 @@ begin
     Result.Write(vOutbuf[0], vBytesWrite);
     vPosition := vPosition + vBytesRead;
   end;
+  Result.Size := Result.Position;
   Result.Position := 0;
+end;
+
+class function TRALBase64.DecodeAsStream(AValue: StringRAL): TStream;
+var
+  vStream: TStream;
+begin
+  vStream := StringToStream(AValue);
+  try
+    Result := DecodeAsStream(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
 end;
 
 class function TRALBase64.ToBase64Url(const AValue: StringRAL): StringRAL;
@@ -138,6 +166,16 @@ begin
   Result := StringReplace(AValue, '+', '-', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
   Result := StringReplace(Result, '=', '', [rfReplaceAll]);
+end;
+
+class function TRALBase64.GetSizeEncode(ASize: Int64RAL): Int64RAL;
+begin
+  Result := 4 * ((ASize div 3) + Ord(Frac(ASize / 3) > 0));
+end;
+
+class function TRALBase64.GetSizeDecode(ASize: Int64RAL): Int64RAL;
+begin
+  Result := Round(ASize / 4 * 3);
 end;
 
 class function TRALBase64.FromBase64Url(const AValue: StringRAL): StringRAL;
@@ -311,8 +349,8 @@ end;
 
 class function TRALBase64.EncodeAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array[0..4589] of Byte;
-  vOutBuf: array[0..6119] of Byte;
+  vInBuf: array of Byte;
+  vOutBuf: array of Byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
@@ -320,8 +358,18 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    vBytesRead := DEFAULTBUFFERSTREAMSIZE
+  else
+    vBytesRead := AValue.Size;
+
+  vBytesWrite := GetSizeEncode(vBytesRead);
+
+  SetLength(vInBuf, vBytesRead);
+  SetLength(vOutBuf, vBytesWrite);
+
   Result := TMemoryStream.Create;
-  Result.Size := 4 * ((AValue.Size div 3) + Ord(Frac(AValue.Size / 3) > 0));
+  Result.Size := GetSizeEncode(AValue.Size);
   while vPosition < vSize do
   begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));

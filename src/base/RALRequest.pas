@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects, RALTools,
-  RALMIMETypes;
+  RALMIMETypes, RALStream, RALCompress;
 
 type
 
@@ -17,10 +17,12 @@ type
   private
     FIP: StringRAL;
     FMACAddress: StringRAL;
+    FPorta: IntegerRAL;
     FUserAgent: StringRAL;
   public
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
+    property Porta: IntegerRAL read FPorta write FPorta;
     property UserAgent: StringRAL read FUserAgent write FUserAgent;
   end;
 
@@ -49,7 +51,6 @@ type
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
     FAuthorization: TRALAuthorization;
-    FContentType: StringRAL;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
     FHost: StringRAL;
@@ -57,13 +58,16 @@ type
     FMethod: TRALMethod;
     FProtocol: StringRAL;
     FQuery: StringRAL;
-    FStream: TStream;
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
     /// Grabs only the params after the "?" key and records it in FQuery attribute
     procedure SetQuery(const AValue: StringRAL);
-    procedure SetStream(const AValue: TStream);
+
+    function GetRequestStream: TStream;
+    function GetRequestText: StringRAL;
+    procedure SetRequestStream(const AValue: TStream); virtual; abstract;
+    procedure SetRequestText(const AValue: StringRAL); virtual; abstract;
   public
     constructor Create;
     destructor Destroy; override;
@@ -80,23 +84,65 @@ type
     /// Adds an UTF8 String to the header of the request.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
 
+    /// Returns the request in TStream format
+    function GetRequestEncStream(const AEncode : boolean = true): TStream; virtual; abstract;
+    /// Returns the request in UTF8String format
+    function GetRequestEncText(const AEncode : boolean = true): StringRAL; virtual; abstract;
+
+    procedure Clone(ASource : TRALRequest); reintroduce;
+
     property URL: StringRAL read GetURL;
+    property RequestStream: TStream read GetRequestStream write SetRequestStream;
+    property RequestText: StringRAL read GetRequestText write SetRequestText;
   published
     property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
-    property ContentType: StringRAL read FContentType write FContentType;
     property Host: StringRAL read FHost write FHost;
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Method: TRALMethod read FMethod write FMethod;
     property Protocol: StringRAL read FProtocol write FProtocol;
-    property Stream: TStream read FStream write SetStream;
     property Query: StringRAL read FQuery write SetQuery;
+  end;
+
+  /// Derived class to handle ServerRequest
+  TRALServerRequest = class(TRALRequest)
+  private
+    FStream: TStream;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    function GetRequestEncStream(const AEncode : boolean = true): TStream; override;
+    function GetRequestEncText(const AEncode : boolean = true): StringRAL; override;
+  protected
+    procedure SetRequestStream(const AValue: TStream); override;
+    procedure SetRequestText(const AValue: StringRAL); override;
+  end;
+
+  /// Derived class to handle ClientRequest
+  TRALClientRequest = class(TRALRequest)
+  public
+    function GetRequestEncStream(const AEncode : boolean = true): TStream; override;
+    function GetRequestEncText(const AEncode : boolean = true): StringRAL; override;
+  protected
+    procedure SetRequestStream(const AValue: TStream); override;
+    procedure SetRequestText(const AValue: StringRAL); override;
   end;
 
 implementation
 
 { TRALRequest }
+
+function TRALRequest.GetRequestStream: TStream;
+begin
+  Result := GetRequestEncStream;
+end;
+
+function TRALRequest.GetRequestText: StringRAL;
+begin
+  Result := GetRequestEncText;
+end;
 
 function TRALRequest.GetURL: StringRAL;
 begin
@@ -108,17 +154,26 @@ var
   vInt: IntegerRAL;
 begin
   FQuery := AValue;
+  
   vInt := Pos('?', FQuery);
   if vInt > 0 then
     Delete(FQuery, vInt, Length(FQuery));
+
+  FQuery := FixRoute(FQuery);
 end;
 
-procedure TRALRequest.SetStream(const AValue: TStream);
+procedure TRALRequest.Clone(ASource: TRALRequest);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
+  inherited Clone(ASource);
 
-  FStream := Params.DecodeBody(AValue, FContentType);
+  ASource.Authorization := Self.Authorization;
+  ASource.ClientInfo := Self.ClientInfo;
+  ASource.ContentSize := Self.ContentSize;
+  ASource.Host := Self.Host;
+  ASource.HttpVersion := Self.HttpVersion;
+  ASource.Method := Self.Method;
+  ASource.Protocol := Self.Protocol;
+  ASource.Query := Self.Query;
 end;
 
 constructor TRALRequest.Create;
@@ -127,15 +182,12 @@ begin
   FAuthorization := TRALAuthorization.Create;
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
-  FStream := nil;
 end;
 
 destructor TRALRequest.Destroy;
 begin
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
-  if FStream <> nil then
-    FreeAndNil(FStream);
   inherited;
 end;
 
@@ -212,6 +264,125 @@ constructor TRALAuthorization.Create;
 begin
   FAuthType := ratNone;
   FAuthString := '';
+end;
+
+{ TRALServerRequest }
+
+constructor TRALServerRequest.Create;
+begin
+  inherited;
+  FStream := nil;
+end;
+
+destructor TRALServerRequest.Destroy;
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+  inherited;
+end;
+
+function TRALServerRequest.GetRequestEncStream(const AEncode: boolean): TStream;
+var
+  vContentType, vContentDisposition : StringRAL;
+  vCompress : TRALCompressType;
+  vCripto : TRALCriptoType;
+begin
+  // caso acontece com a Sagui, pois a mesma ja vem params separados
+  if FStream = nil then
+  begin
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
+
+    Params.CompressType := ctNone;
+    Params.CriptoOptions.CriptType := crNone;
+
+    FStream := Params.EncodeBody(vContentType, vContentDisposition);
+
+    Params.CompressType := vCompress;
+    Params.CriptoOptions.CriptType := vCripto;
+  end;
+  Result := FStream;
+end;
+
+function TRALServerRequest.GetRequestEncText(const AEncode: boolean): StringRAL;
+begin
+  Result := StreamToString(FStream);
+end;
+
+procedure TRALServerRequest.SetRequestStream(const AValue: TStream);
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+end;
+
+procedure TRALServerRequest.SetRequestText(const AValue: StringRAL);
+begin
+  if FStream <> nil then
+    FreeAndNil(FStream);
+
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+end;
+
+{ TRALClientRequest }
+
+function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
+var
+  vContentType, vContentDisposition : StringRAL;
+begin
+  if not AEncode then
+  begin
+    Params.CriptoOptions.CriptType := crNone;
+    Params.CriptoOptions.Key := '';
+    Params.CompressType := ctNone;
+  end
+  else
+  begin
+    Params.CriptoOptions.CriptType := ContentCripto;
+    Params.CriptoOptions.Key := CriptoKey;
+    Params.CompressType := ContentCompress;
+  end;
+  Result := Params.EncodeBody(vContentType, vContentDisposition);
+  ContentType := vContentType;
+  ContentDisposition := vContentDisposition;
+end;
+
+function TRALClientRequest.GetRequestEncText(const AEncode: boolean): StringRAL;
+var
+  vStream: TStream;
+begin
+  vStream := GetRequestEncStream(AEncode);
+  try
+    Result := StreamToString(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
+procedure TRALClientRequest.SetRequestStream(const AValue: TStream);
+var
+  vParam: TRALParam;
+begin
+  Params.ClearParams(rpkBODY);
+  if AValue.Size > 0 then
+  begin
+    vParam := Params.AddValue(AValue, rpkBODY);
+    vParam.ContentType := ContentType;
+  end;
+end;
+
+procedure TRALClientRequest.SetRequestText(const AValue: StringRAL);
+var
+  vParam: TRALParam;
+begin
+  Params.ClearParams(rpkBODY);
+  if AValue <> '' then
+  begin
+    vParam := Params.AddValue(AValue);
+    vParam.ContentType := ContentType;
+    vParam.Kind := rpkBODY;
+  end;
 end;
 
 end.

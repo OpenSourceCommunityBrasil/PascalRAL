@@ -23,8 +23,8 @@ type
   StringRAL = string;
   CharRAL = Char;
   {$ELSE}
-  StringRAL = utf8string;
-  CharRAL = widechar;
+  StringRAL = UTF8String;
+  CharRAL = Widechar;
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
@@ -32,58 +32,38 @@ type
   TBytes = array of byte;
   {$IFEND}
 
-  TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd);
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS, amHEAD, amTRACE);
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
-  TRALServerOption = (rsoBruteForceProtection, rsoDDoSProtection, rsoEnableBlackList,
-    rsoEnableBlockList, rsoEnableWhiteList, rsoIPBroadcastProtection,
-    rsoPathTransvBlackList);
-  TRALServerOptions = set of TRALServerOption;
+  TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection, rsoPathTransvBlackList);
+  TRALSecurityOptions = set of TRALSecurityOption;
+  TRALExecBehavior = (ebSingleThread, ebMultiThread);
+  TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
 const
-  {$IFDEF HAS_FMX}
-    {$IFNDEF DELPHI12UP}
-      PosIniStr = 0;
-    {$ELSE}
-      PosIniStr = 1;
-    {$ENDIF}
+  {$IF DEFINED(FPC) or DEFINED(DELPHIXE3UP)}
+    POSINISTR = Low(String);
   {$ELSE}
-    PosIniStr = 1;
-  {$ENDIF}
+    POSINISTR = 1;
+  {$IFEND}
+  {$IF not Defined(FPC) AND not Defined(DELPHI7UP)}
+    sLineBreak = #13#10;
+  {$IFEND}
 
-function RALLowStr(AStr: StringRAL): IntegerRAL;
-function RALHighStr(const AStr: StringRAL): IntegerRAL;
+function RALHighStr(const AStr: StringRAL): integer;
 
 implementation
 
-function RALLowStr(AStr: StringRAL): integer;
-begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2UP}
-      Result := 1;
-    {$ELSE}
-      Result := Low(AStr);
-    {$ENDIF}
-  {$ELSE}
-    Result := Low(AStr);
-  {$ENDIF}
-end;
-
 function RALHighStr(const AStr: StringRAL): integer;
 begin
-  {$IFNDEF FPC}
-    {$IFNDEF DELPHIXE2UP}
-      Result := Length(AStr);
-    {$ELSE}
-      Result := High(AStr);
-    {$ENDIF}
+  {$IF not Defined(FPC) and not Defined(DELPHIXE2UP)}
+    Result := Length(AStr);
   {$ELSE}
     Result := High(AStr);
-  {$ENDIF}
+  {$IFEND}
 end;
 
 end.

@@ -298,7 +298,7 @@ begin
     vParams.Sorted := True;
     vParam := '';
     vAuth := AValue + ',';
-    vIni := RALLowStr(vAuth);
+    vIni := POSINISTR;
     vLen := RALHighStr(vAuth);
     vQuoted := False;
     while vIni <= vLen do
@@ -474,7 +474,7 @@ begin
     vParams.Sorted := True;
     vParam := '';
     vAuth := AValue + ',';
-    vIni := RALLowStr(vAuth);
+    vIni := POSINISTR;
     vLen := RALHighStr(vAuth);
     while vIni <= vLen do
     begin
@@ -560,7 +560,7 @@ var
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
-  vPairName, vAux1: StringRAL;
+  vAux1: StringRAL;
 begin
   vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
   try
@@ -618,7 +618,7 @@ procedure TRALJWTParams.createNewId;
 var
   vBytes: TBytes;
 begin
-  vBytes := randomBytes(10);
+  vBytes := RandomBytes(10);
   FId := TRALBase64.Encode(vBytes);
 end;
 
@@ -707,7 +707,6 @@ procedure TRALJWTParams.SetAsJSON(const AValue: StringRAL);
 var
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
-  vInt64: Int64RAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
 begin

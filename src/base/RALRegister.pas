@@ -1,21 +1,39 @@
 /// Class to create(register) components on pallete
 unit RALRegister;
+
 {$I PascalRAL.inc}
 
 interface
 
 uses
   {$IFDEF FPC}
-  LResources,
-  {$ENDIF}
-  {$IFDEF DELPHI2005UP}
-  ToolsAPI,
+  LResources, PropEdits, StringsPropEditDlg,
+  {$ELSE}
+    {$IFDEF DELPHI2005UP}
+    ToolsAPI,
+    {$ENDIF}
+    DesignEditors, DesignIntf, StringsEdit,
   {$ENDIF}
   {$IFDEF RALWindows}
   Windows,
   {$ENDIF}
   Classes, SysUtils,
-  RALConsts, RALAuthentication, RALWebModule;
+  RALConsts, RALAuthentication, RALWebModule, RALClient, RALCompress,
+  RALTypes, RALServer;
+
+type
+  TRALBaseURLEditor = class(TClassProperty)
+  public
+    procedure Edit; override;
+    function GetAttributes: TPropertyAttributes; override;
+    procedure SetValue(const Value: string); override;
+    function GetValue: string; override;
+  end;
+
+  TRALCompressEditor = class(TEnumProperty)
+  public
+    procedure GetValues(Proc: TGetStrProc); override;
+  end;
 
 procedure Register;
 
@@ -48,6 +66,74 @@ begin
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule]);
+  RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
+  RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClientBase, 'CompressType', TRALCompressEditor);
+  RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
+end;
+
+{ TRALBaseURLEditor }
+
+{$IFDEF FPC}
+  procedure TRALBaseURLEditor.Edit;
+  var
+    vStr : TStringsPropEditorFrm;
+  begin
+    inherited;
+    vStr := TStringsPropEditorFrm.Create(nil);
+    try
+      vStr.Memo.Text := GetValue;
+      if vStr.ShowModal = 1 then // mrOK
+        SetValue(vStr.Memo.Text);
+    finally
+      FreeAndNil(vStr);
+    end;
+  end;
+{$ELSE}
+  procedure TRALBaseURLEditor.Edit;
+  var
+    vStr : TStringsEditDlg;
+  begin
+    inherited;
+    vStr := TStringsEditDlg.Create(nil);
+    try
+      vStr.Memo.Text := GetValue;
+      if vStr.ShowModal = 1 then // mrOK
+        SetValue(vStr.Memo.Text);
+    finally
+      FreeAndNil(vStr);
+    end;
+  end;
+{$ENDIF}
+
+function TRALBaseURLEditor.GetAttributes: TPropertyAttributes;
+begin
+  Result := [paDialog];
+end;
+
+function TRALBaseURLEditor.GetValue: string;
+begin
+  Result := Trim(TRALClient(GetComponent(0)).BaseURL.Text);
+end;
+
+procedure TRALBaseURLEditor.SetValue(const Value: string);
+begin
+  TRALClient(GetComponent(0)).BaseURL.Text := Value;
+end;
+
+{ TRALCompressEditor }
+
+procedure TRALCompressEditor.GetValues(Proc: TGetStrProc);
+var
+  vStr: TStringList;
+  vInt: Integer;
+begin
+  vStr := TRALCompress.GetInstalledList;
+  try
+    for vInt := 0 to Pred(vStr.Count) do
+      Proc(vStr.Strings[vInt]);
+  finally
+    FreeAndNil(vStr);
+  end;
 end;
 
 {$IFDEF FPC}

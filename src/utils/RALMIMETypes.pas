@@ -32,6 +32,7 @@ const
   rctAPPLICATIONGZIP = 'application/gzip';
   rctAPPLICATIONJAVASCRIPT = 'application/javascript';
   rctAPPLICATIONJSON = 'application/json';
+  rctAPPLICATIONBSON = 'application/bson';
   rctAPPLICATIONOCTETSTREAM = 'application/octet-stream';
   rctAPPLICATIONOGG = 'application/ogg';
   rctAPPLICATIONPDF = 'application/pdf';

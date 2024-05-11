@@ -5,7 +5,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream, RALConsts;
+  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream, RALConsts,
+  RALCompress, RALTools;
 
 type
 
@@ -13,17 +14,13 @@ type
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
-    FContentType: StringRAL;
-    FCriptoKey: StringRAL;
-    FFreeContent: boolean;
     FStatusCode: IntegerRAL;
+    FErrorCode: IntegerRAL;
   protected
     /// Returns the response in TStream format
-    function GetResponseStream: TStream; virtual; abstract;
+    function GetResponseStream: TStream;
     /// Returns the response in UTF8String format
-    function GetResponseText: StringRAL; virtual; abstract;
-    /// Assign an UTF8String into the Response's ContentType
-    procedure SetContentType(const AValue: StringRAL);
+    function GetResponseText: StringRAL;
     /// Assign a Stream into the Response
     procedure SetResponseStream(const AValue: TStream); virtual; abstract;
     /// Assign an UTF8String into the Response
@@ -46,26 +43,40 @@ type
     /// Sets the response with the given status code, UTF8 String and Content-Type
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Sets the response with the given status code, Data Stream and Content-Type
+    procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
     /// Sets the response with the given status code
     procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Loads and set a file to the response with the given AFileName
     procedure Answer(const AFileName: StringRAL); overload;
-    /// Sets a file to the response with the given status code, FileStream and an AFileName
-    procedure Answer(AStatusCode: IntegerRAL; AFile: TStream; const AFileName: StringRAL); overload;
-  published
-    property ContentType: StringRAL read FContentType write SetContentType;
-    property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
-    property FreeContent: boolean read FFreeContent;
+
+    ///  Fills the 'ADest' Strings with RALParams Cookies Headers
+    procedure GetParamsCookies(ADest: TStringList; ADateTime : TDateTime);
+    /// Returns an UTF8 String with RALParams Cookies Headers
+    function GetParamsCookiesText(ADateTime : TDateTime; AHeader : StringRAL = 'Set-Cookie: ') : StringRAL;
+
+
+    procedure Clear; override;
+
+    /// Returns the response in TStream format
+    function GetResponseEncStream(const AEncode : boolean = true): TStream; virtual; abstract;
+    /// Returns the response in UTF8String format
+    function GetResponseEncText(const AEncode : boolean = true): StringRAL; virtual; abstract;
+
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
+  published
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
   end;
 
   /// Derived class to handle ServerResponse
   TRALServerResponse = class(TRALResponse)
+  public
+    function GetResponseEncStream(const AEncode : boolean = true): TStream; override;
+    function GetResponseEncText(const AEncode : boolean = true): StringRAL; override;
   protected
-    function GetResponseStream: TStream; override;
-    function GetResponseText: StringRAL; override;
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
   end;
@@ -77,9 +88,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
+    function GetResponseEncStream(const AEncode : boolean = true): TStream; override;
+    function GetResponseEncText(const AEncode : boolean = true): StringRAL; override;
   protected
-    function GetResponseStream: TStream; override;
-    function GetResponseText: StringRAL; override;
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
   end;
@@ -101,11 +113,76 @@ begin
   AddFile(AFileName);
 end;
 
-procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AFile: TStream;
-  const AFileName: StringRAL);
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+  const AContentType: StringRAL);
 begin
   StatusCode := AStatusCode;
-  AddFile(AFile, AFileName);
+  ResponseStream := AStream;
+  ContentType := AContentType;
+end;
+
+procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
+const
+  HTTPMonths : array[1..12] of string[3] = (
+    'Jan', 'Feb', 'Mar', 'Apr',
+    'May', 'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec');
+  HTTPDays: array[1..7] of string[3] = (
+    'Sun', 'Mon', 'Tue', 'Wed',
+    'Thu', 'Fri', 'Sat');
+
+  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
+  Expire     = '; Expires=%s GMT';
+var
+  vInt: integer;
+  vYear, vMonth, vDay: Word;
+  vExpire, vValue : StringRAL;
+  vParam: TRALParam;
+begin
+  ADateTime := RALDateTimeToGMT(ADateTime);
+  DecodeDate(ADateTime, vYear, vMonth, vDay);
+
+  vExpire := FormatDateTime(DateFormat, ADateTime);
+  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
+  vExpire := Format(Expire, [vExpire]);
+
+  for vInt := 0 to Pred(Params.Count) do
+  begin
+    vParam := TRALParam(Params.Index[vInt]);
+    if (vParam <> nil) and (vParam.Kind = rpkCOOKIE) then
+    begin
+      vValue := vParam.ParamName + '=' + vParam.AsString + ';';
+      vValue := vValue + vExpire + '; path=/';
+      ADest.Add(vValue);
+    end;
+  end;
+end;
+
+function TRALResponse.GetParamsCookiesText(ADateTime: TDateTime; AHeader: StringRAL): StringRAL;
+var
+  vDest : TStringList;
+  vInt : integer;
+begin
+  Result := '';
+  vDest := TStringList.Create;
+  try
+    GetParamsCookies(vDest, ADateTime);
+    for vInt := 0 to Pred(vDest.Count) do
+    begin
+      if Result <> '' then
+        Result := Result + HTTPLineBreak;
+      Result := Result + AHeader + vDest.Strings[vInt];
+    end;
+  finally
+    FreeAndNil(vDest);
+  end;
+end;
+
+procedure TRALResponse.Clear;
+begin
+  inherited Clear;
+  FStatusCode := -1;
+  FErrorCode := 0;
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
@@ -124,25 +201,29 @@ begin
   end;
 end;
 
-function TRALResponse.AddHeader(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddField(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddField(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALResponse.AddBody(const AText, AContextType: StringRAL): TRALResponse;
+function TRALResponse.AddBody(const AText: StringRAL;
+  const AContextType: StringRAL): TRALResponse;
 begin
   inherited AddBody(AText, AContextType);
   Result := Self;
 end;
 
-function TRALResponse.AddCookie(const AName, AValue: StringRAL): TRALResponse;
+function TRALResponse.AddCookie(const AName: StringRAL; const AValue: StringRAL
+  ): TRALResponse;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
@@ -164,7 +245,6 @@ constructor TRALResponse.Create;
 begin
   inherited Create;
   ContentType := rctAPPLICATIONJSON;
-  FFreeContent := False;
 end;
 
 destructor TRALResponse.Destroy;
@@ -172,34 +252,52 @@ begin
   inherited;
 end;
 
-procedure TRALResponse.SetContentType(const AValue: StringRAL);
+function TRALResponse.GetResponseStream: TStream;
 begin
-  FContentType := AValue;
-  if Pos('charset=', FContentType) = 0 then
-    FContentType := FContentType + '; charset=utf-8';
+  Result := GetResponseEncStream;
+end;
+
+function TRALResponse.GetResponseText: StringRAL;
+begin
+  Result := GetResponseEncText;
 end;
 
 { TRALServerResponse }
 
-function TRALServerResponse.GetResponseStream: TStream;
+function TRALServerResponse.GetResponseEncStream(const AEncode: boolean): TStream;
+var
+  vContentType, vContentDisposition : StringRAL;
 begin
-  Params.CriptoOptions.CriptType := ContentCripto;
-  Params.CriptoOptions.Key := CriptoKey;
-  Params.CompressType := ContentCompress;
-  Result := Params.EncodeBody(FContentType, FFreeContent);
+  if not AEncode then
+  begin
+    Params.CriptoOptions.CriptType := crNone;
+    Params.CriptoOptions.Key := '';
+    Params.CompressType := ctNone;
+  end
+  else
+  begin
+    Params.CriptoOptions.CriptType := ContentCripto;
+    Params.CriptoOptions.Key := CriptoKey;
+    Params.CompressType := ContentCompress;
+  end;
+
+  Params.ContentDispositionInline := ContentDispositionInline;
+
+  Result := Params.EncodeBody(vContentType, vContentDisposition);
+  ContentType := vContentType;
+  ContentDisposition := vContentDisposition;
 end;
 
-function TRALServerResponse.GetResponseText: StringRAL;
+function TRALServerResponse.GetResponseEncText(
+  const AEncode: boolean): StringRAL;
 var
   vStream: TStream;
 begin
-  vStream := GetResponseStream;
+  vStream := GetResponseEncStream(AEncode);
   try
     Result := StreamToString(vStream);
   finally
-    if FFreeContent then
-      vStream.Free;
-    FFreeContent := False;
+    FreeAndNil(vStream);
   end;
 end;
 
@@ -243,12 +341,15 @@ begin
   inherited;
 end;
 
-function TRALClientResponse.GetResponseStream: TStream;
+function TRALClientResponse.GetResponseEncStream(
+  const AEncode: boolean): TStream;
 begin
   Result := FStream;
+  Result.Position := 0;
 end;
 
-function TRALClientResponse.GetResponseText: StringRAL;
+function TRALClientResponse.GetResponseEncText(
+  const AEncode: boolean): StringRAL;
 begin
   Result := StreamToString(FStream);
 end;
@@ -258,7 +359,7 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, FContentType)
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 procedure TRALClientResponse.SetResponseText(const AValue: StringRAL);
@@ -266,7 +367,7 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, FContentType)
+  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
 end;
 
 end.

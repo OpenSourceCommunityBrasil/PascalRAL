@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALBase64, RALTypes, RALTools, RALStream;
+  RALBase64, RALTypes, RALTools, RALStream, RALConsts;
 
 type
   TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
@@ -154,12 +154,12 @@ end;
 
 function TRALHashes.HashAsStream(AValue: TStream): TStream;
 var
-  vResult: StringRAL;
   vDigest : TBytes;
 begin
   Initialize;
   UpdateBuffer(AValue);
   vDigest := Finalize;
+  Result := nil;
 
   case OutputType of
     rhotNone: Result := TStringStream.Create(vDigest);
@@ -309,7 +309,7 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TStream);
 var
-  vInBuf: array[0..4095] of byte;
+  vInBuf: array of byte;
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
@@ -319,6 +319,11 @@ begin
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
+  else
+    SetLength(vInBuf, vSize);
 
   while vPosition < vSize do
   begin

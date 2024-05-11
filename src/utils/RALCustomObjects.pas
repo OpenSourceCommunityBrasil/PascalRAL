@@ -28,7 +28,11 @@ type
     FAcceptEncription: StringRAL;
     FContentEncoding: StringRAL;
     FContentEncription: StringRAL;
+    FContentType: StringRAL;
+    FCriptoKey: StringRAL;
     FParams: TRALParams;
+    FContentDisposition: StringRAL;
+    FContentDispositionInline : Boolean;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -41,12 +45,14 @@ type
     function GetParams: TRALParams;
     procedure SetContentCompress(const AValue: TRALCompressType);
     procedure SetContentCripto(AValue: TRALCriptoType);
+    procedure SetContentType(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookies(ACookies : StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
@@ -54,7 +60,7 @@ type
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     /// Grabs the body of either the request or the response
     function Body: TRALParam;
-    procedure Clear;
+    procedure Clear; virtual;
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
     function GetCookie(const AName: StringRAL): StringRAL; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;
@@ -64,6 +70,8 @@ type
     function HasValidContentEncoding: boolean;
     /// Grabs the param either on request or response by its name
     function ParamByName(const AParamName: StringRAL): TRALParam;
+
+    procedure Clone(ASource : TRALHTTPHeaderInfo);
   published
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;
@@ -73,6 +81,10 @@ type
     property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
+    property ContentType: StringRAL read FContentType write SetContentType;
+    property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
+    property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
   end;
 
@@ -88,18 +100,8 @@ end;
 { TRALHTTPHeaderInfo }
 
 function TRALHTTPHeaderInfo.GetAcceptCompress: TRALCompressType;
-var
-  vStr: StringRAL;
 begin
-  vStr := LowerCase(FAcceptEncoding);
-  if (Pos('gzip', vStr) > 0) then
-    Result := ctGZip
-  else if (Pos('deflate', vStr) > 0) then
-    Result := ctDeflate
-  else if (Pos('zlib', vStr) > 0) then
-    Result := ctZLib
-  else
-    Result := ctNone;
+  Result := TRALCompress.GetBestCompress(FAcceptEncoding);
 end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
@@ -120,6 +122,13 @@ end;
 procedure TRALHTTPHeaderInfo.SetContentCripto(AValue: TRALCriptoType);
 begin
   FContentEncription := CriptoToStrCripto(AValue);
+end;
+
+procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
+begin
+  FContentType := AValue;
+  if Pos('charset=', FContentType) = 0 then
+    FContentType := FContentType + '; charset=utf-8';
 end;
 
 function TRALHTTPHeaderInfo.GetAcceptCripto: TRALCriptoType;
@@ -147,10 +156,36 @@ begin
   FParams.ClearParams;
 end;
 
+procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);
+var
+  vInt : IntegerRAL;
+  vParamSource, vParamTarget : TRALParam;
+begin
+  if ASource = nil then
+    Exit;
+
+  ASource.AcceptEncoding := Self.AcceptEncoding;
+  ASource.ContentCompress := Self.ContentCompress;
+  ASource.AcceptEncription := Self.AcceptEncription;
+  ASource.ContentCripto := Self.ContentCripto;
+  ASource.ContentEncoding := Self.ContentEncoding;
+  ASource.ContentEncription := Self.ContentEncription;
+  ASource.ContentType := Self.ContentType;
+  ASource.ContentDisposition := Self.ContentDisposition;
+  ASource.CriptoKey := Self.CriptoKey;
+
+  for vInt := 0 to Pred(FParams.Count) do begin
+    vParamSource := FParams.Index[vInt];
+    vParamTarget := ASource.Params.NewParam;
+    vParamSource.Clone(vParamTarget);
+  end;
+end;
+
 constructor TRALHTTPHeaderInfo.Create;
 begin
   inherited;
   FParams := TRALParams.Create;
+  FContentDispositionInline := False;
 end;
 
 destructor TRALHTTPHeaderInfo.Destroy;
@@ -191,6 +226,25 @@ function TRALHTTPHeaderInfo.AddCookie(const AName, AValue: StringRAL): TRALHTTPH
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
   Result := Self;
+end;
+
+function TRALHTTPHeaderInfo.AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo;
+var
+  vInt1: IntegerRAL;
+  vStr: StringRAL;
+begin
+  while Trim(ACookies) <> '' do
+  begin
+    vInt1 := Pos(';', ACookies);
+    if vInt1 = 0 then
+      vInt1 := Length(ACookies) + 1;
+
+    vStr := Copy(ACookies, 1, vInt1 - 1);
+    Delete(ACookies, 1, vInt1);
+
+    vInt1 := Pos('=', vStr);
+    AddCookie(Trim(Copy(vStr, 1, vInt1 - 1)), Trim(Copy(vStr, vInt1 + 1, Length(vStr))));
+  end;
 end;
 
 function TRALHTTPHeaderInfo.AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo;
@@ -240,24 +294,8 @@ begin
 end;
 
 function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
-var
-  vStr: StringRAL;
-  vZLib, vZStd : boolean;
 begin
-  vZLib := GetClass('TRALCompressZLib') <> nil;
-  vZStd := GetClass('TRALCompressZStd') <> nil;
-
-  vStr := LowerCase(FContentEncoding);
-  if vZLib and (Pos('gzip', vStr) > 0) then
-    Result := ctGZip
-  else if vZLib and (Pos('deflate', vStr) > 0) then
-    Result := ctDeflate
-  else if vZLib and (Pos('zlib', vStr) > 0) then
-    Result := ctZLib
-  else if vZStd and (Pos('zstd', vStr) > 0) then
-    Result := ctZStd
-  else
-    Result := ctNone;
+  Result := TRALCompress.GetBestCompress(FContentEncoding);
 end;
 
 function TRALHTTPHeaderInfo.GetCookie(const AName: StringRAL): StringRAL;
@@ -278,7 +316,7 @@ begin
   Result := nil;
   for vInt := 0 to FParams.Count do
   begin
-    vParam := FParams.Param[vInt];
+    vParam := FParams.Index[vInt];
     if vParam.Kind = rpkBODY then
     begin
       if AIdx > 0 then
@@ -301,7 +339,7 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  FContentEncoding := CompressToStrCompress(AValue);
+  FContentEncoding := TRALCompress.CompressToString(AValue);
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;
@@ -327,7 +365,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if StrCompressToCompress(vEnc) <> ctNone then
+    if TRALCompress.StringToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;
@@ -355,7 +393,7 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if StrCompressToCompress(vEnc) <> ctNone then
+    if TRALCompress.StringToCompress(vEnc) <> ctNone then
     begin
       Result := True;
       Break;

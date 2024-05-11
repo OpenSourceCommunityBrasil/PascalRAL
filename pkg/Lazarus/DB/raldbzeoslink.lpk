@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="raldbzeoslink"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\src\database\links;..\..\src\database;..\..\src\database\Zeos;..\..\..\src\database\Zeos"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
+      </SearchPaths>
+    </CompilerOptions>
+    <Version Major="1"/>
+    <Files Count="3">
+      <Item1>
+        <Filename Value="..\..\..\src\database\Zeos\RALDBZeos.pas"/>
+        <UnitName Value="RALDBZeos"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\database\Zeos\RALDBZeosLinkReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="raldbzeoslinkreg"/>
+      </Item2>
+      <Item3>
+        <Filename Value="raldbpackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item3>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="4">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="LCL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="zcomponent"/>
+        <MinVersion Major="8" Valid="True"/>
+      </Item3>
+      <Item4>
+        <PackageName Value="FCL"/>
+      </Item4>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

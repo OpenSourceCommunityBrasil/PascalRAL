@@ -4,7 +4,8 @@ unit RALThreadSafe;
 interface
 
 uses
-  Classes, SysUtils, syncobjs, RALTypes;
+  Classes, SysUtils, SyncObjs,
+  RALTypes;
 
 type
 
@@ -35,12 +36,17 @@ type
 
     procedure Add(const AItem: StringRAL);
     procedure AddObject(const AItem: StringRAL; AObject: TObject);
-    procedure Clear(AFreeObjects : boolean = false);
-    function Empty: Boolean;
-    function Exists(const AItem : StringRAL) : boolean;
+    procedure Clear(AFreeObjects: boolean = false);
+    function Count: IntegerRAL;
+    function Exists(const AItem: StringRAL): boolean;
+    function Get(const AIndex: IntegerRAL): StringRAL;
+    function GetName(const AIndex: IntegerRAL): StringRAL;
+    function GetObject(const AIndex: IntegerRAL): TObject;
+    function IsEmpty: boolean;
     function Lock: TStringList; reintroduce;
     function ObjectByItem(const AItem: StringRAL): TObject;
-    procedure Remove(const AItem: StringRAL; AFreeObjects : boolean = false);
+    procedure Remove(const AItem: StringRAL; AFreeObjects: boolean = false); overload;
+    procedure Remove(const AItem: IntegerRAL; AFreeObjects: boolean = false); overload;
     procedure Unlock; reintroduce;
 
     property Values[const AName: StringRAL]: StringRAL read GetValue write SetValue;
@@ -55,6 +61,36 @@ begin
   Lock;
   try
     FValue.Values[AName] := AValue;
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALStringListSafe.Get(const AIndex: IntegerRAL): StringRAL;
+begin
+  Lock;
+  try
+    Result := FValue.Strings[AIndex];
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALStringListSafe.GetName(const AIndex: IntegerRAL): StringRAL;
+begin
+  Lock;
+  try
+    Result := FValue.Names[AIndex];
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALStringListSafe.GetObject(const AIndex: IntegerRAL): TObject;
+begin
+  Lock;
+  try
+    Result := FValue.Objects[AIndex];
   finally
     Unlock;
   end;
@@ -121,7 +157,8 @@ begin
         FValue.Delete(FValue.Count - 1);
       end;
     end
-    else begin
+    else
+    begin
       FValue.Clear;
     end;
   finally
@@ -129,7 +166,17 @@ begin
   end;
 end;
 
-function TRALStringListSafe.Empty: Boolean;
+function TRALStringListSafe.Count: IntegerRAL;
+begin
+  Lock;
+  try
+    Result := FValue.Count;
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALStringListSafe.IsEmpty: boolean;
 begin
   Lock;
   try
@@ -147,7 +194,7 @@ end;
 
 function TRALStringListSafe.Exists(const AItem: StringRAL): boolean;
 begin
-  Result := False;
+  Result := false;
   Lock;
   try
     Result := FValue.IndexOf(AItem) > 0;
@@ -158,14 +205,28 @@ end;
 
 function TRALStringListSafe.ObjectByItem(const AItem: StringRAL): TObject;
 var
-  i : Integer;
+  i: Integer;
 begin
   Result := nil;
   Lock;
   try
     i := FValue.IndexOf(AItem);
-    if i > -1 then begin
+    if i > -1 then
       Result := FValue.Objects[i];
+  finally
+    Unlock;
+  end;
+end;
+
+procedure TRALStringListSafe.Remove(const AItem: IntegerRAL; AFreeObjects: boolean);
+begin
+  Lock;
+  try
+    if (AItem > -1) and (AItem < FValue.Count) then
+    begin
+      if (AFreeObjects) then
+        FValue.Objects[AItem].Free;
+      FValue.Delete(AItem);
     end;
   finally
     Unlock;
@@ -179,7 +240,8 @@ begin
   Lock;
   try
     i := FValue.IndexOf(AItem);
-    if i > -1 then begin
+    if i > -1 then
+    begin
       if (AFreeObjects) then
         FValue.Objects[i].Free;
       FValue.Delete(i);
@@ -219,4 +281,3 @@ begin
 end;
 
 end.
-

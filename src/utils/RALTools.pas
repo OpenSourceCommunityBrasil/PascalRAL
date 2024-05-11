@@ -1,13 +1,14 @@
 ﻿/// Class for General public functions
 unit RALTools;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
-function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
 function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
@@ -16,20 +17,24 @@ function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALStringToDateTime(const AValue: StringRAL;
                              const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
-function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
+
+function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
 
 implementation
 
 function FixRoute(ARoute: StringRAL): StringRAL;
 begin
-  Result := '/' + ARoute + '/';
+  Result := '/' + ARoute;
 
   // path transversal fix
-  ARoute := StringReplace(ARoute, '../', '', [rfReplaceAll]);
+  Result := StringReplace(Result, '../', '', [rfReplaceAll]);
 
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+
+  if (Result <> '')  and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
+    Delete(Result, RALHighStr(Result), 1);
 end;
 
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
@@ -60,36 +65,6 @@ begin
   Delete(Result, 1, 2); // delete 'am'
 end;
 
-function StrCompressToCompress(const AStr: StringRAL): TRALCompressType;
-var
-  vZLib, vZStd: boolean;
-begin
-  vZLib := GetClass('TRALCompressZLib') <> nil;
-  vZStd := GetClass('TRALCompressZStd') <> nil;
-
-  if vZLib and SameText(AStr, 'gzip') then
-    Result := ctGZip
-  else if vZLib and SameText(AStr, 'zlib') then
-    Result := ctZLib
-  else if vZLib and SameText(AStr, 'deflate') then
-    Result := ctDeflate
-  else if vZStd and SameText(AStr, 'zstd') then
-    Result := ctZStd
-  else
-    Result := ctNone;
-end;
-
-function CompressToStrCompress(ACompress: TRALCompressType): StringRAL;
-begin
-  case ACompress of
-    ctNone: Result := '';
-    ctGZip: Result := 'gzip';
-    ctDeflate: Result := 'deflate';
-    ctZLib: Result := 'zlib';
-    ctZStd: Result := 'zstd';
-  end;
-end;
-
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 begin
   if SameText(AStr, 'aes128cbc_pkcs7') then
@@ -117,9 +92,9 @@ var
   vInt: IntegerRAL;
 begin
   Result := '';
-  for vInt := RALLowStr(AValue) to RALHighStr(AValue) do
+  for vInt := POSINISTR to RALHighStr(AValue) do
   begin
-    if AValue[vInt] in ['0'..'9'] then
+    if CharInSet(AValue[vInt], ['0'..'9']) then
       Result := Result + AValue[vInt];
   end;
 end;
@@ -139,8 +114,8 @@ begin
   sSeg := '0';
   sMil := '0';
 
-  vInt2 := RALLowStr(AValue);
-  for vInt1 := RALLowStr(AFormat) to RALHighStr(AFormat) do
+  vInt2 := POSINISTR;
+  for vInt1 := POSINISTR to RALHighStr(AFormat) do
   begin
     if vInt2 <= RALHighStr(AValue) then
     begin
@@ -181,6 +156,34 @@ begin
     if not TryEncodeDateTime(wAno, wMes, wDia, wHor, wMin, wSeg, wMil, Result) then
       Result := TDateTime(0);
   end;
+end;
+
+function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
+{$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+var
+  vTimeZone : TTimeZoneInformation;
+  vBias : Cardinal;
+{$IFEND}
+begin
+  {$IFDEF FPC}
+    Result := LocalTimeToUniversal(ADateTime);
+  {$ELSE}
+    {$IFDEF DELPHIXE2UP}
+      Result := TTimeZone.Local.ToUniversalTime(ADateTime);
+    {$ELSE}
+      case GetTimeZoneInformation(vTimeZone) of
+        TIME_ZONE_ID_UNKNOWN:
+          vBias := vTimeZone.Bias;
+        TIME_ZONE_ID_STANDARD:
+          vBias := vTimeZone.Bias + vTimeZone.StandardBias;
+        TIME_ZONE_ID_DAYLIGHT:
+          vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
+        else
+          vBias := 0;
+      end;
+      Result := IncMinute(ADateTime, -vBias);
+    {$ENDIF}
+  {$ENDIF}
 end;
 
 end.

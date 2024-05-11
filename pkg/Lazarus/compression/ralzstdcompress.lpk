@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="ralzstdcompress"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..;..\ZSTD;..\..\..\src\others;..\..\..\src\others\ZSTD"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
+      </SearchPaths>
+    </CompilerOptions>
+    <Version Major="1"/>
+    <Files Count="3">
+      <Item1>
+        <Filename Value="..\..\..\src\others\RALCompressZStd.pas"/>
+        <UnitName Value="RALCompressZStd"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\others\ZSTD\ZSTD.pas"/>
+        <UnitName Value="ZSTD"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\others\ZSTD\ZSTDLib.pas"/>
+        <UnitName Value="ZSTDLib"/>
+      </Item3>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

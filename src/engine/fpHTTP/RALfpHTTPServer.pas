@@ -5,6 +5,7 @@ interface
 uses
   Classes, SysUtils,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
+  HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;
 
@@ -193,8 +194,11 @@ var
   vInt: integer;
   vStr1, vStr2: StringRAL;
   vConnClose : boolean;
+  vCookies : TStringList;
+  vCookie : TCookie;
 begin
-  vRequest := TRALRequest.Create;
+  vRequest := FParent.CreateRequest;
+  vResponse := FParent.CreateResponse;
   try
     with vRequest do
     begin
@@ -218,88 +222,105 @@ begin
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
-      // fields tambem
-      vInt := 0;
-      while vInt < ARequest.FieldCount do
-      begin
-        vStr1 := ARequest.FieldNames[vInt];
-        vStr2 := ARequest.FieldValues[vInt];
-
-        Params.AddParam(vStr1, vStr2, rpkFIELD);
-
-        vInt := vInt + 1;
-      end;
-
-      Params.AppendParams(ARequest.QueryFields,rpkQUERY);
-      Params.AppendParams(ARequest.CookieFields,rpkCOOKIE);
-
       ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;;
+      AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
-      Stream := Params.DecodeBody(ARequest.Content, ARequest.ContentType);
-
-      Host := ARequest.Host;
-      vInt := Pos('/', ARequest.ProtocolVersion);
-      if vInt > 0 then
+      FParent.ValidateRequest(vRequest, vResponse);
+      if vResponse.StatusCode < 400 then
       begin
-        HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
-        Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
-      end
-      else begin
-        HttpVersion := 'HTTP';
-        Protocol := '1.0';
+        // fields tambem
+        vInt := 0;
+        while vInt < ARequest.FieldCount do
+        begin
+          vStr1 := ARequest.FieldNames[vInt];
+          vStr2 := ARequest.FieldValues[vInt];
+
+          Params.AddParam(vStr1, vStr2, rpkFIELD);
+
+          vInt := vInt + 1;
+        end;
+
+        Params.AppendParams(ARequest.QueryFields, rpkQUERY);
+        Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
+
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
+        RequestText := ARequest.Content;
+
+        Host := ARequest.Host;
+        vInt := Pos('/', ARequest.ProtocolVersion);
+        if vInt > 0 then
+        begin
+          HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
+          Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
+        end
+        else begin
+          HttpVersion := 'HTTP';
+          Protocol := '1.0';
+        end;
+
+        vConnClose := False;
+        if Protocol = '1.0' then
+          vConnClose := True;
+        if SameText(ARequest.GetHeader(hhConnection), 'close') then
+          vConnClose := True;
+
+        ARequest.Content := '';
+        ARequest.QueryFields.Clear;
+        ARequest.CustomHeaders.Clear;
+        ARequest.CookieFields.Clear;
+        ARequest.Files.Clear;
       end;
-
-      vConnClose := False;
-      if Protocol = '1.0' then
-        vConnClose := True;
-      if SameText(ARequest.GetHeader(hhConnection), 'close') then
-        vConnClose := True;
-
-      ARequest.Content := '';
-      ARequest.QueryFields.Clear;
-      ARequest.CustomHeaders.Clear;
-      ARequest.CookieFields.Clear;
-      ARequest.Files.Clear;
     end;
 
-    vResponse := FParent.ProcessCommands(vRequest);
+    FParent.ProcessCommands(vRequest, vResponse);
+    with vResponse do
+    begin
+      AResponse.Code := StatusCode;
 
-    try
-      with vResponse do
-      begin
-        AResponse.Code := StatusCode;
+      if ContentEncoding <> '' then
+        AResponse.ContentEncoding := ContentEncoding;
 
-        if vResponse.ContentEncoding <> '' then
-          AResponse.ContentEncoding := vResponse.ContentEncoding;
+      if AcceptEncoding <> '' then
+        Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+      if ContentEncription <> '' then
+        Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
+      AResponse.Server := 'RAL_fpHTTP';
+      if vConnClose then
+        AResponse.Connection := 'close';
 
-        AResponse.Server := 'RAL_fpHTTP';
-        if vConnClose then
-          AResponse.Connection := 'close';
-
-        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
-        Params.AssignParams(AResponse.CookieFields, rpkCOOKIE);
-
-        AResponse.ContentStream := ResponseStream;
-
-        AResponse.FreeContentStream := vResponse.FreeContent;
-        AResponse.ContentType := ContentType;
-
-        AResponse.SendContent;
+      vCookies := TStringList.Create;
+      try
+        Params.AssignParams(vCookies, rpkCOOKIE);
+        for vInt := 0 to Pred(vCookies.Count) do
+        begin
+          vCookie := AResponse.Cookies.Add;
+          vCookie.Name := vCookies.Names[vInt];
+          vCookie.Value := vCookies.ValueFromIndex[vInt];
+          vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
+          vCookie.Path := '/';
+        end;
+      finally
+        FreeAndNil(vCookies);
       end;
-    finally
-      FreeAndNil(vResponse);
+
+      AResponse.ContentStream := ResponseStream;
+
+      AResponse.FreeContentStream := True;
+      AResponse.ContentType := ContentType;
+
+      if ContentDisposition <> '' then
+        Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+
+      Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
+
+      AResponse.SendContent;
     end;
   finally
+    FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
 end;
@@ -339,8 +360,10 @@ end;
 procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do
+  begin
     if (FParent.Active) then
       FHttp.Active := FParent.Active;
+  end;
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
@@ -381,7 +404,7 @@ begin
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 
-  inherited Create(False);
+  inherited Create(True);
 end;
 
 destructor TRALfpHttpServerThread.Destroy;
@@ -423,8 +446,11 @@ end;
 
 destructor TRALfpHttpServer.Destroy;
 begin
-  FHttpThread.Terminate;
-  FHttpThread.WaitFor;
+  if Active then
+  begin
+    FHttpThread.Terminate;
+    FHttpThread.WaitFor;
+  end;
   FreeAndNil(FHttpThread);
   inherited;
 end;
@@ -440,13 +466,20 @@ begin
 end;
 
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
+var
+  vActive: boolean;
 begin
-  if AValue = Active then
+  vActive := Active;
+
+  inherited;
+
+  if AValue = vActive then
     Exit;
 
   FHttpThread.Active := AValue;
 
-  inherited;
+  if AValue then
+    FHttpThread.Start;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);

@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALCripto, RALTypes;
+  RALCripto, RALTypes, RALConsts;
 
 type
   TRALAESType = (tAES128, tAES192, tAES256);
@@ -522,18 +522,29 @@ end;
 
 function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array [0 .. 8191] of byte;
-  vOutBuf: array [0 .. 8191] of byte;
+  vInBuf: array of byte;
+  vOutBuf: array of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize: Int64RAL;
-  vPaddind: IntegerRAL;
+  vPadding: IntegerRAL;
 begin
   if not CheckKey then
     Exit;
-
+  vPadding := 0;
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+  begin
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE);
+    SetLength(vOutBuf, DEFAULTBUFFERSTREAMSIZE);
+  end
+  else
+  begin
+    SetLength(vInBuf, vSize);
+    SetLength(vOutBuf, vSize);
+  end;
 
   Result := TMemoryStream.Create;
   Result.Size := AValue.Size + 32;
@@ -543,10 +554,10 @@ begin
     vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
 
     // padding complemantar
-    vPaddind := vBytesRead mod 16;
-    if vPaddind <> 0 then
+    vPadding := vBytesRead mod 16;
+    if vPadding <> 0 then
     begin
-      FillChar(vInBuf[vBytesRead], 16 - (vBytesRead mod 16), 16 - (vPaddind mod 16));
+      FillChar(vInBuf[vBytesRead], 16 - (vBytesRead mod 16), 16 - (vPadding mod 16));
       vBytesRead := vBytesRead + (16 - (vBytesRead mod 16));
     end;
 
@@ -558,7 +569,7 @@ begin
   end;
 
   // padding nao complementar
-  if vPaddind = 0 then
+  if vPadding = 0 then
   begin
     FillChar(vInBuf[0], 16, 16);
     vBytesRead := 16;
@@ -575,8 +586,8 @@ end;
 
 function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
 var
-  vInBuf: array [0 .. 4095] of byte;
-  vOutBuf: array [0 .. 4095] of byte;
+  vInBuf: array of byte;
+  vOutBuf: array of byte;
   vBytesRead, vBytesWrite: IntegerRAL;
   vPosition, vSize: Int64RAL;
   vPad1, vPad2: byte;
@@ -587,6 +598,17 @@ begin
   AValue.Position := 0;
   vPosition := 0;
   vSize := AValue.Size;
+
+  if vSize > DEFAULTBUFFERSTREAMSIZE then
+  begin
+    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE);
+    SetLength(vOutBuf, DEFAULTBUFFERSTREAMSIZE);
+  end
+  else
+  begin
+    SetLength(vInBuf, vSize);
+    SetLength(vOutBuf, vSize);
+  end;
 
   Result := TMemoryStream.Create;
   Result.Size := AValue.Size;

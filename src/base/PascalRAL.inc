@@ -1,4 +1,5 @@
 {$DEFINE PascalRAL}
+{.$DEFINE RAL_DEBUG} (* Internal debugging directive *)
 
 (* IFEND Directives - HAS TO STAY ON TOP OF THE FILE!*)
 
@@ -359,12 +360,15 @@
 (* FRAMEWORK Directives *)
 
 {$IFNDEF FPC}
-// Fernando
-// Data: 13/10/2023 - Problemas ao rodar com D7 - ScopeNames
-  {$IF Declared(FireMonkeyVersion) or Defined(FRAMEWORK_FMX)
-    or Declared(FMX.Types.TFmxObject) or Defined(LINUX64)}
-    {$DEFINE HAS_FMX}
-  {$IFEND}
+  {$IFDEF DELPHI2009UP}
+    {$IF Declared(FireMonkeyVersion) or Defined(FRAMEWORK_FMX) or Defined(LINUX64)}
+      {$DEFINE HAS_FMX}
+    {$IFEND}
+  {$ELSE}
+    {$IF Declared(FMX.Types.TFmxObject)}
+      {$DEFINE HAS_FMX}
+    {$IFEND}
+  {$ENDIF}
 {$ENDIF}
 
 (* End of FRAMEWORK Directives *)
@@ -373,31 +377,43 @@
 
 {$IF Defined(IOS) or Defined(IOS64) or Defined(DCCIOS32) or Defined(MACOS) or
   Defined(MACOS32)}
-  {$DEFINE RALApple}
-  {$DEFINE HAS_UTF8}
+  {$IFDEF FPC}
+    {$DEFINE RALAppleFPC}
+  {$ELSE}
+    {$DEFINE RALApple}
+    {$DEFINE HAS_UTF8}
+    {$DEFINE HAS_FMX}
+  {$ENDIF}
 {$IFEND}
 
 {$IF Defined(ANDROID) or Defined(Android64) or Defined(Android32)}
-  {$DEFINE RALAndroid}
-  {$DEFINE HAS_UTF8}
+  {$IFDEF FPC}
+    {$DEFINE RALAndroidFPC}
+  {$ELSE}
+    {$DEFINE RALAndroid}
+    {$DEFINE HAS_UTF8}
+    {$DEFINE HAS_FMX}
+  {$ENDIF}
 {$IFEND}
 
 {$IF Defined(LINUX) or Defined(LINUX32) or Defined(LINUX64) or Defined(UNIX)}
-  {$DEFINE RALLinux}
-  {$DEFINE HAS_UTF8}
-  {$IFDEF HAS_FMX}
-    {$DEFINE LINUXFMX}
+  {$IFDEF FPC}
+    {$DEFINE RALLinuxFPC}
+  {$ELSE}
+    {$DEFINE RALLinux}
+    {$DEFINE HAS_UTF8}
+    {$IFDEF HAS_FMX}
+      {$DEFINE RALLinuxFMX}
+    {$ENDIF}
   {$ENDIF}
 {$IFEND}
 
 {$IF Defined(POSIX)}
-  {$DEFINE RALApple}
-  {$DEFINE RALLinux}
+  {$DEFINE RALPosix}
 {$IFEND}
 
 {$IF Defined(NEXTGEN)}
-  {$DEFINE RALAndroid}
-  {$DEFINE RALApple}
+  {$DEFINE RALNextGen}
 {$IFEND}
 
 {$IF (Defined(IOS) or Defined(ANDROID)) AND Defined(HAS_FMX)}

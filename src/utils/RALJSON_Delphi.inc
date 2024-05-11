@@ -208,20 +208,13 @@ end;
 
 function TRALJSONValue.AsString: StringRAL;
 begin
-  if Self = nil then
-  begin
-    Result := '';
-  end
-  else if FJsonObj <> nil then
+  Result := '';
+  if FJsonObj <> nil then
   begin
     if (FJsonObj is TJSONObject) or (FJsonObj is TJSONArray) then
       Result := ToJSON
     else
       Result := FJsonObj.Value
-  end
-  else
-  begin
-    Result := 'null';
   end;
 end;
 
@@ -494,11 +487,13 @@ end;
 
 function TRALJSONArray.Add(const AValue: Int64RAL): TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.Add(AValue);
 end;
 
 function TRALJSONArray.Add(const AValue: StringRAL): TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.Add(AValue);
 end;
 
@@ -506,6 +501,7 @@ function TRALJSONArray.Add(const AValue: TRALJSONValue): TRALJSONArray;
 var
   vObj: TJSONValue;
 begin
+  Result := Self;
   if AValue <> nil then
   begin
     vObj := AValue.GetJsonObj;
@@ -526,21 +522,25 @@ end;
 
 function TRALJSONArray.Add(const AValue: IntegerRAL): TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.Add(AValue);
 end;
 
 function TRALJSONArray.Add: TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.AddElement(TJSONNull.Create);
 end;
 
 function TRALJSONArray.Add(const AValue: Boolean): TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.Add(AValue);
 end;
 
 function TRALJSONArray.Add(const AValue: DoubleRAL): TRALJSONArray;
 begin
+  Result := Self;
   JsonObject.Add(AValue);
 end;
 

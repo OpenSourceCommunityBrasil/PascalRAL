@@ -38,14 +38,14 @@ type
     function DecryptAsBytes(const AValue: StringRAL): TBytes; overload;
     function DecryptAsBytes(AValue: TBytes): TBytes; overload;
     function DecryptAsBytes(AValue: TStream): TBytes; overload;
-    function DecryptAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function DecryptAsStream(AValue: TStream): TStream; virtual; abstract;
     function Encrypt(const AValue: StringRAL): StringRAL; overload;
     function Encrypt(AValue: TBytes): StringRAL; overload;
     function Encrypt(AValue: TStream): StringRAL; overload;
     function EncryptAsBytes(const AValue: StringRAL): TBytes; overload;
     function EncryptAsBytes(AValue: TBytes): TBytes; overload;
     function EncryptAsBytes(AValue: TStream): TBytes; overload;
-    function EncryptAsStream(AValue: TStream): TStream; overload; virtual; abstract;
+    function EncryptAsStream(AValue: TStream): TStream; virtual; abstract;
   published
     property Key: StringRAL read FKey write SetKey;
   end;

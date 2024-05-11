@@ -1,0 +1,6 @@
+TRALDBStorageJSONLink BITMAP "..\components\database\TRALDBStorageJSONLink.bmp"
+TRALDBStorageBINLink BITMAP "..\components\database\TRALDBStorageBINLink.bmp"
+TRALDBStorageBSONLink BITMAP "..\components\database\TRALDBStorageBSONLink.bmp"
+TRALDBStorageCSVLink BITMAP "..\components\database\TRALDBStorageCSVLink.bmp"
+TRALDBStorageXMLLink BITMAP "..\components\database\TRALDBStorageXMLLink.bmp"
+TRALDBModule BITMAP "..\components\database\TRALDBModule.bmp"
