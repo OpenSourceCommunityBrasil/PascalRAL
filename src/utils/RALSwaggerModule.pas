@@ -7,31 +7,40 @@ uses
     LResources,
   {$ENDIF}
   Classes, SysUtils,
-  RALServer, RALTypes, RALRoutes, RALRequest, RALResponse;
+  RALServer, RALTypes, RALRoutes, RALRequest, RALResponse, RALMIMETypes;
 
 type
   { TRALSwaggerModule }
 
   TRALSwaggerModule = class(TRALModuleRoutes)
   private
-    FDocumentRoot : StringRAL;
-    FExported : boolean;
-    FDefautRoute : TRALRoute;
+    FDescription : TStrings;
+    FEMail : StringRAL;
+    FTitle : StringRAL;
+    FVersion : StringRAL;
   protected
-    procedure SwaggerFile(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerIndex(ARequest : TRALRequest; AResponse : TRALResponse);
-    function GetFileRoute(ARequest: TRALRequest) : StringRAL;
-    procedure CreateSwaggerDirectory;
-    procedure SaveResourceStream(AResourceName, AFileName : StringRAL);
+    procedure SwaggerCSS(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerUI(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerUIBundle(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerUIBundleMap(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerUIStandalone(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerInitializer(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerJSON(ARequest : TRALRequest; AResponse : TRALResponse);
+
+    function SwaggerResourceStream(AResourceName : StringRAL) : TStream;
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function CanAnswerRoute(ARequest : TRALRequest; AResponse : TRALResponse) : TRALRoute; override;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; override;
     function IsDomain : boolean; override;
     function GetListRoutes : TList; override;
   published
-    property DocumentRoot : StringRAL read FDocumentRoot write FDocumentRoot;
+    property Description : TStrings read FDescription write FDescription;
+    property EMail : StringRAL read FEMail write FEMail;
+    property Title : StringRAL read FTitle write FTitle;
+    property Version : StringRAL read FVersion write FVersion;
   end;
 
 implementation
@@ -45,21 +54,6 @@ uses
 
 { TRALSwaggerModule }
 
-function TRALSwaggerModule.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
-begin
-  Result := Routes.CanAnswerRoute(ARequest);
-
-  if (Result = nil) and (GetFileRoute(ARequest) <> '') then
-    Result := FDefautRoute
-  else if (Result <> nil) and (not Assigned(Result.OnReply)) then
-    Result.OnReply := {$IFDEF FPC}@{$ENDIF}SwaggerFile;
-
-  if Result <> nil then begin
-    ARequest.ContentDispositionInline := True;
-    AResponse.ContentDispositionInline := True;
-  end;
-end;
-
 constructor TRALSwaggerModule.Create(AOwner: TComponent);
 var
   vRoute : TRALRoute;
@@ -69,107 +63,171 @@ begin
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  FDefautRoute := TRALRoute.Create(nil);
-  FDefautRoute.SkipAuthMethods := [amALL];
-  FDefautRoute.OnReply := {$IFDEF FPC}@{$ENDIF}SwaggerFile;
+  vRoute := CreateRoute('/swagger/swagger.css', @SwaggerCSS);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
 
-  FDocumentRoot := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)) + 'swagger');
-  FExported := False;
+  vRoute := CreateRoute('/swagger/swagger-ui.css', @SwaggerUI);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  vRoute := CreateRoute('/swagger/swagger-ui-bundle.js', @SwaggerUIBundle);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  vRoute := CreateRoute('/swagger/swagger-ui-bundle.js.map', @SwaggerUIBundleMap);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  vRoute := CreateRoute('/swagger/swagger-ui-standalone-preset.js', @SwaggerUIStandalone);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  vRoute := CreateRoute('/swagger/swagger-initializer.js', @SwaggerInitializer);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  vRoute := CreateRoute('/swagger/swagger.json', @SwaggerJSON);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
+
+  FDescription := TStringList.Create;
 end;
 
 destructor TRALSwaggerModule.Destroy;
 begin
-  FreeAndNil(FDefautRoute);
+  FreeAndNil(FDescription);
   inherited;
 end;
 
-procedure TRALSwaggerModule.SwaggerFile(ARequest: TRALRequest;
-  AResponse: TRALResponse);
-var
-  vFile : StringRAL;
+function TRALSwaggerModule.CanAnswerRoute(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALRoute;
 begin
-  vFile := GetFileRoute(ARequest);
-  if vFile <> '' then
-    AResponse.Answer(vFile)
-  else
-    AResponse.Answer(404);
+  Result := Routes.CanAnswerRoute(ARequest);
 end;
 
 procedure TRALSwaggerModule.SwaggerIndex(ARequest: TRALRequest;
   AResponse: TRALResponse);
-begin
-  CreateSwaggerDirectory;
-  AResponse.Answer(FDocumentRoot + 'swagger.html');
-end;
-
-function TRALSwaggerModule.GetFileRoute(ARequest: TRALRequest): StringRAL;
 var
-  vDir, vFile : StringRAL;
+  vResource : TStream;
 begin
-  Result := '';
-  vDir := FDocumentRoot;
-  if (Trim(vDir) = '') or (not DirectoryExists(vDir)) then
-    vDir := ExtractFilePath(ParamStr(0));
-
-  vDir := IncludeTrailingPathDelimiter(vDir);
-
-  SetCurrentDir(vDir);
-  vFile := ARequest.Query;
-  Delete(vFile, 1, 1);
-  vFile := ExpandFileName(vFile);
-
-  // verificando se a base folder (document root) é o mesmo
-  if (SameText(Copy(vFile, 1, Length(vDir)), vDir)) and
-     (FileExists(vFile)) then
-    Result := vFile;
-end;
-
-procedure TRALSwaggerModule.CreateSwaggerDirectory;
-var
-  vSwagger : TRALSwaggerExporter;
-begin
-  if not FExported then
-  begin
-    ForceDirectories(FDocumentRoot);
-
-    SaveResourceStream('SWAGGER_INDEX', 'swagger.html');
-    SaveResourceStream('SWAGGER_CSS', 'swagger.css');
-    SaveResourceStream('SWAGGER_UI_CSS', 'swagger-ui.css');
-    SaveResourceStream('SWAGGER_UI_BUNDLE_JS', 'swagger-ui-bundle.js');
-    SaveResourceStream('SWAGGER_UI_BUNDLE_MAP', 'swagger-ui-bundle.js.map');
-    SaveResourceStream('SWAGGER_UI_STANDALONE', 'swagger-ui-standalone-preset.js');
-    SaveResourceStream('SWAGGER_INITIALIZER', 'swagger-initializer.js');
-
-    vSwagger := TRALSwaggerExporter.Create;
-    try
-      vSwagger.ExportToFile(Server, FDocumentRoot + 'swagger.json');
-    finally
-      vSwagger.Free;
-    end;
-
-    FExported := True;
+  AResponse.ContentType := rctTEXTHTML;
+  vResource := SwaggerResourceStream('SWAGGER_INDEX');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
   end;
 end;
 
-procedure TRALSwaggerModule.SaveResourceStream(AResourceName,
-  AFileName: StringRAL);
+procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest;
+  AResponse: TRALResponse);
 var
-  vRes : TStream;
+  vResource : TStream;
+begin
+  AResponse.ContentType := rctTEXTCSS;
+  vResource := SwaggerResourceStream('SWAGGER_CSS');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerUI(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vResource : TStream;
+begin
+  AResponse.ContentType := rctTEXTCSS;
+  vResource := SwaggerResourceStream('SWAGGER_UI_CSS');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerUIBundle(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vResource : TStream;
+begin
+  AResponse.ContentType := rctTEXTJAVASCRIPT;
+  vResource := SwaggerResourceStream('SWAGGER_UI_BUNDLE_JS');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerUIBundleMap(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vResource : TStream;
+begin
+//  AResponse.ContentType := rctTEXTJAVASCRIPT;
+  vResource := SwaggerResourceStream('SWAGGER_UI_BUNDLE_MAP');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerUIStandalone(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vResource : TStream;
+begin
+  AResponse.ContentType := rctTEXTJAVASCRIPT;
+  vResource := SwaggerResourceStream('SWAGGER_UI_STANDALONE');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerInitializer(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vResource : TStream;
+begin
+  AResponse.ContentType := rctTEXTJAVASCRIPT;
+  vResource := SwaggerResourceStream('SWAGGER_INITIALIZER');
+  try
+    AResponse.ResponseStream := vResource;
+  finally
+    FreeAndNil(vResource);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerJSON(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vMem : TStream;
+  vSwagger : TRALSwaggerExporter;
+begin
+  vSwagger := TRALSwaggerExporter.Create;
+  try
+    vSwagger.SwaggerModule := Self;
+    vSwagger.Host := ARequest.Host;
+    vMem := vSwagger.ExportToStream(Server);
+    AResponse.ResponseStream := vMem;
+    vMem.Free;
+  finally
+    vSwagger.Free;
+  end;
+end;
+
+function TRALSwaggerModule.SwaggerResourceStream(AResourceName: StringRAL): TStream;
 begin
   {$IFDEF FPC}
-    vRes := TLazarusResourceStream.Create(AResourceName, 'RCDATA');
-    try
-      TLazarusResourceStream(vRes).SaveToFile(FDocumentRoot + AFileName);
-    finally
-      vRes.Free;
-    end;
+    Result := TLazarusResourceStream.Create(AResourceName, 'RCDATA');
   {$ELSE}
-    vRes := TResourceStream.Create(HINSTANCE, AResourceName, 'RCDATA');
-    try
-      TResourceStream(vRes).SaveToFile(FDocumentRoot + AFileName);
-    finally
-      vRes.Free;
-    end;
+    Result := TResourceStream.Create(HINSTANCE, AResourceName, 'RCDATA');
   {$ENDIF}
 end;
 
@@ -188,6 +246,5 @@ end;
 initialization
   {$I RALSwaggerModule.lrs}
 {$ENDIF}
-
 
 end.

@@ -4,13 +4,17 @@ interface
 
 uses
   Classes, SysUtils,
-  RALJSON, RALServer, RALTypes, RALAuthentication, RALRoutes, RALTools;
+  RALJSON, RALServer, RALTypes, RALAuthentication, RALRoutes, RALTools,
+  RALSwaggerModule;
 
 type
 
   { TRALSwaggerExporter }
 
   TRALSwaggerExporter = class
+  private
+    FHost : StringRAL;
+    FSwaggerModule : TRALSwaggerModule;
   protected
     function getInfo(AServer: TRALServer) : TRALJSONObject;
     function getPaths(AServer: TRALServer) : TRALJSONObject;
@@ -22,6 +26,9 @@ type
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
     procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
     function ExportToStream(AServer : TRALServer) : TStream; overload;
+  published
+    property Host : StringRAL read FHost write FHost;
+    property SwaggerModule : TRALSwaggerModule read FSwaggerModule write FSwaggerModule;
   end;
 
 implementation
@@ -50,7 +57,7 @@ begin
     vMethod.Add('operationId', 'getToken');
 
     vRoute.Add('post', vMethod);
-    AItem.Add(TRALServerJWTAuth(vRoute).Route, vRoute)
+    AItem.Add(TRALServerJWTAuth(AAuth).Route, vRoute)
   end;
 end;
 
@@ -76,11 +83,14 @@ begin
   try
     vJson.Add('swagger', '2.0');
     vJson.Add('info', getInfo(AServer));
-    vJson.Add('host', 'localhost:'+IntToStr(AServer.Port));
+    vJson.Add('host', FHost);
     vJson.Add('basePath', '/');
 
     vSchemas := TRALJSONArray.Create;
-    vSchemas.Add('http');
+    if AServer.SSLEnabled then
+      vSchemas.Add('https')
+    else
+      vSchemas.Add('http');
 
     vJson.Add('schemes', vSchemas);
     vJson.Add('paths', getPaths(AServer));
@@ -107,15 +117,18 @@ var
   vjAux1 : TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
-  Result.Add('description', 'Descricao do Swagger Module'); // colocar
-  Result.Add('version', '1.0.7'); // colocar
-  Result.Add('title', 'RAL Swagger'); // colocar
+  Result.Add('description', FSwaggerModule.Description.Text);
+  Result.Add('version', FSwaggerModule.Version);
+  Result.Add('title', FSwaggerModule.Title);
   Result.Add('termsOfService', 'http://swagger.io/terms/'); // colocar
 
-  vjAux1 := TRALJSONObject.Create;
-  vjAux1.Add('email', 'apiteam@swagger.io'); // colocar
+  if FSwaggerModule.EMail <> '' then
+  begin
+    vjAux1 := TRALJSONObject.Create;
+    vjAux1.Add('email', SwaggerModule.EMail);
 
-  Result.Add('contact', vjAux1);
+    Result.Add('contact', vjAux1);
+  end;
 
   vjAux1 := TRALJSONObject.Create;
   vjAux1.Add('name', 'Apache 2.0'); // colocar

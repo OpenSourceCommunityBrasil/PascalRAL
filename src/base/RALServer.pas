@@ -230,6 +230,7 @@ type
     procedure Stop;
 
     function CountSubModules : IntegerRAL;
+    function SSLEnabled : boolean;
 
     property SubModule[AIndex : IntegerRAL] : TRALModuleRoutes read GetSubModule;
   published
@@ -443,6 +444,13 @@ end;
 function TRALServer.CountSubModules: IntegerRAL;
 begin
   Result := FListSubModules.Count;
+end;
+
+function TRALServer.SSLEnabled: boolean;
+begin
+  Result := False;
+  if FSSL <> nil then
+    Result := FSSL.Enabled;
 end;
 
 destructor TRALServer.Destroy;
