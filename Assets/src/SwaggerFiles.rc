@@ -1,0 +1,7 @@
+SWAGGER_INDEX         RCDATA "..\swagger_files\swagger.html"
+SWAGGER_CSS           RCDATA "..\swagger_files\swagger.css"
+SWAGGER_UI_CSS        RCDATA "..\swagger_files\swagger-ui.css"
+SWAGGER_UI_BUNDLE_JS  RCDATA "..\swagger_files\swagger-ui-bundle.js"
+SWAGGER_UI_BUNDLE_MAP RCDATA "..\swagger_files\swagger-ui-bundle.js.map"
+SWAGGER_UI_STANDALONE RCDATA "..\swagger_files\swagger-ui-standalone-preset.js"
+SWAGGER_INITIALIZER   RCDATA "..\swagger_files\swagger-initializer.js"

@@ -19,3 +19,6 @@ if NOT EXIST %path_brcc32% (
 # DBWare
 %path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBFireDAC.dcr" "RALDBFireDAC.rc"
 %path_brcc32% -fo "..\..\pkg\Delphi\DB\RALDBZeos.dcr" "RALDBZeos.rc"
+
+# Swagger Files
+%path_brcc32% -fo "..\..\src\utils\RALSwaggerModule.res" "SwaggerFiles.rc"
