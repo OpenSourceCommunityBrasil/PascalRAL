@@ -18,8 +18,12 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils,
-  RALConsts, RALAuthentication, RALWebModule, RALClient, RALCompress,
-  RALTypes, RALServer;
+  // generic
+  RALConsts, RALAuthentication, RALCompress, RALTypes,
+  // server
+  RALServer, RALWebModule, RALSwaggerModule,
+  // client
+   RALClient;
 
 type
   TRALBaseURLEditor = class(TClassProperty)
@@ -65,7 +69,9 @@ begin
   // component registration process
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
-  RegisterComponents('RAL - Modules', [TRALWebModule]);
+  RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
+
+  // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClientBase, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
