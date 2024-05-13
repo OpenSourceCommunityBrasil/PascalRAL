@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALServer, RALTypes, RALRoutes, RALRequest, RALResponse, RALMIMETypes;
+  RALServer, RALTypes, RALRoutes, RALRequest, RALResponse, RALMIMETypes,
+  RAlTools;
 
 type
   { TRALSwaggerModule }
@@ -15,16 +16,21 @@ type
     FEMail : StringRAL;
     FTitle : StringRAL;
     FVersion : StringRAL;
+    FRoute : StringRAL;
   protected
+    procedure SetRoute(const AValue: StringRAL);
+
     procedure SwaggerIndex(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerCSS(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerInitializer(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerJSON(ARequest : TRALRequest; AResponse : TRALResponse);
+    procedure SwaggerPostman(ARequest : TRALRequest; AResponse : TRALResponse);
+
+    procedure CreateRoutes;
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; override;
     function IsDomain : boolean; override;
     function GetListRoutes : TList; override;
   published
@@ -32,49 +38,55 @@ type
     property EMail : StringRAL read FEMail write FEMail;
     property Title : StringRAL read FTitle write FTitle;
     property Version : StringRAL read FVersion write FVersion;
+    property Route : StringRAL read FRoute write SetRoute;
   end;
 
 implementation
 
 uses
-  RALSwaggerExporter;
+  RALSwaggerExporter, RALPostmanExporter;
 
 { TRALSwaggerModule }
 
 constructor TRALSwaggerModule.Create(AOwner: TComponent);
+begin
+  inherited;
+  FDescription := TStringList.Create;
+  FRoute := '/swagger';
+  CreateRoutes;
+end;
+
+procedure TRALSwaggerModule.CreateRoutes;
 var
   vRoute : TRALRoute;
 begin
-  inherited;
-  vRoute := CreateRoute('/swagger', {$IFDEF FPC}@{$ENDIF}SwaggerIndex);
+  Routes.Clear;
+
+  vRoute := CreateRoute(FRoute, {$IFDEF FPC}@{$ENDIF}SwaggerIndex);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute('/swagger/swagger.css', {$IFDEF FPC}@{$ENDIF}SwaggerCSS);
+  vRoute := CreateRoute(FRoute + '/swagger.css', {$IFDEF FPC}@{$ENDIF}SwaggerCSS);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute('/swagger/swagger-initializer.js', {$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
+  vRoute := CreateRoute(FRoute + '/swagger-initializer.js', {$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute('/swagger/swagger.json', {$IFDEF FPC}@{$ENDIF}SwaggerJSON);
+  vRoute := CreateRoute(FRoute + '/swagger.json', {$IFDEF FPC}@{$ENDIF}SwaggerJSON);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  FDescription := TStringList.Create;
+  vRoute := CreateRoute(FRoute + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
+  vRoute.AllowedMethods := [amGET];
+  vRoute.SkipAuthMethods := [amALL];
 end;
 
 destructor TRALSwaggerModule.Destroy;
 begin
   FreeAndNil(FDescription);
   inherited;
-end;
-
-function TRALSwaggerModule.CanAnswerRoute(ARequest: TRALRequest;
-  AResponse: TRALResponse): TRALRoute;
-begin
-  Result := Routes.CanAnswerRoute(ARequest);
 end;
 
 procedure TRALSwaggerModule.SwaggerIndex(ARequest: TRALRequest;
@@ -86,7 +98,7 @@ var
 begin
   AResponse.ContentType := rctTEXTHTML;
 
-  vURL := 'https://unpkg.com/swagger-ui-dist@5.17.7/';
+  vURL := 'https://unpkg.com/swagger-ui-dist@5.17.9/';
 
   vHTML := TStringList.Create;
   try
@@ -98,13 +110,13 @@ begin
     vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-32x32.png" sizes="32x32" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-16x16.png" sizes="16x16" />');
-    vHTML.Add('    <link rel="stylesheet" type="text/css" href="swagger.css" />');
+    vHTML.Add('    <link rel="stylesheet" type="text/css" href=".' + FRoute + '/swagger.css" />');
     vHTML.Add('  </head>');
     vHTML.Add('  <body>');
     vHTML.Add('    <div id="swagger-ui"></div>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src="swagger-initializer.js" charset="UTF-8"></script>');
+    vHTML.Add('    <script src=".' + FRoute + '/swagger-initializer.js" charset="UTF-8"></script>');
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
@@ -119,6 +131,15 @@ begin
   finally
     FreeAndNil(vHTML);
   end;
+end;
+
+procedure TRALSwaggerModule.SetRoute(const AValue: StringRAL);
+begin
+  if AValue = FRoute then
+    Exit;
+
+  FRoute := FixRoute(AValue);
+  CreateRoutes;
 end;
 
 procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest;
@@ -172,7 +193,7 @@ begin
   vScript := TStringList.Create;
   try
     vScript.Add('window.onload = function() {');
-    vScript.Add('  const definitionURL = "./swagger.json";');
+    vScript.Add('  const definitionURL = ".' + FRoute + '/swagger.json";');
     vScript.Add('');
     vScript.Add('  window.ui = SwaggerUIBundle({');
     vScript.Add('    url: definitionURL,');
@@ -222,6 +243,25 @@ begin
     end;
   finally
     FreeAndNil(vSwagger);
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerPostman(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vMem : TStream;
+  vPostman : TRALPostmanExporter;
+begin
+  vPostman := TRALPostmanExporter.Create;
+  try
+    vMem := vPostman.ExportToStream(Server);
+    try
+      AResponse.AddFile(vMem, 'postman.json');
+    finally
+      FreeAndNil(vMem);
+    end;
+  finally
+    FreeAndNil(vPostman);
   end;
 end;
 

@@ -18,6 +18,8 @@ type
     procedure AuthToRoute(AItem : TRALJSONArray; AAuth : TRALAuthServer);
   public
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
+    procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
+    function ExportToStream(AServer : TRALServer) : TStream; overload;
   end;
 
 implementation
@@ -95,8 +97,25 @@ end;
 
 procedure TRALPostmanExporter.ExportToFile(AServer: TRALServer; AFileName: TFileName);
 var
-  vJson, vAuth : TRALJSONObject;
   vFile : TFileStream;
+begin
+  vFile := TFileStream.Create(AFileName, fmCreate);
+  try
+    ExportToStream(AServer, vFile);
+  finally
+    vFile.Free;
+  end;
+end;
+
+function TRALPostmanExporter.ExportToStream(AServer: TRALServer): TStream;
+begin
+  Result := TMemoryStream.Create;
+  ExportToStream(AServer, Result);
+end;
+
+procedure TRALPostmanExporter.ExportToStream(AServer: TRALServer; AStream: TStream);
+var
+  vJson, vAuth : TRALJSONObject;
   vStr : StringRAL;
 begin
   vJson := TRALJSONObject.Create;
@@ -114,12 +133,7 @@ begin
     FreeAndNil(vJson);
   end;
 
-  vFile := TFileStream.Create(AFileName, fmCreate);
-  try
-    vFile.Write(vStr[POSINISTR], Length(vStr));
-  finally
-    vFile.Free;
-  end;
+  AStream.Write(vStr[POSINISTR], Length(vStr));
 end;
 
 function TRALPostmanExporter.getAuth(AServer: TRALServer): TRALJSONObject;
@@ -285,10 +299,10 @@ begin
       vAux2.Add('host', vAux3);
 
       vAux3 := TRALJSONArray.Create;
-      vAux3.Add(ARoute.Route);
+      vAux3.Add(ARoute.GetFullRoute);
       vAux2.Add('path', vAux3);
 
-      vAux2.Add('raw', '{{ral_url}}' + ARoute.Route);
+      vAux2.Add('raw', '{{ral_url}}' + ARoute.GetFullRoute);
 
       vAux1.Add('url', vAux2);
       vAux1.Add('method', RALMethodToHTTPMethod(vMethod));

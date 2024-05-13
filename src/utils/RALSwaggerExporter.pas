@@ -17,11 +17,15 @@ type
     FSwaggerModule : TRALSwaggerModule;
   protected
     function getInfo(AServer: TRALServer) : TRALJSONObject;
+    function getServers(AServer: TRALServer) : TRALJSONArray;
+    function getTags(AServer: TRALServer) : TRALJSONArray;
     function getPaths(AServer: TRALServer) : TRALJSONObject;
     function getSecurity(AAuth: TRALAuthServer) : TRALJSONObject;
 
-    procedure RouteToJSON(AItem : TRALJSONObject; AObject : TComponent; ARoute : TRALRoute);
+    procedure RouteToJSON(AItem : TRALJSONObject; AServer : TRALServer;
+                          AModule : TRALModuleRoutes; ARoute : TRALRoute);
     procedure AuthToRoute(AItem : TRALJSONObject; AAuth : TRALAuthServer);
+    function RouteToOperation(ARoute : StringRAL) : StringRAL;
   public
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
     procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
@@ -76,23 +80,14 @@ end;
 procedure TRALSwaggerExporter.ExportToStream(AServer: TRALServer; AStream: TStream);
 var
   vJson : TRALJSONObject;
-  vSchemas : TRALJSONArray;
   vStr : StringRAL;
 begin
   vJson := TRALJSONObject.Create;
   try
-    vJson.Add('swagger', '2.0');
+    vJson.Add('openapi', '3.1.0');
     vJson.Add('info', getInfo(AServer));
-    vJson.Add('host', FHost);
-    vJson.Add('basePath', '/');
-
-    vSchemas := TRALJSONArray.Create;
-    if AServer.SSLEnabled then
-      vSchemas.Add('https')
-    else
-      vSchemas.Add('http');
-
-    vJson.Add('schemes', vSchemas);
+    vJson.Add('servers', getServers(AServer));
+    vJson.Add('tags', getTags(AServer));
     vJson.Add('paths', getPaths(AServer));
 
     if AServer.Authentication <> nil then
@@ -117,10 +112,10 @@ var
   vjAux1 : TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
+  Result.Add('title', FSwaggerModule.Title);
   Result.Add('description', FSwaggerModule.Description.Text);
   Result.Add('version', FSwaggerModule.Version);
-  Result.Add('title', FSwaggerModule.Title);
-  Result.Add('termsOfService', 'http://swagger.io/terms/'); // colocar
+//  Result.Add('termsOfService', 'http://swagger.io/terms/'); // colocar
 
   if FSwaggerModule.EMail <> '' then
   begin
@@ -130,11 +125,11 @@ begin
     Result.Add('contact', vjAux1);
   end;
 
-  vjAux1 := TRALJSONObject.Create;
-  vjAux1.Add('name', 'Apache 2.0'); // colocar
-  vjAux1.Add('url', 'http://www.apache.org/licenses/LICENSE-2.0.html'); // colocar
+//  vjAux1 := TRALJSONObject.Create;
+//  vjAux1.Add('name', 'Apache 2.0'); // colocar
+//  vjAux1.Add('url', 'http://www.apache.org/licenses/LICENSE-2.0.html'); // colocar
 
-  Result.Add('license', vjAux1);
+//  Result.Add('license', vjAux1);
 end;
 
 function TRALSwaggerExporter.getPaths(AServer: TRALServer): TRALJSONObject;
@@ -151,7 +146,7 @@ begin
   for vInt1 := 0 to Pred(AServer.Routes.Count) do
   begin
     vRoute := TRALRoute(AServer.Routes.Items[vInt1]);
-    RouteToJSON(Result, AServer, vRoute);
+    RouteToJSON(Result, AServer, nil, vRoute);
   end;
 
   // adicionando submodules
@@ -162,7 +157,7 @@ begin
       for vInt2 := 0 to Pred(vSubRoutes.Count) do
       begin
         vRoute := TRALRoute(vSubRoutes.Items[vInt2]);
-        RouteToJSON(Result, AServer.SubModule[vInt1], vRoute);
+        RouteToJSON(Result, AServer, AServer.SubModule[vInt1], vRoute);
       end;
     finally
       FreeAndNil(vSubRoutes);
@@ -195,31 +190,72 @@ begin
   end;
 end;
 
+function TRALSwaggerExporter.getServers(AServer: TRALServer): TRALJSONArray;
+var
+  vItem : TRALJSONObject;
+begin
+  Result := TRALJSONArray.Create;
+
+  vItem := TRALJSONObject.Create;
+  vItem.Add('url', '/');
+
+  Result.Add(vItem);
+end;
+
+function TRALSwaggerExporter.getTags(AServer: TRALServer): TRALJSONArray;
+var
+  vItem1, vItem2 : TRALJSONObject;
+begin
+  Result := TRALJSONArray.Create;
+
+  vItem1 := TRALJSONObject.Create;
+  vItem1.Add('name', 'Postman');
+  vItem1.Add('description', 'Export API to Postman');
+
+  vItem2 := TRALJSONObject.Create;
+  vItem2.Add('description', 'Postman Document');
+  vItem2.Add('url', './swagger/postman.json');
+
+  vItem1.Add('externalDocs', vItem2);
+
+  Result.Add(vItem1);
+end;
+
 procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject;
-  AObject: TComponent; ARoute: TRALRoute);
+  AServer : TRALServer; AModule : TRALModuleRoutes; ARoute: TRALRoute);
 var
   vRoute, vAuth, vjMethod : TRALJSONObject;
+  vAux1, vAux2 : TRALJSONObject;
   vSecurity, vAuthTypes, vTags : TRALJSONArray;
   vMethod : TRALMethod;
 begin
   vRoute := TRALJSONObject.Create;
+
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
     if ARoute.IsMethodAllowed(vMethod) then begin
       vjMethod := TRALJSONObject.Create;
 
-      if AObject.Name <> '' then
+      if (AModule <> nil) and (AModule.Name <> '') then
       begin
         vTags := TRALJSONArray.Create;
-        vTags.Add(AObject.Name);
+        vTags.Add(AModule.Name);
+
+        vjMethod.Add('tags', vTags);
+      end
+      else if (AServer <> nil) and (AServer.Name <> '') then
+      begin
+        vTags := TRALJSONArray.Create;
+        vTags.Add(AServer.Name);
 
         vjMethod.Add('tags', vTags);
       end;
-      vjMethod.Add('summary', '');
-      vjMethod.Add('description', ARoute.Description.Text);
-      vjMethod.Add('operationId', '');
+      vjMethod.Add('summary', ARoute.Name);
+      vjMethod.Add('description', Trim(ARoute.Description.Text));
+      vjMethod.Add('operationId', RouteToOperation(ARoute.GetFullRoute));
 
-      if not ARoute.IsMethodSkipped(vMethod) then begin
+      if (AServer.Authentication <> nil) and
+         (not ARoute.IsMethodSkipped(vMethod)) then begin
         vSecurity := TRALJSONArray.Create;
 
         vAuth := TRALJSONObject.Create;
@@ -230,10 +266,26 @@ begin
         vjMethod.Add('security', vSecurity);
       end;
 
+      vAux1 := TRALJSONObject.Create;;
+      vAux1.Add('description', 'successful operation');
+
+      vAux2 := TRALJSONObject.Create;;
+      vAux2.Add('200', vAux1);
+
+      vjMethod.Add('responses', vAux2);
+
       vRoute.Add(LowerCase(RALMethodToHTTPMethod(vMethod)), vjMethod);
     end;
   end;
-  AItem.Add(ARoute.Route, vRoute)
+  AItem.Add(ARoute.GetFullRoute, vRoute)
+end;
+
+function TRALSwaggerExporter.RouteToOperation(ARoute: StringRAL): StringRAL;
+begin
+  if (ARoute <> '') and (ARoute[POSINISTR] = '/') then
+    Delete(ARoute, 1, 1);
+
+  Result := StringReplace(ARoute, '/', '_', [rfReplaceAll]);
 end;
 
 end.

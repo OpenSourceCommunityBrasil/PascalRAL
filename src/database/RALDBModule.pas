@@ -5,7 +5,8 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALDBStorage, RALBase64, RALQueryStructure;
+  RALConsts, RALTypes, RALDBStorage, RALBase64, RALQueryStructure,
+  RALRoutes;
 
 type
   { TRALDBModule }
@@ -291,10 +292,19 @@ begin
 end;
 
 constructor TRALDBModule.Create(AOwner: TComponent);
+var
+  vRoute : TRALRoute;
 begin
   inherited Create(AOwner);
-  CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
-  CreateRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
+  vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
+  vRoute.Name := 'opensql';
+  vRoute.AllowedMethods := [amPOST];
+  vRoute.Description.Add('Open a SQL from a client http');
+
+  vRoute := CreateRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
+  vRoute.Name := 'execsql';
+  vRoute.AllowedMethods := [amPOST];
+  vRoute.Description.Add('Execute a SQL from a client http');
 end;
 
 end.

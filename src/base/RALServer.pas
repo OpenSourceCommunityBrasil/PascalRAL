@@ -827,11 +827,14 @@ begin
   Delete(vName, 1, 1);
 
   vInt := Pos('/', vName);
-  if vInt > 0 then
+  if (vInt > 0) and (IsDomain) then
   begin
     vName := Copy(vName, 1, vInt - 1);
     if SameText(vName, Name) then
       Result := Routes.CanAnswerRoute(ARequest);
+  end
+  else begin
+    Result := Routes.CanAnswerRoute(ARequest);
   end;
 end;
 
