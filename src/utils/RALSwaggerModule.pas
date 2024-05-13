@@ -95,14 +95,16 @@ begin
     vHTML.Add('  <head>');
     vHTML.Add('    <meta charset="UTF-8">');
     vHTML.Add('    <title>RAL Swagger</title>');
-    vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css"/>');
+    vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css" />');
+    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-32x32.png" sizes="32x32" />');
+    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-16x16.png" sizes="16x16" />');
     vHTML.Add('    <link rel="stylesheet" type="text/css" href="swagger.css" />');
     vHTML.Add('  </head>');
     vHTML.Add('  <body>');
     vHTML.Add('    <div id="swagger-ui"></div>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src="swagger-initializer.js" charset="UTF-8"> </script>');
+    vHTML.Add('    <script src="swagger-initializer.js" charset="UTF-8"></script>');
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
