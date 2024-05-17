@@ -826,11 +826,11 @@ begin
   vName := ARequest.Query;
   Delete(vName, 1, 1);
 
-  vInt := Pos('/', vName);
-  if (vInt > 0) and (IsDomain) then
+  if IsDomain then
   begin
+    vInt := Pos('/', vName);
     vName := Copy(vName, 1, vInt - 1);
-    if SameText(vName, Name) then
+    if (vInt > 0) and (SameText(vName, Name)) then
       Result := Routes.CanAnswerRoute(ARequest);
   end
   else begin

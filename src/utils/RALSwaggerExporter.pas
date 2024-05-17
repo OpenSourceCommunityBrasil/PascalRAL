@@ -13,7 +13,6 @@ type
 
   TRALSwaggerExporter = class
   private
-    FHost : StringRAL;
     FSwaggerModule : TRALSwaggerModule;
   protected
     function getInfo(AServer: TRALServer) : TRALJSONObject;
@@ -31,7 +30,6 @@ type
     procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
     function ExportToStream(AServer : TRALServer) : TStream; overload;
   published
-    property Host : StringRAL read FHost write FHost;
     property SwaggerModule : TRALSwaggerModule read FSwaggerModule write FSwaggerModule;
   end;
 
@@ -87,7 +85,8 @@ begin
     vJson.Add('openapi', '3.1.0');
     vJson.Add('info', getInfo(AServer));
     vJson.Add('servers', getServers(AServer));
-    vJson.Add('tags', getTags(AServer));
+    if SwaggerModule.PostmanTag then
+      vJson.Add('tags', getTags(AServer));
     vJson.Add('paths', getPaths(AServer));
 
     if AServer.Authentication <> nil then
@@ -115,7 +114,8 @@ begin
   Result.Add('title', FSwaggerModule.Title);
   Result.Add('description', FSwaggerModule.Description.Text);
   Result.Add('version', FSwaggerModule.Version);
-//  Result.Add('termsOfService', 'http://swagger.io/terms/'); // colocar
+  if SwaggerModule.TermsOfService <> '' then
+    Result.Add('termsOfService', SwaggerModule.TermsOfService);
 
   if FSwaggerModule.EMail <> '' then
   begin
@@ -125,11 +125,14 @@ begin
     Result.Add('contact', vjAux1);
   end;
 
-//  vjAux1 := TRALJSONObject.Create;
-//  vjAux1.Add('name', 'Apache 2.0'); // colocar
-//  vjAux1.Add('url', 'http://www.apache.org/licenses/LICENSE-2.0.html'); // colocar
+  if (SwaggerModule.License.Name <> '') or (SwaggerModule.License.URL <> '') then
+  begin
+    vjAux1 := TRALJSONObject.Create;
+    vjAux1.Add('name', SwaggerModule.License.Name);
+    vjAux1.Add('url', SwaggerModule.License.URL);
 
-//  Result.Add('license', vjAux1);
+    Result.Add('license', vjAux1);
+  end;
 end;
 
 function TRALSwaggerExporter.getPaths(AServer: TRALServer): TRALJSONObject;
@@ -208,15 +211,17 @@ var
 begin
   Result := TRALJSONArray.Create;
 
-  vItem1 := TRALJSONObject.Create;
-  vItem1.Add('name', 'Postman');
-  vItem1.Add('description', 'Export API to Postman');
+  if SwaggerModule.PostmanTag then
+  begin
+    vItem2 := TRALJSONObject.Create;
+    vItem2.Add('description', 'Postman Document');
+    vItem2.Add('url', '.' + SwaggerModule.Route + '/postman.json');
 
-  vItem2 := TRALJSONObject.Create;
-  vItem2.Add('description', 'Postman Document');
-  vItem2.Add('url', './swagger/postman.json');
-
-  vItem1.Add('externalDocs', vItem2);
+    vItem1 := TRALJSONObject.Create;
+    vItem1.Add('name', 'Postman');
+    vItem1.Add('description', 'Export API to Postman');
+    vItem1.Add('externalDocs', vItem2);
+  end;
 
   Result.Add(vItem1);
 end;
@@ -225,7 +230,7 @@ procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject;
   AServer : TRALServer; AModule : TRALModuleRoutes; ARoute: TRALRoute);
 var
   vRoute, vAuth, vjMethod : TRALJSONObject;
-  vAux1, vAux2 : TRALJSONObject;
+  vAux1 : TRALJSONObject;
   vSecurity, vAuthTypes, vTags : TRALJSONArray;
   vMethod : TRALMethod;
 begin
@@ -243,7 +248,7 @@ begin
 
         vjMethod.Add('tags', vTags);
       end
-      else if (AServer <> nil) and (AServer.Name <> '') then
+      else if (AModule = nil) and (AServer <> nil) and (AServer.Name <> '') then
       begin
         vTags := TRALJSONArray.Create;
         vTags.Add(AServer.Name);
@@ -267,12 +272,7 @@ begin
       end;
 
       vAux1 := TRALJSONObject.Create;;
-      vAux1.Add('description', 'successful operation');
-
-      vAux2 := TRALJSONObject.Create;;
-      vAux2.Add('200', vAux1);
-
-      vjMethod.Add('responses', vAux2);
+      vjMethod.Add('responses', vAux1);
 
       vRoute.Add(LowerCase(RALMethodToHTTPMethod(vMethod)), vjMethod);
     end;

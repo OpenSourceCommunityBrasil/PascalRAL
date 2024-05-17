@@ -23,6 +23,10 @@ type
     FParams: TParams;
     FStorage: TRALDBStorageLink;
     FOnError: TRALDBOnError;
+    FUpdateSQL: TRALDBUpdateSQL;
+  protected
+    procedure InternalPost; override;
+    procedure InternalDelete; override;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -43,12 +47,18 @@ type
 
     procedure OpenRemote;
     procedure ExecSQLRemote;
+    procedure ApplyUpdatesRemote;
   published
+//    property Active;
+//    property FieldDefs;
+
     property Client : TRALClientMT read FClient write SetClient;
     property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write SetStorage;
     property Params : TParams read FParams write FParams;
+    property UpdateSQL : TRALDBUpdateSQL read FUpdateSQL write FUpdateSQL;
+
     property OnError : TRALDBOnError read FOnError write FOnError;
   end;
 
@@ -66,6 +76,19 @@ begin
 
   if FStorage <> nil then
     FStorage.FreeNotification(Self);
+end;
+
+procedure TRALDBZMemTable.InternalPost;
+begin
+  inherited InternalPost;
+
+  if not CachedUpdates then
+    ApplyUpdatesRemote;
+end;
+
+procedure TRALDBZMemTable.InternalDelete;
+begin
+  inherited InternalDelete;
 end;
 
 procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
@@ -188,12 +211,15 @@ begin
   TStringList(FSQL).OnChange := {$IFDEF FPC}@{$ENDIF}OnChangeSQL;
 
   FParams := TParams.Create(Self);
+  FUpdateSQL := TRALDBUpdateSQL.Create;
+  CachedUpdates := True;
 end;
 
 destructor TRALDBZMemTable.Destroy;
 begin
   FreeAndNil(FSQL);
   FreeAndNil(FParams);
+  FreeAndNil(FUpdateSQL);
   inherited Destroy;
 end;
 
@@ -250,6 +276,27 @@ begin
   finally
     FreeAndNil(vQueryStructure);
   end;
+end;
+
+procedure TRALDBZMemTable.ApplyUpdatesRemote;
+var
+  vBook: TBookMark;
+begin
+  Self.DisableControls;
+  vBook := Self.GetBookmark;
+
+  Self.First;
+  while not Self.Eof do begin
+    if Self.UpdateStatus in [usUnmodified] then
+    begin
+
+    end;
+    Self.Next;
+  end;
+
+  Self.GotoBookmark(vBook);
+  Self.FreeBookmark(vBook);
+  Self.DisableControls;
 end;
 
 end.

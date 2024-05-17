@@ -8,6 +8,20 @@ uses
   RAlTools;
 
 type
+
+  { TRALSwaggerLicense }
+
+  TRALSwaggerLicense = class(TPersistent)
+  private
+    FName : StringRAL;
+    FURL : StringRAL;
+  published
+    constructor Create;
+  published
+    property Name : StringRAL read FName write FName;
+    property URL : StringRAL read FURL write FURL;
+  end;
+
   { TRALSwaggerModule }
 
   TRALSwaggerModule = class(TRALModuleRoutes)
@@ -17,8 +31,12 @@ type
     FTitle : StringRAL;
     FVersion : StringRAL;
     FRoute : StringRAL;
+    FPostmanTag : boolean;
+    FTermsOfService : StringRAL;
+    FLicense : TRALSwaggerLicense;
   protected
     procedure SetRoute(const AValue: StringRAL);
+    procedure SetPostmanTag(AValue: boolean);
 
     procedure SwaggerIndex(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerCSS(ARequest : TRALRequest; AResponse : TRALResponse);
@@ -39,12 +57,24 @@ type
     property Title : StringRAL read FTitle write FTitle;
     property Version : StringRAL read FVersion write FVersion;
     property Route : StringRAL read FRoute write SetRoute;
+    property PostmanTag : boolean read FPostmanTag write SetPostmanTag;
+    property TermsOfService : StringRAL read FTermsOfService write FTermsOfService;
+    property License : TRALSwaggerLicense read FLicense write FLicense;
   end;
 
 implementation
 
 uses
   RALSwaggerExporter, RALPostmanExporter;
+
+{ TRALSwaggerLicense }
+
+constructor TRALSwaggerLicense.Create;
+begin
+  inherited;
+  FName := '';
+  FURL := '';
+end;
 
 { TRALSwaggerModule }
 
@@ -53,6 +83,14 @@ begin
   inherited;
   FDescription := TStringList.Create;
   FRoute := '/swagger';
+  FPostmanTag := False;
+  FDescription.Clear;
+  FEMail := '';
+  FTitle := '';
+  FVersion := '';
+  FTermsOfService := '';
+  FLicense := TRALSwaggerLicense.Create;
+
   CreateRoutes;
 end;
 
@@ -78,14 +116,18 @@ begin
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(FRoute + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
-  vRoute.AllowedMethods := [amGET];
-  vRoute.SkipAuthMethods := [amALL];
+  if FPostmanTag then
+  begin
+    vRoute := CreateRoute(FRoute + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
+    vRoute.AllowedMethods := [amGET];
+    vRoute.SkipAuthMethods := [amALL];
+  end;
 end;
 
 destructor TRALSwaggerModule.Destroy;
 begin
   FreeAndNil(FDescription);
+  FreeAndNil(FLicense);
   inherited;
 end;
 
@@ -131,6 +173,15 @@ begin
   finally
     FreeAndNil(vHTML);
   end;
+end;
+
+procedure TRALSwaggerModule.SetPostmanTag(AValue: boolean);
+begin
+  if FPostmanTag = AValue then
+    Exit;
+
+  FPostmanTag := AValue;
+  CreateRoutes;
 end;
 
 procedure TRALSwaggerModule.SetRoute(const AValue: StringRAL);
@@ -234,7 +285,6 @@ begin
   vSwagger := TRALSwaggerExporter.Create;
   try
     vSwagger.SwaggerModule := Self;
-    vSwagger.Host := ARequest.Host;
     vMem := vSwagger.ExportToStream(Server);
     try
       AResponse.ResponseStream := vMem;

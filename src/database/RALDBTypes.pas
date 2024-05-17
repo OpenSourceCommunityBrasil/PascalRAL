@@ -296,6 +296,7 @@ end;
 
 constructor TRALDBUpdateSQL.Create;
 begin
+  inherited;
   FDeleteSQL := TStringList.Create;
   FInsertSQL := TStringList.Create;
   FUpdateSQL := TStringList.Create;
