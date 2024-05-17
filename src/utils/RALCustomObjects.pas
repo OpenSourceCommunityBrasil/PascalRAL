@@ -14,9 +14,9 @@ type
   /// Base class of visual components
   TRALComponent = class(TComponent)
   private
-    function getVersion: string;
+    function GetVersion: string;
   published
-    property Version: string read getVersion;
+    property Version: string read GetVersion;
   end;
 
   { TRALHTTPHeaderInfo }

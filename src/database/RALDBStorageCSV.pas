@@ -218,7 +218,6 @@ procedure TRALDBStorageCSV.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark : TBookMark;
   vValue : StringRAL;
-  vVirg1, vVirg2 : boolean;
   vInt: IntegerRAL;
   vMem: TStream;
 begin

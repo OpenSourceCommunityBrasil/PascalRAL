@@ -98,6 +98,7 @@ begin
   end;
 
   AStream.Write(vStr[POSINISTR], Length(vStr));
+  AStream.Position := 0;
 end;
 
 function TRALSwaggerExporter.ExportToStream(AServer: TRALServer): TStream;
@@ -109,11 +110,17 @@ end;
 function TRALSwaggerExporter.getInfo(AServer: TRALServer) : TRALJSONObject;
 var
   vjAux1 : TRALJSONObject;
+  vAux : StringRAL;
 begin
+  vAux := FSwaggerModule.SystemDescription.Text;
+  vAux := StringReplace(vAux, #13#10, '<br/>', [rfReplaceAll]);
+  vAux := StringReplace(vAux, #13, '<br/>', [rfReplaceAll]);
+  vAux := StringReplace(vAux, #10, '<br/>', [rfReplaceAll]);
+
   Result := TRALJSONObject.Create;
   Result.Add('title', FSwaggerModule.Title);
-  Result.Add('description', FSwaggerModule.Description.Text);
-  Result.Add('version', FSwaggerModule.Version);
+  Result.Add('description', vAux);
+  Result.Add('version', FSwaggerModule.SystemVersion);
   if SwaggerModule.TermsOfService <> '' then
     Result.Add('termsOfService', SwaggerModule.TermsOfService);
 
@@ -215,7 +222,7 @@ begin
   begin
     vItem2 := TRALJSONObject.Create;
     vItem2.Add('description', 'Postman Document');
-    vItem2.Add('url', '.' + SwaggerModule.Route + '/postman.json');
+    vItem2.Add('url', '.' + SwaggerModule.Domain + '/postman.json');
 
     vItem1 := TRALJSONObject.Create;
     vItem1.Add('name', 'Postman');

@@ -208,6 +208,7 @@ begin
     finally
       FreeAndNil(vSource);
     end;
+    vHttp.Free;
   except
     on e : ENetSock do
     begin

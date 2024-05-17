@@ -134,7 +134,6 @@ var
   vMem : TStream;
   vNative : Boolean;
   vException : StringRAL;
-  vStor : TRALDBStorage;
 begin
   if AResponse.StatusCode = 200 then
   begin

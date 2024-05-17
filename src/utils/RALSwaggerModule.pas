@@ -26,17 +26,21 @@ type
 
   TRALSwaggerModule = class(TRALModuleRoutes)
   private
-    FDescription : TStrings;
     FEMail : StringRAL;
-    FTitle : StringRAL;
-    FVersion : StringRAL;
-    FRoute : StringRAL;
-    FPostmanTag : boolean;
-    FTermsOfService : StringRAL;
     FLicense : TRALSwaggerLicense;
+    FPostmanTag : boolean;
+    FSystemVersion : StringRAL;
+    FSystemDescription : TStrings;
+    FTermsOfService : StringRAL;
+    FTitle : StringRAL;
+    FSwaggerFile : TFileName;
+    FPostmanFile : TFileName;
   protected
-    procedure SetRoute(const AValue: StringRAL);
+    procedure SetSystemDescription(const AValue: TStrings);
+    procedure SetDomain(const AValue: StringRAL); override;
     procedure SetPostmanTag(AValue: boolean);
+    procedure SetPostmanFile(const AValue: TFileName);
+    procedure SetSwaggerFile(const AValue: TFileName);
 
     procedure SwaggerIndex(ARequest : TRALRequest; AResponse : TRALResponse);
     procedure SwaggerCSS(ARequest : TRALRequest; AResponse : TRALResponse);
@@ -52,14 +56,15 @@ type
     function IsDomain : boolean; override;
     function GetListRoutes : TList; override;
   published
-    property Description : TStrings read FDescription write FDescription;
     property EMail : StringRAL read FEMail write FEMail;
-    property Title : StringRAL read FTitle write FTitle;
-    property Version : StringRAL read FVersion write FVersion;
-    property Route : StringRAL read FRoute write SetRoute;
-    property PostmanTag : boolean read FPostmanTag write SetPostmanTag;
-    property TermsOfService : StringRAL read FTermsOfService write FTermsOfService;
     property License : TRALSwaggerLicense read FLicense write FLicense;
+    property PostmanTag : boolean read FPostmanTag write SetPostmanTag;
+    property PostmanFile : TFileName read FPostmanFile write SetPostmanFile;
+    property SwaggerFile : TFileName read FSwaggerFile write SetSwaggerFile;
+    property SystemDescription : TStrings read FSystemDescription write SetSystemDescription;
+    property SystemVersion : StringRAL read FSystemVersion write FSystemVersion;
+    property TermsOfService : StringRAL read FTermsOfService write FTermsOfService;
+    property Title : StringRAL read FTitle write FTitle;
   end;
 
 implementation
@@ -81,17 +86,15 @@ end;
 constructor TRALSwaggerModule.Create(AOwner: TComponent);
 begin
   inherited;
-  FDescription := TStringList.Create;
-  FRoute := '/swagger';
+  FSystemDescription := TStringList.Create;
   FPostmanTag := False;
-  FDescription.Clear;
   FEMail := '';
   FTitle := '';
-  FVersion := '';
+  FSystemVersion := '';
   FTermsOfService := '';
   FLicense := TRALSwaggerLicense.Create;
 
-  CreateRoutes;
+  Domain := '/swagger';
 end;
 
 procedure TRALSwaggerModule.CreateRoutes;
@@ -100,25 +103,25 @@ var
 begin
   Routes.Clear;
 
-  vRoute := CreateRoute(FRoute, {$IFDEF FPC}@{$ENDIF}SwaggerIndex);
+  vRoute := CreateRoute(Domain, {$IFDEF FPC}@{$ENDIF}SwaggerIndex);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(FRoute + '/swagger.css', {$IFDEF FPC}@{$ENDIF}SwaggerCSS);
+  vRoute := CreateRoute(Domain + '/swagger.css', {$IFDEF FPC}@{$ENDIF}SwaggerCSS);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(FRoute + '/swagger-initializer.js', {$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
+  vRoute := CreateRoute(Domain + '/swagger-initializer.js', {$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(FRoute + '/swagger.json', {$IFDEF FPC}@{$ENDIF}SwaggerJSON);
+  vRoute := CreateRoute(Domain + '/swagger.json', {$IFDEF FPC}@{$ENDIF}SwaggerJSON);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
   if FPostmanTag then
   begin
-    vRoute := CreateRoute(FRoute + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
+    vRoute := CreateRoute(Domain + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
     vRoute.AllowedMethods := [amGET];
     vRoute.SkipAuthMethods := [amALL];
   end;
@@ -126,7 +129,7 @@ end;
 
 destructor TRALSwaggerModule.Destroy;
 begin
-  FreeAndNil(FDescription);
+  FreeAndNil(FSystemDescription);
   FreeAndNil(FLicense);
   inherited;
 end;
@@ -152,13 +155,13 @@ begin
     vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-32x32.png" sizes="32x32" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-16x16.png" sizes="16x16" />');
-    vHTML.Add('    <link rel="stylesheet" type="text/css" href=".' + FRoute + '/swagger.css" />');
+    vHTML.Add('    <link rel="stylesheet" type="text/css" href=".' + Domain + '/swagger.css" />');
     vHTML.Add('  </head>');
     vHTML.Add('  <body>');
     vHTML.Add('    <div id="swagger-ui"></div>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
     vHTML.Add('    <script src="' + vURL + 'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src=".' + FRoute + '/swagger-initializer.js" charset="UTF-8"></script>');
+    vHTML.Add('    <script src=".' + Domain + '/swagger-initializer.js" charset="UTF-8"></script>');
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
@@ -175,6 +178,24 @@ begin
   end;
 end;
 
+procedure TRALSwaggerModule.SetDomain(const AValue: StringRAL);
+begin
+  inherited;
+  CreateRoutes;
+end;
+
+procedure TRALSwaggerModule.SetPostmanFile(const AValue: TFileName);
+begin
+  if (AValue <> '') and (FileExists(AValue)) then
+  begin
+    FPostmanFile := AValue;
+    FPostmanTag := True;
+  end
+  else begin
+    FPostmanFile := '';
+  end;
+end;
+
 procedure TRALSwaggerModule.SetPostmanTag(AValue: boolean);
 begin
   if FPostmanTag = AValue then
@@ -184,13 +205,17 @@ begin
   CreateRoutes;
 end;
 
-procedure TRALSwaggerModule.SetRoute(const AValue: StringRAL);
+procedure TRALSwaggerModule.SetSwaggerFile(const AValue: TFileName);
 begin
-  if AValue = FRoute then
-    Exit;
+  if (AValue <> '') and (FileExists(AValue)) then
+    FSwaggerFile := AValue
+  else
+    FSwaggerFile := '';
+end;
 
-  FRoute := FixRoute(AValue);
-  CreateRoutes;
+procedure TRALSwaggerModule.SetSystemDescription(const AValue: TStrings);
+begin
+  FSystemDescription.Assign(AValue);
 end;
 
 procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest;
@@ -244,7 +269,7 @@ begin
   vScript := TStringList.Create;
   try
     vScript.Add('window.onload = function() {');
-    vScript.Add('  const definitionURL = ".' + FRoute + '/swagger.json";');
+    vScript.Add('  const definitionURL = ".' + Domain + '/swagger.json";');
     vScript.Add('');
     vScript.Add('  window.ui = SwaggerUIBundle({');
     vScript.Add('    url: definitionURL,');
@@ -282,17 +307,24 @@ var
   vMem : TStream;
   vSwagger : TRALSwaggerExporter;
 begin
-  vSwagger := TRALSwaggerExporter.Create;
-  try
-    vSwagger.SwaggerModule := Self;
-    vMem := vSwagger.ExportToStream(Server);
+  if FileExists(FSwaggerFile) then
+  begin
+    AResponse.Answer(FSwaggerFile);
+    AResponse.ContentDispositionInline := True;
+  end
+  else begin
+    vSwagger := TRALSwaggerExporter.Create;
     try
-      AResponse.ResponseStream := vMem;
+      vSwagger.SwaggerModule := Self;
+      vMem := vSwagger.ExportToStream(Server);
+      try
+        AResponse.ResponseStream := vMem;
+      finally
+        FreeAndNil(vMem);
+      end;
     finally
-      FreeAndNil(vMem);
+      FreeAndNil(vSwagger);
     end;
-  finally
-    FreeAndNil(vSwagger);
   end;
 end;
 
@@ -302,16 +334,22 @@ var
   vMem : TStream;
   vPostman : TRALPostmanExporter;
 begin
-  vPostman := TRALPostmanExporter.Create;
-  try
-    vMem := vPostman.ExportToStream(Server);
+  if FileExists(FPostmanFile) then
+  begin
+    AResponse.Answer(FPostmanFile);
+  end
+  else begin
+    vPostman := TRALPostmanExporter.Create;
     try
-      AResponse.AddFile(vMem, 'postman.json');
+      vMem := vPostman.ExportToStream(Server);
+      try
+        AResponse.AddFile(vMem, 'postman.json');
+      finally
+        FreeAndNil(vMem);
+      end;
     finally
-      FreeAndNil(vMem);
+      FreeAndNil(vPostman);
     end;
-  finally
-    FreeAndNil(vPostman);
   end;
 end;
 

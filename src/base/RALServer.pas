@@ -262,9 +262,11 @@ type
   private
     FRoutes: TRALRoutes;
     FServer: TRALServer;
+    FDomain: StringRAL;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer);
+    procedure SetDomain(const AValue: StringRAL); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -279,6 +281,7 @@ type
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
     property Server: TRALServer read FServer write SetServer;
+    property Domain : StringRAL read FDomain write SetDomain;
   end;
 
 implementation
@@ -460,7 +463,6 @@ begin
 
   FreeAndNil(FRoutes);
   FreeAndNil(FServerStatus);
-
   FreeAndNil(FIPConfig);
   FreeAndNil(FCORSOptions);
   FreeAndNil(FCriptoOptions);
@@ -778,6 +780,14 @@ begin
 end;
 
 { TRALModuleRoutes }
+
+procedure TRALModuleRoutes.SetDomain(const AValue: StringRAL);
+begin
+  if AValue = FDomain then
+    Exit;
+
+  FDomain := FixRoute(AValue);
+end;
 
 procedure TRALModuleRoutes.SetServer(AValue: TRALServer);
 begin

@@ -231,7 +231,6 @@ var
   vSQL: StringRAL;
   vParams: TParams;
   vString: StringRAL;
-  vInt: IntegerRAL;
   vRowsAffect, vLastId: Int64RAL;
 begin
   vDB := FindDatabaseDriver;

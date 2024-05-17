@@ -32,9 +32,9 @@ type
     function GetAsString: StringRAL;
     function GetContentDisposition: StringRAL;
     function GetContentSize: Int64RAL;
-    procedure SetAsBoolean(const Value: Boolean);
-    procedure SetAsDouble(const Value: DoubleRAL);
-    procedure SetAsInteger(const Value: IntegerRAL);
+    procedure SetAsBoolean(const AValue: Boolean);
+    procedure SetAsDouble(const AValue: DoubleRAL);
+    procedure SetAsInteger(const AValue: IntegerRAL);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
     procedure SetContentDisposition(AValue: StringRAL);
@@ -266,8 +266,11 @@ begin
 end;
 
 function TRALParam.GetAsBoolean: Boolean;
+var
+  vStr : StringRAL;
 begin
-  Result := StrToBoolDef(StreamToString(FContent), False);
+  vStr := StreamToString(FContent);
+  Result := (vStr = '1') or (SameText(vStr, 'true'));
 end;
 
 function TRALParam.GetAsDouble: DoubleRAL;
@@ -367,27 +370,27 @@ begin
   SaveToFile(AFolderName + AFileName);
 end;
 
-procedure TRALParam.SetAsBoolean(const Value: Boolean);
+procedure TRALParam.SetAsBoolean(const AValue: Boolean);
 var
   vStr : StringRAL;
 begin
-  vStr := BoolToStr(Value);
+  vStr := IntToStr(Integer(AValue));
   SetAsString(vStr);
 end;
 
-procedure TRALParam.SetAsDouble(const Value: DoubleRAL);
+procedure TRALParam.SetAsDouble(const AValue: DoubleRAL);
 var
   vStr : StringRAL;
 begin
-  vStr := FloatToStr(Value);
+  vStr := FloatToStr(AValue);
   SetAsString(vStr);
 end;
 
-procedure TRALParam.SetAsInteger(const Value: IntegerRAL);
+procedure TRALParam.SetAsInteger(const AValue: IntegerRAL);
 var
   vStr : StringRAL;
 begin
-  vStr := IntToStr(Value);
+  vStr := IntToStr(AValue);
   SetAsString(vStr);
 end;
 
@@ -839,7 +842,7 @@ begin
 
   vStream := StringToStream(ASource);
   try
-    Result := DecodeBody(vStream, AContentType);
+    Result := DecodeBody(vStream, AContentType, AContentDisposition);
   finally
     FreeAndNil(vStream);
   end;
