@@ -778,6 +778,7 @@ begin
   inherited;
   FHeader := TRALJWTHeader.Create;
   FPayload := TRALJWTParams.Create;
+  FToken := '';
 end;
 
 procedure TRALJWT.SetToken(AValue: StringRAL);

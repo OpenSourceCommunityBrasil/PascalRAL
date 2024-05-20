@@ -17,6 +17,7 @@ type
   /// Base class for individual route definition
   TRALBaseRoute = class(TCollectionItem)
   private
+    FContentType: StringRAL;
     FAllowedMethods: TRALMethods;
     FAllowURIParams: boolean;
     FCallback: boolean;
@@ -61,6 +62,7 @@ type
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
+    property ContentType: StringRAL read FContentType write FContentType;
     property Description: TStrings read FDescription write SetDescription;
     property Route: StringRAL read FRoute write SetRoute;
   end;
@@ -109,6 +111,7 @@ begin
   FRoute := '/';
   FDescription := TStringList.Create;
   FUriParams := TStringList.Create;
+  FContentType := rctAPPLICATIONJSON;
   Changed(False);
 end;
 
