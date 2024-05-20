@@ -91,14 +91,14 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function isValidToken(const AValue: StringRAL): boolean;
 
-    property Token: StringRAL read GetToken write SetToken;
+    function IsValidToken(const AValue: StringRAL = ''): boolean;
   published
     property Header: TRALJWTHeader read FHeader write FHeader;
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Signature: StringRAL read FSignature;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
+    property Token: StringRAL read GetToken write SetToken;
   end;
 
   { TRALOAuth }
@@ -891,7 +891,7 @@ begin
   end;
 end;
 
-function TRALJWT.isValidToken(const AValue: StringRAL): boolean;
+function TRALJWT.IsValidToken(const AValue: StringRAL): boolean;
 var
   vSignature: StringRAL;
   vAlgorithm: TRALJWTAlgorithm;
@@ -900,7 +900,9 @@ begin
 
   vAlgorithm := FHeader.Algorithm;
 
-  Token := AValue;
+  if AValue <> '' then
+    Token := AValue;
+
   if vAlgorithm = FHeader.Algorithm then
   begin
     vSignature := FSignature;

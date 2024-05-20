@@ -23,7 +23,7 @@ uses
   // server
   RALServer, RALWebModule, RALSwaggerModule,
   // client
-   RALClient;
+  RALClient;
 
 type
   TRALBaseURLEditor = class(TClassProperty)

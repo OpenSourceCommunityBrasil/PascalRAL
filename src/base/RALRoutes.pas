@@ -12,10 +12,10 @@ type
   TRALRoutes = class;
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
 
-  { TRALRoute }
+  { TRALBasicRoute }
 
   /// Base class for individual route definition
-  TRALRoute = class(TCollectionItem)
+  TRALBaseRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
     FAllowURIParams: boolean;
@@ -51,17 +51,32 @@ type
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
 
     function GetFullRoute: StringRAL;
-  published
+
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
-    property Callback: boolean read FCallback write FCallback;
-    property Description: TStrings read FDescription write SetDescription;
     property Name: StringRAL read FName write FName;
-    property Route: StringRAL read FRoute write SetRoute;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
     property URIParams: TStrings read FURIParams write SetURIParams;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
+  published
+    property Callback: boolean read FCallback write FCallback;
+    property Description: TStrings read FDescription write SetDescription;
+    property Route: StringRAL read FRoute write SetRoute;
+  end;
+
+  TRALRoute = class(TRALBaseRoute)
+  published
+    property AllowedMethods;
+    property AllowURIParams;
+    property Callback;
+    property Description;
+    property Name;
+    property Route;
+    property SkipAuthMethods;
+    property URIParams;
+
+    property OnReply;
   end;
 
   { TRALRoutes }
@@ -82,9 +97,9 @@ implementation
 uses
   RALServer;
 
-{ TRALRoutes }
+{ TRALBaseRoute }
 
-constructor TRALRoute.Create(ACollection: TCollection);
+constructor TRALBaseRoute.Create(ACollection: TCollection);
 begin
   inherited;
   FAllowedMethods := [amALL];
@@ -97,26 +112,32 @@ begin
   Changed(False);
 end;
 
-destructor TRALRoute.Destroy;
+destructor TRALBaseRoute.Destroy;
 begin
   FreeAndNil(FDescription);
   FreeAndNil(FURIParams);
   inherited Destroy;
 end;
 
-procedure TRALRoute.Execute(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALBaseRoute.Execute(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
+  if Self = nil then
+    Exit;
+
   if Assigned(OnReply) then
     OnReply(ARequest, AResponse)
   else
     AResponse.Answer(404);
 end;
 
-function TRALRoute.GetAllowMethods: StringRAL;
+function TRALBaseRoute.GetAllowMethods: StringRAL;
 var
   vMethod: TRALMethod;
 begin
   Result := '';
+  if Self = nil then
+    Exit;
+
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
     if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or (amALL in FAllowedMethods))
@@ -129,7 +150,7 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetRoute(AValue: StringRAL);
+procedure TRALBaseRoute.SetRoute(AValue: StringRAL);
 begin
   AValue := FixRoute(Trim(AValue));
 
@@ -139,7 +160,7 @@ begin
   FRoute := AValue;
 end;
 
-procedure TRALRoute.SetSkipAuthMethods(const AValue: TRALMethods);
+procedure TRALBaseRoute.SetSkipAuthMethods(const AValue: TRALMethods);
 begin
   if FSkipAuthMethods <> AValue then
   begin
@@ -152,30 +173,40 @@ begin
   end;
 end;
 
-function TRALRoute.IsMethodAllowed(const AMethod: TRALMethod): boolean;
+function TRALBaseRoute.IsMethodAllowed(const AMethod: TRALMethod): boolean;
 begin
+  Result := False;
+  if Self = nil then
+    Exit;
+
   Result := (amALL in AllowedMethods) or
             (not(amALL in AllowedMethods) and (AMethod in AllowedMethods));
 end;
 
-function TRALRoute.IsMethodSkipped(const AMethod: TRALMethod): boolean;
+function TRALBaseRoute.IsMethodSkipped(const AMethod: TRALMethod): boolean;
 begin
+  Result := False;
+  if Self = nil then
+    Exit;
+
   Result := (amALL in SkipAuthMethods) or
             (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
 end;
 
-function TRALRoute.GetFullRoute: StringRAL;
+function TRALBaseRoute.GetFullRoute: StringRAL;
 begin
   Result := '';
+  if Self = nil then
+    Exit;
+
   if (Collection <> nil) and (Collection.Owner <> nil) and
-    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) and
-    (TRALModuleRoutes(Collection.Owner).IsDomain) then
-    Result := TRALModuleRoutes(Collection.Owner).Name;
+    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) then
+    Result := TRALModuleRoutes(Collection.Owner).Domain;
 
   Result := FixRoute(Result + '/' + FRoute);
 end;
 
-procedure TRALRoute.SetURIParams(AValue: TStrings);
+procedure TRALBaseRoute.SetURIParams(AValue: TStrings);
 begin
   if FURIParams = AValue then
     Exit;
@@ -186,16 +217,20 @@ begin
   FURIParams.Text := AValue.Text;
 end;
 
-function TRALRoute.GetDisplayName: string;
+function TRALBaseRoute.GetDisplayName: string;
 begin
   Result := FName;
   inherited;
 end;
 
-function TRALRoute.GetNamePath: string;
+function TRALBaseRoute.GetNamePath: string;
 var
   vName: StringRAL;
 begin
+  Result := '';
+  if Self = nil then
+    Exit;
+
   vName := Collection.GetNamePath;
   {$IFDEF FPC}
   if (Collection.Owner <> nil) and (Collection.Owner is TComponent) then
@@ -205,7 +240,7 @@ begin
   Result := vName + '_' + FName;
 end;
 
-procedure TRALRoute.SetAllowedMethods(const AValue: TRALMethods);
+procedure TRALBaseRoute.SetAllowedMethods(const AValue: TRALMethods);
 begin
   if FAllowedMethods <> AValue then
   begin
@@ -218,7 +253,7 @@ begin
   end;
 end;
 
-procedure TRALRoute.SetDescription(const AValue: TStrings);
+procedure TRALBaseRoute.SetDescription(const AValue: TStrings);
 begin
   if FDescription = AValue then
     Exit;
@@ -226,7 +261,7 @@ begin
   FDescription.Text := AValue.Text;
 end;
 
-procedure TRALRoute.SetDisplayName(const AValue: string);
+procedure TRALBaseRoute.SetDisplayName(const AValue: string);
 begin
   if Trim(AValue) <> '' then
     FName := AValue;

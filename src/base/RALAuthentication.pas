@@ -51,12 +51,16 @@ type
 
   /// Base class of server components' Authenticator
   TRALAuthServer = class(TRALAuthentication)
+  protected
+    function GetAuthRoute: TRALBaseRoute; virtual;
   public
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     /// Main method of authenticator, all validations must be done here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute;
 
     property AuthType: TRALAuthTypes read FAuthType;
+    property AuthRoute: TRALBaseRoute read GetAuthRoute;
   end;
 
   /// BasicAuth for client components
@@ -123,24 +127,25 @@ type
   private
     FAlgorithm: TRALJWTAlgorithm;
     FExpSecs: IntegerRAL;
-    FRoute: StringRAL;
     FJSONKey: StringRAL;
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnValidate: TRALOnTokenJWT;
-    /// Sets the default route on server to do JWT Authentication
-    /// default: gettoken
-    procedure SetRoute(const AValue: StringRAL);
+    FAuthToken : TRALBaseRoute;
+  protected
+    function GetAuthRoute: TRALBaseRoute; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     function GetToken(var AJSONParams: StringRAL): StringRAL;
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
+    property AuthRoute;
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
-    property Route: StringRAL read FRoute write SetRoute;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
@@ -488,7 +493,7 @@ var
   vParam: TRALParam;
   vParamJWT: TRALJWTParams;
 begin
-  if SameText(ARequest.Query, FRoute) then
+  if SameText(ARequest.Query, AuthRoute.Route) then
   begin
     vResult := False;
     vToken := '';
@@ -550,9 +555,22 @@ constructor TRALServerJWTAuth.Create(AOwner: TComponent);
 begin
   inherited;
   SetAuthType(ratBearer);
-  FRoute := '/gettoken/';
+
+  FAuthToken := TRALBaseRoute.Create(nil);
+  FAuthToken.Route := '/gettoken';
+  FAuthToken.Name := 'gettoken';
+  FAuthToken.SkipAuthMethods := [amALL];
+  FAuthToken.AllowedMethods := [amPOST, amOPTIONS];
+  FAuthToken.Description.Text := 'Get a JWT Token';
+
   FExpSecs := 1800;
   FJSONKey := 'token';
+end;
+
+destructor TRALServerJWTAuth.Destroy;
+begin
+  FreeAndNil(FAuthToken);
+  inherited;
 end;
 
 function TRALServerJWTAuth.RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL)
@@ -579,13 +597,6 @@ begin
   end;
 end;
 
-procedure TRALServerJWTAuth.SetRoute(const AValue: StringRAL);
-begin
-  FRoute := FixRoute(AValue);
-  if FRoute = '/' then
-    FRoute := '/gettoken/';
-end;
-
 procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult: boolean;
@@ -604,7 +615,7 @@ begin
   try
     vJWT.Header.Algorithm := FAlgorithm;
     vJWT.SignSecretKey := FSignSecretKey;
-    vResult := vJWT.isValidToken(ARequest.Authorization.AuthString);
+    vResult := vJWT.IsValidToken(ARequest.Authorization.AuthString);
     if vResult and Assigned(FOnValidate) then
       FOnValidate(ARequest, AResponse, vJWT.Payload, vResult);
   finally
@@ -613,6 +624,11 @@ begin
 
   if (not vResult) and (AResponse.StatusCode < 400) then
     AResponse.Answer(401);
+end;
+
+function TRALServerJWTAuth.GetAuthRoute: TRALBaseRoute;
+begin
+  Result := FAuthToken;
 end;
 
 function TRALServerJWTAuth.GetToken(var AJSONParams: StringRAL): StringRAL;
@@ -790,6 +806,19 @@ end;
 procedure TRALAuthServer.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(404);
+end;
+
+function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALRoute;
+begin
+  Result := TRALRoute(GetAuthRoute);
+  if not SameText(Result.GetFullRoute, ARequest.Query) then
+    Result := nil;
+end;
+
+function TRALAuthServer.GetAuthRoute: TRALBaseRoute;
+begin
+  Result := nil;
 end;
 
 end.

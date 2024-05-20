@@ -19,11 +19,11 @@ type
     function getServers(AServer: TRALServer) : TRALJSONArray;
     function getTags(AServer: TRALServer) : TRALJSONArray;
     function getPaths(AServer: TRALServer) : TRALJSONObject;
+    function getComponents(AServer: TRALServer) : TRALJSONObject;
     function getSecurity(AAuth: TRALAuthServer) : TRALJSONObject;
 
     procedure RouteToJSON(AItem : TRALJSONObject; AServer : TRALServer;
-                          AModule : TRALModuleRoutes; ARoute : TRALRoute);
-    procedure AuthToRoute(AItem : TRALJSONObject; AAuth : TRALAuthServer);
+                          AModule : TRALModuleRoutes; ARoute : TRALBaseRoute);
     function RouteToOperation(ARoute : StringRAL) : StringRAL;
   public
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
@@ -36,32 +36,6 @@ type
 implementation
 
 { TRALSwaggerExporter }
-
-procedure TRALSwaggerExporter.AuthToRoute(AItem: TRALJSONObject; AAuth: TRALAuthServer);
-var
-  vRoute, vMethod : TRALJSONObject;
-  vTags : TRALJSONArray;
-begin
-  if AAuth = nil then
-    Exit;
-
-  if AAuth is TRALServerJWTAuth then
-  begin
-    vRoute := TRALJSONObject.Create;
-    vMethod := TRALJSONObject.Create;
-
-    vTags := TRALJSONArray.Create;
-    vTags.Add(AAuth.Name);
-
-    vMethod.Add('tags', vTags);
-    vMethod.Add('summary', 'Get a token');
-    vMethod.Add('description', 'Get a token on server');
-    vMethod.Add('operationId', 'getToken');
-
-    vRoute.Add('post', vMethod);
-    AItem.Add(TRALServerJWTAuth(AAuth).Route, vRoute)
-  end;
-end;
 
 procedure TRALSwaggerExporter.ExportToFile(AServer: TRALServer; AFileName: TFileName);
 var
@@ -90,7 +64,7 @@ begin
     vJson.Add('paths', getPaths(AServer));
 
     if AServer.Authentication <> nil then
-      vJson.Add('securityDefinitions', getSecurity(AServer.Authentication));
+      vJson.Add('components', getComponents(AServer));
 
     vStr := vJson.ToJSON;
   finally
@@ -105,6 +79,14 @@ function TRALSwaggerExporter.ExportToStream(AServer: TRALServer): TStream;
 begin
   Result := TMemoryStream.Create;
   ExportToStream(AServer, Result);
+end;
+
+function TRALSwaggerExporter.getComponents(AServer: TRALServer): TRALJSONObject;
+begin
+  Result := TRALJSONObject.Create;
+
+  if AServer.Authentication <> nil then
+    Result.Add('securitySchemes', getSecurity(AServer.Authentication));
 end;
 
 function TRALSwaggerExporter.getInfo(AServer: TRALServer) : TRALJSONObject;
@@ -150,7 +132,8 @@ var
 begin
   Result := TRALJSONObject.Create;
 
-  AuthToRoute(Result, AServer.Authentication);
+  // authentication
+  RouteToJSON(Result, AServer, nil, AServer.Authentication.AuthRoute);
 
   // adicionando rotas do server
   for vInt1 := 0 to Pred(AServer.Routes.Count) do
@@ -234,13 +217,16 @@ begin
 end;
 
 procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject;
-  AServer : TRALServer; AModule : TRALModuleRoutes; ARoute: TRALRoute);
+  AServer : TRALServer; AModule : TRALModuleRoutes; ARoute: TRALBaseRoute);
 var
   vRoute, vAuth, vjMethod : TRALJSONObject;
-  vAux1 : TRALJSONObject;
+  vAux1, vAux2 : TRALJSONObject;
   vSecurity, vAuthTypes, vTags : TRALJSONArray;
   vMethod : TRALMethod;
 begin
+  if ARoute = nil then
+    Exit;
+
   vRoute := TRALJSONObject.Create;
 
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
@@ -279,6 +265,10 @@ begin
       end;
 
       vAux1 := TRALJSONObject.Create;;
+      vAux2 := TRALJSONObject.Create;;
+      vAux2.Add('description', 'successful operation');
+
+      vAux1.Add('200', vAux2);
       vjMethod.Add('responses', vAux1);
 
       vRoute.Add(LowerCase(RALMethodToHTTPMethod(vMethod)), vjMethod);

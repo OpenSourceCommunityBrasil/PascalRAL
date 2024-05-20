@@ -14,8 +14,7 @@ type
     function getItems(AServer: TRALServer) : TRALJSONArray;
     function getAuth(AServer: TRALServer) : TRALJSONObject;
 
-    procedure RouteToJSON(AItem : TRALJSONArray; ARoute : TRALRoute);
-    procedure AuthToRoute(AItem : TRALJSONArray; AAuth : TRALAuthServer);
+    procedure RouteToJSON(AItem: TRALJSONArray; ARoute: TRALBaseRoute; AAuth: TRALAuthServer = nil);
   public
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
     procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
@@ -25,75 +24,6 @@ type
 implementation
 
 { TRALPostmanExporter }
-
-procedure TRALPostmanExporter.AuthToRoute(AItem: TRALJSONArray; AAuth: TRALAuthServer);
-var
-  vRoute : TRALJSONObject;
-  vAux1, vAux2 : TRALJSONObject;
-  vAux3, vAux4 : TRALJSONArray;
-  vFunc : TStringList;
-begin
-  if AAuth = nil then
-    Exit;
-
-  if AAuth is TRALServerJWTAuth then
-  begin
-    vRoute := TRALJSONObject.Create;
-
-    vRoute.Add('name', 'getToken');
-
-    // event
-    vAux3 := TRALJSONArray.Create;
-
-    vAux1 := TRALJSONObject.Create;
-    vAux1.Add('listen', 'test');
-    vAux1.Add('type', 'text/javascript');
-
-    vAux4 := TRALJSONArray.Create;
-
-    vFunc := TStringList.Create;
-    vFunc.Add('pm.test("setToken", function () {');
-    vFunc.Add('    var jsonData = pm.response.json();');
-    vFunc.Add('    pm.collectionVariables.set("token",jsonData.token);');
-    vFunc.Add('});');
-
-    vAux4.Add(vFunc.Text);
-
-    vAux2 := TRALJSONObject.Create;
-    vAux2.Add('exec', vAux4);
-
-    vAux1.Add('script', vAux2);
-
-    vAux3.Add(vAux1);
-    vRoute.Add('event', vAux3);
-
-    // url - request
-    vAux1 := TRALJSONObject.Create;
-    vAux2 := TRALJSONObject.Create;
-    vAux2.Add('type', 'noauth');
-
-    vAux1.Add('auth', vAux2);
-
-    vAux2 := TRALJSONObject.Create;
-    vAux3 := TRALJSONArray.Create;
-    vAux3.Add('{{ral_url}}');
-    vAux2.Add('host', vAux3);
-
-    vAux3 := TRALJSONArray.Create;
-    vAux3.Add(TRALServerJWTAuth(AAuth).Route);
-    vAux2.Add('path', vAux3);
-
-    vAux2.Add('raw', '{{ral_url}}' + TRALServerJWTAuth(AAuth).Route);
-
-    vAux1.Add('url', vAux2);
-
-    vAux1.Add('method', 'POST');
-
-    vRoute.Add('request', vAux1);
-
-    AItem.Add(vRoute)
-  end;
-end;
 
 procedure TRALPostmanExporter.ExportToFile(AServer: TRALServer; AFileName: TFileName);
 var
@@ -202,7 +132,8 @@ var
 begin
   Result := TRALJSONArray.Create;
 
-  AuthToRoute(Result, AServer.Authentication);
+  // autenticacao
+  RouteToJSON(Result, AServer.Authentication.AuthRoute, AServer.Authentication);
 
   // adicionando rotas do server
   for vInt1 := 0 to Pred(AServer.Routes.Count) do
@@ -270,13 +201,19 @@ begin
   end;
 end;
 
-procedure TRALPostmanExporter.RouteToJSON(AItem : TRALJSONArray; ARoute: TRALRoute);
+procedure TRALPostmanExporter.RouteToJSON(AItem : TRALJSONArray; ARoute: TRALBaseRoute;
+                                          AAuth : TRALAuthServer);
 var
   vRoute : TRALJSONObject;
+  vStr: StringRAL;
   vAux1, vAux2 : TRALJSONObject;
-  vAux3 : TRALJSONArray;
+  vAux3, vAux4 : TRALJSONArray;
   vMethod : TRALMethod;
+  vFunc : TStringList;
 begin
+  if ARoute = nil then
+    Exit;
+
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
     if ARoute.IsMethodAllowed(vMethod) then begin
@@ -308,6 +245,40 @@ begin
       vAux1.Add('method', RALMethodToHTTPMethod(vMethod));
 
       vRoute.Add('request', vAux1);
+
+      if (AAuth <> nil) and (AAuth is TRALServerJWTAuth) and
+         (vMethod <> amOPTIONS) then
+      begin
+        // event
+        vAux3 := TRALJSONArray.Create;
+
+        vAux1 := TRALJSONObject.Create;
+        vAux1.Add('listen', 'test');
+        vAux1.Add('type', 'text/javascript');
+
+        vAux4 := TRALJSONArray.Create;
+
+        vFunc := TStringList.Create;
+        try
+          vStr := TRALServerJWTAuth(AAuth).JSONKey;
+          vFunc.Add('pm.test("setToken", function () {');
+          vFunc.Add('    var jsonData = pm.response.json();');
+          vFunc.Add('    pm.collectionVariables.set(token, jsonData.' + vStr + ');');
+          vFunc.Add('});');
+
+          vAux4.Add(vFunc.Text);
+        finally
+          FreeAndNil(vFunc);
+        end;
+
+        vAux2 := TRALJSONObject.Create;
+        vAux2.Add('exec', vAux4);
+
+        vAux1.Add('script', vAux2);
+
+        vAux3.Add(vAux1);
+        vRoute.Add('event', vAux3);
+      end;
 
       AItem.Add(vRoute)
     end;

@@ -53,7 +53,6 @@ type
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function IsDomain : boolean; override;
     function GetListRoutes : TList; override;
   published
     property EMail : StringRAL read FEMail write FEMail;
@@ -351,11 +350,6 @@ begin
       FreeAndNil(vPostman);
     end;
   end;
-end;
-
-function TRALSwaggerModule.IsDomain: boolean;
-begin
-  Result := False;
 end;
 
 function TRALSwaggerModule.GetListRoutes: TList;

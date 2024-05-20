@@ -48,7 +48,6 @@ type
     destructor Destroy; override;
 
     function CanAnswerRoute(ARequest : TRALRequest; AResponse : TRALResponse) : TRALRoute; override;
-    function IsDomain : boolean; override;
 
     property Session[ARequest : TRALRequest] : TRALWebSession read GetWebSession;
   published
@@ -193,11 +192,6 @@ begin
     CreateGUID(vGuid);
     Result := GUIDToString(vGuid);
   until not FSessions.Exists(Result);
-end;
-
-function TRALWebModule.IsDomain: boolean;
-begin
-  Result := False;
 end;
 
 function TRALWebModule.GetWebSession(ARequest : TRALRequest): TRALWebSession;

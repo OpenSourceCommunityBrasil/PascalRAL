@@ -275,7 +275,6 @@ type
       const ADescription: StringRAL = ''): TRALRoute;
 
     function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
-    function IsDomain: boolean; virtual;
     function GetListRoutes : TList; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
@@ -526,12 +525,15 @@ var
   vCheckBruteForce : boolean;
   vCheckBruteForceTries : boolean;
   vCheck_Authentication : boolean;
+  vRouteIsAuth : boolean;
 
-label aSTATUS, aAUTH, aOK, a401, a403, a404, aFIM;
+label aSTATUS, aOK, a401, a403, a404, aFIM;
 
 begin
   if AResponse.StatusCode >= 400 then
     Exit;
+
+  vRouteIsAuth := False;
 
   AResponse.ContentCompress := ARequest.AcceptCompress;
   if AResponse.ContentCompress = ctNone then
@@ -554,6 +556,13 @@ begin
     vInt := vInt + 1;
   end;
 
+  if (vRoute = nil) and (FAuthentication <> nil) then
+  begin
+    vRoute := FAuthentication.CanAnswerRoute(ARequest, AResponse);
+    if vRoute <> nil then
+      vRouteIsAuth := True;
+  end;
+
   if Assigned(FOnRequest) then
     FOnRequest(ARequest, AResponse);
 
@@ -566,6 +575,11 @@ begin
         goto aFIM
       else
         goto a404
+    end
+    else if vRouteIsAuth then
+    begin
+      FAuthentication.BeforeValidate(ARequest, AResponse);
+      goto aFIM;
     end
     else if vRoute.IsMethodAllowed(ARequest.Method) then
     begin
@@ -602,8 +616,6 @@ begin
   end
   else if (ARequest.Query = '/') and (FShowServerStatus) then
     goto aSTATUS
-  else if (ARequest.Query <> '/') and (Assigned(FAuthentication)) then
-    goto aAUTH
   else
     goto a404;
 
@@ -614,14 +626,6 @@ aSTATUS:
       vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
       AResponse.Answer(200, vString, rctTEXTHTML);
     end;
-    goto aFIM;
-  end;
-
-aAUTH:
-  begin
-    CheckCORS(True, 'GET, POST', ARequest, AResponse);
-    if ARequest.Method <> amOPTIONS then
-      FAuthentication.BeforeValidate(ARequest, AResponse);
     goto aFIM;
   end;
 
@@ -836,22 +840,14 @@ begin
   vName := ARequest.Query;
   Delete(vName, 1, 1);
 
-  if IsDomain then
-  begin
-    vInt := Pos('/', vName);
-    vName := Copy(vName, 1, vInt - 1);
-    if (vInt > 0) and (SameText(vName, Name)) then
-      Result := Routes.CanAnswerRoute(ARequest);
-  end
-  else begin
-    Result := Routes.CanAnswerRoute(ARequest);
-  end;
+  Result := Routes.CanAnswerRoute(ARequest);
 end;
 
 constructor TRALModuleRoutes.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FRoutes := TRALRoutes.Create(Self);
+  FDomain := '/';
 end;
 
 destructor TRALModuleRoutes.Destroy;
@@ -859,7 +855,7 @@ begin
   if FServer <> nil then
     FServer.DelSubRoute(Self);
 
-  FRoutes.Free;
+  FreeAndNil(FRoutes);
   inherited Destroy;
 end;
 
@@ -871,11 +867,6 @@ begin
 
   for vInt := 0 to Pred(FRoutes.Count) do
     Result.Add(FRoutes.Items[vInt]);
-end;
-
-function TRALModuleRoutes.IsDomain: boolean;
-begin
-  Result := True;
 end;
 
 { TRALSecurity }
