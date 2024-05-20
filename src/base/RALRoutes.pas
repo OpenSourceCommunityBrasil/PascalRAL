@@ -54,13 +54,13 @@ type
 
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
+    property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
     property URIParams: TStrings read FURIParams write SetURIParams;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
-    property Callback: boolean read FCallback write FCallback;
     property Description: TStrings read FDescription write SetDescription;
     property Route: StringRAL read FRoute write SetRoute;
   end;

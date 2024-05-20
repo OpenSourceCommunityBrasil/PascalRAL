@@ -79,6 +79,7 @@ type
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
     FSignSecretKey: StringRAL;
+    FToken : StringRAL;
   protected
     function signHS256(const ASource: StringRAL): StringRAL;
     function signHS384(const ASource: StringRAL): StringRAL;
@@ -784,6 +785,7 @@ var
   vInt: IntegerRAL;
   vStr: TStringList;
 begin
+  FToken := '';
   vStr := TStringList.Create;
   try
     repeat
@@ -800,6 +802,7 @@ begin
 
     if vStr.Count = 3 then
     begin
+      FToken := AValue;
       FHeader.AsJSON := TRALBase64.Decode(vStr.Strings[0]);
       FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
       FSignature := vStr.Strings[2];
@@ -897,6 +900,8 @@ var
   vAlgorithm: TRALJWTAlgorithm;
 begin
   Result := False;
+  if (Trim(AValue) = '') and (Trim(FToken) = '') then
+    Exit;
 
   vAlgorithm := FHeader.Algorithm;
 
