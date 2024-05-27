@@ -568,8 +568,6 @@ begin
 
   if Assigned(vRoute) then
   begin
-    AResponse.ContentType := vRoute.ContentType;
-
     CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods,  ARequest, AResponse);
     if ARequest.Method = amOPTIONS then
     begin

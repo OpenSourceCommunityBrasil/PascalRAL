@@ -35,6 +35,7 @@ type
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
+
     function GetDriverName: TRALDBDriverType; virtual; abstract;
 
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
