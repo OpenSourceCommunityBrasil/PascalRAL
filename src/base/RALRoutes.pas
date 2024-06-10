@@ -87,11 +87,14 @@ type
   private
     function CompareRoutes(ARoute : TRALRoute; AQuery: StringRAL;
                            var AWeight: IntegerRAL; AURI: TStringList): boolean;
+    function GetRoute(const ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
     function CanAnswerRoute(ARequest : TRALRequest) : TRALRoute;
+
+    property Find[ARoute: StringRAL]: TRALRoute read GetRoute;
   end;
 
 implementation
@@ -335,6 +338,18 @@ begin
   finally
     FreeAndNil(vStrQuery1);
     FreeAndNil(vStrQuery2);
+  end;
+end;
+
+function TRALRoutes.GetRoute(const ARoute: StringRAL): TRALRoute;
+var
+  I: integer;
+begin
+  for I := 0 to pred(Self.Count) do
+  if SameText(ARoute, Self.Items[I].DisplayName) then
+  begin
+    Result := TRALRoute(Self.Items[I]);
+    break;
   end;
 end;
 

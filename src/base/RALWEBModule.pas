@@ -1,70 +1,78 @@
+/// Module unit with definitions of the web section of the package.
 unit RALWebModule;
 
 interface
 
 uses
   Classes, SysUtils,
-  RALServer, RALTypes, RALRoutes, RALRequest, RALResponse, RALParams,
+  RALServer, RALTypes, RALConsts, RALTools, RALRoutes, RALRequest, RALResponse, RALParams,
   RALThreadSafe;
 
 type
 
   { TRALWebSession }
 
+  /// Class for the Session object
   TRALWebSession = class
   private
-    FLastDate : TDateTime;
-    FObjects : TStringList;
+    FLastDate: TDateTime;
+    FObjects: TStringList;
   protected
     procedure ClearObjects;
-    function GetObjects(AName : StringRAL): TObject;
-    procedure SetObjects(AName : StringRAL; AValue: TObject);
+    function GetObjects(AName: StringRAL): TObject;
+    procedure SetObjects(AName: StringRAL; AValue: TObject);
   public
     constructor Create;
     destructor Destroy; override;
 
-    function DeleteObject(AName : StringRAL; AFree : boolean = true) : boolean;
+    function DeleteObject(AName: StringRAL; AFree: boolean = True): boolean;
 
-    property Objects[AName : StringRAL] : TObject read GetObjects write SetObjects;
+    property Objects[AName: StringRAL]: TObject read GetObjects write SetObjects;
   published
-    property LastDate : TDateTime read FLastDate write FLastDate;
+    property LastDate: TDateTime read FLastDate write FLastDate;
   end;
 
   { TRALWebModule }
 
+  /// Class for the base object of the module
   TRALWebModule = class(TRALModuleRoutes)
   private
-    FDefautRoute : TRALRoute;
-    FDocumentRoot : StringRAL;
-    FSessions : TRALStringListSafe;
+    FDefaultRoute: TRALRoute;
+    FDocumentRoot: StringRAL;
+    FIndexFile: StringRAL;
+    FSessions: TRALStringListSafe;
   protected
-    procedure WebModFile(ARequest : TRALRequest; AResponse : TRALResponse);
-    function GetFileRoute(ARequest: TRALRequest) : StringRAL;
-    function GetWebSession(ARequest : TRALRequest): TRALWebSession;
-    procedure CreateSession(ARequest : TRALRequest; AResponse : TRALResponse);
-    function NewSessionName : StringRAL;
+    procedure CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
+    function GetFileRoute(ARequest: TRALRequest): StringRAL;
+    function GetWebSession(ARequest: TRALRequest): TRALWebSession;
+    function NewSessionName: StringRAL;
+    procedure SetDocumentRoot(AValue: StringRAL);
+    procedure SetServer(AValue: TRALServer); override;
+    procedure WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function CanAnswerRoute(ARequest : TRALRequest; AResponse : TRALResponse) : TRALRoute; override;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
+      override;
 
-    property Session[ARequest : TRALRequest] : TRALWebSession read GetWebSession;
+    property Session[ARequest: TRALRequest]: TRALWebSession read GetWebSession;
   published
-    property DocumentRoot : StringRAL read FDocumentRoot write FDocumentRoot;
+    property DocumentRoot: StringRAL read FDocumentRoot write SetDocumentRoot;
+    property IndexFile: StringRAL read FIndexFile write FIndexFile;
     property Routes;
   end;
 
 implementation
 
 const
-  RAL_SESSION : StringRAL = 'ral_websession';
+  RAL_SESSION: StringRAL = 'ral_websession';
 
 { TRALWebSession }
 
-function TRALWebSession.GetObjects(AName : StringRAL): TObject;
+function TRALWebSession.GetObjects(AName: StringRAL): TObject;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := nil;
   vInt := FObjects.IndexOf(AName);
@@ -72,9 +80,9 @@ begin
     Result := FObjects.Objects[vInt];
 end;
 
-procedure TRALWebSession.SetObjects(AName : StringRAL; AValue: TObject);
+procedure TRALWebSession.SetObjects(AName: StringRAL; AValue: TObject);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   vInt := FObjects.IndexOf(AName);
   if vInt >= 0 then
@@ -83,7 +91,8 @@ begin
       FObjects.Objects[vInt].Free;
     FObjects.Objects[vInt] := AValue;
   end
-  else begin
+  else
+  begin
     FObjects.AddObject(AName, AValue);
   end;
 end;
@@ -114,7 +123,7 @@ end;
 
 function TRALWebSession.DeleteObject(AName: StringRAL; AFree: boolean): boolean;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := False;
   vInt := FObjects.IndexOf(AName);
@@ -133,23 +142,25 @@ begin
   Result := Routes.CanAnswerRoute(ARequest);
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
-    Result := FDefautRoute
+    Result := FDefaultRoute
   else if (Result <> nil) and (not Assigned(Result.OnReply)) then
     Result.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
-  if Result <> nil then begin
-    ARequest.ContentDispositionInline := True;
-    AResponse.ContentDispositionInline := True;
-    CreateSession(ARequest, AResponse);
-  end;
+  //if Result <> nil then begin
+  //  ARequest.ContentDispositionInline := True;
+  //  AResponse.ContentDispositionInline := True;
+  //  CreateSession(ARequest, AResponse);
+  //end;
 end;
 
 constructor TRALWebModule.Create(AOwner: TComponent);
 begin
   inherited;
-  FDefautRoute := TRALRoute.Create(nil);
-  FDefautRoute.SkipAuthMethods := [amALL];
-  FDefautRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
+  FIndexFile := '';
+  FDefaultRoute := TRALRoute.Create(nil);
+  FDefaultRoute.Route := '/';
+  FDefaultRoute.SkipAuthMethods := [amALL];
+  FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
   FSessions := TRALStringListSafe.Create;
 end;
@@ -158,35 +169,38 @@ destructor TRALWebModule.Destroy;
 begin
   FSessions.Clear(True);
   FreeAndNil(FSessions);
-  FreeAndNil(FDefautRoute);
+  FreeAndNil(FDefaultRoute);
   inherited;
 end;
 
 function TRALWebModule.GetFileRoute(ARequest: TRALRequest): StringRAL;
 var
-  vDir, vFile : StringRAL;
+  vFile: StringRAL;
 begin
   Result := '';
-  vDir := FDocumentRoot;
-  if (Trim(vDir) = '') or (not DirectoryExists(vDir)) then
-    vDir := ExtractFilePath(ParamStr(0));
+  //vDir := FDocumentRoot;
+  //if (Trim(vDir) = '') or (not DirectoryExists(vDir)) then
+  //  vDir := ExtractFilePath(ParamStr(0));
 
-  vDir := IncludeTrailingPathDelimiter(vDir);
+  //vDir := IncludeTrailingPathDelimiter(vDir);
 
-  SetCurrentDir(vDir);
+  //SetCurrentDir(vDir);
+
   vFile := ARequest.Query;
   Delete(vFile, 1, 1);
-  vFile := ExpandFileName(vFile);
+  if vFile <> '' then
+    vFile := DocumentRoot + vFile;
+  //vFile := ExpandFileName(vFile);
+  if FileExists(vFile) then Result := vFile;
 
   // verificando se a base folder (document root) é o mesmo
-  if (SameText(Copy(vFile, 1, Length(vDir)), vDir)) and
-     (FileExists(vFile)) then
-    Result := vFile;
+  //if (SameText(Copy(vFile, 1, Length(DocumentRoot)), DocumentRoot)) and (FileExists(vFile)) then
+  //  Result := vFile;
 end;
 
 function TRALWebModule.NewSessionName: StringRAL;
 var
-  vGuid : TGuid;
+  vGuid: TGuid;
 begin
   repeat
     CreateGUID(vGuid);
@@ -194,9 +208,27 @@ begin
   until not FSessions.Exists(Result);
 end;
 
-function TRALWebModule.GetWebSession(ARequest : TRALRequest): TRALWebSession;
+procedure TRALWebModule.SetServer(AValue: TRALServer);
+begin
+  inherited SetServer(AValue);
+  AValue.CreateRoute('/', {$IFDEF FPC}@{$ENDIF}WebModFile, 'index page').SkipAuthMethods := [amALL];
+end;
+
+procedure TRALWebModule.SetDocumentRoot(AValue: StringRAL);
+begin
+  if FDocumentRoot = AValue then exit;
+  FDocumentRoot := AValue;
+  if (Trim(AValue) = '') or (not DirectoryExists(AValue)) then
+    AValue := ExtractFilePath(ParamStr(0));
+
+  AValue := IncludeTrailingPathDelimiter(AValue);
+
+  //SetCurrentDir(AValue);
+end;
+
+function TRALWebModule.GetWebSession(ARequest: TRALRequest): TRALWebSession;
 var
-  vSession : TRALParam;
+  vSession: TRALParam;
 begin
   Result := nil;
   vSession := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE];
@@ -204,12 +236,11 @@ begin
     Result := TRALWebSession(FSessions.ObjectByItem(vSession.AsString));
 end;
 
-procedure TRALWebModule.CreateSession(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALWebModule.CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vSession : TRALParam;
-  vWebSession : TRALWebSession;
-  vWesSessionName : StringRAL;
+  vSession: TRALParam;
+  vWebSession: TRALWebSession;
+  vWesSessionName: StringRAL;
 begin
   vSession := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE];
   if vSession <> nil then
@@ -220,7 +251,8 @@ begin
     begin
       vWebSession.LastDate := Now;
     end
-    else begin
+    else
+    begin
       vWesSessionName := NewSessionName;
       vWebSession := TRALWebSession.Create;
       FSessions.AddObject(vWesSessionName, vWebSession);
@@ -236,14 +268,15 @@ begin
   AResponse.AddCookie(RAL_SESSION, vWesSessionName);
 end;
 
-procedure TRALWebModule.WebModFile(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALWebModule.WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vFile : StringRAL;
+  vFile: StringRAL;
 begin
   vFile := GetFileRoute(ARequest);
   if vFile <> '' then
     AResponse.Answer(vFile)
+  else if IndexFile <> '' then
+    AResponse.Answer(IndexFile)
   else
     AResponse.Answer(404);
 end;

@@ -1,3 +1,4 @@
+/// Unit that handles base compression definitions used on the package
 unit RALCompress;
 
 interface

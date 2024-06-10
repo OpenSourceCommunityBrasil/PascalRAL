@@ -48,8 +48,9 @@ type
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
     /// Sets the response with the given status code
     procedure Answer(AStatusCode: IntegerRAL); overload;
-    /// Loads and set a file to the response with the given AFileName
-    procedure Answer(const AFileName: StringRAL); overload;
+    /// Loads and set a file to the response with the given AFileName and sets the disposition
+    /// to inline by default.
+    procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
 
     ///  Fills the 'ADest' Strings with RALParams Cookies Headers
     procedure GetParamsCookies(ADest: TStringList; ADateTime : TDateTime);
@@ -108,9 +109,11 @@ begin
   ResponseText := AMessage;
 end;
 
-procedure TRALResponse.Answer(const AFileName: StringRAL);
+procedure TRALResponse.Answer(const AFileName: StringRAL;
+  const DispositionInline: boolean);
 begin
   AddFile(AFileName);
+  ContentDispositionInline := DispositionInline;
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;

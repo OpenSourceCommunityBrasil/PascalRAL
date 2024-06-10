@@ -1,3 +1,4 @@
+/// Module Unit for the Swagger OpenAPI implementation of the package
 unit RALSwaggerModule;
 
 interface
@@ -13,57 +14,55 @@ type
 
   TRALSwaggerLicense = class(TPersistent)
   private
-    FName : StringRAL;
-    FURL : StringRAL;
+    FName: StringRAL;
+    FURL: StringRAL;
   published
     constructor Create;
   published
-    property Name : StringRAL read FName write FName;
-    property URL : StringRAL read FURL write FURL;
+    property Name: StringRAL read FName write FName;
+    property URL: StringRAL read FURL write FURL;
   end;
 
   { TRALSwaggerModule }
 
   TRALSwaggerModule = class(TRALModuleRoutes)
   private
-    FEMail : StringRAL;
-    FLicense : TRALSwaggerLicense;
-    FPostmanTag : boolean;
-    FSystemVersion : StringRAL;
-    FSystemDescription : TStrings;
-    FTermsOfService : StringRAL;
-    FTitle : StringRAL;
-    FSwaggerFile : TFileName;
-    FPostmanFile : TFileName;
+    FEMail: StringRAL;
+    FLicense: TRALSwaggerLicense;
+    FPostmanFile: TFileName;
+    FPostmanTag: boolean;
+    FSystemDescription: TStrings;
+    FSystemVersion: StringRAL;
+    FSwaggerFile: TFileName;
+    FTermsOfService: StringRAL;
+    FTitle: StringRAL;
   protected
-    procedure SetSystemDescription(const AValue: TStrings);
-    procedure SetDomain(const AValue: StringRAL); override;
-    procedure SetPostmanTag(AValue: boolean);
-    procedure SetPostmanFile(const AValue: TFileName);
-    procedure SetSwaggerFile(const AValue: TFileName);
-
-    procedure SwaggerIndex(ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure SwaggerCSS(ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure SwaggerInitializer(ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure SwaggerJSON(ARequest : TRALRequest; AResponse : TRALResponse);
-    procedure SwaggerPostman(ARequest : TRALRequest; AResponse : TRALResponse);
-
     procedure CreateRoutes;
+    procedure SetDomain(const AValue: StringRAL); override;
+    procedure SetPostmanFile(const AValue: TFileName);
+    procedure SetPostmanTag(AValue: boolean);
+    procedure SetSystemDescription(const AValue: TStrings);
+    procedure SetSwaggerFile(const AValue: TFileName);
+    procedure SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function GetListRoutes : TList; override;
+    function GetListRoutes: TList; override;
   published
-    property EMail : StringRAL read FEMail write FEMail;
-    property License : TRALSwaggerLicense read FLicense write FLicense;
-    property PostmanTag : boolean read FPostmanTag write SetPostmanTag;
-    property PostmanFile : TFileName read FPostmanFile write SetPostmanFile;
-    property SwaggerFile : TFileName read FSwaggerFile write SetSwaggerFile;
-    property SystemDescription : TStrings read FSystemDescription write SetSystemDescription;
-    property SystemVersion : StringRAL read FSystemVersion write FSystemVersion;
-    property TermsOfService : StringRAL read FTermsOfService write FTermsOfService;
-    property Title : StringRAL read FTitle write FTitle;
+    property EMail: StringRAL read FEMail write FEMail;
+    property License: TRALSwaggerLicense read FLicense write FLicense;
+    property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
+    property PostmanTag: boolean read FPostmanTag write SetPostmanTag;
+    property SystemDescription: TStrings read FSystemDescription write SetSystemDescription;
+    property SystemVersion: StringRAL read FSystemVersion write FSystemVersion;
+    property TermsOfService: StringRAL read FTermsOfService write FTermsOfService;
+    property Title: StringRAL read FTitle write FTitle;
+    property SwaggerFile: TFileName read FSwaggerFile write SetSwaggerFile;
   end;
 
 implementation
@@ -71,7 +70,7 @@ implementation
 uses
   RALSwaggerExporter, RALPostmanExporter;
 
-{ TRALSwaggerLicense }
+  { TRALSwaggerLicense }
 
 constructor TRALSwaggerLicense.Create;
 begin
@@ -98,29 +97,29 @@ end;
 
 procedure TRALSwaggerModule.CreateRoutes;
 var
-  vRoute : TRALRoute;
+  vRoute: TRALRoute;
 begin
   Routes.Clear;
 
-  vRoute := CreateRoute(Domain, {$IFDEF FPC}@{$ENDIF}SwaggerIndex);
+  vRoute := CreateRoute(Domain,{$IFDEF FPC}@{$ENDIF}SwaggerIndex);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger.css', {$IFDEF FPC}@{$ENDIF}SwaggerCSS);
+  vRoute := CreateRoute(Domain + '/swagger.css',{$IFDEF FPC}@{$ENDIF}SwaggerCSS);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger-initializer.js', {$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
+  vRoute := CreateRoute(Domain + '/swagger-initializer.js',{$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger.json', {$IFDEF FPC}@{$ENDIF}SwaggerJSON);
+  vRoute := CreateRoute(Domain + '/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
   if FPostmanTag then
   begin
-    vRoute := CreateRoute(Domain + '/postman.json', {$IFDEF FPC}@{$ENDIF}SwaggerPostman);
+    vRoute := CreateRoute(Domain + '/postman.json',{$IFDEF FPC}@{$ENDIF}SwaggerPostman);
     vRoute.AllowedMethods := [amGET];
     vRoute.SkipAuthMethods := [amALL];
   end;
@@ -133,12 +132,11 @@ begin
   inherited;
 end;
 
-procedure TRALSwaggerModule.SwaggerIndex(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALSwaggerModule.SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vHTML : TStringList;
-  vStream : TMemoryStream;
-  vURL : StringRAL;
+  vHTML: TStringList;
+  vStream: TMemoryStream;
+  vURL: StringRAL;
 begin
   AResponse.ContentType := rctTEXTHTML;
 
@@ -152,15 +150,20 @@ begin
     vHTML.Add('    <meta charset="UTF-8">');
     vHTML.Add('    <title>RAL Swagger</title>');
     vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css" />');
-    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-32x32.png" sizes="32x32" />');
-    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL + 'favicon-16x16.png" sizes="16x16" />');
+    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL +
+      'favicon-32x32.png" sizes="32x32" />');
+    vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL +
+      'favicon-16x16.png" sizes="16x16" />');
     vHTML.Add('    <link rel="stylesheet" type="text/css" href=".' + Domain + '/swagger.css" />');
     vHTML.Add('  </head>');
     vHTML.Add('  <body>');
     vHTML.Add('    <div id="swagger-ui"></div>');
-    vHTML.Add('    <script src="' + vURL + 'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src="' + vURL + 'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src=".' + Domain + '/swagger-initializer.js" charset="UTF-8"></script>');
+    vHTML.Add('    <script src="' + vURL +
+      'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
+    vHTML.Add('    <script src="' + vURL +
+      'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
+    vHTML.Add('    <script src=".' + Domain +
+      '/swagger-initializer.js" charset="UTF-8"></script>');
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
@@ -190,7 +193,8 @@ begin
     FPostmanFile := AValue;
     FPostmanTag := True;
   end
-  else begin
+  else
+  begin
     FPostmanFile := '';
   end;
 end;
@@ -217,11 +221,10 @@ begin
   FSystemDescription.Assign(AValue);
 end;
 
-procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vStream : TMemoryStream;
-  vCSS : TStringList;
+  vStream: TMemoryStream;
+  vCSS: TStringList;
 begin
   AResponse.ContentType := rctTEXTCSS;
 
@@ -257,11 +260,10 @@ begin
   end;
 end;
 
-procedure TRALSwaggerModule.SwaggerInitializer(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALSwaggerModule.SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vStream : TMemoryStream;
-  vScript : TStringList;
+  vStream: TMemoryStream;
+  vScript: TStringList;
 begin
   AResponse.ContentType := rctTEXTJAVASCRIPT;
 
@@ -300,18 +302,18 @@ begin
   end;
 end;
 
-procedure TRALSwaggerModule.SwaggerJSON(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALSwaggerModule.SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vMem : TStream;
-  vSwagger : TRALSwaggerExporter;
+  vMem: TStream;
+  vSwagger: TRALSwaggerExporter;
 begin
   if FileExists(FSwaggerFile) then
   begin
     AResponse.Answer(FSwaggerFile);
     AResponse.ContentDispositionInline := True;
   end
-  else begin
+  else
+  begin
     vSwagger := TRALSwaggerExporter.Create;
     try
       vSwagger.SwaggerModule := Self;
@@ -327,17 +329,17 @@ begin
   end;
 end;
 
-procedure TRALSwaggerModule.SwaggerPostman(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALSwaggerModule.SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vMem : TStream;
-  vPostman : TRALPostmanExporter;
+  vMem: TStream;
+  vPostman: TRALPostmanExporter;
 begin
   if FileExists(FPostmanFile) then
   begin
     AResponse.Answer(FPostmanFile);
   end
-  else begin
+  else
+  begin
     vPostman := TRALPostmanExporter.Create;
     try
       vMem := vPostman.ExportToStream(Server);

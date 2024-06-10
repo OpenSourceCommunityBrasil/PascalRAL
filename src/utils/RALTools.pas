@@ -1,4 +1,4 @@
-﻿/// Class for General public functions
+﻿/// Unit for General public functions
 unit RALTools;
 
 {$I ..\base\PascalRAL.inc}
@@ -15,11 +15,12 @@ function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function OnlyNumbers(const AValue: StringRAL): StringRAL;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALStringToDateTime(const AValue: StringRAL;
-                             const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
+  const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
-function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
+function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
+function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 
 implementation
 
@@ -33,7 +34,7 @@ begin
   while Pos(StringRAL('//'), Result) > 0 do
     Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
 
-  if (Result <> '')  and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
+  if (Result <> '') and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
     Delete(Result, RALHighStr(Result), 1);
 end;
 
@@ -99,8 +100,7 @@ begin
   end;
 end;
 
-function RALStringToDateTime(const AValue: StringRAL;
-  const AFormat: StringRAL): TDateTime;
+function RALStringToDateTime(const AValue: StringRAL; const AFormat: StringRAL): TDateTime;
 var
   vInt1, vInt2: integer;
   sAno, sMes, sDia, sHor, sMin, sSeg, sMil: StringRAL;
@@ -158,32 +158,45 @@ begin
   end;
 end;
 
-function RALDateTimeToGMT(ADateTime : TDateTime) : TDateTime;
-{$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
+  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
 var
-  vTimeZone : TTimeZoneInformation;
-  vBias : Cardinal;
-{$IFEND}
+  vTimeZone: TTimeZoneInformation;
+  vBias: cardinal;
+  {$IFEND}
 begin
   {$IFDEF FPC}
     Result := LocalTimeToUniversal(ADateTime);
   {$ELSE}
-    {$IFDEF DELPHIXE2UP}
+  {$IFDEF DELPHIXE2UP}
       Result := TTimeZone.Local.ToUniversalTime(ADateTime);
-    {$ELSE}
-      case GetTimeZoneInformation(vTimeZone) of
-        TIME_ZONE_ID_UNKNOWN:
-          vBias := vTimeZone.Bias;
-        TIME_ZONE_ID_STANDARD:
-          vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-        TIME_ZONE_ID_DAYLIGHT:
-          vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-        else
-          vBias := 0;
-      end;
-      Result := IncMinute(ADateTime, -vBias);
-    {$ENDIF}
+  {$ELSE}
+  case GetTimeZoneInformation(vTimeZone) of
+    TIME_ZONE_ID_UNKNOWN:
+      vBias := vTimeZone.Bias;
+    TIME_ZONE_ID_STANDARD:
+      vBias := vTimeZone.Bias + vTimeZone.StandardBias;
+    TIME_ZONE_ID_DAYLIGHT:
+      vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
+    else
+      vBias := 0;
+  end;
+  Result := IncMinute(ADateTime, -vBias);
   {$ENDIF}
+  {$ENDIF}
+end;
+
+function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
+var
+  I: integer;
+begin
+  Result := False;
+  for I := 0 to pred(Length(AArray)) do
+    if SameText(AStr, AArray[I]) then
+    begin
+      Result := True;
+      Break;
+    end;
 end;
 
 end.

@@ -57,7 +57,7 @@ type
     /// Used to insert more content that will generate the hash
     procedure UpdateBuffer(AValue: TBytes); overload; virtual;
   public
-    constructor Create;
+    constructor Create(AOutputType: TRALHashOutputType = rhotHex);
     /// Returns a string hash from a string
     function HashAsString(const AValue: StringRAL): StringRAL; overload; virtual;
     /// Returns a string hash from a stream
@@ -84,9 +84,9 @@ begin
   FIndex := 0;
 end;
 
-constructor TRALHashes.Create;
+constructor TRALHashes.Create(AOutputType: TRALHashOutputType);
 begin
-  FOutputType := rhotHex;
+  FOutputType := AOutputType;
 end;
 
 function TRALHashes.DigestToBase64(AValue: TBytes): StringRAL;
@@ -253,7 +253,8 @@ begin
   Result := Finalize;
 end;
 
-function TRALHashes.HMACAsString(const AValue, AKey: StringRAL): StringRAL;
+function TRALHashes.HMACAsString(const AValue: StringRAL; const AKey: StringRAL
+  ): StringRAL;
 var
   vStream: TStringStream;
 begin

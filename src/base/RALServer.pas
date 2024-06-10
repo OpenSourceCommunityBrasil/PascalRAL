@@ -1,4 +1,4 @@
-﻿/// Base unit for all HTTP Server related implementations
+﻿/// Unit for all HTTP Server related implementations
 unit RALServer;
 
 interface
@@ -143,14 +143,14 @@ type
     /// Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
     /// Get a client block object from the list of blocked IPs
-    function GetBlockClient(const AClientIP: StringRAL) : TRALClientBlockList;
+    function GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
     /// Get a client object from the list of blocked IPs
-    function GetClientList(const AClientIP: StringRAL) : TRALClientList;
+    function GetClientList(const AClientIP: StringRAL): TRALClientList;
     /// Get the number tries of block of client, case client do not blocked
     /// return zero
-    function GetBlockClientTry(const AClientIP: StringRAL) : Integer;
+    function GetBlockClientTry(const AClientIP: StringRAL): integer;
     /// Check if the number de tries of client exceed the established limit
-    function CheckBlockClientTry(const AClienteIP : StringRAL) : boolean;
+    function CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
   published
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
@@ -188,8 +188,8 @@ type
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
-    procedure CheckCORS(AAllowOptions : boolean; AAllowMethods: StringRAL;
-                        ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
+      ARequest: TRALRequest; AResponse: TRALResponse);
     /// Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
     /// Removes a fixed subroute used by other components
@@ -229,10 +229,10 @@ type
     /// Shortcut to stop the server
     procedure Stop;
 
-    function CountSubModules : IntegerRAL;
-    function SSLEnabled : boolean;
+    function CountSubModules: IntegerRAL;
+    function SSLEnabled: boolean;
 
-    property SubModule[AIndex : IntegerRAL] : TRALModuleRoutes read GetSubModule;
+    property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -265,7 +265,7 @@ type
     FDomain: StringRAL;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetServer(AValue: TRALServer);
+    procedure SetServer(AValue: TRALServer); virtual;
     procedure SetDomain(const AValue: StringRAL); virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -274,13 +274,13 @@ type
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
       const ADescription: StringRAL = ''): TRALRoute;
 
-    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute; virtual;
-    function GetListRoutes : TList; virtual;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
+    function GetListRoutes: TList; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
     property Server: TRALServer read FServer write SetServer;
-    property Domain : StringRAL read FDomain write SetDomain;
+    property Domain: StringRAL read FDomain write SetDomain;
   end;
 
 implementation
@@ -429,8 +429,8 @@ begin
   Result := False;
 end;
 
-procedure TRALServer.CheckCORS(AAllowOptions : boolean; AAllowMethods: StringRAL;
-                              ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALServer.CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
+  ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   if AAllowOptions then
   begin
@@ -521,13 +521,14 @@ var
   vRoute: TRALRoute;
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
-  vString : StringRAL;
-  vCheckBruteForce : boolean;
-  vCheckBruteForceTries : boolean;
-  vCheck_Authentication : boolean;
-  vRouteIsAuth : boolean;
+  vString: StringRAL;
+  vCheckBruteForce: boolean;
+  vCheckBruteForceTries: boolean;
+  vCheck_Authentication: boolean;
+  vRouteIsAuth: boolean;
 
-label aSTATUS, aOK, a401, a403, a404, aFIM;
+label
+  aSTATUS, aOK, a401, a403, a404, aFIM;
 
 begin
   if AResponse.StatusCode >= 400 then
@@ -570,13 +571,13 @@ begin
   begin
     AResponse.ContentType := vRoute.ContentType;
 
-    CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods,  ARequest, AResponse);
+    CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods, ARequest, AResponse);
     if ARequest.Method = amOPTIONS then
     begin
       if vRoute.IsMethodAllowed(amOPTIONS) then
         goto aFIM
       else
-        goto a404
+        goto a404;
     end
     else if vRouteIsAuth then
     begin
@@ -589,22 +590,22 @@ begin
       begin
         if vRoute.IsMethodSkipped(ARequest.Method) then
         begin
-          goto aOK
+          goto aOK;
         end
         else
         begin
           vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
           // client e valido se o numero de tentativas <= ao max de tentativas
-          vCheckBruteForceTries := (vCheckBruteForce and
-                                   (Security.CheckBlockClientTry(ARequest.ClientInfo.IP)));
+          vCheckBruteForceTries :=
+            (vCheckBruteForce and (Security.CheckBlockClientTry(
+            ARequest.ClientInfo.IP)));
 
           // devido algumas auths que adiciona o header realm
           vCheck_Authentication := ValidateAuth(ARequest, AResponse);
 
           if vCheck_Authentication then
             goto aOK
-          else if (vCheckBruteForceTries) or
-                  (AResponse.StatusCode = 401) then
+          else if (vCheckBruteForceTries) or (AResponse.StatusCode = 401) then
             goto a401
           else
             goto a403;
@@ -621,31 +622,32 @@ begin
   else
     goto a404;
 
-aSTATUS:
+  aSTATUS:
   begin
     CheckCORS(True, 'GET', ARequest, AResponse);
-    if ARequest.Method <> amOPTIONS then begin
+    if ARequest.Method <> amOPTIONS then
+    begin
       vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
       AResponse.Answer(200, vString, rctTEXTHTML);
     end;
     goto aFIM;
   end;
 
-aOK:
+  aOK:
   begin
     Security.UnblockClient(ARequest.ClientInfo.IP);
     vRoute.Execute(ARequest, AResponse);
     goto aFIM;
   end;
 
-a401:
+  a401:
   begin
     Security.BlockClient(ARequest.ClientInfo.IP);
     AResponse.Answer(401);
     goto aFIM;
   end;
 
-a403:
+  a403:
   begin
     Security.BlockClient(ARequest.ClientInfo.IP);
     if Assigned(FOnClientBlock) then
@@ -654,13 +656,13 @@ a403:
     goto aFIM;
   end;
 
-a404:
+  a404:
   begin
     AResponse.Answer(404);
     goto aFIM;
   end;
 
-aFIM:
+  aFIM:
   begin
     if Assigned(FOnResponse) then
       FOnResponse(ARequest, AResponse);
@@ -698,7 +700,7 @@ begin
 
       // redundant, requires intense testing to check if it ever happens
       vCheckPathTransversal := (rsoPathTransvBlackList in Security.Options) and
-                               (Pos('../', ARequest.Query) > 0);
+        (Pos('../', ARequest.Query) > 0);
 
       // Security Protections
       if vCheckFlood or vCheckPathTransversal then
@@ -711,7 +713,8 @@ begin
         AResponse.Answer(403);
       end;
     end
-    else begin
+    else
+    begin
       AResponse.Answer(403);
     end;
   end;
@@ -774,8 +777,7 @@ begin
   FSessionTimeout := AValue;
 end;
 
-function TRALServer.ValidateAuth(ARequest: TRALRequest;
-  var AResponse: TRALResponse): boolean;
+function TRALServer.ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
 begin
   Result := False;
   if FAuthentication <> nil then
@@ -823,8 +825,8 @@ begin
   inherited;
 end;
 
-function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL;
-  AReplyProc: TRALOnReply; const ADescription: StringRAL): TRALRoute;
+function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
+  const ADescription: StringRAL): TRALRoute;
 begin
   Result := TRALRoute.Create(Self.Routes);
   Result.Route := ARoute;
@@ -863,7 +865,7 @@ end;
 
 function TRALModuleRoutes.GetListRoutes: TList;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := TList.Create;
 
@@ -875,7 +877,7 @@ end;
 
 procedure TRALSecurity.BlockClient(const AClientIP: StringRAL);
 var
-  vBlock : TRALClientBlockList;
+  vBlock: TRALClientBlockList;
 begin
   if (not FWhiteIPList.Exists(AClientIP)) then
   begin
@@ -890,7 +892,7 @@ begin
   end;
 end;
 
-function TRALSecurity.CheckBlockClientTry(const AClienteIP: StringRAL) : boolean;
+function TRALSecurity.CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
 begin
   Result := GetBlockClientTry(AClienteIP) <= FBruteForce.MaxTry;
 end;
@@ -898,7 +900,7 @@ end;
 function TRALSecurity.CheckBlockClientIP(const AClientIP: StringRAL): boolean;
 begin
   Result := (((rsoBruteForceProtection in Options) and FBlockedList.Exists(AClientIP)) or
-            (FBlackIPList.Exists(AClientIP))) and (not FWhiteIPList.Exists(AClientIP));
+    (FBlackIPList.Exists(AClientIP))) and (not FWhiteIPList.Exists(AClientIP));
 end;
 
 function TRALSecurity.CheckFlood(const AClientIP: StringRAL): boolean;
@@ -927,7 +929,7 @@ end;
 
 procedure TRALSecurity.ClearExpiredIPs;
 var
-  vInt: Integer;
+  vInt: integer;
   vBlock: TRALClientBlockList;
 begin
   if rsoBruteForceProtection in Options then
@@ -983,15 +985,14 @@ begin
   FBlackIPList.Unlock;
 end;
 
-function TRALSecurity.GetBlockClient(
-  const AClientIP: StringRAL): TRALClientBlockList;
+function TRALSecurity.GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
 begin
   Result := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
 end;
 
-function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): Integer;
+function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): integer;
 var
-  vBlock : TRALClientBlockList;
+  vBlock: TRALClientBlockList;
 begin
   Result := 0;
   vBlock := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));

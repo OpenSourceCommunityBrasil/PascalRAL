@@ -1,3 +1,4 @@
+/// Unit that stores all constant values, version configuration and i18n message strings
 unit RALConsts;
 
 interface
