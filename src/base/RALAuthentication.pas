@@ -17,7 +17,8 @@ type
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
-  TRALOnGetTokenSecret = procedure(ATokenAccess: StringRAL; var ATokenSecret: StringRAL) of object;
+  TRALOnGetTokenSecret = procedure(ATokenAccess: StringRAL; var ATokenSecret: StringRAL)
+    of object;
 
   /// Base class of authenticators
   TRALAuthentication = class(TRALComponent)
@@ -35,12 +36,12 @@ type
   /// Base class of client components' Authenticator
   TRALAuthClient = class(TRALAuthentication)
   private
-    FOnBeforeGetToken: TRALOnBeforeGetToken;
     FAutoGetToken: boolean;
+    FOnBeforeGetToken: TRALOnBeforeGetToken;
   public
     constructor Create(AOwner: TComponent); override;
+    function IsAuthenticated: boolean; virtual;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
-    function IsAuthenticated : boolean; virtual;
 
     property OnBeforeGetToken: TRALOnBeforeGetToken read FOnBeforeGetToken
       write FOnBeforeGetToken;
@@ -55,12 +56,12 @@ type
     function GetAuthRoute: TRALBaseRoute; virtual;
   public
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
     /// Main method of authenticator, all validations must be done here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
-    function CanAnswerRoute(ARequest: TRALRequest; AResponse : TRALResponse): TRALRoute;
 
-    property AuthType: TRALAuthTypes read FAuthType;
     property AuthRoute: TRALBaseRoute read GetAuthRoute;
+    property AuthType: TRALAuthTypes read FAuthType;
   end;
 
   /// BasicAuth for client components
@@ -71,9 +72,9 @@ type
   public
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
-      const APassword: StringRAL); overload;
+                       const APassword: StringRAL); overload;
+    function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-    function IsAuthenticated : boolean; override;
   published
     property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
@@ -83,8 +84,8 @@ type
   TRALServerBasicAuth = class(TRALAuthServer)
   private
     FAuthDialog: boolean;
-    FUserName: StringRAL;
     FPassword: StringRAL;
+    FUserName: StringRAL;
     FOnValidate: TRALOnValidate;
   public
     constructor Create(AOwner: TComponent); overload; override;
@@ -94,8 +95,8 @@ type
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
-    property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
+    property UserName: StringRAL read FUserName write FUserName;
     property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
   end;
 
@@ -103,35 +104,35 @@ type
   TRALClientJWTAuth = class(TRALAuthClient)
   private
     FJSONKey: StringRAL;
-    FToken: StringRAL;
     FPayload: TRALJWTParams;
     FRoute: StringRAL;
+    FToken: StringRAL;
   protected
     procedure SetRoute(const AValue: StringRAL);
     procedure SetToken(const AValue: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-    function IsAuthenticated : boolean; override;
   published
-    property OnBeforeGetToken;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
-    property Token: StringRAL read FToken write SetToken;
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Route: StringRAL read FRoute write SetRoute;
+    property Token: StringRAL read FToken write SetToken;
+    property OnBeforeGetToken;
   end;
 
   /// JWT Authenticator for server components
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
+    FAuthToken: TRALBaseRoute;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnValidate: TRALOnTokenJWT;
-    FAuthToken : TRALBaseRoute;
   protected
     function GetAuthRoute: TRALBaseRoute; override;
   public
@@ -144,8 +145,8 @@ type
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
-    property AuthRoute;
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
+    property AuthRoute;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
@@ -159,30 +160,30 @@ type
   TRALClientOAuth = class(TRALAuthClient)
   private
     FAlgorithm: TRALOAuthAlgorithm;
+    FCallBack: StringRAL;
     FConsumerKey: StringRAL;
     FConsumerSecret: StringRAL;
+    FNonce: StringRAL;
+    FRouteAuthorize: StringRAL;
+    FRouteInitialize: StringRAL;
     FTokenAccess: StringRAL;
     FTokenSecret: StringRAL;
-    FCallBack: StringRAL;
-    FNonce: StringRAL;
     FVerifier: StringRAL;
-    FRouteInitialize: StringRAL;
-    FRouteAuthorize: StringRAL;
   public
     constructor Create(AOwner: TComponent); override;
+    function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-    function IsAuthenticated : boolean; override;
   published
     property Algorithm: TRALOAuthAlgorithm read FAlgorithm write FAlgorithm;
+    property CallBack: StringRAL read FCallBack write FCallBack;
     property ConsumerKey: StringRAL read FConsumerKey write FConsumerKey;
     property ConsumerSecret: StringRAL read FConsumerSecret write FConsumerSecret;
+    property Nonce: StringRAL read FNonce write FNonce;
+    property RouteAuthorize: StringRAL read FRouteAuthorize write FRouteAuthorize;
+    property RouteInitialize: StringRAL read FRouteInitialize write FRouteInitialize;
     property TokenAccess: StringRAL read FTokenAccess write FTokenAccess;
     property TokenSecret: StringRAL read FTokenSecret write FTokenSecret;
-    property CallBack: StringRAL read FCallBack write FCallBack;
-    property Nonce: StringRAL read FNonce write FNonce;
     property Verifier: StringRAL read FVerifier write FVerifier;
-    property RouteInitialize: StringRAL read FRouteInitialize write FRouteInitialize;
-    property RouteAuthorize: StringRAL read FRouteAuthorize write FRouteAuthorize;
   end;
 
   { TRALServerOAuth }
@@ -193,8 +194,8 @@ type
     FAlgorithm: TRALOAuthAlgorithm;
     FConsumerKey: StringRAL;
     FConsumerSecret: StringRAL;
-    FRouteInitialize: StringRAL;
     FRouteAuthorize: StringRAL;
+    FRouteInitialize: StringRAL;
     FOnGetTokenSecret: TRALOnGetTokenSecret;
   public
     constructor Create(AOwner: TComponent); override;
@@ -224,20 +225,18 @@ type
   /// Digest Authenticator for Client components
   TRALClientDigest = class(TRALAuthClient)
   private
-    FUserName: StringRAL;
-    FPassword: StringRAL;
-
     FDigestParams: TRALDigestParams;
+    FPassword: StringRAL;
+    FUserName: StringRAL;
   protected
     function GetEntityBody(AParams: TRALParams): StringRAL;
   public
-    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-    function IsAuthenticated : boolean; override;
-
+    function IsAuthenticated: boolean; override;
     property DigestParams: TRALDigestParams read FDigestParams write FDigestParams;
+    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
   published
-    property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
+    property UserName: StringRAL read FUserName write FUserName;
   end;
 
   /// Digest Authenticator for Server components
@@ -615,7 +614,7 @@ begin
   try
     vJWT.Header.Algorithm := FAlgorithm;
     vJWT.SignSecretKey := FSignSecretKey;
-    vResult := vJWT.IsValidToken(ARequest.Authorization.AuthString);
+    vResult := vJWT.isValidToken(ARequest.Authorization.AuthString);
     if vResult and Assigned(FOnValidate) then
       FOnValidate(ARequest, AResponse, vJWT.Payload, vResult);
   finally
@@ -808,8 +807,8 @@ begin
   AResponse.Answer(404);
 end;
 
-function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest;
-  AResponse: TRALResponse): TRALRoute;
+function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse)
+  : TRALRoute;
 begin
   Result := TRALRoute(GetAuthRoute);
   if not SameText(Result.GetFullRoute, ARequest.Query) then

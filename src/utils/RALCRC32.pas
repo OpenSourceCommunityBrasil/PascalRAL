@@ -75,7 +75,7 @@ const
 
 procedure TRALCRC32.Compress;
 var
-  vIdx : integer;
+  vIdx: integer;
 
 begin
   vIdx := GetIndex;
@@ -117,7 +117,7 @@ end;
 
 procedure TRALCRC32.HashCRC32(AIndex: integer);
 var
-  vInt : integer;
+  vInt: integer;
 begin
   if AIndex = 0 then
     Exit;

@@ -22,7 +22,7 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
 
-    class function CheckDependence : boolean; override;
+    class function CheckDepedancy : boolean; override;
   end;
 
 implementation
@@ -174,14 +174,14 @@ begin
 
   if not (AValue in [ctDeflate, ctGZip, ctZLib]) then
   begin
-    raise Exception.Create('Format is invalid!');
+    raise Exception.Create(emCompressInvalidFormat);
     Exit;
   end;
 
   inherited;
 end;
 
-class function TRALCompressZLib.CheckDependence: boolean;
+class function TRALCompressZLib.CheckDepedancy: boolean;
 begin
   // zlib eh incorporado
   Result := True;

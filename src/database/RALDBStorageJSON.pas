@@ -1,3 +1,4 @@
+/// Base unit for the Storage exporter in JSON format
 unit RALDBStorageJSON;
 
 interface
@@ -5,7 +6,7 @@ interface
 uses
   Classes, SysUtils, DB, DateUtils,
   RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
-  RALJSON;
+  RALJSON, RALConsts;
 
 type
   TRALJSONType = (jtDBWare, jtRAW);
@@ -14,96 +15,93 @@ type
 
   TRALJSONFormatOptions = class(TPersistent)
   private
-    FDateTimeFormat : TRALDateTimeFormat;
-    FCustomDateTimeFormat : StringRAL;
+    FDateTimeFormat: TRALDateTimeFormat;
+    FCustomDateTimeFormat: StringRAL;
   public
     constructor Create;
   published
-    property DateTimeFormat : TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
-    property CustomDateTimeFormat : StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
+    property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
+    property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
   end;
 
   { TRALDBStorageJSON }
 
   TRALDBStorageJSON = class(TRALDBStorage)
   private
-    FFormatOptions : TRALJSONFormatOptions;
+    FFormatOptions: TRALJSONFormatOptions;
   public
     constructor Create;
     destructor Destroy; override;
   protected
+    function JSONFormatDateTime(AValue: TDateTime): StringRAL;
     function StringToJSONString(AValue: TStream): StringRAL; overload;
     function StringToJSONString(AValue: string): StringRAL; overload;
-    function JSONFormatDateTime(AValue: TDateTime) : StringRAL;
-
-    procedure WriteStringToStream(AStream : TStream; AValue : StringRAL);
-
-    function WriteFieldInt64(AFieldName : StringRAL; AValue : Int64RAL) : StringRAL;
-    function WriteFieldFloat(AFieldName : StringRAL; AValue : Double) : StringRAL;
-    function WriteFieldBoolean(AFieldName : StringRAL; AValue : Boolean) : StringRAL;
-    function WriteFieldString(AFieldName : StringRAL; AValue : string) : StringRAL;
-    function WriteFieldBlob(AFieldName : StringRAL; AValue : TStream) : StringRAL;
-    function WriteFieldMemo(AFieldName : StringRAL; AValue : TStream) : StringRAL;
-    function WriteFieldDateTime(AFieldName : StringRAL; AValue : TDateTime) : StringRAL;
-    function WriteFieldNull(AFieldName : StringRAL) : StringRAL;
-
-    function WriteInt64(AValue : Int64RAL) : StringRAL;
-    function WriteFloat(AValue : Double) : StringRAL;
-    function WriteBoolean(AValue : Boolean) : StringRAL;
-    function WriteString(AValue : string) : StringRAL;
-    function WriteBlob(AValue : TStream) : StringRAL;
-    function WriteMemo(AValue : TStream) : StringRAL;
-    function WriteDateTime(AValue : TDateTime) : StringRAL;
+    function WriteBlob(AValue: TStream): StringRAL;
+    function WriteBoolean(AValue: Boolean): StringRAL;
+    function WriteDateTime(AValue: TDateTime): StringRAL;
+    function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
+    function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+    function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
+    function WriteFieldString(AFieldName: StringRAL; AValue: string): StringRAL;
+    function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
+    function WriteFieldMemo(AFieldName: StringRAL; AValue: TStream): StringRAL;
+    function WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
+    function WriteFieldNull(AFieldName: StringRAL): StringRAL;
+    function WriteFloat(AValue: Double): StringRAL;
+    function WriteMemo(AValue: TStream): StringRAL;
+    function WriteInt64(AValue: Int64RAL): StringRAL;
+    function WriteString(AValue: string): StringRAL;
+    procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   published
-    property FormatOptions : TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
+    property FormatOptions: TRALJSONFormatOptions read FFormatOptions
+      write FFormatOptions;
   end;
 
   { TRALDBStorageJSON_RAW }
 
   TRALDBStorageJSON_RAW = class(TRALDBStorageJSON)
   protected
+    procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
+    procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
-
-    procedure ReadFields(ADataset: TDataSet; AJSON : TRALJSONArray);
-    procedure ReadRecords(ADataset: TDataSet; AJSON : TRALJSONArray);
   public
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
-    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
   { TRALDBStorageJSON_DBWare }
 
   TRALDBStorageJSON_DBWare = class(TRALDBStorageJSON)
   protected
-    procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
 
-    function ReadHeaders(AJSON : TRALJSONObject) : boolean;
-    procedure ReadFields(ADataset: TDataSet; AJSON : TRALJSONObject);
-    procedure ReadRecords(ADataset: TDataSet; AJSON : TRALJSONObject);
+    procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
+    function ReadHeaders(AJSON: TRALJSONObject): Boolean;
+    procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
   public
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
-    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
   { TRALDBStorageJSONLink }
 
   TRALDBStorageJSONLink = class(TRALDBStorageLink)
   private
-    FJSONType : TRALJSONType;
-    FFormatOptions : TRALJSONFormatOptions;
+    FJSONType: TRALJSONType;
+    FFormatOptions: TRALJSONFormatOptions;
   protected
     function GetContentType: StringRAL; override;
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function GetStorage : TRALDBStorage; override;
+    function GetStorage: TRALDBStorage; override;
   published
-    property JSONType : TRALJSONType read FJSONType write FJSONType;
-    property FormatOptions : TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
+    property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
+    property JSONType: TRALJSONType read FJSONType write FJSONType;
   end;
 
 implementation
@@ -139,16 +137,25 @@ begin
   begin
     AValue.Read(vChr, SizeOf(vChr));
     case vChr of
-      '\': Result := Result + '\\';
-      '/': Result := Result + '\/';
-      '"': Result := Result + '\"';
-      #8 : Result := Result + '\b';
-      #9 : Result := Result + '\t';
-      #10: Result := Result + '\n';
-      #12: Result := Result + '\f';
-      #13: Result := Result + '\r';
-      else begin
-        if vChr in [#0..#31,#127..#255] then
+      '\':
+        Result := Result + '\\';
+      '/':
+        Result := Result + '\/';
+      '"':
+        Result := Result + '\"';
+      #8:
+        Result := Result + '\b';
+      #9:
+        Result := Result + '\t';
+      #10:
+        Result := Result + '\n';
+      #12:
+        Result := Result + '\f';
+      #13:
+        Result := Result + '\r';
+    else
+      begin
+        if vChr in [#0 .. #31, #127 .. #255] then
           Result := Result + '\u' + IntToHex(Ord(vChr), 4)
         else
           Result := Result + vChr;
@@ -168,16 +175,25 @@ begin
   begin
     vChr := AValue[vInt64];
     case vChr of
-      '\': Result := Result + '\\';
-      '/': Result := Result + '\/';
-      '"': Result := Result + '\"';
-      #8 : Result := Result + '\b';
-      #9 : Result := Result + '\t';
-      #10: Result := Result + '\n';
-      #12: Result := Result + '\f';
-      #13: Result := Result + '\r';
-      else begin
-        if vChr in [#0..#31,#127..#255] then
+      '\':
+        Result := Result + '\\';
+      '/':
+        Result := Result + '\/';
+      '"':
+        Result := Result + '\"';
+      #8:
+        Result := Result + '\b';
+      #9:
+        Result := Result + '\t';
+      #10:
+        Result := Result + '\n';
+      #12:
+        Result := Result + '\f';
+      #13:
+        Result := Result + '\r';
+    else
+      begin
+        if vChr in [#0 .. #31, #127 .. #255] then
           Result := Result + '\u' + IntToHex(Ord(vChr), 4)
         else
           Result := Result + vChr;
@@ -190,9 +206,12 @@ end;
 function TRALDBStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
 begin
   case FFormatOptions.DateTimeFormat of
-    dtfUnix    : Result := IntToStr(DateTimeToUnix(AValue));
-    dtfISO8601 : Result := DateToISO8601(AValue);
-    dtfCustom  : Result := FormatDateTime(FFormatOptions.CustomDateTimeFormat, AValue);
+    dtfUnix:
+      Result := IntToStr(DateTimeToUnix(AValue));
+    dtfISO8601:
+      Result := DateToISO8601(AValue);
+    dtfCustom:
+      Result := FormatDateTime(FFormatOptions.CustomDateTimeFormat, AValue);
   end;
 end;
 
@@ -201,46 +220,50 @@ begin
   AStream.Write(AValue[POSINISTR], Length(AValue));
 end;
 
-function TRALDBStorageJSON.WriteFieldInt64(AFieldName: StringRAL;
-  AValue: Int64RAL): StringRAL;
+function TRALDBStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
+  : StringRAL;
 begin
-  Result := Format('"%s":%s',[AFieldName, IntToStr(AValue)]);
+  Result := Format('"%s":%s', [AFieldName, IntToStr(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+function TRALDBStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
+  : StringRAL;
 var
-  vFormat : TFormatSettings;
+  vFormat: TFormatSettings;
 begin
   vFormat.DecimalSeparator := '.';
-  Result := Format('"%s":%s',[AFieldName, FloatToStr(AValue, vFormat)]);
+  Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, vFormat)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldBoolean(AFieldName: StringRAL;
-  AValue: Boolean): StringRAL;
+function TRALDBStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
+  : StringRAL;
 begin
   if AValue then
-    Result := Format('"%s":%s',[AFieldName, 'true'])
+    Result := Format('"%s":%s', [AFieldName, 'true'])
   else
-    Result := Format('"%s":%s',[AFieldName, 'false'])
+    Result := Format('"%s":%s', [AFieldName, 'false'])
 end;
 
-function TRALDBStorageJSON.WriteFieldString(AFieldName: StringRAL;
-  AValue: string): StringRAL;
+function TRALDBStorageJSON.WriteFieldString(AFieldName: StringRAL; AValue: string)
+  : StringRAL;
 begin
-  Result := Format('"%s":"%s"',[AFieldName, StringToJSONString(AValue)]);
+  Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
+function TRALDBStorageJSON.WriteFieldBlob(AFieldName: StringRAL; AValue: TStream)
+  : StringRAL;
 begin
-  Result := Format('"%s":"%s"',[AFieldName, TRALBase64.Encode(AValue)]);
+  Result := Format('"%s":"%s"', [AFieldName, TRALBase64.Encode(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream): StringRAL;
+function TRALDBStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream)
+  : StringRAL;
 begin
-  Result := Format('"%s":"%s"',[AFieldName, StringToJSONString(AValue)]);
+  Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
+function TRALDBStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime)
+  : StringRAL;
 begin
   if FFormatOptions.DateTimeFormat = dtfUnix then
     Result := Format('"%s":%s', [AFieldName, JSONFormatDateTime(AValue)])
@@ -250,7 +273,7 @@ end;
 
 function TRALDBStorageJSON.WriteFieldNull(AFieldName: StringRAL): StringRAL;
 begin
-  Result := Format('"%s":null',[AFieldName]);
+  Result := Format('"%s":null', [AFieldName]);
 end;
 
 function TRALDBStorageJSON.WriteInt64(AValue: Int64RAL): StringRAL;
@@ -260,7 +283,7 @@ end;
 
 function TRALDBStorageJSON.WriteFloat(AValue: Double): StringRAL;
 var
-  vFormat : TFormatSettings;
+  vFormat: TFormatSettings;
 begin
   vFormat.DecimalSeparator := '.';
   Result := FloatToStr(AValue, vFormat);
@@ -313,12 +336,11 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON_RAW.WriteRecords(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_RAW.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
-  vBookMark : TBookMark;
-  vJson, vValue : StringRAL;
-  vVirg1, vVirg2 : boolean;
+  vBookMark: TBookMark;
+  vJson, vValue: StringRAL;
+  vVirg1, vVirg2: Boolean;
   vInt: IntegerRAL;
   vMem: TStream;
 begin
@@ -344,36 +366,40 @@ begin
       if not ADataset.Fields[vInt].IsNull then
       begin
         case FFieldTypes[vInt] of
-          sftShortInt,
-          sftSmallInt,
-          sftInteger,
-          sftInt64,
-          sftByte,
-          sftWord,
-          sftCardinal,
-          sftQWord     : vValue := WriteFieldInt64(FFieldNames[vInt], ADataset.Fields[vInt].AsLargeInt);
-          sftDouble    : vValue := WriteFieldFloat(FFieldNames[vInt], ADataset.Fields[vInt].AsFloat);
-          sftBoolean   : vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
-          sftString    : vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsString);
-          sftBlob      : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteFieldBlob(FFieldNames[vInt], vMem);
-            finally
-              vMem.Free
+          sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord, sftCardinal,
+            sftQWord:
+            vValue := WriteFieldInt64(FFieldNames[vInt],
+              ADataset.Fields[vInt].AsLargeInt);
+          sftDouble:
+            vValue := WriteFieldFloat(FFieldNames[vInt], ADataset.Fields[vInt].AsFloat);
+          sftBoolean:
+            vValue := WriteFieldBoolean(FFieldNames[vInt],
+              ADataset.Fields[vInt].AsBoolean);
+          sftString:
+            vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsString);
+          sftBlob:
+            begin
+              vMem := TMemoryStream.Create;
+              try
+                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+                vValue := WriteFieldBlob(FFieldNames[vInt], vMem);
+              finally
+                vMem.Free
+              end;
             end;
-          end;
-          sftMemo      : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteFieldMemo(FFieldNames[vInt], vMem);
-            finally
-              vMem.Free
+          sftMemo:
+            begin
+              vMem := TMemoryStream.Create;
+              try
+                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+                vValue := WriteFieldMemo(FFieldNames[vInt], vMem);
+              finally
+                vMem.Free
+              end;
             end;
-          end;
-          sftDateTime  : vValue := WriteFieldDateTime(FFieldNames[vInt], ADataset.Fields[vInt].AsDateTime);
+          sftDateTime:
+            vValue := WriteFieldDateTime(FFieldNames[vInt],
+              ADataset.Fields[vInt].AsDateTime);
         end;
       end
       else
@@ -414,7 +440,7 @@ var
   vName: StringRAL;
   vField: TField;
   vType: TFieldType;
-  vjValue : TRALJSONValue;
+  vjValue: TRALJSONValue;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -439,23 +465,27 @@ begin
       vType := vField.DataType;
       vSize := vField.Size;
     end
-    else begin
+    else
+    begin
       vjValue := vjObj.Get(vInt);
       vSize := 0;
-      case vjValue.JsonType of
-        rjtString : begin
-          vType := ftString;
-          if Length(vjValue.AsString) > MAX_JSONSTRING then
-            vType := ftMemo
-          else
-            vSize := MAX_JSONSTRING;
-        end;
-        rjtNumber : begin
-          vType := ftFloat;
-          if Frac(vjValue.AsFloat) = 0 then
-            vType := ftLargeint;
-        end;
-        rjtBoolean : vType := ftBoolean;
+      case vjValue.JSONType of
+        rjtString:
+          begin
+            vType := ftString;
+            if Length(vjValue.AsString) > MAX_JSONSTRING then
+              vType := ftMemo
+            else
+              vSize := MAX_JSONSTRING;
+          end;
+        rjtNumber:
+          begin
+            vType := ftFloat;
+            if Frac(vjValue.AsFloat) = 0 then
+              vType := ftLargeint;
+          end;
+        rjtBoolean:
+          vType := ftBoolean;
       end;
     end;
     FFieldNames[vInt] := vName;
@@ -486,7 +516,7 @@ var
   vjObj: TRALJSONObject;
   vInt64: Int64RAL;
   vInt: IntegerRAL;
-  vjValue : TRALJSONValue;
+  vjValue: TRALJSONValue;
 begin
   vInt64 := 0;
   ADataset.DisableControls;
@@ -499,25 +529,39 @@ begin
     begin
       vjValue := vjObj.Get(vInt);
       case FFieldTypes[vInt] of
-        sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
-        sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
-        sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
-        sftInt64    : ReadFieldInt64(FFoundFields[vInt],vjValue.AsInteger);
-        sftByte     : ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
-        sftWord     : ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
-        sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
-        sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-        sftDouble   : ReadFieldFloat(FFoundFields[vInt],vjValue.AsFloat);
-        sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
-        sftString   : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-        sftBlob     : ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
-        sftMemo     : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-        sftDateTime : begin
-          if vjValue.JsonType = rjtNumber then
-            ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
-          else
-            ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
-        end;
+        sftShortInt:
+          ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
+        sftSmallInt:
+          ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
+        sftInteger:
+          ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
+        sftInt64:
+          ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+        sftByte:
+          ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
+        sftWord:
+          ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
+        sftCardinal:
+          ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
+        sftQWord:
+          ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+        sftDouble:
+          ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
+        sftBoolean:
+          ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
+        sftString:
+          ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+        sftBlob:
+          ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
+        sftMemo:
+          ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+        sftDateTime:
+          begin
+            if vjValue.JSONType = rjtNumber then
+              ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
+            else
+              ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
+          end;
       end;
     end;
     ADataset.Post;
@@ -539,10 +583,9 @@ begin
   WriteStringToStream(AStream, ']');
 end;
 
-procedure TRALDBStorageJSON_RAW.LoadFromStream(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vjArr : TRALJSONArray;
+  vjArr: TRALJSONArray;
 begin
   vjArr := TRALJSONArray(TRALJSON.ParseJSON(AStream));
   try
@@ -558,23 +601,21 @@ end;
 
 { TRALDBStorageJSON_DBWare }
 
-procedure TRALDBStorageJSON_DBWare.WriteHeaders(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_DBWare.WriteHeaders(ADataset: TDataSet; AStream: TStream);
 var
-  vJson : StringRAL;
+  vJson: StringRAL;
 begin
-  vJson := Format('"sign":"RAL","version":%d',[GetStoreVersion]);
+  vJson := Format('"sign":"RAL","version":%d', [GetStoreVersion]);
   WriteStringToStream(AStream, vJson);
 end;
 
-procedure TRALDBStorageJSON_DBWare.WriteFields(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_DBWare.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
   vJson: StringRAL;
   vInt: IntegerRAL;
   vByte: Byte;
   vType: TRALFieldType;
-  vVirg1: boolean;
+  vVirg1: Boolean;
 begin
   vJson := ',"fd":[';
 
@@ -599,7 +640,7 @@ begin
 
     // flags
     vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
-    vJson := vJson + WriteInt64(vByte)+ ',';
+    vJson := vJson + WriteInt64(vByte) + ',';
 
     // size
     vJson := vJson + WriteInt64(ADataset.Fields[vInt].Size);
@@ -612,12 +653,11 @@ begin
   WriteStringToStream(AStream, vJson);
 end;
 
-procedure TRALDBStorageJSON_DBWare.WriteRecords(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_DBWare.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
-  vBookMark : TBookMark;
-  vJson, vValue : StringRAL;
-  vVirg1, vVirg2 : boolean;
+  vBookMark: TBookMark;
+  vJson, vValue: StringRAL;
+  vVirg1, vVirg2: Boolean;
   vInt: IntegerRAL;
   vMem: TStream;
 begin
@@ -644,36 +684,37 @@ begin
     for vInt := 0 to Pred(ADataset.FieldCount) do
     begin
       case FFieldTypes[vInt] of
-        sftShortInt,
-        sftSmallInt,
-        sftInteger,
-        sftInt64,
-        sftByte,
-        sftWord,
-        sftCardinal,
-        sftQWord     : vValue := WriteInt64(ADataset.Fields[vInt].AsLargeInt);
-        sftDouble    : vValue := WriteFloat(ADataset.Fields[vInt].AsFloat);
-        sftBoolean   : vValue := WriteBoolean(ADataset.Fields[vInt].AsBoolean);
-        sftString    : vValue := WriteString(ADataset.Fields[vInt].AsString);
-        sftBlob      : begin
-          vMem := TMemoryStream.Create;
-          try
-            TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-            vValue := WriteBlob(vMem);
-          finally
-            vMem.Free
+        sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord, sftCardinal,
+          sftQWord:
+          vValue := WriteInt64(ADataset.Fields[vInt].AsLargeInt);
+        sftDouble:
+          vValue := WriteFloat(ADataset.Fields[vInt].AsFloat);
+        sftBoolean:
+          vValue := WriteBoolean(ADataset.Fields[vInt].AsBoolean);
+        sftString:
+          vValue := WriteString(ADataset.Fields[vInt].AsString);
+        sftBlob:
+          begin
+            vMem := TMemoryStream.Create;
+            try
+              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+              vValue := WriteBlob(vMem);
+            finally
+              vMem.Free
+            end;
           end;
-        end;
-        sftMemo      : begin
-          vMem := TMemoryStream.Create;
-          try
-            TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-            vValue := WriteMemo(vMem);
-          finally
-            vMem.Free
+        sftMemo:
+          begin
+            vMem := TMemoryStream.Create;
+            try
+              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+              vValue := WriteMemo(vMem);
+            finally
+              vMem.Free
+            end;
           end;
-        end;
-        sftDateTime  : vValue := WriteDateTime(ADataset.Fields[vInt].AsDateTime);
+        sftDateTime:
+          vValue := WriteDateTime(ADataset.Fields[vInt].AsDateTime);
       end;
 
       if vVirg2 then
@@ -703,7 +744,7 @@ begin
   WriteStringToStream(AStream, vJson);
 end;
 
-function TRALDBStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): boolean;
+function TRALDBStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): Boolean;
 var
   vSign: StringRAL;
   vVersion: IntegerRAL;
@@ -716,19 +757,18 @@ begin
   vVersion := AJSON.Get('version').AsInteger;
 
   if (vSign <> 'RAL') or (vVersion <> GetStoreVersion) then
-    raise Exception.Create('Invalid JSON Format!');
+    raise Exception.Create(emInvalidJSONFormat);
 
   Result := True;
 end;
 
-procedure TRALDBStorageJSON_DBWare.ReadFields(ADataset: TDataSet;
-  AJSON: TRALJSONObject);
+procedure TRALDBStorageJSON_DBWare.ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
 var
   vInt, vSize: IntegerRAL;
   vName: StringRAL;
   vType: TFieldType;
   vByte: Byte;
-  vjArr1, vjArr2 : TRALJSONArray;
+  vjArr1, vjArr2: TRALJSONArray;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -783,14 +823,13 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON_DBWare.ReadRecords(ADataset: TDataSet;
-  AJSON: TRALJSONObject);
+procedure TRALDBStorageJSON_DBWare.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
 var
   vInt64: Int64RAL;
-  vIsNull: boolean;
+  vIsNull: Boolean;
   vInt: IntegerRAL;
-  vjArr1, vjArr2 : TRALJSONArray;
-  vjValue : TRALJSONValue;
+  vjArr1, vjArr2: TRALJSONArray;
+  vjValue: TRALJSONValue;
 begin
   vjArr1 := TRALJSONArray(AJSON.Get('rc'));
   if vjArr1 <> nil then
@@ -813,25 +852,39 @@ begin
         if not vIsNull then
         begin
           case FFieldTypes[vInt] of
-            sftShortInt : ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
-            sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
-            sftInteger  : ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
-            sftInt64    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-            sftByte     : ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
-            sftWord     : ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
-            sftCardinal : ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
-            sftQWord    : ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-            sftDouble   : ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
-            sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
-            sftString   : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-            sftBlob     : ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
-            sftMemo     : ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-            sftDateTime : begin
-              if vjValue.JsonType = rjtNumber then
-                ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
-              else
-                ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
-            end;
+            sftShortInt:
+              ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
+            sftSmallInt:
+              ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
+            sftInteger:
+              ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
+            sftInt64:
+              ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+            sftByte:
+              ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
+            sftWord:
+              ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
+            sftCardinal:
+              ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
+            sftQWord:
+              ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
+            sftDouble:
+              ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
+            sftBoolean:
+              ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
+            sftString:
+              ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+            sftBlob:
+              ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
+            sftMemo:
+              ReadFieldString(FFoundFields[vInt], vjValue.AsString);
+            sftDateTime:
+              begin
+                if vjValue.JSONType = rjtNumber then
+                  ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
+                else
+                  ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
+              end;
           end;
         end;
       end;
@@ -847,8 +900,7 @@ begin
   SetLength(FFoundFields, 0);
 end;
 
-procedure TRALDBStorageJSON_DBWare.SaveToStream(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_DBWare.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
   WriteStringToStream(AStream, '{');
   WriteHeaders(ADataset, AStream);
@@ -857,10 +909,9 @@ begin
   WriteStringToStream(AStream, '}');
 end;
 
-procedure TRALDBStorageJSON_DBWare.LoadFromStream(ADataset: TDataSet;
-  AStream: TStream);
+procedure TRALDBStorageJSON_DBWare.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vjObj : TRALJSONObject;
+  vjObj: TRALJSONObject;
 begin
   vjObj := TRALJSONObject(TRALJSON.ParseJSON(AStream));
   try
@@ -897,8 +948,10 @@ end;
 function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
 begin
   case FJSONType of
-    jtRAW    : Result := TRALDBStorageJSON_RAW.Create;
-    jtDBWare : Result := TRALDBStorageJSON_DBWare.Create;
+    jtRAW:
+      Result := TRALDBStorageJSON_RAW.Create;
+    jtDBWare:
+      Result := TRALDBStorageJSON_DBWare.Create;
   end;
 
   Result.FieldCharCase := FieldCharCase;
@@ -911,6 +964,7 @@ begin
 end;
 
 initialization
-  RegisterClass(TRALDBStorageJSONLink);
+
+RegisterClass(TRALDBStorageJSONLink);
 
 end.

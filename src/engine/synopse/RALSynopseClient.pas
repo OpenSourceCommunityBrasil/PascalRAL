@@ -1,3 +1,4 @@
+/// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
 interface
@@ -17,7 +18,7 @@ type
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); override;
+                      AMethod: TRALMethod); override;
   end;
 
   { TRALSynopseClientMT }
@@ -53,7 +54,7 @@ end;
 constructor TRALSynopseClient.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
+  SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 function TRALSynopseClient.CreateClient: TRALClientHTTP;
@@ -78,16 +79,16 @@ end;
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vSource : TStream;
-  vHeader : StringRAL;
-  vHttp : THttpClientSocket;
-  vAddress : UTF8String;
-  vResult : IntegerRAL;
+  vSource: TStream;
+  vHeader: StringRAL;
+  vHttp: THttpClientSocket;
+  vAddress: UTF8String;
+  vResult: IntegerRAL;
   vKeepAlive: Cardinal;
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(AException : Exception);
+  procedure HandleException(AException: Exception);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
@@ -194,15 +195,15 @@ begin
         AResponse.StatusCode := vResult;
         AResponse.ResponseText := vHttp.Content;
       except
-        on e : ENetSock do
+        on e: ENetSock do
         begin
-          tratarExcecao(e);
+          HandleException(e);
           if e.LastError in [nrFatalError, nrConnectTimeout]  then
             AResponse.ErrorCode := 10061;
         end;
-        on e : Exception do
+        on e: Exception do
         begin
-          tratarExcecao(e);
+          HandleException(e);
         end;
       end;
     finally
@@ -210,17 +211,17 @@ begin
     end;
     vHttp.Free;
   except
-    on e : ENetSock do
+    on e: ENetSock do
     begin
       FreeAndNil(vHttp);
-      tratarExcecao(e);
+      HandleException(e);
       if e.LastError in [nrFatalError, nrConnectTimeout]  then
         AResponse.ErrorCode := 10061;
     end;
-    on e : Exception do
+    on e: Exception do
     begin
       FreeAndNil(vHttp);
-      tratarExcecao(e);
+      HandleException(e);
     end;
   end;
 end;
@@ -236,7 +237,7 @@ end;
 constructor TRALSynopseClientMT.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
+  SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 function TRALSynopseClientMT.CreateClient: TRALClientHTTP;

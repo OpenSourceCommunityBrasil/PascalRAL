@@ -20,7 +20,7 @@ type
   private
     FContent: TStream;
     FContentType: StringRAL;
-    FContentDispositionInline : Boolean;
+    FContentDispositionInline: Boolean;
     FFileName: StringRAL;
     FKind: TRALParamKind;
     FParamName: StringRAL;
@@ -42,7 +42,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function IsNilOrEmpty: boolean;
+    procedure Clone(ASource: TRALParam);
+    function IsNilOrEmpty: Boolean;
     /// Clears and assign a file to the FContent.
     procedure OpenFile(const AFileName: StringRAL);
     /// Saves FContent to the default executable location.
@@ -55,8 +56,6 @@ type
     procedure SaveToStream(AStream: TStream); overload;
     function Size: Int64;
 
-    procedure Clone(ASource : TRALParam);
-
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
@@ -64,7 +63,7 @@ type
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
     property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
-    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
+    property ContentDispositionInline: Boolean read FContentDispositionInline write FContentDispositionInline;
     property ContentSize: Int64RAL read GetContentSize;
     property ContentType: StringRAL read FContentType write FContentType;
     property FileName: StringRAL read FFileName write FFileName;
@@ -78,14 +77,14 @@ type
   TRALParams = class
   private
     FCompressType: TRALCompressType;
+    FContentDispositionInline: Boolean;
     FCriptoOptions: TRALCriptoOptions;
-    FContentDispositionInline : Boolean;
     FNextParam: IntegerRAL;
     FParams: TList;
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
-                              AKind: TRALParamKind);
+      AKind: TRALParamKind);
     /// Compresses the input stream into a TStream.
     function Compress(AStream: TStream): TStream;
     /// Decompresses the input string into an UTF8 String.
@@ -112,7 +111,7 @@ type
     function NextParamStr: StringRAL;
     /// Event to be called during the processing of FormData.
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
-                             var AFreeData: boolean);
+      var AFreeData: Boolean);
   public
     constructor Create;
     destructor Destroy; override;
@@ -140,7 +139,8 @@ type
                                    ANameSeparator: StringRAL = '');
     /// Appends params based on a string 'AText'.
     procedure AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
-                               const ANameSeparator: StringRAL = '='; const ALineSeparator: StringRAL = '&');
+                               const ANameSeparator: StringRAL = '=';
+                               const ALineSeparator: StringRAL = '&');
     /// Appends params based on the full URL given.
     procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
     /// Appends params based on the full URL given separated by '/'.
@@ -170,11 +170,11 @@ type
     /// Returns total ammount of RALParams matching multiple kinds.
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
     /// Returns a TStream with the filtered Stream body contents.
-    function DecodeBody(ASource: TStream; const AContentType : StringRAL;
+    function DecodeBody(ASource: TStream; const AContentType: StringRAL;
                         const AContentDisposition: StringRAL = ''): TStream; overload;
     /// Returns a TStream with the filtered String body contents.
-    function DecodeBody(const ASource, AContentType : StringRAL;
-                        const AContentDisposition: StringRAL = '' ): TStream; overload;
+    function DecodeBody(const ASource, AContentType: StringRAL;
+                        const AContentDisposition: StringRAL = ''): TStream; overload;
     /// Decode and append RALParams based on the ASource input.
     procedure DecodeFields(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
     /// Removes a RALParam matching the given AName.
@@ -205,7 +205,8 @@ type
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     /// Configuration of the cryptography used on params for a secure P2P traffic.
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
-    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
+    property ContentDispositionInline: Boolean read FContentDispositionInline
+      write FContentDispositionInline;
   end;
 
 implementation
@@ -236,7 +237,7 @@ begin
   inherited;
 end;
 
-function TRALParam.IsNilOrEmpty: boolean;
+function TRALParam.IsNilOrEmpty: Boolean;
 begin
   Result := (Self = nil) or ((Self <> nil) and (Self.Size = 0));
 end;
@@ -267,7 +268,7 @@ end;
 
 function TRALParam.GetAsBoolean: Boolean;
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 begin
   vStr := StreamToString(FContent);
   Result := (vStr = '1') or (SameText(vStr, 'true'));
@@ -301,7 +302,7 @@ end;
 function TRALParam.GetContentDisposition: StringRAL;
 begin
   if (FFileName <> '') and (not FContentDispositionInline) then
-    Result := Format('attachment; name="%s"; filename="%s"',[FParamName, FFileName])
+    Result := Format('attachment; name="%s"; filename="%s"', [FParamName, FFileName])
   else
     Result := Format('inline; name="%s"', [FParamName])
 end;
@@ -372,7 +373,7 @@ end;
 
 procedure TRALParam.SetAsBoolean(const AValue: Boolean);
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 begin
   vStr := IntToStr(Integer(AValue));
   SetAsString(vStr);
@@ -380,7 +381,7 @@ end;
 
 procedure TRALParam.SetAsDouble(const AValue: DoubleRAL);
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 begin
   vStr := FloatToStr(AValue);
   SetAsString(vStr);
@@ -388,7 +389,7 @@ end;
 
 procedure TRALParam.SetAsInteger(const AValue: IntegerRAL);
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 begin
   vStr := IntToStr(AValue);
   SetAsString(vStr);
@@ -416,12 +417,12 @@ end;
 
 procedure TRALParam.SetContentDisposition(AValue: StringRAL);
 var
-  vStr : StringRAL;
+  vStr: StringRAL;
 
   function GetWord(var AStr: StringRAL): StringRAL;
   var
     vInt, vLen: Integer;
-    vQuoted: boolean;
+    vQuoted: Boolean;
     vChr: CharRAL;
   begin
     Result := '';
@@ -447,13 +448,13 @@ var
     AStr := '';
   end;
 
-  function ProcessVar(const AHeader, AValue: StringRAL): boolean;
+  function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
   begin
     Result := True;
     if SameText(AHeader, 'name') then
       FParamName := AValue
     else if SameText(AHeader, 'filename') then
-      FFilename := AValue
+      FFileName := AValue
     else
       Result := False;
   end;
@@ -473,7 +474,8 @@ end;
 
 { TRALParams }
 
-function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
+function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind)
+  : TRALParam;
 begin
   Result := GetKind[AName, AKind];
   if Result = nil then
@@ -485,7 +487,8 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddParam(const AName: StringRAL; AContent: TStream; AKind: TRALParamKind): TRALParam;
+function TRALParams.AddParam(const AName: StringRAL; AContent: TStream;
+  AKind: TRALParamKind): TRALParam;
 begin
   Result := GetKind[AName, AKind];
   if Result = nil then
@@ -543,7 +546,8 @@ begin
   end;
 end;
 
-function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam;
+function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE)
+  : TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
@@ -552,7 +556,8 @@ begin
   Result.Kind := AKind;
 end;
 
-function TRALParams.AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam;
+function TRALParams.AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE)
+  : TRALParam;
 begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
@@ -595,7 +600,7 @@ end;
 
 procedure TRALParams.AppendParams(ASource: TStrings; AKind: TRALParamKind);
 var
-  vInt: integer;
+  vInt: Integer;
   vSeparator: StringRAL;
 begin
   if ASource.Count > 0 then
@@ -610,7 +615,7 @@ procedure TRALParams.AppendParamsListText(ASource: StringRAL; AKind: TRALParamKi
 var
   vInt: IntegerRAL;
   vLine: StringRAL;
-  vIs13: boolean;
+  vIs13: Boolean;
 begin
   {$IFNDEF FPC}
   ASource := UTF8ToString(ASource);
@@ -662,702 +667,707 @@ begin
       AppendParamLine(vLine, ANameSeparator, AKind);
       Delete(AText, POSINISTR, vIndex);
     end
-  until vIndex = 0;
-end;
+    until vIndex = 0;
+  end;
 
-procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
-var
-  vInt, vIdx: IntegerRAL;
-  vParam : TRALParam;
-begin
-  if SameText(AFullURI, APartialURI) then
-    Exit;
-
-  AFullURI := FixRoute(AFullURI);
-  APartialURI := FixRoute(APartialURI);
-
-  if Pos(LowerCase(APartialURI), LowerCase(AFullURI)) > 0 then
+  procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL;
+    AKind: TRALParamKind);
+  var
+    vInt, vIdx: IntegerRAL;
+    vParam: TRALParam;
   begin
-    Delete(AFullURI, 1, Length(APartialURI)); // removendo partialuri
-    vIdx := 1;
-    repeat
-      vInt := Pos('/', AFullURI);
-      if vInt > 0 then
-      begin
-        vParam := GetKind['ral_uriparam' + IntToStr(vIdx), AKind];
-        if vParam = nil then
+    if SameText(AFullURI, APartialURI) then
+      Exit;
+
+    AFullURI := FixRoute(AFullURI);
+    APartialURI := FixRoute(APartialURI);
+
+    if Pos(LowerCase(APartialURI), LowerCase(AFullURI)) > 0 then
+    begin
+      Delete(AFullURI, 1, Length(APartialURI)); // removendo partialuri
+      vIdx := 1;
+      repeat
+        vInt := Pos('/', AFullURI);
+        if vInt > 0 then
         begin
-          vParam := NewParam;
-          vParam.ParamName := 'ral_uriparam' + IntToStr(vIdx);
+          vParam := GetKind['ral_uriparam' + IntToStr(vIdx), AKind];
+          if vParam = nil then
+          begin
+            vParam := NewParam;
+            vParam.ParamName := 'ral_uriparam' + IntToStr(vIdx);
+          end;
+          vParam.AsString := Copy(AFullURI, 1, vInt - 1);
+          vParam.Kind := AKind;
+
+          Delete(AFullURI, 1, vInt);
+          vIdx := vIdx + 1;
         end;
-        vParam.AsString := Copy(AFullURI, 1, vInt - 1);
-        vParam.Kind := AKind;
-
-        Delete(AFullURI, 1, vInt);
-        vIdx := vIdx + 1;
-      end;
-    until vInt = 0;
-  end;
-end;
-
-procedure TRALParams.AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
-var
-  vInt: IntegerRAL;
-begin
-  vInt := Pos('?', AUrlQuery);
-  if vInt > 0 then
-    System.Delete(AUrlQuery, 1, vInt);
-
-  AppendParamsText(AUrlQuery, AKind);
-end;
-
-procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
-  ASeparator: StringRAL);
-begin
-  AssignParams(TStrings(ADest), AKind, ASeparator);
-end;
-
-procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL);
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  for vInt := 0 to Pred(FParams.Count) do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind = AKind then
-      ADest.Add(vParam.ParamName + ASeparator + vParam.AsString);
-  end;
-end;
-
-function TRALParams.AssignParamsListText(AKind: TRALParamKind;
-  const ANameSeparator: StringRAL): StringRAL;
-begin
-  Result := AssignParamsText(AKind, ANameSeparator, HTTPLineBreak);
-end;
-
-function TRALParams.AssignParamsText(AKind: TRALParamKind; const ANameSeparator: StringRAL;
-  const ALineSeparator: StringRAL): StringRAL;
-var
-  vInt: integer;
-  vParam: TRALParam;
-begin
-  Result := '';
-  for vInt := 0 to Pred(Count) do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind = AKind then
-    begin
-      if Result <> '' then
-        Result := Result + ALineSeparator;
-      Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString;
+      until vInt = 0;
     end;
   end;
 
-  Result := TrimRight(Result);
-end;
+  procedure TRALParams.AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
+  var
+    vInt: IntegerRAL;
+  begin
+    vInt := Pos('?', AUrlQuery);
+    if vInt > 0 then
+      System.Delete(AUrlQuery, 1, vInt);
 
-function TRALParams.AssignParamsUrl(AKind: TRALParamKind): StringRAL;
-begin
-  Result := AssignParamsText(AKind);
-end;
+    AppendParamsText(AUrlQuery, AKind);
+  end;
 
-function TRALParams.AsString: StringRAL;
-var
-  I: IntegerRAL;
-begin
-  Result := '';
-  if (FParams <> nil) and (FParams.Count > 0) then
-    for I := 0 to Pred(FParams.Count) do
+  procedure TRALParams.AssignParams(ADest: TStringList; AKind: TRALParamKind;
+    ASeparator: StringRAL);
+  begin
+    AssignParams(TStrings(ADest), AKind, ASeparator);
+  end;
+
+  procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
+    ASeparator: StringRAL);
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    for vInt := 0 to Pred(FParams.Count) do
     begin
-      Result := Result + TRALParam(FParams.Items[I]).AsString;
-      if FParams.Count > 0 then
-        Result := Result + ', ';
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind = AKind then
+        ADest.Add(vParam.ParamName + ASeparator + vParam.AsString);
     end;
-end;
-
-function TRALParams.DecodeBody(ASource: TStream; const AContentType, AContentDisposition : StringRAL): TStream;
-var
-  vParam: TRALParam;
-  vDecoder: TRALMultipartDecoder;
-  vTemp: TStream;
-begin
-  Result := nil;
-  if ASource = nil then
-    Exit;
-
-  ASource.Position := 0;
-
-  Result := TMemoryStream.Create;
-  Result.CopyFrom(ASource, ASource.Size);
-
-  if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
-  begin
-    vTemp := Decrypt(Result);
-    FreeAndNil(Result);
-    Result := vTemp;
   end;
 
-  if FCompressType <> ctNone then
+  function TRALParams.AssignParamsListText(AKind: TRALParamKind;
+    const ANameSeparator: StringRAL): StringRAL;
   begin
-    vTemp := Decompress(Result);
-    FreeAndNil(Result);
-    Result := vTemp;
+    Result := AssignParamsText(AKind, ANameSeparator, HTTPLineBreak);
   end;
 
-  if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+  function TRALParams.AssignParamsText(AKind: TRALParamKind;
+    const ANameSeparator: StringRAL; const ALineSeparator: StringRAL): StringRAL;
+  var
+    vInt: Integer;
+    vParam: TRALParam;
   begin
-    vDecoder := TRALMultipartDecoder.Create;
-    try
-      vDecoder.ContentType := AContentType;
-      vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-      vDecoder.ProcessMultiPart(Result);
-    finally
-      FreeAndNil(vDecoder);
-    end;
-  end
-  else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
-  begin
-    DecodeFields(StreamToString(Result));
-  end
-  else
-  begin
-    vParam := NewParam;
-    vParam.ParamName := 'ral_body';
-    vParam.FileName := '';
-    vParam.ContentDisposition := AContentDisposition;
-    vParam.AsStream := Result;
-    vParam.ContentType := AContentType;
-    vParam.Kind := rpkBODY;
-  end;
-end;
-
-function TRALParams.DecodeBody(const ASource, AContentType, AContentDisposition: StringRAL): TStream;
-var
-  vStream: TStream;
-begin
-  Result := nil;
-  if ASource = '' then
-    Exit;
-
-  vStream := StringToStream(ASource);
-  try
-    Result := DecodeBody(vStream, AContentType, AContentDisposition);
-  finally
-    FreeAndNil(vStream);
-  end;
-end;
-
-function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
-var
-  vMultPart: TRALMultipartEncoder;
-  vInt1, vInt2: integer;
-  vItem: TRALParam;
-  vString, vValor: StringRAL;
-  vTemp: TStream;
-begin
-  Result := nil;
-
-  vInt1 := Count(rpkBODY);
-  vInt2 := Count(rpkFIELD);
-
-  AContentDisposition := '';
-
-  if vInt1 + vInt2 = 1 then
-  begin
-    if vInt1 > 0 then
-      vItem := IndexKind[0, rpkBODY]
-    else
-      vItem := IndexKind[0, rpkFIELD];
-
-    vItem.ContentDispositionInline := FContentDispositionInline;
-
-    Result := vItem.SaveToStream;
-
-    AContentType := vItem.ContentType;
-    AContentDisposition := vItem.ContentDisposition;
-  end
-  else if (vInt2 > 0) and (vInt1 = 0) then
-  begin
-    vString := '';
-    for vInt1 := 0 to Pred(Count) do
+    Result := '';
+    for vInt := 0 to Pred(Count) do
     begin
-      vItem := Index[vInt1];
-      if vItem.Kind in [rpkFIELD] then
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind = AKind then
       begin
-        if vString <> '' then
-          vString := vString + '&';
-
-        vValor := vItem.ParamName + '=' + vItem.AsString;
-        vValor := StringReplace(vValor, '&', '%26', [rfReplaceAll]);
-        vValor := StringReplace(vValor, '&amp;', '%26', [rfReplaceAll]);
-
-        vString := vString + vValor;
+        if Result <> '' then
+          Result := Result + ALineSeparator;
+        Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString;
       end;
     end;
-    Result := TStringStream.Create(vString);
-    Result.Position := 0;
 
-    AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
-  end
-  else if vInt1 + vInt2 > 1 then
+    Result := TrimRight(Result);
+  end;
+
+  function TRALParams.AssignParamsUrl(AKind: TRALParamKind): StringRAL;
   begin
-    vMultPart := TRALMultipartEncoder.Create;
+    Result := AssignParamsText(AKind);
+  end;
+
+  function TRALParams.AsString: StringRAL;
+  var
+    I: IntegerRAL;
+  begin
+    Result := '';
+    if (FParams <> nil) and (FParams.Count > 0) then
+      for I := 0 to Pred(FParams.Count) do
+      begin
+        Result := Result + TRALParam(FParams.Items[I]).AsString;
+        if FParams.Count > 0 then
+          Result := Result + ', ';
+      end;
+  end;
+
+  function TRALParams.DecodeBody(ASource: TStream;
+    const AContentType, AContentDisposition: StringRAL): TStream;
+  var
+    vParam: TRALParam;
+    vDecoder: TRALMultipartDecoder;
+    vTemp: TStream;
+  begin
+    Result := nil;
+    if ASource = nil then
+      Exit;
+
+    ASource.Position := 0;
+
+    Result := TMemoryStream.Create;
+    Result.CopyFrom(ASource, ASource.Size);
+
+    if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
+    begin
+      vTemp := Decrypt(Result);
+      FreeAndNil(Result);
+      Result := vTemp;
+    end;
+
+    if FCompressType <> ctNone then
+    begin
+      vTemp := Decompress(Result);
+      FreeAndNil(Result);
+      Result := vTemp;
+    end;
+
+    if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+    begin
+      vDecoder := TRALMultipartDecoder.Create;
+      try
+        vDecoder.ContentType := AContentType;
+        vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
+        vDecoder.ProcessMultiPart(Result);
+      finally
+        FreeAndNil(vDecoder);
+      end;
+    end
+    else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
+    begin
+      DecodeFields(StreamToString(Result));
+    end
+    else
+    begin
+      vParam := NewParam;
+      vParam.ParamName := 'ral_body';
+      vParam.FileName := '';
+      vParam.ContentDisposition := AContentDisposition;
+      vParam.AsStream := Result;
+      vParam.ContentType := AContentType;
+      vParam.Kind := rpkBODY;
+    end;
+  end;
+
+  function TRALParams.DecodeBody(const ASource, AContentType, AContentDisposition
+    : StringRAL): TStream;
+  var
+    vStream: TStream;
+  begin
+    Result := nil;
+    if ASource = '' then
+      Exit;
+
+    vStream := StringToStream(ASource);
     try
+      Result := DecodeBody(vStream, AContentType, AContentDisposition);
+    finally
+      FreeAndNil(vStream);
+    end;
+  end;
+
+  function TRALParams.EncodeBody(var AContentType, AContentDisposition
+    : StringRAL): TStream;
+  var
+    vMultPart: TRALMultipartEncoder;
+    vInt1, vInt2: Integer;
+    vItem: TRALParam;
+    vString, vValor: StringRAL;
+    vTemp: TStream;
+  begin
+    Result := nil;
+
+    vInt1 := Count(rpkBODY);
+    vInt2 := Count(rpkFIELD);
+
+    AContentDisposition := '';
+
+    if vInt1 + vInt2 = 1 then
+    begin
+      if vInt1 > 0 then
+        vItem := IndexKind[0, rpkBODY]
+      else
+        vItem := IndexKind[0, rpkFIELD];
+
+      vItem.ContentDispositionInline := FContentDispositionInline;
+
+      Result := vItem.SaveToStream;
+
+      AContentType := vItem.ContentType;
+      AContentDisposition := vItem.ContentDisposition;
+    end
+    else if (vInt2 > 0) and (vInt1 = 0) then
+    begin
+      vString := '';
       for vInt1 := 0 to Pred(Count) do
       begin
         vItem := Index[vInt1];
-        if vItem.Kind in [rpkBODY, rpkFIELD] then
+        if vItem.Kind in [rpkFIELD] then
         begin
-          vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
-            Index[vInt1].FileName, Index[vInt1].ContentType);
+          if vString <> '' then
+            vString := vString + '&';
+
+          vValor := vItem.ParamName + '=' + vItem.AsString;
+          vValor := StringReplace(vValor, '&', '%26', [rfReplaceAll]);
+          vValor := StringReplace(vValor, '&amp;', '%26', [rfReplaceAll]);
+
+          vString := vString + vValor;
         end;
       end;
-      Result := vMultPart.AsStream;
-      AContentType := vMultPart.ContentType;
-    finally
-      FreeAndNil(vMultPart);
-    end;
-  end;
+      Result := TStringStream.Create(vString);
+      Result.Position := 0;
 
-  if (FCompressType <> ctNone) and (Result <> nil) then
-  begin
-    vTemp := Compress(Result);
-    FreeAndNil(Result);
-    Result := vTemp;
-  end;
-
-  if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
-     (Result <> nil) then
-  begin
-    vTemp := Encrypt(Result);
-    FreeAndNil(Result);
-    Result := vTemp;
-  end;
-end;
-
-function TRALParams.URLEncodedToList(ASource: StringRAL): TStringList;
-begin
-  Result := TStringList.Create;
-  if Trim(ASource) = '' then
-    Exit;
-
-  ASource := StringReplace(ASource, '&amp;', '%26', [rfReplaceAll]);
-  ASource := StringReplace(ASource, '&', HTTPLineBreak, [rfReplaceAll]);
-  Result.Text := ASource;
-end;
-
-procedure TRALParams.DecodeFields(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
-var
-  vStringList: TStringList;
-begin
-  vStringList := URLEncodedToList(ASource);
-  try
-    AppendParams(vStringList, AKind);
-  finally
-    FreeAndNil(vStringList);
-  end;
-end;
-
-function TRALParams.Count: IntegerRAL;
-begin
-  Result := FParams.Count;
-end;
-
-function TRALParams.Count(AKind: TRALParamKind): IntegerRAL;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  Result := 0;
-  for vInt := 0 to Pred(FParams.Count) do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind = AKind then
-      Result := Result + 1;
-  end;
-end;
-
-function TRALParams.Count(AKinds: TRALParamKinds): IntegerRAL;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  Result := 0;
-  for vInt := 0 to Pred(FParams.Count) do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind in AKinds then
-      Result := Result + 1;
-  end;
-end;
-
-constructor TRALParams.Create;
-begin
-  inherited;
-  FParams := TList.Create;
-  FCriptoOptions := TRALCriptoOptions.Create;
-
-  FCompressType := ctGZip;
-  FNextParam := 0;
-end;
-
-destructor TRALParams.Destroy;
-begin
-  ClearParams;
-  FreeAndNil(FParams);
-  FreeAndNil(FCriptoOptions);
-  inherited;
-end;
-
-function TRALParams.GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  Result := nil;
-
-  for vInt := 0 to FParams.Count - 1 do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if (SameText(vParam.ParamName, AName)) and (vParam.Kind = AKind) then
-    begin
-      Result := vParam;
-      Break;
-    end;
-  end;
-end;
-
-function TRALParams.GetParam(AIndex: IntegerRAL;
-  AKind: TRALParamKind): TRALParam;
-var
-  vInt, vIdxParam : IntegerRAL;
-  vParam: TRALParam;
-begin
-  Result := nil;
-  vIdxParam := 0;
-
-  for vInt := 0 to FParams.Count - 1 do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if (vParam.Kind = AKind) and (vIdxParam = AIndex) then
-    begin
-      Result := vParam;
-      Break;
+      AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
     end
-    else if (vParam.Kind = AKind) then
+    else if vInt1 + vInt2 > 1 then
     begin
-      vIdxParam := vIdxParam + 1;
-    end;
-  end;
-end;
-
-function TRALParams.GetBody: TList;
-var
-  I: IntegerRAL;
-begin
-  Result := TList.Create;
-  for I := 0 to Pred(FParams.Count) do
-    if TRALParam(FParams.Items[I]).Kind = rpkBODY then
-      Result.Add(TRALParam(FParams.Items[I]));
-end;
-
-function TRALParams.GetParam(AIndex: IntegerRAL): TRALParam;
-begin
-  Result := nil;
-  if (AIndex >= 0) and (AIndex < FParams.Count) then
-    Result := TRALParam(FParams.Items[AIndex]);
-end;
-
-function TRALParams.GetParam(AName: StringRAL): TRALParam;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  Result := nil;
-
-  for vInt := 0 to FParams.Count - 1 do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) then
-    begin
-      Result := vParam;
-      Break;
-    end;
-  end;
-end;
-
-function TRALParams.NewParam: TRALParam;
-begin
-  Result := TRALParam.Create;
-  Result.Kind := rpkNONE;
-  FParams.Add(Result);
-end;
-
-function TRALParams.NextParamStr: StringRAL;
-begin
-  FNextParam := FNextParam + 1;
-  Result := 'ral_param' + IntToStr(FNextParam);
-end;
-
-function TRALParams.FindNameSeparator(const ASource: StringRAL): StringRAL;
-var
-  vPos, vMin: IntegerRAL;
-begin
-  vMin := Length(ASource);
-  vPos := Pos('=', ASource);
-  if (vPos > 0) and (vPos < vMin) then
-    Result := '=';
-
-  vPos := Pos(': ', ASource);
-  if (vPos > 0) and (vPos < vMin) then
-    Result := ': ';
-end;
-
-procedure TRALParams.AppendParamLine(const ALine, ANameSeparator: StringRAL;
-  AKind: TRALParamKind);
-var
-  vPos: IntegerRAL;
-  vName, vValue: StringRAL;
-  vParam: TRALParam;
-begin
-  if ALine = '' then
-    Exit;
-
-  vPos := Pos(ANameSeparator, ALine);
-  if vPos > 0 then
-  begin
-    vName := Copy(ALine, POSINISTR, vPos - 1);
-    vName := TRALHTTPCoder.DecodeURL(vName);
-
-    vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
-    vValue := TRALHTTPCoder.DecodeURL(vValue);
-
-    vParam := GetKind[vName, AKind];
-    if vParam = nil then
-      vParam := NewParam;
-    vParam.ParamName := vName;
-    vParam.AsString := vValue;
-    vParam.ContentType := rctTEXTPLAIN;
-    vParam.Kind := AKind;
-  end;
-end;
-
-function TRALParams.NextParamInt: IntegerRAL;
-begin
-  FNextParam := FNextParam + 1;
-  Result := FNextParam;
-end;
-
-procedure TRALParams.OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
-  var AFreeData: boolean);
-var
-  vParam: TRALParam;
-begin
-  vParam := NewParam;
-  if AFormData.Name = '' then
-    vParam.ParamName := 'ral_body' + IntToStr(NextParamInt)
-  else
-    vParam.ParamName := AFormData.Name;
-
-  vParam.AsStream := AFormData.AsStream;
-  vParam.FileName := AFormData.FileName;
-
-  if AFormData.ContentType = '' then
-    vParam.ContentType := AFormData.ContentType
-  else
-    vParam.ContentType := rctTEXTPLAIN;
-
-  vParam.Kind := rpkBODY;
-
-  AFreeData := True;
-end;
-
-function TRALParams.Compress(AStream: TStream): TStream;
-var
-  vCompress: TRALCompress;
-  vClass: TRALCompressClass;
-begin
-  Result := nil;
-
-  vClass := TRALCompress.GetCompressClass(FCompressType);
-  if vClass <> nil then
-  begin
-    vCompress := vClass.Create;
-    try
-      vCompress.Format := FCompressType;
-      Result := vCompress.Compress(AStream);
-    finally
-      vCompress.Free;
-    end;
-  end;
-end;
-
-function TRALParams.Encrypt(AStream: TStream): TStream;
-var
-  vCript: TRALCripto;
-begin
-  Result := nil;
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
-    end;
-  end;
-
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.EncryptAsStream(AStream);
-  finally
-    FreeAndNil(vCript);
-  end;
-end;
-
-function TRALParams.Decompress(AStream: TStream): TStream;
-var
-  vCompress: TRALCompress;
-  vClass: TRALCompressClass;
-begin
-  Result := nil;
-
-  vClass := TRALCompress.GetCompressClass(FCompressType);
-  if vClass <> nil then
-  begin
-    vCompress := vClass.Create;
-    try
-      vCompress.Format := FCompressType;
-      Result := vCompress.Decompress(AStream);
-    finally
-      vCompress.Free;
-    end;
-  end;
-end;
-
-function TRALParams.Decompress(const ASource: StringRAL): StringRAL;
-var
-  vStream, vResult: TStream;
-begin
-  Result := '';
-  if Result <> '' then
-  begin
-    vStream := StringToStream(ASource);
-    try
-      vStream.Position := 0;
-      vResult := Decompress(vStream);
+      vMultPart := TRALMultipartEncoder.Create;
       try
-        Result := StreamToString(vResult);
+        for vInt1 := 0 to Pred(Count) do
+        begin
+          vItem := Index[vInt1];
+          if vItem.Kind in [rpkBODY, rpkFIELD] then
+          begin
+            vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
+              Index[vInt1].FileName, Index[vInt1].ContentType);
+          end;
+        end;
+        Result := vMultPart.AsStream;
+        AContentType := vMultPart.ContentType;
       finally
-        vResult.Free;
+        FreeAndNil(vMultPart);
       end;
+    end;
+
+    if (FCompressType <> ctNone) and (Result <> nil) then
+    begin
+      vTemp := Compress(Result);
+      FreeAndNil(Result);
+      Result := vTemp;
+    end;
+
+    if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
+      (Result <> nil) then
+    begin
+      vTemp := Encrypt(Result);
+      FreeAndNil(Result);
+      Result := vTemp;
+    end;
+  end;
+
+  function TRALParams.URLEncodedToList(ASource: StringRAL): TStringList;
+  begin
+    Result := TStringList.Create;
+    if Trim(ASource) = '' then
+      Exit;
+
+    ASource := StringReplace(ASource, '&amp;', '%26', [rfReplaceAll]);
+    ASource := StringReplace(ASource, '&', HTTPLineBreak, [rfReplaceAll]);
+    Result.Text := ASource;
+  end;
+
+  procedure TRALParams.DecodeFields(const ASource: StringRAL;
+    AKind: TRALParamKind = rpkFIELD);
+  var
+    vStringList: TStringList;
+  begin
+    vStringList := URLEncodedToList(ASource);
+    try
+      AppendParams(vStringList, AKind);
     finally
-      vStream.Free;
-    end;
-  end;
-end;
-
-function TRALParams.Decrypt(AStream: TStream): TStream;
-var
-  vCript: TRALCripto;
-begin
-  Result := nil;
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
+      FreeAndNil(vStringList);
     end;
   end;
 
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.DecryptAsStream(AStream);
-  finally
-    FreeAndNil(vCript);
-  end;
-end;
-
-function TRALParams.Decrypt(const ASource: StringRAL): StringRAL;
-var
-  vCript: TRALCripto;
-begin
-  Result := '';
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
-    end;
-  end;
-
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.Decrypt(ASource);
-  finally
-    FreeAndNil(vCript);
-  end;
-end;
-
-procedure TRALParams.DelParam(const AName: StringRAL; AKind: TRALParamKind);
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  for vInt := Pred(FParams.Count) downto 0 do
+  function TRALParams.Count: IntegerRAL;
   begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) and (vParam.Kind = AKind) then
-    begin
-      vParam.Free;
-      FParams.Delete(vInt);
-    end;
+    Result := FParams.Count;
   end;
-end;
 
-procedure TRALParams.DelParam(const AName: StringRAL);
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  for vInt := Pred(FParams.Count) downto 0 do
+  function TRALParams.Count(AKind: TRALParamKind): IntegerRAL;
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
   begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) then
+    Result := 0;
+    for vInt := 0 to Pred(FParams.Count) do
     begin
-      vParam.Free;
-      FParams.Delete(vInt);
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind = AKind then
+        Result := Result + 1;
     end;
   end;
-end;
+
+  function TRALParams.Count(AKinds: TRALParamKinds): IntegerRAL;
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    Result := 0;
+    for vInt := 0 to Pred(FParams.Count) do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind in AKinds then
+        Result := Result + 1;
+    end;
+  end;
+
+  constructor TRALParams.Create;
+  begin
+    inherited;
+    FParams := TList.Create;
+    FCriptoOptions := TRALCriptoOptions.Create;
+
+    FCompressType := ctGZip;
+    FNextParam := 0;
+  end;
+
+  destructor TRALParams.Destroy;
+  begin
+    ClearParams;
+    FreeAndNil(FParams);
+    FreeAndNil(FCriptoOptions);
+    inherited;
+  end;
+
+  function TRALParams.GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam;
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    Result := nil;
+
+    for vInt := 0 to FParams.Count - 1 do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if (SameText(vParam.ParamName, AName)) and (vParam.Kind = AKind) then
+      begin
+        Result := vParam;
+        Break;
+      end;
+    end;
+  end;
+
+  function TRALParams.GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam;
+  var
+    vInt, vIdxParam: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    Result := nil;
+    vIdxParam := 0;
+
+    for vInt := 0 to FParams.Count - 1 do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if (vParam.Kind = AKind) and (vIdxParam = AIndex) then
+      begin
+        Result := vParam;
+        Break;
+      end
+      else if (vParam.Kind = AKind) then
+      begin
+        vIdxParam := vIdxParam + 1;
+      end;
+    end;
+  end;
+
+  function TRALParams.GetBody: TList;
+  var
+    I: IntegerRAL;
+  begin
+    Result := TList.Create;
+    for I := 0 to Pred(FParams.Count) do
+      if TRALParam(FParams.Items[I]).Kind = rpkBODY then
+        Result.Add(TRALParam(FParams.Items[I]));
+  end;
+
+  function TRALParams.GetParam(AIndex: IntegerRAL): TRALParam;
+  begin
+    Result := nil;
+    if (AIndex >= 0) and (AIndex < FParams.Count) then
+      Result := TRALParam(FParams.Items[AIndex]);
+  end;
+
+  function TRALParams.GetParam(AName: StringRAL): TRALParam;
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    Result := nil;
+
+    for vInt := 0 to FParams.Count - 1 do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if SameText(vParam.ParamName, AName) then
+      begin
+        Result := vParam;
+        Break;
+      end;
+    end;
+  end;
+
+  function TRALParams.NewParam: TRALParam;
+  begin
+    Result := TRALParam.Create;
+    Result.Kind := rpkNONE;
+    FParams.Add(Result);
+  end;
+
+  function TRALParams.NextParamStr: StringRAL;
+  begin
+    FNextParam := FNextParam + 1;
+    Result := 'ral_param' + IntToStr(FNextParam);
+  end;
+
+  function TRALParams.FindNameSeparator(const ASource: StringRAL): StringRAL;
+  var
+    vPos, vMin: IntegerRAL;
+  begin
+    vMin := Length(ASource);
+    vPos := Pos('=', ASource);
+    if (vPos > 0) and (vPos < vMin) then
+      Result := '=';
+
+    vPos := Pos(': ', ASource);
+    if (vPos > 0) and (vPos < vMin) then
+      Result := ': ';
+  end;
+
+  procedure TRALParams.AppendParamLine(const ALine, ANameSeparator: StringRAL;
+    AKind: TRALParamKind);
+  var
+    vPos: IntegerRAL;
+    vName, vValue: StringRAL;
+    vParam: TRALParam;
+  begin
+    if ALine = '' then
+      Exit;
+
+    vPos := Pos(ANameSeparator, ALine);
+    if vPos > 0 then
+    begin
+      vName := Copy(ALine, POSINISTR, vPos - 1);
+      vName := TRALHTTPCoder.DecodeURL(vName);
+
+      vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
+      vValue := TRALHTTPCoder.DecodeURL(vValue);
+
+      vParam := GetKind[vName, AKind];
+      if vParam = nil then
+        vParam := NewParam;
+      vParam.ParamName := vName;
+      vParam.AsString := vValue;
+      vParam.ContentType := rctTEXTPLAIN;
+      vParam.Kind := AKind;
+    end;
+  end;
+
+  function TRALParams.NextParamInt: IntegerRAL;
+  begin
+    FNextParam := FNextParam + 1;
+    Result := FNextParam;
+  end;
+
+  procedure TRALParams.OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
+    var AFreeData: Boolean);
+  var
+    vParam: TRALParam;
+  begin
+    vParam := NewParam;
+    if AFormData.Name = '' then
+      vParam.ParamName := 'ral_body' + IntToStr(NextParamInt)
+    else
+      vParam.ParamName := AFormData.Name;
+
+    vParam.AsStream := AFormData.AsStream;
+    vParam.FileName := AFormData.FileName;
+
+    if AFormData.ContentType = '' then
+      vParam.ContentType := AFormData.ContentType
+    else
+      vParam.ContentType := rctTEXTPLAIN;
+
+    vParam.Kind := rpkBODY;
+
+    AFreeData := True;
+  end;
+
+  function TRALParams.Compress(AStream: TStream): TStream;
+  var
+    vCompress: TRALCompress;
+    vClass: TRALCompressClass;
+  begin
+    Result := nil;
+
+    vClass := TRALCompress.GetCompressClass(FCompressType);
+    if vClass <> nil then
+    begin
+      vCompress := vClass.Create;
+      try
+        vCompress.Format := FCompressType;
+        Result := vCompress.Compress(AStream);
+      finally
+        vCompress.Free;
+      end;
+    end;
+  end;
+
+  function TRALParams.Encrypt(AStream: TStream): TStream;
+  var
+    vCript: TRALCripto;
+  begin
+    Result := nil;
+    case FCriptoOptions.CriptType of
+      crAES128:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES128;
+        end;
+      crAES192:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES192;
+        end;
+      crAES256:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES256;
+        end;
+    end;
+
+    try
+      vCript.Key := FCriptoOptions.Key;
+      Result := vCript.EncryptAsStream(AStream);
+    finally
+      FreeAndNil(vCript);
+    end;
+  end;
+
+  function TRALParams.Decompress(AStream: TStream): TStream;
+  var
+    vCompress: TRALCompress;
+    vClass: TRALCompressClass;
+  begin
+    Result := nil;
+
+    vClass := TRALCompress.GetCompressClass(FCompressType);
+    if vClass <> nil then
+    begin
+      vCompress := vClass.Create;
+      try
+        vCompress.Format := FCompressType;
+        Result := vCompress.Decompress(AStream);
+      finally
+        vCompress.Free;
+      end;
+    end;
+  end;
+
+  function TRALParams.Decompress(const ASource: StringRAL): StringRAL;
+  var
+    vStream, vResult: TStream;
+  begin
+    Result := '';
+    if Result <> '' then
+    begin
+      vStream := StringToStream(ASource);
+      try
+        vStream.Position := 0;
+        vResult := Decompress(vStream);
+        try
+          Result := StreamToString(vResult);
+        finally
+          vResult.Free;
+        end;
+      finally
+        vStream.Free;
+      end;
+    end;
+  end;
+
+  function TRALParams.Decrypt(AStream: TStream): TStream;
+  var
+    vCript: TRALCripto;
+  begin
+    Result := nil;
+    case FCriptoOptions.CriptType of
+      crAES128:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES128;
+        end;
+      crAES192:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES192;
+        end;
+      crAES256:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES256;
+        end;
+    end;
+
+    try
+      vCript.Key := FCriptoOptions.Key;
+      Result := vCript.DecryptAsStream(AStream);
+    finally
+      FreeAndNil(vCript);
+    end;
+  end;
+
+  function TRALParams.Decrypt(const ASource: StringRAL): StringRAL;
+  var
+    vCript: TRALCripto;
+  begin
+    Result := '';
+    case FCriptoOptions.CriptType of
+      crAES128:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES128;
+        end;
+      crAES192:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES192;
+        end;
+      crAES256:
+        begin
+          vCript := TRALCriptoAES.Create;
+          TRALCriptoAES(vCript).AESType := tAES256;
+        end;
+    end;
+
+    try
+      vCript.Key := FCriptoOptions.Key;
+      Result := vCript.Decrypt(ASource);
+    finally
+      FreeAndNil(vCript);
+    end;
+  end;
+
+  procedure TRALParams.DelParam(const AName: StringRAL; AKind: TRALParamKind);
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    for vInt := Pred(FParams.Count) downto 0 do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if SameText(vParam.ParamName, AName) and (vParam.Kind = AKind) then
+      begin
+        vParam.Free;
+        FParams.Delete(vInt);
+      end;
+    end;
+  end;
+
+  procedure TRALParams.DelParam(const AName: StringRAL);
+  var
+    vInt: IntegerRAL;
+    vParam: TRALParam;
+  begin
+    for vInt := Pred(FParams.Count) downto 0 do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if SameText(vParam.ParamName, AName) then
+      begin
+        vParam.Free;
+        FParams.Delete(vInt);
+      end;
+    end;
+  end;
 
 end.

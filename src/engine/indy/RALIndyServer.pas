@@ -1,3 +1,4 @@
+/// Base unit for RALServer component using Indy Engine
 unit RALIndyServer;
 
 interface
@@ -37,18 +38,19 @@ type
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure SetActive(const AValue: Boolean); override;
-    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
-    procedure SetPort(const AValue: IntegerRAL); override;
     function IPv6IsImplemented: Boolean; override;
     function GetSSL: TRALIndySSL;
+    procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
+    procedure SetActive(const AValue: Boolean); override;
+    procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALIndySSL);
+
     procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
     procedure OnParseAuthentication(AContext: TIdContext;
       const AAuthType, AAuthData: String; var VUsername, VPassword: String;
       var VHandled: Boolean);
-    procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -123,7 +125,7 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
-      ClientInfo.Porta := AContext.Binding.PeerPort;
+      ClientInfo.Port := AContext.Binding.PeerPort;
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 

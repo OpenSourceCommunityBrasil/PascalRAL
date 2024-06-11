@@ -1,3 +1,4 @@
+/// Base unit for RALClients using Indy engine
 unit RALIndyClient;
 
 interface
@@ -21,7 +22,7 @@ type
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); override;
+                      AMethod: TRALMethod); override;
   end;
 
   { TRALIndyClientMT }
@@ -41,7 +42,6 @@ type
     function CreateClient: TRALClientHTTP; override;
   public
     constructor Create(AOwner: TComponent); override;
-
     function Clone(AOwner: TComponent = nil): TRALClient; override;
   end;
 

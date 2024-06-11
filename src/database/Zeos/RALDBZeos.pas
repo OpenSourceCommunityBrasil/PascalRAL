@@ -1,3 +1,4 @@
+/// Unit for Zeos wrapper components
 unit RALDBZeos;
 
 {$IFNDEF FPC}
@@ -17,37 +18,37 @@ type
 
   TRALDBZeos = class(TRALDBBase)
   private
-    FConnector : TZConnection;
+    FConnector: TZConnection;
   protected
     procedure Conectar; override;
-    function FindProtocol : StringRAL;
+    function FindProtocol: StringRAL;
   public
     constructor Create; override;
     destructor Destroy; override;
 
-    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
-    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
-    procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                      var ALastInsertId : Int64RAL); override;
+    function CanExportNative: boolean; override;
+    procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                      var ALastInsertId: Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
-                           var ANative : boolean); override;
-    function CanExportNative : boolean; override;
+                           var ANative: boolean); override;
   end;
 
   { TRALDBZeosLink }
 
   TRALDBZeosLink = class(TRALDBLink)
   public
-    function GetDBClass : TRALDBClass; override;
+    function GetDBClass: TRALDBClass; override;
   end;
 
 implementation
 
 { TRALDBZeosLink }
 
-function TRALDBZeosLink.GetDBClass : TRALDBClass;
+function TRALDBZeosLink.GetDBClass: TRALDBClass;
 begin
   Result := TRALDBZeos;
 end;
@@ -70,7 +71,7 @@ begin
   FConnector.Connect;
 end;
 
-function TRALDBZeos.FindProtocol : StringRAL;
+function TRALDBZeos.FindProtocol: StringRAL;
 begin
   case DatabaseType of
     dtFirebird   : Result := 'firebird';
@@ -96,10 +97,10 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBZeos.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;
+function TRALDBZeos.OpenNative(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery : TZReadOnlyQuery;
-  vInt : integer;
+  vQuery: TZReadOnlyQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -126,8 +127,8 @@ procedure TRALDBZeos.SaveToStream(ADataset: TDataSet; AStream: TStream;
   type
     TSaveToStream = procedure (AStream: TStream) of object;
   var
-    vMethod : TMethod;
-    vProc : TSaveToStream;
+    vMethod: TMethod;
+    vProc: TSaveToStream;
 {$ENDIF}
 begin
   {$IFNDEF FPC}
@@ -159,8 +160,8 @@ end;
 
 function TRALDBZeos.OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
-  vQuery : TZReadOnlyQuery;
-  vInt : integer;
+  vQuery: TZReadOnlyQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -181,11 +182,11 @@ begin
   Result := vQuery;
 end;
 
-procedure TRALDBZeos.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                             var ALastInsertId : Int64RAL);
+procedure TRALDBZeos.ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                             var ALastInsertId: Int64RAL);
 var
-  vQuery : TZQuery;
-  vInt : integer;
+  vQuery: TZQuery;
+  vInt: integer;
 begin
   Conectar;
 

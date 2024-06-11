@@ -1,3 +1,4 @@
+/// Base unit for the module component that will enable DBWare on the server
 unit RALDBModule;
 
 interface
@@ -14,41 +15,37 @@ type
   TRALDBModule = class(TRALModuleRoutes)
   private
     FDatabase: StringRAL;
+    FDatabaseLink: TRALDBLink;
+    FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
-    FUsername: StringRAL;
     FPassword: StringRAL;
     FPort: IntegerRAL;
-
-    FDataBaseLink: TRALDBLink;
-    FDatabaseType: TRALDatabaseType;
     FStorageOutPut: TRALDBStorageLink;
+    FUsername: StringRAL;
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SetDataBaseLink(AValue: TRALDBLink);
-    procedure SetStorageOutPut(AValue: TRALDBStorageLink);
-
+    procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     function FindDatabaseDriver: TRALDBBase;
+    procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
                                   var AParams: TParams; var AType : TRALDBDriverType);
     procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
                                     var AParams: TParams; var AType : TRALDBDriverType);
-
-    procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SetDataBaseLink(AValue: TRALDBLink);
+    procedure SetStorageOutPut(AValue: TRALDBStorageLink);
   public
     constructor Create(AOwner: TComponent); override;
   published
     property Database: StringRAL read FDatabase write FDatabase;
+    property DatabaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
+    property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
-    property Username: StringRAL read FUsername write FUsername;
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
-
-    property DataBaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
-    property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property StorageOutPut: TRALDBStorageLink read FStorageOutPut write SetStorageOutPut;
+    property Username: StringRAL read FUsername write FUsername;
   end;
 
 implementation
@@ -113,7 +110,7 @@ end;
 procedure TRALDBModule.RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
                                            var AParams: TParams; var AType : TRALDBDriverType);
 var
-  vQryStruc : TRALQueryStructure;
+  vQryStruc: TRALQueryStructure;
 begin
   vQryStruc := TRALQueryStructure.Create;
   try
@@ -126,7 +123,7 @@ end;
 procedure TRALDBModule.RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
                                              var AParams: TParams; var AType : TRALDBDriverType);
 var
-  vQryStruc : TRALQueryStructure;
+  vQryStruc: TRALQueryStructure;
 begin
   vQryStruc := TRALQueryStructure.Create;
   try
@@ -140,7 +137,7 @@ procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
   vParam: TRALParam;
-  vType : TRALDBDriverType;
+  vType: TRALDBDriverType;
   vSQL: StringRAL;
   vParams: TParams;
   vQuery: TDataSet;
@@ -294,12 +291,12 @@ end;
 procedure TRALDBModule.GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vSQL : TStringList;
+  vSQL: TStringList;
   vSchema, vString : StringRAL;
-  vSystem : boolean;
-  vQuery : TDataSet;
-  vJSON : TRALJSONArray;
-  vjObj : TRALJSONObject;
+  vSystem: boolean;
+  vQuery: TDataSet;
+  vJSON: TRALJSONArray;
+  vjObj: TRALJSONObject;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -409,35 +406,35 @@ end;
 procedure TRALDBModule.GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
 type
   TInfoField = record
-    column_name : StringRAL;
-    schema_name : StringRAL;
-    column_datatype : IntegerRAL;
-    column_typename : StringRAL;
-    column_attributes : StringRAL;
-    column_precision : IntegerRAL;
-    column_scale : IntegerRAL;
-    column_length : IntegerRAL;
+    column_name: StringRAL;
+    schema_name: StringRAL;
+    column_datatype: IntegerRAL;
+    column_typename: StringRAL;
+    column_attributes: StringRAL;
+    column_precision: IntegerRAL;
+    column_scale: IntegerRAL;
+    column_length: IntegerRAL;
   end;
 var
   vDB: TRALDBBase;
-  vSQL : TStringList;
-  vSchema, vTable, vString : StringRAL;
-  vSystem : boolean;
-  vQuery : TDataSet;
-  vJSON : TRALJSONArray;
-  vjObj : TRALJSONObject;
-  vField : TInfoField;
+  vSQL: TStringList;
+  vSchema, vTable, vString: StringRAL;
+  vSystem: boolean;
+  vQuery: TDataSet;
+  vJSON: TRALJSONArray;
+  vjObj: TRALJSONObject;
+  vField: TInfoField;
 
-  procedure AddFieldAttribute(AAttribute : StringRAL);
+  procedure AddFieldAttribute(AAttribute: StringRAL);
   begin
     if vField.column_attributes <> '' then
       vField.column_attributes := vField.column_attributes + ',';
     vField.column_attributes := vField.column_attributes + AAttribute;
   end;
 
-  procedure AssignOthersDateTypeField(AType : StringRAL);
+  procedure AssignOthersDateTypeField(AType: StringRAL);
   var
-    vInt : IntegerRAL;
+    vInt: IntegerRAL;
   begin
     AType := LowerCase(AType);
     if (Pos('varchar', AType) > 0) or (Pos('char', AType) > 0) then
@@ -555,32 +552,32 @@ var
     vfbType : TRALFieldType;
   begin
     case vQuery.FieldByName('rdb$field_type').AsInteger of
-      007 : begin
+      007: begin
             vfbType := sftSmallInt;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
               vfbType := sftDouble;
       end;
-      008 : begin
+      008: begin
             vfbType := sftInteger;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
               vfbType := sftDouble;
       end;
-      009 : vfbType := sftInt64;
-      010 : vfbType := sftDouble;
-      011 : vfbType := sftDouble;
-      012 : vfbType := sftDateTime;
-      013 : vfbType := sftDateTime;
-      014 : vfbType := sftString;
-      016 : begin
+      009: vfbType := sftInt64;
+      010: vfbType := sftDouble;
+      011: vfbType := sftDouble;
+      012: vfbType := sftDateTime;
+      013: vfbType := sftDateTime;
+      014: vfbType := sftString;
+      016: begin
             vfbType := sftInt64;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
               vfbType := sftDouble;
       end;
-      027 : vfbType := sftDouble;
-      035 : vfbType := sftDateTime;
-      037 : vfbType := sftString;
-      040 : vfbType := sftString;
-      261 : begin
+      027: vfbType := sftDouble;
+      035: vfbType := sftDateTime;
+      037: vfbType := sftString;
+      040: vfbType := sftString;
+      261: begin
         vfbType := sftBlob;
         if vQuery.FieldByName('rdb$field_sub_type').AsInteger = 1 then
           vfbType := sftMemo;
@@ -596,7 +593,7 @@ var
     if vQuery.FieldByName('pk').AsInteger > 0 then
       AddFieldAttribute('pk');
 
-    if vQuery.FieldByName('rdb$field_type').AsInteger in [14,37,40] then
+    if vQuery.FieldByName('rdb$field_type').AsInteger in [14, 37, 40] then
     begin
       vField.column_length := vQuery.FieldByName('rdb$field_length').AsInteger;
       // field com charset e colation
@@ -604,7 +601,7 @@ var
          (vQuery.FieldByName('rdb$character_length').AsInteger < vField.column_length) then
         vField.column_length := vQuery.FieldByName('rdb$character_length').AsInteger;
     end
-    else if vQuery.FieldByName('rdb$field_type').AsInteger in [7,8,16,27] then
+    else if vQuery.FieldByName('rdb$field_type').AsInteger in [7, 8, 16, 27] then
     begin
       // numeric
       if vfbType = sftDouble then
@@ -622,8 +619,8 @@ var
 
   procedure AssignPostgresDateTypeField;
   var
-    vpgType : TRALFieldType;
-    vType, vTypMod : IntegerRAL;
+    vpgType: TRALFieldType;
+    vType, vTypMod: IntegerRAL;
   begin
     if vQuery.FieldByName('attnotnull').AsBoolean then
       AddFieldAttribute('nn');
@@ -683,7 +680,7 @@ begin
       vSQL := TStringList.Create;
       try
         case FDatabaseType of
-          dtFirebird : begin
+          dtFirebird: begin
             vSQL.Add('select f.rdb$field_type, f.rdb$field_sub_type, f.rdb$field_length,');
             vSQL.Add('       f.rdb$character_length, f.rdb$field_precision,');
             vSQL.Add('       f.rdb$field_scale, rf.rdb$field_name, rf.rdb$null_flag,');
@@ -704,13 +701,13 @@ begin
             vSQL.Add('where rf.rdb$relation_name = '+QuotedStr(UpperCase(vTable)));
             vSQL.Add('order by rf.rdb$field_position');
           end;
-          dtSQLite : begin
+          dtSQLite: begin
             vSQL.Add('pragma table_info('+vTable+')');
           end;
-          dtMySQL : begin
+          dtMySQL: begin
             vSQL.Add('show columns from '+vTable);
           end;
-          dtPostgreSQL : begin
+          dtPostgreSQL: begin
             vSQL.Add('select t.typbasetype, t.typtypmod, a.atttypid, a.atttypmod,');
             vSQL.Add('       a.attname, a.attnotnull, n.nspname,');
             vSQL.Add('       pg_get_expr(d.adbin, d.adrelid) as pg_default,');
@@ -765,11 +762,11 @@ begin
                 vField.column_length := 0;
 
                 case FDatabaseType of
-                  dtFirebird : begin
+                  dtFirebird: begin
                     vField.column_name := vQuery.FieldByName('rdb$field_name').AsString;
                     AssignFirebirdDateTypeField;
                   end;
-                  dtSQLite : begin
+                  dtSQLite: begin
                     vField.column_name := vQuery.Fields[1].AsString;
                     AssignOthersDateTypeField(vQuery.Fields[2].AsString);
                     if vQuery.Fields[3].AsInteger = 1 then
@@ -777,7 +774,7 @@ begin
                     if vQuery.Fields[5].AsInteger = 1 then
                       AddFieldAttribute('pk');
                   end;
-                  dtMySQL : begin
+                  dtMySQL: begin
                     vField.column_name := vQuery.Fields[0].AsString;
                     AssignOthersDateTypeField(vQuery.Fields[1].AsString);
                     if vQuery.Fields[2].AsString = 'NO' then
@@ -826,7 +823,7 @@ end;
 
 constructor TRALDBModule.Create(AOwner: TComponent);
 var
-  vRoute : TRALRoute;
+  vRoute: TRALRoute;
 begin
   inherited Create(AOwner);
   vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);

@@ -43,6 +43,7 @@ type
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse);
     /// Returns methods that this route will answer
     function GetAllowMethods: StringRAL;
+    function GetFullRoute: StringRAL;
     /// Returns internal name of the route
     function GetNamePath: string; override;
     /// Returns true or false wether the method is allowed in route
@@ -50,15 +51,12 @@ type
     /// Returns true or false wether the method is skipped in authentication
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
 
-    function GetFullRoute: StringRAL;
-
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
     property URIParams: TStrings read FURIParams write SetURIParams;
-
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
     property Description: TStrings read FDescription write SetDescription;
@@ -83,16 +81,16 @@ type
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
-    function CompareRoutes(ARoute : TRALRoute; AQuery: StringRAL;
+    function CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
                            var AWeight: IntegerRAL; AURI: TStringList): boolean;
     function GetRoute(const ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
-    function CanAnswerRoute(ARequest : TRALRequest) : TRALRoute;
+    function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
 
-    property Find[ARoute: StringRAL]: TRALRoute read GetRoute;
+    property Find[const ARoute: StringRAL]: TRALRoute read GetRoute;
   end;
 
 implementation
@@ -273,7 +271,7 @@ end;
 
 { RALRoutes }
 
-function TRALRoutes.CompareRoutes(ARoute : TRALRoute; AQuery: StringRAL;
+function TRALRoutes.CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
                                   var AWeight: IntegerRAL; AURI: TStringList): boolean;
 var
   vStrQuery1, vStrQuery2: TStringList;

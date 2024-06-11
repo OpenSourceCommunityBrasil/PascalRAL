@@ -1,3 +1,4 @@
+/// Unit that register RAL mORMot2 Engine components in the IDE
 unit RALSynopseRegister;
 
 interface

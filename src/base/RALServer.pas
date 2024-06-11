@@ -66,10 +66,10 @@ type
   /// Internal IP Configuration property of RALServer
   TRALIPConfig = class(TPersistent)
   private
-    FOwner: TRALServer;
     FIPv4Bind: StringRAL;
     FIPv6Bind: StringRAL;
     FIPv6Enabled: boolean;
+    FOwner: TRALServer;
   protected
     procedure SetIPv6Enabled(AValue: boolean);
   public
@@ -116,8 +116,8 @@ type
     FBruteForce: TRALBruteForceProtection;
     FFloodTimeInterval: IntegerRAL;
     FFloodList: TRALStringListSafe;
-    FWhiteIPList: TRALStringListSafe;
     FOptions: TRALSecurityOptions;
+    FWhiteIPList: TRALStringListSafe;
     /// Creates and returns the internal Blacklisted IPs
     function GetBlackIPList: TStringList;
     /// Creates and returns the internal Whitelisted IPs
@@ -126,8 +126,8 @@ type
     procedure SetBlackIPList(AValue: TStringList);
     procedure SetBruteForce(const Value: TRALBruteForceProtection);
     procedure SetFloodTimeInterval(const Value: IntegerRAL);
-    procedure SetWhiteIPList(AValue: TStringList);
     procedure SetOptions(const Value: TRALSecurityOptions);
+    procedure SetWhiteIPList(AValue: TStringList);
   public
     constructor Create;
     destructor Destroy; override;
@@ -136,20 +136,20 @@ type
     procedure BlockClient(const AClientIP: StringRAL);
     /// Verifies if the Client IP is blacklisted
     function CheckBlockClientIP(const AClientIP: StringRAL): boolean;
-    /// Verifies if the incomming IP is known for a DDoS attack
-    function CheckFlood(const AClientIP: StringRAL): boolean;
     /// Removes the IPs that are stored longer than the preconfigured duration
     procedure ClearExpiredIPs;
+    /// Verifies if the incomming IP is known for request flooding
+    function CheckFlood(const AClientIP: StringRAL): boolean;
     /// Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
-    /// Get a client block object from the list of blocked IPs
+    /// Gets a client block object from the list of blocked IPs
     function GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
-    /// Get a client object from the list of blocked IPs
+    /// Gets a client object from the list of blocked IPs
     function GetClientList(const AClientIP: StringRAL): TRALClientList;
-    /// Get the number tries of block of client, case client do not blocked
+    /// Gets the number of tries to block client, in case client is not blocked
     /// return zero
     function GetBlockClientTry(const AClientIP: StringRAL): integer;
-    /// Check if the number de tries of client exceed the established limit
+    /// Checks if the number de tries of client exceed the established limit
     function CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
   published
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
@@ -189,7 +189,7 @@ type
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
     procedure CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
-      ARequest: TRALRequest; AResponse: TRALResponse);
+                        ARequest: TRALRequest; AResponse: TRALResponse);
     /// Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
     /// Removes a fixed subroute used by other components
@@ -214,7 +214,7 @@ type
     destructor Destroy; override;
     /// Shortcut to create routes on the server
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
-      const ADescription: StringRAL = ''): TRALRoute;
+                         const ADescription: StringRAL = ''): TRALRoute;
     /// Core procedure of the server, every request will pass through here to be
     /// processed into response that will be answered to the client
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -272,7 +272,7 @@ type
     destructor Destroy; override;
 
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
-      const ADescription: StringRAL = ''): TRALRoute;
+                         const ADescription: StringRAL = ''): TRALRoute;
 
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
     function GetListRoutes: TList; virtual;

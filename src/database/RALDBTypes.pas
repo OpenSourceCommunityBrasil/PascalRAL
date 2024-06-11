@@ -1,3 +1,4 @@
+/// Base unit for database related type definitions
 unit RALDBTypes;
 
 {$IFDEF FPC}
@@ -28,16 +29,16 @@ type
                    sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
                    sftString, sftBlob, sftMemo, sftDateTime);
 
-  TRALDBOnError = procedure(Sender : TObject; AException : StringRAL) of object;
+  TRALDBOnError = procedure(Sender: TObject; AException: StringRAL) of object;
 
   { TRALDB }
 
   TRALDB = class
   public
-    class function FieldTypeToRALFieldType(AFieldType : TFieldType) : TRALFieldType;
-    class function RALFieldTypeToFieldType(AFieldType : TRALFieldType) : TFieldType;
-    class function FieldProviderFlags(AField : TField) : Byte;
-    class procedure ParseSQLParams(ASQL : StringRAL; AParams : TParams);
+    class function FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
+    class function RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
+    class function FieldProviderFlags(AField: TField): Byte;
+    class procedure ParseSQLParams(ASQL: StringRAL; AParams: TParams);
   end;
 
   { TRALDBUpdateSQL }
@@ -55,9 +56,9 @@ type
     constructor Create;
     destructor Destroy; override;
   published
-    property DeleteSQL : TStrings read FDeleteSQL write SetDeleteSQL;
-    property InsertSQL : TStrings read FInsertSQL write SetInsertSQL;
-    property UpdateSQL : TStrings read FUpdateSQL write SetUpdateSQL;
+    property DeleteSQL: TStrings read FDeleteSQL write SetDeleteSQL;
+    property InsertSQL: TStrings read FInsertSQL write SetInsertSQL;
+    property UpdateSQL: TStrings read FUpdateSQL write SetUpdateSQL;
   end;
 
 implementation

@@ -21,6 +21,7 @@ type
     FLogAES: TStringList;
     FWordKeys: array of Cardinal; // UInt32;
   protected
+    function CheckKey: boolean;
     /// Decrypt cipher
     procedure DecMixColumns(AInput, AOutput: PByte);
     procedure DecSubBytes(AInput, AOutput: PByte);
@@ -41,7 +42,6 @@ type
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
-    function CheckKey : boolean;
     function SubWord(AInt: Cardinal): Cardinal;
     function WordToBytes(AInt: Cardinal): TBytes;
   public
@@ -459,7 +459,7 @@ function TRALCriptoAES.CheckKey: boolean;
 begin
   if Length(FWordKeys) = 0 then begin
     Result := False;
-    raise Exception.Create('Key deve ser preenchida');
+    raise Exception.Create(emCryptEmptyKey);
   end
   else begin
     Result := True;

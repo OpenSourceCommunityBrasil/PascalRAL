@@ -26,13 +26,13 @@ type
   private
     FAcceptEncoding: StringRAL;
     FAcceptEncription: StringRAL;
+    FContentDisposition: StringRAL;
+    FContentDispositionInline: Boolean;
     FContentEncoding: StringRAL;
     FContentEncription: StringRAL;
     FContentType: StringRAL;
     FCriptoKey: StringRAL;
     FParams: TRALParams;
-    FContentDisposition: StringRAL;
-    FContentDispositionInline : Boolean;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -52,7 +52,7 @@ type
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddCookies(ACookies : StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
@@ -61,6 +61,7 @@ type
     /// Grabs the body of either the request or the response
     function Body: TRALParam;
     procedure Clear; virtual;
+    procedure Clone(ASource: TRALHTTPHeaderInfo);
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
     function GetCookie(const AName: StringRAL): StringRAL; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;
@@ -70,8 +71,6 @@ type
     function HasValidContentEncoding: boolean;
     /// Grabs the param either on request or response by its name
     function ParamByName(const AParamName: StringRAL): TRALParam;
-
-    procedure Clone(ASource : TRALHTTPHeaderInfo);
   published
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;

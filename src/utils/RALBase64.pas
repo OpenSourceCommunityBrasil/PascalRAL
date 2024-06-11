@@ -31,8 +31,8 @@ type
     class function FromBase64Url(const AValue: StringRAL): StringRAL;
     class function ToBase64Url(const AValue: StringRAL): StringRAL;
 
-    class function GetSizeEncode(ASize : Int64RAL) : Int64RAL;
-    class function GetSizeDecode(ASize : Int64RAL) : Int64RAL;
+    class function GetSizeEncode(ASize: Int64RAL): Int64RAL;
+    class function GetSizeDecode(ASize: Int64RAL): Int64RAL;
   end;
 
 implementation

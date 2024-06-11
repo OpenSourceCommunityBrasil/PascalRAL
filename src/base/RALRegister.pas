@@ -7,15 +7,15 @@ interface
 
 uses
   {$IFDEF FPC}
-  LResources, PropEdits, StringsPropEditDlg,
+    LResources, PropEdits, StringsPropEditDlg,
   {$ELSE}
     {$IFDEF DELPHI2005UP}
-    ToolsAPI,
+      ToolsAPI,
     {$ENDIF}
-    DesignEditors, DesignIntf, StringsEdit,
+      DesignEditors, DesignIntf, StringsEdit,
   {$ENDIF}
   {$IFDEF RALWindows}
-  Windows,
+    Windows,
   {$ENDIF}
   Classes, SysUtils,
   // generic

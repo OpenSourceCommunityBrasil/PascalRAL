@@ -1,3 +1,4 @@
+/// Register unit for Zeos Wrapping components
 unit raldbzeoslinkreg;
 
 {$IFDEF FPC}

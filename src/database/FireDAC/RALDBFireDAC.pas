@@ -1,3 +1,4 @@
+/// Base unit for FireDAC wrappings
 unit RALDBFireDAC;
 
 interface
@@ -24,16 +25,15 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
-    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function CanExportNative: boolean; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverName: TRALDBDriverType; override;
-
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
-                             var AContentType: StringRAL;
-                             var ANative: boolean); override;
-    function CanExportNative : boolean; override;
+                           var AContentType: StringRAL;
+                           var ANative: boolean); override;
   end;
 
   { TRALDBFireDACLink }

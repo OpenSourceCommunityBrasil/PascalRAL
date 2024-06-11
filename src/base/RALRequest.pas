@@ -17,12 +17,12 @@ type
   private
     FIP: StringRAL;
     FMACAddress: StringRAL;
-    FPorta: IntegerRAL;
+    FPort: IntegerRAL;
     FUserAgent: StringRAL;
   public
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
-    property Porta: IntegerRAL read FPorta write FPorta;
+    property Port: IntegerRAL read FPort write FPort;
     property UserAgent: StringRAL read FUserAgent write FUserAgent;
   end;
 
@@ -39,8 +39,8 @@ type
   public
     constructor Create;
   published
-    property AuthType: TRALAuthTypes read FAuthType write FAuthType;
     property AuthString: StringRAL read FAuthString write FAuthString;
+    property AuthType: TRALAuthTypes read FAuthType write FAuthType;
     property UserName: StringRAL read GetUserName;
     property Password: StringRAL read GetPassword;
   end;
@@ -83,13 +83,11 @@ type
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALRequest; reintroduce; overload;
     /// Adds an UTF8 String to the header of the request.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
-
-    /// Returns the request in TStream format
-    function GetRequestEncStream(const AEncode : boolean = true): TStream; virtual; abstract;
-    /// Returns the request in UTF8String format
-    function GetRequestEncText(const AEncode : boolean = true): StringRAL; virtual; abstract;
-
-    procedure Clone(ASource : TRALRequest); reintroduce;
+    procedure Clone(ASource: TRALRequest); reintroduce;
+    /// Returns the request data in TStream format
+    function GetRequestEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
+    /// Returns the request data in UTF8String format
+    function GetRequestEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
 
     property URL: StringRAL read GetURL;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
@@ -112,9 +110,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
-    function GetRequestEncStream(const AEncode : boolean = true): TStream; override;
-    function GetRequestEncText(const AEncode : boolean = true): StringRAL; override;
+    function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
+    function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
@@ -123,8 +120,8 @@ type
   /// Derived class to handle ClientRequest
   TRALClientRequest = class(TRALRequest)
   public
-    function GetRequestEncStream(const AEncode : boolean = true): TStream; override;
-    function GetRequestEncText(const AEncode : boolean = true): StringRAL; override;
+    function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
+    function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
@@ -283,9 +280,9 @@ end;
 
 function TRALServerRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
-  vContentType, vContentDisposition : StringRAL;
-  vCompress : TRALCompressType;
-  vCripto : TRALCriptoType;
+  vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
   // caso acontece com a Sagui, pois a mesma ja vem params separados
   if FStream = nil then
@@ -329,7 +326,7 @@ end;
 
 function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
-  vContentType, vContentDisposition : StringRAL;
+  vContentType, vContentDisposition: StringRAL;
 begin
   if not AEncode then
   begin

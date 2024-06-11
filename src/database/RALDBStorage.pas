@@ -1,13 +1,14 @@
+/// Base unit for the Storage exporter components
 unit RALDBStorage;
 
 interface
 
 uses
   {$IFDEF FPC}
-    bufstream,
+  bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALCustomObjects, RALDBTypes, RALBase64;
+  RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts;
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
@@ -16,36 +17,36 @@ type
 
   TRALDBStorage = class(TPersistent)
   private
-    FFieldCharCase : TRALFieldCharCase;
+    FFieldCharCase: TRALFieldCharCase;
   protected
     // variaveis para uso nas units filhas como controle
-    FFieldNames : array of StringRAL;
-    FFieldTypes : array of TRALFieldType;
-    FFoundFields : array of TField;
+    FFieldNames: array of StringRAL;
+    FFieldTypes: array of TRALFieldType;
+    FFoundFields: array of TField;
 
-    function GetStoreVersion : byte;
-    function CharCaseValue(AValue : StringRAL) : StringRAL;
+    function GetStoreVersion: byte;
+    function CharCaseValue(AValue: StringRAL): StringRAL;
 
-    procedure ReadFieldString(AField : TField; AValue : StringRAL);
-    procedure ReadFieldShortint(AField : TField; AValue : Shortint);
-    procedure ReadFieldByte(AField : TField; AValue : Byte);
-    procedure ReadFieldLongWord(AField : TField; AValue : LongWord);
-    procedure ReadFieldSmallint(AField : TField; AValue : Smallint);
-    procedure ReadFieldWord(AField : TField; AValue : Word);
-    procedure ReadFieldInteger(AField : TField; AValue : Integer);
-    procedure ReadFieldInt64(AField : TField; AValue : Int64RAL);
-    procedure ReadFieldBoolean(AField : TField; AValue : Boolean);
-    procedure ReadFieldFloat(AField : TField; AValue : Double);
-    procedure ReadFieldDateTime(AField : TField; AValue : TDateTime); overload;
-    procedure ReadFieldDateTime(AField : TField; AValue : Int64RAL); overload;
-    procedure ReadFieldDateTime(AField : TField; AValue : StringRAL); overload;
-    procedure ReadFieldStream(AField : TField; AValue : StringRAL); overload;
-    procedure ReadFieldStream(AField : TField; AValue : TStream); overload;
+    procedure ReadFieldBoolean(AField: TField; AValue: Boolean);
+    procedure ReadFieldByte(AField: TField; AValue: byte);
+    procedure ReadFieldDateTime(AField: TField; AValue: TDateTime); overload;
+    procedure ReadFieldDateTime(AField: TField; AValue: Int64RAL); overload;
+    procedure ReadFieldDateTime(AField: TField; AValue: StringRAL); overload;
+    procedure ReadFieldFloat(AField: TField; AValue: Double);
+    procedure ReadFieldInteger(AField: TField; AValue: Integer);
+    procedure ReadFieldInt64(AField: TField; AValue: Int64RAL);
+    procedure ReadFieldLongWord(AField: TField; AValue: LongWord);
+    procedure ReadFieldShortint(AField: TField; AValue: Shortint);
+    procedure ReadFieldSmallint(AField: TField; AValue: Smallint);
+    procedure ReadFieldStream(AField: TField; AValue: StringRAL); overload;
+    procedure ReadFieldStream(AField: TField; AValue: TStream); overload;
+    procedure ReadFieldString(AField: TField; AValue: StringRAL);
+    procedure ReadFieldWord(AField: TField; AValue: Word);
   public
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); virtual; abstract;
-    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); virtual; abstract;
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); virtual; abstract;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); virtual; abstract;
   published
-    property FieldCharCase : TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
+    property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
@@ -55,33 +56,30 @@ type
 
   TRALDBStorageLink = class(TRALComponent)
   private
-    FFieldCharCase : TRALFieldCharCase;
+    FFieldCharCase: TRALFieldCharCase;
   protected
     function GetContentType: StringRAL; virtual;
-    class function GetDeclaredStorageLink : TRALDBStorageClassLink;
-    class function GetDefaultStorage : TRALDBStorage; virtual;
+    class function GetDeclaredStorageLink: TRALDBStorageClassLink;
+    class function GetDefaultStorage: TRALDBStorage; virtual;
   public
-    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
-    function SaveToStream(ADataset: TDataSet): TStream; overload;
-    procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
-
+    function GetStorage: TRALDBStorage; virtual;
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
-
-    function GetStorage : TRALDBStorage; virtual;
+    procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
+    function SaveToStream(ADataset: TDataSet): TStream; overload;
   published
     property ContentType: StringRAL read GetContentType;
-    property FieldCharCase : TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
+    property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
   end;
 
 implementation
 
 const
-  cStorageLinkClass : array[0..2] of StringRAL = ('TRALDBStorageBINLink',
-                                                  'TRALDBStorageJSONLink',
-                                                  'TRALDBStorageBSONLink');
+  cStorageLinkClass: array [0 .. 2] of StringRAL = ('TRALDBStorageBINLink',
+    'TRALDBStorageJSONLink', 'TRALDBStorageBSONLink');
 
-{ TRALDBStorage }
+  { TRALDBStorage }
 
 function TRALDBStorage.GetStoreVersion: byte;
 begin
@@ -91,8 +89,10 @@ end;
 function TRALDBStorage.CharCaseValue(AValue: StringRAL): StringRAL;
 begin
   case FieldCharCase of
-    fcUpper : AValue := UpperCase(AValue);
-    fcLower : AValue := LowerCase(AValue);
+    fcUpper:
+      AValue := UpperCase(AValue);
+    fcLower:
+      AValue := LowerCase(AValue);
   end;
   Result := AValue;
 end;
@@ -109,7 +109,7 @@ begin
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldByte(AField: TField; AValue: Byte);
+procedure TRALDBStorage.ReadFieldByte(AField: TField; AValue: byte);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
@@ -171,7 +171,7 @@ end;
 
 procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
 var
-  vDate : TDateTime;
+  vDate: TDateTime;
 begin
   if AField <> nil then
   begin
@@ -210,7 +210,7 @@ end;
 function TRALDBStorageLink.GetContentType: StringRAL;
 var
   vClassStor: TRALDBStorageClassLink;
-  vLink : TRALDBStorageLink;
+  vLink: TRALDBStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
   if vClassStor <> nil then
@@ -224,13 +224,13 @@ begin
   end
   else
   begin
-    raise Exception.Create('No TRALStorageLink found!');
+    raise Exception.Create(emStorageNotFound);
   end;
 end;
 
 class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageClassLink;
 var
-  vLinks : IntegerRAL;
+  vLinks: IntegerRAL;
 begin
   Result := nil;
   for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
@@ -244,7 +244,7 @@ end;
 class function TRALDBStorageLink.GetDefaultStorage: TRALDBStorage;
 var
   vClassStor: TRALDBStorageClassLink;
-  vLink : TRALDBStorageLink;
+  vLink: TRALDBStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
   if vClassStor <> nil then
@@ -258,7 +258,7 @@ begin
   end
   else
   begin
-    raise Exception.Create('No TRALStorageLink found!');
+    raise Exception.Create(emStorageNotFound);
   end;
 end;
 
@@ -295,7 +295,7 @@ end;
 
 procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
 var
-  vStream : TFileStream;
+  vStream: TFileStream;
 begin
   vStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
   try

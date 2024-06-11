@@ -8,7 +8,7 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, TypInfo,
-  RALTypes, RALStream;
+  RALTypes, RALStream, RALConsts;
 
 type
   TRALCompressClass = class of TRALCompress;
@@ -28,7 +28,7 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
 
-    class function CheckDependence : boolean; virtual; abstract;
+    class function CheckDepedancy: boolean; virtual; abstract;
   public
     function Compress(AStream: TStream): TStream; overload;
     function Compress(const AString: StringRAL): StringRAL; overload;
@@ -37,14 +37,14 @@ type
     function Decompress(const AString: StringRAL): StringRAL; overload;
     procedure DecompressFile(AInFile, AOutFile: StringRAL);
 
-    class function GetSuportedCompress : StringRAL;
-    class function GetInstalledList : TStringList;
-    class procedure UpdateDeclaredClasses;
-    class function StringToCompress(const AStr: StringRAL): TRALCompressType;
-    class function CompressToString(ACompress: TRALCompressType): StringRAL;
-    class function GetBestCompress(const AEncoding : StringRAL): TRALCompressType;
-    class function GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
     class procedure CheckDependencies;
+    class function CompressToString(ACompress: TRALCompressType): StringRAL;
+    class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
+    class function GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
+    class function GetInstalledList: TStringList;
+    class function GetSuportedCompress: StringRAL;
+    class function StringToCompress(const AStr: StringRAL): TRALCompressType;
+    class procedure UpdateDeclaredClasses;
   published
     property Format: TRALCompressType read FFormat write SetFormat;
   end;
@@ -52,19 +52,19 @@ type
 implementation
 
 const
-  cCompressTypeStr : array[TRALCompressType] of StringRAL = (
-                          '', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
-  cCompressLibsClass : array[TRALCompressLibs] of StringRAL = (
-                          'TRALCompressZLib', 'TRALCompressZStd', 'TRALCompressBrotli');
-  cCompressLibsTypes : array[TRALCompressLibs] of TRALCompressTypes = (
-                          [ctDeflate, ctZLib, ctGZip], [ctZStd], [ctBrotli]);
+  cCompressTypeStr: array[TRALCompressType] of StringRAL = (
+                      '', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
+  cCompressLibsClass: array[TRALCompressLibs] of StringRAL = (
+                        'TRALCompressZLib', 'TRALCompressZStd', 'TRALCompressBrotli');
+  cCompressLibsTypes: array[TRALCompressLibs] of TRALCompressTypes = (
+                        [ctDeflate, ctZLib, ctGZip], [ctZStd], [ctBrotli]);
 
 var
-  vDeclaredCompressLibs : array[TRALCompressLibs] of boolean;
+  vDeclaredCompressLibs: array[TRALCompressLibs] of boolean;
 
 procedure LoadDeclaredCompressLibs;
 var
-  vLib : TRALCompressLibs;
+  vLib: TRALCompressLibs;
 begin
   for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
     vDeclaredCompressLibs[vLib] := GetClass(cCompressLibsClass[vLib]) <> nil;
@@ -274,15 +274,15 @@ end;
 
 class procedure TRALCompress.CheckDependencies;
 var
-  vLib : TRALCompressLibs;
-  vCompress : TRALCompressClass;
-  vLibs : StringRAL;
+  vLib: TRALCompressLibs;
+  vCompress: TRALCompressClass;
+  vLibs: StringRAL;
 begin
   vLibs := '';
   for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
   begin
     vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
-    if (vCompress <> nil) and (not vCompress.CheckDependence) then
+    if (vCompress <> nil) and (not vCompress.CheckDepedancy) then
     begin
       if vLibs <> '' then
         vLibs := vLibs + ', ';
@@ -291,7 +291,7 @@ begin
   end;
 
   if vLibs <> '' then
-    raise Exception.CreateFmt('The classes %s - libraries files not found!', [vLibs]);
+    raise Exception.CreateFmt(emCompressLibFilesError, [vLibs]);
 end;
 
 initialization

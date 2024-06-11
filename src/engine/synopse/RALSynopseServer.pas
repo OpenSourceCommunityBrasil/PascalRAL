@@ -1,4 +1,5 @@
-﻿unit RALSynopseServer;
+﻿/// Base unit for RALServer component using mORMot2 Engine
+unit RALSynopseServer;
 
 interface
 
@@ -15,15 +16,15 @@ type
 
   TRALSynopseSSL = class(TRALSSL)
   private
+    FCACertificatesFile: TFileName;
     FCertificateFile: TFileName;
     FPrivateKeyFile: TFileName;
     FPrivateKeyPassword: StringRAL;
-    FCACertificatesFile: TFileName;
   published
+    property CACertificatesFile: TFileName read FCACertificatesFile write FCACertificatesFile;
     property CertificateFile: TFileName read FCertificateFile write FCertificateFile;
     property PrivateKeyFile: TFileName read FPrivateKeyFile write FPrivateKeyFile;
     property PrivateKeyPassword: StringRAL read FPrivateKeyPassword write FPrivateKeyPassword;
-    property CACertificatesFile: TFileName read FCACertificatesFile write FCACertificatesFile;
   end;
 
   { TRALSynopseServer }
@@ -35,18 +36,14 @@ type
     FQueueSize: IntegerRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
+    procedure DecodeAuth(AResult: TRALRequest);
+    function GetSSL: TRALSynopseSSL;
+    function IPv6IsImplemented: boolean; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
-
-    function GetSSL: TRALSynopseSSL;
-    procedure SetSSL(const AValue: TRALSynopseSSL);
-
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetQueueSize(const AValue: IntegerRAL);
-
-    function IPv6IsImplemented: boolean; override;
-
-    procedure DecodeAuth(AResult: TRALRequest);
+    procedure SetSSL(const AValue: TRALSynopseSSL);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
   public
@@ -225,7 +222,7 @@ begin
       if ClientInfo.IP = '' then
         ClientInfo.IP := '127.0.0.1';
       //ClientInfo.Porta := StrToInt(AContext.RemotePort);
-      ClientInfo.Porta := 0;
+      ClientInfo.Port := 0;
 
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := AContext.UserAgent;
@@ -318,7 +315,7 @@ begin
   FHttp := nil;
   FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
   FQueueSize := 1000; // padrao do synopse
-  SetEngine('Synopse ' + SYNOPSE_FRAMEWORK_FULLVERSION);
+  SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 
 destructor TRALSynopseServer.Destroy;

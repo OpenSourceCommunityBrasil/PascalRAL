@@ -269,7 +269,7 @@ end;
 
 function TRALHashes.HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL;
 var
-  vKey, vDigest : TBytes;
+  vKey, vDigest: TBytes;
 begin
   SetLength(vKey, Length(AKey));
   Move(AKey[PosIniStr], vKey[0], Length(AKey));

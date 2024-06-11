@@ -1,10 +1,11 @@
-﻿unit RALDBStorageBIN;
+﻿/// Base unit for the Storage exporter in stream format
+unit RALDBStorageBIN;
 
 interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes;
+  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALConsts;
 
 type
 
@@ -13,43 +14,43 @@ type
   TRALDBStorageBIN = class(TRALDBStorage)
   protected
     // write
-    procedure WriteHeader(AStream : TStream);
-    procedure WriteFields(ADataset : TDataSet; AStream : TStream);
-    procedure WriteRecords(ADataset : TDataSet; AStream : TStream);
+    procedure WriteHeader(AStream: TStream);
+    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
 
-    procedure WriteString(AStream : TStream; AValue : StringRAL);
-    procedure WriteShortint(AStream : TStream; AValue : Shortint);
-    procedure WriteByte(AStream : TStream; AValue : Byte);
-    procedure WriteLongWord(AStream : TStream; AValue : LongWord);
-    procedure WriteSmallint(AStream : TStream; AValue : Smallint);
-    procedure WriteWord(AStream : TStream; AValue : Word);
-    procedure WriteInteger(AStream : TStream; AValue : Integer);
-    procedure WriteInt64(AStream : TStream; AValue : Int64RAL);
-    procedure WriteBoolean(AStream : TStream; AValue : Boolean);
-    procedure WriteFloat(AStream : TStream; AValue : Double);
-    procedure WriteDateTime(AStream : TStream; AValue : TDateTime);
-    procedure WriteStream(AStream : TStream; AValue : TStream);
+    procedure WriteString(AStream: TStream; AValue: StringRAL);
+    procedure WriteShortint(AStream: TStream; AValue: Shortint);
+    procedure WriteByte(AStream: TStream; AValue: Byte);
+    procedure WriteLongWord(AStream: TStream; AValue: LongWord);
+    procedure WriteSmallint(AStream: TStream; AValue: Smallint);
+    procedure WriteWord(AStream: TStream; AValue: Word);
+    procedure WriteInteger(AStream: TStream; AValue: Integer);
+    procedure WriteInt64(AStream: TStream; AValue: Int64RAL);
+    procedure WriteBoolean(AStream: TStream; AValue: Boolean);
+    procedure WriteFloat(AStream: TStream; AValue: Double);
+    procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
+    procedure WriteStream(AStream: TStream; AValue: TStream);
 
     // read
-    function ReadHeader(AStream : TStream) : boolean;
-    procedure ReadFields(ADataset : TDataSet; AStream : TStream);
-    procedure ReadRecords(ADataset : TDataSet; AStream : TStream);
+    function ReadHeader(AStream: TStream): boolean;
+    procedure ReadFields(ADataset: TDataSet; AStream: TStream);
+    procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
 
-    function ReadString(AStream : TStream) : StringRAL;
-    function ReadShortint(AStream : TStream) : Shortint;
-    function ReadByte(AStream : TStream) : Byte;
-    function ReadLongWord(AStream : TStream) : LongWord;
-    function ReadSmallint(AStream : TStream) : Smallint;
-    function ReadWord(AStream : TStream): Word;
-    function ReadInteger(AStream : TStream) : Integer;
-    function ReadInt64(AStream : TStream) : Int64RAL;
-    function ReadBoolean(AStream : TStream) : Boolean;
-    function ReadFloat(AStream : TStream) : Double;
-    function ReadDateTime(AStream : TStream) : TDateTime;
-    function ReadStream(AStream : TStream) : TStream;
+    function ReadString(AStream: TStream): StringRAL;
+    function ReadShortint(AStream: TStream): Shortint;
+    function ReadByte(AStream: TStream): Byte;
+    function ReadLongWord(AStream: TStream): LongWord;
+    function ReadSmallint(AStream: TStream): Smallint;
+    function ReadWord(AStream: TStream): Word;
+    function ReadInteger(AStream: TStream): Integer;
+    function ReadInt64(AStream: TStream): Int64RAL;
+    function ReadBoolean(AStream: TStream): Boolean;
+    function ReadFloat(AStream: TStream): Double;
+    function ReadDateTime(AStream: TStream): TDateTime;
+    function ReadStream(AStream: TStream): TStream;
   public
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
-    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
   { TRALDBStorageBINLink }
@@ -58,7 +59,7 @@ type
   protected
     function GetContentType: StringRAL; override;
   public
-    function GetStorage : TRALDBStorage; override;
+    function GetStorage: TRALDBStorage; override;
   end;
 
 implementation
@@ -67,7 +68,7 @@ implementation
 
 procedure TRALDBStorageBIN.WriteHeader(AStream: TStream);
 var
-  vHeader : TBytes;
+  vHeader: TBytes;
 begin
   SetLength(vHeader, 4);
   vHeader[0] := 18; // R
@@ -112,8 +113,8 @@ procedure TRALDBStorageBIN.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vRecords, vPosRecords, vPosTemp: Int64RAL;
   vInt: IntegerRAL;
-  vBookMark : TBookMark;
-  vMem : TMemoryStream;
+  vBookMark: TBookMark;
+  vMem: TMemoryStream;
 begin
   vPosRecords := AStream.Position;
 
@@ -195,7 +196,7 @@ end;
 
 procedure TRALDBStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
 var
-  vSize : IntegerRAL;
+  vSize: IntegerRAL;
 begin
   vSize := Length(AValue);
   AStream.Write(vSize, SizeOf(vSize));
@@ -265,7 +266,7 @@ end;
 
 function TRALDBStorageBIN.ReadHeader(AStream: TStream): boolean;
 var
-  vHeader : TBytes;
+  vHeader: TBytes;
 begin
   Result := False;
   SetLength(vHeader, 4);
@@ -273,7 +274,7 @@ begin
 
   if (vHeader[0] <> 18) or (vHeader[1] <> 01) or (vHeader[2] <> 12) or
      (vHeader[3] <> GetStoreVersion) then
-    raise Exception.Create('Invalid Binary Format!');
+    raise Exception.Create(emStorageInvalidBinary);
 
   Result := True;
 end;

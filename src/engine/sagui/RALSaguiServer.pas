@@ -1,3 +1,4 @@
+/// Base unit for RALServer component using Indy Engine
 unit RALSaguiServer;
 
 {$IFDEF FPC}
@@ -19,27 +20,27 @@ type
 
   TRALSaguiSSL = class(TRALSSL)
   private
-    FPrivateKey: StringRAL;
-    FPrivatePassword: StringRAL;
     FCertificate: StringRAL;
-    FTrust: StringRAL;
     FDHParams: StringRAL;
     FPriorities: StringRAL;
+    FPrivateKey: StringRAL;
+    FPrivatePassword: StringRAL;
+    FTrust: StringRAL;
   published
-    /// Content of the private key (key.pem) to be used by the HTTPS server.
-    property PrivateKey: StringRAL read FPrivateKey write FPrivateKey;
-    /// { Password of the private key.
-    property PrivatePassword: StringRAL read FPrivatePassword write FPrivatePassword;
     /// Content of the certificate (cert.pem) to be used by the HTTPS server.
     property Certificate: StringRAL read FCertificate write FCertificate;
-    /// Content of the certificate (ca.pem) to be used by the HTTPS server for
-    ///  client authentication.
-    property Trust: StringRAL read FTrust write FTrust;
     /// Content of the Diffie-Hellman parameters (dh.pem) to be used by the HTTPS
     ///  server for key exchange.
     property DHParams: StringRAL read FDHParams write FDHParams;
     /// Content of the cipher algorithm. Default: @code(NORMAL).
     property Priorities: StringRAL read FPriorities write FPriorities;
+    /// Content of the private key (key.pem) to be used by the HTTPS server.
+    property PrivateKey: StringRAL read FPrivateKey write FPrivateKey;
+    /// { Password of the private key.
+    property PrivatePassword: StringRAL read FPrivatePassword write FPrivatePassword;
+    /// Content of the certificate (ca.pem) to be used by the HTTPS server for
+    ///  client authentication.
+    property Trust: StringRAL read FTrust write FTrust;
   end;
 
   { TRALSaguiServer }
@@ -49,41 +50,36 @@ type
     FHandle: Psg_httpsrv;
     FLibPath: TFileName;
 
+    class procedure DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
+    class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
+      Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
     class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
       cdecl; static;
-
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
-
-    class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
-      Aclosed: Pcbool); cdecl; static;
-
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
-    class procedure DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure SetActive(const AValue: boolean); override;
-    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
-    procedure SetPort(const AValue: IntegerRAL); override;
+    procedure CreateServerHandle;
+    procedure FreeServerHandle;
+    function InitializeServer: boolean;
     function IPv6IsImplemented: boolean; override;
 
     function GetSSL: TRALSaguiSSL;
-    procedure SetSSL(const AValue: TRALSaguiSSL);
-
-    procedure CreateServerHandle;
-    procedure ShutdownServerHandle;
-    procedure FreeServerHandle;
-
-    function InitilizeServer: boolean;
+    procedure SetActive(const AValue: boolean); override;
     procedure SetLibPath(const AValue: TFileName);
+    procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
+    procedure SetSSL(const AValue: TRALSaguiSSL);
+    procedure ShutdownServerHandle;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property SSL: TRALSaguiSSL read GetSSL write SetSSL;
     property LibPath: TFileName read FLibPath write SetLibPath;
+    property SSL: TRALSaguiSSL read GetSSL write SetSSL;
   end;
 
 implementation
@@ -93,25 +89,25 @@ type
 
   TRALSaguiStringMap = class(TPersistent)
   private
-    FHandle: PPsg_strmap;
     FCurrent: PPsg_strmap;
     FFreeOnDestroy: boolean;
+    FHandle: PPsg_strmap;
   protected
     function GetCount: integer;
   public
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
-    function First: boolean;
-    function Next: boolean;
     procedure Add(const AName, AValue: StringRAL);
-    procedure GetPair(var AName, AValue: StringRAL);
-    function MapList: TStringList;
     procedure AppendToParams(AParams: TRALParams; AKind: TRALParamKind);
     procedure AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
-
-    // Counts the total pairs present in the map.
+    /// Counts the total pairs present in the map.
     property Count: integer read GetCount;
+    function First: boolean;
+    procedure GetPair(var AName, AValue: StringRAL);
+    function MapList: TStringList;
+    function Next: boolean;
+
     property FreeOnDestroy: boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
 
@@ -119,14 +115,14 @@ type
 
   TRALSaguiUploadFile = class(TPersistent)
   private
+    FDirectory: StringRAL;
+    FEncoding: StringRAL;
+    FField: StringRAL;
     FHandle: Psg_httpupld;
-    FStreamHandle: Pointer;
-    FDirectory: string;
-    FField: string;
-    FName: string;
-    FMime: string;
-    FEncoding: string;
+    FMime: StringRAL;
+    FName: StringRAL;
     FSize: uint64;
+    FStreamHandle: Pointer;
   protected
     function GetHandle: Pointer;
   public
@@ -137,15 +133,15 @@ type
     property StreamHandle: Pointer read FStreamHandle;
   published
     /// Directory of the uploaded file.
-    property Directory: string read FDirectory;
-    /// Field name of the upload.
-    property Field: string read FField;
-    /// Name of the uploaded file.
-    property Name: string read FName;
-    /// MIME (content-type) of the upload.
-    property Mime: string read FMime;
+    property Directory: StringRAL read FDirectory;
     /// Encoding (transfer-encoding) of the upload.
-    property Encoding: string read FEncoding;
+    property Encoding: StringRAL read FEncoding;
+    /// Field name of the upload.
+    property Field: StringRAL read FField;
+    /// Name of the uploaded file.
+    property Name: StringRAL read FName;
+    /// MIME (content-type) of the upload.
+    property Mime: StringRAL read FMime;
     /// Size of the upload.
     property Size: uint64 read FSize;
   end;
@@ -234,7 +230,7 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
   vRespStream: TStream;
-  vCookies : TStringList;
+  vCookies: TStringList;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -461,7 +457,7 @@ begin
   begin
     SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
-    if not InitilizeServer then
+    if not InitializeServer then
       FreeServerHandle;
   end
   else
@@ -510,7 +506,7 @@ begin
   inherited;
 end;
 
-function TRALSaguiServer.InitilizeServer: boolean;
+function TRALSaguiServer.InitializeServer: boolean;
 begin
   if SSL.Enabled then
   begin

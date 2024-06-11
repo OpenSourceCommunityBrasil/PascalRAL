@@ -14,8 +14,8 @@ type
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
-    FStatusCode: IntegerRAL;
     FErrorCode: IntegerRAL;
+    FStatusCode: IntegerRAL;
   protected
     /// Returns the response in TStream format
     function GetResponseStream: TStream;
@@ -51,19 +51,16 @@ type
     /// Loads and set a file to the response with the given AFileName and sets the disposition
     /// to inline by default.
     procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
-
-    ///  Fills the 'ADest' Strings with RALParams Cookies Headers
-    procedure GetParamsCookies(ADest: TStringList; ADateTime : TDateTime);
-    /// Returns an UTF8 String with RALParams Cookies Headers
-    function GetParamsCookiesText(ADateTime : TDateTime; AHeader : StringRAL = 'Set-Cookie: ') : StringRAL;
-
-
+    /// Empties out the Response and sets default values
     procedure Clear; override;
-
+    /// Fills the 'ADest' Strings with RALParams Cookies' Headers
+    procedure GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
+    /// Returns an UTF8 String with RALParams Cookies' Headers
+    function GetParamsCookiesText(ADateTime: TDateTime; AHeader: StringRAL = 'Set-Cookie: ') : StringRAL;
     /// Returns the response in TStream format
-    function GetResponseEncStream(const AEncode : boolean = true): TStream; virtual; abstract;
+    function GetResponseEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// Returns the response in UTF8String format
-    function GetResponseEncText(const AEncode : boolean = true): StringRAL; virtual; abstract;
+    function GetResponseEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
 
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
@@ -75,8 +72,8 @@ type
   /// Derived class to handle ServerResponse
   TRALServerResponse = class(TRALResponse)
   public
-    function GetResponseEncStream(const AEncode : boolean = true): TStream; override;
-    function GetResponseEncText(const AEncode : boolean = true): StringRAL; override;
+    function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
+    function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
@@ -90,8 +87,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function GetResponseEncStream(const AEncode : boolean = true): TStream; override;
-    function GetResponseEncText(const AEncode : boolean = true): StringRAL; override;
+    function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
+    function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
@@ -126,7 +123,7 @@ end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
 const
-  HTTPMonths : array[1..12] of string[3] = (
+  HTTPMonths: array[1..12] of string[3] = (
     'Jan', 'Feb', 'Mar', 'Apr',
     'May', 'Jun', 'Jul', 'Aug',
     'Sep', 'Oct', 'Nov', 'Dec');
@@ -163,8 +160,8 @@ end;
 
 function TRALResponse.GetParamsCookiesText(ADateTime: TDateTime; AHeader: StringRAL): StringRAL;
 var
-  vDest : TStringList;
-  vInt : integer;
+  vDest: TStringList;
+  vInt: integer;
 begin
   Result := '';
   vDest := TStringList.Create;
@@ -193,19 +190,18 @@ begin
   StatusCode := AStatusCode;
   ContentType := rctTEXTHTML;
   case AStatusCode of
-    400 : ResponseText := RAL400Page;
-    401 : ResponseText := RAL401Page;
-    403 : ResponseText := RAL403Page;
-    404 : ResponseText := RAL404Page;
-    415 : ResponseText := RAL415Page;
-    500 : ResponseText := RAL500Page;
-    501 : ResponseText := RAL501Page;
-    503 : ResponseText := RAL503Page;
+    400: ResponseText := RAL400Page;
+    401: ResponseText := RAL401Page;
+    403: ResponseText := RAL403Page;
+    404: ResponseText := RAL404Page;
+    415: ResponseText := RAL415Page;
+    500: ResponseText := RAL500Page;
+    501: ResponseText := RAL501Page;
+    503: ResponseText := RAL503Page;
   end;
 end;
 
-function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL
-  ): TRALResponse;
+function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
@@ -269,7 +265,7 @@ end;
 
 function TRALServerResponse.GetResponseEncStream(const AEncode: boolean): TStream;
 var
-  vContentType, vContentDisposition : StringRAL;
+  vContentType, vContentDisposition: StringRAL;
 begin
   if not AEncode then
   begin

@@ -15,7 +15,7 @@ function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 function OnlyNumbers(const AValue: StringRAL): StringRAL;
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 function RALStringToDateTime(const AValue: StringRAL;
-  const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
+                             const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 

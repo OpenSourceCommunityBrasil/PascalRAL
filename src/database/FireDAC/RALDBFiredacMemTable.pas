@@ -1,3 +1,4 @@
+/// Unit for FireDAC MemTable wrapper
 unit RALDBFiredacMemTable;
 
 interface
@@ -26,25 +27,24 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetClient(AValue: TRALClientMT);
     procedure SetStorage(const AValue: TRALDBStorageLink);
-    procedure OnChangeSQL(Sender : TObject);
+    procedure OnChangeSQL(Sender: TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ParamByName(const AValue: StringRAL): TParam;
-
-    procedure OpenRemote;
     procedure ExecSQLRemote;
+    procedure OpenRemote;
+    function ParamByName(const AValue: StringRAL): TParam;
   published
-    property Client : TRALClientMT read FClient write SetClient;
-    property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
-    property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorageLink read FStorage write SetStorage;
-    property Params : TParams read FParams write FParams;
-    property OnError : TRALDBOnError read FOnError write FOnError;
+    property Client: TRALClientMT read FClient write SetClient;
+    property ModuleRoute: StringRAL read FModuleRoute write FModuleRoute;
+    property Params: TParams read FParams write FParams;
+    property SQL: TStrings read FSQL write SetSQL;
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property OnError: TRALDBOnError read FOnError write FOnError;
   end;
 
 implementation
@@ -70,8 +70,8 @@ end;
 procedure TRALDBFDMemTable.ExecSQLRemote;
 var
   vQueryStructure: TRALQueryStructure;
-  vMem : TStream;
-  vReq : TRALRequest;
+  vMem: TStream;
+  vReq: TRALRequest;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try
@@ -104,7 +104,7 @@ end;
 
 procedure TRALDBFDMemTable.OnChangeSQL(Sender: TObject);
 var
-  vSQL : StringRAL;
+  vSQL: StringRAL;
 begin
   vSQL := TStringList(Sender).Text;
   TRALDB.ParseSQLParams(vSQL, FParams);
@@ -113,7 +113,7 @@ end;
 procedure TRALDBFDMemTable.OnExecSQLResponse(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
 var
-  vException : StringRAL;
+  vException: StringRAL;
 begin
   if AResponse.StatusCode = 500 then
   begin
@@ -131,10 +131,10 @@ end;
 procedure TRALDBFDMemTable.OnQueryResponse(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
 var
-  vMem : TStream;
-  vNative : Boolean;
-  vException : StringRAL;
-  vStor : TRALDBStorage;
+  vMem: TStream;
+  vNative: Boolean;
+  vException: StringRAL;
+  vStor: TRALDBStorage;
 begin
   if AResponse.StatusCode = 200 then
   begin
@@ -165,8 +165,8 @@ end;
 procedure TRALDBFDMemTable.OpenRemote;
 var
   vQueryStructure: TRALQueryStructure;
-  vMem : TStream;
-  vReq : TRALRequest;
+  vMem: TStream;
+  vReq: TRALRequest;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try

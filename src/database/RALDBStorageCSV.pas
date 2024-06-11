@@ -1,3 +1,4 @@
+/// Base unit for the Storage exporter in csv format
 unit RALDBStorageCSV;
 
 interface
@@ -12,74 +13,70 @@ type
 
   TRALCSVFormatOptions = class(TPersistent)
   private
-    FDateTimeFormat: TRALDateTimeFormat;
-    FCustomDateFormat: StringRAL;
-    FCustomTimeFormat: StringRAL;
-    FDecimalSeparator: Char;
-    FThousandSeparator: Char;
-    FColumnSeparator: Char;
     FBoolFalseStr: StringRAL;
     FBoolTrueStr: StringRAL;
+    FColumnSeparator: Char;
+    FCustomDateFormat: StringRAL;
+    FCustomTimeFormat: StringRAL;
+    FDateTimeFormat: TRALDateTimeFormat;
+    FDecimalSeparator: Char;
+    FThousandSeparator: Char;
   protected
     procedure AssignTo(ADest: TPersistent); override;
   public
     constructor Create;
   published
-    property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
-    property CustomDateFormat: StringRAL read FCustomDateFormat write FCustomDateFormat;
-    property CustomTimeFormat: StringRAL read FCustomTimeFormat write FCustomTimeFormat;
-    property DecimalSeparator: Char read FDecimalSeparator write FDecimalSeparator;
-    property ThousandSeparator: Char read FThousandSeparator write FThousandSeparator;
-    property ColumnSeparator: Char read FColumnSeparator write FColumnSeparator;
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
+    property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
+    property DecimalSeparator: Char read FDecimalSeparator write FDecimalSeparator;
+    property ColumnSeparator: Char read FColumnSeparator write FColumnSeparator;
+    property CustomDateFormat: StringRAL read FCustomDateFormat write FCustomDateFormat;
+    property CustomTimeFormat: StringRAL read FCustomTimeFormat write FCustomTimeFormat;
+    property ThousandSeparator: Char read FThousandSeparator write FThousandSeparator;
   end;
 
   { TRALDBStorageCSV }
 
   TRALDBStorageCSV = class(TRALDBStorage)
   private
-    FFormatOptions : TRALCSVFormatOptions;
+    FFormatOptions: TRALCSVFormatOptions;
   protected
-    procedure WriteFields(ADataset : TDataSet; AStream : TStream);
-    procedure WriteRecords(ADataset : TDataSet; AStream : TStream);
-
-    function CSVFormatDateTime(AValue: TDateTime) : StringRAL;
-    function CSVFormatFloat(AValue: Double) : StringRAL;
-    function CSVFormatStream(AValue : TStream) : StringRAL;
-    function CSVFormatBoolean(AValue : Boolean) : StringRAL;
-    function CSVFormatString(AValue : StringRAL) : StringRAL;
-
-    procedure WriteStringToStream(AStream : TStream; AValue : StringRAL);
-
-    function ReadLine(AStream : TStream) : TStringList;
-
-    procedure ReadFields(ADataset : TDataSet; AStream : TStream);
-    procedure ReadRecords(ADataset : TDataSet; AStream : TStream);
+    function CSVFormatBoolean(AValue: Boolean): StringRAL;
+    function CSVFormatDateTime(AValue: TDateTime): StringRAL;
+    function CSVFormatFloat(AValue: Double): StringRAL;
+    function CSVFormatStream(AValue: TStream): StringRAL;
+    function CSVFormatString(AValue: StringRAL): StringRAL;
+    procedure ReadFields(ADataset: TDataSet; AStream: TStream);
+    function ReadLine(AStream: TStream): TStringList;
+    procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
+    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+    procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
-    procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   published
-    property FormatOptions : TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
   end;
 
   { TRALDBStorageCSVLink }
 
   TRALDBStorageCSVLink = class(TRALDBStorageLink)
   private
-    FFormatOptions : TRALCSVFormatOptions;
+    FFormatOptions: TRALCSVFormatOptions;
   protected
     function GetContentType: StringRAL; override;
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function GetStorage : TRALDBStorage; override;
+    function GetStorage: TRALDBStorage; override;
   published
-    property FormatOptions : TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
   end;
 
 implementation
@@ -135,22 +132,25 @@ end;
 
 function TRALDBStorageCSV.CSVFormatDateTime(AValue: TDateTime): StringRAL;
 var
-  vFormat : StringRAL;
+  vFormat: StringRAL;
 begin
   case FFormatOptions.DateTimeFormat of
-    dtfUnix    : Result := IntToStr(DateTimeToUnix(AValue));
-    dtfISO8601 : Result := DateToISO8601(AValue);
-    dtfCustom  : begin
-       if (Frac(AValue) <> 0) and (Trunc(AValue) <> 0) then
-         vFormat := Format('%s %s',[FFormatOptions.CustomDateFormat,
-                                    FFormatOptions.CustomTimeFormat])
-       else if (Frac(AValue) <> 0) and (Trunc(AValue) = 0) then
-         vFormat := FFormatOptions.CustomTimeFormat
-       else
-         vFormat := FFormatOptions.CustomDateFormat;
+    dtfUnix:
+      Result := IntToStr(DateTimeToUnix(AValue));
+    dtfISO8601:
+      Result := DateToISO8601(AValue);
+    dtfCustom:
+      begin
+        if (Frac(AValue) <> 0) and (Trunc(AValue) <> 0) then
+          vFormat := Format('%s %s', [FFormatOptions.CustomDateFormat,
+            FFormatOptions.CustomTimeFormat])
+        else if (Frac(AValue) <> 0) and (Trunc(AValue) = 0) then
+          vFormat := FFormatOptions.CustomTimeFormat
+        else
+          vFormat := FFormatOptions.CustomDateFormat;
 
-       Result := FormatDateTime(vFormat, AValue);
-    end;
+        Result := FormatDateTime(vFormat, AValue);
+      end;
   end;
 
   if FFormatOptions.DateTimeFormat <> dtfUnix then
@@ -159,7 +159,7 @@ end;
 
 function TRALDBStorageCSV.CSVFormatFloat(AValue: Double): StringRAL;
 var
-  vFormat : TFormatSettings;
+  vFormat: TFormatSettings;
 begin
   vFormat.DecimalSeparator := FFormatOptions.DecimalSeparator;
   vFormat.ThousandSeparator := FFormatOptions.ThousandSeparator;
@@ -216,8 +216,8 @@ end;
 
 procedure TRALDBStorageCSV.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
-  vBookMark : TBookMark;
-  vValue : StringRAL;
+  vBookMark: TBookMark;
+  vValue: StringRAL;
   vInt: IntegerRAL;
   vMem: TStream;
 begin
@@ -240,36 +240,37 @@ begin
       if not ADataset.Fields[vInt].IsNull then
       begin
         case FFieldTypes[vInt] of
-          sftShortInt,
-          sftSmallInt,
-          sftInteger,
-          sftInt64,
-          sftByte,
-          sftWord,
-          sftCardinal,
-          sftQWord     : vValue := vValue + ADataset.Fields[vInt].AsString;
-          sftDouble    : vValue := vValue + CSVFormatFloat(ADataset.Fields[vInt].AsFloat);
-          sftBoolean   : vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
-          sftString    : vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsString);
-          sftBlob      : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := vValue + CSVFormatStream(vMem);
-            finally
-              vMem.Free
+          sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord, sftCardinal,
+            sftQWord:
+            vValue := vValue + ADataset.Fields[vInt].AsString;
+          sftDouble:
+            vValue := vValue + CSVFormatFloat(ADataset.Fields[vInt].AsFloat);
+          sftBoolean:
+            vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
+          sftString:
+            vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsString);
+          sftBlob:
+            begin
+              vMem := TMemoryStream.Create;
+              try
+                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+                vValue := vValue + CSVFormatStream(vMem);
+              finally
+                vMem.Free
+              end;
             end;
-          end;
-          sftMemo      : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := vValue + CSVFormatStream(vMem);
-            finally
-              vMem.Free
+          sftMemo:
+            begin
+              vMem := TMemoryStream.Create;
+              try
+                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+                vValue := vValue + CSVFormatStream(vMem);
+              finally
+                vMem.Free
+              end;
             end;
-          end;
-          sftDateTime  : vValue := vValue + CSVFormatDateTime(ADataset.Fields[vInt].AsDateTime);
+          sftDateTime:
+            vValue := vValue + CSVFormatDateTime(ADataset.Fields[vInt].AsDateTime);
         end;
       end;
     end;
@@ -296,9 +297,9 @@ end;
 
 function TRALDBStorageCSV.ReadLine(AStream: TStream): TStringList;
 var
-  vChr1, vChr2 : Char;
-  vDoubleQuote, v13 : boolean;
-  vStr : StringRAL;
+  vChr1, vChr2: Char;
+  vDoubleQuote, v13: Boolean;
+  vStr: StringRAL;
 
   procedure addString;
   begin
@@ -365,7 +366,7 @@ var
   vName, vValue: StringRAL;
   vField: TField;
   vType: TFieldType;
-  vFormat : TFormatSettings;
+  vFormat: TFormatSettings;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -397,11 +398,12 @@ begin
         vType := vField.DataType;
         vSize := vField.Size;
       end
-      else begin
+      else
+      begin
         vValue := vLine2.Strings[vInt];
         vSize := 0;
-        if (vValue = FFormatOptions.BoolTrueStr) or
-           (vValue = FFormatOptions.BoolFalseStr) then
+        if (vValue = FFormatOptions.BoolTrueStr) or (vValue = FFormatOptions.BoolFalseStr)
+        then
         begin
           vType := ftBoolean;
         end

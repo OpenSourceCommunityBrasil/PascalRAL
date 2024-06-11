@@ -1,3 +1,4 @@
+/// Unit for ZMemTable wrapping
 unit RALDBZeosMemTable;
 
 {$IFNDEF FPC}
@@ -43,23 +44,22 @@ type
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function ParamByName(const AValue: StringRAL): TParam; reintroduce;
-
-    procedure OpenRemote;
-    procedure ExecSQLRemote;
     procedure ApplyUpdatesRemote;
+    procedure ExecSQLRemote;
+    function ParamByName(const AValue: StringRAL): TParam; reintroduce;
+    procedure OpenRemote;
   published
 //    property Active;
 //    property FieldDefs;
 
-    property Client : TRALClientMT read FClient write SetClient;
-    property ModuleRoute : StringRAL read FModuleRoute write FModuleRoute;
-    property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorageLink read FStorage write SetStorage;
-    property Params : TParams read FParams write FParams;
-    property UpdateSQL : TRALDBUpdateSQL read FUpdateSQL write FUpdateSQL;
+    property Client: TRALClientMT read FClient write SetClient;
+    property ModuleRoute: StringRAL read FModuleRoute write FModuleRoute;
+    property Params: TParams read FParams write FParams;
+    property SQL: TStrings read FSQL write SetSQL;
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write FUpdateSQL;
 
-    property OnError : TRALDBOnError read FOnError write FOnError;
+    property OnError: TRALDBOnError read FOnError write FOnError;
   end;
 
 implementation
@@ -184,8 +184,8 @@ procedure TRALDBZMemTable.ZeosLoadFromStream(AStream: TStream);
   type
     TLoadFromStream = procedure (AStream: TStream) of object;
   var
-    vMethod : TMethod;
-    vProc : TLoadFromStream;
+    vMethod: TMethod;
+    vProc: TLoadFromStream;
 {$ENDIF}
 begin
   {$IFNDEF FPC}
@@ -230,8 +230,8 @@ end;
 procedure TRALDBZMemTable.OpenRemote;
 var
   vQueryStructure: TRALQueryStructure;
-  vMem : TStream;
-  vReq : TRALRequest;
+  vMem: TStream;
+  vReq: TRALRequest;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try
@@ -255,8 +255,8 @@ end;
 procedure TRALDBZMemTable.ExecSQLRemote;
 var
   vQueryStructure: TRALQueryStructure;
-  vMem : TStream;
-  vReq : TRALRequest;
+  vMem: TStream;
+  vReq: TRALRequest;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try

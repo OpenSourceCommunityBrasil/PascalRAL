@@ -1,3 +1,4 @@
+/// Base unit for RALClients using net.http engine
 unit RALnetHTTPClient;
 
 interface
@@ -19,7 +20,7 @@ type
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); override;
+                      AMethod: TRALMethod); override;
   end;
 
   { TRALnetHTTPClientMT }

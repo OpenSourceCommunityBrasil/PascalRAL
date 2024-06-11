@@ -1,3 +1,4 @@
+/// Register unit for FireDAC wrappers
 unit RALDBFireDACLinkReg;
 
 interface

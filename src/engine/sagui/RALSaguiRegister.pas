@@ -1,3 +1,4 @@
+/// Unit that register RAL Sagui Engine components in the IDE
 unit RALSaguiRegister;
 
 interface

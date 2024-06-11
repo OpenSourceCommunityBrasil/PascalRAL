@@ -1,36 +1,37 @@
-﻿unit RALQueryStructure;
+﻿/// Unit for structured query functions
+unit RALQueryStructure;
 
 interface
 
 uses
   Classes, SysUtils, DB, TypInfo,
-  RALTypes, RALDBBase, RALJSON, RALBase64, RALDBStorage, RALDBTypes;
+  RALTypes, RALDBBase, RALJSON, RALBase64, RALDBStorage, RALDBTypes, RALConsts;
 
 type
   { TRALQueryStructure }
 
   TRALQueryStructure = class
   protected
-    function GetQuerySQL(ADataset : TDataSet): StringRAL;
-    function GetQueryClass(ADataset : TDataSet): TRALDBDriverType;
-    function GetQueryParams(ADataset : TDataSet): TParams;
+    function GetQuerySQL(ADataset: TDataSet): StringRAL;
+    function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
+    function GetQueryParams(ADataset: TDataSet): TParams;
 
-    procedure SetQuerySQL(ADataset : TDataSet; AString: StringRAL);
-    procedure SetQueryParams(ADataset : TDataSet; AParams: TParams);
+    procedure SetQuerySQL(ADataset: TDataSet; AString: StringRAL);
+    procedure SetQueryParams(ADataset: TDataSet; AParams: TParams);
   public
-    function ExportToJSON(ADataset : TDataSet): TStream;
-    procedure ImportFromJSON(AStream: TStream; var ASQL : StringRAL;
-                             var AParams : TParams;
-                             var AQueryType : TRALDBDriverType); overload;
-    procedure ImportFromJSON(AStream: TStream; ADataset : TDataSet); overload;
+    function ExportToJSON(ADataset: TDataSet): TStream;
+    procedure ImportFromJSON(AStream: TStream; var ASQL: StringRAL;
+                             var AParams: TParams;
+                             var AQueryType: TRALDBDriverType); overload;
+    procedure ImportFromJSON(AStream: TStream; ADataset: TDataSet); overload;
 
-    function ExportToBinary(ADataset : TDataSet) : TStream;
-    procedure ImportFromBinary(AStream: TStream; var ASQL : StringRAL;
-                               var AParams : TParams;
-                               var AQueryType : TRALDBDriverType); overload;
-    procedure ImportFromBinary(AStream: TStream; ADataset : TDataSet); overload;
+    function ExportToBinary(ADataset: TDataSet) : TStream;
+    procedure ImportFromBinary(AStream: TStream; var ASQL: StringRAL;
+                               var AParams: TParams;
+                               var AQueryType: TRALDBDriverType); overload;
+    procedure ImportFromBinary(AStream: TStream; ADataset: TDataSet); overload;
 
-    function GetStructureVersion : byte;
+    function GetStructureVersion: byte;
   end;
 
 implementation
@@ -39,16 +40,16 @@ implementation
 
 function TRALQueryStructure.GetQuerySQL(ADataset : TDataSet): StringRAL;
 var
-  vStrings : TStrings;
+  vStrings: TStrings;
 begin
   vStrings := TStrings(GetObjectProp(ADataset, 'SQL'));
   if vStrings <> nil then
     Result := Trim(vStrings.Text);
 end;
 
-function TRALQueryStructure.GetQueryClass(ADataset : TDataSet): TRALDBDriverType;
+function TRALQueryStructure.GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
 var
-  vComp : TClass;
+  vComp: TClass;
 begin
   vComp := ADataset.ClassType;
   Result := qtOther;
@@ -75,13 +76,13 @@ begin
   end;
 end;
 
-function TRALQueryStructure.GetQueryParams(ADataset : TDataSet): TParams;
+function TRALQueryStructure.GetQueryParams(ADataset: TDataSet): TParams;
 var
-  vColetion : TCollection;
-  vColetItem : TCollectionItem;
-  vInt : IntegerRAL;
-  vType : StringRAL;
-  vParam : TParam;
+  vColetion: TCollection;
+  vColetItem: TCollectionItem;
+  vInt: IntegerRAL;
+  vType: StringRAL;
+  vParam: TParam;
 begin
   vColetion := TCollection(GetObjectProp(ADataset,'Params'));
   if vColetion <> nil then
@@ -109,9 +110,9 @@ begin
 
 end;
 
-procedure TRALQueryStructure.SetQuerySQL(ADataset : TDataSet; AString: StringRAL);
+procedure TRALQueryStructure.SetQuerySQL(ADataset: TDataSet; AString: StringRAL);
 var
-  vStrings : TStrings;
+  vStrings: TStrings;
 begin
   vStrings := TStrings(GetObjectProp(ADataset, 'SQL'));
   if vStrings <> nil then
@@ -120,13 +121,13 @@ end;
 
 function TRALQueryStructure.ExportToJSON(ADataset : TDataSet): TStream;
 var
-  vjObj : TRALJSONObject;
-  vjArr : TRALJSONArray;
-  vjParam : TRALJSONObject;
+  vjObj: TRALJSONObject;
+  vjArr: TRALJSONArray;
+  vjParam: TRALJSONObject;
   vParams: TParams;
-  vInt : IntegerRAL;
-  vString : StringRAL;
-  vStorType : TRALFieldType;
+  vInt: IntegerRAL;
+  vString: StringRAL;
+  vStorType: TRALFieldType;
 begin
   Result := TMemoryStream.Create;
   vString := '';
@@ -192,15 +193,15 @@ var
   vByte: Byte;
   vParams: TParams;
   vFloat: Double;
-  vInt64 : Int64RAL;
-  vBytes : TBytes;
-  vStorType : TRALFieldType;
-  vBool : boolean;
-  vShort : ShortInt;
-  vSmallInt : SmallInt;
-  vWord : Word;
-  vCardinal : Cardinal;
-  vQWord : UInt64;
+  vInt64: Int64RAL;
+  vBytes: TBytes;
+  vStorType: TRALFieldType;
+  vBool: boolean;
+  vShort: ShortInt;
+  vSmallInt: SmallInt;
+  vWord: Word;
+  vCardinal: Cardinal;
+  vQWord: UInt64;
 begin
   Result := TMemoryStream.Create;
   // version
@@ -314,31 +315,31 @@ begin
   end;
 end;
 
-procedure TRALQueryStructure.ImportFromBinary(AStream: TStream; var ASQL : StringRAL;
-                             var AParams : TParams;
-                             var AQueryType : TRALDBDriverType);
+procedure TRALQueryStructure.ImportFromBinary(AStream: TStream; var ASQL: StringRAL;
+                             var AParams: TParams;
+                             var AQueryType: TRALDBDriverType);
 var
   vByte, vTotParam: Byte;
   vString: StringRAL;
   vInt, vSize: IntegerRAL;
   vFloat: Double;
-  vInt64 : Int64RAL;
-  vBytes : TBytes;
-  vParam : TParam;
-  vStorType : TRALFieldType;
-  vBool : boolean;
-  vShort : ShortInt;
-  vSmallInt : SmallInt;
-  vWord : Word;
-  vCardinal : Cardinal;
-  vQWord : UInt64;
+  vInt64: Int64RAL;
+  vBytes: TBytes;
+  vParam: TParam;
+  vStorType: TRALFieldType;
+  vBool: boolean;
+  vShort: ShortInt;
+  vSmallInt: SmallInt;
+  vWord: Word;
+  vCardinal: Cardinal;
+  vQWord: UInt64;
 begin
   AStream.Position := 0;
 
   // version
   AStream.Read(vByte, SizeOf(vByte));
   if vByte <> GetStructureVersion then
-    raise Exception.Create('Versão da estrutura não confere');
+    raise Exception.Create(emQueryVersionError);
 
   // class dataset
   AStream.Read(vByte, SizeOf(vByte));
@@ -444,9 +445,9 @@ end;
 procedure TRALQueryStructure.ImportFromBinary(AStream: TStream;
   ADataset: TDataSet);
 var
-  vSQL : StringRAL;
-  vParams : TParams;
-  vQueryType : TRALDBDriverType;
+  vSQL: StringRAL;
+  vParams: TParams;
+  vQueryType: TRALDBDriverType;
 begin
   ImportFromBinary(AStream, vSQL, vParams, vQueryType);
   SetQuerySQL(ADataset, vSQL);
@@ -461,9 +462,9 @@ end;
 procedure TRALQueryStructure.ImportFromJSON(AStream: TStream;
   ADataset: TDataSet);
 var
-  vSQL : StringRAL;
-  vParams : TParams;
-  vQueryType : TRALDBDriverType;
+  vSQL: StringRAL;
+  vParams: TParams;
+  vQueryType: TRALDBDriverType;
 begin
   ImportFromJSON(AStream, vSQL, vParams, vQueryType);
   SetQuerySQL(ADataset, vSQL);
@@ -473,13 +474,13 @@ end;
 procedure TRALQueryStructure.ImportFromJSON(AStream: TStream;
   var ASQL: StringRAL; var AParams: TParams; var AQueryType: TRALDBDriverType);
 var
-  vjObj : TRALJSONObject;
-  vInt : IntegerRAL;
-  vjArr : TRALJSONArray;
-  vjParam : TRALJSONObject;
-  vParam : TParam;
-  vStorType : TRALFieldType;
-  vBytes : TBytes;
+  vjObj: TRALJSONObject;
+  vInt: IntegerRAL;
+  vjArr: TRALJSONArray;
+  vjParam: TRALJSONObject;
+  vParam: TParam;
+  vStorType: TRALFieldType;
+  vBytes: TBytes;
 begin
   vjObj := TRALJSONObject(TRALJSON.ParseJSON(AStream));
   try
@@ -487,7 +488,7 @@ begin
     begin
       vInt := vjObj.Get('version').AsInteger;
       if vInt <> GetStructureVersion then
-        raise Exception.Create('Versão da estrutura não confere');
+        raise Exception.Create(emQueryVersionError);
 
       vInt := vjObj.Get('class').AsInteger;
       AQueryType := TRALDBDriverType(vInt);

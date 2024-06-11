@@ -1,3 +1,4 @@
+/// Base unit for RALServer component using UniGUI Engine
 unit RALUniGUIServer;
 
 interface
@@ -13,10 +14,10 @@ type
 
   TRALUniGUIServer = class(TRALServer)
   private
-    FOnHTTPCommand : TUniHTTPCommandEvent;
+    FOnHTTPCommand: TUniHTTPCommandEvent;
   protected
-    procedure SetActive(const AValue: boolean); override;
     procedure DecodeAuth(ARequest: TIdHTTPRequestInfo; AResult: TRALRequest);
+    procedure SetActive(const AValue: boolean); override;
 
     procedure OnRALHTTPCommand(ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo;
@@ -73,7 +74,7 @@ var
   vResponse: TRALResponse;
   vInt: IntegerRAL;
   vCookies: TStringList;
-  vParam : TRALParam;
+  vParam: TRALParam;
   vIdCookie: TIdCookie;
 begin
   if Assigned(FOnHTTPCommand) then

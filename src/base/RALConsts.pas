@@ -11,7 +11,7 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.9.6 - alpha';
+  RALVERSION = '0.9.7 - alpha';
   // IOTA Constants
   RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
   RALPACKAGESHORT          = 'PascalRAL';
@@ -93,11 +93,20 @@ resourcestring
   wm = warning messages
   these are strings that are present through the internal code of RAL, stored here
   for localization purposes, allowing the user to customise their side of the component
+
+  Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
   emContentCheckError = 'Content check error.';
+  emCompressLibFilesError = 'The classes %s - library files were not found.';
+  emCompressInvalidFormat = 'Invalid Format.';
+  emCryptEmptyKey = 'Key must be provided.';
   emDBLinkMissing = 'DBLink Property missing.';
-  emRouteAlreadyExists = 'Route already exists!';
+  emInvalidJSONFormat = 'Invalid JSON Format.';
+  emQueryVersionError = 'Invalid structure version.';
+  emRouteAlreadyExists = 'Route already exists.';
+  emStorageNotFound = 'No TRALStorageLink found.';
+  emStorageInvalidBinary = 'Invalid Binary Format.';
 
   // sagui error messages
   emSaguiServerCreateError = 'Error while attempting to create the server.';
@@ -105,7 +114,7 @@ resourcestring
   emSaguiLibraryLoadError = 'Error while trying to load libsagui.';
 
   // ralserver error messages
-  wmIPv6notImplemented = 'IPv6 not is implemented in this engine!';
+  wmIPv6notImplemented = 'IPv6 is not implemented in this engine.';
 
 implementation
 

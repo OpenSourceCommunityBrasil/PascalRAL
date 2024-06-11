@@ -17,21 +17,20 @@ type
   /// Base class of engine
   TRALClientHTTP = class
   private
-    FParent: TRALClientBase;
     FIndexUrl: IntegerRAL; // cliente MT control
+    FParent: TRALClientBase;
   protected
-    /// returns the complete URL of a given route.
-    function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil;
-      AIndexUrl: IntegerRAL = -1): StringRAL;
     /// allows manipulation of params before executing request.
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
-      AResponse: TRALResponse; AMethod: TRALMethod);
+                            AResponse: TRALResponse; AMethod: TRALMethod);
+    /// returns the complete URL of a given route.
+    function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil;
+                    AIndexUrl: IntegerRAL = -1): StringRAL;
     /// clears authentication token property.
     procedure ResetToken;
     /// Configures the Request header with proper authentication info based on the assigned
     /// authenticator.
     function SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
-
     /// used by SetAuthToken to set authentication on the header: Basic.
     function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: DigestAuth.
@@ -48,7 +47,7 @@ type
     constructor Create(AOwner: TRALClientBase); virtual;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); virtual; abstract;
+                      AMethod: TRALMethod); virtual; abstract;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -61,33 +60,27 @@ type
   /// Base class of engines multi-threads
   TRALThreadClient = class(TThread)
   private
-    FParent: TRALClientBase;
     FClient: TRALClientHTTP;
-
     FException: StringRAL;
     FIndexUrl: IntegerRAL; // cliente MT control
     FMethod: TRALMethod;
-    FRoute: StringRAL;
-
+    FParent: TRALClientBase;
     FRequest: TRALRequest;
     FResponse: TRALResponse;
     FRequestLifeCicle: boolean;
-
+    FRoute: StringRAL;
     FOnResponse: TRALThreadClientResponse;
-
     procedure SetRequest(const AValue: TRALRequest);
   protected
     procedure Execute; override;
     procedure OnTerminateThread(Sender: TObject);
 
-    property Parent: TRALClientBase read FParent write FParent;
-
-    property Route: StringRAL read FRoute write FRoute;
-    property Request: TRALRequest read FRequest write SetRequest;
-    property Method: TRALMethod read FMethod write FMethod;
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
+    property Method: TRALMethod read FMethod write FMethod;
+    property Parent: TRALClientBase read FParent write FParent;
+    property Request: TRALRequest read FRequest write SetRequest;
     property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle;
-
+    property Route: StringRAL read FRoute write FRoute;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   public
     constructor Create(AOwner: TRALClientBase); virtual;
@@ -110,21 +103,18 @@ type
     FRequestTimeout: IntegerRAL;
     FUserAgent: StringRAL;
   protected
+    function CreateClient: TRALClientHTTP; virtual; abstract;
+    property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
     procedure SetAuthentication(const AValue: TRALAuthClient);
     procedure SetBaseURL(const AValue: TStrings);
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
+    procedure SetEngine(const AValue: StringRAL);
     procedure SetKeepAlive(const AValue: boolean); virtual;
     procedure SetRequestTimeout(const AValue: IntegerRAL); virtual;
     procedure SetUserAgent(const AValue: StringRAL); virtual;
-
-    procedure SetEngine(const AValue: StringRAL);
-
-    function CreateClient: TRALClientHTTP; virtual; abstract;
-
-    property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -134,70 +124,64 @@ type
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
-    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout
-      default 5000;
+    property ConnectTimeout: IntegerRAL read FConnectTimeout write SetConnectTimeout default 5000;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
-    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout
-      default 30000;
-    property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
+    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
+    property UserAgent: StringRAL read FUserAgent write SetUserAgent;
   end;
 
   { TRALClientMT }
 
   TRALClientMT = class(TRALClientBase)
   private
-    FOnResponse: TRALThreadClientResponse;
     FCritSession: TCriticalSection;
     FExecBehavior: TRALExecBehavior;
     FRequestLifeCicle: boolean;
+    FOnResponse: TRALThreadClientResponse;
   protected
-    procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
-      AException: StringRAL);
-
     procedure LockSession;
     procedure UnLockSession;
-
     /// core method of the client. Must override on children.
     procedure ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest; AMethod: TRALMethod;
-      AOnResponse: TRALThreadClientResponse = nil);
+                            AOnResponse: TRALThreadClientResponse = nil);
+
+    /// event called when client thread finishes
+    procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    function NewRequest: TRALRequest;
-
     function Clone(AOwner: TComponent = nil): TRALClientMT; virtual; abstract;
-
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; ARequest: TRALRequest;
-      AOnResponse: TRALThreadClientResponse = nil); virtual;
+                     AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Get.
     procedure Get(ARoute: StringRAL; ARequest: TRALRequest;
-      AOnResponse: TRALThreadClientResponse = nil); virtual;
+                  AOnResponse: TRALThreadClientResponse = nil); virtual;
+    function NewRequest: TRALRequest;
     /// Defines method on the client: Patch.
     procedure Patch(ARoute: StringRAL; ARequest: TRALRequest;
-      AOnResponse: TRALThreadClientResponse = nil); virtual;
+                    AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Post.
     procedure Post(ARoute: StringRAL; ARequest: TRALRequest;
-      AOnResponse: TRALThreadClientResponse = nil); virtual;
+                   AOnResponse: TRALThreadClientResponse = nil); virtual;
     /// Defines method on the client: Put.
     procedure Put(ARoute: StringRAL; ARequest: TRALRequest;
-      AOnResponse: TRALThreadClientResponse = nil); virtual;
+                  AOnResponse: TRALThreadClientResponse = nil); virtual;
   published
     property Authentication;
     property BaseURL;
     property ConnectTimeout;
     property CompressType;
     property CriptoOptions;
+    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior;
+    property KeepAlive;
+    property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle default True;
     property RequestTimeout;
     property UserAgent;
-    property KeepAlive;
-
-    property RequestLifeCicle: boolean read FRequestLifeCicle write FRequestLifeCicle default True;
-    property ExecBehavior: TRALExecBehavior read FExecBehavior write FExecBehavior;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   end;
 
@@ -206,10 +190,10 @@ type
   /// Base class of client components.
   TRALClient = class(TRALClientBase)
   private
-    FRoute: StringRAL;
+    FClient: TRALClientHTTP; // single
     FRequest: TRALRequest;
     FResponse: TRALResponse;
-    FClient: TRALClientHTTP; // single
+    FRoute: StringRAL;
   protected
     /// Returns LastResponse of the client in an UTF8 String.
     function GetResponseText: StringRAL;
@@ -246,11 +230,10 @@ type
     property ConnectTimeout;
     property CompressType;
     property CriptoOptions;
-    property RequestTimeout;
-    property UserAgent;
     property KeepAlive;
-
+    property RequestTimeout;
     property Route: StringRAL read FRoute write FRoute;
+    property UserAgent;
   end;
 
 implementation
