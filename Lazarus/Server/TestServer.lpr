@@ -1,4 +1,4 @@
-program TestServer;
+program RALTestServerLazarus;
 
 {$mode objfpc}{$H+}
 

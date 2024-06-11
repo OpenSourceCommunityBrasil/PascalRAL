@@ -36,6 +36,7 @@ type
   var
     input: string;
   begin
+    input := '';
     while not (input = 'exit') do
     begin
       WriteLn('Server ' + FServer.Engine + ' online on port ' + FServer.Port.ToString);
@@ -52,7 +53,6 @@ type
   constructor TRALApplication.Create(AOwner: TComponent);
   var
     opt: integer;
-    test: string;
   begin
     inherited Create(AOwner);
     StopOnException := True;

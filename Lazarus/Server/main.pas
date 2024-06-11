@@ -9,7 +9,7 @@ uses
   StdCtrls, Grids, LazUTF8,
   RALServer, RALIndyServer, RALFpHttpServer, RALSynopseServer, RALResponse,
   RALRequest, RALRoutes, RALAuthentication, RALConsts, RALTools, RALSaguiServer,
-  uroutes;
+  uRoutes;
 
 type
 
@@ -192,8 +192,8 @@ begin
   begin
     SkipMethods.DelimitedText := sgRoutes.Cells[2, I];
     for J := 0 to pred(SkipMethods.Count) do
-      FServer.Routes.RouteAddress[sgRoutes.Cells[0, I]].SkipAuthMethods :=
-        FServer.Routes.RouteAddress[sgRoutes.Cells[0, I]].SkipAuthMethods +
+      FServer.Routes.Find[sgRoutes.Cells[0, I]].SkipAuthMethods :=
+        FServer.Routes.Find[sgRoutes.Cells[0, I]].SkipAuthMethods +
         [HTTPMethodToRALMethod(SkipMethods.Strings[J])];
     SkipMethods.Clear;
   end;
