@@ -101,8 +101,11 @@ type
     procedure AddAllowHeader(AValue: StringRAL);
     function GetAllowHeaders: StringRAL;
   published
+    /// List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
+    /// List of IPs allowed to comunicate with the server
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
+    /// Time in miliseconds to allow an active CORS session
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
@@ -152,10 +155,15 @@ type
     /// Checks if the number de tries of client exceed the established limit
     function CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
   published
+    /// List of IPs that will not receive a response from the server
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
+    /// Set of configurations to block BruteForce attacks
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
+    /// Time in miliseconds between requests by the same IP that the server will allow
     property FloodTimeInterval: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;
+    /// Flags that will enable/disable security features
     property Options: TRALSecurityOptions read FOptions write SetOptions;
+    /// List of IPs that will always receive a response from the server and won't be blocked
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
   end;
 
@@ -212,6 +220,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function CountSubModules: IntegerRAL;
     /// Shortcut to create routes on the server
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
@@ -220,37 +229,49 @@ type
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     /// Validate requests headers before ProcessCommands
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
-    /// create handle request of server
+    /// Create handle request of server
     function CreateRequest: TRALRequest;
-    /// create handle response of server
+    /// Create handle response of server
     function CreateResponse: TRALResponse;
+    function SSLEnabled: boolean;
     /// Shortcut to start the server
     procedure Start;
     /// Shortcut to stop the server
     procedure Stop;
 
-    function CountSubModules: IntegerRAL;
-    function SSLEnabled: boolean;
-
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
+    /// Compression algorithm that will be used on responses to the client
     property CompressType: TRALCompressType read FCompressType write FCompressType;
+    /// Determinates in seconds how long will the cookies be kept
     property CookieLife: integer read FCookieLife write FCookieLife;
+    /// Determinates CORS configurations for server-server communication
     property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
+    /// Options for P2P crypt security
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    /// Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
+    /// Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    /// Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
+    /// Route configuration of the server, a.k.a endpoints
     property Routes: TRALRoutes read FRoutes write FRoutes;
+    /// Security configurations of the server
     property Security: TRALSecurity read FSecurity write FSecurity;
+    /// Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
+    /// Timeout (miliseconds) for WebModule to determinate max age of the session
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
+    /// Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
-
+    /// Event fired whenever an incoming IP gets blocked by the server
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
+    /// Event fired whenever any request is received by the server
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
+    /// Event fired whenever any response is sent by the server
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
   end;
 
