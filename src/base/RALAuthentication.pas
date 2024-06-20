@@ -51,17 +51,20 @@ type
   end;
 
   /// Base class of server components' Authenticator
+
+  { TRALAuthServer }
+
   TRALAuthServer = class(TRALAuthentication)
   protected
     function GetAuthRoute: TRALBaseRoute; virtual;
+    procedure SetAuthRoute(ARoute : TRALBaseRoute); virtual;
   public
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
     /// Main method of authenticator, all validations must be done here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
 
-    property AuthRoute: TRALBaseRoute read GetAuthRoute;
-    property AuthType: TRALAuthTypes read FAuthType;
+    property AuthRoute: TRALBaseRoute read GetAuthRoute write SetAuthRoute;
   end;
 
   /// BasicAuth for client components
@@ -124,9 +127,13 @@ type
   end;
 
   /// JWT Authenticator for server components
+
+  { TRALServerJWTAuth }
+
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
+    FCollectionAuth : TCollection;
     FAuthToken: TRALBaseRoute;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
@@ -135,6 +142,7 @@ type
     FOnValidate: TRALOnTokenJWT;
   protected
     function GetAuthRoute: TRALBaseRoute; override;
+    procedure SetAuthRoute(ARoute : TRALBaseRoute); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -555,7 +563,9 @@ begin
   inherited;
   SetAuthType(ratBearer);
 
-  FAuthToken := TRALBaseRoute.Create(nil);
+  FCollectionAuth := TCollection.Create(TRALBaseRoute);
+
+  FAuthToken := TRALBaseRoute(FCollectionAuth.Add);
   FAuthToken.Route := '/gettoken';
   FAuthToken.Name := 'gettoken';
   FAuthToken.SkipAuthMethods := [amALL];
@@ -568,7 +578,7 @@ end;
 
 destructor TRALServerJWTAuth.Destroy;
 begin
-  FreeAndNil(FAuthToken);
+  FreeAndNil(FCollectionAuth);
   inherited;
 end;
 
@@ -628,6 +638,11 @@ end;
 function TRALServerJWTAuth.GetAuthRoute: TRALBaseRoute;
 begin
   Result := FAuthToken;
+end;
+
+procedure TRALServerJWTAuth.SetAuthRoute(ARoute: TRALBaseRoute);
+begin
+  inherited SetAuthRoute(ARoute);
 end;
 
 function TRALServerJWTAuth.GetToken(var AJSONParams: StringRAL): StringRAL;
@@ -818,6 +833,11 @@ end;
 function TRALAuthServer.GetAuthRoute: TRALBaseRoute;
 begin
   Result := nil;
+end;
+
+procedure TRALAuthServer.SetAuthRoute(ARoute: TRALBaseRoute);
+begin
+  // not implmented
 end;
 
 end.

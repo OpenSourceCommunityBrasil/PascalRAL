@@ -854,15 +854,7 @@ begin
 end;
 
 function TRALModuleRoutes.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
-var
-  vInt: IntegerRAL;
-  vName: StringRAL;
 begin
-  Result := nil;
-
-  vName := ARequest.Query;
-  Delete(vName, 1, 1);
-
   Result := Routes.CanAnswerRoute(ARequest);
 end;
 

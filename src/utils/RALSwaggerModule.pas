@@ -101,25 +101,25 @@ var
 begin
   Routes.Clear;
 
-  vRoute := CreateRoute(Domain,{$IFDEF FPC}@{$ENDIF}SwaggerIndex);
+  vRoute := CreateRoute('/',{$IFDEF FPC}@{$ENDIF}SwaggerIndex);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger.css',{$IFDEF FPC}@{$ENDIF}SwaggerCSS);
+  vRoute := CreateRoute('/swagger.css',{$IFDEF FPC}@{$ENDIF}SwaggerCSS);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger-initializer.js',{$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
+  vRoute := CreateRoute('/swagger-initializer.js',{$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
-  vRoute := CreateRoute(Domain + '/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
+  vRoute := CreateRoute('/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
   vRoute.AllowedMethods := [amGET];
   vRoute.SkipAuthMethods := [amALL];
 
   if FPostmanTag then
   begin
-    vRoute := CreateRoute(Domain + '/postman.json',{$IFDEF FPC}@{$ENDIF}SwaggerPostman);
+    vRoute := CreateRoute('/postman.json',{$IFDEF FPC}@{$ENDIF}SwaggerPostman);
     vRoute.AllowedMethods := [amGET];
     vRoute.SkipAuthMethods := [amALL];
   end;

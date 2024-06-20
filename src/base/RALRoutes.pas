@@ -12,6 +12,40 @@ type
   TRALRoutes = class;
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
 
+  // swagger defines
+  // array, boolean, integer, number, object, string
+  TRALParamRouteType = (prtBoolean, prtInteger, prtNumber, prtString);
+
+  { TRALParamRoute }
+
+  TRALParamRoute = class(TCollectionItem)
+  private
+    FDescription: TStrings;
+    FIsURI: boolean;
+    FParamName: StringRAL;
+    FParamType: TRALParamRouteType;
+    FRequired : boolean;
+  protected
+    function GetDisplayName: string; override;
+    procedure SetDescription(AValue: TStrings);
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+  published
+    property Description: TStrings read FDescription write SetDescription;
+    property IsURI: boolean read FIsURI write FIsURI;
+    property ParamName: StringRAL read FParamName write FParamName;
+    property ParamType: TRALParamRouteType read FParamType write FParamType;
+    property Required: boolean read FRequired write FRequired;
+  end;
+
+  { TRALParamsRoute }
+
+  TRALParamsRoute = class(TOwnedCollection)
+  public
+    constructor Create(AOwner: TPersistent);
+  end;
+
   { TRALBasicRoute }
 
   /// Base class for individual route definition
@@ -25,6 +59,7 @@ type
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
     FURIParams: TStrings;
+    FParams : TRALParamsRoute;
 
     FOnReply: TRALOnReply;
   protected
@@ -61,6 +96,7 @@ type
   published
     property Description: TStrings read FDescription write SetDescription;
     property Route: StringRAL read FRoute write SetRoute;
+    property Params: TRALParamsRoute read FParams write FParams;
   end;
 
   TRALRoute = class(TRALBaseRoute)
@@ -73,11 +109,13 @@ type
     property Route;
     property SkipAuthMethods;
     property URIParams;
+    property Params;
 
     property OnReply;
   end;
 
   { TRALRoutes }
+
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
   private
@@ -110,6 +148,8 @@ begin
   FRoute := '/';
   FDescription := TStringList.Create;
   FUriParams := TStringList.Create;
+  FParams := TRALParamsRoute.Create(Self);
+
   Changed(False);
 end;
 
@@ -117,6 +157,7 @@ destructor TRALBaseRoute.Destroy;
 begin
   FreeAndNil(FDescription);
   FreeAndNil(FURIParams);
+  FreeAndNil(FParams);
   inherited Destroy;
 end;
 
@@ -408,6 +449,38 @@ begin
     FreeAndNil(vUriRoute);
     FreeAndNil(vTempUriRoute);
   end;
+end;
+
+{ TRALParamRoute }
+
+function TRALParamRoute.GetDisplayName: string;
+begin
+  Result := FParamName;
+  inherited;
+end;
+
+procedure TRALParamRoute.SetDescription(AValue: TStrings);
+begin
+  FDescription.Assign(AValue);
+end;
+
+constructor TRALParamRoute.Create(ACollection: TCollection);
+begin
+  inherited Create(ACollection);
+  FDescription := TStringList.Create;
+end;
+
+destructor TRALParamRoute.Destroy;
+begin
+  FreeAndNil(FDescription);
+  inherited Destroy;
+end;
+
+{ TRALParamsRoute }
+
+constructor TRALParamsRoute.Create(AOwner: TPersistent);
+begin
+  inherited Create(AOwner, TRALParamRoute);
 end;
 
 end.
