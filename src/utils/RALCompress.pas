@@ -28,7 +28,7 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
 
-    class function CheckDepedancy: boolean; virtual; abstract;
+    class function CheckDependency: boolean; virtual; abstract;
   public
     function Compress(AStream: TStream): TStream; overload;
     function Compress(const AString: StringRAL): StringRAL; overload;
@@ -282,7 +282,7 @@ begin
   for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
   begin
     vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
-    if (vCompress <> nil) and (not vCompress.CheckDepedancy) then
+    if (vCompress <> nil) and (not vCompress.CheckDependency) then
     begin
       if vLibs <> '' then
         vLibs := vLibs + ', ';

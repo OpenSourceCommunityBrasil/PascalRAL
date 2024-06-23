@@ -133,7 +133,8 @@ begin
   Result := TRALJSONArray.Create;
 
   // autenticacao
-  RouteToJSON(Result, AServer.Authentication.AuthRoute, AServer.Authentication);
+  if AServer.Authentication <> nil then
+    RouteToJSON(Result, AServer.Authentication.AuthRoute, AServer.Authentication);
 
   // adicionando rotas do server
   for vInt1 := 0 to Pred(AServer.Routes.Count) do
@@ -206,17 +207,20 @@ procedure TRALPostmanExporter.RouteToJSON(AItem : TRALJSONArray; ARoute: TRALBas
 var
   vRoute : TRALJSONObject;
   vStr: StringRAL;
-  vAux1, vAux2 : TRALJSONObject;
+  vAux1, vAux2, vAux5, vAux6 : TRALJSONObject;
   vAux3, vAux4 : TRALJSONArray;
   vMethod : TRALMethod;
-  vFunc : TStringList;
+  vFunc, vList : TStringList;
+  vInt : IntegerRAL;
+  vRouteParam : TRALRouteParam;
+  vStrRoute : StringRAL;
 begin
   if ARoute = nil then
     Exit;
 
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if ARoute.IsMethodAllowed(vMethod) then begin
+    if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then begin
       vRoute := TRALJSONObject.Create;
 
       vRoute.Add('name', ARoute.Name);
@@ -231,15 +235,95 @@ begin
       end;
 
       vAux2 := TRALJSONObject.Create;
+
       vAux3 := TRALJSONArray.Create;
       vAux3.Add('{{ral_url}}');
       vAux2.Add('host', vAux3);
 
+      vStrRoute := ARoute.GetFullRoute;
+
       vAux3 := TRALJSONArray.Create;
-      vAux3.Add(ARoute.GetFullRoute);
+
+      vList := TStringList.Create;
+      try
+        vList.DelimitedText := '/';
+        vList.Text := ARoute.GetFullRoute;
+
+        for vInt := 0 to Pred(vList.Count) do
+          vAux3.Add(vList.Strings[vInt]);
+      finally
+        FreeAndNil(vList);
+      end;
+
+      vAux4 := nil;
+      if ARoute.URIParams.Count > 0 then
+        vAux4 := TRALJSONArray.Create;
+
+      for vInt := 0 to Pred(ARoute.URIParams.Count) do
+      begin
+        vRouteParam := TRALRouteParam(ARoute.URIParams.Items[vInt]);
+        vAux3.Add(Format(':%s', [vRouteParam.ParamName]));
+        vStrRoute := Format('%s/:%s', [vStrRoute, vRouteParam.ParamName]);
+
+        vAux5 := TRALJSONObject.Create;
+        vAux5.Add('key', vRouteParam.ParamName);
+        vAux5.Add('description', vRouteParam.Description.Text);
+
+        vAux4.Add(vAux5);
+      end;
+
       vAux2.Add('path', vAux3);
 
-      vAux2.Add('raw', '{{ral_url}}' + ARoute.GetFullRoute);
+      vAux2.Add('raw', '{{ral_url}}' + vStrRoute);
+      if vAux4 <> nil then
+        vAux2.Add('variable', vAux4);
+
+      case vMethod of
+        amDELETE, amPOST, amPATCH, amPUT : begin
+          if ARoute.InputParams.Count > 0 then
+          begin
+            vAux6 := TRALJSONObject.Create;
+            vAux6.Add('mode', 'formdata');
+            vAux3 := TRALJSONArray.Create;
+          end;
+
+          for vInt := 0 to Pred(ARoute.InputParams.Count) do
+          begin
+            vRouteParam := TRALRouteParam(ARoute.InputParams.Items[vInt]);
+
+            vAux5 := TRALJSONObject.Create;
+            vAux5.Add('key', vRouteParam.ParamName);
+            vAux5.Add('description', vRouteParam.Description.Text);
+            vAux5.Add('type', 'text');
+
+            vAux3.Add(vAux5);
+          end;
+
+          if ARoute.InputParams.Count > 0 then
+          begin
+            vAux6.Add('formdata', vAux3);
+            vAux1.Add('body', vAux6);
+          end;
+        end;
+        amGET : begin
+          if ARoute.InputParams.Count > 0 then
+            vAux3 := TRALJSONArray.Create;
+
+          for vInt := 0 to Pred(ARoute.InputParams.Count) do
+          begin
+            vRouteParam := TRALRouteParam(ARoute.InputParams.Items[vInt]);
+
+            vAux5 := TRALJSONObject.Create;
+            vAux5.Add('key', vRouteParam.ParamName);
+            vAux5.Add('description', vRouteParam.Description.Text);
+
+            vAux3.Add(vAux5);
+          end;
+
+          if ARoute.InputParams.Count > 0 then
+            vAux2.Add('query', vAux3);
+        end;
+      end;
 
       vAux1.Add('url', vAux2);
       vAux1.Add('method', RALMethodToHTTPMethod(vMethod));

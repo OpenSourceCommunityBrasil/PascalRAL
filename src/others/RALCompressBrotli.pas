@@ -16,7 +16,7 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
 
-    class function CheckDependence : boolean; override;
+    class function CheckDependency: boolean; override;
   end;
 
 implementation
@@ -83,7 +83,7 @@ begin
   inherited;
 end;
 
-class function TRALCompressBrotli.CheckDependence: boolean;
+class function TRALCompressBrotli.CheckDependency: boolean;
 begin
   Result := TBrotli.IsLoaded;
 end;

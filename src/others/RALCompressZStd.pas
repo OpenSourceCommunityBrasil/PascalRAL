@@ -20,7 +20,7 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
 
-    class function CheckDependence : boolean; override;
+    class function CheckDependency : boolean; override;
   end;
 
 implementation
@@ -95,7 +95,7 @@ begin
   inherited;
 end;
 
-class function TRALCompressZStd.CheckDependence: boolean;
+class function TRALCompressZStd.CheckDependency: boolean;
 begin
   Result := ZSTDIsLoaded;
 end;

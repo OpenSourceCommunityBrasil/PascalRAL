@@ -14,16 +14,15 @@ type
 
   // swagger defines
   // array, boolean, integer, number, object, string
-  TRALParamRouteType = (prtBoolean, prtInteger, prtNumber, prtString);
+  TRALRouteParamType = (prtBoolean, prtInteger, prtNumber, prtString);
 
-  { TRALParamRoute }
+  { TRALRouteParam }
 
-  TRALParamRoute = class(TCollectionItem)
+  TRALRouteParam = class(TCollectionItem)
   private
     FDescription: TStrings;
-    FIsURI: boolean;
     FParamName: StringRAL;
-    FParamType: TRALParamRouteType;
+    FParamType: TRALRouteParamType;
     FRequired : boolean;
   protected
     function GetDisplayName: string; override;
@@ -33,15 +32,16 @@ type
     destructor Destroy; override;
   published
     property Description: TStrings read FDescription write SetDescription;
-    property IsURI: boolean read FIsURI write FIsURI;
     property ParamName: StringRAL read FParamName write FParamName;
-    property ParamType: TRALParamRouteType read FParamType write FParamType;
+    property ParamType: TRALRouteParamType read FParamType write FParamType;
     property Required: boolean read FRequired write FRequired;
   end;
 
-  { TRALParamsRoute }
+  { TRALRouteParams }
 
-  TRALParamsRoute = class(TOwnedCollection)
+  TRALRouteParams = class(TOwnedCollection)
+  protected
+    procedure Update(Item: TCollectionItem); override;
   public
     constructor Create(AOwner: TPersistent);
   end;
@@ -58,8 +58,8 @@ type
     FName: StringRAL;
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
-    FURIParams: TStrings;
-    FParams : TRALParamsRoute;
+    FURIParams: TRALRouteParams;
+    FInputParams : TRALRouteParams;
 
     FOnReply: TRALOnReply;
   protected
@@ -70,7 +70,6 @@ type
     procedure SetDisplayName(const AValue: string); override;
     procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
-    procedure SetURIParams(AValue: TStrings);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -91,12 +90,12 @@ type
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
-    property URIParams: TStrings read FURIParams write SetURIParams;
+    property URIParams: TRALRouteParams read FURIParams write FURIParams;
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
     property Description: TStrings read FDescription write SetDescription;
     property Route: StringRAL read FRoute write SetRoute;
-    property Params: TRALParamsRoute read FParams write FParams;
+    property InputParams: TRALRouteParams read FInputParams write FInputParams;
   end;
 
   TRALRoute = class(TRALBaseRoute)
@@ -109,7 +108,7 @@ type
     property Route;
     property SkipAuthMethods;
     property URIParams;
-    property Params;
+    property InputParams;
 
     property OnReply;
   end;
@@ -147,8 +146,8 @@ begin
   FName := 'ralroute' + IntToStr(Index);
   FRoute := '/';
   FDescription := TStringList.Create;
-  FUriParams := TStringList.Create;
-  FParams := TRALParamsRoute.Create(Self);
+  FURIParams := TRALRouteParams.Create(Self);
+  FInputParams := TRALRouteParams.Create(Self);
 
   Changed(False);
 end;
@@ -157,7 +156,7 @@ destructor TRALBaseRoute.Destroy;
 begin
   FreeAndNil(FDescription);
   FreeAndNil(FURIParams);
-  FreeAndNil(FParams);
+  FreeAndNil(FInputParams);
   inherited Destroy;
 end;
 
@@ -248,17 +247,6 @@ begin
   Result := FixRoute(Result + '/' + FRoute);
 end;
 
-procedure TRALBaseRoute.SetURIParams(AValue: TStrings);
-begin
-  if FURIParams = AValue then
-    Exit;
-
-  if Trim(AValue.Text) <> '' then
-    FAllowURIParams := True;
-
-  FURIParams.Text := AValue.Text;
-end;
-
 function TRALBaseRoute.GetDisplayName: string;
 begin
   Result := FName;
@@ -343,7 +331,11 @@ begin
     for vInt := 0 to Pred(vStrQuery1.Count) do
     begin
       vStr1 := vStrQuery1.Strings[vInt];
-      vStr2 := vStrQuery2.Strings[vInt];
+
+      vStr2 := '';
+      if vInt < vStrQuery2.Count then
+        vStr2 := vStrQuery2.Strings[vInt];
+
       if not SameText(vStr1, vStr2) then
         Exit;
     end;
@@ -357,7 +349,7 @@ begin
       begin
         if vIdxURI < ARoute.URIParams.Count then
         begin
-          vStr1 := ARoute.URIParams.Strings[vIdxURI];
+          vStr1 := TRALRouteParam(ARoute.URIParams.Items[vIdxURI]).ParamName;
           vIdxURI := vIdxURI + 1;
         end
         else begin
@@ -451,36 +443,46 @@ begin
   end;
 end;
 
-{ TRALParamRoute }
+{ TRALRouteParam }
 
-function TRALParamRoute.GetDisplayName: string;
+function TRALRouteParam.GetDisplayName: string;
 begin
   Result := FParamName;
   inherited;
 end;
 
-procedure TRALParamRoute.SetDescription(AValue: TStrings);
+procedure TRALRouteParam.SetDescription(AValue: TStrings);
 begin
   FDescription.Assign(AValue);
 end;
 
-constructor TRALParamRoute.Create(ACollection: TCollection);
+constructor TRALRouteParam.Create(ACollection: TCollection);
 begin
   inherited Create(ACollection);
   FDescription := TStringList.Create;
+
+  FParamName := 'routeparam' + IntToStr(Index);
+  FParamType := prtString;
 end;
 
-destructor TRALParamRoute.Destroy;
+destructor TRALRouteParam.Destroy;
 begin
   FreeAndNil(FDescription);
   inherited Destroy;
 end;
 
-{ TRALParamsRoute }
+{ TRALRouteParams }
 
-constructor TRALParamsRoute.Create(AOwner: TPersistent);
+constructor TRALRouteParams.Create(AOwner: TPersistent);
 begin
-  inherited Create(AOwner, TRALParamRoute);
+  inherited Create(AOwner, TRALRouteParam);
+end;
+
+procedure TRALRouteParams.Update(Item: TCollectionItem);
+begin
+  inherited;
+  if GetOwner.InheritsFrom(TRALBaseRoute) and (Self.Count > 0) then
+    TRALBaseRoute(GetOwner).AllowURIParams := True;
 end;
 
 end.
