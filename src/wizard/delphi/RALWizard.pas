@@ -60,30 +60,12 @@ uses
   {$IF COMPILERVERSION > 29}
     PlatformAPI,
   {$ENDIF}
-  RALWizardTools, RALWizardProjCreator;
+  RALWizardTools, RALWizardForm;
 
 procedure TRALWizard.Execute;
-var
-  vModuleServices: IOTAModuleServices;
-  vProjectName: string;
-  vProjectDir: String;
-Begin
-  vModuleServices := (BorlandIDEServices as IOTAModuleServices);
-  vProjectName := FindNewProjectName(GetActiveProjectGroup);
-  vProjectDir := IncludeTrailingPathDelimiter(GetIDEProjectPath);
-
-  vModuleServices.GetNewModuleAndClassName('', FUnitIdent, FClassName, FFileName);
-
-{
-  FUnitIdent=Unit1
-  FClassName=
-  FFileName=D:\SourceForge\pascalral\dev\wizard\delphi\Unit1.pas
-}
-
-  FClassName := 'RALForm' + Copy(FUnitIdent, 5, Length(FUnitIdent));
-
-  vModuleServices.CreateModule(TRALWizardProjCreator.Create(vProjectName,
-                               vProjectDir, FUnitIdent, FClassName, FFileName));
+begin
+  Application.CreateForm(TfRALWizardForm, fRALWizardForm);
+  fRALWizardForm.ShowModal;
 end;
 
 function TRALWizard.GetAuthor: string;
@@ -93,7 +75,7 @@ end;
 
 function TRALWizard.GetComment: string;
 begin
-  Result := 'Pascal RAL - Form Application';
+  Result := 'Pascal RAL - Wizard Application';
 end;
 
 function TRALWizard.GetDesigner: string;
@@ -114,12 +96,12 @@ end;
 
 function TRALWizard.GetIDString: string;
 begin
-  Result := 'RAL.PascalRALApplicationWizard';
+  Result := 'RAL.PascalRALServerWizard';
 end;
 
 function TRALWizard.GetName: string;
 begin
-  Result := 'Pascal RAL - Server Application';
+  Result := 'Pascal RAL - Server Wizard';
 end;
 
 function TRALWizard.GetPage: string;

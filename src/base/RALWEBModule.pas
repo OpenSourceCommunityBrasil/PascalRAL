@@ -37,9 +37,9 @@ type
   /// Class for the base object of the module
   TRALWebModule = class(TRALModuleRoutes)
   private
+    FCollectionRoute: TCollection;
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
-    FIndexFile: StringRAL;
     FSessions: TRALStringListSafe;
   protected
     procedure CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -47,7 +47,6 @@ type
     function GetWebSession(ARequest: TRALRequest): TRALWebSession;
     function NewSessionName: StringRAL;
     procedure SetDocumentRoot(AValue: StringRAL);
-    procedure SetServer(AValue: TRALServer); override;
     procedure WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
@@ -59,7 +58,6 @@ type
     property Session[ARequest: TRALRequest]: TRALWebSession read GetWebSession;
   published
     property DocumentRoot: StringRAL read FDocumentRoot write SetDocumentRoot;
-    property IndexFile: StringRAL read FIndexFile write FIndexFile;
     property Routes;
   end;
 
@@ -156,10 +154,14 @@ end;
 constructor TRALWebModule.Create(AOwner: TComponent);
 begin
   inherited;
-  FIndexFile := '';
-  FDefaultRoute := TRALRoute.Create(nil);
+  FCollectionRoute := TCollection.Create(TRALRoute);
+
+  FDefaultRoute := TRALRoute(FCollectionRoute.Add);
   FDefaultRoute.Route := '/';
+  FDefaultRoute.Name := 'webdefault';
+  FDefaultRoute.Description.Text := 'Index Page';
   FDefaultRoute.SkipAuthMethods := [amALL];
+  FDefaultRoute.AllowedMethods := [amGET];
   FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
   FSessions := TRALStringListSafe.Create;
@@ -169,33 +171,37 @@ destructor TRALWebModule.Destroy;
 begin
   FSessions.Clear(True);
   FreeAndNil(FSessions);
-  FreeAndNil(FDefaultRoute);
+  FreeAndNil(FCollectionRoute);
   inherited;
 end;
 
 function TRALWebModule.GetFileRoute(ARequest: TRALRequest): StringRAL;
 var
-  vFile: StringRAL;
+  vFile, vDir: StringRAL;
+  vDirFile : StringRAL;
 begin
   Result := '';
-  //vDir := FDocumentRoot;
-  //if (Trim(vDir) = '') or (not DirectoryExists(vDir)) then
-  //  vDir := ExtractFilePath(ParamStr(0));
+  vDir := FDocumentRoot;
+  if (Trim(vDir) = '') or (not DirectoryExists(vDir)) then
+    vDir := ExtractFilePath(ParamStr(0));
 
-  //vDir := IncludeTrailingPathDelimiter(vDir);
-
-  //SetCurrentDir(vDir);
+  vDir := IncludeTrailingPathDelimiter(vDir);
 
   vFile := ARequest.Query;
   Delete(vFile, 1, 1);
-  if vFile <> '' then
-    vFile := DocumentRoot + vFile;
-  //vFile := ExpandFileName(vFile);
-  if FileExists(vFile) then Result := vFile;
 
-  // verificando se a base folder (document root) é o mesmo
-  //if (SameText(Copy(vFile, 1, Length(DocumentRoot)), DocumentRoot)) and (FileExists(vFile)) then
-  //  Result := vFile;
+  if (vFile <> '') and IsRelativePath(vFile) then
+    vFile := ExpandFileName(vDir + vFile);
+
+  // alguns exemplos:
+  // <img src="c:\windows\system32\dll.dll"> -> pode dar bo
+  // <img src="../../../system32/dll.dll"> -> pode dar bo
+  // <img src="system32/dll.dll"> -> nao da bo
+
+  // se o diretorio do vFile = vDir nao dah bo
+  vDirFile := Copy(vFile, 1, Length(vDir));
+  if SameText(vDirFile, vDir) and (FileExists(vFile)) then
+    Result := vFile;
 end;
 
 function TRALWebModule.NewSessionName: StringRAL;
@@ -208,12 +214,6 @@ begin
   until not FSessions.Exists(Result);
 end;
 
-procedure TRALWebModule.SetServer(AValue: TRALServer);
-begin
-  inherited SetServer(AValue);
-  AValue.CreateRoute('/', {$IFDEF FPC}@{$ENDIF}WebModFile, 'index page').SkipAuthMethods := [amALL];
-end;
-
 procedure TRALWebModule.SetDocumentRoot(AValue: StringRAL);
 begin
   if FDocumentRoot = AValue then exit;
@@ -222,8 +222,6 @@ begin
     AValue := ExtractFilePath(ParamStr(0));
 
   AValue := IncludeTrailingPathDelimiter(AValue);
-
-  //SetCurrentDir(AValue);
 end;
 
 function TRALWebModule.GetWebSession(ARequest: TRALRequest): TRALWebSession;
@@ -275,8 +273,6 @@ begin
   vFile := GetFileRoute(ARequest);
   if vFile <> '' then
     AResponse.Answer(vFile)
-  else if IndexFile <> '' then
-    AResponse.Answer(IndexFile)
   else
     AResponse.Answer(404);
 end;

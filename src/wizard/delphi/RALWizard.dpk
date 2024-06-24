@@ -37,8 +37,9 @@ contains
   RALWizardForm in 'RALWizardForm.pas' {fRALWizardForm},
   RALWizardReg in 'RALWizardReg.pas',
   RALWizardTools in 'RALWizardTools.pas',
-  RALWizardProjCreator in 'RALWizardProjCreator.pas',
-  RALWizardFormCreator in 'RALWizardFormCreator.pas',
-  RALWizardObjects in 'RALWizardObjects.pas';
+  RALWizardProjStandAlone in 'standalone\RALWizardProjStandAlone.pas',
+  RALWizardFormStandAlone in 'standalone\RALWizardFormStandAlone.pas',
+  RALWizardObjects in 'RALWizardObjects.pas',
+  RALWizardProjConsole in 'console\RALWizardProjConsole.pas';
 
 end.
