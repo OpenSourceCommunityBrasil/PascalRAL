@@ -47,6 +47,7 @@ type
     {$IFDEF FPC}
       function RequestToHtml(ARequest : TWebRequest) : TStringList;
     {$ENDIF}
+  published
     property RALServer : TRALServerCGI read FRALServer;
   end;
 
@@ -80,7 +81,7 @@ end;
 procedure TRALWebModule.DataModuleCreate(Sender : TObject);
 begin
   FRALServer := TRALServerCGI.Create(nil);
-  FRALServer.BruteForceProtection.Enabled := False;
+  FRALServer.Security.Options := [];
 end;
 
 procedure TRALWebModule.DataModuleDestroy(Sender : TObject);
@@ -201,7 +202,7 @@ end;
         ARequest.Files.Clear;
       end;
 
-      vResponse := FRALServer.ProcessCommands(vRequest);
+      FRALServer.ProcessCommands(vRequest, vResponse);
 
       try
         with vResponse do
@@ -277,7 +278,7 @@ end;
         Protocol := '1.0';
       end;
 
-      vResponse := FRALServer.ProcessCommands(vRequest);
+      FRALServer.ProcessCommands(vRequest, vResponse);
       try
         Response.ContentStream := vResponse.ResponseStream;
         Response.ContentLength := Response.ContentStream.Size;
