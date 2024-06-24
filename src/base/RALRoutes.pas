@@ -40,6 +40,13 @@ type
   { TRALRouteParams }
 
   TRALRouteParams = class(TOwnedCollection)
+  public
+    constructor Create(AOwner: TPersistent);
+  end;
+
+  { TRALRouteURIParams }
+
+  TRALRouteURIParams = class(TOwnedCollection)
   protected
     procedure Update(Item: TCollectionItem); override;
   public
@@ -58,7 +65,7 @@ type
     FName: StringRAL;
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
-    FURIParams: TRALRouteParams;
+    FURIParams: TRALRouteURIParams;
     FInputParams : TRALRouteParams;
 
     FOnReply: TRALOnReply;
@@ -90,7 +97,7 @@ type
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
-    property URIParams: TRALRouteParams read FURIParams write FURIParams;
+    property URIParams: TRALRouteURIParams read FURIParams write FURIParams;
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
     property Description: TStrings read FDescription write SetDescription;
@@ -146,7 +153,7 @@ begin
   FName := 'ralroute' + IntToStr(Index);
   FRoute := '/';
   FDescription := TStringList.Create;
-  FURIParams := TRALRouteParams.Create(Self);
+  FURIParams := TRALRouteURIParams.Create(Self);
   FInputParams := TRALRouteParams.Create(Self);
 
   Changed(False);
@@ -285,10 +292,7 @@ end;
 
 procedure TRALBaseRoute.SetDescription(const AValue: TStrings);
 begin
-  if FDescription = AValue then
-    Exit;
-
-  FDescription.Text := AValue.Text;
+  FDescription.Assign(AValue);
 end;
 
 procedure TRALBaseRoute.SetDisplayName(const AValue: string);
@@ -478,7 +482,14 @@ begin
   inherited Create(AOwner, TRALRouteParam);
 end;
 
-procedure TRALRouteParams.Update(Item: TCollectionItem);
+{ TRALRouteURIParams }
+
+constructor TRALRouteURIParams.Create(AOwner: TPersistent);
+begin
+  inherited Create(AOwner, TRALRouteParam);
+end;
+
+procedure TRALRouteURIParams.Update(Item: TCollectionItem);
 begin
   inherited;
   if GetOwner.InheritsFrom(TRALBaseRoute) and (Self.Count > 0) then

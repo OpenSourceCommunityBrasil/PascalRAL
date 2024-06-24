@@ -319,6 +319,7 @@ begin
       vSwagger.SwaggerModule := Self;
       vMem := vSwagger.ExportToStream(Server);
       try
+        AResponse.ContentEncoding := rctAPPLICATIONJSON;
         AResponse.ResponseStream := vMem;
       finally
         FreeAndNil(vMem);
