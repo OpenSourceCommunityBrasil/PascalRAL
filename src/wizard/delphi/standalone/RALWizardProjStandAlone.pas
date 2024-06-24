@@ -1,5 +1,7 @@
 unit RALWizardProjStandAlone;
 
+{$I ..\..\src\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -8,11 +10,13 @@ uses
 type
   {TRALWizardProjStandAloneCreator}
 
-  TRALWizardProjStandAloneCreator = class(TNotifierObject, IOTACreator, IOTAProjectCreator,
-                                          IOTAProjectCreator50
-                                          {$IF COMPILERVERSION > 25}
+  TRALWizardProjStandAloneCreator = class(TNotifierObject, IOTACreator, IOTAProjectCreator
+                                          {$IF Defined(DELPHIXE5UP)}
                                           , IOTAProjectCreator80
-                                          {$ENDIF})
+                                          {$ELSE}
+                                          , IOTAProjectCreator50
+                                          {$IFEND}
+                                          )
   private
     FProjectFile: string;
     FProjectDir: string;
@@ -44,12 +48,12 @@ type
     procedure NewDefaultProjectModule(const Project: IOTAProject);
 
     { IOTAProjectCreator80 }
-    {$IF COMPILERVERSION > 25}
+    {$IFDEF DELPHIXE5UP}
       function GetProjectPersonality: string;
     {$ENDIF}
   public
-    constructor Create(AProjectFile, AProjectDir : string;
-                       AEngine, AAuth, AOptions : integer);
+    constructor Create(AProjectFile, AProjectDir: string;
+                       AEngine, AAuth, AOptions: integer);
   end;
 
   { TRALWizardProjStandAloneFile }
@@ -74,8 +78,8 @@ uses
 
 { TRALWizardProjStandAloneCreator }
 
-constructor TRALWizardProjStandAloneCreator.Create(AProjectFile, AProjectDir : string;
-                                                   AEngine, AAuth, AOptions : integer);
+constructor TRALWizardProjStandAloneCreator.Create(AProjectFile, AProjectDir: string;
+                                                   AEngine, AAuth, AOptions: integer);
 begin
   inherited Create;
   FProjectFile := AProjectFile;
@@ -170,7 +174,7 @@ begin
   Result := TRALWizardProjStandAloneFile.Create(ProjectName, FUnitName, FFormClass);
 end;
 
-{$IF COMPILERVERSION > 25}
+{$IFDEF DELPHIXE5UP}
   function TRALWizardProjStandAloneCreator.GetProjectPersonality: string;
   begin
     Result := sDelphiPersonality;

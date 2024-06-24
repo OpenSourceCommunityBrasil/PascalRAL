@@ -25,6 +25,7 @@ type
     cbTipoMotor: TComboBox;
     Label3: TLabel;
     cbAutenticacao: TComboBox;
+    Image1: TImage;
     procedure bCriarAplicacaoClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
@@ -57,8 +58,8 @@ var
   vModuleServices: IOTAModuleServices;
   vProjectName: string;
   vProjectDir: String;
-  vOpcoes : integer;
-Begin
+  vOpcoes: integer;
+begin
   vModuleServices := (BorlandIDEServices as IOTAModuleServices);
   vProjectName := FindNewProjectName(GetActiveProjectGroup);
   vProjectDir := IncludeTrailingPathDelimiter(GetIDEProjectPath);

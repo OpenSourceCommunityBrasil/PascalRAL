@@ -36,6 +36,9 @@
         <Projects Include="DB\RALDBZeosLink.dproj">
             <Dependencies>DB\RALDBPackage.dproj</Dependencies>
         </Projects>
+        <Projects Include="RALWizard.dproj">
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -143,14 +146,23 @@
     <Target Name="RALDBZeosLink:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="DB\RALDBZeosLink.dproj" Targets="Make"/>
     </Target>
+    <Target Name="RALWizard" DependsOnTargets="PascalRALDsgn">
+        <MSBuild Projects="RALWizard.dproj"/>
+    </Target>
+    <Target Name="RALWizard:Clean" DependsOnTargets="PascalRALDsgn:Clean">
+        <MSBuild Projects="RALWizard.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALWizard:Make" DependsOnTargets="PascalRALDsgn:Make">
+        <MSBuild Projects="RALWizard.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;SynopseRAL;SaguiRAL;UniGUIRAL;RALDBPackage;RALDBFireDACObjects;RALDBFireDACLink;RALDBZeosLink"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;SynopseRAL;SaguiRAL;UniGUIRAL;RALDBPackage;RALDBFireDACObjects;RALDBFireDACLink;RALDBZeosLink;RALWizard"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;UniGUIRAL:Clean;RALDBPackage:Clean;RALDBFireDACObjects:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;UniGUIRAL:Clean;RALDBPackage:Clean;RALDBFireDACObjects:Clean;RALDBFireDACLink:Clean;RALDBZeosLink:Clean;RALWizard:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;SynopseRAL:Make;SaguiRAL:Make;UniGUIRAL:Make;RALDBPackage:Make;RALDBFireDACObjects:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;SynopseRAL:Make;SaguiRAL:Make;UniGUIRAL:Make;RALDBPackage:Make;RALDBFireDACObjects:Make;RALDBFireDACLink:Make;RALDBZeosLink:Make;RALWizard:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

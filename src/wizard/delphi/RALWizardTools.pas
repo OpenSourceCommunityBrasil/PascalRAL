@@ -6,12 +6,12 @@ uses
   Classes, SysUtils, ToolsAPI;
 
 function FindNewProjectName(const AProjectGroup: IOTAProjectGroup): string;
-function ProjectExists(const AProjectGroup: Iotaprojectgroup; AProject: string): Boolean;
+function ProjectExists(const AProjectGroup: IOTAProjectGroup; AProject: string): Boolean;
 function GetActiveProjectGroup: IOTAProjectGroup;
 function GetIDEProjectPath: string;
 function GetCurrentProject: IOTAProject;
 function MakeFileName(AProjectDir, ABaseFileName, AExtension: string): string;
-procedure Logar(AStr : string);
+procedure Logar(AStr: string);
 
 implementation
 
@@ -30,7 +30,7 @@ end;
 
 function ProjectExists(const AProjectGroup: IOTAProjectGroup; AProject: string): Boolean;
 var
-  vInt: Integer;
+  vInt: integer;
   vProjectFileName: string;
 begin
   Result := False;
@@ -51,7 +51,7 @@ end;
 function GetActiveProjectGroup: IOTAProjectGroup;
 var
   vModuleServices: IOTAModuleServices;
-  vInt: Integer;
+  vInt: integer;
 begin
   Result := nil;
   if Assigned(BorlandIDEServices) then
@@ -82,12 +82,12 @@ var
   vProject: IOTAProject;
   vProjectGroup: IOTAProjectGroup;
   vMultipleProjects: Boolean;
-  vInt: Integer;
+  vInt: integer;
 begin
   Result := nil;
   vMultipleProjects := False;
   vServices := BorlandIDEServices As IOTAModuleServices;
-  for vInt := 0 to Pred(vServices.ModuleCount) do
+  for vInt := 0 to Pred(vServices.Modulecount) do
   begin
     vModule := vServices.Modules[vInt];
     if vServices.Queryinterface(IOTAProjectGroup, vProjectGroup) = S_OK then
@@ -109,8 +109,8 @@ begin
     end;
   end;
 
-//  if vMultipleProjects then
-//    Result := nil;
+  // if vMultipleProjects then
+  // Result := nil;
 end;
 
 function MakeFileName(AProjectDir, ABaseFileName, AExtension: string): string;
@@ -121,9 +121,9 @@ begin
     Result := AProjectDir + ABaseFileName;
 end;
 
-procedure Logar(AStr : string);
+procedure Logar(AStr: string);
 var
-  txt : TextFile;
+  txt: TextFile;
 begin
   AssignFile(txt, 'd:\wizard.txt');
   if not FileExists('d:\wizard.txt') then

@@ -1,5 +1,7 @@
 unit RALWizard;
 
+{$I ..\..\src\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -7,16 +9,17 @@ uses
 
 Type
   TRALWizard = class(TNotifierObject, IUnknown, IOTAWizard, IOTAProjectWizard,
-                     IOTARepositoryWizard, IOTARepositoryWizard80
-                     {$IF COMPILERVERSION > 29}
-                       , IOTARepositoryWizard160
-                     {$ENDIF}
-                     {$IF COMPILERVERSION > 31}
-                       , IOTARepositoryWizard190
-                     {$ENDIF}
-                     {$IF COMPILERVERSION > 32}
-                       , IOTARepositoryWizard260
-                     {$ENDIF})
+                     IOTARepositoryWizard
+                     {$IF Defined(DELPHI10_3UP)}
+                     , IOTARepositoryWizard260
+                     {$ELSEIF Defined(DELPHI10_2UP)}
+                     , IOTARepositoryWizard190
+                     {$ELSEIF Defined(DELPHI10_0UP)}
+                     , IOTARepositoryWizard160
+                     {$ELSE}
+                     , IOTARepositoryWizard80
+                     {$IFEND}
+                     )
   private
     FUnitIdent: string;
     FClassName: string;
@@ -40,16 +43,16 @@ Type
     function GetPersonality: string;
     function GetDesigner: string;
 
-    {$IF COMPILERVERSION > 29}
+    {$IFDEF DELPHI10_0UP}
       function GetFrameworkTypes: TArray<string>;
       function GetPlatforms: TArray<string>;
     {$ENDIF}
 
-    {$IF COMPILERVERSION > 31}
+    {$IFDEF DELPHI10_2UP}
       function GetSupportedPlatforms: TArray<string>;
     {$ENDIF}
 
-    {$IF COMPILERVERSION > 32}
+    {$IFDEF DELPHI10_3UP}
       function GetGalleryCategories: TArray<IOTAGalleryCategory>;
     {$ENDIF}
   end;
@@ -57,7 +60,7 @@ Type
 implementation
 
 uses
-  {$IF COMPILERVERSION > 29}
+  {$IFDEF DELPHI10_0UP}
     PlatformAPI,
   {$ENDIF}
   RALWizardTools, RALWizardForm;
@@ -119,7 +122,7 @@ begin
   Result := [wsEnabled];
 end;
 
-{$IF COMPILERVERSION > 29}
+{$IFDEF DELPHI10_0UP}
   function TRALWizard.GetFrameworkTypes: TArray<string>;
   begin
     SetLength(Result, 2);
@@ -141,7 +144,7 @@ end;
   end;
 {$ENDIF}
 
-{$IF COMPILERVERSION > 31}
+{$IFDEF DELPHI10_2UP}
   function TRALWizard.GetSupportedPlatforms: TArray<string>;
   begin
     SetLength(Result, 6);
@@ -156,7 +159,7 @@ end;
   end;
 {$ENDIF}
 
-{$IF COMPILERVERSION > 32}
+{$IFDEF DELPHI10_3UP}
   function TRALWizard.GetGalleryCategories: TArray<IOTAGalleryCategory>;
   begin
     Result := nil;

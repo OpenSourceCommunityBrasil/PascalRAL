@@ -1,5 +1,7 @@
 unit RALWizardProjConsole;
 
+{$I ..\..\src\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -9,11 +11,13 @@ uses
 type
   {TRALWizardProjConsoleCreator}
 
-  TRALWizardProjConsoleCreator = class(TNotifierObject, IOTACreator, IOTAProjectCreator,
-                                       IOTAProjectCreator50
-                                       {$IF COMPILERVERSION > 25}
+  TRALWizardProjConsoleCreator = class(TNotifierObject, IOTACreator, IOTAProjectCreator
+                                       {$IFDEF DELPHIXE5UP}
                                        , IOTAProjectCreator80
-                                       {$ENDIF})
+                                       {$ELSE}
+                                       , IOTAProjectCreator50
+                                       {$ENDIF}
+                                       )
   private
     FProjectFile: string;
     FProjectDir: string;
@@ -45,7 +49,7 @@ type
     procedure NewDefaultProjectModule(const Project: IOTAProject);
 
     { IOTAProjectCreator80 }
-    {$IF COMPILERVERSION > 25}
+    {$IFDEF DELPHIXE5UP}
       function GetProjectPersonality: string;
     {$ENDIF}
   public
@@ -147,7 +151,7 @@ begin
                                              '', FEngine, FAuth, FOptions);
 end;
 
-{$IF COMPILERVERSION > 25}
+{$IFDEF DELPHIXE5UP}
   function TRALWizardProjConsoleCreator.GetProjectPersonality: string;
   begin
     Result := sDelphiPersonality;

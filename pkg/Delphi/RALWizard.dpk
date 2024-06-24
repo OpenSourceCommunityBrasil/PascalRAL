@@ -1,0 +1,45 @@
+package RALWizard;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Pascal RAL | Wizard'}
+{$IMPLICITBUILD ON}
+
+requires
+  designide,
+  vcl;
+
+contains
+  RALWizard in '..\..\src\wizard\delphi\RALWizard.pas',
+  RALWizardForm in '..\..\src\wizard\delphi\RALWizardForm.pas' {fRALWizardForm},
+  RALWizardObjects in '..\..\src\wizard\delphi\RALWizardObjects.pas',
+  RALWizardReg in '..\..\src\wizard\delphi\RALWizardReg.pas',
+  RALWizardTools in '..\..\src\wizard\delphi\RALWizardTools.pas',
+  RALWizardProjConsole in '..\..\src\wizard\delphi\console\RALWizardProjConsole.pas',
+  RALWizardFormStandAlone in '..\..\src\wizard\delphi\standalone\RALWizardFormStandAlone.pas',
+  RALWizardProjStandAlone in '..\..\src\wizard\delphi\standalone\RALWizardProjStandAlone.pas';
+
+end.
