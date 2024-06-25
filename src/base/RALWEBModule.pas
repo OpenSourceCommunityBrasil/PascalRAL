@@ -4,6 +4,9 @@ unit RALWebModule;
 interface
 
 uses
+  {$IFDEF FPC}
+    LazFileUtils,
+  {$ENDIF}
   Classes, SysUtils,
   RALServer, RALTypes, RALConsts, RALTools, RALRoutes, RALRequest, RALResponse, RALParams,
   RALThreadSafe;
@@ -190,8 +193,13 @@ begin
   vFile := ARequest.Query;
   Delete(vFile, 1, 1);
 
-  if (vFile <> '') and IsRelativePath(vFile) then
-    vFile := ExpandFileName(vDir + vFile);
+  {$IFDEF FPC}
+    if (vFile <> '') and (not FilenameIsAbsolute(vFile)) then
+      vFile := ExpandFileName(vDir + vFile);
+  {$ELSE}
+    if (vFile <> '') and IsRelativePath(vFile) then
+      vFile := ExpandFileName(vDir + vFile);
+  {$ENDIF}
 
   // alguns exemplos:
   // <img src="c:\windows\system32\dll.dll"> -> pode dar bo
