@@ -9,16 +9,16 @@ uses
 
 Type
   TRALWizard = class(TNotifierObject, IUnknown, IOTAWizard, IOTAProjectWizard,
-                     IOTARepositoryWizard
-                     {$IF Defined(DELPHI10_3UP)}
+                     IOTARepositoryWizard, IOTARepositoryWizard80
+                     {$IFDEF DELPHI10_3UP}
                      , IOTARepositoryWizard260
-                     {$ELSEIF Defined(DELPHI10_2UP)}
+                     {$ENDIF}
+                     {$IFDEF DELPHI10_2UP}
                      , IOTARepositoryWizard190
-                     {$ELSEIF Defined(DELPHI10_0UP)}
+                     {$ENDIF}
+                     {$IFDEF DELPHI10_0UP}
                      , IOTARepositoryWizard160
-                     {$ELSE}
-                     , IOTARepositoryWizard80
-                     {$IFEND}
+                     {$ENDIF}
                      )
   private
     FUnitIdent: string;

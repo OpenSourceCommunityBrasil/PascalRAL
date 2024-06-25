@@ -10,12 +10,11 @@ uses
 type
   {TRALWizardProjStandAloneCreator}
 
-  TRALWizardProjStandAloneCreator = class(TNotifierObject, IOTACreator, IOTAProjectCreator
-                                          {$IF Defined(DELPHIXE5UP)}
+  TRALWizardProjStandAloneCreator = class(TNotifierObject, IOTACreator,
+                                          IOTAProjectCreator, IOTAProjectCreator50
+                                          {$IFDEF DELPHIXE5UP}
                                           , IOTAProjectCreator80
-                                          {$ELSE}
-                                          , IOTAProjectCreator50
-                                          {$IFEND}
+                                          {$ENDIF}
                                           )
   private
     FProjectFile: string;
