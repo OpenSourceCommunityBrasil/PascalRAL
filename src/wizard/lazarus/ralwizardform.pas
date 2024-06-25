@@ -51,6 +51,20 @@ implementation
 
 procedure Tfralwizardform.bCriarAplicacaoClick(Sender: TObject);
 begin
+  if Trim(eDirAplicacao.Text) = '' then
+  begin
+    ShowMessage('Diretório deve ser preenchido');
+    eDirAplicacao.SetFocus;
+    Exit;
+  end;
+
+  if not DirectoryExists(eDirAplicacao.Text) then
+  begin
+    ShowMessage('Diretório não Existe');
+    eDirAplicacao.SetFocus;
+    Exit;
+  end;
+
   FResModal := mrOK;
   Close;
 end;
