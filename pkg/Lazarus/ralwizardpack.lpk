@@ -8,17 +8,18 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <OtherUnitFiles Value="..\..\src\wizard\lazarus"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
     <Files>
       <Item>
-        <Filename Value="ralwizard.pas"/>
+        <Filename Value="..\..\src\wizard\lazarus\ralwizard.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="ralwizard"/>
       </Item>
       <Item>
-        <Filename Value="ralwizardform.pas"/>
+        <Filename Value="..\..\src\wizard\lazarus\ralwizardform.pas"/>
         <UnitName Value="ralwizardform"/>
       </Item>
     </Files>
