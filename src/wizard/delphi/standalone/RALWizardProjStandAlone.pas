@@ -200,9 +200,9 @@ function TRALWizardProjStandAloneFile.GetSource: string;
 var
   vFile : TStringList;
 begin
-  Logar(FFormClass);
   vFile := TStringList.Create;
   try
+    vFile.Add('// by PascalRAL - StandAlone App: '+DateTimeToStr(Now));
     vFile.Add(Format('program %s;',[FProjectName]));
     vFile.Add('');
     vFile.Add('uses');

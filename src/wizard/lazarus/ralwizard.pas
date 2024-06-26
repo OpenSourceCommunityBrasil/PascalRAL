@@ -20,6 +20,7 @@ type
     FProjectDir : string;
   protected
     function CreateProjStandAlone(AProject: TLazProject) : TModalResult;
+    function CreateProjConsole(AProject: TLazProject) : TModalResult;
   public
     function GetLocalizedName: string; override;
     function GetLocalizedDescription: string; override;
@@ -64,7 +65,7 @@ var
   vMainFile: TLazProjectFile;
   vFile: TStringList;
   vProjLPIName, vProjLPRName : string;
-  vServerUnit : string;
+  vServerPkg : string;
 begin
   Result := inherited InitProject(AProject);
 
@@ -72,6 +73,22 @@ begin
   vProjLPRName := FProjectDir + 'ralproject1.lpr';
 
   AProject.ProjectInfoFile := vProjLPIName;
+  AProject.LoadDefaultIcon;
+
+  AProject.LazCompilerOptions.Win32GraphicApp := True;
+  AProject.LazCompilerOptions.IncludePath := '$(ProjOutDir)';
+  AProject.LazCompilerOptions.UnitOutputDirectory := 'lib\$(TargetCPU)-$(TargetOS)';
+  AProject.LazCompilerOptions.TargetFilename := 'ralproject1';
+  AProject.LazCompilerOptions.UseExternalDbgSyms := True;
+
+
+  AProject.UseManifest := True;
+  AProject.UseAppBundle := False;
+  AProject.Scaled := True;
+  AProject.Flags := AProject.Flags - [pfMainUnitHasCreateFormStatements,
+                                      pfMainUnitHasTitleStatement,
+                                      pfMainUnitHasScaledStatement,
+                                      pfLRSFilesInOutputDirectory];
 
   vMainFile := AProject.CreateProjectFile(vProjLPRName);
   vMainFile.IsPartOfProject := True;
@@ -81,11 +98,14 @@ begin
   AProject.Title := 'RAL Wizard StandAlone Application';
 
   case FEngineType of
-    0 : vServerUnit := 'indyral';
-    1 : vServerUnit := 'synopseral';
-    2 : vServerUnit := 'saguiral';
-    3 : vServerUnit := 'fphttpral';
+    0 : vServerPkg := 'indyral';
+    1 : vServerPkg := 'synopseral';
+    2 : vServerPkg := 'saguiral';
+    3 : vServerPkg := 'fphttpral';
   end;
+
+  AProject.AddPackageDependency('pascalral');
+  AProject.AddPackageDependency(vServerPkg);
 
   vFile := TStringList.Create;
   try
@@ -102,30 +122,218 @@ begin
     vFile.Add('  athreads,');
     vFile.Add('  {$ENDIF}');
     vFile.Add('  Interfaces, // this includes the LCL widgetset');
-    vFile.Add(Format('  Forms, unit1, %s', [vServerUnit]));
+    vFile.Add(Format('  Forms, pascalral, %s, unit1', [vServerPkg]));
     vFile.Add('  { you can add units after this };');
     vFile.Add('');
     vFile.Add('{$R *.res}');
     vFile.Add('');
     vFile.Add('begin');
-    vFile.Add('  RequireDerivedFormResource:=True;');
-    vFile.Add('  Application.Scaled:=True;');
+    vFile.Add('  RequireDerivedFormResource := True;');
+    vFile.Add('  Application.Scaled := True;');
     vFile.Add('  Application.Initialize;');
     vFile.Add('  Application.CreateForm(TRALForm1, RALForm1);');
     vFile.Add('  Application.Run;');
     vFile.Add('end.');
 
     AProject.MainFile.SetSourceText(vFile.Text, True);
+    vFile.SaveToFile(vProjLPRName);
   finally
     FreeAndNil(vFile);
   end;
 
-  AProject.Flags := AProject.Flags - [pfMainUnitHasCreateFormStatements,
-                                      pfMainUnitHasTitleStatement,
-                                      pfLRSFilesInOutputDirectory];
+  AProject.Modified:= True;
+  Result := mrOK;
+end;
+
+function TRALWizard.CreateProjConsole(AProject: TLazProject): TModalResult;
+var
+  vMainFile: TLazProjectFile;
+  vFile: TStringList;
+  vProjLPIName, vProjLPRName : string;
+  vServerUnit, vServerClass, vServerPkg, vUnits : string;
+begin
+  Result := inherited InitProject(AProject);
+
+  vProjLPIName := FProjectDir + 'ralproject1.lpi';
+  vProjLPRName := FProjectDir + 'ralproject1.lpr';
+
+  AProject.ProjectInfoFile := vProjLPIName;
+
+  AProject.LazCompilerOptions.Win32GraphicApp := False;
+  AProject.LazCompilerOptions.IncludePath := '$(ProjOutDir)';
+  AProject.LazCompilerOptions.UnitOutputDirectory := 'lib\$(TargetCPU)-$(TargetOS)';
+  AProject.LazCompilerOptions.TargetFilename := 'ralproject1';
+  AProject.LazCompilerOptions.UseExternalDbgSyms := True;
+
 
   AProject.UseManifest := False;
   AProject.UseAppBundle := False;
+  AProject.Scaled := False;
+  AProject.Flags := AProject.Flags - [pfMainUnitHasTitleStatement,
+                                      pfLRSFilesInOutputDirectory];
+
+  vMainFile := AProject.CreateProjectFile(vProjLPRName);
+  vMainFile.IsPartOfProject := True;
+
+  AProject.AddFile(vMainFile, False);
+  AProject.MainFileID := 0;
+  AProject.Title := 'RAL Application';
+
+  case FEngineType of
+    0 : begin
+      vServerUnit := 'RALIndyServer';
+      vServerClass := 'TRALIndyServer';
+      vServerPkg := 'indyral';
+    end;
+    1 : begin
+      vServerUnit := 'RALSynopseServer';
+      vServerClass := 'TRALSynopseServer';
+      vServerPkg := 'synopseral';
+    end;
+    2 : begin
+      vServerUnit := 'RALSaguiServer';
+      vServerClass := 'TRALSaguiServer';
+      vServerPkg := 'saguiral';
+    end;
+    3 : begin
+      vServerUnit := 'RALfpHTTPServer';
+      vServerClass := 'TRALfpHttpServer';
+      vServerPkg := 'fphttpral';
+    end;
+  end;
+
+  vUnits := 'RALMimeTypes, RALTypes';
+  if FSwagger then
+    vUnits := vUnits + ', RALSwaggerModule';
+  if FWebModule then
+    vUnits := vUnits + ', RALWebModule';
+  if FAuthType > 0 then
+    vUnits := vUnits + ', RALAuthentication';
+
+  AProject.AddPackageDependency('pascalral');
+  AProject.AddPackageDependency(vServerPkg);
+
+  vFile := TStringList.Create;
+  try
+    vFile.Add('// by PascalRAL - Console App: '+DateTimeToStr(Now));
+    vFile.Add('program ralproject1;');
+    vFile.Add('');
+    vFile.Add('{$mode objfpc}{$H+}');
+    vFile.Add('');
+    vFile.Add('uses');
+    vFile.Add('  {$IFDEF UNIX}');
+    vFile.Add('    cthreads,');
+    vFile.Add('  {$ENDIF}');
+    vFile.Add('  Classes, SysUtils, CustApp,');
+    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, %s,', [vServerUnit]));
+    vFile.Add(Format('  %s;', [vUnits]));
+    vFile.Add('');
+    vFile.Add('type');
+    vFile.Add('');
+    vFile.Add('  { TRALApplication }');
+    vFile.Add('');
+    vFile.Add('  TRALApplication = class(TCustomApplication)');
+    vFile.Add('  private');
+    vFile.Add(Format('    FServer: %s;', [vServerClass]));
+
+    case FAuthType of
+      1 : vFile.Add('    FAuthBasic: TRALServerBasicAuth;');
+      2 : vFile.Add('    FAuthJWT: TRALServerJWTAuth;');
+    end;
+
+    if FSwagger then
+      vFile.Add('    FSwagger: TRALSwaggerModule;');
+    if FWebModule then
+      vFile.Add('    FWebModule: TRALWebModule;');
+
+    vFile.Add('  protected');
+    vFile.Add('    procedure Run;');
+    vFile.Add('    procedure ping(ARequest: TRALRequest; AResponse: TRALResponse);');
+    vFile.Add('  public');
+    vFile.Add('    constructor Create(AOwner: TComponent); override;');
+    vFile.Add('    destructor Destroy; override;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  { TRALApplication }');
+    vFile.Add('');
+    vFile.Add('  procedure TRALApplication.Run;');
+    vFile.Add('  var');
+    vFile.Add('    vRoute : TRALRoute;');
+    vFile.Add('  begin');
+    vFile.Add('    vRoute := FServer.CreateRoute(''ping'', @ping);');
+    vFile.Add('    vRoute.AllowedMethods := [amGET];');
+    vFile.Add('    vRoute.Name := ''ping'';');
+    vFile.Add('');
+    vFile.Add('    FServer.Start;');
+    vFile.Add('');
+    vFile.Add('    Writeln(''server active on port: '', FServer.Port);');
+    vFile.Add('    Writeln(''press any key to terminate app...'');');
+    vFile.Add('    ReadLn;');
+    vFile.Add('    Terminate;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  procedure TRALApplication.ping(ARequest: TRALRequest; AResponse: TRALResponse);');
+    vFile.Add('  begin');
+    vFile.Add('    AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  constructor TRALApplication.Create(AOwner: TComponent);');
+    vFile.Add('  begin');
+    vFile.Add('    inherited Create(AOwner);');
+    vFile.Add('    StopOnException := True;');
+    vFile.Add(Format('    FServer := %s.Create(nil);', [vServerClass]));
+    if FAuthType = 1 then
+    begin
+      vFile.Add('    FAuthBasic := TRALServerBasicAuth.Create(nil);');
+      vFile.Add('    FServer.Authentication := FAuthBasic;');
+    end
+    else if FAuthType = 2 then
+    begin
+      vFile.Add('    FAuthJWT := TRALServerJWTAuth.Create(nil);');
+      vFile.Add('    FServer.Authentication := FAuthJWT;');
+    end;
+
+    if FSwagger then
+    begin
+      vFile.Add('    FSwagger := TRALSwaggerModule.Create(nil);');
+      vFile.Add('    FSwagger.Server := FServer;');
+    end;
+    if FWebModule then
+    begin
+      vFile.Add('    FWebModule := TRALWebModule.Create(nil);');
+      vFile.Add('    FWebModule.Server := FServer;');
+    end;
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  destructor TRALApplication.Destroy;');
+    vFile.Add('  begin');
+    case FAuthType of
+      1 : vFile.Add('    FreeAndNil(FAuthBasic);');
+      2 : vFile.Add('    FreeAndNil(FAuthJWT);');
+    end;
+
+    if FSwagger then
+      vFile.Add('    FreeAndNil(FSwagger);');
+    if FWebModule then
+      vFile.Add('    FreeAndNil(FWebModule);');
+    vFile.Add('    FreeAndNil(FServer);');
+    vFile.Add('    inherited Destroy;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('var');
+    vFile.Add('  Application: TRALApplication;');
+    vFile.Add('begin');
+    vFile.Add('  Application := TRALApplication.Create(nil);');
+    vFile.Add('  Application.Title := ''RAL Application'';');
+    vFile.Add('  Application.Run;');
+    vFile.Add('  Application.Free;');
+    vFile.Add('end.');
+
+    AProject.MainFile.SetSourceText(vFile.Text, True);
+    vFile.SaveToFile(vProjLPRName);
+  finally
+    FreeAndNil(vFile);
+  end;
 
   AProject.Modified:= True;
   Result := mrOK;
@@ -166,9 +374,9 @@ begin
   Result := inherited InitProject(AProject);
 
   case FApplicationType of
-    0 : Result := CreateProjStandAlone(AProject);
-    1 : Result := mrOK; // console
-    2 : Result := mrOK; // CGI - Todo
+    0 : Result := CreateProjStandAlone(AProject); // GUI
+    1 : Result := mrOK; // CGI
+    2 : Result := CreateProjConsole(AProject); // Console
   end;
 
 //  LazarusIDE.DoSaveProject([]);
@@ -236,8 +444,8 @@ begin
     vFile.Add('interface');
     vFile.Add('');
     vFile.Add('uses');
-    vFile.Add(Format('  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, %s,', [vServerUnit]));
-    vFile.Add('  RALRoutes, RALResponse, RALRequest,');
+    vFile.Add('  Classes, SysUtils, Forms, Controls, Graphics, Dialogs,');
+    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, %s,', [vServerUnit]));
     vFile.Add(Format('  %s;', [vUnits]));
     vFile.Add('');
     vFile.Add('type');
@@ -309,28 +517,10 @@ begin
     vFile.Add('  Caption = ''RALForm1''');
     vFile.Add('  OnCreate = FormCreate');
     vFile.Add(Format('  object server: %s', [vServerClass]));
-    vFile.Add('    Active = False');
     case FAuthType of
       1 : vFile.Add('    Authentication = authbasic');
       2 : vFile.Add('    Authentication = authjwt');
     end;
-    vFile.Add('    CompressType = ctNone');
-    vFile.Add('    CookieLife = 30');
-    vFile.Add('    CORSOptions.AllowHeaders.Strings = (');
-    vFile.Add('      ''Content-Type''');
-    vFile.Add('      ''Origin''');
-    vFile.Add('      ''Accept''');
-    vFile.Add('      ''Authorization''');
-    vFile.Add('      ''Content-Encoding''');
-    vFile.Add('      ''Accept-Encoding''');
-    vFile.Add('    )');
-    vFile.Add('    CORSOptions.AllowOrigin = ''*''');
-    vFile.Add('    CORSOptions.MaxAge = 86400');
-    vFile.Add('    CriptoOptions.CriptType = crNone');
-    vFile.Add('    IPConfig.IPv4Bind = ''0.0.0.0''');
-    vFile.Add('    IPConfig.IPv6Bind = ''::''');
-    vFile.Add('    IPConfig.IPv6Enabled = False');
-    vFile.Add('    Port = 8000');
     vFile.Add('    Routes = <    ');
     vFile.Add('      item');
     vFile.Add('        Route = ''/ping''');
@@ -343,15 +533,6 @@ begin
     vFile.Add('        URIParams = <>');
     vFile.Add('        OnReply = server_pingReply');
     vFile.Add('      end>');
-    vFile.Add('    Security.BruteForce.ExpirationTime = 1800000');
-    vFile.Add('    Security.BruteForce.MaxTry = 3');
-    vFile.Add('    Security.FloodTimeInterval = 30');
-    vFile.Add('    Security.Options = []');
-    vFile.Add('    ShowServerStatus = True');
-    vFile.Add('    SSL.Enabled = False');
-    vFile.Add('    SSL.SSLOptions.Mode = sslmUnassigned');
-    vFile.Add('    SSL.SSLOptions.VerifyMode = []');
-    vFile.Add('    SSL.SSLOptions.VerifyDepth = 0');
     vFile.Add('    Left = 236');
     vFile.Add('    Top = 172');
     vFile.Add('  end');
@@ -441,6 +622,9 @@ begin
       2 : Result := mrOK; // CGI - Todo
     end;
   end;
+
+  //LazarusIDE.DoSaveProject([]);
+  AProject.Modified := True;
 end;
 
 function TRALWizardApplication.DoInitDescriptor: TModalResult;

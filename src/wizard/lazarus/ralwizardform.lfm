@@ -602,7 +602,7 @@ object fralwizardform: Tfralwizardform
       BorderSpacing.Left = 10
       BorderSpacing.Top = 10
       BorderSpacing.Right = 10
-      Caption = 'Directory Application:'
+      Caption = 'Application Directory:'
     end
     object eDirAplicacao: TDirectoryEdit
       Left = 10

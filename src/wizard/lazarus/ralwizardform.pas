@@ -65,6 +65,13 @@ begin
     Exit;
   end;
 
+  if cbTipoAplicacao.ItemIndex = 1 then
+  begin
+    ShowMessage('Aplicação CGI - em desenvolvimento');
+    cbTipoAplicacao.SetFocus;
+    Exit;
+  end;
+
   FResModal := mrOK;
   Close;
 end;

@@ -26,13 +26,21 @@ type
     Label3: TLabel;
     cbAutenticacao: TComboBox;
     Image1: TImage;
+    Label4: TLabel;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    Panel6: TPanel;
+    eDirAplicacao: TEdit;
+    bDirectory: TSpeedButton;
+    OpenDialog: TOpenDialog;
     procedure bCriarAplicacaoClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+    procedure bDirectoryClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
-    FUnitIdent: string;
-    FClassName: string;
-    FFileName: string;
+    FResModal : TModalResult;
   public
     { Public declarations }
   end;
@@ -45,48 +53,55 @@ implementation
 {$R *.dfm}
 
 uses
-  RALWizardTools, RALWizardProjStandAlone, RALWizardProjConsole;
+  RALWizardTools;
+
+procedure TfRALWizardForm.bDirectoryClick(Sender: TObject);
+begin
+  if OpenDialog.Execute then
+    eDirAplicacao.Text := OpenDialog.FileName;
+end;
 
 procedure TfRALWizardForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  Release;
   Action := caFree;
+  ModalResult := FResModal;
+  Release;
+end;
+
+procedure TfRALWizardForm.FormCreate(Sender: TObject);
+begin
+  FResModal := mrCancel;
+end;
+
+procedure TfRALWizardForm.FormShow(Sender: TObject);
+begin
+  eDirAplicacao.Text := GetIDEProjectPath;
 end;
 
 procedure TfRALWizardForm.bCriarAplicacaoClick(Sender: TObject);
-var
-  vModuleServices: IOTAModuleServices;
-  vProjectName: string;
-  vProjectDir: String;
-  vOpcoes: integer;
 begin
-  vModuleServices := (BorlandIDEServices as IOTAModuleServices);
-  vProjectName := FindNewProjectName(GetActiveProjectGroup);
-  vProjectDir := IncludeTrailingPathDelimiter(GetIDEProjectPath);
-
-  vOpcoes := 0;
-  if ckSwagger.Checked then
-    vOpcoes := vOpcoes + 1;
-  if ckWebModule.Checked then
-    vOpcoes := vOpcoes + 2;
-
-  case cbTipoAplicacao.ItemIndex of
-    0 : begin
-      vModuleServices.CreateModule(TRALWizardProjStandAloneCreator.Create(vProjectName,
-                                   vProjectDir, cbTipoMotor.ItemIndex,
-                                   cbAutenticacao.ItemIndex, vOpcoes));
-    end;
-    1 : begin
-
-
-    end;
-    2 : begin
-      vModuleServices.CreateModule(TRALWizardProjConsoleCreator.Create(vProjectName,
-                                   vProjectDir, cbTipoMotor.ItemIndex,
-                                   cbAutenticacao.ItemIndex, vOpcoes));
-    end;
+  if Trim(eDirAplicacao.Text) = '' then
+  begin
+    ShowMessage('Diretório deve ser preenchido');
+    eDirAplicacao.SetFocus;
+    Exit;
   end;
 
+  if not DirectoryExists(eDirAplicacao.Text) then
+  begin
+    ShowMessage('Diretório não Existe');
+    eDirAplicacao.SetFocus;
+    Exit;
+  end;
+
+  if cbTipoAplicacao.ItemIndex = 1 then
+  begin
+    ShowMessage('Aplicação CGI - em desenvolvimento');
+    cbTipoAplicacao.SetFocus;
+    Exit;
+  end;
+
+  FResModal := mrOk;
   Close;
 end;
 

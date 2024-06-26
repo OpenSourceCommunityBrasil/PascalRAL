@@ -3,7 +3,7 @@ object fRALWizardForm: TfRALWizardForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'PascalRAL - Server Wizard'
-  ClientHeight = 269
+  ClientHeight = 317
   ClientWidth = 405
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -14,18 +14,21 @@ object fRALWizardForm: TfRALWizardForm
   OldCreateOrder = True
   Position = poScreenCenter
   OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
     Left = 0
     Top = 0
     Width = 47
-    Height = 269
+    Height = 317
     Align = alLeft
     BevelOuter = bvNone
     Color = 16744448
     ParentBackground = False
     TabOrder = 0
+    ExplicitHeight = 269
     object imLogo: TImage
       Left = 7
       Top = 7
@@ -106,11 +109,57 @@ object fRALWizardForm: TfRALWizardForm
     Left = 47
     Top = 0
     Width = 358
-    Height = 269
+    Height = 317
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
+    ExplicitHeight = 269
     object Label1: TLabel
+      AlignWithMargins = True
+      Left = 10
+      Top = 57
+      Width = 338
+      Height = 13
+      Margins.Left = 10
+      Margins.Top = 5
+      Margins.Right = 10
+      Margins.Bottom = 0
+      Align = alTop
+      Caption = 'Application Type:'
+      ExplicitTop = 10
+      ExplicitWidth = 83
+    end
+    object Label2: TLabel
+      AlignWithMargins = True
+      Left = 10
+      Top = 106
+      Width = 338
+      Height = 13
+      Margins.Left = 10
+      Margins.Top = 10
+      Margins.Right = 10
+      Margins.Bottom = 0
+      Align = alTop
+      Caption = 'Data Engine:'
+      ExplicitTop = 59
+      ExplicitWidth = 62
+    end
+    object Label3: TLabel
+      AlignWithMargins = True
+      Left = 10
+      Top = 155
+      Width = 338
+      Height = 13
+      Margins.Left = 10
+      Margins.Top = 10
+      Margins.Right = 10
+      Margins.Bottom = 0
+      Align = alTop
+      Caption = 'Authentication:'
+      ExplicitTop = 108
+      ExplicitWidth = 74
+    end
+    object Label4: TLabel
       AlignWithMargins = True
       Left = 10
       Top = 10
@@ -121,45 +170,18 @@ object fRALWizardForm: TfRALWizardForm
       Margins.Right = 10
       Margins.Bottom = 0
       Align = alTop
-      Caption = 'Application Type:'
-      ExplicitWidth = 83
-    end
-    object Label2: TLabel
-      AlignWithMargins = True
-      Left = 10
-      Top = 59
-      Width = 338
-      Height = 13
-      Margins.Left = 10
-      Margins.Top = 10
-      Margins.Right = 10
-      Margins.Bottom = 0
-      Align = alTop
-      Caption = 'Data Engine:'
-      ExplicitWidth = 62
-    end
-    object Label3: TLabel
-      AlignWithMargins = True
-      Left = 10
-      Top = 108
-      Width = 338
-      Height = 13
-      Margins.Left = 10
-      Margins.Top = 10
-      Margins.Right = 10
-      Margins.Bottom = 0
-      Align = alTop
-      Caption = 'Authentication:'
-      ExplicitWidth = 74
+      Caption = 'Application Directory:'
+      ExplicitWidth = 103
     end
     object Panel3: TPanel
       Left = 0
-      Top = 228
+      Top = 276
       Width = 358
       Height = 41
       Align = alBottom
       BevelOuter = bvNone
       TabOrder = 0
+      ExplicitTop = 228
       object Bevel1: TBevel
         AlignWithMargins = True
         Left = 5
@@ -578,7 +600,7 @@ object fRALWizardForm: TfRALWizardForm
     object gbOpcoes: TGroupBox
       AlignWithMargins = True
       Left = 10
-      Top = 152
+      Top = 199
       Width = 338
       Height = 64
       Margins.Left = 10
@@ -588,6 +610,8 @@ object fRALWizardForm: TfRALWizardForm
       Align = alTop
       Caption = 'Aditional Options'
       TabOrder = 1
+      ExplicitLeft = 13
+      ExplicitTop = 152
       object ckSwagger: TCheckBox
         Left = 16
         Top = 19
@@ -608,7 +632,7 @@ object fRALWizardForm: TfRALWizardForm
     object cbTipoAplicacao: TComboBox
       AlignWithMargins = True
       Left = 10
-      Top = 28
+      Top = 75
       Width = 338
       Height = 21
       Margins.Left = 10
@@ -624,11 +648,12 @@ object fRALWizardForm: TfRALWizardForm
         'Standalone Application'
         'CGI Application'
         'Console Aplication')
+      ExplicitTop = 28
     end
     object cbTipoMotor: TComboBox
       AlignWithMargins = True
       Left = 10
-      Top = 77
+      Top = 124
       Width = 338
       Height = 21
       Margins.Left = 10
@@ -644,11 +669,12 @@ object fRALWizardForm: TfRALWizardForm
         'Indy'
         'Synopse mORMot2'
         'Sagui')
+      ExplicitTop = 77
     end
     object cbAutenticacao: TComboBox
       AlignWithMargins = True
       Left = 10
-      Top = 126
+      Top = 173
       Width = 338
       Height = 21
       Margins.Left = 10
@@ -664,6 +690,154 @@ object fRALWizardForm: TfRALWizardForm
         'None'
         'Basic'
         'JWT')
+      ExplicitTop = 126
     end
+    object Panel4: TPanel
+      Left = 0
+      Top = 23
+      Width = 358
+      Height = 29
+      Align = alTop
+      BevelOuter = bvNone
+      TabOrder = 5
+      object Panel5: TPanel
+        Left = 324
+        Top = 0
+        Width = 34
+        Height = 29
+        Align = alRight
+        BevelOuter = bvNone
+        TabOrder = 0
+        ExplicitHeight = 31
+        object bDirectory: TSpeedButton
+          AlignWithMargins = True
+          Left = 0
+          Top = 3
+          Width = 23
+          Height = 23
+          Margins.Left = 0
+          Align = alLeft
+          Glyph.Data = {
+            560A0000424D560A000000000000360000002800000024000000120000000100
+            200000000000200A000000000000000000000000000000000000EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00C6CD
+            CD00C3CACA00C3CACA00C3CACA00C3CACA00C3CACA00C3CACA00C3CACA00C3CA
+            CA00C3CACA00C3CACA00C3CACA00C3CACA00C7CECE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00CCCCCC00C9C9C900C9C9C900C9C9C900C9C9C900C9C9C900C9C9
+            C900C9C9C900C9C9C900C9C9C900C9C9C900C9C9C900C9C9C900CDCDCD00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE004E9DD3004398D2404094D03E3E92CF3E3E92
+            CE3F3F92CE3F3F92CE3F3F92CE3F3F92CE3F3F92CE3F3F92CE3F3F92CE3F3F93
+            CF414C9AD000E6EFEF00EBFBFE00EBFBFE00EBFBFE00A4A4A400A0A0A0009C9C
+            9C009B9B9B009A9A9A009A9A9A009A9A9A009A9A9A009A9A9A009A9A9A009A9A
+            9A009A9A9A009B9B9B00A1A1A100EEEEEE00EBFBFE00EBFBFE00EBFBFE004499
+            D23F3F94D0ABABFBFF9B9BF3FF9292F1FF9393F1FF9393F1FF9393F1FF9393F1
+            FF9393F1FF9393F1FF9393F1FFA6A6F8FF6565B8E331ABC8D900EBFBFE00EBFB
+            FE00EBFBFE00A0A0A0009C9C9C00F3F3F300ECECEC00EAEAEA00EAEAEA00EAEA
+            EA00EAEAEA00EAEAEA00EAEAEA00EAEAEA00EAEAEA00F1F1F100BBBBBB00C9C9
+            C900EBFBFE00EBFBFE00EBFBFE004398D24F4FA6D98E8EDAF5A2A2EEFF8282E5
+            FE8484E5FE8484E5FE8585E6FE8585E6FE8585E6FE8585E6FE8484E6FE9696EB
+            FF8C8CD8F5396DA6CE00EBFBFE00EBFBFE00EBFBFE00A0A0A000ABABAB00D9D9
+            D900EAEAEA00E1E1E100E1E1E100E1E1E100E2E2E200E2E2E200E2E2E200E2E2
+            E200E2E2E200E7E7E700D8D8D800ABABAB00EBFBFE00EBFBFE00EBFBFE004296
+            D16B6BBEE86D6DBDE6BBBBF2FF7575DEFD7777DEFC7878DEFC7B7BDFFC7D7DDF
+            FC7D7DDFFC7D7DDFFC7C7CDFFC8080E0FDADADF0FF4D4D9DD300E6EFEF00EBFB
+            FE00EBFBFE009E9E9E00C1C1C100C0C0C000EFEFEF00DBDBDB00DBDBDB00DBDB
+            DB00DCDCDC00DCDCDC00DCDCDC00DCDCDC00DCDCDC00DEDEDE00EDEDED00A4A4
+            A400EEEEEE00EBFBFE00EBFBFE004095D08A8AD7F54444A1D8DDDDFDFFDADAFA
+            FFDBDBFAFFDEDEFAFF7474DCFC7676DBFA7575DAFA7474DAFA7474DAFA7272D9
+            FAA1A1E8FF7C7CBFE630ACC8D900EBFBFE00EBFBFE009D9D9D00D7D7D700A7A7
+            A700FAFAFA00F7F7F700F8F8F800F8F8F800DADADA00D9D9D900D8D8D800D8D8
+            D800D8D8D800D7D7D700E7E7E700C3C3C300CACACA00EBFBFE00EBFBFE003E94
+            D0ABABF0FF44449DD636368CCB36368CCB36368CCB37378BCB5C5CBEEA6F6FD9
+            FB6A6AD6FA6868D5F96767D4F96666D4F98282DEFCAAAAE0F6386CA6CE00EBFB
+            FE00EBFBFE009C9C9C00ECECEC00A4A4A4009595950095959500959595009494
+            9400C0C0C000D7D7D700D4D4D400D3D3D300D3D3D300D3D3D300DCDCDC00E0E0
+            E000ABABAB00EBFBFE00EBFBFE003D92CFB9B9F4FF7373DBFB6B6BCCF26C6CCD
+            F36C6CCEF36D6DCEF347479CD45656BAE9DADAF8FFD7D7F6FFD6D6F6FFD5D5F6
+            FFD5D5F7FFDBDBFCFF3E3E94D03CEBFBFE00EBFBFE009A9A9A00F0F0F000D9D9
+            D900CCCCCC00CDCDCD00CECECE00CECECE00A3A3A300BDBDBD00F6F6F600F5F5
+            F500F5F5F500F5F5F500F5F5F500F9F9F9009C9C9C00EBFBFE00EBFBFE003C92
+            CFC0C0F3FF7171DAFB7474DBFB7575DBFC7575DBFC7676DCFC7373DAFA44449C
+            D437378CCB36368CCB35358CCC34348DCC383890CE3D3D94D04351A0D500EBFB
+            FE00EBFBFE009A9A9A00F0F0F000D8D8D800D9D9D900D9D9D900D9D9D900DADA
+            DA00D8D8D800A3A3A30095959500959595009595950096969600989898009C9C
+            9C00A7A7A700EBFBFE00EBFBFE003B92CFCACAF6FF6969D5F96C6CD5F96B6BD5
+            F96969D5F96969D5FA6A6AD7FB6868D4FA5E5EC7F15E5EC7F25D5DC8F2B4B4E3
+            F83D3D94D03FA9CFE600EBFBFE00EBFBFE00EBFBFE009A9A9A00F3F3F300D3D3
+            D300D4D4D400D4D4D400D3D3D300D4D4D400D5D5D500D3D3D300C8C8C800C8C8
+            C800C8C8C800E4E4E4009C9C9C00D1D1D100EBFBFE00EBFBFE00EBFBFE003B92
+            CFD5D5F7FF6060D1F96161D0F8B4B4EBFDD9D9F6FFDADAF8FFDADAF8FFDBDBF9
+            FFDCDCFAFFDCDCFAFFDCDCFBFFE0E0FFFF3E3E95D045D1E9F400EBFBFE00EBFB
+            FE00EBFBFE009A9A9A00F5F5F500D0D0D000CFCFCF00EAEAEA00F5F5F500F6F6
+            F600F6F6F600F7F7F700F8F8F800F8F8F800F8F8F800FBFBFB009D9D9D00E9E9
+            E900EBFBFE00EBFBFE00EBFBFE003D94D0DCDCFCFFD8D8F7FFD8D8F7FFDBDBFA
+            FF35358ECD393991CE3A3A92CF3A3A92CF3A3A92CF3A3A92CF3B3B92CF3D3D94
+            D0435FA8D800EBFBFE00EBFBFE00EBFBFE00EBFBFE009C9C9C00F9F9F900F5F5
+            F500F5F5F500F8F8F80097979700999999009A9A9A009A9A9A009A9A9A009A9A
+            9A009A9A9A009C9C9C00AEAEAE00EBFBFE00EBFBFE00EBFBFE00EBFBFE007AB7
+            DF003D94D03A3A92CF3A3A92CF3D3D94D04161A9D800EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00BCBCBC009C9C9C009A9A9A009A9A9A009C9C9C00AFAFAF00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFB
+            FE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00EBFBFE00}
+          NumGlyphs = 2
+          OnClick = bDirectoryClick
+          ExplicitTop = 2
+        end
+      end
+      object Panel6: TPanel
+        Left = 0
+        Top = 0
+        Width = 324
+        Height = 29
+        Align = alClient
+        BevelOuter = bvNone
+        Caption = 'Panel6'
+        TabOrder = 1
+        ExplicitLeft = 136
+        ExplicitTop = 32
+        ExplicitWidth = 185
+        ExplicitHeight = 41
+        object eDirAplicacao: TEdit
+          AlignWithMargins = True
+          Left = 10
+          Top = 4
+          Width = 311
+          Height = 21
+          Margins.Left = 10
+          Margins.Top = 4
+          Align = alTop
+          TabOrder = 0
+          ExplicitLeft = 26
+          ExplicitTop = 3
+          ExplicitWidth = 121
+        end
+      end
+    end
+  end
+  object OpenDialog: TOpenDialog
+    Left = 33
+    Top = 71
   end
 end

@@ -191,6 +191,7 @@ begin
     if Auth > 0 then
       vUnits := vUnits + ', RALAuthentication';
 
+    vFile.Add('// by PascalRAL - Console App: '+DateTimeToStr(Now));
     vFile.Add(Format('program %s;',[ModuleName]));
     vFile.Add('');
     vFile.Add('{$APPTYPE CONSOLE}');
@@ -283,8 +284,9 @@ begin
     vFile.Add('  inherited;');
     vFile.Add('  vRoute := FServer.CreateRoute(''/ping'', ping);');
     vFile.Add('  vRoute.AllowedMethods := [amGET];');
+    vFile.Add('  vRoute.Name := ''ping'';');
     vFile.Add('');
-    vFile.Add('  FServer.Active := True;');
+    vFile.Add('  FServer.Start;');
     vFile.Add('  Writeln(''server running on port: '', FServer.Port);');
     vFile.Add('  writeln(''press any key to end application...'');');
     vFile.Add('  Readln;');
@@ -292,8 +294,7 @@ begin
     vFile.Add('');
     vFile.Add('procedure TRALApplication.ping(ARequest: TRALRequest; AResponse: TRALResponse);');
     vFile.Add('begin');
-    vFile.Add('  AResponse.ContentType := rctTEXTPLAIN;');
-    vFile.Add('  AResponse.Answer(200, ''pong'');');
+    vFile.Add('  AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add('var');

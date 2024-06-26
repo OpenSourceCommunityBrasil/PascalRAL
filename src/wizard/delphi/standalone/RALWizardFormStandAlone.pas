@@ -191,38 +191,15 @@ begin
     vFile.Add('  Caption = ''RAL - StandAlone Application''');
     vFile.Add('  ClientHeight = 315');
     vFile.Add('  ClientWidth = 552');
-    vFile.Add('  Color = clBtnFace');
-    vFile.Add('  Font.Charset = DEFAULT_CHARSET');
-    vFile.Add('  Font.Color = clWindowText');
-    vFile.Add('  Font.Height = -11');
-    vFile.Add('  Font.Name = ''Tahoma''');
-    vFile.Add('  Font.Style = []');
     vFile.Add('  OldCreateOrder = False');
     vFile.Add('  OnCreate = FormCreate');
     vFile.Add('  PixelsPerInch = 96');
     vFile.Add('  TextHeight = 13');
     vFile.Add(Format('  object server: %s',[vClassServer]));
-    vFile.Add('    Active = False');
     if Auth = 1 then
       vFile.Add('    Authentication = authbasic')
     else if Auth = 2 then
       vFile.Add('    Authentication = authjwt');
-    vFile.Add('    CompressType = ctNone');
-    vFile.Add('    CookieLife = 30');
-    vFile.Add('    CORSOptions.AllowHeaders.Strings = (');
-    vFile.Add('      ''Content-Type''');
-    vFile.Add('      ''Origin''');
-    vFile.Add('      ''Accept''');
-    vFile.Add('      ''Authorization''');
-    vFile.Add('      ''Content-Encoding''');
-    vFile.Add('      ''Accept-Encoding'')');
-    vFile.Add('    CORSOptions.AllowOrigin = ''*''');
-    vFile.Add('    CORSOptions.MaxAge = 86400');
-    vFile.Add('    CriptoOptions.CriptType = crNone');
-    vFile.Add('    IPConfig.IPv4Bind = ''0.0.0.0''');
-    vFile.Add('    IPConfig.IPv6Bind = ''::''');
-    vFile.Add('    IPConfig.IPv6Enabled = False');
-    vFile.Add('    Port = 8000');
     vFile.Add('    Routes = <');
     vFile.Add('      item');
     vFile.Add('        Route = ''/ping''');
@@ -235,12 +212,6 @@ begin
     vFile.Add('        URIParams = <>');
     vFile.Add('        OnReply = serverRoutes_pingReply');
     vFile.Add('      end>');
-    vFile.Add('    Security.BruteForce.ExpirationTime = 1800000');
-    vFile.Add('    Security.BruteForce.MaxTry = 3');
-    vFile.Add('    Security.FloodTimeInterval = 30');
-    vFile.Add('    Security.Options = []');
-    vFile.Add('    ShowServerStatus = True');
-    vFile.Add('    SSL.Enabled = False');
     vFile.Add('    Left = 208');
     vFile.Add('    Top = 144');
     vFile.Add('  end');
@@ -326,6 +297,7 @@ begin
     if Auth > 0 then
       vUnits := vUnits + ', RALAuthentication';
 
+    vFile.Add('// by PascalRAL - StandAlone App: '+DateTimeToStr(Now));
     vFile.Add(Format('unit %s;',[ModuleName]));
     vFile.Add('');
     vFile.Add('interface');
@@ -368,14 +340,13 @@ begin
     vFile.Add('');
     vFile.Add(Format('procedure T%s.FormCreate(Sender: TObject);',[FormName]));
     vFile.Add('begin');
-    vFile.Add('  server.Active := True;');
+    vFile.Add('  server.Start;');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add(Format('procedure T%s.serverRoutes_pingReply(ARequest: TRALRequest;',[FormName]));
     vFile.Add('  AResponse: TRALResponse);');
     vFile.Add('begin');
-    vFile.Add('  AResponse.ContentType := rctTEXTPLAIN;');
-    vFile.Add('  AResponse.ResponseText := ''pong'';');
+    vFile.Add('  AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add('end.');

@@ -5,7 +5,7 @@ unit RALWizard;
 interface
 
 uses
-  Classes, SysUtils, ToolsAPI, Forms;
+  Classes, SysUtils, ToolsAPI, Forms, Controls;
 
 Type
   TRALWizard = class(TNotifierObject, IUnknown, IOTAWizard, IOTAProjectWizard,
@@ -63,12 +63,45 @@ uses
   {$IFDEF DELPHI10_0UP}
     PlatformAPI,
   {$ENDIF}
-  RALWizardTools, RALWizardForm;
+  RALWizardTools, RALWizardForm, RALWizardProjStandAlone, RALWizardProjConsole;
 
 procedure TRALWizard.Execute;
+var
+  vModuleServices: IOTAModuleServices;
+  vProjectName: string;
+  vProjectDir: String;
+  vOpcoes: integer;
 begin
   Application.CreateForm(TfRALWizardForm, fRALWizardForm);
-  fRALWizardForm.ShowModal;
+  if fRALWizardForm.ShowModal = mrOK then
+  begin
+    vModuleServices := (BorlandIDEServices as IOTAModuleServices);
+    vProjectName := FindNewProjectName(GetActiveProjectGroup);
+    vProjectDir := IncludeTrailingPathDelimiter(fRALWizardForm.eDirAplicacao.Text);
+
+    vOpcoes := 0;
+    if fRALWizardForm.ckSwagger.Checked then
+      vOpcoes := vOpcoes + 1;
+    if fRALWizardForm.ckWebModule.Checked then
+      vOpcoes := vOpcoes + 2;
+
+    case fRALWizardForm.cbTipoAplicacao.ItemIndex of
+      0 : begin
+        vModuleServices.CreateModule(TRALWizardProjStandAloneCreator.Create(vProjectName,
+                                     vProjectDir, fRALWizardForm.cbTipoMotor.ItemIndex,
+                                     fRALWizardForm.cbAutenticacao.ItemIndex, vOpcoes));
+      end;
+      1 : begin
+
+
+      end;
+      2 : begin
+        vModuleServices.CreateModule(TRALWizardProjConsoleCreator.Create(vProjectName,
+                                     vProjectDir, fRALWizardForm.cbTipoMotor.ItemIndex,
+                                     fRALWizardForm.cbAutenticacao.ItemIndex, vOpcoes));
+      end;
+    end;
+  end;
 end;
 
 function TRALWizard.GetAuthor: string;
