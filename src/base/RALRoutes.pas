@@ -25,6 +25,7 @@ type
     FParamType: TRALRouteParamType;
     FRequired : boolean;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
     procedure SetDescription(AValue: TStrings);
   public
@@ -56,6 +57,9 @@ type
   { TRALBasicRoute }
 
   /// Base class for individual route definition
+
+  { TRALBaseRoute }
+
   TRALBaseRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
@@ -70,6 +74,7 @@ type
 
     FOnReply: TRALOnReply;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
     /// checks if the route already exists on the list
     procedure SetAllowedMethods(const AValue: TRALMethods);
@@ -252,6 +257,36 @@ begin
     Result := TRALModuleRoutes(Collection.Owner).Domain;
 
   Result := FixRoute(Result + '/' + FRoute);
+end;
+
+procedure TRALBaseRoute.AssignTo(Dest: TPersistent);
+var
+  vDest: TRALBaseRoute;
+  vInt: integer;
+  vParam : TRALRouteParam;
+begin
+  vDest := TRALBaseRoute(Dest);
+  vDest.AllowedMethods := FAllowedMethods;
+  vDest.AllowURIParams := FAllowURIParams;
+  vDest.Callback := FCallback;
+  vDest.Description.Assign(FDescription);
+  vDest.Name := FName;
+  vDest.Route := FRoute;
+  vDest.SkipAuthMethods := FSkipAuthMethods;
+
+  vDest.URIParams.Clear;
+  for vInt := 0 to Pred(FURIParams.Count) do
+  begin
+    vParam := TRALRouteParam(vDest.URIParams.Add);
+    vParam.Assign(FURIParams.Items[vInt]);
+  end;
+
+  vDest.InputParams.Clear;
+  for vInt := 0 to Pred(FInputParams.Count) do
+  begin
+    vParam := TRALRouteParam(vDest.InputParams.Add);
+    vParam.Assign(FInputParams.Items[vInt]);
+  end;
 end;
 
 function TRALBaseRoute.GetDisplayName: string;
@@ -448,6 +483,19 @@ begin
 end;
 
 { TRALRouteParam }
+
+procedure TRALRouteParam.AssignTo(Dest: TPersistent);
+var
+  vDest: TRALRouteParam;
+begin
+  vDest := TRALRouteParam(Dest);
+  vDest.Description.Assign(FDescription);
+  vDest.ParamName := FParamName;
+  vDest.ParamType := FParamType;
+  vDest.Required := FRequired;
+
+  Changed(True);
+end;
 
 function TRALRouteParam.GetDisplayName: string;
 begin

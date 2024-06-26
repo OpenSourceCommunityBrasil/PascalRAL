@@ -642,7 +642,7 @@ end;
 
 procedure TRALServerJWTAuth.SetAuthRoute(ARoute: TRALBaseRoute);
 begin
-  inherited SetAuthRoute(ARoute);
+  FAuthToken.Assign(ARoute);
 end;
 
 function TRALServerJWTAuth.GetToken(var AJSONParams: StringRAL): StringRAL;
