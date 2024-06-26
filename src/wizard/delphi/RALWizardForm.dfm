@@ -28,7 +28,6 @@ object fRALWizardForm: TfRALWizardForm
     Color = 16744448
     ParentBackground = False
     TabOrder = 0
-    ExplicitHeight = 269
     object imLogo: TImage
       Left = 7
       Top = 7
@@ -113,7 +112,6 @@ object fRALWizardForm: TfRALWizardForm
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitHeight = 269
     object Label1: TLabel
       AlignWithMargins = True
       Left = 10
@@ -126,7 +124,6 @@ object fRALWizardForm: TfRALWizardForm
       Margins.Bottom = 0
       Align = alTop
       Caption = 'Application Type:'
-      ExplicitTop = 10
       ExplicitWidth = 83
     end
     object Label2: TLabel
@@ -141,7 +138,6 @@ object fRALWizardForm: TfRALWizardForm
       Margins.Bottom = 0
       Align = alTop
       Caption = 'Data Engine:'
-      ExplicitTop = 59
       ExplicitWidth = 62
     end
     object Label3: TLabel
@@ -156,7 +152,6 @@ object fRALWizardForm: TfRALWizardForm
       Margins.Bottom = 0
       Align = alTop
       Caption = 'Authentication:'
-      ExplicitTop = 108
       ExplicitWidth = 74
     end
     object Label4: TLabel
@@ -181,7 +176,6 @@ object fRALWizardForm: TfRALWizardForm
       Align = alBottom
       BevelOuter = bvNone
       TabOrder = 0
-      ExplicitTop = 228
       object Bevel1: TBevel
         AlignWithMargins = True
         Left = 5
@@ -610,8 +604,6 @@ object fRALWizardForm: TfRALWizardForm
       Align = alTop
       Caption = 'Aditional Options'
       TabOrder = 1
-      ExplicitLeft = 13
-      ExplicitTop = 152
       object ckSwagger: TCheckBox
         Left = 16
         Top = 19
@@ -648,7 +640,6 @@ object fRALWizardForm: TfRALWizardForm
         'Standalone Application'
         'CGI Application'
         'Console Aplication')
-      ExplicitTop = 28
     end
     object cbTipoMotor: TComboBox
       AlignWithMargins = True
@@ -669,7 +660,6 @@ object fRALWizardForm: TfRALWizardForm
         'Indy'
         'Synopse mORMot2'
         'Sagui')
-      ExplicitTop = 77
     end
     object cbAutenticacao: TComboBox
       AlignWithMargins = True
@@ -690,7 +680,6 @@ object fRALWizardForm: TfRALWizardForm
         'None'
         'Basic'
         'JWT')
-      ExplicitTop = 126
     end
     object Panel4: TPanel
       Left = 0
@@ -708,7 +697,6 @@ object fRALWizardForm: TfRALWizardForm
         Align = alRight
         BevelOuter = bvNone
         TabOrder = 0
-        ExplicitHeight = 31
         object bDirectory: TSpeedButton
           AlignWithMargins = True
           Left = 0
@@ -815,10 +803,6 @@ object fRALWizardForm: TfRALWizardForm
         BevelOuter = bvNone
         Caption = 'Panel6'
         TabOrder = 1
-        ExplicitLeft = 136
-        ExplicitTop = 32
-        ExplicitWidth = 185
-        ExplicitHeight = 41
         object eDirAplicacao: TEdit
           AlignWithMargins = True
           Left = 10
@@ -829,15 +813,8 @@ object fRALWizardForm: TfRALWizardForm
           Margins.Top = 4
           Align = alTop
           TabOrder = 0
-          ExplicitLeft = 26
-          ExplicitTop = 3
-          ExplicitWidth = 121
         end
       end
     end
-  end
-  object OpenDialog: TOpenDialog
-    Left = 33
-    Top = 71
   end
 end

@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
   System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
   Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Imaging.pngimage,
-  Vcl.Buttons, ToolsAPI;
+  Vcl.Buttons, ToolsAPI, FileCtrl;
 
 type
   TfRALWizardForm = class(TForm)
@@ -32,7 +32,6 @@ type
     Panel6: TPanel;
     eDirAplicacao: TEdit;
     bDirectory: TSpeedButton;
-    OpenDialog: TOpenDialog;
     procedure bCriarAplicacaoClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCreate(Sender: TObject);
@@ -56,9 +55,12 @@ uses
   RALWizardTools;
 
 procedure TfRALWizardForm.bDirectoryClick(Sender: TObject);
+var
+  vDir : string;
 begin
-  if OpenDialog.Execute then
-    eDirAplicacao.Text := OpenDialog.FileName;
+  if SelectDirectory('Select Directory', ExtractFileDrive(vDir), vDir,
+                     [sdNewUI, sdNewFolder]) then
+    eDirAplicacao.Text := vDir;
 end;
 
 procedure TfRALWizardForm.FormClose(Sender: TObject; var Action: TCloseAction);

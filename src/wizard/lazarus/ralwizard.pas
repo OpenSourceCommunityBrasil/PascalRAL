@@ -378,8 +378,6 @@ begin
     1 : Result := mrOK; // CGI
     2 : Result := CreateProjConsole(AProject); // Console
   end;
-
-//  LazarusIDE.DoSaveProject([]);
 end;
 
 function TRALWizard.CreateStartFiles(AProject: TLazProject): TModalResult;
