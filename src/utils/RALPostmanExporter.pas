@@ -8,6 +8,8 @@ uses
 
 type
   TRALPostmanExporter = class
+  private
+    FAllowCORSVerbs: boolean;
   protected
     function getInfo(AServer: TRALServer) : TRALJSONObject;
     function getVariables(AServer: TRALServer) : TRALJSONArray;
@@ -19,6 +21,8 @@ type
     procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
     procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
     function ExportToStream(AServer : TRALServer) : TStream; overload;
+  published
+    property AllowCORSVerbs: boolean read FAllowCORSVerbs write FAllowCORSVerbs;
   end;
 
 implementation
@@ -221,6 +225,9 @@ begin
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
     if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then begin
+      if (vMethod = amOPTIONS) and (not FAllowCORSVerbs) then
+        Continue;
+
       vRoute := TRALJSONObject.Create;
 
       vRoute.Add('name', ARoute.Name);

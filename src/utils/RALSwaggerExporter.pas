@@ -61,7 +61,7 @@ begin
   try
     vJson.Add('openapi', '3.1.0');
     vJson.Add('info', getInfo(AServer));
-    vJson.Add('servers', getServers(AServer));
+//    vJson.Add('servers', getServers(AServer));
     if SwaggerModule.PostmanTag then
       vJson.Add('tags', getTags(AServer));
     vJson.Add('paths', getPaths(AServer));
@@ -213,7 +213,7 @@ begin
   Result := TRALJSONArray.Create;
 
   vItem := TRALJSONObject.Create;
-  vItem.Add('url', '/');
+  vItem.Add('url', ''); // "/"
 
   Result.Add(vItem);
 end;
@@ -403,7 +403,11 @@ begin
 
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then begin
+    if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then
+    begin
+       if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
+         Continue;
+
       vjMethod := TRALJSONObject.Create;
 
       vStrMethod := LowerCase(RALMethodToHTTPMethod(vMethod));

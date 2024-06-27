@@ -27,6 +27,7 @@ type
 
   TRALSwaggerModule = class(TRALModuleRoutes)
   private
+    FAllowCORSVerbs : boolean;
     FEMail: StringRAL;
     FLicense: TRALSwaggerLicense;
     FPostmanFile: TFileName;
@@ -54,6 +55,7 @@ type
 
     function GetListRoutes: TList; override;
   published
+    property AllowCORSVerbs: boolean read FAllowCORSVerbs write FAllowCORSVerbs;
     property EMail: StringRAL read FEMail write FEMail;
     property License: TRALSwaggerLicense read FLicense write FLicense;
     property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
@@ -91,6 +93,7 @@ begin
   FSystemVersion := '';
   FTermsOfService := '';
   FLicense := TRALSwaggerLicense.Create;
+  FAllowCORSVerbs := False;
 
   Domain := '/swagger';
 end;
@@ -343,6 +346,7 @@ begin
   begin
     vPostman := TRALPostmanExporter.Create;
     try
+      vPostman.AllowCORSVerbs := FAllowCORSVerbs;
       vMem := vPostman.ExportToStream(Server);
       try
         AResponse.AddFile(vMem, 'postman.json');
