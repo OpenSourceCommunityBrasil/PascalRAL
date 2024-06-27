@@ -1,12 +1,12 @@
 unit RALWizardForm;
 
-interface
+{$I ..\..\src\base\PascalRAL.inc}
 
+interface
+                        
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
-  Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Imaging.pngimage,
-  Vcl.Buttons, ToolsAPI, FileCtrl;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, StdCtrls, Buttons, FileCtrl;
 
 type
   TfRALWizardForm = class(TForm)
@@ -14,29 +14,34 @@ type
     imLogo: TImage;
     Panel2: TPanel;
     Panel3: TPanel;
-    Bevel1: TBevel;
-    bCriarAplicacao: TSpeedButton;
-    gbOpcoes: TGroupBox;
-    ckSwagger: TCheckBox;
-    ckWebModule: TCheckBox;
-    Label1: TLabel;
-    cbTipoAplicacao: TComboBox;
-    Label2: TLabel;
-    cbTipoMotor: TComboBox;
-    Label3: TLabel;
-    cbAutenticacao: TComboBox;
-    Image1: TImage;
-    Label4: TLabel;
     Panel4: TPanel;
-    Panel5: TPanel;
     Panel6: TPanel;
+    Label1: TLabel;
+    Panel7: TPanel;
+    Panel8: TPanel;
+    Label2: TLabel;
     eDirAplicacao: TEdit;
     bDirectory: TSpeedButton;
+    Panel9: TPanel;
+    cbTipoAplicacao: TComboBox;
+    Label3: TLabel;
+    Panel10: TPanel;
+    cbTipoMotor: TComboBox;
+    Label4: TLabel;
+    Panel11: TPanel;
+    cbAutenticacao: TComboBox;
+    Panel5: TPanel;
+    Bevel1: TBevel;
+    bCriarAplicacao: TSpeedButton;
+    GroupBox1: TGroupBox;
+    ckSwagger: TCheckBox;
+    ckWebModule: TCheckBox;
+    Image1: TImage;
     procedure bCriarAplicacaoClick(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure FormCreate(Sender: TObject);
-    procedure bDirectoryClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure bDirectoryClick(Sender: TObject);
   private
     { Private declarations }
     FResModal : TModalResult;
@@ -53,32 +58,6 @@ implementation
 
 uses
   RALWizardTools;
-
-procedure TfRALWizardForm.bDirectoryClick(Sender: TObject);
-var
-  vDir : string;
-begin
-  if SelectDirectory('Select Directory', ExtractFileDrive(vDir), vDir,
-                     [sdNewUI, sdNewFolder]) then
-    eDirAplicacao.Text := vDir;
-end;
-
-procedure TfRALWizardForm.FormClose(Sender: TObject; var Action: TCloseAction);
-begin
-  Action := caFree;
-  ModalResult := FResModal;
-  Release;
-end;
-
-procedure TfRALWizardForm.FormCreate(Sender: TObject);
-begin
-  FResModal := mrCancel;
-end;
-
-procedure TfRALWizardForm.FormShow(Sender: TObject);
-begin
-  eDirAplicacao.Text := GetIDEProjectPath;
-end;
 
 procedure TfRALWizardForm.bCriarAplicacaoClick(Sender: TObject);
 begin
@@ -105,6 +84,37 @@ begin
 
   FResModal := mrOk;
   Close;
+end;
+
+procedure TfRALWizardForm.FormShow(Sender: TObject);
+begin
+  eDirAplicacao.Text := GetIDEProjectPath;
+end;
+
+procedure TfRALWizardForm.FormCreate(Sender: TObject);
+begin
+  FResModal := mrCancel;
+end;
+
+procedure TfRALWizardForm.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+  ModalResult := FResModal;
+  Release;
+end;
+
+procedure TfRALWizardForm.bDirectoryClick(Sender: TObject);
+var
+  vDir : string;
+begin
+  {$IFDEF DELPHI10_0UP}
+  if SelectDirectory('Select Directory', ExtractFileDrive(vDir), vDir,
+                     [sdNewUI, sdNewFolder]) then
+  {$ELSE}
+  if SelectDirectory(vDir, [sdAllowCreate, sdPerformCreate, sdPrompt], 0) then
+  {$ENDIF}
+    eDirAplicacao.Text := vDir;
 end;
 
 end.
