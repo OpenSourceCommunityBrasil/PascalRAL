@@ -32,9 +32,11 @@ type
     FLicense: TRALSwaggerLicense;
     FPostmanFile: TFileName;
     FPostmanTag: boolean;
+    FServersUrl: TStrings;
+    FShowCustomNames: boolean;
+    FSwaggerFile: TFileName;
     FSystemDescription: TStrings;
     FSystemVersion: StringRAL;
-    FSwaggerFile: TFileName;
     FTermsOfService: StringRAL;
     FTitle: StringRAL;
   protected
@@ -42,8 +44,10 @@ type
     procedure SetDomain(const AValue: StringRAL); override;
     procedure SetPostmanFile(const AValue: TFileName);
     procedure SetPostmanTag(AValue: boolean);
+    procedure SetServersUrl(AValue: TStrings);
     procedure SetSystemDescription(const AValue: TStrings);
     procedure SetSwaggerFile(const AValue: TFileName);
+
     procedure SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -60,11 +64,13 @@ type
     property License: TRALSwaggerLicense read FLicense write FLicense;
     property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
     property PostmanTag: boolean read FPostmanTag write SetPostmanTag;
+    property ServersUrl: TStrings read FServersUrl write SetServersUrl;
+    property ShowCustomNames: boolean read FShowCustomNames write FShowCustomNames;
+    property SwaggerFile: TFileName read FSwaggerFile write SetSwaggerFile;
     property SystemDescription: TStrings read FSystemDescription write SetSystemDescription;
     property SystemVersion: StringRAL read FSystemVersion write FSystemVersion;
     property TermsOfService: StringRAL read FTermsOfService write FTermsOfService;
     property Title: StringRAL read FTitle write FTitle;
-    property SwaggerFile: TFileName read FSwaggerFile write SetSwaggerFile;
   end;
 
 implementation
@@ -86,16 +92,25 @@ end;
 constructor TRALSwaggerModule.Create(AOwner: TComponent);
 begin
   inherited;
-  FSystemDescription := TStringList.Create;
-  FPostmanTag := False;
-  FEMail := '';
-  FTitle := '';
-  FSystemVersion := '';
-  FTermsOfService := '';
-  FLicense := TRALSwaggerLicense.Create;
-  FAllowCORSVerbs := False;
-
   Domain := '/swagger';
+
+  FAllowCORSVerbs := False;
+  FEMail := '';
+  FLicense := TRALSwaggerLicense.Create;
+  FPostmanFile := '';
+  FPostmanTag := False;
+  FServersUrl := TStringList.Create;
+  FShowCustomNames := False;
+  FSwaggerFile := '';
+  FSystemVersion := '';
+  FSystemDescription := TStringList.Create;
+  FTermsOfService := '';
+  FTitle := '';
+end;
+
+procedure TRALSwaggerModule.SetServersUrl(AValue: TStrings);
+begin
+  FServersUrl.Assign(AValue);
 end;
 
 procedure TRALSwaggerModule.CreateRoutes;
@@ -132,6 +147,7 @@ destructor TRALSwaggerModule.Destroy;
 begin
   FreeAndNil(FSystemDescription);
   FreeAndNil(FLicense);
+  FreeAndNil(FServersUrl);
   inherited;
 end;
 
@@ -361,7 +377,8 @@ end;
 
 function TRALSwaggerModule.GetListRoutes: TList;
 begin
-  // nao devolse as rotas
+  // nao devolve as rota, porque rotas do swagger nao devem ser vistas pelo
+  // proprio swagger
   Result := TList.Create;
 end;
 

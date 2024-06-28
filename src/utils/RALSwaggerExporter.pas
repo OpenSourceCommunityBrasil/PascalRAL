@@ -54,14 +54,19 @@ end;
 
 procedure TRALSwaggerExporter.ExportToStream(AServer: TRALServer; AStream: TStream);
 var
-  vJson, vAux : TRALJSONObject;
-  vStr : StringRAL;
+  vJson, vAux: TRALJSONObject;
+  vArr: TRALJSONArray;
+  vStr: StringRAL;
 begin
   vJson := TRALJSONObject.Create;
   try
     vJson.Add('openapi', '3.1.0');
     vJson.Add('info', getInfo(AServer));
-//    vJson.Add('servers', getServers(AServer));
+
+    vArr := getServers(AServer);
+    if vArr <> nil then
+      vJson.Add('servers', vArr);
+
     if SwaggerModule.PostmanTag then
       vJson.Add('tags', getTags(AServer));
     vJson.Add('paths', getPaths(AServer));
@@ -208,14 +213,22 @@ end;
 
 function TRALSwaggerExporter.getServers(AServer: TRALServer): TRALJSONArray;
 var
-  vItem : TRALJSONObject;
+  vItem: TRALJSONObject;
+  vInt: IntegerRAL;
 begin
-  Result := TRALJSONArray.Create;
+  Result := nil;
+  if FSwaggerModule.ServersUrl.Count > 0 then
+  begin
+    Result := TRALJSONArray.Create;
 
-  vItem := TRALJSONObject.Create;
-  vItem.Add('url', ''); // "/"
+    for vInt := 0 to Pred(FSwaggerModule.ServersUrl.Count) do
+    begin
+      vItem := TRALJSONObject.Create;
+      vItem.Add('url', FSwaggerModule.ServersUrl.Strings[vInt]);
 
-  Result.Add(vItem);
+      Result.Add(vItem);
+    end;
+  end;
 end;
 
 function TRALSwaggerExporter.getTags(AServer: TRALServer): TRALJSONArray;
@@ -426,7 +439,10 @@ begin
 
         vjMethod.Add('tags', vTags);
       end;
-      vjMethod.Add('summary', ARoute.Name);
+
+      if FSwaggerModule.ShowCustomNames then
+        vjMethod.Add('summary', ARoute.Name);
+
       vjMethod.Add('description', Trim(ARoute.Description.Text));
       vjMethod.Add('operationId', vStrOperation + '_' + vStrMethod);
 
