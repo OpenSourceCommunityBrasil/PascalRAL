@@ -259,9 +259,25 @@ var
   vAux1, vAux2 : TRALJSONObject;
   vSecurity, vAuthTypes, vTags : TRALJSONArray;
   vMethod : TRALMethod;
-  vStrMethod, vStrOperation ,vStrRoute : StringRAL;
+  vStrMethod, vStrOperation, vStrRoute, vStrAux : StringRAL;
   vInt : IntegerRAL;
   vRouteParam : TRALRouteParam;
+  vURIParams : TStringList;
+
+  function getParameterStr(AParam : StringRAL; AType : StringRAL) : TRALJSONObject;
+  var
+    rbAux1 : TRALJSONObject;
+  begin
+    Result := TRALJSONObject.Create;
+    Result.Add('name', AParam);
+    Result.Add('in', AType);
+    Result.Add('required', True);
+
+    rbAux1 := TRALJSONObject.Create;
+    rbAux1.Add('type', 'string');
+
+    Result.Add('schema',rbAux1);
+  end;
 
   function getParameter(AParam : TRALRouteParam; AType : StringRAL) : TRALJSONObject;
   var
@@ -271,7 +287,7 @@ var
     Result.Add('name', AParam.ParamName);
     Result.Add('in', AType);
     Result.Add('description', AParam.Description.Text);
-    Result.Add('required', AParam.Required);
+    Result.Add('required', (AParam.Required) or (AType = 'path'));
 
     rbAux1 := TRALJSONObject.Create;
     case AParam.ParamType of
@@ -300,7 +316,7 @@ var
     spAux1.Add('description', 'Schema of Route ' + ARoute.Name);
 
     spAux2 := TRALJSONObject.Create;
-    spArr1 := TRALJSONArray.Create;
+    spArr1 := nil;
 
     for spInt := 0 to Pred(ARoute.InputParams.Count) do
     begin
@@ -318,15 +334,18 @@ var
 
       spAux2.Add(spParam.ParamName, spAux3);
 
-      if spParam.Required then
+      if (spParam.Required) then
+      begin
+        if spArr1 = nil then
+          spArr1 := TRALJSONArray.Create;
+
         spArr1.Add(spParam.ParamName);
+      end
     end;
     spAux1.Add('properties', spAux2);
 
-    if spArr1.Count > 0 then
-      spAux1.Add('required', spArr1)
-    else
-      FreeAndNil(spArr1);
+    if spArr1 <> nil then
+      spAux1.Add('required', spArr1);
 
     FSchemas.AddObject(LowerCase(ARoute.Name), spAux1);
   end;
@@ -335,7 +354,8 @@ var
   var
     rbAux1, rbAux2, rbAux3, rbAux4 : TRALJSONObject;
     rbParameters : TRALJSONArray;
-    rbInt : IntegerRAL;
+    rbInt, rbIdx : IntegerRAL;
+    rbStr1 : StringRAL;
     rbParam : TRALRouteParam;
   begin
     rbParameters := nil;
@@ -375,13 +395,17 @@ var
       end;
     end;
 
-    if (rbParameters = nil) and (ARoute.URIParams.Count > 0) then
+    if (rbParameters = nil) and (vURIParams.Count > 0) then
       rbParameters := TRALJSONArray.Create;
 
-    for rbInt := 0 to Pred(ARoute.URIParams.Count) do
+    for rbInt := 0 to Pred(vURIParams.Count) do
     begin
-      rbParam := TRALRouteParam(ARoute.URIParams.Items[rbInt]);
-      rbAux1 := getParameter(rbParam, 'path');
+      rbStr1 := vURIParams.Strings[rbInt];
+      rbIdx := ARoute.URIParams.IndexOf(rbStr1);
+      if rbIdx >= 0 then
+        rbAux1 := getParameter(TRALRouteParam(ARoute.URIParams.Items[rbIdx]), 'path')
+      else
+        rbAux1 := getParameterStr(vURIParams.Strings[rbInt], 'path');
       rbParameters.Add(rbAux1);
     end;
 
@@ -393,84 +417,100 @@ begin
   if ARoute = nil then
     Exit;
 
-  // adicionando params URI na route
   vStrRoute := ARoute.GetFullRoute;
-  for vInt := 0 to Pred(ARoute.URIParams.Count) do
-  begin
-    vRouteParam := TRALRouteParam(ARoute.URIParams.Items[vInt]);
-    vStrRoute := Format('%s/{{%s}}',[vStrRoute, vRouteParam.ParamName]);
-  end;
+  if (vStrRoute <> '') and (vStrRoute[POSINISTR] = '/') then
+    System.Delete(vStrRoute, POSINISTR, 1);
 
-  vStrRoute := FixRoute(vStrRoute);
+  vURIParams := TStringList.Create;
+  try
+    // convertendo a route em operation
+    vStrOperation := vStrRoute;
+    vStrOperation := StringReplace(vStrOperation, '/', '_', [rfReplaceAll]);
+    vStrOperation := StringReplace(vStrOperation, ':', '', [rfReplaceAll]);
 
-  // convertendo a route em operation
-  vStrOperation := vStrRoute;
-  if (vStrOperation <> '') and (vStrOperation[POSINISTR] = '/') then
-    Delete(vStrOperation, 1, 1);
-
-  vStrOperation := StringReplace(vStrOperation, '/', '_', [rfReplaceAll]);
-  vStrOperation := StringReplace(vStrOperation, '{', '', [rfReplaceAll]);
-  vStrOperation := StringReplace(vStrOperation, '}', '', [rfReplaceAll]);
-
-  vRoute := TRALJSONObject.Create;
-
-  for vMethod := Low(TRALMethod) to High(TRALMethod) do
-  begin
-    if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then
+    vURIParams.LineBreak := '/';
+    vURIParams.Text := vStrRoute;
+    vStrRoute := '';
+    vInt := 0;
+    while vInt < vURIParams.Count do
     begin
-       if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
-         Continue;
-
-      vjMethod := TRALJSONObject.Create;
-
-      vStrMethod := LowerCase(RALMethodToHTTPMethod(vMethod));
-
-      if (AModule <> nil) and (AModule.Name <> '') then
+      vStrAux := vURIParams.Strings[vInt];
+      if (vStrAux <> '') and (vStrAux[POSINISTR] = ':') then
       begin
-        vTags := TRALJSONArray.Create;
-        vTags.Add(AModule.Name);
-
-        vjMethod.Add('tags', vTags);
+        System.Delete(vStrAux, POSINISTR, 1);
+        vURIParams.Strings[vInt] := vStrAux;
+        vStrAux := '{' + vStrAux + '}';
+        vInt := vInt + 1;
       end
-      else if (AModule = nil) and (AServer <> nil) and (AServer.Name <> '') then
+      else
       begin
-        vTags := TRALJSONArray.Create;
-        vTags.Add(AServer.Name);
-
-        vjMethod.Add('tags', vTags);
+        vURIParams.Delete(vInt);
       end;
-
-      if FSwaggerModule.ShowCustomNames then
-        vjMethod.Add('summary', ARoute.Name);
-
-      vjMethod.Add('description', Trim(ARoute.Description.Text));
-      vjMethod.Add('operationId', vStrOperation + '_' + vStrMethod);
-
-      getRequestParameters;
-
-      if (AServer.Authentication <> nil) and
-         (not ARoute.IsMethodSkipped(vMethod)) then begin
-        vSecurity := TRALJSONArray.Create;
-
-        vAuth := TRALJSONObject.Create;
-        vAuthTypes := TRALJSONArray.Create;
-        vAuth.Add('ralAuth', vAuthTypes);
-
-        vSecurity.Add(vAuth);
-        vjMethod.Add('security', vSecurity);
-      end;
-
-      vAux1 := TRALJSONObject.Create;;
-      vAux2 := TRALJSONObject.Create;;
-      vAux2.Add('description', 'successful operation');
-
-      vAux1.Add('200', vAux2);
-      vjMethod.Add('responses', vAux1);
-
-      vRoute.Add(vStrMethod, vjMethod);
+      vStrRoute := vStrRoute + '/' + vStrAux;
     end;
+
+    vRoute := TRALJSONObject.Create;
+
+    for vMethod := Low(TRALMethod) to High(TRALMethod) do
+    begin
+      if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then
+      begin
+         if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
+           Continue;
+
+        vjMethod := TRALJSONObject.Create;
+
+        vStrMethod := LowerCase(RALMethodToHTTPMethod(vMethod));
+
+        if (AModule <> nil) and (AModule.Name <> '') then
+        begin
+          vTags := TRALJSONArray.Create;
+          vTags.Add(AModule.Name);
+
+          vjMethod.Add('tags', vTags);
+        end
+        else if (AModule = nil) and (AServer <> nil) and (AServer.Name <> '') then
+        begin
+          vTags := TRALJSONArray.Create;
+          vTags.Add(AServer.Name);
+
+          vjMethod.Add('tags', vTags);
+        end;
+
+        if FSwaggerModule.ShowCustomNames then
+          vjMethod.Add('summary', ARoute.Name);
+
+        vjMethod.Add('description', Trim(ARoute.Description.Text));
+        vjMethod.Add('operationId', vStrOperation + '_' + vStrMethod);
+
+        getRequestParameters;
+
+        if (AServer.Authentication <> nil) and
+           (not ARoute.IsMethodSkipped(vMethod)) then begin
+          vSecurity := TRALJSONArray.Create;
+
+          vAuth := TRALJSONObject.Create;
+          vAuthTypes := TRALJSONArray.Create;
+          vAuth.Add('ralAuth', vAuthTypes);
+
+          vSecurity.Add(vAuth);
+          vjMethod.Add('security', vSecurity);
+        end;
+
+        vAux1 := TRALJSONObject.Create;;
+        vAux2 := TRALJSONObject.Create;;
+        vAux2.Add('description', 'successful operation');
+
+        vAux1.Add('200', vAux2);
+        vjMethod.Add('responses', vAux1);
+
+        vRoute.Add(vStrMethod, vjMethod);
+      end;
+    end;
+    AItem.Add(vStrRoute, vRoute)
+  finally
+    FreeAndNil(vURIParams);
   end;
-  AItem.Add(vStrRoute, vRoute)
 end;
 
 constructor TRALSwaggerExporter.Create;

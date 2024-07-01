@@ -38,39 +38,29 @@ type
     property Required: boolean read FRequired write FRequired;
   end;
 
+
   { TRALRouteParams }
 
   TRALRouteParams = class(TOwnedCollection)
   public
     constructor Create(AOwner: TPersistent);
+    function IndexOf(AName : StringRAL) : IntegerRAL;
   end;
-
-  { TRALRouteURIParams }
-
-  TRALRouteURIParams = class(TOwnedCollection)
-  protected
-    procedure Update(Item: TCollectionItem); override;
-  public
-    constructor Create(AOwner: TPersistent);
-  end;
-
-  { TRALBasicRoute }
-
-  /// Base class for individual route definition
 
   { TRALBaseRoute }
 
+  /// Base class for individual route definition
   TRALBaseRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
     FAllowURIParams: boolean;
     FCallback: boolean;
     FDescription: TStrings;
+    FInputParams : TRALRouteParams;
     FName: StringRAL;
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
-    FURIParams: TRALRouteURIParams;
-    FInputParams : TRALRouteParams;
+    FURIParams : TRALRouteParams;
 
     FOnReply: TRALOnReply;
   protected
@@ -102,12 +92,13 @@ type
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
-    property URIParams: TRALRouteURIParams read FURIParams write FURIParams;
+    property URIParams: TRALRouteParams read FURIParams write FURIParams;
+
     property OnReply: TRALOnReply read FOnReply write FOnReply;
   published
     property Description: TStrings read FDescription write SetDescription;
-    property Route: StringRAL read FRoute write SetRoute;
     property InputParams: TRALRouteParams read FInputParams write FInputParams;
+    property Route: StringRAL read FRoute write SetRoute;
   end;
 
   TRALRoute = class(TRALBaseRoute)
@@ -116,11 +107,11 @@ type
     property AllowURIParams;
     property Callback;
     property Description;
+    property InputParams;
     property Name;
     property Route;
     property SkipAuthMethods;
     property URIParams;
-    property InputParams;
 
     property OnReply;
   end;
@@ -158,8 +149,8 @@ begin
   FName := 'ralroute' + IntToStr(Index);
   FRoute := '/';
   FDescription := TStringList.Create;
-  FURIParams := TRALRouteURIParams.Create(Self);
   FInputParams := TRALRouteParams.Create(Self);
+  FURIParams := TRALRouteParams.Create(Self);
 
   Changed(False);
 end;
@@ -167,8 +158,8 @@ end;
 destructor TRALBaseRoute.Destroy;
 begin
   FreeAndNil(FDescription);
-  FreeAndNil(FURIParams);
   FreeAndNil(FInputParams);
+  FreeAndNil(FURIParams);
   inherited Destroy;
 end;
 
@@ -204,6 +195,11 @@ begin
 end;
 
 procedure TRALBaseRoute.SetRoute(AValue: StringRAL);
+var
+  vList : TStringList;
+  vInt, vPos : IntegerRAL;
+  vStr : StringRAL;
+  vParam : TRALRouteParam;
 begin
   AValue := FixRoute(Trim(AValue));
 
@@ -211,6 +207,43 @@ begin
     Exit;
 
   FRoute := AValue;
+  Delete(AValue, POSINISTR, 1);
+
+  vList := TStringList.Create;
+  try
+    vList.LineBreak := '/';
+    vList.Text := AValue;
+
+    // limpando a rota e deixando somente os URIParams
+    vInt := 0;
+    while vInt < vList.Count do
+    begin
+      vStr := vList.Strings[vInt];
+      if (vStr <> '') and (vStr[POSINISTR] = ':') then
+        vInt := vInt + 1
+      else
+        vList.Delete(vInt);
+    end;
+
+    // criando os novos URIParams
+    for vInt := 0 to Pred(vList.Count) do
+    begin
+      vStr := vList.Strings[vInt];
+      Delete(vStr, POSINISTR, 1);
+      vPos := FURIParams.IndexOf(vStr);
+      if vPos >= 0 then
+      begin
+        FURIParams.Move(vPos, vInt);
+      end
+      else
+      begin
+        vParam := TRALRouteParam(FURIParams.Insert(vInt));
+        vParam.ParamName := vStr;
+      end;
+    end;
+  finally
+    FreeAndNil(vList);
+  end;
 end;
 
 procedure TRALBaseRoute.SetSkipAuthMethods(const AValue: TRALMethods);
@@ -344,7 +377,7 @@ function TRALRoutes.CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
 var
   vStrQuery1, vStrQuery2: TStringList;
   vStr1, vStr2, vQuery: StringRAL;
-  vInt, vIdxParam, vIdxURI: IntegerRAL;
+  vInt, vIdxParam: IntegerRAL;
 begin
   Result := False;
   AWeight := 0;
@@ -357,46 +390,48 @@ begin
   vStrQuery1 := TStringList.Create;
   vStrQuery2 := TStringList.Create;
   try
+    // query da rota
     vStrQuery1.LineBreak := '/';
     vStrQuery1.Text := vQuery;
 
+    // query da requisicao
     vStrQuery2.LineBreak := '/';
     vStrQuery2.Text := AQuery;
 
-    if (not ARoute.AllowURIParams) and (vStrQuery2.Count <> vStrQuery1.Count) then
+    // se a rota nao permitir URIParams o total de parametros devem ser iguais
+    // lembrando que a o tamanho da rota da requisicao deve ser maior ou igual ao
+    // tamanho da rota
+    if ((not ARoute.AllowURIParams) and (vStrQuery2.Count <> vStrQuery1.Count)) or
+       (vStrQuery2.Count < vStrQuery1.Count) then
       Exit;
 
     vInt := 0;
     for vInt := 0 to Pred(vStrQuery1.Count) do
     begin
-      vStr1 := vStrQuery1.Strings[vInt];
+      vStr1 := Trim(vStrQuery1.Strings[vInt]);
+      vStr2 := Trim(vStrQuery2.Strings[vInt]);
 
-      vStr2 := '';
-      if vInt < vStrQuery2.Count then
-        vStr2 := vStrQuery2.Strings[vInt];
-
-      if not SameText(vStr1, vStr2) then
+      if vStr1[POSINISTR] = ':' then
+      begin
+        System.Delete(vStr1, POSINISTR, 1);
+        AURI.Add(vStr1 + '=' + vStr2);
+      end
+      else if not SameText(vStr1, vStr2) then
+      begin
         Exit;
+      end;
     end;
 
     if ARoute.AllowURIParams then
     begin
       vInt := vStrQuery1.Count;
       vIdxParam := 1;
-      vIdxURI := 0;
       for vInt := vInt to Pred(vStrQuery2.Count) do
       begin
-        if vIdxURI < ARoute.URIParams.Count then
-        begin
-          vStr1 := TRALRouteParam(ARoute.URIParams.Items[vIdxURI]).ParamName;
-          vIdxURI := vIdxURI + 1;
-        end
-        else begin
-          vStr1 := 'ral_uriparam' + IntToStr(vIdxParam);
-          vIdxParam := vIdxParam + 1;
-        end;
+        vStr1 := 'ral_uriparam' + IntToStr(vIdxParam);
         vStr2 := vStrQuery2.Strings[vInt];
         AURI.Add(vStr1 + '=' + vStr2);
+        vIdxParam := vIdxParam + 1;
         AWeight := AWeight + 10;
       end;
     end;
@@ -530,18 +565,19 @@ begin
   inherited Create(AOwner, TRALRouteParam);
 end;
 
-{ TRALRouteURIParams }
-
-constructor TRALRouteURIParams.Create(AOwner: TPersistent);
+function TRALRouteParams.IndexOf(AName: StringRAL): IntegerRAL;
+var
+  vInt : IntegerRAL;
 begin
-  inherited Create(AOwner, TRALRouteParam);
-end;
-
-procedure TRALRouteURIParams.Update(Item: TCollectionItem);
-begin
-  inherited;
-  if GetOwner.InheritsFrom(TRALBaseRoute) and (Self.Count > 0) then
-    TRALBaseRoute(GetOwner).AllowURIParams := True;
+  Result := -1;
+  for vInt := 0 to Pred(Count) do
+  begin
+    if SameText(AName, TRALRouteParam(Items[vInt]).ParamName) then
+    begin
+      Result := vInt;
+      Break;
+    end;
+  end;
 end;
 
 end.

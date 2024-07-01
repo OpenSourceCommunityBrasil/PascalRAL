@@ -215,7 +215,7 @@ var
   vAux3, vAux4 : TRALJSONArray;
   vMethod : TRALMethod;
   vFunc, vList : TStringList;
-  vInt : IntegerRAL;
+  vInt, vIdx : IntegerRAL;
   vRouteParam : TRALRouteParam;
   vStrRoute : StringRAL;
 begin
@@ -250,38 +250,48 @@ begin
       vStrRoute := ARoute.GetFullRoute;
 
       vAux3 := TRALJSONArray.Create;
+      vAux4 := nil;
 
       vList := TStringList.Create;
       try
-        vList.DelimitedText := '/';
-        vList.Text := ARoute.GetFullRoute;
+        vStr := vStrRoute;
+        if (vStr <> '') and (vStr[POSINISTR] = '/') then
+          System.Delete(vStr, POSINISTR, 1);
+
+        vList.LineBreak := '/';
+        vList.Text := vStr;
 
         for vInt := 0 to Pred(vList.Count) do
-          vAux3.Add(vList.Strings[vInt]);
+        begin
+          vStr := Trim(vList.Strings[vInt]);
+
+          if (vStr <> '') and (vStr[POSINISTR] = ':') then
+          begin
+            vRouteParam := nil;
+            vIdx := ARoute.URIParams.IndexOf(vStr);
+            if vIdx >= 0 then
+              vRouteParam := TRALRouteParam(ARoute.URIParams.Items[vIdx]);
+
+            if vAux4 = nil then
+              vAux4 := TRALJSONArray.Create;
+
+            vAux5 := TRALJSONObject.Create;
+            vAux5.Add('key', vStr);
+            if vRouteParam <> nil then
+              vAux5.Add('description', Trim(vRouteParam.Description.Text));
+
+            vAux4.Add(vAux5);
+          end;
+
+          vAux3.Add(vStr);
+        end;
       finally
         FreeAndNil(vList);
       end;
 
-      vAux4 := nil;
-      if ARoute.URIParams.Count > 0 then
-        vAux4 := TRALJSONArray.Create;
-
-      for vInt := 0 to Pred(ARoute.URIParams.Count) do
-      begin
-        vRouteParam := TRALRouteParam(ARoute.URIParams.Items[vInt]);
-        vAux3.Add(Format(':%s', [vRouteParam.ParamName]));
-        vStrRoute := Format('%s/:%s', [vStrRoute, vRouteParam.ParamName]);
-
-        vAux5 := TRALJSONObject.Create;
-        vAux5.Add('key', vRouteParam.ParamName);
-        vAux5.Add('description', vRouteParam.Description.Text);
-
-        vAux4.Add(vAux5);
-      end;
-
+      vAux2.Add('raw', '{{ral_url}}' + vStrRoute);
       vAux2.Add('path', vAux3);
 
-      vAux2.Add('raw', '{{ral_url}}' + vStrRoute);
       if vAux4 <> nil then
         vAux2.Add('variable', vAux4);
 
@@ -300,7 +310,7 @@ begin
 
             vAux5 := TRALJSONObject.Create;
             vAux5.Add('key', vRouteParam.ParamName);
-            vAux5.Add('description', vRouteParam.Description.Text);
+            vAux5.Add('description', Trim(vRouteParam.Description.Text));
             vAux5.Add('type', 'text');
 
             vAux3.Add(vAux5);
