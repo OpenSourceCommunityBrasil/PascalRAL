@@ -7,9 +7,6 @@ inherited fide: Tfide
     AnchorSideLeft.Control = Owner
     AnchorSideBottom.Control = Owner
   end
-  inherited lbNext: TLabel
-    OnClick = lbNextClick
-  end
   inherited lbSubTitle: TLabel
     AnchorSideLeft.Control = Owner
     AnchorSideTop.Control = Owner

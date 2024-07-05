@@ -43,6 +43,7 @@ inherited fconfigrecursos: Tfconfigrecursos
     Width = 77
     Caption = 'IDEs Instaladas'
     ParentColor = False
+    OnClick = lPathIDEVersionClick
   end
   object lLatestVersion: TLabel[7]
     Left = 232
@@ -94,6 +95,7 @@ inherited fconfigrecursos: Tfconfigrecursos
     HorzScrollBar.Page = 1
     VertScrollBar.Page = 1
     Color = clWhite
+    ParentBackground = False
     ParentColor = False
     TabOrder = 1
   end

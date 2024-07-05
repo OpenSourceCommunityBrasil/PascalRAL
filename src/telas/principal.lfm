@@ -12,7 +12,6 @@ object fprincipal: Tfprincipal
   OnCreate = FormCreate
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '2.2.6.0'
   object imBackground: TImage
     Left = 16
     Height = 90
@@ -29,6 +28,7 @@ object fprincipal: Tfprincipal
     BevelOuter = bvNone
     ClientHeight = 113
     ClientWidth = 640
+    ParentBackground = False
     TabOrder = 0
     object imBanner: TImage
       Left = 0

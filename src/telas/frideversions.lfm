@@ -5,14 +5,15 @@ object fframe_ide_versions: Tfframe_ide_versions
   Width = 320
   ClientHeight = 44
   ClientWidth = 320
+  ParentBackground = False
   TabOrder = 0
   DesignLeft = 626
   DesignTop = 370
   object ckSelected: TCheckBox
     Left = 9
-    Height = 19
+    Height = 17
     Top = 11
-    Width = 20
+    Width = 18
     TabOrder = 0
   end
   object lbName: TLabel

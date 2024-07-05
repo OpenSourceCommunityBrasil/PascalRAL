@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   Buttons,
   frmodelo, frideversions, install_types, lclfunctions,
-  fileinfo, ghrepofunctions;
+  fileinfo, ghrepofunctions, frideversion_lazarus;
 
 type
 
@@ -39,6 +39,7 @@ type
     procedure bFindLazPathsClick(Sender: TObject);
     procedure lbBackClick(Sender: TObject);
     procedure lbNextClick(Sender: TObject);
+    procedure lPathIDEVersionClick(Sender: TObject);
     procedure sbChoosePathClick(Sender: TObject);
   private
     FTotThread: integer;
@@ -67,6 +68,7 @@ var
   vInt: integer;
 begin
   with TTaskDialog.Create(self) do
+  begin
     try
       Title := 'Confirma varredura';
       Caption := 'RAL Installer';
@@ -122,6 +124,7 @@ begin
     finally
       Free;
     end;
+  end;
 end;
 
 procedure Tfconfigrecursos.bAddLazPathClick(Sender: TObject);
@@ -160,6 +163,21 @@ begin
   inherited;
 end;
 
+procedure Tfconfigrecursos.lPathIDEVersionClick(Sender: TObject);
+var
+  vInt: Integer;
+begin
+  for vInt := 0 to Pred(sbInstalledIDEs.ControlCount) do
+  begin
+    if sbInstalledIDEs.Controls[vInt].InheritsFrom(Tfframe_ide_version_lazarus) then
+    begin
+      Tfframe_ide_version_lazarus(sbInstalledIDEs.Controls[vInt]).addPackage('D:\SourceForge\indy\Lib\indylaz.lpk');
+      Tfframe_ide_version_lazarus(sbInstalledIDEs.Controls[vInt]).addPackage('D:\SourceForge\pascalral\dev\pkg\Lazarus\pascalral.lpk');
+      Tfframe_ide_version_lazarus(sbInstalledIDEs.Controls[vInt]).buildIDE;
+    end;
+  end;
+end;
+
 procedure Tfconfigrecursos.sbChoosePathClick(Sender: TObject);
 begin
   if DirDialog.Execute then
@@ -169,37 +187,34 @@ end;
 procedure Tfconfigrecursos.schFileFound(Sender: TObject; AFound: string);
 var
   vFrame: Tfframe_ide_versions;
+  vFrameClass: Tfframe_ide_versions_class;
   I: integer;
   pathexists: boolean;
-  FileVerInfo: TFileVersionInfo;
 begin
   pathexists := False;
   for I := 0 to pred(sbInstalledIDEs.ControlCount) do
+  begin
     if sbInstalledIDEs.Controls[I].InheritsFrom(Tfframe_ide_versions) then
     begin
-      pathexists := Tfframe_ide_versions(sbInstalledIDEs.Controls[I]).lbPath.Caption = aFound;
-      if pathexists then Break;
+      pathexists := Tfframe_ide_versions(sbInstalledIDEs.Controls[I]).Path = AFound;
+      if pathexists then
+        Break;
     end;
+  end;
 
   if not pathexists then
   begin
-    vFrame := Tfframe_ide_versions.Create(Self);
-    vFrame.Parent := sbInstalledIDEs;
-    //vFrame.Top := 30000;
-    vFrame.Align := alTop;
-    vFrame.lbPath.Caption := AFound;
+    if fprincipal.GetIDESelected = 0 then
+      vFrameClass := Tfframe_ide_versions_class(GetClass('Tfframe_ide_version_lazarus'))
+    else
+      vFrameClass := Tfframe_ide_versions_class(GetClass('Tfframe_ide_version_delphi'));
 
-    FileVerInfo := TFileVersionInfo.Create(nil);
-    try
-      FileVerInfo.FileName := ExtractFileDir(aFound) + '\' + LazExecFile;
-      FileVerInfo.ReadFileInfo;
-      vFrame.lbName.Caption :=
-        FileVerInfo.VersionStrings.Values['ProductName'] + ' ' +
-        FileVerInfo.VersionStrings.Values['FileVersion'];
-      vFrame.Name := 'frmVersion' + FormatDateTime('ddmmyyyyhhnnsszzz', Now);
-    finally
-      FileVerInfo.Free;
-    end;
+    vFrame := vFrameClass.Create(Self);
+    vFrame.Parent := sbInstalledIDEs;
+    vFrame.Top := 30000;
+    vFrame.Align := alTop;
+    vFrame.Path := AFound;
+    vFrame.Name := 'frmVersion' + FormatDateTime('ddmmyyyyhhnnsszzz', Now);
   end;
 end;
 
@@ -250,10 +265,11 @@ begin
 end;
 
 procedure Tfconfigrecursos.doShow(Sender: TObject);
-var
-  Client: TRESTClient;
-  LRelease: TRelease;
+//var
+//  Client: TRESTClient;
+//  LRelease: TRelease;
 begin
+{
   Client := TRESTClient.Create;
   try
     LRelease := Client.getLatestRelease;
@@ -263,6 +279,7 @@ begin
     LRelease.Free;
     Client.Free;
   end;
+}
 end;
 
 end.

@@ -20,7 +20,6 @@ type
     lbDelphi: TLabel;
     lbLazarus: TLabel;
     procedure imLazarusClick(Sender: TObject);
-    procedure lbNextClick(Sender: TObject);
   private
     FIDE: integer;
   public
@@ -43,14 +42,6 @@ begin
   imLazarusFundo.Visible := FIDE = 0;
   imDelphiFundo.Visible := FIDE = 1;
   validaControls;
-end;
-
-procedure Tfide.lbNextClick(Sender: TObject);
-var
-  install: TJSONInstaller;
-begin
-  install := TJSONInstaller.Create;
-  inherited;
 end;
 
 constructor Tfide.Create(TheOwner: TComponent);

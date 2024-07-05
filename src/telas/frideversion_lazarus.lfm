@@ -1,0 +1,17 @@
+inherited fframe_ide_version_lazarus: Tfframe_ide_version_lazarus
+  object prcBuildIDE: TProcess[4]
+    Active = False
+    Options = [poWaitOnExit, poNoConsole]
+    Priority = ppNormal
+    StartupOptions = []
+    ShowWindow = swoNone
+    WindowColumns = 0
+    WindowHeight = 0
+    WindowLeft = 0
+    WindowRows = 0
+    WindowTop = 0
+    WindowWidth = 0
+    FillAttribute = 0
+    Left = 208
+  end
+end
