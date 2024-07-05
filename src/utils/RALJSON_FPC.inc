@@ -449,6 +449,10 @@ end;
 function TRALJSONValue.AsString: StringRAL;
 begin
   Result := '';
+
+  if (Self = nil) then
+    Exit;
+
   if (FJsonObj <> nil) and (not FJsonObj.IsNull) then
     Result := FJsonObj.AsString;
 end;

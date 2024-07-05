@@ -183,14 +183,14 @@ begin
       vVar := TRALJSONObject.Create;
       vVar.Add('key', 'user');
       vVar.Add('type', 'string');
-      vVar.Add('value', TRALServerBasicAuth(AServer.Authentication).UserName);
+      vVar.Add('value', '');
 
       Result.Add(vVar);
 
       vVar := TRALJSONObject.Create;
       vVar.Add('key', 'pass');
       vVar.Add('type', 'string');
-      vVar.Add('value', TRALServerBasicAuth(AServer.Authentication).Password);
+      vVar.Add('value', '');
 
       Result.Add(vVar);
     end
