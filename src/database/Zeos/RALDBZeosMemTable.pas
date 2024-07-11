@@ -11,7 +11,7 @@ uses
   Classes, SysUtils, DB,
   ZDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALQueryStructure,
-  RALResponse, RALMIMETypes, RALDBTypes;
+  RALResponse, RALMIMETypes, RALDBTypes, RALTools;
 
 type
   { TRALDBZMemTable }
@@ -19,18 +19,23 @@ type
   TRALDBZMemTable = class(TZMemTable)
   private
     FClient: TRALClientMT;
+    FLoading : boolean;
     FModuleRoute: StringRAL;
     FSQL: TStrings;
+    FParamCheck: boolean;
     FParams: TParams;
     FStorage: TRALDBStorageLink;
-    FOnError: TRALDBOnError;
     FUpdateSQL: TRALDBUpdateSQL;
-  protected
-    procedure InternalPost; override;
-    procedure InternalDelete; override;
+
+    FOnError: TRALDBOnError;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+    procedure InternalOpen; override;
+    procedure InternalClose; override;
+    procedure InternalPost; override;
+    procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
     procedure SetClient(AValue: TRALClientMT);
@@ -46,14 +51,13 @@ type
 
     procedure ApplyUpdatesRemote;
     procedure ExecSQLRemote;
-    function ParamByName(const AValue: StringRAL): TParam; reintroduce;
     procedure OpenRemote;
-  published
-//    property Active;
-//    property FieldDefs;
 
+    function ParamByName(const AValue: StringRAL): TParam; reintroduce;
+  published
     property Client: TRALClientMT read FClient write SetClient;
     property ModuleRoute: StringRAL read FModuleRoute write FModuleRoute;
+    property ParamCheck : boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALDBStorageLink read FStorage write SetStorage;
@@ -80,15 +84,30 @@ end;
 
 procedure TRALDBZMemTable.InternalPost;
 begin
-  inherited InternalPost;
+  if FLoading then begin
+    inherited InternalPost;
+  end
+  else begin
+    // cacheupdate or send
+    inherited InternalPost;
+  end;
+end;
 
-  if not CachedUpdates then
-    ApplyUpdatesRemote;
+procedure TRALDBZMemTable.InternalClose;
+begin
+  inherited;
+
 end;
 
 procedure TRALDBZMemTable.InternalDelete;
 begin
   inherited InternalDelete;
+end;
+
+procedure TRALDBZMemTable.InternalOpen;
+begin
+  inherited;
+
 end;
 
 procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
@@ -102,10 +121,7 @@ end;
 
 procedure TRALDBZMemTable.SetSQL(AValue: TStrings);
 begin
-  if FSQL = AValue then
-    Exit;
-
-  FSQL.Text := AValue.Text;
+  FSQL.Assign(AValue);
 end;
 
 procedure TRALDBZMemTable.SetClient(AValue: TRALClientMT);
@@ -124,8 +140,15 @@ procedure TRALDBZMemTable.OnChangeSQL(Sender: TObject);
 var
   vSQL : StringRAL;
 begin
-  vSQL := TStringList(Sender).Text;
-  TRALDB.ParseSQLParams(vSQL, FParams);
+  if FParamCheck then
+  begin
+    vSQL := TStringList(Sender).Text;
+    TRALDB.ParseSQLParams(vSQL, FParams);
+  end
+  else
+  begin
+    FParams.Clear;
+  end;
 end;
 
 procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject;
@@ -140,12 +163,16 @@ begin
     vNative := AResponse.ParamByName('ResultType').AsInteger = 1;
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
+      FLoading := True;
+
       if vNative then
         ZeosLoadFromStream(vMem)
       else
         FStorage.LoadFromStream(Self, vMem);
     finally
       FreeAndNil(vMem);
+      FLoading := False;
+      Resync([rmExact]);
     end;
   end
   else if AResponse.StatusCode = 500 then
@@ -209,9 +236,10 @@ begin
   FSQL := TStringList.Create;
   TStringList(FSQL).OnChange := {$IFDEF FPC}@{$ENDIF}OnChangeSQL;
 
+  FParamCheck := True;
   FParams := TParams.Create(Self);
   FUpdateSQL := TRALDBUpdateSQL.Create;
-  CachedUpdates := True;
+  CachedUpdates := False;
 end;
 
 destructor TRALDBZMemTable.Destroy;
@@ -232,6 +260,7 @@ var
   vQueryStructure: TRALQueryStructure;
   vMem: TStream;
   vReq: TRALRequest;
+  vUrl: StringRAL;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try
@@ -242,7 +271,8 @@ begin
       vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
       vReq.AddFile(vMem);
 
-      FClient.Post(FModuleRoute + '/opensql', vReq, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      vUrl := FixRoute(FModuleRoute + '/opensql');
+      FClient.Post(vUrl, vReq, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
     finally
       if FClient.RequestLifeCicle then
         FreeAndNil(vReq);
@@ -257,6 +287,7 @@ var
   vQueryStructure: TRALQueryStructure;
   vMem: TStream;
   vReq: TRALRequest;
+  vUrl: StringRAL;
 begin
   vQueryStructure := TRALQueryStructure.Create;
   try
@@ -267,7 +298,8 @@ begin
       vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
       vReq.AddFile(vMem);
 
-      FClient.Post(FModuleRoute + '/execsql', vReq, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
+      vUrl := FixRoute(FModuleRoute + '/execsql');
+      FClient.Post(vUrl, vReq, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
     finally
       if FClient.RequestLifeCicle then
         FreeAndNil(vReq);
@@ -278,24 +310,8 @@ begin
 end;
 
 procedure TRALDBZMemTable.ApplyUpdatesRemote;
-var
-  vBook: TBookMark;
 begin
-  Self.DisableControls;
-  vBook := Self.GetBookmark;
 
-  Self.First;
-  while not Self.Eof do begin
-    if Self.UpdateStatus in [usUnmodified] then
-    begin
-
-    end;
-    Self.Next;
-  end;
-
-  Self.GotoBookmark(vBook);
-  Self.FreeBookmark(vBook);
-  Self.DisableControls;
 end;
 
 end.

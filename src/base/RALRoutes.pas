@@ -233,7 +233,12 @@ begin
       vPos := FURIParams.IndexOf(vStr);
       if vPos >= 0 then
       begin
-        FURIParams.Move(vPos, vInt);
+        {$IFDEF FPC}
+          FURIParams.Move(vPos, vInt);
+        {$ELSE}
+          vParam := TRALRouteParam(FURIParams.Items[vPos]);
+          vParam.Index := vInt;
+        {$ENDIF}
       end
       else
       begin
