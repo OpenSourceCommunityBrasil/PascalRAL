@@ -423,7 +423,6 @@ begin
   FCompressType := ctNone;
   FEngine := '';
   FPort := 8000;
-  FServerStatus.Text := RALDefaultPage;
   FSessionTimeout := 30000;
   FShowServerStatus := True;
   FCookieLife := 30;
@@ -506,13 +505,7 @@ end;
 
 procedure TRALServer.SetServerStatus(AValue: TStringList);
 begin
-  if FServerStatus = AValue then
-    Exit;
-
-  if Trim(AValue.Text) <> '' then
-    FServerStatus.Text := AValue.Text
-  else
-    FServerStatus.Text := RALDefaultPage;
+  FServerStatus.Assign(AValue);
 end;
 
 procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
@@ -646,7 +639,10 @@ begin
     CheckCORS(True, 'GET', ARequest, AResponse);
     if ARequest.Method <> amOPTIONS then
     begin
-      vString := StringReplace(FServerStatus.Text, '%ralengine%', FEngine, [rfReplaceAll]);
+      vString := Trim(FServerStatus.Text);
+      if vString = EmptyStr then
+        vString := RALDefaultPage;
+      vString := StringReplace(vString, '%ralengine%', FEngine, [rfReplaceAll]);
       AResponse.Answer(200, vString, rctTEXTHTML);
     end;
     goto aFIM;
