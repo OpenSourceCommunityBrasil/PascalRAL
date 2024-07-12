@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALParams, RALBase64, RALCustomObjects, RALTools,
-  RALMIMETypes, RALStream, RALCompress;
+  RALMIMETypes, RALStream, RALCompress, RALToken;
 
 type
 
@@ -33,16 +33,21 @@ type
   private
     FAuthString: StringRAL;
     FAuthType: TRALAuthTypes;
+    FObjAuth : TObject;
   protected
-    function GetPassword: StringRAL;
-    function GetUserName: StringRAL;
+    procedure SetAuthString(const AValue: StringRAL);
+    function GetAuthBasic: TRALAuthBasic;
+    function GetAuthBearer: TRALJWT;
+    procedure CreateObjAuth;
   public
     constructor Create;
+    destructor Destroy; override;
   published
-    property AuthString: StringRAL read FAuthString write FAuthString;
+    property AuthString: StringRAL read FAuthString write SetAuthString;
     property AuthType: TRALAuthTypes read FAuthType write FAuthType;
-    property UserName: StringRAL read GetUserName;
-    property Password: StringRAL read GetPassword;
+
+    property AsAuthBasic : TRALAuthBasic read GetAuthBasic;
+    property AsAuthBearer : TRALJWT read GetAuthBearer;
   end;
 
   { TRALRequest }
@@ -227,40 +232,54 @@ end;
 
 { TRALAuthorization }
 
-function TRALAuthorization.GetPassword: StringRAL;
-var
-  vString: StringRAL;
-  vInt: IntegerRAL;
-begin
-  Result := '';
-  if FAuthType = ratBasic then
-  begin
-    vString := TRALBase64.Decode(FAuthString);
-    vInt := Pos(':', vString);
-    if vInt > 0 then
-      Result := Copy(vString, vInt + 1, Length(vString));
-  end;
-end;
-
-function TRALAuthorization.GetUserName: StringRAL;
-var
-  vString: StringRAL;
-  vInt: IntegerRAL;
-begin
-  Result := '';
-  if FAuthType = ratBasic then
-  begin
-    vString := TRALBase64.Decode(FAuthString);
-    vInt := Pos(':', vString);
-    if vInt > 0 then
-      Result := Copy(vString, 1, vInt - 1);
-  end;
-end;
-
 constructor TRALAuthorization.Create;
 begin
   FAuthType := ratNone;
   FAuthString := '';
+  FObjAuth := nil;
+end;
+
+procedure TRALAuthorization.CreateObjAuth;
+begin
+  if FObjAuth <> nil then
+    FreeAndNil(FObjAuth);
+
+  if FAuthType = ratBasic then begin
+    FObjAuth := TRALAuthBasic.Create;
+    TRALAuthBasic(FObjAuth).AuthString := FAuthString;
+  end
+  else if FAuthType = ratBearer then begin
+    FObjAuth := TRALJWT.Create;
+    TRALJWT(FObjAuth).Token := FAuthString;
+  end;
+end;
+
+destructor TRALAuthorization.Destroy;
+begin
+  if FObjAuth <> nil then
+    FreeAndNil(FObjAuth);
+
+  inherited;
+end;
+
+function TRALAuthorization.GetAuthBasic: TRALAuthBasic;
+begin
+  Result := nil;
+  if FAuthType = ratBasic then
+    Result := TRALAuthBasic(FObjAuth);
+end;
+
+function TRALAuthorization.GetAuthBearer: TRALJWT;
+begin
+  Result := nil;
+  if FAuthType = ratBearer then
+    Result := TRALJWT(FObjAuth);
+end;
+
+procedure TRALAuthorization.SetAuthString(const AValue: StringRAL);
+begin
+  FAuthString := AValue;
+  CreateObjAuth;
 end;
 
 { TRALServerRequest }

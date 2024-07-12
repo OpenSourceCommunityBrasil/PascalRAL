@@ -13,6 +13,21 @@ type
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA384, tjaHSHA512);
   TRALOAuthAlgorithm = (toaHSHA256, toaHSHA512, toaPLAINTEXT);
 
+  { TRALAuthBasic }
+
+  TRALAuthBasic = class
+  private
+    FAuthString: StringRAL;
+    FPassword : StringRAL;
+    FUserName : StringRAL;
+  protected
+    procedure SetAuthString(const AValue: StringRAL);
+  published
+    property AuthString: StringRAL read FAuthString write SetAuthString;
+    property Password: StringRAL read FPassword write FPassword;
+    property UserName: StringRAL read FUserName write FUserName;
+  end;
+
   { TRALJWTHeader }
 
   /// Class for header definitions of JWT Token
@@ -924,6 +939,22 @@ begin
         (FPayload.Expiration < FPayload.NotBefore) then
         Result := False;
     end;
+  end;
+end;
+
+{ TRALAuthBasic }
+
+procedure TRALAuthBasic.SetAuthString(const AValue: StringRAL);
+var
+  vString : StringRAL;
+  vInt : IntegerRAL;
+begin
+  FAuthString := AValue;
+  vString := TRALBase64.Decode(FAuthString);
+  vInt := Pos(':', vString);
+  if vInt > 0 then begin
+    FUserName := Copy(vString, 1, vInt - 1);
+    FPassword := Copy(vString, vInt + 1, Length(vString));
   end;
 end;
 

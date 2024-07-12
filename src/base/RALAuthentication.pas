@@ -133,7 +133,7 @@ type
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
-    FCollectionAuth : TCollection;
+    FCollectionAuth : TOwnedCollection;
     FAuthToken: TRALBaseRoute;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
@@ -563,7 +563,7 @@ begin
   inherited;
   SetAuthType(ratBearer);
 
-  FCollectionAuth := TCollection.Create(TRALBaseRoute);
+  FCollectionAuth := TOwnedCollection.Create(Self, TRALBaseRoute);
 
   FAuthToken := TRALBaseRoute(FCollectionAuth.Add);
   FAuthToken.Route := '/gettoken';
@@ -686,6 +686,7 @@ end;
 procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult: boolean;
+  vAuthBasic : TRALAuthBasic;
 
   procedure Error401;
   begin
@@ -712,9 +713,10 @@ begin
   end
   else
   begin
-    if (ARequest.Authorization.AuthType <> ratBasic) or (Trim(FUserName) = '') or
-      (Trim(FPassword) = '') or (ARequest.Authorization.UserName <> FUserName) or
-      (ARequest.Authorization.Password <> FPassword) then
+    vAuthBasic := ARequest.Authorization.AsAuthBasic;
+    if (ARequest.Authorization.AuthType <> ratBasic) or (vAuthBasic = nil) or
+       (Trim(FUserName) = '') or (Trim(FPassword) = '') or
+       (vAuthBasic.UserName <> FUserName) or (vAuthBasic.Password <> FPassword) then
       Error401;
   end;
 end;
