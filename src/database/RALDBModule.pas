@@ -6,8 +6,8 @@ interface
 uses
   Classes, SysUtils, DB, TypInfo,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALDBStorage, RALBase64, RALQueryStructure,
-  RALRoutes, RALJSON, RALDBTypes;
+  RALConsts, RALTypes, RALDBStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
+  RALDBSQLCache;
 
 type
   { TRALDBModule }
@@ -29,10 +29,6 @@ type
     procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                  var AParams: TParams; var AType : TRALDBDriverType);
-    procedure RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                    var AParams: TParams; var AType : TRALDBDriverType);
     procedure SetDataBaseLink(AValue: TRALDBLink);
     procedure SetStorageOutPut(AValue: TRALDBStorageLink);
   public
@@ -54,6 +50,9 @@ implementation
 
 procedure TRALDBModule.SetStorageOutPut(AValue: TRALDBStorageLink);
 begin
+  if FStorageOutPut <> nil then
+    FStorageOutPut.RemoveFreeNotification(Self);
+
   if AValue <> FStorageOutPut then
     FStorageOutPut := AValue;
 
@@ -72,6 +71,9 @@ end;
 
 procedure TRALDBModule.SetDataBaseLink(AValue: TRALDBLink);
 begin
+  if FDataBaseLink <> nil then
+    FDataBaseLink.RemoveFreeNotification(Self);
+
   if AValue <> FDataBaseLink then
     FDataBaseLink := AValue;
 
@@ -107,112 +109,86 @@ begin
   end;
 end;
 
-procedure TRALDBModule.RALParamJSONToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                           var AParams: TParams; var AType : TRALDBDriverType);
-var
-  vQryStruc: TRALQueryStructure;
-begin
-  vQryStruc := TRALQueryStructure.Create;
-  try
-    vQryStruc.ImportFromJSON(ARALParam.AsStream, ASQL, AParams, AType);
-  finally
-    FreeAndNil(vQryStruc);
-  end;
-end;
-
-procedure TRALDBModule.RALParamBinaryToQuery(ARALParam: TRALParam; var ASQL: StringRAL;
-                                             var AParams: TParams; var AType : TRALDBDriverType);
-var
-  vQryStruc: TRALQueryStructure;
-begin
-  vQryStruc := TRALQueryStructure.Create;
-  try
-    vQryStruc.ImportFromBinary(ARALParam.AsStream, ASQL, AParams, AType);
-  finally
-    FreeAndNil(vQryStruc);
-  end;
-end;
-
 procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vParam: TRALParam;
-  vType: TRALDBDriverType;
-  vSQL: StringRAL;
-  vParams: TParams;
+  vMem, vResult: TStream;
+  vSQLCache: TRALDBSQLCache;
+  vDBSQL : TRALDBSQL;
   vQuery: TDataSet;
-  vResult: TStream;
-  vString, vContentType: StringRAL;
   vNative: boolean;
+  vString, vContentType: StringRAL;
 begin
   vDB := FindDatabaseDriver;
   try
-    if vDB <> nil then
-    begin
-      vParam := ARequest.Body;
-
-      if vParam <> nil then
+    try
+      if vDB <> nil then
       begin
-        vSQL := '';
-        vParams := nil;
-        vQuery := nil;
-        vString := '';
-        vResult := nil;
-
+        vMem := ARequest.Body.AsStream;
         try
-          if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
-            RALParamJSONToQuery(vParam, vSQL, vParams, vType)
-          else
-            RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
-
-          if vType = vDB.DriverName then
-            vQuery := vDB.OpenNative(vSQL, vParams)
-          else
-            vQuery := vDB.OpenCompatible(vSQL, vParams);
-        except
-          on e: Exception do
+          if (vMem <> nil) and (vMem.Size > 0) then
           begin
-            vString := e.Message;
-          end;
-        end;
+            vSQLCache := TRALDBSQLCache.Create;
+            try
+              vSQLCache.LoadFromStream(vMem);
+              vDBSQL := vSQLCache.SQLList[0];
 
-        try
-          if vString <> '' then
-          begin
-            AResponse.StatusCode := 500;
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            AResponse.Params.AddParam('Exception', vString, rpkBODY);
+              if vDBSQL.DriverType = vDB.DriverType then
+                vQuery := vDB.OpenNative(vDBSQL.SQL, vDBSQL.Params)
+              else
+                vQuery := vDB.OpenCompatible(vDBSQL.SQL, vDBSQL.Params);
+
+              vResult := TMemoryStream.Create;
+              try
+                if (vDB.CanExportNative) and (vDBSQL.DriverType = vDB.DriverType) then
+                begin
+                  vContentType := rctAPPLICATIONOCTETSTREAM;
+                  vNative := True;
+                  vDB.SaveToStream(vQuery, vResult, vContentType, vNative);
+                end
+                else
+                begin
+                  vNative := False;
+                  vContentType := FStorageOutPut.ContentType;
+                  FStorageOutPut.SaveToStream(vQuery, vResult);
+                end;
+                vDBSQL.Response.Native := vNative;
+                vDBSQL.Response.ContentType := vContentType;
+                vDBSQL.Response.Stream := vResult;
+              finally
+                FreeAndNil(vResult);
+              end;
+
+              vResult := vSQLCache.ResponseToStream;
+              try
+                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
+              finally
+                FreeAndNil(vResult);
+              end;
+            finally
+              FreeAndNil(vSQLCache);
+            end;
           end
           else
           begin
-            vResult := TMemoryStream.Create;
-            try
-              if (vDB.CanExportNative) and (vType = vDB.DriverName) then
-              begin
-                vContentType := vParam.ContentType;
-                vNative := True;
-                vDB.SaveToStream(vQuery, vResult, vContentType, vNative);
-              end
-              else
-              begin
-                vNative := False;
-                vContentType := FStorageOutPut.ContentType;
-                FStorageOutPut.SaveToStream(vQuery, vResult);
-              end;
-              AResponse.ContentType := vContentType;
-              AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-            finally
-              FreeAndNil(vResult);
-            end;
+            raise Exception.Create('Body está vazio');
           end;
         finally
-          FreeAndNil(vParams);
-          FreeAndNil(vQuery);
+          FreeAndNil(vMem);
         end;
       end
       else
       begin
-        AResponse.Answer(404);
+        raise Exception.Create('Driver da Conexão não encontrado');
+      end;
+    except
+      on e: Exception do
+      begin
+        vString := e.Message;
+        AResponse.StatusCode := 500;
+        AResponse.ContentType := rctTEXTPLAIN;
+        AResponse.Params.AddParam('Exception', vString, rpkBODY);
       end;
     end;
   finally
@@ -223,64 +199,70 @@ end;
 procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vParam: TRALParam;
-  vType: TRALDBDriverType;
-  vSQL: StringRAL;
-  vParams: TParams;
-  vString: StringRAL;
+  vMem, vResult: TStream;
+  vSQLCache: TRALDBSQLCache;
+  vDBSQL: TRALDBSQL;
   vRowsAffect, vLastId: Int64RAL;
+  vString: StringRAL;
 begin
   vDB := FindDatabaseDriver;
   try
-    if vDB <> nil then
-    begin
-      vParam := ARequest.ParamByName('query');
-
-      if vParam = nil then
-        vParam := ARequest.Body;
-
-      if vParam <> nil then
+    try
+      if vDB <> nil then
       begin
-        vString := '';
-        vRowsAffect := 0;
-        vLastId := 0;
-
+        vMem := ARequest.Body.AsStream;
         try
-          if Pos(rctAPPLICATIONJSON, vParam.ContentType) > 0 then
-            RALParamJSONToQuery(vParam, vSQL, vParams, vType)
-          else
-            RALParamBinaryToQuery(vParam, vSQL, vParams, vType);
-
-          vDB.ExecSQL(vSQL, vParams, vRowsAffect, vLastId);
-        except
-          on e: Exception do
+          if (vMem <> nil) and (vMem.Size > 0) then
           begin
-            vString := e.Message;
-          end;
-        end;
+            vSQLCache := TRALDBSQLCache.Create;
+            try
+              vSQLCache.LoadFromStream(vMem);
+              vDBSQL := vSQLCache.SQLList[0];
 
-        try
-          if vString <> '' then
-          begin
-            AResponse.StatusCode := 500;
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            AResponse.Params.AddParam('Exception', vString, rpkBODY);
+              vDB.ExecSQL(vDBSQL.SQL, vDBSQL.Params, vRowsAffect, vLastId);
+
+              vResult := TMemoryStream.Create;
+              try
+                vResult.Write(vRowsAffect, SizeOf(vRowsAffect));
+                vResult.Write(vLastId, SizeOf(vLastId));
+
+                vDBSQL.Response.Native := False;
+                vDBSQL.Response.ContentType := rctAPPLICATIONOCTETSTREAM;
+                vDBSQL.Response.Stream := vResult;
+              finally
+                FreeAndNil(vResult);
+              end;
+
+              vResult := vSQLCache.ResponseToStream;
+              try
+                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
+              finally
+                FreeAndNil(vResult);
+              end;
+            finally
+              FreeAndNil(vSQLCache);
+            end;
           end
           else
           begin
-            AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-            AResponse.StatusCode := 200;
-
-            AResponse.Params.AddParam('RowsAffected', IntToStr(vRowsAffect), rpkBODY);
-            AResponse.Params.AddParam('LastID', IntToStr(vLastId), rpkBODY);
+            raise Exception.Create('Body está vazio');
           end;
         finally
-          FreeAndNil(vParams);
+          FreeAndNil(vMem);
         end;
       end
       else
       begin
-        AResponse.Answer(404);
+        raise Exception.Create('Driver da Conexão não encontrado');
+      end;
+    except
+      on e: Exception do
+      begin
+        vString := e.Message;
+        AResponse.StatusCode := 500;
+        AResponse.ContentType := rctTEXTPLAIN;
+        AResponse.Params.AddParam('Exception', vString, rpkBODY);
       end;
     end;
   finally

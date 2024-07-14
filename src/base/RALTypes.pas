@@ -39,7 +39,7 @@ type
   TRALParamKinds = set of TRALParamKind;
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection, rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
-  TRALExecBehavior = (ebSingleThread, ebMultiThread);
+  TRALExecBehavior = (ebSingleThread, ebMultiThread, ebDefault);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
 const

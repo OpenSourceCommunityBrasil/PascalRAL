@@ -8,7 +8,7 @@ uses
   {$IFDEF FPC}
   LResources,
   {$ENDIF}
-  Classes, SysUtils, RALDBSQLDB;
+  Classes, SysUtils, RALDBSQLDB, RALDBBufDataset;
 
 procedure Register;
 
@@ -17,6 +17,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - DBWare', [TRALDBSQLDBLink]);
+  RegisterComponents('RAL - DBWare', [TRALDBBufDataset]);
 end;
 
 initialization

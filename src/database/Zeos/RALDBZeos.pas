@@ -29,7 +29,7 @@ type
     function CanExportNative: boolean; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
-    function GetDriverName: TRALDBDriverType; override;
+    function GetDriverType: TRALDBDriverType; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -81,7 +81,7 @@ begin
   end;
 end;
 
-function TRALDBZeos.GetDriverName: TRALDBDriverType;
+function TRALDBZeos.GetDriverType: TRALDBDriverType;
 begin
   Result := qtZeos;
 end;

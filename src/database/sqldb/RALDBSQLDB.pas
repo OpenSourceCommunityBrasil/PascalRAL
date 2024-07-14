@@ -28,7 +28,7 @@ type
     function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
-    function GetDriverName: TRALDBDriverType; override;
+    function GetDriverType: TRALDBDriverType; override;
 
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                              var AContentType: StringRAL;
@@ -80,7 +80,7 @@ begin
   end;
 end;
 
-function TRALDBSQLDB.GetDriverName: TRALDBDriverType;
+function TRALDBSQLDB.GetDriverType: TRALDBDriverType;
 begin
   Result := qtLazSQL;
 end;

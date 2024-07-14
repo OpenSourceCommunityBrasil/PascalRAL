@@ -32,7 +32,7 @@ type
     function CanExportNative: boolean; virtual;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
-    function GetDriverName: TRALDBDriverType; virtual; abstract;
+    function GetDriverType: TRALDBDriverType; virtual; abstract;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -41,7 +41,7 @@ type
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    property DriverName: TRALDBDriverType read GetDriverName;
+    property DriverType: TRALDBDriverType read GetDriverType;
     property Hostname: StringRAL read FHostname write FHostname;
     property Username: StringRAL read FUsername write FUsername;
     property Password: StringRAL read FPassword write FPassword;
