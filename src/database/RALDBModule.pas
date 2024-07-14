@@ -274,7 +274,7 @@ procedure TRALDBModule.GetTables(ARequest: TRALRequest; AResponse: TRALResponse)
 var
   vDB: TRALDBBase;
   vSQL: TStringList;
-  vSchema, vString : StringRAL;
+  vSchema : StringRAL;
   vSystem: boolean;
   vQuery: TDataSet;
   vJSON: TRALJSONArray;
@@ -282,69 +282,54 @@ var
 begin
   vDB := FindDatabaseDriver;
   try
-    if vDB <> nil then
-    begin
-      vSchema := ARequest.ParamByName('schema').AsString;
-      vSystem := ARequest.ParamByName('system').AsBoolean;
-      vQuery := nil;
-      vJSON := nil;
+    try
+      if vDB <> nil then
+      begin
+        vSchema := ARequest.ParamByName('schema').AsString;
+        vSystem := ARequest.ParamByName('system').AsBoolean;
+        vQuery := nil;
+        vJSON := nil;
 
-      vSQL := TStringList.Create;
-      try
-        case FDatabaseType of
-          dtFirebird : begin
-            vSQL.Add('select rdb$relation_name, rdb$system_flag from rdb$relations');
-            if not vSystem then
-              vSQL.Add('where rdb$system_flag = 0');
-            vSQL.Add('order by rdb$relation_name');
-          end;
-          dtSQLite : begin
-            vSQL.Add('select name from sqlite_master');
-            vSQL.Add('where type = ''table''');
-          end;
-          dtMySQL : begin
-            vSQL.Add('show tables');
-          end;
-          dtPostgreSQL : begin
-            vSQL.Add('select c.relname,');
-            vSQL.Add('       case');
-            vSQL.Add('         when (n.nspname = ''information_schema'') or');
-            vSQL.Add('              (n.nspname = ''pg_catalog'') or (n.nspname = ''dbo'') or');
-            vSQL.Add('              (n.nspname = ''sys'') or');
-            vSQL.Add('              (substr(c.relname, 1, 3) = ''pg_'') then 1');
-            vSQL.Add('         else 0');
-            vSQL.Add('       end as systable, n.nspname');
-            vSQL.Add('from pg_catalog.pg_class c');
-            vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
-            vSQL.Add('where c.relkind = ''r''');
-            if not vSystem then begin
-              vSQL.Add('  and n.nspname <> ''information_schema'' and ');
-              vSQL.Add('      n.nspname <> ''pg_catalog'' and n.nspname <> ''dbo'' and');
-              vSQL.Add('      n.nspname <> ''sys'' and substr(c.relname, 1, 3) <> ''pg_''');
+        vSQL := TStringList.Create;
+        try
+          case FDatabaseType of
+            dtFirebird : begin
+              vSQL.Add('select rdb$relation_name, rdb$system_flag from rdb$relations');
+              if not vSystem then
+                vSQL.Add('where rdb$system_flag = 0');
+              vSQL.Add('order by rdb$relation_name');
             end;
-            if vSchema <> '' then
-              vSQL.Add('  and lower(n.nspname) = '+QuotedStr(LowerCase(vSchema)));
+            dtSQLite : begin
+              vSQL.Add('select name from sqlite_master');
+              vSQL.Add('where type = ''table''');
+            end;
+            dtMySQL : begin
+              vSQL.Add('show tables');
+            end;
+            dtPostgreSQL : begin
+              vSQL.Add('select c.relname,');
+              vSQL.Add('       case');
+              vSQL.Add('         when (n.nspname = ''information_schema'') or');
+              vSQL.Add('              (n.nspname = ''pg_catalog'') or (n.nspname = ''dbo'') or');
+              vSQL.Add('              (n.nspname = ''sys'') or');
+              vSQL.Add('              (substr(c.relname, 1, 3) = ''pg_'') then 1');
+              vSQL.Add('         else 0');
+              vSQL.Add('       end as systable, n.nspname');
+              vSQL.Add('from pg_catalog.pg_class c');
+              vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
+              vSQL.Add('where c.relkind = ''r''');
+              if not vSystem then begin
+                vSQL.Add('  and n.nspname <> ''information_schema'' and ');
+                vSQL.Add('      n.nspname <> ''pg_catalog'' and n.nspname <> ''dbo'' and');
+                vSQL.Add('      n.nspname <> ''sys'' and substr(c.relname, 1, 3) <> ''pg_''');
+              end;
+              if vSchema <> '' then
+                vSQL.Add('  and lower(n.nspname) = '+QuotedStr(LowerCase(vSchema)));
+            end;
           end;
-        end;
 
-        try
-          vQuery := vDB.OpenNative(vSQL.Text, nil)
-        except
-          on e: Exception do
-          begin
-            vString := e.Message;
-          end;
-        end;
-
-        try
-          if vString <> '' then
-          begin
-            AResponse.StatusCode := 500;
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            AResponse.Params.AddParam('Exception', vString, rpkBODY);
-          end
-          else
-          begin
+          vQuery := vDB.OpenNative(vSQL.Text, nil);
+          try
             AResponse.ContentType := rctAPPLICATIONJSON;
             vJSON := TRALJSONArray.Create;
             try
@@ -352,7 +337,6 @@ begin
               while not vQuery.Eof do begin
                 vjObj := TRALJSONObject.Create;
                 vjObj.Add('table_name', vQuery.Fields[0].AsString);
-
                 if vQuery.FieldCount > 1 then
                   vjObj.Add('system_table', vQuery.Fields[1].AsInteger = 1)
                 else
@@ -372,12 +356,19 @@ begin
             finally
               FreeAndNil(vJSON);
             end;
+          finally
+            FreeAndNil(vQuery);
           end;
         finally
-          FreeAndNil(vQuery);
+          FreeAndNil(vSQL);
         end;
-      finally
-        FreeAndNil(vSQL);
+      end;
+    except
+      on e : Exception do
+      begin
+        AResponse.StatusCode := 500;
+        AResponse.ContentType := rctAPPLICATIONJSON;
+        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
     end;
   finally

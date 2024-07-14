@@ -9,7 +9,7 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
-  RALDBTypes, RALDBBase, RALTypes, RALConsts;
+  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream;
 
 type
   TRALDBExecType = (etOpen, etExecute);
@@ -300,167 +300,97 @@ end;
 
 procedure TRALDBSQLCache.SaveToStream(AStream: TStream);
 var
-  vInt1, vInt2, vSize: IntegerRAL;
   vDBSQL: TRALDBSQL;
   vStrSQLList: TStringList;
+  vWriter : TRALBinaryWriter;
   vStorType: TRALFieldType;
-  vByte: Byte;
-  vString: StringRAL;
-  vShort: ShortInt;
-  vSmallInt: SmallInt;
-  vWord: Word;
-  vCardinal: Cardinal;
-  vQWord: UInt64;
-  vFloat: Double;
-  vInt64: Int64RAL;
-  vBool: boolean;
-  vBytes: TBytes;
-begin
-  // versao da estrutura
-  vByte := GetStructureVersion;
-  AStream.Write(vByte, SizeOf(vByte));
 
-  vStrSQLList := TStringList.Create;
+  vInt1, vInt2: IntegerRAL;
+begin
+  vWriter := TRALBinaryWriter.Create(AStream);
   try
-    // indexando os sqls
+    // versao da estrutura
+    vWriter.WriteByte(GetStructureVersion);
+
+    vStrSQLList := TStringList.Create;
+    try
+      // indexando os sqls
+      for vInt1 := 0 to Pred(FSQLList.Count) do
+      begin
+        vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
+
+        vDBSQL.SQLIndex := vStrSQLList.IndexOf(vDBSQL.SQL);
+        if vDBSQL.SQLIndex < 0 then
+          vDBSQL.SQLIndex := vStrSQLList.Add(vDBSQL.SQL);
+      end;
+
+      // tamanho do index de sqls
+      vWriter.WriteInteger(vStrSQLList.Count);
+
+      // escrevendo os sqls indexados
+      for vInt1 := 0 to Pred(vStrSQLList.Count) do
+        vWriter.WriteString(vStrSQLList.Strings[vInt1]);
+    finally
+      FreeAndNil(vStrSQLList);
+    end;
+
+    // tamanhos do cache
+    vWriter.WriteInteger(FSQLList.Count);
+
+    // salvando o cache
     for vInt1 := 0 to Pred(FSQLList.Count) do
     begin
       vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
 
-      vDBSQL.SQLIndex := vStrSQLList.IndexOf(vDBSQL.SQL);
-      if vDBSQL.SQLIndex < 0 then
-        vDBSQL.SQLIndex := vStrSQLList.Add(vDBSQL.SQL);
-    end;
+      // drive type
+      vWriter.WriteByte(Ord(vDBSQL.DriverType));
 
-    // tamanho do index de sqls
-    vInt1 := vStrSQLList.Count;
-    AStream.Write(vInt1, SizeOf(vInt1));
+      // type de exec - open or execsql
+      vWriter.WriteByte(Ord(vDBSQL.ExecType));
 
-    // escrevendo os sqls indexados
-    for vInt1 := 0 to Pred(vStrSQLList.Count) do
-    begin
-      vString := vStrSQLList.Strings[vInt1];
-      vInt2 := Length(vString);
+      // index do sql
+      vWriter.WriteInteger(vDBSQL.SQLIndex);
 
-      AStream.Write(vInt2, SizeOf(vInt2));
-      AStream.Write(vString[POSINISTR], vInt2);
-    end;
-  finally
-    FreeAndNil(vStrSQLList);
-  end;
+      // qtd de parametros
+      vWriter.WriteInteger(vDBSQL.Params.Count);
 
-  // tamanhos do cache
-  vInt1 := FSQLList.Count;
-  AStream.Write(vInt1, SizeOf(vInt1));
+      for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
+      begin
+        // name
+        vWriter.WriteString(vDBSQL.Params.Items[vInt2].Name);
 
-  // salvando o cache
-  for vInt1 := 0 to Pred(FSQLList.Count) do
-  begin
-    vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
+        // datatype
+        vStorType := TRALDB.FieldTypeToRALFieldType(vDBSQL.Params.Items[vInt2].DataType);
+        vWriter.WriteByte(Ord(vStorType));
 
-    // drive type
-    vByte := Ord(vDBSQL.DriverType);
-    AStream.Write(vByte, SizeOf(vByte));
+        // size
+        vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
 
-    // type de exec - open or execsql
-    vByte := Ord(vDBSQL.ExecType);
-    AStream.Write(vByte, SizeOf(vByte));
-
-    // index do sql
-    vInt2 := vDBSQL.SQLIndex;
-    AStream.Write(vInt2, SizeOf(vInt2));
-
-    // qtd de parametros
-    vByte := vDBSQL.Params.Count;
-    AStream.Write(vByte, SizeOf(vByte));
-
-    for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
-    begin
-      // name
-      vString := vDBSQL.Params.Items[vInt2].Name;
-      vByte := Length(vString);
-      AStream.Write(vByte, SizeOf(vByte));
-      AStream.Write(vString[POSINISTR], vByte);
-
-      // datatype
-      vStorType := TRALDB.FieldTypeToRALFieldType(vDBSQL.Params.Items[vInt2].DataType);
-      vByte := Ord(vStorType);
-      AStream.Write(vByte, SizeOf(vByte));
-
-      // size
-      vSize := vDBSQL.Params.Items[vInt2].Size;
-      AStream.Write(vSize, SizeOf(vSize));
-
-      // values
-      case vStorType of
-        sftShortInt : begin
-          vShort := vDBSQL.Params.Items[vInt2].AsInteger;
-          AStream.Write(vShort, SizeOf(vShort));
-        end;
-        sftSmallInt : begin
-          vSmallInt := vDBSQL.Params.Items[vInt2].AsInteger;
-          AStream.Write(vSmallInt, SizeOf(vSmallInt));
-        end;
-        sftInteger : begin
-          vSize := vDBSQL.Params.Items[vInt2].AsInteger;
-          AStream.Write(vSize, SizeOf(vSize));
-        end;
-        sftInt64 : begin
-          vInt64 := vDBSQL.Params.Items[vInt2].AsLargeInt;
-          AStream.Write(vInt64, SizeOf(vInt64));
-        end;
-        sftByte : begin
-          vByte := vDBSQL.Params.Items[vInt2].AsInteger;
-          AStream.Write(vByte, SizeOf(vByte));
-        end;
-        sftWord : begin
-          vWord := vDBSQL.Params.Items[vInt2].AsInteger;
-          AStream.Write(vWord, SizeOf(vWord));
-        end;
-        sftCardinal : begin
+        // values
+        case vStorType of
+          sftShortInt : vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftSmallInt : vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftInteger  : vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftInt64    : vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
+          sftByte     : vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftWord     : vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
           {$IFDEF FPC}
-            vCardinal := vDBSQL.Params.Items[vInt2].AsLargeInt;
+            sftCardinal : vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
           {$ELSE}
-            vCardinal := vDBSQL.Params.Items[vInt2].AsLongWord;
+            sftCardinal : vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
           {$ENDIF}
-          AStream.Write(vCardinal, SizeOf(vCardinal));
-        end;
-        sftQWord : begin
-          vQWord := vDBSQL.Params.Items[vInt2].AsLargeInt;
-          AStream.Write(vQWord, SizeOf(vQWord));
-        end;
-        sftDouble  : begin
-          vFloat := vDBSQL.Params.Items[vInt2].AsFloat;
-          AStream.Write(vFloat, SizeOf(vFloat));
-        end;
-        sftBoolean : begin
-          vBool := vDBSQL.Params.Items[vInt2].AsBoolean;
-          AStream.Write(vBool, SizeOf(vBool));
-        end;
-        sftString  : begin
-          vString := vDBSQL.Params.Items[vInt2].AsString;
-          vInt64 := Length(vString);
-          AStream.Write(vInt64, SizeOf(vInt64));
-          AStream.Write(vString[PosIniStr], vByte);
-        end;
-        sftBlob    : begin
-          vBytes := vDBSQL.Params.Items[vInt2].AsBlob;
-          vInt64 := Length(vBytes);
-          AStream.Write(vInt64, SizeOf(vInt64));
-          AStream.Write(vBytes[0], vInt64);
-        end;
-        sftMemo    : begin
-          vString := vDBSQL.Params.Items[vInt2].AsString;
-          vInt64 := Length(vString);
-          AStream.Write(vInt64, SizeOf(vInt64));
-          AStream.Write(vString[PosIniStr], vInt64);
-        end;
-        sftDateTime: begin
-          vFloat := vDBSQL.Params.Items[vInt2].AsDateTime;
-          AStream.Write(vFloat, SizeOf(vFloat));
+          sftQWord   : vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
+          sftDouble  : vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
+          sftBoolean : vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
+          sftString  : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+          sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
+          sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+          sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
         end;
       end;
     end;
+  finally
+    FreeAndNil(vWriter);
   end;
 end;
 
@@ -487,38 +417,29 @@ end;
 procedure TRALDBSQLCache.ResponseToStream(AStream: TStream);
 var
   vDBSQL: TRALDBSQL;
+  vWriter : TRALBinaryWriter;
 
-  vByte: Byte;
-  vInt1, vInt2: IntegerRAL;
-  vInt64: Int64RAL;
-  vBool: boolean;
-  vString: StringRAL;
+  vInt: IntegerRAL;
 begin
-  // versao da estrutura
-  vByte := GetStructureVersion;
-  AStream.Write(vByte, SizeOf(vByte));
+  vWriter := TRALBinaryWriter.Create(AStream);
+  try
+    // versao da estrutura
+    vWriter.WriteByte(GetStructureVersion);
 
-  // tamanhos do cache
-  vInt1 := FSQLList.Count;
-  AStream.Write(vInt1, SizeOf(vInt1));
+    // tamanhos do cache
+    vWriter.WriteInteger(FSQLList.Count);
 
-  // salvando as respostas
-  for vInt1 := 0 to Pred(FSQLList.Count) do
-  begin
-    vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
+    // salvando as respostas
+    for vInt := 0 to Pred(FSQLList.Count) do
+    begin
+      vDBSQL := TRALDBSQL(FSQLList.Items[vInt]);
 
-    vBool := vDBSQL.Response.Native;
-    AStream.Write(vBool, SizeOf(vBool));
-
-    vString := vDBSQL.Response.ContentType;
-    vInt2 := Length(vString);
-
-    AStream.Write(vInt2, SizeOf(vInt2));
-    AStream.Write(vString[POSINISTR], vInt2);
-
-    vInt64 := vDBSQL.Response.Stream.Size;
-    AStream.Write(vInt64, SizeOf(vInt64));
-    AStream.CopyFrom(vDBSQL.Response.Stream, vDBSQL.Response.Stream.Size);
+      vWriter.WriteBoolean(vDBSQL.Response.Native);
+      vWriter.WriteString(vDBSQL.Response.ContentType);
+      vWriter.WriteStream(vDBSQL.Response.Stream);
+    end;
+  finally
+    FreeAndNil(vWriter);
   end;
 end;
 
@@ -548,156 +469,89 @@ var
   vDBSQL : TRALDBSQL;
   vParam : TParam;
   vStorType : TRALFieldType;
+  vWriter : TRALBinaryWriter;
 
-  vInt1, vInt2, vInt3, vSize: IntegerRAL;
+  vInt1, vInt2, vInt3: IntegerRAL;
   vByte: Byte;
-  vString: StringRAL;
-  vShort: ShortInt;
-  vSmallInt: SmallInt;
-  vWord: Word;
-  vCardinal: Cardinal;
-  vQWord: UInt64;
-  vFloat: Double;
-  vInt64: Int64RAL;
-  vBool: boolean;
-  vBytes: TBytes;
 begin
   Clear;
   AStream.Position := 0;
 
-  // version
-  AStream.Read(vByte, SizeOf(vByte));
-  if vByte <> GetStructureVersion then
-    raise Exception.Create(emQueryVersionError);
-
-  vStrSQLList := TStringList.Create;
+  vWriter := TRALBinaryWriter.Create(AStream);
   try
-    // tamanho do index de sqls
-    AStream.Read(vInt1, SizeOf(vInt1));
+    // version
+    if vWriter.ReadByte <> GetStructureVersion then
+      raise Exception.Create(emQueryVersionError);
 
-    // lendo os index de sql
-    for vInt2 := 1 to vInt1 do
-    begin
-      AStream.Read(vInt3, SizeOf(vInt3));
-      SetLength(vString, vInt3);
-      AStream.Read(vString[POSINISTR], vInt3);
-      vStrSQLList.Add(vString);
-    end;
+    vStrSQLList := TStringList.Create;
+    try
+      // tamanho do index de sqls
+      vInt1 := vWriter.ReadInteger;
 
-    // tamanho do cache
-    AStream.Read(vInt1, SizeOf(vInt1));
+      // lendo os index de sql
+      for vInt2 := 1 to vInt1 do
+        vStrSQLList.Add(vWriter.ReadString);
 
-    // lendo e criado o cache
-    for vInt2 := 1 to vInt1 do
-    begin
-      vDBSQL := TRALDBSQL.Create;
+      // tamanho do cache
+      vInt1 := vWriter.ReadInteger;
 
-      // drive type
-      AStream.Read(vByte, SizeOf(vByte));
-      vDBSQL.DriverType := TRALDBDriverType(vByte);
-
-      // type de exec - open or execsql
-      AStream.Read(vByte, SizeOf(vByte));
-      vDBSQL.ExecType := TRALDBExecType(vByte);
-
-      // index do sql
-      AStream.Read(vInt3, SizeOf(vInt3));
-      vDBSQL.SQLIndex := vInt3;
-      vDBSQL.SQL := vStrSQLList.Strings[vInt3];
-
-      // qtd de parametros
-      AStream.Read(vByte, SizeOf(vByte));
-
-      for vInt3 := 1 to vByte do
+      // lendo e criado o cache
+      for vInt2 := 1 to vInt1 do
       begin
-        vParam := TParam(vDBSQL.Params.Add);
+        vDBSQL := TRALDBSQL.Create;
 
-        // name
-        AStream.Read(vByte, SizeOf(vByte));
-        SetLength(vString, vByte);
-        AStream.Read(vString[POSINISTR], vByte);
-        vParam.Name := vString;
+        // drive type
+        vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadByte);
 
-        // datatype
-        AStream.Read(vByte, SizeOf(vByte));
-        vStorType := TRALFieldType(vByte);
-        vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
+        // type de exec - open or execsql
+        vDBSQL.ExecType := TRALDBExecType(vWriter.ReadByte);
 
-        // size
-        AStream.Read(vSize, SizeOf(vSize));
-        vParam.Size := vSize;
+        // index do sql
+        vDBSQL.SQLIndex := vWriter.ReadInteger;
+        vDBSQL.SQL := vStrSQLList.Strings[vDBSQL.SQLIndex];
 
-        // values
-        case vStorType of
-          sftShortInt : begin
-            AStream.Read(vShort, SizeOf(vShort));
-            vParam.AsInteger := vShort;
-          end;
-          sftSmallInt : begin
-            AStream.Read(vSmallInt, SizeOf(vSmallInt));
-            vParam.AsInteger := vSmallInt;
-          end;
-          sftInteger : begin
-            AStream.Read(vSize, SizeOf(vSize));
-            vParam.AsInteger := vSize;
-          end;
-          sftInt64 : begin
-            AStream.Read(vInt64, SizeOf(vInt64));
-            vParam.AsLargeInt := vInt64;
-          end;
-          sftByte : begin
-            AStream.Read(vByte, SizeOf(vByte));
-            vParam.AsInteger := vByte;
-          end;
-          sftWord : begin
-            AStream.Read(vWord, SizeOf(vWord));
-            vParam.AsInteger := vWord;
-          end;
-          sftCardinal : begin
-            AStream.Read(vCardinal, SizeOf(vCardinal));
-            vParam.AsLargeInt := vCardinal;
-          end;
-          sftQWord : begin
-            AStream.Read(vQWord, SizeOf(vQWord));
-            vParam.AsLargeInt := vQWord;
-          end;
-          sftDouble : begin
-            AStream.Read(vFloat, SizeOf(vFloat));
-            vParam.AsFloat := vFloat;
-          end;
-          sftBoolean : begin
-            AStream.Read(vBool, SizeOf(vBool));
-            vParam.AsBoolean := vBool;
-          end;
-          sftString : begin
-            AStream.Read(vInt64, SizeOf(vInt64));
-            SetLength(vString, vInt64);
-            AStream.Read(vString[PosIniStr], vInt64);
-            vParam.AsString := vString;
-          end;
-          sftBlob : begin
-            AStream.Read(vInt64, SizeOf(vInt64));
-            SetLength(vBytes, vInt64);
-            AStream.Read(vBytes[0], vInt64);
-            vParam.AsBlob := vBytes;
-            SetLength(vBytes, 0);
-          end;
-          sftMemo    : begin
-            AStream.Read(vInt64, SizeOf(vInt64));
-            SetLength(vString, vInt64);
-            AStream.Read(vString[PosIniStr], vInt64);
-            vParam.AsMemo := vString;
-          end;
-          sftDateTime: begin
-            AStream.Read(vFloat, SizeOf(vFloat));
-            vParam.AsDateTime := vFloat;
+        // qtd de parametros
+        vByte := vWriter.ReadByte;
+
+        for vInt3 := 1 to vByte do
+        begin
+          vParam := TParam(vDBSQL.Params.Add);
+
+          // name
+          vParam.Name := vWriter.ReadString;
+
+          // datatype
+          vStorType := TRALFieldType(vWriter.ReadByte);
+          vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
+
+          // size
+          vParam.Size := vWriter.ReadInteger;
+
+          // values
+          case vStorType of
+            sftShortInt : vParam.AsInteger := vWriter.ReadShortint;
+            sftSmallInt : vParam.AsInteger := vWriter.ReadSmallint;
+            sftInteger  : vParam.AsInteger := vWriter.ReadInteger;
+            sftInt64    : vParam.AsLargeInt := vWriter.ReadInt64;
+            sftByte     : vParam.AsInteger := vWriter.ReadByte;
+            sftWord     : vParam.AsInteger := vWriter.ReadWord;
+            sftCardinal : vParam.AsLargeInt := vWriter.ReadLongWord;
+            sftQWord    : vParam.AsLargeInt := vWriter.ReadQWord;
+            sftDouble   : vParam.AsFloat := vWriter.ReadFloat;
+            sftBoolean  : vParam.AsBoolean := vWriter.ReadBoolean;
+            sftString   : vParam.AsString := vWriter.ReadString;
+            sftBlob     : vParam.AsBlob := vWriter.ReadBytes;
+            sftMemo     : vParam.AsMemo := vWriter.ReadString;
+            sftDateTime : vParam.AsDateTime := vWriter.ReadDateTime;
           end;
         end;
+        FSQLList.Add(vDBSQL);
       end;
-      FSQLList.Add(vDBSQL);
+    finally
+      FreeAndNil(vStrSQLList);
     end;
   finally
-    FreeAndNil(vStrSQLList);
+    FreeAndNil(vWriter);
   end;
 end;
 
@@ -716,48 +570,39 @@ end;
 procedure TRALDBSQLCache.ResponseFromStream(AStream: TStream);
 var
   vDBSQL: TRALDBSQL;
+  vWriter : TRALBinaryWriter;
 
-  vByte: Byte;
-  vInt1, vInt2, vInt3: IntegerRAL;
-  vString: StringRAL;
-  vBool: boolean;
-  vInt64: Int64RAL;
+  vInt1, vInt2: IntegerRAL;
 begin
   AStream.Position := 0;
 
-  // version
-  AStream.Read(vByte, SizeOf(vByte));
-  if vByte <> GetStructureVersion then
-    raise Exception.Create(emQueryVersionError);
+  vWriter := TRALBinaryWriter.Create(AStream);
+  try
+    // version
+    if vWriter.ReadByte <> GetStructureVersion then
+      raise Exception.Create(emQueryVersionError);
 
-  // tamanho do dados
-  AStream.Read(vInt1, SizeOf(vInt1));
+    // tamanho do dados
+   vInt1 := vWriter.ReadInteger;
 
-  // recuperando as respostas
-  for vInt2 := 1 to vInt1 do
-  begin
-    if vInt2 <= FSQLList.Count then
+    // recuperando as respostas
+    for vInt2 := 0 to Pred(vInt1) do
     begin
-      vDBSQL := TRALDBSQL(FSQLList.Items[vInt2 - 1]);
-    end
-    else begin
-      vDBSQL := TRALDBSQL.Create;
-      FSQLList.Add(vDBSQL);
+      if vInt2 <= FSQLList.Count then
+      begin
+        vDBSQL := TRALDBSQL(FSQLList.Items[vInt2]);
+      end
+      else begin
+        vDBSQL := TRALDBSQL.Create;
+        FSQLList.Add(vDBSQL);
+      end;
+
+      vDBSQL.Response.Native := vWriter.ReadBoolean;
+      vDBSQL.Response.ContentType := vWriter.ReadString;
+      vWriter.ReadStream(vDBSQL.Response.Stream);
     end;
-
-    AStream.Read(vBool, SizeOf(vBool));
-    vDBSQL.Response.Native := vBool;
-
-    vDBSQL.Response.ContentType := '';
-    AStream.Read(vInt3, SizeOf(vInt3));
-    if vInt3 > 0 then begin
-      SetLength(vString, vInt3);
-      AStream.Write(vString[POSINISTR], vInt3);
-      vDBSQL.Response.ContentType := vString;
-    end;
-
-    AStream.Read(vInt64, SizeOf(vInt64));
-    vDBSQL.Response.Stream.CopyFrom(AStream, vInt64);
+  finally
+    FreeAndNil(vWriter);
   end;
 end;
 
