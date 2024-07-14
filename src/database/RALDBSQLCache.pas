@@ -1,6 +1,4 @@
-unit RALDBSQLCache;
-
-{$mode objfpc}{$H+}
+﻿unit RALDBSQLCache;
 
 interface
 
@@ -281,7 +279,7 @@ begin
   vParams := GetQueryParams(ADataset);
   vDriver := GetQueryClass(ADataset);
 
-  Add(vSQL, vParams, AExecType, vDriver);
+  Add(vSQL, vParams, nil, AExecType, vDriver);
 end;
 
 procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams;
