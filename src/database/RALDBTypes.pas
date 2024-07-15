@@ -52,6 +52,7 @@ type
     procedure SetDeleteSQL(AValue: TStrings);
     procedure SetInsertSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TStrings);
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create;
     destructor Destroy; override;
@@ -293,6 +294,19 @@ end;
 procedure TRALDBUpdateSQL.SetUpdateSQL(AValue: TStrings);
 begin
   FUpdateSQL.Assign(AValue);
+end;
+
+procedure TRALDBUpdateSQL.AssignTo(Dest: TPersistent);
+var
+  vDest : TRALDBUpdateSQL;
+begin
+  if Dest is TRALDBUpdateSQL then
+  begin
+    vDest := TRALDBUpdateSQL(Dest);
+    vDest.UpdateSQL := FUpdateSQL;
+    vDest.InsertSQL := FInsertSQL;
+    vDest.DeleteSQL := FDeleteSQL;
+  end;
 end;
 
 constructor TRALDBUpdateSQL.Create;

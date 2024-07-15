@@ -315,6 +315,7 @@ var
 begin
   vQWord := ReadSize;
   AStream.CopyFrom(FStream, vQWord);
+  AStream.Position := 0;
 end;
 
 function TRALBinaryWriter.ReadBytes: TBytes;

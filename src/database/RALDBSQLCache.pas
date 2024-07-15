@@ -9,7 +9,7 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
-  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream;
+  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes;
 
 type
   TRALDBExecType = (etOpen, etExecute);
@@ -19,17 +19,28 @@ type
   TRALDBSQLResponse = class
   private
     FContentType: StringRAL;
+    FError : boolean;
+    FLastId: Int64RAL;
     FNative: boolean;
+    FRowsAffected : Int64RAL;
     FStream: TStream;
   protected
     function GetStream: TStream;
     procedure SetStream(AValue: TStream);
+    procedure SetStrError(AError : StringRAL);
+    function GetStrError: StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
+
+    procedure Clear;
   published
     property ContentType: StringRAL read FContentType write FContentType;
+    property Error: boolean read FError write FError;
+    property LastId: Int64RAL read FLastId write FLastId;
     property Native: boolean read FNative write FNative;
+    property RowsAffected: Int64RAL read FRowsAffected write FRowsAffected;
+    property StrError: StringRAL read GetStrError write SetStrError;
     property Stream: TStream read GetStream write SetStream;
   end;
 
@@ -105,6 +116,16 @@ implementation
 
 { TRALDBSQLResponse }
 
+function TRALDBSQLResponse.GetStrError: StringRAL;
+begin
+  Result := '';
+  if (not FError) or (FStream.Size = 0) then
+    Exit;
+
+  SetLength(Result, FStream.Size);
+  FStream.Read(Result[POSINISTR], FStream.Size);
+end;
+
 function TRALDBSQLResponse.GetStream: TStream;
 begin
   Result := FStream;
@@ -115,20 +136,40 @@ begin
   FStream.Size := 0;
   AValue.Position := 0;
   FStream.CopyFrom(AValue, AValue.Size);
+  FStream.Position := 0;
 end;
 
 constructor TRALDBSQLResponse.Create;
 begin
   inherited;
   FStream := TMemoryStream.Create;
-  FContentType := '';
-  FNative := False;
+  Clear;
 end;
 
 destructor TRALDBSQLResponse.Destroy;
 begin
   FreeAndNil(FStream);
   inherited Destroy;
+end;
+
+procedure TRALDBSQLResponse.Clear;
+begin
+  FContentType := '';
+  FNative := False;
+  FStream.Size := 0;
+  FError := False;
+  FLastId := 0;
+  FNative := False;
+  FRowsAffected := 0;
+end;
+
+procedure TRALDBSQLResponse.SetStrError(AError: StringRAL);
+begin
+  Clear;
+  FError := True;
+  FContentType := rctTEXTPLAIN;
+  FStream.Write(AError[POSINISTR], Length(AError));
+  FStream.Position := 0;
 end;
 
 { TRALDBSQL }
@@ -352,7 +393,7 @@ begin
       vWriter.WriteInteger(vDBSQL.SQLIndex);
 
       // qtd de parametros
-      vWriter.WriteInteger(vDBSQL.Params.Count);
+      vWriter.WriteByte(vDBSQL.Params.Count);
 
       for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
       begin
@@ -435,7 +476,10 @@ begin
       vDBSQL := TRALDBSQL(FSQLList.Items[vInt]);
 
       vWriter.WriteBoolean(vDBSQL.Response.Native);
+      vWriter.WriteBoolean(vDBSQL.Response.Error);
       vWriter.WriteString(vDBSQL.Response.ContentType);
+      vWriter.WriteInt64(vDBSQL.Response.RowsAffected);
+      vWriter.WriteInt64(vDBSQL.Response.LastId);
       vWriter.WriteStream(vDBSQL.Response.Stream);
     end;
   finally
@@ -598,7 +642,10 @@ begin
       end;
 
       vDBSQL.Response.Native := vWriter.ReadBoolean;
+      vDBSQL.Response.Error := vWriter.ReadBoolean;
       vDBSQL.Response.ContentType := vWriter.ReadString;
+      vDBSQL.Response.RowsAffected := vWriter.ReadInt64;
+      vDBSQL.Response.LastId := vWriter.ReadInt64;
       vWriter.ReadStream(vDBSQL.Response.Stream);
     end;
   finally

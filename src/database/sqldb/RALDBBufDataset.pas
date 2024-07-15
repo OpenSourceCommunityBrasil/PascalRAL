@@ -14,13 +14,14 @@ type
 
   TRALDBBufDataset = class(TBufDataset)
   private
-    FAffectedRows: Int64RAL;
     FClient: TRALClientMT;
+    FOpened: boolean;
     FLoading: boolean;
     FLastId: Int64RAL;
     FModuleRoute: StringRAL;
     FParams: TParams;
     FParamCheck: boolean;
+    FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FStorage: TRALDBStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
@@ -31,6 +32,7 @@ type
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
+    procedure InternalOpen; override;
     procedure InternalPost; override;
     procedure InternalDelete; override;
 
@@ -38,12 +40,13 @@ type
     procedure SetClient(AValue: TRALClientMT);
     procedure SetStorage(AValue: TRALDBStorageLink);
     procedure SetModuleRoute(AValue: StringRAL);
+    procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
 
     procedure OnChangeSQL(Sender : TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
-    procedure OnQueryApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
     procedure OpenRemote;
     procedure Clear;
@@ -58,7 +61,7 @@ type
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
-    property AffectedRows : Int64RAL read FAffectedRows;
+    property RowsAffected : Int64RAL read FRowsAffected;
     property LastId : Int64RAL read FLastId;
   published
     property Client : TRALClientMT read FClient write SetClient;
@@ -67,7 +70,7 @@ type
     property Params : TParams read FParams write FParams;
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write SetStorage;
-    property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write FUpdateSQL;
+    property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
 
     property OnError : TRALDBOnError read FOnError write FOnError;
   end;
@@ -85,6 +88,11 @@ begin
   FModuleRoute := FixRoute(AValue);
 end;
 
+procedure TRALDBBufDataset.SetUpdateSQL(AValue: TRALDBUpdateSQL);
+begin
+  FUpdateSQL.Assign(AValue);
+end;
+
 procedure TRALDBBufDataset.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FClient) then
@@ -92,6 +100,15 @@ begin
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
+end;
+
+procedure TRALDBBufDataset.InternalOpen;
+begin
+  if (FLoading) and (not FOpened) then begin
+    FOpened := True;
+    CreateDataset;
+  end;
+  inherited InternalOpen;
 end;
 
 procedure TRALDBBufDataset.InternalPost;
@@ -184,9 +201,9 @@ begin
       vDBSQL := FSQLCache.SQLList[0];
 
       if vDBSQL.Response.Native then
-        Self.LoadFromStream(vMem, dfBinary)
+        Self.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
       else
-        FStorage.LoadFromStream(Self, vMem);
+        FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
     finally
       FreeAndNil(vMem);
       MergeChangeLog;
@@ -220,8 +237,8 @@ begin
       FSQLCache.ResponseFromStream(vMem);
       vDBSQL := FSQLCache.SQLList[0];
 
-      vDBSQL.Response.Stream.Read(FAffectedRows, SizeOf(FAffectedRows));
-      vDBSQL.Response.Stream.Read(FLastId, SizeOf(FLastId));
+      FAffectedRows := vDBSQL.Response.RowsAffected;
+      FLastId := vDBSQL.Response.LastId;
     finally
       FreeAndNil(vMem);
     end;
@@ -239,22 +256,52 @@ begin
   end;
 end;
 
-procedure TRALDBBufDataset.OnQueryApplyUpdates(Sender: TObject;
+procedure TRALDBBufDataset.OnApplyUpdates(Sender: TObject;
   AResponse: TRALResponse; AException: StringRAL);
 var
   vException : StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
-  vInt : IntegerRAL;
+  vInt1, vInt2 : IntegerRAL;
+  vTable: TRALDBBufDataset;
+  vField: TField;
 begin
   if AResponse.StatusCode = 200 then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
       FSQLCache.ResponseFromStream(vMem);
-      for vInt := 0 to Pred(FSQLCache.Count) do
+      for vInt1 := 0 to Pred(FSQLCache.Count) do
       begin
+        vDBSQL := FSQLCache.SQLList[vInt1];
+        if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
+        begin
+          Self.GotoBookmark(vDBSQL.BookMark);
 
+          vTable := TRALDBBufDataset.Create(nil);
+          try
+            try
+              if vDBSQL.Response.Native then
+                vTable.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
+              else
+                FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
+
+              Self.Edit;
+              for vInt2 := 0 to Pred(vTable.FieldCount) do
+              begin
+                vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+                if vField <> nil then
+                  vField.Value := vTable.Fields[vInt2].Value;
+              end;
+              Self.Post;
+            except
+
+            end;
+          finally
+            FreeAndNil(vTable);
+          end;
+        end;
       end;
     finally
       FreeAndNil(vMem);
@@ -317,30 +364,34 @@ begin
     Exit;
 
   vParams := TParams.Create;
-  TRALDB.ParseSQLParams(ASQL, vParams);
-  for vInt := 0 to Pred(vParams.Count) do
-  begin
-    vParam := vParams.Items[vInt];
-    vField := Self.FieldByName(vParam.Name);
-    vPrefix := '';
-    if vField = nil then
+  try
+    TRALDB.ParseSQLParams(ASQL, vParams);
+    for vInt := 0 to Pred(vParams.Count) do
     begin
-      vField := Self.FieldByName(Copy(vParam.Name, 5, Length(vParam.Name)));
-      vPrefix := Copy(vParam.Name, 1, 3)
-    end;
+      vParam := vParams.Items[vInt];
+      vField := Self.FindField(vParam.Name);
+      vPrefix := '';
+      if vField = nil then
+      begin
+        vField := Self.FindField(Copy(vParam.Name, 5, Length(vParam.Name)));
+        vPrefix := Copy(vParam.Name, 1, 3)
+      end;
 
-    if vField <> nil then
-    begin
-      vParam.DataType := vField.DataType;
-      if vPrefix = '' then
-        vParam.Value := vField.Value;
-      if SameText(vPrefix, 'OLD') then
-        vParam.Value := vField.OldValue;
-      if SameText(vPrefix, 'NEW') then
-        vParam.Value := vField.NewValue;
+      if vField <> nil then
+      begin
+        vParam.DataType := vField.DataType;
+        if vPrefix = '' then
+          vParam.Value := vField.Value;
+        if SameText(vPrefix, 'OLD') then
+          vParam.Value := vField.OldValue;
+        if SameText(vPrefix, 'NEW') then
+          vParam.Value := vField.NewValue;
+      end;
     end;
+    FSQLCache.Add(ASQL, vParams, Self.GetBookmark, AExecType, FSQLCache.GetQueryClass(Self));
+  finally
+    FreeAndNil(vParams);
   end;
-  FSQLCache.Add(ASQL, vParams, Self.GetBookmark, AExecType, FSQLCache.GetQueryClass(Self));
 end;
 
 constructor TRALDBBufDataset.Create(AOwner: TComponent);
@@ -379,7 +430,7 @@ begin
     vReq.AddFile(vMem);
 
     vUrl := FixRoute(FModuleRoute + '/applyupdates');
-    FClient.Post(vUrl, vReq, @OnQueryApplyUpdates, ebSingleThread);
+    FClient.Post(vUrl, vReq, @OnApplyUpdates, ebSingleThread);
   finally
     if FClient.RequestLifeCicle then
       FreeAndNil(vReq);
@@ -395,22 +446,16 @@ end;
 
 procedure TRALDBBufDataset.Open;
 begin
-  if FLoading then
-  begin
-    CreateDataset;
-    inherited Open;
-  end
-  else begin
-    if Self.Active then
-      Close;
+  if Self.Active then
+    Close;
 
-    Clear;
+  Clear;
+  FOpened := False;
 
-    if FClient = nil then
-      raise Exception.Create('Propriedade Client deve ser setada');
+  if FClient = nil then
+    raise Exception.Create('Propriedade Client deve ser setada');
 
-    OpenRemote;
-  end;
+  OpenRemote;
 end;
 
 procedure TRALDBBufDataset.ExecSQL;

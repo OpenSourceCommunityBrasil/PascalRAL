@@ -270,18 +270,26 @@ function TRALParam.GetAsBoolean: Boolean;
 var
   vStr: StringRAL;
 begin
-  vStr := StreamToString(FContent);
-  Result := (vStr = '1') or (SameText(vStr, 'true'));
+  Result := False;
+  if (Self <> nil) then
+  begin
+    vStr := StreamToString(FContent);
+    Result := (vStr = '1') or (SameText(vStr, 'true'));
+  end;
 end;
 
 function TRALParam.GetAsDouble: DoubleRAL;
 begin
-  Result := StrToFloatDef(StreamToString(FContent), 0);
+  Result := 0;
+  if (Self <> nil) then
+    Result := StrToFloatDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.GetAsInteger: IntegerRAL;
 begin
-  Result := StrToIntDef(StreamToString(FContent), 0);
+  Result := 0;
+  if (Self <> nil) then
+    Result := StrToIntDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.GetAsStream: TStream;
