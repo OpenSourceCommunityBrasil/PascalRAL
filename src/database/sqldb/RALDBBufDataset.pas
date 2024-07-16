@@ -68,6 +68,7 @@ type
 
     property RowsAffected : Int64RAL read FRowsAffected;
     property LastId : Int64RAL read FLastId;
+    property FieldInfo : TRALDBInfoFields read FFieldInfo;
   published
     property Client : TRALClientMT read FClient write SetClient;
     property ModuleRoute : StringRAL read FModuleRoute write SetModuleRoute;
@@ -190,10 +191,6 @@ begin
   begin
     FParams.Clear;
   end;
-
-  FieldDefs.BeginUpdate;
-  FieldDefs.Clear;
-  FieldDefs.EndUpdate;
 
   FFieldInfo.Clear;
 end;
@@ -355,6 +352,8 @@ begin
       vField.Name := FFieldInfo.Fields[vInt].FieldName;
       vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
       vField.Size := FFieldInfo.Fields[vInt].Length;
+      vField.Precision := FFieldInfo.Fields[vInt].Precision;
+      vField.Required := FFieldInfo.Fields[vInt].Flags and 2 > 0;
     end;
   end;
 end;
@@ -442,7 +441,6 @@ begin
   FSQL := TStringList.Create;
   TStringList(FSQL).OnChange := @OnChangeSQL;
   FFieldInfo:= TRALDBInfoFields.Create;
-
 
   FParamCheck := True;
   FParams := TParams.Create(Self);

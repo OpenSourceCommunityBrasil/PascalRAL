@@ -55,7 +55,8 @@ begin
   case AIndex of
     0 : begin
       vBufDataset := TRALDBBufDataset(GetComponent);
-      if vBufDataset.FieldDefs.Count = 0 then
+      if (vBufDataset.FieldInfo.Count = 0) or
+         (vBufDataset.FieldDefs.Count = 0) then
         vBufDataset.FillFieldDefs;
 
       vEditor := FindEditorForm(vBufDataset);
@@ -68,7 +69,7 @@ begin
       if vEditor <> nil then
       begin
         TDsFieldsEditorFrm(vEditor).ComponentEditor := Self;
-        TDsFieldsEditorFrm(vEditor).ShowModal;
+        TDsFieldsEditorFrm(vEditor).ShowOnTop;
       end;
     end;
   end;
