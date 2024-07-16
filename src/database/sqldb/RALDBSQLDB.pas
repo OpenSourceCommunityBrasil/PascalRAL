@@ -24,11 +24,12 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    function OpenNative(ASQL : string; AParams : TParams) : TDataset; override;
-    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
+    function OpenNative(ASQL : string; AParams : TParams) : TDataset; override;
+    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
 
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                              var AContentType: StringRAL;
@@ -85,6 +86,14 @@ begin
   Result := qtLazSQL;
 end;
 
+function TRALDBSQLDB.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
+var
+  vInfo : TSQLStatementInfo;
+begin
+  vInfo := FConnector.GetStatementInfo(TSQLQuery(ADataset).SQL.Text);
+  Result := vInfo.TableName;
+end;
+
 constructor TRALDBSQLDB.Create;
 begin
   FConnector := TSQLConnector.Create(nil);
@@ -115,10 +124,13 @@ begin
   vQuery.DataBase := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
-  for vInt := 0 to Pred(AParams.Count) do
+  if AParams <> nil then
   begin
-    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+    for vInt := 0 to Pred(AParams.Count) do
+    begin
+      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+    end;
   end;
   vQuery.Open;
 
@@ -152,10 +164,13 @@ begin
   vQuery.DataBase := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
-  for vInt := 0 to Pred(AParams.Count) do
+  if AParams <> nil then
   begin
-    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+    for vInt := 0 to Pred(AParams.Count) do
+    begin
+      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+    end;
   end;
   vQuery.Open;
 
@@ -178,10 +193,13 @@ begin
     vQuery.DataBase := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
-    for vInt := 0 to Pred(AParams.Count) do
+    if AParams <> nil then
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
     end;
     vQuery.ExecSQL;
 

@@ -30,6 +30,7 @@ type
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -84,6 +85,11 @@ end;
 function TRALDBZeos.GetDriverType: TRALDBDriverType;
 begin
   Result := qtZeos;
+end;
+
+function TRALDBZeos.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
+begin
+  Result := TZAbstractMemTable(ADataset).DbcResultSet.GetMetadata.GetTableName(AFieldIndex);
 end;
 
 constructor TRALDBZeos.Create;

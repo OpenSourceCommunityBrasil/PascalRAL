@@ -6,7 +6,8 @@ uses
   Classes, SysUtils, DB, Dialogs,
   BufDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes,
-  RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALTools, RALDBSQLCache;
+  RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALTools, RALDBSQLCache,
+  RALJSON;
 
 type
 
@@ -26,6 +27,7 @@ type
     FStorage: TRALDBStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
     FSQLCache: TRALDBSQLCache;
+    FFieldInfo: TRALDBInfoFields;
 
     FOnError: TRALDBOnError;
   protected
@@ -47,6 +49,7 @@ type
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnGetSQLFields(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
     procedure OpenRemote;
     procedure Clear;
@@ -54,6 +57,8 @@ type
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+
+    procedure FillFieldDefs;
 
     procedure ApplyUpdates; reintroduce;
     procedure Open; reintroduce;
@@ -142,6 +147,9 @@ end;
 
 procedure TRALDBBufDataset.SetSQL(AValue: TStrings);
 begin
+  if AValue.Text = FSQL.Text then
+    Exit;
+
   FSQL.Assign(AValue);
 end;
 
@@ -182,6 +190,12 @@ begin
   begin
     FParams.Clear;
   end;
+
+  FieldDefs.BeginUpdate;
+  FieldDefs.Clear;
+  FieldDefs.EndUpdate;
+
+  FFieldInfo.Clear;
 end;
 
 procedure TRALDBBufDataset.OnQueryResponse(Sender: TObject;
@@ -237,7 +251,7 @@ begin
       FSQLCache.ResponseFromStream(vMem);
       vDBSQL := FSQLCache.SQLList[0];
 
-      FAffectedRows := vDBSQL.Response.RowsAffected;
+      FRowsAffected := vDBSQL.Response.RowsAffected;
       FLastId := vDBSQL.Response.LastId;
     finally
       FreeAndNil(vMem);
@@ -320,6 +334,31 @@ begin
   end;
 end;
 
+procedure TRALDBBufDataset.OnGetSQLFields(Sender: TObject;
+  AResponse: TRALResponse; AException: StringRAL);
+var
+  vBody: StringRAL;
+  vInt: IntegerRAL;
+  vField: TFieldDef;
+  vType: TRALFieldType;
+begin
+  if AResponse.StatusCode = 200 then
+  begin
+    FieldDefs.Clear;
+    FFieldInfo.AsJSON := AResponse.Body.AsString;
+
+    for vInt := 0 to Pred(FFieldInfo.Count) do
+    begin
+      vType := FFieldInfo.Fields[vInt].RALFieldType;
+
+      vField := FieldDefs.AddFieldDef;
+      vField.Name := FFieldInfo.Fields[vInt].FieldName;
+      vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
+      vField.Size := FFieldInfo.Fields[vInt].Length;
+    end;
+  end;
+end;
+
 procedure TRALDBBufDataset.OpenRemote;
 var
   vMem : TStream;
@@ -330,8 +369,8 @@ begin
   FSQLCache.Add(Self);
 
   vMem := FSQLCache.SaveToStream;
+  vReq := FClient.NewRequest;
   try
-    vReq := FClient.NewRequest;
     vReq.Clear;
     vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
     vReq.AddFile(vMem);
@@ -349,7 +388,7 @@ end;
 procedure TRALDBBufDataset.Clear;
 begin
   FLastId := 0;
-  FAffectedRows := 0;
+  FRowsAffected := 0;
 end;
 
 procedure TRALDBBufDataset.CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType);
@@ -369,10 +408,13 @@ begin
     for vInt := 0 to Pred(vParams.Count) do
     begin
       vParam := vParams.Items[vInt];
+      // verificando se existe um fieldname com nome do param
+      // pode existir um tabela com um field nomedo de new_field, old_field
       vField := Self.FindField(vParam.Name);
       vPrefix := '';
       if vField = nil then
       begin
+        // params tipo new_field, old_field
         vField := Self.FindField(Copy(vParam.Name, 5, Length(vParam.Name)));
         vPrefix := Copy(vParam.Name, 1, 3)
       end;
@@ -381,10 +423,10 @@ begin
       begin
         vParam.DataType := vField.DataType;
         if vPrefix = '' then
-          vParam.Value := vField.Value;
-        if SameText(vPrefix, 'OLD') then
-          vParam.Value := vField.OldValue;
-        if SameText(vPrefix, 'NEW') then
+          vParam.Value := vField.Value
+        else if SameText(vPrefix, 'OLD') then
+          vParam.Value := vField.OldValue
+        else if SameText(vPrefix, 'NEW') then
           vParam.Value := vField.NewValue;
       end;
     end;
@@ -399,6 +441,8 @@ begin
   inherited Create(AOwner);
   FSQL := TStringList.Create;
   TStringList(FSQL).OnChange := @OnChangeSQL;
+  FFieldInfo:= TRALDBInfoFields.Create;
+
 
   FParamCheck := True;
   FParams := TParams.Create(Self);
@@ -413,7 +457,27 @@ begin
   FreeAndNil(FParams);
   FreeAndNil(FUpdateSQL);
   FreeAndNil(FSQLCache);
+  FreeAndNil(FFieldInfo);
   inherited Destroy;
+end;
+
+procedure TRALDBBufDataset.FillFieldDefs;
+var
+  vReq : TRALRequest;
+  vUrl : StringRAL;
+begin
+  vReq := FClient.NewRequest;
+  try
+    vReq.Clear;
+    vReq.ContentType := rctAPPLICATIONJSON;
+    vReq.Params.AddParam('sql', SQL.Text, rpkQUERY);
+
+    vUrl := FixRoute(FModuleRoute + '/getsqlfields');
+    FClient.Get(vUrl, vReq, @OnGetSQLFields, ebSingleThread);
+  finally
+    if FClient.RequestLifeCicle then
+      FreeAndNil(vReq);
+  end;
 end;
 
 procedure TRALDBBufDataset.ApplyUpdates;
@@ -423,8 +487,8 @@ var
   vUrl : StringRAL;
 begin
   vMem := FSQLCache.SaveToStream;
+  vReq := FClient.NewRequest;
   try
-    vReq := FClient.NewRequest;
     vReq.Clear;
     vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
     vReq.AddFile(vMem);
@@ -473,8 +537,8 @@ begin
   FSQLCache.Add(Self, etExecute);
 
   vMem := FSQLCache.SaveToStream;
+  vReq := FClient.NewRequest;
   try
-    vReq := FClient.NewRequest;
     vReq.Clear;
     vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
     vReq.AddFile(vMem);

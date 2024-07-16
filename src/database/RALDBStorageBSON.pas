@@ -56,7 +56,7 @@ begin
     vField^.Values.Add(TBSONItemInt32.Create('', Ord(vType)));
     FFieldTypes[vInt] := vType;
 
-    vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
+    vByte := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
     vField^.Values.Add(TBSONItemInt32.Create('', vByte));
 
     vField^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].Size));
@@ -145,7 +145,7 @@ var
   vFields, vField : PBSONItemArray;
   vName: StringRAL;
   vType: TFieldType;
-  vFlags: Byte;
+  vFlags: TBytes;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -157,6 +157,7 @@ begin
   SetLength(FFieldNames, vFields^.Values.Count);
   SetLength(FFieldTypes, vFields^.Values.Count);
   SetLength(FFoundFields, vFields^.Values.Count);
+  SetLength(vFlags, vFields^.Values.Count);
 
   for vInt := 0 to Pred(vFields^.Values.Count) do
   begin
@@ -168,7 +169,7 @@ begin
     FFieldTypes[vInt] := TRALFieldType(vField^.Values[1]^.ToInt);
     vType := TRALDB.RALFieldTypeToFieldType(FFieldTypes[vInt]);
 
-    vFlags := vField^.Values[2]^.ToInt;
+    vFlags[vInt] := vField^.Values[2]^.ToInt;
     vSize := vField^.Values[3]^.ToInt;
 
     ADataset.FieldDefs.Add(vName, vType, vSize);
@@ -186,6 +187,7 @@ begin
     begin
       if SameText(vName, FFieldNames[vSize]) then
       begin
+        TRALDB.SetFieldProviderFlags(ADataset.Fields[vInt], vFlags[vSize]);
         FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
       end;

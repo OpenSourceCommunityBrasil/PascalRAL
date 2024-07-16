@@ -890,6 +890,9 @@ begin
 
       vItem.ContentDispositionInline := FContentDispositionInline;
 
+      if Pos('ral_param', vItem.ParamName) > 0 then
+        vItem.ParamName := 'ral_body';
+
       Result := vItem.SaveToStream;
 
       AContentType := vItem.ContentType;

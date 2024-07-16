@@ -101,7 +101,7 @@ begin
     FFieldTypes[vInt] := vType;
 
     // flags
-    vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
+    vByte := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
     WriteByte(AStream, Byte(Ord(vType)));
 
     // size
@@ -285,6 +285,7 @@ var
   vName: StringRAL;
   vType: TFieldType;
   vByte: Byte;
+  vFlags: TBytes;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -297,6 +298,7 @@ begin
   SetLength(FFieldNames, vFields);
   SetLength(FFieldTypes, vFields);
   SetLength(FFoundFields, vFields);
+  SetLength(vFlags, vFields);
 
   for vInt := 0 to Pred(vFields) do
   begin
@@ -310,7 +312,7 @@ begin
     FFieldTypes[vInt] := TRALFieldType(vByte);
 
     // flags
-    vByte := ReadByte(AStream);
+    vFlags[vInt] := ReadByte(AStream);
 
     // size
     vSize := ReadInteger(AStream);
@@ -330,6 +332,7 @@ begin
     begin
       if SameText(vName, FFieldNames[vSize]) then
       begin
+        TRALDB.SetFieldProviderFlags(ADataset.Fields[vInt], vFlags[vSize]);
         FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
       end;

@@ -4,7 +4,7 @@ unit RALDBModule;
 interface
 
 uses
-  Classes, SysUtils, DB, TypInfo,
+  Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
   RALConsts, RALTypes, RALDBStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
   RALDBSQLCache;
@@ -27,6 +27,7 @@ type
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     function FindDatabaseDriver: TRALDBBase;
     procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure GetSQLFields(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -207,6 +208,9 @@ var
   vDBSQL: TRALDBSQL;
   vRowsAffect, vLastId: Int64RAL;
   vInt: IntegerRAL;
+  vQuery: TDataSet;
+  vContentType: StringRAL;
+  vNative: Boolean;
 begin
   vRowsAffect := 0;
   vLastId := 0;
@@ -484,31 +488,19 @@ begin
 end;
 
 procedure TRALDBModule.GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
-type
-  TInfoField = record
-    column_name: StringRAL;
-    schema_name: StringRAL;
-    column_datatype: IntegerRAL;
-    column_typename: StringRAL;
-    column_attributes: StringRAL;
-    column_precision: IntegerRAL;
-    column_scale: IntegerRAL;
-    column_length: IntegerRAL;
-  end;
 var
   vDB: TRALDBBase;
   vSQL: TStringList;
   vSchema, vTable: StringRAL;
   vQuery: TDataSet;
-  vJSON: TRALJSONArray;
-  vjObj: TRALJSONObject;
-  vField: TInfoField;
+  vFields: TRALDBInfoFields;
+  vField: TRALDBInfoField;
 
   procedure AddFieldAttribute(AAttribute: StringRAL);
   begin
-    if vField.column_attributes <> '' then
-      vField.column_attributes := vField.column_attributes + ',';
-    vField.column_attributes := vField.column_attributes + AAttribute;
+    if vField.Attributes <> '' then
+      vField.Attributes := vField.Attributes + ',';
+    vField.Attributes := vField.Attributes + AAttribute;
   end;
 
   procedure AssignOthersDateTypeField(AType: StringRAL);
@@ -518,41 +510,36 @@ var
     AType := LowerCase(AType);
     if (Pos('varchar', AType) > 0) or (Pos('char', AType) > 0) then
     begin
-      vField.column_datatype := Ord(sftString);
-      vField.column_typename := 'sftString';
+      vField.RALFieldType := sftString;
 
       vInt := Pos('(', AType);
       if vInt > 0 then
       begin
         Delete(AType, 1, vInt);
         vInt := Pos(')', AType);
-        vField.column_length := StrToInt(Copy(AType, 1, vInt-1));
+        vField.Length := StrToInt(Copy(AType, 1, vInt-1));
       end
       else begin
-        vField.column_length := 255;
+        vField.Length := 255;
       end;
     end
     else if (Pos('text', AType) > 0) or (Pos('json', AType) > 0) or
             (Pos('uuid', AType) > 0) then
     begin
-      vField.column_datatype := Ord(sftMemo);
-      vField.column_typename := 'sftMemo';
+      vField.RALFieldType := sftMemo;
     end
     else if (Pos('binary', AType) > 0) or (Pos('blob', AType) > 0) then
     begin
-      vField.column_datatype := Ord(sftBlob);
-      vField.column_typename := 'sftBlob';
+      vField.RALFieldType := sftBlob;
     end
     else if (Pos('date', AType) > 0) or (Pos('time', AType) > 0) then
     begin
-      vField.column_datatype := Ord(sftDateTime);
-      vField.column_typename := 'sftDateTime';
+      vField.RALFieldType := sftDateTime;
     end
     else if (Pos('double', AType) > 0) or (Pos('numeric', AType) > 0) or
             (Pos('decimal', AType) > 0) then
     begin
-      vField.column_datatype := Ord(sftDouble);
-      vField.column_typename := 'sftDouble';
+      vField.RALFieldType := sftDouble;
 
       vInt := Pos('(', AType);
       if vInt > 0 then
@@ -560,69 +547,45 @@ var
         Delete(AType, 1, vInt);
         vInt := Pos(',', AType);
 
-        vField.column_precision := StrToInt(Copy(AType, 1, vInt-1));
+        vField.Precision := StrToInt(Copy(AType, 1, vInt-1));
 
         Delete(AType, 1, vInt);
         vInt := Pos(')', AType);
 
-        vField.column_scale := StrToInt(Copy(AType, 1, vInt-1));
+        vField.Scale := StrToInt(Copy(AType, 1, vInt-1));
       end
       else begin
-        vField.column_precision := 15;
-        vField.column_scale := 2;
+        vField.Precision := 15;
+        vField.Scale := 2;
       end;
     end
     else if (Pos('tinyint', AType) > 0) then
     begin
       if Pos('unsigned', AType) > 0 then
-      begin
-        vField.column_datatype := Ord(sftByte);
-        vField.column_typename := 'sftByte';
-      end
+        vField.RALFieldType := sftByte
       else
-      begin
-        vField.column_datatype := Ord(sftShortInt);
-        vField.column_typename := 'sftShortInt';
-      end;
+        vField.RALFieldType := sftShortInt;
     end
     else if (Pos('smallint', AType) > 0) then
     begin
       if Pos('unsigned', AType) > 0 then
-      begin
-        vField.column_datatype := Ord(sftWord);
-        vField.column_typename := 'sftWord';
-      end
+        vField.RALFieldType := sftWord
       else
-      begin
-        vField.column_datatype := Ord(sftSmallInt);
-        vField.column_typename := 'sftSmallInt';
-      end;
+        vField.RALFieldType := sftSmallint;
     end
     else if (Pos('bigint', AType) > 0) then
     begin
       if Pos('unsigned', AType) > 0 then
-      begin
-        vField.column_datatype := Ord(sftQWord);
-        vField.column_typename := 'sftQWord';
-      end
+        vField.RALFieldType := sftQWord
       else
-      begin
-        vField.column_datatype := Ord(sftInt64);
-        vField.column_typename := 'sftInt64';
-      end;
+        vField.RALFieldType := sftInt64;
     end
     else if (Pos('int', AType) > 0) or (Pos('integer', AType) > 0) then
     begin
       if Pos('unsigned', AType) > 0 then
-      begin
-        vField.column_datatype := Ord(sftCardinal);
-        vField.column_typename := 'sftCardinal';
-      end
+        vField.RALFieldType := sftCardinal
       else
-      begin
-        vField.column_datatype := Ord(sftInteger);
-        vField.column_typename := 'sftInteger';
-      end;
+        vField.RALFieldType := sftInteger;
     end;
   end;
 
@@ -663,8 +626,7 @@ var
       end;
     end;
 
-    vField.column_datatype := Ord(vfbType);
-    vField.column_typename := GetEnumName(TypeInfo(TRALFieldType), Ord(vfbType));
+    vField.RALFieldType := vfbType;
 
     if vQuery.FieldByName('rdb$null_flag').AsString = '0' then
       AddFieldAttribute('not_null');
@@ -674,24 +636,24 @@ var
 
     if vQuery.FieldByName('rdb$field_type').AsInteger in [14, 37, 40] then
     begin
-      vField.column_length := vQuery.FieldByName('rdb$field_length').AsInteger;
+      vField.Length := vQuery.FieldByName('rdb$field_length').AsInteger;
       // field com charset e colation
       if (vQuery.FieldByName('rdb$character_length').AsInteger > 0) and
-         (vQuery.FieldByName('rdb$character_length').AsInteger < vField.column_length) then
-        vField.column_length := vQuery.FieldByName('rdb$character_length').AsInteger;
+         (vQuery.FieldByName('rdb$character_length').AsInteger < vField.Length) then
+        vField.Length := vQuery.FieldByName('rdb$character_length').AsInteger;
     end
     else if vQuery.FieldByName('rdb$field_type').AsInteger in [7, 8, 16, 27] then
     begin
       // numeric
       if vfbType = sftDouble then
-        vField.column_precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
+        vField.Precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
 
       if (vQuery.FieldByName('rdb$field_scale').AsInteger < 0) then
       begin
-        vField.column_precision := 15;
+        vField.Precision := 15;
         if (vQuery.FieldByName('rdb$field_precision').AsInteger > 0) then
-          vField.column_precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
-        vField.column_scale := Abs(vQuery.FieldByName('rdb$field_scale').AsInteger);
+          vField.Precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
+        vField.Scale := Abs(vQuery.FieldByName('rdb$field_scale').AsInteger);
       end;
     end;
   end;
@@ -732,17 +694,16 @@ var
       1184 : vpgType := sftDateTime;
     end;
 
-    vField.column_datatype := Ord(vpgType);
-    vField.column_typename := GetEnumName(TypeInfo(TRALFieldType), Ord(vpgType));
+    vField.RALFieldType := vpgType;
 
     if (vType <> 1700) and (vTypMod > 0) then begin
-      vField.column_length := vTypMod - 4;
-      if vField.column_length < 0 then
-        vField.column_length := 0;
+      vField.Length := vTypMod - 4;
+      if vField.Length < 0 then
+        vField.Length := 0;
     end
     else if (vType = 1700) then begin
-      vField.column_precision := (vTypMod - 4) mod 65536;
-      vField.column_scale := (vTypMod - 4) div 65536;
+      vField.Precision := (vTypMod - 4) mod 65536;
+      vField.Scale := (vTypMod - 4) div 65536;
     end;
   end;
 
@@ -755,7 +716,6 @@ begin
         vSchema := ARequest.ParamByName('schema').AsString;
         vTable := ARequest.ParamByName('table').AsString;
         vQuery := nil;
-        vJSON := nil;
 
         vSQL := TStringList.Create;
         try
@@ -811,31 +771,21 @@ begin
 
           vQuery := vDB.OpenNative(vSQL.Text, nil);
           try
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            vJSON := TRALJSONArray.Create;
+            vFields := TRALDBInfoFields.Create;
             try
               if not vQuery.IsUniDirectional then
                 vQuery.First;
 
               while not vQuery.Eof do begin
-                vjObj := TRALJSONObject.Create;
-
-                vField.column_name := '';
-                vField.schema_name := '';
-                vField.column_datatype := -1;
-                vField.column_typename := '';
-                vField.column_attributes := '';
-                vField.column_precision := 0;
-                vField.column_scale := 0;
-                vField.column_length := 0;
+                vField := vFields.NewField;
 
                 case FDatabaseType of
                   dtFirebird: begin
-                    vField.column_name := vQuery.FieldByName('rdb$field_name').AsString;
+                    vField.FieldName := vQuery.FieldByName('rdb$field_name').AsString;
                     AssignFirebirdDateTypeField;
                   end;
                   dtSQLite: begin
-                    vField.column_name := vQuery.Fields[1].AsString;
+                    vField.FieldName := vQuery.Fields[1].AsString;
                     AssignOthersDateTypeField(vQuery.Fields[2].AsString);
                     if vQuery.Fields[3].AsInteger = 1 then
                       AddFieldAttribute('not_null');
@@ -843,7 +793,7 @@ begin
                       AddFieldAttribute('pk');
                   end;
                   dtMySQL: begin
-                    vField.column_name := vQuery.Fields[0].AsString;
+                    vField.FieldName := vQuery.Fields[0].AsString;
                     AssignOthersDateTypeField(vQuery.Fields[1].AsString);
                     if vQuery.Fields[2].AsString = 'NO' then
                       AddFieldAttribute('not_null');
@@ -851,36 +801,76 @@ begin
                       AddFieldAttribute('pk');
                   end;
                   dtPostgreSQL : begin
-                    vField.column_name := vQuery.FieldByName('attname').AsString;
-                    vField.schema_name := vQuery.FieldByName('nspname').AsString;
+                    vField.FieldName := vQuery.FieldByName('attname').AsString;
+                    vField.Schema := vQuery.FieldByName('nspname').AsString;
                     AssignPostgresDateTypeField;
                   end;
                 end;
 
-                vjObj.Add('table_name', vTable);
-                vjObj.Add('column_name', vField.column_name);
-                vjObj.Add('schema_name', vField.schema_name);
-                vjObj.Add('column_datatype', vField.column_datatype);
-                vjObj.Add('column_typename', vField.column_typename);
-                vjObj.Add('column_attributes', vField.column_attributes);
-                vjObj.Add('column_precision', vField.column_precision);
-                vjObj.Add('column_scale', vField.column_scale);
-                vjObj.Add('column_length', vField.column_length);
-
-                vJSON.Add(vjObj);
-
                 vQuery.Next;
               end;
 
-              AResponse.ResponseText := vJSON.ToJson;
+              AResponse.ContentType := rctAPPLICATIONJSON;
+              AResponse.ResponseText := vFields.AsJSON;
             finally
-              FreeAndNil(vJSON);
+              FreeAndNil(vFields);
             end;
           finally
             FreeAndNil(vQuery);
           end;
         finally
           FreeAndNil(vSQL);
+        end;
+      end;
+    except
+      on e : Exception do
+      begin
+        AResponse.StatusCode := 500;
+        AResponse.ContentType := rctTEXTPLAIN;
+        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
+      end;
+    end;
+  finally
+    FreeAndNil(vDB);
+  end;
+end;
+
+procedure TRALDBModule.GetSQLFields(ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vDB: TRALDBBase;
+  vSQL: StringRAL;
+  vQuery: TDataSet;
+  vInt: IntegerRAL;
+  vFields: TRALDBInfoFields;
+  vField: TRALDBInfoField;
+begin
+  vDB := FindDatabaseDriver;
+  try
+    try
+      if vDB <> nil then
+      begin
+        vSQL := ARequest.ParamByName('sql').AsString;
+        vQuery := vDB.OpenNative(vSQL, nil);
+        try
+          vFields:= TRALDBInfoFields.Create;
+          try
+            for vInt := 0 to Pred(vQuery.FieldCount) do
+            begin
+              vField := vFields.NewField;
+              vField.TableName := vDB.GetFieldTable(vQuery, vInt);
+              vField.FieldName := vQuery.Fields[vInt].FieldName;
+              vField.FieldType := vQuery.Fields[vInt].DataType;
+              vField.Flags := TRALDB.GetFieldProviderFlags(vQuery.Fields[vInt]);
+              vField.Length := vQuery.Fields[vInt].Size;
+            end;
+            AResponse.ContentType := rctAPPLICATIONJSON;
+            AResponse.ResponseText := vFields.AsJSON;
+          finally
+            FreeAndNil(vFields);
+          end;
+        finally
+          FreeAndNil(vQuery);
         end;
       end;
     except
@@ -948,6 +938,17 @@ begin
   vParam := TRALRouteParam(vRoute.InputParams.Add);
   vParam.Description.Text := 'Table name';
   vParam.ParamName := 'table';
+  vParam.ParamType := prtString;
+  vParam.Required := True;
+
+  vRoute := CreateRoute('getsqlfields', {$IFDEF FPC}@{$ENDIF}GetSQLFields);
+  vRoute.Name := 'getsqlfields';
+  vRoute.AllowedMethods := [amGET, amOPTIONS];
+  vRoute.Description.Add('List all fields from a SQL');
+
+  vParam := TRALRouteParam(vRoute.InputParams.Add);
+  vParam.Description.Text := 'SQL';
+  vParam.ParamName := 'sql';
   vParam.ParamType := prtString;
   vParam.Required := True;
 end;

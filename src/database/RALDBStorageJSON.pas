@@ -639,7 +639,7 @@ begin
     FFieldTypes[vInt] := vType;
 
     // flags
-    vByte := TRALDB.FieldProviderFlags(ADataset.Fields[vInt]);
+    vByte := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
     vJson := vJson + WriteInt64(vByte) + ',';
 
     // size
@@ -768,6 +768,7 @@ var
   vName: StringRAL;
   vType: TFieldType;
   vByte: Byte;
+  vFlags: TBytes;
   vjArr1, vjArr2: TRALJSONArray;
 begin
   if ADataset.Active then
@@ -781,6 +782,7 @@ begin
     SetLength(FFieldNames, vjArr1.Count);
     SetLength(FFieldTypes, vjArr1.Count);
     SetLength(FFoundFields, vjArr1.Count);
+    SetLength(vFlags, vjArr1.Count);
 
     for vInt := 0 to Pred(vjArr1.Count) do
     begin
@@ -796,7 +798,7 @@ begin
       FFieldTypes[vInt] := TRALFieldType(vByte);
 
       // flags
-      vByte := vjArr2.Get(2).AsInteger;
+      vFlags[vInt] := vjArr2.Get(2).AsInteger;
 
       // size
       vSize := vjArr2.Get(3).AsInteger;
@@ -815,6 +817,7 @@ begin
       begin
         if SameText(vName, FFieldNames[vSize]) then
         begin
+          TRALDB.SetFieldProviderFlags(ADataset.Fields[vInt], vFlags[vSize]);
           FFoundFields[vSize] := ADataset.Fields[vInt];
           Break;
         end;

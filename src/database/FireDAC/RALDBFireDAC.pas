@@ -29,6 +29,7 @@ type
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
@@ -83,6 +84,11 @@ end;
 function TRALDBFireDAC.GetDriverType: TRALDBDriverType;
 begin
   Result := qtFiredac;
+end;
+
+function TRALDBFireDAC.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
+begin
+
 end;
 
 constructor TRALDBFireDAC.Create;

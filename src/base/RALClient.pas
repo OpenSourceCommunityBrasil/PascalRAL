@@ -462,7 +462,7 @@ end;
 procedure TRALClientMT.Delete(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
-  ExecuteThread(ARoute, ARequest, amDELETE, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amDELETE, AOnResponse, AExecBehavior);
 end;
 
 destructor TRALClientMT.Destroy;
@@ -540,7 +540,7 @@ end;
 procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
-  ExecuteThread(ARoute, ARequest, amGET, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amGET, AOnResponse, AExecBehavior);
 end;
 
 procedure TRALClientMT.LockSession;
@@ -568,19 +568,19 @@ end;
 procedure TRALClientMT.Patch(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
-  ExecuteThread(ARoute, ARequest, amPATCH, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amPATCH, AOnResponse, AExecBehavior);
 end;
 
 procedure TRALClientMT.Post(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
-  ExecuteThread(ARoute, ARequest, amPOST, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amPOST, AOnResponse, AExecBehavior);
 end;
 
 procedure TRALClientMT.Put(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
-  ExecuteThread(ARoute, ARequest, amPUT, AOnResponse);
+  ExecuteThread(ARoute, ARequest, amPUT, AOnResponse, AExecBehavior);
 end;
 
 procedure TRALClientMT.UnLockSession;

@@ -33,6 +33,7 @@ type
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
     function GetDriverType: TRALDBDriverType; virtual; abstract;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; virtual; abstract;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
