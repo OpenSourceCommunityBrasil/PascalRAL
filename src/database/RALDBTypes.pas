@@ -8,7 +8,7 @@ unit RALDBTypes;
 interface
 
 uses
-  Classes, SysUtils, DB, TypInfo,
+  Classes, SysUtils, TypInfo, DB,
   RALTypes, RALJSON;
 
 type

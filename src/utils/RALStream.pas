@@ -16,8 +16,8 @@ type
     FStream : TStream;
   protected
     // read and write UTF-7
-    function ReadSize: QWord;
-    procedure WriteSize(ASize: QWord);
+    function ReadSize: UInt64;
+    procedure WriteSize(ASize: UInt64);
   public
     constructor Create(const AStream : TStream);
 
@@ -28,7 +28,7 @@ type
     procedure WriteInteger(AValue : IntegerRAL);
     procedure WriteLongWord(AValue: LongWord);
     procedure WriteInt64(AValue: Int64RAL);
-    procedure WriteQWord(AValue: QWord);
+    procedure WriteQWord(AValue: UInt64);
     procedure WriteBoolean(AValue: Boolean);
     procedure WriteFloat(AValue: Double);
     procedure WriteDateTime(AValue: TDateTime);
@@ -43,7 +43,7 @@ type
     function ReadInteger: IntegerRAL;
     function ReadLongWord: LongWord;
     function ReadInt64: Int64RAL;
-    function ReadQWord: QWord;
+    function ReadQWord: UInt64;
     function ReadBoolean: Boolean;
     function ReadFloat: Double;
     function ReadDateTime: TDateTime;
@@ -136,7 +136,7 @@ end;
 
 { TRALBinaryWriter }
 
-function TRALBinaryWriter.ReadSize: QWord;
+function TRALBinaryWriter.ReadSize: UInt64;
 var
   vMult: integer;
   vByte: Byte;
@@ -150,7 +150,7 @@ begin
   until (vByte and 128) = 0;
 end;
 
-procedure TRALBinaryWriter.WriteSize(ASize: QWord);
+procedure TRALBinaryWriter.WriteSize(ASize: UInt64);
 var
   vByte: Byte;
 begin
@@ -208,7 +208,7 @@ begin
   FStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALBinaryWriter.WriteQWord(AValue: QWord);
+procedure TRALBinaryWriter.WriteQWord(AValue: UInt64);
 begin
   FStream.Write(AValue, SizeOf(AValue));
 end;
@@ -230,7 +230,7 @@ end;
 
 procedure TRALBinaryWriter.WriteStream(AValue: TStream);
 var
-  vQWord : QWord;
+  vQWord : UInt64;
 begin
   AValue.Position := 0;
 
@@ -240,7 +240,7 @@ end;
 
 procedure TRALBinaryWriter.WriteBytes(AValue: TBytes);
 var
-  vQWord : QWord;
+  vQWord : UInt64;
 begin
   WriteSize(Length(AValue));
   if Length(AValue) > 0 then
@@ -289,7 +289,7 @@ begin
   FStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALBinaryWriter.ReadQWord: QWord;
+function TRALBinaryWriter.ReadQWord: UInt64;
 begin
   FStream.Read(Result, SizeOf(Result));
 end;
@@ -311,7 +311,7 @@ end;
 
 procedure TRALBinaryWriter.ReadStream(AStream: TStream);
 var
-  vQWord : QWord;
+  vQWord : UInt64;
 begin
   vQWord := ReadSize;
   AStream.CopyFrom(FStream, vQWord);
@@ -320,7 +320,7 @@ end;
 
 function TRALBinaryWriter.ReadBytes: TBytes;
 var
-  vQWord: QWord;
+  vQWord: UInt64;
 begin
   vQWord := ReadSize;
   SetLength(Result, vQWord);
@@ -330,7 +330,7 @@ end;
 
 function TRALBinaryWriter.ReadString: StringRAL;
 var
-  vQWord : QWord;
+  vQWord : UInt64;
 begin
   vQWord := ReadSize;
   Result := '';
