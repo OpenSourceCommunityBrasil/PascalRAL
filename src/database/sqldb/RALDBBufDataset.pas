@@ -346,14 +346,14 @@ begin
 
     for vInt := 0 to Pred(FFieldInfo.Count) do
     begin
-      vType := FFieldInfo.Fields[vInt].RALFieldType;
+      vType := FFieldInfo.Field[vInt].RALFieldType;
 
       vField := FieldDefs.AddFieldDef;
-      vField.Name := FFieldInfo.Fields[vInt].FieldName;
+      vField.Name := FFieldInfo.Field[vInt].FieldName;
       vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
-      vField.Size := FFieldInfo.Fields[vInt].Length;
-      vField.Precision := FFieldInfo.Fields[vInt].Precision;
-      vField.Required := FFieldInfo.Fields[vInt].Flags and 2 > 0;
+      vField.Size := FFieldInfo.Field[vInt].Length;
+      vField.Precision := FFieldInfo.Field[vInt].Precision;
+      vField.Required := FFieldInfo.Field[vInt].Flags and 2 > 0;
     end;
   end;
 end;

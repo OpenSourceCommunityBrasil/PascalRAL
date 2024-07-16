@@ -108,7 +108,8 @@ type
   private
     FFields: TList;
   protected
-    function GetFields(AIndex: IntegerRAL): TRALDBInfoField;
+    function GetField(AIndex: IntegerRAL): TRALDBInfoField;
+    function GetFieldName(AName: StringRAL): TRALDBInfoField;
     function GetAsJSON: StringRAL;
     function GetAsJSONObj: TRALJSONArray;
     procedure SetAsJSON(AValue: StringRAL);
@@ -122,7 +123,8 @@ type
 
     function NewField: TRALDBInfoField;
 
-    property Fields[AIndex: IntegerRAL]: TRALDBInfoField read GetFields;
+    property Field[AIndex: IntegerRAL]: TRALDBInfoField read GetField;
+    property FieldName[AName: StringRAL]: TRALDBInfoField read GetFieldName;
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
   end;
@@ -495,7 +497,22 @@ end;
 
 { TRALDBInfoFields }
 
-function TRALDBInfoFields.GetFields(AIndex: IntegerRAL): TRALDBInfoField;
+function TRALDBInfoFields.GetFieldName(AName: StringRAL): TRALDBInfoField;
+var
+  vInt : IntegerRAL;
+begin
+  Result := nil;
+  for vInt := 0 to Pred(FFields.Count) do
+  begin
+    if SameText(Field[vInt].FieldName, AName) then
+    begin
+      Result := Field[vInt];
+      Break;
+    end;
+  end;
+end;
+
+function TRALDBInfoFields.GetField(AIndex: IntegerRAL): TRALDBInfoField;
 begin
   Result := nil;
   if (AIndex >= 0) and (AIndex < FFields.Count) then
@@ -508,7 +525,7 @@ var
 begin
   Result := TRALJSONArray.Create;
   for vInt := 0 to Pred(FFields.Count) do
-    Result.Add(Fields[vInt].AsJSONObj);
+    Result.Add(Field[vInt].AsJSONObj);
 end;
 
 procedure TRALDBInfoFields.SetAsJSONObj(AValue: TRALJSONArray);

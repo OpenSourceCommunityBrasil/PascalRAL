@@ -8,7 +8,8 @@ uses
   {$IFDEF FPC}
   LResources, ComponentEditors, FieldsEditor, PropEdits, Forms, DB, Dialogs,
   {$ENDIF}
-  Classes, SysUtils, RALDBSQLDB, RALDBBufDataset;
+  Classes, SysUtils,
+  RALDBSQLDB, RALDBBufDataset, RALDBTypes;
 
 type
 
