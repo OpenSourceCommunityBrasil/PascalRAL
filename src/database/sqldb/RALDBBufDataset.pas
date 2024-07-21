@@ -26,6 +26,7 @@ type
     FSQLCache: TRALDBSQLCache;
     FStorage: TRALDBStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
+    FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
 
     FOnError: TRALDBOnError;
@@ -72,6 +73,7 @@ type
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
+    property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
 
     property OnError : TRALDBOnError read FOnError write FOnError;
@@ -175,6 +177,20 @@ begin
       dsInsert : vSQL := FUpdateSQL.InsertSQL.Text;
       dsEdit   : vSQL := FUpdateSQL.UpdateSQL.Text;
     end;
+
+    if Trim(vSQL) = '' then begin
+      if FUpdateTable = '' then
+        raise Exception.Create('UpdateTable ou UpdateSQL deve ser preenchido');
+
+      case State of
+        dsInsert : vSQL := FConnection.ConstructInsertSQL(Self, FUpdateTable);
+        dsEdit   : vSQL := FConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
+      end;
+    end;
+
+    if Trim(vSQL) = '' then
+      raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+
     CacheSQL(vSQL);
     inherited InternalPost;
     MergeChangeLog;
@@ -186,6 +202,12 @@ var
   vSQL: StringRAL;
 begin
   vSQL := FUpdateSQL.DeleteSQL.Text;
+  if Trim(vSQL) = '' then
+    vSQL := FConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
+
+  if Trim(vSQL) = '' then
+    raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+
   CacheSQL(vSQL);
 
   inherited InternalDelete;
@@ -432,6 +454,7 @@ begin
   FParams := TParams.Create(Self);
   FUpdateSQL := TRALDBUpdateSQL.Create;
   FSQLCache := TRALDBSQLCache.Create;
+  FUpdateMode := upWhereAll;
 end;
 
 destructor TRALDBBufDataset.Destroy;

@@ -161,32 +161,32 @@ type
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; ARequest: TRALRequest;
                      AOnResponse: TRALThreadClientResponse = nil;
-                     AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
-    procedure Delete(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
+                     AExecBehavior : TRALExecBehavior = ebDefault); overload; virtual;
+    procedure Delete(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); overload; virtual;
 
     /// Defines method on the client: Get.
     procedure Get(ARoute: StringRAL; ARequest: TRALRequest;
                   AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
-    procedure Get(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
+                  AExecBehavior : TRALExecBehavior = ebDefault); overload; virtual;
+    procedure Get(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); overload; virtual;
 
     function NewRequest: TRALRequest;
     /// Defines method on the client: Patch.
     procedure Patch(ARoute: StringRAL; ARequest: TRALRequest;
                     AOnResponse: TRALThreadClientResponse = nil;
-                    AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
-    procedure Patch(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
+                    AExecBehavior : TRALExecBehavior = ebDefault); overload; virtual;
+    procedure Patch(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); overload; virtual;
 
     /// Defines method on the client: Post.
     procedure Post(ARoute: StringRAL; ARequest: TRALRequest;
                    AOnResponse: TRALThreadClientResponse = nil;
-                   AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
-    procedure Post(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
+                   AExecBehavior : TRALExecBehavior = ebDefault); overload; virtual;
+    procedure Post(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); overload; virtual;
     /// Defines method on the client: Put.
     procedure Put(ARoute: StringRAL; ARequest: TRALRequest;
                   AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
-    procedure Put(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
+                  AExecBehavior : TRALExecBehavior = ebDefault); overload; virtual;
+    procedure Put(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); overload; virtual;
   published
     property Authentication;
     property BaseURL;

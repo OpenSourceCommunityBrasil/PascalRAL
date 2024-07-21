@@ -1,11 +1,9 @@
 unit RALDBConnection;
 
-{$mode objfpc}{$H+}
-
 interface
 
 uses
-  Classes, SysUtils, DB,
+  Classes, SysUtils, DB, Variants,
   RALCustomObjects, RALTypes, RALTools, RALDBSQLCache, RALClient, RALResponse,
   RALDBTypes, RALRequest, RALMimeTypes;
 
@@ -29,6 +27,12 @@ type
 
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     function GetTables: TRALDBInfoTables;
+
+    function ConstructInsertSQL(ADataset: TDataSet; AUpdateTable: StringRAL): StringRAL;
+    function ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                AUpdateMode: TUpdateMode): StringRAL;
+    function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                AUpdateMode: TUpdateMode): StringRAL;
   published
     property Client : TRALClientMT read FClient write SetClient;
     property ModuleRoute : StringRAL read FModuleRoute write SetModuleRoute;
@@ -213,6 +217,151 @@ begin
     if FClient.RequestLifeCicle then
       FreeAndNil(vReq);
   end;
+end;
+
+function TRALDBConnection.ConstructInsertSQL(ADataset: TDataSet; AUpdateTable : StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+  vField : TField;
+  vSQLFields: StringRAL;
+  vSQLValues: StringRAL;
+  vRetFields: StringRAL;
+begin
+  Result := '';
+  vSQLFields := '';
+  vSQLValues := '';
+  vRetFields := '';
+
+  for vInt := 0 to Pred(ADataset.Fields.Count) do
+  begin
+    vField := ADataset.Fields[vInt];
+     if (not vField.IsNull) and (pfInUpdate in vField.ProviderFlags) and
+        (not vField.ReadOnly) then
+     begin
+       if vSQLFields <> '' then
+         vSQLFields := vSQLFields + ',';
+       if vSQLValues <> '' then
+         vSQLValues := vSQLValues + ',';
+
+       vSQLFields := vSQLFields + vField.FieldName;
+       vSQLValues := vSQLValues + ':' + vField.FieldName;
+     end;
+
+     {$IFDEF FPC}
+       if (pfRefreshOnInsert in vField.ProviderFlags) then begin
+         if vRetFields <> '' then
+           vRetFields := vRetFields + ',';
+
+         vRetFields := vRetFields + vField.FieldName;
+       end;
+     {$ENDIF}
+  end;
+
+  if Length(vSQLFields) = 0 then
+    Exit;
+
+  Result := Format('insert into %s(%s) values(%s)', [AUpdateTable, vSQLFields, vSQLValues]);
+  if vRetFields <> '' then
+    Result := Result + ' returning ' + vRetFields;
+end;
+
+function TRALDBConnection.ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                             AUpdateMode : TUpdateMode): StringRAL;
+var
+  vInt: IntegerRAL;
+  vField: TField;
+  vSQLFields: StringRAL;
+  vSQLWhere: StringRAL;
+  vRetFields: StringRAL;
+begin
+  Result := '';
+  vSQLFields := '';
+  vSQLWhere := '';
+  vRetFields := '';
+
+  for vInt := 0 to Pred(ADataset.Fields.Count) do
+  begin
+    vField := ADataset.Fields[vInt];
+    if (pfInUpdate in vField.ProviderFlags) and (not vField.ReadOnly) then
+    begin
+      if vSQLFields <> '' then
+        vSQLFields := vSQLFields + ',';
+
+      vSQLFields := vSQLFields + vField.FieldName + ' = :' + vField.FieldName;
+    end;
+
+    if (pfInKey in vField.ProviderFlags) or
+       ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
+       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and (vField.Value <> vField.OldValue)) then
+    begin
+      if vSQLWhere <> '' then
+        vSQLWhere := vSQLWhere + ' and ';
+
+      vSQLWhere := vSQLWhere + '(' + vField.FieldName;
+
+      // primary key normally cannot be null
+      if Assigned(vField.Dataset) and vField.Dataset.Active and (vField.OldValue = NULL) then
+         vSQLWhere :=  vSQLWhere + ' is null '
+      else
+         vSQLWhere :=  vSQLWhere + '= :' + 'OLD_' + vField.FieldName;
+
+      vSQLWhere := vSQLWhere + ')';
+    end;
+
+    {$IFDEF FPC}
+      if (pfRefreshOnUpdate in vField.ProviderFlags) then begin
+        if vRetFields <> '' then
+          vRetFields := vRetFields + ',';
+
+        vRetFields := vRetFields + vField.FieldName;
+      end;
+    {$ENDIF}
+  end;
+
+  if (Length(vSQLFields) = 0) and (Length(vSQLWhere) = 0) then
+    Exit;
+
+  Result := Format('update %s set %s where %s', [AUpdateTable, vSQLFields, vSQLWhere]);
+  if vRetFields <> '' then
+    Result := Result + ' returning ' + vRetFields;
+end;
+
+function TRALDBConnection.ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                             AUpdateMode: TUpdateMode): StringRAL;
+var
+  vInt: IntegerRAL;
+  vSQLWhere: StringRAL;
+  vField: TField;
+begin
+  Result := '';
+  vSQLWhere := '';
+
+  for vInt := 0 to Pred(ADataset.Fields.Count) do
+  begin
+    vField := ADataset.Fields[vInt];
+    if (pfInKey in vField.ProviderFlags) or
+       ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
+       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and (vField.Value <> vField.OldValue)) then
+    begin
+      if vSQLWhere <> '' then
+        vSQLWhere := vSQLWhere + ' and ';
+
+      vSQLWhere := vSQLWhere + '(' + vField.FieldName;
+
+      // primary key normally cannot be null
+      if Assigned(vField.Dataset) and vField.Dataset.Active and (vField.OldValue = NULL) then
+         vSQLWhere :=  vSQLWhere + ' is null '
+      else
+         vSQLWhere :=  vSQLWhere + '= :' + 'OLD_' + vField.FieldName;
+
+      vSQLWhere := vSQLWhere + ')';
+    end;
+  end;
+
+  if Length(vSQLWhere) = 0 then
+    Exit;
+
+  Result := Format('delete from %s where %s', [AUpdateTable, vSQLWhere]);
 end;
 
 end.
