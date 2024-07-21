@@ -146,6 +146,7 @@ var
   vName: StringRAL;
   vType: TFieldType;
   vFlags: TBytes;
+  vField: TFieldDef;
 begin
   if ADataset.Active then
     ADataset.Close;
@@ -172,7 +173,17 @@ begin
     vFlags[vInt] := vField^.Values[2]^.ToInt;
     vSize := vField^.Values[3]^.ToInt;
 
-    ADataset.FieldDefs.Add(vName, vType, vSize);
+    vField := TFieldDef(ADataset.FieldDefs.Add);
+    vField.Name := vName;
+    vField.DataType := vType;
+    vField.Size := vSize;
+    if vFlags[vInt] and 1 > 0 then
+      vField.Attributes := vField.Attributes + [faReadonly];
+
+    vField.Required := vFlags[vInt] and 2 > 0;
+    if vFlags[vInt] and 2 > 0 then
+      vField.Attributes := vField.Attributes + [faRequired];
+
     FFoundFields[vInt] := nil;
   end;
 
@@ -187,7 +198,6 @@ begin
     begin
       if SameText(vName, FFieldNames[vSize]) then
       begin
-        TRALDB.SetFieldProviderFlags(ADataset.Fields[vInt], vFlags[vSize]);
         FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
       end;

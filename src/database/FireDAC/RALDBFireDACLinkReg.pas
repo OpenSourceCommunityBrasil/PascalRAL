@@ -4,7 +4,7 @@ unit RALDBFireDACLinkReg;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, VCL.DIalogs,
   DesignEditors, DesignIntf, DSDesign, DB,
   RALDBFireDAC, RALDBFiredacMemTable, RALDBTypes, RALDBConnection, RALTypes;
 
@@ -28,7 +28,6 @@ type
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
-
 procedure register;
 
 implementation
@@ -37,6 +36,9 @@ procedure register;
 begin
   RegisterComponents('RAL - DBWare', [TRALDBFireDACLink]);
   RegisterComponents('RAL - DBWare', [TRALDBFDMemTable]);
+
+  RegisterComponentEditor(TRALDBFDMemTable, TRALDBFDMemTableEditor);
+  RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBFDMemTable, 'UpdateTable', TRALDBFDMemTableTables);
 end;
 
 { TRALDBFDMemTableEditor }

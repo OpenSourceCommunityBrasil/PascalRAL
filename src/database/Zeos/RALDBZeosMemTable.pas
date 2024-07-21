@@ -8,7 +8,7 @@ unit RALDBZeosMemTable;
 interface
 
 uses
-  Classes, SysUtils, DB, VCL.Dialogs,
+  Classes, SysUtils, DB,
   ZDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALDBTypes,
   RALTools, RALDBConnection, RALDBSQLCache;
@@ -21,7 +21,6 @@ type
     FRALConnection: TRALDBConnection;
     FLoading: boolean;
     FLastId: Int64RAL;
-    FOpened: boolean;
     FParams: TParams;
     FParamCheck: boolean;
     FRowsAffected: Int64RAL;
@@ -47,6 +46,7 @@ type
     procedure SetRALConnection(AValue: TRALDBConnection);
 
     procedure OnChangeSQL(Sender : TObject);
+    procedure SetActive(AValue : boolean); override;
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -65,13 +65,13 @@ type
     procedure ApplyUpdates; reintroduce;
     // no zeos essa funcao ja existe
     procedure ExecSQL; override;
-    procedure Open; reintroduce;
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
     property RowsAffected : Int64RAL read FRowsAffected;
     property LastId : Int64RAL read FLastId;
   published
+    property Active;
     property FieldDefs;
     property RALConnection : TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck : boolean read FParamCheck write FParamCheck;
@@ -155,10 +155,32 @@ end;
 
 procedure TRALDBZMemTable.InternalOpen;
 begin
-  if (FLoading) and (not FOpened) then begin
-    FOpened := True;
-//    CreateDataset;
+//  if (FLoading) and (not FOpened) then
+//    FOpened := True;
+  inherited;
+end;
+
+procedure TRALDBZMemTable.SetActive(AValue: boolean);
+begin
+  Clear;
+
+  if (AValue) and (not FLoading) then
+  begin
+    if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
+       (not (csLoading in ComponentState)) then
+      raise Exception.Create('Propriedade Connection deve ser setada');
+
+    if FRALConnection <> nil then
+    begin
+      FLoading := True;
+      FRALConnection.OpenRemote(Self, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+    end;
+    Exit;
   end;
+
+  if (not AValue) then
+    FLoading := False;
+
   inherited;
 end;
 
@@ -281,7 +303,6 @@ begin
     finally
       FreeAndNil(vMem);
       Resync([rmExact]);
-      FLoading := False;
     end;
   end
   else if AResponse.StatusCode = 500 then
@@ -295,6 +316,7 @@ begin
     if Assigned(FOnError) then
       FOnError(Self, AException);
   end;
+  FLoading := False;
 end;
 
 procedure TRALDBZMemTable.OnExecSQLResponse(Sender: TObject;
@@ -481,6 +503,8 @@ begin
   FSQLCache := TRALDBSQLCache.Create;
   FUpdateMode := upWhereAll;
 
+  FLoading := False;
+
   CachedUpdates := False;
 end;
 
@@ -507,26 +531,11 @@ begin
     Close;
 
   Clear;
-  FOpened := False;
 
   if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
 
   FRALConnection.ExecSQLRemote(Self, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
-end;
-
-procedure TRALDBZMemTable.Open;
-begin
-  if Self.Active then
-    Close;
-
-  Clear;
-  FOpened := False;
-
-  if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
-
-  FRALConnection.OpenRemote(Self, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
 end;
 
 function TRALDBZMemTable.ParamByName(const AValue: StringRAL): TParam;

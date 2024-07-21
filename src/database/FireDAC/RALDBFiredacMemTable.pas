@@ -6,6 +6,7 @@ interface
 uses
   Classes, SysUtils, DB,
   FireDAC.Comp.Client, FireDAC.Stan.StorageJSON, FireDAC.Stan.StorageBin,
+  FireDAC.Comp.DataSet,
   RALDBStorage, RALTypes, RALDBConnection, RALDBSQLCache, RALMIMETypes,
   RALDBTypes, RALResponse;
 
@@ -17,7 +18,6 @@ type
     FRALConnection: TRALDBConnection;
     FLoading: boolean;
     FLastId: Int64RAL;
-    FOpened: boolean;
     FParams: TParams;
     FParamCheck: boolean;
     FRowsAffected: Int64RAL;
@@ -33,7 +33,6 @@ type
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
-    procedure InternalOpen; override;
     procedure InternalPost; override;
     procedure InternalDelete; override;
 
@@ -43,6 +42,10 @@ type
     procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
 
     procedure OnChangeSQL(Sender: TObject);
+
+    // proprias do firedac
+    procedure OpenCursor(InfoQuery: Boolean); override;
+    procedure SetActive(AValue: Boolean); override;
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -59,7 +62,6 @@ type
 
     procedure ApplyUpdates;
     procedure ExecSQL;
-    procedure Open; reintroduce;
 
     function ParamByName(const AValue: StringRAL): TParam;
 
@@ -153,6 +155,8 @@ begin
   FSQLCache := TRALDBSQLCache.Create;
   FUpdateMode := upWhereAll;
 
+  FLoading := False;
+
   CachedUpdates := False;
 end;
 
@@ -171,7 +175,7 @@ begin
     Close;
 
   Clear;
-  FOpened := False;
+  FLoading := False;
 
   if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
@@ -209,7 +213,6 @@ begin
     if vInfo = nil then
       Exit;
 
-    Self.DisableControls;
     FieldDefs.Clear;
 
     for vInt := 0 to Pred(vInfo.Count) do
@@ -232,21 +235,13 @@ begin
         vField.Attributes := vField.Attributes + [faRequired];
     end;
 
-    if vTables.Count = 1 then
+    if (vTables.Count = 1) and (FUpdateTable = '') then
       FUpdateTable := vTables.Strings[0];
   finally
-    Self.EnableControls;
     FreeAndNil(vInfo);
     FreeAndNil(vTables);
   end;
-end;
 
-procedure TRALDBFDMemTable.InternalOpen;
-begin
-  if (FLoading) and (not FOpened) then begin
-    FOpened := True;
-//    CreateDataset;
-  end;
   inherited;
 end;
 
@@ -423,8 +418,6 @@ begin
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
-      FLoading := True;
-
       FSQLCache.ResponseFromStream(vMem);
       vDBSQL := FSQLCache.SQLList[0];
 
@@ -447,25 +440,44 @@ begin
     if Assigned(FOnError) then
       FOnError(Self, AException);
   end;
+  FLoading := False;
 end;
 
-procedure TRALDBFDMemTable.Open;
+procedure TRALDBFDMemTable.OpenCursor(InfoQuery: Boolean);
 begin
-  if Self.Active then
-    Close;
-
-  Clear;
-  FOpened := False;
-
-  if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
-
-  FRALConnection.OpenRemote(Self, OnQueryResponse);
+  // server para burlar a memtable, para nao dar erro
+  // 206 - cannot open dataset...
+  if InfoQuery then
+    InternalInitFieldDefs;
+  inherited;
 end;
 
 function TRALDBFDMemTable.ParamByName(const AValue: StringRAL): TParam;
 begin
   Result := FParams.FindParam(AValue);
+end;
+
+procedure TRALDBFDMemTable.SetActive(AValue: Boolean);
+begin
+  Clear;
+
+  if (AValue) and (not FLoading) then
+  begin
+    if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
+       (not (csLoading in ComponentState)) then
+      raise Exception.Create('Propriedade Connection deve ser setada');
+
+    if FRALConnection <> nil then
+    begin
+      FLoading := True;
+      FRALConnection.OpenRemote(Self, OnQueryResponse);
+    end;
+    Exit;
+  end;
+
+  if (not AValue) then
+    FLoading := False;
+  inherited;
 end;
 
 procedure TRALDBFDMemTable.SetRALConnection(const AValue: TRALDBConnection);

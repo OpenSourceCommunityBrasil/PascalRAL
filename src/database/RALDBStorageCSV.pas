@@ -429,6 +429,7 @@ begin
       FFieldNames[vInt] := vName;
       FFoundFields[vInt] := nil;
       FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(vType);
+
       ADataset.FieldDefs.Add(vName, vType, vSize);
     end;
 

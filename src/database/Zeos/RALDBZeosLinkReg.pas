@@ -13,8 +13,8 @@ uses
   {$ELSE}
     DesignEditors, DesignIntf, DSDesign, DB,
   {$ENDIF}
-  Classes, SysUtils, RALDBZeos, RALDBZeosMemTable, ZAbstractConnection, 
-  RALTypes, RAlDBTypes, RALDBConnection;
+  Classes, SysUtils, RALDBZeos, RALDBZeosMemTable, ZAbstractConnection,
+  RALTypes, RALDBTypes, RALDBConnection;
 
 type
 

@@ -632,7 +632,7 @@ begin
     // recuperando as respostas
     for vInt2 := 0 to Pred(vInt1) do
     begin
-      if vInt2 <= FSQLList.Count then
+      if vInt2 < FSQLList.Count then
       begin
         vDBSQL := TRALDBSQL(FSQLList.Items[vInt2]);
       end

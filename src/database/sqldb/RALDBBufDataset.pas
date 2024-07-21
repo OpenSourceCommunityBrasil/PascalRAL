@@ -19,6 +19,7 @@ type
     FLoading: boolean;
     FLastId: Int64RAL;
     FOpened: boolean;
+    FOpening: boolean;
     FParams: TParams;
     FParamCheck: boolean;
     FRowsAffected: Int64RAL;
@@ -45,8 +46,9 @@ type
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
+    procedure SetActive(AValue: boolean); override;
 
-    procedure OnChangeSQL(Sender : TObject);
+    procedure OnChangeSQL(Sender: TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
@@ -55,28 +57,28 @@ type
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     procedure ApplyUpdates; reintroduce;
     procedure ExecSQL;
-    procedure Open; reintroduce;
+    //    procedure Open; reintroduce;
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
-    property RowsAffected : Int64RAL read FRowsAffected;
-    property LastId : Int64RAL read FLastId;
+    property RowsAffected: Int64RAL read FRowsAffected;
+    property LastId: Int64RAL read FLastId;
   published
-    property RALConnection : TRALDBConnection read FRALConnection write SetRALConnection;
-    property ParamCheck : boolean read FParamCheck write FParamCheck;
-    property Params : TParams read FParams write FParams;
-    property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorageLink read FStorage write SetStorage;
+    property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
+    property ParamCheck: boolean read FParamCheck write FParamCheck;
+    property Params: TParams read FParams write FParams;
+    property SQL: TStrings read FSQL write SetSQL;
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
 
-    property OnError : TRALDBOnError read FOnError write FOnError;
+    property OnError: TRALDBOnError read FOnError write FOnError;
   end;
 
 
@@ -158,8 +160,11 @@ end;
 
 procedure TRALDBBufDataset.InternalOpen;
 begin
-  if (FLoading) and (not FOpened) then begin
+  if (FLoading) and (not FOpened) then
+  begin
     FOpened := True;
+    if (Fields.Count > 0) then
+      FieldDefs.Clear;
     CreateDataset;
   end;
   inherited InternalOpen;
@@ -167,24 +172,27 @@ end;
 
 procedure TRALDBBufDataset.InternalPost;
 var
-  vSQL : StringRAL;
+  vSQL: StringRAL;
 begin
-  if FLoading then begin
+  if FLoading then
+  begin
     inherited InternalPost;
   end
-  else begin
+  else
+  begin
     case State of
-      dsInsert : vSQL := FUpdateSQL.InsertSQL.Text;
-      dsEdit   : vSQL := FUpdateSQL.UpdateSQL.Text;
+      dsInsert: vSQL := FUpdateSQL.InsertSQL.Text;
+      dsEdit: vSQL := FUpdateSQL.UpdateSQL.Text;
     end;
 
-    if Trim(vSQL) = '' then begin
+    if Trim(vSQL) = '' then
+    begin
       if FUpdateTable = '' then
         raise Exception.Create('UpdateTable ou UpdateSQL deve ser preenchido');
 
       case State of
-        dsInsert : vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
-        dsEdit   : vSQL := FRALConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
+        dsInsert: vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
+        dsEdit: vSQL := FRALConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
       end;
     end;
 
@@ -236,7 +244,7 @@ end;
 
 procedure TRALDBBufDataset.OnChangeSQL(Sender: TObject);
 var
-  vSQL : StringRAL;
+  vSQL: StringRAL;
 begin
   if FParamCheck then
   begin
@@ -257,11 +265,11 @@ begin
   end;
 end;
 
-procedure TRALDBBufDataset.OnQueryResponse(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
+procedure TRALDBBufDataset.OnQueryResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 var
-  vMem : TStream;
-  vException : StringRAL;
+  vMem: TStream;
+  vException: StringRAL;
   vDBSQL: TRALDBSQL;
 begin
   if AResponse.StatusCode = 200 then
@@ -280,8 +288,7 @@ begin
     finally
       FreeAndNil(vMem);
       MergeChangeLog;
-      FLoading := False;
-    end;
+  end;
   end
   else if AResponse.StatusCode = 500 then
   begin
@@ -294,12 +301,13 @@ begin
     if Assigned(FOnError) then
       FOnError(Self, AException);
   end;
+  FLoading := False;
 end;
 
-procedure TRALDBBufDataset.OnExecSQLResponse(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
+procedure TRALDBBufDataset.OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 var
-  vException : StringRAL;
+  vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
 begin
@@ -329,13 +337,13 @@ begin
   end;
 end;
 
-procedure TRALDBBufDataset.OnApplyUpdates(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
+procedure TRALDBBufDataset.OnApplyUpdates(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 var
-  vException : StringRAL;
+  vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
-  vInt1, vInt2 : IntegerRAL;
+  vInt1, vInt2: IntegerRAL;
   vTable: TRALDBBufDataset;
   vField: TField;
 begin
@@ -348,7 +356,7 @@ begin
       begin
         vDBSQL := FSQLCache.SQLList[vInt1];
         if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
+          (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
         begin
           Self.GotoBookmark(vDBSQL.BookMark);
 
@@ -401,10 +409,10 @@ end;
 
 procedure TRALDBBufDataset.CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType);
 var
-  vParams : TParams;
-  vParam : TParam;
+  vParams: TParams;
+  vParam: TParam;
   vInt: IntegerRAL;
-  vField : TField;
+  vField: TField;
   vPrefix: StringRAL;
 begin
   if Trim(ASQL) = '' then
@@ -424,7 +432,7 @@ begin
       begin
         // params tipo new_field, old_field
         vField := Self.FindField(Copy(vParam.Name, 5, Length(vParam.Name)));
-        vPrefix := Copy(vParam.Name, 1, 3)
+        vPrefix := Copy(vParam.Name, 1, 3);
       end;
 
       if vField <> nil then
@@ -455,6 +463,10 @@ begin
   FUpdateSQL := TRALDBUpdateSQL.Create;
   FSQLCache := TRALDBSQLCache.Create;
   FUpdateMode := upWhereAll;
+
+  FOpening := False;
+  FLoading := False;
+  FOpened := False;
 end;
 
 destructor TRALDBBufDataset.Destroy;
@@ -479,18 +491,29 @@ begin
   Result := FParams.FindParam(AValue);
 end;
 
-procedure TRALDBBufDataset.Open;
+procedure TRALDBBufDataset.SetActive(AValue: boolean);
 begin
-  if Self.Active then
-    Close;
-
   Clear;
-  FOpened := False;
 
-  if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
+  if (AValue) and (not FOpening) then
+  begin
+    if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
+      (not (csLoading in ComponentState)) then
+      raise Exception.Create('Propriedade Connection deve ser setada');
 
-  FRALConnection.OpenRemote(Self, @OnQueryResponse);
+    if FRALConnection <> nil then
+    begin
+      FOpening := True;
+      FLoading := False;
+      FOpened := False;
+      FRALConnection.OpenRemote(Self, @OnQueryResponse);
+    end;
+    Exit;
+  end
+  else if (not AValue) then
+    FOpening := False;
+
+  inherited;
 end;
 
 procedure TRALDBBufDataset.ExecSQL;
@@ -508,4 +531,3 @@ begin
 end;
 
 end.
-
