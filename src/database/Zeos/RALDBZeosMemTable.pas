@@ -495,7 +495,7 @@ end;
 
 procedure TRALDBZMemTable.ApplyUpdates;
 begin
-  if FConnection = nil then
+  if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
 
   FRALConnection.ApplyUpdatesRemote(FSQLCache, {$IFDEF FPC}@{$ENDIF}OnApplyUpdates);
