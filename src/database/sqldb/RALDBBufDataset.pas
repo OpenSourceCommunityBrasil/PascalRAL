@@ -5,9 +5,9 @@ interface
 uses
   Classes, SysUtils, DB, Dialogs,
   BufDataset,
-  RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes,
-  RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALTools, RALDBSQLCache,
-  RALJSON, RALDBConnection;
+  RALDBStorage, RALTypes, RALResponse, RALMIMETypes,
+  RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALDBSQLCache,
+  RALDBConnection;
 
 type
 
@@ -15,7 +15,7 @@ type
 
   TRALDBBufDataset = class(TBufDataset)
   private
-    FConnection: TRALDBConnection;
+    FRALConnection: TRALDBConnection;
     FLoading: boolean;
     FLastId: Int64RAL;
     FOpened: boolean;
@@ -41,7 +41,7 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetStorage(AValue: TRALDBStorageLink);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
-    procedure SetConnection(AValue: TRALDBConnection);
+    procedure SetRALConnection(AValue: TRALDBConnection);
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -59,15 +59,15 @@ type
     destructor Destroy; override;
 
     procedure ApplyUpdates; reintroduce;
-    procedure Open; reintroduce;
     procedure ExecSQL;
+    procedure Open; reintroduce;
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
     property RowsAffected : Int64RAL read FRowsAffected;
     property LastId : Int64RAL read FLastId;
   published
-    property Connection : TRALDBConnection read FConnection write SetConnection;
+    property RALConnection : TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck : boolean read FParamCheck write FParamCheck;
     property Params : TParams read FParams write FParams;
     property SQL : TStrings read FSQL write SetSQL;
@@ -98,7 +98,7 @@ var
   vTables: TStringList;
 begin
   vTables := TStringList.Create;
-  vInfo := FConnection.InfoFieldsFromSQL(FSQL.Text);
+  vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
   try
     if vInfo = nil then
       Exit;
@@ -135,22 +135,22 @@ begin
   end;
 end;
 
-procedure TRALDBBufDataset.SetConnection(AValue: TRALDBConnection);
+procedure TRALDBBufDataset.SetRALConnection(AValue: TRALDBConnection);
 begin
-  if FConnection <> nil then
-    FConnection.RemoveFreeNotification(Self);
+  if FRALConnection <> nil then
+    FRALConnection.RemoveFreeNotification(Self);
 
-  if AValue <> FConnection then
-    FConnection := AValue;
+  if AValue <> FRALConnection then
+    FRALConnection := AValue;
 
-  if FConnection <> nil then
-    FConnection.FreeNotification(Self);
+  if FRALConnection <> nil then
+    FRALConnection.FreeNotification(Self);
 end;
 
 procedure TRALDBBufDataset.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  if (Operation = opRemove) and (AComponent = FConnection) then
-    FConnection := nil
+  if (Operation = opRemove) and (AComponent = FRALConnection) then
+    FRALConnection := nil
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
@@ -183,8 +183,8 @@ begin
         raise Exception.Create('UpdateTable ou UpdateSQL deve ser preenchido');
 
       case State of
-        dsInsert : vSQL := FConnection.ConstructInsertSQL(Self, FUpdateTable);
-        dsEdit   : vSQL := FConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
+        dsInsert : vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
+        dsEdit   : vSQL := FRALConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
       end;
     end;
 
@@ -203,7 +203,7 @@ var
 begin
   vSQL := FUpdateSQL.DeleteSQL.Text;
   if Trim(vSQL) = '' then
-    vSQL := FConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
+    vSQL := FRALConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
 
   if Trim(vSQL) = '' then
     raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
@@ -468,10 +468,10 @@ end;
 
 procedure TRALDBBufDataset.ApplyUpdates;
 begin
-  if FConnection = nil then
+  if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
 
-  FConnection.ApplyUpdatesRemote(FSQLCache, @OnApplyUpdates);
+  FRALConnection.ApplyUpdatesRemote(FSQLCache, @OnApplyUpdates);
 end;
 
 function TRALDBBufDataset.ParamByName(const AValue: StringRAL): TParam;
@@ -487,10 +487,10 @@ begin
   Clear;
   FOpened := False;
 
-  if FConnection = nil then
+  if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
 
-  FConnection.OpenRemote(Self, @OnQueryResponse);
+  FRALConnection.OpenRemote(Self, @OnQueryResponse);
 end;
 
 procedure TRALDBBufDataset.ExecSQL;
@@ -501,10 +501,10 @@ begin
   Clear;
   FOpened := False;
 
-  if FConnection = nil then
+  if FRALConnection = nil then
     raise Exception.Create('Propriedade Connection deve ser setada');
 
-  FConnection.ExecSQLRemote(Self, @OnExecSQLResponse);
+  FRALConnection.ExecSQLRemote(Self, @OnExecSQLResponse);
 end;
 
 end.

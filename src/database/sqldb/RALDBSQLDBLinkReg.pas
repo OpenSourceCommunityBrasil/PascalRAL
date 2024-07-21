@@ -6,7 +6,7 @@ interface
 
 uses
   {$IFDEF FPC}
-  LResources, ComponentEditors, FieldsEditor, PropEdits, Forms, DB, Dialogs,
+  LResources, ComponentEditors, FieldsEditor, PropEdits,
   {$ENDIF}
   Classes, SysUtils,
   RALDBSQLDB, RALDBBufDataset, RALDBTypes, RALDBConnection, RALTypes;
@@ -22,14 +22,13 @@ type
     procedure ExecuteVerb(AIndex: Integer); override;
   end;
 
-  { TRALBufDatasetTables }
+  { TRALDBBufDatasetTables }
 
-  TRALBufDatasetTables = class(TStringProperty)
+  TRALDBBufDatasetTables = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
-
 
 procedure Register;
 
@@ -41,7 +40,7 @@ begin
   RegisterComponents('RAL - DBWare', [TRALDBBufDataset]);
 
   RegisterComponentEditor(TRALDBBufDataset, TRALDBBufDatasetEditor);
-  RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBBufDataset, 'UpdateTable', TRALBufDatasetTables);
+  RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBBufDataset, 'UpdateTable', TRALDBBufDatasetTables);
 end;
 
 { TRALDBBufDatasetEditor }
@@ -85,14 +84,14 @@ begin
   end;
 end;
 
-{ TRALBufDatasetTables }
+{ TRALDBBufDatasetTables }
 
-function TRALBufDatasetTables.GetAttributes: TPropertyAttributes;
+function TRALDBBufDatasetTables.GetAttributes: TPropertyAttributes;
 begin
   Result := [paValueList, paSortList];
 end;
 
-procedure TRALBufDatasetTables.GetValues(Proc: TGetStrProc);
+procedure TRALDBBufDatasetTables.GetValues(Proc: TGetStrProc);
 var
   vBufDataset: TRALDBBufDataset;
   vTables: TRALDBInfoTables;
@@ -100,7 +99,7 @@ var
   vInt: IntegerRAL;
 begin
   vBufDataset := TRALDBBufDataset(GetComponent(0));
-  vConnection := vBufDataset.Connection;
+  vConnection := vBufDataset.RALConnection;
   if vConnection = nil then
     raise Exception.Create('Connection não setada');
 
