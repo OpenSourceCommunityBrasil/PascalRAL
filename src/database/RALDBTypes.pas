@@ -108,10 +108,10 @@ type
   private
     FFields: TList;
   protected
-    function GetField(AIndex: IntegerRAL): TRALDBInfoField;
-    function GetFieldName(AName: StringRAL): TRALDBInfoField;
     function GetAsJSON: StringRAL;
     function GetAsJSONObj: TRALJSONArray;
+    function GetField(AIndex: IntegerRAL): TRALDBInfoField;
+    function GetFieldName(AName: StringRAL): TRALDBInfoField;
     procedure SetAsJSON(AValue: StringRAL);
     procedure SetAsJSONObj(AValue: TRALJSONArray);
   public
@@ -125,6 +125,58 @@ type
 
     property Field[AIndex: IntegerRAL]: TRALDBInfoField read GetField;
     property FieldName[AName: StringRAL]: TRALDBInfoField read GetFieldName;
+
+    property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
+  end;
+
+  { TRALDBInfoTable }
+
+  TRALDBInfoTable = class
+  private
+    FName: StringRAL;
+    FIsSystem: boolean;
+    FSchema: StringRAL;
+  protected
+    function GetAsJSON: StringRAL;
+    function GetAsJSONObj: TRALJSONObject;
+    procedure SetAsJSON(AValue: StringRAL);
+    procedure SetAsJSONObj(AValue: TRALJSONObject);
+  public
+    constructor Create;
+
+    property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    property AsJSONObj: TRALJSONObject read GetAsJSONObj write SetAsJSONObj;
+  published
+    property Name: StringRAL read FName write FName;
+    property IsSystem: boolean read FIsSystem write FIsSystem;
+    property Schema: StringRAL read FSchema write FSchema;
+  end;
+
+  { TRALDBInfoTables }
+
+  TRALDBInfoTables = class
+  private
+    FTables : TList;
+  protected
+    function GetAsJSON: StringRAL;
+    function GetAsJSONObj: TRALJSONArray;
+    function GetTable(AIndex: IntegerRAL): TRALDBInfoTable;
+    function GetTableName(AName: StringRAL): TRALDBInfoTable;
+    procedure SetAsJSON(AValue: StringRAL);
+    procedure SetAsJSONObj(AValue: TRALJSONArray);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    function Count: IntegerRAL;
+    procedure Clear;
+
+    function NewTable: TRALDBInfoTable;
+
+    property Table[AIndex: IntegerRAL]: TRALDBInfoTable read GetTable;
+    property TableName[AName: StringRAL]: TRALDBInfoTable read GetTableName;
+
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
   end;
@@ -600,6 +652,162 @@ function TRALDBInfoFields.NewField: TRALDBInfoField;
 begin
   Result := TRALDBInfoField.Create;
   FFields.Add(Result);
+end;
+
+{ TRALDBInfoTable }
+
+function TRALDBInfoTable.GetAsJSON: StringRAL;
+var
+  vJSON: TRALJSONObject;
+begin
+  vJSON := AsJSONObj;
+  try
+    Result := vJSON.ToJson;
+  finally
+    FreeAndNil(vJSON);
+  end;
+end;
+
+function TRALDBInfoTable.GetAsJSONObj: TRALJSONObject;
+begin
+  Result := TRALJSONObject.Create;
+
+  Result.Add('table_name', FName);
+  Result.Add('system_table', FIsSystem);
+  Result.Add('schema_name', FSchema);
+end;
+
+procedure TRALDBInfoTable.SetAsJSON(AValue: StringRAL);
+var
+  vJSON : TRALJSONObject;
+begin
+  vJSON := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  try
+    AsJSONObj := vJSON;
+  finally
+    FreeAndNil(vJSON);
+  end;
+end;
+
+procedure TRALDBInfoTable.SetAsJSONObj(AValue: TRALJSONObject);
+begin
+  FName := AValue.Get('table_name').AsString;
+  FIsSystem := AValue.Get('system_table').AsBoolean;
+  FSchema := AValue.Get('schema_name').AsString;
+end;
+
+constructor TRALDBInfoTable.Create;
+begin
+  FName := '';
+  FIsSystem := False;
+  FSchema := '';
+end;
+
+{ TRALDBInfoTables }
+
+function TRALDBInfoTables.GetAsJSON: StringRAL;
+var
+  vJSON: TRALJSONArray;
+begin
+  vJSON := AsJSONObj;
+  try
+    Result := vJSON.ToJson;
+  finally
+    FreeAndNil(vJSON);
+  end;
+end;
+
+function TRALDBInfoTables.GetAsJSONObj: TRALJSONArray;
+var
+  vInt: IntegerRAL;
+begin
+  Result := TRALJSONArray.Create;
+  for vInt := 0 to Pred(FTables.Count) do
+    Result.Add(Table[vInt].AsJSONObj);
+end;
+
+function TRALDBInfoTables.GetTable(AIndex: IntegerRAL): TRALDBInfoTable;
+begin
+  Result := nil;
+  if (AIndex >= 0) and (AIndex < FTables.Count) then
+    Result := TRALDBInfoTable(FTables.Items[AIndex]);
+end;
+
+function TRALDBInfoTables.GetTableName(AName: StringRAL): TRALDBInfoTable;
+var
+  vInt : IntegerRAL;
+begin
+  Result := nil;
+  for vInt := 0 to Pred(FTables.Count) do
+  begin
+    if SameText(Table[vInt].Name, AName) then
+    begin
+      Result := Table[vInt];
+      Break;
+    end;
+  end;
+end;
+
+procedure TRALDBInfoTables.SetAsJSON(AValue: StringRAL);
+var
+  vJSON: TRALJSONArray;
+begin
+  vJSON := TRALJSONArray(TRALJSON.ParseJSON(AValue));
+  try
+    AsJSONObj := vJSON;
+  finally
+    FreeAndNil(vJSON);
+  end;
+end;
+
+procedure TRALDBInfoTables.SetAsJSONObj(AValue: TRALJSONArray);
+var
+  vObj: TRALJSONObject;
+  vInt: IntegerRAL;
+  vTable: TRALDBInfoTable;
+begin
+  Clear;
+
+  for vInt := 0 to Pred(AValue.Count) do
+  begin
+    vObj := TRALJSONObject(AValue.Get(vInt));
+
+    vTable := NewTable;
+    vTable.AsJSONObj := vObj;
+  end;
+end;
+
+constructor TRALDBInfoTables.Create;
+begin
+  inherited;
+  FTables := TList.Create;
+end;
+
+destructor TRALDBInfoTables.Destroy;
+begin
+  Clear;
+  FreeAndNil(FTables);
+  inherited Destroy;
+end;
+
+function TRALDBInfoTables.Count: IntegerRAL;
+begin
+  Result := FTables.Count;
+end;
+
+procedure TRALDBInfoTables.Clear;
+begin
+  while FTables.Count > 0 do
+  begin
+    TRALDBInfoTable(FTables.Items[FTables.Count - 1]).Free;
+    FTables.Delete(FTables.Count - 1);
+  end;
+end;
+
+function TRALDBInfoTables.NewTable: TRALDBInfoTable;
+begin
+  Result := TRALDBInfoTable.Create;
+  FTables.Add(Result);
 end;
 
 end.

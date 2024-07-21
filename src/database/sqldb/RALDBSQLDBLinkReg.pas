@@ -9,7 +9,7 @@ uses
   LResources, ComponentEditors, FieldsEditor, PropEdits, Forms, DB, Dialogs,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBSQLDB, RALDBBufDataset, RALDBTypes;
+  RALDBSQLDB, RALDBBufDataset, RALDBTypes, RALDBConnection, RALTypes;
 
 type
 
@@ -22,6 +22,15 @@ type
     procedure ExecuteVerb(AIndex: Integer); override;
   end;
 
+  { TRALBufDatasetTables }
+
+  TRALBufDatasetTables = class(TStringProperty)
+  public
+    function GetAttributes: TPropertyAttributes; override;
+    procedure GetValues(Proc: TGetStrProc); override;
+  end;
+
+
 procedure Register;
 
 implementation
@@ -32,6 +41,7 @@ begin
   RegisterComponents('RAL - DBWare', [TRALDBBufDataset]);
 
   RegisterComponentEditor(TRALDBBufDataset, TRALDBBufDatasetEditor);
+  RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBBufDataset, 'UpdateTable', TRALBufDatasetTables);
 end;
 
 { TRALDBBufDatasetEditor }
@@ -56,9 +66,8 @@ begin
   case AIndex of
     0 : begin
       vBufDataset := TRALDBBufDataset(GetComponent);
-      if (vBufDataset.FieldInfo.Count = 0) or
-         (vBufDataset.FieldDefs.Count = 0) then
-        vBufDataset.FillFieldDefs;
+      if vBufDataset.FieldDefs.Count = 0 then
+        vBufDataset.FieldDefs.Updated := False;
 
       vEditor := FindEditorForm(vBufDataset);
       if vEditor = nil then
@@ -73,6 +82,39 @@ begin
         TDsFieldsEditorFrm(vEditor).ShowOnTop;
       end;
     end;
+  end;
+end;
+
+{ TRALBufDatasetTables }
+
+function TRALBufDatasetTables.GetAttributes: TPropertyAttributes;
+begin
+  Result := [paValueList, paSortList];
+end;
+
+procedure TRALBufDatasetTables.GetValues(Proc: TGetStrProc);
+var
+  vBufDataset: TRALDBBufDataset;
+  vTables: TRALDBInfoTables;
+  vConnection : TRALDBConnection;
+  vInt: IntegerRAL;
+begin
+  vBufDataset := TRALDBBufDataset(GetComponent(0));
+  vConnection := vBufDataset.Connection;
+  if vConnection = nil then
+    raise Exception.Create('Connection não setada');
+
+  vTables := vConnection.GetTables;
+  try
+    if vTables <> nil then begin
+      for vInt := 0 to Pred(vTables.Count) do
+      begin
+        if not vTables.Table[vInt].IsSystem then
+          Proc(vTables.Table[vInt].Name);
+      end;
+    end;
+  finally
+    FreeAndNil(vTables)
   end;
 end;
 

@@ -7,7 +7,7 @@ uses
   BufDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes,
   RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALTools, RALDBSQLCache,
-  RALJSON;
+  RALJSON, RALDBConnection;
 
 type
 
@@ -15,19 +15,18 @@ type
 
   TRALDBBufDataset = class(TBufDataset)
   private
-    FClient: TRALClientMT;
-    FOpened: boolean;
+    FConnection: TRALDBConnection;
     FLoading: boolean;
     FLastId: Int64RAL;
-    FModuleRoute: StringRAL;
+    FOpened: boolean;
     FParams: TParams;
     FParamCheck: boolean;
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
+    FSQLCache: TRALDBSQLCache;
     FStorage: TRALDBStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
-    FSQLCache: TRALDBSQLCache;
-    FFieldInfo: TRALDBInfoFields;
+    FUpdateTable: StringRAL;
 
     FOnError: TRALDBOnError;
   protected
@@ -39,26 +38,24 @@ type
     procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
-    procedure SetClient(AValue: TRALClientMT);
     procedure SetStorage(AValue: TRALDBStorageLink);
-    procedure SetModuleRoute(AValue: StringRAL);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
+    procedure SetConnection(AValue: TRALDBConnection);
+
+    // carrega os fieldsdefs do servidor
+    procedure InternalInitFieldDefs; override;
 
     procedure OnChangeSQL(Sender : TObject);
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
-    procedure OnGetSQLFields(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
-    procedure OpenRemote;
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
-
-    procedure FillFieldDefs;
 
     procedure ApplyUpdates; reintroduce;
     procedure Open; reintroduce;
@@ -68,15 +65,14 @@ type
 
     property RowsAffected : Int64RAL read FRowsAffected;
     property LastId : Int64RAL read FLastId;
-    property FieldInfo : TRALDBInfoFields read FFieldInfo;
   published
-    property Client : TRALClientMT read FClient write SetClient;
-    property ModuleRoute : StringRAL read FModuleRoute write SetModuleRoute;
+    property Connection : TRALDBConnection read FConnection write SetConnection;
     property ParamCheck : boolean read FParamCheck write FParamCheck;
     property Params : TParams read FParams write FParams;
     property SQL : TStrings read FSQL write SetSQL;
     property Storage : TRALDBStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
+    property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
 
     property OnError : TRALDBOnError read FOnError write FOnError;
   end;
@@ -86,23 +82,73 @@ implementation
 
 { TRALDBBufDataset }
 
-procedure TRALDBBufDataset.SetModuleRoute(AValue: StringRAL);
-begin
-  if FModuleRoute = AValue then
-    Exit;
-
-  FModuleRoute := FixRoute(AValue);
-end;
-
 procedure TRALDBBufDataset.SetUpdateSQL(AValue: TRALDBUpdateSQL);
 begin
   FUpdateSQL.Assign(AValue);
 end;
 
+procedure TRALDBBufDataset.InternalInitFieldDefs;
+var
+  vInfo: TRALDBInfoFields;
+  vInt: IntegerRAL;
+  vField: TFieldDef;
+  vType: TRALFieldType;
+  vTables: TStringList;
+begin
+  vTables := TStringList.Create;
+  vInfo := FConnection.InfoFieldsFromSQL(FSQL.Text);
+  try
+    if vInfo = nil then
+      Exit;
+
+    Self.DisableControls;
+    FieldDefs.Clear;
+
+    for vInt := 0 to Pred(vInfo.Count) do
+    begin
+      vType := vInfo.Field[vInt].RALFieldType;
+
+      // update table
+      if vTables.IndexOf(vInfo.Field[vInt].TableName) < 0 then
+        vTables.Add(vInfo.Field[vInt].TableName);
+
+      vField := FieldDefs.AddFieldDef;
+      vField.Name := vInfo.Field[vInt].FieldName;
+      vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
+      vField.Size := vInfo.Field[vInt].Length;
+      vField.Precision := vInfo.Field[vInt].Precision;
+      vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
+      if vInfo.Field[vInt].Flags and 1 > 0 then
+        vField.Attributes := vField.Attributes + [faReadonly];
+      if vInfo.Field[vInt].Flags and 2 > 0 then
+        vField.Attributes := vField.Attributes + [faRequired];
+    end;
+
+    if vTables.Count = 1 then
+      FUpdateTable := vTables.Strings[0];
+  finally
+    Self.EnableControls;
+    FreeAndNil(vInfo);
+    FreeAndNil(vTables);
+  end;
+end;
+
+procedure TRALDBBufDataset.SetConnection(AValue: TRALDBConnection);
+begin
+  if FConnection <> nil then
+    FConnection.RemoveFreeNotification(Self);
+
+  if AValue <> FConnection then
+    FConnection := AValue;
+
+  if FConnection <> nil then
+    FConnection.FreeNotification(Self);
+end;
+
 procedure TRALDBBufDataset.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  if (Operation = opRemove) and (AComponent = FClient) then
-    FClient := nil
+  if (Operation = opRemove) and (AComponent = FConnection) then
+    FConnection := nil
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
@@ -154,18 +200,6 @@ begin
   FSQL.Assign(AValue);
 end;
 
-procedure TRALDBBufDataset.SetClient(AValue: TRALClientMT);
-begin
-  if FClient <> nil then
-    FClient.RemoveFreeNotification(Self);
-
-  if AValue <> FClient then
-    FClient := AValue;
-
-  if FClient <> nil then
-    FClient.FreeNotification(Self);
-end;
-
 procedure TRALDBBufDataset.SetStorage(AValue: TRALDBStorageLink);
 begin
   if FStorage <> nil then
@@ -192,7 +226,13 @@ begin
     FParams.Clear;
   end;
 
-  FFieldInfo.Clear;
+  Self.DisableControls;
+  try
+    FieldDefs.Clear;
+    FieldDefs.Updated := False;
+  finally
+    Self.EnableControls;
+  end;
 end;
 
 procedure TRALDBBufDataset.OnQueryResponse(Sender: TObject;
@@ -331,59 +371,6 @@ begin
   end;
 end;
 
-procedure TRALDBBufDataset.OnGetSQLFields(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
-var
-  vBody: StringRAL;
-  vInt: IntegerRAL;
-  vField: TFieldDef;
-  vType: TRALFieldType;
-begin
-  if AResponse.StatusCode = 200 then
-  begin
-    FieldDefs.Clear;
-    FFieldInfo.AsJSON := AResponse.Body.AsString;
-
-    for vInt := 0 to Pred(FFieldInfo.Count) do
-    begin
-      vType := FFieldInfo.Field[vInt].RALFieldType;
-
-      vField := FieldDefs.AddFieldDef;
-      vField.Name := FFieldInfo.Field[vInt].FieldName;
-      vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
-      vField.Size := FFieldInfo.Field[vInt].Length;
-      vField.Precision := FFieldInfo.Field[vInt].Precision;
-      vField.Required := FFieldInfo.Field[vInt].Flags and 2 > 0;
-    end;
-  end;
-end;
-
-procedure TRALDBBufDataset.OpenRemote;
-var
-  vMem : TStream;
-  vReq : TRALRequest;
-  vUrl : StringRAL;
-begin
-  FSQLCache.Clear;
-  FSQLCache.Add(Self);
-
-  vMem := FSQLCache.SaveToStream;
-  vReq := FClient.NewRequest;
-  try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-    vReq.AddFile(vMem);
-
-    vUrl := FixRoute(FModuleRoute + '/opensql');
-    FClient.Post(vUrl, vReq, @OnQueryResponse);
-  finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
-
-    FreeAndNil(vMem);
-  end;
-end;
-
 procedure TRALDBBufDataset.Clear;
 begin
   FLastId := 0;
@@ -440,13 +427,11 @@ begin
   inherited Create(AOwner);
   FSQL := TStringList.Create;
   TStringList(FSQL).OnChange := @OnChangeSQL;
-  FFieldInfo:= TRALDBInfoFields.Create;
 
   FParamCheck := True;
   FParams := TParams.Create(Self);
   FUpdateSQL := TRALDBUpdateSQL.Create;
   FSQLCache := TRALDBSQLCache.Create;
-  FModuleRoute := '/';
 end;
 
 destructor TRALDBBufDataset.Destroy;
@@ -455,50 +440,15 @@ begin
   FreeAndNil(FParams);
   FreeAndNil(FUpdateSQL);
   FreeAndNil(FSQLCache);
-  FreeAndNil(FFieldInfo);
   inherited Destroy;
 end;
 
-procedure TRALDBBufDataset.FillFieldDefs;
-var
-  vReq : TRALRequest;
-  vUrl : StringRAL;
-begin
-  vReq := FClient.NewRequest;
-  try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONJSON;
-    vReq.Params.AddParam('sql', SQL.Text, rpkQUERY);
-
-    vUrl := FixRoute(FModuleRoute + '/getsqlfields');
-    FClient.Get(vUrl, vReq, @OnGetSQLFields, ebSingleThread);
-  finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
-  end;
-end;
-
 procedure TRALDBBufDataset.ApplyUpdates;
-var
-  vMem : TStream;
-  vReq : TRALRequest;
-  vUrl : StringRAL;
 begin
-  vMem := FSQLCache.SaveToStream;
-  vReq := FClient.NewRequest;
-  try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-    vReq.AddFile(vMem);
+  if FConnection = nil then
+    raise Exception.Create('Propriedade Connection deve ser setada');
 
-    vUrl := FixRoute(FModuleRoute + '/applyupdates');
-    FClient.Post(vUrl, vReq, @OnApplyUpdates, ebSingleThread);
-  finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
-
-    FreeAndNil(vMem);
-  end;
+  FConnection.ApplyUpdatesRemote(FSQLCache, @OnApplyUpdates);
 end;
 
 function TRALDBBufDataset.ParamByName(const AValue: StringRAL): TParam;
@@ -514,41 +464,24 @@ begin
   Clear;
   FOpened := False;
 
-  if FClient = nil then
-    raise Exception.Create('Propriedade Client deve ser setada');
+  if FConnection = nil then
+    raise Exception.Create('Propriedade Connection deve ser setada');
 
-  OpenRemote;
+  FConnection.OpenRemote(Self, @OnQueryResponse);
 end;
 
 procedure TRALDBBufDataset.ExecSQL;
-var
-  vMem : TStream;
-  vReq : TRALRequest;
-  vUrl : StringRAL;
 begin
   if Self.Active then
     Close;
 
   Clear;
+  FOpened := False;
 
-  FSQLCache.Clear;
-  FSQLCache.Add(Self, etExecute);
+  if FConnection = nil then
+    raise Exception.Create('Propriedade Connection deve ser setada');
 
-  vMem := FSQLCache.SaveToStream;
-  vReq := FClient.NewRequest;
-  try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-    vReq.AddFile(vMem);
-
-    vUrl := FixRoute(FModuleRoute + '/execsql');
-    FClient.Post(vUrl, vReq, @OnExecSQLResponse, ebSingleThread);
-  finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
-
-    FreeAndNil(vMem);
-  end;
+  FConnection.ExecSQLRemote(Self, @OnExecSQLResponse);
 end;
 
 end.

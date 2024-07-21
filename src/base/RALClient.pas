@@ -148,6 +148,8 @@ type
     procedure ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest; AMethod: TRALMethod;
                             AOnResponse: TRALThreadClientResponse = nil;
                             AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+    function ExecuteSingle(ARoute: StringRAL; ARequest: TRALRequest;
+                           AMethod: TRALMethod; var AException: StringRAL) : TRALResponse; virtual;
 
     /// event called when client thread finishes
     procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
@@ -159,27 +161,32 @@ type
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; ARequest: TRALRequest;
                      AOnResponse: TRALThreadClientResponse = nil;
-                     AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+                     AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
+    procedure Delete(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
 
     /// Defines method on the client: Get.
     procedure Get(ARoute: StringRAL; ARequest: TRALRequest;
                   AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+                  AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
+    procedure Get(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
 
     function NewRequest: TRALRequest;
     /// Defines method on the client: Patch.
     procedure Patch(ARoute: StringRAL; ARequest: TRALRequest;
                     AOnResponse: TRALThreadClientResponse = nil;
-                    AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+                    AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
+    procedure Patch(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
 
     /// Defines method on the client: Post.
     procedure Post(ARoute: StringRAL; ARequest: TRALRequest;
                    AOnResponse: TRALThreadClientResponse = nil;
-                   AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+                   AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
+    procedure Post(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
     /// Defines method on the client: Put.
     procedure Put(ARoute: StringRAL; ARequest: TRALRequest;
                   AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebDefault); virtual;
+                  AExecBehavior : TRALExecBehavior = ebDefault); virtual; overload;
+    procedure Put(ARoute: StringRAL; ARequest: TRALRequest; var AResponse : TRALResponse); virtual; overload;
   published
     property Authentication;
     property BaseURL;
@@ -465,6 +472,14 @@ begin
   ExecuteThread(ARoute, ARequest, amDELETE, AOnResponse, AExecBehavior);
 end;
 
+procedure TRALClientMT.Delete(ARoute: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vException: StringRAL;
+begin
+  AResponse := ExecuteSingle(ARoute, ARequest, amDELETE, vException);
+end;
+
 destructor TRALClientMT.Destroy;
 begin
   FreeAndNil(FCritSession);
@@ -476,7 +491,6 @@ procedure TRALClientMT.ExecuteThread(ARoute: StringRAL; ARequest: TRALRequest;
   AExecBehavior: TRALExecBehavior);
 var
   vThread: TRALThreadClient;
-  vClient: TRALClientHTTP;
   vResponse: TRALResponse;
   vException: StringRAL;
   vExecBehavior: TRALExecBehavior;
@@ -485,7 +499,7 @@ begin
   if AExecBehavior = ebDefault then
     vExecBehavior := FExecBehavior;
 
-  if vExecBehavior in [ebMultiThread,ebDefault] then
+  if vExecBehavior in [ebMultiThread, ebDefault] then
   begin
     vThread := TRALThreadClient.Create(Self);
     // deve vir antes pra clonar o request
@@ -504,30 +518,38 @@ begin
   end
   else
   begin
-    vResponse := TRALClientResponse.Create;
-    vClient := CreateClient;
+    vResponse := ExecuteSingle(ARoute, ARequest, AMethod, vException);
     try
-      try
-        vClient.BeforeSendUrl(ARoute, ARequest, vResponse, AMethod);
-        FIndexUrl := vClient.IndexUrl;
-      except
-        on e: Exception do
-        begin
-          vException := e.Message;
-        end;
-      end;
-    finally
-      FreeAndNil(vClient);
-      if not FRequestLifeCicle then
-        FreeAndNil(ARequest);
-
       if Assigned(AOnResponse) then
         AOnResponse(Self, vResponse, vException)
       else if Assigned(FOnResponse) then
         FOnResponse(Self, vResponse, vException);
-
+    finally
       FreeAndNil(vResponse);
     end;
+  end;
+end;
+
+function TRALClientMT.ExecuteSingle(ARoute: StringRAL; ARequest: TRALRequest;
+  AMethod: TRALMethod; var AException: StringRAL): TRALResponse;
+var
+  vClient: TRALClientHTTP;
+begin
+  Result := TRALClientResponse.Create;
+
+  vClient := CreateClient;
+  try
+    try
+      vClient.BeforeSendUrl(ARoute, ARequest, Result, AMethod);
+      FIndexUrl := vClient.IndexUrl;
+    except
+      on e: Exception do
+        AException := e.Message;
+    end;
+  finally
+    FreeAndNil(vClient);
+    if not FRequestLifeCicle then
+      FreeAndNil(ARequest);
   end;
 end;
 
@@ -541,6 +563,14 @@ procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
   ExecuteThread(ARoute, ARequest, amGET, AOnResponse, AExecBehavior);
+end;
+
+procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vException: StringRAL;
+begin
+  AResponse := ExecuteSingle(ARoute, ARequest, amGET, vException);
 end;
 
 procedure TRALClientMT.LockSession;
@@ -571,16 +601,40 @@ begin
   ExecuteThread(ARoute, ARequest, amPATCH, AOnResponse, AExecBehavior);
 end;
 
+procedure TRALClientMT.Patch(ARoute: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vException: StringRAL;
+begin
+  AResponse := ExecuteSingle(ARoute, ARequest, amPATCH, vException);
+end;
+
 procedure TRALClientMT.Post(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
   ExecuteThread(ARoute, ARequest, amPOST, AOnResponse, AExecBehavior);
 end;
 
+procedure TRALClientMT.Post(ARoute: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vException: StringRAL;
+begin
+  AResponse := ExecuteSingle(ARoute, ARequest, amPOST, vException);
+end;
+
 procedure TRALClientMT.Put(ARoute: StringRAL; ARequest: TRALRequest;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 begin
   ExecuteThread(ARoute, ARequest, amPUT, AOnResponse, AExecBehavior);
+end;
+
+procedure TRALClientMT.Put(ARoute: StringRAL; ARequest: TRALRequest;
+  var AResponse: TRALResponse);
+var
+  vException: StringRAL;
+begin
+  AResponse := ExecuteSingle(ARoute, ARequest, amPUT, vException);
 end;
 
 procedure TRALClientMT.UnLockSession;

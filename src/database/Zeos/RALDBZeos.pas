@@ -112,6 +112,7 @@ begin
 
   Conectar;
 
+  // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
   vQuery := TZReadOnlyQuery.Create(nil);
   vQuery.IsUniDirectional := True;
   vQuery.Connection := FConnector;
@@ -126,6 +127,14 @@ begin
     end;
   end;
   vQuery.Open;
+
+  // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+  for vInt := 0 to Pred(vQuery.Fields.Count) do
+  begin
+    vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
+    vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
+                                    (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
+  end;
 
   Result := vQuery;
 end;
@@ -176,6 +185,7 @@ begin
 
   Conectar;
 
+  // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
   vQuery := TZReadOnlyQuery.Create(nil);
   vQuery.IsUniDirectional := True;
   vQuery.Connection := FConnector;
@@ -190,6 +200,14 @@ begin
     end;
   end;
   vQuery.Open;
+
+  // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+  for vInt := 0 to Pred(vQuery.Fields.Count) do
+  begin
+    vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
+    vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
+                                    (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
+  end;
 
   Result := vQuery;
 end;

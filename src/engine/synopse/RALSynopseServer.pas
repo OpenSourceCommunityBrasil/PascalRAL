@@ -114,8 +114,11 @@ begin
   end
   else
   begin
-    if FHttp <> nil then
+    if FHttp <> nil then begin
+      FHttp.Shutdown;
+      Sleep(100);
       FreeAndNil(FHttp);
+    end;
   end;
 end;
 
