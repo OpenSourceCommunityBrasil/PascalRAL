@@ -88,7 +88,7 @@ end;
 
 function TRALDBFireDAC.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
 begin
-
+  Result := TFDQuery(ADataset).GetFieldColumn(ADataset.Fields[AFieldIndex]).OriginTabName;
 end;
 
 constructor TRALDBFireDAC.Create;

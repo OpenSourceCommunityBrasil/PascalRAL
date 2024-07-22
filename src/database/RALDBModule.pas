@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
   RALConsts, RALTypes, RALDBStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
-  RALDBSQLCache;
+  RALDBSQLCache, RALStream;
 
 type
   { TRALDBModule }
@@ -33,6 +33,11 @@ type
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetDataBaseLink(AValue: TRALDBLink);
     procedure SetStorageOutPut(AValue: TRALDBStorageLink);
+
+    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
+    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
+    function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
+                                 ABinary : boolean) : TStream;
   public
     constructor Create(AOwner: TComponent); override;
   published
@@ -60,6 +65,88 @@ begin
 
   if FStorageOutPut <> nil then
     FStorageOutPut.FreeNotification(Self);
+end;
+
+procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL);
+var
+  vResult: TStream;
+  vQuery: TDataSet;
+  vNative: Boolean;
+  vContentType: StringRAL;
+begin
+  if ADBSQL.DriverType = ADatabase.DriverType then
+    vQuery := ADatabase.OpenNative(ADBSQL.SQL, ADBSQL.Params)
+  else
+    vQuery := ADatabase.OpenCompatible(ADBSQL.SQL, ADBSQL.Params);
+
+  vResult := TMemoryStream.Create;
+  try
+    if (ADatabase.CanExportNative) and (ADBSQL.DriverType = ADatabase.DriverType) then
+    begin
+      vContentType := rctAPPLICATIONOCTETSTREAM;
+      vNative := True;
+      ADatabase.SaveToStream(vQuery, vResult, vContentType, vNative);
+    end
+    else
+    begin
+      vNative := False;
+      vContentType := FStorageOutPut.ContentType;
+      FStorageOutPut.SaveToStream(vQuery, vResult);
+    end;
+
+    ADBSQL.Response.Native := vNative;
+    ADBSQL.Response.ContentType := vContentType;
+    ADBSQL.Response.RowsAffected := 0;
+    ADBSQL.Response.LastId := 0;
+    ADBSQL.Response.Stream := vResult;
+  finally
+    FreeAndNil(vResult);
+  end;
+end;
+
+procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL);
+var
+  vRowsAffect, vLastId: Int64RAL;
+begin
+  ADatabase.ExecSQL(ADBSQL.SQL, ADBSQL.Params, vRowsAffect, vLastId);
+
+  ADBSQL.Response.Native := False;
+  ADBSQL.Response.ContentType := rctAPPLICATIONOCTETSTREAM;
+  ADBSQL.Response.RowsAffected := vRowsAffect;
+  ADBSQL.Response.LastId := vLastId;
+end;
+
+function TRALDBModule.GetInfoFieldsStream(ADatabase: TRALDBBase;
+  ADataset: TDataSet; ABinary: boolean): TStream;
+var
+  vFields: TRALDBInfoFields;
+  vInt: Integer;
+  vField: TRALDBInfoField;
+begin
+  vFields:= TRALDBInfoFields.Create;
+  try
+    for vInt := 0 to Pred(ADataset.FieldCount) do
+    begin
+      vField := vFields.NewField;
+      vField.TableName := ADatabase.GetFieldTable(ADataset, vInt);
+      vField.FieldName := ADataset.Fields[vInt].FieldName;
+      vField.FieldType := ADataset.Fields[vInt].DataType;
+      vField.Flags := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
+
+      vField.Length := 0;
+      vField.Precision := 0;
+
+      if ADataset.Fields[vInt].DataType in [ftBCD, ftFMTBcd] then
+        vField.Precision := ADataset.Fields[vInt].Size
+      else
+        vField.Length := ADataset.Fields[vInt].Size
+    end;
+
+    if not ABinary then
+      Result := StringToStream(vFields.AsJSON);
+  finally
+    FreeAndNil(vFields);
+  end;
 end;
 
 procedure TRALDBModule.Notification(AComponent: TComponent; Operation: TOperation);
@@ -117,9 +204,6 @@ var
   vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL : TRALDBSQL;
-  vQuery: TDataSet;
-  vNative: boolean;
-  vContentType: StringRAL;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -135,33 +219,7 @@ begin
               vSQLCache.LoadFromStream(vMem);
               vDBSQL := vSQLCache.SQLList[0];
 
-              if vDBSQL.DriverType = vDB.DriverType then
-                vQuery := vDB.OpenNative(vDBSQL.SQL, vDBSQL.Params)
-              else
-                vQuery := vDB.OpenCompatible(vDBSQL.SQL, vDBSQL.Params);
-
-              vResult := TMemoryStream.Create;
-              try
-                if (vDB.CanExportNative) and (vDBSQL.DriverType = vDB.DriverType) then
-                begin
-                  vContentType := rctAPPLICATIONOCTETSTREAM;
-                  vNative := True;
-                  vDB.SaveToStream(vQuery, vResult, vContentType, vNative);
-                end
-                else
-                begin
-                  vNative := False;
-                  vContentType := FStorageOutPut.ContentType;
-                  FStorageOutPut.SaveToStream(vQuery, vResult);
-                end;
-                vDBSQL.Response.Native := vNative;
-                vDBSQL.Response.ContentType := vContentType;
-                vDBSQL.Response.RowsAffected := 0;
-                vDBSQL.Response.LastId := 0;
-                vDBSQL.Response.Stream := vResult;
-              finally
-                FreeAndNil(vResult);
-              end;
+              OpenSQLResponse(vDB, vDBSQL);
 
               vResult := vSQLCache.ResponseToStream;
               try
@@ -233,44 +291,9 @@ begin
 
                 try
                   if vDBSQL.ExecType = etExecute then
-                  begin
-                    vDB.ExecSQL(vDBSQL.SQL, vDBSQL.Params, vRowsAffect, vLastId);
-
-                    vDBSQL.Response.Native := False;
-                    vDBSQL.Response.ContentType := rctAPPLICATIONOCTETSTREAM;
-                    vDBSQL.Response.RowsAffected := vRowsAffect;
-                    vDBSQL.Response.LastId := vLastId;
-                  end
+                    ExecSQLResponse(vDB, vDBSQL)
                   else
-                  begin
-                    if vDBSQL.DriverType = vDB.DriverType then
-                      vQuery := vDB.OpenNative(vDBSQL.SQL, vDBSQL.Params)
-                    else
-                      vQuery := vDB.OpenCompatible(vDBSQL.SQL, vDBSQL.Params);
-
-                    vResult := TMemoryStream.Create;
-                    try
-                      if (vDB.CanExportNative) and (vDBSQL.DriverType = vDB.DriverType) then
-                      begin
-                        vContentType := rctAPPLICATIONOCTETSTREAM;
-                        vNative := True;
-                        vDB.SaveToStream(vQuery, vResult, vContentType, vNative);
-                      end
-                      else
-                      begin
-                        vNative := False;
-                        vContentType := FStorageOutPut.ContentType;
-                        FStorageOutPut.SaveToStream(vQuery, vResult);
-                      end;
-                      vDBSQL.Response.Native := vNative;
-                      vDBSQL.Response.ContentType := vContentType;
-                      vDBSQL.Response.RowsAffected := 0;
-                      vDBSQL.Response.LastId := 0;
-                      vDBSQL.Response.Stream := vResult;
-                    finally
-                      FreeAndNil(vResult);
-                    end;
-                  end;
+                    OpenSQLResponse(vDB, vDBSQL);
                 except
                   on e : Exception do
                     vDBSQL.Response.StrError := e.Message;
@@ -335,13 +358,11 @@ begin
             vSQLCache := TRALDBSQLCache.Create;
             try
               vSQLCache.LoadFromStream(vMem);
+
               vDBSQL := vSQLCache.SQLList[0];
               vDBSQL.Response.Clear;
 
-              vDB.ExecSQL(vDBSQL.SQL, vDBSQL.Params, vRowsAffect, vLastId);
-
-              vDBSQL.Response.RowsAffected := vRowsAffect;
-              vDBSQL.Response.LastId := vLastId;
+              ExecSQLResponse(vDB, vDBSQL);
 
               vResult := vSQLCache.ResponseToStream;
               try
@@ -841,9 +862,7 @@ var
   vDB: TRALDBBase;
   vSQL: StringRAL;
   vQuery: TDataSet;
-  vInt: IntegerRAL;
-  vFields: TRALDBInfoFields;
-  vField: TRALDBInfoField;
+  vResult: TStream;
 begin
   vDB := FindDatabaseDriver;
   try
@@ -853,21 +872,12 @@ begin
         vSQL := ARequest.ParamByName('sql').AsString;
         vQuery := vDB.OpenNative(vSQL, nil);
         try
-          vFields:= TRALDBInfoFields.Create;
+          vResult := GetInfoFieldsStream(vDB, vQuery, False);
           try
-            for vInt := 0 to Pred(vQuery.FieldCount) do
-            begin
-              vField := vFields.NewField;
-              vField.TableName := vDB.GetFieldTable(vQuery, vInt);
-              vField.FieldName := vQuery.Fields[vInt].FieldName;
-              vField.FieldType := vQuery.Fields[vInt].DataType;
-              vField.Flags := TRALDB.GetFieldProviderFlags(vQuery.Fields[vInt]);
-              vField.Length := vQuery.Fields[vInt].Size;
-            end;
             AResponse.ContentType := rctAPPLICATIONJSON;
-            AResponse.ResponseText := vFields.AsJSON;
+            AResponse.ResponseStream := vResult;
           finally
-            FreeAndNil(vFields);
+            FreeAndNil(vResult);
           end;
         finally
           FreeAndNil(vQuery);
@@ -951,6 +961,12 @@ begin
   vParam.ParamName := 'sql';
   vParam.ParamType := prtString;
   vParam.Required := True;
+
+  vParam := TRALRouteParam(vRoute.InputParams.Add);
+  vParam.Description.Text := 'Binary Format';
+  vParam.ParamName := 'binary';
+  vParam.ParamType := prtBoolean;
+  vParam.Required := False;
 end;
 
 end.

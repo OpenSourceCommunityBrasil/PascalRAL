@@ -317,10 +317,13 @@ var
   vDriver: TRALDBDriverType;
 begin
   vSQL := GetQuerySQL(ADataset);
-  vParams := GetQueryParams(ADataset);
   vDriver := GetQueryClass(ADataset);
-
-  Add(vSQL, vParams, nil, AExecType, vDriver);
+  vParams := GetQueryParams(ADataset);
+  try
+    Add(vSQL, vParams, nil, AExecType, vDriver);
+  finally
+    FreeAndNil(vParams);
+  end;
 end;
 
 procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams;

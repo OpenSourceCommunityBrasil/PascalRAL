@@ -214,24 +214,39 @@ begin
 
     FieldDefs.Clear;
 
-    for vInt := 0 to Pred(vInfo.Count) do
-    begin
-      vType := vInfo.Field[vInt].RALFieldType;
+    try
+      for vInt := 0 to Pred(vInfo.Count) do
+      begin
+        vType := vInfo.Field[vInt].RALFieldType;
 
-      // update table
-      if vTables.IndexOf(vInfo.Field[vInt].TableName) < 0 then
-        vTables.Add(vInfo.Field[vInt].TableName);
+        // update table
+        if vTables.IndexOf(vInfo.Field[vInt].TableName) < 0 then
+          vTables.Add(vInfo.Field[vInt].TableName);
 
-      vField := FieldDefs.AddFieldDef;
-      vField.Name := vInfo.Field[vInt].FieldName;
-      vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
-      vField.Size := vInfo.Field[vInt].Length;
-      vField.Precision := vInfo.Field[vInt].Precision;
-      vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
-      if vInfo.Field[vInt].Flags and 1 > 0 then
-        vField.Attributes := vField.Attributes + [faReadonly];
-      if vInfo.Field[vInt].Flags and 2 > 0 then
-        vField.Attributes := vField.Attributes + [faRequired];
+        vField := FieldDefs.AddFieldDef;
+        vField.Name := vInfo.Field[vInt].FieldName;
+        vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
+
+        if TRALFieldType(vType) = sftString then
+          vField.Size := vInfo.Field[vInt].Length
+        else
+          vField.Size := 0;
+
+        if (TRALFieldType(vType) = sftDouble) and
+           (vInfo.Field[vInt].Precision > 0) then
+          vField.Precision := vInfo.Field[vInt].Precision;
+
+        vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
+        if vInfo.Field[vInt].Flags and 1 > 0 then
+          vField.Attributes := vField.Attributes + [faReadonly];
+        if vInfo.Field[vInt].Flags and 2 > 0 then
+          vField.Attributes := vField.Attributes + [faRequired];
+      end;
+    except
+      on e : Exception do
+      begin
+        raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
+      end;
     end;
 
     if (vTables.Count = 1) and (FUpdateTable = '') then

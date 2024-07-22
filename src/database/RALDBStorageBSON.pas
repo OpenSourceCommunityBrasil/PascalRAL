@@ -176,7 +176,15 @@ begin
     vField := ADataset.FieldDefs.AddFieldDef;
     vField.Name := vName;
     vField.DataType := vType;
-    vField.Size := vSize;
+
+    if FFieldTypes[vInt] = sftString then
+      vField.Size := vSize
+    else
+      vField.Size := 0;
+
+    if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
+      vField.Precision := vSize;
+
     if vFlags[vInt] and 1 > 0 then
       vField.Attributes := vField.Attributes + [faReadonly];
 
