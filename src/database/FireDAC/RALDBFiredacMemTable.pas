@@ -195,8 +195,8 @@ begin
     raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
 
   CacheSQL(vSQL);
-
   inherited InternalDelete;
+  Resync([rmExact]);
 end;
 
 procedure TRALDBFDMemTable.InternalInitFieldDefs;
@@ -273,6 +273,7 @@ begin
 
     CacheSQL(vSQL);
     inherited InternalPost;
+    Resync([rmExact]);
   end;
 end;
 
@@ -331,8 +332,14 @@ begin
           finally
             FreeAndNil(vTable);
           end;
+        end
+        else if vDBSQL.Response.Error then
+        begin
+          if Assigned(FOnError) then
+            FOnError(Self, vDBSQL.Response.StrError);
         end;
       end;
+      FSQLCache.Clear;
     finally
       FreeAndNil(vMem);
     end;
@@ -379,16 +386,22 @@ var
   vException : StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
+  vSQLCache: TRALDBSQLCache;
 begin
   if AResponse.StatusCode = 200 then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
 
-      FRowsAffected := vDBSQL.Response.RowsAffected;
-      FLastId := vDBSQL.Response.LastId;
+        FRowsAffected := vDBSQL.Response.RowsAffected;
+        FLastId := vDBSQL.Response.LastId;
+      finally
+        FreeAndNil(vSQLCache);
+      end;
     finally
       FreeAndNil(vMem);
     end;
@@ -413,20 +426,29 @@ var
   vNative: Boolean;
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
+  vSQLCache : TRALDBSQLCache;
 begin
   if AResponse.StatusCode = 200 then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
+      FLoading := True;
 
-      if vDBSQL.Response.Native then
-        Self.LoadFromStream(vDBSQL.Response.Stream)
-      else
-        FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
+
+        if vDBSQL.Response.Native then
+          Self.LoadFromStream(vDBSQL.Response.Stream)
+        else
+          FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+      finally
+        FreeAndNil(vSQLCache);
+      end;
     finally
       FreeAndNil(vMem);
+      Resync([rmCenter]);
     end;
   end
   else if AResponse.StatusCode = 500 then
@@ -473,10 +495,13 @@ begin
       FRALConnection.OpenRemote(Self, OnQueryResponse);
     end;
     Exit;
-  end;
-
-  if (not AValue) then
+  end
+  else if (not AValue) then
+  begin
     FLoading := False;
+    if FSQLCache <> nil then
+      FSQLCache.Clear;
+  end;
   inherited;
 end;
 

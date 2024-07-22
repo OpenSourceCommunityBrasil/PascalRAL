@@ -134,6 +134,7 @@ begin
 
     CacheSQL(vSQL);
     inherited InternalPost;
+    Resync([rmExact]);
   end;
 end;
 
@@ -149,8 +150,8 @@ begin
     raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
 
   CacheSQL(vSQL);
-
   inherited InternalDelete;
+  Resync([rmExact]);
 end;
 
 procedure TRALDBZMemTable.InternalOpen;
@@ -176,10 +177,13 @@ begin
       FRALConnection.OpenRemote(Self, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
     end;
     Exit;
-  end;
-
-  if (not AValue) then
+  end
+  else if (not AValue) then
+  begin
     FLoading := False;
+    if FSQLCache <> nil then
+      FSQLCache.Clear;
+  end;
 
   inherited;
 end;
@@ -397,8 +401,14 @@ begin
           finally
             FreeAndNil(vTable);
           end;
+        end
+        else if vDBSQL.Response.Error then
+        begin
+          if Assigned(FOnError) then
+            FOnError(Self, vDBSQL.Response.StrError);
         end;
       end;
+      FSQLCache.Clear;
     finally
       FreeAndNil(vMem);
     end;

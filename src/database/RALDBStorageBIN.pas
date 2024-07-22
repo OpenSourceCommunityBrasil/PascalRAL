@@ -318,7 +318,7 @@ begin
     // size
     vSize := ReadInteger(AStream);
 
-    vField := TFieldDef(ADataset.FieldDefs.Add);
+    vField := ADataset.FieldDefs.AddFieldDef;
     vField.Name := vName;
     vField.DataType := vType;
     vField.Size := vSize;

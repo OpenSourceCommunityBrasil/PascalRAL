@@ -805,7 +805,7 @@ begin
       // size
       vSize := vjArr2.Get(3).AsInteger;
 
-      vField := TFieldDef(ADataset.FieldDefs.Add);
+      vField := ADataset.FieldDefs.AddFieldDef;
       vField.Name := vName;
       vField.DataType := vType;
       vField.Size := vSize;

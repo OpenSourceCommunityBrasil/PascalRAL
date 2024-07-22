@@ -173,7 +173,7 @@ begin
     vFlags[vInt] := vField^.Values[2]^.ToInt;
     vSize := vField^.Values[3]^.ToInt;
 
-    vField := TFieldDef(ADataset.FieldDefs.Add);
+    vField := ADataset.FieldDefs.AddFieldDef;
     vField.Name := vName;
     vField.DataType := vType;
     vField.Size := vSize;

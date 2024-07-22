@@ -271,6 +271,7 @@ var
   vMem: TStream;
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
+  vSQLCache: TRALDBSQLCache;
 begin
   if AResponse.StatusCode = 200 then
   begin
@@ -278,17 +279,22 @@ begin
     try
       FLoading := True;
 
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
 
-      if vDBSQL.Response.Native then
-        Self.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
-      else
-        FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+        if vDBSQL.Response.Native then
+          Self.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
+        else
+          FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+      finally
+        FreeAndNil(vSQLCache);
+      end;
     finally
       FreeAndNil(vMem);
       MergeChangeLog;
-  end;
+    end;
   end
   else if AResponse.StatusCode = 500 then
   begin
@@ -310,16 +316,22 @@ var
   vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
+  vSQLCache: TRALDBSQLCache;
 begin
   if AResponse.StatusCode = 200 then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
 
-      FRowsAffected := vDBSQL.Response.RowsAffected;
-      FLastId := vDBSQL.Response.LastId;
+        FRowsAffected := vDBSQL.Response.RowsAffected;
+        FLastId := vDBSQL.Response.LastId;
+      finally
+        FreeAndNil(vSQLCache);
+      end;
     finally
       FreeAndNil(vMem);
     end;
@@ -382,8 +394,14 @@ begin
           finally
             FreeAndNil(vTable);
           end;
+        end
+        else if vDBSQL.Response.Error then
+        begin
+          if Assigned(FOnError) then
+            FOnError(Self, vDBSQL.Response.StrError);
         end;
       end;
+      FSQLCache.Clear;
     finally
       FreeAndNil(vMem);
     end;
@@ -511,7 +529,11 @@ begin
     Exit;
   end
   else if (not AValue) then
+  begin
     FOpening := False;
+    if FSQLCache <> nil then
+      FSQLCache.Clear;
+  end;
 
   inherited;
 end;

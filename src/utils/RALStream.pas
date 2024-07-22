@@ -142,6 +142,9 @@ var
   vByte: Byte;
 begin
   Result := 0;
+  if FStream.Position = FStream.Size then
+    Exit;
+
   vMult := 0;
   repeat
     vByte := ReadByte;
