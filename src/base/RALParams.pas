@@ -155,7 +155,8 @@ type
     function AssignParamsListText(AKind: TRALParamKind;
                                   const ANameSeparator: StringRAL = '='): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind'. Can accept a different Line Separator than CRLF.
-    function AssignParamsText(AKind: TRALParamKind; const ANameSeparator: StringRAL = '=';
+    function AssignParamsText(AKind: TRALParamKind; AUrlEncoded : boolean = false;
+                              const ANameSeparator: StringRAL = '=';
                               const ALineSeparator: StringRAL = '&'): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind' using default URL separators.
     function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
@@ -748,10 +749,10 @@ begin
   function TRALParams.AssignParamsListText(AKind: TRALParamKind;
     const ANameSeparator: StringRAL): StringRAL;
   begin
-    Result := AssignParamsText(AKind, ANameSeparator, HTTPLineBreak);
+    Result := AssignParamsText(AKind, False, ANameSeparator, HTTPLineBreak);
   end;
 
-  function TRALParams.AssignParamsText(AKind: TRALParamKind;
+  function TRALParams.AssignParamsText(AKind: TRALParamKind; AUrlEncoded : boolean;
     const ANameSeparator: StringRAL; const ALineSeparator: StringRAL): StringRAL;
   var
     vInt: Integer;
@@ -765,7 +766,11 @@ begin
       begin
         if Result <> '' then
           Result := Result + ALineSeparator;
-        Result := Result + vParam.ParamName + ANameSeparator + vParam.AsString;
+        Result := Result + vParam.ParamName + ANameSeparator;
+        if AUrlEncoded then
+          Result := Result + TRALHTTPCoder.EncodeURL(vParam.AsString)
+        else
+          Result := Result + vParam.AsString;
       end;
     end;
 
@@ -774,7 +779,7 @@ begin
 
   function TRALParams.AssignParamsUrl(AKind: TRALParamKind): StringRAL;
   begin
-    Result := AssignParamsText(AKind);
+    Result := AssignParamsText(AKind, True);
   end;
 
   function TRALParams.AsString: StringRAL;
