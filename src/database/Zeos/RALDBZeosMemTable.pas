@@ -36,7 +36,6 @@ type
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
-    procedure InternalOpen; override;
     procedure InternalPost; override;
     procedure InternalDelete; override;
 
@@ -134,7 +133,6 @@ begin
 
     CacheSQL(vSQL);
     inherited InternalPost;
-    Resync([rmExact]);
   end;
 end;
 
@@ -151,14 +149,6 @@ begin
 
   CacheSQL(vSQL);
   inherited InternalDelete;
-  Resync([rmExact]);
-end;
-
-procedure TRALDBZMemTable.InternalOpen;
-begin
-//  if (FLoading) and (not FOpened) then
-//    FOpened := True;
-  inherited;
 end;
 
 procedure TRALDBZMemTable.SetActive(AValue: boolean);
@@ -306,7 +296,6 @@ begin
         FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
     finally
       FreeAndNil(vMem);
-      Resync([rmExact]);
     end;
   end
   else if AResponse.StatusCode = 500 then

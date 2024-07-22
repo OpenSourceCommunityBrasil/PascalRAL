@@ -196,7 +196,6 @@ begin
 
   CacheSQL(vSQL);
   inherited InternalDelete;
-  Resync([rmExact]);
 end;
 
 procedure TRALDBFDMemTable.InternalInitFieldDefs;
@@ -272,8 +271,8 @@ begin
       raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
 
     CacheSQL(vSQL);
+
     inherited InternalPost;
-    Resync([rmExact]);
   end;
 end;
 
@@ -294,7 +293,7 @@ var
   vMem: TStream;
   vDBSQL: TRALDBSQL;
   vInt1, vInt2 : IntegerRAL;
-  vTable: TRALDBFDMemTable;
+  vTable: TFDMemTable;
   vField: TField;
 begin
   if AResponse.StatusCode = 200 then
@@ -310,7 +309,7 @@ begin
         begin
           Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TRALDBFDMemTable.Create(nil);
+          vTable := TFDMemTable.Create(nil);
           try
             try
               if vDBSQL.Response.Native then
@@ -448,7 +447,6 @@ begin
       end;
     finally
       FreeAndNil(vMem);
-      Resync([rmCenter]);
     end;
   end
   else if AResponse.StatusCode = 500 then
