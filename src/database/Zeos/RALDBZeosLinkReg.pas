@@ -1,5 +1,5 @@
 ﻿/// Register unit for Zeos Wrapping components
-unit raldbzeoslinkreg;
+unit RALDBZeosLinkReg;
 
 {$IFDEF FPC}
 {$mode ObjFPC}{$H+}
@@ -54,8 +54,8 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWare', [TRALDBZeosLink]);
-  RegisterComponents('RAL - DBWare', [TRALDBZMemTable]);
+  RegisterComponents('RAL - Server', [TRALDBZeosLink]);
+  RegisterComponents('RAL - Client', [TRALDBZMemTable]);
 
   RegisterComponentEditor(TRALDBZMemTable, TRALDBZMemTableEditor);
   {$IFDEF FPC}

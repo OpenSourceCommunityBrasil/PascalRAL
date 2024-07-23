@@ -29,7 +29,7 @@ package RALZStdCompress;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRALDsgn;
 
 contains
   RALCompressZStd in '..\..\..\..\src\others\RALCompressZStd.pas',

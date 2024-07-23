@@ -187,9 +187,6 @@
         </DelphiCompile>
         <DCCReference Include="IndyRAL.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="IndySystem.dcp"/>
-        <DCCReference Include="IndyProtocols.dcp"/>
-        <DCCReference Include="IndyCore.dcp"/>
         <DCCReference Include="..\..\..\src\engine\indy\RALIndyClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\indy\RALIndyRegister.pas"/>
         <DCCReference Include="..\..\..\src\engine\indy\RALIndyServer.pas"/>

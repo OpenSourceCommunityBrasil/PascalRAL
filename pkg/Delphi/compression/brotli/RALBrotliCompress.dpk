@@ -29,7 +29,7 @@ package RALBrotliCompress;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRALDsgn;
 
 contains
   RALCompressBrotli in '..\..\..\..\src\others\RALCompressBrotli.pas',

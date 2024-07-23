@@ -393,7 +393,7 @@ begin
           try
             try
               if vDBSQL.Response.Native then
-                vTable.ZeosLoadFromStream(vDBSQL.Response.Stream)
+//                vTable.ZeosLoadFromStream(vDBSQL.Response.Stream)
               else
                 FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
 

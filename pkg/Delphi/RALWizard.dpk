@@ -30,7 +30,8 @@ package RALWizard;
 
 requires
   designide,
-  vcl;
+  vcl,
+  PascalRALDsgn;
 
 contains
   RALWizard in '..\..\src\wizard\delphi\RALWizard.pas',

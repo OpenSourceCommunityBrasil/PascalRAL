@@ -34,7 +34,8 @@ implementation
 
 procedure register;
 begin
-  RegisterComponents('RAL - DBWare', [TRALDBFireDACLink, TRALDBFDMemTable]);
+  RegisterComponents('RAL - Server', [TRALDBFireDACLink]);
+  RegisterComponents('RAL - Client', [TRALDBFDMemTable]);
 
   RegisterComponentEditor(TRALDBFDMemTable, TRALDBFDMemTableEditor);
   RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBFDMemTable, 'UpdateTable', TRALDBFDMemTableTables);

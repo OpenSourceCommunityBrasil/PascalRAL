@@ -11,7 +11,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <OtherUnitFiles Value="..\..\src\wizard\lazarus"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Package for installing IDE Wizards to quickly create startup PascalRAL applications."/>

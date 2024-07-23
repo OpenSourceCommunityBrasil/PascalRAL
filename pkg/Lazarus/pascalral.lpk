@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1"/>
-    <Files Count="30">
+    <Files Count="31">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -148,6 +148,10 @@
         <Filename Value="PascalRAL.lrs"/>
         <Type Value="LRS"/>
       </Item30>
+      <Item31>
+        <Filename Value="..\..\src\base\RALSwaggerModule.pas"/>
+        <UnitName Value="RALSwaggerModule"/>
+      </Item31>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">

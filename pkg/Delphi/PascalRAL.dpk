@@ -42,8 +42,12 @@ contains
   RALRoutes in '..\..\src\base\RALRoutes.pas',
   RALServer in '..\..\src\base\RALServer.pas',
   RALTypes in '..\..\src\base\RALTypes.pas',
+  RALSwaggerModule in '..\..\src\base\RALSwaggerModule.pas',
+  RALWEBModule in '..\..\src\base\RALWEBModule.pas',
   RALBase64 in '..\..\src\utils\RALBase64.pas',
+  RALCompress in '..\..\src\utils\RALCompress.pas',
   RALCompressZLib in '..\..\src\utils\RALCompressZLib.pas',
+  RALCRC32 in '..\..\src\utils\RALCRC32.pas',
   RALCripto in '..\..\src\utils\RALCripto.pas',
   RALCriptoAES in '..\..\src\utils\RALCriptoAES.pas',
   RALCustomObjects in '..\..\src\utils\RALCustomObjects.pas',
@@ -52,15 +56,15 @@ contains
   RALMD5 in '..\..\src\utils\RALMD5.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
   RALMultipartCoder in '..\..\src\utils\RALMultipartCoder.pas',
+  RALPostmanExporter in '..\..\src\utils\RALPostmanExporter.pas',
   RALSHA1 in '..\..\src\utils\RALSHA1.pas',
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
   RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas',
   RALStream in '..\..\src\utils\RALStream.pas',
+  RALSwaggerExporter in '..\..\src\utils\RALSwaggerExporter.pas',
   RALThreadSafe in '..\..\src\utils\RALThreadSafe.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
   RALTools in '..\..\src\utils\RALTools.pas',
-  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas',
-  RALCompress in '..\..\src\utils\RALCompress.pas',
-  RALCRC32 in '..\..\src\utils\RALCRC32.pas';
+  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas';
 
 end.

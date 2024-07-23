@@ -36,8 +36,8 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWare', [TRALDBSQLDBLink]);
-  RegisterComponents('RAL - DBWare', [TRALDBBufDataset]);
+  RegisterComponents('RAL - Server', [TRALDBSQLDBLink]);
+  RegisterComponents('RAL - Client', [TRALDBBufDataset]);
 
   RegisterComponentEditor(TRALDBBufDataset, TRALDBBufDatasetEditor);
   RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBBufDataset, 'UpdateTable', TRALDBBufDatasetTables);

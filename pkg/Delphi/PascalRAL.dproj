@@ -182,8 +182,12 @@
         <DCCReference Include="..\..\src\base\RALRoutes.pas"/>
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
+        <DCCReference Include="..\..\src\base\RALSwaggerModule.pas"/>
+        <DCCReference Include="..\..\src\base\RALWEBModule.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
+        <DCCReference Include="..\..\src\utils\RALCompress.pas"/>
         <DCCReference Include="..\..\src\utils\RALCompressZLib.pas"/>
+        <DCCReference Include="..\..\src\utils\RALCRC32.pas"/>
         <DCCReference Include="..\..\src\utils\RALCripto.pas"/>
         <DCCReference Include="..\..\src\utils\RALCriptoAES.pas"/>
         <DCCReference Include="..\..\src\utils\RALCustomObjects.pas"/>
@@ -192,16 +196,16 @@
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALMultipartCoder.pas"/>
+        <DCCReference Include="..\..\src\utils\RALPostmanExporter.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA1.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
         <DCCReference Include="..\..\src\utils\RALStream.pas"/>
+        <DCCReference Include="..\..\src\utils\RALSwaggerExporter.pas"/>
         <DCCReference Include="..\..\src\utils\RALThreadSafe.pas"/>
         <DCCReference Include="..\..\src\utils\RALToken.pas"/>
         <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <DCCReference Include="..\..\src\utils\RALUrlCoder.pas"/>
-        <DCCReference Include="..\..\src\utils\RALCompress.pas"/>
-        <DCCReference Include="..\..\src\utils\RALCRC32.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -243,7 +247,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>PascalRAL.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

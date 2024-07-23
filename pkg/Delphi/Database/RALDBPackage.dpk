@@ -38,7 +38,6 @@ requires
 contains
   RALDBBase in '..\..\..\src\database\RALDBBase.pas',
   RALDBModule in '..\..\..\src\database\RALDBModule.pas',
-  raldbregister in '..\..\..\src\database\raldbregister.pas',
   RALDBStorage in '..\..\..\src\database\RALDBStorage.pas',
   RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
   RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas',
@@ -46,6 +45,7 @@ contains
   RALQueryStructure in '..\..\..\src\database\RALQueryStructure.pas',
   RALDBStorageCSV in '..\..\..\src\database\RALDBStorageCSV.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
-  RALDBConnection in '..\..\..\src\database\RALDBConnection.pas';
+  RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',
+  RALDBRegister in '..\..\..\src\database\RALDBRegister.pas';
 
 end.

@@ -7,7 +7,7 @@ interface
 
 uses
   {$IFDEF FPC}
-    LResources,
+  LResources,
   {$ENDIF}
   Classes, SysUtils,
   RALDBModule, RALDBStorageJSON, RALDBStorageBIN, RALDBStorageCSV, RALDBConnection;
@@ -18,13 +18,15 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - DBWare', [TRALDBModule, TRALDBStorageJSONLink,
-    TRALDBStorageBINLink, TRALDBStorageCSVLink, TRALDBConnection]);
+  RegisterComponents('RAL - Server', [TRALDBStorageJSONLink, TRALDBStorageBINLink,
+    TRALDBStorageCSVLink]);
+  RegisterComponents('RAL - Client', [TRALDBConnection]);
+  RegisterComponents('RAL - Modules', [TRALDBModule]);
 end;
 
 {$IFDEF FPC}
 initialization
-//{$I raldbpackage.lrs}
+// {$I raldbpackage.lrs}
 {$ENDIF}
 
 end.
