@@ -19,7 +19,7 @@ type
     procedure SetClient(AValue: TRALClientMT);
     procedure SetModuleRoute(AValue: StringRAL);
   public
-    constructor Create(AOwner : TComponent);
+    constructor Create(AOwner: TComponent);
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
     procedure OpenRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
@@ -34,8 +34,8 @@ type
     function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
                                 AUpdateMode: TUpdateMode): StringRAL;
   published
-    property Client : TRALClientMT read FClient write SetClient;
-    property ModuleRoute : StringRAL read FModuleRoute write SetModuleRoute;
+    property Client: TRALClientMT read FClient write SetClient;
+    property ModuleRoute: StringRAL read FModuleRoute write SetModuleRoute;
   end;
 
 implementation
@@ -70,9 +70,9 @@ end;
 
 procedure TRALDBConnection.ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
 var
-  vMem : TStream;
-  vReq : TRALRequest;
-  vUrl : StringRAL;
+  vMem: TStream;
+  vReq: TRALRequest;
+  vUrl: StringRAL;
 begin
   if ACache.Count = 0 then
     Exit;
@@ -94,7 +94,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.OpenRemote(AQuery : TDataset; AResp : TRALThreadClientResponse);
+procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
   vReq: TRALRequest;
@@ -125,11 +125,11 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.ExecSQLRemote(AQuery : TDataset; AResp : TRALThreadClientResponse);
+procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
 var
-  vMem : TStream;
-  vReq : TRALRequest;
-  vUrl : StringRAL;
+  vMem: TStream;
+  vReq: TRALRequest;
+  vUrl: StringRAL;
   vSQLCache: TRALDBSQLCache;
 begin
   vSQLCache := TRALDBSQLCache.Create;
@@ -158,8 +158,8 @@ end;
 
 function TRALDBConnection.InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
 var
-  vReq : TRALRequest;
-  vUrl : StringRAL;
+  vReq: TRALRequest;
+  vUrl: StringRAL;
   vResponse: TRALResponse;
 begin
   Result := nil;
@@ -190,8 +190,8 @@ end;
 
 function TRALDBConnection.GetTables: TRALDBInfoTables;
 var
-  vReq : TRALRequest;
-  vUrl : StringRAL;
+  vReq: TRALRequest;
+  vUrl: StringRAL;
   vResponse: TRALResponse;
 begin
   Result := nil;
@@ -219,10 +219,10 @@ begin
   end;
 end;
 
-function TRALDBConnection.ConstructInsertSQL(ADataset: TDataSet; AUpdateTable : StringRAL): StringRAL;
+function TRALDBConnection.ConstructInsertSQL(ADataset: TDataSet; AUpdateTable: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
-  vField : TField;
+  vField: TField;
   vSQLFields: StringRAL;
   vSQLValues: StringRAL;
   vRetFields: StringRAL;
@@ -266,7 +266,7 @@ begin
 end;
 
 function TRALDBConnection.ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
-                                             AUpdateMode : TUpdateMode): StringRAL;
+                                             AUpdateMode: TUpdateMode): StringRAL;
 var
   vInt: IntegerRAL;
   vField: TField;

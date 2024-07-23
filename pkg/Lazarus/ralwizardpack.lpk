@@ -4,6 +4,8 @@
     <PathDelim Value="\"/>
     <Name Value="ralwizardpack"/>
     <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -12,24 +14,27 @@
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Files>
-      <Item>
+    <Description Value="Package for installing IDE Wizards to quickly create startup PascalRAL applications."/>
+    <Version Major="1"/>
+    <Files Count="2">
+      <Item1>
         <Filename Value="..\..\src\wizard\lazarus\ralwizard.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="ralwizard"/>
-      </Item>
-      <Item>
+      </Item1>
+      <Item2>
         <Filename Value="..\..\src\wizard\lazarus\ralwizardform.pas"/>
         <UnitName Value="ralwizardform"/>
-      </Item>
+      </Item2>
     </Files>
-    <RequiredPkgs>
-      <Item>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
         <PackageName Value="IDEIntf"/>
-      </Item>
-      <Item>
+      </Item1>
+      <Item2>
         <PackageName Value="FCL"/>
-      </Item>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

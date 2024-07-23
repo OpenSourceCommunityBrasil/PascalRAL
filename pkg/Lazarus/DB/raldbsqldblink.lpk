@@ -5,6 +5,7 @@
     <Name Value="raldbsqldblink"/>
     <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -14,12 +15,13 @@
       </SearchPaths>
       <Other>
         <Verbosity>
-          <ShoLineNum Value="True"/>
+          <ShowLineNum Value="True"/>
         </Verbosity>
       </Other>
     </CompilerOptions>
+    <Description Value="Package for SQLDB&apos;s DBWare components for PascalRAL."/>
     <Version Major="1"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="..\..\..\src\database\sqldb\raldbsqldb.pas"/>
         <UnitName Value="RALDBSQLDB"/>
@@ -33,6 +35,10 @@
         <Filename Value="raldbpackage.lrs"/>
         <Type Value="LRS"/>
       </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\database\sqldb\RALDBBufDataset.pas"/>
+        <UnitName Value="RALDBBufDataset"/>
+      </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">

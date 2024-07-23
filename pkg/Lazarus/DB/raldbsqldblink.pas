@@ -8,7 +8,7 @@ unit raldbsqldblink;
 interface
 
 uses
-  RALDBSQLDB, RALDBSQLDBLinkReg, LazarusPackageIntf;
+  RALDBSQLDB, RALDBSQLDBLinkReg, RALDBBufDataset, LazarusPackageIntf;
 
 implementation
 

@@ -5,6 +5,7 @@
     <Name Value="SynopseRAL"/>
     <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -19,10 +20,11 @@
       </Linking>
       <Other>
         <Verbosity>
-          <ShoLineNum Value="True"/>
+          <ShowLineNum Value="True"/>
         </Verbosity>
       </Other>
     </CompilerOptions>
+    <Description Value="Package for installing mORMot2 data engine components for PascalRAL."/>
     <Version Major="1"/>
     <Files Count="4">
       <Item1>

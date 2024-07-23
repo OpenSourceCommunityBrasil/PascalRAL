@@ -31,6 +31,8 @@ package RALDBPackage;
 
 requires
   dbrtl,
+  dcldb,
+  designide,
   PascalRALDsgn;
 
 contains
@@ -42,6 +44,8 @@ contains
   RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas',
   RALDBTypes in '..\..\..\src\database\RALDBTypes.pas',
   RALQueryStructure in '..\..\..\src\database\RALQueryStructure.pas',
-  RALDBStorageCSV in '..\..\..\src\database\RALDBStorageCSV.pas';
+  RALDBStorageCSV in '..\..\..\src\database\RALDBStorageCSV.pas',
+  RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
+  RALDBConnection in '..\..\..\src\database\RALDBConnection.pas';
 
 end.

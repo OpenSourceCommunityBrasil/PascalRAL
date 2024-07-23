@@ -5,6 +5,7 @@
     <Name Value="RALDBPackage"/>
     <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -14,12 +15,13 @@
       </SearchPaths>
       <Other>
         <Verbosity>
-          <ShoLineNum Value="True"/>
+          <ShowLineNum Value="True"/>
         </Verbosity>
       </Other>
     </CompilerOptions>
+    <Description Value="Package for DBWare components for PascalRAL."/>
     <Version Major="1"/>
-    <Files Count="8">
+    <Files Count="10">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
@@ -53,6 +55,14 @@
         <Filename Value="..\..\..\src\database\RALDBStorageCSV.pas"/>
         <UnitName Value="RALDBStorageCSV"/>
       </Item8>
+      <Item9>
+        <Filename Value="..\..\..\src\database\RALDBConnection.pas"/>
+        <UnitName Value="RALDBConnection"/>
+      </Item9>
+      <Item10>
+        <Filename Value="..\..\..\src\database\RALDBSQLCache.pas"/>
+        <UnitName Value="RALDBSQLCache"/>
+      </Item10>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

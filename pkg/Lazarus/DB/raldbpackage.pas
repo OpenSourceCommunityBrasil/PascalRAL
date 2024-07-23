@@ -9,7 +9,8 @@ interface
 
 uses
   RALDBBase, RALDBModule, RALDBRegister, RALDBStorage, RALDBStorageBIN, 
-  RALDBStorageJSON, RALDBStorageCSV, LazarusPackageIntf;
+  RALDBStorageJSON, RALDBStorageCSV, RALDBConnection, RALDBSQLCache, 
+  LazarusPackageIntf;
 
 implementation
 

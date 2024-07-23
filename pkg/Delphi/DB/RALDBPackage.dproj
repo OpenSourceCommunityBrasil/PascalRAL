@@ -188,6 +188,8 @@
         </DelphiCompile>
         <DCCReference Include="RALDBPackage.dcr"/>
         <DCCReference Include="dbrtl.dcp"/>
+        <DCCReference Include="dcldb.dcp"/>
+        <DCCReference Include="designide.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
@@ -198,6 +200,8 @@
         <DCCReference Include="..\..\..\src\database\RALDBTypes.pas"/>
         <DCCReference Include="..\..\..\src\database\RALQueryStructure.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBStorageCSV.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

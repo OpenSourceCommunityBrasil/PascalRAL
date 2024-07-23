@@ -30,7 +30,10 @@ package IndyRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRALDsgn,
+  IndySystem,
+  IndyProtocols,
+  IndyCore;
 
 contains
   RALIndyClient in '..\..\..\src\engine\indy\RALIndyClient.pas',

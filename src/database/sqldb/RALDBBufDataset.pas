@@ -136,7 +136,7 @@ begin
         if vInfo.Field[vInt].Flags and 2 > 0 then
           vField.Attributes := vField.Attributes + [faRequired];
       end;
-    finally
+    except
       on e : Exception do
       begin
         raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
