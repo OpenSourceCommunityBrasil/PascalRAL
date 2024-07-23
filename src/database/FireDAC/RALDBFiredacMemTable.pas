@@ -207,11 +207,16 @@ var
   vTables: TStringList;
 begin
   vTables := TStringList.Create;
-  vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
+  vInfo := nil;
+  if FRALConnection <> nil then
+    vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
   try
     if vInfo = nil then
       Exit;
 
+    Self.DisableControls;
     FieldDefs.Clear;
 
     try
@@ -252,6 +257,7 @@ begin
     if (vTables.Count = 1) and (FUpdateTable = '') then
       FUpdateTable := vTables.Strings[0];
   finally
+    Self.EnableControls;
     FreeAndNil(vInfo);
     FreeAndNil(vTables);
   end;

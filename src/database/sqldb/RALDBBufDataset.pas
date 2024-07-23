@@ -100,7 +100,11 @@ var
   vTables: TStringList;
 begin
   vTables := TStringList.Create;
-  vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
+  vInfo := nil;
+  if FRALConnection <> nil then
+    vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
   try
     if vInfo = nil then
       Exit;
@@ -143,13 +147,15 @@ begin
       end;
     end;
 
-    if vTables.Count = 1 then
+    if (vTables.Count = 1) and (FUpdateTable = '') then
       FUpdateTable := vTables.Strings[0];
   finally
     Self.EnableControls;
     FreeAndNil(vInfo);
     FreeAndNil(vTables);
   end;
+
+  inherited;
 end;
 
 procedure TRALDBBufDataset.SetRALConnection(AValue: TRALDBConnection);
@@ -371,7 +377,7 @@ var
   vMem: TStream;
   vDBSQL: TRALDBSQL;
   vInt1, vInt2: IntegerRAL;
-  vTable: TRALDBBufDataset;
+  vTable: TBufDataset;
   vField: TField;
 begin
   if AResponse.StatusCode = 200 then
@@ -387,7 +393,7 @@ begin
         begin
           Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TRALDBBufDataset.Create(nil);
+          vTable := TBufDataset.Create(nil);
           try
             try
               if vDBSQL.Response.Native then

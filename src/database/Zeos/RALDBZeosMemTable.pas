@@ -236,7 +236,11 @@ var
   vTables: TStringList;
 begin
   vTables := TStringList.Create;
-  vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
+  vInfo := nil;
+  if FRALConnection <> nil then
+    vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
   try
     if vInfo = nil then
       Exit;
@@ -286,6 +290,8 @@ begin
     FreeAndNil(vInfo);
     FreeAndNil(vTables);
   end;
+
+  inherited;
 end;
 
 procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject;
@@ -367,7 +373,7 @@ var
   vMem: TStream;
   vDBSQL: TRALDBSQL;
   vInt1, vInt2 : IntegerRAL;
-  vTable: TRALDBZMemTable;
+  vTable: TZMemTable;
   vField: TField;
 begin
   if AResponse.StatusCode = 200 then
@@ -383,7 +389,7 @@ begin
         begin
           Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TRALDBZMemTable.Create(nil);
+          vTable := TZMemTable.Create(nil);
           try
             try
               if vDBSQL.Response.Native then
