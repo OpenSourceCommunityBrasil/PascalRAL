@@ -7,7 +7,7 @@ uses
   BufDataset,
   RALDBStorage, RALTypes, RALResponse, RALMIMETypes,
   RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALDBSQLCache,
-  RALDBConnection;
+  RALDBConnection, RALConsts;
 
 type
 
@@ -141,7 +141,7 @@ begin
           vField.Attributes := vField.Attributes + [faRequired];
       end;
     except
-      on e : Exception do
+      on e: Exception do
       begin
         raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
       end;
@@ -209,7 +209,7 @@ begin
     if Trim(vSQL) = '' then
     begin
       if FUpdateTable = '' then
-        raise Exception.Create('UpdateTable ou UpdateSQL deve ser preenchido');
+        raise Exception.Create(emDBUpdateSQLMissing);
 
       case State of
         dsInsert: vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
@@ -218,7 +218,7 @@ begin
     end;
 
     if Trim(vSQL) = '' then
-      raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+      raise Exception.Create(emDBUpdateSQLMissing);
 
     CacheSQL(vSQL);
     inherited InternalPost;
@@ -235,7 +235,7 @@ begin
     vSQL := FRALConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
 
   if Trim(vSQL) = '' then
-    raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+    raise Exception.Create(emDBUpdateSQLMissing);
 
   CacheSQL(vSQL);
 
@@ -520,7 +520,7 @@ end;
 procedure TRALDBBufDataset.ApplyUpdates;
 begin
   if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   FRALConnection.ApplyUpdatesRemote(FSQLCache, @OnApplyUpdates);
 end;
@@ -538,7 +538,7 @@ begin
   begin
     if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
       (not (csLoading in ComponentState)) then
-      raise Exception.Create('Propriedade Connection deve ser setada');
+      raise Exception.Create(emDBConnectionUndefined);
 
     if FRALConnection <> nil then
     begin
@@ -568,7 +568,7 @@ begin
   FOpened := False;
 
   if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   FRALConnection.ExecSQLRemote(Self, @OnExecSQLResponse);
 end;

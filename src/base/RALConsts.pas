@@ -101,7 +101,11 @@ resourcestring
   emCompressLibFilesError = 'The classes %s - library files were not found.';
   emCompressInvalidFormat = 'Invalid Format.';
   emCryptEmptyKey = 'Key must be provided.';
+  emDBConnectionUndefined = 'Connection not set.';
+  emDBDriverMissing = 'Connection driver not found.';
+  emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
+  emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
   emInvalidJSONFormat = 'Invalid JSON Format.';
   emQueryVersionError = 'Invalid structure version.';
   emRouteAlreadyExists = 'Route already exists.';

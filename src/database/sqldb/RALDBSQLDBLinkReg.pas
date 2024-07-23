@@ -9,7 +9,7 @@ uses
   LResources, ComponentEditors, FieldsEditor, PropEdits,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBSQLDB, RALDBBufDataset, RALDBTypes, RALDBConnection, RALTypes;
+  RALDBSQLDB, RALDBBufDataset, RALDBTypes, RALDBConnection, RALTypes, RALConsts;
 
 type
 
@@ -17,9 +17,9 @@ type
 
   TRALDBBufDatasetEditor = class(TFieldsComponentEditor)
   public
-    function GetVerbCount: Integer; override;
-    function GetVerb(AIndex: Integer): string; override;
-    procedure ExecuteVerb(AIndex: Integer); override;
+    function GetVerbCount: integer; override;
+    function GetVerb(AIndex: integer): string; override;
+    procedure ExecuteVerb(AIndex: integer); override;
   end;
 
   { TRALDBBufDatasetTables }
@@ -45,25 +45,25 @@ end;
 
 { TRALDBBufDatasetEditor }
 
-function TRALDBBufDatasetEditor.GetVerbCount: Integer;
+function TRALDBBufDatasetEditor.GetVerbCount: integer;
 begin
   Result := 1;
 end;
 
-function TRALDBBufDatasetEditor.GetVerb(AIndex: Integer): string;
+function TRALDBBufDatasetEditor.GetVerb(AIndex: integer): string;
 begin
   case AIndex of
-    0 : Result := 'Fields Edi&tor';
+    0: Result := 'Fields Edi&tor';
   end;
 end;
 
-procedure TRALDBBufDatasetEditor.ExecuteVerb(AIndex: Integer);
+procedure TRALDBBufDatasetEditor.ExecuteVerb(AIndex: integer);
 var
-  vEditor : TObject;
-  vBufDataset : TRALDBBufDataset;
+  vEditor: TObject;
+  vBufDataset: TRALDBBufDataset;
 begin
   case AIndex of
-    0 : begin
+    0: begin
       vBufDataset := TRALDBBufDataset(GetComponent);
       if vBufDataset.FieldDefs.Count = 0 then
         vBufDataset.FieldDefs.Updated := False;
@@ -95,17 +95,18 @@ procedure TRALDBBufDatasetTables.GetValues(Proc: TGetStrProc);
 var
   vBufDataset: TRALDBBufDataset;
   vTables: TRALDBInfoTables;
-  vConnection : TRALDBConnection;
+  vConnection: TRALDBConnection;
   vInt: IntegerRAL;
 begin
   vBufDataset := TRALDBBufDataset(GetComponent(0));
   vConnection := vBufDataset.RALConnection;
   if vConnection = nil then
-    raise Exception.Create('Connection não setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   vTables := vConnection.GetTables;
   try
-    if vTables <> nil then begin
+    if vTables <> nil then
+    begin
       for vInt := 0 to Pred(vTables.Count) do
       begin
         if not vTables.Table[vInt].IsSystem then
@@ -118,6 +119,6 @@ begin
 end;
 
 initialization
-{$I RALDBPackage.lrs}
+  {$I RALDBPackage.lrs}
 
 end.

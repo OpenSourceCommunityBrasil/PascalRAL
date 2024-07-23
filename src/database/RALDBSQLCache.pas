@@ -194,17 +194,12 @@ destructor TRALDBSQL.Destroy;
 begin
   FreeAndNil(FParams);
   FreeAndNil(FResponse);
-  {$IFDEF FPC}
-    {$IFDEF noautomatedbookmark}
+  // no delphi 7 o TBookMark é um Pointer
+  // no radstudo 2007 o TBookmark é um TBytes
+  {$IF (Defined(FPC) AND Defined(noautomatedbookmark))
+    OR ((not Defined(FPC)) AND (not Defined(DELPHI2007UP)))}
       FreeMem(FBookMark);
-    {$ENDIF}
-  {$ELSE}
-    // no delphi 7 o TBookMark é um Pointer
-    // no radstudo 2007 o TBookmark é um TBytes
-    {$IFNDEF DELPHI2007UP}
-      FreeMem(FBookMark);
-    {$ENDIF}
-  {$ENDIF}
+  {$IFEND}
   inherited Destroy;
 end;
 

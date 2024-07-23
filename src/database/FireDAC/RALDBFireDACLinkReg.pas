@@ -6,7 +6,8 @@ interface
 uses
   Classes, SysUtils, VCL.DIalogs,
   DesignEditors, DesignIntf, DSDesign, DB,
-  RALDBFireDAC, RALDBFiredacMemTable, RALDBTypes, RALDBConnection, RALTypes;
+  RALDBFireDAC, RALDBFiredacMemTable, RALDBTypes, RALDBConnection, RALTypes,
+  RALConsts;
 
 type
   { TRALDBFDMemTableEditor }
@@ -90,7 +91,7 @@ begin
   vFDDataset := TRALDBFDMemTable(GetComponent(0));
   vConnection := vFDDataset.RALConnection;
   if vConnection = nil then
-    raise Exception.Create('Connection não setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   vTables := vConnection.GetTables;
   try

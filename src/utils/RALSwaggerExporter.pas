@@ -13,27 +13,27 @@ type
 
   TRALSwaggerExporter = class
   private
-    FSwaggerModule : TRALSwaggerModule;
-    FSchemas : TStrings;
+    FSwaggerModule: TRALSwaggerModule;
+    FSchemas: TStrings;
   protected
-    function getInfo(AServer: TRALServer) : TRALJSONObject;
-    function getServers(AServer: TRALServer) : TRALJSONArray;
-    function getTags(AServer: TRALServer) : TRALJSONArray;
-    function getPaths(AServer: TRALServer) : TRALJSONObject;
-    function getComponents(AServer: TRALServer) : TRALJSONObject;
-    function getSecurity(AAuth: TRALAuthServer) : TRALJSONObject;
+    function getInfo(AServer: TRALServer): TRALJSONObject;
+    function getServers(AServer: TRALServer): TRALJSONArray;
+    function getTags(AServer: TRALServer): TRALJSONArray;
+    function getPaths(AServer: TRALServer): TRALJSONObject;
+    function getComponents(AServer: TRALServer): TRALJSONObject;
+    function getSecurity(AAuth: TRALAuthServer): TRALJSONObject;
 
-    procedure RouteToJSON(AItem : TRALJSONObject; AServer : TRALServer;
-                          AModule : TRALModuleRoutes; ARoute : TRALBaseRoute);
+    procedure RouteToJSON(AItem: TRALJSONObject; AServer: TRALServer;
+                          AModule: TRALModuleRoutes; ARoute: TRALBaseRoute);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure ExportToFile(AServer : TRALServer; AFileName : TFileName);
-    procedure ExportToStream(AServer : TRALServer; AStream : TStream); overload;
-    function ExportToStream(AServer : TRALServer) : TStream; overload;
+    procedure ExportToFile(AServer: TRALServer; AFileName: TFileName);
+    procedure ExportToStream(AServer: TRALServer; AStream: TStream); overload;
+    function ExportToStream(AServer: TRALServer): TStream; overload;
   published
-    property SwaggerModule : TRALSwaggerModule read FSwaggerModule write FSwaggerModule;
+    property SwaggerModule: TRALSwaggerModule read FSwaggerModule write FSwaggerModule;
   end;
 
 implementation
@@ -42,7 +42,7 @@ implementation
 
 procedure TRALSwaggerExporter.ExportToFile(AServer: TRALServer; AFileName: TFileName);
 var
-  vFile : TFileStream;
+  vFile: TFileStream;
 begin
   vFile := TFileStream.Create(AFileName, fmCreate);
   try
@@ -104,7 +104,8 @@ begin
   if FSchemas.Count > 0 then
     vSchemas := TRALJSONObject.Create;
 
-  while FSchemas.Count > 0 do begin
+  while FSchemas.Count > 0 do
+  begin
     vSchemas.Add(FSchemas.Strings[0], TRALJSONObject(FSchemas.Objects[0]));
     FSchemas.Delete(0);
   end;
@@ -116,10 +117,10 @@ begin
     Result.Add('securitySchemes', getSecurity(AServer.Authentication));
 end;
 
-function TRALSwaggerExporter.getInfo(AServer: TRALServer) : TRALJSONObject;
+function TRALSwaggerExporter.getInfo(AServer: TRALServer): TRALJSONObject;
 var
-  vjAux1 : TRALJSONObject;
-  vAux : StringRAL;
+  vjAux1: TRALJSONObject;
+  vAux: StringRAL;
 begin
   vAux := FSwaggerModule.SystemDescription.Text;
   vAux := StringReplace(vAux, #13#10, '<br/>', [rfReplaceAll]);
@@ -153,7 +154,7 @@ end;
 
 function TRALSwaggerExporter.getPaths(AServer: TRALServer): TRALJSONObject;
 var
-  vInt1, vInt2 : IntegerRAL;
+  vInt1, vInt2: IntegerRAL;
   vRoute: TRALRoute;
   vSubRoutes: TList;
 begin
@@ -188,7 +189,7 @@ end;
 
 function TRALSwaggerExporter.getSecurity(AAuth: TRALAuthServer): TRALJSONObject;
 var
-  vAuth : TRALJSONObject;
+  vAuth: TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
 
@@ -233,7 +234,7 @@ end;
 
 function TRALSwaggerExporter.getTags(AServer: TRALServer): TRALJSONArray;
 var
-  vItem1, vItem2 : TRALJSONObject;
+  vItem1, vItem2: TRALJSONObject;
 begin
   Result := TRALJSONArray.Create;
 
@@ -252,21 +253,21 @@ begin
   Result.Add(vItem1);
 end;
 
-procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject;
-  AServer : TRALServer; AModule : TRALModuleRoutes; ARoute: TRALBaseRoute);
+procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject; AServer: TRALServer;
+  AModule: TRALModuleRoutes; ARoute: TRALBaseRoute);
 var
-  vRoute, vAuth, vjMethod : TRALJSONObject;
-  vAux1, vAux2 : TRALJSONObject;
-  vSecurity, vAuthTypes, vTags : TRALJSONArray;
-  vMethod : TRALMethod;
-  vStrMethod, vStrOperation, vStrRoute, vStrAux : StringRAL;
-  vInt : IntegerRAL;
-  vRouteParam : TRALRouteParam;
-  vURIParams : TStringList;
+  vRoute, vAuth, vjMethod: TRALJSONObject;
+  vAux1, vAux2: TRALJSONObject;
+  vSecurity, vAuthTypes, vTags: TRALJSONArray;
+  vMethod: TRALMethod;
+  vStrMethod, vStrOperation, vStrRoute, vStrAux: StringRAL;
+  vInt: IntegerRAL;
+  vRouteParam: TRALRouteParam;
+  vURIParams: TStringList;
 
-  function getParameterStr(AParam : StringRAL; AType : StringRAL) : TRALJSONObject;
+  function getParameterStr(AParam: StringRAL; AType: StringRAL): TRALJSONObject;
   var
-    rbAux1 : TRALJSONObject;
+    rbAux1: TRALJSONObject;
   begin
     Result := TRALJSONObject.Create;
     Result.Add('name', AParam);
@@ -276,12 +277,12 @@ var
     rbAux1 := TRALJSONObject.Create;
     rbAux1.Add('type', 'string');
 
-    Result.Add('schema',rbAux1);
+    Result.Add('schema', rbAux1);
   end;
 
-  function getParameter(AParam : TRALRouteParam; AType : StringRAL) : TRALJSONObject;
+  function getParameter(AParam: TRALRouteParam; AType: StringRAL): TRALJSONObject;
   var
-    rbAux1 : TRALJSONObject;
+    rbAux1: TRALJSONObject;
   begin
     Result := TRALJSONObject.Create;
     Result.Add('name', AParam.ParamName);
@@ -291,22 +292,26 @@ var
 
     rbAux1 := TRALJSONObject.Create;
     case AParam.ParamType of
-      prtBoolean : rbAux1.Add('type', 'boolean');
-      prtInteger : rbAux1.Add('type', 'integer');
-      prtNumber  : rbAux1.Add('type', 'number');
-      prtString  : rbAux1.Add('type', 'string');
+      prtBoolean:
+        rbAux1.Add('type', 'boolean');
+      prtInteger:
+        rbAux1.Add('type', 'integer');
+      prtNumber:
+        rbAux1.Add('type', 'number');
+      prtString:
+        rbAux1.Add('type', 'string');
     end;
-//    rbAux2.Add('example', '');
+    // rbAux2.Add('example', '');
 
-    Result.Add('schema',rbAux1);
+    Result.Add('schema', rbAux1);
   end;
 
   procedure getSchemaParameters;
   var
-    spAux1, spAux2, spAux3 : TRALJSONObject;
-    spArr1 : TRALJSONArray;
-    spInt : IntegerRAL;
-    spParam : TRALRouteParam;
+    spAux1, spAux2, spAux3: TRALJSONObject;
+    spArr1: TRALJSONArray;
+    spInt: IntegerRAL;
+    spParam: TRALRouteParam;
   begin
     if FSchemas.IndexOf(LowerCase(ARoute.Name)) >= 0 then
       Exit;
@@ -324,13 +329,17 @@ var
 
       spAux3 := TRALJSONObject.Create;
       case spParam.ParamType of
-        prtBoolean : spAux3.Add('type', 'boolean');
-        prtInteger : spAux3.Add('type', 'integer');
-        prtNumber  : spAux3.Add('type', 'number');
-        prtString  : spAux3.Add('type', 'string');
+        prtBoolean:
+          spAux3.Add('type', 'boolean');
+        prtInteger:
+          spAux3.Add('type', 'integer');
+        prtNumber:
+          spAux3.Add('type', 'number');
+        prtString:
+          spAux3.Add('type', 'string');
       end;
       spAux3.Add('description', spParam.Description.Text);
-  //      spAux3.Add('example', '');
+      // spAux3.Add('example', '');
 
       spAux2.Add(spParam.ParamName, spAux3);
 
@@ -352,47 +361,49 @@ var
 
   procedure getRequestParameters;
   var
-    rbAux1, rbAux2, rbAux3, rbAux4 : TRALJSONObject;
-    rbParameters : TRALJSONArray;
-    rbInt, rbIdx : IntegerRAL;
-    rbStr1 : StringRAL;
-    rbParam : TRALRouteParam;
+    rbAux1, rbAux2, rbAux3, rbAux4: TRALJSONObject;
+    rbParameters: TRALJSONArray;
+    rbInt, rbIdx: IntegerRAL;
+    rbStr1: StringRAL;
+    rbParam: TRALRouteParam;
   begin
     rbParameters := nil;
 
     case vMethod of
-      amDELETE, amPOST, amPATCH, amPUT : begin
-        if ARoute.InputParams.Count > 0 then
+      amDELETE, amPOST, amPATCH, amPUT:
         begin
-          rbAux1 := TRALJSONObject.Create;
-          rbAux1.Add('$ref', '#/components/schemas/'+LowerCase(ARoute.Name));
+          if ARoute.InputParams.Count > 0 then
+          begin
+            rbAux1 := TRALJSONObject.Create;
+            rbAux1.Add('$ref', '#/components/schemas/' + LowerCase(ARoute.Name));
 
-          rbAux2 := TRALJSONObject.Create;
-          rbAux2.Add('schema', rbAux1);
+            rbAux2 := TRALJSONObject.Create;
+            rbAux2.Add('schema', rbAux1);
 
-          rbAux3 := TRALJSONObject.Create;
-          rbAux3.Add('multipart/form-data', rbAux2);
+            rbAux3 := TRALJSONObject.Create;
+            rbAux3.Add('multipart/form-data', rbAux2);
 
-          rbAux4 := TRALJSONObject.Create;
-          rbAux4.Add('content', rbAux3);
+            rbAux4 := TRALJSONObject.Create;
+            rbAux4.Add('content', rbAux3);
 
-          vjMethod.Add('requestBody', rbAux4);
+            vjMethod.Add('requestBody', rbAux4);
 
-          getSchemaParameters;
+            getSchemaParameters;
+          end;
         end;
-      end;
-      amGET : begin
-        if (rbParameters = nil) and (ARoute.InputParams.Count > 0) then
-          rbParameters := TRALJSONArray.Create;
-
-        for rbInt := 0 to Pred(ARoute.InputParams.Count) do
+      amGET:
         begin
-          rbParam := TRALRouteParam(ARoute.InputParams.Items[rbInt]);
+          if (rbParameters = nil) and (ARoute.InputParams.Count > 0) then
+            rbParameters := TRALJSONArray.Create;
 
-          rbAux1 := getParameter(rbParam, 'query');
-          rbParameters.Add(rbAux1);
+          for rbInt := 0 to Pred(ARoute.InputParams.Count) do
+          begin
+            rbParam := TRALRouteParam(ARoute.InputParams.Items[rbInt]);
+
+            rbAux1 := getParameter(rbParam, 'query');
+            rbParameters.Add(rbAux1);
+          end;
         end;
-      end;
     end;
 
     if (rbParameters = nil) and (vURIParams.Count > 0) then
@@ -455,8 +466,8 @@ begin
     begin
       if (ARoute.IsMethodAllowed(vMethod)) and (vMethod <> amALL) then
       begin
-         if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
-           Continue;
+        if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
+          Continue;
 
         vjMethod := TRALJSONObject.Create;
 
@@ -485,8 +496,8 @@ begin
 
         getRequestParameters;
 
-        if (AServer.Authentication <> nil) and
-           (not ARoute.IsMethodSkipped(vMethod)) then begin
+        if (AServer.Authentication <> nil) and (not ARoute.IsMethodSkipped(vMethod)) then
+        begin
           vSecurity := TRALJSONArray.Create;
 
           vAuth := TRALJSONObject.Create;

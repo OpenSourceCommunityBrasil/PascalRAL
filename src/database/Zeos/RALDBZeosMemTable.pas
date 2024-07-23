@@ -2,7 +2,7 @@
 unit RALDBZeosMemTable;
 
 {$IFNDEF FPC}
-  {$I ZComponent.inc}
+{$I ZComponent.inc}
 {$ENDIF}
 
 interface
@@ -11,7 +11,7 @@ uses
   Classes, SysUtils, DB,
   ZDataset,
   RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALDBTypes,
-  RALTools, RALDBConnection, RALDBSQLCache;
+  RALTools, RALDBConnection, RALDBSQLCache, RALConsts;
 
 type
   { TRALDBZMemTable }
@@ -44,8 +44,8 @@ type
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
 
-    procedure OnChangeSQL(Sender : TObject);
-    procedure SetActive(AValue : boolean); override;
+    procedure OnChangeSQL(Sender: TObject);
+    procedure SetActive(AValue: boolean); override;
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -54,11 +54,11 @@ type
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
-    procedure ZeosLoadFromStream(AStream : TStream);
+    procedure ZeosLoadFromStream(AStream: TStream);
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
   public
-    constructor Create(AOwner : TComponent); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     procedure ApplyUpdates; reintroduce;
@@ -67,16 +67,16 @@ type
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
-    property RowsAffected : Int64RAL read FRowsAffected;
-    property LastId : Int64RAL read FLastId;
+    property RowsAffected: Int64RAL read FRowsAffected;
+    property LastId: Int64RAL read FLastId;
   published
     property Active;
     property FieldDefs;
-    property RALConnection : TRALDBConnection read FRALConnection write SetRALConnection;
-    property ParamCheck : boolean read FParamCheck write FParamCheck;
-    property Params : TParams read FParams write FParams;
-    property SQL : TStrings read FSQL write SetSQL;
-    property Storage : TRALDBStorageLink read FStorage write SetStorage;
+    property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
+    property ParamCheck: boolean read FParamCheck write FParamCheck;
+    property Params: TParams read FParams write FParams;
+    property SQL: TStrings read FSQL write SetSQL;
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -107,29 +107,36 @@ end;
 
 procedure TRALDBZMemTable.InternalPost;
 var
-  vSQL : StringRAL;
+  vSQL: StringRAL;
 begin
-  if FLoading then begin
+  if FLoading then
+  begin
     inherited InternalPost;
   end
-  else begin
+  else
+  begin
     case State of
-      dsInsert : vSQL := FUpdateSQL.InsertSQL.Text;
-      dsEdit   : vSQL := FUpdateSQL.UpdateSQL.Text;
+      dsInsert:
+        vSQL := FUpdateSQL.InsertSQL.Text;
+      dsEdit:
+        vSQL := FUpdateSQL.UpdateSQL.Text;
     end;
 
-    if Trim(vSQL) = '' then begin
+    if Trim(vSQL) = '' then
+    begin
       if FUpdateTable = '' then
-        raise Exception.Create('UpdateTable ou UpdateSQL deve ser preenchido');
+        raise Exception.Create(emDBUpdateSQLMissing);
 
       case State of
-        dsInsert : vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
-        dsEdit   : vSQL := FRALConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
+        dsInsert:
+          vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
+        dsEdit:
+          vSQL := FRALConnection.ConstructUpdateSQL(Self, FUpdateTable, FUpdateMode);
       end;
     end;
 
     if Trim(vSQL) = '' then
-      raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+      raise Exception.Create(emDBUpdateSQLMissing);
 
     CacheSQL(vSQL);
     inherited InternalPost;
@@ -145,7 +152,7 @@ begin
     vSQL := FRALConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
 
   if Trim(vSQL) = '' then
-    raise Exception.Create('SQL não foi preenchido (UpdateTable/UpdateSQL)');
+    raise Exception.Create(emDBUpdateSQLMissing);
 
   CacheSQL(vSQL);
   inherited InternalDelete;
@@ -157,9 +164,9 @@ begin
 
   if (AValue) and (not FLoading) then
   begin
-    if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
-       (not (csLoading in ComponentState)) then
-      raise Exception.Create('Propriedade Connection deve ser setada');
+    if (FRALConnection = nil) and (not(csDestroying in ComponentState)) and
+       (not(csLoading in ComponentState)) then
+      raise Exception.Create(emDBConnectionUndefined);
 
     if FRALConnection <> nil then
     begin
@@ -206,7 +213,7 @@ end;
 
 procedure TRALDBZMemTable.OnChangeSQL(Sender: TObject);
 var
-  vSQL : StringRAL;
+  vSQL: StringRAL;
 begin
   if FParamCheck then
   begin
@@ -277,7 +284,7 @@ begin
           vField.Attributes := vField.Attributes + [faRequired];
       end;
     except
-      on e : Exception do
+      on e: Exception do
       begin
         raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
       end;
@@ -294,12 +301,12 @@ begin
   inherited;
 end;
 
-procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
+procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 var
-  vMem : TStream;
-  vNative : Boolean;
-  vException : StringRAL;
+  vMem: TStream;
+  vNative: boolean;
+  vException: StringRAL;
   vDBSQL: TRALDBSQL;
 begin
   if AResponse.StatusCode = 200 then
@@ -333,10 +340,10 @@ begin
   FLoading := False;
 end;
 
-procedure TRALDBZMemTable.OnExecSQLResponse(Sender: TObject;
-  AResponse: TRALResponse; AException: StringRAL);
+procedure TRALDBZMemTable.OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
 var
-  vException : StringRAL;
+  vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
 begin
@@ -367,12 +374,12 @@ begin
 end;
 
 procedure TRALDBZMemTable.OnApplyUpdates(Sender: TObject; AResponse: TRALResponse;
-                                         AException: StringRAL);
+  AException: StringRAL);
 var
-  vException : StringRAL;
+  vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
-  vInt1, vInt2 : IntegerRAL;
+  vInt1, vInt2: IntegerRAL;
   vTable: TZMemTable;
   vField: TField;
 begin
@@ -393,7 +400,7 @@ begin
           try
             try
               if vDBSQL.Response.Native then
-//                vTable.ZeosLoadFromStream(vDBSQL.Response.Stream)
+                // vTable.ZeosLoadFromStream(vDBSQL.Response.Stream)
               else
                 FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
 
@@ -438,25 +445,25 @@ end;
 
 procedure TRALDBZMemTable.ZeosLoadFromStream(AStream: TStream);
 {$IFDEF FPC}
-  type
-    TLoadFromStream = procedure (AStream: TStream) of object;
-  var
-    vMethod: TMethod;
-    vProc: TLoadFromStream;
-{$ENDIF}
+type
+  TLoadFromStream = procedure(AStream: TStream) of object;
+var
+  vMethod: TMethod;
+  vProc: TLoadFromStream;
+  {$ENDIF}
 begin
   {$IFNDEF FPC}
-    {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
-      Self.LoadFromStream(AStream);
-    {$ENDIF}
+  {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
+  Self.LoadFromStream(AStream);
+  {$ENDIF}
   {$ELSE}
-    vMethod.Data := Pointer(Self);
-    vMethod.Code := Self.MethodAddress('LoadFromStream');
-    if vMethod.Code <> nil then
-    begin
-      vProc := TLoadFromStream(vMethod);
-      vProc(AStream);
-    end;
+  vMethod.Data := Pointer(Self);
+  vMethod.Code := Self.MethodAddress('LoadFromStream');
+  if vMethod.Code <> nil then
+  begin
+    vProc := TLoadFromStream(vMethod);
+    vProc(AStream);
+  end;
   {$ENDIF}
 end;
 
@@ -468,10 +475,10 @@ end;
 
 procedure TRALDBZMemTable.CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType);
 var
-  vParams : TParams;
-  vParam : TParam;
+  vParams: TParams;
+  vParam: TParam;
   vInt: IntegerRAL;
-  vField : TField;
+  vField: TField;
   vPrefix: StringRAL;
 begin
   if Trim(ASQL) = '' then
@@ -540,7 +547,7 @@ end;
 procedure TRALDBZMemTable.ApplyUpdates;
 begin
   if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   FRALConnection.ApplyUpdatesRemote(FSQLCache, {$IFDEF FPC}@{$ENDIF}OnApplyUpdates);
 end;
@@ -553,7 +560,7 @@ begin
   Clear;
 
   if FRALConnection = nil then
-    raise Exception.Create('Propriedade Connection deve ser setada');
+    raise Exception.Create(emDBConnectionUndefined);
 
   FRALConnection.ExecSQLRemote(Self, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
 end;
@@ -564,4 +571,3 @@ begin
 end;
 
 end.
-

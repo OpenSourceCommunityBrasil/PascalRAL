@@ -1,4 +1,4 @@
-/// Base unit for the module component that will enable DBWare on the server
+﻿/// Base unit for the module component that will enable DBWare on the server
 unit RALDBModule;
 
 interface
@@ -234,7 +234,7 @@ begin
           end
           else
           begin
-            raise Exception.Create('Body está vazio');
+            raise Exception.Create(emDBEmptyBody);
           end;
         finally
           FreeAndNil(vMem);
@@ -242,7 +242,7 @@ begin
       end
       else
       begin
-        raise Exception.Create('Driver da Conexão não encontrado');
+        raise Exception.Create(emDBDriverMissing);
       end;
     except
       on e: Exception do
@@ -313,7 +313,7 @@ begin
           end
           else
           begin
-            raise Exception.Create('Body está vazio');
+            raise Exception.Create(emDBEmptyBody);
           end;
         finally
           FreeAndNil(vMem);
@@ -321,7 +321,7 @@ begin
       end
       else
       begin
-        raise Exception.Create('Driver da Conexão não encontrado');
+        raise Exception.Create(emDBDriverMissing);
       end;
     except
       on e: Exception do
@@ -377,7 +377,7 @@ begin
           end
           else
           begin
-            raise Exception.Create('Body está vazio');
+            raise Exception.Create(emDBEmptyBody);
           end;
         finally
           FreeAndNil(vMem);
@@ -385,7 +385,7 @@ begin
       end
       else
       begin
-        raise Exception.Create('Driver da Conexão não encontrado');
+        raise Exception.Create(emDBDriverMissing);
       end;
     except
       on e: Exception do
