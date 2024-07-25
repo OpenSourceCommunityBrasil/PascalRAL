@@ -197,7 +197,6 @@
         <DCCReference Include="..\..\..\src\database\RALDBStorageBIN.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBStorageJSON.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBTypes.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALQueryStructure.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBStorageCSV.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>
