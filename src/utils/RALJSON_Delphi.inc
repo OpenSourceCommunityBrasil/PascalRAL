@@ -209,7 +209,7 @@ end;
 function TRALJSONValue.AsString: StringRAL;
 begin
   Result := '';
-  if FJsonObj <> nil then
+  if (Self <> nil) and (FJsonObj <> nil) then
   begin
     if (FJsonObj is TJSONObject) or (FJsonObj is TJSONArray) then
       Result := ToJSON
