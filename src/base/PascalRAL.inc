@@ -11,6 +11,16 @@
 
 (* End of IFEND Directives *)
 (******************************************************************************)
+
+(* Languague definition *)
+
+{$DEFINE LANG_ENUS}
+{.$DEFINE LANG_ESES}
+{.$DEFINE LANG_PTBR}
+
+(* End of Languague directives definition *)
+(******************************************************************************)
+
 (* 3rd Party directives definition *)
 
 {$DEFINE RALlkJSON}
@@ -18,6 +28,7 @@
 
 (* End of 3rd Party directives definition *)
 (******************************************************************************)
+
 (*  Compiler Directives for IDE Version *)
 
 {$IFNDEF FPC}
