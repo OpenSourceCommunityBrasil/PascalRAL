@@ -259,8 +259,8 @@ implementation
 constructor TRALClient.Create(AOwner: TComponent);
 begin
   inherited;
-  FRequest := TRALClientRequest.Create;
-  FResponse := TRALClientResponse.Create;
+  FRequest := TRALClientRequest.Create(Self);
+  FResponse := TRALClientResponse.Create(Self);
   FClient := CreateClient;
 end;
 
@@ -325,7 +325,7 @@ begin
   FRoute := '';
   FException := '';
   FRequest := nil;
-  FResponse := TRALClientResponse.Create;
+  FResponse := TRALClientResponse.Create(AOwner);
   FClient := FParent.CreateClient;
   FIndexUrl := AOwner.IndexUrl;
   FRequestLifeCicle := True;
@@ -365,7 +365,7 @@ procedure TRALThreadClient.SetRequest(const AValue: TRALRequest);
 begin
   if FRequestLifeCicle then
   begin
-    FRequest := TRALClientRequest.Create;
+    FRequest := TRALClientRequest.Create(FParent);
     AValue.Clone(FRequest);
   end
   else
@@ -535,7 +535,7 @@ function TRALClientMT.ExecuteSingle(ARoute: StringRAL; ARequest: TRALRequest;
 var
   vClient: TRALClientHTTP;
 begin
-  Result := TRALClientResponse.Create;
+  Result := TRALClientResponse.Create(Self);
 
   vClient := CreateClient;
   try
@@ -580,7 +580,7 @@ end;
 
 function TRALClientMT.NewRequest: TRALRequest;
 begin
-  Result := TRALClientRequest.Create;
+  Result := TRALClientRequest.Create(Self);
   Result.Clear;
   Result.ContentCompress := Self.CompressType;
   Result.ContentCripto := Self.CriptoOptions.CriptType;
@@ -799,8 +799,8 @@ begin
   vObjAuth := TRALClientDigest(FParent.Authentication);
   if not vObjAuth.IsAuthenticated then
   begin
-    vResponse := TRALClientResponse.Create;
-    vRequest := TRALClientRequest.Create;
+    vResponse := TRALClientResponse.Create(FParent);
+    vRequest := TRALClientRequest.Create(FParent);
     try
       vURL := AVars.Values['url'];
       vMethod := HTTPMethodToRALMethod(AVars.Values['method']);
@@ -852,8 +852,8 @@ begin
   begin
     vConta := 0;
     repeat
-      vResponse := TRALClientResponse.Create;
-      vRequest := TRALClientRequest.Create;
+      vResponse := TRALClientResponse.Create(FParent);
+      vRequest := TRALClientRequest.Create(FParent);
       try
         if Assigned(vObjAuth.OnBeforeGetToken) then
         begin
@@ -913,8 +913,8 @@ begin
   begin
     vConta := 0;
     repeat
-      vResponse := TRALClientResponse.Create;
-      vRequest := TRALClientRequest.Create;
+      vResponse := TRALClientResponse.Create(FParent);
+      vRequest := TRALClientRequest.Create(FParent);
       try
         vObjAuth.SetAuthHeader(AVars, vResponse.Params);
         SendUrl(GetURL(vObjAuth.RouteInitialize, ARequest), vRequest, vResponse, amPOST);

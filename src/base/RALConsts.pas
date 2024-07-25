@@ -28,11 +28,11 @@ const
                  + '<h4>Version: ' + RALVERSION + '</h4>'
                  + '<h4>Engine: %ralengine%</h4>'
                  + '</body></html>';
-  RALPageCode = '<!DOCTYPE html>'
-              + '<html lang="%s">'
-              + '<head><title>RALServer - ' + RALVERSION + '</title>'
-              + '</head><body><h1>%d - %s</h1>'
-              + '<p>%s</p></body></html>';
+  RALPage = '<!DOCTYPE html>'
+          + '<html lang="%s">'
+          + '<head><title>RALServer - ' + RALVERSION + '</title>'
+          + '</head><body><h1>%d - %s</h1>'
+          + '<p>%s</p></body></html>';
 
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
   MultipartLineLength = 500;
@@ -41,6 +41,16 @@ const
   HTTPLineBreak = #13#10;
 
 resourcestring
+{
+{$IF DEFINED(LANG_PTBR)}
+  {$I ralconsts_prbr.inc}
+{$ELSEIF DEFINED(LANG_ESES)}
+  {$I ralconsts_eses.inc}
+{$ELSE}
+  {$I ralconsts_enus.inc}
+{$IFEND}
+}
+
 { @abstract constant internal messages
   am = alert messages
   em = error messages

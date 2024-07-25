@@ -74,7 +74,7 @@ type
     procedure SetRequestStream(const AValue: TStream); virtual; abstract;
     procedure SetRequestText(const AValue: StringRAL); virtual; abstract;
   public
-    constructor Create;
+    constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
     /// Adds an UTF8 String to the body of the request.
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
@@ -108,12 +108,15 @@ type
     property Query: StringRAL read FQuery write SetQuery;
   end;
 
+
+  { TRALServerRequest }
+
   /// Derived class to handle ServerRequest
   TRALServerRequest = class(TRALRequest)
   private
     FStream: TStream;
   public
-    constructor Create;
+    constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
     function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
@@ -121,6 +124,9 @@ type
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
   end;
+
+
+  { TRALClientRequest }
 
   /// Derived class to handle ClientRequest
   TRALClientRequest = class(TRALRequest)
@@ -178,7 +184,7 @@ begin
   ASource.Query := Self.Query;
 end;
 
-constructor TRALRequest.Create;
+constructor TRALRequest.Create(AOwner: TObject);
 begin
   inherited;
   FAuthorization := TRALAuthorization.Create;
@@ -193,7 +199,8 @@ begin
   inherited;
 end;
 
-function TRALRequest.AddHeader(const AName, AValue: StringRAL): TRALRequest;
+function TRALRequest.AddHeader(const AName: StringRAL; const AValue: StringRAL
+  ): TRALRequest;
 begin
   inherited AddHeader(AName, AValue);
   Result := Self;
@@ -206,13 +213,15 @@ begin
   Result := Self;
 end;
 
-function TRALRequest.AddField(const AName, AValue: StringRAL): TRALRequest;
+function TRALRequest.AddField(const AName: StringRAL; const AValue: StringRAL
+  ): TRALRequest;
 begin
   inherited AddField(AName, AValue);
   Result := Self;
 end;
 
-function TRALRequest.AddCookie(const AName, AValue: StringRAL): TRALRequest;
+function TRALRequest.AddCookie(const AName: StringRAL; const AValue: StringRAL
+  ): TRALRequest;
 begin
   inherited AddCookie(AName, AValue);
   Result := Self;
@@ -284,7 +293,7 @@ end;
 
 { TRALServerRequest }
 
-constructor TRALServerRequest.Create;
+constructor TRALServerRequest.Create(AOwner: TObject);
 begin
   inherited;
   FStream := nil;

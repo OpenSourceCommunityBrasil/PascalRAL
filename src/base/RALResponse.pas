@@ -26,7 +26,7 @@ type
     /// Assign an UTF8String into the Response
     procedure SetResponseText(const AValue: StringRAL); virtual; abstract;
   public
-    constructor Create;
+    constructor Create(AOwner : TObject); override;
     destructor Destroy; override;
     /// Append an UTF8 String to the response
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;
@@ -86,7 +86,7 @@ type
   private
     FStream: TStream;
   public
-    constructor Create;
+    constructor Create(AOwner : TObject); override;
     destructor Destroy; override;
 
     function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
@@ -97,6 +97,9 @@ type
   end;
 
 implementation
+
+uses
+  RALServer;
 
 { TRALResponse }
 
@@ -188,10 +191,18 @@ begin
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
+var
+  vResp: StringRAL;
 begin
   FStatusCode := AStatusCode;
   if AStatusCode >= 400 then
     ContentType := rctTEXTHTML;
+
+  if Parent.InheritsFrom(TRALServer) then begin
+    vResp := TRALServer(Parent).ResponsePages.HTMLPage[AStatusCode];
+    if vResp <> '' then
+      ResponseText := vResp;
+  end;
 end;
 
 function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse;
@@ -233,9 +244,9 @@ begin
   Result := Self;
 end;
 
-constructor TRALResponse.Create;
+constructor TRALResponse.Create(AOwner: TObject);
 begin
-  inherited Create;
+  inherited;
   ContentType := rctAPPLICATIONJSON;
 end;
 
@@ -320,7 +331,7 @@ end;
 
 { TRALClientResponse }
 
-constructor TRALClientResponse.Create;
+constructor TRALClientResponse.Create(AOwner : TObject);
 begin
   inherited;
   FStream := nil;

@@ -24,6 +24,7 @@ type
   /// Base class of REQUEST and RESPONSE classes
   TRALHTTPHeaderInfo = class
   private
+    FParent: TObject;
     FAcceptEncoding: StringRAL;
     FAcceptEncription: StringRAL;
     FContentDisposition: StringRAL;
@@ -47,7 +48,7 @@ type
     procedure SetContentCripto(AValue: TRALCriptoType);
     procedure SetContentType(const AValue: StringRAL);
   public
-    constructor Create;
+    constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
@@ -85,6 +86,7 @@ type
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
+    property Parent: TObject read FParent;
   end;
 
 implementation
@@ -180,9 +182,10 @@ begin
   end;
 end;
 
-constructor TRALHTTPHeaderInfo.Create;
+constructor TRALHTTPHeaderInfo.Create(AOwner : TObject);
 begin
-  inherited;
+  inherited Create;
+  FParent := AOwner;
   FParams := TRALParams.Create;
   FContentDispositionInline := False;
 end;
@@ -193,13 +196,15 @@ begin
   inherited Destroy;
 end;
 
-function TRALHTTPHeaderInfo.AddHeader(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddHeader(const AName: StringRAL;
+  const AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkHEADER);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddQuery(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddQuery(const AName: StringRAL;
+  const AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkQUERY);
   Result := Self;
@@ -215,13 +220,15 @@ begin
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddField(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddField(const AName: StringRAL;
+  const AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkFIELD);
   Result := Self;
 end;
 
-function TRALHTTPHeaderInfo.AddCookie(const AName, AValue: StringRAL): TRALHTTPHeaderInfo;
+function TRALHTTPHeaderInfo.AddCookie(const AName: StringRAL;
+  const AValue: StringRAL): TRALHTTPHeaderInfo;
 begin
   FParams.AddParam(AName, AValue, rpkCOOKIE);
   Result := Self;

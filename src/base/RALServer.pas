@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo, DateUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALCripto, RALCompress, RALCompressZLib, RALPageCodes;
+  RALCripto, RALCompress, RALCompressZLib, RALResponsePages;
 
 type
   TRALServer = class;
@@ -188,7 +188,7 @@ type
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
-    FPagesCodes: TRALPageCodes;
+    FResponsePages: TRALResponsePages;
 
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
@@ -257,7 +257,7 @@ type
     property Engine: StringRAL read FEngine;
     /// Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
-    property PageCodes: TRALPageCodes read FPagesCodes write FPagesCodes;
+    property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
     /// Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
     /// Route configuration of the server, a.k.a endpoints
@@ -421,7 +421,7 @@ begin
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
   FSecurity := TRALSecurity.Create;
-  FPagesCodes := TRALPageCodes.Create(Self);
+  FResponsePages := TRALResponsePages.Create(Self);
 
   FAuthentication := nil;
   FCompressType := ctNone;
@@ -431,6 +431,8 @@ begin
   FShowServerStatus := True;
   FCookieLife := 30;
   FSSL := CreateRALSSL;
+
+  ResponsePages.CreateDefaultPages;
 end;
 
 function TRALServer.CreateRALSSL: TRALSSL;
@@ -491,7 +493,7 @@ begin
   FreeAndNil(FCriptoOptions);
   FreeAndNil(FListSubModules);
   FreeAndNil(FSecurity);
-  FreeAndNil(FPagesCodes);
+  FreeAndNil(FResponsePages);
 
   inherited;
 end;
@@ -687,9 +689,6 @@ begin
     if Assigned(FOnResponse) then
       FOnResponse(ARequest, AResponse);
 
-    if AResponse.Params.Count([rpkBODY, rpkFIELD]) = 0 then
-      AResponse.ResponseText := FPagesCodes.FindPageHTML(AResponse.StatusCode);
-
     ARequest.Params.ClearParams;
   end;
 end;
@@ -746,12 +745,12 @@ end;
 
 function TRALServer.CreateRequest: TRALRequest;
 begin
-  Result := TRALServerRequest.Create;
+  Result := TRALServerRequest.Create(Self);
 end;
 
 function TRALServer.CreateResponse: TRALResponse;
 begin
-  Result := TRALServerResponse.Create;
+  Result := TRALServerResponse.Create(Self);
   Result.StatusCode := 200;
 end;
 
