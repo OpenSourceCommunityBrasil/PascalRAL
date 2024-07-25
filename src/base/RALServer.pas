@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo, DateUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALCripto, RALCompress, RALCompressZLib;
+  RALCripto, RALCompress, RALCompressZLib, RALPageCodes;
 
 type
   TRALServer = class;
@@ -188,6 +188,7 @@ type
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
     FSSL: TRALSSL;
+    FPagesCodes: TRALPageCodes;
 
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
@@ -220,6 +221,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     function CountSubModules: IntegerRAL;
     /// Shortcut to create routes on the server
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
@@ -255,6 +257,7 @@ type
     property Engine: StringRAL read FEngine;
     /// Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    property PageCodes: TRALPageCodes read FPagesCodes write FPagesCodes;
     /// Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
     /// Route configuration of the server, a.k.a endpoints
@@ -418,6 +421,7 @@ begin
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
   FSecurity := TRALSecurity.Create;
+  FPagesCodes := TRALPageCodes.Create(Self);
 
   FAuthentication := nil;
   FCompressType := ctNone;
@@ -486,8 +490,9 @@ begin
   FreeAndNil(FCORSOptions);
   FreeAndNil(FCriptoOptions);
   FreeAndNil(FListSubModules);
-
   FreeAndNil(FSecurity);
+  FreeAndNil(FPagesCodes);
+
   inherited;
 end;
 
@@ -681,6 +686,9 @@ begin
   begin
     if Assigned(FOnResponse) then
       FOnResponse(ARequest, AResponse);
+
+    if AResponse.Params.Count([rpkBODY, rpkFIELD]) = 0 then
+      AResponse.ResponseText := FPagesCodes.FindPageHTML(AResponse.StatusCode);
 
     ARequest.Params.ClearParams;
   end;

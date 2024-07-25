@@ -1,0 +1,15 @@
+[ralconsts]
+emContentCheckError=Erro de verificação de conteúdo.
+emCompressLibFilesError=As classes %s - arquivos de biblioteca não foram encontrados.
+emCompressInvalidFormat=Formato inválido.
+emCryptEmptyKey=A chave deve ser fornecida.
+emDBLinkMissing=Propriedade DBLink ausente.
+emInvalidJSONFormat=Formato JSON inválido.
+emQueryVersionError=Versão da estrutura inválida.
+emRouteAlreadyExists=A rota já existe.
+emStorageNotFound=Nenhum TRALStorageLink encontrado.
+emStorageInvalidBinary=Formato binário inválido.
+emSaguiServerCreateError=Erro ao tentar criar o servidor.
+emSaguiServerUnsupportedTLS=Esta versão do TLS não é suportada pela lib.
+emSaguiLibraryLoadError=Erro ao tentar carregar libsagui.
+wmIPv6notImplemented=IPv6 não é implementado neste mecanismo.

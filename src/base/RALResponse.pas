@@ -65,8 +65,10 @@ type
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
   published
-    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    /// TCP Client Connection Error
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
+    /// HTTP StatusCode
+    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
   end;
 
   /// Derived class to handle ServerResponse
@@ -187,18 +189,9 @@ end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
 begin
-  StatusCode := AStatusCode;
-  ContentType := rctTEXTHTML;
-  case AStatusCode of
-    400: ResponseText := RAL400Page;
-    401: ResponseText := RAL401Page;
-    403: ResponseText := RAL403Page;
-    404: ResponseText := RAL404Page;
-    415: ResponseText := RAL415Page;
-    500: ResponseText := RAL500Page;
-    501: ResponseText := RAL501Page;
-    503: ResponseText := RAL503Page;
-  end;
+  FStatusCode := AStatusCode;
+  if AStatusCode >= 400 then
+    ContentType := rctTEXTHTML;
 end;
 
 function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse;
