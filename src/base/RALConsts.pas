@@ -28,57 +28,11 @@ const
                  + '<h4>Version: ' + RALVERSION + '</h4>'
                  + '<h4>Engine: %ralengine%</h4>'
                  + '</body></html>';
-  RAL400Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>400 - BadRequest</h1>'
-             + '<p>The server informs that it doesn''t like the input params</p>'
-             + '</body></html>';
-  RAL401Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>401 - Unauthorized</h1>'
-             + '<p>The server informs that it doesn''t know you</p>'
-             + '</body></html>';
-  RAL403Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>403 - Forbidden</h1>'
-             + '<p>The server informs that it doesn''t want you to access'
-             + ' this page</p>'
-             + '</body></html>';
-  RAL404Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>404 - Not Found</h1>'
-             + '<p>The server informs that the page you''re requesting doesn''t'
-             + ' exist in this reality</p>'
-             + '</body></html>';
-  RAL415Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>415 - Unsuported Media Type</h1>'
-             + '<p>The server informs that it doesn''t know what you''re asking</p>'
-             + '</body></html>';
-  RAL500Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>500 - Internal Server Error</h1>'
-             + '<p>The server made something that it shouldn''t</p>'
-             + '</body></html>';
-  RAL501Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>501 - Not Implemented</h1>'
-             + '<p>The server informs that it doesn''t exist</p>'
-             + '</body></html>';
-  RAL503Page = '<!DOCTYPE html>'
-             + '<html lang="en-us">'
-             + '<head><title>RALServer - ' + RALVERSION + '</title>'
-             + '</head><body><h1>503 - Service Unavailable</h1>'
-             + '<p>The server informs that it doesn''t want to work now and you'
-             + ' should try later</p>'
-             + '</body></html>';
+  RALPageCode = '<!DOCTYPE html>'
+              + '<html lang="%s">'
+              + '<head><title>RALServer - ' + RALVERSION + '</title>'
+              + '</head><body><h1>%d - %s</h1>'
+              + '<p>%s</p></body></html>';
 
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
   MultipartLineLength = 500;
@@ -119,6 +73,28 @@ resourcestring
 
   // ralserver error messages
   wmIPv6notImplemented = 'IPv6 is not implemented in this engine.';
+
+  // ralserver page codes
+  SLangHTTP = 'en-US';
+  SServerOnline = 'Server Online';
+  SWordVersion = 'Version';
+  SWordEngine = 'Engine';
+  SError400 = 'BadRequest';
+  SError400Page = 'The server informs that it doesn''t like the input params';
+  SError401 = 'Unauthorized';
+  SError401Page = 'The server informs that it doesn''t know you';
+  SError403 = 'Forbidden';
+  SError403Page = 'The server informs that it doesn''t want you to access';
+  SError404 = 'Not Found';
+  SError404Page = 'The server informs that the page you''re requesting doesn''t exist in this reality';
+  SError415 = 'Unsuported Media Type';
+  SError415Page = 'The server informs that it doesn''t know what you''re asking';
+  SError500 = 'Internal Server Error';
+  SError500Page = 'The server made something that it shouldn''t';
+  SError501 = 'Not Implemented';
+  SError501Page = 'The server informs that it doesn''t exist';
+  SError503 = 'Service Unavailable';
+  SError503Page = 'The server informs that it doesn''t want to work now and you should try later';
 
 implementation
 

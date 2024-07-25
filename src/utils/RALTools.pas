@@ -22,6 +22,8 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 
+function RALHTTPPageCode(ACode : IntegerRAL) : StringRAL;
+
 implementation
 
 function FixRoute(ARoute: StringRAL): StringRAL;
@@ -191,12 +193,27 @@ var
   I: integer;
 begin
   Result := False;
-  for I := 0 to pred(Length(AArray)) do
+  for I := 0 to Pred(Length(AArray)) do
     if SameText(AStr, AArray[I]) then
     begin
       Result := True;
       Break;
     end;
+end;
+
+function RALHTTPPageCode(ACode : IntegerRAL) : StringRAL;
+begin
+  Result := '';
+  case ACode of
+    400 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError400, SError400Page]);
+    401 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError401, SError401Page]);
+    403 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError403, SError403Page]);
+    404 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError404, SError404Page]);
+    415 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError415, SError415Page]);
+    500 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError500, SError500Page]);
+    501 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError501, SError501Page]);
+    503 : Result := Format(RALPageCode, [SLangHTTP, ACode, SError503, SError503Page]);
+  end;
 end;
 
 end.
