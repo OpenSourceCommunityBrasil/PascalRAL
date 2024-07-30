@@ -1,5 +1,0 @@
-{"version":1,"strings":[
-{"hash":47318657,"name":"tframe1.lsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,111,32,73,100,105,111,109,97],"value":"Escolha o Idioma"},
-{"hash":95382754,"name":"tframe1.lprevious.caption","sourcebytes":[60,32,65,110,116,101,114,105,111,114],"value":"< Anterior"},
-{"hash":183197662,"name":"tframe1.lnext.caption","sourcebytes":[80,114,195,179,120,105,109,111,32,62],"value":"Pr\u00F3ximo >"}
-]}

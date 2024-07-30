@@ -1,0 +1,6 @@
+{"version":1,"strings":[
+{"hash":195079507,"name":"tfrm_recursos.lbsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,111,115,32,114,101,99,117,114,115,111,115],"value":"Escolha os recursos"},
+{"hash":88460180,"name":"tfrm_recursos.label1.caption","sourcebytes":[80,97,116,104,32,112,97,114,97,32,68,111,119,110,108,111,97,100],"value":"Path para Download"},
+{"hash":146168831,"name":"tfrm_recursos.baddversion.hint","sourcebytes":[65,100,105,99,105,111,110,97,114,32,117,109,32,73,68,69,32,112,101,108,97,32,115,117,97,32,112,97,115,116,97,32,100,101,32,105,110,115,116,97,108,97,195,167,195,163,111],"value":"Adicionar um IDE pela sua pasta de instala\u00E7\u00E3o"},
+{"hash":264222898,"name":"tfrm_recursos.label2.caption","sourcebytes":[82,101,99,117,114,115,111,115,32,112,97,114,97,32,73,110,115,116,97,108,97,114],"value":"Recursos para Instalar"}
+]}

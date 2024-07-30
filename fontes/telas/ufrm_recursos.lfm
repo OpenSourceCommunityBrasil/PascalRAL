@@ -1,0 +1,83 @@
+inherited frm_recursos: Tfrm_recursos
+  inherited imNext: TImage
+    AnchorSideRight.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  inherited imBack: TImage
+    AnchorSideLeft.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  object lbSubTitle: TLabel[9]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrCenter
+    Left = 165
+    Height = 30
+    Top = 120
+    Width = 370
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Top = 120
+    Caption = 'Escolha os recursos'
+    Font.Height = -21
+    ParentColor = False
+    ParentFont = False
+  end
+  object Label1: TLabel[10]
+    Left = 48
+    Height = 15
+    Top = 166
+    Width = 107
+    Caption = 'Path para Download'
+    ParentColor = False
+  end
+  object ePathDownload: TEdit[11]
+    Left = 48
+    Height = 23
+    Top = 184
+    Width = 576
+    ReadOnly = True
+    TabOrder = 0
+  end
+  object tvRecursos: TTreeView[12]
+    Left = 48
+    Height = 296
+    Top = 232
+    Width = 601
+    Images = dm.imgList
+    ReadOnly = True
+    ScrollBars = ssAutoVertical
+    ShowLines = False
+    ShowRoot = False
+    TabOrder = 1
+    OnDblClick = tvRecursosDblClick
+    OnKeyDown = tvRecursosKeyDown
+    Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoToolTips, tvoThemedDraw]
+  end
+  object bAddVersion: TSpeedButton[13]
+    Left = 626
+    Height = 23
+    Hint = 'Adicionar um IDE pela sua pasta de instalação'
+    Top = 184
+    Width = 23
+    Images = dm.imgList
+    ImageIndex = 0
+    OnClick = bAddVersionClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object Label2: TLabel[14]
+    Left = 48
+    Height = 15
+    Top = 213
+    Width = 114
+    Caption = 'Recursos para Instalar'
+    ParentColor = False
+  end
+  object dirSelect: TSelectDirectoryDialog[15]
+    Left = 204
+    Top = 284
+  end
+end

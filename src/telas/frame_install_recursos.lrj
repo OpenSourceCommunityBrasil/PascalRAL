@@ -1,4 +1,0 @@
-{"version":1,"strings":[
-{"hash":4611762,"name":"tfframe_install_recursos.lbsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,111,115,32,114,101,99,117,114,115,111,115,32,97,32,105,110,115,116,97,108,97,114],"value":"Escolha os recursos a instalar"},
-{"hash":240507235,"name":"tfframe_install_recursos.checkbox1.caption","sourcebytes":[73,110,115,116,97,108,97,114,32,68,101,112,101,110,100,195,170,110,99,105,97,115],"value":"Instalar Depend\u00EAncias"}
-]}

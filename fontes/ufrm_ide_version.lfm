@@ -1,0 +1,86 @@
+object frm_ide_version: Tfrm_ide_version
+  Left = 0
+  Height = 45
+  Top = 0
+  Width = 647
+  ClientHeight = 45
+  ClientWidth = 647
+  ParentBackground = False
+  TabOrder = 0
+  DesignLeft = 379
+  DesignTop = 10
+  object Panel1: TPanel
+    Left = 0
+    Height = 45
+    Top = 0
+    Width = 28
+    Align = alLeft
+    BevelOuter = bvNone
+    ClientHeight = 45
+    ClientWidth = 28
+    ParentBackground = False
+    TabOrder = 0
+    object ckSelecionado: TCheckBox
+      Left = 5
+      Height = 17
+      Top = 14
+      Width = 18
+      TabOrder = 0
+    end
+    object Bevel1: TBevel
+      Left = 26
+      Height = 43
+      Top = 0
+      Width = 2
+      Align = alRight
+    end
+    object Bevel3: TBevel
+      Left = 0
+      Height = 2
+      Top = 43
+      Width = 28
+      Align = alBottom
+    end
+  end
+  object Panel2: TPanel
+    Left = 28
+    Height = 45
+    Top = 0
+    Width = 619
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 45
+    ClientWidth = 619
+    ParentBackground = False
+    TabOrder = 1
+    object lbIDEName: TLabel
+      Left = 7
+      Height = 15
+      Top = 4
+      Width = 55
+      Caption = 'IDE Name:'
+      ParentColor = False
+    end
+    object lbPath: TLabel
+      Left = 8
+      Height = 15
+      Top = 24
+      Width = 28
+      Caption = 'Path:'
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clGray
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsItalic]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Bevel2: TBevel
+      Left = 0
+      Height = 2
+      Top = 43
+      Width = 619
+      Align = alBottom
+    end
+  end
+end

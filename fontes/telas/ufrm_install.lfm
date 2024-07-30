@@ -1,0 +1,40 @@
+inherited frm_install: Tfrm_install
+  inherited imNext: TImage
+    AnchorSideRight.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  inherited imBack: TImage
+    AnchorSideLeft.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  inherited lbNext: TLabel
+    Caption = 'Instalar'
+    OnClick = lbNextClick
+  end
+  object lbSubTitle: TLabel[9]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrCenter
+    Left = 165
+    Height = 30
+    Top = 120
+    Width = 370
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Top = 120
+    Caption = 'Instalação dos Componentes'
+    Font.Height = -21
+    ParentColor = False
+    ParentFont = False
+  end
+  object mLogInstall: TMemo[10]
+    Left = 40
+    Height = 354
+    Top = 176
+    Width = 616
+    ReadOnly = True
+    TabOrder = 0
+  end
+end

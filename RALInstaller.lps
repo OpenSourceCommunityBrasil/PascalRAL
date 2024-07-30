@@ -3,579 +3,656 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Win64"/>
-    <Units Count="53">
-      <Unit0>
-        <Filename Value="RALInstaller.lpr"/>
+    <BuildModes Active="Windows32"/>
+    <Units>
+      <Unit>
+        <Filename Value="ralinstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="7"/>
-        <CursorPos X="16" Y="24"/>
-        <UsageCount Value="201"/>
+        <EditorIndex Value="9"/>
+        <CursorPos Y="28"/>
+        <UsageCount Value="74"/>
         <Loaded Value="True"/>
-      </Unit0>
-      <Unit1>
-        <Filename Value="src\telas\principal.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\umain.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fprincipal"/>
+        <ComponentName Value="fmain"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="264"/>
-        <CursorPos X="60" Y="275"/>
-        <UsageCount Value="213"/>
+        <TopLine Value="102"/>
+        <CursorPos X="24" Y="133"/>
+        <UsageCount Value="74"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
-      </Unit1>
-      <Unit2>
-        <Filename Value="src\funcoes\configdatabase.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="34" Y="62"/>
-        <UsageCount Value="220"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="src\funcoes\imagefunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fprincipal"/>
+        <ComponentName Value="frm_modelo"/>
         <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="43"/>
-        <CursorPos X="31" Y="15"/>
-        <UsageCount Value="200"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="src\funcoes\lclfunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="61"/>
-        <CursorPos X="3" Y="84"/>
-        <UsageCount Value="207"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="src\funcoes\ghrepofunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="9"/>
-        <CursorPos X="55" Y="11"/>
-        <UsageCount Value="202"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="17"/>
+        <CursorPos Y="48"/>
+        <UsageCount Value="74"/>
         <Loaded Value="True"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="src\funcoes\delphiutils.pas"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_idioma.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_idioma"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="8"/>
+        <CursorPos Y="41"/>
+        <UsageCount Value="74"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\utools.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="199"/>
-        <CursorPos X="35" Y="273"/>
-        <UsageCount Value="201"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="src\funcoes\lazarusutils.pas"/>
+        <TopLine Value="4"/>
+        <CursorPos Y="24"/>
+        <UsageCount Value="74"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_ide"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="36"/>
+        <CursorPos Y="54"/>
+        <UsageCount Value="73"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_ide_versions"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="256"/>
+        <CursorPos X="84" Y="42"/>
+        <UsageCount Value="72"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ufrm_ide_version.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_ide_version"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <TopLine Value="21"/>
+        <CursorPos X="84" Y="32"/>
+        <UsageCount Value="71"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\delphiutils.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="16"/>
-        <CursorPos X="39" Y="55"/>
-        <UsageCount Value="201"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="src\telas\frideversions.pas"/>
+        <TopLine Value="198"/>
+        <CursorPos Y="205"/>
+        <UsageCount Value="71"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\lazarusutils.pas"/>
         <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="79"/>
+        <CursorPos X="3" Y="71"/>
+        <UsageCount Value="67"/>
+        <Bookmarks Count="1">
+          <Item0 X="5" Y="122" ID="1"/>
+        </Bookmarks>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_recursos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_recursos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="177"/>
+        <CursorPos X="68" Y="198"/>
+        <UsageCount Value="53"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\udm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="dm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="52"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_install.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_install"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="7"/>
+        <CursorPos X="39" Y="18"/>
+        <UsageCount Value="51"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubral.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="12"/>
+        <CursorPos Y="20"/>
+        <UsageCount Value="50"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\fpjsonrtti.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="723"/>
+        <CursorPos X="18" Y="607"/>
+        <UsageCount Value="26"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\extctrls.pp"/>
+        <UnitName Value="ExtCtrls"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="565"/>
+        <CursorPos X="3" Y="586"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_idioma.lfm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="432"/>
+        <CursorPos Y="474"/>
+        <UsageCount Value="7"/>
+        <DefaultSyntaxHighlighter Value="LFM"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide.lfm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="6"/>
+        <UsageCount Value="7"/>
+        <DefaultSyntaxHighlighter Value="LFM"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-registry\src\regdef.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="3"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-registry\src\registry.pp"/>
+        <UnitName Value="Registry"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1071"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\classes\classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="308"/>
+        <CursorPos X="20" Y="322"/>
+        <UsageCount Value="14"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\classes\lists.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="654"/>
+        <CursorPos X="3" Y="656"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\telas\fride.pas"/>
+        <ComponentName Value="fide"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\telas\frideversions.pas"/>
         <ComponentName Value="fframe_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <CursorPos X="26" Y="9"/>
-        <UsageCount Value="140"/>
-      </Unit8>
-      <Unit9>
-        <Filename Value="src\telas\frmodelo.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fmodelo"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="7"/>
-        <TopLine Value="46"/>
-        <CursorPos X="3" Y="55"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="src\telas\fride.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fide"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="6"/>
-        <TopLine Value="35"/>
-        <CursorPos Y="52"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit10>
-      <Unit11>
-        <Filename Value="src\telas\fridioma.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fidioma"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\telas\ide.pas"/>
+        <ComponentName Value="frIDE"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="58"/>
-        <CursorPos X="56" Y="25"/>
-        <UsageCount Value="140"/>
-      </Unit11>
-      <Unit12>
-        <Filename Value="src\telas\frconfigrecursos.pas"/>
-        <IsPartOfProject Value="True"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\funcoes\lazarusutils.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="246"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\filutilh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="124"/>
+        <CursorPos X="12" Y="138"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\sysutils.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="276"/>
+        <CursorPos X="5" Y="294"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\telas\frideversion_lazarus.pas"/>
+        <ComponentName Value="fframe_ide_version_lazarus"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="4"/>
+        <CursorPos X="28" Y="9"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
+        <UnitName Value="FileInfo"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="262"/>
+        <CursorPos X="3" Y="271"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\installer\src\telas\frconfigrecursos.pas"/>
         <ComponentName Value="fconfigrecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="4"/>
-        <CursorPos X="49" Y="246"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit12>
-      <Unit13>
-        <Filename Value="src\telas\frinstallrecursos.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="finstallrecursos"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="5"/>
-        <CursorPos X="53" Y="28"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit13>
-      <Unit14>
-        <Filename Value="src\telas\frinstall.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="finstall"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="24"/>
-        <CursorPos X="27" Y="8"/>
-        <UsageCount Value="140"/>
-      </Unit14>
-      <Unit15>
-        <Filename Value="src\telas\frconfirmrecursos.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fconfirmrecursos"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
+        <TopLine Value="124"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\resource.pp"/>
         <EditorIndex Value="-1"/>
-        <CursorPos X="49" Y="18"/>
-        <UsageCount Value="136"/>
-      </Unit15>
-      <Unit16>
-        <Filename Value="src\funcoes\install_types.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="12"/>
-        <CursorPos X="50" Y="22"/>
-        <UsageCount Value="96"/>
-        <Loaded Value="True"/>
-      </Unit16>
-      <Unit17>
-        <Filename Value="src\funcoes\install_tools.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="2"/>
-        <CursorPos X="58" Y="10"/>
-        <UsageCount Value="96"/>
-        <Loaded Value="True"/>
-      </Unit17>
-      <Unit18>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="8"/>
-        <TopLine Value="226"/>
-        <CursorPos X="18" Y="233"/>
-        <UsageCount Value="57"/>
-        <Loaded Value="True"/>
-      </Unit18>
-      <Unit19>
-        <Filename Value="src\install_types.pas"/>
+        <TopLine Value="535"/>
+        <CursorPos X="3" Y="540"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\winpeimagereader.pp"/>
         <EditorIndex Value="-1"/>
-        <CursorPos X="16" Y="27"/>
-        <UsageCount Value="49"/>
-      </Unit19>
-      <Unit20>
-        <Filename Value="src\install_tools.pas"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\fina.inc"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="3"/>
-        <CursorPos X="24" Y="54"/>
-        <UsageCount Value="48"/>
-      </Unit20>
-      <Unit21>
-        <Filename Value="src\funcoes\libbinres.pas"/>
-        <UnitName Value="libBinRes"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="22" Y="179"/>
-        <UsageCount Value="29"/>
-      </Unit21>
-      <Unit22>
-        <Filename Value="src\funcoes\detectide.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="442"/>
-        <CursorPos X="40" Y="449"/>
-        <UsageCount Value="183"/>
-        <Bookmarks Count="1">
-          <Item0 X="10" Y="269" ID="1"/>
-        </Bookmarks>
-      </Unit22>
-      <Unit23>
-        <Filename Value="src\funcoes\idefunctions.pas"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="28" Y="30"/>
-        <UsageCount Value="183"/>
-      </Unit23>
-      <Unit24>
-        <Filename Value="src\funcoes\restfunctions.pas"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="21"/>
-        <UsageCount Value="180"/>
-      </Unit24>
-      <Unit25>
-        <Filename Value="src\funcoes\consts.pas"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="28" Y="2"/>
-        <UsageCount Value="186"/>
-      </Unit25>
-      <Unit26>
-        <Filename Value="src\funcoes\ulocale.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="76"/>
-        <CursorPos X="36" Y="15"/>
-        <UsageCount Value="170"/>
-      </Unit26>
-      <Unit27>
-        <Filename Value="utesteanim.pas"/>
-        <ComponentName Value="fTesteAnim"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="57"/>
-        <CursorPos X="54" Y="69"/>
-        <UsageCount Value="6"/>
-      </Unit27>
-      <Unit28>
-        <Filename Value="src\telas\uprincipalold.pas"/>
-        <ComponentName Value="fPrincipalOld"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="uprincipalOld"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="44"/>
-        <CursorPos X="37" Y="25"/>
-        <UsageCount Value="16"/>
-      </Unit28>
-      <Unit29>
-        <Filename Value="src\telas\frames\ufrideitem.pas"/>
-        <ComponentName Value="frIDEItem"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="16"/>
-      </Unit29>
-      <Unit30>
-        <Filename Value="src\funcoes\SVN_Class.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="292"/>
-        <CursorPos X="34" Y="306"/>
-        <UsageCount Value="4"/>
-      </Unit30>
-      <Unit31>
-        <Filename Value="src\funcoes\uRESTDWZlib.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="384"/>
-        <CursorPos X="3" Y="386"/>
-        <UsageCount Value="4"/>
-      </Unit31>
-      <Unit32>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-db\src\sqldb\sqlite\sqlite3conn.pp"/>
-        <UnitName Value="SQLite3Conn"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="107"/>
-        <CursorPos X="15" Y="118"/>
-        <UsageCount Value="3"/>
-      </Unit32>
-      <Unit33>
-        <Filename Value="src\funcoes\installerlocale.pas"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="21" Y="13"/>
-        <UsageCount Value="5"/>
-      </Unit33>
-      <Unit34>
-        <Filename Value="D:\IDE\lazarus\lazarus\lcl\include\picture.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="601"/>
-        <CursorPos Y="613"/>
-        <UsageCount Value="4"/>
-      </Unit34>
-      <Unit35>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-image\src\fpimage.pp"/>
-        <UnitName Value="FPImage"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="31"/>
-        <CursorPos X="3" Y="33"/>
-        <UsageCount Value="7"/>
-      </Unit35>
-      <Unit36>
-        <Filename Value="D:\IDE\lazarus\lazarus\lcl\dialogs.pp"/>
-        <UnitName Value="Dialogs"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="706"/>
-        <CursorPos X="22" Y="727"/>
-        <UsageCount Value="4"/>
-      </Unit36>
-      <Unit37>
-        <Filename Value="D:\IDE\lazarus\lazarus\lcl\lcltranslator.pas"/>
-        <UnitName Value="LCLTranslator"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="71"/>
-        <CursorPos X="21" Y="83"/>
-        <UsageCount Value="3"/>
-      </Unit37>
-      <Unit38>
-        <Filename Value="src\funcoes\fclimage.pas"/>
-        <EditorIndex Value="-1"/>
-        <UsageCount Value="3"/>
-      </Unit38>
-      <Unit39>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-process\src\process.pp"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="34"/>
-        <CursorPos X="29" Y="56"/>
-        <UsageCount Value="3"/>
-      </Unit39>
-      <Unit40>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-process\src\processbody.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="136"/>
-        <CursorPos X="95" Y="147"/>
-        <UsageCount Value="26"/>
-      </Unit40>
-      <Unit41>
-        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\forms.pp"/>
-        <UnitName Value="Forms"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="444"/>
-        <CursorPos X="33" Y="453"/>
-        <UsageCount Value="4"/>
-      </Unit41>
-      <Unit42>
-        <Filename Value="..\installer\src\telas\principal.pas"/>
-        <ComponentName Value="fprincipal"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="129"/>
-        <CursorPos X="38" Y="402"/>
-        <UsageCount Value="3"/>
-      </Unit42>
-      <Unit43>
-        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\inc\objpash.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="188"/>
-        <CursorPos X="23" Y="206"/>
-        <UsageCount Value="1"/>
-      </Unit43>
-      <Unit44>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
-        <UnitName Value="FileInfo"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="59"/>
-        <CursorPos X="46" Y="67"/>
-        <UsageCount Value="4"/>
-      </Unit44>
-      <Unit45>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-web\src\base\fphttpclient.pp"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="1260"/>
-        <CursorPos X="25" Y="1266"/>
-        <UsageCount Value="4"/>
-      </Unit45>
-      <Unit46>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-json\src\jsonparser.pp"/>
-        <EditorIndex Value="12"/>
-        <TopLine Value="223"/>
-        <CursorPos X="3" Y="226"/>
-        <UsageCount Value="17"/>
-        <Loaded Value="True"/>
-      </Unit46>
-      <Unit47>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-json\src\fpjsonrtti.pp"/>
-        <EditorIndex Value="10"/>
-        <TopLine Value="237"/>
-        <CursorPos X="14" Y="245"/>
-        <UsageCount Value="17"/>
-        <Loaded Value="True"/>
-      </Unit47>
-      <Unit48>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-json\src\fpjson.pp"/>
-        <EditorIndex Value="13"/>
-        <TopLine Value="462"/>
-        <CursorPos X="5" Y="476"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
-      </Unit48>
-      <Unit49>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-base\src\contnrs.pp"/>
-        <UnitName Value="Contnrs"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="29"/>
-        <CursorPos X="3" Y="31"/>
-        <UsageCount Value="11"/>
-      </Unit49>
-      <Unit50>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-json\src\jsonreader.pp"/>
-        <EditorIndex Value="11"/>
-        <TopLine Value="446"/>
-        <CursorPos X="3" Y="448"/>
-        <UsageCount Value="17"/>
-        <Loaded Value="True"/>
-      </Unit50>
-      <Unit51>
-        <Filename Value="D:\IDE\lazarus\fpcsrc\packages\fcl-json\src\jsonscanner.pp"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="184"/>
-        <CursorPos X="3" Y="186"/>
-        <UsageCount Value="13"/>
-      </Unit51>
-      <Unit52>
-        <Filename Value="D:\IDE\lazarus\lazarus\lcl\include\control.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="2948"/>
-        <CursorPos Y="2959"/>
+        <TopLine Value="424"/>
+        <CursorPos X="3" Y="430"/>
         <UsageCount Value="10"/>
-      </Unit52>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\sysunixh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="10"/>
+        <CursorPos X="2" Y="31"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\stdctrls.pp"/>
+        <UnitName Value="StdCtrls"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1597"/>
+        <CursorPos X="3" Y="1618"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\finah.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="38" Y="36"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\linux\osmacro.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="4"/>
+        <CursorPos X="3" Y="22"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\filutil.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="541"/>
+        <CursorPos X="3" Y="543"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\fileutil.pas"/>
+        <UnitName Value="FileUtil"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="150"/>
+        <CursorPos X="11" Y="171"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\fileutil.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="783"/>
+        <CursorPos X="3" Y="833"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\lazfileutils.pas"/>
+        <UnitName Value="LazFileUtils"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="172"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\unixlazfileutils.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="284"/>
+        <CursorPos X="3" Y="298"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\bunxovl.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="418"/>
+        <CursorPos X="3" Y="448"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide_versions.lfm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="6"/>
+        <UsageCount Value="7"/>
+        <DefaultSyntaxHighlighter Value="LFM"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_recursos.lfm"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="7"/>
+        <DefaultSyntaxHighlighter Value="LFM"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\elfreader.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="269"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\machoreader.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="235"/>
+        <CursorPos X="46" Y="283"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ralinstallparser.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="165"/>
+        <CursorPos Y="198"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\winlazfileutils.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="313"/>
+        <CursorPos X="42" Y="486"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\installparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="47"/>
+        <CursorPos X="14" Y="73"/>
+        <UsageCount Value="47"/>
+        <Bookmarks Count="1">
+          <Item0 Y="917" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\fpjson.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3965"/>
+        <CursorPos X="3" Y="3971"/>
+        <UsageCount Value="15"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\jsonreader.pp"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="329"/>
+        <CursorPos Y="348"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\typinfo.pp"/>
+        <UnitName Value="TypInfo"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="825"/>
+        <CursorPos X="22" Y="852"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\paszlib\src\zipper.pp"/>
+        <UnitName Value="Zipper"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="482"/>
+        <CursorPos X="3" Y="497"/>
+        <UsageCount Value="17"/>
+        <Bookmarks Count="1">
+          <Item0 X="17" Y="2797" ID="2"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-web\src\base\fphttpclient.pp"/>
+        <EditorIndex Value="13"/>
+        <CursorPos X="3" Y="1444"/>
+        <UsageCount Value="17"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubutils.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="23"/>
+        <CursorPos X="25" Y="68"/>
+        <UsageCount Value="29"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-base\src\base64.pp"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="46"/>
+        <CursorPos X="3" Y="61"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\dev\src\base\RALSwaggerModule.pas"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="151"/>
+        <CursorPos X="36" Y="164"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\paszlib\src\zip.pas"/>
+        <UnitName Value="Zip"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="49" Y="14"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\disk.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="39"/>
+        <CursorPos X="3" Y="62"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\diskh.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="17" Y="22"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\inc\astrings.inc"/>
+        <EditorIndex Value="15"/>
+        <TopLine Value="1526"/>
+        <CursorPos X="5" Y="1542"/>
+        <UsageCount Value="12"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ralzipper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="5"/>
+        <CursorPos X="30" Y="32"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
-      <Position1>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="237" TopLine="217"/>
-      </Position1>
-      <Position2>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="238" TopLine="218"/>
-      </Position2>
-      <Position3>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="239" TopLine="219"/>
-      </Position3>
-      <Position4>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="229" TopLine="219"/>
-      </Position4>
-      <Position5>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="241" TopLine="222"/>
-      </Position5>
-      <Position6>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="242" TopLine="223"/>
-      </Position6>
-      <Position7>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="227" TopLine="223"/>
-      </Position7>
-      <Position8>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="243" TopLine="224"/>
-      </Position8>
-      <Position9>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="227" TopLine="223"/>
-      </Position9>
-      <Position10>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="243" TopLine="224"/>
-      </Position10>
-      <Position11>
-        <Filename Value="src\telas\fride.pas"/>
-        <Caret Line="53" TopLine="35"/>
-      </Position11>
-      <Position12>
-        <Filename Value="src\telas\fride.pas"/>
-        <Caret Line="54" TopLine="35"/>
-      </Position12>
-      <Position13>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="231" Column="3" TopLine="219"/>
-      </Position13>
-      <Position14>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="179" Column="34" TopLine="167"/>
-      </Position14>
-      <Position15>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="252" Column="45" TopLine="236"/>
-      </Position15>
-      <Position16>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="3" Column="25"/>
-      </Position16>
-      <Position17>
-        <Filename Value="src\telas\fride.pas"/>
-        <Caret Line="52" TopLine="35"/>
-      </Position17>
-      <Position18>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="228" TopLine="216"/>
-      </Position18>
-      <Position19>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="229" TopLine="216"/>
-      </Position19>
-      <Position20>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="230" TopLine="216"/>
-      </Position20>
-      <Position21>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="231" TopLine="216"/>
-      </Position21>
-      <Position22>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="233" TopLine="216"/>
-      </Position22>
-      <Position23>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="234" TopLine="226"/>
-      </Position23>
-      <Position24>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="235" TopLine="226"/>
-      </Position24>
-      <Position25>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="236" TopLine="226"/>
-      </Position25>
-      <Position26>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="238" TopLine="226"/>
-      </Position26>
-      <Position27>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="239" TopLine="226"/>
-      </Position27>
-      <Position28>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="240" TopLine="226"/>
-      </Position28>
-      <Position29>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="241" TopLine="226"/>
-      </Position29>
-      <Position30>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
-        <Caret Line="242" TopLine="226"/>
-      </Position30>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="946" TopLine="939"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="947" TopLine="939"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="949" TopLine="954"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="952" TopLine="934"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="953" TopLine="934"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="954" TopLine="934"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="955" TopLine="953"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="957" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="958" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="959" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="960" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="962" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="963" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="958" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="965" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="966" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="972" TopLine="950"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="982" TopLine="953"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\telas\ufrm_recursos.pas"/>
+        <Caret Line="197" Column="78" TopLine="177"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="280" Column="14" TopLine="260"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="64" Column="20" TopLine="43"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="428" Column="3" TopLine="426"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="65" Column="19" TopLine="43"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="430" Column="14" TopLine="427"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="67" Column="15" TopLine="44"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="442" Column="19" TopLine="437"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="65" Column="17" TopLine="46"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="429" Column="3" TopLine="427"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="68" Column="15" TopLine="44"/>
+      </Position>
+      <Position>
+        <Filename Value="fontes\installparser.pas"/>
+        <Caret Line="447" Column="3" TopLine="445"/>
+      </Position>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>
@@ -588,17 +665,23 @@
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
-        <Source Value="src\telas\fride.pas"/>
-        <Line Value="52"/>
+        <Source Value="fontes\telas\ufrm_idioma.pas"/>
+        <Line Value="59"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
+        <Line Value="271"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="fontes\installparser.pas"/>
+        <Line Value="950"/>
       </Item>
     </BreakPoints>
-    <Watches>
-      <Item>
-        <Expression Value="sbInstalledIDEs.ControlCount"/>
-      </Item>
-      <Item>
-        <Expression Value="FileVerInfo.VersionStrings.Values[&apos;FileVersion&apos;]"/>
-      </Item>
-    </Watches>
   </Debugging>
 </CONFIG>

@@ -1,5 +1,0 @@
-{"version":1,"strings":[
-{"hash":95061890,"name":"tfinstall.lbnext.caption","sourcebytes":[73,110,115,116,97,108,97,114],"value":"Instalar"},
-{"hash":131700511,"name":"tfinstall.lbsubtitle.caption","sourcebytes":[73,110,115,116,97,108,97,195,167,195,163,111],"value":"Instala\u00E7\u00E3o"},
-{"hash":45093389,"name":"tfinstall.button1.caption","sourcebytes":[116,101,115,116,32,108,111,103,111,32,97,110,105,109],"value":"test logo anim"}
-]}

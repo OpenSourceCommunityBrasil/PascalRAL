@@ -4,12 +4,8 @@
     <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
-      <Flags>
-        <AlwaysBuild Value="True"/>
-        <CompatibilityMode Value="True"/>
-      </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="RALInstaller"/>
+      <Title Value="RAL Installer"/>
       <Scaled Value="True"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
@@ -17,109 +13,41 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="7">
-        <Resource_0 FileName="Assets\Summer.png" Type="RCDATA" ResourceName="LIGHTICON"/>
-        <Resource_1 FileName="Assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
-        <Resource_2 FileName="Assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
-        <Resource_3 FileName="Assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
-        <Resource_4 FileName="Assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
-        <Resource_5 FileName="Assets\Banner.png" Type="RCDATA" ResourceName="BANNER"/>
-        <Resource_6 FileName="Assets\Moon Symbol_White.png" Type="RCDATA" ResourceName="DARKICON"/>
+      <Resources Count="6">
+        <Resource_0 FileName="assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
+        <Resource_1 FileName="assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
+        <Resource_2 FileName="assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
+        <Resource_3 FileName="assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
+        <Resource_4 FileName="assets\Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
+        <Resource_5 FileName="assets\Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
       </Resources>
     </General>
     <i18n>
       <EnableI18N Value="True"/>
-      <OutDir Value="lang"/>
-      <ExcludedIdentifiers Count="3">
-        <Item1 Value="tfprincipal.ltheme.caption"/>
-        <Item2 Value="tfprincipal.lidedelphi.caption"/>
-        <Item3 Value="tfprincipal.lidelazarus.caption"/>
-      </ExcludedIdentifiers>
+      <OutDir Value="languages"/>
     </i18n>
-    <BuildModes Count="7">
-      <Item1 Name="Debug" Default="True"/>
-      <Item2 Name="Release">
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <MajorVersionNr Value="1"/>
+      <StringTable CompanyName="Pascal RAL"/>
+    </VersionInfo>
+    <BuildModes>
+      <Item Name="Windows32" Default="True"/>
+      <Item Name="Windows64">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
+            <Filename Value="ralinstaller_w64"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
+            <OtherUnitFiles Value="fontes;fontes\telas"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
             <SmartLinkUnit Value="True"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <GenerateDebugInfo Value="False"/>
-              <DebugInfoType Value="dsDwarf3"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-            </Options>
-          </Linking>
-        </CompilerOptions>
-      </Item2>
-      <Item3 Name="Win32">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <PathDelim Value="\"/>
-          <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
-            <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
-            <TargetCPU Value="i386"/>
-            <TargetOS Value="win32"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <DebugInfoType Value="dsDwarf3"/>
-              <UseExternalDbgSyms Value="True"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-            </Options>
-          </Linking>
-        </CompilerOptions>
-      </Item3>
-      <Item4 Name="Win64">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <PathDelim Value="\"/>
-          <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
-            <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
             <TargetCPU Value="x86_64"/>
-            <TargetOS Value="win64"/>
             <Optimizations>
               <OptimizationLevel Value="3"/>
             </Optimizations>
@@ -127,7 +55,6 @@
           <Linking>
             <Debugging>
               <DebugInfoType Value="dsDwarf3"/>
-              <UseHeaptrc Value="True"/>
               <UseExternalDbgSyms Value="True"/>
             </Debugging>
             <LinkSmart Value="True"/>
@@ -137,93 +64,75 @@
               </Win32>
             </Options>
           </Linking>
+          <Other>
+            <CustomOptions Value="-dINSTALL_TEST"/>
+          </Other>
         </CompilerOptions>
-      </Item4>
-      <Item5 Name="Linux64">
+      </Item>
+      <Item Name="Linux32">
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
+            <Filename Value="ralinstaller_l32"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
-            <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
+            <OtherUnitFiles Value="fontes;fontes\telas"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="linux"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf3"/>
+              <UseExternalDbgSyms Value="True"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CustomOptions Value="-dINSTALL_TEST"/>
+          </Other>
+        </CompilerOptions>
+      </Item>
+      <Item Name="Linux64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralinstaller_l64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="fontes;fontes\telas"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
             <TargetCPU Value="x86_64"/>
             <TargetOS Value="linux"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
           </CodeGeneration>
           <Linking>
             <Debugging>
-              <GenerateDebugInfo Value="False"/>
               <DebugInfoType Value="dsDwarf3"/>
+              <UseExternalDbgSyms Value="True"/>
             </Debugging>
-            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
           </Linking>
+          <Other>
+            <CustomOptions Value="-dINSTALL_TEST"/>
+          </Other>
         </CompilerOptions>
-      </Item5>
-      <Item6 Name="OSX64">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <PathDelim Value="\"/>
-          <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
-            <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
-            <TargetCPU Value="x86_64"/>
-            <TargetOS Value="darwin"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <GenerateDebugInfo Value="False"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-          </Linking>
-        </CompilerOptions>
-      </Item6>
-      <Item7 Name="OSXArm64">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <PathDelim Value="\"/>
-          <Target>
-            <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
-            <UnitOutputDirectory Value="$(TargetCPU)-$(TargetOS)\$(TargetMode)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
-            <TargetCPU Value="aarch64"/>
-            <TargetOS Value="darwin"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <GenerateDebugInfo Value="False"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-          </Linking>
-        </CompilerOptions>
-      </Item7>
+      </Item>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -232,156 +141,123 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="3">
-      <Item1>
-        <PackageName Value="FCL"/>
-      </Item1>
-      <Item2>
-        <PackageName Value="weblaz"/>
-      </Item2>
-      <Item3>
+    <RequiredPackages>
+      <Item>
         <PackageName Value="LCL"/>
-      </Item3>
+      </Item>
     </RequiredPackages>
-    <Units Count="19">
-      <Unit0>
-        <Filename Value="RALInstaller.lpr"/>
+    <Units>
+      <Unit>
+        <Filename Value="ralinstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-      </Unit0>
-      <Unit1>
-        <Filename Value="src\telas\principal.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\umain.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fprincipal"/>
+        <ComponentName Value="fmain"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-      </Unit1>
-      <Unit2>
-        <Filename Value="src\funcoes\configdatabase.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="src\funcoes\imagefunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fprincipal"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="src\funcoes\lclfunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="src\funcoes\ghrepofunctions.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="src\funcoes\delphiutils.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="src\funcoes\lazarusutils.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="src\telas\frideversions.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="fframe_ide_versions"/>
+        <ComponentName Value="frm_modelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit8>
-      <Unit9>
-        <Filename Value="src\telas\frmodelo.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_idioma.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fmodelo"/>
+        <ComponentName Value="frm_idioma"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="src\telas\fride.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\utools.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fide"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_ide"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit10>
-      <Unit11>
-        <Filename Value="src\telas\fridioma.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fidioma"/>
+        <ComponentName Value="frm_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit11>
-      <Unit12>
-        <Filename Value="src\telas\frconfigrecursos.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ufrm_ide_version.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fconfigrecursos"/>
+        <ComponentName Value="frm_ide_version"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit12>
-      <Unit13>
-        <Filename Value="src\telas\frinstallrecursos.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\delphiutils.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="finstallrecursos"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\lazarusutils.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_recursos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_recursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit13>
-      <Unit14>
-        <Filename Value="src\telas\frinstall.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\udm.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="finstall"/>
+        <ComponentName Value="dm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\ufrm_install.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frm_install"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit14>
-      <Unit15>
-        <Filename Value="src\telas\frconfirmrecursos.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubral.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fconfirmrecursos"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-      </Unit15>
-      <Unit16>
-        <Filename Value="src\funcoes\install_types.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\installparser.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit16>
-      <Unit17>
-        <Filename Value="src\funcoes\install_tools.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubutils.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit17>
-      <Unit18>
-        <Filename Value="src\funcoes\ralinstallparser.pas"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ralzipper.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit18>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="exec\RALInstaller-$(TargetOS)$(TargetCPU)"/>
+      <Filename Value="ralinstaller_w32"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="src\funcoes;src\telas;..\..\..\..;src"/>
+      <OtherUnitFiles Value="fontes;fontes\telas"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Parsing>
-      <SyntaxOptions>
-        <IncludeAssertionCode Value="True"/>
-      </SyntaxOptions>
-    </Parsing>
-    <CodeGeneration>
-      <Checks>
-        <IOChecks Value="True"/>
-        <RangeChecks Value="True"/>
-        <OverflowChecks Value="True"/>
-        <StackChecks Value="True"/>
-      </Checks>
-      <VerifyObjMethodCallValidity Value="True"/>
-    </CodeGeneration>
     <Linking>
       <Debugging>
         <DebugInfoType Value="dsDwarf3"/>
-        <UseHeaptrc Value="True"/>
-        <TrashVariables Value="True"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
       <Options>
@@ -390,18 +266,24 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-dINSTALL_TEST"/>
+      <OtherDefines Count="1">
+        <Define0 Value="INSTALL_TEST"/>
+      </OtherDefines>
+    </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="3">
-      <Item1>
+    <Exceptions>
+      <Item>
         <Name Value="EAbort"/>
-      </Item1>
-      <Item2>
+      </Item>
+      <Item>
         <Name Value="ECodetoolError"/>
-      </Item2>
-      <Item3>
+      </Item>
+      <Item>
         <Name Value="EFOpenError"/>
-      </Item3>
+      </Item>
     </Exceptions>
   </Debugging>
 </CONFIG>

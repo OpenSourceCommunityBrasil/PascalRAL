@@ -1,0 +1,334 @@
+{
+    "version": 1,
+    "languages": [
+        {
+            "name": "ptBR",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        },
+        {
+            "name": "enUS",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        },
+        {
+            "name": "esES",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        }
+    ],
+    "eula": "https://linktothefile",
+    "Delphi": {
+        "base-package": {
+            "version": "1.0",
+            "install-order": [
+                {
+                    "name": "PascalRAL",
+                    "is-compile": true,
+                    "is-install": false
+                },
+                {
+                    "name": "PascalRALdsgn",
+                    "is-compile": true,
+                    "is-install": true
+                }
+            ],
+            "library-paths": [
+                "/src/base",
+                "/src/utils"
+            ]
+        },
+        "data-engines": [
+            {
+                "name": "Indy",
+                "is-server": true,
+                "is-client": true,
+                "has-depedancy": true,
+                "depedancy": {
+                    "name": "Indy",
+                    "min-version": "10.6.2",
+                    "repository": "https://github.com/IndySockets/Indy",
+                    "base-path": "/",
+                    "has-dpk": true,
+                    "dpk": [
+                        {
+                            "version-code": 100,
+                            "location": "/Lib",
+                            "name": "Indy100Net.dpk",
+                            "IDE-version": "2006"
+                        },
+                        {
+                            "version-code": 110,
+                            "location": "/Lib",
+                            "name": "Indy110Net.dpk",
+                            "IDE-version": "2007"
+                        },
+                        {
+                            "version-code": 120,
+                            "location": "/Lib",
+                            "name": "Indy120Net.dpk",
+                            "IDE-version": "2009"
+                        },
+                        {
+                            "version-code": 140,
+                            "location": "/Lib",
+                            "name": "Indy130Net.dpk",
+                            "IDE-version": "2010"
+                        },
+                        {
+                            "version-code": 150,
+                            "location": "/Lib",
+                            "name": "Indy150.groupproj",
+                            "IDE-version": "XE"
+                        },
+                        {
+                            "version-code": 160,
+                            "location": "/Lib",
+                            "name": "Indy160.groupproj",
+                            "IDE-version": "XE2"
+                        },
+                        {
+                            "version-code": 170,
+                            "location": "/Lib",
+                            "name": "Indy170.groupproj",
+                            "IDE-version": "XE3"
+                        },
+                        {
+                            "version-code": 180,
+                            "location": "/Lib",
+                            "name": "Indy180.groupproj",
+                            "IDE-version": "XE4"
+                        },
+                        {
+                            "version-code": 190,
+                            "location": "/Lib",
+                            "name": "Indy190.groupproj",
+                            "IDE-version": "XE5"
+                        },
+                        {
+                            "version-code": 200,
+                            "location": "/Lib",
+                            "name": "Indy200.groupproj",
+                            "IDE-version": "XE6"
+                        },
+                        {
+                            "version-code": 210,
+                            "location": "/Lib",
+                            "name": "Indy210.groupproj",
+                            "IDE-version": "XE7"
+                        },
+                        {
+                            "version-code": 220,
+                            "location": "/Lib",
+                            "name": "Indy220.groupproj",
+                            "IDE-version": "XE8"
+                        },
+                        {
+                            "version-code": 230,
+                            "location": "/Lib",
+                            "name": "Indy230.groupproj",
+                            "IDE-version": "10.0"
+                        },
+                        {
+                            "version-code": 240,
+                            "location": "/Lib",
+                            "name": "Indy240.groupproj",
+                            "IDE-version": "10.1"
+                        },
+                        {
+                            "version-code": 250,
+                            "location": "/Lib",
+                            "name": "Indy250.groupproj",
+                            "IDE-version": "10.2"
+                        },
+                        {
+                            "version-code": 260,
+                            "location": "/Lib",
+                            "name": "Indy260.groupproj",
+                            "IDE-version": "10.3"
+                        },
+                        {
+                            "version-code": 270,
+                            "location": "/Lib",
+                            "name": "Indy270.groupproj",
+                            "IDE-version": "10.4"
+                        },
+                        {
+                            "version-code": 280,
+                            "location": "/Lib",
+                            "name": "Indy280.groupproj",
+                            "IDE-version": "11.3"
+                        }
+                    ],
+                    "install-order": [
+                        {
+                            "name": "IndySystem",
+                            "is-compile": true,
+                            "is-install": false
+                        },
+                        {
+                            "name": "IndyCore",
+                            "is-compile": true,
+                            "is-install": false
+                        },
+                        {
+                            "name": "IndyProtocols",
+                            "is-compile": true,
+                            "is-install": false
+                        },
+                        {
+                            "name": "dclIndyCore",
+                            "is-compile": true,
+                            "is-install": true
+                        },
+                        {
+                            "name": "dclIndyProtocols",
+                            "is-compile": true,
+                            "is-install": true
+                        }
+                    ],
+                    "library-paths": [
+                        "/Lib/System",
+                        "/Lib/Core",
+                        "/Lib/Protocols"
+                    ]
+                },
+                "install-order": [
+                    {
+                        "name": "IndyRAL",
+                        "is-compile": true,
+                        "is-install": true
+                    }
+                ],
+                "library-paths": [
+                    "/src/engine/Indy"
+                ]
+            },
+            {
+                "name": "Synopse mORMot2",
+                "is-server": true,
+                "is-client": true,
+                "has-depedancy": true,
+                "depedancy": {
+                    "name": "mORMot2",
+                    "min-version": "2.1",
+                    "repository": "https://github.com/synopse/mORMot2",
+                    "base-path": "/src",
+                    "has-dpk": false,
+                    "library-paths": [
+                        "$(mormot2)",
+                        "$(mormot2)/core",
+                        "$(mormot2)/lib",
+                        "$(mormot2)/crypt",
+                        "$(mormot2)/net",
+                        "$(mormot2)/db",
+                        "$(mormot2)/rest",
+                        "$(mormot2)/orm",
+                        "$(mormot2)/soa",
+                        "$(mormot2)/app",
+                        "$(mormot2)/script",
+                        "$(mormot2)/ui",
+                        "$(mormot2)/tools",
+                        "$(mormot2)/misc"
+                    ]
+                },
+                "install-order": [
+                    {
+                        "name": "SynopseRAL",
+                        "is-compile": true,
+                        "is-install": true
+                    }
+                ],
+                "library-paths": [
+                    "/src/engine/synopse"
+                ]
+            },
+            {
+                "name": "NetHttp",
+                "is-server": false,
+                "is-client": true,
+                "has-depedancy": false,
+                "install-order": [
+                    {
+                        "name": "NetHttpRAL",
+                        "is-compile": true,
+                        "is-install": true
+                    }
+                ],
+                "library-paths": [
+                    "/src/engine/netHTTP"
+                ]
+            },
+            {
+                "name": "UniGUI",
+                "is-server": true,
+                "is-client": false,
+                "has-depedancy": true,
+                "depedancy": {
+                    "name": "UniGUI",
+                    "min-version": "1.90.0.1530",
+                    "paid-app": true
+                },
+                "install-order": [
+                    {
+                        "name": "UniGUIRAL",
+                        "is-compile": true,
+                        "is-install": true
+                    }
+                ],
+                "library-paths": [
+                    "/src/engine/unigui"
+                ]
+            }
+        ]
+    },
+    "Lazarus": {
+        "base-package": {
+            "version": "1.0",
+            "install-order": [
+                {
+                    "name": "PascalRAL",
+                    "is-compile": true,
+                    "is-install": true
+                }
+            ],
+            "library-paths": [
+                "/src/base",
+                "/src/utils"
+            ]
+        },
+        "data-engines": [
+            {
+                "name": "Synopse mORMot2",
+                "is-server": true,
+                "is-client": true,
+                "has-depedancy": true,
+                "depedancy": {
+                    "name": "mORMot2",
+                    "min-version": "2.1",
+                    "repository": "https://github.com/synopse/mORMot2",
+                    "base-path": "/src",
+                    "has-lpk": true,
+                    "lpk-location": "../packages/lazarus",
+                    "install-order": [
+                        {
+                            "name": "mormot2.lpk",
+                            "is-compile": true,
+                            "is-install": true
+                        }
+                    ]
+                },
+                "install-order": [
+                    {
+                        "name": "SynopseRAL",
+                        "is-compile": true,
+                        "is-install": true
+                    }
+                ],
+                "library-paths": [
+                    "/src/engine/synopse"
+                ]
+            }
+        ]
+    }
+}

@@ -1,34 +1,29 @@
-program RALInstaller;
+program ralinstaller;
 
 {$mode objfpc}{$H+}
 
 uses
- {$IFDEF UNIX}cthreads,  {$ENDIF}
- {$IFDEF HASAMIGA}athreads,  {$ENDIF}
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
+  {$IFDEF HASAMIGA}
+  athreads,
+  {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms,
-  principal,
-  ghrepofunctions,
-  configdatabase,
-  imagefunctions,
-  lclfunctions,
-  frideversions,
-  frmodelo,
-  fride,
-  fridioma,
-  frconfigrecursos,
-  frinstallrecursos,
-  frinstall,
-  frconfirmrecursos,
-  install_types,
-  install_tools;
+  winpeimagereader, elfreader, machoreader, Forms, umain,
+  ufrm_modelo, ufrm_idioma, utools, ufrm_ide, ufrm_ide_versions,
+  ufrm_ide_version, delphiutils, lazarusutils, ufrm_recursos, udm, githubral,
+  ufrm_install, installparser, githubutils, ralzipper;
 
 {$R *.res}
 
 begin
   RequireDerivedFormResource := True;
+  Application.Title := 'RAL Installer';
   Application.Scaled := True;
   Application.Initialize;
-  Application.CreateForm(Tfprincipal, fprincipal);
+  Application.CreateForm(Tdm, dm);
+  Application.CreateForm(Tfmain, fmain);
   Application.Run;
 end.
+

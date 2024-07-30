@@ -1,0 +1,8 @@
+{"version":1,"strings":[
+{"hash":9209829,"name":"tfrm_ide_versions.lbsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,97,115,32,86,101,114,115,195,181,101,115,32,100,111,32,73,68,69],"value":"Escolha as Vers\u00F5es do IDE"},
+{"hash":146168831,"name":"tfrm_ide_versions.baddversion.hint","sourcebytes":[65,100,105,99,105,111,110,97,114,32,117,109,32,73,68,69,32,112,101,108,97,32,115,117,97,32,112,97,115,116,97,32,100,101,32,105,110,115,116,97,108,97,195,167,195,163,111],"value":"Adicionar um IDE pela sua pasta de instala\u00E7\u00E3o"},
+{"hash":34900329,"name":"tfrm_ide_versions.bautobusca.hint","sourcebytes":[66,117,115,99,97,114,32,97,117,116,111,109,97,116,105,99,97,109,101,110,116,101,32,111,115,32,73,68,69,32,40,112,114,111,99,101,115,115,111,32,108,101,110,116,111,41],"value":"Buscar automaticamente os IDE (processo lento)"},
+{"hash":119984196,"name":"tfrm_ide_versions.lbfind.caption","sourcebytes":[108,98,70,105,110,100],"value":"lbFind"},
+{"hash":177198513,"name":"tfrm_ide_versions.bstopbusca.hint","sourcebytes":[67,97,110,99,101,108,97,114,32,97,32,66,117,115,99,97],"value":"Cancelar a Busca"},
+{"hash":175107765,"name":"tfrm_ide_versions.lbfind1.caption","sourcebytes":[76,105,115,116,97,32,100,111,115,32,73,68,69],"value":"Lista dos IDE"}
+]}

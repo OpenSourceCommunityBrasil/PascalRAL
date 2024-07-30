@@ -1,0 +1,94 @@
+inherited frm_ide_versions: Tfrm_ide_versions
+  inherited imNext: TImage
+    AnchorSideRight.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  inherited imBack: TImage
+    AnchorSideLeft.Control = Owner
+    AnchorSideBottom.Control = Owner
+  end
+  object lbSubTitle: TLabel[9]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrCenter
+    Left = 165
+    Height = 30
+    Top = 120
+    Width = 370
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Top = 120
+    Caption = 'Escolha as Versões do IDE'
+    Font.Height = -21
+    ParentColor = False
+    ParentFont = False
+  end
+  object sbIDEVersions: TScrollBox[10]
+    Left = 50
+    Height = 320
+    Top = 188
+    Width = 600
+    HorzScrollBar.Page = 1
+    VertScrollBar.Page = 1
+    ParentBackground = False
+    TabOrder = 0
+  end
+  object bAddVersion: TSpeedButton[11]
+    Left = 656
+    Height = 23
+    Hint = 'Adicionar um IDE pela sua pasta de instalação'
+    Top = 188
+    Width = 23
+    Images = dm.imgList
+    ImageIndex = 0
+    OnClick = bAddVersionClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object bAutoBusca: TSpeedButton[12]
+    Left = 656
+    Height = 23
+    Hint = 'Buscar automaticamente os IDE (processo lento)'
+    Top = 216
+    Width = 23
+    Images = dm.imgList
+    ImageIndex = 1
+    OnClick = bAutoBuscaClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object lbFind: TLabel[13]
+    Left = 50
+    Height = 15
+    Top = 520
+    Width = 600
+    AutoSize = False
+    Caption = 'lbFind'
+  end
+  object bStopBusca: TSpeedButton[14]
+    Left = 656
+    Height = 23
+    Hint = 'Cancelar a Busca'
+    Top = 513
+    Width = 23
+    Images = dm.imgList
+    ImageIndex = 2
+    Visible = False
+    OnClick = bStopBuscaClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object lbFind1: TLabel[15]
+    Left = 50
+    Height = 15
+    Top = 169
+    Width = 66
+    Caption = 'Lista dos IDE'
+  end
+  object dirSelect: TSelectDirectoryDialog[16]
+    Left = 176
+    Top = 256
+  end
+end

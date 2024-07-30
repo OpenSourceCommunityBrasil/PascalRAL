@@ -1,0 +1,238 @@
+{
+    "version": 1,
+    "languages": [
+        {
+            "name": "ptBR",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        },
+        {
+            "name": "enUS",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        },
+        {
+            "name": "esES",
+            "po-file": "https://linktothefile",
+            "picture": "https://linktothefile"
+        }
+    ],
+    "eula": "https://linktothefile",
+    "packages": {
+        "name": "PascalRAL",
+        "repository": "OpenSourceCommunityBrasil/PascalRAL",
+        "repo-version": "master",
+   	    "folder": "pascalral",
+        "install": {
+            "dpk": [
+                {
+                    "version-code": -1,
+                    "location": "pkg/Delphi/PascalRAL.dpk"
+                }
+            ],
+            "lpk": "pkg/Lazarus/pascalral.lpk"
+        },
+        "engines": [
+            {
+                "name": "RALSynopse",
+                "install": {
+                    "dpk": [
+                        {
+                            "version-code": -1,
+                            "location": "pkg/Delphi/PascalRAL.dpk"
+                        }
+                    ],
+                    "lpk": "pkg/Lazarus/Engine/synopseral.lpk"
+                },
+                "depedancy": [
+                    "Synopse mORMot2"
+                ]
+            },
+            {
+                "name": "RALIndy",
+                "install": {
+                    "dpk": [
+                        {
+                            "version-code": -1,
+                            "location": "pkg/Delphi/PascalRAL.dpk"
+                        }
+                    ],
+                    "lpk": "pkg/Lazarus/Engine/indyral.lpk"
+                },
+                "depedancy": [
+                    "Indy"
+                ]
+            },
+            {
+                "name": "RALfpHTTP",
+                "install": {
+                    "lpk": "pkg/Lazarus/Engine/fphttpral.lpk"
+                },
+                "depedancy": [
+                    "fpHTTP"
+                ]
+            },
+            {
+                "name": "RALSagui",
+                "install": {
+                    "dpk": [
+                        {
+                            "version-code": -1,
+                            "location": "pkg/Delphi/PascalRAL.dpk"
+                        }
+                    ],
+                    "lpk": "pkg/Lazarus/Engine/saguiral.lpk"
+                },
+                "depedancy": [
+                    "Sagui"
+                ]
+            }
+        ],
+        "databases": {
+            "name": "RALDB",
+            "install": {
+                "dpk": [
+                    {
+                        "version-code": -1,
+                        "location": "pkg/Delphi/PascalRAL.dpk"
+                    }
+                ],
+                "lpk": "pkg/Lazarus/Database/raldbpackage.lpk"
+            },
+            "packages": [
+                {
+                    "name": "RALDBFireDAC",
+                    "install": {
+                        "dpk": [
+                            {
+                                "version-code": -1,
+                                "location": "pkg/Delphi/PascalRAL.dpk"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "RALDBZeos",
+                    "install": {
+                        "dpk": [
+                            {
+                                "version-code": -1,
+                                "location": "pkg/Delphi/PascalRAL.dpk"
+                            }
+                        ],
+                        "lpk": "pkg/Lazarus/Database/raldbsqldblink.lpk"
+                    }
+                },
+                {
+                    "name": "RALDBSQLDB",
+                    "install": {
+                        "dpk": [
+                            {
+                                "version-code": -1,
+                                "location": "pkg/Delphi/PascalRAL.dpk"
+                            }
+                        ],
+                        "lpk": "pkg/Lazarus/Engine/saguiral.lpk"
+                    }
+                }
+            ]
+        },
+        "compression": [
+            {
+                "name": "RALBrotli",
+                "install": {
+                    "dpk": [
+                        {
+                            "version-code": -1,
+                            "location": "pkg/Delphi/PascalRAL.dpk"
+                        }
+                    ],
+                    "lpk": "pkg/Lazarus/compression/ralbrotlicompress.lpk"
+                }
+            },
+            {
+                "name": "RALZSTD",
+                "install": {
+                    "dpk": [
+                        {
+                            "version-code": -1,
+                            "location": "pkg/Delphi/PascalRAL.dpk"
+                        }
+                    ],
+                    "lpk": "pkg/Lazarus/compression/ralzstdcompress.lpk"
+                }
+            }
+        ]
+    },
+    "depedancies": [
+        {
+            "name": "Indy",
+            "repository": "IndySockets/Indy",
+            "repo-version": "master",
+			"folder": "indy",
+            "install": {
+                "dpk": [
+                    {
+                        "version-code": -1,
+                        "location": "pkg/Delphi/PascalRAL.dpk"
+                    }
+                ],
+                "lpk": "Lib/indylaz.lpk"
+            }
+        },
+        {
+            "name": "Synopse Mormot2",
+            "repository": "synopse/mORMot2",
+            "repo-version": "master",
+			"folder": "mormot2",
+            "install": {
+                "dpk": [
+                    {
+                        "version-code": -1,
+                        "location": "pkg/Delphi/PascalRAL.dpk"
+                    }
+                ],
+                "lpk": "packages/lazarus/mormot2.lpk"
+            }
+        },
+        {
+            "name": "fpHTTP",
+            "install": {
+                "lpk": "%lazpath%/components/fpweb/weblaz.lpk"
+            }
+        },
+        {
+            "name": "Sagui",
+            "repository": "risoflora/brookframework",
+            "repo-version": "main",
+			"folder": "pascalral/src/others/brookframework"
+        },
+        {
+            "name": "Zeos",
+            "repository": "marsupilami79/zeoslib",
+            "repo-version": "master",
+			"folder": "zeos",
+            "install": {
+                "dpk": [
+                    {
+                        "version-code": -1,
+                        "location": "pkg/Delphi/PascalRAL.dpk"
+                    }
+                ],
+                "lpk": "packages/lazarus/zcomponentdesign.lpk"
+            }
+        },
+        {
+            "name": "Brotli",
+            "repository": "FernandoBanhos/pascal_brotli",
+            "repo-version": "main",
+			"folder": "pascalral/src/others/pascal_brotli"
+        },
+        {
+            "name": "ZSTD",
+            "repository": "FernandoBanhos/ZSTD",
+            "repo-version": "master",
+			"folder": "pascalral/src/others/ZSTD"
+        }
+    ]
+}

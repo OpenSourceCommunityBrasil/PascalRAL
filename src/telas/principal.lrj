@@ -1,5 +1,0 @@
-{"version":1,"strings":[
-{"hash":119536834,"name":"tfprincipal.caption","sourcebytes":[80,97,115,99,97,108,82,65,76,32,73,110,115,116,97,108,97,100,111,114],"value":"PascalRAL Instalador"},
-{"hash":56261408,"name":"tfprincipal.lversion.caption","sourcebytes":[73,110,115,116,97,108,97,100,111,114,32,86,101,114,115,195,163,111,32,49,46,48],"value":"Instalador Vers\u00E3o 1.0"},
-{"hash":4860047,"name":"tfprincipal.ltheme.caption","sourcebytes":[67,108,97,114,111],"value":"Claro"}
-]}

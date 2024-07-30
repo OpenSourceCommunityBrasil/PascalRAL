@@ -1,7 +1,0 @@
-{"version":1,"strings":[
-{"hash":4611762,"name":"tfinstallrecursos.lbsubtitle.caption","sourcebytes":[69,115,99,111,108,104,97,32,111,115,32,114,101,99,117,114,115,111,115,32,97,32,105,110,115,116,97,108,97,114],"value":"Escolha os recursos a instalar"},
-{"hash":240507235,"name":"tfinstallrecursos.checkbox1.caption","sourcebytes":[73,110,115,116,97,108,97,114,32,68,101,112,101,110,100,195,170,110,99,105,97,115],"value":"Instalar Depend\u00EAncias"},
-{"hash":123257843,"name":"tfinstallrecursos.lversionnotes1.caption","sourcebytes":[67,97,109,105,110,104,111,32,112,97,114,97,32,98,97,105,120,97,114,32,111,115,32,102,111,110,116,101,115,32,100,97,115,32,100,101,112,101,110,100,195,170,110,99,105,97,115],"value":"Caminho para baixar os fontes das depend\u00EAncias"},
-{"hash":232680147,"name":"tfinstallrecursos.epathfolder.texthint","sourcebytes":[69,115,99,111,108,104,97,32,111,32,99,97,109,105,110,104,111,32,111,110,100,101,32,98,97,105,120,97,114,32,111,115,32,102,111,110,116,101,115],"value":"Escolha o caminho onde baixar os fontes"},
-{"hash":33307267,"name":"tfinstallrecursos.label1.caption","sourcebytes":[77,111,116,111,114,32,100,101,32,68,97,100,111,115],"value":"Motor de Dados"}
-]}
