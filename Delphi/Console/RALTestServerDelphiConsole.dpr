@@ -28,7 +28,7 @@ type
 
 constructor TRALApplication.Create(AOwner: TComponent);
 var
-  opt: integer;
+  opt, port: integer;
 begin
   WriteLn('RALTestServer Delphi Console v' + RALVERSION);
   WriteLn('Choose the engine:');
@@ -52,7 +52,10 @@ begin
         TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + SG_LIB_NAME;
       end;
   end;
-  FServer.Port := 8083;
+  WriteLn('Type the port used by server (0 for default 8000)');
+  ReadLn(port);
+  if port <= 0 then port := 8000;
+  FServer.Port := port;
   FServer.CreateRoute('ping', Ping);
   FServer.Start;
 end;
@@ -60,7 +63,7 @@ end;
 destructor TRALApplication.Destroy;
 begin
   FServer.Stop;
-  FServer.Free;
+  FreeAndNil(FServer);
   inherited;
 end;
 
@@ -70,7 +73,7 @@ var
 begin
   while not(input = 'exit') do
   begin
-    WriteLn('Server online on port 8083');
+    WriteLn('Server online on port ' + FServer.Port.ToString);
     WriteLn('type exit to close');
     ReadLn(input);
   end

@@ -53,6 +53,7 @@ type
   constructor TRALApplication.Create(AOwner: TComponent);
   var
     opt: integer;
+    port: integer;
   begin
     inherited Create(AOwner);
     StopOnException := True;
@@ -61,7 +62,7 @@ type
     WriteLn('Choose the engine:');
     WriteLn('1 - Synopse mORMot2 ' + SYNOPSE_FRAMEWORK_VERSION);
     WriteLn('2 - Indy ' + gsIdVersion);
-    WriteLn('3 - FpHttp');
+    WriteLn('3 - FpHttp ' + 'v3.5');
     WriteLn('4 - Sagui ' + Format('%d.%d.%d', [SG_VERSION_MAJOR, SG_VERSION_MINOR,
     SG_VERSION_PATCH]) + ' (' + SG_LIB_NAME + ' required)');
     ReadLn(opt);
@@ -74,7 +75,10 @@ type
         TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + SG_LIB_NAME;
       end;
     end;
-    FServer.Port := 8083;
+    WriteLn('Type the port used by server (0 for default 8000)');
+    ReadLn(port);
+    if port <= 0 then port := 8000;
+    FServer.Port := port;
     FServer.CreateRoute('ping', @Ping);
     FServer.Start;
   end;
