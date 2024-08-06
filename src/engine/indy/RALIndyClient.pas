@@ -76,6 +76,7 @@ begin
   FHttp.HTTPOptions := [hoKeepOrigProtocol, hoWantProtocolErrorContent,
                         hoNoProtocolErrorException];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
+  FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
 end;
 
 destructor TRALIndyClientHTTP.Destroy;
@@ -108,11 +109,11 @@ begin
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;
   FHttp.Request.CustomHeaders.FoldLines := False;
-  FHttp.Request.UserAgent := Parent.UserAgent;
-
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.ReadTimeout := Parent.RequestTimeout;
   FHttp.Request.UserAgent := Parent.UserAgent;
+  FHttp.RedirectMaximum := 30;
+  FHttp.HandleRedirects := true;
 
   FHttp.IOHandler := nil;
   if SameText(Copy(AURL, 1, 5), 'https') then

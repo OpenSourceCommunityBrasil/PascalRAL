@@ -112,6 +112,7 @@ begin
     vHttp.UserAgent := Parent.UserAgent;
     vHttp.Accept := '*/*';
     vHttp.KeepAlive := Parent.KeepAlive;
+    vHttp.RedirectMax := 3;
 
     if Parent.KeepAlive then
       vKeepAlive := Parent.ConnectTimeout

@@ -94,6 +94,8 @@ begin
 
   FHttp.ResponseHeaders.Clear;
   FHttp.RequestHeaders.Clear;
+  FHttp.AllowRedirect := true;
+  FHttp.MaxRedirects := 300;
 
   ARequest.Params.AssignParams(FHttp.Cookies,rpkCOOKIE);
 

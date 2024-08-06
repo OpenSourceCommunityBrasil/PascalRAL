@@ -221,6 +221,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    function AddBody(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALClient;
+
     function Clone(AOwner: TComponent = nil): TRALClient; virtual; abstract;
 
     /// Defines method on the client: Delete.
@@ -233,6 +236,10 @@ type
     procedure Post; virtual;
     /// Defines method on the client: Put.
     procedure Put; virtual;
+    /// Defines method on the client: Head.
+    procedure Head; virtual;
+    /// Defines method on the client: Trace.
+    procedure Trace; virtual;
 
     property Request: TRALRequest read FRequest;
     property Response: TRALResponse read FResponse;
@@ -279,6 +286,20 @@ begin
   inherited;
 end;
 
+function TRALClient.AddBody(const AName: StringRAL; const AValue: StringRAL
+  ): TRALClient;
+begin
+  Result := Self;
+  FRequest.Params.AddParam(AName, AValue, rpkBODY);
+end;
+
+function TRALClient.AddHeader(const AName: StringRAL; const AValue: StringRAL
+  ): TRALClient;
+begin
+  Result := Self;
+  FRequest.Params.AddParam(AName, AValue, rpkHEADER);
+end;
+
 procedure TRALClient.Get;
 begin
   FClient.BeforeSendUrl(FRoute, FRequest, FResponse, amGET);
@@ -310,6 +331,18 @@ end;
 procedure TRALClient.Put;
 begin
   FClient.BeforeSendUrl(FRoute, FRequest, FResponse, amPOST);
+  FIndexUrl := FClient.IndexUrl;
+end;
+
+procedure TRALClient.Head;
+begin
+  FClient.BeforeSendUrl(FRoute, FRequest, FResponse, amHEAD);
+  FIndexUrl := FClient.IndexUrl;
+end;
+
+procedure TRALClient.Trace;
+begin
+  FClient.BeforeSendUrl(FRoute, FRequest, FResponse, amTRACE);
   FIndexUrl := FClient.IndexUrl;
 end;
 
