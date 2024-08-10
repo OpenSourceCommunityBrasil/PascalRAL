@@ -22,7 +22,7 @@
         "name": "PascalRAL",
         "repository": "OpenSourceCommunityBrasil/PascalRAL",
         "repo-version": "master",
-   	    "folder": "pascalral",
+        "folder": "pascalral",
         "install": {
             "dpk": [
                 {
@@ -121,7 +121,10 @@
                             }
                         ],
                         "lpk": "pkg/Lazarus/Database/raldbsqldblink.lpk"
-                    }
+                    },
+                    "depedancy": [
+                        "Zeos"
+                    ]
                 },
                 {
                     "name": "RALDBSQLDB",
@@ -148,7 +151,10 @@
                         }
                     ],
                     "lpk": "pkg/Lazarus/compression/ralbrotlicompress.lpk"
-                }
+                },
+                "depedancy": [
+                    "Brotli"
+                ]
             },
             {
                 "name": "RALZSTD",
@@ -160,7 +166,10 @@
                         }
                     ],
                     "lpk": "pkg/Lazarus/compression/ralzstdcompress.lpk"
-                }
+                },
+                "depedancy": [
+                    "ZSTD"
+                ]
             }
         ]
     },
@@ -169,7 +178,7 @@
             "name": "Indy",
             "repository": "IndySockets/Indy",
             "repo-version": "master",
-			"folder": "indy",
+            "folder": "indy",
             "install": {
                 "dpk": [
                     {
@@ -184,7 +193,7 @@
             "name": "Synopse Mormot2",
             "repository": "synopse/mORMot2",
             "repo-version": "master",
-			"folder": "mormot2",
+            "folder": "mormot2",
             "install": {
                 "dpk": [
                     {
@@ -192,8 +201,16 @@
                         "location": "pkg/Delphi/PascalRAL.dpk"
                     }
                 ],
-                "lpk": "packages/lazarus/mormot2.lpk"
-            }
+                "lpk": "packages/lazarus/mormot2.lpk",
+                "lpk_islink": true
+            },
+            "downloads": [
+                {
+                    "link": "https://synopse.info/files/mormot2static.tgz",
+                    "format": "tar_gzip",
+                    "folder": "mormot2/static"
+                }
+            ]
         },
         {
             "name": "fpHTTP",
@@ -205,13 +222,13 @@
             "name": "Sagui",
             "repository": "risoflora/brookframework",
             "repo-version": "main",
-			"folder": "pascalral/src/others/brookframework"
+            "folder": "pascalral/src/others/brookframework"
         },
         {
             "name": "Zeos",
             "repository": "marsupilami79/zeoslib",
             "repo-version": "master",
-			"folder": "zeos",
+            "folder": "zeos",
             "install": {
                 "dpk": [
                     {
@@ -226,13 +243,13 @@
             "name": "Brotli",
             "repository": "FernandoBanhos/pascal_brotli",
             "repo-version": "main",
-			"folder": "pascalral/src/others/pascal_brotli"
+            "folder": "pascalral/src/others/pascal_brotli"
         },
         {
             "name": "ZSTD",
             "repository": "FernandoBanhos/ZSTD",
             "repo-version": "master",
-			"folder": "pascalral/src/others/ZSTD"
+            "folder": "pascalral/src/others/ZSTD"
         }
     ]
 }

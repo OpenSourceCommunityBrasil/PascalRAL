@@ -3,7 +3,8 @@ unit installparser;
 interface
 
 uses
-  Classes, SysUtils, Dialogs, githubutils, fpjson, ralzipper;
+  Classes, SysUtils, Dialogs, StdCtrls, Forms, githubutils, fpjson, ralzipper,
+  http_client, tar_gzip;
 
 type
 
@@ -59,6 +60,7 @@ type
   private
     FDPK: TDPKList;
     FLPK: string;
+    FLPKIsLink : boolean;
     FIsEmpty : boolean;
   protected
     function GetAsJSON: TJSONObject;
@@ -70,6 +72,7 @@ type
     property AsJSON : TJSONObject read GetAsJSON write SetAsJSON;
     property DPK : TDPKList read FDPK write FDPK;
     property LPK : string read FLPK write FLPK;
+    property LPKIsLink : boolean read FLPKIsLink write FLPKIsLink;
     property IsEmpty : boolean read FIsEmpty write FIsEmpty;
   end;
 
@@ -93,6 +96,7 @@ type
     property AsJSON : TJSONObject read GetAsJSON write SetAsJSON;
     property Name : string read FName write FName;
     property Install : TInstall read FInstall write FInstall;
+    property Depedancy : TStringList read FDepedancy write FDepedancy;
   end;
 
   { TEngineList }
@@ -126,6 +130,7 @@ type
     FOwner : TPackages;
     FName: string;
     FInstall: TInstall;
+    FDepedancy: TStringList;
   protected
     function GetAsJSON: TJSONObject;
     procedure SetAsJSON(AValue: TJSONObject);
@@ -137,6 +142,7 @@ type
 
     property Name : string read FName write FName;
     property Install : TInstall read FInstall write FInstall;
+    property Depedancy : TStringList read FDepedancy write FDepedancy;
   end;
 
   { TDatabasesList }
@@ -191,6 +197,7 @@ type
     FOwner : TPackages;
     FName: string;
     FInstall: TInstall;
+    FDepedancy: TStringList;
   protected
     function GetAsJSON: TJSONObject;
     procedure SetAsJSON(AValue: TJSONObject);
@@ -202,6 +209,7 @@ type
 
     property Name : string read FName write FName;
     property Install : TInstall read FInstall write FInstall;
+    property Depedancy : TStringList read FDepedancy write FDepedancy;
   end;
 
   { TCompressionList }
@@ -260,6 +268,47 @@ type
     property Compression : TCompressionList read FCompression write FCompression;
   end;
 
+  { TDownload }
+
+  TDownload = class
+  private
+    FLink : string;
+    FFormat : string;
+    FFolder : string;
+  protected
+    function GetAsJSON: TJSONObject;
+    procedure SetAsJSON(AValue: TJSONObject);
+  published
+    property AsJSON : TJSONObject read GetAsJSON write SetAsJSON;
+
+    property Link : string read FLink write FLink;
+    property Format : string read FFormat write FFormat;
+    property Folder : string read FFolder write FFolder;
+  end;
+
+  { TDownloadList }
+
+  TDownloadList = class
+  private
+    FList : TList;
+  protected
+    function GetAsJSON: TJSONArray;
+    function GetDownload(AIndex : integer): TDownload;
+    procedure SetAsJSON(AValue: TJSONArray);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
+    function NewDownload : TDownload;
+
+    function Count : integer;
+
+    property Download[AIndex : integer] : TDownload read GetDownload;
+  published
+    property AsJSON : TJSONArray read GetAsJSON write SetAsJSON;
+  end;
+
   { TDepedancy }
 
   TDepedancy = class(TSelected)
@@ -269,6 +318,7 @@ type
     FRepoVersion: string;
     FFolder: string;
     FInstall: TInstall;
+    FDownloads : TDownloadList;
   protected
     function GetAsJSON: TJSONObject;
     procedure SetAsJSON(AValue: TJSONObject);
@@ -283,6 +333,7 @@ type
     property Repository : string read FRepository write FRepository;
     property RepoVersion : string read FRepoVersion write FRepoVersion;
     property Folder : string read FFolder write FFolder;
+    property Downloads : TDownloadList read FDownloads write FDownloads;
   end;
 
   { TDepedancyList }
@@ -318,13 +369,21 @@ type
     FDepedancies: TDepedancyList;
   protected
     function downloadRepository(ARepository, AVersion : string) : TStream;
+    function downloadLink(ALink : string) : TStream;
+
     procedure descompressRepository(AFile, APath, AFolder : string); overload;
     procedure descompressRepository(AStream : TStream; APath, AFolder : string); overload;
+    procedure downloadToFolder(ALink, AFormat, AFolder, APath: string);
+
+    function logar(ALog : TMemo; AStr : string) : boolean;
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure Download(APath : string);
+    function getDepedancy(ADepedancy : string) : TDepedancy;
+
+    procedure download(APath : string; ALog : TMemo);
+    function checkDepedancy(ALog : TMemo): boolean;
   published
     property Version: integer read FVersion write FVersion;
     property Eula: string read FEula write FEula;
@@ -433,6 +492,7 @@ begin
 
   FDPK.AsJSON := AValue.Get('dpk', TJSONArray(nil));
   FLPK := AValue.Get('lpk', '');
+  FLPKIsLink := AValue.Get('lpk_islink', False);
 end;
 
 constructor TInstall.Create;
@@ -465,8 +525,11 @@ begin
   FInstall.AsJSON := AValue.Get('install', TJSONObject(nil));
 
   vArray := AValue.Get('depedancy', TJSONArray(nil));
-  for vInt := 0 to Pred(vArray.Count) do
-    FDepedancy.Add(vArray.Items[vInt].AsString);
+  if vArray <> nil then
+  begin
+    for vInt := 0 to Pred(vArray.Count) do
+      FDepedancy.Add(vArray.Items[vInt].AsString);
+  end;
 end;
 
 constructor TEngine.Create(AOwner: TPackages);
@@ -552,12 +615,22 @@ begin
 end;
 
 procedure TDatabase.SetAsJSON(AValue: TJSONObject);
+var
+  vInt: Integer;
+  vArray: TJSONArray;
 begin
   if AValue = nil then
     Exit;
 
   FName := AValue.Get('name', '');
   FInstall.AsJSON := AValue.Get('install', TJSONObject(nil));
+
+  vArray := AValue.Get('depedancy', TJSONArray(nil));
+  if vArray <> nil then
+  begin
+    for vInt := 0 to Pred(vArray.Count) do
+      FDepedancy.Add(vArray.Items[vInt].AsString);
+  end;
 end;
 
 constructor TDatabase.Create(AOwner: TPackages);
@@ -565,11 +638,13 @@ begin
   inherited Create;
   FOwner := AOwner;
   FInstall := TInstall.Create;
+  FDepedancy := TStringList.Create;
 end;
 
 destructor TDatabase.Destroy;
 begin
   FreeAndNil(FInstall);
+  FreeAndNil(FDepedancy);
   inherited Destroy;
 end;
 
@@ -672,12 +747,22 @@ begin
 end;
 
 procedure TCompression.SetAsJSON(AValue: TJSONObject);
+var
+  vArray: TJSONArray;
+  vInt: Integer;
 begin
   if AValue = nil then
     Exit;
 
   FName := AValue.Get('name', '');
   FInstall.AsJSON := AValue.Get('install', TJSONObject(nil));
+
+  vArray := AValue.Get('depedancy', TJSONArray(nil));
+  if vArray <> nil then
+  begin
+    for vInt := 0 to Pred(vArray.Count) do
+      FDepedancy.Add(vArray.Items[vInt].AsString);
+  end;
 end;
 
 constructor TCompression.Create(AOwner: TPackages);
@@ -685,11 +770,13 @@ begin
   inherited Create;
   FOwner := AOwner;
   FInstall := TInstall.Create;
+  FDepedancy := TStringList.Create;
 end;
 
 destructor TCompression.Destroy;
 begin
   FreeAndNil(FInstall);
+  FreeAndNil(FDepedancy);
   inherited Destroy;
 end;
 
@@ -800,6 +887,81 @@ begin
   inherited Destroy;
 end;
 
+{ TDownload }
+
+function TDownload.GetAsJSON: TJSONObject;
+begin
+  Result := nil;
+end;
+
+procedure TDownload.SetAsJSON(AValue: TJSONObject);
+begin
+  if AValue = nil then
+    Exit;
+
+  FLink := AValue.Get('link', '');
+  FFormat := AValue.Get('format', '');
+  FFolder := AValue.Get('folder', '');
+end;
+
+{ TDownloadList }
+
+function TDownloadList.GetDownload(AIndex : integer): TDownload;
+begin
+  Result := nil;
+  if (AIndex >= 0) and (AIndex < FList.Count) then
+    Result := TDownload(FList.Items[AIndex]);
+end;
+
+function TDownloadList.GetAsJSON: TJSONArray;
+begin
+  Result := nil;
+end;
+
+procedure TDownloadList.SetAsJSON(AValue: TJSONArray);
+var
+  vInt: integer;
+begin
+  if AValue = nil then
+    Exit;
+
+  for vInt := 0 to Pred(AValue.Count) do
+    NewDownload.AsJSON := TJSONObject(AValue.Items[vInt]);
+end;
+
+constructor TDownloadList.Create;
+begin
+  inherited;
+  FList := TList.Create;
+end;
+
+destructor TDownloadList.Destroy;
+begin
+  Clear;
+  FreeAndNil(FList);
+  inherited Destroy;
+end;
+
+procedure TDownloadList.Clear;
+begin
+  while FList.Count > 0 do
+  begin
+    TObject(FList.Items[FList.Count - 1]).Free;
+    FList.Delete(FList.Count - 1);
+  end;
+end;
+
+function TDownloadList.NewDownload: TDownload;
+begin
+  Result := TDownload.Create;
+  FList.Add(Result);
+end;
+
+function TDownloadList.Count: integer;
+begin
+  Result := FList.Count;
+end;
+
 { TDepedancy }
 
 function TDepedancy.GetAsJSON: TJSONObject;
@@ -817,17 +979,20 @@ begin
   FRepoVersion := AValue.Get('repo-version', '');
   FFolder := AValue.Get('folder', '');
   FInstall.AsJSON := AValue.Get('install', TJSONObject(nil));
+  FDownloads.AsJSON := AValue.Get('downloads', TJSONArray(nil));
 end;
 
 constructor TDepedancy.Create;
 begin
   inherited;
   FInstall := TInstall.Create;
+  FDownloads := TDownloadList.Create;
 end;
 
 destructor TDepedancy.Destroy;
 begin
   FreeAndNil(FInstall);
+  FreeAndNil(FDownloads);
   inherited Destroy;
 end;
 
@@ -906,6 +1071,18 @@ begin
   end;
 end;
 
+function TInstaller.downloadLink(ALink: string): TStream;
+var
+  vHttp: THttpClient;
+begin
+  vHttp := THttpClient.Create;
+  try
+    Result := vHttp.DownloadLink(ALink);
+  finally
+    FreeAndNil(vHttp);
+  end;
+end;
+
 procedure TInstaller.descompressRepository(AFile, APath, AFolder: string);
 var
   vUnZip: TRALUnZipper;
@@ -937,6 +1114,53 @@ begin
     vUnZip.UnZipAllFiles;
   finally
     FreeAndNil(vUnZip);
+  end;
+end;
+
+procedure TInstaller.downloadToFolder(ALink, AFormat, AFolder, APath: string);
+var
+  vStream: TStream;
+  vFileStream: TFileStream;
+  vFile, vOutput: string;
+  vTGZ : TTGZDecompress;
+begin
+  vStream := downloadLink(ALink);
+  try
+    if SameText(AFormat, 'tar_gzip') then
+    begin
+      vFile := APath + 'temp.tgz';
+      vFileStream := TFileStream.Create(vFile, fmCreate);
+      try
+        vFileStream.CopyFrom(vStream, vStream.Size);
+      finally
+        FreeAndNil(vFileStream);
+      end;
+
+      vOutput := IncludeTrailingPathDelimiter(APath) + AFolder;
+      vOutput := IncludeTrailingPathDelimiter(vOutput);
+
+      vTGZ := TTGZDecompress.Create(vFile);
+      try
+        vTGZ.OutputFolder := vOutput;
+        vTGZ.ExtractAll;
+      finally
+        FreeAndNil(vTGZ);
+      end;
+
+      DeleteFile(vFile);
+    end;
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
+function TInstaller.logar(ALog: TMemo; AStr: string): boolean;
+begin
+  Result := ALog <> nil;
+  if Result then
+  begin
+    ALog.Lines.Add(AStr);
+    Application.ProcessMessages;
   end;
 end;
 
@@ -991,14 +1215,31 @@ begin
   inherited Destroy;
 end;
 
-procedure TInstaller.Download(APath: string);
+function TInstaller.getDepedancy(ADepedancy: string): TDepedancy;
+var
+  vInt : integer;
+begin
+  Result := nil;
+  for vInt := 0 to Pred(FDepedancies.Count) do
+  begin
+    if SameText(FDepedancies.Depedancy[vInt].Name, ADepedancy) then begin
+      Result := FDepedancies.Depedancy[vInt];
+      Break;
+    end;
+  end;
+end;
+
+procedure TInstaller.download(APath: string; ALog: TMemo);
 var
   vFile: String;
-  vInt: integer;
+  vInt, vInt1: integer;
   vStream: TStream;
 begin
   APath := IncludeTrailingPathDelimiter(APath);
   ForceDirectories(APath);
+
+  logar(ALog, 'Downloading Packages');
+  logar(ALog, 'Downloading: '+FPackages.Name);
 
   {$IFDEF INSTALL_TEST}
     vFile := ExtractFilePath(ParamStr(0));
@@ -1014,11 +1255,112 @@ begin
   for vInt := 0 to Pred(FDepedancies.Count) do
   begin
     if (FDepedancies.Depedancy[vInt].Selected) and
-       (FDepedancies.Depedancy[vInt].Repository <> '') then begin
+       (FDepedancies.Depedancy[vInt].Repository <> '') then
+    begin
+      logar(ALog, 'Downloading: '+FDepedancies.Depedancy[vInt].Name);
+
       vStream := downloadRepository(FDepedancies.Depedancy[vInt].Repository,
                                     FDepedancies.Depedancy[vInt].RepoVersion);
       descompressRepository(vStream, APath, FDepedancies.Depedancy[vInt].Folder);
+
+      for vInt1 := 0 to Pred(FDepedancies.Depedancy[vInt].Downloads.Count) do
+      begin
+        logar(ALog, 'Downloading Link: '+FDepedancies.Depedancy[vInt].Downloads.Download[vInt1].Link);
+
+        downloadToFolder(FDepedancies.Depedancy[vInt].Downloads.Download[vInt1].Link,
+                         FDepedancies.Depedancy[vInt].Downloads.Download[vInt1].Format,
+                         FDepedancies.Depedancy[vInt].Downloads.Download[vInt1].Folder,
+                         APath);
+      end;
     end;
+  end;
+  logar(ALog, '');
+end;
+
+function TInstaller.checkDepedancy(ALog: TMemo): boolean;
+var
+  vInt1, vInt2: Integer;
+  vLst : TStringList;
+  vDepedancy : TDepedancy;
+  vAux1 : string;
+begin
+  Result := False;
+
+  vLst := TStringList.Create;
+  try
+    // pegando dependencias do engines packges
+    for vInt1 := 0 to Pred(FPackages.Engines.Count) do
+    begin
+      if FPackages.Engines.Engine[vInt1].Selected then
+      begin
+        // pegando as dependencias
+        for vInt2 := 0 to Pred(FPackages.Engines.Engine[vInt1].Depedancy.Count) do
+        begin
+          vAux1 := FPackages.Engines.Engine[vInt1].Depedancy.Strings[vInt2];
+          if vLst.IndexOf(vAux1) < 0 then
+            vLst.Add(vAux1);
+        end;
+      end;
+    end;
+
+    // pegando dependencias do databases packages
+    for vInt1 := 0 to Pred(FPackages.Databases.Packages.Count) do
+    begin
+      if FPackages.Databases.Packages.Database[vInt1].Selected then
+      begin
+        // pegando as dependencias
+        for vInt2 := 0 to Pred(FPackages.Databases.Packages.Database[vInt1].Depedancy.Count) do begin
+          vAux1 := FPackages.Databases.Packages.Database[vInt1].Depedancy.Strings[vInt2];
+          if vLst.IndexOf(vAux1) < 0 then
+            vLst.Add(vAux1);
+        end;
+      end;
+    end;
+
+    // pegando dependencias do compression packges
+    for vInt1 := 0 to Pred(FPackages.Compression.Count) do
+    begin
+      if FPackages.Compression.Compression[vInt1].Selected then
+      begin
+        // pegando as dependencias
+        for vInt2 := 0 to Pred(FPackages.Compression.Compression[vInt1].Depedancy.Count) do begin
+          vAux1 := FPackages.Compression.Compression[vInt1].Depedancy.Strings[vInt2];
+          if vLst.IndexOf(vAux1) < 0 then
+            vLst.Add(vAux1);
+        end;
+      end;
+    end;
+
+    // pegando a dependencia da lista e adicionando e criando uma lista do package
+    for vInt1 := 0 to Pred(vLst.Count) do
+    begin
+      vDepedancy := getDepedancy(vLst.Strings[vInt1]);
+      if (vDepedancy <> nil) and (not vDepedancy.Selected) then begin
+        vAux1 := 'Dependência: '+vDepedancy.Name+' não selecionada';
+        if not logar(ALog, vAux1) then
+          ShowMessage(vAux1);
+        Exit;
+      end
+    end;
+
+    // verificando se alguma database foi selecionado pra install o RALDB
+    if not FPackages.Databases.Selected then
+    begin
+      for vInt1 := 0 to Pred(FPackages.Databases.Packages.Count) do
+      begin
+        if FPackages.Databases.Packages.Database[vInt1].Selected then
+        begin
+          vAux1 := 'Pacote: '+FPackages.Databases.Name+' não selecionado';
+          if not logar(ALog, vAux1) then
+            ShowMessage(vAux1);
+          Exit;
+        end;
+      end;
+    end;
+
+    Result := True;
+  finally
+    FreeAndNil(vLst);
   end;
 end;
 

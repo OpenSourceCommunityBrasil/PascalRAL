@@ -44,7 +44,7 @@ implementation
 {$R *.lfm}
 
 uses
-  udm;
+  udm, umain;
 
 { Tfrm_recursos }
 
@@ -209,7 +209,8 @@ end;
 
 function Tfrm_recursos.validatePageNext: boolean;
 begin
-  Result := DirectoryExists(ePathDownload.Text);
+  Result := DirectoryExists(ePathDownload.Text) and
+            fmain.checkDepedancy(nil);
 end;
 
 constructor Tfrm_recursos.Create(AOwner: TComponent);

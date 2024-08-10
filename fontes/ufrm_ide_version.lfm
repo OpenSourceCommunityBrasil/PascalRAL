@@ -83,4 +83,19 @@ object frm_ide_version: Tfrm_ide_version
       Align = alBottom
     end
   end
+  object prcBuildIDE: TProcess
+    Active = False
+    Options = [poWaitOnExit, poNewConsole]
+    Priority = ppNormal
+    StartupOptions = []
+    ShowWindow = swoShow
+    WindowColumns = 0
+    WindowHeight = 0
+    WindowLeft = 0
+    WindowRows = 0
+    WindowTop = 0
+    WindowWidth = 0
+    FillAttribute = 0
+    Left = 360
+  end
 end

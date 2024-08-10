@@ -38,7 +38,8 @@ type
     procedure PriorPage;
 
     procedure installRAL(ALog : TMemo);
-    procedure downloadRAL;
+    procedure downloadRAL(ALog: TMemo);
+    function checkDepedancy(ALog : TMemo) : boolean;
   published
     property Theme : TThemes read FTheme write SetTheme;
     property Language : TLanguages read FLanguage write SetLanguage;
@@ -147,9 +148,14 @@ begin
   FPgIDEVersions.installRAL(ALog, FPgRecursos.Install, FPgRecursos.PathDownload);
 end;
 
-procedure Tfmain.downloadRAL;
+procedure Tfmain.downloadRAL(ALog: TMemo);
 begin
-  FPgRecursos.Install.Download(FPgRecursos.PathDownload);
+  FPgRecursos.Install.Download(FPgRecursos.PathDownload, ALog);
+end;
+
+function Tfmain.checkDepedancy(ALog: TMemo): boolean;
+begin
+  Result := FPgRecursos.Install.CheckDepedancy(ALog);
 end;
 
 end.

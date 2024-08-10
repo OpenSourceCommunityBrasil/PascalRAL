@@ -40,8 +40,13 @@ begin
   FInstalling := True;
 
   mLogInstall.Clear;
-  fmain.downloadRAL;
-  fmain.installRAL(mLogInstall);
+  Application.ProcessMessages;
+
+  if fmain.checkDepedancy(mLogInstall) then
+  begin
+    fmain.downloadRAL(mLogInstall);
+    fmain.installRAL(mLogInstall);
+  end;
 
   FInstalling := False;
 end;

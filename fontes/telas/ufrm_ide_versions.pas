@@ -183,6 +183,7 @@ begin
       vFrm.Name := 'ide_version_' + IntToStr(vInt);
       vFrm.Parent := sbIDEVersions;
       vFrm.Top := FTop;
+      vFrm.IsDelphi := True;
 
       Application.ProcessMessages;
 
