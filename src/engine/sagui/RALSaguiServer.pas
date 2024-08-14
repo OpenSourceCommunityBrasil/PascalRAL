@@ -264,7 +264,7 @@ begin
       Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
       vServer.ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < 400 then
+      if vResponse.StatusCode < HTTP_BadRequest then
       begin
         // fields
         vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));

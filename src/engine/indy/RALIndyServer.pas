@@ -155,7 +155,7 @@ begin
       vKeepAlive := SameText(ARequestInfo.Connection, 'keep-alive');
 
       ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < 400 then
+      if vResponse.StatusCode < HTTP_BadRequest then
       begin
         Params.AppendParams(ARequestInfo.Params, rpkQUERY);
 

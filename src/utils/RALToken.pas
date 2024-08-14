@@ -18,8 +18,8 @@ type
   TRALAuthBasic = class
   private
     FAuthString: StringRAL;
-    FPassword : StringRAL;
-    FUserName : StringRAL;
+    FPassword: StringRAL;
+    FUserName: StringRAL;
   protected
     procedure SetAuthString(const AValue: StringRAL);
   published
@@ -94,7 +94,7 @@ type
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
     FSignSecretKey: StringRAL;
-    FToken : StringRAL;
+    FToken: StringRAL;
   protected
     function signHS256(const ASource: StringRAL): StringRAL;
     function signHS384(const ASource: StringRAL): StringRAL;
@@ -946,8 +946,8 @@ end;
 
 procedure TRALAuthBasic.SetAuthString(const AValue: StringRAL);
 var
-  vString : StringRAL;
-  vInt : IntegerRAL;
+  vString: StringRAL;
+  vInt: IntegerRAL;
 begin
   FAuthString := AValue;
   vString := TRALBase64.Decode(FAuthString);

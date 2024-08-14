@@ -251,7 +251,7 @@ begin
       AddCookies(ParamByName('Cookie').AsString);
 
       ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < 400 then
+      if vResponse.StatusCode < HTTP_BadRequest then
       begin
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;

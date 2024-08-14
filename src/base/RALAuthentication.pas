@@ -358,10 +358,10 @@ var
   vResult, vGetToken: boolean;
   vTokenSecret: StringRAL;
 begin
-  AResponse.StatusCode := 200;
+  AResponse.StatusCode := HTTP_OK;
   if (ARequest.Authorization.AuthType <> ratOAuth) then
   begin
-    AResponse.Answer(401);
+    AResponse.Answer(HTTP_Unauthorized);
     Exit;
   end;
 
@@ -401,7 +401,7 @@ begin
   end;
 
   if not vResult then
-    AResponse.Answer(401);
+    AResponse.Answer(HTTP_Unauthorized);
 end;
 
 procedure TRALServerOAuth.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -542,19 +542,19 @@ begin
     begin
       vStrResult := Format('{"%s":"%s"}', [FJSONKey, vToken]);
 
-      AResponse.StatusCode := 200;
+      AResponse.StatusCode := HTTP_OK;
       AResponse.ContentType := rctAPPLICATIONJSON;
       AResponse.ResponseText := vStrResult;
     end
     else
     begin
-      if AResponse.StatusCode < 400 then
-        AResponse.Answer(401);
+      if AResponse.StatusCode < HTTP_BadRequest then
+        AResponse.Answer(HTTP_Unauthorized);
     end;
   end
   else
   begin
-    AResponse.Answer(404);
+    AResponse.Answer(HTTP_NotFound);
   end;
 end;
 
@@ -611,10 +611,10 @@ var
   vResult: boolean;
   vJWT: TRALJWT;
 begin
-  AResponse.StatusCode := 200;
+  AResponse.StatusCode := HTTP_OK;
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
-    AResponse.Answer(401);
+    AResponse.Answer(HTTP_Unauthorized);
     Exit;
   end;
 
@@ -631,8 +631,8 @@ begin
     FreeAndNil(vJWT);
   end;
 
-  if (not vResult) and (AResponse.StatusCode < 400) then
-    AResponse.Answer(401);
+  if (not vResult) and (AResponse.StatusCode < HTTP_BadRequest) then
+    AResponse.Answer(HTTP_Unauthorized);
 end;
 
 function TRALServerJWTAuth.GetAuthRoute: TRALBaseRoute;
@@ -690,14 +690,14 @@ var
 
   procedure Error401;
   begin
-    if AResponse.StatusCode < 400 then
-      AResponse.Answer(401);
+    if AResponse.StatusCode < HTTP_BadRequest then
+      AResponse.Answer(HTTP_Unauthorized);
     if FAuthDialog then
       AResponse.AddHeader('WWW-Authenticate', 'Basic realm="RAL Basic"');
   end;
 
 begin
-  AResponse.StatusCode := 200;
+  AResponse.StatusCode := HTTP_OK;
   if (ARequest.Authorization.AuthType <> ratBasic) then
   begin
     Error401;
@@ -821,7 +821,7 @@ end;
 
 procedure TRALAuthServer.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
-  AResponse.Answer(404);
+  AResponse.Answer(HTTP_NotFound);
 end;
 
 function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse)

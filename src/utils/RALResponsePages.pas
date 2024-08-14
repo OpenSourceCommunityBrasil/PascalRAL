@@ -80,28 +80,36 @@ end;
 
 procedure TRALResponsePages.CreateDefaultPages;
 begin
-  CreatePage(400, Format(RALPage, [SLangHTTP, 400, SError400, SError400Page]));
-  CreatePage(401, Format(RALPage, [SLangHTTP, 401, SError401, SError401Page]));
-  CreatePage(403, Format(RALPage, [SLangHTTP, 403, SError403, SError403Page]));
-  CreatePage(404, Format(RALPage, [SLangHTTP, 404, SError404, SError404Page]));
-  CreatePage(415, Format(RALPage, [SLangHTTP, 415, SError415, SError415Page]));
-  CreatePage(500, Format(RALPage, [SLangHTTP, 500, SError500, SError500Page]));
-  CreatePage(501, Format(RALPage, [SLangHTTP, 501, SError501, SError501Page]));
-  CreatePage(503, Format(RALPage, [SLangHTTP, 503, SError503, SError503Page]));
+  CreatePage(HTTP_BadRequest, Format(RALPage, [SLangHTTP, 400, SError400, SError400Page]));
+  CreatePage(HTTP_Unauthorized, Format(RALPage, [SLangHTTP, 401, SError401, SError401Page]));
+  CreatePage(HTTP_Forbidden, Format(RALPage, [SLangHTTP, 403, SError403, SError403Page]));
+  CreatePage(HTTP_NotFound, Format(RALPage, [SLangHTTP, 404, SError404, SError404Page]));
+  CreatePage(HTTP_UnsupportedMedia, Format(RALPage, [SLangHTTP, 415, SError415, SError415Page]));
+  CreatePage(HTTP_InternalError, Format(RALPage, [SLangHTTP, 500, SError500, SError500Page]));
+  CreatePage(HTTP_NotImplemented, Format(RALPage, [SLangHTTP, 501, SError501, SError501Page]));
+  CreatePage(HTTP_ServiceUnavailable, Format(RALPage, [SLangHTTP, 503, SError503, SError503Page]));
 end;
 
 class function TRALResponsePages.GetHTTPResponsePage(AStatusCode: IntegerRAL): StringRAL;
 begin
   Result := '';
   case AStatusCode of
-    400 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError400, SError400Page]);
-    401 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError401, SError401Page]);
-    403 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError403, SError403Page]);
-    404 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError404, SError404Page]);
-    415 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError415, SError415Page]);
-    500 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError500, SError500Page]);
-    501 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError501, SError501Page]);
-    503 : Result := Format(RALPage, [SLangHTTP, AStatusCode, SError503, SError503Page]);
+    HTTP_BadRequest:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError400, SError400Page]);
+    HTTP_Unauthorized:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError401, SError401Page]);
+    HTTP_Forbidden:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError403, SError403Page]);
+    HTTP_NotFound:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError404, SError404Page]);
+    HTTP_UnsupportedMedia:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError415, SError415Page]);
+    HTTP_InternalError:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError500, SError500Page]);
+    HTTP_NotImplemented:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError501, SError501Page]);
+    HTTP_ServiceUnavailable:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError503, SError503Page]);
   end;
 end;
 

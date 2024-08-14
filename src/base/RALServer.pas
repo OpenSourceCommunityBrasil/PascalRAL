@@ -552,7 +552,7 @@ label
   aSTATUS, aOK, a401, a403, a404, aFIM;
 
 begin
-  if AResponse.StatusCode >= 400 then
+  if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
 
   vRouteIsAuth := False;
@@ -624,7 +624,7 @@ begin
 
           if vCheck_Authentication then
             goto aOK
-          else if (vCheckBruteForceTries) or (AResponse.StatusCode = 401) then
+          else if (vCheckBruteForceTries) or (AResponse.StatusCode = HTTP_Unauthorized) then
             goto a401
           else
             goto a403;
@@ -650,7 +650,7 @@ begin
       if vString = EmptyStr then
         vString := RALDefaultPage;
       vString := StringReplace(vString, '%ralengine%', FEngine, [rfReplaceAll]);
-      AResponse.Answer(200, vString, rctTEXTHTML);
+      AResponse.Answer(HTTP_OK, vString, rctTEXTHTML);
     end;
     goto aFIM;
   end;
@@ -665,7 +665,7 @@ begin
   a401:
   begin
     Security.BlockClient(ARequest.ClientInfo.IP);
-    AResponse.Answer(401);
+    AResponse.Answer(HTTP_Unauthorized);
     goto aFIM;
   end;
 
@@ -674,13 +674,13 @@ begin
     Security.BlockClient(ARequest.ClientInfo.IP);
     if Assigned(FOnClientBlock) then
       FOnClientBlock(Self, ARequest.ClientInfo.IP);
-    AResponse.Answer(403);
+    AResponse.Answer(HTTP_Forbidden);
     goto aFIM;
   end;
 
   a404:
   begin
-    AResponse.Answer(404);
+    AResponse.Answer(HTTP_NotFound);
     goto aFIM;
   end;
 
@@ -701,14 +701,14 @@ var
 begin
   if not ARequest.HasValidContentEncoding then
   begin
-    AResponse.Answer(415);
+    AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.ContentEncoding := ARequest.ContentEncoding;
     AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    AResponse.Answer(415);
+    AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.ContentEncoding := ARequest.AcceptEncoding;
     AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
     Exit;
@@ -732,12 +732,12 @@ begin
         if Assigned(FOnClientBlock) then
           FOnClientBlock(Self, ARequest.ClientInfo.IP);
 
-        AResponse.Answer(403);
+        AResponse.Answer(HTTP_Forbidden);
       end;
     end
     else
     begin
-      AResponse.Answer(403);
+      AResponse.Answer(HTTP_Forbidden);
     end;
   end;
   Security.ClearExpiredIPs;
@@ -751,7 +751,7 @@ end;
 function TRALServer.CreateResponse: TRALResponse;
 begin
   Result := TRALServerResponse.Create(Self);
-  Result.StatusCode := 200;
+  Result.StatusCode := HTTP_OK;
 end;
 
 procedure TRALServer.Start;
@@ -805,7 +805,7 @@ begin
   if FAuthentication <> nil then
   begin
     FAuthentication.Validate(ARequest, AResponse);
-    Result := AResponse.StatusCode < 400;
+    Result := AResponse.StatusCode < HTTP_BadRequest;
   end;
 end;
 

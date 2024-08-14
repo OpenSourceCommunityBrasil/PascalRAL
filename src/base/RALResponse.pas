@@ -195,7 +195,7 @@ var
   vResp: StringRAL;
 begin
   FStatusCode := AStatusCode;
-  if AStatusCode >= 400 then
+  if AStatusCode >= HTTP_BadRequest then
     ContentType := rctTEXTHTML;
 
   if Parent.InheritsFrom(TRALServer) then begin

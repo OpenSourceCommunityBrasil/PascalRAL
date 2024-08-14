@@ -226,7 +226,7 @@ begin
       AcceptEncription := ParamByName('Accept-Encription').AsString;
 
       FParent.ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < 400 then
+      if vResponse.StatusCode < HTTP_BadRequest then
       begin
         // fields tambem
         vInt := 0;

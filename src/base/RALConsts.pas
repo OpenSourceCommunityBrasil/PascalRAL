@@ -41,6 +41,24 @@ const
   DEFAULTBUFFERSTREAMSIZE = 52428800;
   DEFAULTDECODERBUFFERSIZE = 65536;
   HTTPLineBreak = #13#10;
+  // HTTP Codes
+  HTTP_OK                  = 200;
+  HTTP_Created             = 201;
+  HTTP_NoContent           = 204;
+  HTTP_Moved               = 301;
+  HTTP_Found               = 302;
+  HTTP_BadRequest          = 400;
+  HTTP_Unauthorized        = 401;
+  HTTP_Forbidden           = 403;
+  HTTP_NotFound            = 404;
+  HTTP_MethodNotAllowed    = 405;
+  HTTP_RequestTimeout      = 408;
+  HTTP_UnsupportedMedia    = 415;
+  HTTP_InternalError       = 500;
+  HTTP_NotImplemented      = 501;
+  HTTP_BadGateway          = 502;
+  HTTP_ServiceUnavailable  = 503;
+  HTTP_VersionNotSupported = 505;
 
 resourcestring
   {$IF DEFINED(LANG_PTBR)}

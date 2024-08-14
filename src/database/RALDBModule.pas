@@ -247,7 +247,7 @@ begin
     except
       on e: Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
@@ -326,7 +326,7 @@ begin
     except
       on e: Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
@@ -390,7 +390,7 @@ begin
     except
       on e: Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
@@ -498,7 +498,7 @@ begin
     except
       on e : Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
@@ -846,7 +846,7 @@ begin
     except
       on e : Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
@@ -886,7 +886,7 @@ begin
     except
       on e : Exception do
       begin
-        AResponse.StatusCode := 500;
+        AResponse.StatusCode := HTTP_InternalError;
         AResponse.ContentType := rctTEXTPLAIN;
         AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
       end;
