@@ -323,7 +323,7 @@ var
   vTable: TFDMemTable;
   vField: TField;
 begin
-  if AResponse.StatusCode = 200 then
+  if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
@@ -370,7 +370,7 @@ begin
       FreeAndNil(vMem);
     end;
   end
-  else if AResponse.StatusCode = 500 then
+  else if AResponse.StatusCode = HTTP_InternalError then
   begin
     vException := AResponse.ParamByName('Exception').AsString;
     if Assigned(FOnError) then
@@ -414,7 +414,7 @@ var
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
 begin
-  if AResponse.StatusCode = 200 then
+  if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
@@ -432,7 +432,7 @@ begin
       FreeAndNil(vMem);
     end;
   end
-  else if AResponse.StatusCode = 500 then
+  else if AResponse.StatusCode = HTTP_InternalError then
   begin
     vException := AResponse.ParamByName('Exception').AsString;
     if Assigned(FOnError) then
@@ -454,7 +454,7 @@ var
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
 begin
-  if AResponse.StatusCode = 200 then
+  if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
@@ -476,7 +476,7 @@ begin
       FreeAndNil(vMem);
     end;
   end
-  else if AResponse.StatusCode = 500 then
+  else if AResponse.StatusCode = HTTP_InternalError then
   begin
     vException := AResponse.ParamByName('Exception').AsString;
     if Assigned(FOnError) then

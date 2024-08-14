@@ -225,7 +225,7 @@ begin
     vFile.Add('    cthreads,');
     vFile.Add('  {$ENDIF}');
     vFile.Add('  Classes, SysUtils, CustApp,');
-    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, %s,', [vServerUnit]));
+    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, RALConsts, %s,', [vServerUnit]));
     vFile.Add(Format('  %s;', [vUnits]));
     vFile.Add('');
     vFile.Add('type');
@@ -274,7 +274,7 @@ begin
     vFile.Add('');
     vFile.Add('  procedure TRALApplication.ping(ARequest: TRALRequest; AResponse: TRALResponse);');
     vFile.Add('  begin');
-    vFile.Add('    AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('    AResponse.Answer(HTTP_OK, ''pong'', rctTEXTPLAIN);');
     vFile.Add('  end;');
     vFile.Add('');
     vFile.Add('  constructor TRALApplication.Create(AOwner: TComponent);');
@@ -443,7 +443,7 @@ begin
     vFile.Add('');
     vFile.Add('uses');
     vFile.Add('  Classes, SysUtils, Forms, Controls, Graphics, Dialogs,');
-    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, %s,', [vServerUnit]));
+    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, RALConsts, %s,', [vServerUnit]));
     vFile.Add(Format('  %s;', [vUnits]));
     vFile.Add('');
     vFile.Add('type');
@@ -488,7 +488,7 @@ begin
     vFile.Add('procedure TRALForm1.server_pingReply(ARequest: TRALRequest;');
     vFile.Add('  AResponse: TRALResponse);');
     vFile.Add('begin');
-    vFile.Add('  AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('  AResponse.Answer(HTTP_OK, ''pong'', rctTEXTPLAIN);');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add('end.');

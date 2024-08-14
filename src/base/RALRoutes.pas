@@ -171,7 +171,7 @@ begin
   if Assigned(OnReply) then
     OnReply(ARequest, AResponse)
   else
-    AResponse.Answer(404);
+    AResponse.Answer(HTTP_NotFound);
 end;
 
 function TRALBaseRoute.GetAllowMethods: StringRAL;

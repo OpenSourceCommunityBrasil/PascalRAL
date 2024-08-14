@@ -745,9 +745,9 @@ begin
 
     vConta := vConta + 1;
 
-    if (vResp = 401) and (vConta = 1) then
+    if (vResp = HTTP_Unauthorized) and (vConta = 1) then
       ResetToken
-    else if (vResp = 401) and (vConta > 1) then
+    else if (vResp = HTTP_Unauthorized) and (vConta > 1) then
       Break;
   until (vResp > 0) or (vConta >= vMaxConta);
 
@@ -847,9 +847,9 @@ begin
 
         vStatus := vResponse.StatusCode;
         vConta := vConta + 1;
-      until (Result <> 0) or (vStatus = 401) or (vConta > 3);
+      until (Result <> 0) or (vStatus = HTTP_Unauthorized) or (vConta > 3);
 
-      if vStatus = 401 then
+      if vStatus = HTTP_Unauthorized then
       begin
         vAuth := vResponse.GetHeader('WWW-Authenticate');
         vDigest := TRALDigest.Create;
@@ -902,7 +902,7 @@ begin
         vStatus := vResponse.StatusCode;
         Result := vResponse.ErrorCode;
 
-        if vStatus = 200 then
+        if vStatus = HTTP_OK then
         begin
           if not vResponse.Body.IsNilOrEmpty then
           begin
@@ -924,7 +924,7 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or
+    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta > 3) or
           (Result > 0);
   end;
 end;
@@ -953,7 +953,7 @@ begin
         SendUrl(GetURL(vObjAuth.RouteInitialize, ARequest), vRequest, vResponse, amPOST);
         Result := vResponse.ErrorCode;
         vStatus := vResponse.StatusCode;
-        if vStatus = 200 then
+        if vStatus = HTTP_OK then
         begin
           vRequest.Clear;
 
@@ -973,7 +973,7 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = 401) and (vConta > 1)) or (vStatus = 200) or (vConta > 3) or
+    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta > 3) or
       (Result > 0);
   end;
 end;

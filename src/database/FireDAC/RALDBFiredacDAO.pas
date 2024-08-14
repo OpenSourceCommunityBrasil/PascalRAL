@@ -10,7 +10,7 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse, RALConsts,
   System.SyncObjs;
 
 type
@@ -116,7 +116,7 @@ begin
       if AException <> '' then
         raise Exception.Create(AException);
 
-      if AResponse.StatusCode = 200 then
+      if AResponse.StatusCode = HTTP_OK then
       begin
         Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
           .AsString);
@@ -241,7 +241,7 @@ begin
       if AException <> '' then
         raise Exception.Create(AException);
 
-      if AResponse.StatusCode = 200 then
+      if AResponse.StatusCode = HTTP_OK then
       begin
         Self.CommitUpdates;
 
@@ -382,7 +382,7 @@ begin
       if AException <> '' then
         raise Exception.Create(AException);
 
-      if AResponse.StatusCode = 200 then
+      if AResponse.StatusCode = HTTP_OK then
       begin
         vStreamAux := TMemoryStream.Create;
         TMemoryStream(vStreamAux).Clear;
@@ -723,12 +723,12 @@ begin
         raise Exception.Create(emTypeNotImplemented);
       end;
 
-      AResponse.StatusCode := 200;
+      AResponse.StatusCode := HTTP_OK;
     except
       on e: Exception do
       begin
-        if AResponse.StatusCode <> 501 then
-          AResponse.StatusCode := 500;
+        if AResponse.StatusCode <> HTTP_NotImplemented then
+          AResponse.StatusCode := HTTP_InternalError;
         AResponse.ResponseText := e.Message;
       end;
     end

@@ -294,7 +294,7 @@ begin
     vFile.Add('');
     vFile.Add('procedure TRALApplication.ping(ARequest: TRALRequest; AResponse: TRALResponse);');
     vFile.Add('begin');
-    vFile.Add('  AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('  AResponse.Answer(HTTP_OK, ''pong'', rctTEXTPLAIN);');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add('var');

@@ -282,7 +282,7 @@ begin
   if vFile <> '' then
     AResponse.Answer(vFile)
   else
-    AResponse.Answer(404);
+    AResponse.Answer(HTTP_NotFound);
 end;
 
 end.

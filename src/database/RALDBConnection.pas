@@ -175,7 +175,7 @@ begin
 
     FClient.Get(vUrl, vReq, vResponse);
     try
-      if vResponse.StatusCode = 200 then begin
+      if vResponse.StatusCode = HTTP_OK then begin
         Result := TRALDBInfoFields.Create;
         Result.AsJSON := vResponse.Body.AsString;
       end;
@@ -206,7 +206,7 @@ begin
 
     FClient.Get(vUrl, vReq, vResponse);
     try
-      if vResponse.StatusCode = 200 then begin
+      if vResponse.StatusCode = HTTP_OK then begin
         Result := TRALDBInfoTables.Create;
         Result.AsJSON := vResponse.Body.AsString;
       end;

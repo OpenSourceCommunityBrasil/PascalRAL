@@ -346,7 +346,7 @@ begin
     vFile.Add(Format('procedure T%s.serverRoutes_pingReply(ARequest: TRALRequest;',[FormName]));
     vFile.Add('  AResponse: TRALResponse);');
     vFile.Add('begin');
-    vFile.Add('  AResponse.Answer(200, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('  AResponse.Answer(HTTP_OK, ''pong'', rctTEXTPLAIN);');
     vFile.Add('end;');
     vFile.Add('');
     vFile.Add('end.');
