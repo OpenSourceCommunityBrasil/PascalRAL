@@ -23,7 +23,6 @@
       </Resources>
     </General>
     <i18n>
-      <EnableI18N Value="True"/>
       <OutDir Value="languages"/>
     </i18n>
     <VersionInfo>
@@ -148,8 +147,9 @@
     </RequiredPackages>
     <Units>
       <Unit>
-        <Filename Value="ralinstaller.lpr"/>
+        <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="ralinstaller"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\umain.pas"/>
@@ -242,6 +242,10 @@
         <Filename Value="fontes\ralzipper.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="fontes\i18n_utils.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -268,9 +272,6 @@
     </Linking>
     <Other>
       <CustomOptions Value="-dINSTALL_TEST"/>
-      <OtherDefines Count="1">
-        <Define0 Value="INSTALL_TEST"/>
-      </OtherDefines>
     </Other>
   </CompilerOptions>
   <Debugging>

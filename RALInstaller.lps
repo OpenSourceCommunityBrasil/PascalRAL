@@ -6,12 +6,12 @@
     <BuildModes Active="Windows32"/>
     <Units>
       <Unit>
-        <Filename Value="ralinstaller.lpr"/>
+        <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="9"/>
-        <CursorPos Y="28"/>
-        <UsageCount Value="74"/>
-        <Loaded Value="True"/>
+        <UnitName Value="ralinstaller"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="20"/>
+        <UsageCount Value="85"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\umain.pas"/>
@@ -19,10 +19,10 @@
         <ComponentName Value="fmain"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="102"/>
-        <CursorPos X="24" Y="133"/>
-        <UsageCount Value="74"/>
+        <CursorPos X="18" Y="78"/>
+        <UsageCount Value="85"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -32,10 +32,10 @@
         <ComponentName Value="frm_modelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="4"/>
-        <TopLine Value="17"/>
-        <CursorPos Y="48"/>
-        <UsageCount Value="74"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="136"/>
+        <CursorPos X="20" Y="146"/>
+        <UsageCount Value="85"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -48,15 +48,15 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="8"/>
         <CursorPos Y="41"/>
-        <UsageCount Value="74"/>
+        <UsageCount Value="85"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\utools.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="4"/>
-        <CursorPos Y="24"/>
-        <UsageCount Value="74"/>
+        <TopLine Value="57"/>
+        <CursorPos X="27" Y="87"/>
+        <UsageCount Value="85"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide.pas"/>
@@ -67,7 +67,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="36"/>
         <CursorPos Y="54"/>
-        <UsageCount Value="73"/>
+        <UsageCount Value="84"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
@@ -75,10 +75,10 @@
         <ComponentName Value="frm_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="256"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="254"/>
         <CursorPos X="84" Y="42"/>
-        <UsageCount Value="72"/>
+        <UsageCount Value="83"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -90,7 +90,7 @@
         <ResourceBaseClass Value="Frame"/>
         <TopLine Value="21"/>
         <CursorPos X="84" Y="32"/>
-        <UsageCount Value="71"/>
+        <UsageCount Value="82"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -100,7 +100,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="198"/>
         <CursorPos Y="205"/>
-        <UsageCount Value="71"/>
+        <UsageCount Value="82"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\lazarusutils.pas"/>
@@ -108,7 +108,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="79"/>
         <CursorPos X="3" Y="71"/>
-        <UsageCount Value="67"/>
+        <UsageCount Value="78"/>
         <Bookmarks Count="1">
           <Item0 X="5" Y="122" ID="1"/>
         </Bookmarks>
@@ -119,11 +119,9 @@
         <ComponentName Value="frm_recursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="177"/>
-        <CursorPos X="68" Y="198"/>
-        <UsageCount Value="53"/>
+        <EditorIndex Value="7"/>
+        <CursorPos X="3" Y="15"/>
+        <UsageCount Value="64"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -134,7 +132,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="52"/>
+        <UsageCount Value="63"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_install.pas"/>
@@ -142,27 +140,51 @@
         <ComponentName Value="frm_install"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="16"/>
+        <EditorIndex Value="13"/>
         <TopLine Value="7"/>
-        <CursorPos X="39" Y="18"/>
-        <UsageCount Value="51"/>
+        <CursorPos X="10" Y="18"/>
+        <UsageCount Value="62"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\githubral.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="11"/>
         <CursorPos Y="20"/>
-        <UsageCount Value="50"/>
+        <UsageCount Value="61"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\installparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="367"/>
+        <CursorPos X="15" Y="385"/>
+        <UsageCount Value="58"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubutils.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="10"/>
+        <UsageCount Value="40"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ralzipper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="5"/>
+        <CursorPos X="30" Y="32"/>
+        <UsageCount Value="34"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\fpjsonrtti.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="723"/>
         <CursorPos X="18" Y="607"/>
-        <UsageCount Value="26"/>
+        <UsageCount Value="25"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\extctrls.pp"/>
@@ -170,103 +192,103 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="565"/>
         <CursorPos X="3" Y="586"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_idioma.lfm"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="432"/>
         <CursorPos Y="474"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
         <DefaultSyntaxHighlighter Value="LFM"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide.lfm"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="6"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
         <DefaultSyntaxHighlighter Value="LFM"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-registry\src\regdef.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="3"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-registry\src\registry.pp"/>
         <UnitName Value="Registry"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="1071"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\classes\classesh.inc"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="308"/>
-        <CursorPos X="20" Y="322"/>
-        <UsageCount Value="14"/>
+        <TopLine Value="1885"/>
+        <CursorPos X="15" Y="1933"/>
+        <UsageCount Value="16"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\classes\lists.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="654"/>
         <CursorPos X="3" Y="656"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\telas\fride.pas"/>
+        <Filename Value="src\telas\fride.pas"/>
         <ComponentName Value="fide"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\telas\frideversions.pas"/>
+        <Filename Value="src\telas\frideversions.pas"/>
         <ComponentName Value="fframe_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\telas\ide.pas"/>
+        <Filename Value="src\telas\ide.pas"/>
         <ComponentName Value="frIDE"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\funcoes\lazarusutils.pas"/>
+        <Filename Value="src\funcoes\lazarusutils.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="246"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\filutilh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="124"/>
         <CursorPos X="12" Y="138"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\sysutils.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="276"/>
         <CursorPos X="5" Y="294"/>
-        <UsageCount Value="13"/>
+        <UsageCount Value="12"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\telas\frideversion_lazarus.pas"/>
+        <Filename Value="src\telas\frideversion_lazarus.pas"/>
         <ComponentName Value="fframe_ide_version_lazarus"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="4"/>
         <CursorPos X="28" Y="9"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
@@ -274,42 +296,42 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="262"/>
         <CursorPos X="3" Y="271"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
-        <Filename Value="..\installer\src\telas\frconfigrecursos.pas"/>
+        <Filename Value="src\telas\frconfigrecursos.pas"/>
         <ComponentName Value="fconfigrecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="124"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\resource.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="535"/>
         <CursorPos X="3" Y="540"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\winpeimagereader.pp"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\fina.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="424"/>
         <CursorPos X="3" Y="430"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\sysunixh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
         <CursorPos X="2" Y="31"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\stdctrls.pp"/>
@@ -317,27 +339,27 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1597"/>
         <CursorPos X="3" Y="1618"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\finah.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="38" Y="36"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\linux\osmacro.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="4"/>
         <CursorPos X="3" Y="22"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\filutil.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="541"/>
         <CursorPos X="3" Y="543"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\fileutil.pas"/>
@@ -345,102 +367,89 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="150"/>
         <CursorPos X="11" Y="171"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\fileutil.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="783"/>
         <CursorPos X="3" Y="833"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\lazfileutils.pas"/>
         <UnitName Value="LazFileUtils"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="172"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\unixlazfileutils.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="284"/>
         <CursorPos X="3" Y="298"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\unix\bunxovl.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="418"/>
         <CursorPos X="3" Y="448"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide_versions.lfm"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="6"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
         <DefaultSyntaxHighlighter Value="LFM"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_recursos.lfm"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
         <DefaultSyntaxHighlighter Value="LFM"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\elfreader.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="269"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\machoreader.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="235"/>
         <CursorPos X="46" Y="283"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ralinstallparser.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="165"/>
         <CursorPos Y="198"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\winlazfileutils.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="313"/>
         <CursorPos X="42" Y="486"/>
-        <UsageCount Value="7"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\installparser.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="47"/>
-        <CursorPos X="14" Y="73"/>
-        <UsageCount Value="47"/>
-        <Bookmarks Count="1">
-          <Item0 Y="917" ID="1"/>
-        </Bookmarks>
-        <Loaded Value="True"/>
+        <UsageCount Value="6"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\fpjson.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="3965"/>
         <CursorPos X="3" Y="3971"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="14"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-json\src\jsonreader.pp"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="329"/>
         <CursorPos Y="348"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\typinfo.pp"/>
@@ -448,210 +457,263 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="825"/>
         <CursorPos X="22" Y="852"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\paszlib\src\zipper.pp"/>
         <UnitName Value="Zipper"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="482"/>
         <CursorPos X="3" Y="497"/>
-        <UsageCount Value="17"/>
+        <UsageCount Value="22"/>
         <Bookmarks Count="1">
           <Item0 X="17" Y="2797" ID="2"/>
         </Bookmarks>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-web\src\base\fphttpclient.pp"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="12"/>
         <CursorPos X="3" Y="1444"/>
-        <UsageCount Value="17"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\githubutils.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="8"/>
-        <TopLine Value="23"/>
-        <CursorPos X="25" Y="68"/>
-        <UsageCount Value="29"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-base\src\base64.pp"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="46"/>
         <CursorPos X="3" Y="61"/>
-        <UsageCount Value="15"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="..\dev\src\base\RALSwaggerModule.pas"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="151"/>
-        <CursorPos X="36" Y="164"/>
-        <UsageCount Value="14"/>
-        <Loaded Value="True"/>
+        <CursorPos X="31" Y="164"/>
+        <UsageCount Value="19"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\paszlib\src\zip.pas"/>
         <UnitName Value="Zip"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="49" Y="14"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="10"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\disk.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="39"/>
         <CursorPos X="3" Y="62"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\diskh.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="17" Y="22"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\inc\astrings.inc"/>
-        <EditorIndex Value="15"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="1526"/>
         <CursorPos X="5" Y="1542"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="17"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\forms.pp"/>
+        <UnitName Value="Forms"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="155"/>
+        <CursorPos X="3" Y="174"/>
+        <UsageCount Value="15"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\ralzipper.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="6"/>
-        <TopLine Value="5"/>
-        <CursorPos X="30" Y="32"/>
-        <UsageCount Value="23"/>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\controls.pp"/>
+        <UnitName Value="Controls"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="1180"/>
+        <CursorPos X="14" Y="1852"/>
+        <UsageCount Value="15"/>
         <Loaded Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\lclclasses.pp"/>
+        <UnitName Value="LCLClasses"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="26"/>
+        <CursorPos X="3" Y="45"/>
+        <UsageCount Value="15"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\i18n_utils.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="105"/>
+        <CursorPos X="3" Y="114"/>
+        <UsageCount Value="29"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\http_client.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="28"/>
+        <CursorPos Y="40"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\lcltranslator.pas"/>
+        <UnitName Value="LCLTranslator"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="527"/>
+        <CursorPos X="3" Y="531"/>
+        <UsageCount Value="13"/>
+        <Bookmarks Count="1">
+          <Item0 X="68" Y="524" ID="1"/>
+        </Bookmarks>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\lazarus\components\lazutils\translations.pas"/>
+        <UnitName Value="Translations"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="761"/>
+        <CursorPos X="37" Y="769"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\objpas.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="458"/>
+        <CursorPos X="3" Y="463"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\inc\objpash.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="435"/>
+        <CursorPos X="8" Y="470"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\classes\compon.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="403"/>
+        <CursorPos X="3" Y="406"/>
+        <UsageCount Value="10"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
+    <JumpHistory HistoryIndex="27">
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="946" TopLine="939"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="43" Column="15" TopLine="27"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="947" TopLine="939"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="163" Column="15" TopLine="145"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="949" TopLine="954"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="44" Column="15" TopLine="25"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="952" TopLine="934"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="127" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="953" TopLine="934"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="130" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="954" TopLine="934"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="132" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="955" TopLine="953"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="133" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="957" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="143" Column="18" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="958" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="127" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="959" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="130" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="960" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="132" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="962" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="134" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="963" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="138" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="958" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="139" TopLine="120"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="965" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="142" Column="25" TopLine="121"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="966" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="43" Column="15" TopLine="26"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="972" TopLine="950"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="174" Column="42" TopLine="147"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="982" TopLine="953"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="174" Column="37" TopLine="147"/>
       </Position>
       <Position>
-        <Filename Value="fontes\telas\ufrm_recursos.pas"/>
-        <Caret Line="197" Column="78" TopLine="177"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="44" Column="15" TopLine="25"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="280" Column="14" TopLine="260"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="138" TopLine="121"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="64" Column="20" TopLine="43"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="137" TopLine="121"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="428" Column="3" TopLine="426"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="44" Column="15" TopLine="26"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="65" Column="19" TopLine="43"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="141" Column="7" TopLine="124"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="430" Column="14" TopLine="427"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="43" Column="15" TopLine="26"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="67" Column="15" TopLine="44"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="162" Column="30" TopLine="145"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="442" Column="19" TopLine="437"/>
+        <Filename Value="fontes\i18n_utils.pas"/>
+        <Caret Line="183" Column="36" TopLine="162"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="65" Column="17" TopLine="46"/>
+        <Filename Value="fontes\i18n_utils.pas"/>
+        <Caret Line="222" Column="22" TopLine="66"/>
       </Position>
       <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="429" Column="3" TopLine="427"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="68" Column="15" TopLine="44"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\installparser.pas"/>
-        <Caret Line="447" Column="3" TopLine="445"/>
+        <Filename Value="fontes\i18n_utils.pas"/>
+        <Caret Line="23" Column="14" TopLine="4"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -674,13 +736,6 @@
         <WatchKind Value="wpkWrite"/>
         <Source Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
         <Line Value="271"/>
-      </Item>
-      <Item>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="fontes\installparser.pas"/>
-        <Line Value="950"/>
       </Item>
     </BreakPoints>
   </Debugging>

@@ -922,6 +922,8 @@ object frm_modelo: Tfrm_modelo
     Width = 30
     Anchors = [akTop, akLeft, akBottom]
     OnClick = imThemeClick
+    ParentShowHint = False
+    ShowHint = True
   end
   object lVersion: TLabel
     Cursor = crHandPoint

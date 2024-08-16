@@ -9,7 +9,6 @@ object fmain: Tfmain
   ClientWidth = 700
   OnCreate = FormCreate
   Position = poScreenCenter
-  LCLVersion = '3.4.0.0'
   object ntPages: TNotebook
     Left = 0
     Height = 600
@@ -17,5 +16,15 @@ object fmain: Tfmain
     Width = 700
     Align = alClient
     TabOrder = 0
+  end
+  object bTranslate: TButton
+    Left = 224
+    Height = 25
+    Top = 560
+    Width = 134
+    Caption = 'Translate'
+    TabOrder = 1
+    Visible = False
+    OnClick = bTranslateClick
   end
 end

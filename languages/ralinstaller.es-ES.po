@@ -1,0 +1,180 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.4.4\n"
+
+#: Tfrm_idioma.imTheme.Hint
+msgctxt "Tfrm_idioma.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: Tfrm_idioma.lVersion.Caption
+msgctxt "Tfrm_idioma.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Versión del instalador 1.0"
+
+#: Tfrm_idioma.lbNext.Caption
+msgctxt "Tfrm_idioma.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: Tfrm_idioma.lbBack.Caption
+msgctxt "Tfrm_idioma.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: Tfrm_idioma.lbSubTitle.Caption
+msgctxt "Tfrm_idioma.lbSubTitle.Caption"
+msgid "Escolha o Idioma"
+msgstr "Elija idioma"
+
+#: Tfrm_ide.imTheme.Hint
+msgctxt "Tfrm_ide.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: Tfrm_ide.lVersion.Caption
+msgctxt "Tfrm_ide.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Versión del instalador 1.0"
+
+#: Tfrm_ide.lbNext.Caption
+msgctxt "Tfrm_ide.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: Tfrm_ide.lbBack.Caption
+msgctxt "Tfrm_ide.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: Tfrm_ide.lbSubTitle.Caption
+msgctxt "Tfrm_ide.lbSubTitle.Caption"
+msgid "Escolha a IDE"
+msgstr "Elige el IDE"
+
+#: Tfrm_ide_versions.imTheme.Hint
+msgctxt "Tfrm_ide_versions.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: Tfrm_ide_versions.lVersion.Caption
+msgctxt "Tfrm_ide_versions.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Versión del instalador 1.0"
+
+#: Tfrm_ide_versions.lbNext.Caption
+msgctxt "Tfrm_ide_versions.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: Tfrm_ide_versions.lbBack.Caption
+msgctxt "Tfrm_ide_versions.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: Tfrm_ide_versions.lbSubTitle.Caption
+msgctxt "Tfrm_ide_versions.lbSubTitle.Caption"
+msgid "Escolha as Versões do IDE"
+msgstr "Elija versiones IDE"
+
+#: Tfrm_ide_versions.bAddVersion.Hint
+msgctxt "Tfrm_ide_versions.bAddVersion.Hint"
+msgid "Adicionar um IDE pela sua pasta de instalação"
+msgstr "Agregue un IDE desde su carpeta de instalación"
+
+#: Tfrm_ide_versions.bAutoBusca.Hint
+msgctxt "Tfrm_ide_versions.bAutoBusca.Hint"
+msgid "Buscar automaticamente os IDE (processo lento)"
+msgstr "Buscar IDE automáticamente (proceso lento)"
+
+#: Tfrm_ide_versions.bStopBusca.Hint
+msgctxt "Tfrm_ide_versions.bStopBusca.Hint"
+msgid "Cancelar a Busca"
+msgstr "Cancelar búsqueda"
+
+#: Tfrm_ide_versions.lbFind1.Caption
+msgctxt "Tfrm_ide_versions.lbFind1.Caption"
+msgid "Lista dos IDE"
+msgstr "Lista de IDE"
+
+#: Tfrm_recursos.imTheme.Hint
+msgctxt "Tfrm_recursos.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: Tfrm_recursos.lVersion.Caption
+msgctxt "Tfrm_recursos.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Versión del instalador 1.0"
+
+#: Tfrm_recursos.lbNext.Caption
+msgctxt "Tfrm_recursos.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: Tfrm_recursos.lbBack.Caption
+msgctxt "Tfrm_recursos.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: Tfrm_recursos.lbSubTitle.Caption
+msgctxt "Tfrm_recursos.lbSubTitle.Caption"
+msgid "Escolha os recursos"
+msgstr "Elige características"
+
+#: Tfrm_recursos.Label1.Caption
+msgctxt "Tfrm_recursos.Label1.Caption"
+msgid "Path para Download"
+msgstr "Ruta de descarga"
+
+#: Tfrm_recursos.bAddVersion.Hint
+msgctxt "Tfrm_recursos.bAddVersion.Hint"
+msgid "Adicionar um IDE pela sua pasta de instalação"
+msgstr "Agregue un IDE desde su carpeta de instalación"
+
+#: Tfrm_recursos.Label2.Caption
+msgctxt "Tfrm_recursos.Label2.Caption"
+msgid "Recursos para Instalar"
+msgstr "Recursos para instalar"
+
+#: Tfrm_install.imTheme.Hint
+msgctxt "Tfrm_install.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: Tfrm_install.lVersion.Caption
+msgctxt "Tfrm_install.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Versión del instalador 1.0"
+
+#: Tfrm_install.lbNext.Caption
+msgctxt "Tfrm_install.lbNext.Caption"
+msgid "Instalar"
+msgstr "Instalar"
+
+#: Tfrm_install.lbBack.Caption
+msgctxt "Tfrm_install.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: Tfrm_install.lbSubTitle.Caption
+msgctxt "Tfrm_install.lbSubTitle.Caption"
+msgid "Instalação dos Componentes"
+msgstr "Instalación de componentes"
+
+#: utools.themelight
+msgid "Claro"
+msgstr "Claro"
+
+#: utools.themedark
+msgid "Escuro"
+msgstr "Oscuro"

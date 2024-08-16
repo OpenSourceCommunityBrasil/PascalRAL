@@ -5,8 +5,8 @@ unit ufrm_modelo;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, ExtCtrls, StdCtrls,
-  utools;
+  Classes, SysUtils, Forms, Controls, ExtCtrls, StdCtrls, DefaultTranslator,
+  LCLTranslator, utools, Dialogs;
 
 type
 
@@ -128,6 +128,17 @@ begin
     Exit;
 
   FLanguage := AValue;
+
+  case AValue of
+    lPortuguese : SetDefaultLang('pt-BR', 'languages', 'ralinstaller');
+    lEnglish    : SetDefaultLang('en-US', 'languages', 'ralinstaller');
+    lSpanish    : SetDefaultLang('es-ES', 'languages', 'ralinstaller');
+  end;
+
+  case FTheme of
+    tDark  : imTheme.Hint := ThemeLight;
+    tLight : imTheme.Hint := ThemeDark;
+  end;
 end;
 
 function Tfrm_modelo.validatePageNext: boolean;
@@ -149,6 +160,11 @@ begin
 
   FTheme := AValue;
   imTheme.Tag := Ord(AValue);
+
+  case AValue of
+    tDark  : imTheme.Hint := ThemeLight;
+    tLight : imTheme.Hint := ThemeDark;
+  end;
 
   GetResourceImage(Themes[AValue].Background, imFundo);
   GetResourceImage(Themes[AValue].Button, imNext);

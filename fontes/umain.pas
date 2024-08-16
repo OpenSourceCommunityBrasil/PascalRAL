@@ -6,15 +6,17 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ufrm_modelo, ufrm_idioma, ufrm_ide, ufrm_ide_versions, ufrm_recursos, ufrm_install,
-  utools;
+  Buttons, ufrm_modelo, ufrm_idioma, ufrm_ide, ufrm_ide_versions, ufrm_recursos,
+  ufrm_install, utools, i18n_utils;
 
 type
 
   { Tfmain }
 
   Tfmain = class(TForm)
+    bTranslate: TButton;
     ntPages: TNotebook;
+    procedure bTranslateClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
     FPgIdioma: Tfrm_idioma;
@@ -33,6 +35,8 @@ type
     procedure SetLanguage(AValue: TLanguages);
     procedure SetPage(AValue: integer);
     procedure SetTheme(AValue: TThemes);
+
+    procedure translate(ALang : string);
   public
     procedure NextPage;
     procedure PriorPage;
@@ -67,6 +71,13 @@ begin
   Theme := tDark;
   Language := lEnglish;
   IDE := -1;
+end;
+
+procedure Tfmain.bTranslateClick(Sender: TObject);
+begin
+  translate('pt-BR');
+  translate('en-US');
+  translate('es-ES');
 end;
 
 function Tfmain.criarFrame(AClass: Tfrm_modelo_class): Tfrm_modelo;
@@ -131,6 +142,34 @@ begin
   FPgIDEVersions.Theme := AValue;
   FPgRecursos.Theme := AValue;
   FPgInstall.Theme := AValue;
+end;
+
+procedure Tfmain.translate(ALang: string);
+var
+  vTrans : TTranslate;
+  vStream : TStream;
+  vFileStream : TFileStream;
+begin
+  vTrans := TTranslate.Create;
+  try
+    vTrans.Lang := ALang;
+    vTrans.addComponentes(Self);
+    vTrans.addUnit('utools');
+
+    vStream := vTrans.SaveToStream;
+    try
+      vFileStream := TFileStream.Create('./languages/ralinstaller.'+ALang+'.po', fmCreate);
+      try
+        vFileStream.CopyFrom(vStream, vStream.Size);
+      finally
+        FreeAndNil(vFileStream);
+      end;
+    finally
+      FreeAndNil(vStream);
+    end;
+  finally
+    FreeAndNil(vTrans);
+  end;
 end;
 
 procedure Tfmain.NextPage;

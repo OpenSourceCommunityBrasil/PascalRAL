@@ -13,14 +13,14 @@ uses
   winpeimagereader, elfreader, machoreader, Forms, umain,
   ufrm_modelo, ufrm_idioma, utools, ufrm_ide, ufrm_ide_versions,
   ufrm_ide_version, delphiutils, lazarusutils, ufrm_recursos, udm, githubral,
-  ufrm_install, installparser, githubutils, ralzipper;
+  ufrm_install, installparser, githubutils, ralzipper, i18n_utils;
 
 {$R *.res}
 
 begin
   RequireDerivedFormResource := True;
-  Application.Title := 'RAL Installer';
-  Application.Scaled := True;
+  Application.Title:='RAL Installer';
+  Application.Scaled:=True;
   Application.Initialize;
   Application.CreateForm(Tdm, dm);
   Application.CreateForm(Tfmain, fmain);
