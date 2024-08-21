@@ -3,14 +3,15 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Debug"/>
+    <BuildModes Active="Linux64"/>
     <Units>
       <Unit>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="62"/>
-        <CursorPos X="30" Y="75"/>
-        <UsageCount Value="39"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="61"/>
+        <CursorPos X="61" Y="70"/>
+        <UsageCount Value="40"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -100,23 +101,20 @@
       </Unit>
       <Unit>
         <Filename Value="..\..\..\PascalRAL-dev\src\base\RALRoutes.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="222"/>
-        <CursorPos X="24" Y="230"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="37" Y="234"/>
         <UsageCount Value="12"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\IDE\lazarus\3.4\fpcsrc\rtl\objpas\classes\classesh.inc"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="1"/>
         <TopLine Value="466"/>
         <CursorPos X="3" Y="480"/>
         <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="12">
+    <JumpHistory HistoryIndex="10">
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="75" Column="34" TopLine="59"/>
@@ -160,14 +158,6 @@
       <Position>
         <Filename Value="RALTestServerConsoleLazarus.lpr"/>
         <Caret Line="9" Column="11"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL-dev\src\base\RALRoutes.pas"/>
-        <Caret Line="53" Column="34" TopLine="34"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\..\PascalRAL-dev\src\base\RALRoutes.pas"/>
-        <Caret Line="64" Column="29" TopLine="49"/>
       </Position>
     </JumpHistory>
     <RunParams>
