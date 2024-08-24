@@ -54,7 +54,7 @@ object frm_ide_version: Tfrm_ide_version
     ParentBackground = False
     TabOrder = 1
     object lbIDEName: TLabel
-      Left = 7
+      Left = 47
       Height = 15
       Top = 4
       Width = 55
@@ -62,7 +62,7 @@ object frm_ide_version: Tfrm_ide_version
       ParentColor = False
     end
     object lbPath: TLabel
-      Left = 8
+      Left = 48
       Height = 15
       Top = 24
       Width = 28
@@ -82,20 +82,13 @@ object frm_ide_version: Tfrm_ide_version
       Width = 619
       Align = alBottom
     end
-  end
-  object prcBuildIDE: TProcess
-    Active = False
-    Options = [poWaitOnExit, poNewConsole]
-    Priority = ppNormal
-    StartupOptions = []
-    ShowWindow = swoShow
-    WindowColumns = 0
-    WindowHeight = 0
-    WindowLeft = 0
-    WindowRows = 0
-    WindowTop = 0
-    WindowWidth = 0
-    FillAttribute = 0
-    Left = 360
+    object imIcone: TImage
+      Left = 6
+      Height = 32
+      Top = 5
+      Width = 32
+      Proportional = True
+      Stretch = True
+    end
   end
 end

@@ -31,6 +31,7 @@ resourcestring
 function GetThemeCaption(ATheme: TThemes): string;
 function GetResource(AResource: string): TStream;
 procedure GetResourceImage(AResource: string; AImage: TImage);
+function GetIconExeFile(AExe : string): TGraphic;
 
 implementation
 
@@ -86,6 +87,32 @@ begin
   finally
     FreeAndNil(vStream);
   end;
+end;
+
+function GetIconExeFile(AExe: string): TGraphic;
+{$IFDEF MSWINDOWS}
+  var
+    vHandle: TLibHandle;
+    vSrc: TFPResourceHandle;
+{$ENDIF}
+begin
+  Result := nil;
+  {$IFDEF MSWINDOWS}
+    vHandle := LoadLibrary(AExe);
+    try
+      if vHandle <> 0 then begin
+        vSrc := FindResource(vHandle, PChar('MAINICON'), RT_GROUP_ICON);
+        if vSrc > 0 then
+        begin
+          Result := TIcon.Create;
+          TIcon(Result).LoadFromResourceHandle(vHandle, vSrc);
+        end;
+      end;
+    finally
+      if vHandle <> NilHandle then
+        UnloadLibrary(vHandle);
+    end;
+  {$ENDIF}
 end;
 
 initialization

@@ -13,7 +13,7 @@ uses
   winpeimagereader, elfreader, machoreader, Forms, umain,
   ufrm_modelo, ufrm_idioma, utools, ufrm_ide, ufrm_ide_versions,
   ufrm_ide_version, delphiutils, lazarusutils, ufrm_recursos, udm, githubral,
-  ufrm_install, installparser, githubutils, ralzipper, i18n_utils;
+  ufrm_install, installparser, githubutils, ralzipper, i18n_utils, ideutils;
 
 {$R *.res}
 

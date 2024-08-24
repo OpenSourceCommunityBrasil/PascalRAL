@@ -5,211 +5,54 @@ unit delphiutils;
 interface
 
 uses
-  Registry,
-  Graphics, SysUtils, Classes, ComCtrls, Controls, ImgList;
+  Classes, SysUtils, Registry,
+  ideutils;
 
 type
-  TDelphiVersions = (Delphi7, Delphi8, Delphi2005, Delphi2006, Delphi2007,
-    Delphi2009, Delphi2010, DelphiXE, DelphiXE2, DelphiXE3, DelphiXE4, DelphiXE5,
-    DelphiXE6, DelphiXE7, DelphiXE8, Delphi10Seattle, Delphi10Berlin,
-    Delphi10Tokyo, Delphi10Rio, Delphi10Sydney, Delphi11Alexandria, Delphi12Yukon);
+  TDelphiPlatforms = (pfWin32, pfWin64, pfAndroid, pfAndroid64, pfiOSDevice32,
+                     pfiOSDevice64, pfiOSSimARM64, pfiOSSimulator, pfOSX32,
+                     pfOSX64, pfOSXARM64, pfLinux64);
 
-  TDelphiObjectData = class
+  { TDelphiObjectData }
+
+  TDelphiObjectData = class(TIDEObjectData)
   private
-    FVersion: TDelphiVersions;
-    FName: string;
-    FPath: string;
-    FIcon: TIcon;
-    FRegKey: string;
-  public
-    constructor Create;
-    destructor Destroy; override;
-
-    property Version: TDelphiVersions read FVersion write FVersion;
-    property Path: string read FPath write FPath;
-    property Name: string read FName write FName;
-    property Icon: TIcon read FIcon write FIcon;
-    property RegKey: string read FRegKey;
+    FRegPath : string;
+    FRegVersion : string;
+    FProductVersion : integer;
+  protected
+    procedure SetExeFile(AValue: string); override;
+    procedure SetRegPath(AValue: string);
+  published
+    property RegPath : string read FRegPath write SetRegPath;
+    property ProductVersion : integer read FProductVersion write FProductVersion;
+    property RegVersion : string read FRegVersion write FRegVersion;
   end;
 
-  { TDelphiInstaller }
+  { TDelphiFinder }
 
-  TDelphiInstaller = class
-  private
-    procedure AddLibraryPath(const APath: string); overload;
-    procedure AddLibraryPath(const APaths: array of string); overload;
+  TDelphiFinder = class(TIDEFinder)
+  protected
+    function GetObjectDelphi(RegPath: string) : TDelphiObjectData;
   public
-    constructor Create;
-    destructor Destroy; override;
+    procedure BuscarIDE; override;
   end;
-
-  { TDelphiObjectList }
-
-  TDelphiObjectList = class(TList)
-  public
-    procedure Clear; override;
-  end;
-
-{$REGION 'Consts}
-const
-  DelphiRegKey: array [TDelphiVersions] of string = (
-    '\Software\Borland\Delphi\7.0',
-    '\Software\Borland\BDS\2.0',
-    '\Software\Borland\BDS\3.0',
-    '\Software\Borland\BDS\4.0',
-    '\Software\Borland\BDS\5.0',
-    '\Software\CodeGear\BDS\6.0',
-    '\Software\CodeGear\BDS\7.0',
-    '\Software\Embarcadero\BDS\8.0',
-    '\Software\Embarcadero\BDS\9.0',
-    '\Software\Embarcadero\BDS\10.0',
-    '\Software\Embarcadero\BDS\11.0',
-    '\Software\Embarcadero\BDS\12.0',
-    '\Software\Embarcadero\BDS\14.0',
-    '\Software\Embarcadero\BDS\15.0',
-    '\Software\Embarcadero\BDS\16.0',
-    '\Software\Embarcadero\BDS\17.0',
-    '\Software\Embarcadero\BDS\18.0',
-    '\Software\Embarcadero\BDS\19.0',
-    '\Software\Embarcadero\BDS\20.0',
-    '\Software\Embarcadero\BDS\21.0',
-    '\Software\Embarcadero\BDS\22.0',
-    '\Software\Embarcadero\BDS\23.0'
-    );
-
-  DelphiCustomRegPaths: array [TDelphiVersions] of string = (
-    '\Software\Borland\%s\7.0', // Delphi
-    '\Software\Borland\%s\2.0', // BDS
-    '\Software\Borland\%s\3.0', // BDS
-    '\Software\Borland\%s\4.0', // BDS
-    '\Software\Borland\%s\5.0', // BDS
-    '\Software\CodeGear\%s\6.0', // BDS
-    '\Software\CodeGear\%s\7.0', // BDS
-    '\Software\Embarcadero\%s\8.0', // BDS
-    '\Software\Embarcadero\%s\9.0', // BDS
-    '\Software\Embarcadero\%s\10.0', // BDS
-    '\Software\Embarcadero\%s\11.0', // BDS
-    '\Software\Embarcadero\%s\12.0', // BDS
-    '\Software\Embarcadero\%s\14.0', // BDS
-    '\Software\Embarcadero\%s\15.0', // BDS
-    '\Software\Embarcadero\%s\16.0', // BDS
-    '\Software\Embarcadero\%s\17.0', // BDS
-    '\Software\Embarcadero\%s\18.0', // BDS
-    '\Software\Embarcadero\%s\19.0', // BDS
-    '\Software\Embarcadero\%s\20.0', // BDS
-    '\Software\Embarcadero\%s\21.0', // BDS
-    '\Software\Embarcadero\%s\22.0',  // BDS
-    '\Software\Embarcadero\%s\23.0'  // BDS
-    );
-
-  DelphiRegPathNumbers: array [TDelphiVersions] of integer = (
-    7, // 'Delphi 7',
-    2, // 'Delphi 8',
-    3, // 'BDS 2005',
-    4, // 'BDS 2006',
-    5, // 'RAD Studio 2007',
-    6, // 'RAD Studio 2009',
-    7, // 'RAD Studio 2010',
-    8, // 'RAD Studio XE'
-    9, // 'RAD Studio XE2'
-    10, // 'RAD Studio XE3'
-    11, // 'RAD Studio XE4'
-    12, // 'RAD Studio XE5'
-    14, // 'RAD Studio XE6'
-    15, // 'RAD Studio XE7'
-    16, // 'RAD Studio XE8'
-    17, // 'RAD Studio 10 Seattle'
-    18, // 'RAD Studio 10.1 Berlin'
-    19, // 'RAD Studio 10.2 Tokyo'
-    20, // 'RAD Studio 10.3 Rio'
-    21, // 'RAD Studio 10.4 Sydney'
-    22, // 'RAD Studio 11.0 Alexandria'
-    23  // 'RAD Studio 12.0 Yukon'
-    );
-
-  DelphiVersionsNames: array [TDelphiVersions] of string = (
-    'Delphi 7', 'Delphi 8', 'BDS 2005', 'BDS 2006', 'RAD Studio 2007',
-    'RAD Studio 2009', 'RAD Studio 2010', 'RAD Studio XE', 'RAD Studio XE2',
-    'RAD Studio XE3', 'RAD Studio XE4', 'RAD Studio XE5',
-    'RAD Studio XE6/Appmethod 1.14', 'RAD Studio XE7/Appmethod 1.15',
-    'RAD Studio XE8', 'RAD Studio 10 Seattle', 'RAD Studio 10.1 Berlin',
-    'RAD Studio 10.2 Tokyo', 'RAD Studio 10.3 Rio', 'RAD Studio 10.4 Sydney',
-    'RAD Studio 11.0 Alexandria', 'RAD Studio 12.0 Yukon');
-
-  DelphiVersionNumbers: array [TDelphiVersions] of double = (
-    15, // 'Delphi 7',
-    16, // 'Delphi 8',
-    17, // 'BDS 2005',
-    18, // 'BDS 2006',
-    18.5, // 'RAD Studio 2007',
-    20, // 'RAD Studio 2009',
-    21, // 'RAD Studio 2010',
-    22, // 'RAD Studio XE'
-    23, // 'RAD Studio XE2'
-    24, // 'RAD Studio XE3'
-    25, // 'RAD Studio XE4'
-    26, // 'RAD Studio XE5'
-    27, // 'RAD Studio XE6'
-    28, // 'RAD Studio XE7'
-    29, // 'RAD Studio XE8'
-    30, // 'RAD Studio 10 Seattle'
-    31, // 'RAD Studio 10.1 Berlin'
-    32, // 'RAD Studio 10.2 Tokyo'
-    33, // 'RAD Studio 10.3 Rio'
-    34, // 'RAD Studio 10.4 Sydney'
-    35, // 'RAD Studio 11.0 Alexandria'
-    36  // 'RAD Studio 12.0 Yukon'
-    );
-{$ENDREGION}
-
-procedure FillCurrentDelphiVersion(Data: TDelphiObjectData);
-procedure FillListDelphiVersions(AList: TList);
-function ListInstalledDelphiVersions: TDelphiObjectList;
 
 implementation
 
-{ TDelphiInstaller }
-
-procedure TDelphiInstaller.AddLibraryPath(const APath: string);
-begin
-
-end;
-
-procedure TDelphiInstaller.AddLibraryPath(const APaths: array of string);
-var
-  I: integer;
-begin
-  for I := 0 to pred(Length(APaths)) do
-    AddLibraryPath(Apaths[I]);
-end;
-
-constructor TDelphiInstaller.Create;
-begin
-
-end;
-
-destructor TDelphiInstaller.Destroy;
-begin
-  inherited Destroy;
-end;
-
-{ TDelphiObjectList }
-
-procedure TDelphiObjectList.Clear;
-begin
-  while Self.Count > 0 do begin
-    TObject(Self.Items[Self.Count - 1]).Free;
-    Self.Delete(Self.Count - 1);
-  end;
-  inherited Clear;
-end;
-
-{$REGION 'Custom Functions'}
+const
+  DelphisRegKey: array [0..3] of string = (
+    '\Software\Borland\Delphi',
+    '\Software\Borland\BDS',
+    '\Software\CodeGear\BDS',
+    '\Software\Embarcadero\BDS'
+  );
 
 function RegKeyExists(const RegPath: string; const RootKey: HKEY): boolean;
 var
   Reg: TRegistry;
 begin
+  Result := False;
   try
     Reg := TRegistry.Create;
     try
@@ -219,261 +62,198 @@ begin
       Reg.Free;
     end;
   except
-    Result := False;
+
   end;
 end;
 
-function RegReadStr(const RegPath, RegValue: string; var Str: string;
-  const RootKey: HKEY): boolean;
+function RegReadStr(const RegPath, RegValue: string; var Str: string; const RootKey: HKEY): boolean;
 var
   Reg: TRegistry;
 begin
+  Result := False;
+  Str := '';
   try
     Reg := TRegistry.Create;
     try
       Reg.RootKey := RootKey;
-      Result := Reg.OpenKey(RegPath, True);
-      if Result then
+      if Reg.KeyExists(RegPath) and
+         Reg.OpenKeyReadOnly(RegPath) then
+      begin
         Str := Reg.ReadString(RegValue);
+        Result := True;
+      end;
     finally
       Reg.Free;
     end;
   except
-    Result := False;
+
   end;
 end;
 
-procedure ScanRootKey(const AKey: string; AList: TStrings; AMin, AMax: integer);
+function RegReadList(const RegPath: string; AList: TStringList; const RootKey: HKEY): boolean;
 var
-  s: string;
-  RootKey: HKEY;
-  LList: TStrings;
-
-  procedure GetItems();
-  var
-    LRegistry: TRegistry;
-  begin
-    LRegistry := TRegistry.Create;
+  Reg: TRegistry;
+begin
+  Result := False;
+  AList.Clear;
+  try
+    Reg := TRegistry.Create;
     try
-      LRegistry.RootKey := RootKey;
-      if LRegistry.OpenKeyReadOnly(AKey) then
-        LRegistry.GetKeyNames(LList);
+      Reg.RootKey := RootKey;
+      if Reg.KeyExists(RegPath) and Reg.OpenKeyReadOnly(RegPath) then
+      begin
+        Reg.GetKeyNames(AList);
+        Result := True;
+      end;
     finally
-      LRegistry.Free;
+      Reg.Free;
     end;
-  end;
+  except
 
-  function IsValidKey(const ASubKey: string): boolean;
-  var
-    LVersion: integer;
-    FullKey, FileName: string;
-  begin
-    Result := False;
-    for LVersion := AMin to AMax do
-    begin
-      FullKey := Format('%s\%s\%d.0', [AKey, ASubKey, LVersion]);
-      if RegKeyExists(FullKey, RootKey) then
-      begin
-        Result := RegReadStr(FullKey, 'App', FileName, RootKey) and FileExists(FileName);
-        if Result then
-          break;
-      end;
-    end;
-  end;
-
-begin
-  RootKey := HKEY_CURRENT_USER;
-  LList := TStringList.Create;
-  try
-    AList.Clear;
-    GetItems();
-    if LList.Count > 0 then
-      for s in LList do
-        if { (s <> 'BDS') and } IsValidKey(s) then
-          AList.Add(s);
-  finally
-    LList.Free;
   end;
 end;
 
-{$ENDREGION}
-
-function ListInstalledDelphiVersions: TDelphiObjectList;
-var
-  item: TDelphiObjectData;
-  DelphiComp: TDelphiVersions;
-  FileName: string;
-  Found: boolean;
-begin
-  Result := TDelphiObjectList.Create;
-
-  for DelphiComp := Low(TDelphiVersions) to High(TDelphiVersions) do
-  begin
-    Found := RegKeyExists(DelphiRegKey[DelphiComp], HKEY_CURRENT_USER);
-    if Found then
-      Found := RegReadStr(DelphiRegKey[DelphiComp], 'App', FileName,
-                          HKEY_CURRENT_USER) and FileExists(FileName);
-
-    if not Found then
-    begin
-      Found := RegKeyExists(DelphiRegKey[DelphiComp], HKEY_LOCAL_MACHINE);
-      if Found then
-        Found := RegReadStr(DelphiRegKey[DelphiComp], 'App', FileName,
-                            HKEY_LOCAL_MACHINE) and FileExists(FileName);
-    end;
-
-    if Found then
-    begin
-      item := TDelphiObjectData.Create;
-      with item do
-      begin
-        Name := DelphiVersionsNames[DelphiComp];
-        Path := FileName;
-        Version := DelphiComp;
-        Icon := TIcon.Create;
-//        Icon.LoadFromFile(FileName);
-      end;
-      Result.Add(item);
-    end;
-  end;
-end;
-
-procedure FillCurrentDelphiVersion(Data: TDelphiObjectData);
-var
-  List: TList;
-  LData: TDelphiObjectData;
-  s: string;
-begin
-  s := ParamStr(0);
-  List := TList.Create;
-  try
-    FillListDelphiVersions(List);
-    //for LData in List do
-      if SameText(LData.Path, s) then
-      begin
-        Data.FVersion := LData.Version;
-        Data.Path := LData.Path;
-        Data.Name := LData.Name;
-        if (Data.Icon = nil) then
-          Data.Icon := TIcon.Create;
-        Data.Icon.Assign(LData.Icon);
-        Data.FRegKey := LData.FRegKey;
-        //break;
-      end;
-  finally
-    List.Free;
-  end;
-end;
-
-procedure FillListDelphiVersions(AList: TList);
-type
-  TBDSKeysItem = record
-    MinValue, MaxValue: integer;
-    Key: string;
-  end;
-const
-  MaxBDSKeysItem = 4;
-var
-  VersionData: TDelphiObjectData;
-  DelphiComp: TDelphiVersions;
-  LKey, FileName: string;
-  Found: boolean;
-  RootKey: HKEY;
-  BDSKeys: TStrings;
-  i, j: integer;
-  BDSKeysItems: array [0 .. MaxBDSKeysItem - 1] of TBDSKeysItem;
-begin
-  BDSKeys := TStringList.Create;
-  try
-    BDSKeysItems[0].MinValue := 7;
-    BDSKeysItems[0].MaxValue := 7;
-    BDSKeysItems[0].Key := '\Software\Borland';
-
-    BDSKeysItems[1].MinValue := 2;
-    BDSKeysItems[1].MaxValue := 5;
-    BDSKeysItems[1].Key := '\Software\Borland';
-
-    BDSKeysItems[2].MinValue := 6;
-    BDSKeysItems[2].MaxValue := 7;
-    BDSKeysItems[2].Key := '\Software\CodeGear';
-
-    BDSKeysItems[3].MinValue := DelphiRegPathNumbers[DelphiXE];
-    BDSKeysItems[3].MaxValue := DelphiRegPathNumbers[Delphi11Alexandria];
-    BDSKeysItems[3].Key := '\Software\Embarcadero';
-
-    for j := 0 to MaxBDSKeysItem - 1 do
-    begin
-      BDSKeys.Clear;
-      ScanRootKey(BDSKeysItems[j].Key, BDSKeys, BDSKeysItems[j].MinValue,
-        BDSKeysItems[j].MaxValue);
-
-      for i := 0 to BDSKeys.Count - 1 do
-      begin
-        for DelphiComp := Low(TDelphiVersions) to High(TDelphiVersions) do
-          if (DelphiRegPathNumbers[DelphiComp] >= BDSKeysItems[j].MinValue) and
-            (DelphiRegPathNumbers[DelphiComp] <= BDSKeysItems[j].MaxValue) then
-          begin
-            RootKey := HKEY_CURRENT_USER;
-            // LKey    := DelphiRegPaths[DelphiComp];
-            LKey := Format(DelphiCustomRegPaths[DelphiComp], [BDSKeys[i]]);
-            Found := RegKeyExists(LKey, RootKey);
-
-            FileName := '';
-
-            if Found then
-              Found := RegReadStr(LKey, 'App', FileName, RootKey) and
-                FileExists(FileName);
-
-            if (DelphiComp >= DelphiXE6) and not Found then
-            begin
-              FileName := StringReplace(FileName, 'bds.exe', 'appmethod.exe',
-                [rfReplaceAll]);
-              Found := FileExists(FileName);
-            end;
-
-            if not Found then
-            begin
-              RootKey := HKEY_LOCAL_MACHINE;
-              Found := RegKeyExists(LKey, RootKey);
-              if Found then
-                Found := RegReadStr(LKey, 'App', FileName, RootKey) and
-                  FileExists(FileName);
-            end;
-
-            if Found then
-            begin
-              VersionData := TDelphiObjectData.Create;
-              VersionData.FPath := FileName;
-              VersionData.FRegKey := LKey;
-              VersionData.FVersion := DelphiComp;
-              VersionData.FName := DelphiVersionsNames[DelphiComp];
-              if not SameText(BDSKeys[i], 'BDS') then
-                VersionData.FName :=
-                  DelphiVersionsNames[DelphiComp] + ' (' + BDSKeys[i] + ')';
-
-              VersionData.Icon := TIcon.Create;
-              AList.Add(VersionData);
-            end;
-          end;
-      end;
-    end;
-  finally
-    BDSKeys.Free;
-  end;
-end;
 
 { TDelphiObjectData }
 
-constructor TDelphiObjectData.Create;
+procedure TDelphiObjectData.SetRegPath(AValue: string);
+var
+  vKey, vStr: String;
 begin
-  inherited;
-  FIcon := nil;
+  if FRegPath = AValue then
+    Exit;
+
+  FRegPath := AValue;
+  vStr := '';
+
+  // nome da delphi
+  vKey := AValue;
+  RegReadStr(vKey, 'Personalities', vStr, HKEY_CURRENT_USER);
+  if vStr = '' then
+    RegReadStr(vKey, 'Personalities', vStr, HKEY_LOCAL_MACHINE);
+
+  if vStr = '' then
+  begin
+    vKey := AValue + '\Personalities';
+    RegReadStr(vKey, '', vStr, HKEY_CURRENT_USER);
+    if vStr = '' then
+      RegReadStr(vKey, '', vStr, HKEY_LOCAL_MACHINE);
+    if vStr = '' then
+      RegReadStr(vKey, 'Delphi.Win32', vKey, HKEY_CURRENT_USER);
+    if vStr = '' then
+      RegReadStr(vKey, 'Delphi.Win32', vKey, HKEY_LOCAL_MACHINE);
+  end;
+
+  if vStr <> '' then
+    Self.Name := vStr;
+
+  // exe do delphi
+  vKey := AValue;
+  RegReadStr(vKey, 'App', vStr, HKEY_CURRENT_USER);
+  if vStr = '' then
+    RegReadStr(vKey, 'App', vStr, HKEY_LOCAL_MACHINE);
+
+  Self.ExeFile := vStr;
+
+  // productversion
+  vKey := AValue;
+  RegReadStr(vKey, 'ProductVersion', vStr, HKEY_CURRENT_USER);
+  if vStr = '' then
+    RegReadStr(vKey, 'ProductVersion', vStr, HKEY_LOCAL_MACHINE);
+
+  if vStr <> '' then
+    Self.ProductVersion := StrToIntDef(vStr, -1);
+
+  // delphis antigos
+  if Self.Name = '' then
+  begin
+    if SameText(AValue, '\Software\Borland\Delphi\7.0') then
+    begin
+      Self.Name := 'Delphi 7.0';
+      Self.ProductVersion := 7;
+    end;
+  end;
 end;
 
-destructor TDelphiObjectData.Destroy;
+procedure TDelphiObjectData.SetExeFile(AValue: string);
 begin
-  FreeAndNil(FIcon);
   inherited;
+end;
+
+{ TDelphiFinder }
+
+function TDelphiFinder.GetObjectDelphi(RegPath: string): TDelphiObjectData;
+var
+  vInt: integer;
+begin
+  Result := nil;
+  for vInt := 0 to Pred(Count) do
+  begin
+    if TDelphiObjectData(ObjectData[vInt]).RegPath = RegPath then begin
+      Result := TDelphiObjectData(ObjectData[vInt]);
+      Break;
+    end;
+  end;
+end;
+
+procedure TDelphiFinder.BuscarIDE;
+var
+  vInt1, vInt2: integer;
+  vLst: TStringList;
+  vObj: TDelphiObjectData;
+  vKey: string;
+  vFormat: TFormatSettings;
+begin
+  vLst := TStringList.Create;
+
+  vFormat.DecimalSeparator := '.';
+  vFormat.ThousandSeparator := ',';
+
+  try
+    for vInt1 := 0 to High(DelphisRegKey) do
+    begin
+      if RegKeyExists(DelphisRegKey[vInt1], HKEY_CURRENT_USER) then
+      begin
+        RegReadList(DelphisRegKey[vInt1], vLst, HKEY_CURRENT_USER);
+        for vInt2 := 0 to Pred(vLst.Count) do
+        begin
+          if StrToFloatDef(vLst.Strings[vInt2], -1, vFormat) > 0 then
+          begin
+            vKey := DelphisRegKey[vInt1] + '\' + vLst.Strings[vInt2];
+
+            vObj := TDelphiObjectData.Create;
+            vObj.RegVersion := vLst.Strings[vInt2];
+            vObj.RegPath := vKey;
+
+            List.Add(vObj);
+          end;
+        end;
+      end;
+
+      if RegKeyExists(DelphisRegKey[vInt1], HKEY_LOCAL_MACHINE) then
+      begin
+        RegReadList(DelphisRegKey[vInt1], vLst, HKEY_LOCAL_MACHINE);
+        for vInt2 := 0 to Pred(vLst.Count) do
+        begin
+          if StrToFloatDef(vLst.Strings[vInt2], -1, vFormat) > 0 then
+          begin
+            vKey := DelphisRegKey[vInt1] + '\' + vLst.Strings[vInt2];
+            vObj := GetObjectDelphi(vKey);
+            if vObj = nil then begin
+              vObj := TDelphiObjectData.Create;
+              vObj.RegVersion := vLst.Strings[vInt2];
+              vObj.RegPath := vKey;
+
+              List.Add(vObj);
+            end;
+          end;
+        end;
+      end;
+    end;
+  finally
+    FreeAndNil(vLst);
+  end;
 end;
 
 end.
+

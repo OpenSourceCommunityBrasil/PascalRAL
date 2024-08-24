@@ -31,8 +31,10 @@ type
 
     procedure clearVersions;
     procedure showDelphiVersions;
+
     function BuscarFrameInstall(APath: string): Tfrm_ide_version;
-    procedure OnFindLazarus(APath: string; var ACancel: boolean);
+
+    procedure OnIDEFind(APath: string; var ACancel: boolean);
   protected
     procedure SetIDE(AValue: integer); override;
     function validatePageNext : boolean; override;
@@ -47,15 +49,15 @@ implementation
 {$R *.lfm}
 
 uses
-  udm, delphiutils, lazarusutils;
+  udm, delphiutils, lazarusutils, ideutils;
 
 { Tfrm_ide_versions }
 
 procedure Tfrm_ide_versions.bAutoBuscaClick(Sender: TObject);
 var
-  vList: TLazarusObjectList;
+  vList: TLazarusFinder;
   vInt: Integer;
-  vItem: TLazarusObjectData;
+  vItem: TIDEObjectData;
   vFrm: Tfrm_ide_version;
 begin
   FFilesFind := 0;
@@ -64,38 +66,32 @@ begin
   bStopBusca.Visible := True;
   FCancelBusca := False;
 
+  vList := TLazarusFinder.Create;
   try
-    vList := ListInstalledLazarusVersions(@OnFindLazarus);
-    try
-      if (vList = nil) or (FCancelBusca) then
-        Exit;
+    vList.OnIDEFind := @OnIDEFind;
+    vList.BuscarIDE;
 
-      for vInt := 0 to Pred(vList.Count) do
+    for vInt := 0 to Pred(vList.Count) do
+    begin
+      vItem := vList.ObjectData[vInt];
+      vFrm := BuscarFrameInstall(vItem.ExeFile);
+      if vFrm = nil then
       begin
-        vItem := TLazarusObjectData(vList.Items[vInt]);
+        vFrm := Tfrm_ide_version.Create(Self, vItem);
+        vFrm.Name := 'ide_version_' + IntToStr(vInt);
+        vFrm.Parent := sbIDEVersions;
+        vFrm.Top := FTop;
 
-        vFrm := BuscarFrameInstall(vItem.Path);
-        if vFrm = nil then
-        begin
-          vFrm := Tfrm_ide_version.Create(Self);
-          vFrm.Name := 'ide_version_' + IntToStr(vInt);
-          vFrm.Parent := sbIDEVersions;
-          vFrm.Top := FTop;
+        Application.ProcessMessages;
 
-          Application.ProcessMessages;
+        vFrm.Align := alTop;
 
-          vFrm.Align := alTop;
-
-          vFrm.IDEName := vItem.Name;
-          vFrm.ExecFile := vItem.Path;
-
-          FTop := FTop + vFrm.Height;
-        end;
+        FTop := FTop + vFrm.Height;
       end;
-    finally
-      FreeAndNil(vList);
     end;
   finally
+    FreeAndNil(vList);
+
     bAutoBusca.Enabled := True;
     bAddVersion.Enabled := True;
     bStopBusca.Visible := False;
@@ -121,30 +117,22 @@ begin
        FileExists(vPasta + LazExecFile) then
     begin
       vObj := TLazarusObjectData.Create;
-      try
-        vObj.ExeFile := vPasta + LazExecFile;
-        if vObj.IsLazarus then
-        begin
-          vFrm := BuscarFrameInstall(vPasta);
-          if vFrm = nil then
-          begin
-            vFrm := Tfrm_ide_version.Create(Self);
-            vFrm.Name := 'ide_version_' + FormatDateTime('ddmmyyyyhhnnss', Now);
-            vFrm.Parent := sbIDEVersions;
-            vFrm.Top := FTop;
+      vObj.ExeFile := vPasta + LazExecFile;
+      vObj.BuildFile := vPasta + LazBuildFile;
 
-            Application.ProcessMessages;
+      vFrm := BuscarFrameInstall(vObj.ExeFile);
+      if vFrm = nil then
+      begin
+        vFrm := Tfrm_ide_version.Create(Self, vObj);
+        vFrm.Name := 'ide_version_' + FormatDateTime('ddmmyyyyhhnnss', Now);
+        vFrm.Parent := sbIDEVersions;
+        vFrm.Top := FTop;
 
-            vFrm.Align := alTop;
+        Application.ProcessMessages;
 
-            vFrm.IDEName := vObj.Name;
-            vFrm.ExecFile := vObj.Path;
+        vFrm.Align := alTop;
 
-            FTop := FTop + vFrm.Height;
-          end;
-        end;
-      finally
-        FreeAndNil(vObj);
+        FTop := FTop + vFrm.Height;
       end;
     end;
   end;
@@ -164,34 +152,35 @@ end;
 
 procedure Tfrm_ide_versions.showDelphiVersions;
 var
-  vList: TDelphiObjectList;
+  vList: TDelphiFinder;
   vInt: Integer;
-  vItem: TDelphiObjectData;
+  vItem: TIDEObjectData;
   vFrm: Tfrm_ide_version;
 begin
-  vList := ListInstalledDelphiVersions;
-  FTop := 0;
+  vList := TDelphiFinder.Create;
   try
-    if vList = nil then
-      Exit;
+    vList.OnIDEFind := @OnIDEFind;
+    vList.BuscarIDE;
 
     for vInt := 0 to Pred(vList.Count) do
     begin
-      vItem := TDelphiObjectData(vList.Items[vInt]);
+      vItem := vList.ObjectData[vInt];
 
-      vFrm := Tfrm_ide_version.Create(Self);
+      // produto desinstalado
+      if vItem.ExeFile = '' then
+      begin
+        FreeAndNil(vItem);
+        Continue;
+      end;
+
+      vFrm := Tfrm_ide_version.Create(Self, vItem);
       vFrm.Name := 'ide_version_' + IntToStr(vInt);
       vFrm.Parent := sbIDEVersions;
       vFrm.Top := FTop;
-      vFrm.IsDelphi := True;
 
       Application.ProcessMessages;
 
       vFrm.Align := alTop;
-
-      vFrm.IDEName := vItem.Name;
-      vFrm.ExecFile := vItem.Path;
-      vFrm.DelphiVerion := vItem.Version;
 
       FTop := FTop + vFrm.Height;
     end;
@@ -211,7 +200,7 @@ begin
     if sbIDEVersions.Controls[vInt] is Tfrm_ide_version then
     begin
       vFrm := Tfrm_ide_version(sbIDEVersions.Controls[vInt]);
-      if ExtractFilePath(vFrm.ExecFile) = APath then
+      if ExtractFilePath(vFrm.ObjectData.ExeFile) = APath then
       begin
         Result := vFrm;
         Break;
@@ -221,7 +210,7 @@ begin
   FTop := 0;
 end;
 
-procedure Tfrm_ide_versions.OnFindLazarus(APath: string; var ACancel: boolean);
+procedure Tfrm_ide_versions.OnIDEFind(APath: string; var ACancel: boolean);
 
   function CortePath(APasta: string) : string;
   var
