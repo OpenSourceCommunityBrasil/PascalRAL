@@ -26,7 +26,7 @@ end;
 
 {$IFDEF FPC}
 initialization
-// {$I raldbpackage.lrs}
+{$I raldbpackage.lrs}
 {$ENDIF}
 
 end.
