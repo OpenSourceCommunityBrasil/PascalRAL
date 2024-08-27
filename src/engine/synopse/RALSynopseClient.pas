@@ -128,6 +128,7 @@ begin
       ARequest.Params.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
     end;
 
+    ARequest.CriptoKey := Parent.CriptoOptions.Key;
     ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
     if Parent.CriptoOptions.CriptType <> crNone then
     begin
@@ -139,8 +140,8 @@ begin
     try
       if ARequest.ContentType <> '' then
         ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
-      if ARequest.ContentType <> '' then
-        ARequest.Params.AddParam('Content-Disposition', ARequest.ContentType, rpkHEADER);
+      if ARequest.ContentDisposition <> '' then
+        ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
 
       vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 

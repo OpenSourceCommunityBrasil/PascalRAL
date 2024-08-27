@@ -54,7 +54,7 @@ type
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
-    procedure ZeosLoadFromStream(AStream: TStream);
+    class procedure ZeosLoadFromStream(ADataset: TZMemTable; AStream: TStream);
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
   public
@@ -305,7 +305,6 @@ procedure TRALDBZMemTable.OnQueryResponse(Sender: TObject; AResponse: TRALRespon
   AException: StringRAL);
 var
   vMem: TStream;
-  vNative: boolean;
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
 begin
@@ -319,7 +318,7 @@ begin
       vDBSQL := FSQLCache.SQLList[0];
 
       if vDBSQL.Response.Native then
-        ZeosLoadFromStream(vDBSQL.Response.Stream)
+        ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
       else
         FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
     finally
@@ -400,7 +399,7 @@ begin
           try
             try
               if vDBSQL.Response.Native then
-                // vTable.ZeosLoadFromStream(vDBSQL.Response.Stream)
+                ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
               else
                 FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
 
@@ -443,7 +442,7 @@ begin
   end;
 end;
 
-procedure TRALDBZMemTable.ZeosLoadFromStream(AStream: TStream);
+class procedure TRALDBZMemTable.ZeosLoadFromStream(ADataset: TZMemTable; AStream: TStream);
 {$IFDEF FPC}
 type
   TLoadFromStream = procedure(AStream: TStream) of object;
@@ -454,11 +453,11 @@ var
 begin
   {$IFNDEF FPC}
   {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
-  Self.LoadFromStream(AStream);
+    ADataset.LoadFromStream(AStream);
   {$ENDIF}
   {$ELSE}
   vMethod.Data := Pointer(Self);
-  vMethod.Code := Self.MethodAddress('LoadFromStream');
+  vMethod.Code := ADataset.MethodAddress('LoadFromStream');
   if vMethod.Code <> nil then
   begin
     vProc := TLoadFromStream(vMethod);

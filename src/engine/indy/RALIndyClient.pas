@@ -145,6 +145,7 @@ begin
     FHttp.Request.AcceptEncoding := TRALCompress.GetSuportedCompress;
   end;
 
+  ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
   if Parent.CriptoOptions.CriptType <> crNone then
   begin

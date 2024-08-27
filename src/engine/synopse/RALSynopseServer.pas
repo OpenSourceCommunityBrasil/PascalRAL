@@ -323,8 +323,7 @@ end;
 
 destructor TRALSynopseServer.Destroy;
 begin
-  if Assigned(FHttp) then
-    FreeAndNil(FHttp);
+  Active := False;
   inherited;
 end;
 
