@@ -195,6 +195,7 @@ var
   vStr1, vStr2: StringRAL;
   vConnClose : boolean;
   vCookies : TStringList;
+  vParam: TRALParam;
   vCookie : TCookie;
 begin
   vRequest := FParent.CreateRequest;
@@ -287,6 +288,13 @@ begin
 
       if ContentEncription <> '' then
         Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+
+      vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+      if vParam <> nil then
+      begin
+        AResponse.WWWAuthenticate := vParam.AsString;
+        vResponse.Params.DelParam('WWW-Authenticate');
+      end;
 
       AResponse.Server := 'RAL_fpHTTP';
       if vConnClose then
