@@ -6,7 +6,7 @@ unit RALCriptoAES;
 interface
 
 uses
-  Classes, SysUtils, Dialogs,
+  Classes, SysUtils,
   RALCripto, RALTypes, RALConsts;
 
 type
