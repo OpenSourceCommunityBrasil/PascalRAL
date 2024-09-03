@@ -11,7 +11,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\database;..\..\..\src\others"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Package for BSON support for PascalRAL."/>
