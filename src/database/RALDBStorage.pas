@@ -283,9 +283,9 @@ end;
 
 procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 var
-  vStream: TBufferedFileStream;
+  vStream: TRALBufFileStream;
 begin
-  vStream := TBufferedFileStream.Create(AFileName, fmCreate);
+  vStream := TRALBufFileStream.Create(AFileName, fmCreate);
   try
     SaveToStream(ADataset, vStream);
   finally

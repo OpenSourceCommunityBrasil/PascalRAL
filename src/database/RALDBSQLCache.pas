@@ -442,9 +442,9 @@ end;
 
 procedure TRALDBSQLCache.SaveToFile(AFileName: StringRAL);
 var
-  vFile: TBufferedFileStream;
+  vFile: TRALBufFileStream;
 begin
-  vFile := TBufferedFileStream.Create(AFileName, fmCreate);
+  vFile := TRALBufFileStream.Create(AFileName, fmCreate);
   try
     SaveToStream(vFile);
     vFile.Position := 0;
@@ -494,9 +494,9 @@ end;
 
 procedure TRALDBSQLCache.ResponseToFile(AFileName: StringRAL);
 var
-  vFile: TBufferedFileStream;
+  vFile: TRALBufFileStream;
 begin
-  vFile := TBufferedFileStream.Create(AFileName, fmCreate);
+  vFile := TRALBufFileStream.Create(AFileName, fmCreate);
   try
     ResponseToStream(vFile);
     vFile.Position := 0;

@@ -103,10 +103,10 @@ end;
 procedure TRALCompress.CompressFile(AInFile, AOutFile: StringRAL);
 var
   vInStream: TFileStream;
-  vOutStream: TBufferedFileStream;
+  vOutStream: TRALBufFileStream;
 begin
   vInStream := TFileStream.Create(AInFile, fmOpenRead or fmShareDenyWrite);
-  vOutStream := TBufferedFileStream.Create(AOutFile, fmCreate);
+  vOutStream := TRALBufFileStream.Create(AOutFile, fmCreate);
   try
     vInStream.Position := 0;
     InitCompress(vInStream, vOutStream);
@@ -142,10 +142,10 @@ end;
 procedure TRALCompress.DecompressFile(AInFile, AOutFile: StringRAL);
 var
   vInStream: TFileStream;
-  vOutStream: TBufferedFileStream;
+  vOutStream: TRALBufFileStream;
 begin
   vInStream := TFileStream.Create(AInFile, fmOpenReadWrite);
-  vOutStream := TBufferedFileStream.Create(AOutFile, fmCreate);
+  vOutStream := TRALBufFileStream.Create(AOutFile, fmCreate);
   try
     vInStream.Position := 0;
     InitDeCompress(vInStream, vOutStream);
