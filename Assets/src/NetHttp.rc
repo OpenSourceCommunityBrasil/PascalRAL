@@ -1,2 +1,2 @@
-TRALNetHttpClient BITMAP "..\components\NetHttp\TRALNetHttpClient.bmp"
-TRALNetHttpClientMT BITMAP "..\components\NetHttp\TRALNetHttpClientMT.bmp"
+TRALNetHttpClient BITMAP "..\components\engine\client\TRALNetHttpClient.bmp"
+TRALNetHttpClientMT BITMAP "..\components\engine\client\TRALNetHttpClientMT.bmp"

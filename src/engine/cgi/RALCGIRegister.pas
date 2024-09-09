@@ -1,7 +1,5 @@
 unit RALCGIRegister;
 
-{$mode objfpc}{$H+}
-
 interface
 
 uses
@@ -19,6 +17,11 @@ procedure Register;
 begin
   RegisterComponents('RAL - Server', [TRALCGIServer]);
 end;
+
+{$IFDEF FPC}
+initialization
+{$I cgiRAL.lrs}
+{$ENDIF}
 
 end.
 
