@@ -1,7 +1,8 @@
 uses
   Classes, SysUtils,
   custcgi, custweb, fpweb, httpDefs,
-  RALServer, RALRequest, RALResponse, RALTools, RALCompress;
+  RALServer, RALRequest, RALResponse, RALTools, RALCompress, RALTypes,
+  RALParams;
 
 type
 
@@ -67,6 +68,8 @@ begin
       end;
       Add('</TABLE>');
       Add('</BODY></HTML>');
+
+      Add(ARequest.Content);
     Finally
       EndUpdate;
     end;
@@ -77,13 +80,15 @@ end;
 procedure TRALCGIServerHandler.HandleRequest(ARequest: Trequest;
   AResponse: TResponse);
 var
-  vApp : TRALCGIServerApp;
-  vServer : TRALCGIServer;
+  vApp: TRALCGIServerApp;
+  vServer: TRALCGIServer;
 
-  vRequest : TRALRequest;
+  vRequest: TRALRequest;
   vResponse: TRALResponse;
 
-  vAux1, vAux2 : String;
+  vAux1, vAux2: StringRAL;
+  vInt, vPos: IntegerRAL;
+  vParam: TRALParam;
 begin
   vApp := TRALCGIServerApp(Owner);
   vServer := TRALCGIServer(vApp.Owner);
@@ -110,16 +115,40 @@ begin
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
     vRequest.Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
+    for vInt := 1 to GetEnvironmentVariableCount do
+    begin
+      vAux1 := GetEnvironmentString(vInt);
+      vPos := Pos('=', vAux1);
+
+      vParam := vRequest.Params.NewParam;
+      vParam.ParamName := Copy(vAux1, 1, vPos - 1);
+      vParam.Kind := rpkFIELD;
+      vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
+    end;
+
     vRequest.RequestText := ARequest.Content;
 
     vServer.ProcessCommands(vRequest, vResponse);
 
-    vResponse.ContentCompress := ctNone;
-    AResponse.ContentType := 'text/html';
+    AResponse.ContentStream := vResponse.ResponseStream;
+
+    if vResponse.AcceptEncoding <> '' then
+      vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
+
+    if vResponse.ContentEncription <> '' then
+      vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
+
+    if vResponse.ContentDisposition <> '' then
+      vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
+
+    vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
+
+//    vResponse.ContentCompress := ctNone; // para debug
+    AResponse.Server := 'RAL_CGILaz';
+    AResponse.ContentType := vResponse.ContentType;
     AResponse.ContentEncoding := vResponse.ContentEncoding;
     AResponse.Code := vResponse.StatusCode;
-    AResponse.Content := vResponse.ResponseText;
-//    AResponse.SendContent;
+    AResponse.FreeContentStream := True;
   finally
     FreeAndNil(vRequest);
     FreeAndNil(vResponse);

@@ -144,7 +144,7 @@ end;
 
 {$IFDEF FPC}
 initialization
-{$I pascalral.lrs}
+{$I PascalRALDsgn.lrs}
 {$ENDIF}
 
 end.
