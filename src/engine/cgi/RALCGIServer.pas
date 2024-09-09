@@ -8,4 +8,4 @@ interface
   {$I RALCGIServer_Delphi.inc}
 {$ENDIF}
 
-end;
+end.

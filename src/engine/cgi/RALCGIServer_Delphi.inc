@@ -118,5 +118,3 @@ begin
   vRequest.Free;
   vResponse.Free;
 end;
-
-end.

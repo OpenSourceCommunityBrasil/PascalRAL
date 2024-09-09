@@ -3,7 +3,6 @@
   <Package Version="5">
     <PathDelim Value="\"/>
     <Name Value="PascalRAL"/>
-    <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
@@ -26,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1"/>
-    <Files Count="32">
+    <Files Count="30">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -64,103 +63,94 @@
         <UnitName Value="RALParams"/>
       </Item9>
       <Item10>
-        <Filename Value="..\..\src\base\RALRegister.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RALRegister"/>
-      </Item10>
-      <Item11>
         <Filename Value="..\..\src\utils\RALBase64.pas"/>
         <UnitName Value="RALBase64"/>
-      </Item11>
-      <Item12>
+      </Item10>
+      <Item11>
         <Filename Value="..\..\src\utils\RALHashes.pas"/>
         <UnitName Value="RALHashes"/>
-      </Item12>
-      <Item13>
+      </Item11>
+      <Item12>
         <Filename Value="..\..\src\utils\RALMD5.pas"/>
         <UnitName Value="RALMD5"/>
-      </Item13>
-      <Item14>
+      </Item12>
+      <Item13>
         <Filename Value="..\..\src\utils\RALMIMETypes.pas"/>
         <UnitName Value="RALMIMETypes"/>
-      </Item14>
-      <Item15>
+      </Item13>
+      <Item14>
         <Filename Value="..\..\src\utils\RALSHA2_32.pas"/>
         <UnitName Value="RALSHA2_32"/>
-      </Item15>
-      <Item16>
+      </Item14>
+      <Item15>
         <Filename Value="..\..\src\utils\RALSHA2_64.pas"/>
         <UnitName Value="RALSHA2_64"/>
-      </Item16>
-      <Item17>
+      </Item15>
+      <Item16>
         <Filename Value="..\..\src\utils\RALToken.pas"/>
         <UnitName Value="RALToken"/>
-      </Item17>
-      <Item18>
+      </Item16>
+      <Item17>
         <Filename Value="..\..\src\utils\RALTools.pas"/>
         <UnitName Value="RALTools"/>
-      </Item18>
-      <Item19>
+      </Item17>
+      <Item18>
         <Filename Value="..\..\src\utils\RALJson.pas"/>
         <UnitName Value="RALJson"/>
-      </Item19>
-      <Item20>
+      </Item18>
+      <Item19>
         <Filename Value="..\..\src\utils\RALThreadSafe.pas"/>
         <UnitName Value="RALThreadSafe"/>
-      </Item20>
-      <Item21>
+      </Item19>
+      <Item20>
         <Filename Value="..\..\src\utils\RALMultipartCoder.pas"/>
         <UnitName Value="RALMultipartCoder"/>
-      </Item21>
-      <Item22>
+      </Item20>
+      <Item21>
         <Filename Value="..\..\src\utils\RALCustomObjects.pas"/>
         <UnitName Value="RALCustomObjects"/>
-      </Item22>
-      <Item23>
+      </Item21>
+      <Item22>
         <Filename Value="..\..\src\utils\RALUrlCoder.pas"/>
         <UnitName Value="RALUrlCoder"/>
-      </Item23>
-      <Item24>
+      </Item22>
+      <Item23>
         <Filename Value="..\..\src\utils\RALCripto.pas"/>
         <UnitName Value="RALCripto"/>
-      </Item24>
-      <Item25>
+      </Item23>
+      <Item24>
         <Filename Value="..\..\src\utils\RALCriptoAES.pas"/>
         <UnitName Value="RALCriptoAES"/>
-      </Item25>
-      <Item26>
+      </Item24>
+      <Item25>
         <Filename Value="..\..\src\utils\RALSHA1.pas"/>
         <UnitName Value="RALSHA1"/>
-      </Item26>
-      <Item27>
+      </Item25>
+      <Item26>
         <Filename Value="..\..\src\utils\RALCompressZLib.pas"/>
         <UnitName Value="RALCompressZLib"/>
-      </Item27>
-      <Item28>
+      </Item26>
+      <Item27>
         <Filename Value="..\..\src\base\RALWEBModule.pas"/>
         <UnitName Value="RALWEBModule"/>
-      </Item28>
-      <Item29>
+      </Item27>
+      <Item28>
         <Filename Value="..\..\src\base\PascalRAL.inc"/>
         <Type Value="Include"/>
-      </Item29>
-      <Item30>
-        <Filename Value="PascalRAL.lrs"/>
-        <Type Value="LRS"/>
-      </Item30>
-      <Item31>
+      </Item28>
+      <Item29>
         <Filename Value="..\..\src\base\RALSwaggerModule.pas"/>
         <UnitName Value="RALSwaggerModule"/>
-      </Item31>
-      <Item32>
+      </Item29>
+      <Item30>
         <Filename Value="..\..\src\utils\RALCompress.pas"/>
         <UnitName Value="RALCompress"/>
-      </Item32>
+      </Item30>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="IDEIntf"/>
+        <PackageName Value="LCLBase"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>
