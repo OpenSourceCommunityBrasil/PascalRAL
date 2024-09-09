@@ -6,6 +6,12 @@ object fRALWizardForm: TfRALWizardForm
   ClientHeight = 310
   ClientWidth = 432
   Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = True
   Position = poScreenCenter
   OnClose = FormClose
   OnCreate = FormCreate
@@ -172,6 +178,7 @@ object fRALWizardForm: TfRALWizardForm
         Height = 13
         Align = alTop
         Caption = 'Application Directory:'
+        ExplicitWidth = 103
       end
       object Label2: TLabel
         Left = 0
@@ -180,6 +187,7 @@ object fRALWizardForm: TfRALWizardForm
         Height = 13
         Align = alTop
         Caption = 'Application Type:'
+        ExplicitWidth = 83
       end
       object Label3: TLabel
         Left = 0
@@ -188,6 +196,7 @@ object fRALWizardForm: TfRALWizardForm
         Height = 13
         Align = alTop
         Caption = 'Data Engine:'
+        ExplicitWidth = 62
       end
       object Label4: TLabel
         Left = 0
@@ -196,6 +205,7 @@ object fRALWizardForm: TfRALWizardForm
         Height = 13
         Align = alTop
         Caption = 'Authentication:'
+        ExplicitWidth = 74
       end
       object Panel7: TPanel
         Left = 0
@@ -337,10 +347,10 @@ object fRALWizardForm: TfRALWizardForm
           Height = 21
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
-          ItemHeight = 13
           ItemIndex = 0
           TabOrder = 0
           Text = 'Standalone Application'
+          OnSelect = cbTipoAplicacaoSelect
           Items.Strings = (
             'Standalone Application'
             'CGI Application'
@@ -365,7 +375,6 @@ object fRALWizardForm: TfRALWizardForm
           Height = 21
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
-          ItemHeight = 13
           ItemIndex = 0
           TabOrder = 0
           Text = 'Indy'
@@ -393,7 +402,6 @@ object fRALWizardForm: TfRALWizardForm
           Height = 21
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
-          ItemHeight = 13
           ItemIndex = 0
           TabOrder = 0
           Text = 'None'

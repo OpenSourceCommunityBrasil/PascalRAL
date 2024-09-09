@@ -42,6 +42,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure bDirectoryClick(Sender: TObject);
+    procedure cbTipoAplicacaoSelect(Sender: TObject);
   private
     { Private declarations }
     FResModal : TModalResult;
@@ -72,13 +73,6 @@ begin
   begin
     ShowMessage('Diretório não Existe');
     eDirAplicacao.SetFocus;
-    Exit;
-  end;
-
-  if cbTipoAplicacao.ItemIndex = 1 then
-  begin
-    ShowMessage('Aplicação CGI - em desenvolvimento');
-    cbTipoAplicacao.SetFocus;
     Exit;
   end;
 
@@ -115,6 +109,29 @@ begin
   if SelectDirectory(vDir, [sdAllowCreate, sdPerformCreate, sdPrompt], 0) then
   {$ENDIF}
     eDirAplicacao.Text := vDir;
+end;
+
+procedure TfRALWizardForm.cbTipoAplicacaoSelect(Sender: TObject);
+begin
+  if cbTipoAplicacao.ItemIndex = 1 then begin
+    cbTipoMotor.ItemIndex := -1;
+    cbAutenticacao.ItemIndex := -1;
+    ckWebModule.Checked := False;
+
+    cbTipoMotor.Enabled := False;
+    cbAutenticacao.Enabled := False;
+    ckWebModule.Enabled := False;
+  end
+  else begin
+    if cbTipoMotor.ItemIndex < 0 then
+      cbTipoMotor.ItemIndex := 0;
+    if cbAutenticacao.ItemIndex < 0 then
+      cbAutenticacao.ItemIndex := 0;
+
+    cbTipoMotor.Enabled := True;
+    cbAutenticacao.Enabled := True;
+    ckWebModule.Enabled := True;
+  end
 end;
 
 end.

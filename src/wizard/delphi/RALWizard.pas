@@ -63,7 +63,8 @@ uses
   {$IFDEF DELPHI10_0UP}
     PlatformAPI,
   {$ENDIF}
-  RALWizardTools, RALWizardForm, RALWizardProjStandAlone, RALWizardProjConsole;
+  RALWizardTools, RALWizardForm, RALWizardProjStandAlone, RALWizardProjConsole,
+  RALWizardProjCGI;
 
 procedure TRALWizard.Execute;
 var
@@ -92,8 +93,9 @@ begin
                                      fRALWizardForm.cbAutenticacao.ItemIndex, vOpcoes));
       end;
       1 : begin
-
-
+        vModuleServices.CreateModule(TRALWizardProjCGICreator.Create(vProjectName,
+                                     vProjectDir, fRALWizardForm.cbTipoMotor.ItemIndex,
+                                     fRALWizardForm.cbAutenticacao.ItemIndex, vOpcoes));
       end;
       2 : begin
         vModuleServices.CreateModule(TRALWizardProjConsoleCreator.Create(vProjectName,
