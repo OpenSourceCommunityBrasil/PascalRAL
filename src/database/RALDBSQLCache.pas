@@ -242,22 +242,26 @@ begin
   vComp := ADataset.ClassType;
   Result := qtOther;
   while vComp <> nil do begin
-    if SameText(vComp.ClassName, 'TFDQuery') then
+    if SameText(vComp.ClassName, 'TFDQuery') or
+       SameText(vComp.ClassName, 'TFDMemTable') then
     begin
-      Result := qtFiredac
+      Result := qtFiredac;
+      Break;
     end
     else if (SameText(vComp.ClassName, 'TZQuery') or
              SameText(vComp.ClassName, 'TZReadOnlyQuery') or
              SameText(vComp.ClassName, 'TZMemTable')) and
             (ADataset.MethodAddress('SaveToStream') <> nil) then
     begin
-      Result := qtZeos
+      Result := qtZeos;
+      Break;
     end
     {$IFDEF FPC}
       // evitando conflito com dbexpress
       else if SameText(vComp.ClassName, 'TSQLQuery') then
       begin
         Result := qtLazSQL;
+        Break;
       end
     {$ENDIF};
     vComp := vComp.ClassParent;
