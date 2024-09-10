@@ -105,6 +105,7 @@ begin
       vAux1 := '/';
 
     vRequest.Query := vAux1;
+    vRequest.Params.AppendParamsUrl(vAux2, rpkQUERY);
 
     vAux1 := GetEnvironmentVariable('REQUEST_METHOD');
     vRequest.Method := HTTPMethodToRALMethod(vAux1);

@@ -151,6 +151,8 @@ begin
     vRequest.ContentSize := ARequest.ContentLength;
 
     vRequest.Query := ARequest.PathInfo;
+    vAux2 := ARequest.GetFieldByName('QUERY_STRING');
+    vRequest.Params.AppendParamsUrl(vAux2, rpkQUERY);
 
     vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 
