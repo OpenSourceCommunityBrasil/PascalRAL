@@ -1,5 +1,8 @@
 uses
-  Classes, SysUtils, Windows,
+  {$IFDEF RALWindows}
+    Windows,
+  {$ENDIF}
+  Classes, SysUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
   RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams;
 
@@ -27,46 +30,58 @@ var
 
 { TRALCGIServer }
 
-function GetEnvironmentVariableCount : Integer;
-var
-  hp,p : pchar;
-begin
-  Result:=0;
-  p := GetEnvironmentStrings;
-  hp:=p;
-  if (hp <> nil) then
+{$IFDEF RALWindows}
+  function GetEnvironmentVariableCount : Integer;
+  var
+    hp,p : pchar;
   begin
-    while hp^<>#0 do
+    Result:=0;
+    p := GetEnvironmentStrings;
+    hp:=p;
+    if (hp <> nil) then
     begin
-      Inc(Result);
-      hp := hp + strlen(hp) + 1;
+      while hp^<>#0 do
+      begin
+        Inc(Result);
+        hp := hp + strlen(hp) + 1;
+      end;
     end;
+    FreeEnvironmentStrings(p);
   end;
-  FreeEnvironmentStrings(p);
-end;
 
-Function GetEnvironmentString(Index : Integer) : AnsiString;
-var
-  hp,p : pchar;
-begin
-  Result:='';
-  p := GetEnvironmentStrings;
-  hp := p;
-  if (hp <> nil) then
+  function GetEnvironmentString(Index : Integer) : AnsiString;
+  var
+    hp,p : pchar;
   begin
-    while (hp^ <> #0) and ( Index > 1) do
+    Result:='';
+    p := GetEnvironmentStrings;
+    hp := p;
+    if (hp <> nil) then
     begin
-      Dec(Index);
-      hp := hp + strlen(hp) + 1;
+      while (hp^ <> #0) and ( Index > 1) do
+      begin
+        Dec(Index);
+        hp := hp + strlen(hp) + 1;
+      end;
+      if (hp^ <> #0) then
+      begin
+        Result := hp;
+        SetCodePage(RawByteString(Result),CP_OEMCP,false);
+      end;
     end;
-    if (hp^ <> #0) then
-    begin
-      Result := hp;
-      SetCodePage(RawByteString(Result),CP_OEMCP,false);
-    end;
+    FreeEnvironmentStrings(p);
   end;
-  FreeEnvironmentStrings(p);
-end;
+{$ELSE}
+  function GetEnvironmentVariableCount : Integer;
+  begin
+    Result := 0; // todo
+  end;
+
+  function GetEnvironmentString(Index : Integer) : AnsiString;
+  begin
+    Result := ''; // todo
+  end;
+{$ENDIF}
 
 constructor TRALCGIServer.Create(AOwner: TComponent);
 begin
