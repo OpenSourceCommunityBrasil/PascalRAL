@@ -499,6 +499,7 @@ object fralwizardform: Tfralwizardform
       Style = csDropDownList
       TabOrder = 1
       Text = 'Standalone Application'
+      OnSelect = cbTipoAplicacaoSelect
     end
     object Label3: TLabel
       Left = 10

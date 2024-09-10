@@ -21,6 +21,7 @@ type
   protected
     function CreateProjStandAlone(AProject: TLazProject) : TModalResult;
     function CreateProjConsole(AProject: TLazProject) : TModalResult;
+    function CreateProjCGI(AProject: TLazProject) : TModalResult;
   public
     function GetLocalizedName: string; override;
     function GetLocalizedDescription: string; override;
@@ -339,6 +340,144 @@ begin
   Result := mrOK;
 end;
 
+function TRALWizard.CreateProjCGI(AProject: TLazProject): TModalResult;
+var
+  vMainFile: TLazProjectFile;
+  vFile: TStringList;
+  vProjLPIName, vProjLPRName : string;
+  vServerUnit, vServerClass, vServerPkg, vUnits : string;
+begin
+  Result := inherited InitProject(AProject);
+
+  vProjLPIName := FProjectDir + 'ralproject1.lpi';
+  vProjLPRName := FProjectDir + 'ralproject1.lpr';
+
+  AProject.ProjectInfoFile := vProjLPIName;
+
+  AProject.LazCompilerOptions.Win32GraphicApp := False;
+  AProject.LazCompilerOptions.IncludePath := '$(ProjOutDir)';
+  AProject.LazCompilerOptions.UnitOutputDirectory := 'lib\$(TargetCPU)-$(TargetOS)';
+  AProject.LazCompilerOptions.TargetFilename := 'ralproject1';
+  AProject.LazCompilerOptions.UseExternalDbgSyms := True;
+
+
+  AProject.UseManifest := False;
+  AProject.UseAppBundle := False;
+  AProject.Scaled := False;
+  AProject.Flags := AProject.Flags - [pfMainUnitHasTitleStatement,
+                                      pfLRSFilesInOutputDirectory];
+
+  vMainFile := AProject.CreateProjectFile(vProjLPRName);
+  vMainFile.IsPartOfProject := True;
+
+  AProject.AddFile(vMainFile, False);
+  AProject.MainFileID := 0;
+  AProject.Title := 'RAL Application';
+
+  vServerUnit := 'RALCGIServer';
+  vServerClass := 'TRALCGIServer';
+  vServerPkg := 'cgiral';
+
+  vUnits := 'RALMimeTypes, RALTypes';
+  if FSwagger then
+    vUnits := vUnits + ', RALSwaggerModule';
+
+  AProject.AddPackageDependency('pascalral');
+  AProject.AddPackageDependency(vServerPkg);
+
+  vFile := TStringList.Create;
+  try
+    vFile.Add('// by PascalRAL - CGI App: '+DateTimeToStr(Now));
+    vFile.Add('program ralproject1;');
+    vFile.Add('');
+    vFile.Add('{$mode objfpc}{$H+}');
+    vFile.Add('');
+    vFile.Add('uses');
+    vFile.Add('  {$IFDEF UNIX}');
+    vFile.Add('    cthreads,');
+    vFile.Add('  {$ENDIF}');
+    vFile.Add('  Classes, SysUtils, CustApp,');
+    vFile.Add(Format('  RALRoutes, RALResponse, RALRequest, RALCustomObjects, RALConsts, %s,', [vServerUnit]));
+    vFile.Add(Format('  %s;', [vUnits]));
+    vFile.Add('');
+    vFile.Add('type');
+    vFile.Add('');
+    vFile.Add('  { TRALApplication }');
+    vFile.Add('');
+    vFile.Add('  TRALApplication = class(TCustomApplication)');
+    vFile.Add('  private');
+    vFile.Add(Format('    FServer: %s;', [vServerClass]));
+
+    if FSwagger then
+      vFile.Add('    FSwagger: TRALSwaggerModule;');
+
+    vFile.Add('  protected');
+    vFile.Add('    procedure Run;');
+    vFile.Add('    procedure ping(ARequest: TRALRequest; AResponse: TRALResponse);');
+    vFile.Add('  public');
+    vFile.Add('    constructor Create(AOwner: TComponent); override;');
+    vFile.Add('    destructor Destroy; override;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  { TRALApplication }');
+    vFile.Add('');
+    vFile.Add('  procedure TRALApplication.Run;');
+    vFile.Add('  var');
+    vFile.Add('    vRoute : TRALRoute;');
+    vFile.Add('  begin');
+    vFile.Add('    vRoute := FServer.CreateRoute(''ping'', @ping);');
+    vFile.Add('    vRoute.AllowedMethods := [amGET];');
+    vFile.Add('    vRoute.Name := ''ping'';');
+    vFile.Add('');
+    vFile.Add('    FServer.Start;');
+    vFile.Add('    Terminate;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  procedure TRALApplication.ping(ARequest: TRALRequest; AResponse: TRALResponse);');
+    vFile.Add('  begin');
+    vFile.Add('    AResponse.Answer(HTTP_OK, ''pong'', rctTEXTPLAIN);');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  constructor TRALApplication.Create(AOwner: TComponent);');
+    vFile.Add('  begin');
+    vFile.Add('    inherited Create(AOwner);');
+    vFile.Add('    StopOnException := True;');
+    vFile.Add(Format('    FServer := %s.Create(nil);', [vServerClass]));
+
+    if FSwagger then
+    begin
+      vFile.Add('    FSwagger := TRALSwaggerModule.Create(nil);');
+      vFile.Add('    FSwagger.Server := FServer;');
+    end;
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('  destructor TRALApplication.Destroy;');
+    vFile.Add('  begin');
+    if FSwagger then
+      vFile.Add('    FreeAndNil(FSwagger);');
+    vFile.Add('    FreeAndNil(FServer);');
+    vFile.Add('    inherited Destroy;');
+    vFile.Add('  end;');
+    vFile.Add('');
+    vFile.Add('var');
+    vFile.Add('  Application: TRALApplication;');
+    vFile.Add('begin');
+    vFile.Add('  Application := TRALApplication.Create(nil);');
+    vFile.Add('  Application.Title := ''RAL CGI Application'';');
+    vFile.Add('  Application.Run;');
+    vFile.Add('  Application.Free;');
+    vFile.Add('end.');
+
+    AProject.MainFile.SetSourceText(vFile.Text, True);
+    vFile.SaveToFile(vProjLPRName);
+  finally
+    FreeAndNil(vFile);
+  end;
+
+  AProject.Modified:= True;
+  Result := mrOK;
+end;
+
 function TRALWizard.GetLocalizedName: string;
 begin
   Result := inherited GetLocalizedName;
@@ -375,7 +514,7 @@ begin
 
   case FApplicationType of
     0 : Result := CreateProjStandAlone(AProject); // GUI
-    1 : Result := mrOK; // CGI
+    1 : Result := CreateProjCGI(AProject); // CGI
     2 : Result := CreateProjConsole(AProject); // Console
   end;
 end;
@@ -616,12 +755,11 @@ begin
   begin
     case FApplicationType of
       0 : Result := CreateFormStandAlone(AProject);
-      1 : Result := mrOK; // console
-      2 : Result := mrOK; // CGI - Todo
+      1 : Result := mrOK; // CGI
+      2 : Result := mrOK; // console
     end;
   end;
 
-  //LazarusIDE.DoSaveProject([]);
   AProject.Modified := True;
 end;
 

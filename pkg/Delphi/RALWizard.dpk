@@ -41,6 +41,7 @@ contains
   RALWizardTools in '..\..\src\wizard\delphi\RALWizardTools.pas',
   RALWizardProjConsole in '..\..\src\wizard\delphi\console\RALWizardProjConsole.pas',
   RALWizardFormStandAlone in '..\..\src\wizard\delphi\standalone\RALWizardFormStandAlone.pas',
-  RALWizardProjStandAlone in '..\..\src\wizard\delphi\standalone\RALWizardProjStandAlone.pas';
+  RALWizardProjStandAlone in '..\..\src\wizard\delphi\standalone\RALWizardProjStandAlone.pas',
+  RALWizardProjCGI in '..\..\src\wizard\delphi\cgi\RALWizardProjCGI.pas';
 
 end.

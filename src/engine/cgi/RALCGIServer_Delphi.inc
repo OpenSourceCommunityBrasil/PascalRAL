@@ -1,7 +1,7 @@
 uses
   Classes, SysUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
-  RALServer, RALRequest, RALResponse, RALTools;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -25,11 +25,6 @@ implementation
 var
   FCGIApp : TCGIApplication;
 
-function WebRequestHandler : TWebRequestHandler;
-begin
-  Result := FCGIApp;
-end;
-
 { TRALCGIServer }
 
 constructor TRALCGIServer.Create(AOwner: TComponent);
@@ -37,7 +32,6 @@ begin
   inherited;
   FCGIApp := nil;
   SetEngine('CGI - Delphi');
-  WebRequestHandlerProc := WebRequestHandler;
 end;
 
 destructor TRALCGIServer.Destroy;
@@ -81,40 +75,55 @@ var
   vRequest : TRALRequest;
   vResponse: TRALResponse;
 begin
-  vServer := TRALCGIServer(WebRequestHandler.Owner);
+  vServer := TRALCGIServer(FCGIApp.Owner);
 
   vRequest := vServer.CreateRequest;
   vResponse := vServer.CreateResponse;
+  try
+    vRequest.ClientInfo.IP := ARequest.RemoteIP;
+    vRequest.ClientInfo.MACAddress := '';
+    vRequest.ClientInfo.UserAgent := ARequest.UserAgent;
 
-  vRequest.ClientInfo.IP := ARequest.RemoteIP;
-  vRequest.ClientInfo.MACAddress := '';
-  vRequest.ClientInfo.UserAgent := ARequest.UserAgent;
+    vRequest.ContentType := ARequest.ContentType;
+    vRequest.ContentEncoding := ARequest.ContentEncoding;
+    vRequest.AcceptEncoding := ARequest.GetFieldByName('Accept-Encoding');
+    vRequest.ContentSize := ARequest.ContentLength;
 
-  vRequest.ContentType := ARequest.ContentType;
-  vRequest.ContentEncoding := ARequest.ContentEncoding;
-  vRequest.AcceptEncoding := ARequest.GetFieldByName('Accept-Encoding');
-  vRequest.ContentSize := ARequest.ContentLength;
+    vRequest.Query := ARequest.PathInfo;
 
-  vRequest.Query := ARequest.PathInfo;
+    vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 
-  vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
+    vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
+    vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;;
 
-  vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
-  vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;;
+    vRequest.Params.CompressType := vRequest.ContentCompress;
+    vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
+    vRequest.Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
-  vRequest.Params.CompressType := vRequest.ContentCompress;
-  vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-  vRequest.Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
+    vRequest.RequestText := ARequest.Content;
 
-  vRequest.RequestText := ARequest.Content;
+    vServer.ProcessCommands(vRequest, vResponse);
 
-  vServer.ProcessCommands(vRequest, vResponse);
+    AResponse.ContentStream := vResponse.ResponseStream;
 
-  AResponse.ContentType := 'text/html';
-  AResponse.ContentEncoding := vResponse.ContentEncoding;
-  AResponse.StatusCode := vResponse.StatusCode;
-  AResponse.Content := inttostr(vResponse.StatusCode);// vResponse.ResponseText;
+    if vResponse.AcceptEncoding <> '' then
+      vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
 
-  vRequest.Free;
-  vResponse.Free;
+    if vResponse.ContentEncription <> '' then
+      vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
+
+    if vResponse.ContentDisposition <> '' then
+      vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
+
+    vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
+
+    AResponse.Server := 'RAL_CGILaz';
+    AResponse.ContentType := vResponse.ContentType;
+    AResponse.ContentEncoding := vResponse.ContentEncoding;
+    AResponse.StatusCode := vResponse.StatusCode;
+    AResponse.FreeContentStream := True;
+  finally
+    FreeAndNil(vRequest);
+    FreeAndNil(vResponse);
+  end;
 end;
