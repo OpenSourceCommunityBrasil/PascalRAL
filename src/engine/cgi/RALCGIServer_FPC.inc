@@ -109,7 +109,9 @@ begin
     vAux1 := GetEnvironmentVariable('REQUEST_METHOD');
     vRequest.Method := HTTPMethodToRALMethod(vAux1);
     vRequest.AcceptEncoding := GetEnvironmentVariable('HTTP_ACCEPT_ENCODING');
-    vRequest.ContentType := 'text/html';
+    vRequest.AcceptEncription := GetEnvironmentVariable('HTTP_ACCEPT_ENCRIPTION');
+    vRequest.ContentEncription := GetEnvironmentVariable('HTTP_CONTENT_ENCRIPTION');
+    vRequest.ContentType := GetEnvironmentVariable('CONTENT_TYPE');
 
     vRequest.Params.CompressType := vRequest.ContentCompress;
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
@@ -119,10 +121,19 @@ begin
     begin
       vAux1 := GetEnvironmentString(vInt);
       vPos := Pos('=', vAux1);
+      vAux2 := Copy(vAux1, 1, vPos - 1);
 
       vParam := vRequest.Params.NewParam;
-      vParam.ParamName := Copy(vAux1, 1, vPos - 1);
-      vParam.Kind := rpkFIELD;
+      if Copy(vAux2, 1, 5) = 'HTTP_' then
+      begin
+        Delete(vAux2, 1, 5);
+        vParam.Kind := rpkHEADER;
+      end
+      else
+      begin
+        vParam.Kind := rpkFIELD;
+      end;
+      vParam.ParamName := vAux2;
       vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
     end;
 
@@ -130,6 +141,7 @@ begin
 
     vServer.ProcessCommands(vRequest, vResponse);
 
+//    vResponse.ContentCompress := ctNone; // para debug
     AResponse.ContentStream := vResponse.ResponseStream;
 
     if vResponse.AcceptEncoding <> '' then
@@ -143,7 +155,6 @@ begin
 
     vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
 
-//    vResponse.ContentCompress := ctNone; // para debug
     AResponse.Server := 'RAL_CGILaz';
     AResponse.ContentType := vResponse.ContentType;
     AResponse.ContentEncoding := vResponse.ContentEncoding;
@@ -180,6 +191,7 @@ begin
   inherited;
   if AValue then begin
     FCGIApp := TRALCGIServerApp.Create(Self);
+    FCGIApp.LegacyRouting := True;
     FCGIApp.Initialize;
     FCGIApp.Run;
   end

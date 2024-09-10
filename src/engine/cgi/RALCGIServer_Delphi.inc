@@ -1,7 +1,7 @@
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, Windows,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
-  RALServer, RALRequest, RALResponse, RALTools, RALTypes;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -26,6 +26,47 @@ var
   FCGIApp : TCGIApplication;
 
 { TRALCGIServer }
+
+function GetEnvironmentVariableCount : Integer;
+var
+  hp,p : pchar;
+begin
+  Result:=0;
+  p := GetEnvironmentStrings;
+  hp:=p;
+  if (hp <> nil) then
+  begin
+    while hp^<>#0 do
+    begin
+      Inc(Result);
+      hp := hp + strlen(hp) + 1;
+    end;
+  end;
+  FreeEnvironmentStrings(p);
+end;
+
+Function GetEnvironmentString(Index : Integer) : AnsiString;
+var
+  hp,p : pchar;
+begin
+  Result:='';
+  p := GetEnvironmentStrings;
+  hp := p;
+  if (hp <> nil) then
+  begin
+    while (hp^ <> #0) and ( Index > 1) do
+    begin
+      Dec(Index);
+      hp := hp + strlen(hp) + 1;
+    end;
+    if (hp^ <> #0) then
+    begin
+      Result := hp;
+      SetCodePage(RawByteString(Result),CP_OEMCP,false);
+    end;
+  end;
+  FreeEnvironmentStrings(p);
+end;
 
 constructor TRALCGIServer.Create(AOwner: TComponent);
 begin
@@ -74,6 +115,9 @@ var
 
   vRequest : TRALRequest;
   vResponse: TRALResponse;
+  vAux1, vAux2: StringRAL;
+  vInt, vPos: IntegerRAL;
+  vParam: TRALParam;
 begin
   vServer := TRALCGIServer(FCGIApp.Owner);
 
@@ -86,15 +130,34 @@ begin
 
     vRequest.ContentType := ARequest.ContentType;
     vRequest.ContentEncoding := ARequest.ContentEncoding;
-    vRequest.AcceptEncoding := ARequest.GetFieldByName('Accept-Encoding');
+    vRequest.AcceptEncoding := ARequest.GetFieldByName('HTTP_ACCEPT_ENCODING');
+    vRequest.AcceptEncription := ARequest.GetFieldByName('HTTP_ACCEPT_ENCRIPTION');
+    vRequest.ContentEncription := ARequest.GetFieldByName('HTTP_CONTENT_ENCRIPTION');
     vRequest.ContentSize := ARequest.ContentLength;
 
     vRequest.Query := ARequest.PathInfo;
 
     vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 
-    vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
-    vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;;
+    for vInt := 1 to GetEnvironmentVariableCount do
+    begin
+      vAux1 := GetEnvironmentString(vInt);
+      vPos := Pos('=', vAux1);
+      vAux2 := Copy(vAux1, 1, vPos - 1);
+
+      vParam := vRequest.Params.NewParam;
+      if Copy(vAux2, 1, 5) = 'HTTP_' then
+      begin
+        Delete(vAux2, 1, 5);
+        vParam.Kind := rpkHEADER;
+      end
+      else
+      begin
+        vParam.Kind := rpkFIELD;
+      end;
+      vParam.ParamName := vAux2;
+      vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
+    end;
 
     vRequest.Params.CompressType := vRequest.ContentCompress;
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
@@ -117,7 +180,7 @@ begin
 
     vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
 
-    AResponse.Server := 'RAL_CGILaz';
+    AResponse.Server := 'RAL_CGIDelphi';
     AResponse.ContentType := vResponse.ContentType;
     AResponse.ContentEncoding := vResponse.ContentEncoding;
     AResponse.StatusCode := vResponse.StatusCode;
