@@ -200,7 +200,7 @@ begin
         on e: ENetSock do
         begin
           HandleException(e);
-          if e.LastError in [nrFatalError, nrConnectTimeout]  then
+          if e.LastError in [nrFatalError, nrTimeout]  then
             AResponse.ErrorCode := 10061;
         end;
         on e: Exception do
@@ -217,7 +217,7 @@ begin
     begin
       FreeAndNil(vHttp);
       HandleException(e);
-      if e.LastError in [nrFatalError, nrConnectTimeout]  then
+      if e.LastError in [nrFatalError, nrTimeout]  then
         AResponse.ErrorCode := 10061;
     end;
     on e: Exception do

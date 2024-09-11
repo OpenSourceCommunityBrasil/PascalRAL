@@ -25,8 +25,8 @@ type
   StringRAL = string;
   CharRAL = Char;
   {$ELSE}
-  StringRAL = utf8string;
-  CharRAL = widechar;
+  StringRAL = WideString;
+  CharRAL = WideChar;
   {$ENDIF}
   PCharRAL = ^CharRAL;
 
@@ -51,6 +51,13 @@ type
   TRALExecBehavior = (ebSingleThread, ebMultiThread, ebDefault);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
+//  TRALStringStream = TStringStream;
+  TRALStringStream = class(TStringStream)
+  public
+    constructor Create(AString: StringRAL); overload;
+    constructor Create(ABytes: TBytes); overload;
+  end;
+
 const
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   POSINISTR = Low(String);
@@ -62,7 +69,12 @@ const
   {$IF not Defined(FPC) AND not Defined(DELPHI7UP)}
   sLineBreak = #13#10;
   {$IFEND}
+/// Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
+/// Converts a given AStream to an UTF8String
+function StreamToString(AStream: TStream): StringRAL;
+/// Creates a TStream and writes the given AStr into it
+function StringToStream(const AStr: StringRAL): TStream;
 
 implementation
 
@@ -73,6 +85,52 @@ begin
   {$ELSE}
   Result := High(AStr);
   {$IFEND}
+end;
+
+function StringToStream(const AStr: StringRAL): TStream;
+begin
+  Result := TRALStringStream.Create(AStr);
+  Result.Position := 0;
+end;
+
+function StreamToString(AStream: TStream): StringRAL;
+begin
+  Result := '';
+  if (AStream = nil) or (AStream.Size = 0) then
+    Exit;
+
+  AStream.Position := 0;
+
+  if AStream is TStringStream then
+  begin
+    Result := TRALStringStream(AStream).DataString;
+  end
+  else if AStream.InheritsFrom(TMemoryStream) then
+  begin
+    SetLength(Result, AStream.Size);
+    Move(TMemoryStream(AStream).Memory^, Result[PosIniStr], AStream.Size);
+  end
+  else
+  begin
+    SetLength(Result, AStream.Size);
+    AStream.Read(Result[PosIniStr], AStream.Size);
+  end;
+end;
+
+{ TRALStringStream }
+
+constructor TRALStringStream.Create(AString: StringRAL);
+begin
+  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+  inherited Create(AString);
+  {$ELSE}
+  inherited Create(AString, TEncoding.UTF8);
+  {$IFEND}
+end;
+
+constructor TRALStringStream.Create(ABytes: TBytes);
+begin
+  inherited Create(ABytes);
 end;
 
 end.

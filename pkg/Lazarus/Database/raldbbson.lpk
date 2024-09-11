@@ -34,8 +34,7 @@
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <PackageName Value="RALDBPackage"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>

@@ -149,12 +149,12 @@ begin
   if (wAno = 0) or (wMes = 0) or (wDia = 0) then
   begin
     if not TryEncodeTime(wHor, wMin, wSeg, wMil, Result) then
-      Result := TDateTime(0);
+      Result := 0;
   end
   else
   begin
     if not TryEncodeDateTime(wAno, wMes, wDia, wHor, wMin, wSeg, wMil, Result) then
-      Result := TDateTime(0);
+      Result := 0;
   end;
 end;
 

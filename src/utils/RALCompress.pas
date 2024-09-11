@@ -244,15 +244,15 @@ var
   vStr: StringRAL;
 begin
   vStr := LowerCase(AEncoding);
-  if (vDeclaredCompressLibs[clZStd]) and (Pos('zstd', vStr) > 0) then
+  if (vDeclaredCompressLibs[clZStd]) and (Pos(StringRAL('zstd'), vStr) > 0) then
     Result := ctZStd
-  else if (vDeclaredCompressLibs[clBrotli]) and (Pos('br', vStr) > 0) then
+  else if (vDeclaredCompressLibs[clBrotli]) and (Pos(StringRAL('br'), vStr) > 0) then
     Result := ctBrotli
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos('gzip', vStr) > 0) then
+  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('gzip'), vStr) > 0) then
     Result := ctGZip
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos('deflate', vStr) > 0) then
+  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('deflate'), vStr) > 0) then
     Result := ctDeflate
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos('zlib', vStr) > 0) then
+  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('zlib'), vStr) > 0) then
     Result := ctZLib
   else
     Result := ctNone;

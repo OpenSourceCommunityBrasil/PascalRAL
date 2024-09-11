@@ -722,7 +722,7 @@ begin
 
       // redundant, requires intense testing to check if it ever happens
       vCheckPathTransversal := (rsoPathTransvBlackList in Security.Options) and
-        (Pos('../', ARequest.Query) > 0);
+        (Pos(StringRAL('../'), ARequest.Query) > 0);
 
       // Security Protections
       if vCheckFlood or vCheckPathTransversal then

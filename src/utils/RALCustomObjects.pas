@@ -110,11 +110,11 @@ var
   vStr: StringRAL;
 begin
   vStr := LowerCase(FContentEncription);
-  if (Pos('aes256cbc_pkcs7', vStr) > 0) then
+  if (Pos(StringRAL('aes256cbc_pkcs7'), vStr) > 0) then
     Result := crAES256
-  else if (Pos('aes192cbc_pkcs7', vStr) > 0) then
+  else if (Pos(StringRAL('aes192cbc_pkcs7'), vStr) > 0) then
     Result := crAES192
-  else if (Pos('aes128cbc_pkcs7', vStr) > 0) then
+  else if (Pos(StringRAL('aes128cbc_pkcs7'), vStr) > 0) then
     Result := crAES128
   else
     Result := crNone;
@@ -128,7 +128,7 @@ end;
 procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
 begin
   FContentType := AValue;
-  if Pos('charset=', FContentType) = 0 then
+  if Pos(StringRAL('charset='), FContentType) = 0 then
     FContentType := FContentType + '; charset=utf-8';
 end;
 
@@ -137,11 +137,11 @@ var
   vStr: StringRAL;
 begin
   vStr := LowerCase(FAcceptEncription);
-  if (Pos('aes256cbc_pkcs7', vStr) > 0) then
+  if (Pos(StringRAL('aes256cbc_pkcs7'), vStr) > 0) then
     Result := crAES256
-  else if (Pos('aes192cbc_pkcs7', vStr) > 0) then
+  else if (Pos(StringRAL('aes192cbc_pkcs7'), vStr) > 0) then
     Result := crAES192
-  else if (Pos('aes128cbc_pkcs7', vStr) > 0) then
+  else if (Pos(StringRAL('aes128cbc_pkcs7'), vStr) > 0) then
     Result := crAES128
   else
     Result := crNone;

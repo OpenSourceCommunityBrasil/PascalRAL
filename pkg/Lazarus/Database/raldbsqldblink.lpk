@@ -43,11 +43,11 @@
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">
       <Item1>
-        <PackageName Value="IDEIntf"/>
+        <PackageName Value="RALDBPackage"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <PackageName Value="IDEIntf"/>
       </Item2>
       <Item3>
         <PackageName Value="FCL"/>

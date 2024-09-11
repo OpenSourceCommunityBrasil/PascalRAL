@@ -342,10 +342,10 @@ begin
     FParams.Realm := vParams.Values['realm'];
     vAux1 := LowerCase(vParams.Values['algorithm']);
 
-    FParams.SessAlgorithm := Pos('sess', vAux1) > 0;
-    if Pos('sha-256', vAux1) > 0 then
+    FParams.SessAlgorithm := Pos(StringRAL('sess'), vAux1) > 0;
+    if Pos(StringRAL('sha-256'), vAux1) > 0 then
       FParams.Algorithm := tdaSHA2_256
-    else if Pos('sha-512-256', vAux1) > 0 then
+    else if Pos(StringRAL('sha-512-256'), vAux1) > 0 then
       FParams.Algorithm := tdaSHA2_512;
 
     FParams.Qop := vParams.Values['qop'];

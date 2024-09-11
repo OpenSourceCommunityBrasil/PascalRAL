@@ -1,6 +1,8 @@
 /// Base unit for RALClients using Indy engine
 unit RALIndyClient;
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -73,7 +75,8 @@ begin
   inherited Create(AOwner);
 
   FHttp := TIdHTTP.Create(nil);
-  FHttp.HTTPOptions := [hoKeepOrigProtocol, hoWantProtocolErrorContent,
+  FHttp.HTTPOptions := [hoKeepOrigProtocol,
+                        {$IFDEF DELPHI10_1UP}hoWantProtocolErrorContent,{$ENDIF}
                         hoNoProtocolErrorException];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
@@ -160,7 +163,7 @@ begin
     FHttp.AllowCookies := True;
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
-    vResult := TStringStream.Create;
+    vResult := TRALStringStream.Create;
     try
       case AMethod of
         amGET:

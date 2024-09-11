@@ -337,7 +337,7 @@ var
   vParamName: StringRAL;
   vEscapeQuote, vEspaceDoubleQuote: boolean;
   vParam: boolean;
-  vChar: UTF8Char;
+  vChar: CharRAL;
   vInt: IntegerRAL;
   vOldParams: TStringList;
   vObjParam: TParam;

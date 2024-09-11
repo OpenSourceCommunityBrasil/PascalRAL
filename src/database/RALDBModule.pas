@@ -529,7 +529,7 @@ var
     vInt: IntegerRAL;
   begin
     AType := LowerCase(AType);
-    if (Pos('varchar', AType) > 0) or (Pos('char', AType) > 0) then
+    if (Pos(StringRAL('varchar'), AType) > 0) or (Pos(StringRAL('char'), AType) > 0) then
     begin
       vField.RALFieldType := sftString;
 
@@ -544,21 +544,21 @@ var
         vField.Length := 255;
       end;
     end
-    else if (Pos('text', AType) > 0) or (Pos('json', AType) > 0) or
-            (Pos('uuid', AType) > 0) then
+    else if (Pos(StringRAL('text'), AType) > 0) or (Pos(StringRAL('json'), AType) > 0) or
+            (Pos(StringRAL('uuid'), AType) > 0) then
     begin
       vField.RALFieldType := sftMemo;
     end
-    else if (Pos('binary', AType) > 0) or (Pos('blob', AType) > 0) then
+    else if (Pos(StringRAL('binary'), AType) > 0) or (Pos(StringRAL('blob'), AType) > 0) then
     begin
       vField.RALFieldType := sftBlob;
     end
-    else if (Pos('date', AType) > 0) or (Pos('time', AType) > 0) then
+    else if (Pos(StringRAL('date'), AType) > 0) or (Pos(StringRAL('time'), AType) > 0) then
     begin
       vField.RALFieldType := sftDateTime;
     end
-    else if (Pos('double', AType) > 0) or (Pos('numeric', AType) > 0) or
-            (Pos('decimal', AType) > 0) then
+    else if (Pos(StringRAL('double'), AType) > 0) or (Pos(StringRAL('numeric'), AType) > 0) or
+            (Pos(StringRAL('decimal'), AType) > 0) then
     begin
       vField.RALFieldType := sftDouble;
 
@@ -580,30 +580,30 @@ var
         vField.Scale := 2;
       end;
     end
-    else if (Pos('tinyint', AType) > 0) then
+    else if (Pos(StringRAL('tinyint'), AType) > 0) then
     begin
-      if Pos('unsigned', AType) > 0 then
+      if Pos(StringRAL('unsigned'), AType) > 0 then
         vField.RALFieldType := sftByte
       else
         vField.RALFieldType := sftShortInt;
     end
-    else if (Pos('smallint', AType) > 0) then
+    else if (Pos(StringRAL('smallint'), AType) > 0) then
     begin
-      if Pos('unsigned', AType) > 0 then
+      if Pos(StringRAL('unsigned'), AType) > 0 then
         vField.RALFieldType := sftWord
       else
         vField.RALFieldType := sftSmallint;
     end
-    else if (Pos('bigint', AType) > 0) then
+    else if (Pos(StringRAL('bigint'), AType) > 0) then
     begin
-      if Pos('unsigned', AType) > 0 then
+      if Pos(StringRAL('unsigned'), AType) > 0 then
         vField.RALFieldType := sftQWord
       else
         vField.RALFieldType := sftInt64;
     end
-    else if (Pos('int', AType) > 0) or (Pos('integer', AType) > 0) then
+    else if (Pos(StringRAL('int'), AType) > 0) or (Pos(StringRAL('integer'), AType) > 0) then
     begin
-      if Pos('unsigned', AType) > 0 then
+      if Pos(StringRAL('unsigned'), AType) > 0 then
         vField.RALFieldType := sftCardinal
       else
         vField.RALFieldType := sftInteger;

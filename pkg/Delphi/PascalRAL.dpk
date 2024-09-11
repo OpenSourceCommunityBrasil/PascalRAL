@@ -65,6 +65,7 @@ contains
   RALThreadSafe in '..\..\src\utils\RALThreadSafe.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
   RALTools in '..\..\src\utils\RALTools.pas',
-  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas';
+  RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas',
+  RALResponsePages in '..\..\src\utils\RALResponsePages.pas';
 
 end.

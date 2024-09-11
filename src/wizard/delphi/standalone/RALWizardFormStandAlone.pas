@@ -305,7 +305,7 @@ begin
     vFile.Add('uses');
     vFile.Add('  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,');
     vFile.Add('  System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,');
-    vFile.Add(Format('  RALCustomObjects, RALServer, %s, RALRequest, RALResponse,',[vUnitServer]));
+    vFile.Add(Format('  RALCustomObjects, RALServer, RALConsts, %s, RALRequest, RALResponse,',[vUnitServer]));
     vFile.Add(Format('  %s;', [vUnits]));
     vFile.Add('');
     vFile.Add('type');

@@ -897,7 +897,7 @@ begin
 
     vItem.ContentDispositionInline := FContentDispositionInline;
 
-    if Pos('ral_param', vItem.ParamName) > 0 then
+    if Pos(StringRAL('ral_param'), vItem.ParamName) > 0 then
       vItem.ParamName := 'ral_body';
 
     Result := vItem.SaveToStream;
@@ -923,7 +923,7 @@ begin
         vString := vString + vValor;
       end;
     end;
-    Result := TStringStream.Create(vString);
+    Result := TRALStringStream.Create(vString);
     Result.Position := 0;
 
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
@@ -1136,7 +1136,7 @@ begin
   if (vPos > 0) and (vPos < vMin) then
     Result := '=';
 
-  vPos := Pos(': ', ASource);
+  vPos := Pos(StringRAL(': '), ASource);
   if (vPos > 0) and (vPos < vMin) then
     Result := ': ';
 end;

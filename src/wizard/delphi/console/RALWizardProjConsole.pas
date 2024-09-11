@@ -199,7 +199,7 @@ begin
     vFile.Add('');
     vFile.Add('uses');
     vFile.Add('  SysUtils, Classes,');
-    vFile.Add(Format('  %s, RALRequest, RALResponse, RALRoutes, RALTypes,',[vUnitServer]));
+    vFile.Add(Format('  %s, RALRequest, RALResponse, RALRoutes, RALTypes, RALConsts,',[vUnitServer]));
     vFile.Add(Format('  %s;',[vUnits]));
     vFile.Add('');
     vFile.Add('type');

@@ -1,6 +1,8 @@
 /// Base unit for RALClients using net.http engine
 unit RALnetHTTPClient;
 
+{$I PascalRAL.inc}
+
 interface
 
 uses
@@ -71,7 +73,9 @@ constructor TRALnetHTTPClientHTTP.Create(AOwner: TRALClientBase);
 begin
   inherited;
   FHttp := TNetHTTPClient.Create(nil);
+  {$IFDEF DELPHI10_1UP}
   FHttp.Asynchronous := False;
+  {$ENDIF}
 end;
 
 destructor TRALnetHTTPClientHTTP.Destroy;
@@ -105,8 +109,10 @@ begin
   AResponse.StatusCode := -1;
   AResponse.ResponseText := '';
 
+  {$IFDEF DELPHI10_1UP}
   FHttp.ConnectionTimeout := Parent.ConnectTimeout;
   FHttp.ResponseTimeout := Parent.RequestTimeout;
+  {$ENDIF}
   FHttp.UserAgent := Parent.UserAgent;
 
   if Parent.KeepALive then

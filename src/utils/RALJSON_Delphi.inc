@@ -395,7 +395,7 @@ end;
 
 function TRALJSONObject.Get(const AName: StringRAL): TRALJSONValue;
 var
-  {$IFNDEF DELPHI10_0UP}
+  {$IFNDEF DELPHI10_1UP}
   vPair: TJSONPair;
   {$ENDIF}
   {$IFNDEF DELPHIXEUP}
@@ -408,7 +408,7 @@ begin
   if Self = nil then
     Exit;
 
-  {$IFDEF DELPHI10_0UP}
+  {$IFDEF DELPHI10_1UP}
     vObj := JsonObject.FindValue(AName);
   {$ELSE}
     vObj := nil;

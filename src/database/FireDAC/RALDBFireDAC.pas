@@ -140,11 +140,12 @@ begin
   vQuery.Connection := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
-  for vInt := 0 to Pred(AParams.Count) do
-  begin
-    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-    vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-  end;
+  if (AParams <> nil) and (AParams.Count > 0) then
+    for vInt := 0 to Pred(AParams.Count) do
+    begin
+      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+    end;
   vQuery.Open;
 
   Result := vQuery;
@@ -156,7 +157,7 @@ var
   vFdFormat: TFDStorageFormat;
 begin
   inherited;
-  if Pos(rctAPPLICATIONJSON, AContentType) > 0 then
+  if Pos(StringRAL(rctAPPLICATIONJSON), AContentType) > 0 then
     vFdFormat := sfJSON
   else
     vFdFormat := sfBinary;
