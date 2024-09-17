@@ -18,6 +18,7 @@ type
   protected
     procedure SetClient(AValue: TRALClientMT);
     procedure SetModuleRoute(AValue: StringRAL);
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent);
 
@@ -186,6 +187,13 @@ begin
     if FClient.RequestLifeCicle then
       FreeAndNil(vReq);
   end;
+end;
+
+procedure TRALDBConnection.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  if (Operation = opRemove) and (AComponent = FClient) then
+    FClient := nil;
+  inherited Notification(AComponent, Operation);
 end;
 
 function TRALDBConnection.GetTables: TRALDBInfoTables;
