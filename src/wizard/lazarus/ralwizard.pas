@@ -105,6 +105,7 @@ begin
     3 : vServerPkg := 'fphttpral';
   end;
 
+  AProject.AddPackageDependency('LCL');
   AProject.AddPackageDependency('pascalral');
   AProject.AddPackageDependency(vServerPkg);
 

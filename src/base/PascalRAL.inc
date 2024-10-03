@@ -371,7 +371,7 @@
 (* FRAMEWORK Directives *)
 
 {$IFNDEF FPC}
-  {$IFDEF DELPHI2009UP}
+  {$IFDEF DELPHIXE3UP}
     {$IF Declared(FireMonkeyVersion) or Defined(FRAMEWORK_FMX) or Defined(LINUX64)}
       {$DEFINE HAS_FMX}
     {$IFEND}
