@@ -210,18 +210,23 @@ begin
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequest.UserAgent;
 
+      ContentType := ARequest.ContentType;
+      ContentSize := ARequest.ContentLength;
+
       Query := ARequest.URI;
       Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
 
       Method := HTTPMethodToRALMethod(ARequest.Method);
 
-      ContentType := ARequest.ContentType;
-      ContentSize := ARequest.ContentLength;
       ContentEncoding := ARequest.ContentEncoding;
       AcceptEncoding := ARequest.AcceptEncoding;
 
       DecodeAuth(ARequest, vRequest);
       Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
+
+      ContentDisposition := Params.Get['Content-Disposition'].AsString;
+      ContentEncoding := Params.Get['Content-Encoding'].AsString;
+      AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
