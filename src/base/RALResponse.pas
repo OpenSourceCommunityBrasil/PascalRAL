@@ -122,8 +122,8 @@ procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
   const AContentType: StringRAL);
 begin
   StatusCode := AStatusCode;
-  ResponseStream := AStream;
   ContentType := AContentType;
+  ResponseStream := AStream;
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
