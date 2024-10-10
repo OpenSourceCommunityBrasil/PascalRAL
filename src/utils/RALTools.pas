@@ -6,6 +6,11 @@ unit RALTools;
 interface
 
 uses
+  {$IFNDEF FPC}
+    Windows,
+  {$ELSE}
+    UTF8Process,
+  {$ENDIF}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
@@ -21,6 +26,7 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
+function RALCPUCount : integer;
 
 implementation
 
@@ -197,6 +203,25 @@ begin
       Result := True;
       Break;
     end;
+end;
+
+function RALCPUCount : integer;
+{$IFNDEF FPC}
+  {$IFDEF RALWindows}
+  var
+    info: TSystemInfo;
+  begin
+    FillChar(info, SizeOf(info), 0);
+    GetSystemInfo(info);
+    Result := info.dwNumberOfProcessors;
+  {$ELSE}
+  begin
+    Result := 1;
+  {$ENDIF}
+{$ELSE}
+begin
+  Result := GetSystemThreadCount;
+{$ENDIF}
 end;
 
 end.

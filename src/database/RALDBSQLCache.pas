@@ -347,7 +347,6 @@ var
   vStrSQLList: TStringList;
   vWriter : TRALBinaryWriter;
   vStorType: TRALFieldType;
-
   vInt1, vInt2: IntegerRAL;
 begin
   vWriter := TRALBinaryWriter.Create(AStream);

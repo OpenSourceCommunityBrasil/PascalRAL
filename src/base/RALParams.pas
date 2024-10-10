@@ -1190,10 +1190,13 @@ begin
   vParam.AsStream := AFormData.AsStream;
   vParam.FileName := AFormData.FileName;
 
-  if AFormData.ContentType = '' then
+  if AFormData.ContentType <> '' then
     vParam.ContentType := AFormData.ContentType
   else
     vParam.ContentType := rctTEXTPLAIN;
+
+  if AFormData.Disposition <> '' then
+    vParam.ContentDisposition := AFormData.Disposition;
 
   vParam.Kind := rpkBODY;
 

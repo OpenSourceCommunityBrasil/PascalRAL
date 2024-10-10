@@ -217,10 +217,13 @@ begin
 end;
 
 procedure TRALBinaryWriter.WriteString(AValue: StringRAL);
+var
+  vLen : integer;
 begin
   WriteSize(Length(AValue));
+  vLen := Length(AValue) * SizeOf(CharRAL);
   if AValue <> '' then
-    FStream.Write(AValue[POSINISTR], Length(AValue));
+    FStream.Write(AValue[POSINISTR], vLen);
 end;
 
 function TRALBinaryWriter.ReadShortint: Shortint;
@@ -306,7 +309,7 @@ begin
   if vQWord > 0 then
   begin
     SetLength(Result, vQWord);
-    FStream.Read(Result[POSINISTR], vQWord);
+    FStream.Read(Result[POSINISTR], vQWord * SizeOf(CharRAL));
   end;
 end;
 
