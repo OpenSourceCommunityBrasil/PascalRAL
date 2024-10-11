@@ -10,7 +10,7 @@ uses
   IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
   IdCookie, IdException, IdExceptionCore, IdStack,
   RALClient, RALParams, RALTypes, RALConsts, RALCompress, RALRequest,
-  RALResponse;
+  RALResponse, RALStream;
 
 type
   { TRALIndyClientHTTP }
@@ -163,7 +163,7 @@ begin
     FHttp.AllowCookies := True;
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
-    vResult := TRALStringStream.Create;
+    vResult := TMemoryStream.Create;
     try
       case AMethod of
         amGET:

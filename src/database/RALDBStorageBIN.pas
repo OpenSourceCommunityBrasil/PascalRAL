@@ -200,7 +200,7 @@ var
 begin
   vSize := Length(AValue);
   AStream.Write(vSize, SizeOf(vSize));
-  AStream.Write(AValue[POSINISTR], vSize);
+  AStream.Write(AValue[POSINISTR], vSize * SizeOf(AValue[POSINISTR]));
 end;
 
 procedure TRALDBStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
@@ -437,7 +437,7 @@ begin
   if vSize > 0 then
   begin
     SetLength(Result, vSize);
-    AStream.Read(Result[POSINISTR], vSize);
+    AStream.Read(Result[POSINISTR], vSize * SizeOf(Result[POSINISTR]));
   end;
 end;
 

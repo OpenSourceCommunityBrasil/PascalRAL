@@ -94,6 +94,8 @@ begin
 end;
 
 function StreamToString(AStream: TStream): StringRAL;
+var
+  vStream : TStringStream;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
@@ -101,10 +103,22 @@ begin
 
   AStream.Position := 0;
 
-  if AStream is TStringStream then
+  if AStream.InheritsFrom(TStringStream) then
   begin
-    Result := TRALStringStream(AStream).DataString;
+    Result := TStringStream(AStream).DataString;
   end
+  else begin
+    vStream := TStringStream.Create;
+    try
+      vStream.CopyFrom(AStream, AStream.Size);
+      Result := vStream.DataString;
+    finally
+      FreeAndNil(vStream);
+    end;
+  end
+
+// fonte antigo, guardando pra limpar depois
+{
   else if AStream.InheritsFrom(TMemoryStream) then
   begin
     SetLength(Result, AStream.Size);
@@ -115,6 +129,7 @@ begin
     SetLength(Result, AStream.Size);
     AStream.Read(Result[PosIniStr], AStream.Size);
   end;
+}
 end;
 
 { TRALStringStream }

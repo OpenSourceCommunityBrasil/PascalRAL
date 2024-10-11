@@ -162,7 +162,7 @@ begin
   Result := nil;
 
   case OutputType of
-    rhotNone: Result := TRALStringStream.Create(vDigest);
+    rhotNone: Result := TStringStream.Create(vDigest);
     rhotHex: Result := StringToStream(DigestToHex(vDigest));
     rhotBase64: Result := StringToStream(DigestToBase64(vDigest));
     rhotBase64Url: Result := StringToStream(DigestToBase64Url(vDigest));
@@ -258,7 +258,7 @@ function TRALHashes.HMACAsString(const AValue: StringRAL; const AKey: StringRAL
 var
   vStream: TStringStream;
 begin
-  vStream := TRALStringStream.Create(AValue);
+  vStream := TStringStream.Create(AValue);
   try
     vStream.Position := 0;
     Result := HMACAsString(vStream, AKey);
@@ -291,7 +291,7 @@ function TRALHashes.HMACAsString(AValue: TBytes; const AKey: StringRAL): StringR
 var
   vStream: TStringStream;
 begin
-  vStream := TRALStringStream.Create(AValue);
+  vStream := TStringStream.Create(AValue);
   try
     vStream.Position := 0;
     Result := HMACAsString(vStream, AKey);
@@ -339,7 +339,7 @@ procedure TRALHashes.UpdateBuffer(const AValue: StringRAL);
 var
   vStream: TStringStream;
 begin
-  vStream := TRALStringStream.Create(AValue);
+  vStream := TStringStream.Create(AValue);
   try
     UpdateBuffer(vStream);
   finally
@@ -351,7 +351,7 @@ procedure TRALHashes.UpdateBuffer(AValue: TBytes);
 var
   vStream: TStringStream;
 begin
-  vStream := TRALStringStream.Create(AValue);
+  vStream := TStringStream.Create(AValue);
   try
     UpdateBuffer(vStream);
   finally

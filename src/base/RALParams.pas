@@ -923,7 +923,7 @@ begin
         vString := vString + vValor;
       end;
     end;
-    Result := TRALStringStream.Create(vString);
+    Result := TStringStream.Create(vString);
     Result.Position := 0;
 
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;

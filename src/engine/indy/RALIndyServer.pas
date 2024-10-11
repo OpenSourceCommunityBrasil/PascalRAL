@@ -248,7 +248,7 @@ begin
       AResponseInfo.CloseConnection := not vKeepAlive;
 
       if AResponseInfo.ContentStream = nil then
-        AResponseInfo.ContentStream := TRALStringStream.Create;
+        AResponseInfo.ContentStream := TMemoryStream.Create;
 
       AResponseInfo.FreeContentStream := True;
 
