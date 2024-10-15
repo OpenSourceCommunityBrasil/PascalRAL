@@ -145,6 +145,15 @@ type
   private
     FInternalMIMEList: TStringList;
     procedure SetDefaultTypes;
+    procedure LoadAudioTypes;
+    procedure LoadApplicationTypes;
+    procedure LoadApplication2Types;
+    procedure LoadApplicationVndTypes;
+    procedure LoadApplicationXTypes;
+    procedure LoadVideoTypes;
+    procedure LoadImageTypes;
+    procedure LoadTextTypes;
+    procedure LoadOtherTypes;
     function GetSystemTypes: boolean;
   public
     constructor Create;
@@ -222,10 +231,10 @@ function TRALMIMEType.GetSystemTypes: boolean;
           LReg.GetKeyNames(LKeys);
           LReg.CloseKey;
           for LExt in LKeys do
-            if LExt.StartsWith('.') then
+            if Pos('.', LExt) = POSINISTR then
               if LReg.OpenKeyReadOnly(CExtsKey + LExt) then
               begin
-                LType := LReg.ReadString('Content Type').Trim;
+                LType := Trim(LReg.ReadString('Content Type'));
                 if LType <> '' then
                   FInternalMIMEList.Add(LExt + '=' + LType);
                 LReg.CloseKey;
@@ -237,9 +246,9 @@ function TRALMIMEType.GetSystemTypes: boolean;
           LReg.GetKeyNames(LKeys);
           LReg.CloseKey;
           for LType in LKeys do
-            if (LType.Trim <> '') and LReg.OpenKeyReadOnly(CTypesKey + LType) then
+            if (Trim(LType) <> '') and LReg.OpenKeyReadOnly(CTypesKey + LType) then
             begin
-              LExt := LReg.ReadString('Extension').Trim; // do not localize
+              LExt := Trim(LReg.ReadString('Extension')); // do not localize
               if LExt <> '' then
                 FInternalMIMEList.Add(LExt + '=' + LType);
               LReg.CloseKey;
@@ -399,12 +408,36 @@ begin
   end;
 end;
 
-procedure TRALMIMEType.SetDefaultTypes;
+procedure TRALMIMEType.LoadApplication2Types;
 begin
-  FInternalMIMEList.Clear;
   with FInternalMIMEList do
   begin
-    {$REGION 'Add Default values'}
+    Add('.xaml=application/xaml+xml');
+    Add('.xdf=application/xcap-diff+xml');
+    Add('.xenc=application/xenc+xml');
+    Add('.xhtml=application/xhtml+xml');
+    Add('.xht=application/xhtml+xml');
+    Add('.xml=application/xml');
+    Add('.xsl=application/xml');
+    Add('.dtd=application/xml-dtd');
+    Add('.xop=application/xop+xml');
+    Add('.xpl=application/xproc+xml');
+    Add('.xslt=application/xslt+xml');
+    Add('.xspf=application/xspf+xml');
+    Add('.mxml=application/xv+xml');
+    Add('.xhvml=application/xv+xml');
+    Add('.xvml=application/xv+xml');
+    Add('.xvm=application/xv+xml');
+    Add('.yang=application/yang');
+    Add('.yin=application/yin+xml');
+    Add('.zip=application/zip');
+  end;
+end;
+
+procedure TRALMIMEType.LoadApplicationTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.ez=application/andrew-inset');
     Add('.aw=application/applixware');
     Add('.atom=application/atom+xml');
@@ -546,6 +579,18 @@ begin
     Add('.teicorpus=application/tei+xml');
     Add('.tfi=application/thraud+xml');
     Add('.tsd=application/timestamped-data');
+    Add('.vxml=application/voicexml+xml');
+    Add('.wgt=application/widget');
+    Add('.hlp=application/winhlp');
+    Add('.wsdl=application/wsdl+xml');
+    Add('.wspolicy=application/wspolicy+xml');
+  end;
+end;
+
+procedure TRALMIMEType.LoadApplicationVndTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.plb=application/vnd.3gpp.pic-bw-large');
     Add('.psb=application/vnd.3gpp.pic-bw-small');
     Add('.pvb=application/vnd.3gpp.pic-bw-var');
@@ -967,11 +1012,13 @@ begin
     Add('.zir=application/vnd.zul');
     Add('.zirz=application/vnd.zul');
     Add('.zaz=application/vnd.zzazz.deck+xml');
-    Add('.vxml=application/voicexml+xml');
-    Add('.wgt=application/widget');
-    Add('.hlp=application/winhlp');
-    Add('.wsdl=application/wsdl+xml');
-    Add('.wspolicy=application/wspolicy+xml');
+  end;
+end;
+
+procedure TRALMIMEType.LoadApplicationXTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.7z=application/x-7z-compressed');
     Add('.abw=application/x-abiword');
     Add('.ace=application/x-ace-compressed');
@@ -1122,25 +1169,13 @@ begin
     Add('.z6=application/x-zmachine');
     Add('.z7=application/x-zmachine');
     Add('.z8=application/x-zmachine');
-    Add('.xaml=application/xaml+xml');
-    Add('.xdf=application/xcap-diff+xml');
-    Add('.xenc=application/xenc+xml');
-    Add('.xhtml=application/xhtml+xml');
-    Add('.xht=application/xhtml+xml');
-    Add('.xml=application/xml');
-    Add('.xsl=application/xml');
-    Add('.dtd=application/xml-dtd');
-    Add('.xop=application/xop+xml');
-    Add('.xpl=application/xproc+xml');
-    Add('.xslt=application/xslt+xml');
-    Add('.xspf=application/xspf+xml');
-    Add('.mxml=application/xv+xml');
-    Add('.xhvml=application/xv+xml');
-    Add('.xvml=application/xv+xml');
-    Add('.xvm=application/xv+xml');
-    Add('.yang=application/yang');
-    Add('.yin=application/yin+xml');
-    Add('.zip=application/zip');
+  end;
+end;
+
+procedure TRALMIMEType.LoadAudioTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.adp=audio/adpcm');
     Add('.au=audio/basic');
     Add('.snd=audio/basic');
@@ -1188,12 +1223,13 @@ begin
     Add('.rmp=audio/x-pn-realaudio-plugin');
     Add('.wav=audio/x-wav');
     Add('.xm=audio/xm');
-    Add('.cdx=chemical/x-cdx');
-    Add('.cif=chemical/x-cif');
-    Add('.cmdf=chemical/x-cmdf');
-    Add('.cml=chemical/x-cml');
-    Add('.csml=chemical/x-csml');
-    Add('.xyz=chemical/x-xyz');
+  end;
+end;
+
+procedure TRALMIMEType.LoadImageTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.bmp=image/bmp');
     Add('.cgm=image/cgm');
     Add('.g3=image/g3fax');
@@ -1253,6 +1289,19 @@ begin
     Add('.xbm=image/x-xbitmap');
     Add('.xpm=image/x-xpixmap');
     Add('.xwd=image/x-xwindowdump');
+  end;
+end;
+
+procedure TRALMIMEType.LoadOtherTypes;
+begin
+  with FInternalMIMEList do
+  begin
+    Add('.cdx=chemical/x-cdx');
+    Add('.cif=chemical/x-cif');
+    Add('.cmdf=chemical/x-cmdf');
+    Add('.cml=chemical/x-cml');
+    Add('.csml=chemical/x-csml');
+    Add('.xyz=chemical/x-xyz');
     Add('.eml=message/rfc822');
     Add('.mime=message/rfc822');
     Add('.igs=model/iges');
@@ -1274,6 +1323,13 @@ begin
     Add('.x3dvz=model/x3d+vrml');
     Add('.x3d=model/x3d+xml');
     Add('.x3dz=model/x3d+xml');
+  end;
+end;
+
+procedure TRALMIMEType.LoadTextTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.appcache=text/cache-manifest');
     Add('.manifest=text/cache-manifest');
     Add('.ics=text/calendar');
@@ -1348,6 +1404,13 @@ begin
     Add('.xsl=text/xml');
     Add('.dtd=text/xml-dtd');
     Add('.yaml=text/yaml');
+  end;
+end;
+
+procedure TRALMIMEType.LoadVideoTypes;
+begin
+  with FInternalMIMEList do
+  begin
     Add('.3gp=video/3gpp');
     Add('.3g2=video/3gpp2');
     Add('.h261=video/h261');
@@ -1407,8 +1470,21 @@ begin
     Add('.movie=video/x-sgi-movie');
     Add('.smv=video/x-smv');
     Add('.ice=x-conference/x-cooltalk');
-    {$ENDREGION}
   end;
+end;
+
+procedure TRALMIMEType.SetDefaultTypes;
+begin
+  FInternalMIMEList.Clear;
+  LoadApplicationTypes;
+  LoadApplication2Types;
+  LoadApplicationVndTypes;
+  LoadApplicationXTypes;
+  LoadAudioTypes;
+  LoadVideoTypes;
+  LoadImageTypes;
+  LoadTextTypes;
+  LoadOtherTypes;
 end;
 
 end.

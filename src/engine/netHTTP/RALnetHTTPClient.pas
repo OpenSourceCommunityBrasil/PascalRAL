@@ -1,7 +1,7 @@
 /// Base unit for RALClients using net.http engine
 unit RALnetHTTPClient;
 
-{$I PascalRAL.inc}
+{$I ..\..\base\PascalRAL.inc}
 
 interface
 

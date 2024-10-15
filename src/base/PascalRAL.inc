@@ -375,10 +375,6 @@
     {$IF Declared(FireMonkeyVersion) or Defined(FRAMEWORK_FMX) or Defined(LINUX64)}
       {$DEFINE HAS_FMX}
     {$IFEND}
-  {$ELSE}
-    {$IF Declared(FMX.Types.TFmxObject)}
-      {$DEFINE HAS_FMX}
-    {$IFEND}
   {$ENDIF}
 {$ENDIF}
 
