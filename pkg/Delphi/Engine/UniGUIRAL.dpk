@@ -26,18 +26,10 @@ package UniGUIRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | UniGUI Components'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn,
-  Vcl,
-  vclimg,
-  designide,
-  uIndy26,
-  uniTools26,
-  uniGUI26Core,
-  soaprtl;
+  PascalRALDsgn;
 
 contains
   RALUniGUIRegister in '..\..\..\src\engine\unigui\RALUniGUIRegister.pas',

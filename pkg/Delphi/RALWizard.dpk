@@ -29,7 +29,6 @@ package RALWizard;
 {$IMPLICITBUILD ON}
 
 requires
-  designide,
   vcl,
   PascalRALDsgn;
 

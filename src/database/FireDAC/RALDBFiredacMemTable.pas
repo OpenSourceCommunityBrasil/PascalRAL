@@ -1,19 +1,25 @@
 /// Unit for FireDAC MemTable wrapper
 unit RALDBFiredacMemTable;
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
   Classes, SysUtils, DB,
+  {$IFDEF DELPHIXE4UP}
   FireDAC.Comp.Client, FireDAC.Stan.StorageJSON, FireDAC.Stan.StorageBin,
   FireDAC.Comp.DataSet,
+  {$ELSE}
+  uADCompClient, uADCompDataSet, uADStanStorage,
+  {$ENDIF}
   RALDBStorage, RALTypes, RALDBConnection, RALDBSQLCache, RALMIMETypes,
   RALDBTypes, RALResponse, RALConsts;
 
 type
   { TRALDBFDMemTable }
 
-  TRALDBFDMemTable = class(TFDMemTable)
+  TRALDBFDMemTable = class({$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF})
   private
     FRALConnection: TRALDBConnection;
     FLoading: boolean;
@@ -320,7 +326,7 @@ var
   vMem: TStream;
   vDBSQL: TRALDBSQL;
   vInt1, vInt2: IntegerRAL;
-  vTable: TFDMemTable;
+  vTable: {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF};
   vField: TField;
 begin
   if AResponse.StatusCode = HTTP_OK then
@@ -336,7 +342,7 @@ begin
         begin
           Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TFDMemTable.Create(nil);
+          vTable := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
           try
             try
               if vDBSQL.Response.Native then

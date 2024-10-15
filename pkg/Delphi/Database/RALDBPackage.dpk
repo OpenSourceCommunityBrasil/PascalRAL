@@ -30,10 +30,9 @@ package RALDBPackage;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL,
   dcldb,
   dbrtl,
-  designide;
+  PascalRALDsgn;
 
 contains
   RALDBBase in '..\..\..\src\database\RALDBBase.pas',

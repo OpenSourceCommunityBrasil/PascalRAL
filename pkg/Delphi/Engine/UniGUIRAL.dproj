@@ -7,7 +7,7 @@
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
-        <TargetedPlatforms>1048707</TargetedPlatforms>
+        <TargetedPlatforms>1606803</TargetedPlatforms>
         <AppType>Package</AppType>
         <ProjectName Condition="'$(ProjectName)'==''">UniGUIRAL</ProjectName>
     </PropertyGroup>
@@ -178,13 +178,6 @@
         </DelphiCompile>
         <DCCReference Include="UniGUIRAL.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="Vcl.dcp"/>
-        <DCCReference Include="vclimg.dcp"/>
-        <DCCReference Include="designide.dcp"/>
-        <DCCReference Include="uIndy26.dcp"/>
-        <DCCReference Include="uniTools26.dcp"/>
-        <DCCReference Include="uniGUI26Core.dcp"/>
-        <DCCReference Include="soaprtl.dcp"/>
         <DCCReference Include="..\..\..\src\engine\unigui\RALUniGUIRegister.pas"/>
         <DCCReference Include="..\..\..\src\engine\unigui\RALUniGUIServer.pas"/>
         <BuildConfiguration Include="Base">
@@ -1095,10 +1088,10 @@
                 <ProjectRoot Platform="Win64x" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
-                <Platform value="Android">False</Platform>
-                <Platform value="Android64">False</Platform>
-                <Platform value="iOSDevice64">False</Platform>
-                <Platform value="iOSSimARM64">False</Platform>
+                <Platform value="Android">True</Platform>
+                <Platform value="Android64">True</Platform>
+                <Platform value="iOSDevice64">True</Platform>
+                <Platform value="iOSSimARM64">True</Platform>
                 <Platform value="Linux64">True</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>

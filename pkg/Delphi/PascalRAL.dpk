@@ -25,7 +25,7 @@ package PascalRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Base package'}
+{$DESCRIPTION 'PascalRAL Components Runtime'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 

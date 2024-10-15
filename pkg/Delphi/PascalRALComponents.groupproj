@@ -28,7 +28,7 @@
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Database\RALDBPackage.dproj">
-            <Dependencies>PascalRAL.dproj</Dependencies>
+            <Dependencies>PascalRALDsgn.dproj</Dependencies>
         </Projects>
         <Projects Include="Database\RALDBFireDACLink.dproj">
             <Dependencies>Database\RALDBPackage.dproj</Dependencies>
@@ -125,13 +125,13 @@
     <Target Name="RALWizard:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="RALWizard.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBPackage" DependsOnTargets="PascalRAL">
+    <Target Name="RALDBPackage" DependsOnTargets="PascalRALDsgn">
         <MSBuild Projects="Database\RALDBPackage.dproj"/>
     </Target>
-    <Target Name="RALDBPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+    <Target Name="RALDBPackage:Clean" DependsOnTargets="PascalRALDsgn:Clean">
         <MSBuild Projects="Database\RALDBPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALDBPackage:Make" DependsOnTargets="PascalRAL:Make">
+    <Target Name="RALDBPackage:Make" DependsOnTargets="PascalRALDsgn:Make">
         <MSBuild Projects="Database\RALDBPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALDBFireDACLink" DependsOnTargets="RALDBPackage">

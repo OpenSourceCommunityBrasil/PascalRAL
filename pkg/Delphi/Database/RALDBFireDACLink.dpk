@@ -26,17 +26,11 @@ package RALDBFireDACLink;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | FireDAC Client Links'}
 {$IMPLICITBUILD ON}
 
 requires
-  RALDBPackage,
-  FireDAC,
-  FireDACCommonDriver,
-  FireDACCommon,
-  FireDACPgDriver,
-  FireDACIBDriver,
-  FireDACMySQLDriver,
-  FireDACSqliteDriver;
+  RALDBPackage;
 
 contains
   RALDBFireDAC in '..\..\..\src\database\FireDAC\RALDBFireDAC.pas',

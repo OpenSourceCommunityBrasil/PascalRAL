@@ -1,14 +1,23 @@
 /// Base unit for FireDAC wrappings
 unit RALDBFireDAC;
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
   Classes, SysUtils, DB,
+  {$IFDEF DELPHIXE4UP}
   FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI,
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
+  {$ELSE}
+  uADCompClient, uADCompDataSet, uADCompGUIx,
+  uADPhysIntf,
+  uADDAptIntf, uADStanIntf, uADStanStorage,
+  uADStanConst, uADStanUtil,
+  {$ENDIF}
   RALDBBase, RALTypes, RALMimeTypes;
 
 type
@@ -17,7 +26,7 @@ type
 
   TRALDBFireDAC = class(TRALDBBase)
   private
-    FConnector: TFDConnection;
+    FConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
@@ -88,13 +97,13 @@ end;
 
 function TRALDBFireDAC.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
 begin
-  Result := TFDQuery(ADataset).GetFieldColumn(ADataset.Fields[AFieldIndex]).OriginTabName;
+  Result := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}(ADataset).GetFieldColumn(ADataset.Fields[AFieldIndex]).OriginTabName;
 end;
 
 constructor TRALDBFireDAC.Create;
 begin
   inherited;
-  FConnector := TFDConnection.Create(nil);
+  FConnector := {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF}.Create(nil);
 end;
 
 destructor TRALDBFireDAC.Destroy;
@@ -105,14 +114,14 @@ end;
 
 function TRALDBFireDAC.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery: TFDQuery;
+  vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
   vInt: integer;
 begin
   Result := nil;
 
   Conectar;
 
-  vQuery := TFDQuery.Create(nil);
+  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   vQuery.FetchOptions.Unidirectional := True;
   vQuery.Connection := FConnector;
   vQuery.Close;
@@ -129,14 +138,14 @@ end;
 
 function TRALDBFireDAC.OpenNative(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery: TFDQuery;
+  vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
   vInt: integer;
 begin
   Result := nil;
 
   Conectar;
 
-  vQuery := TFDQuery.Create(nil);
+  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   vQuery.Connection := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
@@ -154,16 +163,16 @@ end;
 procedure TRALDBFireDAC.SaveToStream(ADataset: TDataset; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
 var
-  vFdFormat: TFDStorageFormat;
+  vFdFormat: {$IFDEF DELPHIXE4UP}TFDStorageFormat{$ELSE}TADStorageFormat{$ENDIF};
 begin
   inherited;
   if Pos(StringRAL(rctAPPLICATIONJSON), AContentType) > 0 then
-    vFdFormat := sfJSON
+    vFdFormat := {$IFDEF DELPHIXE4UP}sfJSON{$ELSE}sfAuto{$ENDIF}
   else
     vFdFormat := sfBinary;
 
   AStream.Size := 0;
-  TFDQuery(ADataset).SaveToStream(AStream, vFdFormat);
+  {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}(ADataset).SaveToStream(AStream, vFdFormat);
   AStream.Position := 0;
 end;
 
@@ -175,7 +184,7 @@ end;
 procedure TRALDBFireDAC.ExecSQL(ASQL: StringRAL; AParams: TParams;
   var ARowsAffected: Int64RAL; var ALastInsertId: Int64RAL);
 var
-  vQuery: TFDQuery;
+  vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
   vInt: integer;
 begin
   Conectar;
@@ -183,7 +192,7 @@ begin
   ALastInsertId := 0;
   ARowsAffected := 0;
 
-  vQuery := TFDQuery.Create(nil);
+  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   try
     vQuery.Connection := FConnector;
     vQuery.Close;
