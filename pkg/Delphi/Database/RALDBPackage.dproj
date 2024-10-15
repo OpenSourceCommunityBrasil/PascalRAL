@@ -175,6 +175,8 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Description>PascalRAL | Database Components</DCC_Description>
+        <DCC_UnitSearchPath>..\..\..\src\base;..\..\..\src\database;..\..\..\src\utils;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -187,10 +189,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="RALDBPackage.dcr"/>
-        <DCCReference Include="dbrtl.dcp"/>
-        <DCCReference Include="dcldb.dcp"/>
-        <DCCReference Include="designide.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
+        <DCCReference Include="dcldb.dcp"/>
+        <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBStorage.pas"/>
@@ -222,8 +223,6 @@
                     <Source Name="MainSource">RALDBPackage.dpk</Source>
                 </Source>
                 <Excluded_Packages>
-                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACObjects.bpl">File C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACObjects.bpl not found</Excluded_Packages>
-                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACLink.bpl">File C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBFireDACLink.bpl not found</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dcloffice2k290.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dclofficexp290.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>

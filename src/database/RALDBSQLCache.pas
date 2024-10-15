@@ -1,4 +1,5 @@
-﻿unit RALDBSQLCache;
+/// Unit that encapsulates SQL related operations
+unit RALDBSQLCache;
 
 interface
 
@@ -6,7 +7,7 @@ interface
 
 uses
   {$IFDEF FPC}
-    bufstream,
+  bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
   RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes;
@@ -19,15 +20,15 @@ type
   TRALDBSQLResponse = class
   private
     FContentType: StringRAL;
-    FError : boolean;
+    FError: boolean;
     FLastId: Int64RAL;
     FNative: boolean;
-    FRowsAffected : Int64RAL;
+    FRowsAffected: Int64RAL;
     FStream: TStream;
   protected
     function GetStream: TStream;
     procedure SetStream(AValue: TStream);
-    procedure SetStrError(AError : StringRAL);
+    procedure SetStrError(AError: StringRAL);
     function GetStrError: StringRAL;
   public
     constructor Create;
@@ -78,38 +79,38 @@ type
   protected
     function GetQuerySQL(ADataset: TDataSet): StringRAL;
     function GetQueryParams(ADataset: TDataSet): TParams;
-    function GetSQLList(AIndex : IntegerRAL): TRALDBSQL;
+    function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
   public
     constructor Create;
     destructor Destroy; override;
 
     procedure Clear;
-    function Count : IntegerRAL;
+    function Count: IntegerRAL;
 
     function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
 
     procedure Add(ADataset: TDataSet; AExecType: TRALDBExecType = etOpen); overload;
-    procedure Add(ASQL: StringRAL; AParams: TParams = nil;
-                  ABookMark: TBookMark = nil; AExecType: TRALDBExecType = etExecute;
+    procedure Add(ASQL: StringRAL; AParams: TParams = nil; ABookMark: TBookMark = nil;
+                  AExecType: TRALDBExecType = etExecute;
                   ADriverType: TRALDBDriverType = qtOther); overload;
 
-    procedure SaveToStream(AStream : TStream); overload;
-    function SaveToStream : TStream; overload;
-    procedure SaveToFile(AFileName : StringRAL);
+    procedure SaveToStream(AStream: TStream); overload;
+    function SaveToStream: TStream; overload;
+    procedure SaveToFile(AFileName: StringRAL);
 
-    procedure ResponseToStream(AStream : TStream); overload;
-    function ResponseToStream : TStream; overload;
-    procedure ResponseToFile(AFileName : StringRAL);
+    procedure ResponseToStream(AStream: TStream); overload;
+    function ResponseToStream: TStream; overload;
+    procedure ResponseToFile(AFileName: StringRAL);
 
-    procedure LoadFromStream(AStream : TStream);
-    procedure LoadFromFile(AFileName : StringRAL);
+    procedure LoadFromStream(AStream: TStream);
+    procedure LoadFromFile(AFileName: StringRAL);
 
-    procedure ResponseFromStream(AStream : TStream);
-    procedure ReponseFromFile(AFileName : StringRAL);
+    procedure ResponseFromStream(AStream: TStream);
+    procedure ReponseFromFile(AFileName: StringRAL);
 
     function GetStructureVersion: byte;
 
-    property SQLList[AIndex : IntegerRAL] : TRALDBSQL read GetSQLList;
+    property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
   end;
 
 implementation
@@ -194,12 +195,12 @@ destructor TRALDBSQL.Destroy;
 begin
   FreeAndNil(FParams);
   FreeAndNil(FResponse);
-  // no delphi 7 o TBookMark é um Pointer
-  // no radstudo 2007 o TBookmark é um TBytes
-  {$IF (Defined(FPC) AND Defined(noautomatedbookmark))
-    OR ((not Defined(FPC)) AND (not Defined(DELPHI2007UP)))}
-      FreeMem(FBookMark);
-  {$IFEND}
+//  // no delphi 7 o TBookMark é um Pointer
+//  // no radstudo 2007 o TBookmark é um TBytes
+//  {$IF (Defined(FPC) AND Defined(noautomatedbookmark))
+//  OR (not Defined(FPC) AND not Defined(DELPHI2007UP))}
+//  FreeMem(FBookMark);
+//  {$IFEND}
   inherited Destroy;
 end;
 
@@ -219,7 +220,7 @@ begin
   Result := FSQLList.Count;
 end;
 
-function TRALDBSQLCache.GetSQLList(AIndex : IntegerRAL): TRALDBSQL;
+function TRALDBSQLCache.GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
 begin
   Result := nil;
   if (AIndex >= 0) and (AIndex < FSQLList.Count) then
@@ -241,28 +242,28 @@ var
 begin
   vComp := ADataset.ClassType;
   Result := qtOther;
-  while vComp <> nil do begin
-    if SameText(vComp.ClassName, 'TFDQuery') or
-       SameText(vComp.ClassName, 'TFDMemTable') then
+  while vComp <> nil do
+  begin
+    if SameText(vComp.ClassName, 'TFDQuery') or SameText(vComp.ClassName, 'TFDMemTable')
+    then
     begin
       Result := qtFiredac;
       Break;
     end
-    else if (SameText(vComp.ClassName, 'TZQuery') or
-             SameText(vComp.ClassName, 'TZReadOnlyQuery') or
-             SameText(vComp.ClassName, 'TZMemTable')) and
-            (ADataset.MethodAddress('SaveToStream') <> nil) then
+    else if (SameText(vComp.ClassName, 'TZQuery') or SameText(vComp.ClassName,
+      'TZReadOnlyQuery') or SameText(vComp.ClassName, 'TZMemTable')) and
+      (ADataset.MethodAddress('SaveToStream') <> nil) then
     begin
       Result := qtZeos;
       Break;
     end
     {$IFDEF FPC}
-      // evitando conflito com dbexpress
-      else if SameText(vComp.ClassName, 'TSQLQuery') then
-      begin
-        Result := qtLazSQL;
-        Break;
-      end
+    // evitando conflito com dbexpress
+    else if SameText(vComp.ClassName, 'TSQLQuery') then
+    begin
+      Result := qtLazSQL;
+      Break;
+    end
     {$ENDIF};
     vComp := vComp.ClassParent;
   end;
@@ -276,7 +277,7 @@ var
   vType: StringRAL;
   vParam: TParam;
 begin
-  vColetion := TCollection(GetObjectProp(ADataset,'Params'));
+  vColetion := TCollection(GetObjectProp(ADataset, 'Params'));
   if vColetion <> nil then
   begin
     Result := TParams.Create;
@@ -325,9 +326,8 @@ begin
   end;
 end;
 
-procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams;
-  ABookMark: TBookMark; AExecType: TRALDBExecType; ADriverType: TRALDBDriverType
-  );
+procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams; ABookMark: TBookMark;
+  AExecType: TRALDBExecType; ADriverType: TRALDBDriverType);
 var
   vDBSQL: TRALDBSQL;
 begin
@@ -345,7 +345,7 @@ procedure TRALDBSQLCache.SaveToStream(AStream: TStream);
 var
   vDBSQL: TRALDBSQL;
   vStrSQLList: TStringList;
-  vWriter : TRALBinaryWriter;
+  vWriter: TRALBinaryWriter;
   vStorType: TRALFieldType;
   vInt1, vInt2: IntegerRAL;
 begin
@@ -410,24 +410,39 @@ begin
 
         // values
         case vStorType of
-          sftShortInt : vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftSmallInt : vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftInteger  : vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftInt64    : vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
-          sftByte     : vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftWord     : vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftShortInt:
+            vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftSmallInt:
+            vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftInteger:
+            vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftInt64:
+            vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
+          sftByte:
+            vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
+          sftWord:
+            vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
           {$IFDEF FPC}
-            sftCardinal : vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
+          sftCardinal:
+            vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
           {$ELSE}
-            sftCardinal : vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
+          sftCardinal:
+            vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
           {$ENDIF}
-          sftQWord   : vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
-          sftDouble  : vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
-          sftBoolean : vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
-          sftString  : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-          sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
-          sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-          sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
+          sftQWord:
+            vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
+          sftDouble:
+            vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
+          sftBoolean:
+            vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
+          sftString:
+            vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+          sftBlob:
+            vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
+          sftMemo:
+            vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+          sftDateTime:
+            vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
         end;
       end;
     end;
@@ -459,7 +474,7 @@ end;
 procedure TRALDBSQLCache.ResponseToStream(AStream: TStream);
 var
   vDBSQL: TRALDBSQL;
-  vWriter : TRALBinaryWriter;
+  vWriter: TRALBinaryWriter;
 
   vInt: IntegerRAL;
 begin
@@ -511,13 +526,13 @@ end;
 procedure TRALDBSQLCache.LoadFromStream(AStream: TStream);
 var
   vStrSQLList: TStringList;
-  vDBSQL : TRALDBSQL;
-  vParam : TParam;
-  vStorType : TRALFieldType;
-  vWriter : TRALBinaryWriter;
+  vDBSQL: TRALDBSQL;
+  vParam: TParam;
+  vStorType: TRALFieldType;
+  vWriter: TRALBinaryWriter;
 
   vInt1, vInt2, vInt3: IntegerRAL;
-  vByte: Byte;
+  vByte: byte;
 begin
   Clear;
   AStream.Position := 0;
@@ -574,20 +589,34 @@ begin
 
           // values
           case vStorType of
-            sftShortInt : vParam.AsInteger := vWriter.ReadShortint;
-            sftSmallInt : vParam.AsInteger := vWriter.ReadSmallint;
-            sftInteger  : vParam.AsInteger := vWriter.ReadInteger;
-            sftInt64    : vParam.AsLargeInt := vWriter.ReadInt64;
-            sftByte     : vParam.AsInteger := vWriter.ReadByte;
-            sftWord     : vParam.AsInteger := vWriter.ReadWord;
-            sftCardinal : vParam.AsLargeInt := vWriter.ReadLongWord;
-            sftQWord    : vParam.AsLargeInt := vWriter.ReadQWord;
-            sftDouble   : vParam.AsFloat := vWriter.ReadFloat;
-            sftBoolean  : vParam.AsBoolean := vWriter.ReadBoolean;
-            sftString   : vParam.AsString := vWriter.ReadString;
-            sftBlob     : vParam.AsBlob := vWriter.ReadBytes;
-            sftMemo     : vParam.AsMemo := vWriter.ReadString;
-            sftDateTime : vParam.AsDateTime := vWriter.ReadDateTime;
+            sftShortInt:
+              vParam.AsInteger := vWriter.ReadShortint;
+            sftSmallInt:
+              vParam.AsInteger := vWriter.ReadSmallint;
+            sftInteger:
+              vParam.AsInteger := vWriter.ReadInteger;
+            sftInt64:
+              vParam.AsLargeInt := vWriter.ReadInt64;
+            sftByte:
+              vParam.AsInteger := vWriter.ReadByte;
+            sftWord:
+              vParam.AsInteger := vWriter.ReadWord;
+            sftCardinal:
+              vParam.AsLargeInt := vWriter.ReadLongWord;
+            sftQWord:
+              vParam.AsLargeInt := vWriter.ReadQWord;
+            sftDouble:
+              vParam.AsFloat := vWriter.ReadFloat;
+            sftBoolean:
+              vParam.AsBoolean := vWriter.ReadBoolean;
+            sftString:
+              vParam.AsString := vWriter.ReadString;
+            sftBlob:
+              vParam.AsBlob := vWriter.ReadBytes;
+            sftMemo:
+              vParam.AsMemo := vWriter.ReadString;
+            sftDateTime:
+              vParam.AsDateTime := vWriter.ReadDateTime;
           end;
         end;
         FSQLList.Add(vDBSQL);
@@ -615,7 +644,7 @@ end;
 procedure TRALDBSQLCache.ResponseFromStream(AStream: TStream);
 var
   vDBSQL: TRALDBSQL;
-  vWriter : TRALBinaryWriter;
+  vWriter: TRALBinaryWriter;
 
   vInt1, vInt2: IntegerRAL;
 begin
@@ -628,7 +657,7 @@ begin
       raise Exception.Create(emQueryVersionError);
 
     // tamanho do dados
-   vInt1 := vWriter.ReadInteger;
+    vInt1 := vWriter.ReadInteger;
 
     // recuperando as respostas
     for vInt2 := 0 to Pred(vInt1) do
@@ -637,7 +666,8 @@ begin
       begin
         vDBSQL := TRALDBSQL(FSQLList.Items[vInt2]);
       end
-      else begin
+      else
+      begin
         vDBSQL := TRALDBSQL.Create;
         FSQLList.Add(vDBSQL);
       end;
@@ -672,4 +702,3 @@ begin
 end;
 
 end.
-

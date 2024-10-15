@@ -161,6 +161,7 @@
         <DCC_UnitSearchPath>..\..\src\base;..\..\src\utils;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Description>PascalRAL | Base package</DCC_Description>
         <DCC_MapFile>3</DCC_MapFile>
+        <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -228,8 +229,8 @@
                     <Source Name="MainSource">PascalRAL.dpk</Source>
                 </Source>
                 <Excluded_Packages>
-                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWFireDACDriver.bpl">File C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWFireDACDriver.bpl not found</Excluded_Packages>
-                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWZEOSDriver.bpl">File C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\RESTDWZEOSDriver.bpl not found</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k290.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp290.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="4">

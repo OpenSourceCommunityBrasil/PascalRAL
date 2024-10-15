@@ -116,7 +116,6 @@ var
   vCookies: TStringList;
   vParam: TRALParam;
   vKeepAlive: boolean;
-  aaa : StringRAL;
 begin
   vRequest := CreateRequest;
   vResponse := CreateResponse;

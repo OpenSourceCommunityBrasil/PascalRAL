@@ -160,6 +160,7 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Description>PascalRAL | UniGUI Components</DCC_Description>
         <Debugger_IncludeSystemVars>true</Debugger_IncludeSystemVars>
+        <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>

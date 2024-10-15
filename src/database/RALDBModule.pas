@@ -1,4 +1,4 @@
-﻿/// Base unit for the module component that will enable DBWare on the server
+/// Base unit for the module component that will enable DBWare on the server
 unit RALDBModule;
 
 interface
