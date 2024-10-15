@@ -189,9 +189,10 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="RALDBPackage.dcr"/>
-        <DCCReference Include="PascalRALDsgn.dcp"/>
+        <DCCReference Include="PascalRAL.dcp"/>
         <DCCReference Include="dcldb.dcp"/>
         <DCCReference Include="dbrtl.dcp"/>
+        <DCCReference Include="designide.dcp"/>
         <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBStorage.pas"/>
