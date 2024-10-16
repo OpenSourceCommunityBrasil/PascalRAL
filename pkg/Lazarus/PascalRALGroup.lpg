@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectGroup FileVersion="2">
+    <Targets>
+      <Target FileName="pascalral.lpk"/>
+      <Target FileName="pascalraldsgn.lpk"/>
+      <Target FileName="ralwizardpack.lpk"/>
+      <Target FileName="Engine\cgiral.lpk"/>
+      <Target FileName="Engine\fphttpral.lpk"/>
+      <Target FileName="Engine\indyral.lpk"/>
+      <Target FileName="Engine\saguiral.lpk"/>
+      <Target FileName="Engine\synopseral.lpk"/>
+      <Target FileName="Database\raldbpackage.lpk"/>
+      <Target FileName="Database\raldbsqldblink.lpk"/>
+      <Target FileName="Database\raldbzeoslink.lpk"/>
+      <Target FileName="compression\ralbrotlicompress.lpk"/>
+      <Target FileName="compression\ralzstdcompress.lpk"/>
+    </Targets>
+  </ProjectGroup>
+</CONFIG>

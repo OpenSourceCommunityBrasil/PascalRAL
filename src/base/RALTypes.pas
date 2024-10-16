@@ -77,10 +77,10 @@ function RALHighStr(const AStr: StringRAL): integer;
 function StreamToString(AStream: TStream): StringRAL;
 // Creates a TStream and writes the given AStr into it
 function StringToStream(const AStr: StringRAL): TStream;
-{$IFNDEF DELPHIXE6UP}
+{$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
 function DateToISO8601(const AValue: TDateTime): StringRAL;
 function ISO8601ToDate(const AValue: StringRAL): TDateTime;
-{$ENDIF}
+{$IFEND}
 
 implementation
 
