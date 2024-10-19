@@ -366,7 +366,7 @@ begin
           vStr := TRALServerJWTAuth(AAuth).JSONKey;
           vFunc.Add('pm.test("setToken", function () {');
           vFunc.Add('    var jsonData = pm.response.json();');
-          vFunc.Add('    pm.collectionVariables.set(token, jsonData.' + vStr + ');');
+          vFunc.Add('    pm.collectionVariables.set(''token'', jsonData.' + vStr + ');');
           vFunc.Add('});');
 
           vAux4.Add(vFunc.Text);

@@ -342,7 +342,7 @@ end;
 
 function TRALParam.SaveToStream: TStream;
 begin
-  Result := TMemoryStream.Create;
+  Result := TRALStringStream.Create;
   SaveToStream(Result);
 
   Result.Position := 0;
@@ -411,8 +411,7 @@ begin
 
   AValue.Position := 0;
 
-  FContent := TMemoryStream.Create;
-  FContent.CopyFrom(AValue, AValue.Size);
+  FContent := TRALStringStream.Create(AValue);
   FContent.Position := 0;
 end;
 
@@ -865,7 +864,7 @@ begin
   if ASource = '' then
     Exit;
 
-  vStream := StringToStream(ASource);
+  vStream := TStringStream.Create(ASource);
   try
     Result := DecodeBody(vStream, AContentType, AContentDisposition);
   finally

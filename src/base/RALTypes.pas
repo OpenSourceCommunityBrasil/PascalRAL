@@ -54,10 +54,13 @@ type
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
   // TRALStringStream = TStringStream;
-  TRALStringStream = class(TStringStream)
+  TRALStringStream = class(TMemoryStream)
   public
     constructor Create(AString: StringRAL); overload;
+    constructor Create(AStream: TStream); overload;
     constructor Create(ABytes: TBytes); overload;
+
+    function DataString : StringRAL;
   end;
 
 const
@@ -101,7 +104,7 @@ end;
 
 function StreamToString(AStream: TStream): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
@@ -113,30 +116,33 @@ begin
   begin
     Result := TStringStream(AStream).DataString;
   end
+  else if AStream.InheritsFrom(TRALStringStream) then
+  begin
+    Result := TRALStringStream(AStream).DataString;
+  end
   else
   begin
     vStream := TStringStream.Create;
     try
       vStream.CopyFrom(AStream, AStream.Size);
-      Result := vStream.DataString;
+      Result := TStringStream(vStream).DataString;
     finally
       FreeAndNil(vStream);
     end;
-  end
+  end;
 
-  // fonte antigo, guardando pra limpar depois
-  {
-    else if AStream.InheritsFrom(TMemoryStream) then
-    begin
+{
+  else if AStream.InheritsFrom(TMemoryStream) then
+  begin
     SetLength(Result, AStream.Size);
     Move(TMemoryStream(AStream).Memory^, Result[PosIniStr], AStream.Size);
-    end
-    else
-    begin
+  end
+  else
+  begin
     SetLength(Result, AStream.Size);
     AStream.Read(Result[PosIniStr], AStream.Size);
-    end;
-  }
+  end;
+}
 end;
 
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
@@ -166,20 +172,58 @@ begin
   Result := StrToDate(StringReplace(AValue, 'T', ' ', []), vFmt);
 end;
 {$IFEND}
-{ TRALStringStream }
 
-constructor TRALStringStream.Create(AString: StringRAL);
-begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-  inherited Create(AString);
-  {$ELSE}
-  inherited Create(AString, TEncoding.UTF8);
-  {$IFEND}
-end;
+{ TRALStringStream }
 
 constructor TRALStringStream.Create(ABytes: TBytes);
 begin
-  inherited Create(ABytes);
+  inherited Create;
+  Write(ABytes[0], Length(ABytes));
+end;
+
+constructor TRALStringStream.Create(AString: StringRAL);
+var
+  vBytes : TBytes;
+begin
+  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+    SetLength(vBytes, Length(AString));
+    Move(AString[POSINISTR], ABytes[0], Length(AString));
+  {$ELSE}
+    vBytes := TEncoding.UTF8.GetBytes(AString);
+  {$IFEND}
+  Create(vBytes);
+end;
+
+constructor TRALStringStream.Create(AStream: TStream);
+var
+  vStream : TStringStream;
+  vBytes : TBytes;
+begin
+  vStream := TStringStream.Create;
+  try
+    vStream.LoadFromStream(AStream);
+    SetLength(vBytes, vStream.Size);
+    vStream.Read(vBytes[0], vStream.Size);
+    Create(vBytes);
+  finally
+    FreeAndNil(vStream);
+  end;
+end;
+
+function TRALStringStream.DataString: StringRAL;
+{$IF Defined(FPC) OR Defined(DELPHIXE5UP)}
+var
+  vBytes : TBytes;
+{$IFEND}
+begin
+  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+    SetLength(Result, Self.Size);
+    Read(Result[POSINISTR], Self.Size);
+  {$ELSE}
+    SetLength(vBytes, Self.Size);
+    Read(vBytes[0], Self.Size);
+    Result := TEncoding.UTF8.GetString(vBytes);
+  {$IFEND}
 end;
 
 end.
