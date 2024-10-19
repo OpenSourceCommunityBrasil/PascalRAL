@@ -130,19 +130,6 @@ begin
       FreeAndNil(vStream);
     end;
   end;
-
-{
-  else if AStream.InheritsFrom(TMemoryStream) then
-  begin
-    SetLength(Result, AStream.Size);
-    Move(TMemoryStream(AStream).Memory^, Result[PosIniStr], AStream.Size);
-  end
-  else
-  begin
-    SetLength(Result, AStream.Size);
-    AStream.Read(Result[PosIniStr], AStream.Size);
-  end;
-}
 end;
 
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
