@@ -61,6 +61,10 @@ type
     constructor Create(ABytes: TBytes); overload;
 
     function DataString : StringRAL;
+
+    procedure WriteBytes(ABytes: TBytes);
+    procedure WriteString(AString : StringRAL);
+    procedure WriteStream(AStream: TStream);
   end;
 
 const
@@ -165,36 +169,19 @@ end;
 constructor TRALStringStream.Create(ABytes: TBytes);
 begin
   inherited Create;
-  Write(ABytes[0], Length(ABytes));
+  WriteBytes(ABytes);
 end;
 
 constructor TRALStringStream.Create(AString: StringRAL);
-var
-  vBytes : TBytes;
 begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-    SetLength(vBytes, Length(AString));
-    Move(AString[POSINISTR], ABytes[0], Length(AString));
-  {$ELSE}
-    vBytes := TEncoding.UTF8.GetBytes(AString);
-  {$IFEND}
-  Create(vBytes);
+  inherited Create;
+  WriteString(AString);
 end;
 
 constructor TRALStringStream.Create(AStream: TStream);
-var
-  vStream : TStringStream;
-  vBytes : TBytes;
 begin
-  vStream := TStringStream.Create;
-  try
-    vStream.LoadFromStream(AStream);
-    SetLength(vBytes, vStream.Size);
-    vStream.Read(vBytes[0], vStream.Size);
-    Create(vBytes);
-  finally
-    FreeAndNil(vStream);
-  end;
+  inherited Create;
+  WriteStream(AStream);
 end;
 
 function TRALStringStream.DataString: StringRAL;
@@ -212,6 +199,34 @@ begin
     Read(vBytes[0], Self.Size);
     Result := TEncoding.UTF8.GetString(vBytes);
   {$IFEND}
+end;
+
+procedure TRALStringStream.WriteBytes(ABytes: TBytes);
+begin
+  Write(ABytes[0], Length(ABytes));
+end;
+
+procedure TRALStringStream.WriteString(AString: StringRAL);
+var
+  vBytes : TBytes;
+begin
+  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+    SetLength(vBytes, Length(AString));
+    Move(AString[POSINISTR], ABytes[0], Length(AString));
+  {$ELSE}
+    vBytes := TEncoding.UTF8.GetBytes(AString);
+  {$IFEND}
+  WriteBytes(vBytes);
+end;
+
+procedure TRALStringStream.WriteStream(AStream: TStream);
+var
+  vBytes : TBytes;
+begin
+  AStream.Position := 0;
+  SetLength(vBytes, AStream.Size);
+  AStream.Read(vBytes[0], AStream.Size);
+  WriteBytes(vBytes);
 end;
 
 end.

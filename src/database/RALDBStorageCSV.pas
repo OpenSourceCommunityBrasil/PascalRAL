@@ -292,8 +292,16 @@ begin
 end;
 
 procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringRAL);
+var
+  vBytes : TBytes;
 begin
-  AStream.Write(AValue[POSINISTR], Length(AValue));
+  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+    SetLength(vBytes, Length(AValue));
+    Move(AValue[POSINISTR], ABytes[0], Length(AValue));
+  {$ELSE}
+    vBytes := TEncoding.UTF8.GetBytes(AValue);
+  {$IFEND}
+  AStream.Write(vBytes[0], Length(vBytes));
 end;
 
 function TRALDBStorageCSV.ReadLine(AStream: TStream): TStringList;
