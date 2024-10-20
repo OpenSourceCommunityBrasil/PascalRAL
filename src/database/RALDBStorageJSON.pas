@@ -129,45 +129,13 @@ begin
 end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
-var
-  vChr: CharRAL;
 begin
-  Result := '';
-  while AValue.Position < AValue.Size do
-  begin
-    AValue.Read(vChr, SizeOf(vChr));
-    case vChr of
-      '\':
-        Result := Result + '\\';
-      '/':
-        Result := Result + '\/';
-      '"':
-        Result := Result + '\"';
-      #8:
-        Result := Result + '\b';
-      #9:
-        Result := Result + '\t';
-      #10:
-        Result := Result + '\n';
-      #12:
-        Result := Result + '\f';
-      #13:
-        Result := Result + '\r';
-    else
-      begin
-        if vChr in [#0 .. #31, #127 .. #255] then
-          Result := Result + '\u' + IntToHex(Ord(vChr), 4)
-        else
-          Result := Result + vChr;
-      end;
-    end;
-  end;
+  Result := StringToJSONString(StreamToString(AValue));
 end;
 
 function TRALDBStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
 var
   vStr : UCS4String;
-  vRAL : StringRAL;
   vInt : integer;
 begin
   Result := '';
