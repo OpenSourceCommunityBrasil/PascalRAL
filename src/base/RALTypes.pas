@@ -203,6 +203,7 @@ var
   vBytes : TBytes;
 {$IFEND}
 begin
+  Self.Position := 0;
   {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
     SetLength(Result, Self.Size);
     Read(Result[POSINISTR], Self.Size);

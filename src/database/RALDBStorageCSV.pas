@@ -52,6 +52,7 @@ type
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
@@ -248,7 +249,7 @@ begin
           sftBoolean:
             vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
           sftString:
-            vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsString);
+            vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsWideString);
           sftBlob:
             begin
               vMem := TMemoryStream.Create;
@@ -480,7 +481,7 @@ constructor TRALCSVFormatOptions.Create;
 begin
   FDateTimeFormat := dtfISO8601;
   FCustomDateFormat := 'dd/mm/yyyy';
-  FCustomTimeFormat := 'hh:nn:ss:zzz';
+  FCustomTimeFormat := 'hh:nn:ss.zzz';
   FDecimalSeparator := ',';
   FThousandSeparator := '.';
   FColumnSeparator := ';';
