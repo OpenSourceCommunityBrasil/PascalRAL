@@ -3,6 +3,8 @@ unit RALDBStorageCSV;
 
 interface
 
+{$I ../base/PascalRAL.inc}
+
 uses
   Classes, SysUtils, DB, DateUtils,
   RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64;
@@ -41,6 +43,7 @@ type
   TRALDBStorageCSV = class(TRALDBStorage)
   private
     FFormatOptions: TRALCSVFormatOptions;
+    FUseUTF8BOM : boolean;
   protected
     function CSVFormatBoolean(AValue: Boolean): StringRAL;
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
@@ -62,6 +65,7 @@ type
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
   { TRALDBStorageCSVLink }
@@ -69,6 +73,7 @@ type
   TRALDBStorageCSVLink = class(TRALDBStorageLink)
   private
     FFormatOptions: TRALCSVFormatOptions;
+    FUseUTF8BOM : boolean;
   protected
     function GetContentType: StringRAL; override;
   public
@@ -78,6 +83,7 @@ type
     function GetStorage: TRALDBStorage; override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
 implementation
@@ -88,6 +94,7 @@ constructor TRALDBStorageCSVLink.Create(AOwner: TComponent);
 begin
   inherited;
   FFormatOptions := TRALCSVFormatOptions.Create;
+  FUseUTF8BOM := True;
 end;
 
 destructor TRALDBStorageCSVLink.Destroy;
@@ -106,6 +113,7 @@ begin
   Result := TRALDBStorageCSV.Create;
   Result.FieldCharCase := FieldCharCase;
 
+  TRALDBStorageCSV(Result).UseUTF8BOM := FUseUTF8BOM;
   TRALDBStorageCSV(Result).FormatOptions.Assign(Self.FormatOptions);
 end;
 
@@ -187,7 +195,11 @@ begin
 end;
 
 procedure TRALDBStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
+const
+  UTF8BOM = #$EF#$BB#$BF;
 begin
+  if FUseUTF8BOM then
+    AStream.Write(UTF8BOM, Length(UTF8BOM));
   WriteFields(ADataset, AStream);
   WriteRecords(ADataset, AStream);
 end;
@@ -295,12 +307,12 @@ procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringR
 var
   vBytes : TBytes;
 begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
+  {$IFDEF HAS_Encoding}
+    vBytes := TEncoding.UTF8.GetBytes(AValue);
+  {$ELSE}
     SetLength(vBytes, Length(AValue));
     Move(AValue[POSINISTR], ABytes[0], Length(AValue));
-  {$ELSE}
-    vBytes := TEncoding.UTF8.GetBytes(AValue);
-  {$IFEND}
+  {$ENDIF}
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 

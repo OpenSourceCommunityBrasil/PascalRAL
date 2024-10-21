@@ -185,20 +185,20 @@ begin
 end;
 
 function TRALStringStream.DataString: StringRAL;
-{$IF Defined(FPC) OR Defined(DELPHIXE5UP)}
+{$IFDEF HAS_Encoding}
 var
   vBytes : TBytes;
-{$IFEND}
+{$ENDIF}
 begin
   Self.Position := 0;
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-    SetLength(Result, Self.Size);
-    Read(Result[POSINISTR], Self.Size);
-  {$ELSE}
+  {$IFDEF HAS_Encoding}
     SetLength(vBytes, Self.Size);
     Read(vBytes[0], Self.Size);
     Result := TEncoding.UTF8.GetString(vBytes);
-  {$IFEND}
+  {$ELSE}
+    SetLength(Result, Self.Size);
+    Read(Result[POSINISTR], Self.Size);
+  {$ENDIF}
 end;
 
 procedure TRALStringStream.WriteBytes(ABytes: TBytes);
@@ -210,12 +210,12 @@ procedure TRALStringStream.WriteString(AString: StringRAL);
 var
   vBytes : TBytes;
 begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-    SetLength(vBytes, Length(AString));
-    Move(AString[POSINISTR], ABytes[0], Length(AString));
-  {$ELSE}
+  {$IFDEF HAS_Encoding}
     vBytes := TEncoding.UTF8.GetBytes(AString);
-  {$IFEND}
+  {$ELSE}
+    SetLength(vBytes, Length(AString));
+    Move(AString[POSINISTR], vBytes[0], Length(AString));
+  {$ENDIF}
   WriteBytes(vBytes);
 end;
 
