@@ -75,8 +75,11 @@ begin
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.LoginPrompt := False;
 
-  if DatabaseType = dtSQLite then
+  if DatabaseType = dtSQLite then begin
+    FConnector.Params.Add('LockingMode=Normal');
+    FConnector.Params.Add('OpenMode=CreateUTF8');
     FConnector.Params.Add('StringFormat=Unicode');
+  end;
 
   FConnector.Open;
 end;
