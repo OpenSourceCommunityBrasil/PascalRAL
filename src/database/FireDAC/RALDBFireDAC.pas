@@ -12,6 +12,7 @@ uses
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
+  FireDAC.Stan.Option,
   {$ELSE}
   uADCompClient, uADCompDataSet, uADCompGUIx,
   uADPhysIntf,
@@ -73,6 +74,10 @@ begin
   if Port <> 0 then
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.LoginPrompt := False;
+
+  if DatabaseType = dtSQLite then
+    FConnector.Params.Add('StringFormat=Unicode');
+
   FConnector.Open;
 end;
 
