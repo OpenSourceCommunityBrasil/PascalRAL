@@ -1,4 +1,4 @@
-/// Unit that encapsulates SQL related operations
+﻿/// Unit that encapsulates SQL related operations
 unit RALDBSQLCache;
 
 interface
@@ -244,15 +244,15 @@ begin
   Result := qtOther;
   while vComp <> nil do
   begin
-    if SameText(vComp.ClassName, 'TFDQuery') or SameText(vComp.ClassName, 'TFDMemTable')
-    then
+    if SameText(vComp.ClassName, 'TFDQuery') or
+       SameText(vComp.ClassName, 'TFDMemTable') then
     begin
       Result := qtFiredac;
       Break;
     end
-    else if (SameText(vComp.ClassName, 'TZQuery') or SameText(vComp.ClassName,
-      'TZReadOnlyQuery') or SameText(vComp.ClassName, 'TZMemTable')) and
-      (ADataset.MethodAddress('SaveToStream') <> nil) then
+    else if SameText(vComp.ClassName, 'TZQuery') or
+            SameText(vComp.ClassName, 'TZReadOnlyQuery') or
+            SameText(vComp.ClassName, 'TZMemTable') then
     begin
       Result := qtZeos;
       Break;
@@ -528,6 +528,7 @@ var
 
   vInt1, vInt2, vInt3: IntegerRAL;
   vByte: byte;
+  vBoolean : boolean;
 begin
   Clear;
   AStream.Position := 0;

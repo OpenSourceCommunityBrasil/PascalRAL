@@ -279,9 +279,9 @@ begin
     sftQWord: Result := ftLargeint;
     sftDouble: Result := ftFloat;
     sftBoolean: Result := ftBoolean;
-    sftString: Result := ftString;
+    sftString: Result := ftWideString;
     sftBlob: Result := ftBlob;
-    sftMemo: Result := ftMemo;
+    sftMemo: Result := ftWideMemo;
     sftDateTime: Result := ftDateTime;
   end;
 end;
