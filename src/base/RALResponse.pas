@@ -353,8 +353,15 @@ end;
 
 function TRALClientResponse.GetResponseEncText(
   const AEncode: boolean): StringRAL;
+var
+  vStream : TRALStringStream;
 begin
-  Result := StreamToString(FStream);
+  vStream := TRALStringStream.Create(FStream);
+  try
+    Result := StreamToString(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
 end;
 
 procedure TRALClientResponse.SetResponseStream(const AValue: TStream);

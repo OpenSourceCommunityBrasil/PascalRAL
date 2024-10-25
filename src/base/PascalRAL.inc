@@ -450,19 +450,14 @@
 (******************************************************************************)
 (* General functional Directives *)
 
+{$IF Defined(FPC) OR Defined(DELPHIXEUP)}
+  {$DEFINE HAS_Encoding}
+{$IFEND}
+
 {$IFDEF DELPHI2010UP}
   {$DEFINE SUPPORTS_UNICODE_STRING}
   {$POINTERMATH ON}
 {$ENDIF}
-
-{$IFNDEF NEXTGEN}
-  {$DEFINE HAS_AnsiString}
-  {$DEFINE STRING_IS_ANSI}
-{$ENDIF}
-
-{$IF Defined(DELPHICOMPILER) or Defined(BCBCOMPILER)}
-  {$DEFINE DELPHILANGUAGE}
-{$IFEND}
 
 (* End of General functional Directives *)
 (******************************************************************************)

@@ -864,6 +864,8 @@ begin
   if ASource = '' then
     Exit;
 
+  // deve manter TStringStream pois nesse ponto o ASource ainda pode estar
+  // compress e criptografado
   vStream := TStringStream.Create(ASource);
   try
     Result := DecodeBody(vStream, AContentType, AContentDisposition);

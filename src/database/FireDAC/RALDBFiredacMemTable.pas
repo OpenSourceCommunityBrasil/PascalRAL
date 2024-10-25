@@ -512,10 +512,9 @@ end;
 
 procedure TRALDBFDMemTable.SetActive(AValue: boolean);
 begin
-  Clear;
-
   if (AValue) and (not FLoading) then
   begin
+    Clear;
     if (FRALConnection = nil) and (not(csDestroying in ComponentState)) and
        (not(csLoading in ComponentState)) then
       raise Exception.Create(emDBConnectionUndefined);
@@ -525,15 +524,18 @@ begin
       FLoading := True;
       FRALConnection.OpenRemote(Self, OnQueryResponse);
     end;
-    Exit;
   end
-  else if (not AValue) then
+  else if (not AValue) and (not FLoading) then
   begin
     FLoading := False;
     if FSQLCache <> nil then
       FSQLCache.Clear;
-  end;
-  inherited;
+    inherited;
+  end
+  else if FLoading then
+  begin
+    inherited;
+  end
 end;
 
 procedure TRALDBFDMemTable.SetRALConnection(const AValue: TRALDBConnection);

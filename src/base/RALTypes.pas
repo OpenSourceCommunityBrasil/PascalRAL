@@ -61,6 +61,10 @@ type
     constructor Create(ABytes: TBytes); overload;
 
     function DataString : StringRAL;
+
+    procedure WriteBytes(ABytes: TBytes);
+    procedure WriteString(AString : StringRAL);
+    procedure WriteStream(AStream: TStream);
   end;
 
 const
@@ -130,19 +134,6 @@ begin
       FreeAndNil(vStream);
     end;
   end;
-
-{
-  else if AStream.InheritsFrom(TMemoryStream) then
-  begin
-    SetLength(Result, AStream.Size);
-    Move(TMemoryStream(AStream).Memory^, Result[PosIniStr], AStream.Size);
-  end
-  else
-  begin
-    SetLength(Result, AStream.Size);
-    AStream.Read(Result[PosIniStr], AStream.Size);
-  end;
-}
 end;
 
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
@@ -178,52 +169,64 @@ end;
 constructor TRALStringStream.Create(ABytes: TBytes);
 begin
   inherited Create;
-  Write(ABytes[0], Length(ABytes));
+  WriteBytes(ABytes);
 end;
 
 constructor TRALStringStream.Create(AString: StringRAL);
-var
-  vBytes : TBytes;
 begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-    SetLength(vBytes, Length(AString));
-    Move(AString[POSINISTR], ABytes[0], Length(AString));
-  {$ELSE}
-    vBytes := TEncoding.UTF8.GetBytes(AString);
-  {$IFEND}
-  Create(vBytes);
+  inherited Create;
+  WriteString(AString);
 end;
 
 constructor TRALStringStream.Create(AStream: TStream);
-var
-  vStream : TStringStream;
-  vBytes : TBytes;
 begin
-  vStream := TStringStream.Create;
-  try
-    vStream.LoadFromStream(AStream);
-    SetLength(vBytes, vStream.Size);
-    vStream.Read(vBytes[0], vStream.Size);
-    Create(vBytes);
-  finally
-    FreeAndNil(vStream);
-  end;
+  inherited Create;
+  WriteStream(AStream);
 end;
 
 function TRALStringStream.DataString: StringRAL;
-{$IF Defined(FPC) OR Defined(DELPHIXE5UP)}
+{$IFDEF HAS_Encoding}
 var
   vBytes : TBytes;
-{$IFEND}
+{$ENDIF}
 begin
-  {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE5UP)}
-    SetLength(Result, Self.Size);
-    Read(Result[POSINISTR], Self.Size);
-  {$ELSE}
+  Self.Position := 0;
+  {$IFDEF HAS_Encoding}
     SetLength(vBytes, Self.Size);
     Read(vBytes[0], Self.Size);
     Result := TEncoding.UTF8.GetString(vBytes);
-  {$IFEND}
+  {$ELSE}
+    SetLength(Result, Self.Size);
+    Read(Result[POSINISTR], Self.Size);
+  {$ENDIF}
+end;
+
+procedure TRALStringStream.WriteBytes(ABytes: TBytes);
+begin
+  Write(ABytes[0], Length(ABytes));
+end;
+
+procedure TRALStringStream.WriteString(AString: StringRAL);
+var
+  vBytes : TBytes;
+begin
+  {$IFDEF HAS_Encoding}
+    vBytes := TEncoding.UTF8.GetBytes(AString);
+  {$ELSE}
+    SetLength(vBytes, Length(AString));
+    Move(AString[POSINISTR], vBytes[0], Length(AString));
+  {$ENDIF}
+  WriteBytes(vBytes);
+end;
+
+procedure TRALStringStream.WriteStream(AStream: TStream);
+var
+  vBytes : TBytes;
+begin
+  AStream.Position := 0;
+  SetLength(vBytes, AStream.Size);
+  AStream.Read(vBytes[0], AStream.Size);
+  WriteBytes(vBytes);
 end;
 
 end.

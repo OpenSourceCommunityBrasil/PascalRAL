@@ -3,6 +3,8 @@ unit RALDBStorageCSV;
 
 interface
 
+{$I ../base/PascalRAL.inc}
+
 uses
   Classes, SysUtils, DB, DateUtils,
   RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64;
@@ -41,6 +43,7 @@ type
   TRALDBStorageCSV = class(TRALDBStorage)
   private
     FFormatOptions: TRALCSVFormatOptions;
+    FUseUTF8BOM : boolean;
   protected
     function CSVFormatBoolean(AValue: Boolean): StringRAL;
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
@@ -52,6 +55,7 @@ type
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
@@ -61,6 +65,7 @@ type
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
   { TRALDBStorageCSVLink }
@@ -68,6 +73,7 @@ type
   TRALDBStorageCSVLink = class(TRALDBStorageLink)
   private
     FFormatOptions: TRALCSVFormatOptions;
+    FUseUTF8BOM : boolean;
   protected
     function GetContentType: StringRAL; override;
   public
@@ -77,6 +83,7 @@ type
     function GetStorage: TRALDBStorage; override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
 implementation
@@ -87,6 +94,7 @@ constructor TRALDBStorageCSVLink.Create(AOwner: TComponent);
 begin
   inherited;
   FFormatOptions := TRALCSVFormatOptions.Create;
+  FUseUTF8BOM := True;
 end;
 
 destructor TRALDBStorageCSVLink.Destroy;
@@ -105,6 +113,7 @@ begin
   Result := TRALDBStorageCSV.Create;
   Result.FieldCharCase := FieldCharCase;
 
+  TRALDBStorageCSV(Result).UseUTF8BOM := FUseUTF8BOM;
   TRALDBStorageCSV(Result).FormatOptions.Assign(Self.FormatOptions);
 end;
 
@@ -186,7 +195,11 @@ begin
 end;
 
 procedure TRALDBStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
+const
+  UTF8BOM = #$EF#$BB#$BF;
 begin
+  if FUseUTF8BOM then
+    AStream.Write(UTF8BOM, Length(UTF8BOM));
   WriteFields(ADataset, AStream);
   WriteRecords(ADataset, AStream);
 end;
@@ -248,7 +261,7 @@ begin
           sftBoolean:
             vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
           sftString:
-            vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsString);
+            vValue := vValue + CSVFormatString(ADataset.Fields[vInt].AsWideString);
           sftBlob:
             begin
               vMem := TMemoryStream.Create;
@@ -291,8 +304,16 @@ begin
 end;
 
 procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringRAL);
+var
+  vBytes : TBytes;
 begin
-  AStream.Write(AValue[POSINISTR], Length(AValue));
+  {$IFDEF HAS_Encoding}
+    vBytes := TEncoding.UTF8.GetBytes(AValue);
+  {$ELSE}
+    SetLength(vBytes, Length(AValue));
+    Move(AValue[POSINISTR], ABytes[0], Length(AValue));
+  {$ENDIF}
+  AStream.Write(vBytes[0], Length(vBytes));
 end;
 
 function TRALDBStorageCSV.ReadLine(AStream: TStream): TStringList;
@@ -480,7 +501,7 @@ constructor TRALCSVFormatOptions.Create;
 begin
   FDateTimeFormat := dtfISO8601;
   FCustomDateFormat := 'dd/mm/yyyy';
-  FCustomTimeFormat := 'hh:nn:ss:zzz';
+  FCustomTimeFormat := 'hh:nn:ss.zzz';
   FDecimalSeparator := ',';
   FThousandSeparator := '.';
   FColumnSeparator := ';';

@@ -330,8 +330,15 @@ begin
 end;
 
 function TRALServerRequest.GetRequestEncText(const AEncode: boolean): StringRAL;
+var
+  vStream : TRALStringStream;
 begin
-  Result := StreamToString(FStream);
+  vStream := TRALStringStream.Create(FStream);
+  try
+    Result := StreamToString(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
 end;
 
 procedure TRALServerRequest.SetRequestStream(const AValue: TStream);
