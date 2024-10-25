@@ -123,7 +123,8 @@ begin
     for vInt := 0 to Pred(AParams.Count) do
     begin
       vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      if not AParams.Items[vInt].IsNull then
+        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
     end;
   end;
   vQuery.Open;
@@ -196,7 +197,8 @@ begin
     for vInt := 0 to Pred(AParams.Count) do
     begin
       vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      if not AParams.Items[vInt].IsNull then
+        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
     end;
   end;
   vQuery.Open;
@@ -233,7 +235,8 @@ begin
       for vInt := 0 to Pred(AParams.Count) do
       begin
         vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+        if not AParams.Items[vInt].IsNull then
+          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
       end;
     end;
     vQuery.ExecSQL;

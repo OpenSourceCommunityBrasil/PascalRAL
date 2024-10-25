@@ -276,6 +276,7 @@ var
   vInt: IntegerRAL;
   vType: StringRAL;
   vParam: TParam;
+  vValue: Variant;
 begin
   vColetion := TCollection(GetObjectProp(ADataset, 'Params'));
   if vColetion <> nil then
@@ -292,7 +293,11 @@ begin
       vParam.DataType := TFieldType(GetEnumValue(TypeInfo(TFieldType), vType));
 
       vParam.Size := GetInt64Prop(vColetItem, 'Size');
-      vParam.Value := GetVariantProp(vColetItem, 'Value');
+      vParam.Clear;
+
+      vValue := GetVariantProp(vColetItem, 'Value');
+      if not VarIsNull(vValue) then
+        vParam.Value := vValue;
     end;
   end;
 end;
@@ -408,41 +413,31 @@ begin
         // size
         vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
 
-        // values
-        case vStorType of
-          sftShortInt:
-            vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftSmallInt:
-            vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftInteger:
-            vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftInt64:
-            vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
-          sftByte:
-            vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
-          sftWord:
-            vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
-          {$IFDEF FPC}
-          sftCardinal:
-            vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
-          {$ELSE}
-          sftCardinal:
-            vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
-          {$ENDIF}
-          sftQWord:
-            vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
-          sftDouble:
-            vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
-          sftBoolean:
-            vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
-          sftString:
-            vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-          sftBlob:
-            vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
-          sftMemo:
-            vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-          sftDateTime:
-            vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
+        // param null
+        vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].IsNull);
+
+        if not vDBSQL.Params.Items[vInt2].IsNull then begin
+          // values
+          case vStorType of
+            sftShortInt: vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
+            sftSmallInt: vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
+            sftInteger : vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
+            sftInt64   : vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
+            sftByte    : vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
+            sftWord    : vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
+            {$IFDEF FPC}
+            sftCardinal: vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
+            {$ELSE}
+            sftCardinal: vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
+            {$ENDIF}
+            sftQWord   : vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
+            sftDouble  : vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
+            sftBoolean : vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
+            sftString  : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+            sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
+            sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
+            sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
+          end;
         end;
       end;
     end;
@@ -586,37 +581,29 @@ begin
 
           // size
           vParam.Size := vWriter.ReadInteger;
+          vParam.Clear;
 
-          // values
-          case vStorType of
-            sftShortInt:
-              vParam.AsInteger := vWriter.ReadShortint;
-            sftSmallInt:
-              vParam.AsInteger := vWriter.ReadSmallint;
-            sftInteger:
-              vParam.AsInteger := vWriter.ReadInteger;
-            sftInt64:
-              vParam.AsLargeInt := vWriter.ReadInt64;
-            sftByte:
-              vParam.AsInteger := vWriter.ReadByte;
-            sftWord:
-              vParam.AsInteger := vWriter.ReadWord;
-            sftCardinal:
-              vParam.AsLargeInt := vWriter.ReadLongWord;
-            sftQWord:
-              vParam.AsLargeInt := vWriter.ReadQWord;
-            sftDouble:
-              vParam.AsFloat := vWriter.ReadFloat;
-            sftBoolean:
-              vParam.AsBoolean := vWriter.ReadBoolean;
-            sftString:
-              vParam.AsString := vWriter.ReadString;
-            sftBlob:
-              vParam.AsBlob := vWriter.ReadBytes;
-            sftMemo:
-              vParam.AsMemo := vWriter.ReadString;
-            sftDateTime:
-              vParam.AsDateTime := vWriter.ReadDateTime;
+          // is null
+          vBoolean := vWriter.ReadBoolean;
+
+          if not vBoolean then begin
+            // values
+            case vStorType of
+              sftShortInt: vParam.AsInteger := vWriter.ReadShortint;
+              sftSmallInt: vParam.AsInteger := vWriter.ReadSmallint;
+              sftInteger : vParam.AsInteger := vWriter.ReadInteger;
+              sftInt64   : vParam.AsLargeInt := vWriter.ReadInt64;
+              sftByte    : vParam.AsInteger := vWriter.ReadByte;
+              sftWord    : vParam.AsInteger := vWriter.ReadWord;
+              sftCardinal: vParam.AsLargeInt := vWriter.ReadLongWord;
+              sftQWord   : vParam.AsLargeInt := vWriter.ReadQWord;
+              sftDouble  : vParam.AsFloat := vWriter.ReadFloat;
+              sftBoolean : vParam.AsBoolean := vWriter.ReadBoolean;
+              sftString  : vParam.AsString := vWriter.ReadString;
+              sftBlob    : vParam.AsBlob := vWriter.ReadBytes;
+              sftMemo    : vParam.AsMemo := vWriter.ReadString;
+              sftDateTime: vParam.AsDateTime := vWriter.ReadDateTime;
+            end;
           end;
         end;
         FSQLList.Add(vDBSQL);
