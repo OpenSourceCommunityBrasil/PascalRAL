@@ -292,10 +292,15 @@ begin
     vField := ADataset.Fields[vInt];
     if (pfInUpdate in vField.ProviderFlags) and (not vField.ReadOnly) then
     begin
-      if vSQLFields <> '' then
-        vSQLFields := vSQLFields + ',';
+      if (VarIsNull(vField.AsVariant) and (not VarIsNull(vField.OldValue))) or
+        ((not VarIsNull(vField.AsVariant)) and VarIsNull(vField.OldValue)) or
+        (vField.AsVariant <> vField.OldValue) then
+      begin
+        if vSQLFields <> '' then
+          vSQLFields := vSQLFields + ',';
 
-      vSQLFields := vSQLFields + vField.FieldName + ' = :' + vField.FieldName;
+        vSQLFields := vSQLFields + vField.FieldName + ' = :' + vField.FieldName;
+      end;
     end;
 
     if (pfInKey in vField.ProviderFlags) or
