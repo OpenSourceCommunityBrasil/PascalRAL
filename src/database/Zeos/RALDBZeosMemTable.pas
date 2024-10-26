@@ -175,14 +175,16 @@ begin
     end;
     Exit;
   end
-  else if (not AValue) then
+  else if (not AValue) and (not FLoading) then
   begin
     FLoading := False;
     if FSQLCache <> nil then
       FSQLCache.Clear;
+    inherited;
+  end
+  else if (FLoading) then begin
+    inherited;
   end;
-
-  inherited;
 end;
 
 procedure TRALDBZMemTable.SetRALConnection(AValue: TRALDBConnection);

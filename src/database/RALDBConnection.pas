@@ -292,9 +292,7 @@ begin
     vField := ADataset.Fields[vInt];
     if (pfInUpdate in vField.ProviderFlags) and (not vField.ReadOnly) then
     begin
-      if (VarIsNull(vField.AsVariant) and (not VarIsNull(vField.OldValue))) or
-        ((not VarIsNull(vField.AsVariant)) and VarIsNull(vField.OldValue)) or
-        (vField.AsVariant <> vField.OldValue) then
+      if (vField.Value <> vField.OldValue) then
       begin
         if vSQLFields <> '' then
           vSQLFields := vSQLFields + ',';
@@ -305,7 +303,8 @@ begin
 
     if (pfInKey in vField.ProviderFlags) or
        ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
-       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and (vField.Value <> vField.OldValue)) then
+       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and
+        (vField.Value <> vField.OldValue)) then
     begin
       if vSQLWhere <> '' then
         vSQLWhere := vSQLWhere + ' and ';
@@ -354,7 +353,8 @@ begin
     vField := ADataset.Fields[vInt];
     if (pfInKey in vField.ProviderFlags) or
        ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
-       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and (vField.Value <> vField.OldValue)) then
+       ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and
+        (vField.Value <> vField.OldValue)) then
     begin
       if vSQLWhere <> '' then
         vSQLWhere := vSQLWhere + ' and ';

@@ -212,13 +212,16 @@ var
   vType: TRALFieldType;
   vTables: TStringList;
 begin
+  inherited;
+
   vTables := TStringList.Create;
 
   vInfo := nil;
-  if FRALConnection <> nil then
-    vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
 
   try
+    if FRALConnection <> nil then
+      vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+
     if vInfo = nil then
       Exit;
 
@@ -267,8 +270,6 @@ begin
     FreeAndNil(vInfo);
     FreeAndNil(vTables);
   end;
-
-  inherited;
 end;
 
 procedure TRALDBFDMemTable.InternalPost;
