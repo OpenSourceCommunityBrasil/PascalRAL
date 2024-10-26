@@ -60,7 +60,7 @@ type
     constructor Create(AStream: TStream); overload;
     constructor Create(ABytes: TBytes); overload;
 
-    function DataString : StringRAL;
+    function DataString: StringRAL;
 
     procedure WriteBytes(ABytes: TBytes);
     procedure WriteString(AString : StringRAL);
@@ -78,7 +78,8 @@ const
   {$IF NOT Defined(FPC) AND NOT Defined(DELPHI7UP)}
   sLineBreak = #13#10;
   {$IFEND}
-  // Returns the last position of a string
+
+// Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
 // Converts a given AStream to an UTF8String
 function StreamToString(AStream: TStream): StringRAL;
@@ -173,12 +174,17 @@ begin
 end;
 
 constructor TRALStringStream.Create(AString: StringRAL);
+var
+  vBytes: TBytes;
 begin
   inherited Create;
   WriteString(AString);
 end;
 
 constructor TRALStringStream.Create(AStream: TStream);
+var
+  vStream: TStringStream;
+  vBytes: TBytes;
 begin
   inherited Create;
   WriteStream(AStream);
@@ -187,7 +193,7 @@ end;
 function TRALStringStream.DataString: StringRAL;
 {$IFDEF HAS_Encoding}
 var
-  vBytes : TBytes;
+  vBytes: TBytes;
 {$ENDIF}
 begin
   Self.Position := 0;

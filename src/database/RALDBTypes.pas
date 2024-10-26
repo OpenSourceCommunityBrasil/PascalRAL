@@ -337,7 +337,7 @@ var
   vParamName: StringRAL;
   vEscapeQuote, vEspaceDoubleQuote: boolean;
   vParam: boolean;
-  vChar: CharRAL;
+  vChar, vSQLChar: CharRAL;
   vInt: IntegerRAL;
   vOldParams: TStringList;
   vObjParam: TParam;
@@ -378,19 +378,20 @@ begin
 
     for vInt := POSINISTR to RALHighStr(ASQL) do
     begin
-      if (ASQL[vInt] = '''') and (not vEspaceDoubleQuote) and
+      vSQLChar := ASQL[vInt];
+      if (vSQLChar = '''') and (not vEspaceDoubleQuote) and
         (not (vEscapeQuote and (vChar = '\'))) then
       begin
         AddParamSQL;
         vEscapeQuote := not vEscapeQuote;
       end
-      else if (ASQL[vInt] = '"') and (not vEscapeQuote) and
+      else if (vSQLChar = '"') and (not vEscapeQuote) and
         (not (vEspaceDoubleQuote and (vChar = '\'))) then
       begin
         AddParamSQL;
         vEspaceDoubleQuote := not vEspaceDoubleQuote;
       end
-      else if (ASQL[vInt] = ':') and (not vEscapeQuote) and
+      else if (vSQLChar = ':') and (not vEscapeQuote) and
         (not vEspaceDoubleQuote) then
       begin
         AddParamSQL;
@@ -398,12 +399,12 @@ begin
       end
       else if (vParam) then
       begin
-        if (not CharInSet(ASQL[vInt], cEndParam)) then
-          vParamName := vParamName + ASQL[vInt]
+        if (not CharInSet(vSQLChar, cEndParam)) then
+          vParamName := vParamName + vSQLChar
         else
           AddParamSQL;
       end;
-      vChar := ASQL[vInt];
+      vChar := vSQLChar;
     end;
     AddParamSQL;
 

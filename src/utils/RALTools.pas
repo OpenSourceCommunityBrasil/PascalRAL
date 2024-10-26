@@ -6,9 +6,10 @@ unit RALTools;
 interface
 
 uses
-  {$IFNDEF FPC}
+  {$IF Defined(RALWindows)}
     Windows,
-  {$ELSE}
+  {$IFEND}
+  {$IFDEF FPC}
     UTF8Process,
   {$ENDIF}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
@@ -205,7 +206,7 @@ begin
     end;
 end;
 
-function RALCPUCount : integer;
+function RALCPUCount: integer;
 {$IFNDEF FPC}
   {$IFDEF RALWindows}
   var
