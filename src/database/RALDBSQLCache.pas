@@ -10,7 +10,8 @@ uses
   bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
-  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes;
+  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes,
+  RALDBStorage;
 
 type
   TRALDBExecType = (etOpen, etExecute);
@@ -56,6 +57,7 @@ type
     FResponse: TRALDBSQLResponse;
     FSQL: StringRAL;
     FSQLIndex: IntegerRAL;
+    FStorageFormat: TRALStorageFormat;
   protected
     procedure SetParams(AValue: TParams);
   public
@@ -69,6 +71,7 @@ type
     property Response: TRALDBSQLResponse read FResponse;
     property SQL: StringRAL read FSQL write FSQL;
     property SQLIndex: IntegerRAL read FSQLIndex write FSQLIndex;
+    property StorageFormat: TRALStorageFormat read FStorageFormat write FStorageFormat;
   end;
 
   { TRALDBSQLCache }
@@ -89,10 +92,14 @@ type
 
     function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
 
-    procedure Add(ADataset: TDataSet; AExecType: TRALDBExecType = etOpen); overload;
-    procedure Add(ASQL: StringRAL; AParams: TParams = nil; ABookMark: TBookMark = nil;
+    procedure Add(ADataset: TDataSet;
+                  AExecType: TRALDBExecType = etOpen;
+                  AStorageFormat: TRALStorageFormat = rsfAuto); overload;
+    procedure Add(ASQL: StringRAL; AParams: TParams = nil;
+                  ABookMark: TBookMark = nil;
                   AExecType: TRALDBExecType = etExecute;
-                  ADriverType: TRALDBDriverType = qtOther); overload;
+                  ADriverType: TRALDBDriverType = qtOther;
+                  AStorageFormat: TRALStorageFormat = rsfAuto); overload;
 
     procedure SaveToStream(AStream: TStream); overload;
     function SaveToStream: TStream; overload;
@@ -231,9 +238,12 @@ function TRALDBSQLCache.GetQuerySQL(ADataset: TDataSet): StringRAL;
 var
   vStrings: TStrings;
 begin
-  vStrings := TStrings(GetObjectProp(ADataset, 'SQL'));
-  if vStrings <> nil then
-    Result := Trim(vStrings.Text);
+  Result := '';
+  if IsPublishedProp(ADataset, 'SQL') then begin
+    vStrings := TStrings(GetObjectProp(ADataset, 'SQL'));
+    if vStrings <> nil then
+      Result := Trim(vStrings.Text);
+  end;
 end;
 
 function TRALDBSQLCache.GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
@@ -315,7 +325,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TRALDBSQLCache.Add(ADataset: TDataSet; AExecType: TRALDBExecType);
+procedure TRALDBSQLCache.Add(ADataset: TDataSet; AExecType: TRALDBExecType;
+                             AStorageFormat: TRALStorageFormat);
 var
   vSQL: StringRAL;
   vParams: TParams;
@@ -325,14 +336,14 @@ begin
   vDriver := GetQueryClass(ADataset);
   vParams := GetQueryParams(ADataset);
   try
-    Add(vSQL, vParams, nil, AExecType, vDriver);
+    Add(vSQL, vParams, nil, AExecType, vDriver, AStorageFormat);
   finally
     FreeAndNil(vParams);
   end;
 end;
 
 procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams; ABookMark: TBookMark;
-  AExecType: TRALDBExecType; ADriverType: TRALDBDriverType);
+  AExecType: TRALDBExecType; ADriverType: TRALDBDriverType; AStorageFormat: TRALStorageFormat);
 var
   vDBSQL: TRALDBSQL;
 begin
@@ -342,6 +353,7 @@ begin
   vDBSQL.ExecType := AExecType;
   vDBSQL.Params := AParams;
   vDBSQL.SQL := ASQL;
+  vDBSQL.StorageFormat := AStorageFormat;
 
   FSQLList.Add(vDBSQL);
 end;
@@ -394,6 +406,9 @@ begin
 
       // type de exec - open or execsql
       vWriter.WriteByte(Ord(vDBSQL.ExecType));
+
+      // format storage
+      vWriter.WriteByte(Ord(vDBSQL.StorageFormat));
 
       // index do sql
       vWriter.WriteInteger(vDBSQL.SQLIndex);
@@ -561,6 +576,9 @@ begin
 
         // type de exec - open or execsql
         vDBSQL.ExecType := TRALDBExecType(vWriter.ReadByte);
+
+        // format storage
+        vDBSQL.StorageFormat := TRALStorageFormat(vWriter.ReadByte);
 
         // index do sql
         vDBSQL.SQLIndex := vWriter.ReadInteger;

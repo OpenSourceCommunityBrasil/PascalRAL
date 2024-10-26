@@ -12,6 +12,7 @@ uses
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
+  TRALStorageFormat = (rsfAuto, rsfBIN, rsfJSON, rsfBSON, rsfCSV);
 
   { TRALDBStorage }
 
@@ -50,34 +51,42 @@ type
   end;
 
   TRALDBStorageClass = class of TRALDBStorage;
-  TRALDBStorageClassLink = class of TRALDBStorageLink;
+  TRALDBStorageLinkClass = class of TRALDBStorageLink;
 
   { TRALDBStorageLink }
 
   TRALDBStorageLink = class(TRALComponent)
   private
     FFieldCharCase: TRALFieldCharCase;
+    FStorageFormat: TRALStorageFormat;
   protected
     function GetContentType: StringRAL; virtual;
-    class function GetDeclaredStorageLink: TRALDBStorageClassLink;
+    class function GetDeclaredStorageLink: TRALDBStorageLinkClass;
     class function GetDefaultStorage: TRALDBStorage; virtual;
+
+    procedure SetStorageFormat(AFormat: TRALStorageFormat);
   public
+    constructor Create(AOwner : TComponent); override;
+
     function GetStorage: TRALDBStorage; virtual;
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
     procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
+
+    class function GetStorageClass(AFormat: TRALStorageFormat): TRALDBStorageLinkClass;
   published
     property ContentType: StringRAL read GetContentType;
     property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
+    property StorageFormat: TRALStorageFormat read FStorageFormat;
   end;
 
 implementation
 
 const
-  cStorageLinkClass: array [0 .. 2] of StringRAL = ('TRALDBStorageBINLink',
-    'TRALDBStorageJSONLink', 'TRALDBStorageBSONLink');
+  cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALDBStorageBINLink',
+    'TRALDBStorageJSONLink', 'TRALDBStorageBSONLink', 'TRALDBStorageCSVLink');
 
   { TRALDBStorage }
 
@@ -207,9 +216,15 @@ end;
 
 { TRALDBStorageLink }
 
+constructor TRALDBStorageLink.Create(AOwner: TComponent);
+begin
+  inherited;
+  FStorageFormat := rsfAuto;
+end;
+
 function TRALDBStorageLink.GetContentType: StringRAL;
 var
-  vClassStor: TRALDBStorageClassLink;
+  vClassStor: TRALDBStorageLinkClass;
   vLink: TRALDBStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
@@ -228,14 +243,14 @@ begin
   end;
 end;
 
-class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageClassLink;
+class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageLinkClass;
 var
-  vLinks: IntegerRAL;
+  vLinks: TRALStorageFormat;
 begin
   Result := nil;
   for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
   begin
-    Result := TRALDBStorageClassLink(GetClass(cStorageLinkClass[vLinks]));
+    Result := TRALDBStorageLinkClass(GetClass(cStorageLinkClass[vLinks]));
     if Result <> nil then
       Break;
   end;
@@ -243,7 +258,7 @@ end;
 
 class function TRALDBStorageLink.GetDefaultStorage: TRALDBStorage;
 var
-  vClassStor: TRALDBStorageClassLink;
+  vClassStor: TRALDBStorageLinkClass;
   vLink: TRALDBStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
@@ -279,6 +294,11 @@ begin
   Result := TMemoryStream.Create;
   SaveToStream(ADataset, Result);
   Result.Position := 0;
+end;
+
+procedure TRALDBStorageLink.SetStorageFormat(AFormat: TRALStorageFormat);
+begin
+  FStorageFormat := AFormat;
 end;
 
 procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
@@ -320,6 +340,38 @@ end;
 function TRALDBStorageLink.GetStorage: TRALDBStorage;
 begin
   Result := GetDefaultStorage;
+end;
+
+class function TRALDBStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRALDBStorageLinkClass;
+var
+  vStr: TStringList;
+  vInt: IntegerRAL;
+begin
+  Result := nil;
+  vStr := TStringList.Create;
+  try
+    case AFormat of
+      rsfAuto : begin
+        vStr.Add(cStorageLinkClass[rsfBIN]);
+        vStr.Add(cStorageLinkClass[rsfJSON]);
+        vStr.Add(cStorageLinkClass[rsfBSON]);
+        vStr.Add(cStorageLinkClass[rsfCSV]);
+      end;
+      rsfBIN  : vStr.Add(cStorageLinkClass[rsfBIN]);
+      rsfJSON : vStr.Add(cStorageLinkClass[rsfJSON]);
+      rsfBSON : vStr.Add(cStorageLinkClass[rsfBSON]);
+      rsfCSV  : vStr.Add(cStorageLinkClass[rsfCSV]);
+    end;
+
+    for vInt := 0 to Pred(vStr.Count) do
+    begin
+      Result := TRALDBStorageLinkClass(GetClass(vStr.Strings[vInt]));
+      if Result <> nil then
+        Break;
+    end;
+  finally
+    FreeAndNil(vStr);
+  end;
 end;
 
 end.

@@ -920,6 +920,7 @@ begin
   inherited Create(AOwner);
   FJSONType := jtDBWare;
   FFormatOptions := TRALJSONFormatOptions.Create;
+  SetStorageFormat(rsfJSON);
 end;
 
 destructor TRALDBStorageJSONLink.Destroy;
@@ -947,7 +948,6 @@ begin
 end;
 
 initialization
-
-RegisterClass(TRALDBStorageJSONLink);
+  RegisterClass(TRALDBStorageJSONLink);
 
 end.

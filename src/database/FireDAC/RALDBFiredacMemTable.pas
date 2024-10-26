@@ -29,7 +29,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageFormat;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -43,7 +43,6 @@ type
     procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
-    procedure SetStorage(const AValue: TRALDBStorageLink);
     procedure SetRALConnection(const AValue: TRALDBConnection);
     procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
 
@@ -62,6 +61,8 @@ type
 
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
+
+    procedure LoadFromRALStorage(ADataSet : TDataSet; AStream : TStream);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -78,7 +79,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageFormat read FStorage write FStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -137,7 +138,8 @@ begin
           vParam.Value := vField.NewValue;
       end;
     end;
-    FSQLCache.Add(ASQL, vParams, Self.GetBookmark, AExecType, FSQLCache.GetQueryClass(Self));
+    FSQLCache.Add(ASQL, vParams, Self.GetBookmark, AExecType,
+                  FSQLCache.GetQueryClass(Self), FStorage);
   finally
     FreeAndNil(vParams);
   end;
@@ -186,7 +188,7 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
-  FRALConnection.ExecSQLRemote(Self, OnExecSQLResponse);
+  FRALConnection.ExecSQLRemote(Self, FStorage, OnExecSQLResponse);
 end;
 
 procedure TRALDBFDMemTable.InternalDelete;
@@ -311,12 +313,31 @@ begin
   end;
 end;
 
+procedure TRALDBFDMemTable.LoadFromRALStorage(ADataSet: TDataSet; AStream: TStream);
+var
+  vStorageClass: TRALDBStorageLinkClass;
+  vStorage: TRALDBStorageLink;
+begin
+  vStorageClass := TRALDBStorageLink.GetStorageClass(FStorage);
+  if vStorageClass <> nil then
+  begin
+    vStorage := vStorageClass.Create(nil);
+    try
+      vStorage.LoadFromStream(ADataSet, AStream);
+    finally
+      FreeAndNil(vStorage);
+    end;
+  end
+  else
+  begin
+    raise Exception.Create('Storage class não localizada');
+  end;
+end;
+
 procedure TRALDBFDMemTable.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FRALConnection) then
-    FRALConnection := nil
-  else if (Operation = opRemove) and (AComponent = FStorage) then
-    FStorage := nil;
+    FRALConnection := nil;
   inherited;
 end;
 
@@ -349,7 +370,7 @@ begin
               if vDBSQL.Response.Native then
                 vTable.LoadFromStream(vDBSQL.Response.Stream)
               else
-                FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
+                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
               Self.Edit;
               for vInt2 := 0 to Pred(vTable.FieldCount) do
@@ -475,7 +496,7 @@ begin
         if vDBSQL.Response.Native then
           Self.LoadFromStream(vDBSQL.Response.Stream)
         else
-          FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+          LoadFromRALStorage(Self, vDBSQL.Response.Stream);
       finally
         FreeAndNil(vSQLCache);
       end;
@@ -523,7 +544,7 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, OnQueryResponse);
+      FRALConnection.OpenRemote(Self, FStorage, OnQueryResponse);
     end;
   end
   else if (not AValue) and (not FLoading) then
@@ -554,18 +575,6 @@ end;
 procedure TRALDBFDMemTable.SetSQL(AValue: TStrings);
 begin
   FSQL.Assign(AValue);
-end;
-
-procedure TRALDBFDMemTable.SetStorage(const AValue: TRALDBStorageLink);
-begin
-  if FStorage <> nil then
-    FStorage.RemoveFreeNotification(Self);
-
-  if AValue <> FStorage then
-    FStorage := AValue;
-
-  if FStorage <> nil then
-    FStorage.FreeNotification(Self);
 end;
 
 procedure TRALDBFDMemTable.SetUpdateSQL(const AValue: TRALDBUpdateSQL);

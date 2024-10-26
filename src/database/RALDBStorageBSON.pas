@@ -29,6 +29,8 @@ type
   protected
     function GetContentType: StringRAL; override;
   public
+    constructor Create(AOwner: TComponent); override;
+
     function GetStorage : TRALDBStorage; override;
   end;
 
@@ -300,6 +302,12 @@ begin
 end;
 
 { TRALDBStorageBSONLink }
+
+constructor TRALDBStorageBSONLink.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetStorageFormat(rsfBSON);
+end;
 
 function TRALDBStorageBSONLink.GetContentType: StringRAL;
 begin

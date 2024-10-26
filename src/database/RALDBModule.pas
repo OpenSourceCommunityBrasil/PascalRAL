@@ -20,7 +20,6 @@ type
     FHostname: StringRAL;
     FPassword: StringRAL;
     FPort: IntegerRAL;
-    FStorageOutPut: TRALDBStorageLink;
     FUsername: StringRAL;
   protected
     procedure ApplyUpdates(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -32,12 +31,14 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetDataBaseLink(AValue: TRALDBLink);
-    procedure SetStorageOutPut(AValue: TRALDBStorageLink);
 
     procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
     procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
     function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
                                  ABinary : boolean) : TStream;
+    procedure SaveToRALStorage(ADataset : TDataSet; AStream : TStream;
+                               AStorageFormat : TRALStorageFormat;
+                               var AContentType : StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
   published
@@ -47,25 +48,12 @@ type
     property Hostname: StringRAL read FHostname write FHostname;
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
-    property StorageOutPut: TRALDBStorageLink read FStorageOutPut write SetStorageOutPut;
     property Username: StringRAL read FUsername write FUsername;
   end;
 
 implementation
 
 { TRALDBModule }
-
-procedure TRALDBModule.SetStorageOutPut(AValue: TRALDBStorageLink);
-begin
-  if FStorageOutPut <> nil then
-    FStorageOutPut.RemoveFreeNotification(Self);
-
-  if AValue <> FStorageOutPut then
-    FStorageOutPut := AValue;
-
-  if FStorageOutPut <> nil then
-    FStorageOutPut.FreeNotification(Self);
-end;
 
 procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL);
 var
@@ -90,8 +78,9 @@ begin
     else
     begin
       vNative := False;
-      vContentType := FStorageOutPut.ContentType;
-      FStorageOutPut.SaveToStream(vQuery, vResult);
+      SaveToRALStorage(vQuery, vResult, ADBSQL.StorageFormat, vContentType);
+//      vContentType := FStorageOutPut.ContentType;
+//      FStorageOutPut.SaveToStream(vQuery, vResult);
     end;
 
     ADBSQL.Response.Native := vNative;
@@ -152,10 +141,31 @@ end;
 procedure TRALDBModule.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FDataBaseLink) then
-    FDataBaseLink := nil
-  else if (Operation = opRemove) and (AComponent = FStorageOutPut) then
-    FStorageOutPut := nil;
+    FDataBaseLink := nil;
   inherited Notification(AComponent, Operation);
+end;
+
+procedure TRALDBModule.SaveToRALStorage(ADataset: TDataSet; AStream: TStream;
+  AStorageFormat: TRALStorageFormat; var AContentType: StringRAL);
+var
+  vStorageClass: TRALDBStorageLinkClass;
+  vStorage: TRALDBStorageLink;
+begin
+  vStorageClass := TRALDBStorageLink.GetStorageClass(AStorageFormat);
+  if vStorageClass <> nil then
+  begin
+    vStorage := vStorageClass.Create(nil);
+    try
+      vStorage.SaveToStream(ADataset, AStream);
+      AContentType := vStorage.ContentType;
+    finally
+      FreeAndNil(vStorage);
+    end;
+  end
+  else
+  begin
+    Exception.Create('Storage class não localizada');
+  end;
 end;
 
 procedure TRALDBModule.SetDataBaseLink(AValue: TRALDBLink);
@@ -190,7 +200,6 @@ begin
     Result.Password := FPassword;
     Result.Port := FPort;
     Result.DatabaseType := FDatabaseType;
-    Result.StorageOutPut := FStorageOutPut;
   end
   else
   begin

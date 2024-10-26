@@ -59,6 +59,8 @@ type
   protected
     function GetContentType: StringRAL; override;
   public
+    constructor Create(AOwner: TComponent); override;
+
     function GetStorage: TRALDBStorage; override;
   end;
 
@@ -522,6 +524,12 @@ begin
 end;
 
 { TRALDBStorageBINLink }
+
+constructor TRALDBStorageBINLink.Create(AOwner: TComponent);
+begin
+  inherited;
+  SetStorageFormat(rsfBIN);
+end;
 
 function TRALDBStorageBINLink.GetContentType: StringRAL;
 begin

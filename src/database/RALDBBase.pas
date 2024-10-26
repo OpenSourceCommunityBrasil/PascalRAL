@@ -24,7 +24,6 @@ type
     FUsername: StringRAL;
     FPassword: StringRAL;
     FPort: IntegerRAL;
-    FStorageOutPut: TRALDBStorageLink;
   protected
     procedure Conectar; virtual; abstract;
   public
@@ -47,7 +46,6 @@ type
     property Username: StringRAL read FUsername write FUsername;
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
-    property StorageOutPut: TRALDBStorageLink read FStorageOutPut write FStorageOutPut;
   end;
 
   TRALDBClass = class of TRALDBBase;

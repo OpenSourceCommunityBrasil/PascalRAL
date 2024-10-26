@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB, Variants,
   RALCustomObjects, RALTypes, RALTools, RALDBSQLCache, RALClient, RALResponse,
-  RALDBTypes, RALRequest, RALMimeTypes, RALConsts;
+  RALDBTypes, RALRequest, RALMimeTypes, RALConsts, RALDBStorage;
 
 type
 
@@ -23,8 +23,8 @@ type
     constructor Create(AOwner: TComponent);
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
-    procedure OpenRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
-    procedure ExecSQLRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
+    procedure OpenRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
+    procedure ExecSQLRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
 
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     function GetTables: TRALDBInfoTables;
@@ -95,7 +95,8 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
+procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat;
+                                      AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
   vReq: TRALRequest;
@@ -104,7 +105,7 @@ var
 begin
   vSQLCache := TRALDBSQLCache.Create;
   try
-    vSQLCache.Add(AQuery);
+    vSQLCache.Add(AQuery, etOpen, AStorageFormat);
 
     vMem := vSQLCache.SaveToStream;
     vReq := FClient.NewRequest;
@@ -126,7 +127,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AResp: TRALThreadClientResponse);
+procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
   vReq: TRALRequest;
@@ -135,7 +136,7 @@ var
 begin
   vSQLCache := TRALDBSQLCache.Create;
   try
-    vSQLCache.Add(AQuery);
+    vSQLCache.Add(AQuery, etExecute, AStorageFormat);
 
     vMem := vSQLCache.SaveToStream;
     vReq := FClient.NewRequest;

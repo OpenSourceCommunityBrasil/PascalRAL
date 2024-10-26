@@ -95,6 +95,7 @@ begin
   inherited;
   FFormatOptions := TRALCSVFormatOptions.Create;
   FUseUTF8BOM := True;
+  SetStorageFormat(rsfCSV);
 end;
 
 destructor TRALDBStorageCSVLink.Destroy;

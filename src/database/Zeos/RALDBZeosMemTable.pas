@@ -26,7 +26,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageFormat;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -40,7 +40,6 @@ type
     procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
-    procedure SetStorage(AValue: TRALDBStorageLink);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
 
@@ -57,6 +56,8 @@ type
     class procedure ZeosLoadFromStream(ADataset: TZMemTable; AStream: TStream);
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
+
+    procedure LoadFromRALStorage(ADataSet : TDataSet; AStream : TStream);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -76,7 +77,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageFormat read FStorage write FStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -87,18 +88,6 @@ type
 implementation
 
 { TRALDBZMemTable }
-
-procedure TRALDBZMemTable.SetStorage(AValue: TRALDBStorageLink);
-begin
-  if FStorage <> nil then
-    FStorage.RemoveFreeNotification(Self);
-
-  if AValue <> FStorage then
-    FStorage := AValue;
-
-  if FStorage <> nil then
-    FStorage.FreeNotification(Self);
-end;
 
 procedure TRALDBZMemTable.SetUpdateSQL(AValue: TRALDBUpdateSQL);
 begin
@@ -143,6 +132,27 @@ begin
   end;
 end;
 
+procedure TRALDBZMemTable.LoadFromRALStorage(ADataSet: TDataSet; AStream: TStream);
+var
+  vStorageClass: TRALDBStorageLinkClass;
+  vStorage: TRALDBStorageLink;
+begin
+  vStorageClass := TRALDBStorageLink.GetStorageClass(FStorage);
+  if vStorageClass <> nil then
+  begin
+    vStorage := vStorageClass.Create(nil);
+    try
+      vStorage.LoadFromStream(ADataSet, AStream);
+    finally
+      FreeAndNil(vStorage);
+    end;
+  end
+  else
+  begin
+    raise Exception.Create('Storage class não localizada');
+  end;
+end;
+
 procedure TRALDBZMemTable.InternalDelete;
 var
   vSQL: StringRAL;
@@ -171,7 +181,7 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
     end;
     Exit;
   end
@@ -202,9 +212,7 @@ end;
 procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FRALConnection) then
-    FConnection := nil
-  else if (Operation = opRemove) and (AComponent = FStorage) then
-    FStorage := nil;
+    FConnection := nil;
   inherited;
 end;
 
@@ -322,7 +330,7 @@ begin
       if vDBSQL.Response.Native then
         ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
       else
-        FStorage.LoadFromStream(Self, vDBSQL.Response.Stream);
+        LoadFromRALStorage(Self, vDBSQL.Response.Stream);
     finally
       FreeAndNil(vMem);
     end;
@@ -403,7 +411,7 @@ begin
               if vDBSQL.Response.Native then
                 ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
               else
-                FStorage.LoadFromStream(vTable, vDBSQL.Response.Stream);
+                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
               Self.Edit;
               for vInt2 := 0 to Pred(vTable.FieldCount) do
@@ -563,7 +571,7 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
-  FRALConnection.ExecSQLRemote(Self, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
+  FRALConnection.ExecSQLRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
 end;
 
 function TRALDBZMemTable.ParamByName(const AValue: StringRAL): TParam;
