@@ -26,7 +26,7 @@ type
     /// Assign an UTF8String into the Response
     procedure SetResponseText(const AValue: StringRAL); virtual; abstract;
   public
-    constructor Create(AOwner : TObject); override;
+    constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
     /// Append an UTF8 String to the response
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;

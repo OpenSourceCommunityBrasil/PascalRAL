@@ -27,7 +27,7 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
-function RALCPUCount : integer;
+function RALCPUCount: integer;
 
 implementation
 
