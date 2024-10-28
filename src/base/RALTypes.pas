@@ -85,6 +85,10 @@ function RALHighStr(const AStr: StringRAL): integer;
 function StreamToString(AStream: TStream): StringRAL;
 // Creates a TStream and writes the given AStr into it
 function StringToStream(const AStr: StringRAL): TStream;
+
+function StringToBytes(const AString: StringRAL): TBytes;
+function BytesToString(const ABytes: TBytes): StringRAL;
+
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
 function DateToISO8601(const AValue: TDateTime): StringRAL;
 function ISO8601ToDate(const AValue: StringRAL): TDateTime;
@@ -99,6 +103,26 @@ begin
   {$ELSE}
   Result := High(AStr);
   {$IFEND}
+end;
+
+function StringToBytes(const AString: StringRAL): TBytes;
+begin
+  {$IFDEF HAS_Encoding}
+    Result := TEncoding.UTF8.GetBytes(AString);
+  {$ELSE}
+    SetLength(Result, Length(AString));
+    Move(AString[POSINISTR], Result[0], Length(AString));
+  {$ENDIF}
+end;
+
+function BytesToString(const ABytes: TBytes): StringRAL;
+begin
+  {$IFDEF HAS_Encoding}
+    Result := TEncoding.UTF8.GetString(ABytes);
+  {$ELSE}
+    SetLength(Result, Length(ABytes));
+    Move(ABytes[0], Result[POSINISTR], Length(ABytes));
+  {$ENDIF}
 end;
 
 function StringToStream(const AStr: StringRAL): TStream;

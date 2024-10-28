@@ -199,10 +199,12 @@ end;
 procedure TRALDBStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
 var
   vSize: IntegerRAL;
+  vBytes: TBytes;
 begin
-  vSize := Length(AValue);
+  vBytes := StringToBytes(AValue);
+  vSize := Length(vBytes);
   AStream.Write(vSize, SizeOf(vSize));
-  AStream.Write(AValue[POSINISTR], vSize * SizeOf(AValue[POSINISTR]));
+  AStream.Write(vBytes[0], vSize);
 end;
 
 procedure TRALDBStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
@@ -432,14 +434,16 @@ end;
 function TRALDBStorageBIN.ReadString(AStream: TStream): StringRAL;
 var
   vSize: IntegerRAL;
+  vBytes: TBytes;
 begin
   Result := '';
   vSize := 0;
   AStream.Read(vSize, SizeOf(vSize));
   if vSize > 0 then
   begin
-    SetLength(Result, vSize);
-    AStream.Read(Result[POSINISTR], vSize * SizeOf(Result[POSINISTR]));
+    SetLength(vBytes, vSize);
+    AStream.Read(vBytes[0], vSize);
+    Result := BytesToString(vBytes);
   end;
 end;
 

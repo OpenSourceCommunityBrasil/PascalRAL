@@ -3,6 +3,8 @@ unit RALStream;
 
 interface
 
+{$I ..\base\PascalRAL.inc}
+
 uses
   Classes, SysUtils,
   RALTypes;
@@ -219,12 +221,12 @@ end;
 
 procedure TRALBinaryWriter.WriteString(AValue: StringRAL);
 var
-  vLen : integer;
+  vBytes : TBytes;
 begin
-  WriteSize(Length(AValue));
-  vLen := Length(AValue) * SizeOf(CharRAL);
-  if AValue <> '' then
-    FStream.Write(AValue[POSINISTR], vLen);
+  vBytes := StringToBytes(AValue);
+  WriteSize(Length(vBytes));
+  if Length(vBytes) > 0 then
+    FStream.Write(vBytes[0], Length(vBytes));
 end;
 
 function TRALBinaryWriter.ReadShortint: Shortint;
@@ -304,13 +306,15 @@ end;
 function TRALBinaryWriter.ReadString: StringRAL;
 var
   vQWord : UInt64;
+  vBytes : TBytes;
 begin
   vQWord := ReadSize;
   Result := '';
   if vQWord > 0 then
   begin
-    SetLength(Result, vQWord);
-    FStream.Read(Result[POSINISTR], vQWord * SizeOf(CharRAL));
+    SetLength(vBytes, vQWord);
+    FStream.Read(vBytes[0], vQWord);
+    Result := BytesToString(vBytes);
   end;
 end;
 
