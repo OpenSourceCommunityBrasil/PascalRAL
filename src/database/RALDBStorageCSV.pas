@@ -308,12 +308,7 @@ procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringR
 var
   vBytes : TBytes;
 begin
-  {$IFDEF HAS_Encoding}
-    vBytes := TEncoding.UTF8.GetBytes(AValue);
-  {$ELSE}
-    SetLength(vBytes, Length(AValue));
-    Move(AValue[POSINISTR], ABytes[0], Length(AValue));
-  {$ENDIF}
+  vBytes := StringToBytes(AValue);
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 

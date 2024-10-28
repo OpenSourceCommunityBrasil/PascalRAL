@@ -17,15 +17,15 @@ type
 
   TRALJSONValue = class
   private
-    FJsonObj: TlkJSON;
+    FJsonObj: TlkJSONbase;
     FFreeObj: Boolean;
     FListObj: TList;
     FMarkFree: Boolean;
   protected
     procedure AddObj(AObj: TRALJSONValue);
     procedure ClearObjs;
-    function GetJsonObj: TlkJSON;
-    procedure SetJsonObj(AObj: TlkJSON; AFree: Boolean = True);
+    function GetJsonObj: TlkJSONbase;
+    procedure SetJsonObj(AObj: TlkJSONbase; AFree: Boolean = True);
   public
     constructor Create; virtual;
     destructor Destroy; override;
@@ -86,15 +86,15 @@ type
 
   TRALJSON = class
   public
-    class function ParseJSON(AJson: StringRAL): TRALJSONValue;
-    class function ParseJSON(AStream: TStream): TRALJSONValue;
+    class function ParseJSON(AJson: StringRAL): TRALJSONValue; overload;
+    class function ParseJSON(AStream: TStream): TRALJSONValue; overload;
   end;
 
 implementation
 
 { TRALJSONValue }
 
-procedure TRALJSONValue.SetJsonObj(AObj: TlkJSON; AFree: Boolean = True);
+procedure TRALJSONValue.SetJsonObj(AObj: TlkJSONbase; AFree: Boolean = True);
 begin
   if (FJsonObj <> nil) and (FFreeObj) then
     FreeAndNil(FJsonObj);
@@ -102,7 +102,7 @@ begin
   FFreeObj := AFree;
 end;
 
-function TRALJSONValue.GetJsonObj: TlkJSON;
+function TRALJSONValue.GetJsonObj: TlkJSONbase;
 begin
   Result := FJsonObj;
 end;
@@ -327,7 +327,7 @@ end;
 
 function TRALJSONObject.Get(AName: StringRAL): TRALJSONValue;
 var
-  vObj: TlkJSON;
+  vObj: TlkJSONbase;
 begin
   Result := nil;
 

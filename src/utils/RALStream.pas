@@ -37,6 +37,7 @@ type
     procedure WriteStream(AValue: TStream);
     procedure WriteBytes(AValue: TBytes);
     procedure WriteString(AValue: StringRAL);
+    procedure WriteBytesDirect(AValue: TBytes);
 
     function ReadShortint: Shortint;
     function ReadByte: Byte;
@@ -52,6 +53,7 @@ type
     procedure ReadStream(AStream: TStream);
     function ReadBytes: TBytes;
     function ReadString: StringRAL;
+    function ReadBytesDirect(ALength : integer) : TBytes;
   end;
 
 /// Creates a TStream and write ABytes on it
@@ -201,8 +203,6 @@ begin
 end;
 
 procedure TRALBinaryWriter.WriteStream(AValue: TStream);
-var
-  vQWord : UInt64;
 begin
   AValue.Position := 0;
 
@@ -211,8 +211,6 @@ begin
 end;
 
 procedure TRALBinaryWriter.WriteBytes(AValue: TBytes);
-var
-  vQWord : UInt64;
 begin
   WriteSize(Length(AValue));
   if Length(AValue) > 0 then
@@ -227,6 +225,11 @@ begin
   WriteSize(Length(vBytes));
   if Length(vBytes) > 0 then
     FStream.Write(vBytes[0], Length(vBytes));
+end;
+
+procedure TRALBinaryWriter.WriteBytesDirect(AValue: TBytes);
+begin
+  FStream.Write(AValue[0], Length(AValue));
 end;
 
 function TRALBinaryWriter.ReadShortint: Shortint;
@@ -316,6 +319,12 @@ begin
     FStream.Read(vBytes[0], vQWord);
     Result := BytesToString(vBytes);
   end;
+end;
+
+function TRALBinaryWriter.ReadBytesDirect(ALength: integer): TBytes;
+begin
+  SetLength(Result, ALength);
+  FStream.Read(Result[0], ALength);
 end;
 
 end.

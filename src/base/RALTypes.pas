@@ -20,6 +20,7 @@ type
   IntegerRAL = integer;
   Int64RAL = int64;
   DoubleRAL = double;
+  UInt64RAL = UInt64;
 
   {$IF Defined(FPC) OR NOT Defined(DELPHIXE3UP)}
     StringRAL = string;
@@ -106,22 +107,32 @@ begin
 end;
 
 function StringToBytes(const AString: StringRAL): TBytes;
+{$IFNDEF HAS_Encoding}
+  var
+    vStr : ansistring;
+{$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
     Result := TEncoding.UTF8.GetBytes(AString);
   {$ELSE}
-    SetLength(Result, Length(AString));
-    Move(AString[POSINISTR], Result[0], Length(AString));
+    vStr := Uft8Encode(AString);
+    SetLength(Result, Length(vStr));
+    Move(vStr[POSINISTR], Result[0], Length(vStr));
   {$ENDIF}
 end;
 
 function BytesToString(const ABytes: TBytes): StringRAL;
+{$IFNDEF HAS_Encoding}
+  var
+    vStr : ansistring;
+{$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
     Result := TEncoding.UTF8.GetString(ABytes);
   {$ELSE}
-    SetLength(Result, Length(ABytes));
-    Move(ABytes[0], Result[POSINISTR], Length(ABytes));
+    SetLength(vStr, Length(ABytes));
+    Move(ABytes[0], vStr[POSINISTR], Length(ABytes));
+    Result := Utf8Decode(vStr);
   {$ENDIF}
 end;
 
@@ -215,20 +226,14 @@ begin
 end;
 
 function TRALStringStream.DataString: StringRAL;
-{$IFDEF HAS_Encoding}
 var
   vBytes: TBytes;
-{$ENDIF}
 begin
   Self.Position := 0;
-  {$IFDEF HAS_Encoding}
-    SetLength(vBytes, Self.Size);
-    Read(vBytes[0], Self.Size);
-    Result := TEncoding.UTF8.GetString(vBytes);
-  {$ELSE}
-    SetLength(Result, Self.Size);
-    Read(Result[POSINISTR], Self.Size);
-  {$ENDIF}
+
+  SetLength(vBytes, Self.Size);
+  Read(vBytes[0], Self.Size);
+  Result := BytesToString(vBytes);
 end;
 
 procedure TRALStringStream.WriteBytes(ABytes: TBytes);
@@ -240,12 +245,7 @@ procedure TRALStringStream.WriteString(AString: StringRAL);
 var
   vBytes : TBytes;
 begin
-  {$IFDEF HAS_Encoding}
-    vBytes := TEncoding.UTF8.GetBytes(AString);
-  {$ELSE}
-    SetLength(vBytes, Length(AString));
-    Move(AString[POSINISTR], vBytes[0], Length(AString));
-  {$ENDIF}
+  vBytes := StringToBytes(AString);
   WriteBytes(vBytes);
 end;
 
