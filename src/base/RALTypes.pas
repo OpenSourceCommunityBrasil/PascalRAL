@@ -59,20 +59,6 @@ type
   TRALExecBehavior = (ebSingleThread, ebMultiThread, ebDefault);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
-  // TRALStringStream = TStringStream;
-  TRALStringStream = class(TMemoryStream)
-  public
-    constructor Create(AString: StringRAL); overload;
-    constructor Create(AStream: TStream); overload;
-    constructor Create(ABytes: TBytes); overload;
-
-    function DataString: StringRAL;
-
-    procedure WriteBytes(ABytes: TBytes);
-    procedure WriteString(AString : StringRAL);
-    procedure WriteStream(AStream: TStream);
-  end;
-
 const
   {$IF Defined(FPC) OR Defined(DELPHIXE3UP)}
   POSINISTR = Low(String);
@@ -87,13 +73,9 @@ const
 
 // Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
-// Converts a given AStream to an UTF8String
-function StreamToString(AStream: TStream): StringRAL;
-// Creates a TStream and writes the given AStr into it
-function StringToStream(const AStr: StringRAL): TStream;
 
-function StringToBytes(const AString: StringRAL): TBytes;
-function BytesToString(const ABytes: TBytes): StringRAL;
+function StringToBytesUTF8(const AString: StringRAL): TBytes;
+function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
 function DateToISO8601(const AValue: TDateTime): StringRAL;
@@ -111,7 +93,7 @@ begin
   {$IFEND}
 end;
 
-function StringToBytes(const AString: StringRAL): TBytes;
+function StringToBytesUTF8(const AString: StringRAL): TBytes;
 {$IFNDEF HAS_Encoding}
   var
     vStr : ansistring;
@@ -126,7 +108,7 @@ begin
   {$ENDIF}
 end;
 
-function BytesToString(const ABytes: TBytes): StringRAL;
+function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 {$IFNDEF HAS_Encoding}
   var
     vStr : ansistring;
@@ -139,42 +121,6 @@ begin
     Move(ABytes[0], vStr[POSINISTR], Length(ABytes));
     Result := UTF8Decode(vStr);
   {$ENDIF}
-end;
-
-function StringToStream(const AStr: StringRAL): TStream;
-begin
-  Result := TRALStringStream.Create(AStr);
-  Result.Position := 0;
-end;
-
-function StreamToString(AStream: TStream): StringRAL;
-var
-  vStream: TStream;
-begin
-  Result := '';
-  if (AStream = nil) or (AStream.Size = 0) then
-    Exit;
-
-  AStream.Position := 0;
-
-  if AStream.InheritsFrom(TStringStream) then
-  begin
-    Result := TStringStream(AStream).DataString;
-  end
-  else if AStream.InheritsFrom(TRALStringStream) then
-  begin
-    Result := TRALStringStream(AStream).DataString;
-  end
-  else
-  begin
-    vStream := TStringStream.Create('');
-    try
-      vStream.CopyFrom(AStream, AStream.Size);
-      Result := TStringStream(vStream).DataString;
-    finally
-      FreeAndNil(vStream);
-    end;
-  end;
 end;
 
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
@@ -204,64 +150,5 @@ begin
   Result := StrToDate(StringReplace(AValue, 'T', ' ', []), vFmt);
 end;
 {$IFEND}
-
-{ TRALStringStream }
-
-constructor TRALStringStream.Create(ABytes: TBytes);
-begin
-  inherited Create;
-  WriteBytes(ABytes);
-end;
-
-constructor TRALStringStream.Create(AString: StringRAL);
-var
-  vBytes: TBytes;
-begin
-  inherited Create;
-  WriteString(AString);
-end;
-
-constructor TRALStringStream.Create(AStream: TStream);
-var
-  vStream: TStringStream;
-  vBytes: TBytes;
-begin
-  inherited Create;
-  WriteStream(AStream);
-end;
-
-function TRALStringStream.DataString: StringRAL;
-var
-  vBytes: TBytes;
-begin
-  Self.Position := 0;
-
-  SetLength(vBytes, Self.Size);
-  Read(vBytes[0], Self.Size);
-  Result := BytesToString(vBytes);
-end;
-
-procedure TRALStringStream.WriteBytes(ABytes: TBytes);
-begin
-  Write(ABytes[0], Length(ABytes));
-end;
-
-procedure TRALStringStream.WriteString(AString: StringRAL);
-var
-  vBytes : TBytes;
-begin
-  vBytes := StringToBytes(AString);
-  WriteBytes(vBytes);
-end;
-
-procedure TRALStringStream.WriteStream(AStream: TStream);
-var
-  vBytes : TBytes;
-begin
-  AStream.Position := 0;
-  SetLength(vBytes, AStream.Size);
-  AStream.Read(vBytes[0], AStream.Size);
-  WriteBytes(vBytes);
-end;
 
 end.

@@ -1,4 +1,4 @@
-﻿/// Unit that contains everything related to Params from either the query request
+/// Unit that contains everything related to Params from either the query request
 /// or response.
 unit RALParams;
 
@@ -420,7 +420,7 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  FContent := StringToStream(AValue);
+  FContent := StringToStreamUTF8(AValue);
 end;
 
 procedure TRALParam.SetContentDisposition(AValue: StringRAL);

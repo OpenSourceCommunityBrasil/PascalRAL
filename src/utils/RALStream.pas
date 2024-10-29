@@ -56,12 +56,30 @@ type
     function ReadBytesDirect(ALength : integer) : TBytes;
   end;
 
-/// Creates a TStream and write ABytes on it
-function BytesToStream(ABytes: TBytes): TStream;
+  TRALStringStream = class(TMemoryStream)
+  public
+    constructor Create(AString: StringRAL); overload;
+    constructor Create(AStream: TStream); overload;
+    constructor Create(ABytes: TBytes); overload;
+
+    function DataString: StringRAL;
+
+    procedure WriteBytes(ABytes: TBytes);
+    procedure WriteString(AString : StringRAL);
+    procedure WriteStream(AStream: TStream);
+  end;
+
 /// Saves the stream into a file given the AFileName
 procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
+/// Creates a TStream and write ABytes on it
+function BytesToStream(ABytes: TBytes): TStream;
 /// Converts a given AStream to TBytes
 function StreamToBytes(AStream: TStream): TBytes;
+// Converts a given AStream to an UTF8String
+function StreamToString(AStream: TStream): StringRAL;
+// Creates a TStream and writes the given AStr into it
+function StringToStreamUTF8(const AStr: StringRAL): TStream;
+function StringToStream(const AStr: StringRAL): TStream;
 
 implementation
 
@@ -103,6 +121,50 @@ begin
     vFile.Free;
   end;
 end;
+
+function StringToStream(const AStr: StringRAL): TStream;
+begin
+  Result := TMemoryStream.Create;
+  Result.Write(AStr[POSINISTR], Length(AStr));
+  Result.Position := 0;
+end;
+
+function StringToStreamUTF8(const AStr: StringRAL): TStream;
+begin
+  Result := TRALStringStream.Create(AStr);
+  Result.Position := 0;
+end;
+
+function StreamToString(AStream: TStream): StringRAL;
+var
+  vStream: TStream;
+begin
+  Result := '';
+  if (AStream = nil) or (AStream.Size = 0) then
+    Exit;
+
+  AStream.Position := 0;
+
+  if AStream.InheritsFrom(TStringStream) then
+  begin
+    Result := TStringStream(AStream).DataString;
+  end
+  else if AStream.InheritsFrom(TRALStringStream) then
+  begin
+    Result := TRALStringStream(AStream).DataString;
+  end
+  else
+  begin
+    vStream := TStringStream.Create('');
+    try
+      vStream.CopyFrom(AStream, AStream.Size);
+      Result := TStringStream(vStream).DataString;
+    finally
+      FreeAndNil(vStream);
+    end;
+  end;
+end;
+
 
 { TRALBinaryWriter }
 
@@ -221,7 +283,7 @@ procedure TRALBinaryWriter.WriteString(AValue: StringRAL);
 var
   vBytes : TBytes;
 begin
-  vBytes := StringToBytes(AValue);
+  vBytes := StringToBytesUTF8(AValue);
   WriteSize(Length(vBytes));
   if Length(vBytes) > 0 then
     FStream.Write(vBytes[0], Length(vBytes));
@@ -317,7 +379,7 @@ begin
   begin
     SetLength(vBytes, vQWord);
     FStream.Read(vBytes[0], vQWord);
-    Result := BytesToString(vBytes);
+    Result := BytesToStringUTF8(vBytes);
   end;
 end;
 
@@ -325,6 +387,65 @@ function TRALBinaryWriter.ReadBytesDirect(ALength: integer): TBytes;
 begin
   SetLength(Result, ALength);
   FStream.Read(Result[0], ALength);
+end;
+
+{ TRALStringStream }
+
+constructor TRALStringStream.Create(ABytes: TBytes);
+begin
+  inherited Create;
+  WriteBytes(ABytes);
+end;
+
+constructor TRALStringStream.Create(AString: StringRAL);
+var
+  vBytes: TBytes;
+begin
+  inherited Create;
+  WriteString(AString);
+end;
+
+constructor TRALStringStream.Create(AStream: TStream);
+var
+  vStream: TStringStream;
+  vBytes: TBytes;
+begin
+  inherited Create;
+  WriteStream(AStream);
+end;
+
+function TRALStringStream.DataString: StringRAL;
+var
+  vBytes: TBytes;
+begin
+  Self.Position := 0;
+
+  SetLength(vBytes, Self.Size);
+  Read(vBytes[0], Self.Size);
+  Result := BytesToStringUTF8(vBytes);
+end;
+
+procedure TRALStringStream.WriteBytes(ABytes: TBytes);
+begin
+  Write(ABytes[0], Length(ABytes));
+end;
+
+procedure TRALStringStream.WriteString(AString: StringRAL);
+var
+  vBytes : TBytes;
+begin
+  vBytes := StringToBytesUTF8(AString);
+  WriteBytes(vBytes);
+end;
+
+procedure TRALStringStream.WriteStream(AStream: TStream);
+var
+  vBytes : TBytes;
+begin
+  AStream.Position := 0;
+  SetLength(vBytes, AStream.Size);
+  AStream.Read(vBytes[0], AStream.Size);
+  WriteBytes(vBytes);
 end;
 
 end.

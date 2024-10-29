@@ -308,7 +308,7 @@ procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringR
 var
   vBytes : TBytes;
 begin
-  vBytes := StringToBytes(AValue);
+  vBytes := StringToBytesUTF8(AValue);
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 

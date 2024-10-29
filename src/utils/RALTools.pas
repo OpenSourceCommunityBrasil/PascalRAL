@@ -1,4 +1,4 @@
-﻿/// Unit for General public functions
+/// Unit for General public functions
 unit RALTools;
 
 {$I ..\base\PascalRAL.inc}
@@ -102,8 +102,13 @@ begin
   Result := '';
   for vInt := POSINISTR to RALHighStr(AValue) do
   begin
+    {$IF (DEFINED(FPC) OR DEFINED(DELPHI2010UP))}
     if CharInSet(AValue[vInt], ['0'..'9']) then
       Result := Result + AValue[vInt];
+    {$ELSE}
+    if AValue[vInt] in ['0'..'9'] then
+      Result := Result + AValue[vInt];
+    {$IFEND}
   end;
 end;
 

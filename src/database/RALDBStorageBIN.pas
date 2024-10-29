@@ -201,7 +201,7 @@ var
   vSize: IntegerRAL;
   vBytes: TBytes;
 begin
-  vBytes := StringToBytes(AValue);
+  vBytes := StringToBytesUTF8(AValue);
   vSize := Length(vBytes);
   AStream.Write(vSize, SizeOf(vSize));
   AStream.Write(vBytes[0], vSize);
@@ -443,7 +443,7 @@ begin
   begin
     SetLength(vBytes, vSize);
     AStream.Read(vBytes[0], vSize);
-    Result := BytesToString(vBytes);
+    Result := BytesToStringUTF8(vBytes);
   end;
 end;
 

@@ -400,13 +400,21 @@ end;
 procedure TRALThreadCriptoAES.Encrypt;
 begin
   FEncrypt := 0;
-  Start;
+  {$IF (DEFINED(FPC) OR DEFINED(DELPHI2010UP))}
+    Start;
+  {$ELSE}
+    Resume;
+  {$IFEND}
 end;
 
 procedure TRALThreadCriptoAES.Decrypt;
 begin
   FEncrypt := 1;
-  Start;
+  {$IF (DEFINED(FPC) OR DEFINED(DELPHI2010UP))}
+    Start;
+  {$ELSE}
+    Resume;
+  {$IFEND}
 end;
 
 { TRALCriptoAES }
