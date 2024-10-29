@@ -128,7 +128,7 @@ end;
 function TRALSHA2_32.Finalize: TBytes;
 var
   vIndex: IntegerRAL;
-  vLenBit: uint64;
+  vLenBit: UInt64RAL;
 begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
@@ -153,7 +153,7 @@ begin
   SetLength(Result, FHashSize);
   Move(FHash, Result[0], FHashSize);
 
-  inherited;
+  inherited Finalize;
 end;
 
 function TRALSHA2_32.GetBuffer(AIndex: IntegerRAL): Pointer;

@@ -1,4 +1,4 @@
-﻿/// Unit that stores Base64 encode and decode functions
+/// Unit that stores Base64 encode and decode functions
 unit RALBase64;
 
 interface
@@ -221,6 +221,40 @@ begin
     if AInputLen < 3 then
       vRead := AInputLen;
 
+    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+    case vRead of
+      1: begin
+          AOutput^ := TEncode64[(AInput^ shr 2)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4];
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+      end;
+      2: begin
+          AOutput^ := TEncode64[(AInput^ shr 2)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or (PByte(LongInt(AInput) + 1)^ shr 4)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(PByte(LongInt(AInput) + 1)^ and 15) shl 2];
+          Inc(AOutput);
+          AOutput^ := 61;
+          Inc(AOutput);
+      end;
+      3: begin
+          AOutput^ := TEncode64[(AInput^ shr 2)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(AInput^ and 3) shl 4 or (PByte(LongInt(AInput) + 1)^ shr 4)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(PByte(LongInt(AInput) + 1)^ and 15) shl 2 or (PByte(LongInt(AInput) + 2)^ shr 6)];
+          Inc(AOutput);
+          AOutput^ := TEncode64[(PByte(LongInt(AInput) + 2)^ and 63)];
+          Inc(AOutput);
+      end;
+    end;
+    {$ELSE}
     case vRead of
       1: begin
           AOutput^ := TEncode64[(AInput^ shr 2)];
@@ -253,6 +287,7 @@ begin
           Inc(AOutput);
       end;
     end;
+    {$IFEND}
 
     Inc(AInput, vRead);
     Result := Result + 4;

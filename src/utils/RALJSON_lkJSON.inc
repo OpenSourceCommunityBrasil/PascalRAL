@@ -350,7 +350,7 @@ end;
 
 function TRALJSONObject.Get(AIndex: IntegerRAL): TRALJSONValue;
 var
-  vObj: TlkJSON;
+  vObj: TlkJSONbase;
 begin
   Result := nil;
 
@@ -481,7 +481,7 @@ end;
 
 function TRALJSONArray.Get(AIndex: IntegerRAL): TRALJSONValue;
 var
-  vObj: TlkJSON;
+  vObj: TlkJSONbase;
 begin
   Result := nil;
 

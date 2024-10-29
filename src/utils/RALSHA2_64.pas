@@ -13,7 +13,7 @@ type
   TRALSHA2_64 = class(TRALHashes)
   private
     FBuffer: array[0..127] of byte;
-    FHash: array[0..7] of UInt64;
+    FHash: array[0..7] of UInt64RAL;
     FHashSize: byte;
     FVersion: TRALSHA64Versions;
   protected
@@ -25,7 +25,7 @@ type
     procedure SetVersion(const Value: TRALSHA64Versions);
     /// returns swaps bits of a value
     function Swap(AValue: Cardinal): Cardinal; overload;
-    function Swap(AValue: UInt64): UInt64; overload;
+    function Swap(AValue: UInt64RAL): UInt64RAL; overload;
   public
     constructor Create;
   published
@@ -35,7 +35,7 @@ type
 implementation
 
 const
-  K: array[0..79] of UInt64 = (
+  K: array[0..79] of UInt64RAL = (
     $428a2f98d728ae22, $7137449123ef65cd, $b5c0fbcfec4d3b2f, $e9b5dba58189dbbc,
     $3956c25bf348b538, $59f111f1b605d019, $923f82a4af194f9b, $ab1c5ed5da6d8118,
     $d807aa98a3030242, $12835b0145706fbe, $243185be4ee4b28c, $550c7dc3d5ffb4e2,
@@ -62,9 +62,9 @@ const
 
 procedure TRALSHA2_64.Compress;
 var
-  s0, s1, m0, c0, t1, t2: UInt64;
-  a, b, c, d, e, f, g, h: UInt64;
-  W: array[0..79] of UInt64;
+  s0, s1, m0, c0, t1, t2: UInt64RAL;
+  a, b, c, d, e, f, g, h: UInt64RAL;
+  W: array[0..79] of UInt64RAL;
   I: IntegerRAL;
 begin
   FillChar(W, SizeOf(W), 0);
@@ -127,7 +127,8 @@ begin
   FHash[7] := FHash[7] + h;
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
-  inherited;
+
+  inherited Compress;
 end;
 
 constructor TRALSHA2_64.Create;
@@ -138,7 +139,7 @@ end;
 function TRALSHA2_64.Finalize: TBytes;
 var
   vIndex: IntegerRAL;
-  vLenBit: UInt64;
+  vLenBit: UInt64RAL;
 begin
   vIndex := GetIndex;
   vLenBit := GetLenBit;
@@ -165,7 +166,7 @@ begin
   SetLength(Result, FHashSize);
   Move(FHash, Result[0], FHashSize);
 
-  inherited;
+  inherited Finalize;
 end;
 
 function TRALSHA2_64.GetBuffer(AIndex: IntegerRAL): Pointer;
@@ -241,7 +242,7 @@ begin
   Initialize;
 end;
 
-function TRALSHA2_64.Swap(AValue: UInt64): UInt64;
+function TRALSHA2_64.Swap(AValue: UInt64RAL): UInt64RAL;
 begin
   Result := UInt64(Swap(Cardinal(AValue))) shl 32 or
                    Swap(Cardinal(AValue shr 32));

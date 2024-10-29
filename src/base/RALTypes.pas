@@ -17,10 +17,15 @@ uses
   RALConsts;
 
 type
-  IntegerRAL = integer;
-  Int64RAL = int64;
-  DoubleRAL = double;
-  UInt64RAL = UInt64;
+  IntegerRAL = Integer;
+  Int64RAL = Int64;
+  DoubleRAL = Double;
+
+  {$IF Defined(FPC) OR Defined(DELPHIXE3UP)}
+    UInt64RAL = UInt64;
+  {$ELSE}
+    UInt64RAL = Int64;
+  {$IFEND}
 
   {$IF Defined(FPC) OR NOT Defined(DELPHIXE3UP)}
     StringRAL = string;
@@ -115,7 +120,7 @@ begin
   {$IFDEF HAS_Encoding}
     Result := TEncoding.UTF8.GetBytes(AString);
   {$ELSE}
-    vStr := Uft8Encode(AString);
+    vStr := UTF8Encode(AString);
     SetLength(Result, Length(vStr));
     Move(vStr[POSINISTR], Result[0], Length(vStr));
   {$ENDIF}
@@ -132,7 +137,7 @@ begin
   {$ELSE}
     SetLength(vStr, Length(ABytes));
     Move(ABytes[0], vStr[POSINISTR], Length(ABytes));
-    Result := Utf8Decode(vStr);
+    Result := UTF8Decode(vStr);
   {$ENDIF}
 end;
 
@@ -162,7 +167,7 @@ begin
   end
   else
   begin
-    vStream := TStringStream.Create;
+    vStream := TStringStream.Create('');
     try
       vStream.CopyFrom(AStream, AStream.Size);
       Result := TStringStream(vStream).DataString;

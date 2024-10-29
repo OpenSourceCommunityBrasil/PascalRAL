@@ -18,8 +18,8 @@ type
     FStream : TStream;
   protected
     // read and write UTF-7
-    function ReadSize: UInt64;
-    procedure WriteSize(ASize: UInt64);
+    function ReadSize: UInt64RAL;
+    procedure WriteSize(ASize: UInt64RAL);
   public
     constructor Create(const AStream : TStream);
 
@@ -106,9 +106,9 @@ end;
 
 { TRALBinaryWriter }
 
-function TRALBinaryWriter.ReadSize: UInt64;
+function TRALBinaryWriter.ReadSize: UInt64RAL;
 var
-  vMult: integer;
+  vMult: IntegerRAL;
   vByte: Byte;
 begin
   Result := 0;
@@ -124,7 +124,7 @@ begin
   until (vByte and 128) = 0;
 end;
 
-procedure TRALBinaryWriter.WriteSize(ASize: UInt64);
+procedure TRALBinaryWriter.WriteSize(ASize: UInt64RAL);
 var
   vByte: Byte;
 begin
@@ -289,7 +289,7 @@ end;
 
 procedure TRALBinaryWriter.ReadStream(AStream: TStream);
 var
-  vQWord : UInt64;
+  vQWord : UInt64RAL;
 begin
   vQWord := ReadSize;
   AStream.CopyFrom(FStream, vQWord);
@@ -298,7 +298,7 @@ end;
 
 function TRALBinaryWriter.ReadBytes: TBytes;
 var
-  vQWord: UInt64;
+  vQWord: UInt64RAL;
 begin
   vQWord := ReadSize;
   SetLength(Result, vQWord);
@@ -308,7 +308,7 @@ end;
 
 function TRALBinaryWriter.ReadString: StringRAL;
 var
-  vQWord : UInt64;
+  vQWord : UInt64RAL;
   vBytes : TBytes;
 begin
   vQWord := ReadSize;

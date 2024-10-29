@@ -17,7 +17,7 @@ type
     FFinalized: boolean;
     FIndex: IntegerRAL;
     FInitialized: boolean;
-    FLenBit: uint64;
+    FLenBit: UInt64RAL;
     FOutputType: TRALHashOutputType;
   protected
     /// Used to compress the content, generating the hash
@@ -41,9 +41,9 @@ type
     /// Generates a hash of a given piece of Array of Bytes content
     function GetDigest(AValue: TBytes): TBytes; overload; virtual;
     /// Returns the position of the buffer
-    function GetIndex: integer;
+    function GetIndex: IntegerRAL;
     /// Returns the total buffer in bits
-    function GetLenBit: uint64;
+    function GetLenBit: UInt64RAL;
     /// Picks up incoming and compact content according to buffer length
     procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
     /// Generates an HMAC hash of a given content
@@ -142,12 +142,12 @@ begin
   Result := Finalize;
 end;
 
-function TRALHashes.GetIndex: integer;
+function TRALHashes.GetIndex: IntegerRAL;
 begin
   Result := FIndex;
 end;
 
-function TRALHashes.GetLenBit: uint64;
+function TRALHashes.GetLenBit: UInt64RAL;
 begin
   Result := FLenBit;
 end;
@@ -162,7 +162,7 @@ begin
   Result := nil;
 
   case OutputType of
-    rhotNone: Result := TStringStream.Create(vDigest);
+    rhotNone: Result := BytesToStream(vDigest);
     rhotHex: Result := StringToStream(DigestToHex(vDigest));
     rhotBase64: Result := StringToStream(DigestToBase64(vDigest));
     rhotBase64Url: Result := StringToStream(DigestToBase64Url(vDigest));
@@ -279,7 +279,7 @@ begin
   case OutputType of
     rhotNone: begin
       SetLength(Result, Length(vDigest));
-      Move(vDigest[0], Result[PosIniStr], Length(vDigest));
+      Move(vDigest[0], Result[POSINISTR], Length(vDigest));
     end;
     rhotHex: Result := DigestToHex(vDigest);
     rhotBase64: Result := DigestToBase64(vDigest);
@@ -289,9 +289,9 @@ end;
 
 function TRALHashes.HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL;
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     vStream.Position := 0;
     Result := HMACAsString(vStream, AKey);
@@ -349,9 +349,9 @@ end;
 
 procedure TRALHashes.UpdateBuffer(AValue: TBytes);
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  vStream := BytesToStream(AValue);
   try
     UpdateBuffer(vStream);
   finally
