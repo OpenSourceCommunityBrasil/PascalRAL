@@ -57,7 +57,6 @@ type
     FResponse: TRALDBSQLResponse;
     FSQL: StringRAL;
     FSQLIndex: IntegerRAL;
-    FStorageFormat: TRALStorageFormat;
   protected
     procedure SetParams(AValue: TParams);
   public
@@ -71,7 +70,6 @@ type
     property Response: TRALDBSQLResponse read FResponse;
     property SQL: StringRAL read FSQL write FSQL;
     property SQLIndex: IntegerRAL read FSQLIndex write FSQLIndex;
-    property StorageFormat: TRALStorageFormat read FStorageFormat write FStorageFormat;
   end;
 
   { TRALDBSQLCache }
@@ -79,10 +77,14 @@ type
   TRALDBSQLCache = class
   private
     FSQLList: TList;
+    FStorage: TRALDBStorageLink;
   protected
     function GetQuerySQL(ADataset: TDataSet): StringRAL;
     function GetQueryParams(ADataset: TDataSet): TParams;
     function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
+
+    procedure SetStorage(const AValue: TRALDBStorageLink);
+    procedure CreateStorage(AWriter : TRALBinaryWriter);
   public
     constructor Create;
     destructor Destroy; override;
@@ -93,13 +95,11 @@ type
     function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
 
     procedure Add(ADataset: TDataSet;
-                  AExecType: TRALDBExecType = etOpen;
-                  AStorageFormat: TRALStorageFormat = rsfAuto); overload;
+                  AExecType: TRALDBExecType = etOpen); overload;
     procedure Add(ASQL: StringRAL; AParams: TParams = nil;
                   ABookMark: TBookMark = nil;
                   AExecType: TRALDBExecType = etExecute;
-                  ADriverType: TRALDBDriverType = qtOther;
-                  AStorageFormat: TRALStorageFormat = rsfAuto); overload;
+                  ADriverType: TRALDBDriverType = qtOther); overload;
 
     procedure SaveToStream(AStream: TStream); overload;
     function SaveToStream: TStream; overload;
@@ -118,6 +118,8 @@ type
     function GetStructureVersion: byte;
 
     property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
+  published
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
   end;
 
 implementation
@@ -316,17 +318,38 @@ constructor TRALDBSQLCache.Create;
 begin
   inherited;
   FSQLList := TList.Create;
+  FStorage := nil;
+end;
+
+procedure TRALDBSQLCache.CreateStorage(AWriter: TRALBinaryWriter);
+var
+  vFormat : TRALStorageFormat;
+  vStorageLinkClass : TRALDBStorageLinkClass;
+begin
+  vFormat := TRALStorageFormat(AWriter.ReadByte);
+  if vFormat = rsfAuto then
+    Exit;
+
+  vStorageLinkClass := TRALDBStorageLink.GetStorageClass(vFormat);
+  if vStorageLinkClass <> nil then
+  begin
+    FStorage := vStorageLinkClass.Create(nil);
+    FStorage.LoadPropsFromStream(AWriter);
+  end
+  else begin
+    raise Exception.CreateFmt('Storage %s não declarada', [vStorageLinkClass.ClassName]);
+  end;
 end;
 
 destructor TRALDBSQLCache.Destroy;
 begin
   Clear;
   FreeAndNil(FSQLList);
+  FreeAndNil(FStorage);
   inherited Destroy;
 end;
 
-procedure TRALDBSQLCache.Add(ADataset: TDataSet; AExecType: TRALDBExecType;
-                             AStorageFormat: TRALStorageFormat);
+procedure TRALDBSQLCache.Add(ADataset: TDataSet; AExecType: TRALDBExecType);
 var
   vSQL: StringRAL;
   vParams: TParams;
@@ -336,14 +359,14 @@ begin
   vDriver := GetQueryClass(ADataset);
   vParams := GetQueryParams(ADataset);
   try
-    Add(vSQL, vParams, nil, AExecType, vDriver, AStorageFormat);
+    Add(vSQL, vParams, nil, AExecType, vDriver);
   finally
     FreeAndNil(vParams);
   end;
 end;
 
 procedure TRALDBSQLCache.Add(ASQL: StringRAL; AParams: TParams; ABookMark: TBookMark;
-  AExecType: TRALDBExecType; ADriverType: TRALDBDriverType; AStorageFormat: TRALStorageFormat);
+                             AExecType: TRALDBExecType; ADriverType: TRALDBDriverType);
 var
   vDBSQL: TRALDBSQL;
 begin
@@ -353,7 +376,6 @@ begin
   vDBSQL.ExecType := AExecType;
   vDBSQL.Params := AParams;
   vDBSQL.SQL := ASQL;
-  vDBSQL.StorageFormat := AStorageFormat;
 
   FSQLList.Add(vDBSQL);
 end;
@@ -370,6 +392,11 @@ begin
   try
     // versao da estrutura
     vWriter.WriteByte(GetStructureVersion);
+
+    if FStorage <> nil then
+      FStorage.SavePropsToStream(vWriter)
+    else
+      vWriter.WriteByte(Ord(rsfAuto));
 
     vStrSQLList := TStringList.Create;
     try
@@ -406,9 +433,6 @@ begin
 
       // type de exec - open or execsql
       vWriter.WriteByte(Ord(vDBSQL.ExecType));
-
-      // format storage
-      vWriter.WriteByte(Ord(vDBSQL.StorageFormat));
 
       // index do sql
       vWriter.WriteInteger(vDBSQL.SQLIndex);
@@ -466,6 +490,14 @@ begin
   Result := TMemoryStream.Create;
   SaveToStream(Result);
   Result.Position := 0;
+end;
+
+procedure TRALDBSQLCache.SetStorage(const AValue: TRALDBStorageLink);
+begin
+  if FStorage <> nil then
+    FreeAndNil(FStorage);
+
+  FStorage := AValue.Clone;
 end;
 
 procedure TRALDBSQLCache.SaveToFile(AFileName: StringRAL);
@@ -554,6 +586,8 @@ begin
     if vWriter.ReadByte <> GetStructureVersion then
       raise Exception.Create(emQueryVersionError);
 
+    CreateStorage(vWriter);
+
     vStrSQLList := TStringList.Create;
     try
       // tamanho do index de sqls
@@ -576,9 +610,6 @@ begin
 
         // type de exec - open or execsql
         vDBSQL.ExecType := TRALDBExecType(vWriter.ReadByte);
-
-        // format storage
-        vDBSQL.StorageFormat := TRALStorageFormat(vWriter.ReadByte);
 
         // index do sql
         vDBSQL.SQLIndex := vWriter.ReadInteger;
@@ -683,6 +714,7 @@ begin
       vDBSQL.Response.ContentType := vWriter.ReadString;
       vDBSQL.Response.RowsAffected := vWriter.ReadInt64;
       vDBSQL.Response.LastId := vWriter.ReadInt64;
+
       vWriter.ReadStream(vDBSQL.Response.Stream);
     end;
   finally

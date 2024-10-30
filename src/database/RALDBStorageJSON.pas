@@ -17,8 +17,13 @@ type
   private
     FDateTimeFormat: TRALDateTimeFormat;
     FCustomDateTimeFormat: StringRAL;
+  protected
+    procedure AssignTo(ADest: TPersistent); override;
   public
     constructor Create;
+
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter);
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter);
   published
     property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
@@ -98,6 +103,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
+
+    function Clone : TRALDBStorageLink; override;
     function GetStorage: TRALDBStorage; override;
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
@@ -107,6 +116,15 @@ type
 implementation
 
 { TRALJSONOptions }
+
+procedure TRALJSONFormatOptions.AssignTo(ADest: TPersistent);
+begin
+  if ADest is TRALJSONFormatOptions then
+  begin
+    TRALJSONFormatOptions(ADest).DateTimeFormat := FDateTimeFormat;
+    TRALJSONFormatOptions(ADest).CustomDateTimeFormat := FCustomDateTimeFormat;
+  end;
+end;
 
 constructor TRALJSONFormatOptions.Create;
 begin
@@ -915,6 +933,16 @@ begin
   Result := rctAPPLICATIONJSON;
 end;
 
+function TRALDBStorageJSONLink.Clone: TRALDBStorageLink;
+begin
+  Result := inherited Clone;
+  if Result = nil then
+    Exit;
+
+  TRALDBStorageJSONLink(Result).JSONType := FJSONType;
+  TRALDBStorageJSONLink(Result).FormatOptions.Assign(FFormatOptions);
+end;
+
 constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -945,6 +973,36 @@ begin
     FormatOptions.CustomDateTimeFormat := FFormatOptions.CustomDateTimeFormat;
     FormatOptions.DateTimeFormat := FFormatOptions.DateTimeFormat;
   end;
+end;
+
+procedure TRALDBStorageJSONLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  FJSONType := TRALJSONType(AWriter.ReadByte);
+  FFormatOptions.LoadPropsFromStream(AWriter);
+end;
+
+procedure TRALDBStorageJSONLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  AWriter.WriteByte(Ord(FJSONType));
+  FFormatOptions.SavePropsToStream(AWriter);
+end;
+
+procedure TRALJSONFormatOptions.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  FDateTimeFormat := TRALDateTimeFormat(AWriter.ReadByte);
+  if FDateTimeFormat = dtfCustom then
+    FCustomDateTimeFormat := AWriter.ReadString;
+end;
+
+procedure TRALJSONFormatOptions.SavePropsToStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  AWriter.WriteByte(Ord(FDateTimeFormat));
+  if FDateTimeFormat = dtfCustom then
+    AWriter.WriteString(FCustomDateTimeFormat);
 end;
 
 initialization

@@ -7,8 +7,9 @@ uses
   {$IFDEF FPC}
   bufstream,
   {$ENDIF}
-  Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts;
+  Classes, SysUtils, DB, DateUtils, TypInfo,
+  RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts,
+  RALStream;
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
@@ -74,6 +75,13 @@ type
     procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
+
+    procedure SavePropsToStream(AStream : TStream); overload;
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter); overload; virtual;
+
+    procedure LoadPropsFromStream(AStream : TStream); overload;
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); overload; virtual;
+    function Clone : TRALDBStorageLink; virtual;
 
     class function GetStorageClass(AFormat: TRALStorageFormat): TRALDBStorageLinkClass;
   published
@@ -216,6 +224,21 @@ end;
 
 { TRALDBStorageLink }
 
+function TRALDBStorageLink.Clone: TRALDBStorageLink;
+var
+  vStorageLinkClass : TRALDBStorageLinkClass;
+begin
+  Result := nil;
+  if FStorageFormat = rsfAuto then
+    Exit;
+
+  vStorageLinkClass := GetStorageClass(FStorageFormat);
+  if vStorageLinkClass <> nil then begin
+    Result := vStorageLinkClass.Create(nil);
+    Result.FieldCharCase := FFieldCharCase;
+  end;
+end;
+
 constructor TRALDBStorageLink.Create(AOwner: TComponent);
 begin
   inherited;
@@ -301,6 +324,19 @@ begin
   FStorageFormat := AFormat;
 end;
 
+procedure TRALDBStorageLink.SavePropsToStream(AStream: TStream);
+var
+  vWriter: TRALBinaryWriter;
+begin
+  vWriter := TRALBinaryWriter.Create(AStream);
+end;
+
+procedure TRALDBStorageLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+begin
+  AWriter.WriteByte(Ord(FStorageFormat));
+  AWriter.WriteByte(Ord(FFieldCharCase));
+end;
+
 procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 var
   vStream: TRALBufFileStream;
@@ -335,6 +371,19 @@ begin
   finally
     FreeAndNil(vStor);
   end;
+end;
+
+procedure TRALDBStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+begin
+//  FStorageFormat := TRALStorageFormat(AWriter.ReadByte);
+  FFieldCharCase := TRALFieldCharCase(AWriter.ReadByte);
+end;
+
+procedure TRALDBStorageLink.LoadPropsFromStream(AStream: TStream);
+var
+  vWriter: TRALBinaryWriter;
+begin
+  vWriter := TRALBinaryWriter.Create(AStream);
 end;
 
 function TRALDBStorageLink.GetStorage: TRALDBStorage;

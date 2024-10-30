@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64;
+  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
 
 type
 
@@ -27,6 +27,9 @@ type
     procedure AssignTo(ADest: TPersistent); override;
   public
     constructor Create;
+
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter);
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter);
   published
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
@@ -80,6 +83,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
+
+    function Clone : TRALDBStorageLink; override;
     function GetStorage: TRALDBStorage; override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
@@ -89,6 +96,16 @@ type
 implementation
 
 { TRALDBStorageCSVLink }
+
+function TRALDBStorageCSVLink.Clone: TRALDBStorageLink;
+begin
+  Result := inherited Clone;
+  if Result = nil then
+    Exit;
+
+  TRALDBStorageCSVLink(Result).UseUTF8BOM := FUseUTF8BOM;
+  TRALDBStorageCSVLink(Result).FormatOptions.Assign(FFormatOptions);
+end;
 
 constructor TRALDBStorageCSVLink.Create(AOwner: TComponent);
 begin
@@ -116,6 +133,20 @@ begin
 
   TRALDBStorageCSV(Result).UseUTF8BOM := FUseUTF8BOM;
   TRALDBStorageCSV(Result).FormatOptions.Assign(Self.FormatOptions);
+end;
+
+procedure TRALDBStorageCSVLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  FFormatOptions.LoadPropsFromStream(AWriter);
+  FUseUTF8BOM := AWriter.ReadBoolean;
+end;
+
+procedure TRALDBStorageCSVLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  FFormatOptions.SavePropsToStream(AWriter);
+  AWriter.WriteBoolean(FUseUTF8BOM);
 end;
 
 { TRALDBStorageCSV }
@@ -503,6 +534,38 @@ begin
   FColumnSeparator := ';';
   FBoolFalseStr := 'False';
   FBoolTrueStr := 'True';
+end;
+
+procedure TRALCSVFormatOptions.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  FBoolFalseStr := AWriter.ReadString;
+  FBoolTrueStr := AWriter.ReadString;
+  FColumnSeparator := AWriter.ReadChar;
+  FDateTimeFormat:= TRALDateTimeFormat(AWriter.ReadByte);
+  if FDateTimeFormat = dtfCustom then
+  begin
+    FCustomDateFormat := AWriter.ReadString;
+    FCustomTimeFormat := AWriter.ReadString;
+  end;
+  FDecimalSeparator := AWriter.ReadChar;
+  FThousandSeparator := AWriter.ReadChar;
+end;
+
+procedure TRALCSVFormatOptions.SavePropsToStream(AWriter: TRALBinaryWriter);
+begin
+  inherited;
+  AWriter.WriteString(FBoolFalseStr);
+  AWriter.WriteString(FBoolTrueStr);
+  AWriter.WriteChar(FColumnSeparator);
+  AWriter.WriteByte(Ord(FDateTimeFormat));
+  if FDateTimeFormat = dtfCustom then
+  begin
+    AWriter.WriteString(FCustomDateFormat);
+    AWriter.WriteString(FCustomTimeFormat);
+  end;
+  AWriter.WriteChar(FDecimalSeparator);
+  AWriter.WriteChar(FThousandSeparator);
 end;
 
 end.

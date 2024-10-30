@@ -32,13 +32,10 @@ type
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetDataBaseLink(AValue: TRALDBLink);
 
-    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
-    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL);
+    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALDBStorageLink);
+    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALDBStorageLink);
     function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
                                  ABinary : boolean) : TStream;
-    procedure SaveToRALStorage(ADataset : TDataSet; AStream : TStream;
-                               AStorageFormat : TRALStorageFormat;
-                               var AContentType : StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
   published
@@ -55,7 +52,7 @@ implementation
 
 { TRALDBModule }
 
-procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL);
+procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALDBStorageLink);
 var
   vResult: TStream;
   vQuery: TDataSet;
@@ -78,9 +75,8 @@ begin
     else
     begin
       vNative := False;
-      SaveToRALStorage(vQuery, vResult, ADBSQL.StorageFormat, vContentType);
-//      vContentType := FStorageOutPut.ContentType;
-//      FStorageOutPut.SaveToStream(vQuery, vResult);
+      vContentType := AStorage.ContentType;
+      AStorage.SaveToStream(vQuery, vResult);
     end;
 
     ADBSQL.Response.Native := vNative;
@@ -93,7 +89,7 @@ begin
   end;
 end;
 
-procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL);
+procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALDBStorageLink);
 var
   vRowsAffect, vLastId: Int64RAL;
 begin
@@ -132,7 +128,7 @@ begin
     end;
 
     if not ABinary then
-      Result := StringToStream(vFields.AsJSON);
+      Result := StringToStreamUTF8(vFields.AsJSON);
   finally
     FreeAndNil(vFields);
   end;
@@ -143,29 +139,6 @@ begin
   if (Operation = opRemove) and (AComponent = FDataBaseLink) then
     FDataBaseLink := nil;
   inherited Notification(AComponent, Operation);
-end;
-
-procedure TRALDBModule.SaveToRALStorage(ADataset: TDataSet; AStream: TStream;
-  AStorageFormat: TRALStorageFormat; var AContentType: StringRAL);
-var
-  vStorageClass: TRALDBStorageLinkClass;
-  vStorage: TRALDBStorageLink;
-begin
-  vStorageClass := TRALDBStorageLink.GetStorageClass(AStorageFormat);
-  if vStorageClass <> nil then
-  begin
-    vStorage := vStorageClass.Create(nil);
-    try
-      vStorage.SaveToStream(ADataset, AStream);
-      AContentType := vStorage.ContentType;
-    finally
-      FreeAndNil(vStorage);
-    end;
-  end
-  else
-  begin
-    Exception.Create('Storage class não localizada');
-  end;
 end;
 
 procedure TRALDBModule.SetDataBaseLink(AValue: TRALDBLink);
@@ -228,7 +201,7 @@ begin
               vSQLCache.LoadFromStream(vMem);
               vDBSQL := vSQLCache.SQLList[0];
 
-              OpenSQLResponse(vDB, vDBSQL);
+              OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
               vResult := vSQLCache.ResponseToStream;
               try
@@ -300,9 +273,9 @@ begin
 
                 try
                   if vDBSQL.ExecType = etExecute then
-                    ExecSQLResponse(vDB, vDBSQL)
+                    ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
                   else
-                    OpenSQLResponse(vDB, vDBSQL);
+                    OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
                 except
                   on e : Exception do
                     vDBSQL.Response.StrError := e.Message;
@@ -371,7 +344,7 @@ begin
               vDBSQL := vSQLCache.SQLList[0];
               vDBSQL.Response.Clear;
 
-              ExecSQLResponse(vDB, vDBSQL);
+              ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
               vResult := vSQLCache.ResponseToStream;
               try

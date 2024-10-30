@@ -9,7 +9,6 @@ uses
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
-  TRALFormatStorage = (fsJSON, fsBIN);
 
   // sempre jogar a qtOther pra frente, ela tem valor igual a 255
   TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);

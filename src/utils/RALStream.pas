@@ -37,6 +37,7 @@ type
     procedure WriteStream(AValue: TStream);
     procedure WriteBytes(AValue: TBytes);
     procedure WriteString(AValue: StringRAL);
+    procedure WriteChar(AValue: Char);
     procedure WriteBytesDirect(AValue: TBytes);
 
     function ReadShortint: Shortint;
@@ -53,6 +54,7 @@ type
     procedure ReadStream(AStream: TStream);
     function ReadBytes: TBytes;
     function ReadString: StringRAL;
+    function ReadChar: Char;
     function ReadBytesDirect(ALength : integer) : TBytes;
   end;
 
@@ -294,6 +296,11 @@ begin
   FStream.Write(AValue[0], Length(AValue));
 end;
 
+procedure TRALBinaryWriter.WriteChar(AValue: Char);
+begin
+  FStream.Write(AValue, SizeOf(AValue));
+end;
+
 function TRALBinaryWriter.ReadShortint: Shortint;
 begin
   FStream.Read(Result, SizeOf(Result));
@@ -387,6 +394,11 @@ function TRALBinaryWriter.ReadBytesDirect(ALength: integer): TBytes;
 begin
   SetLength(Result, ALength);
   FStream.Read(Result[0], ALength);
+end;
+
+function TRALBinaryWriter.ReadChar: Char;
+begin
+  FStream.Read(Result, SizeOf(Result));
 end;
 
 { TRALStringStream }

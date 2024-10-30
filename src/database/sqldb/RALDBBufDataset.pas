@@ -25,7 +25,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALStorageFormat;
+    FStorage: TRALDBStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -42,6 +42,7 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
+    procedure SetStorage(AValue: TRALDBStorageLink);
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -74,7 +75,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALStorageFormat read FStorage write FStorage;
+    property Storage: TRALDBStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -171,10 +172,26 @@ begin
     FRALConnection.FreeNotification(Self);
 end;
 
+procedure TRALDBBufDataset.SetStorage(AValue: TRALDBStorageLink);
+begin
+  if FStorage <> nil then
+    FStorage.RemoveFreeNotification(Self);
+
+  if AValue <> FStorage then
+    FStorage := AValue;
+
+  if FStorage <> nil then
+    FStorage.FreeNotification(Self);
+
+  FSQLCache.Storage := AValue;
+end;
+
 procedure TRALDBBufDataset.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FRALConnection) then
-    FRALConnection := nil;
+    FRALConnection := nil
+  else if (Operation = opRemove) and (AComponent = FStorage) then
+    FStorage := nil;
   inherited;
 end;
 
@@ -479,24 +496,11 @@ begin
 end;
 
 procedure TRALDBBufDataset.LoadFromRALStorage(ADataSet: TDataSet; AStream: TStream);
-var
-  vStorageClass: TRALDBStorageLinkClass;
-  vStorage: TRALDBStorageLink;
 begin
-  vStorageClass := TRALDBStorageLink.GetStorageClass(FStorage);
-  if vStorageClass <> nil then
-  begin
-    vStorage := vStorageClass.Create(nil);
-    try
-      vStorage.LoadFromStream(ADataSet, AStream);
-    finally
-      FreeAndNil(vStorage);
-    end;
-  end
+  if FStorage <> nil then
+    FStorage.LoadFromStream(ADataSet, AStream)
   else
-  begin
     raise Exception.Create('Storage class não localizada');
-  end;
 end;
 
 constructor TRALDBBufDataset.Create(AOwner: TComponent);
@@ -510,6 +514,7 @@ begin
   FUpdateSQL := TRALDBUpdateSQL.Create;
   FSQLCache := TRALDBSQLCache.Create;
   FUpdateMode := upWhereAll;
+  FStorage := nil;
 
   FOpening := False;
   FLoading := False;

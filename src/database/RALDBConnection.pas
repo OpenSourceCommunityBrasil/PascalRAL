@@ -23,8 +23,8 @@ type
     constructor Create(AOwner: TComponent);
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
-    procedure OpenRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
-    procedure ExecSQLRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
+    procedure OpenRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
+    procedure ExecSQLRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
 
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     function GetTables: TRALDBInfoTables;
@@ -95,7 +95,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat;
+procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage : TRALDBStorageLink;
                                       AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
@@ -104,8 +104,9 @@ var
   vSQLCache: TRALDBSQLCache;
 begin
   vSQLCache := TRALDBSQLCache.Create;
+  vSQLCache.Storage := AStorage;
   try
-    vSQLCache.Add(AQuery, etOpen, AStorageFormat);
+    vSQLCache.Add(AQuery, etOpen);
 
     vMem := vSQLCache.SaveToStream;
     vReq := FClient.NewRequest;
@@ -127,7 +128,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorageFormat: TRALStorageFormat; AResp: TRALThreadClientResponse);
+procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
   vReq: TRALRequest;
@@ -135,8 +136,9 @@ var
   vSQLCache: TRALDBSQLCache;
 begin
   vSQLCache := TRALDBSQLCache.Create;
+  vSQLCache.Storage := AStorage;
   try
-    vSQLCache.Add(AQuery, etExecute, AStorageFormat);
+    vSQLCache.Add(AQuery, etExecute);
 
     vMem := vSQLCache.SaveToStream;
     vReq := FClient.NewRequest;
