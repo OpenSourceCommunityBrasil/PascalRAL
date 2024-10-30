@@ -21,10 +21,15 @@ type
     FPassword: StringRAL;
     FPort: IntegerRAL;
     FUsername: StringRAL;
+
+    FOnBeforeConnect : TRALDBOnConnect;
+    FOnAfterConnect : TRALDBOnConnect;
+    FOnErrorConnect : TRALDBOnError;
+    FOnErrorQuery : TRALDBOnError;
   protected
     procedure ApplyUpdates(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
-    function FindDatabaseDriver: TRALDBBase;
+    function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
     procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure GetSQLFields(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -46,6 +51,11 @@ type
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
     property Username: StringRAL read FUsername write FUsername;
+
+    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
+    property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
+    property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
   end;
 
 implementation
@@ -153,7 +163,7 @@ begin
     FDataBaseLink.FreeNotification(Self);
 end;
 
-function TRALDBModule.FindDatabaseDriver: TRALDBBase;
+function TRALDBModule.FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
 var
   vClass: TRALDBClass;
   vUnit: StringRAL;
@@ -167,12 +177,19 @@ begin
   if vClass <> nil then
   begin
     Result := vClass.Create;
+    Result.DatabaseType := FDatabaseType;
     Result.Database := FDatabase;
     Result.Hostname := FHostname;
     Result.Username := FUsername;
     Result.Password := FPassword;
     Result.Port := FPort;
-    Result.DatabaseType := FDatabaseType;
+    Result.Request := ARequest;
+    Result.Response := AResponse;
+
+    Result.OnBeforeConnect := FOnBeforeConnect;
+    Result.OnAfterConnect := FOnAfterConnect;
+    Result.OnErrorConnect := FOnErrorConnect;
+    Result.OnErrorQuery := FOnErrorQuery;
   end
   else
   begin
@@ -187,7 +204,7 @@ var
   vSQLCache: TRALDBSQLCache;
   vDBSQL : TRALDBSQL;
 begin
-  vDB := FindDatabaseDriver;
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then
@@ -254,7 +271,7 @@ var
 begin
   vRowsAffect := 0;
   vLastId := 0;
-  vDB := FindDatabaseDriver;
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then
@@ -328,7 +345,8 @@ var
 begin
   vRowsAffect := 0;
   vLastId := 0;
-  vDB := FindDatabaseDriver;
+
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then
@@ -392,7 +410,7 @@ var
   vJSON: TRALJSONArray;
   vjObj: TRALJSONObject;
 begin
-  vDB := FindDatabaseDriver;
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then
@@ -711,7 +729,7 @@ var
   end;
 
 begin
-  vDB := FindDatabaseDriver;
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then
@@ -846,7 +864,7 @@ var
   vQuery: TDataSet;
   vResult: TStream;
 begin
-  vDB := FindDatabaseDriver;
+  vDB := FindDatabaseDriver(ARequest, AResponse);
   try
     try
       if vDB <> nil then

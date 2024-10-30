@@ -29,7 +29,7 @@ type
     sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
     sftString, sftBlob, sftMemo, sftDateTime);
 
-  TRALDBOnError = procedure(Sender: TObject; AException: StringRAL) of object;
+  TRALDBTableOnError = procedure(Sender: TObject; AException: StringRAL) of object;
 
   { TRALDB }
 

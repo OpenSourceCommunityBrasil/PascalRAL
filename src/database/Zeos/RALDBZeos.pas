@@ -22,6 +22,9 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
+
+    procedure OnConnBeforeConnect(ASender : TObject);
+    procedure OnConnAfterConnect(ASender : TObject);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -69,7 +72,20 @@ begin
   FConnector.Protocol := FindProtocol;
   FConnector.LoginPrompt := False;
   FConnector.TransactIsolationLevel := tiReadCommitted;
-  FConnector.Connect;
+
+  FConnector.BeforeConnect := {$IFDEF FPC}@{$ENDIF}OnConnBeforeConnect;
+  FConnector.AfterConnect := {$IFDEF FPC}@{$ENDIF}OnConnAfterConnect;
+
+  try
+    FConnector.Connect;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorConnect) then
+        OnErrorConnect(FConnector, e.Message, Request);
+      raise;
+    end;
+  end;
 end;
 
 function TRALDBZeos.FindProtocol: StringRAL;
@@ -114,30 +130,39 @@ begin
 
   // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
   vQuery := TZReadOnlyQuery.Create(nil);
-  vQuery.IsUniDirectional := True;
-  vQuery.Connection := FConnector;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  if AParams <> nil then
-  begin
-    for vInt := 0 to Pred(AParams.Count) do
+  try
+    vQuery.IsUniDirectional := True;
+    vQuery.Connection := FConnector;
+    vQuery.Close;
+    vQuery.SQL.Text := ASQL;
+    if AParams <> nil then
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        if not AParams.Items[vInt].IsNull then
+          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
+    end;
+    vQuery.Open;
+
+    // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+    for vInt := 0 to Pred(vQuery.Fields.Count) do
+    begin
+      vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
+      vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
+                                      (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
+    end;
+
+    Result := vQuery;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorQuery) then
+        OnErrorQuery(vQuery, e.Message, Request);
+      raise;
     end;
   end;
-  vQuery.Open;
-
-  // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
-  for vInt := 0 to Pred(vQuery.Fields.Count) do
-  begin
-    vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
-    vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
-                                    (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
-  end;
-
-  Result := vQuery;
 end;
 
 procedure TRALDBZeos.SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -177,6 +202,18 @@ begin
   {$ENDIF}
 end;
 
+procedure TRALDBZeos.OnConnAfterConnect(ASender: TObject);
+begin
+  if Assigned(OnAfterConnect) then
+    OnAfterConnect(ASender, Request);
+end;
+
+procedure TRALDBZeos.OnConnBeforeConnect(ASender: TObject);
+begin
+  if Assigned(OnBeforeConnect) then
+    OnBeforeConnect(ASender, Request);
+end;
+
 function TRALDBZeos.OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
   vQuery: TZReadOnlyQuery;
@@ -188,30 +225,39 @@ begin
 
   // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
   vQuery := TZReadOnlyQuery.Create(nil);
-  vQuery.IsUniDirectional := True;
-  vQuery.Connection := FConnector;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  if AParams <> nil then
-  begin
-    for vInt := 0 to Pred(AParams.Count) do
+  try
+    vQuery.IsUniDirectional := True;
+    vQuery.Connection := FConnector;
+    vQuery.Close;
+    vQuery.SQL.Text := ASQL;
+    if AParams <> nil then
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        if not AParams.Items[vInt].IsNull then
+          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
+    end;
+    vQuery.Open;
+
+    // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+    for vInt := 0 to Pred(vQuery.Fields.Count) do
+    begin
+      vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
+      vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
+                                      (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
+    end;
+
+    Result := vQuery;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorQuery) then
+        OnErrorQuery(vQuery, e.Message, Request);
+      raise;
     end;
   end;
-  vQuery.Open;
-
-  // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
-  for vInt := 0 to Pred(vQuery.Fields.Count) do
-  begin
-    vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
-    vQuery.Fields[vInt].Required := vQuery.DbcResultSet.GetMetadata.IsWritable(vInt) and
-                                    (vQuery.DbcResultSet.GetMetadata.IsNullable(vInt) = ntNoNulls);
-  end;
-
-  Result := vQuery;
 end;
 
 procedure TRALDBZeos.ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
@@ -227,32 +273,40 @@ begin
 
   vQuery := TZQuery.Create(nil);
   try
-    vQuery.Connection := FConnector;
-    vQuery.Close;
-    vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
-    vQuery.ExecSQL;
-
-    ARowsAffected := vQuery.RowsAffected;
-
-    if DatabaseType = dtMySQL then
-    begin
+    try
+      vQuery.Connection := FConnector;
       vQuery.Close;
-      vQuery.SQL.Text := 'select last_insert_id()';
-      try
-        vQuery.Open;
+      vQuery.SQL.Text := ASQL;
+      if AParams <> nil then
+      begin
+        for vInt := 0 to Pred(AParams.Count) do
+        begin
+          vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+          if not AParams.Items[vInt].IsNull then
+            vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+        end;
+      end;
+      vQuery.ExecSQL;
 
-        ALastInsertId := vQuery.Fields[0].AsLargeInt;
-      except
+      ARowsAffected := vQuery.RowsAffected;
 
+      if DatabaseType = dtMySQL then
+      begin
+        vQuery.Close;
+        vQuery.SQL.Text := 'select last_insert_id()';
+        try
+          vQuery.Open;
+          ALastInsertId := vQuery.Fields[0].AsLargeInt;
+        except
+
+        end;
+      end;
+    except
+      on e : Exception do
+      begin
+        if Assigned(OnErrorQuery) then
+          OnErrorQuery(vQuery, e.Message, Request);
+        raise;
       end;
     end;
   finally

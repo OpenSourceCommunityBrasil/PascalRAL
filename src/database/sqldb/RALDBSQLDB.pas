@@ -20,6 +20,9 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol : StringRAL;
+
+    procedure OnConnBeforeConnect(ASender : TObject);
+    procedure OnConnAfterConnect(ASender : TObject);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -68,7 +71,20 @@ begin
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.ConnectorType := FindProtocol;
   FConnector.LoginPrompt   := False;
-  FConnector.Open;
+
+  FConnector.BeforeConnect := @OnConnBeforeConnect;
+  FConnector.AfterConnect := @OnConnAfterConnect;
+
+  try
+    FConnector.Open;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorConnect) then
+        OnErrorConnect(FConnector, e.Message, Request);
+      raise;
+    end;
+  end;
 end;
 
 function TRALDBSQLDB.FindProtocol : StringRAL;
@@ -79,6 +95,18 @@ begin
     dtMySQL      : Result := 'MySQL 5.1';
     dtPostgreSQL : Result := 'PostgreSQL';
   end;
+end;
+
+procedure TRALDBSQLDB.OnConnBeforeConnect(ASender: TObject);
+begin
+  if Assigned(OnBeforeConnect) then
+    OnBeforeConnect(ASender, Request);
+end;
+
+procedure TRALDBSQLDB.OnConnAfterConnect(ASender: TObject);
+begin
+  if Assigned(OnAfterConnect) then
+    OnAfterConnect(ASender, Request);
 end;
 
 function TRALDBSQLDB.GetDriverType: TRALDBDriverType;
@@ -120,22 +148,31 @@ begin
   Conectar;
 
   vQuery := TSQLQuery.Create(nil);
-  vQuery.UniDirectional := True;
-  vQuery.DataBase := FConnector;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  if AParams <> nil then
-  begin
-    for vInt := 0 to Pred(AParams.Count) do
+  try
+    vQuery.UniDirectional := True;
+    vQuery.DataBase := FConnector;
+    vQuery.Close;
+    vQuery.SQL.Text := ASQL;
+    if AParams <> nil then
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        if not AParams.Items[vInt].IsNull then
+          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
+    end;
+    vQuery.Open;
+
+    Result := vQuery;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorQuery) then
+        OnErrorQuery(vQuery, e.Message, Request);
+      raise;
     end;
   end;
-  vQuery.Open;
-
-  Result := vQuery;
 end;
 
 procedure TRALDBSQLDB.SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -161,22 +198,31 @@ begin
   Conectar;
 
   vQuery := TSQLQuery.Create(nil);
-  vQuery.UniDirectional := True;
-  vQuery.DataBase := FConnector;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  if AParams <> nil then
-  begin
-    for vInt := 0 to Pred(AParams.Count) do
+  try
+    vQuery.UniDirectional := True;
+    vQuery.DataBase := FConnector;
+    vQuery.Close;
+    vQuery.SQL.Text := ASQL;
+    if AParams <> nil then
     begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        if not AParams.Items[vInt].IsNull then
+          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
+    end;
+    vQuery.Open;
+
+    Result := vQuery;
+  except
+    on e : Exception do
+    begin
+      if Assigned(OnErrorQuery) then
+        OnErrorQuery(vQuery, e.Message, Request);
+      raise;
     end;
   end;
-  vQuery.Open;
-
-  Result := vQuery;
 end;
 
 procedure TRALDBSQLDB.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
@@ -192,32 +238,41 @@ begin
 
   vQuery := TSQLQuery.Create(nil);
   try
-    vQuery.DataBase := FConnector;
-    vQuery.Close;
-    vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
-    vQuery.ExecSQL;
-
-    ARowsAffected := vQuery.RowsAffected;
-
-    if DatabaseType = dtMySQL then
-    begin
+    try
+      vQuery.DataBase := FConnector;
       vQuery.Close;
-      vQuery.SQL.Text := 'select last_insert_id()';
-      try
-        vQuery.Open;
+      vQuery.SQL.Text := ASQL;
+      if AParams <> nil then
+      begin
+        for vInt := 0 to Pred(AParams.Count) do
+        begin
+          vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+          if not AParams.Items[vInt].IsNull then
+            vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+        end;
+      end;
+      vQuery.ExecSQL;
 
-        ALastInsertId := vQuery.Fields[0].AsLargeInt;
-      except
+      ARowsAffected := vQuery.RowsAffected;
 
+      if DatabaseType = dtMySQL then
+      begin
+        vQuery.Close;
+        vQuery.SQL.Text := 'select last_insert_id()';
+        try
+          vQuery.Open;
+
+          ALastInsertId := vQuery.Fields[0].AsLargeInt;
+        except
+
+        end;
+      end;
+    except
+      on e : Exception do
+      begin
+        if Assigned(OnErrorQuery) then
+          OnErrorQuery(vQuery, e.Message, Request);
+        raise;
       end;
     end;
   finally

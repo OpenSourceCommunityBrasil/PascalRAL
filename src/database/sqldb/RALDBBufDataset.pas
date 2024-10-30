@@ -30,7 +30,7 @@ type
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
 
-    FOnError: TRALDBOnError;
+    FOnError: TRALDBTableOnError;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -80,7 +80,7 @@ type
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
 
-    property OnError: TRALDBOnError read FOnError write FOnError;
+    property OnError: TRALDBTableOnError read FOnError write FOnError;
   end;
 
 

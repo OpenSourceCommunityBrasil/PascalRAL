@@ -5,13 +5,17 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALDBTypes, RALDBStorage;
+  RALTypes, RALCustomObjects, RALDBTypes, RALDBStorage, RALRequest,
+  RALResponse;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
 
   // sempre jogar a qtOther pra frente, ela tem valor igual a 255
   TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
+
+  TRALDBOnConnect = procedure(ASender : TObject; ARequest : TRALRequest) of object;
+  TRALDBOnError = procedure(ASender : TObject; AException : StringRAL; ARequest : TRALRequest) of object;
 
   { TRALDBBase }
 
@@ -23,6 +27,13 @@ type
     FUsername: StringRAL;
     FPassword: StringRAL;
     FPort: IntegerRAL;
+    FRequest: TRALRequest;
+    FResponse: TRALResponse;
+
+    FOnBeforeConnect : TRALDBOnConnect;
+    FOnAfterConnect : TRALDBOnConnect;
+    FOnErrorConnect : TRALDBOnError;
+    FOnErrorQuery : TRALDBOnError;
   protected
     procedure Conectar; virtual; abstract;
   public
@@ -45,6 +56,13 @@ type
     property Username: StringRAL read FUsername write FUsername;
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
+    property Request: TRALRequest read FRequest write FRequest;
+    property Response: TRALResponse read FResponse write FResponse;
+
+    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
+    property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
+    property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
   end;
 
   TRALDBClass = class of TRALDBBase;

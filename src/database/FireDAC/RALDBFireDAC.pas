@@ -31,6 +31,11 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
+
+    procedure OnConnBeforeConnect(ASender : TObject);
+    procedure OnConnAfterConnect(ASender : TObject);
+    procedure OnConnError(ASender, AInitiator: TObject; var AException: Exception);
+    procedure OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -81,6 +86,10 @@ begin
     FConnector.Params.Add('StringFormat=Unicode');
   end;
 
+  FConnector.BeforeConnect := OnConnBeforeConnect;
+  FConnector.AfterConnect := OnConnAfterConnect;
+  FConnector.OnError := OnConnError;
+
   FConnector.Open;
 end;
 
@@ -120,6 +129,30 @@ begin
   inherited Destroy;
 end;
 
+procedure TRALDBFireDAC.OnConnAfterConnect(ASender: TObject);
+begin
+  if Assigned(OnAfterConnect) then
+    OnAfterConnect(ASender, Request);
+end;
+
+procedure TRALDBFireDAC.OnConnBeforeConnect(ASender: TObject);
+begin
+  if Assigned(OnBeforeConnect) then
+    OnBeforeConnect(ASender, Request);
+end;
+
+procedure TRALDBFireDAC.OnConnError(ASender, AInitiator: TObject; var AException: Exception);
+begin
+  if Assigned(OnErrorConnect) then
+    OnErrorConnect(ASender, AException.Message, Request);
+end;
+
+procedure TRALDBFireDAC.OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
+begin
+  if Assigned(OnErrorQuery) then
+    OnErrorQuery(ASender, AException.Message, Request);
+end;
+
 function TRALDBFireDAC.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
   vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
@@ -131,6 +164,7 @@ begin
 
   vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   vQuery.FetchOptions.Unidirectional := True;
+  vQuery.OnError := OnQueryError;
   vQuery.Connection := FConnector;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
@@ -156,6 +190,7 @@ begin
 
   vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   vQuery.Connection := FConnector;
+  vQuery.OnError := OnQueryError;
   vQuery.Close;
   vQuery.SQL.Text := ASQL;
   if (AParams <> nil) and (AParams.Count > 0) then
@@ -205,6 +240,7 @@ begin
   vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   try
     vQuery.Connection := FConnector;
+    vQuery.OnError := OnQueryError;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
     for vInt := 0 to Pred(AParams.Count) do
