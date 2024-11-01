@@ -9,7 +9,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, DB,
-  RALTypes, RALJSON;
+  RALTypes, RALJson;
 
 type
   {

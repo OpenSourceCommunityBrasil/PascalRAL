@@ -12,8 +12,8 @@ uses
   RALRequest, RALResponse, RALParams, RALBase64, RALHashes, RALMD5, 
   RALMIMETypes, RALSHA2_32, RALSHA2_64, RALToken, RALTools, RALJson, 
   RALThreadSafe, RALMultipartCoder, RALCustomObjects, RALUrlCoder, RALCripto, 
-  RALCriptoAES, RALSHA1, RALCompressZLib, RALWEBModule, RALSwaggerModule, 
-  RALCompress;
+  RALCriptoAES, RALSHA1, RALCompressZLib, RALSwaggerModule, RALCompress, 
+  RALWebModule;
 
 implementation
 

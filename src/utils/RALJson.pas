@@ -4,7 +4,7 @@
   a native JSON library, for those older versions there are 2 libraries that are
   supported by PascalRAL, which you enable/disable within PascalRAL.inc
 }
-unit RALJSON;
+unit RALJson;
 
 interface
 

@@ -131,20 +131,20 @@
         <UnitName Value="RALCompressZLib"/>
       </Item26>
       <Item27>
-        <Filename Value="..\..\src\base\RALWEBModule.pas"/>
-        <UnitName Value="RALWEBModule"/>
-      </Item27>
-      <Item28>
         <Filename Value="..\..\src\base\PascalRAL.inc"/>
         <Type Value="Include"/>
-      </Item28>
-      <Item29>
+      </Item27>
+      <Item28>
         <Filename Value="..\..\src\base\RALSwaggerModule.pas"/>
         <UnitName Value="RALSwaggerModule"/>
-      </Item29>
-      <Item30>
+      </Item28>
+      <Item29>
         <Filename Value="..\..\src\utils\RALCompress.pas"/>
         <UnitName Value="RALCompress"/>
+      </Item29>
+      <Item30>
+        <Filename Value="..\..\src\base\RALWebModule.pas"/>
+        <UnitName Value="RALWebModule"/>
       </Item30>
     </Files>
     <CompatibilityMode Value="True"/>
