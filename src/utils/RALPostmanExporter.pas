@@ -51,6 +51,7 @@ procedure TRALPostmanExporter.ExportToStream(AServer: TRALServer; AStream: TStre
 var
   vJson, vAuth: TRALJSONObject;
   vStr: StringRAL;
+  vBytes: TBytes;
 begin
   vJson := TRALJSONObject.Create;
   try
@@ -62,12 +63,12 @@ begin
     if vAuth <> nil then
       vJson.Add('auth', vAuth);
 
-    vStr := vJson.ToJSON;
+    vBytes := StringToBytesUTF8(vJson.ToJSON);
+    AStream.Write(vBytes[0], Length(vBytes));
+    AStream.Position := 0;
   finally
     FreeAndNil(vJson);
   end;
-
-  AStream.Write(vStr[POSINISTR], Length(vStr));
 end;
 
 function TRALPostmanExporter.getAuth(AServer: TRALServer): TRALJSONObject;

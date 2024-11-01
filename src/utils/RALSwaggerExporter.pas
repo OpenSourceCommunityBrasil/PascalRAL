@@ -56,7 +56,7 @@ procedure TRALSwaggerExporter.ExportToStream(AServer: TRALServer; AStream: TStre
 var
   vJson, vAux: TRALJSONObject;
   vArr: TRALJSONArray;
-  vStr: StringRAL;
+  vBytes: TBytes;
 begin
   vJson := TRALJSONObject.Create;
   try
@@ -75,13 +75,12 @@ begin
     if vAux <> nil then
       vJson.Add('components', vAux);
 
-    vStr := vJson.ToJSON;
+    vBytes := StringToBytesUTF8(vJson.ToJSON);
+    AStream.Write(vBytes[0], Length(vBytes));
+    AStream.Position := 0;
   finally
     FreeAndNil(vJson);
   end;
-
-  AStream.Write(vStr[POSINISTR], Length(vStr));
-  AStream.Position := 0;
 end;
 
 function TRALSwaggerExporter.ExportToStream(AServer: TRALServer): TStream;
