@@ -33,7 +33,7 @@ type
   private
     FAuthString: StringRAL;
     FAuthType: TRALAuthTypes;
-    FObjAuth : TObject;
+    FObjAuth: TObject;
   protected
     procedure SetAuthString(const AValue: StringRAL);
     function GetAuthBasic: TRALAuthBasic;

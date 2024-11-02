@@ -590,6 +590,7 @@ constructor TRALClientMT.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FExecBehavior := ebMultiThread;
+  FCritSession := TCriticalSection.Create;
 end;
 
 procedure TRALClientMT.Get(ARoute: StringRAL; ARequest: TRALRequest;

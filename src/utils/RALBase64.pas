@@ -1,6 +1,8 @@
 /// Unit that stores Base64 encode and decode functions
 unit RALBase64;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -69,7 +71,7 @@ class function TRALBase64.Decode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
-  vStream := StringToStream(AValue);
+  vStream := StringToStreamUTF8(AValue);
   try
     Result := Decode(vStream);
   finally
@@ -153,7 +155,7 @@ class function TRALBase64.DecodeAsStream(AValue: StringRAL): TStream;
 var
   vStream: TStream;
 begin
-  vStream := StringToStream(AValue);
+  vStream := StringToStreamUTF8(AValue);
   try
     Result := DecodeAsStream(vStream);
   finally
@@ -190,7 +192,7 @@ class function TRALBase64.DecodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStream;
 begin
-  vStream := StringToStream(AValue);
+  vStream := StringToStreamUTF8(AValue);
   try
     Result := DecodeAsBytes(vStream);
   finally
@@ -221,7 +223,7 @@ begin
     if AInputLen < 3 then
       vRead := AInputLen;
 
-    {$IF (NOT DEFINED(DELPHI2010UP)) AND (NOT DEFINED(FPC))}
+    {$IF (not Defined(FPC)) and (not Defined(DELPHI2010UP))}
     case vRead of
       1: begin
           AOutput^ := TEncode64[(AInput^ shr 2)];
@@ -338,7 +340,7 @@ class function TRALBase64.Encode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
-  vStream := StringToStream(AValue);
+  vStream := StringToStreamUTF8(AValue);
   try
     Result := Encode(vStream);
   finally
