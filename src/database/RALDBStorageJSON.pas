@@ -129,7 +129,7 @@ end;
 constructor TRALJSONFormatOptions.Create;
 begin
   FDateTimeFormat := dtfISO8601;
-  FCustomDateTimeFormat := 'dd/mm/yyyy hh:nn:ss:zzz';
+  FCustomDateTimeFormat := 'dd/mm/yyyy hh:nn:ss.zzz';
 end;
 
 { TRALDBStorageJSON }
