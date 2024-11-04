@@ -302,7 +302,8 @@ begin
         if Assigned(vPayLoad) then
         begin
           vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
-          vParam.ContentType := ParamByName('Content-Type').AsString;
+          if vParam <> nil then
+            vParam.ContentType := ParamByName('Content-Type').AsString;
         end;
 
         ContentSize := 0;
