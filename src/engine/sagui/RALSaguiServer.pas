@@ -533,8 +533,12 @@ end;
 
 procedure TRALSaguiStringMap.Add(const AName, AValue: StringRAL);
 begin
+  if AValue = '' then
+    Exit;
+
   SgLib.Check;
-  SgLib.CheckLastError(sg_strmap_add(FHandle, pansichar(AName), pansichar(AValue)));
+  SgLib.CheckLastError(sg_strmap_add(FHandle, PAnsiChar(AnsiString(AName)),
+                       PAnsiChar(AnsiString(AValue))));
 end;
 
 procedure TRALSaguiStringMap.AppendToParams(AParams: TRALParams; AKind: TRALParamKind);

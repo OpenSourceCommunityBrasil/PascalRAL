@@ -484,6 +484,7 @@ end;
 
 function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
+  Result := nil;
   if (AName <> '') and (AValue <> '') then
   begin
     Result := GetKind[AName, AKind];
