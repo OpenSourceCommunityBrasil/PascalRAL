@@ -13,7 +13,7 @@ uses
   // engine components
   RALSynopseServer, RALIndyServer, RALfpHTTPServer, RALSaguiServer,
   // general base components
-  RALServer, RALRequest, RALResponse, RALConsts;
+  RALServer, RALRequest, RALResponse, RALConsts, RALMIMETypes, RALCompress;
 
 type
 
@@ -47,7 +47,7 @@ type
 
   procedure TRALApplication.Ping(Request: TRALRequest; Response: TRALResponse);
   begin
-    Response.Answer(200, 'pong');
+    Response.Answer(HTTP_OK, 'pong', rctTEXTPLAIN);
   end;
 
   constructor TRALApplication.Create(AOwner: TComponent);
@@ -59,6 +59,9 @@ type
     StopOnException := True;
 
     WriteLn('RAL TestServer Lazarus - v' + RALVERSION);
+    {$IFOPT D+}
+    WriteLn('Debug Enabled');
+    {$ENDIF}
     WriteLn('Choose the engine:');
     WriteLn('1 - Synopse mORMot2 ' + SYNOPSE_FRAMEWORK_VERSION);
     WriteLn('2 - Indy ' + gsIdVersion);
@@ -73,6 +76,9 @@ type
       4: begin
         FServer := TRALSaguiServer.Create(nil);
         TRALSaguiServer(FServer).LibPath := ExtractFilePath(ParamStr(0)) + SG_LIB_NAME;
+        {$IFOPT D+}
+        WriteLn(TRALSaguiServer(FServer).LibPath);
+        {$ENDIF}
       end;
     end;
     WriteLn('Type the port used by server (0 for default 8000)');
@@ -80,6 +86,7 @@ type
     if port <= 0 then port := 8000;
     FServer.Port := port;
     FServer.CreateRoute('ping', @Ping);
+    FServer.CompressType := ctNone;
     FServer.Start;
   end;
 
