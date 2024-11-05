@@ -335,6 +335,8 @@ begin
         ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
       else
         LoadFromRALStorage(Self, vDBSQL.Response.Stream);
+
+      Self.First;
     finally
       FreeAndNil(vMem);
     end;

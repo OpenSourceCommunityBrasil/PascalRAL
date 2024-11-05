@@ -144,7 +144,7 @@ end;
 procedure TRALDBStorageBJON.ReadFields(ADataset: TDataSet; ADocument: TBSONDocument);
 var
   vInt, vSize: IntegerRAL;
-  vFields, vField : PBSONItemArray;
+  vFields, vItemField : PBSONItemArray;
   vName: StringRAL;
   vType: TFieldType;
   vFlags: TBytes;
@@ -164,16 +164,16 @@ begin
 
   for vInt := 0 to Pred(vFields^.Values.Count) do
   begin
-    vField := vFields^.Values.Item[vInt]^.PBSONArray;
+    vItemField := vFields^.Values.Item[vInt]^.PBSONArray;
 
-    vName := vField^.Values[0]^.ToString;
+    vName := vItemField^.Values[0]^.ToString;
     FFieldNames[vInt] := vName;
 
-    FFieldTypes[vInt] := TRALFieldType(vField^.Values[1]^.ToInt);
+    FFieldTypes[vInt] := TRALFieldType(vItemField^.Values[1]^.ToInt);
     vType := TRALDB.RALFieldTypeToFieldType(FFieldTypes[vInt]);
 
-    vFlags[vInt] := vField^.Values[2]^.ToInt;
-    vSize := vField^.Values[3]^.ToInt;
+    vFlags[vInt] := vItemField^.Values[2]^.ToInt;
+    vSize := vItemField^.Values[3]^.ToInt;
 
     vField := ADataset.FieldDefs.AddFieldDef;
     vField.Name := vName;

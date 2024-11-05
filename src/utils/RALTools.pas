@@ -6,9 +6,9 @@ unit RALTools;
 interface
 
 uses
-  {$IF Defined(RALWindows)}
+  {$IFDEF RALWindows}
     Windows,
-  {$IFEND}
+  {$ENDIF}
   {$IFDEF FPC}
     UTF8Process,
   {$ENDIF}
@@ -28,6 +28,10 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
+
+{$IF DEFINED(RALLinux) OR DEFINED(RALApple)}
+function sysconf(name: longint): int64; cdecl; external 'libc' name 'sysconf';
+{$IFEND}
 
 implementation
 
@@ -221,8 +225,14 @@ function RALCPUCount: integer;
     GetSystemInfo(info);
     Result := info.dwNumberOfProcessors;
   {$ELSE}
-  begin
-    Result := 1;
+    {$IF DEFINED(RALLinux) OR DEFINED(RALApple)}
+    begin
+      // 83 - num process
+      Result := sysconf(83);
+    {$ELSE}
+    begin
+      Result := 1;
+    {$IFEND}
   {$ENDIF}
 {$ELSE}
 begin

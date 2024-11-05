@@ -313,6 +313,8 @@ begin
           Self.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
+
+        Self.First;
       finally
         FreeAndNil(vSQLCache);
       end;

@@ -488,6 +488,8 @@ begin
           Self.LoadFromStream(vDBSQL.Response.Stream)
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
+
+        Self.First;
       finally
         FreeAndNil(vSQLCache);
       end;
