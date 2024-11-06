@@ -15,6 +15,7 @@
       <Target FileName="Database\raldbzeoslink.lpk"/>
       <Target FileName="compression\ralbrotlicompress.lpk"/>
       <Target FileName="compression\ralzstdcompress.lpk"/>
+      <Target FileName="Database\raldbbson.lpk"/>
     </Targets>
   </ProjectGroup>
 </CONFIG>
