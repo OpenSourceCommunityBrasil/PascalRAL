@@ -59,7 +59,7 @@ type
   TRALMultipartDecoder = class
   private
     FBoundary: StringRAL;
-    FBuffer: array of Byte;
+    FBuffer: TBytes;
     FFormData: TList;
     FIndex: IntegerRAL;
     FIs13: boolean;
@@ -516,8 +516,9 @@ var
 begin
   if FIndex < MultipartLineLength then
   begin
+    vLine := BytesToStringUTF8(FBuffer);
     SetLength(vLine, FIndex);
-    Move(FBuffer[0], vLine[PosIniStr], FIndex);
+
     // boundary end of file
     if Pos('--' + FBoundary + '--', vLine) > 0 then
     begin
@@ -555,8 +556,8 @@ begin
   // buffer eh o parte do arquivo e nao um novo boundary
   begin
     {$IFDEF RAL_DEBUG}
+    vLine := BytesToStringUTF8(FBuffer);
     SetLength(vLine, FIndex);
-    Move(FBuffer[0], vLine[PosIniStr], FIndex);
     {$ENDIF}
     Result := BurnBuffer;
   end;
@@ -572,6 +573,7 @@ end;
 function TRALMultipartDecoder.ResetBuffer: PByte;
 begin
   FIndex := 0;
+  FillChar(FBuffer[0], Length(FBuffer), 0);
   Result := @FBuffer[FIndex];
 end;
 
