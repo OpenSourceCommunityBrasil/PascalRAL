@@ -248,7 +248,7 @@ begin
 
   vHeaderEnd := '----------------------------%s--';
 
-  Result := TMemoryStream.Create;
+  Result := TRALStringStream.Create;
   for vInt := 0 to Pred(FFormData.Count) do
   begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
@@ -262,15 +262,15 @@ begin
       vString := Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
         vItem.ContentType]);
     end;
-    Result.Write(vString[PosIniStr], Length(vString));
+    TRALStringStream(Result).WriteString(vString);
     vItem.AsStream.Position := 0;
     Result.CopyFrom(vItem.AsStream, vItem.AsStream.Size);
 
     vString := HTTPLineBreak;
-    Result.Write(vString[PosIniStr], Length(vString));
+    TRALStringStream(Result).WriteString(vString);
   end;
   vString := Format(vHeaderEnd, [Boundary]);
-  Result.Write(vString[PosIniStr], Length(vString));
+  TRALStringStream(Result).WriteString(vString);
   Result.Position := 0;
 end;
 
