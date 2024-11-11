@@ -134,7 +134,6 @@ begin
 
     // nao deve ser usado o metodo direto e sim como HTTPMethod,
     // devido o paramentro AllowedResponseCodes
-
     try
       case AMethod of
         amGET     : FHttp.HTTPMethod('GET', AURL, vResult, []);
@@ -163,7 +162,7 @@ begin
     except
       on e : ESocketError do
       begin
-        if e.Code = seConnectTimeOut then
+        if (e.Code = seConnectTimeOut) or (e.Code = seIOTimeOut) then
           tratarExcecao(10060, e.Message)
         else
           tratarExcecao(-1, e.Message);

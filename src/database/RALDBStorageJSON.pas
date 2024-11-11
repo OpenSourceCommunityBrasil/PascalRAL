@@ -196,8 +196,11 @@ begin
 end;
 
 procedure TRALDBStorageJSON.WriteStringToStream(AStream: TStream; AValue: StringRAL);
+var
+  vBytes: TBytes;
 begin
-  AStream.Write(AValue[POSINISTR], Length(AValue));
+  vBytes := StringToBytesUTF8(AValue);
+  AStream.Write(vBytes[0], Length(vBytes));
 end;
 
 function TRALDBStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
