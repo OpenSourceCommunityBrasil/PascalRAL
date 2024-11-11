@@ -557,6 +557,9 @@ begin
         AOnResponse(Self, vResponse, vException)
       else if Assigned(FOnResponse) then
         FOnResponse(Self, vResponse, vException);
+
+      if vException <> '' then
+        raise Exception.Create(vException);
     finally
       FreeAndNil(vResponse);
     end;
@@ -684,7 +687,6 @@ var
   vConta, vMaxConta, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL: StringRAL;
-  vConnTimeOut: boolean;
 begin
   vConta := 0;
 
@@ -734,15 +736,10 @@ begin
       SendUrl(vURL, ARequest, AResponse, AMethod);
       vResp := AResponse.StatusCode;
       vErrorCode := AResponse.ErrorCode;
-      vConnTimeOut := False;
     end;
 
     if vErrorCode <> 0 then
-    begin
       FIndexUrl := (FIndexUrl + 1) mod Parent.BaseURL.Count;
-      if (vErrorCode = 10061) or (vErrorCode = 12029) then
-        vConnTimeOut := True;
-    end;
 
     vConta := vConta + 1;
 
@@ -752,8 +749,8 @@ begin
       Break;
   until (vResp > 0) or (vConta >= vMaxConta);
 
-  if vConnTimeOut then
-    raise Exception.Create('Connection TimeOut');
+  if vErrorCode <> 0 then
+    raise Exception.Create(AResponse.ResponseText);
 end;
 
 constructor TRALClientHTTP.Create(AOwner: TRALClientBase);

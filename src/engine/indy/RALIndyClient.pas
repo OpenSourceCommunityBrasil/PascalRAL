@@ -202,8 +202,17 @@ begin
         tratarExcecao(e);
         AResponse.ErrorCode := e.LastError;
       end;
+      on e : EIdConnectTimeout do begin
+        tratarExcecao(e);
+        AResponse.ErrorCode := 10060;
+      end;
+      on e : EIdReadTimeout do begin
+        tratarExcecao(e);
+        AResponse.ErrorCode := 10060;
+      end;
       on e : Exception do begin
         tratarExcecao(e);
+        AResponse.ErrorCode := -1;
       end;
     end;
     FreeAndNil(vResult);
