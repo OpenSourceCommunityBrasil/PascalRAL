@@ -88,18 +88,16 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure HandleException(AException: Exception);
+  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.ResponseText := AException.Message;
-    AResponse.ErrorCode := 0;
+    AResponse.ResponseText := AMessage;
+    AResponse.ErrorCode := ACode;
   end;
 
 begin
   AResponse.Clear;
-  AResponse.StatusCode := -1;
-  AResponse.ResponseText := '';
 
   vHttp := nil;
 
@@ -199,33 +197,29 @@ begin
       except
         on e: ENetSock do
         begin
-          HandleException(e);
           if e.LastError in [nrFatalError, nrTimeout]  then
-            AResponse.ErrorCode := 10061;
+            tratarExcecao(10061, e.Message)
+          else
+            tratarExcecao(-1, e.Message);
         end;
         on e: Exception do
-        begin
-          HandleException(e);
-        end;
+          tratarExcecao(-1, e.Message);
       end;
     finally
       FreeAndNil(vSource);
     end;
-    vHttp.Free;
   except
     on e: ENetSock do
     begin
-      FreeAndNil(vHttp);
-      HandleException(e);
       if e.LastError in [nrFatalError, nrTimeout]  then
-        AResponse.ErrorCode := 10061;
+        tratarExcecao(10061, e.Message)
+      else
+        tratarExcecao(-1, e.Message);
     end;
     on e: Exception do
-    begin
-      FreeAndNil(vHttp);
-      HandleException(e);
-    end;
+      tratarExcecao(-1, e.Message);
   end;
+  FreeAndNil(vHttp);
 end;
 
 { TRALSynopseClientMT }

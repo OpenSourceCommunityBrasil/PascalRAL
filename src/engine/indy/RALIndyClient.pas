@@ -97,13 +97,13 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(AException : Exception);
+  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
     AResponse.StatusCode := FHttp.ResponseCode;
-    AResponse.ResponseText := AException.Message;
-    AResponse.ErrorCode := 0;
+    AResponse.ResponseText := AMessage;
+    AResponse.ErrorCode := ACode;
   end;
 
 begin
@@ -159,11 +159,12 @@ begin
   ARequest.Params.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
   vSource := ARequest.RequestStream;
+  vResult := TMemoryStream.Create;
   try
     FHttp.AllowCookies := True;
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
-    vResult := TMemoryStream.Create;
+
     try
       case AMethod of
         amGET:
@@ -198,27 +199,18 @@ begin
       AResponse.StatusCode := FHttp.ResponseCode;
       AResponse.ResponseStream := vResult;
     except
-      on e : EIdSocketError do begin
-        tratarExcecao(e);
-        AResponse.ErrorCode := e.LastError;
-      end;
-      on e : EIdConnectTimeout do begin
-        tratarExcecao(e);
-        AResponse.ErrorCode := 10060;
-      end;
-      on e : EIdReadTimeout do begin
-        tratarExcecao(e);
-        AResponse.ErrorCode := 10060;
-      end;
-      on e : Exception do begin
-        tratarExcecao(e);
-        AResponse.ErrorCode := -1;
-      end;
+      on e : EIdSocketError do
+        tratarExcecao(e.LastError, e.Message);
+      on e : EIdConnectTimeout do
+        tratarExcecao(10060, e.Message);
+      on e : EIdReadTimeout do
+        tratarExcecao(10060, e.Message);
+      on e : Exception do
+        tratarExcecao(-1, e.Message);
     end;
-    FreeAndNil(vResult);
   finally
-    if vSource <> nil then
-      FreeAndNil(vSource);
+    FreeAndNil(vResult);
+    FreeAndNil(vSource);
   end;
 end;
 
