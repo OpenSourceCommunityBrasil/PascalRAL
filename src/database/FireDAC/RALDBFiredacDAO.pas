@@ -10,7 +10,8 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse, RALConsts,
+  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  RALConsts,
   System.SyncObjs;
 
 type
@@ -102,9 +103,6 @@ end;
 
 destructor TRALFDQuery.Destroy;
 begin
-  if Assigned(vException) then
-    FreeAndNil(vException);
-
   inherited;
 end;
 
@@ -128,7 +126,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -152,9 +150,6 @@ begin
       vStreamAux := nil;
       vStringStreamAux := nil;
       vRequest := nil;
-
-      if Assigned(vException) then
-        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -215,7 +210,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -255,7 +250,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -281,9 +276,6 @@ begin
       vStringStreamAux := nil;
       vAuxMemTable := nil;
       vRequest := nil;
-
-      if Assigned(vException) then
-        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -351,7 +343,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -414,7 +406,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -440,9 +432,6 @@ begin
       vStreamAux := nil;
       vStringStreamAux := nil;
       vRequest := nil;
-
-      if Assigned(vException) then
-        FreeAndNil(vException);
 
       vRequest := RALClient.NewRequest;
 
@@ -501,7 +490,7 @@ begin
       begin
         Self.Close;
 
-        vException := e.Create(e.Message);
+        vException := Exception.Create(e.Message);
       end;
     end;
   finally
@@ -792,4 +781,3 @@ begin
 end;
 
 end.
-
