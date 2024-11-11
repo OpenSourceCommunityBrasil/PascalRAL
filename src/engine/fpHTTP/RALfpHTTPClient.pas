@@ -75,19 +75,17 @@ procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
 var
   vSource, vResult : TStream;
 
-  procedure tratarExcecao(AException : Exception);
+  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
     AResponse.StatusCode := FHttp.ResponseStatusCode;
-    AResponse.ResponseText := AException.Message;
-    AResponse.ErrorCode := 0;
+    AResponse.ResponseText := AMessage;
+    AResponse.ErrorCode := ACode;
   end;
 
 begin
   AResponse.Clear;
-  AResponse.StatusCode := -1;
-  AResponse.ResponseText := '';
 
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.IOTimeout := Parent.RequestTimeout;
@@ -97,7 +95,7 @@ begin
   FHttp.AllowRedirect := true;
   FHttp.MaxRedirects := 255;
 
-  ARequest.Params.AssignParams(FHttp.Cookies,rpkCOOKIE);
+  ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE);
 
   if Parent.KeepAlive then
     ARequest.Params.AddParam('Connection', 'keep-alive', rpkHEADER);
@@ -123,6 +121,7 @@ begin
   ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
   vSource := ARequest.RequestStream;
+  vResult := TStringStream.Create;
   try
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
@@ -136,7 +135,6 @@ begin
     // nao deve ser usado o metodo direto e sim como HTTPMethod,
     // devido o paramentro AllowedResponseCodes
 
-    vResult := TStringStream.Create;
     try
       case AMethod of
         amGET     : FHttp.HTTPMethod('GET', AURL, vResult, []);
@@ -165,23 +163,18 @@ begin
     except
       on e : ESocketError do
       begin
-        tratarExcecao(e);
         if e.Code = seConnectTimeOut then
-          AResponse.ErrorCode := 10061;
+          tratarExcecao(10060, e.Message)
+        else
+          tratarExcecao(-1, e.Message);
       end;
       on e : EHTTPClient do
-      begin
-        tratarExcecao(e);
-        AResponse.ResponseText := e.StatusText;
-        AResponse.StatusCode := e.StatusCode;
-      end;
+        tratarExcecao(e.StatusCode, e.StatusText);
       on e : Exception do
-      begin
-        tratarExcecao(e);
-      end;
+        tratarExcecao(-1, e.Message);
     end;
-    FreeAndNil(vResult);
   finally
+    FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;
 end;

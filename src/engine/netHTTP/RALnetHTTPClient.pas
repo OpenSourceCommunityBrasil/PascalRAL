@@ -87,27 +87,25 @@ end;
 procedure TRALnetHTTPClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vInt, vIdx: IntegerRAL;
+  vInt, vIdx, vErroCode: IntegerRAL;
   vSource : TStream;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vParam : TRALParam;
   vCookies: StringRAL;
 
-  procedure tratarExcecao(AException : Exception);
+  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.ResponseText := AException.Message;
+    AResponse.ResponseText := AMessage;
     AResponse.StatusCode := vResponse.GetStatusCode;
-    AResponse.ErrorCode := 0;
+    AResponse.ErrorCode := ACode;
   end;
 
 begin
   inherited;
   AResponse.Clear;
-  AResponse.StatusCode := -1;
-  AResponse.ResponseText := '';
 
   {$IFDEF DELPHI10_1UP}
   FHttp.ConnectionTimeout := Parent.ConnectTimeout;
@@ -202,19 +200,19 @@ begin
       AResponse.ResponseStream := vResponse.ContentStream;
     except
       on e : ENetHTTPClientException do begin
-        tratarExcecao(e);
+        vErroCode := -1;
         if Pos('12029', e.Message) > 0 then
-          AResponse.ErrorCode := 12029
+          vErroCode := 12029
         else if Pos('10061', e.Message) > 0 then
-          AResponse.ErrorCode := 10061
+          vErroCode := 10061;
+
+        tratarExcecao(vErroCode, e.Message);
       end;
-      on e : Exception do begin
-        tratarExcecao(e);
-      end;
+      on e : Exception do
+        tratarExcecao(-1, e.Message);
     end;
   finally
-    if vSource <> nil then
-      FreeAndNil(vSource);
+    FreeAndNil(vSource);
   end;
 end;
 
