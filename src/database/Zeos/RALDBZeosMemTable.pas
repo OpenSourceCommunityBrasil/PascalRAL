@@ -158,10 +158,9 @@ end;
 
 procedure TRALDBZMemTable.SetActive(AValue: boolean);
 begin
-  Clear;
-
   if (AValue) and (not FLoading) then
   begin
+    Clear;
     if (FRALConnection = nil) and (not(csDestroying in ComponentState)) and
        (not(csLoading in ComponentState)) then
       raise Exception.Create(emDBConnectionUndefined);
@@ -321,20 +320,25 @@ var
   vMem: TStream;
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
+  vSQLCache: TRALDBSQLCache;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
       FLoading := True;
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
 
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
-
-      if vDBSQL.Response.Native then
-        ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
-      else
-        LoadFromRALStorage(Self, vDBSQL.Response.Stream);
+        if vDBSQL.Response.Native then
+          ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
+        else
+          LoadFromRALStorage(Self, vDBSQL.Response.Stream);
+      finally
+        FreeAndNil(vSQLCache);
+      end;
 
       Self.First;
     finally
@@ -361,16 +365,22 @@ var
   vException: StringRAL;
   vMem: TStream;
   vDBSQL: TRALDBSQL;
+  vSQLCache: TRALDBSQLCache;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.ParamByName('Stream').AsStream;
     try
-      FSQLCache.ResponseFromStream(vMem);
-      vDBSQL := FSQLCache.SQLList[0];
+      vSQLCache := TRALDBSQLCache.Create;
+      try
+        vSQLCache.ResponseFromStream(vMem);
+        vDBSQL := vSQLCache.SQLList[0];
 
-      FRowsAffected := vDBSQL.Response.RowsAffected;
-      FLastId := vDBSQL.Response.LastId;
+        FRowsAffected := vDBSQL.Response.RowsAffected;
+        FLastId := vDBSQL.Response.LastId;
+      finally
+        FreeAndNil(vSQLCache);
+      end;
     finally
       FreeAndNil(vMem);
     end;

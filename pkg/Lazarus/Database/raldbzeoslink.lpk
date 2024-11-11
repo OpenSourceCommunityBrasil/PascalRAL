@@ -13,6 +13,11 @@
         <OtherUnitFiles Value="..\..\src\database\links;..\..\src\database;..\..\src\database\Zeos;..\..\..\src\database\Zeos"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
     </CompilerOptions>
     <Description Value="Package for ZeosDBO&apos;s DBWare components for PascalRAL."/>
     <Version Major="1"/>

@@ -13,6 +13,11 @@
         <OtherUnitFiles Value="..\..\src\database;..\..\..\src\database"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
       <Other>
         <Verbosity>
           <ShowLineNum Value="True"/>
