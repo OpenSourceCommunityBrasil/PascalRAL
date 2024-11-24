@@ -144,6 +144,7 @@ type
   TRALMIMEType = class
   private
     FInternalMIMEList: TStringList;
+    class var FInstance: TRALMIMEType;
     procedure SetDefaultTypes;
     procedure LoadAudioTypes;
     procedure LoadApplicationTypes;
@@ -155,11 +156,16 @@ type
     procedure LoadTextTypes;
     procedure LoadOtherTypes;
     function GetSystemTypes: boolean;
-  public
     constructor Create;
     destructor Destroy; override;
+  public
+    class function GetInstance: TRALMIMEType; static;
+    class procedure ReleaseInstance; static;
     function GetMIMEContentExt(const aContentType: StringRAL): StringRAL;
     function GetMIMEType(const aFileName: StringRAL): StringRAL;
+    {$IFDEF RALDEBUG}
+    function GetInternalList: StringRAL;
+    {$ENDIF}
   end;
 
 const
@@ -175,8 +181,9 @@ begin
   FInternalMIMEList.Delimiter := '=';
   FInternalMIMEList.Duplicates := dupIgnore;
   FInternalMIMEList.Sorted := True;
-  SetDefaultTypes;
-  GetSystemTypes;  
+  GetSystemTypes;
+  if FInternalMIMEList.Count = 0 then
+    SetDefaultTypes;
 end;
 
 destructor TRALMIMEType.Destroy;
@@ -186,15 +193,22 @@ begin
   inherited;
 end;
 
+{$IFDEF RALDEBUG}
+function TRALMIMEType.GetInternalList: StringRAL;
+begin
+  Result := FInternalMIMEList.Text;
+end;
+{$ENDIF}
+
 function TRALMIMEType.GetMIMEContentExt(const aContentType: StringRAL): StringRAL;
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   Result := '';
   try
     for vInt := 0 to Pred(FInternalMIMEList.Count) do
     begin
-      if SameText(FInternalMIMEList.ValueFromIndex[vInt],aContentType) then
+      if SameText(FInternalMIMEList.ValueFromIndex[vInt], aContentType) then
       begin
         Result := FInternalMIMEList.Names[vInt];
         Break;
@@ -211,7 +225,7 @@ begin
 end;
 
 function TRALMIMEType.GetSystemTypes: boolean;
-{$IFDEF RALWindows}
+  {$IFDEF RALWindows}
   procedure LoadRegistry;
   const
     CExtsKey = '\';
@@ -262,8 +276,8 @@ function TRALMIMEType.GetSystemTypes: boolean;
     end;
   end;
 
-{$ENDIF}
-{$IFDEF RALLinux}
+  {$ENDIF}
+  {$IFDEF RALLinux}
   procedure LoadFile(const aFileName: string);
   var
     LTypes: TStringList;
@@ -299,8 +313,8 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LTypes.Free;
     end;
   end;
-{$ENDIF}
-{$IFDEF RALApple}
+  {$ENDIF}
+  {$IFDEF RALApple}
   procedure LoadFile(const aFileName: string);
   const
     CBinary: RawByteString = 'bplist';
@@ -378,8 +392,8 @@ function TRALMIMEType.GetSystemTypes: boolean;
       LItems.Free;
     end;
   end;
-{$ENDIF}
-{$IFDEF RALLinux}
+  {$ENDIF}
+  {$IFDEF RALLinux}
 
 const
   CTypeFile = 'mime.types';
@@ -396,7 +410,7 @@ begin
     LoadRegistry;
     {$ENDIF}
     {$IFDEF RALLinux}
-    //LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
+    // LoadFile(TPath.Combine(TPath.GetHomePath, '.' + CTypeFile));
     LoadFile('/etc/' + CTypeFile);
     {$ENDIF}
     {$IFDEF RALApple}
@@ -1486,5 +1500,23 @@ begin
   LoadTextTypes;
   LoadOtherTypes;
 end;
+
+class function TRALMIMEType.GetInstance: TRALMIMEType;
+begin
+  if FInstance = nil then
+    FInstance := TRALMIMEType.Create;
+  Result := FInstance;
+end;
+
+class procedure TRALMIMEType.ReleaseInstance;
+begin
+  FreeAndNil(FInstance);
+end;
+
+initialization
+  TRALMIMEType.GetInstance;
+
+finalization
+  TRALMIMEType.ReleaseInstance;
 
 end.

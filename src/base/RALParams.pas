@@ -362,11 +362,11 @@ begin
   begin
     if FFileName = '' then
     begin
-      vMime := TRALMIMEType.Create;
+      vMime := TRALMIMEType.GetInstance;
       try
         vExt := vMime.GetMIMEContentExt(FContentType);
       finally
-        FreeAndNil(vMime);
+//        FreeAndNil(vMime);
       end;
 
       AFileName := FParamName + vExt;
@@ -549,13 +549,13 @@ begin
     Result.OpenFile(AFileName);
     Result.Kind := rpkBODY;
 
-    vMime := TRALMIMEType.Create;
+    vMime := TRALMIMEType.GetInstance;
     try
       Result.ContentType := vMime.GetMIMEType(AFileName);
       if Result.ContentType = '' then
         Result.ContentType := rctAPPLICATIONOCTETSTREAM;
     finally
-      FreeAndNil(vMime);
+//      FreeAndNil(vMime);
     end;
   end;
 end;
