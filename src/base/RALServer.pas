@@ -431,8 +431,6 @@ begin
   FShowServerStatus := True;
   FCookieLife := 30;
   FSSL := CreateRALSSL;
-
-  ResponsePages.CreateDefaultPages;
 end;
 
 function TRALServer.CreateRALSSL: TRALSSL;
