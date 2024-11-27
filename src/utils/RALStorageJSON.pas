@@ -1,11 +1,11 @@
 /// Base unit for the Storage exporter in JSON format
-unit RALDBStorageJSON;
+unit RALStorageJSON;
 
 interface
 
 uses
   Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALDBStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
+  RALTypes, RALStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
   RALJSON, RALConsts;
 
 type
@@ -29,9 +29,9 @@ type
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
   end;
 
-  { TRALDBStorageJSON }
+  { TRALStorageJSON }
 
-  TRALDBStorageJSON = class(TRALDBStorage)
+  TRALStorageJSON = class(TRALStorage)
   private
     FFormatOptions: TRALJSONFormatOptions;
   public
@@ -62,9 +62,9 @@ type
       write FFormatOptions;
   end;
 
-  { TRALDBStorageJSON_RAW }
+  { TRALStorageJSON_RAW }
 
-  TRALDBStorageJSON_RAW = class(TRALDBStorageJSON)
+  TRALStorageJSON_RAW = class(TRALStorageJSON)
   protected
     procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
     procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
@@ -75,9 +75,9 @@ type
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALDBStorageJSON_DBWare }
+  { TRALStorageJSON_DBWare }
 
-  TRALDBStorageJSON_DBWare = class(TRALDBStorageJSON)
+  TRALStorageJSON_DBWare = class(TRALStorageJSON)
   protected
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
@@ -91,9 +91,9 @@ type
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALDBStorageJSONLink }
+  { TRALStorageJSONLink }
 
-  TRALDBStorageJSONLink = class(TRALDBStorageLink)
+  TRALStorageJSONLink = class(TRALStorageLink)
   private
     FJSONType: TRALJSONType;
     FFormatOptions: TRALJSONFormatOptions;
@@ -106,8 +106,8 @@ type
     procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
     procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
 
-    function Clone : TRALDBStorageLink; override;
-    function GetStorage: TRALDBStorage; override;
+    function Clone : TRALStorageLink; override;
+    function GetStorage: TRALStorage; override;
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
     property JSONType: TRALJSONType read FJSONType write FJSONType;
@@ -132,26 +132,26 @@ begin
   FCustomDateTimeFormat := 'dd/mm/yyyy hh:nn:ss.zzz';
 end;
 
-{ TRALDBStorageJSON }
+{ TRALStorageJSON }
 
-constructor TRALDBStorageJSON.Create;
+constructor TRALStorageJSON.Create;
 begin
   inherited;
   FFormatOptions := TRALJSONFormatOptions.Create;
 end;
 
-destructor TRALDBStorageJSON.Destroy;
+destructor TRALStorageJSON.Destroy;
 begin
   FreeAndNil(FFormatOptions);
   inherited Destroy;
 end;
 
-function TRALDBStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
+function TRALStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
 begin
   Result := StringToJSONString(StreamToString(AValue));
 end;
 
-function TRALDBStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
+function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
 var
   vStr : UCS4String;
   vInt : integer;
@@ -183,7 +183,7 @@ begin
   end;
 end;
 
-function TRALDBStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
+function TRALStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
 begin
   case FFormatOptions.DateTimeFormat of
     dtfUnix:
@@ -195,7 +195,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON.WriteStringToStream(AStream: TStream; AValue: StringRAL);
+procedure TRALStorageJSON.WriteStringToStream(AStream: TStream; AValue: StringRAL);
 var
   vBytes: TBytes;
 begin
@@ -203,13 +203,13 @@ begin
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 
-function TRALDBStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
+function TRALStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
   : StringRAL;
 begin
   Result := Format('"%s":%s', [AFieldName, IntToStr(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
+function TRALStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
   : StringRAL;
 var
   vFormat: TFormatSettings;
@@ -218,7 +218,7 @@ begin
   Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, vFormat)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
+function TRALStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
   : StringRAL;
 begin
   if AValue then
@@ -227,25 +227,25 @@ begin
     Result := Format('"%s":%s', [AFieldName, 'false'])
 end;
 
-function TRALDBStorageJSON.WriteFieldString(AFieldName: StringRAL; AValue: StringRAL)
+function TRALStorageJSON.WriteFieldString(AFieldName: StringRAL; AValue: StringRAL)
   : StringRAL;
 begin
   Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldBlob(AFieldName: StringRAL; AValue: TStream)
+function TRALStorageJSON.WriteFieldBlob(AFieldName: StringRAL; AValue: TStream)
   : StringRAL;
 begin
   Result := Format('"%s":"%s"', [AFieldName, TRALBase64.Encode(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream)
+function TRALStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream)
   : StringRAL;
 begin
   Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime)
+function TRALStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime)
   : StringRAL;
 begin
   if FFormatOptions.DateTimeFormat = dtfUnix then
@@ -254,17 +254,17 @@ begin
     Result := Format('"%s":"%s"', [AFieldName, JSONFormatDateTime(AValue)])
 end;
 
-function TRALDBStorageJSON.WriteFieldNull(AFieldName: StringRAL): StringRAL;
+function TRALStorageJSON.WriteFieldNull(AFieldName: StringRAL): StringRAL;
 begin
   Result := Format('"%s":null', [AFieldName]);
 end;
 
-function TRALDBStorageJSON.WriteInt64(AValue: Int64RAL): StringRAL;
+function TRALStorageJSON.WriteInt64(AValue: Int64RAL): StringRAL;
 begin
   Result := IntToStr(AValue);
 end;
 
-function TRALDBStorageJSON.WriteFloat(AValue: Double): StringRAL;
+function TRALStorageJSON.WriteFloat(AValue: Double): StringRAL;
 var
   vFormat: TFormatSettings;
 begin
@@ -272,7 +272,7 @@ begin
   Result := FloatToStr(AValue, vFormat);
 end;
 
-function TRALDBStorageJSON.WriteBoolean(AValue: Boolean): StringRAL;
+function TRALStorageJSON.WriteBoolean(AValue: Boolean): StringRAL;
 begin
   if AValue then
     Result := 'true'
@@ -280,22 +280,22 @@ begin
     Result := 'false';
 end;
 
-function TRALDBStorageJSON.WriteString(AValue: StringRAL): StringRAL;
+function TRALStorageJSON.WriteString(AValue: StringRAL): StringRAL;
 begin
   Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteBlob(AValue: TStream): StringRAL;
+function TRALStorageJSON.WriteBlob(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteMemo(AValue: TStream): StringRAL;
+function TRALStorageJSON.WriteMemo(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
-function TRALDBStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
+function TRALStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
 begin
   if FFormatOptions.DateTimeFormat = dtfUnix then
     Result := Format('%s', [JSONFormatDateTime(AValue)])
@@ -303,9 +303,9 @@ begin
     Result := Format('"%s"', [JSONFormatDateTime(AValue)]);
 end;
 
-{ TRALDBStorageJSON_RAW }
+{ TRALStorageJSON_RAW }
 
-procedure TRALDBStorageJSON_RAW.WriteFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_RAW.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
   vInt: IntegerRAL;
 begin
@@ -319,7 +319,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON_RAW.WriteRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_RAW.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
   vJson, vValue: StringRAL;
@@ -413,7 +413,7 @@ begin
   ADataset.EnableControls;
 end;
 
-procedure TRALDBStorageJSON_RAW.ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
+procedure TRALStorageJSON_RAW.ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
 const
   MAX_JSONSTRING = 255;
 var
@@ -494,7 +494,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON_RAW.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
+procedure TRALStorageJSON_RAW.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
 var
   vjObj: TRALJSONObject;
   vInt64: Int64RAL;
@@ -558,7 +558,7 @@ begin
   SetLength(FFoundFields, 0);
 end;
 
-procedure TRALDBStorageJSON_RAW.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_RAW.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
   WriteStringToStream(AStream, '[');
   WriteFields(ADataset, AStream);
@@ -566,7 +566,7 @@ begin
   WriteStringToStream(AStream, ']');
 end;
 
-procedure TRALDBStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
   vjArr: TRALJSONArray;
 begin
@@ -582,9 +582,9 @@ begin
   end;
 end;
 
-{ TRALDBStorageJSON_DBWare }
+{ TRALStorageJSON_DBWare }
 
-procedure TRALDBStorageJSON_DBWare.WriteHeaders(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_DBWare.WriteHeaders(ADataset: TDataSet; AStream: TStream);
 var
   vJson: StringRAL;
 begin
@@ -592,7 +592,7 @@ begin
   WriteStringToStream(AStream, vJson);
 end;
 
-procedure TRALDBStorageJSON_DBWare.WriteFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_DBWare.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
   vJson: StringRAL;
   vInt: IntegerRAL;
@@ -636,7 +636,7 @@ begin
   WriteStringToStream(AStream, vJson);
 end;
 
-procedure TRALDBStorageJSON_DBWare.WriteRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_DBWare.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
   vJson, vValue: StringRAL;
@@ -727,7 +727,7 @@ begin
   WriteStringToStream(AStream, vJson);
 end;
 
-function TRALDBStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): Boolean;
+function TRALStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): Boolean;
 var
   vSign: StringRAL;
   vVersion: IntegerRAL;
@@ -745,7 +745,7 @@ begin
   Result := True;
 end;
 
-procedure TRALDBStorageJSON_DBWare.ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
+procedure TRALStorageJSON_DBWare.ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
 var
   vInt, vSize: IntegerRAL;
   vName: StringRAL;
@@ -827,7 +827,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageJSON_DBWare.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
+procedure TRALStorageJSON_DBWare.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
 var
   vInt64: Int64RAL;
   vIsNull: Boolean;
@@ -904,7 +904,7 @@ begin
   SetLength(FFoundFields, 0);
 end;
 
-procedure TRALDBStorageJSON_DBWare.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_DBWare.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
   WriteStringToStream(AStream, '{');
   WriteHeaders(ADataset, AStream);
@@ -913,7 +913,7 @@ begin
   WriteStringToStream(AStream, '}');
 end;
 
-procedure TRALDBStorageJSON_DBWare.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageJSON_DBWare.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
   vjObj: TRALJSONObject;
 begin
@@ -929,24 +929,24 @@ begin
   end;
 end;
 
-{ TRALDBStorageJSONLink }
+{ TRALStorageJSONLink }
 
-function TRALDBStorageJSONLink.GetContentType: StringRAL;
+function TRALStorageJSONLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONJSON;
 end;
 
-function TRALDBStorageJSONLink.Clone: TRALDBStorageLink;
+function TRALStorageJSONLink.Clone: TRALStorageLink;
 begin
   Result := inherited Clone;
   if Result = nil then
     Exit;
 
-  TRALDBStorageJSONLink(Result).JSONType := FJSONType;
-  TRALDBStorageJSONLink(Result).FormatOptions.Assign(FFormatOptions);
+  TRALStorageJSONLink(Result).JSONType := FJSONType;
+  TRALStorageJSONLink(Result).FormatOptions.Assign(FFormatOptions);
 end;
 
-constructor TRALDBStorageJSONLink.Create(AOwner: TComponent);
+constructor TRALStorageJSONLink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FJSONType := jtDBWare;
@@ -954,38 +954,38 @@ begin
   SetStorageFormat(rsfJSON);
 end;
 
-destructor TRALDBStorageJSONLink.Destroy;
+destructor TRALStorageJSONLink.Destroy;
 begin
   FreeAndNil(FFormatOptions);
   inherited Destroy;
 end;
 
-function TRALDBStorageJSONLink.GetStorage: TRALDBStorage;
+function TRALStorageJSONLink.GetStorage: TRALStorage;
 begin
   case FJSONType of
     jtRAW:
-      Result := TRALDBStorageJSON_RAW.Create;
+      Result := TRALStorageJSON_RAW.Create;
     jtDBWare:
-      Result := TRALDBStorageJSON_DBWare.Create;
+      Result := TRALStorageJSON_DBWare.Create;
   end;
 
   Result.FieldCharCase := FieldCharCase;
 
-  with TRALDBStorageJSON(Result) do
+  with TRALStorageJSON(Result) do
   begin
     FormatOptions.CustomDateTimeFormat := FFormatOptions.CustomDateTimeFormat;
     FormatOptions.DateTimeFormat := FFormatOptions.DateTimeFormat;
   end;
 end;
 
-procedure TRALDBStorageJSONLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageJSONLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
   FJSONType := TRALJSONType(AWriter.ReadByte);
   FFormatOptions.LoadPropsFromStream(AWriter);
 end;
 
-procedure TRALDBStorageJSONLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageJSONLink.SavePropsToStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
   AWriter.WriteByte(Ord(FJSONType));
@@ -1009,6 +1009,6 @@ begin
 end;
 
 initialization
-  RegisterClass(TRALDBStorageJSONLink);
+  RegisterClass(TRALStorageJSONLink);
 
 end.

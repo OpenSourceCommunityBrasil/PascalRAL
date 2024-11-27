@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="Package for DBWare components for PascalRAL."/>
     <Version Major="1"/>
-    <Files Count="10">
+    <Files Count="6">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
@@ -41,33 +41,17 @@
         <UnitName Value="RALDBRegister"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\..\src\database\RALDBStorage.pas"/>
-        <UnitName Value="RALDBStorage"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\..\src\database\RALDBStorageBIN.pas"/>
-        <UnitName Value="RALDBStorageBIN"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\..\src\database\RALDBStorageJSON.pas"/>
-        <UnitName Value="RALDBStorageJSON"/>
-      </Item6>
-      <Item7>
         <Filename Value="raldbpackage.lrs"/>
         <Type Value="LRS"/>
-      </Item7>
-      <Item8>
-        <Filename Value="..\..\..\src\database\RALDBStorageCSV.pas"/>
-        <UnitName Value="RALDBStorageCSV"/>
-      </Item8>
-      <Item9>
+      </Item4>
+      <Item5>
         <Filename Value="..\..\..\src\database\RALDBConnection.pas"/>
         <UnitName Value="RALDBConnection"/>
-      </Item9>
-      <Item10>
+      </Item5>
+      <Item6>
         <Filename Value="..\..\..\src\database\RALDBSQLCache.pas"/>
         <UnitName Value="RALDBSQLCache"/>
-      </Item10>
+      </Item6>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

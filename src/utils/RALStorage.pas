@@ -1,5 +1,5 @@
 /// Base unit for the Storage exporter components
-unit RALDBStorage;
+unit RALStorage;
 
 interface
 
@@ -15,9 +15,9 @@ type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
   TRALStorageFormat = (rsfAuto, rsfBIN, rsfJSON, rsfBSON, rsfCSV);
 
-  { TRALDBStorage }
+  { TRALStorage }
 
-  TRALDBStorage = class(TPersistent)
+  TRALStorage = class(TPersistent)
   private
     FFieldCharCase: TRALFieldCharCase;
   protected
@@ -51,25 +51,25 @@ type
     property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
   end;
 
-  TRALDBStorageClass = class of TRALDBStorage;
-  TRALDBStorageLinkClass = class of TRALDBStorageLink;
+  TRALStorageClass = class of TRALStorage;
+  TRALStorageLinkClass = class of TRALStorageLink;
 
-  { TRALDBStorageLink }
+  { TRALStorageLink }
 
-  TRALDBStorageLink = class(TRALComponent)
+  TRALStorageLink = class(TRALComponent)
   private
     FFieldCharCase: TRALFieldCharCase;
     FStorageFormat: TRALStorageFormat;
   protected
     function GetContentType: StringRAL; virtual;
-    class function GetDeclaredStorageLink: TRALDBStorageLinkClass;
-    class function GetDefaultStorage: TRALDBStorage; virtual;
+    class function GetDeclaredStorageLink: TRALStorageLinkClass;
+    class function GetDefaultStorage: TRALStorage; virtual;
 
     procedure SetStorageFormat(AFormat: TRALStorageFormat);
   public
     constructor Create(AOwner : TComponent); override;
 
-    function GetStorage: TRALDBStorage; virtual;
+    function GetStorage: TRALStorage; virtual;
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
     procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
@@ -81,9 +81,9 @@ type
 
     procedure LoadPropsFromStream(AStream : TStream); overload;
     procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); overload; virtual;
-    function Clone : TRALDBStorageLink; virtual;
+    function Clone : TRALStorageLink; virtual;
 
-    class function GetStorageClass(AFormat: TRALStorageFormat): TRALDBStorageLinkClass;
+    class function GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
   published
     property ContentType: StringRAL read GetContentType;
     property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;
@@ -93,17 +93,17 @@ type
 implementation
 
 const
-  cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALDBStorageBINLink',
-    'TRALDBStorageJSONLink', 'TRALDBStorageBSONLink', 'TRALDBStorageCSVLink');
+  cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
+    'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink');
 
-  { TRALDBStorage }
+  { TRALStorage }
 
-function TRALDBStorage.GetStoreVersion: byte;
+function TRALStorage.GetStoreVersion: byte;
 begin
   Result := 1;
 end;
 
-function TRALDBStorage.CharCaseValue(AValue: StringRAL): StringRAL;
+function TRALStorage.CharCaseValue(AValue: StringRAL): StringRAL;
 begin
   case FieldCharCase of
     fcUpper:
@@ -114,79 +114,79 @@ begin
   Result := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldString(AField: TField; AValue: StringRAL);
+procedure TRALStorage.ReadFieldString(AField: TField; AValue: StringRAL);
 begin
   if AField <> nil then
     AField.AsString := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldShortint(AField: TField; AValue: Shortint);
+procedure TRALStorage.ReadFieldShortint(AField: TField; AValue: Shortint);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldByte(AField: TField; AValue: byte);
+procedure TRALStorage.ReadFieldByte(AField: TField; AValue: byte);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldLongWord(AField: TField; AValue: LongWord);
+procedure TRALStorage.ReadFieldLongWord(AField: TField; AValue: LongWord);
 begin
   if AField <> nil then
     AField.AsLargeInt := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldSmallint(AField: TField; AValue: Smallint);
+procedure TRALStorage.ReadFieldSmallint(AField: TField; AValue: Smallint);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldWord(AField: TField; AValue: Word);
+procedure TRALStorage.ReadFieldWord(AField: TField; AValue: Word);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldInteger(AField: TField; AValue: Integer);
+procedure TRALStorage.ReadFieldInteger(AField: TField; AValue: Integer);
 begin
   if AField <> nil then
     AField.AsInteger := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldInt64(AField: TField; AValue: Int64RAL);
+procedure TRALStorage.ReadFieldInt64(AField: TField; AValue: Int64RAL);
 begin
   if AField <> nil then
     AField.AsLargeInt := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldBoolean(AField: TField; AValue: Boolean);
+procedure TRALStorage.ReadFieldBoolean(AField: TField; AValue: Boolean);
 begin
   if AField <> nil then
     AField.AsBoolean := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldFloat(AField: TField; AValue: Double);
+procedure TRALStorage.ReadFieldFloat(AField: TField; AValue: Double);
 begin
   if AField <> nil then
     AField.AsFloat := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);
+procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);
 begin
   if AField <> nil then
     AField.AsDateTime := AValue;
 end;
 
-procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: Int64RAL);
+procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: Int64RAL);
 begin
   if AField <> nil then
     AField.AsDateTime := UnixToDateTime(AValue);
 end;
 
-procedure TRALDBStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
+procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: StringRAL);
 var
   vDate: TDateTime;
 begin
@@ -198,7 +198,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorage.ReadFieldStream(AField: TField; AValue: StringRAL);
+procedure TRALStorage.ReadFieldStream(AField: TField; AValue: StringRAL);
 var
   vMem: TStream;
 begin
@@ -213,7 +213,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorage.ReadFieldStream(AField: TField; AValue: TStream);
+procedure TRALStorage.ReadFieldStream(AField: TField; AValue: TStream);
 begin
   if AField <> nil then
   begin
@@ -222,11 +222,11 @@ begin
   end;
 end;
 
-{ TRALDBStorageLink }
+{ TRALStorageLink }
 
-function TRALDBStorageLink.Clone: TRALDBStorageLink;
+function TRALStorageLink.Clone: TRALStorageLink;
 var
-  vStorageLinkClass : TRALDBStorageLinkClass;
+  vStorageLinkClass : TRALStorageLinkClass;
 begin
   Result := nil;
   if FStorageFormat = rsfAuto then
@@ -239,16 +239,16 @@ begin
   end;
 end;
 
-constructor TRALDBStorageLink.Create(AOwner: TComponent);
+constructor TRALStorageLink.Create(AOwner: TComponent);
 begin
   inherited;
   FStorageFormat := rsfAuto;
 end;
 
-function TRALDBStorageLink.GetContentType: StringRAL;
+function TRALStorageLink.GetContentType: StringRAL;
 var
-  vClassStor: TRALDBStorageLinkClass;
-  vLink: TRALDBStorageLink;
+  vClassStor: TRALStorageLinkClass;
+  vLink: TRALStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
   if vClassStor <> nil then
@@ -266,23 +266,23 @@ begin
   end;
 end;
 
-class function TRALDBStorageLink.GetDeclaredStorageLink: TRALDBStorageLinkClass;
+class function TRALStorageLink.GetDeclaredStorageLink: TRALStorageLinkClass;
 var
   vLinks: TRALStorageFormat;
 begin
   Result := nil;
   for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
   begin
-    Result := TRALDBStorageLinkClass(GetClass(cStorageLinkClass[vLinks]));
+    Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[vLinks]));
     if Result <> nil then
       Break;
   end;
 end;
 
-class function TRALDBStorageLink.GetDefaultStorage: TRALDBStorage;
+class function TRALStorageLink.GetDefaultStorage: TRALStorage;
 var
-  vClassStor: TRALDBStorageLinkClass;
-  vLink: TRALDBStorageLink;
+  vClassStor: TRALStorageLinkClass;
+  vLink: TRALStorageLink;
 begin
   vClassStor := GetDeclaredStorageLink;
   if vClassStor <> nil then
@@ -300,9 +300,9 @@ begin
   end;
 end;
 
-procedure TRALDBStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageLink.SaveToStream(ADataset: TDataSet; AStream: TStream);
 var
-  vStor: TRALDBStorage;
+  vStor: TRALStorage;
 begin
   vStor := GetStorage;
   try
@@ -312,32 +312,32 @@ begin
   end;
 end;
 
-function TRALDBStorageLink.SaveToStream(ADataset: TDataSet): TStream;
+function TRALStorageLink.SaveToStream(ADataset: TDataSet): TStream;
 begin
   Result := TMemoryStream.Create;
   SaveToStream(ADataset, Result);
   Result.Position := 0;
 end;
 
-procedure TRALDBStorageLink.SetStorageFormat(AFormat: TRALStorageFormat);
+procedure TRALStorageLink.SetStorageFormat(AFormat: TRALStorageFormat);
 begin
   FStorageFormat := AFormat;
 end;
 
-procedure TRALDBStorageLink.SavePropsToStream(AStream: TStream);
+procedure TRALStorageLink.SavePropsToStream(AStream: TStream);
 var
   vWriter: TRALBinaryWriter;
 begin
   vWriter := TRALBinaryWriter.Create(AStream);
 end;
 
-procedure TRALDBStorageLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageLink.SavePropsToStream(AWriter: TRALBinaryWriter);
 begin
   AWriter.WriteByte(Ord(FStorageFormat));
   AWriter.WriteByte(Ord(FFieldCharCase));
 end;
 
-procedure TRALDBStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
+procedure TRALStorageLink.SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
 var
   vStream: TRALBufFileStream;
 begin
@@ -349,7 +349,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
+procedure TRALStorageLink.LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
 var
   vStream: TFileStream;
 begin
@@ -361,9 +361,9 @@ begin
   end;
 end;
 
-procedure TRALDBStorageLink.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageLink.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vStor: TRALDBStorage;
+  vStor: TRALStorage;
 begin
   vStor := GetStorage;
   try
@@ -373,25 +373,25 @@ begin
   end;
 end;
 
-procedure TRALDBStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
 //  FStorageFormat := TRALStorageFormat(AWriter.ReadByte);
   FFieldCharCase := TRALFieldCharCase(AWriter.ReadByte);
 end;
 
-procedure TRALDBStorageLink.LoadPropsFromStream(AStream: TStream);
+procedure TRALStorageLink.LoadPropsFromStream(AStream: TStream);
 var
   vWriter: TRALBinaryWriter;
 begin
   vWriter := TRALBinaryWriter.Create(AStream);
 end;
 
-function TRALDBStorageLink.GetStorage: TRALDBStorage;
+function TRALStorageLink.GetStorage: TRALStorage;
 begin
   Result := GetDefaultStorage;
 end;
 
-class function TRALDBStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRALDBStorageLinkClass;
+class function TRALStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
 var
   vStr: TStringList;
   vInt: IntegerRAL;
@@ -414,7 +414,7 @@ begin
 
     for vInt := 0 to Pred(vStr.Count) do
     begin
-      Result := TRALDBStorageLinkClass(GetClass(vStr.Strings[vInt]));
+      Result := TRALStorageLinkClass(GetClass(vStr.Strings[vInt]));
       if Result <> nil then
         Break;
     end;

@@ -172,6 +172,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="..\..\src\base\RALAuthentication.pas"/>
         <DCCReference Include="..\..\src\base\RALClient.pas"/>
         <DCCReference Include="..\..\src\base\RALConsts.pas"/>
@@ -206,6 +207,11 @@
         <DCCReference Include="..\..\src\utils\RALTools.pas"/>
         <DCCReference Include="..\..\src\utils\RALUrlCoder.pas"/>
         <DCCReference Include="..\..\src\utils\RALResponsePages.pas"/>
+        <DCCReference Include="..\..\src\utils\RALStorage.pas"/>
+        <DCCReference Include="..\..\src\utils\RALStorageCSV.pas"/>
+        <DCCReference Include="..\..\src\utils\RALStorageJSON.pas"/>
+        <DCCReference Include="..\..\src\utils\RALStorageBIN.pas"/>
+        <DCCReference Include="..\..\src\base\RALDBTypes.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -275,6 +281,12 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>PascalRAL.bpl</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="OSX32">
                         <Operation>1</Operation>

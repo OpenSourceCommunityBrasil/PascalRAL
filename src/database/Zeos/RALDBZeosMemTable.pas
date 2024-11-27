@@ -10,7 +10,7 @@ interface
 uses
   Classes, SysUtils, DB,
   ZDataset,
-  RALDBStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALDBTypes,
+  RALStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALDBTypes,
   RALTools, RALDBConnection, RALDBSQLCache, RALConsts;
 
 type
@@ -26,7 +26,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -42,7 +42,7 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
-    procedure SetStorage(const AValue: TRALDBStorageLink);
+    procedure SetStorage(const AValue: TRALStorageLink);
 
     procedure OnChangeSQL(Sender: TObject);
     procedure SetActive(AValue: boolean); override;
@@ -78,7 +78,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -210,7 +210,7 @@ begin
   FSQL.Assign(AValue);
 end;
 
-procedure TRALDBZMemTable.SetStorage(const AValue: TRALDBStorageLink);
+procedure TRALDBZMemTable.SetStorage(const AValue: TRALStorageLink);
 begin
   if FStorage <> nil then
     FStorage.RemoveFreeNotification(Self);

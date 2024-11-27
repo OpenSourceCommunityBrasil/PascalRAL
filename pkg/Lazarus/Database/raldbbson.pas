@@ -8,13 +8,13 @@ unit raldbbson;
 interface
 
 uses
-  kxBSON, RALDBStorageBSON, RALDBBSONReg, LazarusPackageIntf;
+  kxBSON, RALStorageBSON, RALBSONReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALDBBSONReg', @RALDBBSONReg.Register);
+  RegisterUnit('RALBSONReg', @RALBSONReg.Register);
 end;
 
 initialization

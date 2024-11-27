@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB, Variants,
   RALCustomObjects, RALTypes, RALTools, RALDBSQLCache, RALClient, RALResponse,
-  RALDBTypes, RALRequest, RALMimeTypes, RALConsts, RALDBStorage;
+  RALDBTypes, RALRequest, RALMimeTypes, RALConsts, RALStorage;
 
 type
 
@@ -23,8 +23,8 @@ type
     constructor Create(AOwner: TComponent);
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
-    procedure OpenRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
-    procedure ExecSQLRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
+    procedure OpenRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
+    procedure ExecSQLRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
 
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     function GetTables: TRALDBInfoTables;
@@ -95,7 +95,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage : TRALDBStorageLink;
+procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage : TRALStorageLink;
                                       AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
@@ -128,7 +128,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorage : TRALDBStorageLink; AResp: TRALThreadClientResponse);
+procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
   vReq: TRALRequest;

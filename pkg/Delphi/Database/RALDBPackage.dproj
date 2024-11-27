@@ -175,15 +175,9 @@
         </DelphiCompile>
         <DCCReference Include="RALDBPackage.dcr"/>
         <DCCReference Include="dcldb.dcp"/>
-        <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBStorage.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBStorageBIN.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBStorageJSON.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBTypes.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBStorageCSV.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBRegister.pas"/>
@@ -256,6 +250,12 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBPackage.bpl" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="..\..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\RALDBPackage.bpl" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>RALDBPackage.bpl</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="OSX32">
                         <Operation>1</Operation>

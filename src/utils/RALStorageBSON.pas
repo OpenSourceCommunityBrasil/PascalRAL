@@ -1,17 +1,17 @@
-unit RALDBStorageBSON;
+unit RALStorageBSON;
 
 interface
 
 uses
   Classes, SysUtils, DB,
   kxBSON,
-  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64;
+  RALTypes, RALStorage, RALMIMETypes, RALDBTypes, RALBase64;
 
 type
 
-  { TRALDBStorageBJON }
+  { TRALStorageBSON }
 
-  TRALDBStorageBJON = class(TRALDBStorage)
+  TRALStorageBSON = class(TRALStorage)
   protected
     procedure WriteFields(ADataset : TDataSet; ADocument : TBSONDocument);
     procedure WriteRecords(ADataset : TDataSet; ADocument : TBSONDocument);
@@ -23,22 +23,22 @@ type
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
   end;
 
-  { TRALDBStorageBSONLink }
+  { TRALStorageBSONLink }
 
-  TRALDBStorageBSONLink = class(TRALDBStorageLink)
+  TRALStorageBSONLink = class(TRALStorageLink)
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
 
-    function GetStorage : TRALDBStorage; override;
+    function GetStorage : TRALStorage; override;
   end;
 
 implementation
 
-{ TRALDBStorageBJON }
+{ TRALStorageBSON }
 
-procedure TRALDBStorageBJON.WriteFields(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.WriteFields(ADataset: TDataSet; ADocument: TBSONDocument);
 var
   vInt: IntegerRAL;
   vFields, vField : PBSONItemArray;
@@ -69,7 +69,7 @@ begin
   ADocument.Values.Add(vFields);
 end;
 
-procedure TRALDBStorageBJON.WriteRecords(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.WriteRecords(ADataset: TDataSet; ADocument: TBSONDocument);
 var
   vRecords, vRecord : PBSONItemArray;
   vInt : IntegerRAL;
@@ -141,7 +141,7 @@ begin
   ADocument.Values.Add(vRecords);
 end;
 
-procedure TRALDBStorageBJON.ReadFields(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.ReadFields(ADataset: TDataSet; ADocument: TBSONDocument);
 var
   vInt, vSize: IntegerRAL;
   vFields, vItemField : PBSONItemArray;
@@ -215,7 +215,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBJON.ReadRecords(ADataset: TDataSet;
+procedure TRALStorageBSON.ReadRecords(ADataset: TDataSet;
   ADocument: TBSONDocument);
 var
   vRecords, vRecord: PBSONItemArray;
@@ -271,7 +271,7 @@ begin
   ADataset.EnableControls;
 end;
 
-procedure TRALDBStorageBJON.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBSON.SaveToStream(ADataset: TDataSet; AStream: TStream);
 var
   vDocument: TBSONDocument;
 begin
@@ -286,7 +286,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBJON.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBSON.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
   vDocument: TBSONDocument;
 begin
@@ -301,27 +301,27 @@ begin
   end;
 end;
 
-{ TRALDBStorageBSONLink }
+{ TRALStorageBSONLink }
 
-constructor TRALDBStorageBSONLink.Create(AOwner: TComponent);
+constructor TRALStorageBSONLink.Create(AOwner: TComponent);
 begin
   inherited;
   SetStorageFormat(rsfBSON);
 end;
 
-function TRALDBStorageBSONLink.GetContentType: StringRAL;
+function TRALStorageBSONLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONBSON;
 end;
 
-function TRALDBStorageBSONLink.GetStorage: TRALDBStorage;
+function TRALStorageBSONLink.GetStorage: TRALStorage;
 begin
-  Result := TRALDBStorageBJON.Create;
+  Result := TRALStorageBSON.Create;
   Result.FieldCharCase := FieldCharCase;
 end;
 
 initialization
-  RegisterClass(TRALDBStorageBSONLink);
+  RegisterClass(TRALStorageBSONLink);
 
 end.
 

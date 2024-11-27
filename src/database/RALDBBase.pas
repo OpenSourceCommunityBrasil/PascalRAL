@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALDBTypes, RALDBStorage, RALRequest,
+  RALTypes, RALCustomObjects, RALDBTypes, RALStorage, RALRequest,
   RALResponse;
 
 type

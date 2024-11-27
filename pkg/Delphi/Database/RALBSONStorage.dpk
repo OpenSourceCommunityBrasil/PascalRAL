@@ -33,7 +33,7 @@ requires
   RALDBPackage;
 
 contains
-  RALDBBSONReg in '..\..\..\src\others\RALDBBSONReg.pas',
-  RALDBStorageBSON in '..\..\..\src\database\RALDBStorageBSON.pas';
+  RALBSONReg in '..\..\..\src\others\RALBSONReg.pas',
+  RALStorageBSON in '..\..\..\src\utils\RALStorageBSON.pas';
 
 end.

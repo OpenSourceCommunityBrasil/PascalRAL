@@ -11,7 +11,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
   RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes,
-  RALDBStorage;
+  RALStorage;
 
 type
   TRALDBExecType = (etOpen, etExecute);
@@ -77,13 +77,13 @@ type
   TRALDBSQLCache = class
   private
     FSQLList: TList;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageLink;
   protected
     function GetQuerySQL(ADataset: TDataSet): StringRAL;
     function GetQueryParams(ADataset: TDataSet): TParams;
     function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
 
-    procedure SetStorage(const AValue: TRALDBStorageLink);
+    procedure SetStorage(const AValue: TRALStorageLink);
     procedure CreateStorage(AWriter : TRALBinaryWriter);
   public
     constructor Create;
@@ -119,7 +119,7 @@ type
 
     property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
   published
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageLink read FStorage write SetStorage;
   end;
 
 implementation
@@ -324,13 +324,13 @@ end;
 procedure TRALDBSQLCache.CreateStorage(AWriter: TRALBinaryWriter);
 var
   vFormat : TRALStorageFormat;
-  vStorageLinkClass : TRALDBStorageLinkClass;
+  vStorageLinkClass : TRALStorageLinkClass;
 begin
   vFormat := TRALStorageFormat(AWriter.ReadByte);
   if vFormat = rsfAuto then
     Exit;
 
-  vStorageLinkClass := TRALDBStorageLink.GetStorageClass(vFormat);
+  vStorageLinkClass := TRALStorageLink.GetStorageClass(vFormat);
   if vStorageLinkClass <> nil then
   begin
     FStorage := vStorageLinkClass.Create(nil);
@@ -492,7 +492,7 @@ begin
   Result.Position := 0;
 end;
 
-procedure TRALDBSQLCache.SetStorage(const AValue: TRALDBStorageLink);
+procedure TRALDBSQLCache.SetStorage(const AValue: TRALStorageLink);
 begin
   if FStorage <> nil then
     FreeAndNil(FStorage);

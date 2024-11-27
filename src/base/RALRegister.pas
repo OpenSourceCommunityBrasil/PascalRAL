@@ -21,7 +21,8 @@ uses
   // generic
   RALConsts, RALAuthentication, RALCompress, RALTypes,
   // server
-  RALServer, RALWebModule, RALSwaggerModule,
+  RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
+  RALStorageCSV,
   // client
   RALClient;
 
@@ -70,6 +71,8 @@ begin
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
   RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
+  RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink,
+    TRALStorageCSVLink]);
 
   // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);

@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1"/>
-    <Files Count="30">
+    <Files Count="34">
       <Item1>
         <Filename Value="..\..\src\base\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -146,6 +146,22 @@
         <Filename Value="..\..\src\base\RALWebModule.pas"/>
         <UnitName Value="RALWebModule"/>
       </Item30>
+      <Item31>
+        <Filename Value="..\..\src\utils\RALStorage.pas"/>
+        <UnitName Value="RALStorage"/>
+      </Item31>
+      <Item32>
+        <Filename Value="..\..\src\utils\RALStorageBIN.pas"/>
+        <UnitName Value="RALStorageBIN"/>
+      </Item32>
+      <Item33>
+        <Filename Value="..\..\src\utils\RALStorageCSV.pas"/>
+        <UnitName Value="RALStorageCSV"/>
+      </Item33>
+      <Item34>
+        <Filename Value="..\..\src\utils\RALStorageJSON.pas"/>
+        <UnitName Value="RALStorageJSON"/>
+      </Item34>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

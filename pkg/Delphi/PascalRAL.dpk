@@ -30,7 +30,8 @@ package PascalRAL;
 {$IMPLICITBUILD ON}
 
 requires
-  rtl;
+  rtl,
+  dbrtl;
 
 contains
   RALAuthentication in '..\..\src\base\RALAuthentication.pas',
@@ -66,6 +67,11 @@ contains
   RALToken in '..\..\src\utils\RALToken.pas',
   RALTools in '..\..\src\utils\RALTools.pas',
   RALUrlCoder in '..\..\src\utils\RALUrlCoder.pas',
-  RALResponsePages in '..\..\src\utils\RALResponsePages.pas';
+  RALResponsePages in '..\..\src\utils\RALResponsePages.pas',
+  RALStorage in '..\..\src\utils\RALStorage.pas',
+  RALStorageCSV in '..\..\src\utils\RALStorageCSV.pas',
+  RALStorageJSON in '..\..\src\utils\RALStorageJSON.pas',
+  RALStorageBIN in '..\..\src\utils\RALStorageBIN.pas',
+  RALDBTypes in '..\..\src\base\RALDBTypes.pas';
 
 end.

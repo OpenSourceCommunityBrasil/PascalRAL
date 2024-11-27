@@ -1,17 +1,17 @@
 ﻿/// Base unit for the Storage exporter in stream format
-unit RALDBStorageBIN;
+unit RALStorageBIN;
 
 interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALConsts, RALStream;
+  RALTypes, RALStorage, RALMIMETypes, RALDBTypes, RALConsts, RALStream;
 
 type
 
-  { TRALDBStorageBIN }
+  { TRALStorageBIN }
 
-  TRALDBStorageBIN = class(TRALDBStorage)
+  TRALStorageBIN = class(TRALStorage)
   protected
     // write
     procedure WriteHeader(AStream: TStream);
@@ -53,22 +53,22 @@ type
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALDBStorageBINLink }
+  { TRALStorageBINLink }
 
-  TRALDBStorageBINLink = class(TRALDBStorageLink)
+  TRALStorageBINLink = class(TRALStorageLink)
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
 
-    function GetStorage: TRALDBStorage; override;
+    function GetStorage: TRALStorage; override;
   end;
 
 implementation
 
-{ TRALDBStorageBIN }
+{ TRALStorageBIN }
 
-procedure TRALDBStorageBIN.WriteHeader(AStream: TStream);
+procedure TRALStorageBIN.WriteHeader(AStream: TStream);
 var
   vHeader: TBytes;
 begin
@@ -81,7 +81,7 @@ begin
   AStream.Write(vHeader[0], Length(vHeader));
 end;
 
-procedure TRALDBStorageBIN.WriteFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
   vInt: IntegerRAL;
   vType: TRALFieldType;
@@ -111,7 +111,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBIN.WriteRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vRecords, vPosRecords, vPosTemp: Int64RAL;
   vInt: IntegerRAL;
@@ -196,7 +196,7 @@ begin
   SetLength(FFieldTypes, 0);
 end;
 
-procedure TRALDBStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
+procedure TRALStorageBIN.WriteString(AStream: TStream; AValue: StringRAL);
 var
   vSize: IntegerRAL;
   vBytes: TBytes;
@@ -207,57 +207,57 @@ begin
   AStream.Write(vBytes[0], vSize);
 end;
 
-procedure TRALDBStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
+procedure TRALStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteByte(AStream: TStream; AValue: Byte);
+procedure TRALStorageBIN.WriteByte(AStream: TStream; AValue: Byte);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteLongWord(AStream: TStream; AValue: LongWord);
+procedure TRALStorageBIN.WriteLongWord(AStream: TStream; AValue: LongWord);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteSmallint(AStream: TStream; AValue: Smallint);
+procedure TRALStorageBIN.WriteSmallint(AStream: TStream; AValue: Smallint);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteWord(AStream: TStream; AValue: Word);
+procedure TRALStorageBIN.WriteWord(AStream: TStream; AValue: Word);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteInteger(AStream: TStream; AValue: Integer);
+procedure TRALStorageBIN.WriteInteger(AStream: TStream; AValue: Integer);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteInt64(AStream: TStream; AValue: Int64RAL);
+procedure TRALStorageBIN.WriteInt64(AStream: TStream; AValue: Int64RAL);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteBoolean(AStream: TStream; AValue: Boolean);
+procedure TRALStorageBIN.WriteBoolean(AStream: TStream; AValue: Boolean);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteFloat(AStream: TStream; AValue: Double);
+procedure TRALStorageBIN.WriteFloat(AStream: TStream; AValue: Double);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteDateTime(AStream: TStream; AValue: TDateTime);
+procedure TRALStorageBIN.WriteDateTime(AStream: TStream; AValue: TDateTime);
 begin
   AStream.Write(AValue, SizeOf(AValue));
 end;
 
-procedure TRALDBStorageBIN.WriteStream(AStream: TStream; AValue: TStream);
+procedure TRALStorageBIN.WriteStream(AStream: TStream; AValue: TStream);
 var
   vSize: Int64RAL;
 begin
@@ -268,7 +268,7 @@ begin
   AStream.CopyFrom(AValue, vSize);
 end;
 
-function TRALDBStorageBIN.ReadHeader(AStream: TStream): boolean;
+function TRALStorageBIN.ReadHeader(AStream: TStream): boolean;
 var
   vHeader: TBytes;
 begin
@@ -283,7 +283,7 @@ begin
   Result := True;
 end;
 
-procedure TRALDBStorageBIN.ReadFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.ReadFields(ADataset: TDataSet; AStream: TStream);
 var
   vInt, vFields, vSize: IntegerRAL;
   vName: StringRAL;
@@ -362,7 +362,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBIN.ReadRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.ReadRecords(ADataset: TDataSet; AStream: TStream);
 var
   vRecords, vInt64: Int64RAL;
   vIsNull: boolean;
@@ -431,7 +431,7 @@ begin
   SetLength(FFoundFields, 0);
 end;
 
-function TRALDBStorageBIN.ReadString(AStream: TStream): StringRAL;
+function TRALStorageBIN.ReadString(AStream: TStream): StringRAL;
 var
   vSize: IntegerRAL;
   vBytes: TBytes;
@@ -447,57 +447,57 @@ begin
   end;
 end;
 
-function TRALDBStorageBIN.ReadShortint(AStream: TStream): Shortint;
+function TRALStorageBIN.ReadShortint(AStream: TStream): Shortint;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadByte(AStream: TStream): Byte;
+function TRALStorageBIN.ReadByte(AStream: TStream): Byte;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadLongWord(AStream: TStream): LongWord;
+function TRALStorageBIN.ReadLongWord(AStream: TStream): LongWord;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadSmallint(AStream: TStream): Smallint;
+function TRALStorageBIN.ReadSmallint(AStream: TStream): Smallint;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadWord(AStream: TStream): Word;
+function TRALStorageBIN.ReadWord(AStream: TStream): Word;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadInteger(AStream: TStream): Integer;
+function TRALStorageBIN.ReadInteger(AStream: TStream): Integer;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadInt64(AStream: TStream): Int64RAL;
+function TRALStorageBIN.ReadInt64(AStream: TStream): Int64RAL;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadBoolean(AStream: TStream): Boolean;
+function TRALStorageBIN.ReadBoolean(AStream: TStream): Boolean;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadFloat(AStream: TStream): Double;
+function TRALStorageBIN.ReadFloat(AStream: TStream): Double;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadDateTime(AStream: TStream): TDateTime;
+function TRALStorageBIN.ReadDateTime(AStream: TStream): TDateTime;
 begin
   AStream.Read(Result, SizeOf(Result));
 end;
 
-function TRALDBStorageBIN.ReadStream(AStream: TStream): TStream;
+function TRALStorageBIN.ReadStream(AStream: TStream): TStream;
 var
   vSize : Int64RAL;
 begin
@@ -511,14 +511,14 @@ begin
   end;
 end;
 
-procedure TRALDBStorageBIN.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.SaveToStream(ADataset: TDataSet; AStream: TStream);
 begin
   WriteHeader(AStream);
   WriteFields(ADataset, AStream);
   WriteRecords(ADataset, AStream);
 end;
 
-procedure TRALDBStorageBIN.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageBIN.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 begin
   if ReadHeader(AStream) then
   begin
@@ -527,26 +527,26 @@ begin
   end;
 end;
 
-{ TRALDBStorageBINLink }
+{ TRALStorageBINLink }
 
-constructor TRALDBStorageBINLink.Create(AOwner: TComponent);
+constructor TRALStorageBINLink.Create(AOwner: TComponent);
 begin
   inherited;
   SetStorageFormat(rsfBIN);
 end;
 
-function TRALDBStorageBINLink.GetContentType: StringRAL;
+function TRALStorageBINLink.GetContentType: StringRAL;
 begin
   Result := rctAPPLICATIONOCTETSTREAM;
 end;
 
-function TRALDBStorageBINLink.GetStorage: TRALDBStorage;
+function TRALStorageBINLink.GetStorage: TRALStorage;
 begin
-  Result := TRALDBStorageBIN.Create;
+  Result := TRALStorageBIN.Create;
   Result.FieldCharCase := FieldCharCase;
 end;
 
 initialization
-  RegisterClass(TRALDBStorageBINLink);
+  RegisterClass(TRALStorageBINLink);
 
 end.

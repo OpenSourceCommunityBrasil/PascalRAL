@@ -31,17 +31,11 @@ package RALDBPackage;
 
 requires
   dcldb,
-  dbrtl,
   PascalRALDsgn;
 
 contains
   RALDBBase in '..\..\..\src\database\RALDBBase.pas',
   RALDBModule in '..\..\..\src\database\RALDBModule.pas',
-  RALDBStorage in '..\..\..\src\database\RALDBStorage.pas',
-  RALDBStorageBIN in '..\..\..\src\database\RALDBStorageBIN.pas',
-  RALDBStorageJSON in '..\..\..\src\database\RALDBStorageJSON.pas',
-  RALDBTypes in '..\..\..\src\database\RALDBTypes.pas',
-  RALDBStorageCSV in '..\..\..\src\database\RALDBStorageCSV.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
   RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',
   RALDBRegister in '..\..\..\src\database\RALDBRegister.pas';

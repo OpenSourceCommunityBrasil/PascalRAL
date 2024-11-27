@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALDBStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
+  RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
   RALDBSQLCache, RALStream;
 
 type
@@ -37,8 +37,8 @@ type
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetDataBaseLink(AValue: TRALDBLink);
 
-    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALDBStorageLink);
-    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALDBStorageLink);
+    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
+    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
     function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
                                  ABinary : boolean) : TStream;
   public
@@ -62,7 +62,7 @@ implementation
 
 { TRALDBModule }
 
-procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALDBStorageLink);
+procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
   vResult: TStream;
   vQuery: TDataSet;
@@ -99,7 +99,7 @@ begin
   end;
 end;
 
-procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALDBStorageLink);
+procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
   vRowsAffect, vLastId: Int64RAL;
 begin

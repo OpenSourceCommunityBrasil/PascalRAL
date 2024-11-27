@@ -13,7 +13,7 @@ uses
   RALMIMETypes, RALSHA2_32, RALSHA2_64, RALToken, RALTools, RALJson, 
   RALThreadSafe, RALMultipartCoder, RALCustomObjects, RALUrlCoder, RALCripto, 
   RALCriptoAES, RALSHA1, RALCompressZLib, RALSwaggerModule, RALCompress, 
-  RALWebModule;
+  RALWebModule, RALStorage, RALStorageBIN, RALStorageCSV, RALStorageJSON;
 
 implementation
 

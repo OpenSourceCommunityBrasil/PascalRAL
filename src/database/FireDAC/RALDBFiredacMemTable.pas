@@ -13,7 +13,7 @@ uses
   {$ELSE}
   uADCompClient, uADCompDataSet, uADStanStorage,
   {$ENDIF}
-  RALDBStorage, RALTypes, RALDBConnection, RALDBSQLCache, RALMIMETypes,
+  RALStorage, RALTypes, RALDBConnection, RALDBSQLCache, RALMIMETypes,
   RALDBTypes, RALResponse, RALConsts;
 
 type
@@ -29,7 +29,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -45,7 +45,7 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetRALConnection(const AValue: TRALDBConnection);
     procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
-    procedure SetStorage(const AValue: TRALDBStorageLink);
+    procedure SetStorage(const AValue: TRALStorageLink);
 
     procedure OnChangeSQL(Sender: TObject);
 
@@ -80,7 +80,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -570,7 +570,7 @@ begin
   FSQL.Assign(AValue);
 end;
 
-procedure TRALDBFDMemTable.SetStorage(const AValue: TRALDBStorageLink);
+procedure TRALDBFDMemTable.SetStorage(const AValue: TRALStorageLink);
 begin
   if FStorage <> nil then
     FStorage.RemoveFreeNotification(Self);

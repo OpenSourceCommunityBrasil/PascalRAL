@@ -1,5 +1,5 @@
 /// Base unit for the Storage exporter in csv format
-unit RALDBStorageCSV;
+unit RALStorageCSV;
 
 interface
 
@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALDBStorage, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
+  RALTypes, RALStorage, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
 
 type
 
@@ -41,9 +41,9 @@ type
     property ThousandSeparator: Char read FThousandSeparator write FThousandSeparator;
   end;
 
-  { TRALDBStorageCSV }
+  { TRALStorageCSV }
 
-  TRALDBStorageCSV = class(TRALDBStorage)
+  TRALStorageCSV = class(TRALStorage)
   private
     FFormatOptions: TRALCSVFormatOptions;
     FUseUTF8BOM : boolean;
@@ -71,9 +71,9 @@ type
     property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
-  { TRALDBStorageCSVLink }
+  { TRALStorageCSVLink }
 
-  TRALDBStorageCSVLink = class(TRALDBStorageLink)
+  TRALStorageCSVLink = class(TRALStorageLink)
   private
     FFormatOptions: TRALCSVFormatOptions;
     FUseUTF8BOM : boolean;
@@ -86,8 +86,8 @@ type
     procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
     procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
 
-    function Clone : TRALDBStorageLink; override;
-    function GetStorage: TRALDBStorage; override;
+    function Clone : TRALStorageLink; override;
+    function GetStorage: TRALStorage; override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
     property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
@@ -95,19 +95,19 @@ type
 
 implementation
 
-{ TRALDBStorageCSVLink }
+{ TRALStorageCSVLink }
 
-function TRALDBStorageCSVLink.Clone: TRALDBStorageLink;
+function TRALStorageCSVLink.Clone: TRALStorageLink;
 begin
   Result := inherited Clone;
   if Result = nil then
     Exit;
 
-  TRALDBStorageCSVLink(Result).UseUTF8BOM := FUseUTF8BOM;
-  TRALDBStorageCSVLink(Result).FormatOptions.Assign(FFormatOptions);
+  TRALStorageCSVLink(Result).UseUTF8BOM := FUseUTF8BOM;
+  TRALStorageCSVLink(Result).FormatOptions.Assign(FFormatOptions);
 end;
 
-constructor TRALDBStorageCSVLink.Create(AOwner: TComponent);
+constructor TRALStorageCSVLink.Create(AOwner: TComponent);
 begin
   inherited;
   FFormatOptions := TRALCSVFormatOptions.Create;
@@ -115,55 +115,55 @@ begin
   SetStorageFormat(rsfCSV);
 end;
 
-destructor TRALDBStorageCSVLink.Destroy;
+destructor TRALStorageCSVLink.Destroy;
 begin
   FreeAndNil(FFormatOptions);
   inherited;
 end;
 
-function TRALDBStorageCSVLink.GetContentType: StringRAL;
+function TRALStorageCSVLink.GetContentType: StringRAL;
 begin
   Result := rctTEXTCSV;
 end;
 
-function TRALDBStorageCSVLink.GetStorage: TRALDBStorage;
+function TRALStorageCSVLink.GetStorage: TRALStorage;
 begin
-  Result := TRALDBStorageCSV.Create;
+  Result := TRALStorageCSV.Create;
   Result.FieldCharCase := FieldCharCase;
 
-  TRALDBStorageCSV(Result).UseUTF8BOM := FUseUTF8BOM;
-  TRALDBStorageCSV(Result).FormatOptions.Assign(Self.FormatOptions);
+  TRALStorageCSV(Result).UseUTF8BOM := FUseUTF8BOM;
+  TRALStorageCSV(Result).FormatOptions.Assign(Self.FormatOptions);
 end;
 
-procedure TRALDBStorageCSVLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageCSVLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
   FFormatOptions.LoadPropsFromStream(AWriter);
   FUseUTF8BOM := AWriter.ReadBoolean;
 end;
 
-procedure TRALDBStorageCSVLink.SavePropsToStream(AWriter: TRALBinaryWriter);
+procedure TRALStorageCSVLink.SavePropsToStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
   FFormatOptions.SavePropsToStream(AWriter);
   AWriter.WriteBoolean(FUseUTF8BOM);
 end;
 
-{ TRALDBStorageCSV }
+{ TRALStorageCSV }
 
-constructor TRALDBStorageCSV.Create;
+constructor TRALStorageCSV.Create;
 begin
   inherited;
   FFormatOptions := TRALCSVFormatOptions.Create;
 end;
 
-destructor TRALDBStorageCSV.Destroy;
+destructor TRALStorageCSV.Destroy;
 begin
   FreeAndNil(FFormatOptions);
   inherited;
 end;
 
-function TRALDBStorageCSV.CSVFormatBoolean(AValue: Boolean): StringRAL;
+function TRALStorageCSV.CSVFormatBoolean(AValue: Boolean): StringRAL;
 begin
   if AValue then
     Result := FFormatOptions.FBoolTrueStr
@@ -171,7 +171,7 @@ begin
     Result := FFormatOptions.FBoolFalseStr;
 end;
 
-function TRALDBStorageCSV.CSVFormatDateTime(AValue: TDateTime): StringRAL;
+function TRALStorageCSV.CSVFormatDateTime(AValue: TDateTime): StringRAL;
 var
   vFormat: StringRAL;
 begin
@@ -198,7 +198,7 @@ begin
     Result := Format('"%s"', [Trim(Result)]);
 end;
 
-function TRALDBStorageCSV.CSVFormatFloat(AValue: Double): StringRAL;
+function TRALStorageCSV.CSVFormatFloat(AValue: Double): StringRAL;
 var
   vFormat: TFormatSettings;
 begin
@@ -207,12 +207,12 @@ begin
   Result := FloatToStr(AValue, vFormat);
 end;
 
-function TRALDBStorageCSV.CSVFormatStream(AValue: TStream): StringRAL;
+function TRALStorageCSV.CSVFormatStream(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
 end;
 
-function TRALDBStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
+function TRALStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, #13, '', [rfReplaceAll]);
   Result := StringReplace(Result, #10, '', [rfReplaceAll]);
@@ -220,13 +220,13 @@ begin
   Result := Format('"%s"', [Trim(Result)]);
 end;
 
-procedure TRALDBStorageCSV.LoadFromStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 begin
   ReadFields(ADataset, AStream);
   ReadRecords(ADataset, AStream);
 end;
 
-procedure TRALDBStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
 const
   UTF8BOM = #$EF#$BB#$BF;
 begin
@@ -236,7 +236,7 @@ begin
   WriteRecords(ADataset, AStream);
 end;
 
-procedure TRALDBStorageCSV.WriteFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
   vFields: StringRAL;
   vInt: IntegerRAL;
@@ -259,7 +259,7 @@ begin
   WriteStringToStream(AStream, vFields);
 end;
 
-procedure TRALDBStorageCSV.WriteRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
   vValue: StringRAL;
@@ -335,7 +335,7 @@ begin
   ADataset.EnableControls;
 end;
 
-procedure TRALDBStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringRAL);
+procedure TRALStorageCSV.WriteStringToStream(AStream: TStream; AValue: StringRAL);
 var
   vBytes : TBytes;
 begin
@@ -343,7 +343,7 @@ begin
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 
-function TRALDBStorageCSV.ReadLine(AStream: TStream): TStringList;
+function TRALStorageCSV.ReadLine(AStream: TStream): TStringList;
 var
   vChr1, vChr2: Char;
   vDoubleQuote, v13: Boolean;
@@ -405,7 +405,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageCSV.ReadFields(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.ReadFields(ADataset: TDataSet; AStream: TStream);
 var
   vLine1, vLine2: TStringList;
   vInt, vSize: IntegerRAL;
@@ -502,7 +502,7 @@ begin
   end;
 end;
 
-procedure TRALDBStorageCSV.ReadRecords(ADataset: TDataSet; AStream: TStream);
+procedure TRALStorageCSV.ReadRecords(ADataset: TDataSet; AStream: TStream);
 begin
 
 end;

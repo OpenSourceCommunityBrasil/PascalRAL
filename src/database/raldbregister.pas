@@ -10,7 +10,7 @@ uses
   LResources,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBModule, RALDBStorageJSON, RALDBStorageBIN, RALDBStorageCSV, RALDBConnection;
+  RALDBModule, RALDBConnection;
 
 procedure Register;
 
@@ -18,8 +18,6 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALDBStorageJSONLink, TRALDBStorageBINLink,
-    TRALDBStorageCSVLink]);
   RegisterComponents('RAL - Client', [TRALDBConnection]);
   RegisterComponents('RAL - Modules', [TRALDBModule]);
 end;

@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\database;..\..\..\src\others"/>
+        <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\others;..\..\..\src\utils"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
@@ -22,13 +22,13 @@
         <UnitName Value="kxBSON"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\database\RALDBStorageBSON.pas"/>
-        <UnitName Value="RALDBStorageBSON"/>
+        <Filename Value="..\..\..\src\utils\RALStorageBSON.pas"/>
+        <UnitName Value="RALStorageBSON"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\others\RALDBBSONReg.pas"/>
+        <Filename Value="..\..\..\src\others\RALBSONReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBBSONReg"/>
+        <UnitName Value="RALBSONReg"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>

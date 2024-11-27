@@ -1,5 +1,5 @@
 /// Unit that register BSON Storage component in the IDE
-unit RALDBBSONReg;
+unit RALBSONReg;
 
 {$I ../base/PascalRAL.inc}
 
@@ -10,7 +10,7 @@ uses
   LResources,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBStorageBSON;
+  RALStorageBSON;
 
 procedure Register;
 
@@ -18,7 +18,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALDBStorageBSONLink]);
+  RegisterComponents('RAL - Storage', [TRALStorageBSONLink]);
 end;
 
 {$IFDEF FPC}

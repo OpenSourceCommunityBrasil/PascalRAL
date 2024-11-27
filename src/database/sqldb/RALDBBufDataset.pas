@@ -5,8 +5,8 @@ interface
 uses
   Classes, SysUtils, DB, Dialogs,
   BufDataset,
-  RALDBStorage, RALTypes, RALResponse, RALMIMETypes,
-  RALDBStorageBIN, RALDBStorageJSON, RALDBTypes, RALDBSQLCache,
+  RALStorage, RALTypes, RALResponse, RALMIMETypes,
+  RALStorageBIN, RALStorageJSON, RALDBTypes, RALDBSQLCache,
   RALDBConnection, RALConsts;
 
 type
@@ -25,7 +25,7 @@ type
     FRowsAffected: Int64RAL;
     FSQL: TStrings;
     FSQLCache: TRALDBSQLCache;
-    FStorage: TRALDBStorageLink;
+    FStorage: TRALStorageLink;
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
@@ -42,7 +42,7 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
-    procedure SetStorage(AValue: TRALDBStorageLink);
+    procedure SetStorage(AValue: TRALStorageLink);
 
     // carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
@@ -75,7 +75,7 @@ type
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write FParams;
     property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALDBStorageLink read FStorage write SetStorage;
+    property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
@@ -172,7 +172,7 @@ begin
     FRALConnection.FreeNotification(Self);
 end;
 
-procedure TRALDBBufDataset.SetStorage(AValue: TRALDBStorageLink);
+procedure TRALDBBufDataset.SetStorage(AValue: TRALStorageLink);
 begin
   if FStorage <> nil then
     FStorage.RemoveFreeNotification(Self);
