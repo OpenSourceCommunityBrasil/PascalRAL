@@ -48,17 +48,23 @@ function TRALResponsePages.GetHTMLPage(AStatusCode: IntegerRAL): StringRAL;
 var
   vInt: IntegerRAL;
   vPage: TRALResponsePage;
+  vFind: boolean;
 begin
   Result := '';
+  vFind := False;
   for vInt := 0 to Pred(Count) do
   begin
     vPage := TRALResponsePage(Items[vInt]);
     if vPage.StatusCode = AStatusCode then
     begin
       Result := vPage.Page.Text;
-      Exit;
+      vFind := True;
+      Break;
     end;
   end;
+
+  if not vFind then
+    Result := GetHTTPResponsePage(AStatusCode);
 end;
 
 constructor TRALResponsePages.Create(AOwner: TPersistent);

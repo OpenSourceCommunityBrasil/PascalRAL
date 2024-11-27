@@ -46,6 +46,7 @@ type
     procedure SetSSL(const AValue: TRALSynopseSSL);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
+    procedure OnHttpTerminate(ASender : TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -96,6 +97,7 @@ begin
     FHttp.HttpQueueLength := FQueueSize;
     FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';
+    FHttp.OnTerminate := {$IFDEF FPC}@{$ENDIF}OnHttpTerminate;
     //    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
     if SSL.Enabled then
@@ -310,6 +312,11 @@ begin
     AContext.OutContent := UTF8Decode(AContext.OutContent);
   {$ENDIF}
   Result := True;
+end;
+
+procedure TRALSynopseServer.OnHttpTerminate(ASender: TObject);
+begin
+  Active := False;
 end;
 
 constructor TRALSynopseServer.Create(AOwner: TComponent);
