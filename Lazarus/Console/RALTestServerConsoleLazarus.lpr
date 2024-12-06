@@ -4,6 +4,7 @@ program RALTestServerConsoleLazarus;
 
 uses
   {$IFDEF UNIX} cthreads,  {$ENDIF}
+  {$IFDEF HASAMIGA} athreads, {$ENDIF}
   Classes,
   SysUtils,
   CustApp,
