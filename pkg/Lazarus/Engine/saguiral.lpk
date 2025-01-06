@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\engine\sagui;..\..\..\src\others\brookframework\Source"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\sagui;..\..\..\src\others"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Other>
