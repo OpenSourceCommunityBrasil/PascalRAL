@@ -287,6 +287,7 @@ type
     FRoutes: TRALRoutes;
     FServer: TRALServer;
     FDomain: StringRAL;
+    FOnBeforeAnswer : TRALOnReply;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetServer(AValue: TRALServer); virtual;
@@ -305,6 +306,7 @@ type
   published
     property Server: TRALServer read FServer write SetServer;
     property Domain: StringRAL read FDomain write SetDomain;
+    property OnBeforeAnswer: TRALOnReply read FOnBeforeAnswer write FOnBeforeAnswer;
   end;
 
 implementation
@@ -857,6 +859,8 @@ end;
 function TRALModuleRoutes.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
 begin
   Result := Routes.CanAnswerRoute(ARequest);
+  if (Result <> nil) and (Assigned(FOnBeforeAnswer)) then
+    FOnBeforeAnswer(ARequest, AResponse);
 end;
 
 constructor TRALModuleRoutes.Create(AOwner: TComponent);

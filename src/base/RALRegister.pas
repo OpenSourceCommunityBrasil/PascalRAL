@@ -40,6 +40,13 @@ type
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
+  {$IFNDEF FPC}
+    TRALServerSelectionEditor = class(TSelectionEditor)
+    public
+      procedure RequiresUnits(Proc: TGetStrProc); override;
+    end;
+  {$ENDIF}
+
 procedure Register;
 
 implementation
@@ -51,7 +58,7 @@ procedure Register;
 {$IFDEF DELPHI2005UP}
 var
   AboutSvcs: IOTAAboutBoxServices;
-  {$ENDIF}
+{$ENDIF}
 begin
   {$IFDEF DELPHI2005UP}
   // add project info to IDE's splash screen
@@ -73,6 +80,10 @@ begin
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink,
     TRALStorageCSVLink]);
+
+  {$IFNDEF FPC}
+    RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
+  {$ENDIF}
 
   // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
@@ -144,6 +155,18 @@ begin
     FreeAndNil(vStr);
   end;
 end;
+
+{$IFNDEF FPC}
+  { TRALServerSelectionEditor }
+
+  procedure TRALServerSelectionEditor.RequiresUnits(Proc: TGetStrProc);
+  begin
+    inherited;
+    Proc('RALRequest');
+    Proc('RALResponse');
+    Proc('RALTypes');
+  end;
+{$ENDIF}
 
 {$IFDEF FPC}
 initialization
