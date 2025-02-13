@@ -14,67 +14,16 @@ type
 
   TRALSynopseClientHTTP = class(TRALClientHTTP)
   public
-    constructor Create(AOwner: TRALClientBase); override;
-    destructor Destroy; override;
-
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
-  end;
 
-  { TRALSynopseClientMT }
-
-  TRALSynopseClientMT = class(TRALClientMT)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
-  end;
-
-  { TRALSynopseClient }
-
-  TRALSynopseClient = class(TRALClient)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent): TRALClient; override;
+    class function EngineName : StringRAL; override;
+    class function EngineVersion : StringRAL; override;
   end;
 
 implementation
 
-{ TRALSynopseClient }
-
-function TRALSynopseClient.Clone(AOwner: TComponent): TRALClient;
-begin
-  Result := TRALSynopseClient.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-constructor TRALSynopseClient.Create(AOwner: TComponent);
-begin
-  inherited;
-  SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
-end;
-
-function TRALSynopseClient.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALSynopseClientHTTP.Create(Self);
-end;
-
 { TRALSynopseClientHTTP }
-
-constructor TRALSynopseClientHTTP.Create(AOwner: TRALClientBase);
-begin
-  inherited;
-
-end;
-
-destructor TRALSynopseClientHTTP.Destroy;
-begin
-
-  inherited;
-end;
 
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
@@ -222,23 +171,17 @@ begin
   FreeAndNil(vHttp);
 end;
 
-{ TRALSynopseClientMT }
-
-function TRALSynopseClientMT.Clone(AOwner: TComponent): TRALClientMT;
+class function TRALSynopseClientHTTP.EngineName: StringRAL;
 begin
-  Result := TRALSynopseClientMT.Create(AOwner);
-  CopyProperties(Result);
+  Result := 'mORMot2';
 end;
 
-constructor TRALSynopseClientMT.Create(AOwner: TComponent);
+class function TRALSynopseClientHTTP.EngineVersion: StringRAL;
 begin
-  inherited;
-  SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
+  Result := SYNOPSE_FRAMEWORK_FULLVERSION;
 end;
 
-function TRALSynopseClientMT.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALSynopseClientHTTP.Create(Self);
-end;
+initialization
+  RegisterEngine(TRALSynopseClientHTTP);
 
 end.

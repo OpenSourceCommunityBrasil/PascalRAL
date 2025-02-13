@@ -17,31 +17,14 @@ type
   protected
     procedure OnGetSSLHandler(Sender : TObject; Const UseSSL : Boolean; Out AHandler : TSocketHandler);
   public
-    constructor Create(AOwner: TRALClientBase); override;
+    constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); override;
-  end;
+                      AMethod: TRALMethod); override;
 
-  { TRALfpHttpClientMT }
-
-  TRALfpHttpClientMT = class(TRALClientMT)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
-  end;
-
-  { TRALfpHttpClient }
-
-  TRALfpHttpClient = class(TRALClient)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent): TRALClient; override;
+    class function EngineName : StringRAL; override;
+    class function EngineVersion : StringRAL; override;
   end;
 
 implementation
@@ -55,7 +38,7 @@ begin
     AHandler := TOpenSSLSocketHandler.create;
 end;
 
-constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClientBase);
+constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited Create(AOwner);
   FHttp := TFPHTTPClient.Create(nil);
@@ -178,42 +161,17 @@ begin
   end;
 end;
 
-{ TRALfpHttpClientMT }
-
-function TRALfpHttpClientMT.CreateClient: TRALClientHTTP;
+class function TRALfpHttpClientHTTP.EngineName: StringRAL;
 begin
-  Result := TRALfpHttpClientHTTP.Create(Self);
+  Result := 'fpHTTP';
 end;
 
-constructor TRALfpHttpClientMT.Create(AOwner: TComponent);
+class function TRALfpHttpClientHTTP.EngineVersion: StringRAL;
 begin
-  inherited;
-  SetEngine('fpHTTP');
+  Result := '';
 end;
 
-function TRALfpHttpClientMT.Clone(AOwner: TComponent): TRALClientMT;
-begin
-  Result := TRALfpHttpClientMT.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-{ TRALfpHttpClient }
-
-function TRALfpHttpClient.Clone(AOwner: TComponent): TRALClient;
-begin
-  Result := TRALfpHttpClient.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-function TRALfpHttpClient.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALfpHttpClientHTTP.Create(Self);
-end;
-
-constructor TRALfpHttpClient.Create(AOwner: TComponent);
-begin
-  inherited;
-  SetEngine('fpHTTP');
-end;
+initialization
+  RegisterEngine(TRALfpHttpClientHTTP);
 
 end.

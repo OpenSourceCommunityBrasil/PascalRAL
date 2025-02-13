@@ -47,6 +47,16 @@ type
     end;
   {$ENDIF}
 
+  { TRALClientEngines }
+
+  TRALClientEngines = class(TStringProperty)
+  public
+    function GetAttributes: TPropertyAttributes; override;
+    procedure GetValues(Proc: TGetStrProc); override;
+    procedure SetValue(const NewValue: ansistring); override;
+  end;
+
+
 procedure Register;
 
 implementation
@@ -76,18 +86,18 @@ begin
 
   // component registration process
   RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
-  RegisterComponents('RAL - Client', [TRALClientBasicAuth, TRALClientJWTAuth]);
+  RegisterComponents('RAL - Client', [TRALClient, TRALClientBasicAuth, TRALClientJWTAuth]);
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
-  RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink,
-    TRALStorageCSVLink]);
+  RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
   {$IFNDEF FPC}
     RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
   {$ENDIF}
 
   // property registration process
-  RegisterPropertyEditor(TypeInfo(TStrings), TRALClientBase, 'BaseURL', TRALBaseURLEditor);
-  RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClientBase, 'CompressType', TRALCompressEditor);
+  RegisterPropertyEditor(TypeInfo(TStrings), TRALClient, 'BaseURL', TRALBaseURLEditor);
+  RegisterPropertyEditor(TypeInfo(StringRAL), TRALClient, 'EngineType', TRALClientEngines);
+  RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClient, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
 end;
 
@@ -156,6 +166,33 @@ begin
   end;
 end;
 
+{ TRALClientEngines }
+
+function TRALClientEngines.GetAttributes: TPropertyAttributes;
+begin
+  Result := [paMultiSelect, paSortList, paValueList, paRevertable];
+end;
+
+procedure TRALClientEngines.GetValues(Proc: TGetStrProc);
+var
+  vInt : IntegerRAL;
+  vList : TStringList;
+begin
+  vList := TStringList.Create;
+  try
+    GetEngineList(vList);
+    for vInt := 0 to Pred(vList.Count) do
+      Proc(vList.Strings[vInt]);
+  finally
+    FreeAndNil(vList);
+  end;
+end;
+
+procedure TRALClientEngines.SetValue(const NewValue: ansistring);
+begin
+  inherited SetValue(NewValue);
+end;
+
 {$IFNDEF FPC}
   { TRALServerSelectionEditor }
 
@@ -165,6 +202,8 @@ end;
     Proc('RALRequest');
     Proc('RALResponse');
     Proc('RALTypes');
+
+    ShowMessage('oi');
   end;
 {$ENDIF}
 

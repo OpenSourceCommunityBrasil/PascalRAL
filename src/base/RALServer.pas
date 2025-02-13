@@ -868,6 +868,7 @@ begin
   inherited Create(AOwner);
   FRoutes := TRALRoutes.Create(Self);
   FDomain := '/';
+  FServer := nil;
 end;
 
 destructor TRALModuleRoutes.Destroy;

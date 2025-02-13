@@ -13,7 +13,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Server', [TRALfpHttpServer]);
-  RegisterComponents('RAL - Client', [TRALfpHttpClient, TRALfpHttpClientMT]);
+  RegisterClass(TRALfpHttpClientHTTP);
 end;
 
 initialization

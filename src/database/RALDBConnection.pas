@@ -13,14 +13,14 @@ type
 
   TRALDBConnection = class(TRALComponent)
   private
-    FClient: TRALClientMT;
+    FClient: TRALClient;
     FModuleRoute: StringRAL;
   protected
-    procedure SetClient(AValue: TRALClientMT);
+    procedure SetClient(AValue: TRALClient);
     procedure SetModuleRoute(AValue: StringRAL);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
-    constructor Create(AOwner: TComponent);
+    constructor Create(AOwner: TComponent); overload;
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
     procedure OpenRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
@@ -35,7 +35,7 @@ type
     function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
                                 AUpdateMode: TUpdateMode): StringRAL;
   published
-    property Client: TRALClientMT read FClient write SetClient;
+    property Client: TRALClient read FClient write SetClient;
     property ModuleRoute: StringRAL read FModuleRoute write SetModuleRoute;
   end;
 
@@ -43,7 +43,7 @@ implementation
 
 { TRALDBConnection }
 
-procedure TRALDBConnection.SetClient(AValue: TRALClientMT);
+procedure TRALDBConnection.SetClient(AValue: TRALClient);
 begin
   if FClient <> nil then
     FClient.RemoveFreeNotification(Self);
@@ -65,6 +65,7 @@ end;
 
 constructor TRALDBConnection.Create(AOwner: TComponent);
 begin
+  inherited;
   FClient := nil;
   FModuleRoute := '/';
 end;
@@ -72,25 +73,20 @@ end;
 procedure TRALDBConnection.ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
-  vReq: TRALRequest;
   vUrl: StringRAL;
 begin
   if ACache.Count = 0 then
     Exit;
 
   vMem := ACache.SaveToStream;
-  vReq := FClient.NewRequest;
   try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-    vReq.AddFile(vMem);
+    FClient.Request.Clear;
+    FClient.Request.ContentType := rctAPPLICATIONOCTETSTREAM;
+    FClient.Request.AddFile(vMem);
 
     vUrl := FModuleRoute + '/applyupdates';
-    FClient.Post(vUrl, vReq, AResp, ebSingleThread);
+    FClient.Post(vUrl, AResp, ebSingleThread);
   finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
-
     FreeAndNil(vMem);
   end;
 end;
@@ -99,7 +95,6 @@ procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage : TRALStorageLi
                                       AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
-  vReq: TRALRequest;
   vUrl: StringRAL;
   vSQLCache: TRALDBSQLCache;
 begin
@@ -109,18 +104,14 @@ begin
     vSQLCache.Add(AQuery, etOpen);
 
     vMem := vSQLCache.SaveToStream;
-    vReq := FClient.NewRequest;
     try
-      vReq.Clear;
-      vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-      vReq.AddFile(vMem);
+      FClient.Request.Clear;
+      FClient.Request.ContentType := rctAPPLICATIONOCTETSTREAM;
+      FClient.Request.AddFile(vMem);
 
       vUrl := FModuleRoute + '/opensql';
-      FClient.Post(vUrl, vReq, AResp);
+      FClient.Post(vUrl, AResp);
     finally
-      if FClient.RequestLifeCicle then
-        FreeAndNil(vReq);
-
       FreeAndNil(vMem);
     end;
   finally
@@ -131,7 +122,6 @@ end;
 procedure TRALDBConnection.ExecSQLRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
-  vReq: TRALRequest;
   vUrl: StringRAL;
   vSQLCache: TRALDBSQLCache;
 begin
@@ -141,18 +131,14 @@ begin
     vSQLCache.Add(AQuery, etExecute);
 
     vMem := vSQLCache.SaveToStream;
-    vReq := FClient.NewRequest;
     try
-      vReq.Clear;
-      vReq.ContentType := rctAPPLICATIONOCTETSTREAM;
-      vReq.AddFile(vMem);
+      FClient.Request.Clear;
+      FClient.Request.ContentType := rctAPPLICATIONOCTETSTREAM;
+      FClient.Request.AddFile(vMem);
 
       vUrl := FModuleRoute + '/execsql';
-      FClient.Post(vUrl, vReq, AResp, ebSingleThread);
+      FClient.Post(vUrl, AResp, ebSingleThread);
     finally
-      if FClient.RequestLifeCicle then
-        FreeAndNil(vReq);
-
       FreeAndNil(vMem);
     end;
   finally
@@ -162,33 +148,25 @@ end;
 
 function TRALDBConnection.InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
 var
-  vReq: TRALRequest;
   vUrl: StringRAL;
   vResponse: TRALResponse;
 begin
   Result := nil;
   vResponse := nil;
 
-  vReq := FClient.NewRequest;
+  FClient.Request.Clear;
+  FClient.Request.ContentType := rctAPPLICATIONJSON;
+  FClient.Request.Params.AddParam('sql', ASQL, rpkQUERY);
+
+  vUrl := FModuleRoute + '/getsqlfields';
+  FClient.Get(vUrl, vResponse);
   try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONJSON;
-    vReq.Params.AddParam('sql', ASQL, rpkQUERY);
-
-    vUrl := FModuleRoute + '/getsqlfields';
-
-    FClient.Get(vUrl, vReq, vResponse);
-    try
-      if vResponse.StatusCode = HTTP_OK then begin
-        Result := TRALDBInfoFields.Create;
-        Result.AsJSON := vResponse.Body.AsString;
-      end;
-    finally
-      FreeAndNil(vResponse);
+    if vResponse.StatusCode = HTTP_OK then begin
+      Result := TRALDBInfoFields.Create;
+      Result.AsJSON := vResponse.Body.AsString;
     end;
   finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
+    FreeAndNil(vResponse);
   end;
 end;
 
@@ -201,32 +179,25 @@ end;
 
 function TRALDBConnection.GetTables: TRALDBInfoTables;
 var
-  vReq: TRALRequest;
   vUrl: StringRAL;
   vResponse: TRALResponse;
 begin
   Result := nil;
   vResponse := nil;
 
-  vReq := FClient.NewRequest;
+  FClient.Request.Clear;
+  FClient.Request.ContentType := rctAPPLICATIONJSON;
+
+  vUrl := FModuleRoute + '/gettables';
+
+  FClient.Get(vUrl, vResponse);
   try
-    vReq.Clear;
-    vReq.ContentType := rctAPPLICATIONJSON;
-
-    vUrl := FModuleRoute + '/gettables';
-
-    FClient.Get(vUrl, vReq, vResponse);
-    try
-      if vResponse.StatusCode = HTTP_OK then begin
-        Result := TRALDBInfoTables.Create;
-        Result.AsJSON := vResponse.Body.AsString;
-      end;
-    finally
-      FreeAndNil(vResponse);
+    if vResponse.StatusCode = HTTP_OK then begin
+      Result := TRALDBInfoTables.Create;
+      Result.AsJSON := vResponse.Body.AsString;
     end;
   finally
-    if FClient.RequestLifeCicle then
-      FreeAndNil(vReq);
+    FreeAndNil(vResponse);
   end;
 end;
 

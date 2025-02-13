@@ -20,57 +20,21 @@ type
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
   public
-    constructor Create(AOwner: TRALClientBase); override;
+    constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
-  end;
 
-  { TRALIndyClientMT }
-
-  TRALIndyClientMT = class(TRALClientMT)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
-  end;
-
-  { TRALIndyClient }
-
-  TRALIndyClient = class(TRALClient)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClient; override;
+    class function EngineName : StringRAL; override;
+    class function EngineVersion : StringRAL; override;
   end;
 
 implementation
 
-{ TRALIndyClient }
-
-function TRALIndyClient.Clone(AOwner: TComponent): TRALClient;
-begin
-  Result := TRALIndyClient.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-constructor TRALIndyClient.Create(AOwner: TComponent);
-begin
-  inherited;
-  SetEngine('Indy ' + gsIdVersion);
-end;
-
-function TRALIndyClient.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALIndyClientHTTP.Create(Self);
-end;
-
 { TRALIndyClientHTTP }
 
-constructor TRALIndyClientHTTP.Create(AOwner: TRALClientBase);
+constructor TRALIndyClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited Create(AOwner);
 
@@ -214,24 +178,17 @@ begin
   end;
 end;
 
-{ TRALIndyClientMT }
-
-function TRALIndyClientMT.Clone(AOwner: TComponent): TRALClientMT;
+class function TRALIndyClientHTTP.EngineName: StringRAL;
 begin
-  Result := TRALIndyClientMT.Create(AOwner);
-  CopyProperties(Result);
-  Result.RequestLifeCicle := Self.RequestLifeCicle;
+  Result := 'Indy';
 end;
 
-constructor TRALIndyClientMT.Create(AOwner: TComponent);
+class function TRALIndyClientHTTP.EngineVersion: StringRAL;
 begin
-  inherited;
-  SetEngine('Indy ' + gsIdVersion);
+  Result := gsIdVersion;
 end;
 
-function TRALIndyClientMT.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALIndyClientHTTP.Create(Self);
-end;
+initialization
+  RegisterEngine(TRALIndyClientHTTP);
 
 end.

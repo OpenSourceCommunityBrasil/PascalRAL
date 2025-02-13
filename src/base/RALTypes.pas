@@ -56,7 +56,7 @@ type
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
-  TRALExecBehavior = (ebSingleThread, ebMultiThread, ebDefault);
+  TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
 const
