@@ -54,6 +54,7 @@ type
 
     class function EngineName : StringRAL; virtual; abstract;
     class function EngineVersion : StringRAL; virtual; abstract;
+    class function PackageDependency : StringRAL; virtual; abstract;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -562,6 +563,9 @@ var
 begin
   if AIndexUrl = -1 then
     AIndexUrl := FIndexUrl;
+
+  if AIndexUrl >= FParent.BaseURL.Count then
+    Exit;
 
   vURL := Trim(FParent.BaseURL.Strings[AIndexUrl]);
   if not SameText(Copy(vURL, 1, 4), 'http') then

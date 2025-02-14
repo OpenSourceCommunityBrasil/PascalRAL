@@ -26,6 +26,7 @@ type
 
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
@@ -53,6 +54,11 @@ begin
 end;
 
 class function TRALnetHTTPClientHTTP.EngineVersion: StringRAL;
+begin
+  Result := '';
+end;
+
+class function TRALnetHTTPClientHTTP.PackageDependency: StringRAL;
 begin
   Result := '';
 end;
@@ -190,6 +196,7 @@ begin
 end;
 
 initialization
+  RegisterClass(TRALnetHTTPClientHTTP);
   RegisterEngine(TRALnetHTTPClientHTTP);
 
 end.

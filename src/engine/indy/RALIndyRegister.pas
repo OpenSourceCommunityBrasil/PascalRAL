@@ -17,7 +17,6 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Server', [TRALIndyServer]);
-  RegisterClass(TRALIndyClientHTTP);
 end;
 
 {$IFDEF FPC}

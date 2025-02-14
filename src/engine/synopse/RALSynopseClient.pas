@@ -19,6 +19,7 @@ type
 
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
@@ -181,7 +182,13 @@ begin
   Result := SYNOPSE_FRAMEWORK_FULLVERSION;
 end;
 
+class function TRALSynopseClientHTTP.PackageDependency: StringRAL;
+begin
+  Result := 'SynopseRAL';
+end;
+
 initialization
+  RegisterClass(TRALSynopseClientHTTP);
   RegisterEngine(TRALSynopseClientHTTP);
 
 end.

@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   fphttpclient, fphttp, ssockets, opensslsockets,
-  RALClient, RALRoutes, RALTypes, RALConsts, RALAuthentication, RALParams,
+  RALClient, RALTypes, RALConsts, RALAuthentication, RALParams,
   RALRequest, RALCompress, RALResponse;
 
 type
@@ -25,6 +25,7 @@ type
 
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
@@ -168,10 +169,16 @@ end;
 
 class function TRALfpHttpClientHTTP.EngineVersion: StringRAL;
 begin
-  Result := '';
+  Result := {$I %FPCVERSION%};
+end;
+
+class function TRALfpHttpClientHTTP.PackageDependency: StringRAL;
+begin
+  Result := 'fphttpral';
 end;
 
 initialization
+  RegisterClass(TRALfpHttpClientHTTP);
   RegisterEngine(TRALfpHttpClientHTTP);
 
 end.

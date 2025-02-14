@@ -13,7 +13,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterClass(TRALnetHTTPClientHTTP);
+//  RegisterClass(TRALnetHTTPClientHTTP);
 end;
 
 end.

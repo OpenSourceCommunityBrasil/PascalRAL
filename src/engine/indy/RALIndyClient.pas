@@ -28,6 +28,7 @@ type
 
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
@@ -188,7 +189,13 @@ begin
   Result := gsIdVersion;
 end;
 
+class function TRALIndyClientHTTP.PackageDependency: StringRAL;
+begin
+  Result := 'IndyRAL';
+end;
+
 initialization
+  RegisterClass(TRALIndyClientHTTP);
   RegisterEngine(TRALIndyClientHTTP);
 
 end.

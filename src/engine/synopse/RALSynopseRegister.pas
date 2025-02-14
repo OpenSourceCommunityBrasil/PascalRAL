@@ -17,7 +17,6 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Server', [TRALSynopseServer]);
-  RegisterClass(TRALSynopseClientHTTP);
 end;
 
 {$IFDEF FPC}

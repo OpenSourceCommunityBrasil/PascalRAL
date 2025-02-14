@@ -13,12 +13,14 @@ type
   { TRALClientInfo }
 
   /// Class that stores information from the client. Some of them can only be obtained with RALClient
-  TRALClientInfo = class
+  TRALClientInfo = class(TPersistent)
   private
     FIP: StringRAL;
     FMACAddress: StringRAL;
     FPort: IntegerRAL;
     FUserAgent: StringRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   public
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
@@ -29,12 +31,14 @@ type
   { TRALAuthorization }
 
   /// Class to define which kind of authentication is used on the data
-  TRALAuthorization = class
+  TRALAuthorization = class(TPersistent)
   private
     FAuthString: StringRAL;
     FAuthType: TRALAuthTypes;
     FObjAuth: TObject;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
+
     procedure SetAuthString(const AValue: StringRAL);
     function GetAuthBasic: TRALAuthBasic;
     function GetAuthBearer: TRALJWT;
@@ -174,8 +178,8 @@ procedure TRALRequest.Clone(ASource: TRALRequest);
 begin
   inherited Clone(ASource);
 
-  ASource.Authorization := Self.Authorization;
-  ASource.ClientInfo := Self.ClientInfo;
+  ASource.Authorization.Assign(Self.Authorization);
+  ASource.ClientInfo.Assign(Self.ClientInfo);
   ASource.ContentSize := Self.ContentSize;
   ASource.Host := Self.Host;
   ASource.HttpVersion := Self.HttpVersion;
@@ -241,8 +245,18 @@ end;
 
 { TRALAuthorization }
 
+procedure TRALAuthorization.AssignTo(Dest: TPersistent);
+var
+  vDest : TRALAuthorization;
+begin
+  vDest := TRALAuthorization(Dest);
+  vDest.AuthType := Self.AuthType;
+  vDest.AuthString := Self.AuthString;
+end;
+
 constructor TRALAuthorization.Create;
 begin
+  inherited;
   FAuthType := ratNone;
   FAuthString := '';
   FObjAuth := nil;
@@ -415,6 +429,19 @@ begin
     vParam.ContentType := ContentType;
     vParam.Kind := rpkBODY;
   end;
+end;
+
+{ TRALClientInfo }
+
+procedure TRALClientInfo.AssignTo(Dest: TPersistent);
+var
+  vDest : TRALClientInfo;
+begin
+  vDest := TRALClientInfo(Dest);
+  vDest.IP := Self.IP;
+  vDest.MACAddress := Self.MACAddress;
+  vDest.Port := Self.Port;
+  vDest.UserAgent := Self.UserAgent;
 end;
 
 end.

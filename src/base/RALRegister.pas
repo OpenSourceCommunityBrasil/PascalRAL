@@ -8,7 +8,7 @@ interface
 uses
   {$IFDEF FPC}
     LResources, PropEdits, StringsPropEditDlg, CodeCache, SrcEditorIntf,
-    LazIDEIntf, CodeToolManager,
+    LazIDEIntf, CodeToolManager, PackageIntf, ProjectIntf,
   {$ELSE}
     {$IFDEF DELPHI2005UP}
       ToolsAPI,
@@ -186,6 +186,8 @@ end;
     vCode: TCodeBuffer;
     vSrcEdit: TSourceEditorInterface;
     vClass: TRALClientHTTPClass;
+    vFile: TLazProjectFile;
+    vPkg: TIDEPackage;
   begin
     if not LazarusIDE.BeginCodeTools then
       Exit;
@@ -199,12 +201,26 @@ end;
       Exit;
 
     vComp := TRALClient(GetComponent(0));
-
     if vComp <> nil then
     begin
       vClass := GetEngineClass(AEngine);
-      if vClass <> nil then
+      if vClass <> nil then begin
         CodeToolBoss.AddUnitToMainUsesSection(vCode, vClass.UnitName, '');
+//        LazarusIDE.ActiveProject.AddPackageDependency(vClass.PackageDependency);
+
+//        vSrcEdit := SourceEditorManagerIntf.SourceEditorIntfWithFilename(LazarusIDE.ActiveProject.ProjectInfoFile);
+
+{
+        vPkg := PackageEditingInterface.FindPackageWithName(vClass.PackageDependency);
+        if vPkg <> nil then
+        begin
+          vFile := LazarusIDE.ActiveProject.CreateProjectFile(vPkg.Filename);
+          vFile.IsPartOfProject := True;
+          LazarusIDE.ActiveProject.AddFile(vFile, True);
+          raise Exception.Create(vPkg.Filename);
+        end;
+}
+      end;
     end;
   end;
 {$ENDIF}
