@@ -22,13 +22,17 @@ type
   TRALFDQuery = class(TFDQuery)
   private
     vQueryBehavior: TRALExecBehavior;
-    vRALClient: TRALClientMT;
+    vRALClient: TRALClient;
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
     vOnQueryRemoteFinish: TOnQueryRemoteFinish;
     vException: Exception;
+  protected
+    /// needed to properly remove assignment in design-time.
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
     procedure SetRALFDConnectionServer(const value: StringRAL);
-    procedure SetRALClient(const value: TRALClientMT);
+    procedure SetRALClient(const value: TRALClient);
     procedure ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
     procedure ApplyUpdatesRemoteResponse(Sender: TObject; AResponse: TRALResponse;
@@ -45,7 +49,7 @@ type
   published
     property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
       default ebMultiThread;
-    property RALClient: TRALClientMT read vRALClient write SetRALClient;
+    property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
     property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
@@ -135,6 +139,14 @@ begin
   end;
 end;
 
+procedure TRALFDQuery.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  if (Operation = opRemove) and (AComponent = vRALClient) then
+    vRALClient := nil;
+  inherited Notification(AComponent, Operation);
+end;
+
 procedure TRALFDQuery.ExecSQLRemote;
 var
   vBinaryWriter: TBinaryWriter;
@@ -142,25 +154,21 @@ var
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
   i, x, t: integer;
-  vRequest: TRALRequest;
 begin
   try
     try
       vBinaryWriter := nil;
       vStreamAux := nil;
       vStringStreamAux := nil;
-      vRequest := nil;
-
-      vRequest := RALClient.NewRequest;
 
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      vRequest.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRequest.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
+      vRALClient.Request.Clear;
+      vRALClient.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+      vRALClient.Request.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
@@ -185,26 +193,24 @@ begin
         end;
 
         if Self.Params[i].IsNull then
-          vRequest.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
         else
-          vRequest.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
 
-        vRequest.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+        vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRequest.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
+        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
           Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
-      vRequest.Params.AddParam('Type', '2', rpkBODY);
+      vRALClient.Request.Params.AddParam('Type', '2', rpkBODY);
 
-      vRALClient.ExecBehavior := Self.QueryBehavior;
-
-      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
-        ExecSQLRemoteResponse);
+      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', ExecSQLRemoteResponse,
+                      Self.QueryBehavior);
     except
       on e: Exception do
       begin
@@ -214,7 +220,6 @@ begin
       end;
     end;
   finally
-    // FreeAndNil(vRequest);
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
@@ -267,7 +272,6 @@ var
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
   i, x, t: integer;
-  vRequest: TRALRequest;
 begin
   try
     try
@@ -275,9 +279,6 @@ begin
       vStreamAux := nil;
       vStringStreamAux := nil;
       vAuxMemTable := nil;
-      vRequest := nil;
-
-      vRequest := RALClient.NewRequest;
 
       vAuxMemTable := TFDMemTable.Create(Self);
       vStreamAux := TMemoryStream.Create;
@@ -285,9 +286,9 @@ begin
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      vRequest.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRequest.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
+      vRALClient.Request.Clear;
+      vRALClient.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+      vRALClient.Request.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
@@ -310,21 +311,21 @@ begin
         end;
 
         if Self.Params[i].IsNull then
-          vRequest.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
         else
-          vRequest.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
 
-        vRequest.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+        vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRequest.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
-          Ord(Self.Params[i].DataType)), rpkBODY);
+        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
+                                           Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
-      vRequest.Params.AddParam('Type', '1', rpkBODY);
+      vRALClient.Request.Params.AddParam('Type', '1', rpkBODY);
 
       vStreamAux.Clear;
 
@@ -332,12 +333,10 @@ begin
       vAuxMemTable.SaveToStream(vStreamAux, sfBinary);
       vStreamAux.Position := 0;
 
-      vRequest.Params.AddParam('Stream', vStreamAux, rpkBODY);
+      vRALClient.Request.Params.AddParam('Stream', vStreamAux, rpkBODY);
 
-      vRALClient.ExecBehavior := Self.QueryBehavior;
-
-      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
-        ApplyUpdatesRemoteResponse);
+      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', ApplyUpdatesRemoteResponse,
+                      Self.QueryBehavior);
     except
       on e: Exception do
       begin
@@ -347,7 +346,6 @@ begin
       end;
     end;
   finally
-    // FreeAndNil(vRequest);
     FreeAndNil(vAuxMemTable);
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
@@ -424,25 +422,21 @@ var
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
   i, x, t: integer;
-  vRequest: TRALRequest;
 begin
   try
     try
       vBinaryWriter := nil;
       vStreamAux := nil;
       vStringStreamAux := nil;
-      vRequest := nil;
-
-      vRequest := RALClient.NewRequest;
 
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
       vStringStreamAux.Position := 0;
 
-      vRequest.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
-
-      vRequest.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
+      vRALClient.Request.Clear;
+      vRALClient.Request.Params.AddParam('SQL', vStringStreamAux, rpkBODY);
+      vRALClient.Request.Params.AddParam('ParamCount', Self.Params.Count.ToString, rpkBODY);
 
       for i := 0 to Self.Params.Count - 1 do
       begin
@@ -465,26 +459,24 @@ begin
         end;
 
         if Self.Params[i].IsNull then
-          vRequest.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'true', rpkBODY)
         else
-          vRequest.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
+          vRALClient.Request.Params.AddParam('N' + i.ToString, 'false', rpkBODY);
 
         TMemoryStream(vStreamAux).Clear;
         vBinaryWriter.Write(vBytesAux);
         vStreamAux.Position := 0;
 
-        vRequest.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
+        vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRequest.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
-          Ord(Self.Params[i].DataType)), rpkBODY);
+        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
+                                           Ord(Self.Params[i].DataType)), rpkBODY);
       end;
 
-      vRequest.Params.AddParam('Type', '0', rpkBODY);
+      vRALClient.Request.Params.AddParam('Type', '0', rpkBODY);
 
-      vRALClient.ExecBehavior := Self.QueryBehavior;
-
-      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', vRequest,
-        OpenRemoteResponse);
+      vRALClient.Post(vRALFDConnectionServer + 'Route/Query', OpenRemoteResponse,
+                      Self.QueryBehavior);
     except
       on e: Exception do
       begin
@@ -494,7 +486,6 @@ begin
       end;
     end;
   finally
-    // FreeAndNil(vRequest);
     FreeAndNil(vBinaryWriter);
     FreeAndNil(vStreamAux);
     FreeAndNil(vStringStreamAux);
@@ -513,9 +504,15 @@ begin
   vOnQueryRemoteFinish := value;
 end;
 
-procedure TRALFDQuery.SetRALClient(const value: TRALClientMT);
+procedure TRALFDQuery.SetRALClient(const value: TRALClient);
 begin
+  if vRALClient <> nil then
+    vRALClient.RemoveFreeNotification(Self);
+
   vRALClient := value;
+
+  if vRALClient <> nil then
+    vRALClient.FreeNotification(Self);
 end;
 
 procedure TRALFDQuery.SetRALFDConnectionServer(const value: StringRAL);

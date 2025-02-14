@@ -1,4 +1,4 @@
-unit RALClient;
+﻿unit RALClient;
 
 interface
 
@@ -203,7 +203,13 @@ begin
   if EnginesDefs = nil then
   begin
     EnginesDefs := TStringList.Create;
+    EnginesDefs.Sorted := True;
   end;
+end;
+
+procedure DoneEngineDefs;
+begin
+  FreeAndNil(EnginesDefs);
 end;
 
 procedure RegisterEngine(AEngine: TRALClientHTTPClass);
@@ -214,8 +220,13 @@ begin
 end;
 
 procedure UnregisterEngine(AEngine: TRALClientHTTPClass);
+var
+  vPos : IntegerRAL;
 begin
-
+  CheckEngineDefs;
+  vPos := EnginesDefs.IndexOfName(AEngine.EngineName);
+  if vPos >= 0 then
+    EnginesDefs.Delete(vPos);
 end;
 
 function GetEngineClass(AEngineName: StringRAL): TRALClientHTTPClass;
@@ -237,41 +248,6 @@ begin
   for vInt := 0 to Pred(EnginesDefs.Count) do
     AList.Add(EnginesDefs.Names[vInt]);
 end;
-
-{
-procedure TRALClient.SetEngineType(AValue: StringRAL);
-var
-  Comp: TPersistent;
-  Code: TCodeBuffer;
-  ConnDef: TConnectionDef;
-  SrcEdit: TSourceEditorInterface;
-begin
-  if FEngineType = AValue then
-    Exit;
-
-  FEngineType := AValue;
-
-  if not LazarusIDE.BeginCodeTools then
-    Exit;
-
-  SrcEdit := SourceEditorManagerIntf.ActiveEditor;
-  if SrcEdit = nil then
-    Exit;
-
-  Code := TCodeBuffer(SrcEdit.CodeToolsBuffer);
-  if Code = nil then
-    Exit;
-
-  Comp := GetComponent(0);
-
-  if Comp is TRALClient then
-  begin
-//    ConnDef := GetConnectionDef(NewValue);
-//    if Assigned(ConnDef) then
-      CodeToolBoss.AddUnitToMainUsesSection(Code, 'RALInsyServer', '');
-  end;
-end;
-}
 
 procedure TRALClient.SetEngineType(AValue: StringRAL);
 var
@@ -851,6 +827,11 @@ begin
   FreeAndNil(FRequest);
   inherited Destroy;
 end;
+
+initialization
+
+finalization
+  DoneEngineDefs;
 
 end.
 

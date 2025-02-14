@@ -7,7 +7,8 @@ interface
 
 uses
   {$IFDEF FPC}
-    LResources, PropEdits, StringsPropEditDlg,
+    LResources, PropEdits, StringsPropEditDlg, CodeCache, SrcEditorIntf,
+    LazIDEIntf, CodeToolManager,
   {$ELSE}
     {$IFDEF DELPHI2005UP}
       ToolsAPI,
@@ -45,15 +46,24 @@ type
     public
       procedure RequiresUnits(Proc: TGetStrProc); override;
     end;
+
+    TRALClientSelectionEditor = class(TSelectionEditor)
+    public
+      procedure RequiresUnits(Proc: TGetStrProc); override;
+    end;
   {$ENDIF}
 
   { TRALClientEngines }
 
   TRALClientEngines = class(TStringProperty)
+  private
+    {$IFDEF FPC}
+       procedure FPCRequiresUnits(AEngine : string);
+    {$ENDIF}
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
-    procedure SetValue(const NewValue: ansistring); override;
+    procedure SetValue(const AValue: string); override;
   end;
 
 
@@ -92,6 +102,7 @@ begin
 
   {$IFNDEF FPC}
     RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
+    RegisterSelectionEditor(TRALClient,  TRALClientSelectionEditor);
   {$ENDIF}
 
   // property registration process
@@ -168,6 +179,36 @@ end;
 
 { TRALClientEngines }
 
+{$IFDEF FPC}
+  procedure TRALClientEngines.FPCRequiresUnits(AEngine : string);
+  var
+    vComp: TRALClient;
+    vCode: TCodeBuffer;
+    vSrcEdit: TSourceEditorInterface;
+    vClass: TRALClientHTTPClass;
+  begin
+    if not LazarusIDE.BeginCodeTools then
+      Exit;
+
+    vSrcEdit := SourceEditorManagerIntf.ActiveEditor;
+    if vSrcEdit = nil then
+      Exit;
+
+    vCode := TCodeBuffer(vSrcEdit.CodeToolsBuffer);
+    if vCode = nil then
+      Exit;
+
+    vComp := TRALClient(GetComponent(0));
+
+    if vComp <> nil then
+    begin
+      vClass := GetEngineClass(AEngine);
+      if vClass <> nil then
+        CodeToolBoss.AddUnitToMainUsesSection(vCode, vClass.UnitName, '');
+    end;
+  end;
+{$ENDIF}
+
 function TRALClientEngines.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paSortList, paValueList, paRevertable];
@@ -188,9 +229,12 @@ begin
   end;
 end;
 
-procedure TRALClientEngines.SetValue(const NewValue: ansistring);
+procedure TRALClientEngines.SetValue(const AValue: string);
 begin
-  inherited SetValue(NewValue);
+  inherited SetValue(AValue);
+  {$IFDEF FPC}
+    FPCRequiresUnits(AValue);
+  {$ENDIF}
 end;
 
 {$IFNDEF FPC}
@@ -202,8 +246,37 @@ end;
     Proc('RALRequest');
     Proc('RALResponse');
     Proc('RALTypes');
+  end;
 
-    ShowMessage('oi');
+  { TRALClienteSelectionEditor }
+
+  procedure TRALClientSelectionEditor.RequiresUnits(Proc: TGetStrProc);
+  var
+    vClass : TRALClientHTTPClass;
+    vComp : TRALClient;
+    vInt : IntegerRAL;
+  begin
+    inherited;
+    Proc('RALRequest');
+    Proc('RALResponse');
+
+    // might be a better way of doing the code from here onwards?
+    if (Designer = nil) or (Designer.Root = nil) then
+      Exit;
+
+    for vInt := 0 to Pred(Designer.Root.ComponentCount) do
+    begin
+      if (Designer.Root.Components[vInt] is TRALClient) then
+      begin
+        vComp := TRALClient(Designer.Root.Components[vInt]);
+        if vComp.EngineType <> '' then
+        begin
+          vClass := GetEngineClass(vComp.EngineType);
+          if vClass <> nil then
+            Proc(vClass.UnitName);
+        end;
+      end;
+    end;
   end;
 {$ENDIF}
 

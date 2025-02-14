@@ -13,7 +13,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Client', [TRALNetHttpClient, TRALnetHTTPClientMT]);
+  RegisterClass(TRALnetHTTPClientHTTP);
 end;
 
 end.

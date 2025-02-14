@@ -18,58 +18,21 @@ type
   private
     FHttp: TNetHTTPClient;
   public
-    constructor Create(AOwner: TRALClientBase); override;
+    constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
-  end;
 
-  { TRALnetHTTPClientMT }
-
-  TRALnetHTTPClientMT = class(TRALClientMT)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Clone(AOwner: TComponent = nil): TRALClientMT; override;
-  end;
-
-  { TRALnetHTTPClient }
-
-  TRALnetHTTPClient = class(TRALClient)
-  protected
-    function CreateClient: TRALClientHTTP; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-
-    function Clone(AOwner: TComponent = nil): TRALClient; override;
+    class function EngineName : StringRAL; override;
+    class function EngineVersion : StringRAL; override;
   end;
 
 implementation
 
-{ TRALnetHTTPClient }
-
-function TRALnetHTTPClient.Clone(AOwner: TComponent): TRALClient;
-begin
-  Result := TRALnetHTTPClient.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-constructor TRALnetHTTPClient.Create(AOwner: TComponent);
-begin
-  inherited;
-  SetEngine('NetHTTP');
-end;
-
-function TRALnetHTTPClient.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALnetHTTPClientHTTP.Create(Self);
-end;
-
 { TRALnetHTTPClientHTTP }
 
-constructor TRALnetHTTPClientHTTP.Create(AOwner: TRALClientBase);
+constructor TRALnetHTTPClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited;
   FHttp := TNetHTTPClient.Create(nil);
@@ -82,6 +45,16 @@ destructor TRALnetHTTPClientHTTP.Destroy;
 begin
   FreeAndNil(FHttp);
   inherited;
+end;
+
+class function TRALnetHTTPClientHTTP.EngineName: StringRAL;
+begin
+  Result := 'netHTTP';
+end;
+
+class function TRALnetHTTPClientHTTP.EngineVersion: StringRAL;
+begin
+  Result := '';
 end;
 
 procedure TRALnetHTTPClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -216,23 +189,7 @@ begin
   end;
 end;
 
-{ TRALnetHTTPClientMT }
-
-function TRALnetHTTPClientMT.Clone(AOwner: TComponent): TRALClientMT;
-begin
-  Result := TRALnetHTTPClientMT.Create(AOwner);
-  CopyProperties(Result);
-end;
-
-constructor TRALnetHTTPClientMT.Create(AOwner: TComponent);
-begin
-  inherited;
-  SetEngine('NetHTTP');
-end;
-
-function TRALnetHTTPClientMT.CreateClient: TRALClientHTTP;
-begin
-  Result := TRALnetHTTPClientHTTP.Create(Self);
-end;
+initialization
+  RegisterEngine(TRALnetHTTPClientHTTP);
 
 end.
