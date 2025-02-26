@@ -823,7 +823,7 @@ begin
   FreeOnTerminate := True;
   FRoute := '';
   FException := '';
-  FRequest := TRALClientRequest.Create(FParent);
+  FRequest := TRALClientRequest.Create(AOwner);
   FResponse := TRALClientResponse.Create(AOwner);
   FClient := FParent.CreateClient;
   FIndexUrl := AOwner.IndexUrl;

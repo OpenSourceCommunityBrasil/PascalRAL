@@ -208,7 +208,6 @@ begin
 
       AResponseInfo.Server := 'RAL_Indy';
       AResponseInfo.ContentEncoding := ContentEncoding;
-      AResponseInfo.ContentDisposition := ContentDisposition;
 
       vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
       if vParam <> nil then
@@ -240,7 +239,6 @@ begin
         FreeAndNil(vCookies);
       end;
 
-      AResponseInfo.ContentText := '';
       AResponseInfo.ContentStream := ResponseStream;
       AResponseInfo.ContentType := ContentType;
       AResponseInfo.ContentDisposition := ContentDisposition;

@@ -106,15 +106,19 @@ var
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
 begin
-  if Format = ctGZip then
-  begin
-    AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
-    AInStream.Read(vCRCFile, SizeOf(vCRCFile));
-    AInStream.Read(vFileSize, SizeOf(vFileSize));
+  {$IFDEF FPC}
+    if Format = ctGZip then
+    begin
+      AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
+      AInStream.Read(vCRCFile, SizeOf(vCRCFile));
+      AInStream.Read(vFileSize, SizeOf(vFileSize));
 
-    AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
-    AInStream.Position := Length(GZipHeader);
-  end;
+        AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
+        AInStream.Position := Length(GZipHeader);
+    end;
+  {$ELSE}
+    AInStream.Position := 0;
+  {$ENDIF}
 
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
@@ -130,7 +134,7 @@ begin
   if Format = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
   else
-    vZip := TDeCompressionStream.Create(AInStream, -15);
+    vZip := TDeCompressionStream.Create(AInStream, 31);
   {$ENDIF}
   try
     repeat
@@ -143,30 +147,32 @@ begin
 
   AOutStream.Position := 0;
 
-  if Format = ctGZip then
-  begin
-    vCRC32 := TRALCRC32.Create;
-    vCRC32.OutputType := rhotNone;
-    try
-      AOutStream.Position := 0;
-      vStreamCRC32 := vCRC32.HashAsStream(AOutStream);
+  {$IFDEF FPC}
+    if Format = ctGZip then
+    begin
+      vCRC32 := TRALCRC32.Create;
+      vCRC32.OutputType := rhotNone;
       try
-        vStreamCRC32.Position := 0;
-        vStreamCRC32.Read(vCRCFinal, vStreamCRC32.Size);
+        AOutStream.Position := 0;
+        vStreamCRC32 := vCRC32.HashAsStream(AOutStream);
+        try
+          vStreamCRC32.Position := 0;
+          vStreamCRC32.Read(vCRCFinal, vStreamCRC32.Size);
+        finally
+          FreeAndNil(vStreamCRC32);
+        end;
       finally
-        FreeAndNil(vStreamCRC32);
+        AOutStream.Position := 0;
+        FreeAndNil(vCRC32);
       end;
-    finally
-      AOutStream.Position := 0;
-      FreeAndNil(vCRC32);
     end;
-  end;
 
-  if (Format = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
-  begin
-    AOutStream.Size := 0;
-    raise Exception.Create(emContentCheckError);
-  end;
+    if (Format = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
+    begin
+      AOutStream.Size := 0;
+      raise Exception.Create(emContentCheckError);
+    end;
+  {$ENDIF}
 end;
 
 procedure TRALCompressZLib.SetFormat(AValue: TRALCompressType);

@@ -231,6 +231,10 @@ var
   vParam: TRALParam;
   vRespStream: TStream;
   vCookies: TStringList;
+  vPayloadLen : integer;
+  vPPayload : Pcchar;
+  vPayloadStream : TMemoryStream;
+  vPay : ansistring;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -252,6 +256,10 @@ begin
       ContentEncription := ParamByName('Content-Encription').AsString;
       AcceptEncription := ParamByName('Accept-Encription').AsString;
       Host := ParamByName('Host').AsString;
+
+      Params.CompressType := ContentCompress;
+      Params.CriptoOptions.CriptType := ContentCripto;
+      Params.CriptoOptions.Key := CriptoKey;
 
       if vServer.Authentication <> nil then
         DecodeAuth(ParamByName('Authorization').AsString, vRequest);
@@ -301,9 +309,19 @@ begin
         vPayLoad := sg_httpreq_payload(Areq);
         if Assigned(vPayLoad) then
         begin
-          vParam := Params.AddParam('ral_body', sg_str_content(vPayLoad), rpkBODY);
-          if vParam <> nil then
-            vParam.ContentType := ParamByName('Content-Type').AsString;
+          vPayloadLen := sg_str_length(vPayLoad);
+          vPPayload := sg_str_content(vPayLoad);
+          SetLength(vPay, vPayloadLen);
+          Move(vPPayload^, vPay[1], vPayloadLen);
+          vPayloadStream := TMemoryStream.Create;
+          try
+            vPayloadStream.Write(vPay[1], Length(vPay));
+            vPayloadStream.Position := 0;
+
+            RequestStream := vPayloadStream;
+          finally
+             FreeAndNil(vPayloadStream);
+          end;
         end;
 
         ContentSize := 0;
