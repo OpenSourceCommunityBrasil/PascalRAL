@@ -35,7 +35,7 @@ const
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
   vBuf: TBytes;
-  vZip: TCompressionStream;
+  vZip: TStream;
   vCount: Integer;
   vSize: LongWord;
   vCRC32: TRALCRC32;
@@ -48,10 +48,10 @@ begin
   else
     SetLength(vBuf, AInStream.Size);
 
+  {$IFDEF FPC}
   if Format = ctGZip then
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
 
-  {$IFDEF FPC}
   if Format = ctZLib then
     vZip := TCompressionStream.Create(clfastest, AOutStream)
   else
@@ -60,7 +60,7 @@ begin
   if Format = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
   else
-    vZip := TCompressionStream.Create(AOutStream, zcFastest, -15);
+    vZip := TCompressionStream.Create(AOutStream, zcFastest, 31);
   {$ENDIF}
   try
     repeat
@@ -71,26 +71,28 @@ begin
     FreeAndNil(vZip);
   end;
 
-  if Format = ctGZip then
-  begin
-    vCRC32 := TRALCRC32.Create;
-    vCRC32.OutputType := rhotNone;
-    try
-      AInStream.Position := 0;
-      vStreamCRC32 := vCRC32.HashAsStream(AInStream);
+  {$IFDEF FPC}
+    if Format = ctGZip then
+    begin
+      vCRC32 := TRALCRC32.Create;
+      vCRC32.OutputType := rhotNone;
       try
-        vStreamCRC32.Position := 0;
-        AOutStream.Position := AOutStream.Size;
-        AOutStream.CopyFrom(vStreamCRC32, vStreamCRC32.Size);
+        AInStream.Position := 0;
+        vStreamCRC32 := vCRC32.HashAsStream(AInStream);
+        try
+          vStreamCRC32.Position := 0;
+          AOutStream.Position := AOutStream.Size;
+          AOutStream.CopyFrom(vStreamCRC32, vStreamCRC32.Size);
+        finally
+          FreeAndNil(vStreamCRC32);
+        end;
       finally
-        FreeAndNil(vStreamCRC32);
+        FreeAndNil(vCRC32);
       end;
-    finally
-      FreeAndNil(vCRC32);
+      AOutStream.Position := AOutStream.Size;
+      AOutStream.Write(vSize, SizeOf(vSize));
     end;
-    AOutStream.Position := AOutStream.Size;
-    AOutStream.Write(vSize, SizeOf(vSize));
-  end;
+  {$ENDIF}
 
   AOutStream.Position := 0;
 end;
