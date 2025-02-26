@@ -17,8 +17,6 @@ echo cgi
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\CGI.dcr" "cgi.rc"
 echo Indy
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\IndyRAL.dcr" "Indy.rc"
-echo NetHttp
-%path_brcc32% -fo "..\..\pkg\Delphi\Engine\NetHttpRAL.dcr" "NetHttp.rc"
 echo Synopse
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\SynopseRAL.dcr" "Synopse.rc"
 echo UniGUI

@@ -561,23 +561,28 @@ function TRALClientHTTP.GetURL(ARoute: StringRAL; ARequest: TRALRequest;
 var
   vURL: StringRAL;
 begin
-  if AIndexUrl = -1 then
-    AIndexUrl := FIndexUrl;
+  if FParent.BaseURL.Count > 0 then
+  begin
+    if AIndexUrl = -1 then
+      AIndexUrl := FIndexUrl;
 
-  if AIndexUrl >= FParent.BaseURL.Count then
-    Exit;
+    if AIndexUrl >= FParent.BaseURL.Count then
+      Exit;
 
-  vURL := Trim(FParent.BaseURL.Strings[AIndexUrl]);
-  if not SameText(Copy(vURL, 1, 4), 'http') then
-    vURL := 'http://' + vURL;
+    vURL := Trim(FParent.BaseURL.Strings[AIndexUrl]);
+    if not SameText(Copy(vURL, 1, 4), 'http') then
+      vURL := 'http://' + vURL;
 
-  if (vURL <> '') and (vURL[RALHighStr(vURL)] = '/') then
-    Delete(vURL, RALHighStr(vURL), 1);
+    if (vURL <> '') and (vURL[RALHighStr(vURL)] = '/') then
+      Delete(vURL, RALHighStr(vURL), 1);
 
-  ARoute := ARoute + '/';
-  ARoute := FixRoute(ARoute);
+    ARoute := ARoute + '/';
+    ARoute := FixRoute(ARoute);
+    Result := vURL + ARoute;
+  end
+  else
+    Result := ARoute;
 
-  Result := vURL + ARoute;
   if Assigned(ARequest) and (ARequest.Params.Count(rpkQUERY) > 0) then
     Result := Result + '?' + ARequest.Params.AssignParamsUrl(rpkQUERY);
 end;

@@ -1,3 +1,1 @@
-TRALIndyClient BITMAP "..\components\engine\client\TRALIndyClient.bmp"
-TRALIndyClientMT BITMAP "..\components\engine\client\TRALIndyClientMT.bmp"
 TRALIndyServer BITMAP "..\components\engine\server\TRALIndyServer.bmp"
