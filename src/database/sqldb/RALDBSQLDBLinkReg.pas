@@ -36,7 +36,6 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALDBSQLDBLink]);
   RegisterComponents('RAL - Client', [TRALDBBufDataset]);
 
   RegisterComponentEditor(TRALDBBufDataset, TRALDBBufDatasetEditor);

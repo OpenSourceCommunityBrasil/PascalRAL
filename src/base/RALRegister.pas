@@ -206,20 +206,15 @@ end;
       vClass := GetEngineClass(AEngine);
       if vClass <> nil then begin
         CodeToolBoss.AddUnitToMainUsesSection(vCode, vClass.UnitName, '');
-//        LazarusIDE.ActiveProject.AddPackageDependency(vClass.PackageDependency);
 
-//        vSrcEdit := SourceEditorManagerIntf.SourceEditorIntfWithFilename(LazarusIDE.ActiveProject.ProjectInfoFile);
-
-{
         vPkg := PackageEditingInterface.FindPackageWithName(vClass.PackageDependency);
         if vPkg <> nil then
         begin
-          vFile := LazarusIDE.ActiveProject.CreateProjectFile(vPkg.Filename);
-          vFile.IsPartOfProject := True;
+          vFile := LazarusIDE.ActiveProject.CreateProjectFile(ChangeFileExt(vPkg.Filename, '.pas'));
+          vFile.IsPartOfProject := False;
           LazarusIDE.ActiveProject.AddFile(vFile, True);
-          raise Exception.Create(vPkg.Filename);
+          LazarusIDE.ActiveProject.AddPackageDependency(vClass.PackageDependency);
         end;
-}
       end;
     end;
   end;
@@ -227,7 +222,10 @@ end;
 
 function TRALClientEngines.GetAttributes: TPropertyAttributes;
 begin
-  Result := [paMultiSelect, paSortList, paValueList, paRevertable];
+  Result := [paSortList, paValueList];
+  {$IFDEF FPC}
+    Result := Result + [paPickList];
+  {$ENDIF}
 end;
 
 procedure TRALClientEngines.GetValues(Proc: TGetStrProc);

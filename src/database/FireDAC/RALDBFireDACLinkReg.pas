@@ -35,7 +35,6 @@ implementation
 
 procedure register;
 begin
-  RegisterComponents('RAL - Server', [TRALDBFireDACLink]);
   RegisterComponents('RAL - Client', [TRALDBFDMemTable]);
 
   RegisterComponentEditor(TRALDBFDMemTable, TRALDBFDMemTableEditor);

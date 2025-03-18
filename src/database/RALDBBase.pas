@@ -48,6 +48,9 @@ type
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative : boolean); virtual; abstract;
+
+    class function DatabaseName : StringRAL; virtual; abstract;
+    class function PackageDependency : StringRAL; virtual; abstract;
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
@@ -67,12 +70,66 @@ type
 
   TRALDBClass = class of TRALDBBase;
 
-  TRALDBLink = class(TRALComponent)
-  public
-    function GetDBClass: TRALDBClass; virtual; abstract;
-  end;
+  procedure RegisterDatabase(ADatabase: TRALDBClass);
+  procedure UnregisterDatabase(ADatabase: TRALDBClass);
+  function GetDatabaseClass(ADatabaseName: StringRAL): TRALDBClass;
+  procedure GetDatabaseList(AList: TStrings);
 
 implementation
+
+var
+  DatabasesDefs : TStringList;
+
+procedure CheckDatabaseDefs;
+begin
+  if DatabasesDefs = nil then
+  begin
+    DatabasesDefs := TStringList.Create;
+    DatabasesDefs.Sorted := True;
+  end;
+end;
+
+procedure DoneEngineDefs;
+begin
+  FreeAndNil(DatabasesDefs);
+end;
+
+procedure RegisterDatabase(ADatabase: TRALDBClass);
+begin
+  CheckDatabaseDefs;
+  if DatabasesDefs.IndexOfName(ADatabase.DatabaseName) < 0 then
+    DatabasesDefs.Add(ADatabase.DatabaseName + '=' + ADatabase.ClassName);
+end;
+
+procedure UnregisterDatabase(ADatabase: TRALDBClass);
+var
+  vPos : IntegerRAL;
+begin
+  CheckDatabaseDefs;
+  vPos := DatabasesDefs.IndexOfName(ADatabase.DatabaseName);
+  if vPos >= 0 then
+    DatabasesDefs.Delete(vPos);
+end;
+
+function GetDatabaseClass(ADatabaseName: StringRAL): TRALDBClass;
+var
+  vPos : IntegerRAL;
+begin
+  Result := nil;
+  CheckDatabaseDefs;
+  vPos := DatabasesDefs.IndexOfName(ADatabaseName);
+  if vPos >= 0 then
+    Result := TRALDBClass(GetClass(DatabasesDefs.ValueFromIndex[vPos]));
+end;
+
+procedure GetDatabaseList(AList: TStrings);
+var
+  vInt : IntegerRAL;
+begin
+  CheckDatabaseDefs;
+  for vInt := 0 to Pred(DatabasesDefs.Count) do
+    AList.Add(DatabasesDefs.Names[vInt]);
+end;
 
 { TRALDBBase }
 
