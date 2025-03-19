@@ -1,4 +1,4 @@
-﻿/// Unit for all HTTP Server related implementations
+﻿// Unit for all HTTP Server related implementations
 unit RALServer;
 
 interface
@@ -15,7 +15,7 @@ type
 
   { TRALSSL }
 
-  /// Internal SSL property of RALServer Component
+  // Internal SSL property of RALServer Component
   TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
@@ -25,7 +25,7 @@ type
 
   { TRALBruteForceProtection }
 
-  /// Internal BruteForce property of RALServer Component
+  // Internal BruteForce property of RALServer Component
   TRALBruteForceProtection = class(TPersistent)
   private
     FExpirationTime: IntegerRAL;
@@ -39,7 +39,7 @@ type
 
   { TRALClientList }
 
-  /// Internal List of clients of RALServer Component
+  // Internal List of clients of RALServer Component
   TRALClientList = class
   private
     FLastAccess: TDateTime;
@@ -51,7 +51,7 @@ type
 
   { TRALClientBlockList }
 
-  /// Internal List of blocked IPs of RALServer Component
+  // Internal List of blocked IPs of RALServer Component
   TRALClientBlockList = class(TRALClientList)
   private
     FNumTry: IntegerRAL;
@@ -63,7 +63,7 @@ type
 
   { TRALIPConfig }
 
-  /// Internal IP Configuration property of RALServer
+  // Internal IP Configuration property of RALServer
   TRALIPConfig = class(TPersistent)
   private
     FIPv4Bind: StringRAL;
@@ -80,12 +80,12 @@ type
     property IPv6Enabled: boolean read FIPv6Enabled write SetIPv6Enabled;
   end;
 
-  /// Event fired when requesting IP is blocked
+  // Event fired when requesting IP is blocked
   TRALOnClientBlock = procedure(Sender: TObject; AClientIP: StringRAL) of object;
 
   { TRALCORSOptions }
 
-  /// Internal CORS configuration of Server
+  // Internal CORS configuration of Server
   TRALCORSOptions = class(TPersistent)
   private
     FAllowOrigin: StringRAL;
@@ -101,17 +101,17 @@ type
     procedure AddAllowHeader(AValue: StringRAL);
     function GetAllowHeaders: StringRAL;
   published
-    /// List of headers that are allowed in the CORS configuration
+    // List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    /// List of IPs allowed to comunicate with the server
+    // List of IPs allowed to comunicate with the server
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
-    /// Time in miliseconds to allow an active CORS session
+    // Time in miliseconds to allow an active CORS session
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
   { TRALSecurity }
 
-  /// Base class for Server Security definitions
+  // Base class for Server Security definitions
   TRALSecurity = class(TPersistent)
   private
     FBlackIPList: TRALStringListSafe;
@@ -121,11 +121,11 @@ type
     FFloodList: TRALStringListSafe;
     FOptions: TRALSecurityOptions;
     FWhiteIPList: TRALStringListSafe;
-    /// Creates and returns the internal Blacklisted IPs
+    // Creates and returns the internal Blacklisted IPs
     function GetBlackIPList: TStringList;
-    /// Creates and returns the internal Whitelisted IPs
+    // Creates and returns the internal Whitelisted IPs
     function GetWhiteIPList: TStringList;
-    /// Setter functions for class properties
+    // Setter functions for class properties
     procedure SetBlackIPList(AValue: TStringList);
     procedure SetBruteForce(const Value: TRALBruteForceProtection);
     procedure SetFloodTimeInterval(const Value: IntegerRAL);
@@ -135,41 +135,41 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    /// Adds the Client IP to the internal blocked IP list
+    // Adds the Client IP to the internal blocked IP list
     procedure BlockClient(const AClientIP: StringRAL);
-    /// Verifies if the Client IP is blacklisted
+    // Verifies if the Client IP is blacklisted
     function CheckBlockClientIP(const AClientIP: StringRAL): boolean;
-    /// Removes the IPs that are stored longer than the preconfigured duration
+    // Removes the IPs that are stored longer than the preconfigured duration
     procedure ClearExpiredIPs;
-    /// Verifies if the incomming IP is known for request flooding
+    // Verifies if the incomming IP is known for request flooding
     function CheckFlood(const AClientIP: StringRAL): boolean;
-    /// Removes an IP from the list of blocked IPs
+    // Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
-    /// Gets a client block object from the list of blocked IPs
+    // Gets a client block object from the list of blocked IPs
     function GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
-    /// Gets a client object from the list of blocked IPs
+    // Gets a client object from the list of blocked IPs
     function GetClientList(const AClientIP: StringRAL): TRALClientList;
-    /// Gets the number of tries to block client, in case client is not blocked
-    /// return zero
+    // Gets the number of tries to block client, in case client is not blocked
+    // return zero
     function GetBlockClientTry(const AClientIP: StringRAL): integer;
-    /// Checks if the number de tries of client exceed the established limit
+    // Checks if the number de tries of client exceed the established limit
     function CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
   published
-    /// List of IPs that will not receive a response from the server
+    // List of IPs that will not receive a response from the server
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
-    /// Set of configurations to block BruteForce attacks
+    // Set of configurations to block BruteForce attacks
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
-    /// Time in miliseconds between requests by the same IP that the server will allow
+    // Time in miliseconds between requests by the same IP that the server will allow
     property FloodTimeInterval: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;
-    /// Flags that will enable/disable security features
+    // Flags that will enable/disable security features
     property Options: TRALSecurityOptions read FOptions write SetOptions;
-    /// List of IPs that will always receive a response from the server and won't be blocked
+    // List of IPs that will always receive a response from the server and won't be blocked
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
   end;
 
   { TRALServer }
 
-  /// Base class for HTTP Server components
+  // Base class for HTTP Server components
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
@@ -194,22 +194,22 @@ type
     FOnResponse: TRALOnReply;
     FOnClientBlock: TRALOnClientBlock;
   protected
-    /// Adds a fixed subroute from other components into server routes
+    // Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
-    /// Processes CORS headers
+    // Processes CORS headers
     procedure CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
                         ARequest: TRALRequest; AResponse: TRALResponse);
-    /// Used by inherited members to set SSL settings
+    // Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
-    /// Removes a fixed subroute used by other components
+    // Removes a fixed subroute used by other components
     procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
-    /// Used by inherited members to return the SSL definitions
+    // Used by inherited members to return the SSL definitions
     function GetDefaultSSL: TRALSSL;
-    /// Checks if the current server component allows IPv6
+    // Checks if the current server component allows IPv6
     function IPv6IsImplemented: boolean; virtual;
-    /// Internal function to properly dispose the component attached to the server
+    // Internal function to properly dispose the component attached to the server
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// Function that will call Validate from the current authentication component
+    // Function that will call Validate from the current authentication component
     function ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
@@ -223,65 +223,64 @@ type
     destructor Destroy; override;
 
     function CountSubModules: IntegerRAL;
-    /// Shortcut to create routes on the server
+    // Shortcut to create routes on the server
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
-    /// Core procedure of the server, every request will pass through here to be
-    /// processed into response that will be answered to the client
+    { Core procedure of the server, every request will pass through here to be
+      processed into response that will be answered to the client}
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
-    /// Validate requests headers before ProcessCommands
+    // Validate requests headers before ProcessCommands
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
-    /// Create handle request of server
+    // Create handle request of server
     function CreateRequest: TRALRequest;
-    /// Create handle response of server
+    // Create handle response of server
     function CreateResponse: TRALResponse;
     function SSLEnabled: boolean;
-    /// Shortcut to start the server
+    // Shortcut to start the server
     procedure Start;
-    /// Shortcut to stop the server
+    // Shortcut to stop the server
     procedure Stop;
-
+    // Returns a submodule based on the provided AIndex
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
     property Active: boolean read FActive write SetActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    /// Compression algorithm that will be used on responses to the client
+    // Compression algorithm that will be used on responses to the client
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    /// Determinates in seconds how long will the cookies be kept
+    // Determinates in seconds how long will the cookies be kept
     property CookieLife: integer read FCookieLife write FCookieLife;
-    /// Determinates CORS configurations for server-server communication
+    // Determinates CORS configurations for server-server communication
     property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
-    /// Options for P2P crypt security
+    // Options for P2P crypt security
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
-    /// Read-only property to indicate engine version
+    // Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
-    /// Configuration params for IP listening
+    // Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
     property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
-    /// Port to listen to
+    // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
-    /// Route configuration of the server, a.k.a endpoints
+    // Route configuration of the server, a.k.a endpoints
     property Routes: TRALRoutes read FRoutes write FRoutes;
-    /// Security configurations of the server
+    // Security configurations of the server
     property Security: TRALSecurity read FSecurity write FSecurity;
-    /// Default text answered by the server without WebModule when requesting the route '/'
+    // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    /// Timeout (miliseconds) for WebModule to determinate max age of the session
+    // Timeout (miliseconds) for WebModule to determinate max age of the session
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
-    /// Boolean check to whether or not show the default text for route '/'
+    // Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
-    /// Event fired whenever an incoming IP gets blocked by the server
+    // Event fired whenever an incoming IP gets blocked by the server
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
-    /// Event fired whenever any request is received by the server
+    // Event fired whenever any request is received by the server
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
-    /// Event fired whenever any response is sent by the server
+    // Event fired whenever any response is sent by the server
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
   end;
 
-  /// Used by other components to add fixed routes to the RAL Server
-
   { TRALModuleRoutes }
 
+  // Attachment module to allow adding custom route modules for 3rd party components
   TRALModuleRoutes = class(TRALComponent)
   private
     FRoutes: TRALRoutes;
@@ -290,16 +289,19 @@ type
     FOnBeforeAnswer : TRALOnReply;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    // Defines the handle of the RALServer in which will be registered the routes
     procedure SetServer(AValue: TRALServer); virtual;
+    // Defines the Domain prefix of all the routes of the instance of this class
     procedure SetDomain(const AValue: StringRAL); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-
+    // Shortcut to create route on the server, similar to RALServer's CreateRoute
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute;
-
+    // Inherited method of RALServer
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
+    // Inherited method of RALServer
     function GetListRoutes: TList; virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;

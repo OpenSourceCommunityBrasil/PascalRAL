@@ -118,7 +118,9 @@ begin
   begin
     if FHttp <> nil then begin
       FHttp.Shutdown;
-      Sleep(100);
+      FHttp.Sock.Close;
+      FHttp.Terminate;
+      FHttp.WaitFor;
       FreeAndNil(FHttp);
     end;
   end;

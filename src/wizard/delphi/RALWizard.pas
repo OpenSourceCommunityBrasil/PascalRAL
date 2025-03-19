@@ -36,7 +36,11 @@ Type
     function GetAuthor: string;
     function GetComment: string;
     function GetPage: string;
+    {$IFDEF WIN64}
+    function GetGlyph: THandle;
+    {$ELSE}
     function GetGlyph: Cardinal;
+    {$ENDIF}
 
     { IOTARepositoryWizard80 }
     function GetGalleryCategory: IOTAGalleryCategory;
@@ -126,7 +130,11 @@ begin
   Result := nil;
 end;
 
+{$IFDEF WIN64}
+function TRALWizard.GetGlyph: THandle;
+{$ELSE}
 function TRALWizard.GetGlyph: Cardinal;
+{$ENDIF}
 begin
   // use standard icon
   Result := 0;
