@@ -54,7 +54,6 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALDBZeosLink]);
   RegisterComponents('RAL - Client', [TRALDBZMemTable]);
 
   RegisterComponentEditor(TRALDBZMemTable, TRALDBZMemTableEditor);

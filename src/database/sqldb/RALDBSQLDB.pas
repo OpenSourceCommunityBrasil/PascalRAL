@@ -38,23 +38,12 @@ type
                              var AContentType: StringRAL;
                              var ANative: boolean); override;
     function CanExportNative : boolean; override;
-  end;
 
-  { TRALDBSQLDBLink }
-
-  TRALDBSQLDBLink = class(TRALDBLink)
-  public
-    function GetDBClass : TRALDBClass; override;
+    class function DatabaseName : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
-
-{ TRALDBSQLDBLink }
-
-function TRALDBSQLDBLink.GetDBClass : TRALDBClass;
-begin
-  Result := TRALDBSQLDB;
-end;
 
 { TRALDBSQLDB }
 
@@ -187,6 +176,16 @@ begin
   Result := True;
 end;
 
+class function TRALDBSQLDB.DatabaseName: StringRAL;
+begin
+  Result := 'SQLDB';
+end;
+
+class function TRALDBSQLDB.PackageDependency: StringRAL;
+begin
+  Result := '';
+end;
+
 function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams
   ): TDataset;
 var
@@ -279,6 +278,10 @@ begin
     FreeAndNil(vQuery);
   end;
 end;
+
+initialization
+  RegisterClass(TRALDBSQLDB);
+  RegisterDatabase(TRALDBSQLDB);
 
 end.
 

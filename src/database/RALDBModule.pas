@@ -15,7 +15,7 @@ type
   TRALDBModule = class(TRALModuleRoutes)
   private
     FDatabase: StringRAL;
-    FDatabaseLink: TRALDBLink;
+    FDatabaseLink: StringRAL;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FPassword: StringRAL;
@@ -33,9 +33,7 @@ type
     procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure GetSQLFields(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure SetDataBaseLink(AValue: TRALDBLink);
 
     procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
     procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
@@ -45,7 +43,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property Database: StringRAL read FDatabase write FDatabase;
-    property DatabaseLink: TRALDBLink read FDataBaseLink write SetDataBaseLink;
+    property DatabaseLink: StringRAL read FDataBaseLink write FDataBaseLink;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
     property Password: StringRAL read FPassword write FPassword;
@@ -144,25 +142,6 @@ begin
   end;
 end;
 
-procedure TRALDBModule.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  if (Operation = opRemove) and (AComponent = FDataBaseLink) then
-    FDataBaseLink := nil;
-  inherited Notification(AComponent, Operation);
-end;
-
-procedure TRALDBModule.SetDataBaseLink(AValue: TRALDBLink);
-begin
-  if FDataBaseLink <> nil then
-    FDataBaseLink.RemoveFreeNotification(Self);
-
-  if AValue <> FDataBaseLink then
-    FDataBaseLink := AValue;
-
-  if FDataBaseLink <> nil then
-    FDataBaseLink.FreeNotification(Self);
-end;
-
 function TRALDBModule.FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
 var
   vClass: TRALDBClass;
@@ -171,8 +150,7 @@ begin
   Result := nil;
   vClass := nil;
 
-  if FDataBaseLink <> nil then
-    vClass := FDataBaseLink.GetDBClass;
+  vClass := GetDatabaseClass(FDatabaseLink);
 
   if vClass <> nil then
   begin

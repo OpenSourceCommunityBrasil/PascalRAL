@@ -190,11 +190,9 @@ type
   procedure RegisterEngine(AEngine : TRALClientHTTPClass);
   procedure UnregisterEngine(AEngine : TRALClientHTTPClass);
   function GetEngineClass(AEngineName : StringRAL) : TRALClientHTTPClass;
-  procedure GetEngineList(AList : TSTrings);
+  procedure GetEngineList(AList : TStrings);
 
 implementation
-
-{ TRALClient }
 
 var
   EnginesDefs : TStringList;
@@ -241,7 +239,7 @@ begin
     Result := TRALClientHTTPClass(GetClass(EnginesDefs.ValueFromIndex[vPos]));
 end;
 
-procedure GetEngineList(AList: TSTrings);
+procedure GetEngineList(AList: TStrings);
 var
   vInt : IntegerRAL;
 begin
@@ -249,6 +247,8 @@ begin
   for vInt := 0 to Pred(EnginesDefs.Count) do
     AList.Add(EnginesDefs.Names[vInt]);
 end;
+
+{ TRALClient }
 
 procedure TRALClient.SetEngineType(AValue: StringRAL);
 var

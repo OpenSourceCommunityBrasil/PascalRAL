@@ -50,13 +50,9 @@ type
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); override;
-  end;
 
-  { TRALDBFireDACLink }
-
-  TRALDBFireDACLink = class(TRALDBLink)
-  public
-    function GetDBClass: TRALDBClass; override;
+    class function DatabaseName : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
@@ -221,6 +217,20 @@ begin
   AStream.Position := 0;
 end;
 
+class function TRALDBFireDAC.DatabaseName: StringRAL;
+begin
+  {$IFDEF DELPHIXE4UP}
+    Result := 'FireDAC';
+  {$ELSE}
+    Result := 'AnyDAC';
+  {$ENDIF}
+end;
+
+class function TRALDBFireDAC.PackageDependency: StringRAL;
+begin
+  Result := '';
+end;
+
 function TRALDBFireDAC.CanExportNative: boolean;
 begin
   Result := True;
@@ -272,11 +282,8 @@ begin
   end;
 end;
 
-{ TRALDBFireDACLink }
-
-function TRALDBFireDACLink.GetDBClass: TRALDBClass;
-begin
-  Result := TRALDBFireDAC;
-end;
+initialization
+  RegisterClass(TRALDBFireDAC);
+  RegisterDatabase(TRALDBFireDAC);
 
 end.

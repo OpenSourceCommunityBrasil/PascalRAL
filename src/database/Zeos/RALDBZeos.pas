@@ -39,23 +39,12 @@ type
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); override;
-  end;
 
-  { TRALDBZeosLink }
-
-  TRALDBZeosLink = class(TRALDBLink)
-  public
-    function GetDBClass: TRALDBClass; override;
+    class function DatabaseName : StringRAL; override;
+    class function PackageDependency : StringRAL; override;
   end;
 
 implementation
-
-{ TRALDBZeosLink }
-
-function TRALDBZeosLink.GetDBClass: TRALDBClass;
-begin
-  Result := TRALDBZeos;
-end;
 
 { TRALDBZeos }
 
@@ -191,6 +180,16 @@ begin
   {$ENDIF}
 end;
 
+class function TRALDBZeos.DatabaseName: StringRAL;
+begin
+  Result := 'Zeos';
+end;
+
+class function TRALDBZeos.PackageDependency: StringRAL;
+begin
+  Result := '';
+end;
+
 function TRALDBZeos.CanExportNative: boolean;
 begin
   {$IFNDEF FPC}
@@ -313,6 +312,10 @@ begin
     FreeAndNil(vQuery);
   end;
 end;
+
+initialization
+  RegisterClass(TRALDBZeos);
+  RegisterDatabase(TRALDBZeos);
 
 end.
 
