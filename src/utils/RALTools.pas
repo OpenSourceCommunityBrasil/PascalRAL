@@ -29,10 +29,6 @@ function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
 
-{$IF DEFINED(RALLinux) OR DEFINED(RALApple)}
-function sysconf(name: longint): int64; cdecl; external 'libc' name 'sysconf';
-{$IFEND}
-
 implementation
 
 function FixRoute(ARoute: StringRAL): StringRAL;
@@ -217,22 +213,16 @@ end;
 
 function RALCPUCount: integer;
 {$IFNDEF FPC}
-  {$IFDEF RALWindows}
+  {$IFDEF DELPHIXE2UP}
+  begin
+    Result := CPUCount;
+  {$ELSE}
   var
     info: TSystemInfo;
   begin
     FillChar(info, SizeOf(info), 0);
     GetSystemInfo(info);
     Result := info.dwNumberOfProcessors;
-  {$ELSE}
-    {$IF DEFINED(RALLinux) OR DEFINED(RALApple)}
-    begin
-      // 83 - num process
-      Result := sysconf(83);
-    {$ELSE}
-    begin
-      Result := 1;
-    {$IFEND}
   {$ENDIF}
 {$ELSE}
 begin
