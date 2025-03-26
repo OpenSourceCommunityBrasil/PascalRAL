@@ -312,15 +312,18 @@ begin
           vPayloadLen := sg_str_length(vPayLoad);
           vPPayload := sg_str_content(vPayLoad);
           SetLength(vPay, vPayloadLen);
-          Move(vPPayload^, vPay[1], vPayloadLen);
-          vPayloadStream := TMemoryStream.Create;
-          try
-            vPayloadStream.Write(vPay[1], Length(vPay));
-            vPayloadStream.Position := 0;
+          if Length(vPay) > 0 then
+          begin
+            Move(vPPayload^, vPay[1], vPayloadLen);
+            vPayloadStream := TMemoryStream.Create;
+            try
+              vPayloadStream.Write(vPay[1], Length(vPay));
+              vPayloadStream.Position := 0;
 
-            RequestStream := vPayloadStream;
-          finally
-             FreeAndNil(vPayloadStream);
+              RequestStream := vPayloadStream;
+            finally
+               FreeAndNil(vPayloadStream);
+            end;
           end;
         end;
 
@@ -370,8 +373,12 @@ begin
       FreeAndNil(vCookies);
     end;
 
-    sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
-                          DoStreamFree, vResponse.StatusCode);
+    if vRespStream <> nil then
+      sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
+                            DoStreamFree, vResponse.StatusCode)
+    else
+      sg_httpres_sendstream(Ares, 0, DoStreamRead, nil, DoStreamFree,
+                            vResponse.StatusCode)
   finally
     FreeAndNil(vStrMap);
     FreeAndNil(vResponse);

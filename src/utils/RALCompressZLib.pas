@@ -42,6 +42,8 @@ var
   vStreamCRC32: TStream;
 begin
   vSize := AInStream.Size;
+  if vSize = 0 then exit;
+  
 
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
