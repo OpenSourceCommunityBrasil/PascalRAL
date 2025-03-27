@@ -13,7 +13,7 @@ uses
   Classes, SysUtils, DateUtils,
   libsagui,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  RALParams, RALTools, RALCompress;
 
 type
   { TRALSaguiSSL }
@@ -310,10 +310,10 @@ begin
         if Assigned(vPayLoad) then
         begin
           vPayloadLen := sg_str_length(vPayLoad);
-          vPPayload := sg_str_content(vPayLoad);
-          SetLength(vPay, vPayloadLen);
-          if Length(vPay) > 0 then
+          if vPayloadLen > 0 then
           begin
+            vPPayload := sg_str_content(vPayLoad);
+            SetLength(vPay, vPayloadLen);
             Move(vPPayload^, vPay[1], vPayloadLen);
             vPayloadStream := TMemoryStream.Create;
             try
@@ -328,10 +328,6 @@ begin
         end;
 
         ContentSize := 0;
-
-        Params.CompressType := ContentCompress;
-        Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
         vStr := sg_httpreq_version(Areq);
         vInt := Pos('/', vStr);

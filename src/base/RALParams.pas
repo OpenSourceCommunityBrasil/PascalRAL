@@ -1212,7 +1212,7 @@ var
 begin
   Result := nil;
 
-  vClass := TRALCompress.GetCompressClass(FCompressType);
+  vClass := GetCompressClass(FCompressType);
   if vClass <> nil then
   begin
     vCompress := vClass.Create;
@@ -1263,7 +1263,7 @@ var
 begin
   Result := nil;
 
-  vClass := TRALCompress.GetCompressClass(FCompressType);
+  vClass := GetCompressClass(FCompressType);
   if vClass <> nil then
   begin
     vCompress := vClass.Create;

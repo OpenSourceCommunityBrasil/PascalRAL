@@ -99,7 +99,7 @@ begin
   if Parent.CompressType <> ctNone then
   begin
     ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
-    ARequest.Params.AddParam('Accept-Encoding', TRALCompress.GetSuportedCompress, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
   end;
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;

@@ -104,7 +104,7 @@ begin
       AcceptEncoding := ARequestInfo.AcceptEncoding;
       ContentSize := ARequestInfo.ContentLength;
 
-      Query := Copy(ARequestInfo.Document,5,Length(ARequestInfo.Document));
+      Query := Copy(ARequestInfo.Document, 5, Length(ARequestInfo.Document));
       Query := FixRoute(Query);
 
       Method := HTTPMethodToRALMethod(ARequestInfo.Command);

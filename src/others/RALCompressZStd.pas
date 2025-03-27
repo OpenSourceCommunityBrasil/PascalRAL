@@ -19,8 +19,9 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
-
-    class function CheckDependency : boolean; override;
+  public
+    class function CompressTypes : TRALCompressTypes; override;
+    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; override;
   end;
 
 implementation
@@ -95,13 +96,20 @@ begin
   inherited;
 end;
 
-class function TRALCompressZStd.CheckDependency: boolean;
+class function TRALCompressZStd.CompressTypes: TRALCompressTypes;
 begin
-  Result := ZSTDIsLoaded;
+  Result := [ctZStd];
+end;
+
+class function TRALCompressZStd.BestCompressFromClass(ATypes: TRALCompressTypes): TRALCompressType;
+begin
+  Result := inherited BestCompressFromClass(ATypes);
+  if ctZStd in ATypes then
+    Result := ctZStd;
 end;
 
 initialization
   RegisterClass(TRALCompressZStd);
-  TRALCompress.UpdateDeclaredClasses;
+  RegisterCompress(TRALCompressZStd);
 
 end.

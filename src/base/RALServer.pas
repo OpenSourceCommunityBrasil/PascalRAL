@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo, DateUtils,
   RALAuthentication, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALCripto, RALCompress, RALCompressZLib, RALResponsePages;
+  RALCripto, RALCompress, RALResponsePages, RALCompressZLib;
 
 type
   TRALServer = class;
@@ -705,14 +705,14 @@ begin
   begin
     AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.ContentEncoding := ARequest.ContentEncoding;
-    AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
+    AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.ContentEncoding := ARequest.AcceptEncoding;
-    AResponse.AcceptEncoding := TRALCompress.GetSuportedCompress;
+    AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
   else
@@ -770,9 +770,6 @@ procedure TRALServer.SetActive(const AValue: boolean);
 begin
   if FActive = AValue then
     Exit;
-
-  if AValue then
-    TRALCompress.CheckDependencies;
 
   FActive := AValue;
 end;

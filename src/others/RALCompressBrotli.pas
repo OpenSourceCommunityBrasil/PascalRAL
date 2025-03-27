@@ -15,8 +15,9 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
-
-    class function CheckDependency: boolean; override;
+  public
+    class function CompressTypes : TRALCompressTypes; override;
+    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; override;
   end;
 
 implementation
@@ -83,13 +84,20 @@ begin
   inherited;
 end;
 
-class function TRALCompressBrotli.CheckDependency: boolean;
+class function TRALCompressBrotli.CompressTypes: TRALCompressTypes;
 begin
-  Result := TBrotli.IsLoaded;
+  Result := [ctBrotli];
+end;
+
+class function TRALCompressBrotli.BestCompressFromClass(ATypes: TRALCompressTypes): TRALCompressType;
+begin
+  Result:= inherited BestCompressFromClass(ATypes);
+  if ctBrotli in ATypes then
+    Result := ctBrotli;
 end;
 
 initialization
   RegisterClass(TRALCompressBrotli);
-  TRALCompress.UpdateDeclaredClasses;
+  RegisterCompress(TRALCompressBrotli);
 
 end.

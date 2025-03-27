@@ -168,8 +168,9 @@ var
   vStr: TStringList;
   vInt: Integer;
 begin
-  vStr := TRALCompress.GetInstalledList;
+  vStr := TStringList.Create;
   try
+    GetCompressList(vStr);
     for vInt := 0 to Pred(vStr.Count) do
       Proc(vStr.Strings[vInt]);
   finally

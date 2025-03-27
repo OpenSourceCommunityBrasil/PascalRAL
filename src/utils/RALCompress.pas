@@ -15,7 +15,6 @@ type
 
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd, ctBrotli);
   TRALCompressTypes = set of TRALCompressType;
-  TRALCompressLibs = (clZLib, clZStd, clBrotli);
 
   { TRALCompress }
 
@@ -27,8 +26,6 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
-
-    class function CheckDependency: boolean; virtual; abstract;
   public
     function Compress(AStream: TStream): TStream; overload;
     function Compress(const AString: StringRAL): StringRAL; overload;
@@ -37,37 +34,133 @@ type
     function Decompress(const AString: StringRAL): StringRAL; overload;
     procedure DecompressFile(AInFile, AOutFile: StringRAL);
 
-    class procedure CheckDependencies;
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
-    class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
-    class function GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
-    class function GetInstalledList: TStringList;
-    class function GetSuportedCompress: StringRAL;
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
-    class procedure UpdateDeclaredClasses;
+    class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
+    class function CompressTypes : TRALCompressTypes; virtual; abstract;
+    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
   published
     property Format: TRALCompressType read FFormat write SetFormat;
   end;
 
+  procedure RegisterCompress(ACompress : TRALCompressClass);
+  procedure UnregisterCompress(ACompress : TRALCompressClass);
+  function GetCompressClass(ACompressType : TRALCompressType) : TRALCompressClass;
+  procedure GetCompressList(AList : TStrings);
+  function GetSuportedCompress : TRALCompressTypes;
+  function GetAcceptCompress : StringRAL;
+
 implementation
 
 const
-  cCompressTypeStr: array[TRALCompressType] of StringRAL = (
-                      '', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
-  cCompressLibsClass: array[TRALCompressLibs] of StringRAL = (
-                        'TRALCompressZLib', 'TRALCompressZStd', 'TRALCompressBrotli');
-  cCompressLibsTypes: array[TRALCompressLibs] of TRALCompressTypes = (
-                        [ctDeflate, ctZLib, ctGZip], [ctZStd], [ctBrotli]);
+  CompressWeight : array[TRALCompressType] of integer = (0, 1, 2, 3, 5, 4);
+  CompressNames : array[TRALCompressType] of StringRAL = ('', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
 
 var
-  vDeclaredCompressLibs: array[TRALCompressLibs] of boolean;
+  CompressDefs : TStringList;
 
-procedure LoadDeclaredCompressLibs;
-var
-  vLib: TRALCompressLibs;
+procedure CheckCompressDefs;
 begin
-  for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
-    vDeclaredCompressLibs[vLib] := GetClass(cCompressLibsClass[vLib]) <> nil;
+  if CompressDefs = nil then
+  begin
+    CompressDefs := TStringList.Create;
+    CompressDefs.Sorted := True;
+  end;
+end;
+
+procedure DoneCompressDefs;
+begin
+  FreeAndNil(CompressDefs);
+end;
+
+procedure RegisterCompress(ACompress: TRALCompressClass);
+var
+  vTypes: TRALCompressTypes;
+  vType: TRALCompressType;
+  vStrType: StringRAL;
+begin
+  CheckCompressDefs;
+  vTypes := ACompress.CompressTypes;
+  for vType := Low(TRALCompressType) to High(TRALCompressType) do begin
+    vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
+    if (vType in vTypes) and (CompressDefs.IndexOfName(vStrType) < 0) then
+      CompressDefs.Add(vStrType + '=' + ACompress.ClassName);
+  end;
+end;
+
+procedure UnregisterCompress(ACompress: TRALCompressClass);
+var
+  vTypes: TRALCompressTypes;
+  vType: TRALCompressType;
+  vStrType: StringRAL;
+  vPos : IntegerRAL;
+begin
+  CheckCompressDefs;
+  vTypes := ACompress.CompressTypes;
+  for vType := Low(TRALCompressType) to High(TRALCompressType) do begin
+    if vType in vTypes then
+    begin
+      vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
+      vPos := CompressDefs.IndexOfName(vStrType);
+      if vPos >= 0 then
+        CompressDefs.Delete(vPos);
+    end;
+  end;
+end;
+
+function GetCompressClass(ACompressType: TRALCompressType): TRALCompressClass;
+var
+  vPos : IntegerRAL;
+  vStrType : StringRAL;
+begin
+  Result := nil;
+  CheckCompressDefs;
+  vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(ACompressType));
+  vPos := CompressDefs.IndexOfName(vStrType);
+  if vPos >= 0 then
+    Result := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vPos]));
+end;
+
+procedure GetCompressList(AList: TStrings);
+var
+  vInt : IntegerRAL;
+begin
+  CheckCompressDefs;
+  for vInt := 0 to Pred(CompressDefs.Count) do
+    AList.Add(CompressDefs.Names[vInt]);
+end;
+
+function GetSuportedCompress: TRALCompressTypes;
+var
+  vInt: IntegerRAL;
+  vClass: TRALCompressClass;
+begin
+  Result := [];
+  for vInt := 0 to Pred(CompressDefs.Count) do
+  begin
+    vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));
+    Result := Result + vClass.CompressTypes;
+  end;
+end;
+
+function GetAcceptCompress: StringRAL;
+var
+  vTypes : TRALCompressTypes;
+  vType: TRALCompressType;
+  vStrTypes: StringRAL;
+begin
+  vTypes := GetSuportedCompress;
+
+  vStrTypes := '';
+  for vType := Low(TRALCompressType) to High(TRALCompressType) do
+  begin
+    if (vType in vTypes) and (CompressNames[vType] <> '') then
+    begin
+      if vStrTypes <> '' then
+        vStrTypes := vStrTypes + ', ';
+      vStrTypes := vStrTypes + CompressNames[vType];
+    end;
+  end;
 end;
 
 { TRALCompress }
@@ -155,146 +248,70 @@ begin
   end;
 end;
 
-class function TRALCompress.GetSuportedCompress: StringRAL;
+class function TRALCompress.CompressToString(ACompress: TRALCompressType): StringRAL;
 begin
-  Result := '';
-  if vDeclaredCompressLibs[clZLib] then
-    Result := 'gzip, zlib, deflate';
-
-  if vDeclaredCompressLibs[clZStd] then
-  begin
-    if Result <> '' then
-      Result := Result + ',';
-    Result := Result + 'zstd';
-  end;
-
-  if vDeclaredCompressLibs[clBrotli] then
-  begin
-    if Result <> '' then
-      Result := Result + ',';
-    Result := Result + 'br';
-  end;
-end;
-
-class function TRALCompress.GetInstalledList: TStringList;
-var
-  vLib: TRALCompressLibs;
-  vCompress: TRALCompressClass;
-  vTypes: TRALCompressTypes;
-  vType: TRALCompressType;
-  vStr: StringRAL;
-begin
-  Result := TStringList.Create;
-  Result.Add(GetEnumName(TypeInfo(TRALCompressType), 0));  // clNone
-
-  for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
-  begin
-    vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
-    if (vCompress <> nil) then
-    begin
-      vTypes := cCompressLibsTypes[vLib];
-      for vType := Low(TRALCompressType) to High(TRALCompressType) do
-      begin
-        if vType in vTypes then
-        begin
-          vStr := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
-          if Result.IndexOf(vStr) < 0 then
-            Result.Add(vStr);
-        end;
-      end;
-    end;
-  end;
-end;
-
-class procedure TRALCompress.UpdateDeclaredClasses;
-begin
-  LoadDeclaredCompressLibs;
+  Result := CompressNames[ACompress];
 end;
 
 class function TRALCompress.StringToCompress(const AStr: StringRAL): TRALCompressType;
 begin
-  if (vDeclaredCompressLibs[clZLib]) and SameText(AStr, 'gzip') then
+  if SameText(AStr, 'gzip') then
     Result := ctGZip
-  else if (vDeclaredCompressLibs[clZLib]) and SameText(AStr, 'zlib') then
+  else if SameText(AStr, 'zlib') then
     Result := ctZLib
-  else if (vDeclaredCompressLibs[clZLib]) and SameText(AStr, 'deflate') then
+  else if SameText(AStr, 'deflate') then
     Result := ctDeflate
-  else if (vDeclaredCompressLibs[clZStd]) and SameText(AStr, 'zstd') then
+  else if SameText(AStr, 'zstd') then
     Result := ctZStd
-  else if (vDeclaredCompressLibs[clBrotli]) and SameText(AStr, 'br') then
+  else if SameText(AStr, 'br') then
     Result := ctBrotli
   else
     Result := ctNone;
-end;
-
-class function TRALCompress.CompressToString(ACompress: TRALCompressType): StringRAL;
-begin
-  case ACompress of
-    ctNone    : Result := '';
-    ctGZip    : Result := 'gzip';
-    ctDeflate : Result := 'deflate';
-    ctZLib    : Result := 'zlib';
-    ctZStd    : Result := 'zstd';
-    ctBrotli  : Result := 'br';
-  end;
 end;
 
 class function TRALCompress.GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
 var
-  vStr: StringRAL;
+  vInt: IntegerRAL;
+  vClass: TRALCompressClass;
+  vList: TStringList;
+  vTypes: TRALCompressTypes;
+  vType: TRALCompressType;
+  vMax: integer;
 begin
-  vStr := LowerCase(AEncoding);
-  if (vDeclaredCompressLibs[clZStd]) and (Pos(StringRAL('zstd'), vStr) > 0) then
-    Result := ctZStd
-  else if (vDeclaredCompressLibs[clBrotli]) and (Pos(StringRAL('br'), vStr) > 0) then
-    Result := ctBrotli
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('gzip'), vStr) > 0) then
-    Result := ctGZip
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('deflate'), vStr) > 0) then
-    Result := ctDeflate
-  else if (vDeclaredCompressLibs[clZLib]) and (Pos(StringRAL('zlib'), vStr) > 0) then
-    Result := ctZLib
-  else
-    Result := ctNone;
-end;
+  Result := ctNone;
 
-class function TRALCompress.GetCompressClass(ACompress: TRALCompressType): TRALCompressClass;
-begin
-  Result := nil;
-
-  case ACompress of
-    ctNone    : Result := nil;
-    ctGZip,
-    ctDeflate,
-    ctZLib    : Result := TRALCompressClass(GetClass(cCompressLibsClass[clZLib]));
-    ctZStd    : Result := TRALCompressClass(GetClass(cCompressLibsClass[clZStd]));
-    ctBrotli  : Result := TRALCompressClass(GetClass(cCompressLibsClass[clBrotli]));
+  vTypes := [];
+  vList := TStringList.Create;
+  try
+    vList.LineBreak := ',';
+    vList.Text := AEncoding;
+    for vInt := 0 to Pred(vList.Count) do
+      vTypes := vTypes + [StringToCompress(Trim(vList.Strings[vInt]))];
+  finally
+    FreeAndNil(vList);
   end;
-end;
 
-class procedure TRALCompress.CheckDependencies;
-var
-  vLib: TRALCompressLibs;
-  vCompress: TRALCompressClass;
-  vLibs: StringRAL;
-begin
-  vLibs := '';
-  for vLib := Low(TRALCompressLibs) to High(TRALCompressLibs) do
+  vMax := -1;
+  for vInt := 0 to Pred(CompressDefs.Count) do
   begin
-    vCompress := TRALCompressClass(GetClass(cCompressLibsClass[vLib]));
-    if (vCompress <> nil) and (not vCompress.CheckDependency) then
+    vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));
+    vType := vClass.BestCompressFromClass(vTypes);
+    if CompressWeight[vType] > vMax then
     begin
-      if vLibs <> '' then
-        vLibs := vLibs + ', ';
-      vLibs := vLibs + cCompressLibsClass[vLib];
+      vMax := CompressWeight[vType];
+      Result := vType;
     end;
   end;
+end;
 
-  if vLibs <> '' then
-    raise Exception.CreateFmt(emCompressLibFilesError, [vLibs]);
+class function TRALCompress.BestCompressFromClass(ATypes: TRALCompressTypes): TRALCompressType;
+begin
+  Result := ctNone;
 end;
 
 initialization
-  LoadDeclaredCompressLibs;
+
+finalization
+  DoneCompressDefs;
 
 end.

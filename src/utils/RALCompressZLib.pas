@@ -21,8 +21,9 @@ type
     procedure InitCompress(AInStream, AOutStream: TStream); override;
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
-
-    class function CheckDependency : boolean; override;
+  public
+    class function CompressTypes : TRALCompressTypes; override;
+    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; override;
   end;
 
 implementation
@@ -42,8 +43,8 @@ var
   vStreamCRC32: TStream;
 begin
   vSize := AInStream.Size;
-  if vSize = 0 then exit;
-  
+  if vSize = 0 then
+    Exit;
 
   if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
     SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
@@ -191,14 +192,24 @@ begin
   inherited;
 end;
 
-class function TRALCompressZLib.CheckDependency: boolean;
+class function TRALCompressZLib.CompressTypes: TRALCompressTypes;
 begin
-  // zlib eh incorporado
-  Result := True;
+  Result := [ctGZip, ctZLib, ctDeflate];
+end;
+
+class function TRALCompressZLib.BestCompressFromClass(ATypes: TRALCompressTypes): TRALCompressType;
+begin
+  Result := inherited BestCompressFromClass(ATypes);
+  if ctGZip in ATypes then
+    Result := ctGZip
+  else if ctZLib in ATypes then
+    Result := ctZLib
+  else if ctDeflate in ATypes then
+    Result := ctDeflate;
 end;
 
 initialization
   RegisterClass(TRALCompressZLib);
-  TRALCompress.UpdateDeclaredClasses;
+  RegisterCompress(TRALCompressZLib);
 
 end.
