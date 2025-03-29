@@ -590,11 +590,11 @@ begin
         vValue := vJson.Get(vInt);
         if SameText(vName, 'typ') then
         begin
-          FHeaderType := vValue.AsValue;
+          FHeaderType := vValue.AsString;
         end
         else if SameText(vName, 'alg') then
         begin
-          vAux1 := vValue.AsValue;
+          vAux1 := vValue.AsString;
 
           FAlgorithm := tjaHSHA256;
           if SameText(vAux1, 'hs256') then
@@ -604,7 +604,7 @@ begin
         end
         else if SameText(vName, 'kid') then
         begin
-          FKeyID := vValue.AsValue;
+          FKeyID := vValue.AsString;
         end;
 
         vInt := vInt + 1;
@@ -738,7 +738,7 @@ begin
         vValue := vJson.Get(vInt);
         if SameText(vName, 'aud') then
         begin
-          FAudience := vValue.AsValue;
+          FAudience := vValue.AsString;
         end
         else if SameText(vName, 'exp') then
         begin

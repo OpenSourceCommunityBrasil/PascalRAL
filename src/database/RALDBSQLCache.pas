@@ -337,7 +337,7 @@ begin
     FStorage.LoadPropsFromStream(AWriter);
   end
   else begin
-    raise Exception.CreateFmt('Storage %s não declarada', [vStorageLinkClass.ClassName]);
+    raise Exception.CreateFmt(emStorageLinkNotFound, [vStorageLinkClass.ClassName]);
   end;
 end;
 

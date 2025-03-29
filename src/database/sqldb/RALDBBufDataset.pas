@@ -502,7 +502,7 @@ begin
   if FStorage <> nil then
     FStorage.LoadFromStream(ADataSet, AStream)
   else
-    raise Exception.Create('Storage class não localizada');
+    raise Exception.Create(emStorageClassNotFound);
 end;
 
 constructor TRALDBBufDataset.Create(AOwner: TComponent);

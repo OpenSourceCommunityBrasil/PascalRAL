@@ -77,7 +77,7 @@ begin
 
   if AValue <> ctBrotli then
   begin
-    raise Exception.Create('Format is invalid!');
+    raise Exception.Create(emInvalidFormat);
     Exit;
   end;
 

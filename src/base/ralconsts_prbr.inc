@@ -1,36 +1,40 @@
 
 { @abstract constant internal messages
-  am = alert messages
-  em = error messages
-  wm = warning messages
+  am = alert messages: middle severity messages, might raise exception
+  em = error messages: high severity messages, raises exception
+  wm = warning messages: low severity messages, doesn't raise exception
+  cm = common messages: usually used in descriptions or labels
   these are strings that are present through the internal code of RAL, stored here
   for localization purposes, allowing the user to customise their side of the component
 
   Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
-  emContentCheckError = 'Erro de verificação de conteúdo.';
-  emCompressLibFilesError = 'As classes %s - arquivos de biblioteca não foram encontrados.';
-  emCompressInvalidFormat = 'Formato inválido.';
-  emCryptEmptyKey = 'A chave deve ser fornecida.';
-  emDBConnectionUndefined = 'Conexão não definida.';
-  emDBDriverMissing = 'Driver de conexão não encontrado.';
-  emDBEmptyBody = 'O corpo está vazio.';
-  emDBLinkMissing = 'Propriedade DBLink ausente.';
-  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
-  emInvalidJSONFormat = 'Formato JSON inválido.';
-  emQueryVersionError = 'Versão de estrutura inválida.';
-  emRouteAlreadyExists = 'A rota já existe.';
-  emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
-  emStorageInvalidBinary = 'Formato binário inválido.';
+emCompressInvalidFormat = 'Formato de compressão inválido.';
+emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
+emContentCheckError = 'Erro de verificação de conteúdo.';
+emCryptEmptyKey = 'A chave deve ser fornecida.';
+emDBConnectionUndefined = 'Conexão não definida.';
+emDBDriverMissing = 'Driver de conexão não encontrado.';
+emDBEmptyBody = 'O "body" está vazio.';
+emDBLinkMissing = 'Propriedade DBLink ausente.';
+emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
+emInvalidFormat = 'Formato Inválido.';
+emInvalidJSONFormat = 'Formato JSON inválido.';
+emQueryVersionError = 'Versão de estrutura inválida.';
+emRouteAlreadyExists = 'A rota já existe.';
+emStorageClassNotFound = 'Classe do Storage não encontrada.';
+emStorageInvalidBinary = 'Formato binário inválido.';
+emStorageLinkNotFound = 'Storage %s não está declarado em "uses".';
+emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
 
   // sagui error messages
+  emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';
   emSaguiServerCreateError = 'Erro ao tentar criar o servidor.';
   emSaguiServerUnsupportedTLS = 'Esta versão do TLS não é suportada pela lib.';
-  emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';
 
   // ralserver error messages
-  wmIPv6notImplemented = 'IPv6 não está implementado neste mecanismo.';
+  wmIPv6notImplemented = 'IPv6 não está implementado.';
 
   // ralserver page codes
   SLangHTTP = 'pt-BR';
@@ -50,6 +54,19 @@
   SError500 = 'Erro interno do servidor';
   SError500Page = 'O servidor fez algo que não deveria';
   SError501 = 'Não implementado';
-  SError501Page = 'O servidor informa que não existe';
+  SError501Page = 'O servidor informa que você procura algo que não existe';
   SError503 = 'Serviço indisponível';
-  SError503Page = 'O servidor informa que não quer funcionar agora, tente mais tarde';
+  SError503Page = 'O servidor informa que está descansando e não quer funcionar agora, tente mais tarde';
+
+  // RALDBDescriptions
+  cmDBApplyUpdDescription = 'Grava as alterações pelo cliente HTTP.';
+  cmDBExecSQLDescription = 'Executa um SQL pelo cliente HTTP.';
+  cmDBGetFieldsDescription = 'Lista todos os campos da tabela.';
+  cmDBGetSQLFieldsDescription = 'Lista todos os campos do SQL.';
+  cmDBGetTablesDescription = 'Lista todas as tabelas do banco de dados.';
+  cmDBOpenSQLDescription = 'Abre uma consulta SQL pelo cliente HTTP.';
+  cmDBParamSchemaDescription = 'Schema do banco de dados.';
+  cmDBParamSystemDescription = 'Inclui tabelas de sistema.';
+  cmDBBinary = 'Formato Binário.';
+  cmDBSQL = 'SQL';
+  cmDBTableName = 'Nome da tabela.';

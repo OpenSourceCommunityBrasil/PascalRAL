@@ -883,31 +883,31 @@ begin
   vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
   vRoute.Name := 'opensql';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
-  vRoute.Description.Add('Open a SQL from a client http');
+  vRoute.Description.Add(cmDBOpenSQLDescription);
 
   vRoute := CreateRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
   vRoute.Name := 'execsql';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
-  vRoute.Description.Add('Execute a SQL from a client http');
+  vRoute.Description.Add(cmDBExecSQLDescription);
 
   vRoute := CreateRoute('applyupdates', {$IFDEF FPC}@{$ENDIF}ApplyUpdates);
   vRoute.Name := 'applyupdates';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
-  vRoute.Description.Add('Apply Update from a client http');
+  vRoute.Description.Add(cmDBApplyUpdDescription);
 
   vRoute := CreateRoute('gettables', {$IFDEF FPC}@{$ENDIF}GetTables);
   vRoute.Name := 'gettables';
   vRoute.AllowedMethods := [amGET, amOPTIONS];
-  vRoute.Description.Add('List all tables in a database');
+  vRoute.Description.Add(cmDBGetTablesDescription);
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'Schema of database';
+  vParam.Description.Text := cmDBParamSchemaDescription;
   vParam.ParamName := 'schema';
   vParam.ParamType := prtString;
   vParam.Required := False;
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'Include system tables';
+  vParam.Description.Text := cmDBParamSystemDescription;
   vParam.ParamName := 'system';
   vParam.ParamType := prtBoolean;
   vParam.Required := False;
@@ -915,16 +915,16 @@ begin
   vRoute := CreateRoute('getfields', {$IFDEF FPC}@{$ENDIF}GetFields);
   vRoute.Name := 'getfields';
   vRoute.AllowedMethods := [amGET, amOPTIONS];
-  vRoute.Description.Add('List all fields in a table');
+  vRoute.Description.Add(cmDBGetFieldsDescription);
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'Schema of database';
+  vParam.Description.Text := cmDBParamSchemaDescription;
   vParam.ParamName := 'schema';
   vParam.ParamType := prtString;
   vParam.Required := False;
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'Table name';
+  vParam.Description.Text := cmDBTableName;
   vParam.ParamName := 'table';
   vParam.ParamType := prtString;
   vParam.Required := True;
@@ -932,16 +932,16 @@ begin
   vRoute := CreateRoute('getsqlfields', {$IFDEF FPC}@{$ENDIF}GetSQLFields);
   vRoute.Name := 'getsqlfields';
   vRoute.AllowedMethods := [amGET, amOPTIONS];
-  vRoute.Description.Add('List all fields from a SQL');
+  vRoute.Description.Add(cmDBGetSQLFieldsDescription);
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'SQL';
+  vParam.Description.Text := cmDBSQL;
   vParam.ParamName := 'sql';
   vParam.ParamType := prtString;
   vParam.Required := True;
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);
-  vParam.Description.Text := 'Binary Format';
+  vParam.Description.Text := cmDBBinary;
   vParam.ParamName := 'binary';
   vParam.ParamType := prtBoolean;
   vParam.Required := False;
