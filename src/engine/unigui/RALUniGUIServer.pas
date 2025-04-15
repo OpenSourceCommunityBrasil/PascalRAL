@@ -15,6 +15,7 @@ type
   TRALUniGUIServer = class(TRALServer)
   private
     FOnHTTPCommand: TUniHTTPCommandEvent;
+    FOnParseAuthentication: TIdHTTPParseAuthenticationEvent;
   protected
     procedure DecodeAuth(ARequest: TIdHTTPRequestInfo; AResult: TRALRequest);
     procedure SetActive(const AValue: boolean); override;
@@ -22,6 +23,10 @@ type
     procedure OnRALHTTPCommand(ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo;
                                var Handled: Boolean);
+
+    procedure OnRALParseAuthentication(AContext: TIdContext; const AAuthType,
+                                       AAuthData: string; var VUsername,
+                                       VPassword: string; var VHandled: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -223,6 +228,16 @@ begin
   end;
 end;
 
+procedure TRALUniGUIServer.OnRALParseAuthentication(AContext: TIdContext;
+  const AAuthType, AAuthData: string; var VUsername, VPassword: string;
+  var VHandled: Boolean);
+begin
+  if Assigned(FOnParseAuthentication) then
+    FOnParseAuthentication(AContext, AAuthType, AAuthData, VUsername, VPassword, VHandled);
+
+  VHandled := True;
+end;
+
 procedure TRALUniGUIServer.SetActive(const AValue: boolean);
 var
   vActive: boolean;
@@ -237,10 +252,14 @@ begin
   if AValue then
   begin
     FOnHTTPCommand := UniServerInstance.OnHTTPCommand;
+    FOnParseAuthentication := UniServerInstance.OnParseAuthentication;
+
     UniServerInstance.OnHTTPCommand := OnRALHTTPCommand;
+    UniServerInstance.OnParseAuthentication := OnRALParseAuthentication;
   end
   else begin
     UniServerInstance.OnHTTPCommand := FOnHTTPCommand;
+    UniServerInstance.OnParseAuthentication := FOnParseAuthentication;
   end;
 end;
 
