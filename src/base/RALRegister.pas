@@ -193,7 +193,15 @@ end;
     if not LazarusIDE.BeginCodeTools then
       Exit;
 
-    vSrcEdit := SourceEditorManagerIntf.ActiveEditor;
+    vComp := TRALClient(GetComponent(0));
+    if (vComp = nil) or (vComp.Owner = nil) then
+      Exit;
+
+    vFile := LazarusIDE.GetProjectFileWithRootComponent(vComp.Owner);
+    if vFile = nil then
+      Exit;
+
+    vSrcEdit := SourceEditorManagerIntf.SourceEditorIntfWithFilename(vFile.Filename);
     if vSrcEdit = nil then
       Exit;
 
@@ -201,21 +209,18 @@ end;
     if vCode = nil then
       Exit;
 
-    vComp := TRALClient(GetComponent(0));
-    if vComp <> nil then
+    vClass := GetEngineClass(AEngine);
+    if vClass <> nil then
     begin
-      vClass := GetEngineClass(AEngine);
-      if vClass <> nil then begin
-        CodeToolBoss.AddUnitToMainUsesSection(vCode, vClass.UnitName, '');
+      CodeToolBoss.AddUnitToMainUsesSection(vCode, vClass.UnitName, '');
 
-        vPkg := PackageEditingInterface.FindPackageWithName(vClass.PackageDependency);
-        if vPkg <> nil then
-        begin
-          vFile := LazarusIDE.ActiveProject.CreateProjectFile(ChangeFileExt(vPkg.Filename, '.pas'));
-          vFile.IsPartOfProject := False;
-          LazarusIDE.ActiveProject.AddFile(vFile, True);
-          LazarusIDE.ActiveProject.AddPackageDependency(vClass.PackageDependency);
-        end;
+      vPkg := PackageEditingInterface.IsPackageInstalled(vClass.PackageDependency);
+      if vPkg <> nil then
+      begin
+        vFile := LazarusIDE.ActiveProject.CreateProjectFile(ChangeFileExt(vPkg.Filename, '.pas'));
+        vFile.IsPartOfProject := False;
+        LazarusIDE.ActiveProject.AddFile(vFile, True);
+        LazarusIDE.ActiveProject.AddPackageDependency(vClass.PackageDependency);
       end;
     end;
   end;
