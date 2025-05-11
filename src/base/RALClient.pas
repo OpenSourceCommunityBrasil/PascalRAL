@@ -212,8 +212,20 @@ begin
 end;
 
 procedure RegisterEngine(AEngine: TRALClientHTTPClass);
+//var
+//  vTxt : TextFile;
 begin
   CheckEngineDefs;
+{
+  AssignFile(vTxt, 'd:\testeral.txt');
+  if FileExists('d:\testeral.txt') then
+    Append(vTxt)
+  else
+    Rewrite(vTxt);
+  Writeln(vTxt, AEngine.ClassName);
+  CloseFile(vTxt);
+}
+
   if EnginesDefs.IndexOfName(AEngine.EngineName) < 0 then
     EnginesDefs.Add(AEngine.EngineName + '=' + AEngine.ClassName);
 end;
@@ -838,6 +850,7 @@ begin
 end;
 
 initialization
+  EnginesDefs := nil;
 
 finalization
   DoneEngineDefs;

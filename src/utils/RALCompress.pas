@@ -124,8 +124,13 @@ end;
 procedure GetCompressList(AList: TStrings);
 var
   vInt : IntegerRAL;
+  vStrType : StringRAL;
 begin
   CheckCompressDefs;
+
+  vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(ctNone));
+  AList.Add(vStrType);
+
   for vInt := 0 to Pred(CompressDefs.Count) do
     AList.Add(CompressDefs.Names[vInt]);
 end;
@@ -229,7 +234,8 @@ end;
 function TRALCompress.Decompress(AStream: TStream): TStream;
 begin
   Result := TMemoryStream.Create;
-  InitDeCompress(AStream, Result);
+  if AStream.Size > 0 then
+    InitDeCompress(AStream, Result);
 end;
 
 procedure TRALCompress.DecompressFile(AInFile, AOutFile: StringRAL);
