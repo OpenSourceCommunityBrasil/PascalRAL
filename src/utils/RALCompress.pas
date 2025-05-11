@@ -125,14 +125,23 @@ procedure GetCompressList(AList: TStrings);
 var
   vInt : IntegerRAL;
   vStrType : StringRAL;
+  vList : TStringList;
 begin
   CheckCompressDefs;
 
-  vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(ctNone));
-  AList.Add(vStrType);
+  vList := TStringList.Create;
+  try
+    for vInt := 0 to Pred(CompressDefs.Count) do
+      vList.Add(CompressDefs.Names[vInt]);
 
-  for vInt := 0 to Pred(CompressDefs.Count) do
-    AList.Add(CompressDefs.Names[vInt]);
+    vList.Sort;
+    AList.Assign(vList);
+  finally
+    FreeAndNil(vList);
+  end;
+
+  vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(ctNone));
+  AList.Insert(0, vStrType);
 end;
 
 function GetSuportedCompress: TRALCompressTypes;

@@ -38,6 +38,7 @@ type
 
   TRALCompressEditor = class(TEnumProperty)
   public
+    function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
@@ -162,6 +163,14 @@ begin
 end;
 
 { TRALCompressEditor }
+
+function TRALCompressEditor.GetAttributes: TPropertyAttributes;
+begin
+  Result := [paValueList];
+  {$IFDEF FPC}
+    Result := Result + [paPickList];
+  {$ENDIF}
+end;
 
 procedure TRALCompressEditor.GetValues(Proc: TGetStrProc);
 var

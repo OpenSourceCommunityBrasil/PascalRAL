@@ -48,7 +48,7 @@ begin
   RegisterComponents('RAL - Client', [TRALDBConnection]);
   RegisterComponents('RAL - Modules', [TRALDBModule]);
 
-  RegisterPropertyEditor(TypeInfo(StringRAL), TRALDBModule, 'DatabaseLink', TRALDBDatabases);
+  RegisterPropertyEditor(TypeInfo(String), TRALDBModule, 'DatabaseLink', TRALDBDatabases);
 
   {$IFNDEF FPC}
     RegisterSelectionEditor(TRALDBModule,  TRALDBModuleSelectionEditor);

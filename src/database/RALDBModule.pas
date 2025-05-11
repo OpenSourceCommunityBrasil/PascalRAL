@@ -15,7 +15,7 @@ type
   TRALDBModule = class(TRALModuleRoutes)
   private
     FDatabase: StringRAL;
-    FDatabaseLink: StringRAL;
+    FDatabaseLink: String;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FPassword: StringRAL;
@@ -43,7 +43,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property Database: StringRAL read FDatabase write FDatabase;
-    property DatabaseLink: StringRAL read FDataBaseLink write FDataBaseLink;
+    property DatabaseLink: String read FDataBaseLink write FDataBaseLink;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
     property Password: StringRAL read FPassword write FPassword;
