@@ -107,7 +107,7 @@ begin
 
   // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClient, 'BaseURL', TRALBaseURLEditor);
-  RegisterPropertyEditor(TypeInfo(StringRAL), TRALClient, 'EngineType', TRALClientEngines);
+  RegisterPropertyEditor(TypeInfo(String), TRALClient, 'EngineType', TRALClientEngines);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClient, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
 end;

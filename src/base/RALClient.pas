@@ -104,7 +104,7 @@ type
     FCompressType: TRALCompressType;
     FCritSession: TCriticalSection;
     FCriptoOptions: TRALCriptoOptions;
-    FEngineType : StringRAL;
+    FEngineType : String;
     FEngine: StringRAL;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
@@ -135,7 +135,7 @@ type
     procedure SetAuthentication(AValue: TRALAuthClient);
     procedure SetBaseURL(AValue: TStrings);
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
-    procedure SetEngineType(AValue: StringRAL);
+    procedure SetEngineType(AValue: String);
     procedure SetKeepAlive(AValue: boolean); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
     procedure SetUserAgent(AValue: StringRAL); virtual;
@@ -180,7 +180,7 @@ type
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
-    property EngineType : StringRAL read FEngineType write SetEngineType;
+    property EngineType : String read FEngineType write SetEngineType;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
@@ -212,19 +212,8 @@ begin
 end;
 
 procedure RegisterEngine(AEngine: TRALClientHTTPClass);
-//var
-//  vTxt : TextFile;
 begin
   CheckEngineDefs;
-{
-  AssignFile(vTxt, 'd:\testeral.txt');
-  if FileExists('d:\testeral.txt') then
-    Append(vTxt)
-  else
-    Rewrite(vTxt);
-  Writeln(vTxt, AEngine.ClassName);
-  CloseFile(vTxt);
-}
 
   if EnginesDefs.IndexOfName(AEngine.EngineName) < 0 then
     EnginesDefs.Add(AEngine.EngineName + '=' + AEngine.ClassName);
@@ -262,7 +251,7 @@ end;
 
 { TRALClient }
 
-procedure TRALClient.SetEngineType(AValue: StringRAL);
+procedure TRALClient.SetEngineType(AValue: String);
 var
   vClass : TRALClientHTTPClass;
 begin
