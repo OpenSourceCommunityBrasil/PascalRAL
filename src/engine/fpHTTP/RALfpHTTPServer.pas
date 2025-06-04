@@ -1,5 +1,7 @@
 unit RALfpHTTPServer;
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -50,8 +52,8 @@ type
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
 
-    function GetQueueSize: IntegerRAL;
-    procedure SetQueueSize(const AValue: IntegerRAL);
+    function GetQueueSize: Word;
+    procedure SetQueueSize(const AValue: Word);
 
     function GetURLServer: StringRAL;
 
@@ -75,7 +77,7 @@ type
     property Active: boolean read GetActive write SetActive;
     property Port: IntegerRAL read GetPort write SetPort;
     property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
-    property QueueSize: IntegerRAL read GetQueueSize write SetQueueSize;
+    property QueueSize: Word read GetQueueSize write SetQueueSize;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -88,8 +90,8 @@ type
     function GetSSL: TRALfpHTTPSSL;
     procedure SetSSL(const AValue: TRALfpHTTPSSL);
 
-    function GetQueueSize: IntegerRAL;
-    procedure SetQueueSize(const AValue: IntegerRAL);
+    function GetQueueSize: Word;
+    procedure SetQueueSize(const AValue: Word);
 
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
@@ -97,11 +99,19 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property QueueSize : IntegerRAL read GetQueueSize write SetQueueSize;
+    property QueueSize : Word read GetQueueSize write SetQueueSize;
     property SSL: TRALfpHTTPSSL read GetSSL write SetSSL;
   end;
 
 implementation
+
+uses
+  // units usadas para capturar a constante SOMAXCONN
+  {$IFDEF RALWINDOWS}
+    WinSock2;
+  {$ELSE}
+    sockets;
+  {$ENDIF}
 
 { TRALfpHTTPCertData }
 
@@ -134,7 +144,7 @@ begin
   Result := FParent.Port;
 end;
 
-function TRALfpHttpServerThread.GetQueueSize: IntegerRAL;
+function TRALfpHttpServerThread.GetQueueSize: Word;
 begin
   Result := FHttp.QueueSize;
 end;
@@ -151,9 +161,12 @@ begin
   Active := vActive;
 end;
 
-procedure TRALfpHttpServerThread.SetQueueSize(const AValue: IntegerRAL);
+procedure TRALfpHttpServerThread.SetQueueSize(const AValue: Word);
 begin
-  FHttp.QueueSize := AValue;
+  if (AValue <= 0) or (AValue > SOMAXCONN) then
+    FHttp.QueueSize := SOMAXCONN
+  else
+    FHttp.QueueSize := AValue;
 end;
 
 procedure TRALfpHttpServerThread.SetSessionTimeout(const AValue: IntegerRAL);
@@ -413,7 +426,7 @@ begin
   FreeOnTerminate := False;
 
   FHttp := TFPHttpServer.Create(AOwner);
-  QueueSize := -1;
+  FHttp.QueueSize := SOMAXCONN;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 
@@ -447,7 +460,7 @@ end;
 constructor TRALfpHttpServer.Create(AOwner: TComponent);
 begin
   inherited;
-  SetEngine('fpHTTP');
+  SetEngine('fpHTTP ' + {$I %FPCVERSION%});
   FHttpThread := TRALfpHttpServerThread.Create(Self);
   FHttpThread.Port := Port;
 end;
@@ -468,7 +481,7 @@ begin
   inherited;
 end;
 
-function TRALfpHttpServer.GetQueueSize: IntegerRAL;
+function TRALfpHttpServer.GetQueueSize: Word;
 begin
   Result := FHttpThread.QueueSize;
 end;
@@ -504,7 +517,7 @@ begin
   inherited;
 end;
 
-procedure TRALfpHttpServer.SetQueueSize(const AValue: IntegerRAL);
+procedure TRALfpHttpServer.SetQueueSize(const AValue: Word);
 begin
   FHttpThread.QueueSize := AValue;
 end;

@@ -36,16 +36,16 @@ type
   private
     FHttp: TIdHTTPServer;
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
-    FMaxConnections: IntegerRAL;
-    FListenQueue: IntegerRAL;
-    procedure SetListenQueue(const Value: IntegerRAL);
-    procedure SetMaxConnections(const Value: IntegerRAL);
   protected
     function CreateRALSSL: TRALSSL; override;
     function IPv6IsImplemented: Boolean; override;
+    function GetListenQueue: IntegerRAL;
+    function GetMaxConnections: IntegerRAL;
     function GetSSL: TRALIndySSL;
     procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
     procedure SetActive(const AValue: Boolean); override;
+    procedure SetListenQueue(const AValue: IntegerRAL);
+    procedure SetMaxConnections(const AValue: IntegerRAL);
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALIndySSL);
@@ -59,8 +59,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property ListenQueue: IntegerRAL read FListenQueue write SetListenQueue;
-    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections;
+    property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
+    property MaxConnections: IntegerRAL read GetMaxConnections write SetMaxConnections;
     property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
 
@@ -107,6 +107,16 @@ begin
   FreeAndNil(FHttp);
   FreeAndNil(FHandlerSSL);
   inherited;
+end;
+
+function TRALIndyServer.GetListenQueue: IntegerRAL;
+begin
+  Result := FHttp.ListenQueue
+end;
+
+function TRALIndyServer.GetMaxConnections: IntegerRAL;
+begin
+  Result := FHttp.MaxConnections;
 end;
 
 function TRALIndyServer.GetSSL: TRALIndySSL;
@@ -341,16 +351,14 @@ begin
   FHttp.Active := AValue;
 end;
 
-procedure TRALIndyServer.SetListenQueue(const Value: IntegerRAL);
+procedure TRALIndyServer.SetListenQueue(const AValue: IntegerRAL);
 begin
-  FListenQueue := Value;
-  FHttp.ListenQueue := Value;
+  FHttp.ListenQueue := AValue;
 end;
 
-procedure TRALIndyServer.SetMaxConnections(const Value: IntegerRAL);
+procedure TRALIndyServer.SetMaxConnections(const AValue: IntegerRAL);
 begin
-  FMaxConnections := Value;
-  FHttp.MaxConnections := Value;
+  FHttp.MaxConnections := AValue;
 end;
 
 procedure TRALIndyServer.SetSessionTimeout(const AValue: IntegerRAL);

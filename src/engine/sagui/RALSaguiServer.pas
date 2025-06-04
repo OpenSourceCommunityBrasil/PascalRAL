@@ -61,10 +61,6 @@ type
       Asize: csize_t): cssize_t; cdecl; static;
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
-    procedure SetConnectionLimit(const Value: Int64RAL);
-    procedure SetPoolCount(const Value: IntegerRAL);
-    function GetPoolCount: IntegerRAL;
-    function GetConnectionLimit: Int64RAL;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure CreateServerHandle;
@@ -72,9 +68,13 @@ type
     function InitializeServer: boolean;
     function IPv6IsImplemented: boolean; override;
 
+    function GetConnectionLimit: Int64RAL;
+    function GetPoolCount: IntegerRAL;
     function GetSSL: TRALSaguiSSL;
     procedure SetActive(const AValue: boolean); override;
+    procedure SetConnectionLimit(const AValue: Int64RAL);
     procedure SetLibPath(const AValue: TFileName);
+    procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALSaguiSSL);
@@ -511,11 +511,11 @@ begin
   end;
 end;
 
-procedure TRALSaguiServer.SetConnectionLimit(const Value: Int64RAL);
+procedure TRALSaguiServer.SetConnectionLimit(const AValue: Int64RAL);
 begin
-  FConnectionLimit := Value;
+  FConnectionLimit := AValue;
   if FHandle <> nil then
-    sg_httpsrv_set_con_limit(FHandle, Value);
+    sg_httpsrv_set_con_limit(FHandle, AValue);
 end;
 
 procedure TRALSaguiServer.SetLibPath(const AValue: TFileName);
@@ -543,11 +543,11 @@ begin
     sg_httpsrv_shutdown(FHandle);
 end;
 
-procedure TRALSaguiServer.SetPoolCount(const Value: IntegerRAL);
+procedure TRALSaguiServer.SetPoolCount(const AValue: IntegerRAL);
 begin
-  FPoolCount := Value;
+  FPoolCount := AValue;
   if FHandle <> nil then
-    sg_httpsrv_set_thr_pool_size(FHandle, Value);
+    sg_httpsrv_set_thr_pool_size(FHandle, AValue);
 end;
 
 procedure TRALSaguiServer.SetPort(const AValue: IntegerRAL);
