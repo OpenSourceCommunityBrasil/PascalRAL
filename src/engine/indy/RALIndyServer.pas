@@ -36,6 +36,10 @@ type
   private
     FHttp: TIdHTTPServer;
     FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
+    FMaxConnections: IntegerRAL;
+    FListenQueue: IntegerRAL;
+    procedure SetListenQueue(const Value: IntegerRAL);
+    procedure SetMaxConnections(const Value: IntegerRAL);
   protected
     function CreateRALSSL: TRALSSL; override;
     function IPv6IsImplemented: Boolean; override;
@@ -55,6 +59,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    property ListenQueue: IntegerRAL read FListenQueue write SetListenQueue;
+    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections;
     property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
 
@@ -70,6 +76,8 @@ begin
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.SessionState := False;
   FHttp.AutoStartSession := True;
+  MaxConnections := -1;
+  ListenQueue := -1;
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 
 {$IFDEF FPC}
@@ -331,6 +339,18 @@ begin
   end;
 
   FHttp.Active := AValue;
+end;
+
+procedure TRALIndyServer.SetListenQueue(const Value: IntegerRAL);
+begin
+  FListenQueue := Value;
+  FHttp.ListenQueue := Value;
+end;
+
+procedure TRALIndyServer.SetMaxConnections(const Value: IntegerRAL);
+begin
+  FMaxConnections := Value;
+  FHttp.MaxConnections := Value;
 end;
 
 procedure TRALIndyServer.SetSessionTimeout(const AValue: IntegerRAL);

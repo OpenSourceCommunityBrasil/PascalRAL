@@ -13,7 +13,7 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.11.0-9 alpha';
+  RALVERSION = '0.11.0-11 alpha';
   RALVERSION_MAJOR = 0;
   RALVERSION_MINOR = 11;
   RALVERSION_PATCH = 0;
@@ -69,7 +69,7 @@ const
 
 resourcestring
   {$IF DEFINED(LANG_PTBR)}
-    {$I ralconsts_prbr.inc}
+    {$I ralconsts_ptbr.inc}
   {$ELSEIF DEFINED(LANG_ESES)}
     {$I ralconsts_eses.inc}
   {$ELSE}

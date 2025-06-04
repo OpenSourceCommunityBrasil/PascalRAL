@@ -10,23 +10,23 @@
   Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
-emCompressInvalidFormat = 'Formato de compressão inválido.';
-emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
-emContentCheckError = 'Erro de verificação de conteúdo.';
-emCryptEmptyKey = 'A chave deve ser fornecida.';
-emDBConnectionUndefined = 'Conexão não definida.';
-emDBDriverMissing = 'Driver de conexão não encontrado.';
-emDBEmptyBody = 'O "body" está vazio.';
-emDBLinkMissing = 'Propriedade DBLink ausente.';
-emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
-emInvalidFormat = 'Formato Inválido.';
-emInvalidJSONFormat = 'Formato JSON inválido.';
-emQueryVersionError = 'Versão de estrutura inválida.';
-emRouteAlreadyExists = 'A rota já existe.';
-emStorageClassNotFound = 'Classe do Storage não encontrada.';
-emStorageInvalidBinary = 'Formato binário inválido.';
-emStorageLinkNotFound = 'Storage %s não está declarado em "uses".';
-emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
+  emCompressInvalidFormat = 'Formato de compressão inválido.';
+  emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
+  emContentCheckError = 'Erro de verificação de conteúdo.';
+  emCryptEmptyKey = 'A chave deve ser fornecida.';
+  emDBConnectionUndefined = 'Conexão não definida.';
+  emDBDriverMissing = 'Driver de conexão não encontrado.';
+  emDBEmptyBody = 'O "body" está vazio.';
+  emDBLinkMissing = 'Propriedade DBLink ausente.';
+  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
+  emInvalidFormat = 'Formato Inválido.';
+  emInvalidJSONFormat = 'Formato JSON inválido.';
+  emQueryVersionError = 'Versão de estrutura inválida.';
+  emRouteAlreadyExists = 'A rota já existe.';
+  emStorageClassNotFound = 'Classe do Storage não encontrada.';
+  emStorageInvalidBinary = 'Formato binário inválido.';
+  emStorageLinkNotFound = 'Storage %s não está declarado em "uses".';
+  emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
 
   // sagui error messages
   emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';

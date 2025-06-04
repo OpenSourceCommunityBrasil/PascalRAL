@@ -75,7 +75,7 @@ type
     property Active: boolean read GetActive write SetActive;
     property Port: IntegerRAL read GetPort write SetPort;
     property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
-    property QueueSize : IntegerRAL read GetQueueSize write SetQueueSize;
+    property QueueSize: IntegerRAL read GetQueueSize write SetQueueSize;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -413,7 +413,7 @@ begin
   FreeOnTerminate := False;
 
   FHttp := TFPHttpServer.Create(AOwner);
-  FHttp.QueueSize := 15;
+  QueueSize := -1;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
 

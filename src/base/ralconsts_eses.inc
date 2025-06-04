@@ -1,8 +1,9 @@
 
 { @abstract constant internal messages
-  am = alert messages
-  em = error messages
-  wm = warning messages
+  am = alert messages: middle severity messages, might raise exception
+  em = error messages: high severity messages, raises exception
+  wm = warning messages: low severity messages, doesn't raise exception
+  cm = common messages: usually used in descriptions or labels
   these are strings that are present through the internal code of RAL, stored here
   for localization purposes, allowing the user to customise their side of the component
 
