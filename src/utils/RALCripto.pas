@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream;
+  RALTypes, RALStream, RALBase64;
 
 type
 
@@ -73,49 +73,75 @@ end;
 
 function TRALCripto.Encrypt(const AValue: StringRAL): StringRAL;
 var
-  vStream: TStream;
+  vInputStream: TStringStream;
 begin
-  vStream := StringToStream(AValue);
+  vInputStream := nil;
   try
-    Result := Encrypt(vStream);
+    vInputStream := TStringStream.Create(AValue, TEncoding.UTF8);
+
+    vInputStream.Position := 0;
+
+    Result := Encrypt(vInputStream);
   finally
-    FreeAndNil(vStream);
+    FreeAndNil(vInputStream);
   end;
 end;
 
 function TRALCripto.Decrypt(const AValue: StringRAL): StringRAL;
 var
-  vStream: TStream;
+  vInputStream: TStringStream;
 begin
-  vStream := StringToStream(AValue);
+  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
+  vInputStream := nil;
   try
-    Result := Decrypt(vStream);
+    vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.ANSI);
+
+    vInputStream.Position := 0;
+
+    Result := Decrypt(vInputStream);
   finally
-    FreeAndNil(vStream);
+    FreeAndNil(vInputStream);
   end;
 end;
 
 function TRALCripto.Encrypt(AValue: TStream): StringRAL;
 var
-  vResult: TStream;
+  vEncryptedStream: TStream;
 begin
-  vResult := EncryptAsStream(AValue);
+  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
+  vEncryptedStream := nil;
   try
-    Result := StreamToString(vResult);
+    vEncryptedStream := EncryptAsStream(AValue);
+
+    vEncryptedStream.Position := 0;
+
+    Result := TRALBase64.Encode(vEncryptedStream);
   finally
-    FreeAndNil(vResult);
+    FreeAndNil(vEncryptedStream);
   end;
 end;
 
 function TRALCripto.Decrypt(AValue: TStream): StringRAL;
 var
-  vResult: TStream;
+  vDecryptedStream: TStream;
+  vStringStream: TStringStream;
 begin
-  vResult := DecryptAsStream(AValue);
+  vDecryptedStream := nil;
+  vStringStream := nil;
   try
-    Result := StreamToString(vResult);
+    vDecryptedStream := DecryptAsStream(AValue);
+
+    vStringStream := TStringStream.Create('', TEncoding.UTF8);
+
+    vDecryptedStream.Position := 0;
+
+    vStringStream.LoadFromStream(vDecryptedStream);
+
+    Result := vStringStream.DataString;
   finally
-    FreeAndNil(vResult);
+    FreeAndNil(vStringStream);
+
+    FreeAndNil(vDecryptedStream);
   end;
 end;
 
