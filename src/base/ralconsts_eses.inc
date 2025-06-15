@@ -14,6 +14,7 @@
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
   emContentCheckError = 'Error de comprobación de contenido.';
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
+  emHMACEmptyText = 'Se debe proporcionar lo texto.';
   emDBConnectionUndefined = 'Conexión no establecida.';
   emDBDriverMissing = 'No se encontró el controlador de conexión.';
   emDBEmptyBody = 'El cuerpo está vacío.';

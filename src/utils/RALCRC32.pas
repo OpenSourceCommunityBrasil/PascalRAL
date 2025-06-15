@@ -4,10 +4,10 @@ interface
 
 uses
   Classes, SysUtils,
-  RALHashes, RALTypes;
+  RALHashBase, RALTypes;
 
 type
-  TRALCRC32 = class(TRALHashes)
+  TRALCRC32 = class(TRALHashBase)
   private
     FCRC32 : LongWord;
     FBuffer: array[0..63] of Byte;

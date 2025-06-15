@@ -1,362 +1,154 @@
-/// Unit for the unidirectional hash algorithms
 unit RALHashes;
 
 interface
 
 uses
-  Classes, SysUtils,
-  RALBase64, RALTypes, RALTools, RALStream, RALConsts;
+  Classes, SysUtils, RALTypes, RALSHA2_64, RALSHA2_32, RALCriptoAES, RALHashBase,
+  RALBase64, RALStream;
 
 type
-  TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
-
-  { TRALHashes }
+  THashType = (htSHA224, htSHA256, htSHA384, htSHA512, htSHA512_224, htSHA512_256);
+  TCriptoType = (ctAES128, ctAES192, ctAES256);
 
   TRALHashes = class
-  private
-    FFinalized: boolean;
-    FIndex: IntegerRAL;
-    FInitialized: boolean;
-    FLenBit: UInt64RAL;
-    FOutputType: TRALHashOutputType;
-  protected
-    /// Used to compress the content, generating the hash
-    procedure Compress; virtual;
-    /// Convert hash (return Finalize) to base64
-    function DigestToBase64(AValue: TBytes): StringRAL;
-    /// Convert hash (return Finalize) to base64-url
-    function DigestToBase64Url(AValue: TBytes): StringRAL;
-    /// Convert hash (return Finalize) to hexadecimal
-    function DigestToHex(AValue: TBytes): StringRAL;
-    /// Finalize the hash and returns it
-    function Finalize: TBytes; virtual;
-    /// Returns the buffer pointer at a given position
-    function GetBuffer(AIndex: IntegerRAL): Pointer; virtual; abstract;
-    /// Returns the length of the buffer
-    function GetBufLength: IntegerRAL; virtual; abstract;
-    /// Generates a hash of a given piece of Stream content
-    function GetDigest(AValue: TStream): TBytes; overload; virtual;
-    /// Generates a hash of a given piece of UTF8String content
-    function GetDigest(const AValue: StringRAL): TBytes; overload; virtual;
-    /// Generates a hash of a given piece of Array of Bytes content
-    function GetDigest(AValue: TBytes): TBytes; overload; virtual;
-    /// Returns the position of the buffer
-    function GetIndex: IntegerRAL;
-    /// Returns the total buffer in bits
-    function GetLenBit: UInt64RAL;
-    /// Picks up incoming and compact content according to buffer length
-    procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
-    /// Generates an HMAC hash of a given content
-    function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
-    /// Used to initialize the hash
-    procedure Initialize; virtual;
-    /// Used to insert more content that will generate the hash
-    procedure UpdateBuffer(AValue: TStream); overload; virtual;
-    /// Used to insert more content that will generate the hash
-    procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
-    /// Used to insert more content that will generate the hash
-    procedure UpdateBuffer(AValue: TBytes); overload; virtual;
   public
-    constructor Create(AOutputType: TRALHashOutputType = rhotHex);
-    /// Returns a string hash from a string
-    function HashAsString(const AValue: StringRAL): StringRAL; overload; virtual;
-    /// Returns a string hash from a stream
-    function HashAsString(AValue: TStream): StringRAL; overload; virtual;
-    /// Returns a stream hash from a stream
-    function HashAsStream(AValue: TStream): TStream;
-    /// Returns a string of a HMAC generated given an UTF8String
-    function HMACAsString(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;
-    /// Returns a string of a HMAC generated given a Stream
-    function HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;
-    /// Returns a string of a HMAC generated given an Array of bytes
-    function HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;
-  published
-    /// Identifies the formatting of the hash
-    property OutputType: TRALHashOutputType read FOutputType write FOutputType;
+    class function GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
+    class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
+    class function Decrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
+    class function toBase64(AText: StringRAL): StringRAL;
+    class function fromBase64(AText: StringRAL): StringRAL;
   end;
 
 implementation
 
 { TRALHashes }
 
-procedure TRALHashes.Compress;
-begin
-  FIndex := 0;
-end;
-
-constructor TRALHashes.Create(AOutputType: TRALHashOutputType);
-begin
-  FOutputType := AOutputType;
-end;
-
-function TRALHashes.DigestToBase64(AValue: TBytes): StringRAL;
-begin
-  Result := TRALBase64.Encode(AValue);
-end;
-
-function TRALHashes.DigestToBase64Url(AValue: TBytes): StringRAL;
-begin
-  Result := TRALBase64.Encode(AValue);
-  Result := TRALBase64.ToBase64Url(Result);
-end;
-
-function TRALHashes.DigestToHex(AValue: TBytes): StringRAL;
-const
-  HexChar: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7',
-                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+class function TRALHashes.Decrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
 var
-  vInt: IntegerRAL;
+  AES: TRALCriptoAES;
 begin
-  vInt := 0;
-  while vInt < Length(AValue) do
-  begin
-    Result := Result + HexChar[(AValue[vInt] shr 4) and $0f];
-    Result := Result + HexChar[(AValue[vInt] and $0f)];
-    Inc(vInt);
-  end;
-end;
-
-function TRALHashes.Finalize: TBytes;
-begin
-  FFinalized := True;
-end;
-
-function TRALHashes.GetDigest(AValue: TStream): TBytes;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
-end;
-
-function TRALHashes.GetDigest(const AValue: StringRAL): TBytes;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
-end;
-
-function TRALHashes.GetDigest(AValue: TBytes): TBytes;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  Result := Finalize;
-end;
-
-function TRALHashes.GetIndex: IntegerRAL;
-begin
-  Result := FIndex;
-end;
-
-function TRALHashes.GetLenBit: UInt64RAL;
-begin
-  Result := FLenBit;
-end;
-
-function TRALHashes.HashAsStream(AValue: TStream): TStream;
-var
-  vDigest : TBytes;
-begin
-  Initialize;
-  UpdateBuffer(AValue);
-  vDigest := Finalize;
-  Result := nil;
-
-  case OutputType of
-    rhotNone: Result := BytesToStream(vDigest);
-    rhotHex: Result := StringToStream(DigestToHex(vDigest));
-    rhotBase64: Result := StringToStream(DigestToBase64(vDigest));
-    rhotBase64Url: Result := StringToStream(DigestToBase64Url(vDigest));
-  end;
-end;
-
-function TRALHashes.HashAsString(AValue: TStream): StringRAL;
-var
-  vResult: TStream;
-begin
-  vResult := HashAsStream(AValue);
+  AES := TRALCriptoAES.Create;
   try
-    Result := StreamToString(vResult);
-  finally
-    vResult.Free;
-  end;
-end;
-
-function TRALHashes.HashAsString(const AValue: StringRAL): StringRAL;
-var
-  vStream: TStream;
-begin
-  vStream := StringToStream(AValue);
-  try
-    Result := HashAsString(vStream);
-  finally
-    vStream.Free;
-  end;
-end;
-
-procedure TRALHashes.HashBytes(AData: pbyte; ALength: IntegerRAL);
-var
-  vBufSize: integer;
-  vBufLength: integer;
-  vBuffer: Pointer;
-begin
-  vBufLength := GetBufLength;
-  Inc(FLenBit, ALength * 8);
-
-  while ALength > 0 do
-  begin
-    vBufSize := vBufLength - FIndex;
-    if ALength < vBufSize then
-      vBufSize := ALength;
-
-    vBuffer := GetBuffer(FIndex);
-    Move(AData^, vBuffer^, vBufSize);
-    Inc(AData, vBufSize);
-
-    if vBufSize + FIndex = vBufLength then
-      Compress
-    else
-      FIndex := vBufSize;
-
-    Dec(ALength, vBufSize);
-  end;
-end;
-
-function TRALHashes.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
-var
-  vKey: TBytes;
-  vTemp1: TBytes;
-  vTemp2: TBytes;
-  vInt: integer;
-begin
-  if Length(AKey) > GetBufLength then
-    vKey := GetDigest(AKey)
-  else
-    vKey := AKey;
-
-  SetLength(vKey, GetBufLength);
-  SetLength(vTemp1, GetBufLength);
-  for vInt := Low(vKey) to High(vKey) do
-    vTemp1[vInt] := vKey[vInt] xor $36;
-
-  Initialize;
-  UpdateBuffer(vTemp1);
-  UpdateBuffer(AValue);
-  vTemp2 := Finalize;
-
-  SetLength(vTemp1, GetBufLength);
-  for vInt := Low(vKey) to High(vKey) do
-    vTemp1[vInt] := vKey[vInt] xor $5C;
-
-  Initialize;
-  UpdateBuffer(vTemp1);
-  UpdateBuffer(vTemp2);
-  Result := Finalize;
-end;
-
-function TRALHashes.HMACAsString(const AValue: StringRAL; const AKey: StringRAL
-  ): StringRAL;
-var
-  vStream: TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
-  try
-    vStream.Position := 0;
-    Result := HMACAsString(vStream, AKey);
-  finally
-    vStream.Free;
-  end;
-end;
-
-function TRALHashes.HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL;
-var
-  vKey, vDigest: TBytes;
-begin
-  SetLength(vKey, Length(AKey));
-  Move(AKey[PosIniStr], vKey[0], Length(AKey));
-
-  vDigest := HMACAsDigest(AValue, vKey);
-
-  case OutputType of
-    rhotNone: begin
-      SetLength(Result, Length(vDigest));
-      Move(vDigest[0], Result[POSINISTR], Length(vDigest));
+    case AAlgorithm of
+      ctAES128: AES.AESType := tAES128;
+      ctAES192: AES.AESType := tAES192;
+      ctAES256: AES.AESType := tAES256;
     end;
-    rhotHex: Result := DigestToHex(vDigest);
-    rhotBase64: Result := DigestToBase64(vDigest);
-    rhotBase64Url: Result := DigestToBase64Url(vDigest);
-  end;
-end;
 
-function TRALHashes.HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL;
-var
-  vStream: TStream;
-begin
-  vStream := BytesToStream(AValue);
-  try
-    vStream.Position := 0;
-    Result := HMACAsString(vStream, AKey);
+    AES.Key := AKey;
+    Result := AES.Decrypt(AText);
   finally
-    vStream.Free;
+    FreeAndNil(AES);
   end;
 end;
 
-procedure TRALHashes.Initialize;
-begin
-  FIndex := 0;
-  FLenBit := 0;
-  FInitialized := True;
-  FFinalized := False;
-end;
-
-procedure TRALHashes.UpdateBuffer(AValue: TStream);
+class function TRALHashes.Encrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
 var
-  vInBuf: array of byte;
-  vBytesRead: IntegerRAL;
-  vPosition, vSize: Int64RAL;
+  AES: TRALCriptoAES;
 begin
-  if (not FInitialized) or (FFinalized) then
-    Exit;
-
-  AValue.Position := 0;
-  vPosition := 0;
-  vSize := AValue.Size;
-
-  if vSize > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vInBuf, vSize);
-
-  while vPosition < vSize do
-  begin
-    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
-    HashBytes(@vInBuf[0], vBytesRead);
-
-    vPosition := vPosition + vBytesRead;
-  end;
-end;
-
-procedure TRALHashes.UpdateBuffer(const AValue: StringRAL);
-var
-  vStream: TStringStream;
-begin
-  vStream := TStringStream.Create(AValue);
+  AES := TRALCriptoAES.Create;
   try
-    UpdateBuffer(vStream);
+    case AAlgorithm of
+      ctAES128: AES.AESType := tAES128;
+      ctAES192: AES.AESType := tAES192;
+      ctAES256: AES.AESType := tAES256;
+    end;
+
+    AES.Key := AKey;
+    Result := AES.Encrypt(AText);
   finally
-    vStream.Free;
+    FreeAndNil(AES);
   end;
 end;
 
-procedure TRALHashes.UpdateBuffer(AValue: TBytes);
-var
-  vStream: TStream;
+class function TRALHashes.fromBase64(AText: StringRAL): StringRAL;
 begin
-  vStream := BytesToStream(AValue);
-  try
-    UpdateBuffer(vStream);
-  finally
-    vStream.Free;
+  Result := TRALBase64.Decode(AText);
+end;
+
+class function TRALHashes.GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
+var
+  Hash32: TRALSHA2_32;
+  Hash64: TRALSHA2_64;
+begin
+  case AHashType of
+    htSHA224:
+      begin
+        Hash32 := TRALSHA2_32.Create;
+        try
+          Hash32.Version := rsv224;
+          Hash32.OutputType := rhotBase64;
+          Result := Hash32.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash32);
+        end;
+      end;
+
+    htSHA256:
+      begin
+        Hash32 := TRALSHA2_32.Create;
+        try
+          Hash32.Version := rsv256;
+          Hash32.OutputType := rhotBase64;
+          Result := Hash32.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash32);
+        end;
+      end;
+
+    htSHA384:
+      begin
+        Hash64 := TRALSHA2_64.Create;
+        try
+          Hash64.Version := rsv384;
+          Hash64.OutputType := rhotBase64;
+          Result := Hash64.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash64);
+        end;
+      end;
+
+    htSHA512:
+      begin
+        Hash64 := TRALSHA2_64.Create;
+        try
+          Hash64.Version := rsv512;
+          Hash64.OutputType := rhotBase64;
+          Result := Hash64.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash64);
+        end;
+      end;
+
+    htSHA512_224:
+      begin
+        Hash64 := TRALSHA2_64.Create;
+        try
+          Hash64.Version := rsv512_224;
+          Hash64.OutputType := rhotBase64;
+          Result := Hash64.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash64);
+        end;
+      end;
+
+    htSHA512_256:
+      begin
+        Hash64 := TRALSHA2_64.Create;
+        try
+          Hash64.Version := rsv512_256;
+          Hash64.OutputType := rhotBase64;
+          Result := Hash64.HMACAsString(AText, AKey);
+        finally
+          FreeAndNil(Hash64);
+        end;
+      end;
   end;
+end;
+
+class function TRALHashes.toBase64(AText: StringRAL): StringRAL;
+begin
+  Result := TRALBase64.Encode(AText);
 end;
 
 end.

@@ -5,12 +5,12 @@ interface
 
 uses
   Classes, SysUtils,
-  RALHashes, RALTypes, RALTools, RALBase64;
+  RALHashBase, RALTypes, RALTools, RALBase64;
 
 type
   TRALSHA64Versions = (rsv384, rsv512, rsv512_224, rsv512_256);
 
-  TRALSHA2_64 = class(TRALHashes)
+  TRALSHA2_64 = class(TRALHashBase)
   private
     FBuffer: array[0..127] of byte;
     FHash: array[0..7] of UInt64RAL;
@@ -90,7 +90,9 @@ begin
     s1 := ((W[i - 2] shr 19) or (W[i - 2] shl 45)) 
       xor ((W[i - 2] shr 61) or (W[i - 2] shl 3)) 
       xor (W[i - 2] shr 6);
+    {$Q-}
     W[I] := W[I - 16] + s0 + W[I - 7] + s1;
+    {$Q+}
   end;
 
   for i := 0 to 79 do
@@ -99,24 +101,33 @@ begin
       xor ((e shr 18) or (e shl 46)) 
       xor ((e shr 41) or (e shl 23));
     c0 := (e and f) xor (not e and g);
+    {$Q-}
     t1 := h + s1 + c0 + K[i] + W[i];
+    {$Q+}
 
     s0 := ((a shr 28) or (a shl 36)) 
       xor ((a shr 34) or (a shl 30)) 
       xor ((a shr 39) or (a shl 25));
     m0 := (a and b) xor (a and c) xor (b and c);
+    {$Q-}
     t2 := s0 + m0;
+    {$Q+}
 
     h := g;
     g := f;
     f := e;
+    {$Q-}
     e := d + t1;
+    {$Q+}
     d := c;
     c := b;
     b := a;
+    {$Q-}
     a := t1 + t2;
+    {$Q+}
   end;
 
+  {$Q-}
   FHash[0] := FHash[0] + a;
   FHash[1] := FHash[1] + b;
   FHash[2] := FHash[2] + c;
@@ -125,6 +136,7 @@ begin
   FHash[5] := FHash[5] + f;
   FHash[6] := FHash[6] + g;
   FHash[7] := FHash[7] + h;
+  {$Q+}
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
 

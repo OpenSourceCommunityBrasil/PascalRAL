@@ -10,7 +10,7 @@ uses
     ZStream,
   {$ENDIF}
   Classes, SysUtils, ZLib,
-  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashes;
+  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase;
 
 type
   { TRALCompressZLib }

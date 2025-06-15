@@ -52,7 +52,7 @@ contains
   RALCripto in '..\..\src\utils\RALCripto.pas',
   RALCriptoAES in '..\..\src\utils\RALCriptoAES.pas',
   RALCustomObjects in '..\..\src\utils\RALCustomObjects.pas',
-  RALHashes in '..\..\src\utils\RALHashes.pas',
+  RALHashBase in '..\..\src\utils\RALHashBase.pas',
   RALJson in '..\..\src\utils\RALJson.pas',
   RALMD5 in '..\..\src\utils\RALMD5.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
@@ -72,6 +72,7 @@ contains
   RALStorageCSV in '..\..\src\utils\RALStorageCSV.pas',
   RALStorageJSON in '..\..\src\utils\RALStorageJSON.pas',
   RALStorageBIN in '..\..\src\utils\RALStorageBIN.pas',
-  RALDBTypes in '..\..\src\base\RALDBTypes.pas';
+  RALDBTypes in '..\..\src\base\RALDBTypes.pas',
+  RALHashes in '..\..\src\utils\RALHashes.pas';
 
 end.

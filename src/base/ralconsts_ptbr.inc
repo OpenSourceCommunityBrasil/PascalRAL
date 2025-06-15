@@ -14,6 +14,7 @@
   emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
   emContentCheckError = 'Erro de verificação de conteúdo.';
   emCryptEmptyKey = 'A chave deve ser fornecida.';
+  emHMACEmptyText = 'Texto de entrada não pode ser vazio.';
   emDBConnectionUndefined = 'Conexão não definida.';
   emDBDriverMissing = 'Driver de conexão não encontrado.';
   emDBEmptyBody = 'O "body" está vazio.';

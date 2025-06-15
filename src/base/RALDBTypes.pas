@@ -378,7 +378,7 @@ begin
 
     for vInt := POSINISTR to RALHighStr(ASQL) do
     begin
-      vSQLChar := ASQL[vInt];
+      vSQLChar := CharRAL(ASQL[vInt]);
       if (vSQLChar = '''') and (not vEspaceDoubleQuote) and
         (not (vEscapeQuote and (vChar = '\'))) then
       begin
