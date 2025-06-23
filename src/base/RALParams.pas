@@ -190,6 +190,8 @@ type
     function URLEncodedToList(ASource: StringRAL): TStringList;
     /// returns all the params in a comma separated UTF8string.
     function AsString: StringRAL;
+    /// returns all the params in a JSON UTF8string format.
+    function AsJSON: StringRAL;
 
     /// Grabs only the body kind of params, excluding headers and cookies.
     property Body: TList read GetBody;
@@ -213,6 +215,9 @@ type
 implementation
 
 { TRALParam }
+
+uses
+  RALJson;
 
 procedure TRALParam.Clone(ASource: TRALParam);
 begin
@@ -735,6 +740,26 @@ begin
   AssignParams(TStrings(ADest), AKind, ASeparator);
 end;
 
+function TRALParams.AsJSON: StringRAL;
+var
+  I: IntegerRAL;
+  JSON: TRALJSONObject;
+begin
+  Result := '';
+  if (FParams <> nil) and (FParams.Count > 0) then
+  begin
+    JSON := TRALJSONObject.Create;
+    try
+      for I := 0 to Pred(FParams.Count) do
+        JSON.Add(TRALParam(FParams.Items[I]).ParamName, TRALParam(FParams.Items[I]).AsString);
+
+      Result := JSON.ToJSON;
+    finally
+      JSON.Free;
+    end;
+  end;
+end;
+
 procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
   ASeparator: StringRAL);
 var
@@ -1135,12 +1160,14 @@ var
 begin
   vMin := Length(ASource);
   vPos := Pos('=', ASource);
-  if (vPos > 0) and (vPos < vMin) then
-    Result := '=';
-
-  vPos := Pos(StringRAL(': '), ASource);
-  if (vPos > 0) and (vPos < vMin) then
-    Result := ': ';
+  if (vPos > 0) and (vPos <= vMin) then
+    Result := '='
+  else
+  begin
+    vPos := Pos(StringRAL(': '), ASource);
+    if (vPos > 0) and (vPos <= vMin) then
+      Result := ': ';
+  end;
 end;
 
 procedure TRALParams.AppendParamLine(const ALine, ANameSeparator: StringRAL;
@@ -1166,7 +1193,8 @@ begin
     if vParam = nil then
       vParam := NewParam;
     vParam.ParamName := vName;
-    vParam.AsString := vValue;
+    if vValue <> '' then
+      vParam.AsString := vValue;
     vParam.ContentType := rctTEXTPLAIN;
     vParam.Kind := AKind;
   end;

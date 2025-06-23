@@ -196,10 +196,10 @@ end;
 
 procedure TRALBaseRoute.SetRoute(AValue: StringRAL);
 var
-  vList : TStringList;
-  vInt, vPos : IntegerRAL;
-  vStr : StringRAL;
-  vParam : TRALRouteParam;
+  vList: TStringList;
+  vInt, vPos: IntegerRAL;
+  vStr: StringRAL;
+  vParam: TRALRouteParam;
 begin
   AValue := FixRoute(Trim(AValue));
 
