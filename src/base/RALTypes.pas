@@ -8,6 +8,9 @@ unit RALTypes;
 interface
 
 {$I ..\base\PascalRAL.inc}
+{$IFDEF FPC}
+{$modeswitch typehelpers}
+{$ENDIF}
 
 uses
   {$IFDEF FPC}
@@ -59,6 +62,14 @@ type
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
+  TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL
+  public
+    function toBase64: StringRAL;
+    function fromBase64: StringRAL;
+  end;
+  {$IFEND}
+
 const
   {$IF Defined(FPC) OR Defined(DELPHIXE3UP)}
   POSINISTR = Low(String);
@@ -83,6 +94,9 @@ function ISO8601ToDate(const AValue: StringRAL): TDateTime;
 {$IFEND}
 
 implementation
+
+uses
+  RALBase64;
 
 function RALHighStr(const AStr: StringRAL): integer;
 begin
@@ -148,6 +162,20 @@ begin
   vFmt.LongTimeFormat := 'hh:nn:ss.zzz';
 
   Result := StrToDate(StringReplace(AValue, 'T', ' ', []), vFmt);
+end;
+{$IFEND}
+
+{ TRALBase64StringHelper }
+
+{$IF Defined(FPC) or defined(DELPHIXE3UP)}
+function TRALBase64StringHelper.fromBase64: StringRAL;
+begin
+  Result := TRALBase64.Decode(Self);
+end;
+
+function TRALBase64StringHelper.toBase64: StringRAL;
+begin
+  Result := TRALBase64.Encode(Self);
 end;
 {$IFEND}
 

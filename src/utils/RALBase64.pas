@@ -37,14 +37,6 @@ type
     class function GetSizeDecode(ASize: Int64RAL): Int64RAL;
   end;
 
-  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
-  TRALBase64StringHelper = record helper for StringRAL
-  public
-    function toBase64: StringRAL;
-    function fromBase64: StringRAL;
-  end;
-  {$IFEND}
-
 implementation
 
 const
@@ -432,19 +424,5 @@ begin
   end;
   Result.Position := 0;
 end;
-
-{ TRALBase64StringHelper }
-
-{$IF Defined(FPC) or defined(DELPHIXE3UP)}
-function TRALBase64StringHelper.fromBase64: StringRAL;
-begin
-  Result := TRALBase64.Decode(Self);
-end;
-
-function TRALBase64StringHelper.toBase64: StringRAL;
-begin
-  Result := TRALBase64.Encode(Self);
-end;
-{$IFEND}
 
 end.
