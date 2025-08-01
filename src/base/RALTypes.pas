@@ -14,10 +14,9 @@ interface
 
 uses
   {$IFDEF FPC}
-  bufstream,
+  bufstream, LazUTF8,
   {$ENDIF}
-  Classes, SysUtils,
-  RALConsts;
+  Classes, SysUtils;
 
 type
   IntegerRAL = Integer;
@@ -31,11 +30,11 @@ type
   {$IFEND}
 
   {$IF Defined(FPC) OR NOT Defined(DELPHIXE3UP)}
-    StringRAL = string;
-    CharRAL = Char;
+    StringRAL = UTF8String;
+    CharRAL = UTF8Char;
   {$ELSE}
-    StringRAL = WideString;
-    CharRAL = WideChar;
+    StringRAL = UTF8String;
+    CharRAL = UTF8Char;
   {$IFEND}
   PCharRAL = ^CharRAL;
 
@@ -81,6 +80,7 @@ const
   {$IF NOT Defined(FPC) AND NOT Defined(DELPHI7UP)}
   sLineBreak = #13#10;
   {$IFEND}
+  EmptyStr: StringRAL = StringRAL('');
 
 // Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
@@ -125,11 +125,13 @@ end;
 function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 {$IFNDEF HAS_Encoding}
   var
-    vStr : ansistring;
+    vStr: ansistring;
 {$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
-    Result := TEncoding.UTF8.GetString(ABytes);
+    //Result := TEncoding.UTF8.GetString(ABytes);
+//    SetString(Result, PUTF8Char(ABytes), Length(ABytes));
+      SetString(Result, PAnsiChar(ABytes), Length(ABytes));
   {$ELSE}
     SetLength(vStr, Length(ABytes));
     Move(ABytes[0], vStr[POSINISTR], Length(ABytes));

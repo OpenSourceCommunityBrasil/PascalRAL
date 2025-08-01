@@ -224,7 +224,7 @@ begin
 
   try
     if FRALConnection <> nil then
-      vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+      vInfo := FRALConnection.InfoFieldsFromSQL(StringRAL(FSQL.Text.Trim));
 
     if vInfo = nil then
       Exit;

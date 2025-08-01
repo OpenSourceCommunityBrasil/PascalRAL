@@ -70,6 +70,7 @@ var
 
 begin
   AResponse.Clear;
+  AResponse.AddHeader('RALEngine', ENGINEFPHTTP);
 
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.IOTimeout := Parent.RequestTimeout;

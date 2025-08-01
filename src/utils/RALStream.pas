@@ -21,13 +21,13 @@ type
     function ReadSize: UInt64RAL;
     procedure WriteSize(ASize: UInt64RAL);
   public
-    constructor Create(const AStream : TStream);
+    constructor Create(const AStream: TStream);
 
     procedure WriteShortint(AValue: Shortint);
     procedure WriteByte(AValue: Byte);
     procedure WriteSmallint(AValue: Smallint);
     procedure WriteWord(AValue: Word);
-    procedure WriteInteger(AValue : IntegerRAL);
+    procedure WriteInteger(AValue: IntegerRAL);
     procedure WriteLongWord(AValue: LongWord);
     procedure WriteInt64(AValue: Int64RAL);
     procedure WriteQWord(AValue: UInt64);
@@ -37,7 +37,7 @@ type
     procedure WriteStream(AValue: TStream);
     procedure WriteBytes(AValue: TBytes);
     procedure WriteString(AValue: StringRAL);
-    procedure WriteChar(AValue: Char);
+    procedure WriteChar(AValue: CharRAL);
     procedure WriteBytesDirect(AValue: TBytes);
 
     function ReadShortint: Shortint;
@@ -54,8 +54,8 @@ type
     procedure ReadStream(AStream: TStream);
     function ReadBytes: TBytes;
     function ReadString: StringRAL;
-    function ReadChar: Char;
-    function ReadBytesDirect(ALength : integer) : TBytes;
+    function ReadChar: CharRAL;
+    function ReadBytesDirect(ALength: integer): TBytes;
   end;
 
   TRALStringStream = class(TMemoryStream)
@@ -67,7 +67,7 @@ type
     function DataString: StringRAL;
 
     procedure WriteBytes(ABytes: TBytes);
-    procedure WriteString(AString : StringRAL);
+    procedure WriteString(AString: StringRAL);
     procedure WriteStream(AStream: TStream);
   end;
 
@@ -157,7 +157,7 @@ begin
   end
   else
   begin
-    vStream := TStringStream.Create('');
+    vStream := TStringStream.Create(EmptyStr);
     try
       vStream.CopyFrom(AStream, AStream.Size);
       Result := TStringStream(vStream).DataString;
@@ -296,7 +296,7 @@ begin
   FStream.Write(AValue[0], Length(AValue));
 end;
 
-procedure TRALBinaryWriter.WriteChar(AValue: Char);
+procedure TRALBinaryWriter.WriteChar(AValue: CharRAL);
 begin
   FStream.Write(AValue, SizeOf(AValue));
 end;
@@ -396,7 +396,7 @@ begin
   FStream.Read(Result[0], ALength);
 end;
 
-function TRALBinaryWriter.ReadChar: Char;
+function TRALBinaryWriter.ReadChar: CharRAL;
 begin
   FStream.Read(Result, SizeOf(Result));
 end;
@@ -452,7 +452,7 @@ end;
 
 procedure TRALStringStream.WriteStream(AStream: TStream);
 var
-  vBytes : TBytes;
+  vBytes: TBytes;
 begin
   AStream.Position := 0;
   SetLength(vBytes, AStream.Size);

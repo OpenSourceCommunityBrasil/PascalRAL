@@ -17,12 +17,12 @@ type
   private
     FBoolFalseStr: StringRAL;
     FBoolTrueStr: StringRAL;
-    FColumnSeparator: Char;
+    FColumnSeparator: CharRAL;
     FCustomDateFormat: StringRAL;
     FCustomTimeFormat: StringRAL;
     FDateTimeFormat: TRALDateTimeFormat;
-    FDecimalSeparator: Char;
-    FThousandSeparator: Char;
+    FDecimalSeparator: CharRAL;
+    FThousandSeparator: CharRAL;
   protected
     procedure AssignTo(ADest: TPersistent); override;
   public
@@ -34,11 +34,11 @@ type
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
-    property DecimalSeparator: Char read FDecimalSeparator write FDecimalSeparator;
-    property ColumnSeparator: Char read FColumnSeparator write FColumnSeparator;
+    property DecimalSeparator: CharRAL read FDecimalSeparator write FDecimalSeparator;
+    property ColumnSeparator: CharRAL read FColumnSeparator write FColumnSeparator;
     property CustomDateFormat: StringRAL read FCustomDateFormat write FCustomDateFormat;
     property CustomTimeFormat: StringRAL read FCustomTimeFormat write FCustomTimeFormat;
-    property ThousandSeparator: Char read FThousandSeparator write FThousandSeparator;
+    property ThousandSeparator: CharRAL read FThousandSeparator write FThousandSeparator;
   end;
 
   { TRALStorageCSV }
@@ -202,8 +202,8 @@ function TRALStorageCSV.CSVFormatFloat(AValue: Double): StringRAL;
 var
   vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := FFormatOptions.DecimalSeparator;
-  vFormat.ThousandSeparator := FFormatOptions.ThousandSeparator;
+  vFormat.DecimalSeparator := Char(FFormatOptions.DecimalSeparator);
+  vFormat.ThousandSeparator := Char(FFormatOptions.ThousandSeparator);
   Result := FloatToStr(AValue, vFormat);
 end;
 
@@ -430,8 +430,8 @@ begin
   AStream.Position := vInt64;
 
   try
-    vFormat.DecimalSeparator := FFormatOptions.DecimalSeparator;
-    vFormat.ThousandSeparator := FFormatOptions.ThousandSeparator;
+    vFormat.DecimalSeparator := Char(FFormatOptions.DecimalSeparator);
+    vFormat.ThousandSeparator := Char(FFormatOptions.ThousandSeparator);
 
     SetLength(FFieldNames, vLine1.Count);
     SetLength(FFieldTypes, vLine1.Count);

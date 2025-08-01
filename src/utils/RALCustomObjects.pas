@@ -159,8 +159,8 @@ end;
 
 procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);
 var
-  vInt : IntegerRAL;
-  vParamSource, vParamTarget : TRALParam;
+  vInt: IntegerRAL;
+  vParamSource, vParamTarget: TRALParam;
 begin
   if ASource = nil then
     Exit;

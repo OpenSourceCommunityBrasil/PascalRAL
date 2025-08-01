@@ -85,6 +85,7 @@ var
 begin
   inherited;
   AResponse.Clear;
+  AResponse.AddHeader('RALEngine', ENGINENETHTTP);
 
   {$IFDEF DELPHI10_1UP}
   FHttp.ConnectionTimeout := Parent.ConnectTimeout;

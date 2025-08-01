@@ -96,7 +96,11 @@ begin
 
   vInputStream := nil;
   try
+    {$IFDEF FPC}
+    vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.UTF8);
+    {$ELSE}
     vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.ANSI);
+    {$ENDIF}
     vInputStream.Position := 0;
     Result := Decrypt(vInputStream);
   finally

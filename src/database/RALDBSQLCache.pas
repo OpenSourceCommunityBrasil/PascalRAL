@@ -575,7 +575,7 @@ var
 
   vInt1, vInt2, vInt3: IntegerRAL;
   vByte: byte;
-  vBoolean : boolean;
+  vBoolean: boolean;
 begin
   Clear;
   AStream.Position := 0;

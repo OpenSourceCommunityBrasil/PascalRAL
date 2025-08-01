@@ -6,6 +6,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo,
+  RALHashes,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
   RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
@@ -20,6 +21,7 @@ type
   private
     FContent: TStream;
     FContentType: StringRAL;
+    FContentDisposition: StringRAL;
     FContentDispositionInline: Boolean;
     FFileName: StringRAL;
     FKind: TRALParamKind;
@@ -221,7 +223,7 @@ uses
 
 procedure TRALParam.Clone(ASource: TRALParam);
 begin
-  ASource.ContentDisposition := Self.ContentDisposition;
+  ASource.ContentDispositionInline := Self.ContentDispositionInline;
   ASource.ContentType := Self.ContentType;
   ASource.FileName := Self.FileName;
   ASource.Kind := Self.Kind;
@@ -318,7 +320,9 @@ begin
   if (FFileName <> '') and (not FContentDispositionInline) then
     Result := Format('attachment; name="%s"; filename="%s"', [FParamName, FFileName])
   else
-    Result := Format('inline; name="%s"', [FParamName]);
+//    Result := Format('inline; name="%s"', [FParamName]);
+// pode cagar o módulo web
+    Result := 'inline';
 end;
 
 function TRALParam.GetContentSize: Int64RAL;
@@ -443,7 +447,7 @@ var
     vQuoted := False;
     for vInt := 1 to vLen do
     begin
-      vChr := Char(AStr[vInt]);
+      vChr := CharRAL(AStr[vInt]);
       if (vChr = '"') then
       begin
         vQuoted := not vQuoted;
@@ -531,13 +535,13 @@ begin
     Result.OpenFile(AFileName);
     Result.Kind := rpkBODY;
 
-    vMime := TRALMIMEType.Create;
+    vMime := TRALMIMEType.GetInstance;
     try
       Result.ContentType := vMime.GetMIMEType(AFileName);
       if Result.ContentType = '' then
         Result.ContentType := rctAPPLICATIONOCTETSTREAM;
     finally
-      FreeAndNil(vMime);
+//      FreeAndNil(vMime);
     end;
   end;
 end;
@@ -635,9 +639,12 @@ var
   vLine: StringRAL;
   vIs13: Boolean;
 begin
-  {$IFNDEF FPC}
-  ASource := UTF8ToString(ASource);
+  {$IFDEF FPC}
+    ASource := UTF8Decode(ASource);
+  {$ELSE}
+    ASource := UTF8ToString(ASource);
   {$ENDIF}
+
   if (ASource <> '') and (ANameSeparator = '') then
     ANameSeparator := FindNameSeparator(ASource);
 
@@ -1157,16 +1164,26 @@ end;
 function TRALParams.FindNameSeparator(const ASource: StringRAL): StringRAL;
 var
   vPos, vMin: IntegerRAL;
+  Engine: StringRAL;
 begin
-  vMin := Length(ASource);
-  vPos := Pos('=', ASource);
-  if (vPos > 0) and (vPos <= vMin) then
+  Engine := Self.GetParam('RALEngine').AsString;
+  if SameText(Engine, ENGINESYNOPSE) then
+    Result := ': '
+  else if SameText(Engine, ENGINEINDY) or SameText(Engine, ENGINEFPHTTP)
+       or SameText(Engine, ENGINESAGUI) or SameText(Engine, ENGINENETHTTP) then
     Result := '='
   else
   begin
-    vPos := Pos(StringRAL(': '), ASource);
+    vMin := Length(ASource);
+    vPos := Pos('=', ASource);
     if (vPos > 0) and (vPos <= vMin) then
-      Result := ': ';
+      Result := '='
+    else
+    begin
+      vPos := Pos(StringRAL(': '), ASource);
+      if (vPos > 0) and (vPos <= vMin) then
+        Result := ': ';
+    end;
   end;
 end;
 
@@ -1254,34 +1271,35 @@ begin
 end;
 
 function TRALParams.Encrypt(AStream: TStream): TStream;
-var
-  vCript: TRALCripto;
+//var
+//  vCript: TRALCripto;
 begin
-  Result := nil;
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
-    end;
-  end;
-
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.EncryptAsStream(AStream);
-  finally
-    FreeAndNil(vCript);
-  end;
+  Result := TRALHashes.Encrypt(AStream, FCriptoOptions.Key, FCriptoOptions.CriptType);
+//  Result := nil;
+//  case FCriptoOptions.CriptType of
+//    crAES128:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES128;
+//    end;
+//    crAES192:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES192;
+//    end;
+//    crAES256:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES256;
+//    end;
+//  end;
+//
+//  try
+//    vCript.Key := FCriptoOptions.Key;
+//    Result := vCript.EncryptAsStream(AStream);
+//  finally
+//    FreeAndNil(vCript);
+//  end;
 end;
 
 function TRALParams.Decompress(AStream: TStream): TStream;
@@ -1327,65 +1345,65 @@ begin
 end;
 
 function TRALParams.Decrypt(AStream: TStream): TStream;
-var
-  vCript: TRALCripto;
+//var
+//  vCript: TRALCripto;
 begin
-  Result := nil;
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
-    end;
-  end;
-
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.DecryptAsStream(AStream);
-  finally
-    FreeAndNil(vCript);
-  end;
+  Result := TRALHashes.Decrypt(AStream, FCriptoOptions.Key, FCriptoOptions.CriptType);
+//  case FCriptoOptions.CriptType of
+//    crAES128:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES128;
+//    end;
+//    crAES192:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES192;
+//    end;
+//    crAES256:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES256;
+//    end;
+//  end;
+//
+//  try
+//    vCript.Key := FCriptoOptions.Key;
+//    Result := vCript.DecryptAsStream(AStream);
+//  finally
+//    FreeAndNil(vCript);
+//  end;
 end;
 
 function TRALParams.Decrypt(const ASource: StringRAL): StringRAL;
-var
-  vCript: TRALCripto;
+//var
+//  vCript: TRALCripto;
 begin
-  Result := '';
-  case FCriptoOptions.CriptType of
-    crAES128:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES128;
-    end;
-    crAES192:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES192;
-    end;
-    crAES256:
-    begin
-      vCript := TRALCriptoAES.Create;
-      TRALCriptoAES(vCript).AESType := tAES256;
-    end;
-  end;
-
-  try
-    vCript.Key := FCriptoOptions.Key;
-    Result := vCript.Decrypt(ASource);
-  finally
-    FreeAndNil(vCript);
-  end;
+  Result := TRALHashes.Decrypt(ASource, FCriptoOptions.Key, FCriptoOptions.CriptType);
+//  case FCriptoOptions.CriptType of
+//    crAES128:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES128;
+//    end;
+//    crAES192:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES192;
+//    end;
+//    crAES256:
+//    begin
+//      vCript := TRALCriptoAES.Create;
+//      TRALCriptoAES(vCript).AESType := tAES256;
+//    end;
+//  end;
+//
+//  try
+//    vCript.Key := FCriptoOptions.Key;
+//    Result := vCript.Decrypt(ASource);
+//  finally
+//    FreeAndNil(vCript);
+//  end;
 end;
 
 procedure TRALParams.DelParam(const AName: StringRAL; AKind: TRALParamKind);

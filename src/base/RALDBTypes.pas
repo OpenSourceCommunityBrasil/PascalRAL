@@ -157,7 +157,7 @@ type
 
   TRALDBInfoTables = class
   private
-    FTables : TList;
+    FTables: TList;
   protected
     function GetAsJSON: StringRAL;
     function GetAsJSONObj: TRALJSONArray;
