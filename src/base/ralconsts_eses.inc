@@ -10,54 +10,54 @@
   Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
-  emCompressInvalidFormat = 'Formato de compressiÛn no Ès v·lido.';
+  emCompressInvalidFormat = 'Formato de compressi√≥n no √©s v√°lido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
-  emContentCheckError = 'Error de comprobaciÛn de contenido.';
+  emContentCheckError = 'Error de comprobaci√≥n de contenido.';
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
   emHMACEmptyText = 'Se debe proporcionar lo texto.';
-  emDBConnectionUndefined = 'ConexiÛn no establecida.';
-  emDBDriverMissing = 'No se encontrÛ el controlador de conexiÛn.';
-  emDBEmptyBody = 'El cuerpo est· vacÌo.';
+  emDBConnectionUndefined = 'Conexi√≥n no establecida.';
+  emDBDriverMissing = 'No se encontr√≥ el controlador de conexi√≥n.';
+  emDBEmptyBody = 'El cuerpo est√° vac√≠o.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
-  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacÌo.';
-  emInvalidFormat = 'Formato no Ès v·lido.';
-  emInvalidJSONFormat = 'Formato JSON no Ès v·lido.';
-  emQueryVersionError = 'VersiÛn de estructura no Ès v·lida.';
+  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vac√≠o.';
+  emInvalidFormat = 'Formato no √©s v√°lido.';
+  emInvalidJSONFormat = 'Formato JSON no √©s v√°lido.';
+  emQueryVersionError = 'Versi√≥n de estructura no √©s v√°lida.';
   emRouteAlreadyExists = 'La ruta ya existe.';
   emStorageClassNotFound = 'Classe del Storage no fue encontrada.';
-  emStorageInvalidBinary = 'Formato binario no Ès v·lido.';
+  emStorageInvalidBinary = 'Formato binario no √©s v√°lido.';
   emStorageLinkNotFound = 'Lo Storage %s no ha declarado en "uses".';
-  emStorageNotFound = 'No se encontrÛ TRALStorageLink.';
+  emStorageNotFound = 'No se encontr√≥ TRALStorageLink.';
 
   // sagui error messages
   emSaguiLibraryLoadError = 'Error al intentar cargar libsagui.';
   emSaguiServerCreateError = 'Error al intentar crear el servidor.';
-  emSaguiServerUnsupportedTLS = 'Esta versiÛn de TLS no es compatible con la lib.';
+  emSaguiServerUnsupportedTLS = 'Esta versi√≥n de TLS no es compatible con la lib.';
 
   // ralserver error messages
-  wmIPv6notImplemented = 'IPv6 no est· implementado en este motor.';
+  wmIPv6notImplemented = 'IPv6 no est√° implementado en este motor.';
 
   // ralserver page codes
   SLangHTTP = 'es-ES';
   SServerOnline = 'Servidor activo';
-  SWordVersion = 'VersiÛn';
+  SWordVersion = 'Versi√≥n';
   SWordEngine = 'Motor';
   SError400 = 'SolicitudIncorrecta';
-  SError400Page = 'El servidor informa que no le gustan los par·metros de entrada.';
+  SError400Page = 'El servidor informa que no le gustan los par√°metros de entrada.';
   SError401 = 'No autorizado';
   SError401Page = 'El servidor informa que no te conoce.';
   SError403 = 'Prohibido';
   SError403Page = 'El servidor informa que no quiere que accedas.';
   SError404 = 'No encontrado';
-  SError404Page = 'El servidor informa que la p·gina que est·s solicitando no existe en esta realidad.';
+  SError404Page = 'El servidor informa que la p√°gina que est√°s solicitando no existe en esta realidad.';
   SError415 = 'Tipo de medio no soportado';
-  SError415Page = 'El servidor informa que no sabe lo que est·s preguntando.';
+  SError415Page = 'El servidor informa que no sabe lo que est√°s preguntando.';
   SError500 = 'Error interno del servidor';
-  SError500Page = 'El servidor hizo algo que no deberÌa.';
+  SError500Page = 'El servidor hizo algo que no deber√≠a.';
   SError501 = 'No implementado';
-  SError501Page = 'El servidor informa que est·s buscando algo que no existe.';
+  SError501Page = 'El servidor informa que est√°s buscando algo que no existe.';
   SError503 = 'Servicio no disponible';
-  SError503Page = 'El servidor informa que est· descansando y no quiere trabajar ahora, intente m·s tarde.';
+  SError503Page = 'El servidor informa que est√° descansando y no quiere trabajar ahora, intente m√°s tarde.';
 
   // RALDBDescriptions
   cmDBApplyUpdDescription = 'Registra los cambios del cliente HTTP.';

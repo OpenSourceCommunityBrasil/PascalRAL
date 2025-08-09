@@ -75,7 +75,7 @@ function TRALCripto.Encrypt(const AValue: StringRAL): StringRAL;
 var
   vInputStream: TStringStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse c骴igo pra compatibilizar com vers鮡s antigas do Delphi }
+  { TODO -cCompatibilidade : Melhorar esse c贸digo pra compatibilizar com vers玫es antigas do Delphi }
   vInputStream := nil;
   try
     vInputStream := TStringStream.Create(AValue, TEncoding.UTF8);
@@ -90,7 +90,7 @@ function TRALCripto.Decrypt(const AValue: StringRAL): StringRAL;
 var
   vInputStream: TStringStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse c骴igo pra compatibilizar com vers鮡s antigas do Delphi }
+  { TODO -cCompatibilidade : Melhorar esse c贸digo pra compatibilizar com vers玫es antigas do Delphi }
   if AValue = '' then
     Raise Exception.Create(emHMACEmptyText);
 
@@ -112,7 +112,7 @@ function TRALCripto.Encrypt(AValue: TStream): StringRAL;
 var
   vEncryptedStream: TStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse c骴igo pra compatibilizar com vers鮡s antigas do Delphi }
+  { TODO -cCompatibilidade : Melhorar esse c贸digo pra compatibilizar com vers玫es antigas do Delphi }
   vEncryptedStream := nil;
   try
     vEncryptedStream := EncryptAsStream(AValue);
@@ -128,7 +128,7 @@ var
   vDecryptedStream: TStream;
   vStringStream: TStringStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse c骴igo pra compatibilizar com vers鮡s antigas do Delphi }
+  { TODO -cCompatibilidade : Melhorar esse c贸digo pra compatibilizar com vers玫es antigas do Delphi }
   vDecryptedStream := nil;
   vStringStream := nil;
   try

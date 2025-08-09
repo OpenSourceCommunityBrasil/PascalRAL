@@ -321,7 +321,7 @@ begin
     Result := Format('attachment; name="%s"; filename="%s"', [FParamName, FFileName])
   else
 //    Result := Format('inline; name="%s"', [FParamName]);
-// pode cagar o módulo web
+// pode cagar o mÃ³dulo web
     Result := 'inline';
 end;
 
