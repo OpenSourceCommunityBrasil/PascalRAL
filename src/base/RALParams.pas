@@ -1,4 +1,4 @@
-/// Unit that contains everything related to Params from either the query request
+﻿/// Unit that contains everything related to Params from either the query request
 /// or response.
 unit RALParams;
 
@@ -101,7 +101,8 @@ type
     function Encrypt(AStream: TStream): TStream;
 
     /// Results either = or : if found on the input text.
-    function FindNameSeparator(const ASource: StringRAL): StringRAL;
+    function FindHeaderNameSeparator(const ASource: StringRAL): StringRAL;
+    function FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
     function GetBody: TList;
     function GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam; overload;
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
@@ -136,6 +137,8 @@ type
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
     /// Used to append a list of params (ASource) to the current params list.
     procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
+    /// Used to append a list of params (ASource) from the body to the current params list.
+    procedure AppendBodyParams(ASource: TStrings; AKind: TRALParamKind);
     /// Used to append a list of params in a string to the current params list.
     procedure AppendParamsListText(ASource: StringRAL; AKind: TRALParamKind;
                                    ANameSeparator: StringRAL = '');
@@ -626,7 +629,7 @@ var
   vSeparator: StringRAL;
 begin
   if ASource.Count > 0 then
-    vSeparator := FindNameSeparator(ASource.Strings[0]);
+    vSeparator := FindHeaderNameSeparator(ASource.Strings[0]);
 
   for vInt := 0 to Pred(ASource.Count) do
     AppendParamLine(ASource.Strings[vInt], vSeparator, AKind);
@@ -646,7 +649,7 @@ begin
   {$ENDIF}
 
   if (ASource <> '') and (ANameSeparator = '') then
-    ANameSeparator := FindNameSeparator(ASource);
+    ANameSeparator := FindHeaderNameSeparator(ASource);
 
   vLine := '';
   for vInt := POSINISTR to RALHighStr(ASource) do
@@ -1015,7 +1018,7 @@ var
 begin
   vStringList := URLEncodedToList(ASource);
   try
-    AppendParams(vStringList, AKind);
+    AppendBodyParams(vStringList, AKind);
   finally
     FreeAndNil(vStringList);
   end;
@@ -1161,7 +1164,25 @@ begin
   Result := 'ral_param' + IntToStr(FNextParam);
 end;
 
-function TRALParams.FindNameSeparator(const ASource: StringRAL): StringRAL;
+function TRALParams.FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
+var
+  vPos, vMin: IntegerRAL;
+begin
+  begin
+    vMin := Length(ASource);
+    vPos := Pos('=', ASource);
+    if (vPos > 0) and (vPos <= vMin) then
+      Result := '='
+    else
+    begin
+      vPos := Pos(StringRAL(': '), ASource);
+      if (vPos > 0) and (vPos <= vMin) then
+        Result := ': ';
+    end;
+  end;
+end;
+
+function TRALParams.FindHeaderNameSeparator(const ASource: StringRAL): StringRAL;
 var
   vPos, vMin: IntegerRAL;
   Engine: StringRAL;
@@ -1185,6 +1206,18 @@ begin
         Result := ': ';
     end;
   end;
+end;
+
+procedure TRALParams.AppendBodyParams(ASource: TStrings; AKind: TRALParamKind);
+var
+  vInt: Integer;
+  vSeparator: StringRAL;
+begin
+  if ASource.Count > 0 then
+    vSeparator := FindBodyNameSeparator(ASource.Strings[0]);
+
+  for vInt := 0 to Pred(ASource.Count) do
+    AppendParamLine(ASource.Strings[vInt], vSeparator, AKind);
 end;
 
 procedure TRALParams.AppendParamLine(const ALine, ANameSeparator: StringRAL;

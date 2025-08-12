@@ -157,13 +157,16 @@ begin
   end
   else
   begin
-    vStream := TStringStream.Create(EmptyStr);
-    try
-      vStream.CopyFrom(AStream, AStream.Size);
-      Result := TStringStream(vStream).DataString;
-    finally
-      FreeAndNil(vStream);
-    end;
+    vStream := TRALStringStream.Create(AStream);
+    Result := TRALStringStream(vStream).DataString;
+
+//    vStream := TStringStream.Create(EmptyStr);
+//    try
+//      vStream.CopyFrom(AStream, AStream.Size);
+//      Result := TStringStream(vStream).DataString;
+//    finally
+//      FreeAndNil(vStream);
+//    end;
   end;
 end;
 
