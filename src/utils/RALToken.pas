@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils, DateUtils,
-  RALTypes, RALSHA2_32, RALSHA2_64, RALHashes, RALBase64, RALMD5,
+  RALTypes, RALSHA2_32, RALSHA2_64, RALHashBase, RALBase64, RALMD5,
   RALJson, RALTools, RALUrlCoder;
 
 type
@@ -227,7 +227,7 @@ implementation
 function TRALDigest.GetHeader: TStringList;
 var
   vHa1, vHa2, vAux1, vNC: StringRAL;
-  vHash: TRALHashes;
+  vHash: TRALHashBase;
 begin
   case FParams.Algorithm of
     tdaMD5: begin
@@ -390,7 +390,7 @@ var
   vNonce, vAlgorithm: StringRAL;
   vURL, vSign, vSecret: StringRAL;
   vInt: IntegerRAL;
-  vHash: TRALHashes;
+  vHash: TRALHashBase;
 begin
   inherited;
   if Trim(FNonce) = '' then

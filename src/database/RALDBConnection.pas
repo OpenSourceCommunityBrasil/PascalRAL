@@ -155,11 +155,11 @@ begin
   vResponse := nil;
 
   FClient.Request.Clear;
+  FClient.Request.Params.AddParam('sql', ASQL, rpkBODY);
   FClient.Request.ContentType := rctAPPLICATIONJSON;
-  FClient.Request.Params.AddParam('sql', ASQL, rpkQUERY);
 
   vUrl := FModuleRoute + '/getsqlfields';
-  FClient.Get(vUrl, vResponse);
+  FClient.Post(vUrl, vResponse);
   try
     if vResponse.StatusCode = HTTP_OK then begin
       Result := TRALDBInfoFields.Create;

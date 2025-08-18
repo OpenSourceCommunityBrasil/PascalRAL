@@ -71,6 +71,9 @@ class function TRALBase64.Decode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
+  if AValue = '' then
+    Raise Exception.Create(emHMACEmptyText);
+
   vStream := StringToStreamUTF8(AValue);
   try
     Result := Decode(vStream);
@@ -340,6 +343,9 @@ class function TRALBase64.Encode(const AValue: StringRAL): StringRAL;
 var
   vStream: TStream;
 begin
+  if AValue = '' then
+    Raise Exception.Create(emHMACEmptyText);
+
   vStream := StringToStreamUTF8(AValue);
   try
     Result := Encode(vStream);

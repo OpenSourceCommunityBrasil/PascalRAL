@@ -22,10 +22,10 @@ type
     FPort: IntegerRAL;
     FUsername: StringRAL;
 
-    FOnBeforeConnect : TRALDBOnConnect;
-    FOnAfterConnect : TRALDBOnConnect;
-    FOnErrorConnect : TRALDBOnError;
-    FOnErrorQuery : TRALDBOnError;
+    FOnBeforeConnect: TRALDBOnConnect;
+    FOnAfterConnect: TRALDBOnConnect;
+    FOnErrorConnect: TRALDBOnError;
+    FOnErrorQuery: TRALDBOnError;
   protected
     procedure ApplyUpdates(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -35,8 +35,8 @@ type
     procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 
-    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
-    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL : TRALDBSQL; AStorage: TRALStorageLink);
+    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
     function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
                                  ABinary : boolean) : TStream;
   public
@@ -116,6 +116,8 @@ var
   vInt: Integer;
   vField: TRALDBInfoField;
 begin
+  if not Assigned(ADataset) then exit;
+  
   vFields:= TRALDBInfoFields.Create;
   try
     for vInt := 0 to Pred(ADataset.FieldCount) do
@@ -180,7 +182,7 @@ var
   vDB: TRALDBBase;
   vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
-  vDBSQL : TRALDBSQL;
+  vDBSQL: TRALDBSQL;
 begin
   vDB := FindDatabaseDriver(ARequest, AResponse);
   try
@@ -382,7 +384,7 @@ procedure TRALDBModule.GetTables(ARequest: TRALRequest; AResponse: TRALResponse)
 var
   vDB: TRALDBBase;
   vSQL: TStringList;
-  vSchema : StringRAL;
+  vSchema: StringRAL;
   vSystem: boolean;
   vQuery: TDataSet;
   vJSON: TRALJSONArray;
@@ -407,11 +409,11 @@ begin
                 vSQL.Add('where rdb$system_flag = 0');
               vSQL.Add('order by rdb$relation_name');
             end;
-            dtSQLite : begin
+            dtSQLite: begin
               vSQL.Add('select name from sqlite_master');
               vSQL.Add('where type = ''table''');
             end;
-            dtMySQL : begin
+            dtMySQL: begin
               vSQL.Add('show tables');
             end;
             dtPostgreSQL : begin
@@ -455,7 +457,7 @@ begin
                 if vQuery.FieldCount > 2 then
                   vjObj.Add('schema_name', vQuery.Fields[2].AsString)
                 else
-                  vjObj.Add('schema_name', '');
+                  vjObj.Add('schema_name', EmptyStr);
 
                 vJSON.Add(vjObj);
 
@@ -497,7 +499,7 @@ var
 
   procedure AddFieldAttribute(AAttribute: StringRAL);
   begin
-    if vField.Attributes <> '' then
+    if vField.Attributes <> EmptyStr then
       vField.Attributes := vField.Attributes + ',';
     vField.Attributes := vField.Attributes + AAttribute;
   end;
@@ -590,7 +592,7 @@ var
 
   procedure AssignFirebirdDateTypeField;
   var
-    vfbType : TRALFieldType;
+    vfbType: TRALFieldType;
   begin
     case vQuery.FieldByName('rdb$field_type').AsInteger of
       007: begin
@@ -604,20 +606,20 @@ var
               vfbType := sftDouble;
       end;
       009: vfbType := sftInt64;
-      010: vfbType := sftDouble;
-      011: vfbType := sftDouble;
-      012: vfbType := sftDateTime;
-      013: vfbType := sftDateTime;
-      014: vfbType := sftString;
+      010,
+      011,
+      027: vfbType := sftDouble;
+      012,
+      013,
+      035: vfbType := sftDateTime;
+      014,
+      037,
+      040: vfbType := sftString;
       016: begin
             vfbType := sftInt64;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
               vfbType := sftDouble;
       end;
-      027: vfbType := sftDouble;
-      035: vfbType := sftDateTime;
-      037: vfbType := sftString;
-      040: vfbType := sftString;
       261: begin
         vfbType := sftBlob;
         if vQuery.FieldByName('rdb$field_sub_type').AsInteger = 1 then
@@ -677,19 +679,19 @@ var
     end;
 
     case vType of
-      23   : vpgType := sftInteger;
-      21   : vpgType := sftSmallInt;
-      20   : vpgType := sftInt64;
       16   : vpgType := sftBoolean;
-      26   : vpgType := sftInt64;
-      1700 : vpgType := sftDouble;
-      701  : vpgType := sftDouble;
-      1043 : vpgType := sftString;
-      1042 : vpgType := sftString;
-      1114 : vpgType := sftDateTime;
       17   : vpgType := sftBlob;
+      21   : vpgType := sftSmallInt;
+      23   : vpgType := sftInteger;
       25   : vpgType := sftMemo;
-      1082 : vpgType := sftDateTime;
+      20,
+      26   : vpgType := sftInt64;
+      701,
+      1700 : vpgType := sftDouble;
+      1042,
+      1043: vpgType := sftString;
+      1082,
+      1114,
       1184 : vpgType := sftDateTime;
     end;
 
@@ -739,14 +741,14 @@ begin
               vSQL.Add('left join rdb$collations cl on cl.rdb$character_set_id = f.rdb$character_set_id and');
               vSQL.Add('     cl.rdb$collation_id = coalesce(f.rdb$collation_id,rf.rdb$collation_id)');
               vSQL.Add('left join rdb$field_dimensions fd on fd.rdb$field_name = f.rdb$field_name');
-              vSQL.Add('where rf.rdb$relation_name = '+QuotedStr(vTable));
+              vSQL.Add('where rf.rdb$relation_name = ' + QuotedStr(vTable));
               vSQL.Add('order by rf.rdb$field_position');
             end;
             dtSQLite: begin
-              vSQL.Add('pragma table_info('+vTable+')');
+              vSQL.Add('pragma table_info(' + vTable + ')');
             end;
             dtMySQL: begin
-              vSQL.Add('show columns from '+vTable);
+              vSQL.Add('show columns from ' + vTable);
             end;
             dtPostgreSQL: begin
               vSQL.Add('select t.typbasetype, t.typtypmod, a.atttypid, a.atttypmod,');
@@ -762,9 +764,9 @@ begin
               vSQL.Add('inner join pg_catalog.pg_type t on a.atttypid = t.oid');
               vSQL.Add('left join pg_catalog.pg_attrdef d on d.adnum = a.attnum and d.adrelid = c.oid');
               vSQL.Add('where a.attnum > 0 and not a.attisdropped and');
-              vSQL.Add('      lower(c.relname) = '+QuotedStr(LowerCase(vTable)));
-              if vSchema <> '' then
-                vSQL.Add('  and lower(n.nspname) = '+QuotedStr(LowerCase(vSchema)));
+              vSQL.Add('      lower(c.relname) = ' + QuotedStr(LowerCase(vTable)));
+              if vSchema <> EmptyStr then
+                vSQL.Add('  and lower(n.nspname) = ' + QuotedStr(LowerCase(vSchema)));
             end;
           end;
 
@@ -847,7 +849,7 @@ begin
     try
       if vDB <> nil then
       begin
-        vSQL := ARequest.ParamByName('sql').AsString;
+        vSQL := ARequest.ParamByName('ral_body').AsString;
         vQuery := vDB.OpenNative(vSQL, nil);
         try
           vResult := GetInfoFieldsStream(vDB, vQuery, False);
@@ -931,7 +933,7 @@ begin
 
   vRoute := CreateRoute('getsqlfields', {$IFDEF FPC}@{$ENDIF}GetSQLFields);
   vRoute.Name := 'getsqlfields';
-  vRoute.AllowedMethods := [amGET, amOPTIONS];
+  vRoute.AllowedMethods := [amPOST, amOPTIONS];
   vRoute.Description.Add(cmDBGetSQLFieldsDescription);
 
   vParam := TRALRouteParam(vRoute.InputParams.Add);

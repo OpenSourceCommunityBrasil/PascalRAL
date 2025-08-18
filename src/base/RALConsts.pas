@@ -13,9 +13,9 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.11.0-13 alpha';
+  RALVERSION = '0.12.0-4 beta';
   RALVERSION_MAJOR = 0;
-  RALVERSION_MINOR = 11;
+  RALVERSION_MINOR = 12;
   RALVERSION_PATCH = 0;
   RALVERSION_FULL  = RALVERSION_MAJOR * 10000
                    + RALVERSION_MINOR * 100
@@ -28,6 +28,11 @@ const
   RALPACKAGESITE           = 'https://github.com/OpenSourceCommunityBrasil/PascalRAL';
   RALPACKAGELICENSE        = 'OpenSource';
   RALPACKAGELICENSEVERSION = 'OpenSource - v' + RALVERSION;
+  ENGINESYNOPSE            = 'mORMot2';
+  ENGINEINDY               = 'Indy';
+  ENGINESAGUI              = 'Sagui';
+  ENGINENETHTTP            = 'netHttp';
+  ENGINEFPHTTP             = 'fpHttp';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'

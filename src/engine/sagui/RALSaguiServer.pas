@@ -83,9 +83,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property ConnectionLimit: Int64RAL read GetConnectionLimit write SetConnectionLimit default 1000;
+    property ConnectionLimit: Int64RAL read GetConnectionLimit write SetConnectionLimit;
     property LibPath: TFileName read FLibPath write SetLibPath;
-    property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount default 32;
+    property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
   end;
 
@@ -252,6 +252,7 @@ begin
   try
     with vRequest do
     begin
+      AddHeader('RALEngine', ENGINESAGUI);
       // headers
       vStrMap := TRALSaguiStringMap.Create(sg_httpreq_headers(Areq));
       try

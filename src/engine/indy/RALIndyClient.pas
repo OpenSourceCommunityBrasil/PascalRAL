@@ -73,6 +73,7 @@ var
 
 begin
   AResponse.Clear;
+  AResponse.AddHeader('RALEngine', ENGINEINDY);
 
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;

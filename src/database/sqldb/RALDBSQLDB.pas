@@ -31,7 +31,7 @@ type
                       var ALastInsertId : Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
-    function OpenNative(ASQL : string; AParams : TParams) : TDataset; override;
+    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
     function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
 
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -127,7 +127,7 @@ begin
   inherited Destroy;
 end;
 
-function TRALDBSQLDB.OpenNative(ASQL : string; AParams : TParams) : TDataset;
+function TRALDBSQLDB.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
   vQuery : TSQLQuery;
   vInt : integer;

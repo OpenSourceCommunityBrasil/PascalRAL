@@ -216,6 +216,7 @@ begin
   try
     with vRequest do
     begin
+      AddHeader('RALEngine', ENGINEFPHTTP);
       ClientInfo.IP := ARequest.RemoteAddress;
       if ClientInfo.IP = '' then
         ClientInfo.IP := ARequest.RemoteHost;

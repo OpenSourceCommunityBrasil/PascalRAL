@@ -10,56 +10,57 @@
   Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
-  emCompressInvalidFormat = 'Formato de compress„o inv·lido.';
-  emCompressLibFilesError = 'Os arquivos bin·rios das seguintes classes n„o foram encontrados: %s.';
-  emContentCheckError = 'Erro de verificaÁ„o de conte˙do.';
+  emCompressInvalidFormat = 'Formato de compress√£o inv√°lido.';
+  emCompressLibFilesError = 'Os arquivos bin√°rios das seguintes classes n√£o foram encontrados: %s.';
+  emContentCheckError = 'Erro de verifica√ß√£o de conte√∫do.';
   emCryptEmptyKey = 'A chave deve ser fornecida.';
-  emDBConnectionUndefined = 'Conex„o n„o definida.';
-  emDBDriverMissing = 'Driver de conex„o n„o encontrado.';
-  emDBEmptyBody = 'O "body" est· vazio.';
+  emHMACEmptyText = 'Texto de entrada n√£o pode ser vazio.';
+  emDBConnectionUndefined = 'Conex√£o n√£o definida.';
+  emDBDriverMissing = 'Driver de conex√£o n√£o encontrado.';
+  emDBEmptyBody = 'O "body" est√° vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
-  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL n„o pode estar vazio.';
-  emInvalidFormat = 'Formato Inv·lido.';
-  emInvalidJSONFormat = 'Formato JSON inv·lido.';
-  emQueryVersionError = 'Vers„o de estrutura inv·lida.';
-  emRouteAlreadyExists = 'A rota j· existe.';
-  emStorageClassNotFound = 'Classe do Storage n„o encontrada.';
-  emStorageInvalidBinary = 'Formato bin·rio inv·lido.';
-  emStorageLinkNotFound = 'Storage %s n„o est· declarado em "uses".';
+  emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL n√£o pode estar vazio.';
+  emInvalidFormat = 'Formato Inv√°lido.';
+  emInvalidJSONFormat = 'Formato JSON inv√°lido.';
+  emQueryVersionError = 'Vers√£o de estrutura inv√°lida.';
+  emRouteAlreadyExists = 'A rota j√° existe.';
+  emStorageClassNotFound = 'Classe do Storage n√£o encontrada.';
+  emStorageInvalidBinary = 'Formato bin√°rio inv√°lido.';
+  emStorageLinkNotFound = 'Storage %s n√£o est√° declarado em "uses".';
   emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
 
   // sagui error messages
   emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';
   emSaguiServerCreateError = 'Erro ao tentar criar o servidor.';
-  emSaguiServerUnsupportedTLS = 'Esta vers„o do TLS n„o È suportada pela lib.';
+  emSaguiServerUnsupportedTLS = 'Esta vers√£o do TLS n√£o √© suportada pela lib.';
 
   // ralserver error messages
-  wmIPv6notImplemented = 'IPv6 n„o est· implementado.';
+  wmIPv6notImplemented = 'IPv6 n√£o est√° implementado.';
 
   // ralserver page codes
   SLangHTTP = 'pt-BR';
   SServerOnline = 'Servidor Online';
-  SWordVersion = 'Vers„o';
+  SWordVersion = 'Vers√£o';
   SWordEngine = 'Motor';
-  SError400 = 'SolicitaÁ„o Incorreta';
-  SError400Page = 'O servidor informa que n„o conhece os par‚metros de entrada';
-  SError401 = 'N„o autorizado';
-  SError401Page = 'O servidor informa que n„o conhece vocÍ';
+  SError400 = 'Solicita√ß√£o Incorreta';
+  SError400Page = 'O servidor informa que n√£o conhece os par√¢metros de entrada';
+  SError401 = 'N√£o autorizado';
+  SError401Page = 'O servidor informa que n√£o conhece voc√™';
   SError403 = 'Proibido';
-  SError403Page = 'O servidor informa que n„o quer que vocÍ acesse';
-  SError404 = 'N„o encontrado';
-  SError404Page = 'O servidor informa que a p·gina que vocÍ est· solicitando n„o existe nesta realidade';
-  SError415 = 'Tipo de mÌdia n„o suportado';
-  SError415Page = 'O servidor informa que desconhece o que vocÍ est· perguntando';
+  SError403Page = 'O servidor informa que n√£o quer que voc√™ acesse';
+  SError404 = 'N√£o encontrado';
+  SError404Page = 'O servidor informa que a p√°gina que voc√™ est√° solicitando n√£o existe nesta realidade';
+  SError415 = 'Tipo de m√≠dia n√£o suportado';
+  SError415Page = 'O servidor informa que desconhece o que voc√™ est√° perguntando';
   SError500 = 'Erro interno do servidor';
-  SError500Page = 'O servidor fez algo que n„o deveria';
-  SError501 = 'N„o implementado';
-  SError501Page = 'O servidor informa que vocÍ procura algo que n„o existe';
-  SError503 = 'ServiÁo indisponÌvel';
-  SError503Page = 'O servidor informa que est· descansando e n„o quer funcionar agora, tente mais tarde';
+  SError500Page = 'O servidor fez algo que n√£o deveria';
+  SError501 = 'N√£o implementado';
+  SError501Page = 'O servidor informa que voc√™ procura algo que n√£o existe';
+  SError503 = 'Servi√ßo indispon√≠vel';
+  SError503Page = 'O servidor informa que est√° descansando e n√£o quer funcionar agora, tente mais tarde';
 
   // RALDBDescriptions
-  cmDBApplyUpdDescription = 'Grava as alteraÁıes pelo cliente HTTP.';
+  cmDBApplyUpdDescription = 'Grava as altera√ß√µes pelo cliente HTTP.';
   cmDBExecSQLDescription = 'Executa um SQL pelo cliente HTTP.';
   cmDBGetFieldsDescription = 'Lista todos os campos da tabela.';
   cmDBGetSQLFieldsDescription = 'Lista todos os campos do SQL.';
@@ -67,6 +68,6 @@
   cmDBOpenSQLDescription = 'Abre uma consulta SQL pelo cliente HTTP.';
   cmDBParamSchemaDescription = 'Schema do banco de dados.';
   cmDBParamSystemDescription = 'Inclui tabelas de sistema.';
-  cmDBBinary = 'Formato Bin·rio.';
+  cmDBBinary = 'Formato Bin√°rio.';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Nome da tabela.';

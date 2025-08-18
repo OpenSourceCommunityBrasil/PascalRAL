@@ -141,6 +141,7 @@ begin
   try
     with vRequest do
     begin
+      AddHeader('RALEngine', ENGINEINDY);
       ClientInfo.IP := ARequestInfo.RemoteIP;
       ClientInfo.Port := AContext.Binding.PeerPort;
       ClientInfo.MACAddress := '';

@@ -193,7 +193,7 @@ begin
   if not vParam.IsNilOrEmpty then
   begin
     vStr := vParam.AsString;
-    if vStr <> '' then
+    if vStr <> EmptyStr then
     begin
       vInt := Pos(' ', vStr);
       vAux := Trim(Copy(vStr, 1, vInt - 1));
@@ -223,55 +223,53 @@ begin
   vResponse := CreateResponse;
 
   try
-    with vRequest do
+    vRequest.AddHeader('RALEngine', ENGINESYNOPSE);
+    vRequest.ClientInfo.IP := RawUtf8(AContext.RemoteIP);
+    if vRequest.ClientInfo.IP = EmptyStr then
+      vRequest.ClientInfo.IP := '127.0.0.1';
+    //ClientInfo.Porta := StrToInt(AContext.RemotePort);
+    vRequest.ClientInfo.Port := 0;
+
+    vRequest.ClientInfo.MACAddress := EmptyStr;
+    vRequest.ClientInfo.UserAgent := RawUtf8(AContext.UserAgent);
+
+    vRequest.ContentType := RawUtf8(AContext.InContentType);
+    vRequest.ContentSize := Length(AContext.InContent);
+
+    vRequest.Query := RawUtf8(AContext.Url);
+    vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+
+    vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
+
+    vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
+    DecodeAuth(vRequest);
+
+    vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
+    vRequest.ContentEncoding := vRequest.Params.Get['Content-Encoding'].AsString;
+    vRequest.AcceptEncoding := vRequest.Params.Get['Accept-Encoding'].AsString;
+
+    vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
+    vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;
+
+    vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+
+    ValidateRequest(vRequest, vResponse);
+    if vResponse.StatusCode < HTTP_BadRequest then
     begin
-      ClientInfo.IP := AContext.RemoteIP;
-      if ClientInfo.IP = '' then
-        ClientInfo.IP := '127.0.0.1';
-      //ClientInfo.Porta := StrToInt(AContext.RemotePort);
-      ClientInfo.Port := 0;
+      vRequest.Params.CompressType := vRequest.ContentCompress;
+      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
+      vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
+      vRequest.RequestText := RawUtf8(AContext.InContent);
 
-      ClientInfo.MACAddress := '';
-      ClientInfo.UserAgent := AContext.UserAgent;
+      vRequest.Host := AContext.Host;
+      vRequest.Protocol := '1.1';
+      if SSL.Enabled then
+        vRequest.HttpVersion := 'HTTPS'
+      else
+        vRequest.HttpVersion := 'HTTP';
 
-      ContentType := AContext.InContentType;
-      ContentSize := Length(AContext.InContent);
-
-      Query := AContext.Url;
-      Params.AppendParamsUrl(AContext.Url, rpkQUERY);
-
-      Method := HTTPMethodToRALMethod(AContext.Method);
-
-      Params.AppendParamsListText(AContext.InHeaders, rpkHEADER);
-      DecodeAuth(vRequest);
-
-      ContentDisposition := Params.Get['Content-Disposition'].AsString;
-      ContentEncoding := Params.Get['Content-Encoding'].AsString;
-      AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
-
-      ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;
-
-      AddCookies(ParamByName('Cookie').AsString);
-
-      ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < HTTP_BadRequest then
-      begin
-        Params.CompressType := ContentCompress;
-        Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := CriptoOptions.Key;
-        RequestText := AContext.InContent;
-
-        Host := AContext.Host;
-        Protocol := '1.1';
-        if SSL.Enabled then
-          HttpVersion := 'HTTPS'
-        else
-          HttpVersion := 'HTTP';
-
-        AContext.InContent := '';
-        AContext.InHeaders := '';
-      end;
+      AContext.InContent := EmptyStr;
+      AContext.InHeaders := EmptyStr;
     end;
 
     ProcessCommands(vRequest, vResponse);
@@ -280,16 +278,16 @@ begin
       AContext.OutContent := ResponseText;
       AContext.OutContentType := ContentType;
 
-      if (vResponse.ContentDisposition <> '') then
+      if (vResponse.ContentDisposition <> EmptyStr) then
         Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
-      if vResponse.ContentEncoding <> '' then
+      if vResponse.ContentEncoding <> EmptyStr then
         Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
 
-      if vResponse.AcceptEncoding <> '' then
+      if vResponse.AcceptEncoding <> EmptyStr then
         Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-      if vResponse.ContentEncription <> '' then
+      if vResponse.ContentEncription <> EmptyStr then
         Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
       vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');

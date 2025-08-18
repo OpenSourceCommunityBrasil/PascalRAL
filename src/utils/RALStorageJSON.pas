@@ -157,7 +157,8 @@ var
   vInt : integer;
 begin
   Result := '';
-  vStr := WideStringToUCS4String(AValue);
+  vStr := UnicodeStringToUCS4String(AValue);
+  //WideStringToUCS4String(AValue);
   for vInt := 0 to Pred(Length(vStr) - 1) do
   begin
     if vStr[vInt] = 8 then

@@ -224,7 +224,7 @@ begin
 
   try
     if FRALConnection <> nil then
-      vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+      vInfo := FRALConnection.InfoFieldsFromSQL(StringRAL(FSQL.Text.Trim));
 
     if vInfo = nil then
       Exit;
@@ -320,7 +320,7 @@ begin
   if FStorage <> nil then
     FStorage.LoadFromStream(ADataSet, AStream)
   else
-    raise Exception.Create('Storage class n„o localizada');
+    raise Exception.Create('Storage class n√£o localizada');
 end;
 
 procedure TRALDBFDMemTable.Notification(AComponent: TComponent; Operation: TOperation);

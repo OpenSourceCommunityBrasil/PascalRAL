@@ -5,12 +5,12 @@ interface
 
 uses
   Classes, SysUtils,
-  RALHashes, RALTypes, RALTools, RALBase64;
+  RALHashBase, RALTypes, RALTools, RALBase64;
 
 type
   TRALSHA32Versions = (rsv224, rsv256);
 
-  TRALSHA2_32 = class(TRALHashes)
+  TRALSHA2_32 = class(TRALHashBase)
   private
     FBuffer: array[0..63] of byte;
     FHash: array[0..7] of cardinal;
@@ -80,8 +80,9 @@ begin
     s1 := ((W[i - 2] shr 17) or (W[i - 2] shl 15)) 
       xor ((W[i - 2] shr 19) or (W[i - 2] shl 13)) 
       xor (W[i - 2] shr 10);
-
+    {$Q-}
     W[I] := W[I - 16] + s0 + W[I - 7] + s1;
+    {$Q+}
   end;
 
   for i := 0 to 63 do
@@ -94,6 +95,7 @@ begin
       xor ((e shr 25) or (e shl 7));
     m0 := (a and b) xor (a and c) xor (b and c);
     c0 := (e and f) xor (not e and g);
+    {$Q-}
     t1 := h + s1 + c0 + K[i] + W[i];
     t2 := s0 + m0;
 
@@ -105,8 +107,10 @@ begin
     c := b;
     b := a;
     a := t1 + t2;
+    {$Q+}
   end;
 
+  {$Q-}
   FHash[0] := FHash[0] + a;
   FHash[1] := FHash[1] + b;
   FHash[2] := FHash[2] + c;
@@ -115,6 +119,7 @@ begin
   FHash[5] := FHash[5] + f;
   FHash[6] := FHash[6] + g;
   FHash[7] := FHash[7] + h;
+  {$Q+}
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited;

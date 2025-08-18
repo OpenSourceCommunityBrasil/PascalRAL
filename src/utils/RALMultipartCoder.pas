@@ -349,7 +349,7 @@ var
     vQuoted := False;
     for vInt := 1 to vLen do
     begin
-      vChr := Char(AStr[vInt]);
+      vChr := CharRAL(AStr[vInt]);
       if (vChr = '"') then
       begin
         vQuoted := not vQuoted;

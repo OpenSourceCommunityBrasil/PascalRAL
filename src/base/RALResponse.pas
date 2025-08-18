@@ -309,7 +309,7 @@ var
   vParam: TRALParam;
 begin
   Params.ClearParams(rpkBODY);
-  if AValue.Size > 0 then
+  if Assigned(Avalue) and (AValue.Size > 0) then
   begin
     vParam := Params.AddValue(AValue, rpkBODY);
     vParam.ContentType := ContentType;
@@ -356,23 +356,23 @@ function TRALClientResponse.GetResponseEncText(
 var
   vStream : TStream;
 begin
-  {$IFDEF FPC}
+//  {$IFDEF FPC}
     vStream := TRALStringStream.Create(FStream);
     try
       Result := StreamToString(vStream);
     finally
       FreeAndNil(vStream);
     end;
-  {$ELSE}
-    vStream := TStringStream.Create;
-    FStream.Position := 0;
-    vStream.CopyFrom(FStream, FStream.Size);
-    try
-      Result := StreamToString(vStream);
-    finally
-      FreeAndNil(vStream);
-    end;
-  {$ENDIF}
+//  {$ELSE}
+//    vStream := TStringStream.Create(EmptyStr);
+//    FStream.Position := 0;
+//    vStream.CopyFrom(FStream, FStream.Size);
+//    try
+//      Result := StreamToString(vStream);
+//    finally
+//      FreeAndNil(vStream);
+//    end;
+//  {$ENDIF}
 end;
 
 procedure TRALClientResponse.SetResponseStream(const AValue: TStream);
@@ -380,7 +380,8 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
+  if AValue.size > 0 then
+    FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 procedure TRALClientResponse.SetResponseText(const AValue: StringRAL);

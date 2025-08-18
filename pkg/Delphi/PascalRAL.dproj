@@ -191,7 +191,7 @@
         <DCCReference Include="..\..\src\utils\RALCripto.pas"/>
         <DCCReference Include="..\..\src\utils\RALCriptoAES.pas"/>
         <DCCReference Include="..\..\src\utils\RALCustomObjects.pas"/>
-        <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALHashBase.pas"/>
         <DCCReference Include="..\..\src\utils\RALJson.pas"/>
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
@@ -212,6 +212,7 @@
         <DCCReference Include="..\..\src\utils\RALStorageJSON.pas"/>
         <DCCReference Include="..\..\src\utils\RALStorageBIN.pas"/>
         <DCCReference Include="..\..\src\base\RALDBTypes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

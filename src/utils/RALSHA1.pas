@@ -5,13 +5,13 @@ interface
 
 uses
   Classes, SysUtils,
-  RALHashes, RALTypes, RALTools, RALBase64;
+  RALHashBase, RALTypes, RALTools, RALBase64;
 
 type
 
   { TRALSHA1 }
 
-  TRALSHA1 = class(TRALHashes)
+  TRALSHA1 = class(TRALHashBase)
   private
     FBuffer: array[0..63] of byte;
     FHash: array[0..4] of cardinal;

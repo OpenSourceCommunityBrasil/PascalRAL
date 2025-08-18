@@ -5,10 +5,10 @@ interface
 
 uses
   Classes, SysUtils,
-  RALHashes, RALTypes;
+  RALHashBase, RALTypes;
 
 type
-  TRALMD5 = class(TRALHashes)
+  TRALMD5 = class(TRALHashBase)
   private
     FBuffer: array[0..63] of Byte;
     FHash: array[0..3] of Cardinal;

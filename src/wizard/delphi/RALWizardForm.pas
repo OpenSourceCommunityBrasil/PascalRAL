@@ -64,14 +64,14 @@ procedure TfRALWizardForm.bCriarAplicacaoClick(Sender: TObject);
 begin
   if Trim(eDirAplicacao.Text) = '' then
   begin
-    ShowMessage('DiretÛrio deve ser preenchido');
+    ShowMessage('Diret√≥rio deve ser preenchido');
     eDirAplicacao.SetFocus;
     Exit;
   end;
 
   if not DirectoryExists(eDirAplicacao.Text) then
   begin
-    ShowMessage('DiretÛrio n„o Existe');
+    ShowMessage('Diret√≥rio n√£o Existe');
     eDirAplicacao.SetFocus;
     Exit;
   end;

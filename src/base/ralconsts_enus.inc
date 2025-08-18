@@ -14,6 +14,7 @@
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
   emContentCheckError = 'Content check error.';
   emCryptEmptyKey = 'Key must be provided.';
+  emHMACEmptyText = 'Input text must be provided.';
   emDBConnectionUndefined = 'Connection not set.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';

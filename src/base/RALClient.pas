@@ -128,7 +128,7 @@ type
     /// event called when client thread finishes
     procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
-    function CreateClient : TRALClientHTTP;
+    function CreateClient: TRALClientHTTP;
     /// Copy all properties of current TRALClientBase object
     procedure CopyProperties(ADest: TRALClient); virtual;
 
@@ -148,31 +148,31 @@ type
     function Clone(AOwner: TComponent = nil): TRALClient; virtual;
 
     /// Defines method on the client: Delete.
-    procedure Delete(ARoute : StringRAL; var AResponse : TRALResponse); overload;
-    procedure Delete(ARoute : StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+    procedure Delete(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    procedure Delete(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                      AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
 
     /// Defines method on the client: Get.
-    procedure Get(ARoute : StringRAL; var AResponse : TRALResponse); overload;
-    procedure Get(ARoute : StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+    procedure Get(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    procedure Get(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                   AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
 
     /// Defines method on the client: Patch.
-    procedure Patch(ARoute : StringRAL; var AResponse : TRALResponse); overload;
-    procedure Patch(ARoute : StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+    procedure Patch(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    procedure Patch(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                     AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
 
     /// Defines method on the client: Post.
-    procedure Post(ARoute : StringRAL; var AResponse : TRALResponse); overload;
-    procedure Post(ARoute : StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+    procedure Post(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    procedure Post(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                    AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
 
     /// Defines method on the client: Put.
-    procedure Put(ARoute : StringRAL; var AResponse : TRALResponse); overload;
-    procedure Put(ARoute : StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
+    procedure Put(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    procedure Put(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+                  AExecBehavior: TRALExecBehavior = ebMultiThread); overload;
 
-    property Request : TRALRequest read FRequest;
+    property Request: TRALRequest read FRequest;
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
@@ -304,7 +304,7 @@ end;
 function TRALClient.ExecuteSingle(ARoute: StringRAL; AMethod: TRALMethod): TRALResponse;
 var
   vClient: TRALClientHTTP;
-  vRequest : TRALRequest;
+  vRequest: TRALRequest;
 begin
   Result := TRALClientResponse.Create(Self);
   vRequest := TRALClientRequest.Create(Self);
