@@ -349,9 +349,9 @@ begin
       end;
     except
       on e: exception do
-        if Assigned(OnServerError) then
-          OnServerError(e)
-        else if RaiseError then
+        if Assigned(FParent.OnServerError) then
+          FParent.OnServerError(e)
+        else if FParent.RaiseError then
           raise;
     end;
   finally
