@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat: implementação de onServerError para centralizar os erros internos num mesmo método** (2025-08-18 – Mobius One)
+  Fixed #111
+
 - **fix: Ajuste de identação fix: Ajuste de versionamento fix: Correções de charset entre Lazarus e Delphi fix: Correções de typecast devido a mudança de charset fix: Correções na criptografia pra adequar ao novo charset fix: Correção de comunicação entre Delphi e Lazarus fix: Prevenção de erros diversos fix: Ajuste de detecção de separador para evitar laço sem necessidade fix: Correção de charset no cliente no Delphi unificando código de tratamento entre Delphi e Lazarus fix: Prevenção de erros através de uma constante EmptyStr para versões que não a possuem fix: Mudança no RALDBConnection para usar verbo POST ao invés do GET para enviar SQL no Body evitando problemas com body no GET fix: Otimização de case agrupando tipos comuns fix: Correção nas criptografias para produzirem o mesmo resultado tanto no Delphi quanto no Lazarus feat: Adição de decrypt e encrypt para stream na RALHashes** (2025-08-01 – Mobius One)
 
 - **- implementado parse authentication para server UNIGUI, para correção de bug de erro de autenticação** (2025-04-15 – Fernando Castelano Banhos)
@@ -18,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-09-11 – Mobius One)
+
 - **Merge remote-tracking branch 'remotes/origin/dev'** (2025-08-18 – Mobius One)
 
 - **- Correção de compilação para Lazarus para usar type helper ao invés de record helper  - Mudança do Helper de base64 para RALTypes, por padronização do código  - Ajuste de versionamento** (2025-06-26 – Mobius One)
@@ -96,6 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: erro de compilação para Lazarus fix: configuração de diretivas para Delphi 13** (2025-08-20 – Mobius One)
+
 - **fix: Correção de parse de www-form-url-encoded para detectar o separador do body diferente do header** (2025-08-11 – Mobius One)
 
 - **fix: Correção de encoding de arquivos do projeto fix: Ajuste de versionamento** (2025-08-08 – Mobius One)
