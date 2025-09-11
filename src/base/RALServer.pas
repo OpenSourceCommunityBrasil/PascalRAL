@@ -167,6 +167,8 @@ type
     property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
   end;
 
+  TRALOnServerError = procedure(Error: Exception) of object;
+
   { TRALServer }
 
   // Base class for HTTP Server components
@@ -182,6 +184,7 @@ type
     FIPConfig: TRALIPConfig;
     FListSubModules: TList;
     FPort: IntegerRAL;
+    FRaiseError: boolean;
     FRoutes: TRALRoutes;
     FSecurity: TRALSecurity;
     FServerStatus: TStringList;
@@ -190,9 +193,10 @@ type
     FSSL: TRALSSL;
     FResponsePages: TRALResponsePages;
 
-    FOnRequest: TRALOnReply;
-    FOnResponse: TRALOnReply;
     FOnClientBlock: TRALOnClientBlock;
+    FOnRequest: TRALOnReply;
+    FOnResponse: TRALOnReply;    
+    FOnServerError: TRALOnServerError;
   protected
     // Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
@@ -262,6 +266,8 @@ type
     property Port: IntegerRAL read FPort write SetPort;
     // Route configuration of the server, a.k.a endpoints
     property Routes: TRALRoutes read FRoutes write FRoutes;
+    // Whether the server will raise error to the application or not (exception raise^), default value is false
+    property RaiseError: boolean read FRaiseError write FRaiseError default false;
     // Security configurations of the server
     property Security: TRALSecurity read FSecurity write FSecurity;
     // Default text answered by the server without WebModule when requesting the route '/'
@@ -270,12 +276,15 @@ type
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     // Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
+
     // Event fired whenever an incoming IP gets blocked by the server
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
     // Event fired whenever any request is received by the server
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     // Event fired whenever any response is sent by the server
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
+    // Event fired whenever any error happens inside the server
+    property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
   end;
 
   { TRALModuleRoutes }
@@ -556,142 +565,149 @@ label
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
+  try
+    vRouteIsAuth := False;
 
-  vRouteIsAuth := False;
+    AResponse.ContentCompress := ARequest.AcceptCompress;
+    if AResponse.ContentCompress = ctNone then
+      AResponse.ContentCompress := FCompressType;
 
-  AResponse.ContentCompress := ARequest.AcceptCompress;
-  if AResponse.ContentCompress = ctNone then
-    AResponse.ContentCompress := FCompressType;
-
-  AResponse.ContentCripto := crNone;
-  if CriptoOptions.Key <> '' then
-  begin
-    AResponse.ContentCripto := ARequest.AcceptCripto;
-    AResponse.CriptoKey := CriptoOptions.Key;
-  end;
-
-  vRoute := FRoutes.CanAnswerRoute(ARequest);
-
-  vInt := 0;
-  while (vRoute = nil) and (vInt < FListSubModules.Count) do
-  begin
-    vSubRoute := TRALModuleRoutes(FListSubModules.Items[vInt]);
-    vRoute := vSubRoute.CanAnswerRoute(ARequest, AResponse);
-    vInt := vInt + 1;
-  end;
-
-  if (vRoute = nil) and (FAuthentication <> nil) then
-  begin
-    vRoute := FAuthentication.CanAnswerRoute(ARequest, AResponse);
-    if vRoute <> nil then
-      vRouteIsAuth := True;
-  end;
-
-  if Assigned(FOnRequest) then
-    FOnRequest(ARequest, AResponse);
-
-  if Assigned(vRoute) then
-  begin
-    CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods, ARequest, AResponse);
-    if ARequest.Method = amOPTIONS then
+    AResponse.ContentCripto := crNone;
+    if CriptoOptions.Key <> '' then
     begin
-      if vRoute.IsMethodAllowed(amOPTIONS) then
-        goto aFIM
-      else
-        goto a404;
-    end
-    else if vRouteIsAuth then
+      AResponse.ContentCripto := ARequest.AcceptCripto;
+      AResponse.CriptoKey := CriptoOptions.Key;
+    end;
+
+    vRoute := FRoutes.CanAnswerRoute(ARequest);
+
+    vInt := 0;
+    while (vRoute = nil) and (vInt < FListSubModules.Count) do
     begin
-      FAuthentication.BeforeValidate(ARequest, AResponse);
-      goto aFIM;
-    end
-    else if vRoute.IsMethodAllowed(ARequest.Method) then
+      vSubRoute := TRALModuleRoutes(FListSubModules.Items[vInt]);
+      vRoute := vSubRoute.CanAnswerRoute(ARequest, AResponse);
+      vInt := vInt + 1;
+    end;
+
+    if (vRoute = nil) and (FAuthentication <> nil) then
     begin
-      if FAuthentication <> nil then
+      vRoute := FAuthentication.CanAnswerRoute(ARequest, AResponse);
+      if vRoute <> nil then
+        vRouteIsAuth := True;
+    end;
+
+    if Assigned(FOnRequest) then
+      FOnRequest(ARequest, AResponse);
+
+    if Assigned(vRoute) then
+    begin
+      CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods, ARequest, AResponse);
+      if ARequest.Method = amOPTIONS then
       begin
-        if vRoute.IsMethodSkipped(ARequest.Method) then
+        if vRoute.IsMethodAllowed(amOPTIONS) then
+          goto aFIM
+        else
+          goto a404;
+      end
+      else if vRouteIsAuth then
+      begin
+        FAuthentication.BeforeValidate(ARequest, AResponse);
+        goto aFIM;
+      end
+      else if vRoute.IsMethodAllowed(ARequest.Method) then
+      begin
+        if FAuthentication <> nil then
         begin
-          goto aOK;
+          if vRoute.IsMethodSkipped(ARequest.Method) then
+          begin
+            goto aOK;
+          end
+          else
+          begin
+            vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
+            // client e valido se o numero de tentativas <= ao max de tentativas
+            vCheckBruteForceTries :=
+              (vCheckBruteForce and (Security.CheckBlockClientTry(
+              ARequest.ClientInfo.IP)));
+
+            // devido algumas auths que adiciona o header realm
+            vCheck_Authentication := ValidateAuth(ARequest, AResponse);
+
+            if vCheck_Authentication then
+              goto aOK
+            else if (vCheckBruteForceTries) or (AResponse.StatusCode = HTTP_Unauthorized) then
+              goto a401
+            else
+              goto a403;
+          end;
         end
         else
-        begin
-          vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
-          // client e valido se o numero de tentativas <= ao max de tentativas
-          vCheckBruteForceTries :=
-            (vCheckBruteForce and (Security.CheckBlockClientTry(
-            ARequest.ClientInfo.IP)));
-
-          // devido algumas auths que adiciona o header realm
-          vCheck_Authentication := ValidateAuth(ARequest, AResponse);
-
-          if vCheck_Authentication then
-            goto aOK
-          else if (vCheckBruteForceTries) or (AResponse.StatusCode = HTTP_Unauthorized) then
-            goto a401
-          else
-            goto a403;
-        end;
+          goto aOK;
       end
       else
-        goto aOK;
+        goto a403;
     end
+    else if (ARequest.Query = '/') and (FShowServerStatus) then
+      goto aSTATUS
     else
-      goto a403;
-  end
-  else if (ARequest.Query = '/') and (FShowServerStatus) then
-    goto aSTATUS
-  else
-    goto a404;
+      goto a404;
 
-  aSTATUS:
-  begin
-    CheckCORS(True, 'GET', ARequest, AResponse);
-    if ARequest.Method <> amOPTIONS then
+    aSTATUS:
     begin
-      vString := Trim(FServerStatus.Text);
-      if vString = EmptyStr then
-        vString := RALDefaultPage;
-      vString := StringReplace(vString, '%ralengine%', FEngine, [rfReplaceAll]);
-      AResponse.Answer(HTTP_OK, vString, rctTEXTHTML);
+      CheckCORS(True, 'GET', ARequest, AResponse);
+      if ARequest.Method <> amOPTIONS then
+      begin
+        vString := Trim(FServerStatus.Text);
+        if vString = EmptyStr then
+          vString := RALDefaultPage;
+        vString := StringReplace(vString, '%ralengine%', FEngine, [rfReplaceAll]);
+        AResponse.Answer(HTTP_OK, vString, rctTEXTHTML);
+      end;
+      goto aFIM;
     end;
-    goto aFIM;
-  end;
 
-  aOK:
-  begin
-    Security.UnblockClient(ARequest.ClientInfo.IP);
-    vRoute.Execute(ARequest, AResponse);
-    goto aFIM;
-  end;
+    aOK:
+    begin
+      Security.UnblockClient(ARequest.ClientInfo.IP);
+      vRoute.Execute(ARequest, AResponse);
+      goto aFIM;
+    end;
 
-  a401:
-  begin
-    Security.BlockClient(ARequest.ClientInfo.IP);
-    AResponse.Answer(HTTP_Unauthorized);
-    goto aFIM;
-  end;
+    a401:
+    begin
+      Security.BlockClient(ARequest.ClientInfo.IP);
+      AResponse.Answer(HTTP_Unauthorized);
+      goto aFIM;
+    end;
 
-  a403:
-  begin
-    Security.BlockClient(ARequest.ClientInfo.IP);
-    if Assigned(FOnClientBlock) then
-      FOnClientBlock(Self, ARequest.ClientInfo.IP);
-    AResponse.Answer(HTTP_Forbidden);
-    goto aFIM;
-  end;
+    a403:
+    begin
+      Security.BlockClient(ARequest.ClientInfo.IP);
+      if Assigned(FOnClientBlock) then
+        FOnClientBlock(Self, ARequest.ClientInfo.IP);
+      AResponse.Answer(HTTP_Forbidden);
+      goto aFIM;
+    end;
 
-  a404:
-  begin
-    AResponse.Answer(HTTP_NotFound);
-    goto aFIM;
-  end;
+    a404:
+    begin
+      AResponse.Answer(HTTP_NotFound);
+      goto aFIM;
+    end;
 
-  aFIM:
-  begin
-    if Assigned(FOnResponse) then
-      FOnResponse(ARequest, AResponse);
+    aFIM:
+    begin
+      if Assigned(FOnResponse) then
+        FOnResponse(ARequest, AResponse);
 
-    ARequest.Params.ClearParams;
+      ARequest.Params.ClearParams;
+    end;
+  except
+    on e: exception do
+      if assigned(OnServerError) then
+        OnServerError(e)
+      else if RaiseError then
+        raise;
   end;
 end;
 

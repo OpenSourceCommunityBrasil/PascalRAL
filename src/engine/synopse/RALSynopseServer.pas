@@ -223,80 +223,88 @@ begin
   vResponse := CreateResponse;
 
   try
-    vRequest.AddHeader('RALEngine', ENGINESYNOPSE);
-    vRequest.ClientInfo.IP := RawUtf8(AContext.RemoteIP);
-    if vRequest.ClientInfo.IP = EmptyStr then
-      vRequest.ClientInfo.IP := '127.0.0.1';
-    //ClientInfo.Porta := StrToInt(AContext.RemotePort);
-    vRequest.ClientInfo.Port := 0;
+    try
+      vRequest.AddHeader('RALEngine', ENGINESYNOPSE);
+      vRequest.ClientInfo.IP := RawUtf8(AContext.RemoteIP);
+      if vRequest.ClientInfo.IP = EmptyStr then
+        vRequest.ClientInfo.IP := '127.0.0.1';
+      //ClientInfo.Porta := StrToInt(AContext.RemotePort);
+      vRequest.ClientInfo.Port := 0;
 
-    vRequest.ClientInfo.MACAddress := EmptyStr;
-    vRequest.ClientInfo.UserAgent := RawUtf8(AContext.UserAgent);
+      vRequest.ClientInfo.MACAddress := EmptyStr;
+      vRequest.ClientInfo.UserAgent := RawUtf8(AContext.UserAgent);
 
-    vRequest.ContentType := RawUtf8(AContext.InContentType);
-    vRequest.ContentSize := Length(AContext.InContent);
+      vRequest.ContentType := RawUtf8(AContext.InContentType);
+      vRequest.ContentSize := Length(AContext.InContent);
 
-    vRequest.Query := RawUtf8(AContext.Url);
-    vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+      vRequest.Query := RawUtf8(AContext.Url);
+      vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
 
-    vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
+      vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
 
-    vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
-    DecodeAuth(vRequest);
+      vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
+      DecodeAuth(vRequest);
 
-    vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
-    vRequest.ContentEncoding := vRequest.Params.Get['Content-Encoding'].AsString;
-    vRequest.AcceptEncoding := vRequest.Params.Get['Accept-Encoding'].AsString;
+      vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
+      vRequest.ContentEncoding := vRequest.Params.Get['Content-Encoding'].AsString;
+      vRequest.AcceptEncoding := vRequest.Params.Get['Accept-Encoding'].AsString;
 
-    vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
-    vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;
+      vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
+      vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;
 
-    vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+      vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
 
-    ValidateRequest(vRequest, vResponse);
-    if vResponse.StatusCode < HTTP_BadRequest then
-    begin
-      vRequest.Params.CompressType := vRequest.ContentCompress;
-      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-      vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
-      vRequest.RequestText := RawUtf8(AContext.InContent);
+      ValidateRequest(vRequest, vResponse);
+      if vResponse.StatusCode < HTTP_BadRequest then
+      begin
+        vRequest.Params.CompressType := vRequest.ContentCompress;
+        vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
+        vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
+        vRequest.RequestText := RawUtf8(AContext.InContent);
 
-      vRequest.Host := AContext.Host;
-      vRequest.Protocol := '1.1';
-      if SSL.Enabled then
-        vRequest.HttpVersion := 'HTTPS'
-      else
-        vRequest.HttpVersion := 'HTTP';
+        vRequest.Host := AContext.Host;
+        vRequest.Protocol := '1.1';
+        if SSL.Enabled then
+          vRequest.HttpVersion := 'HTTPS'
+        else
+          vRequest.HttpVersion := 'HTTP';
 
-      AContext.InContent := EmptyStr;
-      AContext.InHeaders := EmptyStr;
-    end;
+        AContext.InContent := EmptyStr;
+        AContext.InHeaders := EmptyStr;
+      end;
 
-    ProcessCommands(vRequest, vResponse);
-    with vResponse do
-    begin
-      AContext.OutContent := ResponseText;
-      AContext.OutContentType := ContentType;
+      ProcessCommands(vRequest, vResponse);
+      with vResponse do
+      begin
+        AContext.OutContent := ResponseText;
+        AContext.OutContentType := ContentType;
 
-      if (vResponse.ContentDisposition <> EmptyStr) then
-        Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+        if (vResponse.ContentDisposition <> EmptyStr) then
+          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
-      if vResponse.ContentEncoding <> EmptyStr then
-        Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+        if vResponse.ContentEncoding <> EmptyStr then
+          Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
 
-      if vResponse.AcceptEncoding <> EmptyStr then
-        Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+        if vResponse.AcceptEncoding <> EmptyStr then
+          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
 
-      if vResponse.ContentEncription <> EmptyStr then
-        Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+        if vResponse.ContentEncription <> EmptyStr then
+          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
-      vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
-      vHeaders := vHeaders + HTTPLineBreak;
-      vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
+        vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
+        vHeaders := vHeaders + HTTPLineBreak;
+        vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
 
-      AContext.OutCustomHeaders := Trim(vHeaders);
+        AContext.OutCustomHeaders := Trim(vHeaders);
 
-      Result := StatusCode;
+        Result := StatusCode;
+      end;
+    except
+      on e: exception do
+        if Assigned(OnServerError) then
+          OnServerError(e)
+        else if RaiseError then
+          raise;
     end;
   finally
     FreeAndNil(vResponse);

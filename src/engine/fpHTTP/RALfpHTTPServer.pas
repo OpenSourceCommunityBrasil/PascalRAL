@@ -214,137 +214,145 @@ begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
   try
-    with vRequest do
-    begin
-      AddHeader('RALEngine', ENGINEFPHTTP);
-      ClientInfo.IP := ARequest.RemoteAddress;
-      if ClientInfo.IP = '' then
-        ClientInfo.IP := ARequest.RemoteHost;
-
-      ClientInfo.MACAddress := '';
-      ClientInfo.UserAgent := ARequest.UserAgent;
-
-      ContentType := ARequest.ContentType;
-      ContentSize := ARequest.ContentLength;
-
-      Query := ARequest.URI;
-      Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
-
-      Method := HTTPMethodToRALMethod(ARequest.Method);
-
-      ContentEncoding := ARequest.ContentEncoding;
-      AcceptEncoding := ARequest.AcceptEncoding;
-
-      DecodeAuth(ARequest, vRequest);
-      Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
-
-      ContentDisposition := Params.Get['Content-Disposition'].AsString;
-      ContentEncoding := Params.Get['Content-Encoding'].AsString;
-      AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
-
-      ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;
-
-      FParent.ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < HTTP_BadRequest then
+    try
+      with vRequest do
       begin
-        // fields tambem
-        vInt := 0;
-        while vInt < ARequest.FieldCount do
+        AddHeader('RALEngine', ENGINEFPHTTP);
+        ClientInfo.IP := ARequest.RemoteAddress;
+        if ClientInfo.IP = '' then
+          ClientInfo.IP := ARequest.RemoteHost;
+
+        ClientInfo.MACAddress := '';
+        ClientInfo.UserAgent := ARequest.UserAgent;
+
+        ContentType := ARequest.ContentType;
+        ContentSize := ARequest.ContentLength;
+
+        Query := ARequest.URI;
+        Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
+
+        Method := HTTPMethodToRALMethod(ARequest.Method);
+
+        ContentEncoding := ARequest.ContentEncoding;
+        AcceptEncoding := ARequest.AcceptEncoding;
+
+        DecodeAuth(ARequest, vRequest);
+        Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
+
+        ContentDisposition := Params.Get['Content-Disposition'].AsString;
+        ContentEncoding := Params.Get['Content-Encoding'].AsString;
+        AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
+
+        ContentEncription := ParamByName('Content-Encription').AsString;
+        AcceptEncription := ParamByName('Accept-Encription').AsString;
+
+        FParent.ValidateRequest(vRequest, vResponse);
+        if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          vStr1 := ARequest.FieldNames[vInt];
-          vStr2 := ARequest.FieldValues[vInt];
+          // fields tambem
+          vInt := 0;
+          while vInt < ARequest.FieldCount do
+          begin
+            vStr1 := ARequest.FieldNames[vInt];
+            vStr2 := ARequest.FieldValues[vInt];
 
-          Params.AddParam(vStr1, vStr2, rpkFIELD);
+            Params.AddParam(vStr1, vStr2, rpkFIELD);
 
-          vInt := vInt + 1;
+            vInt := vInt + 1;
+          end;
+
+          Params.AppendParams(ARequest.QueryFields, rpkQUERY);
+          Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
+
+          Params.CompressType := ContentCompress;
+          Params.CriptoOptions.CriptType := ContentCripto;
+          Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
+          RequestText := ARequest.Content;
+
+          Host := ARequest.Host;
+          vInt := Pos('/', ARequest.ProtocolVersion);
+          if vInt > 0 then
+          begin
+            HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
+            Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
+          end
+          else begin
+            HttpVersion := 'HTTP';
+            Protocol := '1.0';
+          end;
+
+          vConnClose := False;
+          if Protocol = '1.0' then
+            vConnClose := True;
+          if SameText(ARequest.GetHeader(hhConnection), 'close') then
+            vConnClose := True;
+
+          ARequest.Content := '';
+          ARequest.QueryFields.Clear;
+          ARequest.CustomHeaders.Clear;
+          ARequest.CookieFields.Clear;
+          ARequest.Files.Clear;
         end;
-
-        Params.AppendParams(ARequest.QueryFields, rpkQUERY);
-        Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
-
-        Params.CompressType := ContentCompress;
-        Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
-        RequestText := ARequest.Content;
-
-        Host := ARequest.Host;
-        vInt := Pos('/', ARequest.ProtocolVersion);
-        if vInt > 0 then
-        begin
-          HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
-          Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
-        end
-        else begin
-          HttpVersion := 'HTTP';
-          Protocol := '1.0';
-        end;
-
-        vConnClose := False;
-        if Protocol = '1.0' then
-          vConnClose := True;
-        if SameText(ARequest.GetHeader(hhConnection), 'close') then
-          vConnClose := True;
-
-        ARequest.Content := '';
-        ARequest.QueryFields.Clear;
-        ARequest.CustomHeaders.Clear;
-        ARequest.CookieFields.Clear;
-        ARequest.Files.Clear;
       end;
-    end;
 
-    FParent.ProcessCommands(vRequest, vResponse);
-    with vResponse do
-    begin
-      AResponse.Code := StatusCode;
-
-      if ContentEncoding <> '' then
-        AResponse.ContentEncoding := ContentEncoding;
-
-      if AcceptEncoding <> '' then
-        Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
-
-      if ContentEncription <> '' then
-        Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
-
-      vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
-      if vParam <> nil then
+      FParent.ProcessCommands(vRequest, vResponse);
+      with vResponse do
       begin
-        AResponse.WWWAuthenticate := vParam.AsString;
-        vResponse.Params.DelParam('WWW-Authenticate');
-      end;
+        AResponse.Code := StatusCode;
 
-      AResponse.Server := 'RAL_fpHTTP';
-      if vConnClose then
-        AResponse.Connection := 'close';
+        if ContentEncoding <> '' then
+          AResponse.ContentEncoding := ContentEncoding;
 
-      vCookies := TStringList.Create;
-      try
-        Params.AssignParams(vCookies, rpkCOOKIE);
-        for vInt := 0 to Pred(vCookies.Count) do
+        if AcceptEncoding <> '' then
+          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+
+        if ContentEncription <> '' then
+          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+
+        vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+        if vParam <> nil then
         begin
-          vCookie := AResponse.Cookies.Add;
-          vCookie.Name := vCookies.Names[vInt];
-          vCookie.Value := vCookies.ValueFromIndex[vInt];
-          vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
-          vCookie.Path := '/';
+          AResponse.WWWAuthenticate := vParam.AsString;
+          vResponse.Params.DelParam('WWW-Authenticate');
         end;
-      finally
-        FreeAndNil(vCookies);
+
+        AResponse.Server := 'RAL_fpHTTP';
+        if vConnClose then
+          AResponse.Connection := 'close';
+
+        vCookies := TStringList.Create;
+        try
+          Params.AssignParams(vCookies, rpkCOOKIE);
+          for vInt := 0 to Pred(vCookies.Count) do
+          begin
+            vCookie := AResponse.Cookies.Add;
+            vCookie.Name := vCookies.Names[vInt];
+            vCookie.Value := vCookies.ValueFromIndex[vInt];
+            vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
+            vCookie.Path := '/';
+          end;
+        finally
+          FreeAndNil(vCookies);
+        end;
+
+        AResponse.ContentStream := ResponseStream;
+
+        AResponse.FreeContentStream := True;
+        AResponse.ContentType := ContentType;
+
+        if ContentDisposition <> '' then
+          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+
+        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
+
+        AResponse.SendContent;
       end;
-
-      AResponse.ContentStream := ResponseStream;
-
-      AResponse.FreeContentStream := True;
-      AResponse.ContentType := ContentType;
-
-      if ContentDisposition <> '' then
-        Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
-
-      Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
-
-      AResponse.SendContent;
+    except
+      on e: exception do
+        if Assigned(FParent.OnServerError) then
+          FParent.OnServerError(e)
+        else if FParent.RaiseError then
+          raise;
     end;
   finally
     FreeAndNil(vResponse);

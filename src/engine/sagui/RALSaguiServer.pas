@@ -1,4 +1,4 @@
-/// Base unit for RALServer component using Indy Engine
+/// Base unit for RALServer component using Sagui Engine
 unit RALSaguiServer;
 
 {$IFDEF FPC}
@@ -194,8 +194,8 @@ begin
     FLibPath := SgLib.GetLastName;
   {$ENDIF}
 
-  ConnectionLimit := -4;
-  PoolCount := -1;
+  ConnectionLimit := 9999999;
+  PoolCount := 32;
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -204,10 +204,16 @@ begin
 end;
 
 procedure TRALSaguiServer.CreateServerHandle;
+var
+  e: exception;
 begin
   FHandle := sg_httpsrv_new2(nil, DoRequestCallback, DoErrorCallback, Self);
   if not Assigned(FHandle) then
-    raise Exception.Create(emSaguiServerCreateError);
+  begin
+    e := Exception.Create(emSaguiServerCreateError);
+    if assigned(OnServerError) then
+      OnServerError(e);
+  end;
 end;
 
 destructor TRALSaguiServer.Destroy;
@@ -241,151 +247,159 @@ var
   vParam: TRALParam;
   vRespStream: TStream;
   vCookies: TStringList;
-  vPayloadLen : integer;
-  vPPayload : Pcchar;
-  vPayloadStream : TMemoryStream;
-  vPay : ansistring;
+  vPayloadLen: integer;
+  vPPayload: Pcchar;
+  vPayloadStream: TMemoryStream;
+  vPay: ansistring;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
   vResponse := vServer.CreateResponse;
   try
-    with vRequest do
-    begin
-      AddHeader('RALEngine', ENGINESAGUI);
-      // headers
-      vStrMap := TRALSaguiStringMap.Create(sg_httpreq_headers(Areq));
-      try
-        vStrMap.AppendToParams(Params, rpkHEADER);
-      finally
-        FreeAndNil(vStrMap);
-      end;
-
-      ContentType := ParamByName('Content-Type').AsString;
-      ContentEncoding := ParamByName('Content-Encoding').AsString;
-      AcceptEncoding := ParamByName('Accept-Encoding').AsString;
-      ContentEncription := ParamByName('Content-Encription').AsString;
-      AcceptEncription := ParamByName('Accept-Encription').AsString;
-      Host := ParamByName('Host').AsString;
-
-      Params.CompressType := ContentCompress;
-      Params.CriptoOptions.CriptType := ContentCripto;
-      Params.CriptoOptions.Key := CriptoKey;
-
-      if vServer.Authentication <> nil then
-        DecodeAuth(ParamByName('Authorization').AsString, vRequest);
-
-      ClientInfo.IP := GetSaguiIP(Areq);
-      ClientInfo.MACAddress := '';
-      ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
-
-      Query := sg_httpreq_path(Areq);
-      Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
-
-      vServer.ValidateRequest(vRequest, vResponse);
-      if vResponse.StatusCode < HTTP_BadRequest then
+    try
+      with vRequest do
       begin
-        // fields
-        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));
+        AddHeader('RALEngine', ENGINESAGUI);
+        // headers
+        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_headers(Areq));
         try
-          vStrMap.AppendToParams(Params, rpkFIELD);
+          vStrMap.AppendToParams(Params, rpkHEADER);
         finally
           FreeAndNil(vStrMap);
         end;
 
-        // cookies
-        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_cookies(Areq));
-        try
-          vStrMap.AppendToParams(Params, rpkCOOKIE);
-        finally
-          FreeAndNil(vStrMap);
-        end;
+        ContentType := ParamByName('Content-Type').AsString;
+        ContentEncoding := ParamByName('Content-Encoding').AsString;
+        AcceptEncoding := ParamByName('Accept-Encoding').AsString;
+        ContentEncription := ParamByName('Content-Encription').AsString;
+        AcceptEncription := ParamByName('Accept-Encription').AsString;
+        Host := ParamByName('Host').AsString;
 
-        // query
-        vStrMap := TRALSaguiStringMap.Create(sg_httpreq_params(Areq));
-        try
-          vStrMap.AppendToParams(Params, rpkQUERY);
-        finally
-          FreeAndNil(vStrMap);
-        end;
+        Params.CompressType := ContentCompress;
+        Params.CriptoOptions.CriptType := ContentCripto;
+        Params.CriptoOptions.Key := CriptoKey;
 
-        // body - stream (files)
-        vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
-        try
-          vFileMap.AppendToParams(Params);
-        finally
-          FreeAndNil(vFileMap);
-        end;
+        if vServer.Authentication <> nil then
+          DecodeAuth(ParamByName('Authorization').AsString, vRequest);
 
-        vPayLoad := sg_httpreq_payload(Areq);
-        if Assigned(vPayLoad) then
+        ClientInfo.IP := GetSaguiIP(Areq);
+        ClientInfo.MACAddress := '';
+        ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
+
+        Query := sg_httpreq_path(Areq);
+        Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
+
+        vServer.ValidateRequest(vRequest, vResponse);
+        if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          vPayloadLen := sg_str_length(vPayLoad);
-          if vPayloadLen > 0 then
-          begin
-            vPPayload := sg_str_content(vPayLoad);
-            SetLength(vPay, vPayloadLen);
-            Move(vPPayload^, vPay[1], vPayloadLen);
-            vPayloadStream := TMemoryStream.Create;
-            try
-              vPayloadStream.Write(vPay[1], Length(vPay));
-              vPayloadStream.Position := 0;
+          // fields
+          vStrMap := TRALSaguiStringMap.Create(sg_httpreq_fields(Areq));
+          try
+            vStrMap.AppendToParams(Params, rpkFIELD);
+          finally
+            FreeAndNil(vStrMap);
+          end;
 
-              RequestStream := vPayloadStream;
-            finally
-               FreeAndNil(vPayloadStream);
+          // cookies
+          vStrMap := TRALSaguiStringMap.Create(sg_httpreq_cookies(Areq));
+          try
+            vStrMap.AppendToParams(Params, rpkCOOKIE);
+          finally
+            FreeAndNil(vStrMap);
+          end;
+
+          // query
+          vStrMap := TRALSaguiStringMap.Create(sg_httpreq_params(Areq));
+          try
+            vStrMap.AppendToParams(Params, rpkQUERY);
+          finally
+            FreeAndNil(vStrMap);
+          end;
+
+          // body - stream (files)
+          vFileMap := TRALSaguiUploadMap.Create(sg_httpreq_uploads(Areq));
+          try
+            vFileMap.AppendToParams(Params);
+          finally
+            FreeAndNil(vFileMap);
+          end;
+
+          vPayLoad := sg_httpreq_payload(Areq);
+          if Assigned(vPayLoad) then
+          begin
+            vPayloadLen := sg_str_length(vPayLoad);
+            if vPayloadLen > 0 then
+            begin
+              vPPayload := sg_str_content(vPayLoad);
+              SetLength(vPay, vPayloadLen);
+              Move(vPPayload^, vPay[1], vPayloadLen);
+              vPayloadStream := TMemoryStream.Create;
+              try
+                vPayloadStream.Write(vPay[1], Length(vPay));
+                vPayloadStream.Position := 0;
+
+                RequestStream := vPayloadStream;
+              finally
+                 FreeAndNil(vPayloadStream);
+              end;
             end;
           end;
-        end;
 
-        ContentSize := 0;
+          ContentSize := 0;
 
-        vStr := sg_httpreq_version(Areq);
-        vInt := Pos('/', vStr);
-        if vInt > 0 then
-        begin
-          HttpVersion := Copy(vStr, 1, vInt - 1);
-          Protocol := Copy(vStr, vInt + 1, 3);
-        end
-        else
-        begin
-          HttpVersion := 'HTTP';
-          Protocol := '1.0';
+          vStr := sg_httpreq_version(Areq);
+          vInt := Pos('/', vStr);
+          if vInt > 0 then
+          begin
+            HttpVersion := Copy(vStr, 1, vInt - 1);
+            Protocol := Copy(vStr, vInt + 1, 3);
+          end
+          else
+          begin
+            HttpVersion := 'HTTP';
+            Protocol := '1.0';
+          end;
         end;
       end;
+
+      vServer.ProcessCommands(vRequest, vResponse);
+
+      vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
+      vStrMap.FreeOnDestroy := False;
+
+      vRespStream := vResponse.ResponseStream;
+
+      vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
+
+      vStrMap.Add('Server', 'RAL_Sagui');
+      vStrMap.Add('Content-Type', vResponse.ContentType);
+      vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
+      vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
+      vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
+      vStrMap.Add('Content-Encription', vResponse.ContentEncription);
+
+      vCookies := TStringList.Create;
+      try
+        vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
+        for vInt := 0 to Pred(vCookies.Count) do
+          vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
+      finally
+        FreeAndNil(vCookies);
+      end;
+
+      if vRespStream <> nil then
+        sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
+                              DoStreamFree, vResponse.StatusCode)
+      else
+        sg_httpres_sendstream(Ares, 0, DoStreamRead, nil, DoStreamFree,
+                              vResponse.StatusCode)
+    except
+      on e: exception do
+        if assigned(vServer.OnServerError) then
+          vServer.OnServerError(e)
+        else if vServer.RaiseError then
+          Raise;
     end;
-
-    vServer.ProcessCommands(vRequest, vResponse);
-
-    vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
-    vStrMap.FreeOnDestroy := False;
-
-    vRespStream := vResponse.ResponseStream;
-
-    vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
-
-    vStrMap.Add('Server', 'RAL_Sagui');
-    vStrMap.Add('Content-Type', vResponse.ContentType);
-    vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
-    vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
-    vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
-    vStrMap.Add('Content-Encription', vResponse.ContentEncription);
-
-    vCookies := TStringList.Create;
-    try
-      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
-      for vInt := 0 to Pred(vCookies.Count) do
-        vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
-    finally
-      FreeAndNil(vCookies);
-    end;
-
-    if vRespStream <> nil then
-      sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
-                            DoStreamFree, vResponse.StatusCode)
-    else
-      sg_httpres_sendstream(Ares, 0, DoStreamRead, nil, DoStreamFree,
-                            vResponse.StatusCode)
   finally
     FreeAndNil(vStrMap);
     FreeAndNil(vResponse);
@@ -478,6 +492,7 @@ end;
 procedure TRALSaguiServer.SetActive(const AValue: boolean);
 var
   vActive: boolean;
+  e: exception;
 begin
   vActive := Active;
 
@@ -491,7 +506,9 @@ begin
     try
       SgLib.Load(FLibPath);
     except
-      raise Exception.Create(emSaguiLibraryLoadError);
+      e := Exception.Create(emSaguiLibraryLoadError);
+      if assigned(OnServerError) then
+        OnServerError(e);
     end;
   end;
 
@@ -566,11 +583,17 @@ begin
 end;
 
 function TRALSaguiServer.InitializeServer: boolean;
+var
+  e: exception;
 begin
   if SSL.Enabled then
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
-      raise Exception.Create(emSaguiServerUnsupportedTLS);
+    begin
+      e := Exception.Create(emSaguiServerUnsupportedTLS);
+      if assigned(OnServerError) then
+        OnServerError(e);
+    end;
 
     Result := sg_httpsrv_tls_listen3(FHandle, pansichar(SSL.PrivateKey),
       pansichar(SSL.PrivatePassword), pansichar(SSL.Certificate),
