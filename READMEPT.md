@@ -5,6 +5,6 @@
 
 Pascal REST API Lite é uma suíte de componentes de criação e consumo de APIs RESTFul de forma simples, leve e rápida.
 
-* [Lista de compatibilidade com as IDEs]()
-* [Guia de instalação]()
-* [Exemplos de uso](https://github.com/OpenSourceCommunityBrasil/PascalRAL-Demos)
+* [Lista de compatibilidade com as IDEs](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/compatibilidade)
+* [Guia de instalação](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/instalacao)
+* [Exemplos de uso](https://github.com/OpenSourceCommunityBrasil/PascalRAL-Samples)
