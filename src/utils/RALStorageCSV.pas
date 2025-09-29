@@ -28,8 +28,8 @@ type
   public
     constructor Create;
 
-    procedure SavePropsToStream(AWriter : TRALBinaryWriter);
-    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter);
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
   published
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
@@ -46,7 +46,7 @@ type
   TRALStorageCSV = class(TRALStorage)
   private
     FFormatOptions: TRALCSVFormatOptions;
-    FUseUTF8BOM : boolean;
+    FUseUTF8BOM: boolean;
   protected
     function CSVFormatBoolean(AValue: Boolean): StringRAL;
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
@@ -76,17 +76,17 @@ type
   TRALStorageCSVLink = class(TRALStorageLink)
   private
     FFormatOptions: TRALCSVFormatOptions;
-    FUseUTF8BOM : boolean;
+    FUseUTF8BOM: boolean;
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
-    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
 
-    function Clone : TRALStorageLink; override;
+    function Clone: TRALStorageLink; override;
     function GetStorage: TRALStorage; override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;

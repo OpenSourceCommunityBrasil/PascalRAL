@@ -1,6 +1,8 @@
 /// Base unit for the Storage exporter in JSON format
 unit RALStorageJSON;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -22,8 +24,8 @@ type
   public
     constructor Create;
 
-    procedure SavePropsToStream(AWriter : TRALBinaryWriter);
-    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter);
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
   published
     property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
@@ -73,6 +75,7 @@ type
   public
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
+    function DataSetToJSON(ADataset: TDataSet): StringRAL;
   end;
 
   { TRALStorageJSON_DBWare }
@@ -103,15 +106,24 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure SavePropsToStream(AWriter : TRALBinaryWriter); override;
-    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); override;
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
 
-    function Clone : TRALStorageLink; override;
+    function Clone: TRALStorageLink; override;
     function GetStorage: TRALStorage; override;
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
     property JSONType: TRALJSONType read FJSONType write FJSONType;
   end;
+
+  { TRALStorageJSONHelper }
+
+  {$IF Defined(FPC) or Defined(Delphi2005UP)}
+  TRALStorageJSONHelper = class helper for TDataSet
+  public
+    function ToJSON: StringRAL;
+  end;
+  {$IFEND}
 
 implementation
 
@@ -567,6 +579,20 @@ begin
   WriteStringToStream(AStream, ']');
 end;
 
+function TRALStorageJSON_RAW.DataSetToJSON(ADataset: TDataSet): StringRAL;
+var
+  AStrStream: TRALStringStream;
+begin
+  Result := '';
+  AStrStream := TRALStringStream.Create;
+  try
+    SaveToStream(ADataSet, AStrStream);
+    Result := AStrStream.DataString;
+  finally
+    FreeAndNil(AStrStream);
+  end;
+end;
+
 procedure TRALStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
   vjArr: TRALJSONArray;
@@ -1008,6 +1034,27 @@ begin
   if FDateTimeFormat = dtfCustom then
     AWriter.WriteString(FCustomDateTimeFormat);
 end;
+
+{ TRALStorageJSONHelper }
+
+{$IF Defined(FPC) or Defined(Delphi2005UP)}
+function TRALStorageJSONHelper.ToJSON: StringRAL;
+var
+  AStrStream: TRALStringStream;
+  StorageJSON: TRALStorageJSON_RAW;
+begin
+  Result := '';
+  AStrStream := TRALStringStream.Create;
+  StorageJSON := TRALStorageJSON_RAW.Create;
+  try
+    StorageJSON.SaveToStream(Self, AStrStream);
+    Result := AStrStream.DataString;
+  finally
+    FreeAndNil(StorageJSON);
+    FreeAndNil(AStrStream);
+  end;
+end;
+{$IFEND}
 
 initialization
   RegisterClass(TRALStorageJSONLink);
