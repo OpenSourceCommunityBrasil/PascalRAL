@@ -77,8 +77,11 @@ var
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.ResponseText := AMessage;
-    AResponse.StatusCode := vResponse.GetStatusCode;
+    AResponse.ResponseText := AMessage;											   
+    if vResponse <> nil then // Antonio c Gomes
+      AResponse.StatusCode := vResponse.GetStatusCode
+    else
+      AResponse.StatusCode := ACode; // Antonio c Gomes													   
     AResponse.ErrorCode := ACode;
   end;
 
@@ -163,21 +166,23 @@ begin
         amOPTIONS:
           vResponse := FHttp.Options(AURL, nil, vHeaders);
       end;
-
-      for vInt := 0 to Pred(Length(vResponse.Headers)) do
-        AResponse.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
-
-      AResponse.ContentEncoding := vResponse.ContentEncoding;
-      AResponse.Params.CompressType := AResponse.ContentCompress;
-
+	  
+	  AResponse.Params.CompressType := AResponse.ContentCompress;
       AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
       AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+	  AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
       AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-      AResponse.ContentType := vResponse.MimeType;
-      AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
-      AResponse.StatusCode := vResponse.GetStatusCode;
-      AResponse.ResponseStream := vResponse.ContentStream;
+      if vResponse <> nil then // Antonio c Gomes AV 
+      begin
+        for vInt := 0 to Pred(Length(vResponse.Headers)) do
+          AResponse.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
+
+        AResponse.ContentEncoding := vResponse.ContentEncoding;      
+        AResponse.ContentType     := vResponse.MimeType;        
+        AResponse.StatusCode      := vResponse.GetStatusCode;
+        AResponse.ResponseStream  := vResponse.ContentStream;
+      end;	 	  
     except
       on e : ENetHTTPClientException do begin
         vErroCode := -1;
