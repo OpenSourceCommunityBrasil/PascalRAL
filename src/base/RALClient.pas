@@ -542,7 +542,7 @@ begin
       vErrorCode := AResponse.ErrorCode;
     end;
 
-    if vErrorCode <> 0 then
+    if (vErrorCode <> 0) and (Parent.BaseURL.Count > 0) then
       FIndexUrl := (FIndexUrl + 1) mod Parent.BaseURL.Count;
 
     vConta := vConta + 1;
