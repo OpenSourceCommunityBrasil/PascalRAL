@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Fix:  - README.md banner link** (2025-11-02 – Mobius One)
+
+- **fix: Ajuste de bot de changelog pra branch dev** (2025-10-27 – Mobius One)
+
+
+## [0.12.2] - 2025-10-25
+
+### Security
+- **- Alteração de variável de versionamento pra ser uma string ao invés de concatenação de int  - Remoção de warnings sobre variáveis não utilizadas em diversos métodos no pacote base  + Ajuste de pacote PascalRAL incluindo classes faltantes que estavam sendo importadas implicitamente  * Modificação de atribuição de SetAllowedMethods e SetSkipAuthMethods nas rotas  + Adição de funções isMethodAllowed e isMethodSkipped para facilitar a lógica interna  - Modificação de Options na Types para ser um enumerado próprio da nova classe Security do Server  - Correção de compilação no Delphi da RALDBTypes  + Adição de várias funções na lista ThreadSafe para facilitar o uso  - Utilização de CharInSet na RALTools para resolver warning do Delphi  * Modificação severa no RALServer para incluir 3 options que não eram usados antes: FloodProtection, BruteForceProtection e PathTransversal  * Criação de classe Security como propriedade interna do RALServer para conter todas as definições de segurança  - Removida propriedade BruteForce do server e adicionada à Security  + Novas propriedades para adequar ao uso das Options  * Atualização de Versão para 0.9.4** (2024-03-26 – Mobius One)
+
+
 ### Added
+- **feat:  - Novo helper .ToJSON para datasets de forma a facilitar converter o dataset inteiro para json.  - Nova função DataSetToJSON para versões do Delphi que não possuem class helpers.** (2025-09-29 – Mobius One)
+  Fixed #114
+
 - **feat: implementação de onServerError para centralizar os erros internos num mesmo método** (2025-08-18 – Mobius One)
   Fixed #111
 
@@ -19,104 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - RALServer.pas
   -- implementado evento OnBeforeAnswer na class TRALModuleRoutes, para "filtros" antes da chamada do rota
 
-
-### Changed
-- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-09-11 – Mobius One)
-
-- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-08-18 – Mobius One)
-
-- **- Correção de compilação para Lazarus para usar type helper ao invés de record helper  - Mudança do Helper de base64 para RALTypes, por padronização do código  - Ajuste de versionamento** (2025-06-26 – Mobius One)
-
-- **- Correção de parse para params x-www-form-urlencoded cujo value é vazio  - Pequena otimização do parse melhorando um pouco o tempo de resposta dos servers  + Adição de função para devolver os params como um JSONObject: Params.AsJSON** (2025-06-23 – Mobius One)
-
-- **Update config.yml** (2025-06-19 – Mobius One)
-
-- **- Criação de uma classe intermediária para facilitar exportação de criptografia do pacote, RALHashes.pas #78  * Ajuste em todas as classes para trocar RALHashes -> RALHashBase  - Correção de IntegerOverflow nas hashes SHA  * Ajuste de mensagem de erro referente às classes de criptografia e hash  + Tratamento de entrada para evitar Invalid Pointer e Rangecheck Error  - Ajuste de versionamento** (2025-06-14 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-06-14 – Gustavo Souza)
-
-- **- Correção de erros na criptografia;** (2025-06-14 – Gustavo Souza)
-
-- **- Merge Dev -> Master  - Ajuste versionamento** (2025-06-13 – Mobius One)
-
-- **- ajuste no server FPHttp para o max de conexoes permitidas pelo operacional - ajuste no server indy e sagui colocando as procedures para o protected - ajuste no server indy nas propriedades ListenQueue e MaxConnections acessando diretamente no motor** (2025-06-04 – Fernando Castelano Banhos)
-
-- **- Ajuste de versionamento  + Exportação de propriedades para ajuste fino de limites no Indy, FpHttp e Sagui  - Correção de nomenclatura de arquivo de strings pt-br** (2025-06-04 – Mobius One)
-
-- **- melhoria na ordem da propriedade do CompressType - mudança no tipo da propriedade DatabaseLink do TRALDBModule de StringRAL para String** (2025-05-11 – Fernando Castelano Banhos)
-
-- **- mudança no tipo da propriedade EngineType do RALClient de StringRAL para String** (2025-05-11 – Fernando Castelano Banhos)
-
-- **- adicionado compress type ctNone na lista de compressao dos componentes RALServer e RALCliente - correção de AV para descompressão de stream com size = 0** (2025-05-11 – Fernando Castelano Banhos)
-
-- **- ajuste de versionamento** (2025-04-16 – Fernando Castelano Banhos)
-
-- **- melhoria na adição de units requeridas pelo TRALClient, adicionando na unit correta** (2025-04-16 – Fernando Castelano Banhos)
-
-- **- Ajuste de conversões implícitas.  * Ajuste de strings hardcoded para resource permitindo que sejam localizadas.  * Tradução de strings nos recursos.** (2025-03-29 – Mobius One)
-
-- *** Ajuste de versionamento pra permitir controle por diretivas** (2025-03-27 – Mobius One)
-
-- **- Adaptações nas classes Compress para facilitar a expansão futuras, padronizando os fontes como foi feito com as classes TRALClient e TRALDBWare** (2025-03-26 – Fernando Castelano Banhos)
-
-- *** Correção de versionamento** (2025-03-25 – Mobius One)
-
-- **- Correção de erros internos do Sagui com content de tamanho zero ou stream inválido  - Prevenção de erro de compactação em ZLib se caso o conteúdo a ser compactado for zero** (2025-03-25 – Mobius One)
-
-- **-  melhoria na funcao RALCPUCount** (2025-03-21 – Fernando Castelano Banhos)
-
-- **- Correção de Target de pacote pra win32 pra funcionar por padrão com todas as IDEs Delphi.  - Corrigidos package Indy e Synopse.** (2025-03-19 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-03-19 – Mobius One)
-
-- *** Atualização de versão para 0.11.0-2  * Atualização de package sagui pra versão 3.5.2  * Ajuste de wizard e arquivos .dproj para funcionar com Delphi 12.3  * Ajuste de wizard pra funcionar com IDE 64b 12.3  * Ajuste no SynopseServer para encerrar corretamente o socket  * Ajuste de documentação no RALServer** (2025-03-19 – Mobius One)
-
-- **- Removido componentes DBLinks (TRALDBFireDACLink, TRALDBZeosLink, TRALDBSQLDBLink) - Propriedade DatabaseLink do componente TRALDBModule, modificada e adaptada automaticamente aos Drivers - Ajustes no pacote RALDBPackage do Lazarus - Adaptações para o componente TRALDBModule funcione sem os DBLinks** (2025-03-18 – Fernando Castelano Banhos)
-
-- **- correção do Server Sagui para aceitar compressão - correção do Server Sagui para capturar o payload (body) corretamente - correção da descompressão gzip para Delphi** (2025-02-26 – Fernando Castelano Banhos)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-02-25 – Fernando Castelano Banhos)
-
-- **+ Criação de ícone para ClientRAL unificado  - Ajuste de arquivos de recurso pra incluir as modificações dos clientes  - Adição de uma condição pra usar o valor direto da ARoute se BaseURL tiver vazio, simplificando chamadas GET** (2025-02-17 – Mobius One)
-
-- **- Adaptações para RALCliente funcionar - Correção de alguns leaks ao clonar RALRequest** (2025-02-14 – Fernando Castelano Banhos)
-
-- **- RALNetHttp e RALDBFiredacDAO adaptado com o novo RALClient - Criado para Delphi e Lazarus funçoes para auto declarar as classes dos Engines   conforme selecionado** (2025-02-13 – Fernando Castelano Banhos)
-
-- **- Unificado RALClienteMT e RALCliente - Mudanças e Adaptações nos clientes Indy, fpHTTP, Synopse - Adaptações das mudanças para a classe TRALDBConnection** (2025-02-13 – Fernando Castelano Banhos)
-
-- **- Correção de compatibilidade de plataformas no pacote BSON em design-time para Delphi  * Atualização de versionamento** (2025-01-24 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-01-24 – Fernando Castelano Banhos)
-
-- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-01-06 – Mobius One)
-
-- **- Removido submodule brookframework.** (2025-01-06 – Mobius One)
-
-- **- Atualização de submodule.  - Removido submodule brookframework.  + Adição de libsagui untracked para instalação do SaguiRAL.** (2025-01-06 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2024-11-27 – Mobius One)
-
-- **- Atualização de versão para 0.10.0.  - Mudança estrutural dos pacotes movendo pacote Storage para a base do projeto.  - Criação de categoria própria dos Storages, "RAL - Storage" na paleta de componentes.  - Atualização dos caminhos das imagens de ícone dos componentes.  - Ajuste de dependências de pacotes para incluir a mudança de caminho dos Storages.  - Removida dependência do DBPackage pra instalar os Storages que podem ser usados sem depender de DBWare.** (2024-11-27 – Mobius One)
-
-
-### Fixed
-- **fix: erro de compilação para Lazarus fix: configuração de diretivas para Delphi 13** (2025-08-20 – Mobius One)
-
-- **fix: Correção de parse de www-form-url-encoded para detectar o separador do body diferente do header** (2025-08-11 – Mobius One)
-
-- **fix: Correção de encoding de arquivos do projeto fix: Ajuste de versionamento** (2025-08-08 – Mobius One)
-
-- **- correção de bug (incorrect length check) no Delphi para compressão gzip** (2025-02-25 – Fernando Castelano Banhos)
-
-
-## [0.9.11-alpha] - 2024-11-27
-
-### Security
-- **- Alteração de variável de versionamento pra ser uma string ao invés de concatenação de int  - Remoção de warnings sobre variáveis não utilizadas em diversos métodos no pacote base  + Ajuste de pacote PascalRAL incluindo classes faltantes que estavam sendo importadas implicitamente  * Modificação de atribuição de SetAllowedMethods e SetSkipAuthMethods nas rotas  + Adição de funções isMethodAllowed e isMethodSkipped para facilitar a lógica interna  - Modificação de Options na Types para ser um enumerado próprio da nova classe Security do Server  - Correção de compilação no Delphi da RALDBTypes  + Adição de várias funções na lista ThreadSafe para facilitar o uso  - Utilização de CharInSet na RALTools para resolver warning do Delphi  * Modificação severa no RALServer para incluir 3 options que não eram usados antes: FloodProtection, BruteForceProtection e PathTransversal  * Criação de classe Security como propriedade interna do RALServer para conter todas as definições de segurança  - Removida propriedade BruteForce do server e adicionada à Security  + Novas propriedades para adequar ao uso das Options  * Atualização de Versão para 0.9.4** (2024-03-26 – Mobius One)
-
-
-### Added
 - **- retirada do autocreate das ResponsePages do servidor, para nao ficar dando diferença entre versao compilada versao do conteudo - implmentado no SynopseServer o evento OnTerminate para identificar queda no servidor** (2024-11-27 – Fernando Castelano Banhos)
 
 - **- implementacão em todos os clientes para detectar qualquer exceção** (2024-11-11 – Fernando Castelano Banhos)
@@ -642,6 +559,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2025-10-25 – Mobius One)
+
+- **AV em perda de conexão com o endpoint. Simular, tirar cabo de rede.** (2025-10-03 – ANTONIO GOMES)
+
+- **AV em perda de conexão com o endpoint. Simular, tirar cabo de rede.** (2025-10-03 – ANTONIO GOMES)
+
+- **Update README.md** (2025-09-17 – Mobius One)
+
+- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-09-11 – Mobius One)
+
+- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-08-18 – Mobius One)
+
+- **- Correção de compilação para Lazarus para usar type helper ao invés de record helper  - Mudança do Helper de base64 para RALTypes, por padronização do código  - Ajuste de versionamento** (2025-06-26 – Mobius One)
+
+- **- Correção de parse para params x-www-form-urlencoded cujo value é vazio  - Pequena otimização do parse melhorando um pouco o tempo de resposta dos servers  + Adição de função para devolver os params como um JSONObject: Params.AsJSON** (2025-06-23 – Mobius One)
+
+- **Update config.yml** (2025-06-19 – Mobius One)
+
+- **- Criação de uma classe intermediária para facilitar exportação de criptografia do pacote, RALHashes.pas #78  * Ajuste em todas as classes para trocar RALHashes -> RALHashBase  - Correção de IntegerOverflow nas hashes SHA  * Ajuste de mensagem de erro referente às classes de criptografia e hash  + Tratamento de entrada para evitar Invalid Pointer e Rangecheck Error  - Ajuste de versionamento** (2025-06-14 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-06-14 – Gustavo Souza)
+
+- **- Correção de erros na criptografia;** (2025-06-14 – Gustavo Souza)
+
+- **- Merge Dev -> Master  - Ajuste versionamento** (2025-06-13 – Mobius One)
+
+- **- ajuste no server FPHttp para o max de conexoes permitidas pelo operacional - ajuste no server indy e sagui colocando as procedures para o protected - ajuste no server indy nas propriedades ListenQueue e MaxConnections acessando diretamente no motor** (2025-06-04 – Fernando Castelano Banhos)
+
+- **- Ajuste de versionamento  + Exportação de propriedades para ajuste fino de limites no Indy, FpHttp e Sagui  - Correção de nomenclatura de arquivo de strings pt-br** (2025-06-04 – Mobius One)
+
+- **- melhoria na ordem da propriedade do CompressType - mudança no tipo da propriedade DatabaseLink do TRALDBModule de StringRAL para String** (2025-05-11 – Fernando Castelano Banhos)
+
+- **- mudança no tipo da propriedade EngineType do RALClient de StringRAL para String** (2025-05-11 – Fernando Castelano Banhos)
+
+- **- adicionado compress type ctNone na lista de compressao dos componentes RALServer e RALCliente - correção de AV para descompressão de stream com size = 0** (2025-05-11 – Fernando Castelano Banhos)
+
+- **- ajuste de versionamento** (2025-04-16 – Fernando Castelano Banhos)
+
+- **- melhoria na adição de units requeridas pelo TRALClient, adicionando na unit correta** (2025-04-16 – Fernando Castelano Banhos)
+
+- **- Ajuste de conversões implícitas.  * Ajuste de strings hardcoded para resource permitindo que sejam localizadas.  * Tradução de strings nos recursos.** (2025-03-29 – Mobius One)
+
+- *** Ajuste de versionamento pra permitir controle por diretivas** (2025-03-27 – Mobius One)
+
+- **- Adaptações nas classes Compress para facilitar a expansão futuras, padronizando os fontes como foi feito com as classes TRALClient e TRALDBWare** (2025-03-26 – Fernando Castelano Banhos)
+
+- *** Correção de versionamento** (2025-03-25 – Mobius One)
+
+- **- Correção de erros internos do Sagui com content de tamanho zero ou stream inválido  - Prevenção de erro de compactação em ZLib se caso o conteúdo a ser compactado for zero** (2025-03-25 – Mobius One)
+
+- **-  melhoria na funcao RALCPUCount** (2025-03-21 – Fernando Castelano Banhos)
+
+- **- Correção de Target de pacote pra win32 pra funcionar por padrão com todas as IDEs Delphi.  - Corrigidos package Indy e Synopse.** (2025-03-19 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-03-19 – Mobius One)
+
+- *** Atualização de versão para 0.11.0-2  * Atualização de package sagui pra versão 3.5.2  * Ajuste de wizard e arquivos .dproj para funcionar com Delphi 12.3  * Ajuste de wizard pra funcionar com IDE 64b 12.3  * Ajuste no SynopseServer para encerrar corretamente o socket  * Ajuste de documentação no RALServer** (2025-03-19 – Mobius One)
+
+- **- Removido componentes DBLinks (TRALDBFireDACLink, TRALDBZeosLink, TRALDBSQLDBLink) - Propriedade DatabaseLink do componente TRALDBModule, modificada e adaptada automaticamente aos Drivers - Ajustes no pacote RALDBPackage do Lazarus - Adaptações para o componente TRALDBModule funcione sem os DBLinks** (2025-03-18 – Fernando Castelano Banhos)
+
+- **- correção do Server Sagui para aceitar compressão - correção do Server Sagui para capturar o payload (body) corretamente - correção da descompressão gzip para Delphi** (2025-02-26 – Fernando Castelano Banhos)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-02-25 – Fernando Castelano Banhos)
+
+- **+ Criação de ícone para ClientRAL unificado  - Ajuste de arquivos de recurso pra incluir as modificações dos clientes  - Adição de uma condição pra usar o valor direto da ARoute se BaseURL tiver vazio, simplificando chamadas GET** (2025-02-17 – Mobius One)
+
+- **- Adaptações para RALCliente funcionar - Correção de alguns leaks ao clonar RALRequest** (2025-02-14 – Fernando Castelano Banhos)
+
+- **- RALNetHttp e RALDBFiredacDAO adaptado com o novo RALClient - Criado para Delphi e Lazarus funçoes para auto declarar as classes dos Engines   conforme selecionado** (2025-02-13 – Fernando Castelano Banhos)
+
+- **- Unificado RALClienteMT e RALCliente - Mudanças e Adaptações nos clientes Indy, fpHTTP, Synopse - Adaptações das mudanças para a classe TRALDBConnection** (2025-02-13 – Fernando Castelano Banhos)
+
+- **- Correção de compatibilidade de plataformas no pacote BSON em design-time para Delphi  * Atualização de versionamento** (2025-01-24 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-01-24 – Fernando Castelano Banhos)
+
+- **Merge remote-tracking branch 'remotes/origin/dev'** (2025-01-06 – Mobius One)
+
+- **- Removido submodule brookframework.** (2025-01-06 – Mobius One)
+
+- **- Atualização de submodule.  - Removido submodule brookframework.  + Adição de libsagui untracked para instalação do SaguiRAL.** (2025-01-06 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2024-11-27 – Mobius One)
+
+- **- Atualização de versão para 0.10.0.  - Mudança estrutural dos pacotes movendo pacote Storage para a base do projeto.  - Criação de categoria própria dos Storages, "RAL - Storage" na paleta de componentes.  - Atualização dos caminhos das imagens de ícone dos componentes.  - Ajuste de dependências de pacotes para incluir a mudança de caminho dos Storages.  - Removida dependência do DBPackage pra instalar os Storages que podem ser usados sem depender de DBWare.** (2024-11-27 – Mobius One)
+
 - **- Correção de versionamento** (2024-11-24 – Mobius One)
 
 - **- Conversão de RALMIMETypes para Singleton para reduzir tempo de carga  - Ajuste de coleta de MIMETypes do sistema otimizando a carga** (2024-11-24 – Mobius One)
@@ -1511,6 +1514,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix:  - Update submodules** (2025-10-24 – Mobius One)
+
+- **Merge pull request #116 from acgubamg/dev** (2025-10-03 – Mobius One)
+  Fixed #115
+
+- **fix: erro de compilação para Lazarus fix: configuração de diretivas para Delphi 13** (2025-08-20 – Mobius One)
+
+- **fix: Correção de parse de www-form-url-encoded para detectar o separador do body diferente do header** (2025-08-11 – Mobius One)
+
+- **fix: Correção de encoding de arquivos do projeto fix: Ajuste de versionamento** (2025-08-08 – Mobius One)
+
+- **- correção de bug (incorrect length check) no Delphi para compressão gzip** (2025-02-25 – Fernando Castelano Banhos)
+
 - **- RALDBStorageJSON.pas, correção de bug de chatset - RALfpHTTPClient.pas, adicionado excecao de readtimeout e connectiontimeout** (2024-11-11 – Fernando Castelano Banhos)
 
 - **- packages raldbpackage.lpk e raldbzeoslink.lpk, altera modo debug para dwarf3 - correção RALDBZeosMemTable.pas, openremote e execsqlremote usando o sqlcache errado** (2024-11-10 – Fernando Castelano Banhos)
