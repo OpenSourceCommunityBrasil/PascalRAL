@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fix: Ajuste de bot de changelog pra branch dev** (2025-10-27 – Mobius One)
 
 
+### Removed
+- **chore: Update dropdown options in bug report template EN** (2025-11-14 – Mobius One)
+
+
 ## [0.12.2] - 2025-10-25
 
 ### Security
