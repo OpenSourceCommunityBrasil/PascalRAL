@@ -17,6 +17,7 @@ body:
       label: "Versão RAL:"
       description: "Informe a versão do componente onde ocorre o problema."
       options:
+        - 0.12.x
         - 1.0
     validations:
       required: true
@@ -26,8 +27,9 @@ body:
       label: "IDE:"
       description: "Informe a IDE usada."
       options:
-        - Delphi 12+ Athens
-        - Delphi 11.3 Alexandria
+        - Delphi 13.x Florence
+        - Delphi 12.x Athens
+        - Delphi 11.x Alexandria
         - Delphi 10.4 Sydney
         - Delphi 10.3 Rio
         - Delphi 10.2 Tokyo
@@ -47,8 +49,9 @@ body:
         - Delphi 2007
         - Delphi 2006
         - Delphi 7
-        - Lazarus 3.0 - 3.2+
-        - Lazarus 2.0 - 2.2.6
+        - Lazarus 4.0 - 4.x
+        - Lazarus 3.0 - 3.x
+        - Lazarus 2.0 - 2.x
         - Lazarus < 2.0
     validations:
       required: true
