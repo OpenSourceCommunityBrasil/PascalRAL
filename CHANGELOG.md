@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **chore: Update Lazarus version options in bug report template EN** (2025-11-14 – Mobius One)
+
 - **Fix:  - README.md banner link** (2025-11-02 – Mobius One)
 
 - **fix: Ajuste de bot de changelog pra branch dev** (2025-10-27 – Mobius One)
