@@ -49,8 +49,9 @@ body:
         - Delphi 2007
         - Delphi 2006
         - Delphi 7
-        - Lazarus 3.0 - 3.2+
-        - Lazarus 2.0 - 2.2.6
+        - Lazarus 4.0 - 4.x
+        - Lazarus 3.0 - 3.x
+        - Lazarus 2.0 - 2.x
         - Lazarus < 2.0 
     validations:
       required: true
