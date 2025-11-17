@@ -62,11 +62,14 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
+  procedure tratarExcecao(ACode: IntegerRAL; AMessage: StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.StatusCode := FHttp.ResponseCode;
+    if assigned(FHttp) then
+      AResponse.StatusCode := FHttp.ResponseCode
+    else
+      AResponse.StatusCode := ACode;
     AResponse.ResponseText := AMessage;
     AResponse.ErrorCode := ACode;
   end;
@@ -165,13 +168,13 @@ begin
       AResponse.StatusCode := FHttp.ResponseCode;
       AResponse.ResponseStream := vResult;
     except
-      on e : EIdSocketError do
+      on e: EIdSocketError do
         tratarExcecao(e.LastError, e.Message);
-      on e : EIdConnectTimeout do
+      on e: EIdConnectTimeout do
         tratarExcecao(10060, e.Message);
-      on e : EIdReadTimeout do
+      on e: EIdReadTimeout do
         tratarExcecao(10060, e.Message);
-      on e : Exception do
+      on e: Exception do
         tratarExcecao(-1, e.Message);
     end;
   finally

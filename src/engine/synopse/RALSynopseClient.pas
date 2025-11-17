@@ -38,12 +38,13 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
+  procedure tratarExcecao(ACode: IntegerRAL; AMessage: StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
     AResponse.ResponseText := AMessage;
     AResponse.ErrorCode := ACode;
+    AResponse.StatusCode := ACode;
   end;
 
 begin

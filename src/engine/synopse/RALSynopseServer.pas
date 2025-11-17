@@ -274,6 +274,7 @@ begin
       end;
 
       ProcessCommands(vRequest, vResponse);
+
       with vResponse do
       begin
         AContext.OutContent := ResponseText;

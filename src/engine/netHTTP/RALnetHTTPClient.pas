@@ -184,7 +184,7 @@ begin
         AResponse.ResponseStream  := vResponse.ContentStream;
       end;	 	  
     except
-      on e : ENetHTTPClientException do begin
+      on e: ENetHTTPClientException do begin
         vErroCode := -1;
         if Pos('12029', e.Message) > 0 then
           vErroCode := 12029
@@ -193,7 +193,7 @@ begin
 
         tratarExcecao(vErroCode, e.Message);
       end;
-      on e : Exception do
+      on e: Exception do
         tratarExcecao(-1, e.Message);
     end;
   finally

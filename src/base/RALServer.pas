@@ -704,10 +704,13 @@ begin
     end;
   except
     on e: exception do
+    begin
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
         raise;
+      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+    end;
   end;
 end;
 

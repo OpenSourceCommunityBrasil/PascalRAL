@@ -421,10 +421,14 @@ begin
   if FContent <> nil then
     FreeAndNil(FContent);
 
-  AValue.Position := 0;
-
-  FContent := TRALStringStream.Create(AValue);
-  FContent.Position := 0;
+  if AValue <> nil then
+  begin
+    AValue.Position := 0;
+    FContent := TRALStringStream.Create(AValue);
+    FContent.Position := 0;
+  end
+  else
+    FContent := nil;
 end;
 
 procedure TRALParam.SetAsString(const AValue: StringRAL);
