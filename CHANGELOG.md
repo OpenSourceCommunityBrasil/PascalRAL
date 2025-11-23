@@ -14,7 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Fixed #117
 
 
+### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-23 – Mobius One)
+
+
 ### Fixed
+- **fix:  - Correção de memoryleak na conversão de StreamToString. #118  - Remoção de redundância do fix anterior.** (2025-11-23 – Mobius One)
+  Fixed #118
+
 - **chore: Update Lazarus version options in bug report template EN** (2025-11-14 – Mobius One)
 
 - **Fix:  - README.md banner link** (2025-11-02 – Mobius One)
