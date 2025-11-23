@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **fix:  - Corrigido AV não mostrando no cliente #117  - Correção preventiva de erros nos clientes na função tratarExcecao  - Correção preventiva de erro em casos de Param Stream vazio** (2025-11-17 – Mobius One)
+  feat:
+  - Atualização de arquivo de fontes de identidade visual
+  Fixed #117
+
+
 ### Fixed
 - **chore: Update Lazarus version options in bug report template EN** (2025-11-14 – Mobius One)
 
