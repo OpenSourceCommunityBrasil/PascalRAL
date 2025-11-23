@@ -426,9 +426,7 @@ begin
     AValue.Position := 0;
     FContent := TRALStringStream.Create(AValue);
     FContent.Position := 0;
-  end
-  else
-    FContent := nil;
+  end;
 end;
 
 procedure TRALParam.SetAsString(const AValue: StringRAL);

@@ -15,7 +15,7 @@ type
 
   TRALBinaryWriter = class
   private
-    FStream : TStream;
+    FStream: TStream;
   protected
     // read and write UTF-7
     function ReadSize: UInt64RAL;
@@ -158,7 +158,11 @@ begin
   else
   begin
     vStream := TRALStringStream.Create(AStream);
-    Result := TRALStringStream(vStream).DataString;
+    try
+      Result := TRALStringStream(vStream).DataString;
+    finally
+      FreeAndNil(vStream);
+    end;
 
 //    vStream := TStringStream.Create(EmptyStr);
 //    try
