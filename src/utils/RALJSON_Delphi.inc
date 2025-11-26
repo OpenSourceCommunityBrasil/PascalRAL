@@ -408,7 +408,8 @@ begin
   if Self = nil then
     Exit;
 
-  {$IFDEF DELPHI10_1UP}
+//TODO Conferir no 10.2 Tokyo se isso aqui vai dar erro
+  {$IFDEF DELPHI10_3UP}
     vObj := JsonObject.FindValue(AName);
   {$ELSE}
     vObj := nil;

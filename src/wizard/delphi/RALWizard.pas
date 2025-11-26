@@ -187,7 +187,22 @@ end;
   end;
 {$ENDIF}
 
-{$IFDEF DELPHI10_2UP}
+{$IF Defined(DELPHI10_2UP) AND NOT Defined(DELPHI10_3UP)}
+  function TRALWizard.GetSupportedPlatforms: TArray<string>;
+  begin
+    SetLength(Result, 4);
+    Result[0] := cWin32Platform;
+    Result[1] := cWin64Platform;
+    Result[2] := cLinux64Platform;
+    Result[3] := ciOSDevice64Platform;
+//    Result[3] := cOSX64Platform;
+//    Result[4] := ciOSSimulator64Platform;
+//    Result[6] := cAndroidArm32Platform;
+//    Result[7] := cAndroidArm64Platform;
+  end;
+{$IFEND}
+
+{$IFDEF DELPHI10_3UP}
   function TRALWizard.GetSupportedPlatforms: TArray<string>;
   begin
     SetLength(Result, 6);
