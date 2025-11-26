@@ -15,10 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-26 – Mobius One)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-23 – Mobius One)
 
 
 ### Fixed
+- **fix:  - Correção de compilação para Delphi 10.2 Tokyo, testes pendentes** (2025-11-26 – Mobius One)
+
 - **fix:  - Correção de memoryleak na conversão de StreamToString. #118  - Remoção de redundância do fix anterior.** (2025-11-23 – Mobius One)
   Fixed #118
 
