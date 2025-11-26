@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat:  - Capacidade de executar laços for..in com TRALParams** (2025-11-26 – Mobius One)
+
 - **fix:  - Corrigido AV não mostrando no cliente #117  - Correção preventiva de erros nos clientes na função tratarExcecao  - Correção preventiva de erro em casos de Param Stream vazio** (2025-11-17 – Mobius One)
   feat:
   - Atualização de arquivo de fontes de identidade visual
