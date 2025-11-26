@@ -77,6 +77,18 @@ type
 
   /// Collection of TRALParam objects
   TRALParams = class
+  public type
+    /// Support enumeration of values in TRALParams.
+    TEnumerator = class
+    private
+      FIndex: Integer;
+      FArray: TRALParams;
+    public
+      constructor Create(const AArray: TRALParams);
+      function GetCurrent: TRALParam; inline;
+      function MoveNext: Boolean; inline;
+      property Current: TRALParam read GetCurrent;
+    end;
   private
     FCompressType: TRALCompressType;
     FContentDispositionInline: Boolean;
@@ -189,6 +201,8 @@ type
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
     /// Returns a TStream with all RALParams that matches 'Body' Kind.
     function EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
+    /// Retuns the internal Enumerator type to allow for..in loops
+    function GetEnumerator: TEnumerator; inline;
     /// creates and returns an empty param for a more flexible way of coding.
     function NewParam: TRALParam;
     /// converts a HTML encoded URL into a TStringList.
@@ -1471,6 +1485,32 @@ begin
       FParams.Delete(vInt);
     end;
   end;
+end;
+
+{ TRALParams.TEnumerator }
+
+constructor TRALParams.TEnumerator.Create(const AArray: TRALParams);
+begin
+  inherited Create;
+  FIndex := -1;
+  FArray := AArray;
+end;
+
+function TRALParams.TEnumerator.GetCurrent: TRALParam;
+begin
+  Result := TRALParam(FArray.FParams[FIndex]);
+end;
+
+function TRALParams.TEnumerator.MoveNext: Boolean;
+begin
+  Result := FIndex < FArray.FParams.Count - 1;
+  if Result then
+    Inc(FIndex);
+end;
+
+function TRALParams.GetEnumerator: TEnumerator;
+begin
+  Result := TEnumerator.Create(Self);
 end;
 
 end.
