@@ -8,27 +8,36 @@ permissions:
 
 jobs:
   label-component:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     permissions:
       issues: write
 
-    strategy:
-      matrix:
-        template: [ FormBugReportEN.yml, FormBugReportPT.yml ]
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Parse issue form
+      - name: Parse issue form EN
         uses: stefanbuck/github-issue-parser@v3
-        id: issue-parser
+        id: issue-parser-en
         with:
-          template-path: .github/ISSUE_TEMPLATE/${{ matrix.template }}
+          template-path: .github/ISSUE_TEMPLATE/FormBugReportEN.yml
 
-      - name: Set labels based on component field
+      - name: Parse issue form PT
+        uses: stefanbuck/github-issue-parser@v3
+        id: issue-parser-pt
+        with:
+          template-path: .github/ISSUE_TEMPLATE/FormBugReportPT.yml
+
+      - name: Set labels of form-report-en
         uses: redhat-plumbers-in-action/advanced-issue-labeler@v3
         with:
-          issue-form: ${{ steps.issue-parser.outputs.jsonString }}
-          template: ${{ matrix.template }}
+          issue-form: ${{ steps.issue-parser-en.outputs.jsonString }}
           token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Set labels of form-report-pt
+        uses: redhat-plumbers-in-action/advanced-issue-labeler@v3
+        with:
+          issue-form: ${{ steps.issue-parser-pt.outputs.jsonString }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
