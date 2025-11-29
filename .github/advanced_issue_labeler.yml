@@ -4,13 +4,14 @@
 policy:
   - template: [FormBugReportEN.yml, FormBugReportPT.yml]
     section:
-      - id: [IDE]
+      - id: ['IDE']
         block-list: []
         label:
           - name: "ide: Delphi"
             keys: [
-              "Delphi 12+ Athens", 
-              "Delphi 11.3 Alexandria", 
+              "Delphi 13.x Florence",
+              "Delphi 12.x Athens", 
+              "Delphi 11.x Alexandria", 
               "Delphi 10.4 Sydney", 
               "Delphi 10.3 Rio", 
               "Delphi 10.2 Tokyo", 
@@ -31,9 +32,13 @@ policy:
               "Delphi 2006",
               "Delphi 7"]
           - name: "ide: Lazarus"
-            keys: ["Lazarus 3.0 - 3.2+", "Lazarus 2.0 - 2.2.6", "Lazarus < 2.0"]
-      - id: [OS]
-        block-list: [Other]
+            keys: [
+              "Lazarus 4.0 - 4.x",
+              "Lazarus 3.0 - 3.x",
+              "Lazarus 2.0 - 2.x",
+              "Lazarus < 2.0"]
+      - id: ['OS']
+        block-list: []
         label:
           - name: "os: Android"
             keys: [Android]
