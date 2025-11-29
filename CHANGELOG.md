@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Refactor issue labeler workflow** (2025-11-29 – Mobius One)
+
 - **fix:  - Correção de compilação para Delphi 10.2 Tokyo, testes pendentes** (2025-11-26 – Mobius One)
 
 - **fix:  - Correção de memoryleak na conversão de StreamToString. #118  - Remoção de redundância do fix anterior.** (2025-11-23 – Mobius One)
