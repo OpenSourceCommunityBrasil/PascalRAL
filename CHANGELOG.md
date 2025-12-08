@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat:  - Capacidade de fazer For .. in no TRALRoutes  - Possibilidade de criar rotas em runtime apenas com métodos não pertencentes a uma classe com o OnReplyGen  - Possibilidade de atribuir métodos diferentes por verbo nas rotas  - Ajuste no Swagger para que ele consiga tratar corretamente o novo modelo de rotas, sem prejudicar o funcionamento de sistemas já existentes** (2025-12-08 – Mobius One)
+
 - **feat:  - Capacidade de executar laços for..in com TRALParams** (2025-11-26 – Mobius One)
 
 - **fix:  - Corrigido AV não mostrando no cliente #117  - Correção preventiva de erros nos clientes na função tratarExcecao  - Correção preventiva de erro em casos de Param Stream vazio** (2025-11-17 – Mobius One)
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-08 – Mobius One)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-29 – Mobius One)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-26 – Mobius One)
