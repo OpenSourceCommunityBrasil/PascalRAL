@@ -229,7 +229,9 @@ type
     function CountSubModules: IntegerRAL;
     // Shortcut to create routes on the server
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
-                         const ADescription: StringRAL = ''): TRALRoute;
+                         const ADescription: StringRAL = ''): TRALRoute; overload;
+    function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
+                         const ADescription: StringRAL = ''): TRALRoute; overload;
     { Core procedure of the server, every request will pass through here to be
       processed into response that will be answered to the client}
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -460,6 +462,14 @@ begin
   Result.Description.Text := ADescription;
 end;
 
+function TRALServer.CreateRoute(const ARoute: StringRAL;
+  AReplyProc: TRALOnReplyGen; const ADescription: StringRAL): TRALRoute;
+begin
+  Result := TRALRoute(FRoutes.Add);
+  Result.Route := ARoute;
+  Result.OnReplyGen := AReplyProc;
+  Result.Description.Text := ADescription;
+end;
 
 function TRALServer.IPv6IsImplemented: boolean;
 begin

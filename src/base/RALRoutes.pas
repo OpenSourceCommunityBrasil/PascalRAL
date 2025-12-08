@@ -11,6 +11,7 @@ uses
 type
   TRALRoutes = class;
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
+  TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 
   // swagger defines
   // array, boolean, integer, number, object, string
@@ -23,7 +24,7 @@ type
     FDescription: TStrings;
     FParamName: StringRAL;
     FParamType: TRALRouteParamType;
-    FRequired : boolean;
+    FRequired: boolean;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
@@ -44,7 +45,7 @@ type
   TRALRouteParams = class(TOwnedCollection)
   public
     constructor Create(AOwner: TPersistent);
-    function IndexOf(AName : StringRAL) : IntegerRAL;
+    function IndexOf(AName: StringRAL): IntegerRAL;
   end;
 
   { TRALBaseRoute }
@@ -56,13 +57,14 @@ type
     FAllowURIParams: boolean;
     FCallback: boolean;
     FDescription: TStrings;
-    FInputParams : TRALRouteParams;
+    FInputParams: TRALRouteParams;
     FName: StringRAL;
     FRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
-    FURIParams : TRALRouteParams;
+    FURIParams: TRALRouteParams;
 
     FOnReply: TRALOnReply;
+    FOnReplyGen: TRALOnReplyGen;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
@@ -95,6 +97,7 @@ type
     property URIParams: TRALRouteParams read FURIParams write FURIParams;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
+    property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
   published
     property Description: TStrings read FDescription write SetDescription;
     property InputParams: TRALRouteParams read FInputParams write FInputParams;
@@ -114,12 +117,26 @@ type
     property URIParams;
 
     property OnReply;
+  public
+    property OnReplyGen;
   end;
 
   { TRALRoutes }
 
   /// Collection class to store all route definitions
   TRALRoutes = class(TOwnedCollection)
+  public type
+    /// Support enumeration of values in TRALParams.
+    TEnumerator = class
+    private
+      FIndex: Integer;
+      FArray: TRALRoutes;
+    public
+      constructor Create(const AArray: TRALRoutes);
+      function GetCurrent: TRALRoute; inline;
+      function MoveNext: Boolean; inline;
+      property Current: TRALRoute read GetCurrent;
+    end;
   private
     function CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
                            var AWeight: IntegerRAL; AURI: TStringList): boolean;
@@ -128,7 +145,10 @@ type
     constructor Create(AOwner: TPersistent);
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
+    /// Method that will check if the request finds a matching route
     function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
+    /// Retuns the internal Enumerator type to allow for..in loops
+    function GetEnumerator: TEnumerator; inline;
 
     property Find[const ARoute: StringRAL]: TRALRoute read GetRoute;
   end;
@@ -170,6 +190,8 @@ begin
 
   if Assigned(OnReply) then
     OnReply(ARequest, AResponse)
+  else if Assigned(OnReplyGen) then
+    OnReplyGen(ARequest, AResponse)
   else
     AResponse.Answer(HTTP_NotFound);
 end;
@@ -448,6 +470,11 @@ begin
   end;
 end;
 
+function TRALRoutes.GetEnumerator: TEnumerator;
+begin
+  Result := TEnumerator.Create(Self);
+end;
+
 function TRALRoutes.GetRoute(const ARoute: StringRAL): TRALRoute;
 var
   I: integer;
@@ -495,7 +522,8 @@ begin
     for vInt := 0 to Pred(Self.Count) do
     begin
       vRoute := TRALRoute(Items[vInt]);
-      if CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
+
+      if vRoute.IsMethodAllowed(ARequest.Method) and CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
       begin
         if vTempWeight < vRouteWeight then
         begin
@@ -583,6 +611,27 @@ begin
       Break;
     end;
   end;
+end;
+
+{ TRALRoutes.TEnumerator }
+
+constructor TRALRoutes.TEnumerator.Create(const AArray: TRALRoutes);
+begin
+  inherited Create;
+  FIndex := -1;
+  FArray := AArray;
+end;
+
+function TRALRoutes.TEnumerator.GetCurrent: TRALRoute;
+begin
+  Result := TRALRoute(FArray.Items[FIndex]);
+end;
+
+function TRALRoutes.TEnumerator.MoveNext: Boolean;
+begin
+  Result := FIndex < FArray.Count - 1;
+  if Result then
+    Inc(FIndex);
 end;
 
 end.

@@ -517,7 +517,10 @@ begin
         vRoute.Add(vStrMethod, vjMethod);
       end;
     end;
-    AItem.Add(vStrRoute, vRoute)
+    if assigned(AItem.Get(vStrRoute)) then // rota já existe, insere novo método
+      TRALJSONObject(AItem.Get(vStrRoute)).Add(vStrMethod, vjMethod)
+    else
+      AItem.Add(vStrRoute, vRoute)
   finally
     FreeAndNil(vURIParams);
   end;
