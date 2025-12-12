@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-12 – Fernando Castelano Banhos)
+
+- **- correção de merge do git** (2025-12-12 – Fernando Castelano Banhos)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-08 – Mobius One)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-11-29 – Mobius One)
