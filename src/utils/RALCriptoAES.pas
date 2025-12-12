@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-/// Unit for AES Criptography functions
-/// AES EBC (Sem IV)
-=======
 ﻿/// Unit for AES Criptography functions
->>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
+/// AES EBC (Sem IV)
 unit RALCriptoAES;
 
 {$I ..\base\PascalRAL.inc}

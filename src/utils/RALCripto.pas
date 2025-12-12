@@ -1,4 +1,4 @@
-/// Unit that stores cryptographic functions used in PascalRAL
+﻿/// Unit that stores cryptographic functions used in PascalRAL
 unit RALCripto;
 
 interface
@@ -73,89 +73,70 @@ end;
 
 function TRALCripto.Encrypt(const AValue: StringRAL; ABinary : boolean): StringRAL;
 var
-  vInputStream: TStringStream;
+  vStream: TStream;
 begin
-<<<<<<< HEAD
   if ABinary then
     vStream := StringToStream(AValue)
   else
     vStream := StringToStreamUTF8(AValue);
 
-=======
-  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
-  vInputStream := nil;
->>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
   try
-    vInputStream := TStringStream.Create(AValue, TEncoding.UTF8);
-    vInputStream.Position := 0;
-    Result := Encrypt(vInputStream);
+    vStream.Position := 0;
+    Result := Encrypt(vStream);
   finally
-    FreeAndNil(vInputStream);
+    FreeAndNil(vStream);
   end;
 end;
 
 function TRALCripto.Decrypt(const AValue: StringRAL; ABinary : boolean): StringRAL;
 var
-  vInputStream: TStringStream;
+  vStream: TStream;
 begin
-<<<<<<< HEAD
+  if AValue = '' then
+    raise Exception.Create(emHMACEmptyText);
+
   if ABinary then
     vStream := StringToStream(AValue)
   else
     vStream := StringToStreamUTF8(AValue);
 
-=======
-  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
-  if AValue = '' then
-    Raise Exception.Create(emHMACEmptyText);
-
-  vInputStream := nil;
->>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
   try
-    {$IFDEF FPC}
-    vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.UTF8);
-    {$ELSE}
-    vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.ANSI);
-    {$ENDIF}
-    vInputStream.Position := 0;
-    Result := Decrypt(vInputStream);
+    vStream.Position := 0;
+    Result := Decrypt(vStream);
   finally
-    FreeAndNil(vInputStream);
+    FreeAndNil(vStream);
   end;
 end;
 
 function TRALCripto.Encrypt(AValue: TStream): StringRAL;
 var
-  vEncryptedStream: TStream;
+  vStream: TStream;
 begin
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
-  vEncryptedStream := nil;
+  vStream := nil;
   try
-    vEncryptedStream := EncryptAsStream(AValue);
-    vEncryptedStream.Position := 0;
-    Result := TRALBase64.Encode(vEncryptedStream);
+    vStream := EncryptAsStream(AValue);
+    vStream.Position := 0;
+
+    Result := TRALBase64.Encode(vStream);
   finally
-    FreeAndNil(vEncryptedStream);
+    FreeAndNil(vStream);
   end;
 end;
 
 function TRALCripto.Decrypt(AValue: TStream): StringRAL;
 var
-  vDecryptedStream: TStream;
-  vStringStream: TStringStream;
+  vStream: TStream;
 begin
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
-  vDecryptedStream := nil;
-  vStringStream := nil;
+  vStream := nil;
   try
-    vDecryptedStream := DecryptAsStream(AValue);
-    vStringStream := TStringStream.Create('', TEncoding.UTF8);
-    vDecryptedStream.Position := 0;
-    vStringStream.LoadFromStream(vDecryptedStream);
-    Result := vStringStream.DataString;
+    vStream := DecryptAsStream(AValue);
+    vStream.Position := 0;
+
+    Result := StreamToString(vStream);
   finally
-    FreeAndNil(vStringStream);
-    FreeAndNil(vDecryptedStream);
+    FreeAndNil(vStream);
   end;
 end;
 
