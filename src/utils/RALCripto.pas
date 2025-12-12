@@ -32,14 +32,14 @@ type
   protected
     procedure SetKey(const AValue: StringRAL); virtual;
   public
-    function Decrypt(const AValue: StringRAL): StringRAL; overload;
+    function Decrypt(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
     function Decrypt(AValue: TBytes): StringRAL; overload;
     function Decrypt(AValue: TStream): StringRAL; overload;
     function DecryptAsBytes(const AValue: StringRAL): TBytes; overload;
     function DecryptAsBytes(AValue: TBytes): TBytes; overload;
     function DecryptAsBytes(AValue: TStream): TBytes; overload;
     function DecryptAsStream(AValue: TStream): TStream; virtual; abstract;
-    function Encrypt(const AValue: StringRAL): StringRAL; overload;
+    function Encrypt(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
     function Encrypt(AValue: TBytes): StringRAL; overload;
     function Encrypt(AValue: TStream): StringRAL; overload;
     function EncryptAsBytes(const AValue: StringRAL): TBytes; overload;
@@ -71,12 +71,20 @@ begin
   FKey := AValue;
 end;
 
-function TRALCripto.Encrypt(const AValue: StringRAL): StringRAL;
+function TRALCripto.Encrypt(const AValue: StringRAL; ABinary : boolean): StringRAL;
 var
   vInputStream: TStringStream;
 begin
+<<<<<<< HEAD
+  if ABinary then
+    vStream := StringToStream(AValue)
+  else
+    vStream := StringToStreamUTF8(AValue);
+
+=======
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
   vInputStream := nil;
+>>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
   try
     vInputStream := TStringStream.Create(AValue, TEncoding.UTF8);
     vInputStream.Position := 0;
@@ -86,15 +94,23 @@ begin
   end;
 end;
 
-function TRALCripto.Decrypt(const AValue: StringRAL): StringRAL;
+function TRALCripto.Decrypt(const AValue: StringRAL; ABinary : boolean): StringRAL;
 var
   vInputStream: TStringStream;
 begin
+<<<<<<< HEAD
+  if ABinary then
+    vStream := StringToStream(AValue)
+  else
+    vStream := StringToStreamUTF8(AValue);
+
+=======
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
   if AValue = '' then
     Raise Exception.Create(emHMACEmptyText);
 
   vInputStream := nil;
+>>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
   try
     {$IFDEF FPC}
     vInputStream := TStringStream.Create(TRALBase64.Decode(AValue), TEncoding.UTF8);

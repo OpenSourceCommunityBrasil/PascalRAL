@@ -125,9 +125,13 @@ begin
 end;
 
 function StringToStream(const AStr: StringRAL): TStream;
+var
+  vBytes : TBytes;
 begin
+  vBytes := StringToBytes(AStr);
+
   Result := TMemoryStream.Create;
-  Result.Write(AStr[POSINISTR], Length(AStr));
+  Result.Write(vBytes[0], Length(vBytes));
   Result.Position := 0;
 end;
 
@@ -139,7 +143,7 @@ end;
 
 function StreamToString(AStream: TStream): StringRAL;
 var
-  vStream: TStream;
+  vBytes : TBytes;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
@@ -157,23 +161,11 @@ begin
   end
   else
   begin
-    vStream := TRALStringStream.Create(AStream);
-    try
-      Result := TRALStringStream(vStream).DataString;
-    finally
-      FreeAndNil(vStream);
-    end;
-
-//    vStream := TStringStream.Create(EmptyStr);
-//    try
-//      vStream.CopyFrom(AStream, AStream.Size);
-//      Result := TStringStream(vStream).DataString;
-//    finally
-//      FreeAndNil(vStream);
-//    end;
+    SetLength(vBytes, AStream.Size);
+    AStream.Read(vBytes[0], AStream.Size);
+    Result := BytesToString(vBytes);
   end;
 end;
-
 
 { TRALBinaryWriter }
 

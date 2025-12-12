@@ -88,6 +88,9 @@ function RALHighStr(const AStr: StringRAL): integer;
 function StringToBytesUTF8(const AString: StringRAL): TBytes;
 function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 
+function StringToBytes(const AString: StringRAL): TBytes;
+function BytesToString(const ABytes: TBytes): StringRAL;
+
 {$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
 function DateToISO8601(const AValue: TDateTime): StringRAL;
 function ISO8601ToDate(const AValue: StringRAL): TDateTime;
@@ -107,6 +110,21 @@ begin
   {$IFEND}
 end;
 
+function StringToBytes(const AString: StringRAL): TBytes;
+{$IFNDEF HAS_Encoding}
+  var
+    vStr : ansistring;
+{$ENDIF}
+begin
+  {$IFDEF HAS_Encoding}
+    Result := TEncoding.ANSI.GetBytes(AString);
+  {$ELSE}
+    vStr := AString;
+    SetLength(Result, Length(vStr));
+    Move(vStr[POSINISTR], Result[0], Length(vStr));
+  {$ENDIF}
+end;
+
 function StringToBytesUTF8(const AString: StringRAL): TBytes;
 {$IFNDEF HAS_Encoding}
   var
@@ -119,6 +137,21 @@ begin
     vStr := UTF8Encode(AString);
     SetLength(Result, Length(vStr));
     Move(vStr[POSINISTR], Result[0], Length(vStr));
+  {$ENDIF}
+end;
+
+function BytesToString(const ABytes: TBytes): StringRAL;
+{$IFNDEF HAS_Encoding}
+  var
+    vStr : ansistring;
+{$ENDIF}
+begin
+  {$IFDEF HAS_Encoding}
+    Result := TEncoding.ANSI.GetString(ABytes);
+  {$ELSE}
+    SetLength(vStr, Length(ABytes));
+    Move(ABytes[0], vStr[POSINISTR], Length(ABytes));
+    Result := UTF8Decode(vStr);
   {$ENDIF}
 end;
 

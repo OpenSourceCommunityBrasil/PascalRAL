@@ -1,4 +1,9 @@
+<<<<<<< HEAD
+/// Unit for AES Criptography functions
+/// AES EBC (Sem IV)
+=======
 ﻿/// Unit for AES Criptography functions
+>>>>>>> 37ded8a62a3bb2216bf3ebab8873cede96fc7d8d
 unit RALCriptoAES;
 
 {$I ..\base\PascalRAL.inc}
@@ -631,16 +636,15 @@ begin
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
 
-  SetLength(vKey, 4 * vNk);
-  FillChar(vKey[0], 4 * vNk, 0);
-  SetLength(FWordKeys, vNb * (vNr + 1));
+  vKey := StringToBytesUTF8(Key);
 
   vInt := 4 * vNk;
   if Length(Key) < vInt then
     vInt := Length(Key);
 
-  if Length(Key) > 0 then
-    Move(Key[PosIniStr], vKey[0], vInt);
+  SetLength(vKey, 4 * vNk);
+  FillChar(vKey[vInt], (4 * vNk) - vInt, 0);
+  SetLength(FWordKeys, vNb * (vNr + 1));
 
   for vInt := 0 to Pred(vNk) do
     FWordKeys[vInt] := PCardinal(@vKey[4 * vInt])^;
@@ -681,6 +685,7 @@ var
 begin
   if not CheckKey then
     Exit;
+
   vPadding := 0;
   AValue.Position := 0;
   vPosition := 0;

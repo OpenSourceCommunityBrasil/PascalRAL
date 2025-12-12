@@ -24,7 +24,7 @@ type
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
     class function DecodeAsStream(AValue: StringRAL): TStream; overload;
-    class function Encode(const AValue: StringRAL): StringRAL; overload;
+    class function Encode(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
     class function Encode(AValue: TBytes): StringRAL; overload;
     class function Encode(AValue: TStream): StringRAL; overload;
     class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
@@ -72,7 +72,7 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    Raise Exception.Create(emHMACEmptyText);
+    raise Exception.Create(emHMACEmptyText);
 
   vStream := StringToStreamUTF8(AValue);
   try
@@ -158,7 +158,7 @@ class function TRALBase64.DecodeAsStream(AValue: StringRAL): TStream;
 var
   vStream: TStream;
 begin
-  vStream := StringToStreamUTF8(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := DecodeAsStream(vStream);
   finally
@@ -195,7 +195,7 @@ class function TRALBase64.DecodeAsBytes(const AValue: StringRAL): TBytes;
 var
   vStream: TStream;
 begin
-  vStream := StringToStreamUTF8(AValue);
+  vStream := StringToStream(AValue);
   try
     Result := DecodeAsBytes(vStream);
   finally
@@ -339,14 +339,18 @@ begin
   end;
 end;
 
-class function TRALBase64.Encode(const AValue: StringRAL): StringRAL;
+class function TRALBase64.Encode(const AValue: StringRAL; ABinary : boolean): StringRAL;
 var
   vStream: TStream;
 begin
   if AValue = '' then
-    Raise Exception.Create(emHMACEmptyText);
+    raise Exception.Create(emHMACEmptyText);
 
-  vStream := StringToStreamUTF8(AValue);
+  if ABinary then
+    vStream := StringToStream(AValue)
+  else
+    vStream := StringToStreamUTF8(AValue);
+
   try
     Result := Encode(vStream);
   finally
