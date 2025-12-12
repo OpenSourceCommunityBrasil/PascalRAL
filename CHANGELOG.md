@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **- implementado controle de input e output nos formato base64 para criptografia - faltando implmentacao input e output no formato hex para criptografia** (2025-12-12 – Fernando Castelano Banhos)
+
 - **- Correção de Bug na Cripto AES (Nativa do RAL) - Implementação de Cripto usando OpenSSL** (2025-12-12 – Fernando Castelano Banhos)
 
 - **feat:  - Capacidade de fazer For .. in no TRALRoutes  - Possibilidade de criar rotas em runtime apenas com métodos não pertencentes a uma classe com o OnReplyGen  - Possibilidade de atribuir métodos diferentes por verbo nas rotas  - Ajuste no Swagger para que ele consiga tratar corretamente o novo modelo de rotas, sem prejudicar o funcionamento de sistemas já existentes** (2025-12-08 – Mobius One)
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-12 – Fernando Castelano Banhos)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-12 – Fernando Castelano Banhos)
 
 - **- correção de saida da cripto para string** (2025-12-12 – Fernando Castelano Banhos)
