@@ -118,7 +118,7 @@ begin
     vStream := EncryptAsStream(AValue);
     vStream.Position := 0;
 
-    Result := TRALBase64.Encode(vStream);
+    Result := StreamToString(vStream);
   finally
     FreeAndNil(vStream);
   end;

@@ -129,10 +129,7 @@ var
   vBytes : TBytes;
 begin
   vBytes := StringToBytes(AStr);
-
-  Result := TMemoryStream.Create;
-  Result.Write(vBytes[0], Length(vBytes));
-  Result.Position := 0;
+  Result := BytesToStream(vBytes)
 end;
 
 function StringToStreamUTF8(const AStr: StringRAL): TStream;
