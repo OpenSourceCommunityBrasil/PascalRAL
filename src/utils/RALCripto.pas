@@ -23,15 +23,23 @@ type
     property Key: StringRAL read FKey write FKey;
   end;
 
+  TRALCriptoInOutType = (cotNone, cotBase64, cotHEX);
+
   { TRALCripto }
 
   /// Base class for all crypto functions
   TRALCripto = class
   private
     FKey: StringRAL;
+    FIntputType : TRALCriptoInOutType;
+    FOutputType : TRALCriptoInOutType;
   protected
     procedure SetKey(const AValue: StringRAL); virtual;
+    function BeforeDecrypt(AValue: TStream): TStream;
+    function BeforeEncrypt(AValue: TStream): TStream;
   public
+    constructor Create;
+
     function Decrypt(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
     function Decrypt(AValue: TBytes): StringRAL; overload;
     function Decrypt(AValue: TStream): StringRAL; overload;
@@ -48,6 +56,8 @@ type
     function EncryptAsStream(AValue: TStream): TStream; virtual; abstract;
   published
     property Key: StringRAL read FKey write SetKey;
+    property OutputType: TRALCriptoInOutType read FOutputType write FOutputType;
+    property IntputType: TRALCriptoInOutType read FIntputType write FIntputType;
   end;
 
 implementation
@@ -115,13 +125,76 @@ begin
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
   vStream := nil;
   try
-    vStream := EncryptAsStream(AValue);
+    vStream := BeforeEncrypt(AValue);
     vStream.Position := 0;
 
     Result := StreamToString(vStream);
   finally
     FreeAndNil(vStream);
   end;
+end;
+
+function TRALCripto.BeforeDecrypt(AValue: TStream): TStream;
+var
+  vStreamInput, vStreamEnc : TStream;
+begin
+  case FIntputType of
+    cotNone : begin
+      Result := DecryptAsStream(AValue);
+    end;
+    cotBase64: begin
+      vStreamInput := TRALBase64.DecodeAsStream(AValue);
+      try
+        Result := DecryptAsStream(vStreamInput);
+      finally
+        FreeAndNil(vStreamInput);
+      end;
+    end;
+  end;
+
+  Result.Position := 0;
+
+  case FOutputType of
+    cotBase64: begin
+      vStreamEnc := TRALBase64.EncodeAsStream(Result);
+      FreeAndNil(Result);
+      Result := vStreamEnc;
+    end;
+  end;
+end;
+
+function TRALCripto.BeforeEncrypt(AValue: TStream): TStream;
+var
+  vStreamInput, vStreamEnc : TStream;
+begin
+  case FIntputType of
+    cotNone : begin
+      Result := EncryptAsStream(AValue);
+    end;
+    cotBase64: begin
+      vStreamInput := TRALBase64.DecodeAsStream(AValue);
+      try
+        Result := EncryptAsStream(vStreamInput);
+      finally
+        FreeAndNil(vStreamInput);
+      end;
+    end;
+  end;
+
+  Result.Position := 0;
+
+  case FOutputType of
+    cotBase64: begin
+      vStreamEnc := TRALBase64.EncodeAsStream(Result);
+      FreeAndNil(Result);
+      Result := vStreamEnc;
+    end;
+  end;
+end;
+
+constructor TRALCripto.Create;
+begin
+  FOutputType := cotNone;
 end;
 
 function TRALCripto.Decrypt(AValue: TStream): StringRAL;
@@ -131,7 +204,7 @@ begin
   { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
   vStream := nil;
   try
-    vStream := DecryptAsStream(AValue);
+    vStream := BeforeDecrypt(AValue);
     vStream.Position := 0;
 
     Result := StreamToString(vStream);
@@ -192,7 +265,7 @@ function TRALCripto.EncryptAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
-  vResult := EncryptAsStream(AValue);
+  vResult := BeforeEncrypt(AValue);
   try
     Result := StreamToBytes(vResult);
   finally
@@ -204,7 +277,7 @@ function TRALCripto.DecryptAsBytes(AValue: TStream): TBytes;
 var
   vResult: TStream;
 begin
-  vResult := DecryptAsStream(AValue);
+  vResult := BeforeDecrypt(AValue);
   try
     Result := StreamToBytes(vResult);
   finally
