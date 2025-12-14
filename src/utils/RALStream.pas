@@ -140,7 +140,7 @@ end;
 
 function StreamToString(AStream: TStream): StringRAL;
 var
-  vBytes : TBytes;
+  vBytes: TBytes;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
@@ -160,7 +160,7 @@ begin
   begin
     SetLength(vBytes, AStream.Size);
     AStream.Read(vBytes[0], AStream.Size);
-    Result := BytesToString(vBytes);
+    Result := BytesToStringUTF8(vBytes);
   end;
 end;
 
