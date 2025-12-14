@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix:  - Correção em RALStream para corrigir erro em compressão** (2025-12-14 – Mobius One)
+
 - **Refactor issue labeler workflow** (2025-11-29 – Mobius One)
 
 - **Refactor issue labeler workflow** (2025-11-29 – Mobius One)
