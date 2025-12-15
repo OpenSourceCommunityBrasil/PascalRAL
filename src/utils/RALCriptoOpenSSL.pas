@@ -16,6 +16,8 @@ type
   private
     FAESType : TRALCriptoOpenSSLTypes;
     FIV : StringRAL;
+  protected
+    function CanCript : boolean; override;
   public
     constructor Create;
 
@@ -29,6 +31,15 @@ type
 implementation
 
 { TRALCriptoOpenSSL }
+
+function TRALCriptoOpenSSL.CanCript: boolean;
+begin
+  Result := inherited;
+  if TRALOpenSSL.GetInstance.LibraryHandle = 0 then begin
+    Result := False;
+    raise Exception.Create('OpenSSL not loaded');
+  end;
+end;
 
 constructor TRALCriptoOpenSSL.Create;
 begin

@@ -468,7 +468,7 @@ begin
 
   Result := AInputLen;
   vTheads := RALCPUCount;
-  vSize := AInputLen div (vTheads - 1) div 16 * 16;
+  vSize := AInputLen div vTheads div 16 * 16;
   if vSize < 16 then
     vSize := 16;
 

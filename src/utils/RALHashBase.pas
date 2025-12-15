@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALBase64, RALTypes, RALTools, RALStream, RALConsts;
+  RALBase64, RALTypes, RALTools, RALStream, RALConsts, RALHexadecimal;
 
 type
   TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
@@ -101,19 +101,8 @@ begin
 end;
 
 function TRALHashBase.DigestToHex(AValue: TBytes): StringRAL;
-const
-  HexChar: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7',
-                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
-var
-  vInt: IntegerRAL;
 begin
-  vInt := 0;
-  while vInt < Length(AValue) do
-  begin
-    Result := Result + HexChar[(AValue[vInt] shr 4) and $0f];
-    Result := Result + HexChar[(AValue[vInt] and $0f)];
-    Inc(vInt);
-  end;
+  Result := TRALHexadedimal.Encode(AValue);
 end;
 
 function TRALHashBase.Finalize: TBytes;

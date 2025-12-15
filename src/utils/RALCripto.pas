@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream, RALBase64, RALConsts;
+  RALTypes, RALStream, RALBase64, RALConsts, RALHexadecimal;
 
 type
 
@@ -35,6 +35,7 @@ type
     FOutputType : TRALCriptoInOutType;
   protected
     procedure SetKey(const AValue: StringRAL); virtual;
+    function CanCript : boolean; virtual;
     function BeforeDecrypt(AValue: TStream): TStream;
     function BeforeEncrypt(AValue: TStream): TStream;
   public
@@ -128,7 +129,7 @@ begin
     vStream := BeforeEncrypt(AValue);
     vStream.Position := 0;
 
-    Result := StreamToString(vStream);
+    Result := StreamToString(vStream, True);
   finally
     FreeAndNil(vStream);
   end;
@@ -138,12 +139,23 @@ function TRALCripto.BeforeDecrypt(AValue: TStream): TStream;
 var
   vStreamInput, vStreamEnc : TStream;
 begin
+  if not CanCript then
+    Exit;
+
   case FIntputType of
     cotNone : begin
       Result := DecryptAsStream(AValue);
     end;
     cotBase64: begin
       vStreamInput := TRALBase64.DecodeAsStream(AValue);
+      try
+        Result := DecryptAsStream(vStreamInput);
+      finally
+        FreeAndNil(vStreamInput);
+      end;
+    end;
+    cotHEX: begin
+      vStreamInput := TRALHexadecimal.DecodeAsStream(AValue);
       try
         Result := DecryptAsStream(vStreamInput);
       finally
@@ -160,6 +172,11 @@ begin
       FreeAndNil(Result);
       Result := vStreamEnc;
     end;
+    cotHEX: begin
+      vStreamEnc := TRALHexadecimal.EncodeAsStream(Result);
+      FreeAndNil(Result);
+      Result := vStreamEnc;
+    end;
   end;
 end;
 
@@ -167,12 +184,23 @@ function TRALCripto.BeforeEncrypt(AValue: TStream): TStream;
 var
   vStreamInput, vStreamEnc : TStream;
 begin
+  if not CanCript then
+    Exit;
+
   case FIntputType of
     cotNone : begin
       Result := EncryptAsStream(AValue);
     end;
     cotBase64: begin
       vStreamInput := TRALBase64.DecodeAsStream(AValue);
+      try
+        Result := EncryptAsStream(vStreamInput);
+      finally
+        FreeAndNil(vStreamInput);
+      end;
+    end;
+    cotHEX: begin
+      vStreamInput := TRALHexadecimal.DecodeAsStream(AValue);
       try
         Result := EncryptAsStream(vStreamInput);
       finally
@@ -189,7 +217,17 @@ begin
       FreeAndNil(Result);
       Result := vStreamEnc;
     end;
+    cotHEX: begin
+      vStreamEnc := TRALHexadecimal.EncodeAsStream(Result);
+      FreeAndNil(Result);
+      Result := vStreamEnc;
+    end;
   end;
+end;
+
+function TRALCripto.CanCript: boolean;
+begin
+  Result := True;
 end;
 
 constructor TRALCripto.Create;

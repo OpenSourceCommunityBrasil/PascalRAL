@@ -78,7 +78,7 @@ function BytesToStream(ABytes: TBytes): TStream;
 /// Converts a given AStream to TBytes
 function StreamToBytes(AStream: TStream): TBytes;
 // Converts a given AStream to an UTF8String
-function StreamToString(AStream: TStream): StringRAL;
+function StreamToString(AStream: TStream; ABinary : boolean = false): StringRAL;
 // Creates a TStream and writes the given AStr into it
 function StringToStreamUTF8(const AStr: StringRAL): TStream;
 function StringToStream(const AStr: StringRAL): TStream;
@@ -138,7 +138,7 @@ begin
   Result.Position := 0;
 end;
 
-function StreamToString(AStream: TStream): StringRAL;
+function StreamToString(AStream: TStream; ABinary : boolean): StringRAL;
 var
   vBytes: TBytes;
 begin
@@ -148,19 +148,26 @@ begin
 
   AStream.Position := 0;
 
-  if AStream.InheritsFrom(TStringStream) then
-  begin
-    Result := TStringStream(AStream).DataString;
+  if not ABinary then begin
+    if AStream.InheritsFrom(TStringStream) then
+    begin
+      Result := TStringStream(AStream).DataString;
+    end
+    else if AStream.InheritsFrom(TRALStringStream) then
+    begin
+      Result := TRALStringStream(AStream).DataString;
+    end
+    else
+    begin
+      SetLength(vBytes, AStream.Size);
+      AStream.Read(vBytes[0], AStream.Size);
+      Result := BytesToStringUTF8(vBytes)
+    end;
   end
-  else if AStream.InheritsFrom(TRALStringStream) then
-  begin
-    Result := TRALStringStream(AStream).DataString;
-  end
-  else
-  begin
+  else begin
     SetLength(vBytes, AStream.Size);
     AStream.Read(vBytes[0], AStream.Size);
-    Result := BytesToStringUTF8(vBytes);
+    Result := BytesToString(vBytes)
   end;
 end;
 
