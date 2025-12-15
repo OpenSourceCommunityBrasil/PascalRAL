@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **- implementado classe de conversao para hexadecimal - correção do output de criptografias para string (formato binario)** (2025-12-14 – Fernando Banhos)
+
 - **- implementado controle de input e output nos formato base64 para criptografia - faltando implmentacao input e output no formato hex para criptografia** (2025-12-12 – Fernando Castelano Banhos)
 
 - **- Correção de Bug na Cripto AES (Nativa do RAL) - Implementação de Cripto usando OpenSSL** (2025-12-12 – Fernando Castelano Banhos)
