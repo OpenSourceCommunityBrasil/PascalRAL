@@ -102,7 +102,7 @@ end;
 
 function TRALHashBase.DigestToHex(AValue: TBytes): StringRAL;
 begin
-  Result := TRALHexadedimal.Encode(AValue);
+  Result := TRALHexadecimal.Encode(AValue);
 end;
 
 function TRALHashBase.Finalize: TBytes;
