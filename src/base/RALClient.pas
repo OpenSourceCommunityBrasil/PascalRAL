@@ -253,7 +253,7 @@ end;
 
 procedure TRALClient.SetEngineType(AValue: String);
 var
-  vClass : TRALClientHTTPClass;
+  vClass: TRALClientHTTPClass;
 begin
   if FEngineType = AValue then
     Exit;

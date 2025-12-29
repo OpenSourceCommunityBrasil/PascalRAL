@@ -181,8 +181,8 @@ begin
   FInternalMIMEList.Delimiter := '=';
   FInternalMIMEList.Duplicates := dupIgnore;
   FInternalMIMEList.Sorted := True;
-  GetSystemTypes;
-  if FInternalMIMEList.Count = 0 then
+//  GetSystemTypes;
+//  if FInternalMIMEList.Count = 0 then
     SetDefaultTypes;
 end;
 

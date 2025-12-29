@@ -126,14 +126,13 @@ type
     property OnBeforeGetToken;
   end;
 
-  /// JWT Authenticator for server components
-
   { TRALServerJWTAuth }
 
+  /// JWT Authenticator for server components
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
-    FCollectionAuth : TOwnedCollection;
+    FCollectionAuth: TOwnedCollection;
     FAuthToken: TRALBaseRoute;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
@@ -142,7 +141,7 @@ type
     FOnValidate: TRALOnTokenJWT;
   protected
     function GetAuthRoute: TRALBaseRoute; override;
-    procedure SetAuthRoute(ARoute : TRALBaseRoute); override;
+    procedure SetAuthRoute(ARoute: TRALBaseRoute); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;

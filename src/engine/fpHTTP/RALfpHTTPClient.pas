@@ -13,7 +13,7 @@ type
 
   TRALfpHttpClientHTTP = class(TRALClientHTTP)
   private
-    FHttp : TFPHTTPClient;
+    FHttp: TFPHTTPClient;
   protected
     procedure OnGetSSLHandler(Sender : TObject; Const UseSSL : Boolean; Out AHandler : TSocketHandler);
   public

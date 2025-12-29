@@ -129,7 +129,7 @@ begin
     vStream := BeforeEncrypt(AValue);
     vStream.Position := 0;
 
-    Result := StreamToString(vStream, True);
+    Result := StreamToByteString(vStream);
   finally
     FreeAndNil(vStream);
   end;

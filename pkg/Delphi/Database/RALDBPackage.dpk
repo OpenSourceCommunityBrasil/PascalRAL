@@ -38,6 +38,7 @@ contains
   RALDBModule in '..\..\..\src\database\RALDBModule.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
   RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',
-  RALDBRegister in '..\..\..\src\database\RALDBRegister.pas';
+  RALDBRegister in '..\..\..\src\database\RALDBRegister.pas',
+  RALDBConnectionPooler in '..\..\..\src\database\RALDBConnectionPooler.pas';
 
 end.

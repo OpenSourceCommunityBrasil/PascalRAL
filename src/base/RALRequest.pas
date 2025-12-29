@@ -50,8 +50,8 @@ type
     property AuthString: StringRAL read FAuthString write SetAuthString;
     property AuthType: TRALAuthTypes read FAuthType write FAuthType;
 
-    property AsAuthBasic : TRALAuthBasic read GetAuthBasic;
-    property AsAuthBearer : TRALJWT read GetAuthBearer;
+    property AsAuthBasic: TRALAuthBasic read GetAuthBasic;
+    property AsAuthBearer: TRALJWT read GetAuthBearer;
   end;
 
   { TRALRequest }
