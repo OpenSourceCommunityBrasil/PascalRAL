@@ -73,6 +73,7 @@ contains
   RALStorageJSON in '..\..\src\utils\RALStorageJSON.pas',
   RALStorageBIN in '..\..\src\utils\RALStorageBIN.pas',
   RALDBTypes in '..\..\src\base\RALDBTypes.pas',
-  RALHashes in '..\..\src\utils\RALHashes.pas';
+  RALHashes in '..\..\src\utils\RALHashes.pas',
+  RALHexadecimal in '..\..\src\utils\RALHexadecimal.pas';
 
 end.
