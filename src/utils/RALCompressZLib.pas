@@ -29,7 +29,8 @@ type
 implementation
 
 const
-  GZipHeader: array [0 .. 9] of byte = ($1F, $8B, $08, $00, $00, $00, $00, $00, $00, $00);
+  GZipHeader: array [0 .. 9] of byte = ($1F, $8B, $08, $00, $00, $00, $00, $00, $04, $FF);
+  // 1F8B08 = gzip signature | 04 = fastest | FF = source is stream | 00 = fill the gaps
 
 { TRALCompressZLib }
 
@@ -116,8 +117,8 @@ begin
       AInStream.Read(vCRCFile, SizeOf(vCRCFile));
       AInStream.Read(vFileSize, SizeOf(vFileSize));
 
-        AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
-        AInStream.Position := Length(GZipHeader);
+      AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
+      AInStream.Position := Length(GZipHeader);
     end;
   {$ELSE}
     AInStream.Position := 0;

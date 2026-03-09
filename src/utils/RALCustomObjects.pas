@@ -72,6 +72,10 @@ type
     function HasValidContentEncoding: boolean;
     /// Grabs the param either on request or response by its name
     function ParamByName(const AParamName: StringRAL): TRALParam;
+    /// fills the body with the String AContent
+    procedure SetBody(AContent: StringRAL); overload; virtual;
+    /// fills the body with the Stream AContent
+    procedure SetBody(AContent: TStream); overload; virtual;
   published
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;
@@ -341,6 +345,18 @@ end;
 function TRALHTTPHeaderInfo.ParamByName(const AParamName: StringRAL): TRALParam;
 begin
   Result := FParams.Get[AParamName];
+end;
+
+procedure TRALHTTPHeaderInfo.SetBody(AContent: StringRAL);
+begin
+  Params.ClearParams;
+  Params.AddValue(AContent, rpkBODY);
+end;
+
+procedure TRALHTTPHeaderInfo.SetBody(AContent: TStream);
+begin
+  Params.ClearParams;
+  Params.AddValue(AContent, rpkBODY);
 end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);

@@ -197,7 +197,7 @@ begin
   Result := false;
   Lock;
   try
-    Result := FValue.IndexOf(AItem) > 0;
+    Result := FValue.IndexOf(AItem) >= 0;
   finally
     Unlock;
   end;

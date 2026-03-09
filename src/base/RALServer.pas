@@ -233,7 +233,7 @@ type
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     { Core procedure of the server, every request will pass through here to be
-      processed into response that will be answered to the client}
+      processed into response that will be answered to the client }
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     // Validate requests headers before ProcessCommands
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -309,7 +309,9 @@ type
     destructor Destroy; override;
     // Shortcut to create route on the server, similar to RALServer's CreateRoute
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
-                         const ADescription: StringRAL = ''): TRALRoute;
+                         const ADescription: StringRAL = ''): TRALRoute; overload;
+    function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
+                         const ADescription: StringRAL = ''): TRALRoute; overload;
     // Inherited method of RALServer
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
     // Inherited method of RALServer
@@ -881,6 +883,15 @@ begin
   Result := TRALRoute.Create(Self.Routes);
   Result.Route := ARoute;
   Result.OnReply := AReplyProc;
+  Result.Description.Text := ADescription;
+end;
+
+function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL;
+  AReplyProc: TRALOnReplyGen; const ADescription: StringRAL): TRALRoute;
+begin
+  Result := TRALRoute(FRoutes.Add);
+  Result.Route := ARoute;
+  Result.OnReplyGen := AReplyProc;
   Result.Description.Text := ADescription;
 end;
 

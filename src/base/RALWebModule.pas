@@ -144,7 +144,7 @@ begin
 
   if (Result = nil) and (GetFileRoute(ARequest) <> '') then
     Result := FDefaultRoute
-  else if (Result <> nil) and (not Assigned(Result.OnReply)) then
+  else if (Result <> nil) and (not Assigned(Result.OnReply) and not Assigned(Result.OnReplyGen)) then
     Result.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
   //if Result <> nil then begin

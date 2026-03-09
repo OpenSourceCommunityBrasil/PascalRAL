@@ -229,65 +229,69 @@ var
   vHa1, vHa2, vAux1, vNC: StringRAL;
   vHash: TRALHashBase;
 begin
-  case FParams.Algorithm of
-    tdaMD5: begin
-      vHash := TRALMD5.Create;
-    end;
-    tdaSHA2_256: begin
-      vHash := TRALSHA2_32.Create;
-      TRALSHA2_32(vHash).Version := rsv256;
-    end;
-    tdaSHA2_512: begin
-      vHash := TRALSHA2_64.Create;
-      TRALSHA2_64(vHash).Version := rsv512_256;
-    end;
-  end;
-
-  try
-    vNC := Format('%.8d', [FParams.NC]);
-    FParams.CNonce := vHash.HashAsString(vNC);
-
-    vHa1 := Format('%s:%s:%s', [FUserName, FParams.Realm, FPassword]);
-    vHa1 := vHash.HashAsString(vHa1);
-
-    if FParams.SessAlgorithm then
-      vHa1 := vHash.HashAsString(Format('%s:%s:%s',
-        [vHa1, FParams.Nonce, FParams.CNonce]));
-
-    if ((Pos('auth', LowerCase(FParams.Qop)) > 0) and
-      (Pos('auth-int', LowerCase(FParams.Qop)) = 0)) or
-      (Trim(FParams.Qop) = '') then
-    begin
-      vHa2 := Format('%s:%s', [FMethod, FURL]);
-      vHa2 := vHash.HashAsString(vHa2);
-    end
-    else if (Pos('auth-int', LowerCase(FParams.Qop)) > 0) then
-    begin
-      vHa2 := vHash.HashAsString(FEntityBody);
-      vHa2 := Format('%s:%s:%s', [FMethod, FURL, vHa2]);
-      vHa2 := vHash.HashAsString(vHa2);
-    end;
-
-    if (Pos('auth', LowerCase(FParams.Qop)) > 0) then
-      vAux1 := Format('%s:%s:%s:%s:%s:%s', [vHa1, FParams.Nonce, vNC,
-        FParams.CNonce, FParams.Qop, vHa2])
-    else
-      vAux1 := Format('%s:%s:%s', [vHa1, FParams.Nonce, vHa2]);
-    vAux1 := vHash.HashAsString(vAux1);
-  finally
-    FreeAndNil(vHash);
-  end;
-
   Result := TStringList.Create;
-  Result.Add('realm=' + FParams.Realm);
-  Result.Add('username=' + FUserName);
-  Result.Add('nonce=' + FParams.Nonce);
-  Result.Add('uri=' + FURL);
-  Result.Add('qop=' + FParams.Qop);
-  Result.Add('nc=' + vNC);  //  nc=00000001,
-  Result.Add('cnonce=' + FParams.CNonce); // cnonce="0a4f113b",
-  Result.Add('response=' + vAux1);
-  Result.Add('opaque=' + FParams.Opaque);
+  try
+    case FParams.Algorithm of
+      tdaMD5: begin
+        vHash := TRALMD5.Create;
+      end;
+      tdaSHA2_256: begin
+        vHash := TRALSHA2_32.Create;
+        TRALSHA2_32(vHash).Version := rsv256;
+      end;
+      tdaSHA2_512: begin
+        vHash := TRALSHA2_64.Create;
+        TRALSHA2_64(vHash).Version := rsv512_256;
+      end;
+    end;
+
+    try
+      vNC := Format('%.8d', [FParams.NC]);
+      FParams.CNonce := vHash.HashAsString(vNC);
+
+      vHa1 := Format('%s:%s:%s', [FUserName, FParams.Realm, FPassword]);
+      vHa1 := vHash.HashAsString(vHa1);
+
+      if FParams.SessAlgorithm then
+        vHa1 := vHash.HashAsString(Format('%s:%s:%s',
+          [vHa1, FParams.Nonce, FParams.CNonce]));
+
+      if ((Pos('auth', LowerCase(FParams.Qop)) > 0) and
+        (Pos('auth-int', LowerCase(FParams.Qop)) = 0)) or
+        (Trim(FParams.Qop) = '') then
+      begin
+        vHa2 := Format('%s:%s', [FMethod, FURL]);
+        vHa2 := vHash.HashAsString(vHa2);
+      end
+      else if (Pos('auth-int', LowerCase(FParams.Qop)) > 0) then
+      begin
+        vHa2 := vHash.HashAsString(FEntityBody);
+        vHa2 := Format('%s:%s:%s', [FMethod, FURL, vHa2]);
+        vHa2 := vHash.HashAsString(vHa2);
+      end;
+
+      if (Pos('auth', LowerCase(FParams.Qop)) > 0) then
+        vAux1 := Format('%s:%s:%s:%s:%s:%s', [vHa1, FParams.Nonce, vNC,
+          FParams.CNonce, FParams.Qop, vHa2])
+      else
+        vAux1 := Format('%s:%s:%s', [vHa1, FParams.Nonce, vHa2]);
+      vAux1 := vHash.HashAsString(vAux1);
+    finally
+      FreeAndNil(vHash);
+    end;
+
+    Result.Add('realm=' + FParams.Realm);
+    Result.Add('username=' + FUserName);
+    Result.Add('nonce=' + FParams.Nonce);
+    Result.Add('uri=' + FURL);
+    Result.Add('qop=' + FParams.Qop);
+    Result.Add('nc=' + vNC);  //  nc=00000001,
+    Result.Add('cnonce=' + FParams.CNonce); // cnonce="0a4f113b",
+    Result.Add('response=' + vAux1);
+    Result.Add('opaque=' + FParams.Opaque);
+  except
+    Result.Free;
+  end;
 end;
 
 constructor TRALDigest.Create;

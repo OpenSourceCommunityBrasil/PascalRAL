@@ -644,7 +644,9 @@ var
   vInt: Integer;
   vSeparator: StringRAL;
 begin
-  if ASource.Count > 0 then
+  if ASource.NameValueSeparator <> '' then
+    vSeparator := ASource.NameValueSeparator
+  else if ASource.Count > 0 then
     vSeparator := FindHeaderNameSeparator(ASource.Strings[0]);
 
   for vInt := 0 to Pred(ASource.Count) do
@@ -1206,8 +1208,10 @@ begin
   Engine := Self.GetParam('RALEngine').AsString;
   if SameText(Engine, ENGINESYNOPSE) then
     Result := ': '
-  else if SameText(Engine, ENGINEINDY) or SameText(Engine, ENGINEFPHTTP)
-       or SameText(Engine, ENGINESAGUI) or SameText(Engine, ENGINENETHTTP) then
+  else if SameText(Engine, ENGINEFPHTTP) then
+    Result := ':'
+  else if SameText(Engine, ENGINEINDY) or SameText(Engine, ENGINESAGUI)
+       or SameText(Engine, ENGINENETHTTP) then
     Result := '='
   else
   begin
