@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **fix:  - otimização de RALParams para buscar o separador mais rápido  - ajuste no webmodule para rota genérica  - ajuste no ThreadSafe  - ajuste no RALToken pra evitar o warning de "result might not be defined"** (2026-03-09 – Mobius One)
+  feat:
+  - nova rota de módulo genérica que aceita métodos independentes
+  - novo método SetBody para request e response para substituir o body totalmente com a função.
+
 - **fix:  - ajuste de identação de algumas units.  - Ajuste em MIMETypes para usar a função interna do RAL com todos os tipos definidos no IANA pra corrigir erro no tráfego de arquivos web em alguns sistemas operacionais que não preenchiam corretamente todos os MIMETypes.** (2025-12-29 – Mobius One)
   feat:
   - Criação de função StreamToByteString para evitar if no StreamToString, otimizando o processo.
@@ -55,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix:  - Correção de instalação do wizard** (2026-03-09 – Mobius One)
+
 - **Fix:  - Revert de arquivos incorretos no commit anterior.** (2025-12-29 – Mobius One)
 
 - **fix:  - Correção em RALStream para corrigir erro em compressão** (2025-12-14 – Mobius One)
