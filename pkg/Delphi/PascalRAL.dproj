@@ -213,6 +213,7 @@
         <DCCReference Include="..\..\src\utils\RALStorageBIN.pas"/>
         <DCCReference Include="..\..\src\base\RALDBTypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
+        <DCCReference Include="..\..\src\utils\RALHexadecimal.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -282,7 +283,7 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput"/>
-                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\37.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>PascalRAL.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
