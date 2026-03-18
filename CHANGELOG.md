@@ -36,6 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge pull request #121 from fortesm/dev** (2026-03-18 – Mobius One)
+  função aninhada (nested funcion).
+
+- **Apply suggestion from @mobius1qwe** (2026-03-18 – Mobius One)
+
+- **função aninhada (nested funcion). Centraliza criação. Reduz duplicação. Mantém escopo local. Não alterar comportamento. Mantém DRY (Dont Repeat Yourself).** (2026-03-18 – Marcelo Fortes)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-14 – Fernando Banhos)
 
 - **- correção de typo (erro na digitacao da classe)** (2025-12-14 – Fernando Banhos)
