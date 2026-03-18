@@ -265,7 +265,9 @@ begin
       vWebSession.LastDate := Now
     else
       vWebSession := CreateNewSession;
-  end else vWebSession := CreateNewSession;
+  end
+  else 
+    vWebSession := CreateNewSession;
   AResponse.AddCookie(RAL_SESSION, vWesSessionName);
 end;
 
