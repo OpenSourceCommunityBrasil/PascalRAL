@@ -247,30 +247,25 @@ var
   vSession: TRALParam;
   vWebSession: TRALWebSession;
   vWesSessionName: StringRAL;
+  function CreateNewSession: TRALWebSession;
+  begin
+    vWesSessionName := NewSessionName;
+    Result := TRALWebSession.Create;
+    FSessions.AddObject(vWesSessionName, Result);
+  end;
+
 begin
   vSession := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE];
   if vSession <> nil then
   begin
     vWesSessionName := vSession.AsString;
     vWebSession := TRALWebSession(FSessions.ObjectByItem(vWesSessionName));
-    if vWebSession <> nil then
-    begin
-      vWebSession.LastDate := Now;
-    end
-    else
-    begin
-      vWesSessionName := NewSessionName;
-      vWebSession := TRALWebSession.Create;
-      FSessions.AddObject(vWesSessionName, vWebSession);
-    end;
-  end
-  else
-  begin
-    vWesSessionName := NewSessionName;
-    vWebSession := TRALWebSession.Create;
-    FSessions.AddObject(vWesSessionName, vWebSession);
-  end;
 
+    if vWebSession <> nil then
+      vWebSession.LastDate := Now
+    else
+      vWebSession := CreateNewSession;
+  end else vWebSession := CreateNewSession;
   AResponse.AddCookie(RAL_SESSION, vWesSessionName);
 end;
 
