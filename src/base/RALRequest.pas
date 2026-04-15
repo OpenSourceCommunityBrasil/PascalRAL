@@ -67,6 +67,8 @@ type
     FMethod: TRALMethod;
     FProtocol: StringRAL;
     FQuery: StringRAL;
+  private
+    procedure ParseQueryParams(const AValue: StringRAL);
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
@@ -156,6 +158,20 @@ begin
   Result := GetRequestEncText;
 end;
 
+procedure TRALRequest.ParseQueryParams(const AValue: StringRAL);
+var
+  sl: TStringList;
+begin
+  sl := TStringList.Create;
+  try
+    sl.Delimiter := '&';
+    sl.DelimitedText := AValue;
+    Params.AppendParams(sl, rpkQUERY);
+  finally
+    FreeAndNil(sl);	
+  end;
+end;
+
 function TRALRequest.GetURL: StringRAL;
 begin
   Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
@@ -169,7 +185,10 @@ begin
   
   vInt := Pos('?', FQuery);
   if vInt > 0 then
+  begin
+    ParseQueryParams(Copy(FQuery, vInt + 1, Length(FQuery)));
     Delete(FQuery, vInt, Length(FQuery));
+  end;
 
   FQuery := FixRoute(FQuery);
 end;
