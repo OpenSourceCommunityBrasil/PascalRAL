@@ -122,6 +122,7 @@ type
   TRALStorageJSONHelper = class helper for TDataSet
   public
     function ToJSON: StringRAL;
+    function ToJSONObject: StringRAL;
   end;
   {$IFEND}
 
@@ -165,8 +166,8 @@ end;
 
 function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
 var
-  vStr : UCS4String;
-  vInt : integer;
+  vStr: UCS4String;
+  vInt: integer;
 begin
   Result := '';
   vStr := UnicodeStringToUCS4String(AValue);
@@ -1054,6 +1055,24 @@ begin
     FreeAndNil(AStrStream);
   end;
 end;
+
+function TRALStorageJSONHelper.ToJSONObject: StringRAL;
+var
+  JSON: TRALJSONValue;
+begin
+  Result := '';
+  try
+    try
+      JSON := TRALJSON.ParseJSON(ToJSON);
+      Result := TRALJSONObject(TRALJSONArray(JSON).Get(0)).ToJson;
+    finally
+      FreeAndNil(JSON);
+    end;
+  except
+    Result := '';
+  end;
+end;
+
 {$IFEND}
 
 initialization
