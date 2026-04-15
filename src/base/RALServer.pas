@@ -592,7 +592,7 @@ begin
     end;
 
     vRoute := FRoutes.CanAnswerRoute(ARequest);
-
+    // parse submodules
     vInt := 0;
     while (vRoute = nil) and (vInt < FListSubModules.Count) do
     begin
@@ -601,6 +601,7 @@ begin
       vInt := vInt + 1;
     end;
 
+    // parse routes
     if (vRoute = nil) and (FAuthentication <> nil) then
     begin
       vRoute := FAuthentication.CanAnswerRoute(ARequest, AResponse);

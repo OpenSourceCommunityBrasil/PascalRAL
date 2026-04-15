@@ -15,7 +15,7 @@ type
   private
     FHttp: TFPHTTPClient;
   protected
-    procedure OnGetSSLHandler(Sender : TObject; Const UseSSL : Boolean; Out AHandler : TSocketHandler);
+    procedure OnGetSSLHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -23,9 +23,9 @@ type
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
 
-    class function EngineName : StringRAL; override;
-    class function EngineVersion : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
+    class function EngineName: StringRAL; override;
+    class function EngineVersion: StringRAL; override;
+    class function PackageDependency: StringRAL; override;
   end;
 
 implementation
@@ -57,15 +57,16 @@ end;
 procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vSource, vResult : TStream;
+  vSource, vResult: TStream;
 
-  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
+  procedure tratarExcecao(ACode: IntegerRAL; AMessage: StringRAL);
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
     AResponse.StatusCode := FHttp.ResponseStatusCode;
     AResponse.ResponseText := AMessage;
     AResponse.ErrorCode := ACode;
+    AResponse.ResponseStream := nil;
   end;
 
 begin
@@ -117,18 +118,18 @@ begin
 
     FHttp.RequestBody := vSource;
 
-    // nao deve ser usado o metodo direto e sim como HTTPMethod,
-    // devido o paramentro AllowedResponseCodes
+    // não deve ser usado o método direto e sim como HTTPMethod,
+    // devido o parâmetro AllowedResponseCodes
     try
       case AMethod of
-        amGET     : FHttp.HTTPMethod('GET', AURL, vResult, []);
-        amPOST    : FHttp.HTTPMethod('POST', AURL, vResult, []);
-        amPUT     : FHttp.HTTPMethod('PUT', AURL, vResult, []);
-        amPATCH   : FHttp.HTTPMethod('PATCH', AURL, vResult, []); // sem funcao
-        amDELETE  : FHttp.HTTPMethod('DELETE', AURL, vResult, []);
-        amTRACE   : FHttp.HTTPMethod('TRACE', AURL, vResult, []); // sem funcao
-        amHEAD    : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
-        amOPTIONS : FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
+        amGET    : FHttp.HTTPMethod('GET', AURL, vResult, []);
+        amPOST   : FHttp.HTTPMethod('POST', AURL, vResult, []);
+        amPUT    : FHttp.HTTPMethod('PUT', AURL, vResult, []);
+        amPATCH  : FHttp.HTTPMethod('PATCH', AURL, vResult, []); // sem funcao
+        amDELETE : FHttp.HTTPMethod('DELETE', AURL, vResult, []);
+        amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vResult, []); // sem funcao
+        amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
+        amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
       end;
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
@@ -145,16 +146,16 @@ begin
       AResponse.StatusCode := FHttp.ResponseStatusCode;
       AResponse.ResponseStream := vResult;
     except
-      on e : ESocketError do
+      on e: ESocketError do
       begin
         if (e.Code = seConnectTimeOut) or (e.Code = seIOTimeOut) then
           tratarExcecao(10060, e.Message)
         else
           tratarExcecao(-1, e.Message);
       end;
-      on e : EHTTPClient do
+      on e: EHTTPClient do
         tratarExcecao(e.StatusCode, e.StatusText);
-      on e : Exception do
+      on e: Exception do
         tratarExcecao(-1, e.Message);
     end;
   finally
