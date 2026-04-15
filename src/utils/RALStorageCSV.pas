@@ -231,7 +231,7 @@ const
   UTF8BOM = #$EF#$BB#$BF;
 begin
   if FUseUTF8BOM then
-    AStream.Write(UTF8BOM, Length(UTF8BOM));
+    AStream.Write(BytesOf(UTF8BOM), Length(UTF8BOM));
   WriteFields(ADataset, AStream);
   WriteRecords(ADataset, AStream);
 end;
