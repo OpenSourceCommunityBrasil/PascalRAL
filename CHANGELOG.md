@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Feat: Nova conversão de dataset para JSONObject na RALStorageJSON.pas** (2026-04-15 – Mobius One)
+
+- **Feat: Novo tipo de conversão dos params: Int64** (2026-04-15 – Mobius One)
+
 - **fix:  - otimização de RALParams para buscar o separador mais rápido  - ajuste no webmodule para rota genérica  - ajuste no ThreadSafe  - ajuste no RALToken pra evitar o warning de "result might not be defined"** (2026-03-09 – Mobius One)
   feat:
   - nova rota de módulo genérica que aceita métodos independentes
@@ -67,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de erro de compilação em RALStorageCSV.pas** (2026-04-15 – Mobius One)
+
+- **Fix: Correção de parse de queryParams no request.** (2026-04-15 – Mobius One)
+
 - **fix:  - Correção de instalação do wizard** (2026-03-09 – Mobius One)
 
 - **Fix:  - Revert de arquivos incorretos no commit anterior.** (2025-12-29 – Mobius One)
