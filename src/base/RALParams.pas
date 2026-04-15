@@ -30,6 +30,7 @@ type
     function GetAsBoolean: Boolean;
     function GetAsDouble: DoubleRAL;
     function GetAsInteger: IntegerRAL;
+    function GetAsInt64: Int64;
     function GetAsStream: TStream;
     function GetAsString: StringRAL;
     function GetContentDisposition: StringRAL;
@@ -37,6 +38,7 @@ type
     procedure SetAsBoolean(const AValue: Boolean);
     procedure SetAsDouble(const AValue: DoubleRAL);
     procedure SetAsInteger(const AValue: IntegerRAL);
+    procedure SetAsInt64(const AValue: Int64);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
     procedure SetContentDisposition(AValue: StringRAL);
@@ -61,6 +63,7 @@ type
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
+    property AsInt64: Int64 read GetAsInt64 write SetAsInt64;
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     property Content: TStream read FContent;
@@ -289,6 +292,18 @@ begin
   begin
     FContent := TMemoryStream.Create;
   end;
+end;
+
+function TRALParam.GetAsInt64: Int64;
+begin
+  Result := 0;
+  if Self <> nil then
+    StrToInt64Def(StreamToString(FContent), 0);
+end;
+
+procedure TRALParam.SetAsInt64(const AValue: Int64);
+begin
+  SetAsString(IntToStr(AValue));
 end;
 
 function TRALParam.GetAsBoolean: Boolean;
