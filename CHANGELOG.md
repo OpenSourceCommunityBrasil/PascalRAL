@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-18 – Mobius One)
+
 - **Merge pull request #121 from fortesm/dev** (2026-03-18 – Mobius One)
   função aninhada (nested funcion).
 
@@ -71,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Ajuste defensivo em GetResponseEncText** (2026-04-18 – Mobius One)
+
 - **Fix: Correção temporária para av no DBWare** (2026-04-18 – Mobius One)
 
 - **fix: Correção de erro de compilação em RALStorageCSV.pas** (2026-04-15 – Mobius One)
