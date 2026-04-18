@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Correção temporária para av no DBWare** (2026-04-18 – Mobius One)
+
 - **fix: Correção de erro de compilação em RALStorageCSV.pas** (2026-04-15 – Mobius One)
 
 - **Fix: Correção de parse de queryParams no request.** (2026-04-15 – Mobius One)
