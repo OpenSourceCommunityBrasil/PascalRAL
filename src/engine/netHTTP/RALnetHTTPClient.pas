@@ -182,6 +182,7 @@ begin
         AResponse.ContentType     := vResponse.MimeType;        
         AResponse.StatusCode      := vResponse.GetStatusCode;
         AResponse.ResponseStream  := vResponse.ContentStream;
+        AResponse.Params.AddParam('Stream', AResponse.ParamByName('ral_body').AsStream, rpkBODY);
       end;	 	  
     except
       on e: ENetHTTPClientException do begin

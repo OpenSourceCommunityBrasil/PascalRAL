@@ -84,7 +84,7 @@ begin
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.ReadTimeout := Parent.RequestTimeout;
   FHttp.Request.UserAgent := Parent.UserAgent;
-  FHttp.RedirectMaximum := 30;
+  FHttp.RedirectMaximum := 3;
   FHttp.HandleRedirects := true;
 
   FHttp.IOHandler := nil;
@@ -166,7 +166,9 @@ begin
       AResponse.ContentType := FHttp.Response.ContentType;
       AResponse.ContentDisposition := FHttp.Response.ContentDisposition;
       AResponse.StatusCode := FHttp.ResponseCode;
+
       AResponse.ResponseStream := vResult;
+      AResponse.Params.AddParam('Stream', AResponse.ParamByName('ral_body').AsStream, rpkBODY);
     except
       on e: EIdSocketError do
         tratarExcecao(e.LastError, e.Message);

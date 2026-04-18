@@ -23,8 +23,8 @@ type
     constructor Create(AOwner: TComponent); overload;
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
-    procedure OpenRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
-    procedure ExecSQLRemote(AQuery: TDataset; AStorage : TRALStorageLink; AResp: TRALThreadClientResponse);
+    procedure OpenRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
+    procedure ExecSQLRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
 
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     function GetTables: TRALDBInfoTables;
@@ -91,7 +91,7 @@ begin
   end;
 end;
 
-procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage : TRALStorageLink;
+procedure TRALDBConnection.OpenRemote(AQuery: TDataset; AStorage: TRALStorageLink;
                                       AResp: TRALThreadClientResponse);
 var
   vMem: TStream;
