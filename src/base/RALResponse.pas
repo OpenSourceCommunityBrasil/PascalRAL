@@ -357,12 +357,14 @@ var
   vStream : TStream;
 begin
 //  {$IFDEF FPC}
-    vStream := TRALStringStream.Create(FStream);
-    try
-      Result := StreamToString(vStream);
-    finally
-      FreeAndNil(vStream);
-    end;
+  if not Assigned(FStream) then exit;
+
+  vStream := TRALStringStream.Create(FStream);
+  try
+    Result := StreamToString(vStream);
+  finally
+    FreeAndNil(vStream);
+  end;
 //  {$ELSE}
 //    vStream := TStringStream.Create(EmptyStr);
 //    FStream.Position := 0;
@@ -380,7 +382,7 @@ begin
   if FStream <> nil then
     FreeAndNil(FStream);
 
-  if AValue.size > 0 then
+  if Assigned(AValue) and (AValue.size > 0) then
     FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
