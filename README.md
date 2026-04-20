@@ -1,2 +1,2 @@
-# PascalRAL - test apps branch
-This branch will have the testing sources used to verify functionalities on PascalRAL
+# PascalRAL - documentation branch
+This branch will have the documentation sources used to verify functionalities on PascalRAL
