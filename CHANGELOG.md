@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **add SECURITY.md** (2026-04-20 – Mobius One)
+  Updated supported versions and reporting instructions.
+
+
 ### Added
 - **Feat: Nova conversão de dataset para JSONObject na RALStorageJSON.pas** (2026-04-15 – Mobius One)
 
@@ -19,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **docs: Ajuste de arquivo-fonte pasdoc** (2026-04-20 – Mobius One)
+
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-20 – Mobius One)
 
 - **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
