@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Correção final do AV no DBWare otimizando consumo de memória** (2026-04-20 – Mobius One)
+  Fixed #123
+
 - **fix: Ajuste defensivo em GetResponseEncText** (2026-04-18 – Mobius One)
 
 - **Fix: Correção temporária para av no DBWare** (2026-04-18 – Mobius One)
