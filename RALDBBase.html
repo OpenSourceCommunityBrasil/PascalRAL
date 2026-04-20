@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALDBBase</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<h1 class="unit">Unit RALDBBase</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Uses">Uses</a></div><div class="one_section"><a class="section" href="#PasDoc-Classes">Classes, Interfaces, Objects and Records</a></div><div class="one_section"><a class="section" href="#PasDoc-FuncsProcs">Functions and Procedures</a></div><div class="one_section"><a class="section" href="#PasDoc-Types">Types</a></div><div class="one_section">Constants</div><div class="one_section">Variables</div></div>
+<span id="PasDoc-Description"></span><h2 class="description">Description</h2>
+<p>
+Base unit for Database related components</p>
+<span id="PasDoc-Uses"></span><h2 class="uses">Uses</h2>
+<ul class="useslist"><li>Classes</li><li>SysUtils</li><li>DB</li><li>RALTypes</li><li><a href="RALCustomObjects.html">RALCustomObjects</a></li><li><a href="RALDBTypes.html">RALDBTypes</a></li><li><a href="RALStorage.html">RALStorage</a></li><li><a href="RALRequest.html">RALRequest</a></li><li><a href="RALResponse.html">RALResponse</a></li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Classes"></span><h3 class="cio">Classes, Interfaces, Objects and Records</h3>
+<table class="classestable wide_list">
+<tr class="listheader">
+<th class="itemname">Name</th>
+<th class="itemdesc">Description</th>
+</tr>
+<tr class="list">
+<td class="itemname">Class&nbsp;<a class="bold" href="RALDBBase.TRALDBBase.html"><code>TRALDBBase</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+</table>
+<span id="PasDoc-FuncsProcs"></span><h3 class="summary">Functions and Procedures</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code>procedure <strong><a href="RALDBBase.html#RegisterDatabase">RegisterDatabase</a></strong>(ADatabase: <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>procedure <strong><a href="RALDBBase.html#UnregisterDatabase">UnregisterDatabase</a></strong>(ADatabase: <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="RALDBBase.html#GetDatabaseClass">GetDatabaseClass</a></strong>(ADatabaseName: StringRAL): <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>procedure <strong><a href="RALDBBase.html#GetDatabaseList">GetDatabaseList</a></strong>(AList: TStrings);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Types"></span><h3 class="summary">Types</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALDBBase.html#TRALDatabaseType">TRALDatabaseType</a></strong> = (...);</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALDBBase.html#TRALDBClass">TRALDBClass</a></strong> = class of <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a></strong> = (...);</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALDBBase.html#TRALDBOnConnect">TRALDBOnConnect</a></strong> = procedure(ASender : TObject; ARequest : <a href="RALRequest.TRALRequest.html">TRALRequest</a>) of object;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALDBBase.html#TRALDBOnError">TRALDBOnError</a></strong> = procedure(ASender : TObject; AException : StringRAL; ARequest : <a href="RALRequest.TRALRequest.html">TRALRequest</a>) of object;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Functions and Procedures</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RegisterDatabase"></span><code>procedure <strong>RegisterDatabase</strong>(ADatabase: <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="UnregisterDatabase"></span><code>procedure <strong>UnregisterDatabase</strong>(ADatabase: <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="GetDatabaseClass"></span><code>function <strong>GetDatabaseClass</strong>(ADatabaseName: StringRAL): <a href="RALDBBase.html#TRALDBClass">TRALDBClass</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="GetDatabaseList"></span><code>procedure <strong>GetDatabaseList</strong>(AList: TStrings);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Types</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDatabaseType"></span><code><strong>TRALDatabaseType</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="dtFirebird">dtFirebird</span></li>
+<li>
+<span id="dtSQLite">dtSQLite</span></li>
+<li>
+<span id="dtMySQL">dtMySQL</span></li>
+<li>
+<span id="dtPostgreSQL">dtPostgreSQL</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDBClass"></span><code><strong>TRALDBClass</strong> = class of <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDBDriverType"></span><code><strong>TRALDBDriverType</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+sempre jogar a <a class="normal" href="RALDBBase.html#qtOther">qtOther</a> pra frente, ela tem valor igual a 255</p>
+<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="qtFiredac">qtFiredac</span></li>
+<li>
+<span id="qtZeos">qtZeos</span></li>
+<li>
+<span id="qtLazSQL">qtLazSQL</span></li>
+<li>
+<span id="qtOther">qtOther = 255</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDBOnConnect"></span><code><strong>TRALDBOnConnect</strong> = procedure(ASender : TObject; ARequest : <a href="RALRequest.TRALRequest.html">TRALRequest</a>) of object;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDBOnError"></span><code><strong>TRALDBOnError</strong> = procedure(ASender : TObject; AException : StringRAL; ARequest : <a href="RALRequest.TRALRequest.html">TRALRequest</a>) of object;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

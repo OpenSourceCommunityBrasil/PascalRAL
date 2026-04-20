@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALCrud: Class TRALCrudBase</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALCrudBase"></span><h1 class="cio">Class TRALCrudBase</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section"><a class="section" href="#PasDoc-Fields">Fields</a></div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section">Properties</div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALCrud.html">RALCrud</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALCrudBase = class(TObject)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALCrudBase</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="thisitem">TRALCrudBase</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Fields"></span><h3 class="summary">Fields</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FParamNames">FParamNames</a></strong>: TStrings;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FParamValues">FParamValues</a></strong>: TStrings;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FQueryParamNames">FQueryParamNames</a></strong>: TStrings;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FQueryParamValues">FQueryParamValues</a></strong>: TStrings;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FRequest">FRequest</a></strong>: <a href="RALRequest.TRALRequest.html">TRALRequest</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FTable">FTable</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FPKName">FPKName</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code><strong><a href="RALCrud.TRALCrudBase.html#FPKValue">FPKValue</a></strong>: StringRAL;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALCrud.TRALCrudBase.html#Create">Create</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALCrud.TRALCrudBase.html#Create">Create</a></strong>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALCrud.TRALCrudBase.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#CustomQuery">CustomQuery</a></strong>(AQuery: StringRAL): TDataSet; virtual; abstract;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#Delete">Delete</a></strong>: variant; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#Insert">Insert</a></strong>: variant; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#ParamNames">ParamNames</a></strong>(Args: array of StringRAL): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#ParamsFromKind">ParamsFromKind</a></strong>(AKind: TRALParamKind): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#ParamValues">ParamValues</a></strong>(Args: array of const): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#PrimaryKey">PrimaryKey</a></strong>(pkName: StringRAL; pkValue: variant): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#QueryParams">QueryParams</a></strong>(names, values: array of const): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>; virtual; abstract;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#Read">Read</a></strong>: TDataSet; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#SetRequest">SetRequest</a></strong>(AValue: <a href="RALRequest.TRALRequest.html">TRALRequest</a>): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#Table">Table</a></strong>(ATable: StringRAL): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALCrud.TRALCrudBase.html#Update">Update</a></strong>: variant; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALCrud.TRALCrudBase.html#FromHTTPMethod">FromHTTPMethod</a></strong>;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Fields</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FParamNames"></span><code><strong>FParamNames</strong>: TStrings;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FParamValues"></span><code><strong>FParamValues</strong>: TStrings;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FQueryParamNames"></span><code><strong>FQueryParamNames</strong>: TStrings;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FQueryParamValues"></span><code><strong>FQueryParamValues</strong>: TStrings;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FRequest"></span><code><strong>FRequest</strong>: <a href="RALRequest.TRALRequest.html">TRALRequest</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FTable"></span><code><strong>FTable</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FPKName"></span><code><strong>FPKName</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FPKValue"></span><code><strong>FPKValue</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="CustomQuery"></span><code>function <strong>CustomQuery</strong>(AQuery: StringRAL): TDataSet; virtual; abstract;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Runs a custom query</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Delete"></span><code>function <strong>Delete</strong>: variant; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+&quot;D&quot; of CRUD acronym, removes values from the database based on previously configured params</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Insert"></span><code>function <strong>Insert</strong>: variant; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+&quot;C&quot; of CRUD acronym, inserts data into the database based on previously configured params</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ParamNames"></span><code>function <strong>ParamNames</strong>(Args: array of StringRAL): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+sets the names of the parameters which will be used in the CRUD functions</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ParamsFromKind"></span><code>function <strong>ParamsFromKind</strong>(AKind: TRALParamKind): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+defines both <a class="normal" href="RALCrud.TRALCrudBase.html#ParamNames">ParamNames</a> and <a class="normal" href="RALCrud.TRALCrudBase.html#ParamValues">ParamValues</a> based on the ParamKind in the ARequest attribute</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ParamValues"></span><code>function <strong>ParamValues</strong>(Args: array of const): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+sets the values of the parameters which will be used in the CRUD functions respective to <a class="normal" href="RALCrud.TRALCrudBase.html#ParamNames">paramNames</a> order</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="PrimaryKey"></span><code>function <strong>PrimaryKey</strong>(pkName: StringRAL; pkValue: variant): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+defines which param is the primary key</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="QueryParams"></span><code>function <strong>QueryParams</strong>(names, values: array of const): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>; virtual; abstract;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Read"></span><code>function <strong>Read</strong>: TDataSet; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+&quot;R&quot; of CRUD acronym, gets values from the database based on previously configured params</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="SetRequest"></span><code>function <strong>SetRequest</strong>(AValue: <a href="RALRequest.TRALRequest.html">TRALRequest</a>): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+defines <a class="normal" href="RALRequest.html">RALRequest</a> into CRUD Object</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Table"></span><code>function <strong>Table</strong>(ATable: StringRAL): <a href="RALCrud.TRALCrudBase.html">TRALCrudBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+sets the database <code>table</code> where operations will be performed into</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Update"></span><code>function <strong>Update</strong>: variant; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+&quot;U&quot; of CRUD acronym, updates values in the database based on previously configured params</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="FromHTTPMethod"></span><code>procedure <strong>FromHTTPMethod</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Runs the CRUD based on HTTP Verb from the <a class="normal" href="RALRequest.html">RALRequest</a> following the rules: GET = <a class="normal" href="RALCrud.TRALCrudBase.html#Read">read</a>; POST = <a class="normal" href="RALCrud.TRALCrudBase.html#Insert">insert</a>; PUT/PATCH = <a class="normal" href="RALCrud.TRALCrudBase.html#Update">update</a>; <a class="normal" href="RALCrud.TRALCrudBase.html#Delete">DELETE</a> = <a class="normal" href="RALCrud.TRALCrudBase.html#Delete">delete</a>; HEAD, TRACE, OPTIONS = nothing</p>
+</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

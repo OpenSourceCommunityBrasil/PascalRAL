@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALDBZeosMemTable: Class TRALDBZMemTable</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALDBZMemTable"></span><h1 class="cio">Class TRALDBZMemTable</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALDBZeosMemTable.html">RALDBZeosMemTable</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALDBZMemTable = class(TZMemTable)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALDBZMemTable</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TZMemTable</li>
+<li class="thisitem">TRALDBZMemTable</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Create">Create</a></strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#ParamByName">ParamByName</a></strong>(const AValue: StringRAL): TParam; reintroduce;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#ApplyUpdates">ApplyUpdates</a></strong>; reintroduce;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#ExecSQL">ExecSQL</a></strong>; override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#CacheSQL">CacheSQL</a></strong>(ASQL: StringRAL; AExecType: <a href="RALDBSQLCache.html#TRALDBExecType">TRALDBExecType</a> = <a href="RALDBSQLCache.html#etExecute">etExecute</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Clear">Clear</a></strong>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#InternalDelete">InternalDelete</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#InternalInitFieldDefs">InternalInitFieldDefs</a></strong>; override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#InternalPost">InternalPost</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#LoadFromRALStorage">LoadFromRALStorage</a></strong>(ADataSet : TDataSet; AStream : TStream);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Notification">Notification</a></strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#OnApplyUpdates">OnApplyUpdates</a></strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#OnChangeSQL">OnChangeSQL</a></strong>(Sender: TObject);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#OnExecSQLResponse">OnExecSQLResponse</a></strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#OnQueryResponse">OnQueryResponse</a></strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetActive">SetActive</a></strong>(AValue: boolean); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetRALConnection">SetRALConnection</a></strong>(AValue: <a href="RALDBConnection.TRALDBConnection.html">TRALDBConnection</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetSQL">SetSQL</a></strong>(AValue: TStrings);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetStorage">SetStorage</a></strong>(const AValue: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetUpdateSQL">SetUpdateSQL</a></strong>(AValue: <a href="RALDBTypes.TRALDBUpdateSQL.html">TRALDBUpdateSQL</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>class procedure <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#ZeosLoadFromStream">ZeosLoadFromStream</a></strong>(ADataset: TZMemTable; AStream: TStream);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Active">Active</a></strong>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#FieldDefs">FieldDefs</a></strong>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#LastId">LastId</a></strong>: Int64RAL read FLastId;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#OnError">OnError</a></strong>: <a href="RALDBTypes.html#TRALDBTableOnError">TRALDBTableOnError</a> read FOnError write FOnError;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#ParamCheck">ParamCheck</a></strong>: boolean read FParamCheck write FParamCheck;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Params">Params</a></strong>: TParams read FParams write FParams;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#RALConnection">RALConnection</a></strong>: <a href="RALDBConnection.TRALDBConnection.html">TRALDBConnection</a> read FRALConnection write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetRALConnection">SetRALConnection</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#RowsAffected">RowsAffected</a></strong>: Int64RAL read FRowsAffected;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#SQL">SQL</a></strong>: TStrings read FSQL write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetSQL">SetSQL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#Storage">Storage</a></strong>: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a> read FStorage write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetStorage">SetStorage</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#UpdateMode">UpdateMode</a></strong>: TUpdateMode read FUpdateMode write FUpdateMode;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#UpdateSQL">UpdateSQL</a></strong>: <a href="RALDBTypes.TRALDBUpdateSQL.html">TRALDBUpdateSQL</a> read FUpdateSQL write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetUpdateSQL">SetUpdateSQL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBZeosMemTable.TRALDBZMemTable.html#UpdateTable">UpdateTable</a></strong>: StringRAL read FUpdateTable write FUpdateTable;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ParamByName"></span><code>function <strong>ParamByName</strong>(const AValue: StringRAL): TParam; reintroduce;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ApplyUpdates"></span><code>procedure <strong>ApplyUpdates</strong>; reintroduce;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ExecSQL"></span><code>procedure <strong>ExecSQL</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+no zeos essa funcao ja existe</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="CacheSQL"></span><code>procedure <strong>CacheSQL</strong>(ASQL: StringRAL; AExecType: <a href="RALDBSQLCache.html#TRALDBExecType">TRALDBExecType</a> = <a href="RALDBSQLCache.html#etExecute">etExecute</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Clear"></span><code>procedure <strong>Clear</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="InternalDelete"></span><code>procedure <strong>InternalDelete</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="InternalInitFieldDefs"></span><code>procedure <strong>InternalInitFieldDefs</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+carrega os fieldsdefs do servidor</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="InternalPost"></span><code>procedure <strong>InternalPost</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="LoadFromRALStorage"></span><code>procedure <strong>LoadFromRALStorage</strong>(ADataSet : TDataSet; AStream : TStream);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Notification"></span><code>procedure <strong>Notification</strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+needed to properly remove assignment in design-time.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OnApplyUpdates"></span><code>procedure <strong>OnApplyUpdates</strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OnChangeSQL"></span><code>procedure <strong>OnChangeSQL</strong>(Sender: TObject);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OnExecSQLResponse"></span><code>procedure <strong>OnExecSQLResponse</strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OnQueryResponse"></span><code>procedure <strong>OnQueryResponse</strong>(Sender: TObject; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>; AException: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetActive"></span><code>procedure <strong>SetActive</strong>(AValue: boolean); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetRALConnection"></span><code>procedure <strong>SetRALConnection</strong>(AValue: <a href="RALDBConnection.TRALDBConnection.html">TRALDBConnection</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetSQL"></span><code>procedure <strong>SetSQL</strong>(AValue: TStrings);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetStorage"></span><code>procedure <strong>SetStorage</strong>(const AValue: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetUpdateSQL"></span><code>procedure <strong>SetUpdateSQL</strong>(AValue: <a href="RALDBTypes.TRALDBUpdateSQL.html">TRALDBUpdateSQL</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="ZeosLoadFromStream"></span><code>class procedure <strong>ZeosLoadFromStream</strong>(ADataset: TZMemTable; AStream: TStream);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Active"></span><code>property <strong>Active</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="FieldDefs"></span><code>property <strong>FieldDefs</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="LastId"></span><code>property <strong>LastId</strong>: Int64RAL read FLastId;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OnError"></span><code>property <strong>OnError</strong>: <a href="RALDBTypes.html#TRALDBTableOnError">TRALDBTableOnError</a> read FOnError write FOnError;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="ParamCheck"></span><code>property <strong>ParamCheck</strong>: boolean read FParamCheck write FParamCheck;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Params"></span><code>property <strong>Params</strong>: TParams read FParams write FParams;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="RALConnection"></span><code>property <strong>RALConnection</strong>: <a href="RALDBConnection.TRALDBConnection.html">TRALDBConnection</a> read FRALConnection write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetRALConnection">SetRALConnection</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="RowsAffected"></span><code>property <strong>RowsAffected</strong>: Int64RAL read FRowsAffected;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="SQL"></span><code>property <strong>SQL</strong>: TStrings read FSQL write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetSQL">SetSQL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Storage"></span><code>property <strong>Storage</strong>: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a> read FStorage write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetStorage">SetStorage</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="UpdateMode"></span><code>property <strong>UpdateMode</strong>: TUpdateMode read FUpdateMode write FUpdateMode;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="UpdateSQL"></span><code>property <strong>UpdateSQL</strong>: <a href="RALDBTypes.TRALDBUpdateSQL.html">TRALDBUpdateSQL</a> read FUpdateSQL write <a href="RALDBZeosMemTable.TRALDBZMemTable.html#SetUpdateSQL">SetUpdateSQL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="UpdateTable"></span><code>property <strong>UpdateTable</strong>: StringRAL read FUpdateTable write FUpdateTable;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

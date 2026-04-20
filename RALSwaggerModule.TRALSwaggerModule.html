@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALSwaggerModule: Class TRALSwaggerModule</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALSwaggerModule"></span><h1 class="cio">Class TRALSwaggerModule</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALSwaggerModule.html">RALSwaggerModule</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALSwaggerModule = class(<a class="normal" href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALSwaggerModule</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="ancestor">TComponent</li>
+<li class="ancestor"><a class="normal" href="RALCustomObjects.TRALComponent.html">TRALComponent</a></li>
+<li class="ancestor"><a class="normal" href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a></li>
+<li class="thisitem">TRALSwaggerModule</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#Create">Create</a></strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#GetListRoutes">GetListRoutes</a></strong>: TList; override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#CreateRoutes">CreateRoutes</a></strong>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetDomain">SetDomain</a></strong>(const AValue: StringRAL); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanFile">SetPostmanFile</a></strong>(const AValue: TFileName);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanTag">SetPostmanTag</a></strong>(AValue: boolean);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetServersUrl">SetServersUrl</a></strong>(AValue: TStrings);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetSwaggerFile">SetSwaggerFile</a></strong>(const AValue: TFileName);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SetSystemDescription">SetSystemDescription</a></strong>(const AValue: TStrings);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerCSS">SwaggerCSS</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerIndex">SwaggerIndex</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerInitializer">SwaggerInitializer</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerJSON">SwaggerJSON</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerPostman">SwaggerPostman</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#AllowCORSVerbs">AllowCORSVerbs</a></strong>: boolean read FAllowCORSVerbs write FAllowCORSVerbs;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#EMail">EMail</a></strong>: StringRAL read FEMail write FEMail;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#License">License</a></strong>: <a href="RALSwaggerModule.TRALSwaggerLicense.html">TRALSwaggerLicense</a> read FLicense write FLicense;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#PostmanFile">PostmanFile</a></strong>: TFileName read FPostmanFile write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanFile">SetPostmanFile</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#PostmanTag">PostmanTag</a></strong>: boolean read FPostmanTag write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanTag">SetPostmanTag</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#ServersUrl">ServersUrl</a></strong>: TStrings read FServersUrl write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetServersUrl">SetServersUrl</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#ShowCustomNames">ShowCustomNames</a></strong>: boolean read FShowCustomNames write FShowCustomNames;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SwaggerFile">SwaggerFile</a></strong>: TFileName read FSwaggerFile write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetSwaggerFile">SetSwaggerFile</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SystemDescription">SystemDescription</a></strong>: TStrings read FSystemDescription write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetSystemDescription">SetSystemDescription</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#SystemVersion">SystemVersion</a></strong>: StringRAL read FSystemVersion write FSystemVersion;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#TermsOfService">TermsOfService</a></strong>: StringRAL read FTermsOfService write FTermsOfService;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSwaggerModule.TRALSwaggerModule.html#Title">Title</a></strong>: StringRAL read FTitle write FTitle;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetListRoutes"></span><code>function <strong>GetListRoutes</strong>: TList; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="CreateRoutes"></span><code>procedure <strong>CreateRoutes</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetDomain"></span><code>procedure <strong>SetDomain</strong>(const AValue: StringRAL); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetPostmanFile"></span><code>procedure <strong>SetPostmanFile</strong>(const AValue: TFileName);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetPostmanTag"></span><code>procedure <strong>SetPostmanTag</strong>(AValue: boolean);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetServersUrl"></span><code>procedure <strong>SetServersUrl</strong>(AValue: TStrings);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetSwaggerFile"></span><code>procedure <strong>SetSwaggerFile</strong>(const AValue: TFileName);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetSystemDescription"></span><code>procedure <strong>SetSystemDescription</strong>(const AValue: TStrings);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SwaggerCSS"></span><code>procedure <strong>SwaggerCSS</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SwaggerIndex"></span><code>procedure <strong>SwaggerIndex</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SwaggerInitializer"></span><code>procedure <strong>SwaggerInitializer</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SwaggerJSON"></span><code>procedure <strong>SwaggerJSON</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SwaggerPostman"></span><code>procedure <strong>SwaggerPostman</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="AllowCORSVerbs"></span><code>property <strong>AllowCORSVerbs</strong>: boolean read FAllowCORSVerbs write FAllowCORSVerbs;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="EMail"></span><code>property <strong>EMail</strong>: StringRAL read FEMail write FEMail;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="License"></span><code>property <strong>License</strong>: <a href="RALSwaggerModule.TRALSwaggerLicense.html">TRALSwaggerLicense</a> read FLicense write FLicense;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="PostmanFile"></span><code>property <strong>PostmanFile</strong>: TFileName read FPostmanFile write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanFile">SetPostmanFile</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="PostmanTag"></span><code>property <strong>PostmanTag</strong>: boolean read FPostmanTag write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetPostmanTag">SetPostmanTag</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="ServersUrl"></span><code>property <strong>ServersUrl</strong>: TStrings read FServersUrl write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetServersUrl">SetServersUrl</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="ShowCustomNames"></span><code>property <strong>ShowCustomNames</strong>: boolean read FShowCustomNames write FShowCustomNames;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="SwaggerFile"></span><code>property <strong>SwaggerFile</strong>: TFileName read FSwaggerFile write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetSwaggerFile">SetSwaggerFile</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="SystemDescription"></span><code>property <strong>SystemDescription</strong>: TStrings read FSystemDescription write <a href="RALSwaggerModule.TRALSwaggerModule.html#SetSystemDescription">SetSystemDescription</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="SystemVersion"></span><code>property <strong>SystemVersion</strong>: StringRAL read FSystemVersion write FSystemVersion;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="TermsOfService"></span><code>property <strong>TermsOfService</strong>: StringRAL read FTermsOfService write FTermsOfService;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Title"></span><code>property <strong>Title</strong>: StringRAL read FTitle write FTitle;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

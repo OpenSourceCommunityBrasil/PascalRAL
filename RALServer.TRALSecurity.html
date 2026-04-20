@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALServer: Class TRALSecurity</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALSecurity"></span><h1 class="cio">Class TRALSecurity</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALServer.html">RALServer</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALSecurity = class(TPersistent)</code></p>
+<h2 class="description">Description</h2>
+<p>
+Base class for Server Security definitions</p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="thisitem">TRALSecurity</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALServer.TRALSecurity.html#Create">Create</a></strong>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALServer.TRALSecurity.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#CheckBlockClientIP">CheckBlockClientIP</a></strong>(const AClientIP: StringRAL): boolean;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#CheckBlockClientTry">CheckBlockClientTry</a></strong>(const AClienteIP: StringRAL): boolean;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#CheckFlood">CheckFlood</a></strong>(const AClientIP: StringRAL): boolean;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#GetBlockClient">GetBlockClient</a></strong>(const AClientIP: StringRAL): <a href="RALServer.TRALClientBlockList.html">TRALClientBlockList</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#GetBlockClientTry">GetBlockClientTry</a></strong>(const AClientIP: StringRAL): integer;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALSecurity.html#GetClientList">GetClientList</a></strong>(const AClientIP: StringRAL): <a href="RALServer.TRALClientList.html">TRALClientList</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALSecurity.html#BlockClient">BlockClient</a></strong>(const AClientIP: StringRAL);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALSecurity.html#ClearExpiredIPs">ClearExpiredIPs</a></strong>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALSecurity.html#UnblockClient">UnblockClient</a></strong>(const AClientIP: StringRAL);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALSecurity.html#BlackIPList">BlackIPList</a></strong>: TStringList read GetBlackIPList write SetBlackIPList;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALSecurity.html#BruteForce">BruteForce</a></strong>: <a href="RALServer.TRALBruteForceProtection.html">TRALBruteForceProtection</a> read FBruteForce write SetBruteForce;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALSecurity.html#FloodTimeInterval">FloodTimeInterval</a></strong>: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALSecurity.html#Options">Options</a></strong>: TRALSecurityOptions read FOptions write SetOptions;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALSecurity.html#WhiteIPList">WhiteIPList</a></strong>: TStringList read GetWhiteIPList write SetWhiteIPList;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="CheckBlockClientIP"></span><code>function <strong>CheckBlockClientIP</strong>(const AClientIP: StringRAL): boolean;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Verifies if the Client IP is blacklisted</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="CheckBlockClientTry"></span><code>function <strong>CheckBlockClientTry</strong>(const AClienteIP: StringRAL): boolean;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Checks if the number de tries of client exceed the established limit</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="CheckFlood"></span><code>function <strong>CheckFlood</strong>(const AClientIP: StringRAL): boolean;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Verifies if the incomming IP is known for request flooding</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetBlockClient"></span><code>function <strong>GetBlockClient</strong>(const AClientIP: StringRAL): <a href="RALServer.TRALClientBlockList.html">TRALClientBlockList</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Gets a client block object from the list of blocked IPs</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetBlockClientTry"></span><code>function <strong>GetBlockClientTry</strong>(const AClientIP: StringRAL): integer;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Gets the number of tries to block client, in case client is not blocked return zero</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetClientList"></span><code>function <strong>GetClientList</strong>(const AClientIP: StringRAL): <a href="RALServer.TRALClientList.html">TRALClientList</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Gets a client object from the list of blocked IPs</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="BlockClient"></span><code>procedure <strong>BlockClient</strong>(const AClientIP: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Adds the Client IP to the internal blocked IP list</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ClearExpiredIPs"></span><code>procedure <strong>ClearExpiredIPs</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Removes the IPs that are stored longer than the preconfigured duration</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="UnblockClient"></span><code>procedure <strong>UnblockClient</strong>(const AClientIP: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Removes an IP from the list of blocked IPs</p>
+</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="BlackIPList"></span><code>property <strong>BlackIPList</strong>: TStringList read GetBlackIPList write SetBlackIPList;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+List of IPs that will not receive a response from the server</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="BruteForce"></span><code>property <strong>BruteForce</strong>: <a href="RALServer.TRALBruteForceProtection.html">TRALBruteForceProtection</a> read FBruteForce write SetBruteForce;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Set of configurations to block <code>BruteForce</code> attacks</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="FloodTimeInterval"></span><code>property <strong>FloodTimeInterval</strong>: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Time in miliseconds between requests by the same IP that the server will allow</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Options"></span><code>property <strong>Options</strong>: TRALSecurityOptions read FOptions write SetOptions;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Flags that will enable/disable security features</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="WhiteIPList"></span><code>property <strong>WhiteIPList</strong>: TStringList read GetWhiteIPList write SetWhiteIPList;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+List of IPs that will always receive a response from the server and won't be blocked</p>
+</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

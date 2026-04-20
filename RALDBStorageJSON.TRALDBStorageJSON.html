@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALDBStorageJSON: Class TRALDBStorageJSON</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALDBStorageJSON"></span><h1 class="cio">Class TRALDBStorageJSON</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALDBStorageJSON.html">RALDBStorageJSON</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALDBStorageJSON = class(<a class="normal" href="RALDBStorage.TRALDBStorage.html">TRALDBStorage</a>)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALDBStorageJSON</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="ancestor"><a class="normal" href="RALDBStorage.TRALDBStorage.html">TRALDBStorage</a></li>
+<li class="thisitem">TRALDBStorageJSON</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#Create">Create</a></strong>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#JSONFormatDateTime">JSONFormatDateTime</a></strong>(AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#StringToJSONString">StringToJSONString</a></strong>(AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#StringToJSONString">StringToJSONString</a></strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteBlob">WriteBlob</a></strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteBoolean">WriteBoolean</a></strong>(AValue: Boolean): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteDateTime">WriteDateTime</a></strong>(AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldBlob">WriteFieldBlob</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldBoolean">WriteFieldBoolean</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: Boolean): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldDateTime">WriteFieldDateTime</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldFloat">WriteFieldFloat</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: Double): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldInt64">WriteFieldInt64</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldMemo">WriteFieldMemo</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldNull">WriteFieldNull</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFieldString">WriteFieldString</a></strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteFloat">WriteFloat</a></strong>(AValue: Double): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteInt64">WriteInt64</a></strong>(AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteMemo">WriteMemo</a></strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteString">WriteString</a></strong>(AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#WriteStringToStream">WriteStringToStream</a></strong>(AStream: TStream; AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBStorageJSON.TRALDBStorageJSON.html#FormatOptions">FormatOptions</a></strong>: <a href="RALDBStorageJSON.TRALJSONFormatOptions.html">TRALJSONFormatOptions</a> read FFormatOptions
+      write FFormatOptions;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="JSONFormatDateTime"></span><code>function <strong>JSONFormatDateTime</strong>(AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="StringToJSONString"></span><code>function <strong>StringToJSONString</strong>(AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="StringToJSONString"></span><code>function <strong>StringToJSONString</strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteBlob"></span><code>function <strong>WriteBlob</strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteBoolean"></span><code>function <strong>WriteBoolean</strong>(AValue: Boolean): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteDateTime"></span><code>function <strong>WriteDateTime</strong>(AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldBlob"></span><code>function <strong>WriteFieldBlob</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldBoolean"></span><code>function <strong>WriteFieldBoolean</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: Boolean): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldDateTime"></span><code>function <strong>WriteFieldDateTime</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TDateTime): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldFloat"></span><code>function <strong>WriteFieldFloat</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: Double): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldInt64"></span><code>function <strong>WriteFieldInt64</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldMemo"></span><code>function <strong>WriteFieldMemo</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldNull"></span><code>function <strong>WriteFieldNull</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFieldString"></span><code>function <strong>WriteFieldString</strong>(AFieldName: <a href="RALTypes.html#StringRAL">StringRAL</a>; AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteFloat"></span><code>function <strong>WriteFloat</strong>(AValue: Double): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteInt64"></span><code>function <strong>WriteInt64</strong>(AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteMemo"></span><code>function <strong>WriteMemo</strong>(AValue: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteString"></span><code>function <strong>WriteString</strong>(AValue: string): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="WriteStringToStream"></span><code>procedure <strong>WriteStringToStream</strong>(AStream: TStream; AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="FormatOptions"></span><code>property <strong>FormatOptions</strong>: <a href="RALDBStorageJSON.TRALJSONFormatOptions.html">TRALJSONFormatOptions</a> read FFormatOptions
+      write FFormatOptions;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">repository</a><hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

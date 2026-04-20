@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALDBModule: Class TRALDBModule</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALDBModule"></span><h1 class="cio">Class TRALDBModule</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALDBModule.html">RALDBModule</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALDBModule = class(<a class="normal" href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALDBModule</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="ancestor">TComponent</li>
+<li class="ancestor"><a class="normal" href="RALCustomObjects.TRALComponent.html">TRALComponent</a></li>
+<li class="ancestor"><a class="normal" href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a></li>
+<li class="thisitem">TRALDBModule</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALDBModule.TRALDBModule.html#Create">Create</a></strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBModule.TRALDBModule.html#FindDatabaseDriver">FindDatabaseDriver</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>) : <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALDBModule.TRALDBModule.html#GetInfoFieldsStream">GetInfoFieldsStream</a></strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADataset : TDataSet; ABinary : boolean) : TStream;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#ApplyUpdates">ApplyUpdates</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#ExecSQL">ExecSQL</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#ExecSQLResponse">ExecSQLResponse</a></strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADBSQL: <a href="RALDBSQLCache.TRALDBSQL.html">TRALDBSQL</a>; AStorage: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#GetFields">GetFields</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#GetSQLFields">GetSQLFields</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#GetTables">GetTables</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#OpenSQL">OpenSQL</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALDBModule.TRALDBModule.html#OpenSQLResponse">OpenSQLResponse</a></strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADBSQL: <a href="RALDBSQLCache.TRALDBSQL.html">TRALDBSQL</a>; AStorage: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#Database">Database</a></strong>: StringRAL read FDatabase write FDatabase;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#DatabaseLink">DatabaseLink</a></strong>: String read FDataBaseLink write FDataBaseLink;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#DatabaseType">DatabaseType</a></strong>: <a href="RALDBBase.html#TRALDatabaseType">TRALDatabaseType</a> read FDatabaseType write FDatabaseType;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#Hostname">Hostname</a></strong>: StringRAL read FHostname write FHostname;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#OnAfterConnect">OnAfterConnect</a></strong>: <a href="RALDBBase.html#TRALDBOnConnect">TRALDBOnConnect</a> read FOnAfterConnect write FOnAfterConnect;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#OnBeforeConnect">OnBeforeConnect</a></strong>: <a href="RALDBBase.html#TRALDBOnConnect">TRALDBOnConnect</a> read FOnBeforeConnect write FOnBeforeConnect;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#OnErrorConnect">OnErrorConnect</a></strong>: <a href="RALDBBase.html#TRALDBOnError">TRALDBOnError</a> read FOnErrorConnect write FOnErrorConnect;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#OnErrorQuery">OnErrorQuery</a></strong>: <a href="RALDBBase.html#TRALDBOnError">TRALDBOnError</a> read FOnErrorQuery write FOnErrorQuery;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#Password">Password</a></strong>: StringRAL read FPassword write FPassword;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#Port">Port</a></strong>: IntegerRAL read FPort write FPort;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALDBModule.TRALDBModule.html#Username">Username</a></strong>: StringRAL read FUsername write FUsername;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOwner: TComponent); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FindDatabaseDriver"></span><code>function <strong>FindDatabaseDriver</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>) : <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetInfoFieldsStream"></span><code>function <strong>GetInfoFieldsStream</strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADataset : TDataSet; ABinary : boolean) : TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="ApplyUpdates"></span><code>procedure <strong>ApplyUpdates</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="ExecSQL"></span><code>procedure <strong>ExecSQL</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="ExecSQLResponse"></span><code>procedure <strong>ExecSQLResponse</strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADBSQL: <a href="RALDBSQLCache.TRALDBSQL.html">TRALDBSQL</a>; AStorage: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetFields"></span><code>procedure <strong>GetFields</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetSQLFields"></span><code>procedure <strong>GetSQLFields</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetTables"></span><code>procedure <strong>GetTables</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OpenSQL"></span><code>procedure <strong>OpenSQL</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OpenSQLResponse"></span><code>procedure <strong>OpenSQLResponse</strong>(ADatabase: <a href="RALDBBase.TRALDBBase.html">TRALDBBase</a>; ADBSQL: <a href="RALDBSQLCache.TRALDBSQL.html">TRALDBSQL</a>; AStorage: <a href="RALStorage.TRALStorageLink.html">TRALStorageLink</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Database"></span><code>property <strong>Database</strong>: StringRAL read FDatabase write FDatabase;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="DatabaseLink"></span><code>property <strong>DatabaseLink</strong>: String read FDataBaseLink write FDataBaseLink;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="DatabaseType"></span><code>property <strong>DatabaseType</strong>: <a href="RALDBBase.html#TRALDatabaseType">TRALDatabaseType</a> read FDatabaseType write FDatabaseType;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Hostname"></span><code>property <strong>Hostname</strong>: StringRAL read FHostname write FHostname;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OnAfterConnect"></span><code>property <strong>OnAfterConnect</strong>: <a href="RALDBBase.html#TRALDBOnConnect">TRALDBOnConnect</a> read FOnAfterConnect write FOnAfterConnect;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OnBeforeConnect"></span><code>property <strong>OnBeforeConnect</strong>: <a href="RALDBBase.html#TRALDBOnConnect">TRALDBOnConnect</a> read FOnBeforeConnect write FOnBeforeConnect;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OnErrorConnect"></span><code>property <strong>OnErrorConnect</strong>: <a href="RALDBBase.html#TRALDBOnError">TRALDBOnError</a> read FOnErrorConnect write FOnErrorConnect;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OnErrorQuery"></span><code>property <strong>OnErrorQuery</strong>: <a href="RALDBBase.html#TRALDBOnError">TRALDBOnError</a> read FOnErrorQuery write FOnErrorQuery;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Password"></span><code>property <strong>Password</strong>: StringRAL read FPassword write FPassword;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Port"></span><code>property <strong>Port</strong>: IntegerRAL read FPort write FPort;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Username"></span><code>property <strong>Username</strong>: StringRAL read FUsername write FUsername;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

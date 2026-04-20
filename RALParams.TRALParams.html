@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALParams: Class TRALParams</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALParams"></span><h1 class="cio">Class TRALParams</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section"><a class="section" href="#PasDoc-NestedCRs">Nested Classes and Records</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALParams.html">RALParams</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALParams = class(TObject)</code></p>
+<h2 class="description">Description</h2>
+<p>
+Collection of <a class="normal" href="RALParams.TRALParam.html">TRALParam</a> objects</p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="thisitem">TRALParams</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-NestedCRs"></span><h3 class="summary">Nested Classes and Records</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code><strong><a href="RALParams.TRALParams.TEnumerator.html">TEnumerator</a></strong> = class(TObject)</code></td>
+</tr>
+</table>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALParams.TRALParams.html#Create">Create</a></strong>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALParams.TRALParams.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddFile">AddFile</a></strong>(const AParamName: StringRAL; const AFileName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddFile">AddFile</a></strong>(const AFileName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddParam">AddParam</a></strong>(const AName: StringRAL; const AValue: StringRAL; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddParam">AddParam</a></strong>(const AName: StringRAL; AContent: TStream; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddValue">AddValue</a></strong>(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AddValue">AddValue</a></strong>(AContent: TStream; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AsJSON">AsJSON</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AssignParamsListText">AssignParamsListText</a></strong>(AKind: TRALParamKind; const ANameSeparator: StringRAL = '='): StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AssignParamsText">AssignParamsText</a></strong>(AKind: TRALParamKind; AUrlEncoded: boolean = False; const ANameSeparator: StringRAL = '='; const ALineSeparator: StringRAL = '&amp;'): StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AssignParamsUrl">AssignParamsUrl</a></strong>(AKind: TRALParamKind): StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#AsString">AsString</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Count">Count</a></strong>: IntegerRAL; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Count">Count</a></strong>(AKind: TRALParamKind): IntegerRAL; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Count">Count</a></strong>(AKinds: TRALParamKinds): IntegerRAL; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#DecodeBody">DecodeBody</a></strong>(ASource: TStream; const AContentType: StringRAL; const AContentDisposition: StringRAL = ''): TStream; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#DecodeBody">DecodeBody</a></strong>(const ASource, AContentType: StringRAL; const AContentDisposition: StringRAL = ''): TStream; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#EncodeBody">EncodeBody</a></strong>(var AContentType, AContentDisposition: StringRAL): TStream;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetEnumerator">GetEnumerator</a></strong>: <a href="RALParams.TRALParams.TEnumerator.html">TEnumerator</a>; inline;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#NewParam">NewParam</a></strong>: <a href="RALParams.TRALParam.html">TRALParam</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#URLEncodedToList">URLEncodedToList</a></strong>(ASource: StringRAL): TStringList;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Compress">Compress</a></strong>(AStream: TStream): TStream;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Decompress">Decompress</a></strong>(AStream: TStream): TStream; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Decompress">Decompress</a></strong>(const ASource: StringRAL): StringRAL; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Decrypt">Decrypt</a></strong>(const ASource: StringRAL): StringRAL; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Decrypt">Decrypt</a></strong>(AStream: TStream): TStream; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#Encrypt">Encrypt</a></strong>(AStream: TStream): TStream;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#FindBodyNameSeparator">FindBodyNameSeparator</a></strong>(const ASource: StringRAL): StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#FindHeaderNameSeparator">FindHeaderNameSeparator</a></strong>(const ASource: StringRAL): StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetBody">GetBody</a></strong>: TList;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetParam">GetParam</a></strong>(AIndex: IntegerRAL; AKind: TRALParamKind): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetParam">GetParam</a></strong>(AName: StringRAL; AKind: TRALParamKind): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetParam">GetParam</a></strong>(AName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#GetParam">GetParam</a></strong>(AIndex: IntegerRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#NextParamInt">NextParamInt</a></strong>: IntegerRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALParams.TRALParams.html#NextParamStr">NextParamStr</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendBodyParams">AppendBodyParams</a></strong>(ASource: TStrings; AKind: TRALParamKind);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParams">AppendParams</a></strong>(ASource: TStrings; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParams">AppendParams</a></strong>(ASource: TStringList; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParamsListText">AppendParamsListText</a></strong>(ASource: StringRAL; AKind: TRALParamKind; ANameSeparator: StringRAL = '');</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParamsText">AppendParamsText</a></strong>(AText: StringRAL; AKind: TRALParamKind; const ANameSeparator: StringRAL = '='; const ALineSeparator: StringRAL = '&amp;');</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParamsUri">AppendParamsUri</a></strong>(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParamsUrl">AppendParamsUrl</a></strong>(AUrlQuery: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AssignParams">AssignParams</a></strong>(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AssignParams">AssignParams</a></strong>(ADest: TStringList; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#ClearParams">ClearParams</a></strong>(AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#ClearParams">ClearParams</a></strong>; overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#DecodeFields">DecodeFields</a></strong>(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#DelParam">DelParam</a></strong>(const AName: StringRAL); overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#DelParam">DelParam</a></strong>(const AName: StringRAL; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#AppendParamLine">AppendParamLine</a></strong>(const ALine: StringRAL; const ANameSeparator: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALParams.TRALParams.html#OnFormBodyData">OnFormBodyData</a></strong>(Sender: TObject; AFormData: <a href="RALMultipartCoder.TRALMultipartFormData.html">TRALMultipartFormData</a>; var AFreeData: Boolean);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#Body">Body</a></strong>: TList read <a href="RALParams.TRALParams.html#GetBody">GetBody</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#CompressType">CompressType</a></strong>: <a href="RALCompress.html#TRALCompressType">TRALCompressType</a> read FCompressType write FCompressType;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#ContentDispositionInline">ContentDispositionInline</a></strong>: Boolean read FContentDispositionInline
+      write FContentDispositionInline;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#CriptoOptions">CriptoOptions</a></strong>: <a href="RALCripto.TRALCriptoOptions.html">TRALCriptoOptions</a> read FCriptoOptions write FCriptoOptions;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#Get">Get</a></strong>[AName:StringRAL]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#GetKind">GetKind</a></strong>[AName:StringRAL;AKind:TRALParamKind]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#Index">Index</a></strong>[AIndex:IntegerRAL]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALParams.TRALParams.html#IndexKind">IndexKind</a></strong>[AIndex:IntegerRAL;AKind:TRALParamKind]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddFile"></span><code>function <strong>AddFile</strong>(const AParamName: StringRAL; const AFileName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Locate the RALParam with the given AParamName and fills it with a file from the AFileName.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddFile"></span><code>function <strong>AddFile</strong>(const AFileName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Creates a new RALParam in the internal list and fills it with a file from the AFileName.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddParam"></span><code>function <strong>AddParam</strong>(const AName: StringRAL; const AValue: StringRAL; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+<a class="normal" href="RALParams.TRALParams.html#AddParam">AddParam</a> is used to include a <a class="normal" href="RALParams.TRALParam.html">TRALParam</a> Object into the internal list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddParam"></span><code>function <strong>AddParam</strong>(const AName: StringRAL; AContent: TStream; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+<code>AddParam</code> is used to include a <a class="normal" href="RALParams.TRALParam.html">TRALParam</a> Object into the internal list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddValue"></span><code>function <strong>AddValue</strong>(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+<a class="normal" href="RALParams.TRALParams.html#AddValue">AddValue</a> creates a new RALParam in the internal list and fills it with the given parameters.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AddValue"></span><code>function <strong>AddValue</strong>(AContent: TStream; AKind: TRALParamKind = rpkNONE): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+<code>AddValue</code> creates a new RALParam in the internal list and fills it with the given parameters.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AsJSON"></span><code>function <strong>AsJSON</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+returns all the params in a JSON UTF8string format.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AssignParamsListText"></span><code>function <strong>AssignParamsListText</strong>(AKind: TRALParamKind; const ANameSeparator: StringRAL = '='): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns an UTF8 String with <a class="normal" href="RALParams.html">RALParams</a> matching 'AKind'.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AssignParamsText"></span><code>function <strong>AssignParamsText</strong>(AKind: TRALParamKind; AUrlEncoded: boolean = False; const ANameSeparator: StringRAL = '='; const ALineSeparator: StringRAL = '&amp;'): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns an UTF8 String with <a class="normal" href="RALParams.html">RALParams</a> matching 'AKind'. Can accept a different Line Separator than CRLF.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AssignParamsUrl"></span><code>function <strong>AssignParamsUrl</strong>(AKind: TRALParamKind): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns an UTF8 String with <a class="normal" href="RALParams.html">RALParams</a> matching 'AKind' using default URL separators.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AsString"></span><code>function <strong>AsString</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+returns all the params in a comma separated UTF8string.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Count"></span><code>function <strong>Count</strong>: IntegerRAL; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns total ammount of <a class="normal" href="RALParams.html">RALParams</a>.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Count"></span><code>function <strong>Count</strong>(AKind: TRALParamKind): IntegerRAL; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns total ammount of <a class="normal" href="RALParams.html">RALParams</a> matching AKind.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Count"></span><code>function <strong>Count</strong>(AKinds: TRALParamKinds): IntegerRAL; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns total ammount of <a class="normal" href="RALParams.html">RALParams</a> matching multiple kinds.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="DecodeBody"></span><code>function <strong>DecodeBody</strong>(ASource: TStream; const AContentType: StringRAL; const AContentDisposition: StringRAL = ''): TStream; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a TStream with the filtered Stream <a class="normal" href="RALParams.TRALParams.html#Body">body</a> contents.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="DecodeBody"></span><code>function <strong>DecodeBody</strong>(const ASource, AContentType: StringRAL; const AContentDisposition: StringRAL = ''): TStream; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a TStream with the filtered String <a class="normal" href="RALParams.TRALParams.html#Body">body</a> contents.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="EncodeBody"></span><code>function <strong>EncodeBody</strong>(var AContentType, AContentDisposition: StringRAL): TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a TStream with all <a class="normal" href="RALParams.html">RALParams</a> that matches '<a class="normal" href="RALParams.TRALParams.html#Body">Body</a>' Kind.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetEnumerator"></span><code>function <strong>GetEnumerator</strong>: <a href="RALParams.TRALParams.TEnumerator.html">TEnumerator</a>; inline;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Retuns the internal Enumerator type to allow for..in loops</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="NewParam"></span><code>function <strong>NewParam</strong>: <a href="RALParams.TRALParam.html">TRALParam</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+creates and returns an empty param for a more flexible way of coding.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="URLEncodedToList"></span><code>function <strong>URLEncodedToList</strong>(ASource: StringRAL): TStringList;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+converts a HTML encoded URL into a TStringList.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Compress"></span><code>function <strong>Compress</strong>(AStream: TStream): TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Compresses the input stream into a TStream.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Decompress"></span><code>function <strong>Decompress</strong>(AStream: TStream): TStream; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decompresses the input stream into a TStream.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Decompress"></span><code>function <strong>Decompress</strong>(const ASource: StringRAL): StringRAL; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decompresses the input string into an UTF8 String.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Decrypt"></span><code>function <strong>Decrypt</strong>(const ASource: StringRAL): StringRAL; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decrypts the input string into an UTF8 String.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Decrypt"></span><code>function <strong>Decrypt</strong>(AStream: TStream): TStream; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decrypts the input stream into a TStream.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Encrypt"></span><code>function <strong>Encrypt</strong>(AStream: TStream): TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Encrypts the whole class instead of each individual object.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FindBodyNameSeparator"></span><code>function <strong>FindBodyNameSeparator</strong>(const ASource: StringRAL): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="FindHeaderNameSeparator"></span><code>function <strong>FindHeaderNameSeparator</strong>(const ASource: StringRAL): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Results either = or : if found on the input text.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetBody"></span><code>function <strong>GetBody</strong>: TList;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetParam"></span><code>function <strong>GetParam</strong>(AIndex: IntegerRAL; AKind: TRALParamKind): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetParam"></span><code>function <strong>GetParam</strong>(AName: StringRAL; AKind: TRALParamKind): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetParam"></span><code>function <strong>GetParam</strong>(AName: StringRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetParam"></span><code>function <strong>GetParam</strong>(AIndex: IntegerRAL): <a href="RALParams.TRALParam.html">TRALParam</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="NextParamInt"></span><code>function <strong>NextParamInt</strong>: IntegerRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Moves to the next param and returns its <a class="normal" href="RALParams.TRALParams.html#Index">index</a>.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="NextParamStr"></span><code>function <strong>NextParamStr</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Moves to the next param and returns its internal name.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendBodyParams"></span><code>procedure <strong>AppendBodyParams</strong>(ASource: TStrings; AKind: TRALParamKind);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to append a list of params (ASource) from the <a class="normal" href="RALParams.TRALParams.html#Body">body</a> to the current params list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParams"></span><code>procedure <strong>AppendParams</strong>(ASource: TStrings; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to append a list of params (ASource) to the current params list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParams"></span><code>procedure <strong>AppendParams</strong>(ASource: TStringList; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to append a list of params (ASource) to the current params list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParamsListText"></span><code>procedure <strong>AppendParamsListText</strong>(ASource: StringRAL; AKind: TRALParamKind; ANameSeparator: StringRAL = '');</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to append a list of params in a string to the current params list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParamsText"></span><code>procedure <strong>AppendParamsText</strong>(AText: StringRAL; AKind: TRALParamKind; const ANameSeparator: StringRAL = '='; const ALineSeparator: StringRAL = '&amp;');</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Appends params based on a string 'AText'.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParamsUri"></span><code>procedure <strong>AppendParamsUri</strong>(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Appends params based on the full URL given separated by '/'.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AppendParamsUrl"></span><code>procedure <strong>AppendParamsUrl</strong>(AUrlQuery: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Appends params based on the full URL given.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AssignParams"></span><code>procedure <strong>AssignParams</strong>(ADest: TStrings; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Fills the 'ADest' Strings with <a class="normal" href="RALParams.html">RALParams</a> matching 'AKind'.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AssignParams"></span><code>procedure <strong>AssignParams</strong>(ADest: TStringList; AKind: TRALParamKind; ASeparator: StringRAL = '='); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Fills the 'ADest' StringList with <a class="normal" href="RALParams.html">RALParams</a> matching 'AKind'.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ClearParams"></span><code>procedure <strong>ClearParams</strong>(AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Clears all params matching AKind.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ClearParams"></span><code>procedure <strong>ClearParams</strong>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Clears all params.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="DecodeFields"></span><code>procedure <strong>DecodeFields</strong>(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decode and append <a class="normal" href="RALParams.html">RALParams</a> based on the ASource input.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="DelParam"></span><code>procedure <strong>DelParam</strong>(const AName: StringRAL); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Removes a RALParam matching the given AName.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="DelParam"></span><code>procedure <strong>DelParam</strong>(const AName: StringRAL; AKind: TRALParamKind); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Removes a RALParam matching the given AName and AKind.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="AppendParamLine"></span><code>procedure <strong>AppendParamLine</strong>(const ALine: StringRAL; const ANameSeparator: StringRAL; AKind: TRALParamKind);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Decodes the ALine URL and adds it to the param list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="OnFormBodyData"></span><code>procedure <strong>OnFormBodyData</strong>(Sender: TObject; AFormData: <a href="RALMultipartCoder.TRALMultipartFormData.html">TRALMultipartFormData</a>; var AFreeData: Boolean);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Event to be called during the processing of FormData.</p>
+</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Body"></span><code>property <strong>Body</strong>: TList read <a href="RALParams.TRALParams.html#GetBody">GetBody</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Grabs only the <code>body</code> kind of params, excluding headers and cookies.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="CompressType"></span><code>property <strong>CompressType</strong>: <a href="RALCompress.html#TRALCompressType">TRALCompressType</a> read FCompressType write FCompressType;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Which algorithm to <a class="normal" href="RALParams.TRALParams.html#Compress">compress</a> the content of params.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="ContentDispositionInline"></span><code>property <strong>ContentDispositionInline</strong>: Boolean read FContentDispositionInline
+      write FContentDispositionInline;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="CriptoOptions"></span><code>property <strong>CriptoOptions</strong>: <a href="RALCripto.TRALCriptoOptions.html">TRALCriptoOptions</a> read FCriptoOptions write FCriptoOptions;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Configuration of the cryptography used on params for a secure P2P traffic.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Get"></span><code>property <strong>Get</strong>[AName:StringRAL]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Grabs a param by its name.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetKind"></span><code>property <strong>GetKind</strong>[AName:StringRAL;AKind:TRALParamKind]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Grabs a param by its name and kind since you can have multiple kinds with same name.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Index"></span><code>property <strong>Index</strong>[AIndex:IntegerRAL]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Grabs a param by its <code>index</code> on the <a class="normal" href="RALParams.TRALParams.html">TRALParams</a> list.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="IndexKind"></span><code>property <strong>IndexKind</strong>[AIndex:IntegerRAL;AKind:TRALParamKind]: <a href="RALParams.TRALParam.html">TRALParam</a> read <a href="RALParams.TRALParams.html#GetParam">GetParam</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Grabs a param by its <a class="normal" href="RALParams.TRALParams.html#Index">index</a> on the <a class="normal" href="RALParams.TRALParams.html">TRALParams</a> list.</p>
+</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

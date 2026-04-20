@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALTypes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<h1 class="unit">Unit RALTypes</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Uses">Uses</a></div><div class="one_section"><a class="section" href="#PasDoc-Classes">Classes, Interfaces, Objects and Records</a></div><div class="one_section"><a class="section" href="#PasDoc-FuncsProcs">Functions and Procedures</a></div><div class="one_section"><a class="section" href="#PasDoc-Types">Types</a></div><div class="one_section"><a class="section" href="#PasDoc-Constants">Constants</a></div><div class="one_section">Variables</div></div>
+<span id="PasDoc-Description"></span><h2 class="description">Description</h2>
+<p>
+Unit for all type definitions used within PascalRAL</p>
+<p>
+ These definitions are meant to keep same code across all versions of the IDE or IDEs that might differ on the charset code or basic type length. Expect heavy usage of IFDEFs in this unit</p>
+<span id="PasDoc-Uses"></span><h2 class="uses">Uses</h2>
+<ul class="useslist"><li>bufstream</li><li>Classes</li><li>SysUtils</li><li><a href="RALConsts.html">RALConsts</a></li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Classes"></span><h3 class="cio">Classes, Interfaces, Objects and Records</h3>
+<table class="classestable wide_list">
+<tr class="listheader">
+<th class="itemname">Name</th>
+<th class="itemdesc">Description</th>
+</tr>
+<tr class="list">
+<td class="itemname">Class&nbsp;<a class="bold" href="RALTypes.TRALStringStream.html"><code>TRALStringStream</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+</table>
+<span id="PasDoc-FuncsProcs"></span><h3 class="summary">Functions and Procedures</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="RALTypes.html#RALHighStr">RALHighStr</a></strong>(const AStr: <a href="RALTypes.html#StringRAL">StringRAL</a>): integer;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>function <strong><a href="RALTypes.html#StreamToString">StreamToString</a></strong>(AStream: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="RALTypes.html#StringToStream">StringToStream</a></strong>(const AStr: <a href="RALTypes.html#StringRAL">StringRAL</a>): TStream;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Types"></span><h3 class="summary">Types</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#CharRAL">CharRAL</a></strong> = Char;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#DoubleRAL">DoubleRAL</a></strong> = double;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#Int64RAL">Int64RAL</a></strong> = int64;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#IntegerRAL">IntegerRAL</a></strong> = integer;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#PCharRAL">PCharRAL</a></strong> = &circ;<a href="RALTypes.html#CharRAL">CharRAL</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#StringRAL">StringRAL</a></strong> = string;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALBufFileStream">TRALBufFileStream</a></strong> = TFileStream;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALCriptoType">TRALCriptoType</a></strong> = (...);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALDateTimeFormat">TRALDateTimeFormat</a></strong> = (...);</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALExecBehavior">TRALExecBehavior</a></strong> = (...);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALJSONType">TRALJSONType</a></strong> = (...);</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALMethod">TRALMethod</a></strong> = (...);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALMethods">TRALMethods</a></strong> = set of <a href="RALTypes.html#TRALMethod">TRALMethod</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALParamKind">TRALParamKind</a></strong> = (...);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALParamKinds">TRALParamKinds</a></strong> = set of <a href="RALTypes.html#TRALParamKind">TRALParamKind</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALSecurityOption">TRALSecurityOption</a></strong> = (...);</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#TRALSecurityOptions">TRALSecurityOptions</a></strong> = set of <a href="RALTypes.html#TRALSecurityOption">TRALSecurityOption</a>;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Constants"></span><h3 class="summary">Constants</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALTypes.html#POSINISTR">POSINISTR</a></strong> = Low(String);</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Functions and Procedures</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALHighStr"></span><code>function <strong>RALHighStr</strong>(const AStr: <a href="RALTypes.html#StringRAL">StringRAL</a>): integer;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+old versions of Delphi that don't have sLineBreak Returns the last position of a string</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="StreamToString"></span><code>function <strong>StreamToString</strong>(AStream: TStream): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+Converts a given AStream to an UTF8String</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="StringToStream"></span><code>function <strong>StringToStream</strong>(const AStr: <a href="RALTypes.html#StringRAL">StringRAL</a>): TStream;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+Creates a TStream and writes the given AStr into it</p>
+</td></tr>
+</table>
+<h3 class="detail">Types</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="CharRAL"></span><code><strong>CharRAL</strong> = Char;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="DoubleRAL"></span><code><strong>DoubleRAL</strong> = double;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Int64RAL"></span><code><strong>Int64RAL</strong> = int64;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="IntegerRAL"></span><code><strong>IntegerRAL</strong> = integer;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PCharRAL"></span><code><strong>PCharRAL</strong> = &circ;<a href="RALTypes.html#CharRAL">CharRAL</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="StringRAL"></span><code><strong>StringRAL</strong> = string;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALBufFileStream"></span><code><strong>TRALBufFileStream</strong> = TFileStream;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALCriptoType"></span><code><strong>TRALCriptoType</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="crNone">crNone</span></li>
+<li>
+<span id="crAES128">crAES128</span></li>
+<li>
+<span id="crAES192">crAES192</span></li>
+<li>
+<span id="crAES256">crAES256</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALDateTimeFormat"></span><code><strong>TRALDateTimeFormat</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="dtfUnix">dtfUnix</span></li>
+<li>
+<span id="dtfISO8601">dtfISO8601</span></li>
+<li>
+<span id="dtfCustom">dtfCustom</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALExecBehavior"></span><code><strong>TRALExecBehavior</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="ebSingleThread">ebSingleThread</span></li>
+<li>
+<span id="ebMultiThread">ebMultiThread</span></li>
+<li>
+<span id="ebDefault">ebDefault</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALJSONType"></span><code><strong>TRALJSONType</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="rjtString">rjtString</span></li>
+<li>
+<span id="rjtNumber">rjtNumber</span></li>
+<li>
+<span id="rjtBoolean">rjtBoolean</span></li>
+<li>
+<span id="rjtObject">rjtObject</span></li>
+<li>
+<span id="rjtArray">rjtArray</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALMethod"></span><code><strong>TRALMethod</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="amALL">amALL</span></li>
+<li>
+<span id="amGET">amGET</span></li>
+<li>
+<span id="amPOST">amPOST</span></li>
+<li>
+<span id="amPUT">amPUT</span></li>
+<li>
+<span id="amPATCH">amPATCH</span></li>
+<li>
+<span id="amDELETE">amDELETE</span></li>
+<li>
+<span id="amOPTIONS">amOPTIONS</span></li>
+<li>
+<span id="amHEAD">amHEAD</span></li>
+<li>
+<span id="amTRACE">amTRACE</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALMethods"></span><code><strong>TRALMethods</strong> = set of <a href="RALTypes.html#TRALMethod">TRALMethod</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALParamKind"></span><code><strong>TRALParamKind</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="rpkNONE">rpkNONE</span></li>
+<li>
+<span id="rpkBODY">rpkBODY</span></li>
+<li>
+<span id="rpkFIELD">rpkFIELD</span></li>
+<li>
+<span id="rpkHEADER">rpkHEADER</span></li>
+<li>
+<span id="rpkQUERY">rpkQUERY</span></li>
+<li>
+<span id="rpkCOOKIE">rpkCOOKIE</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALParamKinds"></span><code><strong>TRALParamKinds</strong> = set of <a href="RALTypes.html#TRALParamKind">TRALParamKind</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALSecurityOption"></span><code><strong>TRALSecurityOption</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="rsoBruteForceProtection">rsoBruteForceProtection</span></li>
+<li>
+<span id="rsoFloodProtection">rsoFloodProtection</span></li>
+<li>
+<span id="rsoPathTransvBlackList">rsoPathTransvBlackList</span></li>
+</ul>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALSecurityOptions"></span><code><strong>TRALSecurityOptions</strong> = set of <a href="RALTypes.html#TRALSecurityOption">TRALSecurityOption</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Constants</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="POSINISTR"></span><code><strong>POSINISTR</strong> = Low(String);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">repository</a><hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

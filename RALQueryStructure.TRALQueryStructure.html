@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALQueryStructure: Class TRALQueryStructure</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALQueryStructure"></span><h1 class="cio">Class TRALQueryStructure</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section">Properties</div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALQueryStructure.html">RALQueryStructure</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALQueryStructure = class(TObject)</code></p>
+<h2 class="description">Description</h2>
+<p>
+TRALQueryStructure</p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="thisitem">TRALQueryStructure</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#ExportToBinary">ExportToBinary</a></strong>(ADataset: TDataSet) : TStream;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#ExportToJSON">ExportToJSON</a></strong>(ADataset: TDataSet): TStream;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#GetStructureVersion">GetStructureVersion</a></strong>: byte;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#GetQueryClass">GetQueryClass</a></strong>(ADataset: TDataSet): <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#GetQueryParams">GetQueryParams</a></strong>(ADataset: TDataSet): TParams;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALQueryStructure.TRALQueryStructure.html#GetQuerySQL">GetQuerySQL</a></strong>(ADataset: TDataSet): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#ImportFromBinary">ImportFromBinary</a></strong>(AStream: TStream; var ASQL: <a href="RALTypes.html#StringRAL">StringRAL</a>; var AParams: TParams; var AQueryType: <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#ImportFromBinary">ImportFromBinary</a></strong>(AStream: TStream; ADataset: TDataSet); overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#ImportFromJSON">ImportFromJSON</a></strong>(AStream: TStream; var ASQL: <a href="RALTypes.html#StringRAL">StringRAL</a>; var AParams: TParams; var AQueryType: <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>); overload;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#ImportFromJSON">ImportFromJSON</a></strong>(AStream: TStream; ADataset: TDataSet); overload;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#SetQueryParams">SetQueryParams</a></strong>(ADataset: TDataSet; AParams: TParams);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALQueryStructure.TRALQueryStructure.html#SetQuerySQL">SetQuerySQL</a></strong>(ADataset: TDataSet; AString: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ExportToBinary"></span><code>function <strong>ExportToBinary</strong>(ADataset: TDataSet) : TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ExportToJSON"></span><code>function <strong>ExportToJSON</strong>(ADataset: TDataSet): TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetStructureVersion"></span><code>function <strong>GetStructureVersion</strong>: byte;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetQueryClass"></span><code>function <strong>GetQueryClass</strong>(ADataset: TDataSet): <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetQueryParams"></span><code>function <strong>GetQueryParams</strong>(ADataset: TDataSet): TParams;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetQuerySQL"></span><code>function <strong>GetQuerySQL</strong>(ADataset: TDataSet): <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ImportFromBinary"></span><code>procedure <strong>ImportFromBinary</strong>(AStream: TStream; var ASQL: <a href="RALTypes.html#StringRAL">StringRAL</a>; var AParams: TParams; var AQueryType: <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ImportFromBinary"></span><code>procedure <strong>ImportFromBinary</strong>(AStream: TStream; ADataset: TDataSet); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ImportFromJSON"></span><code>procedure <strong>ImportFromJSON</strong>(AStream: TStream; var ASQL: <a href="RALTypes.html#StringRAL">StringRAL</a>; var AParams: TParams; var AQueryType: <a href="RALDBBase.html#TRALDBDriverType">TRALDBDriverType</a>); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="ImportFromJSON"></span><code>procedure <strong>ImportFromJSON</strong>(AStream: TStream; ADataset: TDataSet); overload;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetQueryParams"></span><code>procedure <strong>SetQueryParams</strong>(ADataset: TDataSet; AParams: TParams);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetQuerySQL"></span><code>procedure <strong>SetQuerySQL</strong>(ADataset: TDataSet; AString: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALHashBase: Class TRALHashBase</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALHashBase"></span><h1 class="cio">Class TRALHashBase</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALHashBase.html">RALHashBase</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALHashBase = class(TObject)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALHashBase</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="thisitem">TRALHashBase</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALHashBase.TRALHashBase.html#Create">Create</a></strong>(AOutputType: <a href="RALHashBase.html#TRALHashOutputType">TRALHashOutputType</a> = <a href="RALHashBase.html#rhotHex">rhotHex</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HashAsStream">HashAsStream</a></strong>(AValue: TStream): TStream;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HashAsString">HashAsString</a></strong>(const AValue: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HashAsString">HashAsString</a></strong>(AValue: TStream): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HMACAsString">HMACAsString</a></strong>(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HMACAsString">HMACAsString</a></strong>(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HMACAsString">HMACAsString</a></strong>(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#DigestToBase64">DigestToBase64</a></strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#DigestToBase64Url">DigestToBase64Url</a></strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#DigestToHex">DigestToHex</a></strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#Finalize">Finalize</a></strong>: TBytes; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetBuffer">GetBuffer</a></strong>(AIndex: IntegerRAL): Pointer; virtual; abstract;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetBufLength">GetBufLength</a></strong>: IntegerRAL; virtual; abstract;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetDigest">GetDigest</a></strong>(AValue: TBytes): TBytes; overload; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetDigest">GetDigest</a></strong>(const AValue: StringRAL): TBytes; overload; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetDigest">GetDigest</a></strong>(AValue: TStream): TBytes; overload; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetIndex">GetIndex</a></strong>: IntegerRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#GetLenBit">GetLenBit</a></strong>: UInt64RAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALHashBase.TRALHashBase.html#HMACAsDigest">HMACAsDigest</a></strong>(AValue: TStream; AKey: TBytes): TBytes; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#Compress">Compress</a></strong>; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#HashBytes">HashBytes</a></strong>(AData: pbyte; ALength: IntegerRAL); virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#Initialize">Initialize</a></strong>; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#UpdateBuffer">UpdateBuffer</a></strong>(AValue: TStream); overload; virtual;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#UpdateBuffer">UpdateBuffer</a></strong>(AValue: TBytes); overload; virtual;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALHashBase.TRALHashBase.html#UpdateBuffer">UpdateBuffer</a></strong>(const AValue: StringRAL); overload; virtual;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALHashBase.TRALHashBase.html#OutputType">OutputType</a></strong>: <a href="RALHashBase.html#TRALHashOutputType">TRALHashOutputType</a> read FOutputType write FOutputType;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOutputType: <a href="RALHashBase.html#TRALHashOutputType">TRALHashOutputType</a> = <a href="RALHashBase.html#rhotHex">rhotHex</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HashAsStream"></span><code>function <strong>HashAsStream</strong>(AValue: TStream): TStream;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a stream hash from a stream</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HashAsString"></span><code>function <strong>HashAsString</strong>(const AValue: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a string hash from a string</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HashAsString"></span><code>function <strong>HashAsString</strong>(AValue: TStream): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a string hash from a stream</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HMACAsString"></span><code>function <strong>HMACAsString</strong>(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a string of a HMAC generated given an Array of bytes</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HMACAsString"></span><code>function <strong>HMACAsString</strong>(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a string of a HMAC generated given an UTF8String</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="HMACAsString"></span><code>function <strong>HMACAsString</strong>(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns a string of a HMAC generated given a Stream</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="DigestToBase64"></span><code>function <strong>DigestToBase64</strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Convert hash (return <a class="normal" href="RALHashBase.TRALHashBase.html#Finalize">Finalize</a>) to base64</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="DigestToBase64Url"></span><code>function <strong>DigestToBase64Url</strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Convert hash (return <a class="normal" href="RALHashBase.TRALHashBase.html#Finalize">Finalize</a>) to base64-url</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="DigestToHex"></span><code>function <strong>DigestToHex</strong>(AValue: TBytes): StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Convert hash (return <a class="normal" href="RALHashBase.TRALHashBase.html#Finalize">Finalize</a>) to hexadecimal</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Finalize"></span><code>function <strong>Finalize</strong>: TBytes; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+<code>Finalize</code> the hash and returns it</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetBuffer"></span><code>function <strong>GetBuffer</strong>(AIndex: IntegerRAL): Pointer; virtual; abstract;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns the buffer pointer at a given position</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetBufLength"></span><code>function <strong>GetBufLength</strong>: IntegerRAL; virtual; abstract;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns the length of the buffer</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetDigest"></span><code>function <strong>GetDigest</strong>(AValue: TBytes): TBytes; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Generates a hash of a given piece of Array of Bytes content</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetDigest"></span><code>function <strong>GetDigest</strong>(const AValue: StringRAL): TBytes; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Generates a hash of a given piece of UTF8String content</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetDigest"></span><code>function <strong>GetDigest</strong>(AValue: TStream): TBytes; overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Generates a hash of a given piece of Stream content</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetIndex"></span><code>function <strong>GetIndex</strong>: IntegerRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns the position of the buffer</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetLenBit"></span><code>function <strong>GetLenBit</strong>: UInt64RAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns the total buffer in bits</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="HMACAsDigest"></span><code>function <strong>HMACAsDigest</strong>(AValue: TStream; AKey: TBytes): TBytes; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Generates an HMAC hash of a given content</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Compress"></span><code>procedure <strong>Compress</strong>; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to <code>compress</code> the content, generating the hash</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="HashBytes"></span><code>procedure <strong>HashBytes</strong>(AData: pbyte; ALength: IntegerRAL); virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Picks up incoming and compact content according to buffer length</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="Initialize"></span><code>procedure <strong>Initialize</strong>; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to <code>initialize</code> the hash</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="UpdateBuffer"></span><code>procedure <strong>UpdateBuffer</strong>(AValue: TStream); overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to insert more content that will generate the hash</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="UpdateBuffer"></span><code>procedure <strong>UpdateBuffer</strong>(AValue: TBytes); overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to insert more content that will generate the hash</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="UpdateBuffer"></span><code>procedure <strong>UpdateBuffer</strong>(const AValue: StringRAL); overload; virtual;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Used to insert more content that will generate the hash</p>
+</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="OutputType"></span><code>property <strong>OutputType</strong>: <a href="RALHashBase.html#TRALHashOutputType">TRALHashOutputType</a> read FOutputType write FOutputType;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Identifies the formatting of the hash</p>
+</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

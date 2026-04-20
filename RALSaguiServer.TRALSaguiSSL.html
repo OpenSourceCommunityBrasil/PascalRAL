@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALSaguiServer: Class TRALSaguiSSL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALSaguiSSL"></span><h1 class="cio">Class TRALSaguiSSL</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section">Methods</div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALSaguiServer.html">RALSaguiServer</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALSaguiSSL = class(<a class="normal" href="RALServer.TRALSSL.html">TRALSSL</a>)</code></p>
+<h2 class="description">Description</h2>
+<p>
+<code>TRALSaguiSSL</code></p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="ancestor"><a class="normal" href="RALServer.TRALSSL.html">TRALSSL</a></li>
+<li class="thisitem">TRALSaguiSSL</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#Certificate">Certificate</a></strong>: StringRAL read FCertificate write FCertificate;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#DHParams">DHParams</a></strong>: StringRAL read FDHParams write FDHParams;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#Priorities">Priorities</a></strong>: StringRAL read FPriorities write FPriorities;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#PrivateKey">PrivateKey</a></strong>: StringRAL read FPrivateKey write FPrivateKey;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#PrivatePassword">PrivatePassword</a></strong>: StringRAL read FPrivatePassword write FPrivatePassword;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALSaguiServer.TRALSaguiSSL.html#Trust">Trust</a></strong>: StringRAL read FTrust write FTrust;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Certificate"></span><code>property <strong>Certificate</strong>: StringRAL read FCertificate write FCertificate;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Content of the <code>certificate</code> (cert.pem) to be used by the HTTPS server.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="DHParams"></span><code>property <strong>DHParams</strong>: StringRAL read FDHParams write FDHParams;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Content of the Diffie-Hellman parameters (dh.pem) to be used by the HTTPS server for key exchange.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Priorities"></span><code>property <strong>Priorities</strong>: StringRAL read FPriorities write FPriorities;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Content of the cipher algorithm. Default: <code>NORMAL</code>.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="PrivateKey"></span><code>property <strong>PrivateKey</strong>: StringRAL read FPrivateKey write FPrivateKey;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Content of the private key (key.pem) to be used by the HTTPS server.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="PrivatePassword"></span><code>property <strong>PrivatePassword</strong>: StringRAL read FPrivatePassword write FPrivatePassword;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+{ Password of the private key.</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Trust"></span><code>property <strong>Trust</strong>: StringRAL read FTrust write FTrust;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Content of the <a class="normal" href="RALSaguiServer.TRALSaguiSSL.html#Certificate">certificate</a> (ca.pem) to be used by the HTTPS server for client authentication.</p>
+</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

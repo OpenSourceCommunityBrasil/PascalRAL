@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: libsagui</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<h1 class="unit">Unit libsagui</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Uses">Uses</a></div><div class="one_section"><a class="section" href="#PasDoc-Classes">Classes, Interfaces, Objects and Records</a></div><div class="one_section"><a class="section" href="#PasDoc-FuncsProcs">Functions and Procedures</a></div><div class="one_section"><a class="section" href="#PasDoc-Types">Types</a></div><div class="one_section"><a class="section" href="#PasDoc-Constants">Constants</a></div><div class="one_section"><a class="section" href="#PasDoc-Variables">Variables</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="description">Description</h2>
+<p>
+Cross-platform low-level Pascal binding for the Sagui library.</p>
+<span id="PasDoc-Uses"></span><h2 class="uses">Uses</h2>
+<ul class="useslist"><li>RTLConsts</li><li>SysUtils</li><li>StrUtils</li><li>Math</li><li>Classes</li><li>Generics.Collections</li><li>Windows</li><li>DynLibs</li><li>SyncObjs</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Classes"></span><h3 class="cio">Classes, Interfaces, Objects and Records</h3>
+<table class="classestable wide_list">
+<tr class="listheader">
+<th class="itemname">Name</th>
+<th class="itemdesc">Description</th>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_str.html"><code>sg_str</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_strmap.html"><code>sg_strmap</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_httpauth.html"><code>sg_httpauth</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_httpupld.html"><code>sg_httpupld</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_httpreq.html"><code>sg_httpreq</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_httpres.html"><code>sg_httpres</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_httpsrv.html"><code>sg_httpsrv</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_entrypoint.html"><code>sg_entrypoint</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_entrypoints.html"><code>sg_entrypoints</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_route.html"><code>sg_route</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_router.html"><code>sg_router</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_expr.html"><code>sg_expr</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_expr_argument.html"><code>sg_expr_argument</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.sg_expr_extension.html"><code>sg_expr_extension</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Class&nbsp;<a class="bold" href="libsagui.ESgLibNotLoaded.html"><code>ESgLibNotLoaded</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Class&nbsp;<a class="bold" href="libsagui.ESgUnloadEvent.html"><code>ESgUnloadEvent</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Class&nbsp;<a class="bold" href="libsagui.TSgLibUnloadHolder.html"><code>TSgLibUnloadHolder</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list2">
+<td class="itemname">Class&nbsp;<a class="bold" href="libsagui.TSgUnloadEvents.html"><code>TSgUnloadEvents</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+<tr class="list">
+<td class="itemname">Record&nbsp;<a class="bold" href="libsagui.SgLib.html"><code>SgLib</code></a></td>
+<td class="itemdesc">&nbsp;</td>
+</tr>
+</table>
+<span id="PasDoc-FuncsProcs"></span><h3 class="summary">Functions and Procedures</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_send">sg_httpres_send</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_download">sg_httpres_download</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_render">sg_httpres_render</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_zsend">sg_httpres_zsend</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_zdownload">sg_httpres_zdownload</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#sg_httpres_zrender">sg_httpres_zrender</a></strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#cpow">cpow</a></strong>(const X, Y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl; inline;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code>function <strong><a href="libsagui.html#cfmod">cfmod</a></strong>(const X, Y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl; inline;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Types"></span><h3 class="summary">Types</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cbool">cbool</a></strong> = Boolean;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#cchar">cchar</a></strong> = Byte;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cdouble">cdouble</a></strong> = Double;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#cenum">cenum</a></strong> = <a href="libsagui.html#cint">cint</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cint">cint</a></strong> = Int32;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#csize_t">csize_t</a></strong> = NativeUInt;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cssize_t">cssize_t</a></strong> = NativeInt;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#ctime_t">ctime_t</a></strong> = NativeInt;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cuint">cuint</a></strong> = UInt32;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#cuint16_t">cuint16_t</a></strong> = UInt16;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#cuint64_t">cuint64_t</a></strong> = UInt64;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#cva_list">cva_list</a></strong> = Pointer;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Pcbool">Pcbool</a></strong> = &circ;Boolean;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Pcchar">Pcchar</a></strong> = MarshaledAString;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Pcvoid">Pcvoid</a></strong> = Pointer;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#PPcvoid">PPcvoid</a></strong> = PPointer;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#PPsg_entrypoint">PPsg_entrypoint</a></strong> = &circ;<a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#PPsg_httpupld">PPsg_httpupld</a></strong> = &circ;<a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#PPsg_route">PPsg_route</a></strong> = &circ;<a href="libsagui.html#Psg_route">Psg_route</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#PPsg_strmap">PPsg_strmap</a></strong> = &circ;<a href="libsagui.html#Psg_strmap">Psg_strmap</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a></strong> = &circ;<a href="libsagui.sg_entrypoint.html">sg_entrypoint</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a></strong> = &circ;<a href="libsagui.sg_entrypoints.html">sg_entrypoints</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_expr">Psg_expr</a></strong> = &circ;<a href="libsagui.sg_expr.html">sg_expr</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_expr_argument">Psg_expr_argument</a></strong> = &circ;<a href="libsagui.sg_expr_argument.html">sg_expr_argument</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_expr_extension">Psg_expr_extension</a></strong> = &circ;<a href="libsagui.sg_expr_extension.html">sg_expr_extension</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_httpauth">Psg_httpauth</a></strong> = &circ;<a href="libsagui.sg_httpauth.html">sg_httpauth</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_httpreq">Psg_httpreq</a></strong> = &circ;<a href="libsagui.sg_httpreq.html">sg_httpreq</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_httpres">Psg_httpres</a></strong> = &circ;<a href="libsagui.sg_httpres.html">sg_httpres</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a></strong> = &circ;<a href="libsagui.sg_httpsrv.html">sg_httpsrv</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_httpupld">Psg_httpupld</a></strong> = &circ;<a href="libsagui.sg_httpupld.html">sg_httpupld</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_route">Psg_route</a></strong> = &circ;<a href="libsagui.sg_route.html">sg_route</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_router">Psg_router</a></strong> = &circ;<a href="libsagui.sg_router.html">sg_router</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_str">Psg_str</a></strong> = &circ;<a href="libsagui.sg_str.html">sg_str</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#Psg_strmap">Psg_strmap</a></strong> = &circ;<a href="libsagui.sg_strmap.html">sg_strmap</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_iter_cb">sg_entrypoints_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_err_cb">sg_err_cb</a></strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const err: <a href="libsagui.html#Pcchar">Pcchar</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_err_type">sg_expr_err_type</a></strong> = <a href="libsagui.html#cenum">cenum</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_func">sg_expr_func</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; args: <a href="libsagui.html#Psg_expr_argument">Psg_expr_argument</a>; const identifier: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_fmod_func">sg_fmod_func</a></strong> = function(const x: <a href="libsagui.html#cdouble">cdouble</a>; const y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_free_cb">sg_free_cb</a></strong> = procedure(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_free_func">sg_free_func</a></strong> = procedure(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_cb">sg_httpauth_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a></strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>); cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_cli_cb">sg_httpsrv_cli_cb</a></strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const client: <a href="libsagui.html#Pcvoid">Pcvoid</a>; closed: <a href="libsagui.html#Pcbool">Pcbool</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpuplds_iter_cb">sg_httpuplds_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_cb">sg_httpupld_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; handle: <a href="libsagui.html#PPcvoid">PPcvoid</a>; const dir: <a href="libsagui.html#Pcchar">Pcchar</a>; const field: <a href="libsagui.html#Pcchar">Pcchar</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const mime: <a href="libsagui.html#Pcchar">Pcchar</a>; const encoding: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_malloc_func">sg_malloc_func</a></strong> = function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_pow_func">sg_pow_func</a></strong> = function(const x: <a href="libsagui.html#cdouble">cdouble</a>; const y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_read_cb">sg_read_cb</a></strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_realloc_func">sg_realloc_func</a></strong> = function(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_dispatch_cb">sg_router_dispatch_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_match_cb">sg_router_match_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_iter_cb">sg_routes_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_cb">sg_route_cb</a></strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_save_as_cb">sg_save_as_cb</a></strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_save_cb">sg_save_cb</a></strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_segments_iter_cb">sg_segments_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; index: <a href="libsagui.html#cuint">cuint</a>; const segment: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_iter_cb">sg_strmap_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_sort_cb">sg_strmap_sort_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; pair_a: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; pair_b: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_vars_iter_cb">sg_vars_iter_cb</a></strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_write_cb">sg_write_cb</a></strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Constants"></span><h3 class="summary">Constants</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_VERSION_MAJOR">SG_VERSION_MAJOR</a></strong> = 3;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_VERSION_MINOR">SG_VERSION_MINOR</a></strong> = 5;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_VERSION_PATCH">SG_VERSION_PATCH</a></strong> = 2;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_VERSION_HEX">SG_VERSION_HEX</a></strong> = (<a href="libsagui.html#SG_VERSION_MAJOR">SG_VERSION_MAJOR</a> shl 16) or (<a href="libsagui.html#SG_VERSION_MINOR">SG_VERSION_MINOR</a> shl 8) or 
+    <a href="libsagui.html#SG_VERSION_PATCH">SG_VERSION_PATCH</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_VERSION_MAJOR_STR">SG_VERSION_MAJOR_STR</a></strong> = '3';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_ERR_SIZE">SG_ERR_SIZE</a></strong> = 256;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_LIB_NAME">SG_LIB_NAME</a></strong> = Concat(
+
+    'libsagui-', <a href="libsagui.html#SG_VERSION_MAJOR_STR">SG_VERSION_MAJOR_STR</a>
+, '.', SharedSuffix
+
+  );</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SSgLibEmptyName">SSgLibEmptyName</a></strong> = 'Empty library name.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SSgLibNotLoaded">SSgLibNotLoaded</a></strong> = Concat('Library ''%s'' not loaded. If it is not available ',
+   'on the system, please download it at: https://github.com/risoflora/libsagui/releases');</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SSgLibInvalid">SSgLibInvalid</a></strong> = 'Invalid library ''%s''.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SSgLibVersion">SSgLibVersion</a></strong> = 'Application requires Sagui library v%d.%d.%d or higher.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SSgUnloadEventAlreadyRegistered">SSgUnloadEventAlreadyRegistered</a></strong> = 'Unload event already registered.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_UNKNOWN">SG_EXPR_ERR_UNKNOWN</a></strong> = 0;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_UNEXPECTED_NUMBER">SG_EXPR_ERR_UNEXPECTED_NUMBER</a></strong> = 1;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_UNEXPECTED_WORD">SG_EXPR_ERR_UNEXPECTED_WORD</a></strong> = 2;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_UNEXPECTED_PARENS">SG_EXPR_ERR_UNEXPECTED_PARENS</a></strong> = 3;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_MISSING_OPERAND">SG_EXPR_ERR_MISSING_OPERAND</a></strong> = 4;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_UNKNOWN_OPERATOR">SG_EXPR_ERR_UNKNOWN_OPERATOR</a></strong> = 5;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_INVALID_FUNC_NAME">SG_EXPR_ERR_INVALID_FUNC_NAME</a></strong> = 6;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_BAD_PARENS">SG_EXPR_ERR_BAD_PARENS</a></strong> = 7;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_TOO_FEW_FUNC_ARGS">SG_EXPR_ERR_TOO_FEW_FUNC_ARGS</a></strong> = 8;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_FIRST_ARG_IS_NOT_VAR">SG_EXPR_ERR_FIRST_ARG_IS_NOT_VAR</a></strong> = 9;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_BAD_VARIABLE_NAME">SG_EXPR_ERR_BAD_VARIABLE_NAME</a></strong> = 10;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#SG_EXPR_ERR_BAD_ASSIGNMENT">SG_EXPR_ERR_BAD_ASSIGNMENT</a></strong> = 11;</code></td>
+</tr>
+</table>
+<span id="PasDoc-Variables"></span><h3 class="summary">Variables</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_version">sg_version</a></strong>: function: <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_version_str">sg_version_str</a></strong>: function: <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_mm_set">sg_mm_set</a></strong>: function(malloc_func: <a href="libsagui.html#sg_malloc_func">sg_malloc_func</a>; realloc_func: <a href="libsagui.html#sg_realloc_func">sg_realloc_func</a>; free_func: <a href="libsagui.html#sg_free_func">sg_free_func</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_malloc">sg_malloc</a></strong>: function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_alloc">sg_alloc</a></strong>: function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_realloc">sg_realloc</a></strong>: function(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_free">sg_free</a></strong>: procedure(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_math_set">sg_math_set</a></strong>: function(pow_func: <a href="libsagui.html#sg_pow_func">sg_pow_func</a>; fmod_func: <a href="libsagui.html#sg_fmod_func">sg_fmod_func</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strerror">sg_strerror</a></strong>: function(errnum: <a href="libsagui.html#cint">cint</a>; errmsg: <a href="libsagui.html#Pcchar">Pcchar</a>; errlen: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_is_post">sg_is_post</a></strong>: function(const method: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_extract_entrypoint">sg_extract_entrypoint</a></strong>: function(const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_tmpdir">sg_tmpdir</a></strong>: function: <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_eor">sg_eor</a></strong>: function(err: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_ip">sg_ip</a></strong>: function(const socket: <a href="libsagui.html#Pcvoid">Pcvoid</a>; buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_new">sg_str_new</a></strong>: function: <a href="libsagui.html#Psg_str">Psg_str</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_free">sg_str_free</a></strong>: procedure(str: <a href="libsagui.html#Psg_str">Psg_str</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_write">sg_str_write</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_printf_va">sg_str_printf_va</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const fmt: <a href="libsagui.html#Pcchar">Pcchar</a>; ap: <a href="libsagui.html#cva_list">cva_list</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_printf">sg_str_printf</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const fmt: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl  varargs;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_content">sg_str_content</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_length">sg_str_length</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_str_clear">sg_str_clear</a></strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_name">sg_strmap_name</a></strong>: function(pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_val">sg_strmap_val</a></strong>: function(pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_add">sg_strmap_add</a></strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_set">sg_strmap_set</a></strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_find">sg_strmap_find</a></strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; pair: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_get">sg_strmap_get</a></strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_rm">sg_strmap_rm</a></strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_iter">sg_strmap_iter</a></strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; cb: <a href="libsagui.html#sg_strmap_iter_cb">sg_strmap_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_sort">sg_strmap_sort</a></strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cb: <a href="libsagui.html#sg_strmap_sort_cb">sg_strmap_sort_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_count">sg_strmap_count</a></strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_next">sg_strmap_next</a></strong>: function(next: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_strmap_cleanup">sg_strmap_cleanup</a></strong>: procedure(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_set_realm">sg_httpauth_set_realm</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const realm: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_realm">sg_httpauth_realm</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_deny2">sg_httpauth_deny2</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const reason: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_deny">sg_httpauth_deny</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const reason: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_cancel">sg_httpauth_cancel</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_usr">sg_httpauth_usr</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpauth_pwd">sg_httpauth_pwd</a></strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpuplds_iter">sg_httpuplds_iter</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; cb: <a href="libsagui.html#sg_httpuplds_iter_cb">sg_httpuplds_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpuplds_next">sg_httpuplds_next</a></strong>: function(upld: <a href="libsagui.html#PPsg_httpupld">PPsg_httpupld</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpuplds_count">sg_httpuplds_count</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_handle">sg_httpupld_handle</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_dir">sg_httpupld_dir</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_field">sg_httpupld_field</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_name">sg_httpupld_name</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_mime">sg_httpupld_mime</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_encoding">sg_httpupld_encoding</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_size">sg_httpupld_size</a></strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cuint64_t">cuint64_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_save">sg_httpupld_save</a></strong>: function(upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpupld_save_as">sg_httpupld_save_as</a></strong>: function(upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_srv">sg_httpreq_srv</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_headers">sg_httpreq_headers</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_cookies">sg_httpreq_cookies</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_params">sg_httpreq_params</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_fields">sg_httpreq_fields</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_version">sg_httpreq_version</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_method">sg_httpreq_method</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_path">sg_httpreq_path</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_payload">sg_httpreq_payload</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_str">Psg_str</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_is_uploading">sg_httpreq_is_uploading</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_uploads">sg_httpreq_uploads</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_client">sg_httpreq_client</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_tls_session">sg_httpreq_tls_session</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_isolate">sg_httpreq_isolate</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_set_user_data">sg_httpreq_set_user_data</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpreq_user_data">sg_httpreq_user_data</a></strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_headers">sg_httpres_headers</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_set_cookie">sg_httpres_set_cookie</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_sendbinary">sg_httpres_sendbinary</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_sendfile2">sg_httpres_sendfile2</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; const disposition: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_sendfile">sg_httpres_sendfile</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; downloaded: <a href="libsagui.html#cbool">cbool</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_sendstream">sg_httpres_sendstream</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendbinary2">sg_httpres_zsendbinary2</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendbinary">sg_httpres_zsendbinary</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendstream2">sg_httpres_zsendstream2</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendstream">sg_httpres_zsendstream</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendfile2">sg_httpres_zsendfile2</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; const disposition: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_zsendfile">sg_httpres_zsendfile</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; downloaded: <a href="libsagui.html#cbool">cbool</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_reset">sg_httpres_reset</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_clear">sg_httpres_clear</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpres_is_empty">sg_httpres_is_empty</a></strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_new2">sg_httpsrv_new2</a></strong>: function(auth_cb: <a href="libsagui.html#sg_httpauth_cb">sg_httpauth_cb</a>; req_cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; err_cb: <a href="libsagui.html#sg_err_cb">sg_err_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_new">sg_httpsrv_new</a></strong>: function(cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_free">sg_httpsrv_free</a></strong>: procedure(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>); cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_tls_listen4">sg_httpsrv_tls_listen4</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; const priorities: <a href="libsagui.html#Pcchar">Pcchar</a>; const hostname: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; backlog: <a href="libsagui.html#cuint">cuint</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_tls_listen3">sg_httpsrv_tls_listen3</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; const priorities: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_tls_listen2">sg_httpsrv_tls_listen2</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_tls_listen">sg_httpsrv_tls_listen</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_listen2">sg_httpsrv_listen2</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; hostname: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; backlog: <a href="libsagui.html#cuint">cuint</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_listen">sg_httpsrv_listen</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_shutdown">sg_httpsrv_shutdown</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_port">sg_httpsrv_port</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint16_t">cuint16_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_is_threaded">sg_httpsrv_is_threaded</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_cli_cb">sg_httpsrv_set_cli_cb</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cb: <a href="libsagui.html#sg_httpsrv_cli_cb">sg_httpsrv_cli_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_upld_cbs">sg_httpsrv_set_upld_cbs</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cb: <a href="libsagui.html#sg_httpupld_cb">sg_httpupld_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; write_cb: <a href="libsagui.html#sg_write_cb">sg_write_cb</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; save_cb: <a href="libsagui.html#sg_save_cb">sg_save_cb</a>; save_as_cb: <a href="libsagui.html#sg_save_as_cb">sg_save_as_cb</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_upld_dir">sg_httpsrv_set_upld_dir</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const dir: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_upld_dir">sg_httpsrv_upld_dir</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_post_buf_size">sg_httpsrv_set_post_buf_size</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_post_buf_size">sg_httpsrv_post_buf_size</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_payld_limit">sg_httpsrv_set_payld_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_payld_limit">sg_httpsrv_payld_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_uplds_limit">sg_httpsrv_set_uplds_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#cuint64_t">cuint64_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_uplds_limit">sg_httpsrv_uplds_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint64_t">cuint64_t</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_thr_pool_size">sg_httpsrv_set_thr_pool_size</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; size: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_thr_pool_size">sg_httpsrv_thr_pool_size</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_con_timeout">sg_httpsrv_set_con_timeout</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; timeout: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_con_timeout">sg_httpsrv_con_timeout</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_set_con_limit">sg_httpsrv_set_con_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_con_limit">sg_httpsrv_con_limit</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_httpsrv_handle">sg_httpsrv_handle</a></strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoint_name">sg_entrypoint_name</a></strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoint_set_user_data">sg_entrypoint_set_user_data</a></strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoint_user_data">sg_entrypoint_user_data</a></strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_new">sg_entrypoints_new</a></strong>: function: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_free">sg_entrypoints_free</a></strong>: procedure(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_add">sg_entrypoints_add</a></strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_rm">sg_entrypoints_rm</a></strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_iter">sg_entrypoints_iter</a></strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; cb: <a href="libsagui.html#sg_entrypoints_iter_cb">sg_entrypoints_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_clear">sg_entrypoints_clear</a></strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_entrypoints_find">sg_entrypoints_find</a></strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; entrypoint: <a href="libsagui.html#PPsg_entrypoint">PPsg_entrypoint</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_handle">sg_route_handle</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_match">sg_route_match</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_rawpattern">sg_route_rawpattern</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_pattern">sg_route_pattern</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_path">sg_route_path</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_segments_iter">sg_route_segments_iter</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_segments_iter_cb">sg_segments_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_vars_iter">sg_route_vars_iter</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_vars_iter_cb">sg_vars_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_route_user_data">sg_route_user_data</a></strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_add2">sg_routes_add2</a></strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>; route: <a href="libsagui.html#PPsg_route">PPsg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>; errmsg: <a href="libsagui.html#Pcchar">Pcchar</a>; errlen: <a href="libsagui.html#csize_t">csize_t</a>; cb: <a href="libsagui.html#sg_route_cb">sg_route_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_add">sg_routes_add</a></strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>; cb: <a href="libsagui.html#sg_route_cb">sg_route_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_rm">sg_routes_rm</a></strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_iter">sg_routes_iter</a></strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_routes_iter_cb">sg_routes_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_next">sg_routes_next</a></strong>: function(route: <a href="libsagui.html#PPsg_route">PPsg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_count">sg_routes_count</a></strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_routes_cleanup">sg_routes_cleanup</a></strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_new">sg_router_new</a></strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Psg_router">Psg_router</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_free">sg_router_free</a></strong>: procedure(router: <a href="libsagui.html#Psg_router">Psg_router</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_dispatch2">sg_router_dispatch2</a></strong>: function(router: <a href="libsagui.html#Psg_router">Psg_router</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>; dispatch_cb: <a href="libsagui.html#sg_router_dispatch_cb">sg_router_dispatch_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; match_cb: <a href="libsagui.html#sg_router_match_cb">sg_router_match_cb</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_router_dispatch">sg_router_dispatch</a></strong>: function(router: <a href="libsagui.html#Psg_router">Psg_router</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_new">sg_expr_new</a></strong>: function: <a href="libsagui.html#Psg_expr">Psg_expr</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_free">sg_expr_free</a></strong>: procedure(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>); cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_compile">sg_expr_compile</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const str: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>; extensions: <a href="libsagui.html#Psg_expr_extension">Psg_expr_extension</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_clear">sg_expr_clear</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_eval">sg_expr_eval</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_var">sg_expr_var</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_set_var">sg_expr_set_var</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>; const val: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_arg">sg_expr_arg</a></strong>: function(args: <a href="libsagui.html#Psg_expr_argument">Psg_expr_argument</a>; index: <a href="libsagui.html#cint">cint</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_near">sg_expr_near</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_err">sg_expr_err</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#sg_expr_err_type">sg_expr_err_type</a>; cdecl;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_strerror">sg_expr_strerror</a></strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="libsagui.html#sg_expr_calc">sg_expr_calc</a></strong>: function(const str: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Functions and Procedures</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_send"></span><code>function <strong>sg_httpres_send</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_download"></span><code>function <strong>sg_httpres_download</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_render"></span><code>function <strong>sg_httpres_render</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsend"></span><code>function <strong>sg_httpres_zsend</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zdownload"></span><code>function <strong>sg_httpres_zdownload</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zrender"></span><code>function <strong>sg_httpres_zrender</strong>(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cpow"></span><code>function <strong>cpow</strong>(const X, Y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cfmod"></span><code>function <strong>cfmod</strong>(const X, Y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl; inline;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Types</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cbool"></span><code><strong>cbool</strong> = Boolean;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cchar"></span><code><strong>cchar</strong> = Byte;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cdouble"></span><code><strong>cdouble</strong> = Double;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cenum"></span><code><strong>cenum</strong> = <a href="libsagui.html#cint">cint</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cint"></span><code><strong>cint</strong> = Int32;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="csize_t"></span><code><strong>csize_t</strong> = NativeUInt;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cssize_t"></span><code><strong>cssize_t</strong> = NativeInt;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ctime_t"></span><code><strong>ctime_t</strong> = NativeInt;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cuint"></span><code><strong>cuint</strong> = UInt32;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cuint16_t"></span><code><strong>cuint16_t</strong> = UInt16;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cuint64_t"></span><code><strong>cuint64_t</strong> = UInt64;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cva_list"></span><code><strong>cva_list</strong> = Pointer;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Pcbool"></span><code><strong>Pcbool</strong> = &circ;Boolean;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Pcchar"></span><code><strong>Pcchar</strong> = MarshaledAString;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Pcvoid"></span><code><strong>Pcvoid</strong> = Pointer;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PPcvoid"></span><code><strong>PPcvoid</strong> = PPointer;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PPsg_entrypoint"></span><code><strong>PPsg_entrypoint</strong> = &circ;<a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PPsg_httpupld"></span><code><strong>PPsg_httpupld</strong> = &circ;<a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PPsg_route"></span><code><strong>PPsg_route</strong> = &circ;<a href="libsagui.html#Psg_route">Psg_route</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="PPsg_strmap"></span><code><strong>PPsg_strmap</strong> = &circ;<a href="libsagui.html#Psg_strmap">Psg_strmap</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_entrypoint"></span><code><strong>Psg_entrypoint</strong> = &circ;<a href="libsagui.sg_entrypoint.html">sg_entrypoint</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_entrypoints"></span><code><strong>Psg_entrypoints</strong> = &circ;<a href="libsagui.sg_entrypoints.html">sg_entrypoints</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_expr"></span><code><strong>Psg_expr</strong> = &circ;<a href="libsagui.sg_expr.html">sg_expr</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_expr_argument"></span><code><strong>Psg_expr_argument</strong> = &circ;<a href="libsagui.sg_expr_argument.html">sg_expr_argument</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_expr_extension"></span><code><strong>Psg_expr_extension</strong> = &circ;<a href="libsagui.sg_expr_extension.html">sg_expr_extension</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_httpauth"></span><code><strong>Psg_httpauth</strong> = &circ;<a href="libsagui.sg_httpauth.html">sg_httpauth</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_httpreq"></span><code><strong>Psg_httpreq</strong> = &circ;<a href="libsagui.sg_httpreq.html">sg_httpreq</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_httpres"></span><code><strong>Psg_httpres</strong> = &circ;<a href="libsagui.sg_httpres.html">sg_httpres</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_httpsrv"></span><code><strong>Psg_httpsrv</strong> = &circ;<a href="libsagui.sg_httpsrv.html">sg_httpsrv</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_httpupld"></span><code><strong>Psg_httpupld</strong> = &circ;<a href="libsagui.sg_httpupld.html">sg_httpupld</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_route"></span><code><strong>Psg_route</strong> = &circ;<a href="libsagui.sg_route.html">sg_route</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_router"></span><code><strong>Psg_router</strong> = &circ;<a href="libsagui.sg_router.html">sg_router</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_str"></span><code><strong>Psg_str</strong> = &circ;<a href="libsagui.sg_str.html">sg_str</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="Psg_strmap"></span><code><strong>Psg_strmap</strong> = &circ;<a href="libsagui.sg_strmap.html">sg_strmap</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_iter_cb"></span><code><strong>sg_entrypoints_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_err_cb"></span><code><strong>sg_err_cb</strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const err: <a href="libsagui.html#Pcchar">Pcchar</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_err_type"></span><code><strong>sg_expr_err_type</strong> = <a href="libsagui.html#cenum">cenum</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_func"></span><code><strong>sg_expr_func</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; args: <a href="libsagui.html#Psg_expr_argument">Psg_expr_argument</a>; const identifier: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_fmod_func"></span><code><strong>sg_fmod_func</strong> = function(const x: <a href="libsagui.html#cdouble">cdouble</a>; const y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_free_cb"></span><code><strong>sg_free_cb</strong> = procedure(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_free_func"></span><code><strong>sg_free_func</strong> = procedure(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_cb"></span><code><strong>sg_httpauth_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_cb"></span><code><strong>sg_httpreq_cb</strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_cli_cb"></span><code><strong>sg_httpsrv_cli_cb</strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const client: <a href="libsagui.html#Pcvoid">Pcvoid</a>; closed: <a href="libsagui.html#Pcbool">Pcbool</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpuplds_iter_cb"></span><code><strong>sg_httpuplds_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_cb"></span><code><strong>sg_httpupld_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; handle: <a href="libsagui.html#PPcvoid">PPcvoid</a>; const dir: <a href="libsagui.html#Pcchar">Pcchar</a>; const field: <a href="libsagui.html#Pcchar">Pcchar</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const mime: <a href="libsagui.html#Pcchar">Pcchar</a>; const encoding: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_malloc_func"></span><code><strong>sg_malloc_func</strong> = function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_pow_func"></span><code><strong>sg_pow_func</strong> = function(const x: <a href="libsagui.html#cdouble">cdouble</a>; const y: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_read_cb"></span><code><strong>sg_read_cb</strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_realloc_func"></span><code><strong>sg_realloc_func</strong> = function(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_dispatch_cb"></span><code><strong>sg_router_dispatch_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_match_cb"></span><code><strong>sg_router_match_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_iter_cb"></span><code><strong>sg_routes_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_cb"></span><code><strong>sg_route_cb</strong> = procedure(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; route: <a href="libsagui.html#Psg_route">Psg_route</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_save_as_cb"></span><code><strong>sg_save_as_cb</strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_save_cb"></span><code><strong>sg_save_cb</strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_segments_iter_cb"></span><code><strong>sg_segments_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; index: <a href="libsagui.html#cuint">cuint</a>; const segment: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_iter_cb"></span><code><strong>sg_strmap_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_sort_cb"></span><code><strong>sg_strmap_sort_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; pair_a: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; pair_b: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_vars_iter_cb"></span><code><strong>sg_vars_iter_cb</strong> = function(cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_write_cb"></span><code><strong>sg_write_cb</strong> = function(handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Constants</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_VERSION_MAJOR"></span><code><strong>SG_VERSION_MAJOR</strong> = 3;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_VERSION_MINOR"></span><code><strong>SG_VERSION_MINOR</strong> = 5;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_VERSION_PATCH"></span><code><strong>SG_VERSION_PATCH</strong> = 2;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_VERSION_HEX"></span><code><strong>SG_VERSION_HEX</strong> = (<a href="libsagui.html#SG_VERSION_MAJOR">SG_VERSION_MAJOR</a> shl 16) or (<a href="libsagui.html#SG_VERSION_MINOR">SG_VERSION_MINOR</a> shl 8) or 
+    <a href="libsagui.html#SG_VERSION_PATCH">SG_VERSION_PATCH</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_VERSION_MAJOR_STR"></span><code><strong>SG_VERSION_MAJOR_STR</strong> = '3';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_ERR_SIZE"></span><code><strong>SG_ERR_SIZE</strong> = 256;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_LIB_NAME"></span><code><strong>SG_LIB_NAME</strong> = Concat(
+
+    'libsagui-', <a href="libsagui.html#SG_VERSION_MAJOR_STR">SG_VERSION_MAJOR_STR</a>
+, '.', SharedSuffix
+
+  );</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SSgLibEmptyName"></span><code><strong>SSgLibEmptyName</strong> = 'Empty library name.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SSgLibNotLoaded"></span><code><strong>SSgLibNotLoaded</strong> = Concat('Library ''%s'' not loaded. If it is not available ',
+   'on the system, please download it at: https://github.com/risoflora/libsagui/releases');</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SSgLibInvalid"></span><code><strong>SSgLibInvalid</strong> = 'Invalid library ''%s''.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SSgLibVersion"></span><code><strong>SSgLibVersion</strong> = 'Application requires Sagui library v%d.%d.%d or higher.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SSgUnloadEventAlreadyRegistered"></span><code><strong>SSgUnloadEventAlreadyRegistered</strong> = 'Unload event already registered.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_UNKNOWN"></span><code><strong>SG_EXPR_ERR_UNKNOWN</strong> = 0;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_UNEXPECTED_NUMBER"></span><code><strong>SG_EXPR_ERR_UNEXPECTED_NUMBER</strong> = 1;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_UNEXPECTED_WORD"></span><code><strong>SG_EXPR_ERR_UNEXPECTED_WORD</strong> = 2;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_UNEXPECTED_PARENS"></span><code><strong>SG_EXPR_ERR_UNEXPECTED_PARENS</strong> = 3;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_MISSING_OPERAND"></span><code><strong>SG_EXPR_ERR_MISSING_OPERAND</strong> = 4;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_UNKNOWN_OPERATOR"></span><code><strong>SG_EXPR_ERR_UNKNOWN_OPERATOR</strong> = 5;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_INVALID_FUNC_NAME"></span><code><strong>SG_EXPR_ERR_INVALID_FUNC_NAME</strong> = 6;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_BAD_PARENS"></span><code><strong>SG_EXPR_ERR_BAD_PARENS</strong> = 7;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_TOO_FEW_FUNC_ARGS"></span><code><strong>SG_EXPR_ERR_TOO_FEW_FUNC_ARGS</strong> = 8;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_FIRST_ARG_IS_NOT_VAR"></span><code><strong>SG_EXPR_ERR_FIRST_ARG_IS_NOT_VAR</strong> = 9;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_BAD_VARIABLE_NAME"></span><code><strong>SG_EXPR_ERR_BAD_VARIABLE_NAME</strong> = 10;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SG_EXPR_ERR_BAD_ASSIGNMENT"></span><code><strong>SG_EXPR_ERR_BAD_ASSIGNMENT</strong> = 11;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+FI:O803</p>
+</td></tr>
+</table>
+<h3 class="detail">Variables</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_version"></span><code><strong>sg_version</strong>: function: <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_version_str"></span><code><strong>sg_version_str</strong>: function: <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_mm_set"></span><code><strong>sg_mm_set</strong>: function(malloc_func: <a href="libsagui.html#sg_malloc_func">sg_malloc_func</a>; realloc_func: <a href="libsagui.html#sg_realloc_func">sg_realloc_func</a>; free_func: <a href="libsagui.html#sg_free_func">sg_free_func</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_malloc"></span><code><strong>sg_malloc</strong>: function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_alloc"></span><code><strong>sg_alloc</strong>: function(size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_realloc"></span><code><strong>sg_realloc</strong>: function(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_free"></span><code><strong>sg_free</strong>: procedure(ptr: <a href="libsagui.html#Pcvoid">Pcvoid</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_math_set"></span><code><strong>sg_math_set</strong>: function(pow_func: <a href="libsagui.html#sg_pow_func">sg_pow_func</a>; fmod_func: <a href="libsagui.html#sg_fmod_func">sg_fmod_func</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strerror"></span><code><strong>sg_strerror</strong>: function(errnum: <a href="libsagui.html#cint">cint</a>; errmsg: <a href="libsagui.html#Pcchar">Pcchar</a>; errlen: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_is_post"></span><code><strong>sg_is_post</strong>: function(const method: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_extract_entrypoint"></span><code><strong>sg_extract_entrypoint</strong>: function(const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_tmpdir"></span><code><strong>sg_tmpdir</strong>: function: <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_eor"></span><code><strong>sg_eor</strong>: function(err: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cssize_t">cssize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_ip"></span><code><strong>sg_ip</strong>: function(const socket: <a href="libsagui.html#Pcvoid">Pcvoid</a>; buf: <a href="libsagui.html#Pcchar">Pcchar</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_new"></span><code><strong>sg_str_new</strong>: function: <a href="libsagui.html#Psg_str">Psg_str</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_free"></span><code><strong>sg_str_free</strong>: procedure(str: <a href="libsagui.html#Psg_str">Psg_str</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_write"></span><code><strong>sg_str_write</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_printf_va"></span><code><strong>sg_str_printf_va</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const fmt: <a href="libsagui.html#Pcchar">Pcchar</a>; ap: <a href="libsagui.html#cva_list">cva_list</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_printf"></span><code><strong>sg_str_printf</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>; const fmt: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl  varargs;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_content"></span><code><strong>sg_str_content</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_length"></span><code><strong>sg_str_length</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_str_clear"></span><code><strong>sg_str_clear</strong>: function(str: <a href="libsagui.html#Psg_str">Psg_str</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_name"></span><code><strong>sg_strmap_name</strong>: function(pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_val"></span><code><strong>sg_strmap_val</strong>: function(pair: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_add"></span><code><strong>sg_strmap_add</strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_set"></span><code><strong>sg_strmap_set</strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_find"></span><code><strong>sg_strmap_find</strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; pair: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_get"></span><code><strong>sg_strmap_get</strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_rm"></span><code><strong>sg_strmap_rm</strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_iter"></span><code><strong>sg_strmap_iter</strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>; cb: <a href="libsagui.html#sg_strmap_iter_cb">sg_strmap_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_sort"></span><code><strong>sg_strmap_sort</strong>: function(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cb: <a href="libsagui.html#sg_strmap_sort_cb">sg_strmap_sort_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_count"></span><code><strong>sg_strmap_count</strong>: function(map: <a href="libsagui.html#Psg_strmap">Psg_strmap</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_next"></span><code><strong>sg_strmap_next</strong>: function(next: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_strmap_cleanup"></span><code><strong>sg_strmap_cleanup</strong>: procedure(map: <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_set_realm"></span><code><strong>sg_httpauth_set_realm</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const realm: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_realm"></span><code><strong>sg_httpauth_realm</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_deny2"></span><code><strong>sg_httpauth_deny2</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const reason: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_deny"></span><code><strong>sg_httpauth_deny</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>; const reason: <a href="libsagui.html#Pcchar">Pcchar</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_cancel"></span><code><strong>sg_httpauth_cancel</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_usr"></span><code><strong>sg_httpauth_usr</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpauth_pwd"></span><code><strong>sg_httpauth_pwd</strong>: function(auth: <a href="libsagui.html#Psg_httpauth">Psg_httpauth</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpuplds_iter"></span><code><strong>sg_httpuplds_iter</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; cb: <a href="libsagui.html#sg_httpuplds_iter_cb">sg_httpuplds_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpuplds_next"></span><code><strong>sg_httpuplds_next</strong>: function(upld: <a href="libsagui.html#PPsg_httpupld">PPsg_httpupld</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpuplds_count"></span><code><strong>sg_httpuplds_count</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_handle"></span><code><strong>sg_httpupld_handle</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_dir"></span><code><strong>sg_httpupld_dir</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_field"></span><code><strong>sg_httpupld_field</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_name"></span><code><strong>sg_httpupld_name</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_mime"></span><code><strong>sg_httpupld_mime</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_encoding"></span><code><strong>sg_httpupld_encoding</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_size"></span><code><strong>sg_httpupld_size</strong>: function(uplds: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>): <a href="libsagui.html#cuint64_t">cuint64_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_save"></span><code><strong>sg_httpupld_save</strong>: function(upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpupld_save_as"></span><code><strong>sg_httpupld_save_as</strong>: function(upld: <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; overwritten: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_srv"></span><code><strong>sg_httpreq_srv</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_headers"></span><code><strong>sg_httpreq_headers</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_cookies"></span><code><strong>sg_httpreq_cookies</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_params"></span><code><strong>sg_httpreq_params</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_fields"></span><code><strong>sg_httpreq_fields</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_version"></span><code><strong>sg_httpreq_version</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_method"></span><code><strong>sg_httpreq_method</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_path"></span><code><strong>sg_httpreq_path</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_payload"></span><code><strong>sg_httpreq_payload</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_str">Psg_str</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_is_uploading"></span><code><strong>sg_httpreq_is_uploading</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_uploads"></span><code><strong>sg_httpreq_uploads</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Psg_httpupld">Psg_httpupld</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_client"></span><code><strong>sg_httpreq_client</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_tls_session"></span><code><strong>sg_httpreq_tls_session</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_isolate"></span><code><strong>sg_httpreq_isolate</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_set_user_data"></span><code><strong>sg_httpreq_set_user_data</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>; data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpreq_user_data"></span><code><strong>sg_httpreq_user_data</strong>: function(req: <a href="libsagui.html#Psg_httpreq">Psg_httpreq</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_headers"></span><code><strong>sg_httpres_headers</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#PPsg_strmap">PPsg_strmap</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_set_cookie"></span><code><strong>sg_httpres_set_cookie</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; const val: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_sendbinary"></span><code><strong>sg_httpres_sendbinary</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_sendfile2"></span><code><strong>sg_httpres_sendfile2</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; const disposition: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_sendfile"></span><code><strong>sg_httpres_sendfile</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; downloaded: <a href="libsagui.html#cbool">cbool</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_sendstream"></span><code><strong>sg_httpres_sendstream</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendbinary2"></span><code><strong>sg_httpres_zsendbinary2</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendbinary"></span><code><strong>sg_httpres_zsendbinary</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; buf: <a href="libsagui.html#Pcvoid">Pcvoid</a>; size: <a href="libsagui.html#csize_t">csize_t</a>; const content_type: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendstream2"></span><code><strong>sg_httpres_zsendstream2</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendstream"></span><code><strong>sg_httpres_zsendstream</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; read_cb: <a href="libsagui.html#sg_read_cb">sg_read_cb</a>; handle: <a href="libsagui.html#Pcvoid">Pcvoid</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendfile2"></span><code><strong>sg_httpres_zsendfile2</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; level: <a href="libsagui.html#cint">cint</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; const disposition: <a href="libsagui.html#Pcchar">Pcchar</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_zsendfile"></span><code><strong>sg_httpres_zsendfile</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>; size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; max_size: <a href="libsagui.html#cuint64_t">cuint64_t</a>; offset: <a href="libsagui.html#cuint64_t">cuint64_t</a>; const filename: <a href="libsagui.html#Pcchar">Pcchar</a>; downloaded: <a href="libsagui.html#cbool">cbool</a>; status: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_reset"></span><code><strong>sg_httpres_reset</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_clear"></span><code><strong>sg_httpres_clear</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpres_is_empty"></span><code><strong>sg_httpres_is_empty</strong>: function(res: <a href="libsagui.html#Psg_httpres">Psg_httpres</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_new2"></span><code><strong>sg_httpsrv_new2</strong>: function(auth_cb: <a href="libsagui.html#sg_httpauth_cb">sg_httpauth_cb</a>; req_cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; err_cb: <a href="libsagui.html#sg_err_cb">sg_err_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_new"></span><code><strong>sg_httpsrv_new</strong>: function(cb: <a href="libsagui.html#sg_httpreq_cb">sg_httpreq_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_free"></span><code><strong>sg_httpsrv_free</strong>: procedure(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_tls_listen4"></span><code><strong>sg_httpsrv_tls_listen4</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; const priorities: <a href="libsagui.html#Pcchar">Pcchar</a>; const hostname: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; backlog: <a href="libsagui.html#cuint">cuint</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_tls_listen3"></span><code><strong>sg_httpsrv_tls_listen3</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; const priorities: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_tls_listen2"></span><code><strong>sg_httpsrv_tls_listen2</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const pwd: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; const trust: <a href="libsagui.html#Pcchar">Pcchar</a>; const dhparams: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_tls_listen"></span><code><strong>sg_httpsrv_tls_listen</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const key: <a href="libsagui.html#Pcchar">Pcchar</a>; const cert: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_listen2"></span><code><strong>sg_httpsrv_listen2</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; hostname: <a href="libsagui.html#Pcchar">Pcchar</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; backlog: <a href="libsagui.html#cuint">cuint</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_listen"></span><code><strong>sg_httpsrv_listen</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; port: <a href="libsagui.html#cuint16_t">cuint16_t</a>; threaded: <a href="libsagui.html#cbool">cbool</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_shutdown"></span><code><strong>sg_httpsrv_shutdown</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_port"></span><code><strong>sg_httpsrv_port</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint16_t">cuint16_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_is_threaded"></span><code><strong>sg_httpsrv_is_threaded</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cbool">cbool</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_cli_cb"></span><code><strong>sg_httpsrv_set_cli_cb</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cb: <a href="libsagui.html#sg_httpsrv_cli_cb">sg_httpsrv_cli_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_upld_cbs"></span><code><strong>sg_httpsrv_set_upld_cbs</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; cb: <a href="libsagui.html#sg_httpupld_cb">sg_httpupld_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; write_cb: <a href="libsagui.html#sg_write_cb">sg_write_cb</a>; free_cb: <a href="libsagui.html#sg_free_cb">sg_free_cb</a>; save_cb: <a href="libsagui.html#sg_save_cb">sg_save_cb</a>; save_as_cb: <a href="libsagui.html#sg_save_as_cb">sg_save_as_cb</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_upld_dir"></span><code><strong>sg_httpsrv_set_upld_dir</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; const dir: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_upld_dir"></span><code><strong>sg_httpsrv_upld_dir</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_post_buf_size"></span><code><strong>sg_httpsrv_set_post_buf_size</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; size: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_post_buf_size"></span><code><strong>sg_httpsrv_post_buf_size</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_payld_limit"></span><code><strong>sg_httpsrv_set_payld_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_payld_limit"></span><code><strong>sg_httpsrv_payld_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#csize_t">csize_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_uplds_limit"></span><code><strong>sg_httpsrv_set_uplds_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#cuint64_t">cuint64_t</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_uplds_limit"></span><code><strong>sg_httpsrv_uplds_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint64_t">cuint64_t</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_thr_pool_size"></span><code><strong>sg_httpsrv_set_thr_pool_size</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; size: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_thr_pool_size"></span><code><strong>sg_httpsrv_thr_pool_size</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_con_timeout"></span><code><strong>sg_httpsrv_set_con_timeout</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; timeout: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_con_timeout"></span><code><strong>sg_httpsrv_con_timeout</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_set_con_limit"></span><code><strong>sg_httpsrv_set_con_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>; limit: <a href="libsagui.html#cuint">cuint</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_con_limit"></span><code><strong>sg_httpsrv_con_limit</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_httpsrv_handle"></span><code><strong>sg_httpsrv_handle</strong>: function(srv: <a href="libsagui.html#Psg_httpsrv">Psg_httpsrv</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoint_name"></span><code><strong>sg_entrypoint_name</strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoint_set_user_data"></span><code><strong>sg_entrypoint_set_user_data</strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoint_user_data"></span><code><strong>sg_entrypoint_user_data</strong>: function(entrypoint: <a href="libsagui.html#Psg_entrypoint">Psg_entrypoint</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_new"></span><code><strong>sg_entrypoints_new</strong>: function: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_free"></span><code><strong>sg_entrypoints_free</strong>: procedure(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_add"></span><code><strong>sg_entrypoints_add</strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_rm"></span><code><strong>sg_entrypoints_rm</strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_iter"></span><code><strong>sg_entrypoints_iter</strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; cb: <a href="libsagui.html#sg_entrypoints_iter_cb">sg_entrypoints_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_clear"></span><code><strong>sg_entrypoints_clear</strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_entrypoints_find"></span><code><strong>sg_entrypoints_find</strong>: function(entrypoints: <a href="libsagui.html#Psg_entrypoints">Psg_entrypoints</a>; entrypoint: <a href="libsagui.html#PPsg_entrypoint">PPsg_entrypoint</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_handle"></span><code><strong>sg_route_handle</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_match"></span><code><strong>sg_route_match</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_rawpattern"></span><code><strong>sg_route_rawpattern</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_pattern"></span><code><strong>sg_route_pattern</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_path"></span><code><strong>sg_route_path</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_segments_iter"></span><code><strong>sg_route_segments_iter</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_segments_iter_cb">sg_segments_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_vars_iter"></span><code><strong>sg_route_vars_iter</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_vars_iter_cb">sg_vars_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_route_user_data"></span><code><strong>sg_route_user_data</strong>: function(route: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Pcvoid">Pcvoid</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_add2"></span><code><strong>sg_routes_add2</strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>; route: <a href="libsagui.html#PPsg_route">PPsg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>; errmsg: <a href="libsagui.html#Pcchar">Pcchar</a>; errlen: <a href="libsagui.html#csize_t">csize_t</a>; cb: <a href="libsagui.html#sg_route_cb">sg_route_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_add"></span><code><strong>sg_routes_add</strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>; cb: <a href="libsagui.html#sg_route_cb">sg_route_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_rm"></span><code><strong>sg_routes_rm</strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>; const pattern: <a href="libsagui.html#Pcchar">Pcchar</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_iter"></span><code><strong>sg_routes_iter</strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>; cb: <a href="libsagui.html#sg_routes_iter_cb">sg_routes_iter_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_next"></span><code><strong>sg_routes_next</strong>: function(route: <a href="libsagui.html#PPsg_route">PPsg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_count"></span><code><strong>sg_routes_count</strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#cuint">cuint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_routes_cleanup"></span><code><strong>sg_routes_cleanup</strong>: function(routes: <a href="libsagui.html#PPsg_route">PPsg_route</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_new"></span><code><strong>sg_router_new</strong>: function(routes: <a href="libsagui.html#Psg_route">Psg_route</a>): <a href="libsagui.html#Psg_router">Psg_router</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_free"></span><code><strong>sg_router_free</strong>: procedure(router: <a href="libsagui.html#Psg_router">Psg_router</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_dispatch2"></span><code><strong>sg_router_dispatch2</strong>: function(router: <a href="libsagui.html#Psg_router">Psg_router</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>; dispatch_cb: <a href="libsagui.html#sg_router_dispatch_cb">sg_router_dispatch_cb</a>; cls: <a href="libsagui.html#Pcvoid">Pcvoid</a>; match_cb: <a href="libsagui.html#sg_router_match_cb">sg_router_match_cb</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_router_dispatch"></span><code><strong>sg_router_dispatch</strong>: function(router: <a href="libsagui.html#Psg_router">Psg_router</a>; const path: <a href="libsagui.html#Pcchar">Pcchar</a>; user_data: <a href="libsagui.html#Pcvoid">Pcvoid</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_new"></span><code><strong>sg_expr_new</strong>: function: <a href="libsagui.html#Psg_expr">Psg_expr</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_free"></span><code><strong>sg_expr_free</strong>: procedure(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>); cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_compile"></span><code><strong>sg_expr_compile</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const str: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>; extensions: <a href="libsagui.html#Psg_expr_extension">Psg_expr_extension</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_clear"></span><code><strong>sg_expr_clear</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_eval"></span><code><strong>sg_expr_eval</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_var"></span><code><strong>sg_expr_var</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_set_var"></span><code><strong>sg_expr_set_var</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>; const name: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>; const val: <a href="libsagui.html#cdouble">cdouble</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_arg"></span><code><strong>sg_expr_arg</strong>: function(args: <a href="libsagui.html#Psg_expr_argument">Psg_expr_argument</a>; index: <a href="libsagui.html#cint">cint</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_near"></span><code><strong>sg_expr_near</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#cint">cint</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_err"></span><code><strong>sg_expr_err</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#sg_expr_err_type">sg_expr_err_type</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_strerror"></span><code><strong>sg_expr_strerror</strong>: function(expr: <a href="libsagui.html#Psg_expr">Psg_expr</a>): <a href="libsagui.html#Pcchar">Pcchar</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="sg_expr_calc"></span><code><strong>sg_expr_calc</strong>: function(const str: <a href="libsagui.html#Pcchar">Pcchar</a>; len: <a href="libsagui.html#csize_t">csize_t</a>): <a href="libsagui.html#cdouble">cdouble</a>; cdecl;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

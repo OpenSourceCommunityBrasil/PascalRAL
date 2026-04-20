@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALRoutes: Class TRALBaseRoute</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<span id="TRALBaseRoute"></span><h1 class="cio">Class TRALBaseRoute</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
+<p class="unitlink">
+<a href="RALRoutes.html">RALRoutes</a></p>
+<h2 class="declaration">Declaration</h2>
+<p class="declaration">
+<code>type TRALBaseRoute = class(TCollectionItem)</code></p>
+<h2 class="description">Description</h2>
+<p>
+Base class for individual <a class="normal" href="RALRoutes.TRALBaseRoute.html#Route">route</a> definition</p>
+<span id="PasDoc-Hierarchy"></span><h2 class="hierarchy">Hierarchy</h2>
+<ul class="hierarchy"><li class="ancestor">TObject</li>
+<li class="ancestor">TPersistent</li>
+<li class="ancestor">TCollectionItem</li>
+<li class="thisitem">TRALBaseRoute</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>constructor <strong><a href="RALRoutes.TRALBaseRoute.html#Create">Create</a></strong>(ACollection: TCollection); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>destructor <strong><a href="RALRoutes.TRALBaseRoute.html#Destroy">Destroy</a></strong>; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#GetAllowMethods">GetAllowMethods</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#GetFullRoute">GetFullRoute</a></strong>: StringRAL;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#GetNamePath">GetNamePath</a></strong>: string; override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#IsMethodAllowed">IsMethodAllowed</a></strong>(const AMethod: TRALMethod): boolean;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#IsMethodSkipped">IsMethodSkipped</a></strong>(const AMethod: TRALMethod): boolean;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>function <strong><a href="RALRoutes.TRALBaseRoute.html#GetDisplayName">GetDisplayName</a></strong>: string; override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#Execute">Execute</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#AssignTo">AssignTo</a></strong>(Dest: TPersistent); override;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#SetAllowedMethods">SetAllowedMethods</a></strong>(const AValue: TRALMethods);</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#SetDescription">SetDescription</a></strong>(const AValue: TStrings);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#SetDisplayName">SetDisplayName</a></strong>(const AValue: string); override;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#SetRoute">SetRoute</a></strong>(AValue: StringRAL);</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRoutes.TRALBaseRoute.html#SetSkipAuthMethods">SetSkipAuthMethods</a></strong>(const AValue: TRALMethods);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#AllowedMethods">AllowedMethods</a></strong>: TRALMethods read FAllowedMethods write <a href="RALRoutes.TRALBaseRoute.html#SetAllowedMethods">SetAllowedMethods</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#AllowURIParams">AllowURIParams</a></strong>: Boolean read FAllowURIParams write FAllowURIParams;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#Callback">Callback</a></strong>: boolean read FCallback write FCallback;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#Description">Description</a></strong>: TStrings read FDescription write <a href="RALRoutes.TRALBaseRoute.html#SetDescription">SetDescription</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#InputParams">InputParams</a></strong>: <a href="RALRoutes.TRALRouteParams.html">TRALRouteParams</a> read FInputParams write FInputParams;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#Name">Name</a></strong>: StringRAL read FName write FName;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#OnReply">OnReply</a></strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnReply write FOnReply;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#OnReplyGen">OnReplyGen</a></strong>: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a> read FOnReplyGen write FOnReplyGen;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#Route">Route</a></strong>: StringRAL read FRoute write <a href="RALRoutes.TRALBaseRoute.html#SetRoute">SetRoute</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#SkipAuthMethods">SkipAuthMethods</a></strong>: TRALMethods read FSkipAuthMethods write <a href="RALRoutes.TRALBaseRoute.html#SetSkipAuthMethods">SetSkipAuthMethods</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><code>property <strong><a href="RALRoutes.TRALBaseRoute.html#URIParams">URIParams</a></strong>: <a href="RALRoutes.TRALRouteParams.html">TRALRouteParams</a> read FURIParams write FURIParams;</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Methods</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(ACollection: TCollection); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetAllowMethods"></span><code>function <strong>GetAllowMethods</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns methods that this <a class="normal" href="RALRoutes.TRALBaseRoute.html#Route">route</a> will answer</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetFullRoute"></span><code>function <strong>GetFullRoute</strong>: StringRAL;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="GetNamePath"></span><code>function <strong>GetNamePath</strong>: string; override;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns internal <a class="normal" href="RALRoutes.TRALBaseRoute.html#Name">name</a> of the <a class="normal" href="RALRoutes.TRALBaseRoute.html#Route">route</a></p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="IsMethodAllowed"></span><code>function <strong>IsMethodAllowed</strong>(const AMethod: TRALMethod): boolean;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns true or false wether the method is allowed in <a class="normal" href="RALRoutes.TRALBaseRoute.html#Route">route</a></p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="IsMethodSkipped"></span><code>function <strong>IsMethodSkipped</strong>(const AMethod: TRALMethod): boolean;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Returns true or false wether the method is skipped in authentication</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="GetDisplayName"></span><code>function <strong>GetDisplayName</strong>: string; override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Execute"></span><code>procedure <strong>Execute</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Runs the <a class="normal" href="RALRoutes.TRALBaseRoute.html#OnReply">OnReply</a> event</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="AssignTo"></span><code>procedure <strong>AssignTo</strong>(Dest: TPersistent); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetAllowedMethods"></span><code>procedure <strong>SetAllowedMethods</strong>(const AValue: TRALMethods);</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+checks if the <a class="normal" href="RALRoutes.TRALBaseRoute.html#Route">route</a> already exists on the list</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetDescription"></span><code>procedure <strong>SetDescription</strong>(const AValue: TStrings);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetDisplayName"></span><code>procedure <strong>SetDisplayName</strong>(const AValue: string); override;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetRoute"></span><code>procedure <strong>SetRoute</strong>(AValue: StringRAL);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<td class="itemcode"><span id="SetSkipAuthMethods"></span><code>procedure <strong>SetSkipAuthMethods</strong>(const AValue: TRALMethods);</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<h3 class="detail">Properties</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AllowedMethods"></span><code>property <strong>AllowedMethods</strong>: TRALMethods read FAllowedMethods write <a href="RALRoutes.TRALBaseRoute.html#SetAllowedMethods">SetAllowedMethods</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="AllowURIParams"></span><code>property <strong>AllowURIParams</strong>: Boolean read FAllowURIParams write FAllowURIParams;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Callback"></span><code>property <strong>Callback</strong>: boolean read FCallback write FCallback;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Description"></span><code>property <strong>Description</strong>: TStrings read FDescription write <a href="RALRoutes.TRALBaseRoute.html#SetDescription">SetDescription</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="InputParams"></span><code>property <strong>InputParams</strong>: <a href="RALRoutes.TRALRouteParams.html">TRALRouteParams</a> read FInputParams write FInputParams;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="Name"></span><code>property <strong>Name</strong>: StringRAL read FName write FName;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="OnReply"></span><code>property <strong>OnReply</strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnReply write FOnReply;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="OnReplyGen"></span><code>property <strong>OnReplyGen</strong>: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a> read FOnReplyGen write FOnReplyGen;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<td class="itemcode"><span id="Route"></span><code>property <strong>Route</strong>: StringRAL read FRoute write <a href="RALRoutes.TRALBaseRoute.html#SetRoute">SetRoute</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="SkipAuthMethods"></span><code>property <strong>SkipAuthMethods</strong>: TRALMethods read FSkipAuthMethods write <a href="RALRoutes.TRALBaseRoute.html#SetSkipAuthMethods">SetSkipAuthMethods</a>;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<td class="itemcode"><span id="URIParams"></span><code>property <strong>URIParams</strong>: <a href="RALRoutes.TRALRouteParams.html">TRALRouteParams</a> read FURIParams write FURIParams;</code></td>
+</tr>
+<tr><td colspan="2">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>

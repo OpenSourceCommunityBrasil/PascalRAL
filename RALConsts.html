@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PascalRAL: RALConsts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PasDoc 0.16.0">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
+
+<link rel="StyleSheet" type="text/css" href="pasdoc.css">
+</head>
+<body>
+<div class="container"><div class="navigation">
+<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<div style="clear: both"></div>
+</li></ul></div><div class="content">
+<h1 class="unit">Unit RALConsts</h1>
+<div class="sections">
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Uses">Uses</a></div><div class="one_section">Classes, Interfaces, Objects and Records</div><div class="one_section">Functions and Procedures</div><div class="one_section"><a class="section" href="#PasDoc-Types">Types</a></div><div class="one_section"><a class="section" href="#PasDoc-Constants">Constants</a></div><div class="one_section">Variables</div></div>
+<span id="PasDoc-Description"></span><h2 class="description">Description</h2>
+<p>
+Unit that stores all constant values, version configuration and i18n message strings</p>
+<span id="PasDoc-Uses"></span><h2 class="uses">Uses</h2>
+<ul class="useslist"><li>Classes</li><li>SysUtils</li></ul><h2 class="overview">Overview</h2>
+<span id="PasDoc-Types"></span><h3 class="summary">Types</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#TRALAuthTypes">TRALAuthTypes</a></strong> = (...);</code></td>
+</tr>
+</table>
+<span id="PasDoc-Constants"></span><h3 class="summary">Constants</h3>
+<table class="summary wide_list">
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALVERSION">RALVERSION</a></strong> = '0.12.5-1 RC1';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALVERSION_MAJOR">RALVERSION_MAJOR</a></strong> = 0;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALVERSION_MINOR">RALVERSION_MINOR</a></strong> = 12;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALVERSION_PATCH">RALVERSION_PATCH</a></strong> = 4;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALVERSION_FULL">RALVERSION_FULL</a></strong>  = <a href="RALConsts.html#RALVERSION_MAJOR">RALVERSION_MAJOR</a> * 10000
+                   + <a href="RALConsts.html#RALVERSION_MINOR">RALVERSION_MINOR</a> * 100
+                   + <a href="RALConsts.html#RALVERSION_PATCH">RALVERSION_PATCH</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGENAME">RALPACKAGENAME</a></strong>           = 'Pascal REST API Lite (RAL) Components';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGESHORT">RALPACKAGESHORT</a></strong>          = 'PascalRAL';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGESHORTLICENSE">RALPACKAGESHORTLICENSE</a></strong>   = 'PascalRAL v' + <a href="RALConsts.html#RALVERSION">RALVERSION</a>;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGESITE">RALPACKAGESITE</a></strong>           = 'https://github.com/OpenSourceCommunityBrasil/PascalRAL';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGELICENSE">RALPACKAGELICENSE</a></strong>        = 'OpenSource';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPACKAGELICENSEVERSION">RALPACKAGELICENSEVERSION</a></strong> = 'OpenSource - v' + <a href="RALConsts.html#RALVERSION">RALVERSION</a>;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#ENGINESYNOPSE">ENGINESYNOPSE</a></strong>            = 'mORMot2';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#ENGINEINDY">ENGINEINDY</a></strong>               = 'Indy';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#ENGINESAGUI">ENGINESAGUI</a></strong>              = 'Sagui';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#ENGINENETHTTP">ENGINENETHTTP</a></strong>            = 'netHttp';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#ENGINEFPHTTP">ENGINEFPHTTP</a></strong>             = 'fpHttp';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALDefaultPage">RALDefaultPage</a></strong> = '&lt;!DOCTYPE html&gt;'
+                 + '&lt;html lang=&quot;en-us&quot;&gt;'
+                 + '&lt;head&gt;&lt;title&gt;RALServer - ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/title&gt;'
+                 + '&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Server OnLine&lt;/h1&gt;'
+                 + '&lt;h4&gt;Version: ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/h4&gt;'
+                 + '&lt;h4&gt;Engine: %ralengine%&lt;/h4&gt;'
+                 + '&lt;/body&gt;&lt;/html&gt;';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#RALPage">RALPage</a></strong> = '&lt;!DOCTYPE html&gt;'
+          + '&lt;html lang=&quot;%s&quot;&gt;'
+          + '&lt;head&gt;&lt;title&gt;RALServer - ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/title&gt;'
+          + '&lt;/head&gt;&lt;body&gt;&lt;h1&gt;%d - %s&lt;/h1&gt;'
+          + '&lt;p&gt;%s&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SupportedEncriptKind">SupportedEncriptKind</a></strong> = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#MultipartLineLength">MultipartLineLength</a></strong> = 500;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#DEFAULTBUFFERSTREAMSIZE">DEFAULTBUFFERSTREAMSIZE</a></strong> = 52428800;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#DEFAULTDECODERBUFFERSIZE">DEFAULTDECODERBUFFERSIZE</a></strong> = 65536;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTPLineBreak">HTTPLineBreak</a></strong> = #13#10;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_OK">HTTP_OK</a></strong>                  = 200;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_Created">HTTP_Created</a></strong>             = 201;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_NoContent">HTTP_NoContent</a></strong>           = 204;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_Moved">HTTP_Moved</a></strong>               = 301;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_Found">HTTP_Found</a></strong>               = 302;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_BadRequest">HTTP_BadRequest</a></strong>          = 400;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_Unauthorized">HTTP_Unauthorized</a></strong>        = 401;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_Forbidden">HTTP_Forbidden</a></strong>           = 403;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_NotFound">HTTP_NotFound</a></strong>            = 404;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_MethodNotAllowed">HTTP_MethodNotAllowed</a></strong>    = 405;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_RequestTimeout">HTTP_RequestTimeout</a></strong>      = 408;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_UnsupportedMedia">HTTP_UnsupportedMedia</a></strong>    = 415;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_InternalError">HTTP_InternalError</a></strong>       = 500;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_NotImplemented">HTTP_NotImplemented</a></strong>      = 501;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_BadGateway">HTTP_BadGateway</a></strong>          = 502;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_ServiceUnavailable">HTTP_ServiceUnavailable</a></strong>  = 503;</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#HTTP_VersionNotSupported">HTTP_VersionNotSupported</a></strong> = 505;</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emCompressInvalidFormat">emCompressInvalidFormat</a></strong> = 'Invalid compression Format.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emCompressLibFilesError">emCompressLibFilesError</a></strong> = 'The library files of the following classes were not found: %s.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emContentCheckError">emContentCheckError</a></strong> = 'Content check error.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emCryptEmptyKey">emCryptEmptyKey</a></strong> = 'Key must be provided.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emHMACEmptyText">emHMACEmptyText</a></strong> = 'Input text must be provided.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emDBConnectionUndefined">emDBConnectionUndefined</a></strong> = 'Connection not set.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emDBDriverMissing">emDBDriverMissing</a></strong> = 'Connection driver not found.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emDBEmptyBody">emDBEmptyBody</a></strong> = 'Body is empty.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emDBLinkMissing">emDBLinkMissing</a></strong> = 'DBLink Property missing.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emDBUpdateSQLMissing">emDBUpdateSQLMissing</a></strong> = 'SQL for UpdateTable/UpdateSQL cannot be empty.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emInvalidFormat">emInvalidFormat</a></strong> = 'Invalid Format.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emInvalidJSONFormat">emInvalidJSONFormat</a></strong> = 'Invalid JSON Format.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emQueryVersionError">emQueryVersionError</a></strong> = 'Invalid structure version.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emRouteAlreadyExists">emRouteAlreadyExists</a></strong> = 'Route already exists.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emStorageClassNotFound">emStorageClassNotFound</a></strong> = 'Storage class not found';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emStorageInvalidBinary">emStorageInvalidBinary</a></strong> = 'Invalid Binary Format.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emStorageLinkNotFound">emStorageLinkNotFound</a></strong> = 'Storage %s not declared in uses';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emStorageNotFound">emStorageNotFound</a></strong> = 'No TRALStorageLink found.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emSaguiLibraryLoadError">emSaguiLibraryLoadError</a></strong> = 'Error while trying to load libsagui.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emSaguiServerCreateError">emSaguiServerCreateError</a></strong> = 'Error while attempting to create the server.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#emSaguiServerUnsupportedTLS">emSaguiServerUnsupportedTLS</a></strong> = 'This version of TLS is not supported by the lib.';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#wmIPv6notImplemented">wmIPv6notImplemented</a></strong> = 'IPv6 is not implemented in this engine.';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SLangHTTP">SLangHTTP</a></strong> = 'en-US';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SServerOnline">SServerOnline</a></strong> = 'Server Online';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SWordVersion">SWordVersion</a></strong> = 'Version';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SWordEngine">SWordEngine</a></strong> = 'Engine';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError400">SError400</a></strong> = 'BadRequest';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError400Page">SError400Page</a></strong> = 'The server informs that it doesn''t like the input params';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError401">SError401</a></strong> = 'Unauthorized';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError401Page">SError401Page</a></strong> = 'The server informs that it doesn''t know you';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError403">SError403</a></strong> = 'Forbidden';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError403Page">SError403Page</a></strong> = 'The server informs that it doesn''t want you to access';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError404">SError404</a></strong> = 'Not Found';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError404Page">SError404Page</a></strong> = 'The server informs that the page you''re requesting doesn''t exist in this reality';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError415">SError415</a></strong> = 'Unsuported Media Type';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError415Page">SError415Page</a></strong> = 'The server informs that it doesn''t know what you''re asking';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError500">SError500</a></strong> = 'Internal Server Error';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError500Page">SError500Page</a></strong> = 'The server made something that it shouldn''t';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError501">SError501</a></strong> = 'Not Implemented';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError501Page">SError501Page</a></strong> = 'The server informs that it doesn''t exist';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError503">SError503</a></strong> = 'Service Unavailable';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#SError503Page">SError503Page</a></strong> = 'The server informs that it''s resting now and doesn''t want to work. You should try later';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBApplyUpdDescription">cmDBApplyUpdDescription</a></strong> = 'Apply Update from a client http';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBExecSQLDescription">cmDBExecSQLDescription</a></strong> = 'Execute a SQL from a client http';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBGetFieldsDescription">cmDBGetFieldsDescription</a></strong> = 'List all fields in a table';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBGetSQLFieldsDescription">cmDBGetSQLFieldsDescription</a></strong> = 'List all fields from a SQL';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBGetTablesDescription">cmDBGetTablesDescription</a></strong> = 'List all tables in a database';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBOpenSQLDescription">cmDBOpenSQLDescription</a></strong> = 'Open a SQL from a client http';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBParamSchemaDescription">cmDBParamSchemaDescription</a></strong> = 'Schema of database';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBParamSystemDescription">cmDBParamSystemDescription</a></strong> = 'Include system tables';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBBinary">cmDBBinary</a></strong> = 'Binary Format';</code></td>
+</tr>
+<tr class="list2">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBSQL">cmDBSQL</a></strong> = 'SQL';</code></td>
+</tr>
+<tr class="list">
+<td class="itemcode"><code><strong><a href="RALConsts.html#cmDBTableName">cmDBTableName</a></strong> = 'Table name';</code></td>
+</tr>
+</table>
+<h2 class="description">Description</h2>
+<h3 class="detail">Types</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="TRALAuthTypes"></span><code><strong>TRALAuthTypes</strong> = (...);</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;<h6 class="description_section">Values</h6>
+<ul>
+<li>
+<span id="ratNone">ratNone</span></li>
+<li>
+<span id="ratBasic">ratBasic</span></li>
+<li>
+<span id="ratBearer">ratBearer</span></li>
+<li>
+<span id="ratOAuth">ratOAuth</span></li>
+<li>
+<span id="ratOAuth2">ratOAuth2</span></li>
+<li>
+<span id="ratDigest">ratDigest</span></li>
+</ul>
+</td></tr>
+</table>
+<h3 class="detail">Constants</h3>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALVERSION"></span><code><strong>RALVERSION</strong> = '0.12.5-1 RC1';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+Versionamento</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALVERSION_MAJOR"></span><code><strong>RALVERSION_MAJOR</strong> = 0;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALVERSION_MINOR"></span><code><strong>RALVERSION_MINOR</strong> = 12;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALVERSION_PATCH"></span><code><strong>RALVERSION_PATCH</strong> = 4;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALVERSION_FULL"></span><code><strong>RALVERSION_FULL</strong>  = <a href="RALConsts.html#RALVERSION_MAJOR">RALVERSION_MAJOR</a> * 10000
+                   + <a href="RALConsts.html#RALVERSION_MINOR">RALVERSION_MINOR</a> * 100
+                   + <a href="RALConsts.html#RALVERSION_PATCH">RALVERSION_PATCH</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGENAME"></span><code><strong>RALPACKAGENAME</strong>           = 'Pascal REST API Lite (RAL) Components';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+IOTA Constants</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGESHORT"></span><code><strong>RALPACKAGESHORT</strong>          = 'PascalRAL';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGESHORTLICENSE"></span><code><strong>RALPACKAGESHORTLICENSE</strong>   = 'PascalRAL v' + <a href="RALConsts.html#RALVERSION">RALVERSION</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGESITE"></span><code><strong>RALPACKAGESITE</strong>           = 'https://github.com/OpenSourceCommunityBrasil/PascalRAL';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGELICENSE"></span><code><strong>RALPACKAGELICENSE</strong>        = 'OpenSource';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPACKAGELICENSEVERSION"></span><code><strong>RALPACKAGELICENSEVERSION</strong> = 'OpenSource - v' + <a href="RALConsts.html#RALVERSION">RALVERSION</a>;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ENGINESYNOPSE"></span><code><strong>ENGINESYNOPSE</strong>            = 'mORMot2';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ENGINEINDY"></span><code><strong>ENGINEINDY</strong>               = 'Indy';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ENGINESAGUI"></span><code><strong>ENGINESAGUI</strong>              = 'Sagui';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ENGINENETHTTP"></span><code><strong>ENGINENETHTTP</strong>            = 'netHttp';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="ENGINEFPHTTP"></span><code><strong>ENGINEFPHTTP</strong>             = 'fpHttp';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALDefaultPage"></span><code><strong>RALDefaultPage</strong> = '&lt;!DOCTYPE html&gt;'
+                 + '&lt;html lang=&quot;en-us&quot;&gt;'
+                 + '&lt;head&gt;&lt;title&gt;RALServer - ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/title&gt;'
+                 + '&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Server OnLine&lt;/h1&gt;'
+                 + '&lt;h4&gt;Version: ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/h4&gt;'
+                 + '&lt;h4&gt;Engine: %ralengine%&lt;/h4&gt;'
+                 + '&lt;/body&gt;&lt;/html&gt;';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+html pages</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="RALPage"></span><code><strong>RALPage</strong> = '&lt;!DOCTYPE html&gt;'
+          + '&lt;html lang=&quot;%s&quot;&gt;'
+          + '&lt;head&gt;&lt;title&gt;RALServer - ' + <a href="RALConsts.html#RALVERSION">RALVERSION</a> + '&lt;/title&gt;'
+          + '&lt;/head&gt;&lt;body&gt;&lt;h1&gt;%d - %s&lt;/h1&gt;'
+          + '&lt;p&gt;%s&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SupportedEncriptKind"></span><code><strong>SupportedEncriptKind</strong> = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="MultipartLineLength"></span><code><strong>MultipartLineLength</strong> = 500;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="DEFAULTBUFFERSTREAMSIZE"></span><code><strong>DEFAULTBUFFERSTREAMSIZE</strong> = 52428800;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="DEFAULTDECODERBUFFERSIZE"></span><code><strong>DEFAULTDECODERBUFFERSIZE</strong> = 65536;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTPLineBreak"></span><code><strong>HTTPLineBreak</strong> = #13#10;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_OK"></span><code><strong>HTTP_OK</strong>                  = 200;</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+HTTP Codes</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_Created"></span><code><strong>HTTP_Created</strong>             = 201;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_NoContent"></span><code><strong>HTTP_NoContent</strong>           = 204;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_Moved"></span><code><strong>HTTP_Moved</strong>               = 301;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_Found"></span><code><strong>HTTP_Found</strong>               = 302;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_BadRequest"></span><code><strong>HTTP_BadRequest</strong>          = 400;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_Unauthorized"></span><code><strong>HTTP_Unauthorized</strong>        = 401;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_Forbidden"></span><code><strong>HTTP_Forbidden</strong>           = 403;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_NotFound"></span><code><strong>HTTP_NotFound</strong>            = 404;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_MethodNotAllowed"></span><code><strong>HTTP_MethodNotAllowed</strong>    = 405;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_RequestTimeout"></span><code><strong>HTTP_RequestTimeout</strong>      = 408;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_UnsupportedMedia"></span><code><strong>HTTP_UnsupportedMedia</strong>    = 415;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_InternalError"></span><code><strong>HTTP_InternalError</strong>       = 500;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_NotImplemented"></span><code><strong>HTTP_NotImplemented</strong>      = 501;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_BadGateway"></span><code><strong>HTTP_BadGateway</strong>          = 502;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_ServiceUnavailable"></span><code><strong>HTTP_ServiceUnavailable</strong>  = 503;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="HTTP_VersionNotSupported"></span><code><strong>HTTP_VersionNotSupported</strong> = 505;</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emCompressInvalidFormat"></span><code><strong>emCompressInvalidFormat</strong> = 'Invalid compression Format.';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+general error messages</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emCompressLibFilesError"></span><code><strong>emCompressLibFilesError</strong> = 'The library files of the following classes were not found: %s.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emContentCheckError"></span><code><strong>emContentCheckError</strong> = 'Content check error.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emCryptEmptyKey"></span><code><strong>emCryptEmptyKey</strong> = 'Key must be provided.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emHMACEmptyText"></span><code><strong>emHMACEmptyText</strong> = 'Input text must be provided.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emDBConnectionUndefined"></span><code><strong>emDBConnectionUndefined</strong> = 'Connection not set.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emDBDriverMissing"></span><code><strong>emDBDriverMissing</strong> = 'Connection driver not found.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emDBEmptyBody"></span><code><strong>emDBEmptyBody</strong> = 'Body is empty.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emDBLinkMissing"></span><code><strong>emDBLinkMissing</strong> = 'DBLink Property missing.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emDBUpdateSQLMissing"></span><code><strong>emDBUpdateSQLMissing</strong> = 'SQL for UpdateTable/UpdateSQL cannot be empty.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emInvalidFormat"></span><code><strong>emInvalidFormat</strong> = 'Invalid Format.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emInvalidJSONFormat"></span><code><strong>emInvalidJSONFormat</strong> = 'Invalid JSON Format.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emQueryVersionError"></span><code><strong>emQueryVersionError</strong> = 'Invalid structure version.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emRouteAlreadyExists"></span><code><strong>emRouteAlreadyExists</strong> = 'Route already exists.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emStorageClassNotFound"></span><code><strong>emStorageClassNotFound</strong> = 'Storage class not found';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emStorageInvalidBinary"></span><code><strong>emStorageInvalidBinary</strong> = 'Invalid Binary Format.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emStorageLinkNotFound"></span><code><strong>emStorageLinkNotFound</strong> = 'Storage %s not declared in uses';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emStorageNotFound"></span><code><strong>emStorageNotFound</strong> = 'No TRALStorageLink found.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emSaguiLibraryLoadError"></span><code><strong>emSaguiLibraryLoadError</strong> = 'Error while trying to load libsagui.';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+sagui error messages</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emSaguiServerCreateError"></span><code><strong>emSaguiServerCreateError</strong> = 'Error while attempting to create the server.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="emSaguiServerUnsupportedTLS"></span><code><strong>emSaguiServerUnsupportedTLS</strong> = 'This version of TLS is not supported by the lib.';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="wmIPv6notImplemented"></span><code><strong>wmIPv6notImplemented</strong> = 'IPv6 is not implemented in this engine.';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+<a class="normal" href="RALServer.html">ralserver</a> error messages</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SLangHTTP"></span><code><strong>SLangHTTP</strong> = 'en-US';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+<a class="normal" href="RALServer.html">ralserver</a> page codes</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SServerOnline"></span><code><strong>SServerOnline</strong> = 'Server Online';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SWordVersion"></span><code><strong>SWordVersion</strong> = 'Version';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SWordEngine"></span><code><strong>SWordEngine</strong> = 'Engine';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError400"></span><code><strong>SError400</strong> = 'BadRequest';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError400Page"></span><code><strong>SError400Page</strong> = 'The server informs that it doesn''t like the input params';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError401"></span><code><strong>SError401</strong> = 'Unauthorized';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError401Page"></span><code><strong>SError401Page</strong> = 'The server informs that it doesn''t know you';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError403"></span><code><strong>SError403</strong> = 'Forbidden';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError403Page"></span><code><strong>SError403Page</strong> = 'The server informs that it doesn''t want you to access';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError404"></span><code><strong>SError404</strong> = 'Not Found';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError404Page"></span><code><strong>SError404Page</strong> = 'The server informs that the page you''re requesting doesn''t exist in this reality';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError415"></span><code><strong>SError415</strong> = 'Unsuported Media Type';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError415Page"></span><code><strong>SError415Page</strong> = 'The server informs that it doesn''t know what you''re asking';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError500"></span><code><strong>SError500</strong> = 'Internal Server Error';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError500Page"></span><code><strong>SError500Page</strong> = 'The server made something that it shouldn''t';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError501"></span><code><strong>SError501</strong> = 'Not Implemented';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError501Page"></span><code><strong>SError501Page</strong> = 'The server informs that it doesn''t exist';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError503"></span><code><strong>SError503</strong> = 'Service Unavailable';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="SError503Page"></span><code><strong>SError503Page</strong> = 'The server informs that it''s resting now and doesn''t want to work. You should try later';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBApplyUpdDescription"></span><code><strong>cmDBApplyUpdDescription</strong> = 'Apply Update from a client http';</code></td>
+</tr>
+<tr><td colspan="1">
+<p>
+RALDBDescriptions</p>
+</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBExecSQLDescription"></span><code><strong>cmDBExecSQLDescription</strong> = 'Execute a SQL from a client http';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBGetFieldsDescription"></span><code><strong>cmDBGetFieldsDescription</strong> = 'List all fields in a table';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBGetSQLFieldsDescription"></span><code><strong>cmDBGetSQLFieldsDescription</strong> = 'List all fields from a SQL';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBGetTablesDescription"></span><code><strong>cmDBGetTablesDescription</strong> = 'List all tables in a database';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBOpenSQLDescription"></span><code><strong>cmDBOpenSQLDescription</strong> = 'Open a SQL from a client http';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBParamSchemaDescription"></span><code><strong>cmDBParamSchemaDescription</strong> = 'Schema of database';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBParamSystemDescription"></span><code><strong>cmDBParamSystemDescription</strong> = 'Include system tables';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBBinary"></span><code><strong>cmDBBinary</strong> = 'Binary Format';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBSQL"></span><code><strong>cmDBSQL</strong> = 'SQL';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<table class="detail wide_list">
+<tr class="list">
+<td class="itemcode"><span id="cmDBTableName"></span><code><strong>cmDBTableName</strong> = 'Table name';</code></td>
+</tr>
+<tr><td colspan="1">
+&nbsp;</td></tr>
+</table>
+<br><br>
+<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+</span>
+</div></div></body></html>
