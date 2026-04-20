@@ -146,7 +146,6 @@ begin
         AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
         AResponse.StatusCode := vResult;
         AResponse.ResponseText := vHttp.Content;
-        AResponse.Params.AddParam('Stream', AResponse.ParamByName('ral_body').AsStream, rpkBODY);
       except
         on e: ENetSock do
         begin

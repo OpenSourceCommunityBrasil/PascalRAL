@@ -138,7 +138,7 @@ begin
   if FStorage <> nil then
     FStorage.LoadFromStream(ADataSet, AStream)
   else
-    raise Exception.Create('Storage class não localizada');
+    raise Exception.Create(emStorageClassNotFound);
 end;
 
 procedure TRALDBZMemTable.InternalDelete;
@@ -324,7 +324,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       FLoading := True;
       vSQLCache := TRALDBSQLCache.Create;
@@ -369,7 +369,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       vSQLCache := TRALDBSQLCache.Create;
       try
@@ -410,7 +410,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       FSQLCache.ResponseFromStream(vMem);
       for vInt1 := 0 to Pred(FSQLCache.Count) do

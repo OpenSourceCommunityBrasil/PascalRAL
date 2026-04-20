@@ -300,7 +300,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       FLoading := True;
 
@@ -347,7 +347,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       vSQLCache := TRALDBSQLCache.Create;
       try
@@ -388,7 +388,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.ParamByName('Stream').AsStream;
+    vMem := AResponse.Body.AsStream;
     try
       FSQLCache.ResponseFromStream(vMem);
       for vInt1 := 0 to Pred(FSQLCache.Count) do

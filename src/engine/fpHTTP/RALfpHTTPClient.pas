@@ -145,7 +145,6 @@ begin
       AResponse.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
       AResponse.StatusCode := FHttp.ResponseStatusCode;
       AResponse.ResponseStream := vResult;
-      AResponse.Params.AddParam('Stream', AResponse.ParamByName('ral_body').AsStream, rpkBODY);
     except
       on e: ESocketError do
       begin

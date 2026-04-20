@@ -168,7 +168,6 @@ begin
       AResponse.StatusCode := FHttp.ResponseCode;
 
       AResponse.ResponseStream := vResult;
-      AResponse.Params.AddParam('Stream', AResponse.ParamByName('ral_body').AsStream, rpkBODY);
     except
       on e: EIdSocketError do
         tratarExcecao(e.LastError, e.Message);
