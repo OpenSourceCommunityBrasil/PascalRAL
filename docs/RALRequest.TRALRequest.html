@@ -1,22 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>PascalRAL: RALRequest: Class TRALRequest</title>
+<title>PascalRAL framework: RALRequest: Class TRALRequest</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="PasDoc 0.16.0">
+<meta name="generator" content="PasDoc 1.0.4">
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 <link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
 
+<link rel="StyleSheet" type="text/css" href="bootstrap.min.css">
 <link rel="StyleSheet" type="text/css" href="pasdoc.css">
 </head>
 <body>
-<div class="container"><div class="navigation">
-<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<nav class="navbar d-md-none sticky-top bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.html">PascalRAL framework</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarNav" aria-controls="sidebarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </div>
+</nav>
+<div class="offcanvas-md offcanvas-start navigation" tabindex="-1" id="sidebarNav" data-bs-scroll="true">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">PascalRAL framework</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarNav" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body py-2">
+<h2><a href="index.html">PascalRAL framework</a></h2><ul class="nav flex-column px-3"><li class="nav-item"><a class="nav-link px-2 py-1" href="AllUnits.html">Units</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="ClassHierarchy.html">Class Hierarchy</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllTypes.html">Types</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllVariables.html">Variables</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllConstants.html">Constants</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllFunctions.html">Functions and Procedures</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllIdentifiers.html">Identifiers</a></li><li class="nav-item pt-2 px-2"><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{1,}" title="At least 1 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
 <div style="clear: both"></div>
-</li></ul></div><div class="content">
+</li></ul></div></div>
+<main class="pasdoc-content content">
+<div class="container-fluid py-3 px-4">
 <span id="TRALRequest"></span><h1 class="cio">Class TRALRequest</h1>
 <div class="sections">
-<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
 <span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
 <p class="unitlink">
 <a href="RALRequest.html">RALRequest</a></p>
@@ -32,371 +48,373 @@ Class that stores everything regarding REQUEST data</p>
 <li class="thisitem">TRALRequest</li></ul><h2 class="overview">Overview</h2>
 <span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
 <table class="summary wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>constructor <strong><a href="RALRequest.TRALRequest.html#Create">Create</a></strong>(AOwner: TObject); override;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>constructor <strong><a href="RALRequest.TRALRequest.html#Create-TObject-">Create</a></strong>(AOwner: TObject); override;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>destructor <strong><a href="RALRequest.TRALRequest.html#Destroy">Destroy</a></strong>; override;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddBody">AddBody</a></strong>(const AText: StringRAL; const AContextType: StringRAL = <a href="RALMIMETypes.html#rctTEXTPLAIN">rctTEXTPLAIN</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddBody-StringRAL-StringRAL-">AddBody</a></strong>(const AText: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AContextType: <a href="RALTypes.html#StringRAL">StringRAL</a> = <a href="RALMIMETypes.html#rctTEXTPLAIN">rctTEXTPLAIN</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddCookie">AddCookie</a></strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddCookie-StringRAL-StringRAL-">AddCookie</a></strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddField">AddField</a></strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddField-StringRAL-StringRAL-">AddField</a></strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddFile">AddFile</a></strong>(AStream: TStream; const AFileName: StringRAL = ''): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddFile-StringRAL-">AddFile</a></strong>(const AFileName: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddFile">AddFile</a></strong>(const AFileName: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddFile-TStream-StringRAL-">AddFile</a></strong>(AStream: TStream; const AFileName: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddHeader">AddHeader</a></strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#AddHeader-StringRAL-StringRAL-">AddHeader</a></strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestEncStream">GetRequestEncStream</a></strong>(const AEncode: boolean = true): TStream; virtual; abstract;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestEncStream-boolean-">GetRequestEncStream</a></strong>(const AEncode: boolean = true): TStream; virtual; abstract;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestEncText">GetRequestEncText</a></strong>(const AEncode: boolean = true): StringRAL; virtual; abstract;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestEncText-boolean-">GetRequestEncText</a></strong>(const AEncode: boolean = true): <a href="RALTypes.html#StringRAL">StringRAL</a>; virtual; abstract;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestStream">GetRequestStream</a></strong>: TStream;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a></strong>: StringRAL;</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetURL">GetURL</a></strong>: StringRAL;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>function <strong><a href="RALRequest.TRALRequest.html#GetURL">GetURL</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#Clone">Clone</a></strong>(ASource: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); reintroduce;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#Clone-TRALRequest-">Clone</a></strong>(ASource: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); reintroduce;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetQuery">SetQuery</a></strong>(const AValue: StringRAL);</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetQuery-StringRAL-">SetQuery</a></strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetRequestStream">SetRequestStream</a></strong>(const AValue: TStream); virtual; abstract;</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetRequestStream-TStream-">SetRequestStream</a></strong>(const AValue: TStream); virtual; abstract;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetRequestText">SetRequestText</a></strong>(const AValue: StringRAL); virtual; abstract;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALRequest.TRALRequest.html#SetRequestText-StringRAL-">SetRequestText</a></strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>); virtual; abstract;</code></td>
 </tr>
 </table>
 <span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
 <table class="summary wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Authorization">Authorization</a></strong>: <a href="RALRequest.TRALAuthorization.html">TRALAuthorization</a> read FAuthorization write FAuthorization;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#ClientInfo">ClientInfo</a></strong>: <a href="RALRequest.TRALClientInfo.html">TRALClientInfo</a> read FClientInfo write FClientInfo;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#ContentSize">ContentSize</a></strong>: Int64RAL read FContentSize write FContentSize;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#ContentSize">ContentSize</a></strong>: <a href="RALTypes.html#Int64RAL">Int64RAL</a> read FContentSize write FContentSize;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Host">Host</a></strong>: StringRAL read FHost write FHost;</code></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Host">Host</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FHost write FHost;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#HttpVersion">HttpVersion</a></strong>: StringRAL read FHttpVersion write FHttpVersion;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#HttpVersion">HttpVersion</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FHttpVersion write FHttpVersion;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Method">Method</a></strong>: TRALMethod read FMethod write FMethod;</code></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Method">Method</a></strong>: <a href="RALTypes.html#TRALMethod">TRALMethod</a> read FMethod write FMethod;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Protocol">Protocol</a></strong>: StringRAL read FProtocol write FProtocol;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Protocol">Protocol</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FProtocol write FProtocol;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Query">Query</a></strong>: StringRAL read FQuery write <a href="RALRequest.TRALRequest.html#SetQuery">SetQuery</a>;</code></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#Query">Query</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FQuery write <a href="RALRequest.TRALRequest.html#SetQuery-StringRAL-">SetQuery</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#RequestStream">RequestStream</a></strong>: TStream read <a href="RALRequest.TRALRequest.html#GetRequestStream">GetRequestStream</a> write <a href="RALRequest.TRALRequest.html#SetRequestStream">SetRequestStream</a>;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#RequestStream">RequestStream</a></strong>: TStream read <a href="RALRequest.TRALRequest.html#GetRequestStream">GetRequestStream</a> write <a href="RALRequest.TRALRequest.html#SetRequestStream-TStream-">SetRequestStream</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#RequestText">RequestText</a></strong>: StringRAL read <a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a> write <a href="RALRequest.TRALRequest.html#SetRequestText">SetRequestText</a>;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#RequestText">RequestText</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read <a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a> write <a href="RALRequest.TRALRequest.html#SetRequestText-StringRAL-">SetRequestText</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#URL">URL</a></strong>: StringRAL read <a href="RALRequest.TRALRequest.html#GetURL">GetURL</a>;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>property <strong><a href="RALRequest.TRALRequest.html#URL">URL</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read <a href="RALRequest.TRALRequest.html#GetURL">GetURL</a>;</code></td>
 </tr>
 </table>
 <h2 class="description">Description</h2>
 <h3 class="detail">Methods</h3>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOwner: TObject); override;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="Create-TObject-"></span><code>constructor <strong>Create</strong>(AOwner: TObject); override;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddBody"></span><code>function <strong>AddBody</strong>(const AText: StringRAL; const AContextType: StringRAL = <a href="RALMIMETypes.html#rctTEXTPLAIN">rctTEXTPLAIN</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddBody-StringRAL-StringRAL-"></span><code>function <strong>AddBody</strong>(const AText: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AContextType: <a href="RALTypes.html#StringRAL">StringRAL</a> = <a href="RALMIMETypes.html#rctTEXTPLAIN">rctTEXTPLAIN</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds an UTF8 String to the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Body">body</a> of the request.</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddCookie"></span><code>function <strong>AddCookie</strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddCookie-StringRAL-StringRAL-"></span><code>function <strong>AddCookie</strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds a string cookie to the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Body">body</a> of the request.</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddField"></span><code>function <strong>AddField</strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddField-StringRAL-StringRAL-"></span><code>function <strong>AddField</strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds a string param with the &quot;Field&quot; kind to the request.</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddFile"></span><code>function <strong>AddFile</strong>(AStream: TStream; const AFileName: StringRAL = ''): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
-</tr>
-<tr><td colspan="2">
-<p>
-Adds a custom file to the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Body">body</a> of the request from the given AStream.</p>
-</td></tr>
-</table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddFile"></span><code>function <strong>AddFile</strong>(const AFileName: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddFile-StringRAL-"></span><code>function <strong>AddFile</strong>(const AFileName: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds a file to the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Body">body</a> of the request based on the given AFileName.</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="AddHeader"></span><code>function <strong>AddHeader</strong>(const AName: StringRAL; const AValue: StringRAL): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddFile-TStream-StringRAL-"></span><code>function <strong>AddFile</strong>(AStream: TStream; const AFileName: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p>
+Adds a custom file to the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Body">body</a> of the request from the given AStream.</p>
+</td></tr>
+</table>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="AddHeader-StringRAL-StringRAL-"></span><code>function <strong>AddHeader</strong>(const AName: <a href="RALTypes.html#StringRAL">StringRAL</a>; const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>): <a href="RALRequest.TRALRequest.html">TRALRequest</a>; reintroduce;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds an UTF8 String to the header of the request.</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="GetRequestEncStream"></span><code>function <strong>GetRequestEncStream</strong>(const AEncode: boolean = true): TStream; virtual; abstract;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="GetRequestEncStream-boolean-"></span><code>function <strong>GetRequestEncStream</strong>(const AEncode: boolean = true): TStream; virtual; abstract;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Returns the request data in TStream format</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="GetRequestEncText"></span><code>function <strong>GetRequestEncText</strong>(const AEncode: boolean = true): StringRAL; virtual; abstract;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="GetRequestEncText-boolean-"></span><code>function <strong>GetRequestEncText</strong>(const AEncode: boolean = true): <a href="RALTypes.html#StringRAL">StringRAL</a>; virtual; abstract;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Returns the request data in UTF8String format</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><span id="GetRequestStream"></span><code>function <strong>GetRequestStream</strong>: TStream;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="GetRequestText"></span><code>function <strong>GetRequestText</strong>: StringRAL;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="GetRequestText"></span><code>function <strong>GetRequestText</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="GetURL"></span><code>function <strong>GetURL</strong>: StringRAL;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="GetURL"></span><code>function <strong>GetURL</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Grabs the full <a class="normal" href="RALRequest.TRALRequest.html#URL">URL</a> of the request</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="Clone"></span><code>procedure <strong>Clone</strong>(ASource: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); reintroduce;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="Clone-TRALRequest-"></span><code>procedure <strong>Clone</strong>(ASource: <a href="RALRequest.TRALRequest.html">TRALRequest</a>); reintroduce;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetQuery"></span><code>procedure <strong>SetQuery</strong>(const AValue: StringRAL);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetQuery-StringRAL-"></span><code>procedure <strong>SetQuery</strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Grabs only the <a class="normal" href="RALCustomObjects.TRALHTTPHeaderInfo.html#Params">params</a> after the &quot;?&quot; key and records it in FQuery attribute</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetRequestStream"></span><code>procedure <strong>SetRequestStream</strong>(const AValue: TStream); virtual; abstract;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetRequestStream-TStream-"></span><code>procedure <strong>SetRequestStream</strong>(const AValue: TStream); virtual; abstract;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetRequestText"></span><code>procedure <strong>SetRequestText</strong>(const AValue: StringRAL); virtual; abstract;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetRequestText-StringRAL-"></span><code>procedure <strong>SetRequestText</strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>); virtual; abstract;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
 <h3 class="detail">Properties</h3>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="Authorization"></span><code>property <strong>Authorization</strong>: <a href="RALRequest.TRALAuthorization.html">TRALAuthorization</a> read FAuthorization write FAuthorization;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="ClientInfo"></span><code>property <strong>ClientInfo</strong>: <a href="RALRequest.TRALClientInfo.html">TRALClientInfo</a> read FClientInfo write FClientInfo;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="ContentSize"></span><code>property <strong>ContentSize</strong>: Int64RAL read FContentSize write FContentSize;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="ContentSize"></span><code>property <strong>ContentSize</strong>: <a href="RALTypes.html#Int64RAL">Int64RAL</a> read FContentSize write FContentSize;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Host"></span><code>property <strong>Host</strong>: StringRAL read FHost write FHost;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Host"></span><code>property <strong>Host</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FHost write FHost;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="HttpVersion"></span><code>property <strong>HttpVersion</strong>: StringRAL read FHttpVersion write FHttpVersion;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="HttpVersion"></span><code>property <strong>HttpVersion</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FHttpVersion write FHttpVersion;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Method"></span><code>property <strong>Method</strong>: TRALMethod read FMethod write FMethod;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Method"></span><code>property <strong>Method</strong>: <a href="RALTypes.html#TRALMethod">TRALMethod</a> read FMethod write FMethod;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Protocol"></span><code>property <strong>Protocol</strong>: StringRAL read FProtocol write FProtocol;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Protocol"></span><code>property <strong>Protocol</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FProtocol write FProtocol;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Query"></span><code>property <strong>Query</strong>: StringRAL read FQuery write <a href="RALRequest.TRALRequest.html#SetQuery">SetQuery</a>;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Query"></span><code>property <strong>Query</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FQuery write <a href="RALRequest.TRALRequest.html#SetQuery-StringRAL-">SetQuery</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="RequestStream"></span><code>property <strong>RequestStream</strong>: TStream read <a href="RALRequest.TRALRequest.html#GetRequestStream">GetRequestStream</a> write <a href="RALRequest.TRALRequest.html#SetRequestStream">SetRequestStream</a>;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="RequestStream"></span><code>property <strong>RequestStream</strong>: TStream read <a href="RALRequest.TRALRequest.html#GetRequestStream">GetRequestStream</a> write <a href="RALRequest.TRALRequest.html#SetRequestStream-TStream-">SetRequestStream</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="RequestText"></span><code>property <strong>RequestText</strong>: StringRAL read <a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a> write <a href="RALRequest.TRALRequest.html#SetRequestText">SetRequestText</a>;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="RequestText"></span><code>property <strong>RequestText</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read <a href="RALRequest.TRALRequest.html#GetRequestText">GetRequestText</a> write <a href="RALRequest.TRALRequest.html#SetRequestText-StringRAL-">SetRequestText</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="URL"></span><code>property <strong>URL</strong>: StringRAL read <a href="RALRequest.TRALRequest.html#GetURL">GetURL</a>;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="URL"></span><code>property <strong>URL</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read <a href="RALRequest.TRALRequest.html#GetURL">GetURL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
 <br><br>
-<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
-<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 1.0.4</a>. </em>
 </span>
-</div></div></body></html>
+</div></main>
+<script src="bootstrap.bundle.min.js"></script>
+</body></html>

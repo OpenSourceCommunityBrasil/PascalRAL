@@ -1,22 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>PascalRAL: RALStream: Class TRALBinaryWriter</title>
+<title>PascalRAL framework: RALStream: Class TRALBinaryWriter</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="PasDoc 0.16.0">
+<meta name="generator" content="PasDoc 1.0.4">
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 <link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
 
+<link rel="StyleSheet" type="text/css" href="bootstrap.min.css">
 <link rel="StyleSheet" type="text/css" href="pasdoc.css">
 </head>
 <body>
-<div class="container"><div class="navigation">
-<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<nav class="navbar d-md-none sticky-top bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.html">PascalRAL framework</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarNav" aria-controls="sidebarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </div>
+</nav>
+<div class="offcanvas-md offcanvas-start navigation" tabindex="-1" id="sidebarNav" data-bs-scroll="true">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">PascalRAL framework</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarNav" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body py-2">
+<h2><a href="index.html">PascalRAL framework</a></h2><ul class="nav flex-column px-3"><li class="nav-item"><a class="nav-link px-2 py-1" href="AllUnits.html">Units</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="ClassHierarchy.html">Class Hierarchy</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllTypes.html">Types</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllVariables.html">Variables</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllConstants.html">Constants</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllFunctions.html">Functions and Procedures</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllIdentifiers.html">Identifiers</a></li><li class="nav-item pt-2 px-2"><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{1,}" title="At least 1 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
 <div style="clear: both"></div>
-</li></ul></div><div class="content">
+</li></ul></div></div>
+<main class="pasdoc-content content">
+<div class="container-fluid py-3 px-4">
 <span id="TRALBinaryWriter"></span><h1 class="cio">Class TRALBinaryWriter</h1>
 <div class="sections">
-<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section">Properties</div></div>
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div></div>
 <span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
 <p class="unitlink">
 <a href="RALStream.html">RALStream</a></p>
@@ -31,433 +47,435 @@
 <li class="thisitem">TRALBinaryWriter</li></ul><h2 class="overview">Overview</h2>
 <span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
 <table class="summary wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>constructor <strong><a href="RALStream.TRALBinaryWriter.html#Create">Create</a></strong>(const AStream: TStream);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>constructor <strong><a href="RALStream.TRALBinaryWriter.html#Create-TStream-">Create</a></strong>(const AStream: TStream);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadBoolean">ReadBoolean</a></strong>: Boolean;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadByte">ReadByte</a></strong>: Byte;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadBytes">ReadBytes</a></strong>: TBytes;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadBytesDirect">ReadBytesDirect</a></strong>(ALength: integer): TBytes;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadBytesDirect-integer-">ReadBytesDirect</a></strong>(ALength: integer): TBytes;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadChar">ReadChar</a></strong>: CharRAL;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadChar">ReadChar</a></strong>: <a href="RALTypes.html#CharRAL">CharRAL</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadDateTime">ReadDateTime</a></strong>: TDateTime;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadFloat">ReadFloat</a></strong>: Double;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadInt64">ReadInt64</a></strong>: Int64RAL;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadInt64">ReadInt64</a></strong>: <a href="RALTypes.html#Int64RAL">Int64RAL</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadInteger">ReadInteger</a></strong>: IntegerRAL;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadInteger">ReadInteger</a></strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadLongWord">ReadLongWord</a></strong>: LongWord;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadQWord">ReadQWord</a></strong>: UInt64;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadShortint">ReadShortint</a></strong>: Shortint;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadSmallint">ReadSmallint</a></strong>: Smallint;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadString">ReadString</a></strong>: StringRAL;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadString">ReadString</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadWord">ReadWord</a></strong>: Word;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadSize">ReadSize</a></strong>: UInt64RAL;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>function <strong><a href="RALStream.TRALBinaryWriter.html#ReadSize">ReadSize</a></strong>: <a href="RALTypes.html#UInt64RAL">UInt64RAL</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#ReadStream">ReadStream</a></strong>(AStream: TStream);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#ReadStream-TStream-">ReadStream</a></strong>(AStream: TStream);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBoolean">WriteBoolean</a></strong>(AValue: Boolean);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBoolean-Boolean-">WriteBoolean</a></strong>(AValue: Boolean);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteByte">WriteByte</a></strong>(AValue: Byte);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteByte-Byte-">WriteByte</a></strong>(AValue: Byte);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBytes">WriteBytes</a></strong>(AValue: TBytes);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBytes-TBytes-">WriteBytes</a></strong>(AValue: TBytes);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBytesDirect">WriteBytesDirect</a></strong>(AValue: TBytes);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteBytesDirect-TBytes-">WriteBytesDirect</a></strong>(AValue: TBytes);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteChar">WriteChar</a></strong>(AValue: CharRAL);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteChar-CharRAL-">WriteChar</a></strong>(AValue: <a href="RALTypes.html#CharRAL">CharRAL</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteDateTime">WriteDateTime</a></strong>(AValue: TDateTime);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteDateTime-TDateTime-">WriteDateTime</a></strong>(AValue: TDateTime);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteFloat">WriteFloat</a></strong>(AValue: Double);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteFloat-Double-">WriteFloat</a></strong>(AValue: Double);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteInt64">WriteInt64</a></strong>(AValue: Int64RAL);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteInt64-Int64RAL-">WriteInt64</a></strong>(AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteInteger">WriteInteger</a></strong>(AValue: IntegerRAL);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteInteger-IntegerRAL-">WriteInteger</a></strong>(AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteLongWord">WriteLongWord</a></strong>(AValue: LongWord);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteLongWord-LongWord-">WriteLongWord</a></strong>(AValue: LongWord);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteQWord">WriteQWord</a></strong>(AValue: UInt64);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteQWord-UInt64-">WriteQWord</a></strong>(AValue: UInt64);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteShortint">WriteShortint</a></strong>(AValue: Shortint);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteShortint-Shortint-">WriteShortint</a></strong>(AValue: Shortint);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteSmallint">WriteSmallint</a></strong>(AValue: Smallint);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteSmallint-Smallint-">WriteSmallint</a></strong>(AValue: Smallint);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteStream">WriteStream</a></strong>(AValue: TStream);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteStream-TStream-">WriteStream</a></strong>(AValue: TStream);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteString">WriteString</a></strong>(AValue: StringRAL);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteString-StringRAL-">WriteString</a></strong>(AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteWord">WriteWord</a></strong>(AValue: Word);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteWord-Word-">WriteWord</a></strong>(AValue: Word);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteSize">WriteSize</a></strong>(ASize: UInt64RAL);</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALStream.TRALBinaryWriter.html#WriteSize-UInt64RAL-">WriteSize</a></strong>(ASize: <a href="RALTypes.html#UInt64RAL">UInt64RAL</a>);</code></td>
 </tr>
 </table>
 <h2 class="description">Description</h2>
 <h3 class="detail">Methods</h3>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(const AStream: TStream);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="Create-TStream-"></span><code>constructor <strong>Create</strong>(const AStream: TStream);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadBoolean"></span><code>function <strong>ReadBoolean</strong>: Boolean;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadByte"></span><code>function <strong>ReadByte</strong>: Byte;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadBytes"></span><code>function <strong>ReadBytes</strong>: TBytes;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadBytesDirect"></span><code>function <strong>ReadBytesDirect</strong>(ALength: integer): TBytes;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadBytesDirect-integer-"></span><code>function <strong>ReadBytesDirect</strong>(ALength: integer): TBytes;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadChar"></span><code>function <strong>ReadChar</strong>: CharRAL;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadChar"></span><code>function <strong>ReadChar</strong>: <a href="RALTypes.html#CharRAL">CharRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadDateTime"></span><code>function <strong>ReadDateTime</strong>: TDateTime;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadFloat"></span><code>function <strong>ReadFloat</strong>: Double;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadInt64"></span><code>function <strong>ReadInt64</strong>: Int64RAL;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadInt64"></span><code>function <strong>ReadInt64</strong>: <a href="RALTypes.html#Int64RAL">Int64RAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadInteger"></span><code>function <strong>ReadInteger</strong>: IntegerRAL;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadInteger"></span><code>function <strong>ReadInteger</strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadLongWord"></span><code>function <strong>ReadLongWord</strong>: LongWord;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadQWord"></span><code>function <strong>ReadQWord</strong>: UInt64;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadShortint"></span><code>function <strong>ReadShortint</strong>: Shortint;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadSmallint"></span><code>function <strong>ReadSmallint</strong>: Smallint;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadString"></span><code>function <strong>ReadString</strong>: StringRAL;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadString"></span><code>function <strong>ReadString</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="ReadWord"></span><code>function <strong>ReadWord</strong>: Word;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="ReadSize"></span><code>function <strong>ReadSize</strong>: UInt64RAL;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="ReadSize"></span><code>function <strong>ReadSize</strong>: <a href="RALTypes.html#UInt64RAL">UInt64RAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 read and write UTF-7</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ReadStream"></span><code>procedure <strong>ReadStream</strong>(AStream: TStream);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ReadStream-TStream-"></span><code>procedure <strong>ReadStream</strong>(AStream: TStream);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteBoolean"></span><code>procedure <strong>WriteBoolean</strong>(AValue: Boolean);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteBoolean-Boolean-"></span><code>procedure <strong>WriteBoolean</strong>(AValue: Boolean);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteByte"></span><code>procedure <strong>WriteByte</strong>(AValue: Byte);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteByte-Byte-"></span><code>procedure <strong>WriteByte</strong>(AValue: Byte);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteBytes"></span><code>procedure <strong>WriteBytes</strong>(AValue: TBytes);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteBytes-TBytes-"></span><code>procedure <strong>WriteBytes</strong>(AValue: TBytes);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteBytesDirect"></span><code>procedure <strong>WriteBytesDirect</strong>(AValue: TBytes);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteBytesDirect-TBytes-"></span><code>procedure <strong>WriteBytesDirect</strong>(AValue: TBytes);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteChar"></span><code>procedure <strong>WriteChar</strong>(AValue: CharRAL);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteChar-CharRAL-"></span><code>procedure <strong>WriteChar</strong>(AValue: <a href="RALTypes.html#CharRAL">CharRAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteDateTime"></span><code>procedure <strong>WriteDateTime</strong>(AValue: TDateTime);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteDateTime-TDateTime-"></span><code>procedure <strong>WriteDateTime</strong>(AValue: TDateTime);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteFloat"></span><code>procedure <strong>WriteFloat</strong>(AValue: Double);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteFloat-Double-"></span><code>procedure <strong>WriteFloat</strong>(AValue: Double);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteInt64"></span><code>procedure <strong>WriteInt64</strong>(AValue: Int64RAL);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteInt64-Int64RAL-"></span><code>procedure <strong>WriteInt64</strong>(AValue: <a href="RALTypes.html#Int64RAL">Int64RAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteInteger"></span><code>procedure <strong>WriteInteger</strong>(AValue: IntegerRAL);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteInteger-IntegerRAL-"></span><code>procedure <strong>WriteInteger</strong>(AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteLongWord"></span><code>procedure <strong>WriteLongWord</strong>(AValue: LongWord);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteLongWord-LongWord-"></span><code>procedure <strong>WriteLongWord</strong>(AValue: LongWord);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteQWord"></span><code>procedure <strong>WriteQWord</strong>(AValue: UInt64);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteQWord-UInt64-"></span><code>procedure <strong>WriteQWord</strong>(AValue: UInt64);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteShortint"></span><code>procedure <strong>WriteShortint</strong>(AValue: Shortint);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteShortint-Shortint-"></span><code>procedure <strong>WriteShortint</strong>(AValue: Shortint);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteSmallint"></span><code>procedure <strong>WriteSmallint</strong>(AValue: Smallint);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteSmallint-Smallint-"></span><code>procedure <strong>WriteSmallint</strong>(AValue: Smallint);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteStream"></span><code>procedure <strong>WriteStream</strong>(AValue: TStream);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteStream-TStream-"></span><code>procedure <strong>WriteStream</strong>(AValue: TStream);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteString"></span><code>procedure <strong>WriteString</strong>(AValue: StringRAL);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteString-StringRAL-"></span><code>procedure <strong>WriteString</strong>(AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="WriteWord"></span><code>procedure <strong>WriteWord</strong>(AValue: Word);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="WriteWord-Word-"></span><code>procedure <strong>WriteWord</strong>(AValue: Word);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="WriteSize"></span><code>procedure <strong>WriteSize</strong>(ASize: UInt64RAL);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="WriteSize-UInt64RAL-"></span><code>procedure <strong>WriteSize</strong>(ASize: <a href="RALTypes.html#UInt64RAL">UInt64RAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
 <br><br>
-<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
-<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 1.0.4</a>. </em>
 </span>
-</div></div></body></html>
+</div></main>
+<script src="bootstrap.bundle.min.js"></script>
+</body></html>

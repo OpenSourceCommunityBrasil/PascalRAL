@@ -1,22 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>PascalRAL: RALServer: Class TRALServer</title>
+<title>PascalRAL framework: RALServer: Class TRALServer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="PasDoc 0.16.0">
+<meta name="generator" content="PasDoc 1.0.4">
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 <link rel="stylesheet" type="text/css" href="tipuesearch/tipuesearch.css">
 
+<link rel="StyleSheet" type="text/css" href="bootstrap.min.css">
 <link rel="StyleSheet" type="text/css" href="pasdoc.css">
 </head>
 <body>
-<div class="container"><div class="navigation">
-<h2><a href="index.html">PascalRAL</a></h2><ul><li><a href="AllUnits.html">Units</a></li><li><a href="ClassHierarchy.html">Class Hierarchy</a></li><li><a href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li><a href="AllTypes.html">Types</a></li><li><a href="AllVariables.html">Variables</a></li><li><a href="AllConstants.html">Constants</a></li><li><a href="AllFunctions.html">Functions and Procedures</a></li><li><a href="AllIdentifiers.html">Identifiers</a></li><li><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{3,}" title="At least 3 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
+<nav class="navbar d-md-none sticky-top bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.html">PascalRAL framework</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarNav" aria-controls="sidebarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </div>
+</nav>
+<div class="offcanvas-md offcanvas-start navigation" tabindex="-1" id="sidebarNav" data-bs-scroll="true">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">PascalRAL framework</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarNav" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body py-2">
+<h2><a href="index.html">PascalRAL framework</a></h2><ul class="nav flex-column px-3"><li class="nav-item"><a class="nav-link px-2 py-1" href="AllUnits.html">Units</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="ClassHierarchy.html">Class Hierarchy</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllClasses.html">Classes, Interfaces, Objects and Records</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllTypes.html">Types</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllVariables.html">Variables</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllConstants.html">Constants</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllFunctions.html">Functions and Procedures</a></li><li class="nav-item"><a class="nav-link px-2 py-1" href="AllIdentifiers.html">Identifiers</a></li><li class="nav-item pt-2 px-2"><form class="search-form" action="tipue_results.html"><div class="search-input"><input type="text" name="q" id="tipue_search_input" pattern=".{1,}" title="At least 1 characters" required><div class="search-button"><input type="button" id="tipue_search_button" onclick="this.form.submit();"></div></div></form>
 <div style="clear: both"></div>
-</li></ul></div><div class="content">
+</li></ul></div></div>
+<main class="pasdoc-content content">
+<div class="container-fluid py-3 px-4">
 <span id="TRALServer"></span><h1 class="cio">Class TRALServer</h1>
 <div class="sections">
-<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section">Fields</div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
+<div class="one_section"><a class="section" href="#PasDoc-Description">Description</a></div><div class="one_section"><a class="section" href="#PasDoc-Hierarchy">Hierarchy</a></div><div class="one_section"><a class="section" href="#PasDoc-Methods">Methods</a></div><div class="one_section"><a class="section" href="#PasDoc-Properties">Properties</a></div></div>
 <span id="PasDoc-Description"></span><h2 class="unit">Unit</h2>
 <p class="unitlink">
 <a href="RALServer.html">RALServer</a></p>
@@ -34,277 +50,277 @@ Base class for HTTP Server components</p>
 <li class="thisitem">TRALServer</li></ul><h2 class="overview">Overview</h2>
 <span id="PasDoc-Methods"></span><h3 class="summary">Methods</h3>
 <table class="summary wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>constructor <strong><a href="RALServer.TRALServer.html#Create">Create</a></strong>(AOwner: TComponent); override;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>constructor <strong><a href="RALServer.TRALServer.html#Create-TComponent-">Create</a></strong>(AOwner: TComponent); override;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>destructor <strong><a href="RALServer.TRALServer.html#Destroy">Destroy</a></strong>; override;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CountSubModules">CountSubModules</a></strong>: IntegerRAL;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CountSubModules">CountSubModules</a></strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRequest">CreateRequest</a></strong>: <a href="RALRequest.TRALRequest.html">TRALRequest</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateResponse">CreateResponse</a></strong>: <a href="RALResponse.TRALResponse.html">TRALResponse</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRoute">CreateRoute</a></strong>(const ARoute: StringRAL; AReplyProc: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a>; const ADescription: StringRAL = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRoute-StringRAL-TRALOnReply-StringRAL-">CreateRoute</a></strong>(const ARoute: <a href="RALTypes.html#StringRAL">StringRAL</a>; AReplyProc: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a>; const ADescription: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRoute">CreateRoute</a></strong>(const ARoute: StringRAL; AReplyProc: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a>; const ADescription: StringRAL = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRoute-StringRAL-TRALOnReplyGen-StringRAL-">CreateRoute</a></strong>(const ARoute: <a href="RALTypes.html#StringRAL">StringRAL</a>; AReplyProc: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a>; const ADescription: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#SSLEnabled">SSLEnabled</a></strong>: boolean;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#CreateRALSSL">CreateRALSSL</a></strong>: <a href="RALServer.TRALSSL.html">TRALSSL</a>; virtual;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#GetDefaultSSL">GetDefaultSSL</a></strong>: <a href="RALServer.TRALSSL.html">TRALSSL</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#GetSubModule">GetSubModule</a></strong>(AIndex: IntegerRAL): <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#GetSubModule-IntegerRAL-">GetSubModule</a></strong>(AIndex: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>): <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#IPv6IsImplemented">IPv6IsImplemented</a></strong>: boolean; virtual;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#ValidateAuth">ValidateAuth</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; var AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>): boolean;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>function <strong><a href="RALServer.TRALServer.html#ValidateAuth-TRALRequest-TRALResponse-">ValidateAuth</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; var AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>): boolean;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#ProcessCommands">ProcessCommands</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#ProcessCommands-TRALRequest-TRALResponse-">ProcessCommands</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#Start">Start</a></strong>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<tr class="list2 visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#Stop">Stop</a></strong>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#ValidateRequest">ValidateRequest</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#ValidateRequest-TRALRequest-TRALResponse-">ValidateRequest</a></strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#AddSubRoute">AddSubRoute</a></strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#AddSubRoute-TRALModuleRoutes-">AddSubRoute</a></strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#CheckCORS">CheckCORS</a></strong>(AAllowOptions: boolean; AAllowMethods: StringRAL; ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#CheckCORS-boolean-StringRAL-TRALRequest-TRALResponse-">CheckCORS</a></strong>(AAllowOptions: boolean; AAllowMethods: <a href="RALTypes.html#StringRAL">StringRAL</a>; ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#DelSubRoute">DelSubRoute</a></strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#DelSubRoute-TRALModuleRoutes-">DelSubRoute</a></strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#Notification">Notification</a></strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#Notification-TComponent-TOperation-">Notification</a></strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetActive">SetActive</a></strong>(const AValue: boolean); virtual;</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetActive-boolean-">SetActive</a></strong>(const AValue: boolean); virtual;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetAuthentication">SetAuthentication</a></strong>(const AValue: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a>);</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetAuthentication-TRALAuthServer-">SetAuthentication</a></strong>(const AValue: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a>);</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetEngine">SetEngine</a></strong>(const AValue: StringRAL);</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetEngine-StringRAL-">SetEngine</a></strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetPort">SetPort</a></strong>(const AValue: IntegerRAL); virtual;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetPort-IntegerRAL-">SetPort</a></strong>(const AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>); virtual;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetServerStatus">SetServerStatus</a></strong>(AValue: TStringList);</code></td>
+<tr class="list2 visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetServerStatus-TStringList-">SetServerStatus</a></strong>(AValue: TStringList);</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetSessionTimeout">SetSessionTimeout</a></strong>(const AValue: IntegerRAL); virtual;</code></td>
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><code>procedure <strong><a href="RALServer.TRALServer.html#SetSessionTimeout-IntegerRAL-">SetSessionTimeout</a></strong>(const AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>); virtual;</code></td>
 </tr>
 </table>
 <span id="PasDoc-Properties"></span><h3 class="summary">Properties</h3>
 <table class="summary wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Active">Active</a></strong>: boolean read FActive write <a href="RALServer.TRALServer.html#SetActive">SetActive</a>;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Active">Active</a></strong>: boolean read FActive write <a href="RALServer.TRALServer.html#SetActive-boolean-">SetActive</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Authentication">Authentication</a></strong>: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a> read FAuthentication write <a href="RALServer.TRALServer.html#SetAuthentication">SetAuthentication</a>;</code></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Authentication">Authentication</a></strong>: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a> read FAuthentication write <a href="RALServer.TRALServer.html#SetAuthentication-TRALAuthServer-">SetAuthentication</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#CompressType">CompressType</a></strong>: <a href="RALCompress.html#TRALCompressType">TRALCompressType</a> read FCompressType write FCompressType;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#CookieLife">CookieLife</a></strong>: integer read FCookieLife write FCookieLife;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#CORSOptions">CORSOptions</a></strong>: <a href="RALServer.TRALCORSOptions.html">TRALCORSOptions</a> read FCORSOptions write FCORSOptions;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#CriptoOptions">CriptoOptions</a></strong>: <a href="RALCripto.TRALCriptoOptions.html">TRALCriptoOptions</a> read FCriptoOptions write FCriptoOptions;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Engine">Engine</a></strong>: StringRAL read FEngine;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Engine">Engine</a></strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FEngine;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#IPConfig">IPConfig</a></strong>: <a href="RALServer.TRALIPConfig.html">TRALIPConfig</a> read FIPConfig write FIPConfig;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#OnClientBlock">OnClientBlock</a></strong>: <a href="RALServer.html#TRALOnClientBlock">TRALOnClientBlock</a> read FOnClientBlock write FOnClientBlock;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#OnRequest">OnRequest</a></strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnRequest write FOnRequest;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#OnResponse">OnResponse</a></strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnResponse write FOnResponse;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#OnServerError">OnServerError</a></strong>: <a href="RALServer.html#TRALOnServerError">TRALOnServerError</a> read FOnServerError write FOnServerError;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Port">Port</a></strong>: IntegerRAL read FPort write <a href="RALServer.TRALServer.html#SetPort">SetPort</a>;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Port">Port</a></strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a> read FPort write <a href="RALServer.TRALServer.html#SetPort-IntegerRAL-">SetPort</a>;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#RaiseError">RaiseError</a></strong>: boolean read FRaiseError write FRaiseError default false;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#ResponsePages">ResponsePages</a></strong>: <a href="RALResponsePages.TRALResponsePages.html">TRALResponsePages</a> read FResponsePages write FResponsePages;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Routes">Routes</a></strong>: <a href="RALRoutes.TRALRoutes.html">TRALRoutes</a> read FRoutes write FRoutes;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#Security">Security</a></strong>: <a href="RALServer.TRALSecurity.html">TRALSecurity</a> read FSecurity write FSecurity;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#ServerStatus">ServerStatus</a></strong>: TStringList read FServerStatus write <a href="RALServer.TRALServer.html#SetServerStatus">SetServerStatus</a>;</code></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#ServerStatus">ServerStatus</a></strong>: TStringList read FServerStatus write <a href="RALServer.TRALServer.html#SetServerStatus-TStringList-">SetServerStatus</a>;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#SessionTimeout">SessionTimeout</a></strong>: IntegerRAL read FSessionTimeout write <a href="RALServer.TRALServer.html#SetSessionTimeout">SetSessionTimeout</a> default 30000;</code></td>
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#SessionTimeout">SessionTimeout</a></strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a> read FSessionTimeout write <a href="RALServer.TRALServer.html#SetSessionTimeout-IntegerRAL-">SetSessionTimeout</a> default 30000;</code></td>
 </tr>
-<tr class="list2">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<tr class="list2 visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#ShowServerStatus">ShowServerStatus</a></strong>: boolean read FShowServerStatus write FShowServerStatus;</code></td>
 </tr>
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#SubModule">SubModule</a></strong>[AIndex:IntegerRAL]: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a> read <a href="RALServer.TRALServer.html#GetSubModule">GetSubModule</a>;</code></td>
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><code>property <strong><a href="RALServer.TRALServer.html#SubModule">SubModule</a></strong>[AIndex: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>]: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a> read <a href="RALServer.TRALServer.html#GetSubModule-IntegerRAL-">GetSubModule</a>;</code></td>
 </tr>
 </table>
 <h2 class="description">Description</h2>
 <h3 class="detail">Methods</h3>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="Create"></span><code>constructor <strong>Create</strong>(AOwner: TComponent); override;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="Create-TComponent-"></span><code>constructor <strong>Create</strong>(AOwner: TComponent); override;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="Destroy"></span><code>destructor <strong>Destroy</strong>; override;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="CountSubModules"></span><code>function <strong>CountSubModules</strong>: IntegerRAL;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="CountSubModules"></span><code>function <strong>CountSubModules</strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="CreateRequest"></span><code>function <strong>CreateRequest</strong>: <a href="RALRequest.TRALRequest.html">TRALRequest</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
-<a class="normal" href="RALServer.TRALServer.html#Create">Create</a> handle request of server</p>
+<a class="normal" href="RALServer.TRALServer.html#Create-TComponent-">Create</a> handle request of server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="CreateResponse"></span><code>function <strong>CreateResponse</strong>: <a href="RALResponse.TRALResponse.html">TRALResponse</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
-<a class="normal" href="RALServer.TRALServer.html#Create">Create</a> handle response of server</p>
+<a class="normal" href="RALServer.TRALServer.html#Create-TComponent-">Create</a> handle response of server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="CreateRoute"></span><code>function <strong>CreateRoute</strong>(const ARoute: StringRAL; AReplyProc: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a>; const ADescription: StringRAL = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
-</tr>
-<tr><td colspan="2">
-&nbsp;</td></tr>
-</table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="CreateRoute"></span><code>function <strong>CreateRoute</strong>(const ARoute: StringRAL; AReplyProc: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a>; const ADescription: StringRAL = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="CreateRoute-StringRAL-TRALOnReply-StringRAL-"></span><code>function <strong>CreateRoute</strong>(const ARoute: <a href="RALTypes.html#StringRAL">StringRAL</a>; AReplyProc: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a>; const ADescription: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
-Shortcut to <a class="normal" href="RALServer.TRALServer.html#Create">create</a> <a class="normal" href="RALServer.TRALServer.html#Routes">routes</a> on the server</p>
+Shortcut to <a class="normal" href="RALServer.TRALServer.html#Create-TComponent-">create</a> <a class="normal" href="RALServer.TRALServer.html#Routes">routes</a> on the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="CreateRoute-StringRAL-TRALOnReplyGen-StringRAL-"></span><code>function <strong>CreateRoute</strong>(const ARoute: <a href="RALTypes.html#StringRAL">StringRAL</a>; AReplyProc: <a href="RALRoutes.html#TRALOnReplyGen">TRALOnReplyGen</a>; const ADescription: <a href="RALTypes.html#StringRAL">StringRAL</a> = ''): <a href="RALRoutes.TRALRoute.html">TRALRoute</a>; overload;</code></td>
+</tr>
+<tr><td colspan="2">
+<p class="nodescription">This item has no description.</p></td></tr>
+</table>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="SSLEnabled"></span><code>function <strong>SSLEnabled</strong>: boolean;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><span id="CreateRALSSL"></span><code>function <strong>CreateRALSSL</strong>: <a href="RALServer.TRALSSL.html">TRALSSL</a>; virtual;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -312,9 +328,9 @@ Shortcut to <a class="normal" href="RALServer.TRALServer.html#Create">create</a>
 Used by inherited members to set SSL settings</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><span id="GetDefaultSSL"></span><code>function <strong>GetDefaultSSL</strong>: <a href="RALServer.TRALSSL.html">TRALSSL</a>;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -322,17 +338,17 @@ Used by inherited members to set SSL settings</p>
 Used by inherited members to return the SSL definitions</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="GetSubModule"></span><code>function <strong>GetSubModule</strong>(AIndex: IntegerRAL): <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="GetSubModule-IntegerRAL-"></span><code>function <strong>GetSubModule</strong>(AIndex: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>): <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
 <td class="itemcode"><span id="IPv6IsImplemented"></span><code>function <strong>IPv6IsImplemented</strong>: boolean; virtual;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -340,29 +356,29 @@ Used by inherited members to return the SSL definitions</p>
 Checks if the current server component allows IPv6</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="ValidateAuth"></span><code>function <strong>ValidateAuth</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; var AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>): boolean;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="ValidateAuth-TRALRequest-TRALResponse-"></span><code>function <strong>ValidateAuth</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; var AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>): boolean;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Function that will call Validate from the current <a class="normal" href="RALServer.TRALServer.html#Authentication">authentication</a> component</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ProcessCommands"></span><code>procedure <strong>ProcessCommands</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ProcessCommands-TRALRequest-TRALResponse-"></span><code>procedure <strong>ProcessCommands</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Core procedure of the server, every request will pass through here to be processed into response that will be answered to the client</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="Start"></span><code>procedure <strong>Start</strong>;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -370,9 +386,9 @@ Core procedure of the server, every request will pass through here to be process
 Shortcut to <code>start</code> the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
 <td class="itemcode"><span id="Stop"></span><code>procedure <strong>Stop</strong>;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -380,124 +396,124 @@ Shortcut to <code>start</code> the server</p>
 Shortcut to <code>stop</code> the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="ValidateRequest"></span><code>procedure <strong>ValidateRequest</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="ValidateRequest-TRALRequest-TRALResponse-"></span><code>procedure <strong>ValidateRequest</strong>(ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
-Validate requests headers before <a class="normal" href="RALServer.TRALServer.html#ProcessCommands">ProcessCommands</a></p>
+Validate requests headers before <a class="normal" href="RALServer.TRALServer.html#ProcessCommands-TRALRequest-TRALResponse-">ProcessCommands</a></p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="AddSubRoute"></span><code>procedure <strong>AddSubRoute</strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="AddSubRoute-TRALModuleRoutes-"></span><code>procedure <strong>AddSubRoute</strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Adds a fixed subroute from other components into server <a class="normal" href="RALServer.TRALServer.html#Routes">routes</a></p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="CheckCORS"></span><code>procedure <strong>CheckCORS</strong>(AAllowOptions: boolean; AAllowMethods: StringRAL; ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="CheckCORS-boolean-StringRAL-TRALRequest-TRALResponse-"></span><code>procedure <strong>CheckCORS</strong>(AAllowOptions: boolean; AAllowMethods: <a href="RALTypes.html#StringRAL">StringRAL</a>; ARequest: <a href="RALRequest.TRALRequest.html">TRALRequest</a>; AResponse: <a href="RALResponse.TRALResponse.html">TRALResponse</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Processes CORS headers</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="DelSubRoute"></span><code>procedure <strong>DelSubRoute</strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="DelSubRoute-TRALModuleRoutes-"></span><code>procedure <strong>DelSubRoute</strong>(ASubRoute: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a>);</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Removes a fixed subroute used by other components</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="Notification"></span><code>procedure <strong>Notification</strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="Notification-TComponent-TOperation-"></span><code>procedure <strong>Notification</strong>(AComponent: TComponent; Operation: TOperation); override;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Internal function to properly dispose the component attached to the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetActive"></span><code>procedure <strong>SetActive</strong>(const AValue: boolean); virtual;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetActive-boolean-"></span><code>procedure <strong>SetActive</strong>(const AValue: boolean); virtual;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetAuthentication"></span><code>procedure <strong>SetAuthentication</strong>(const AValue: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a>);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetAuthentication-TRALAuthServer-"></span><code>procedure <strong>SetAuthentication</strong>(const AValue: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetEngine"></span><code>procedure <strong>SetEngine</strong>(const AValue: StringRAL);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetEngine-StringRAL-"></span><code>procedure <strong>SetEngine</strong>(const AValue: <a href="RALTypes.html#StringRAL">StringRAL</a>);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetPort"></span><code>procedure <strong>SetPort</strong>(const AValue: IntegerRAL); virtual;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetPort-IntegerRAL-"></span><code>procedure <strong>SetPort</strong>(const AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>); virtual;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetServerStatus"></span><code>procedure <strong>SetServerStatus</strong>(AValue: TStringList);</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetServerStatus-TStringList-"></span><code>procedure <strong>SetServerStatus</strong>(AValue: TStringList);</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="protected.gif" alt="Protected" title="Protected"></a></td>
-<td class="itemcode"><span id="SetSessionTimeout"></span><code>procedure <strong>SetSessionTimeout</strong>(const AValue: IntegerRAL); virtual;</code></td>
+<table class="detail visibility-protected wide_list">
+<tr class="list visibility-protected">
+<td class="visibility"><span class="badge vis-protected">Protected</span></td>
+<td class="itemcode"><span id="SetSessionTimeout-IntegerRAL-"></span><code>procedure <strong>SetSessionTimeout</strong>(const AValue: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>); virtual;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
 <h3 class="detail">Properties</h3>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Active"></span><code>property <strong>Active</strong>: boolean read FActive write <a href="RALServer.TRALServer.html#SetActive">SetActive</a>;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Active"></span><code>property <strong>Active</strong>: boolean read FActive write <a href="RALServer.TRALServer.html#SetActive-boolean-">SetActive</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Authentication"></span><code>property <strong>Authentication</strong>: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a> read FAuthentication write <a href="RALServer.TRALServer.html#SetAuthentication">SetAuthentication</a>;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Authentication"></span><code>property <strong>Authentication</strong>: <a href="RALAuthentication.TRALAuthServer.html">TRALAuthServer</a> read FAuthentication write <a href="RALServer.TRALServer.html#SetAuthentication-TRALAuthServer-">SetAuthentication</a>;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="CompressType"></span><code>property <strong>CompressType</strong>: <a href="RALCompress.html#TRALCompressType">TRALCompressType</a> read FCompressType write FCompressType;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -505,9 +521,9 @@ Internal function to properly dispose the component attached to the server</p>
 Compression algorithm that will be used on responses to the client</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="CookieLife"></span><code>property <strong>CookieLife</strong>: integer read FCookieLife write FCookieLife;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -515,9 +531,9 @@ Compression algorithm that will be used on responses to the client</p>
 Determinates in seconds how long will the cookies be kept</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="CORSOptions"></span><code>property <strong>CORSOptions</strong>: <a href="RALServer.TRALCORSOptions.html">TRALCORSOptions</a> read FCORSOptions write FCORSOptions;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -525,9 +541,9 @@ Determinates in seconds how long will the cookies be kept</p>
 Determinates CORS configurations for server-server communication</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="CriptoOptions"></span><code>property <strong>CriptoOptions</strong>: <a href="RALCripto.TRALCriptoOptions.html">TRALCriptoOptions</a> read FCriptoOptions write FCriptoOptions;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -535,19 +551,19 @@ Determinates CORS configurations for server-server communication</p>
 Options for P2P crypt <a class="normal" href="RALServer.TRALServer.html#Security">security</a></p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Engine"></span><code>property <strong>Engine</strong>: StringRAL read FEngine;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Engine"></span><code>property <strong>Engine</strong>: <a href="RALTypes.html#StringRAL">StringRAL</a> read FEngine;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Read-only property to indicate <code>engine</code> <a class="normal" href="RALCustomObjects.TRALComponent.html#Version">version</a></p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="IPConfig"></span><code>property <strong>IPConfig</strong>: <a href="RALServer.TRALIPConfig.html">TRALIPConfig</a> read FIPConfig write FIPConfig;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -555,9 +571,9 @@ Read-only property to indicate <code>engine</code> <a class="normal" href="RALCu
 Configuration params for IP listening</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="OnClientBlock"></span><code>property <strong>OnClientBlock</strong>: <a href="RALServer.html#TRALOnClientBlock">TRALOnClientBlock</a> read FOnClientBlock write FOnClientBlock;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -565,9 +581,9 @@ Configuration params for IP listening</p>
 Event fired whenever an incoming IP gets blocked by the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="OnRequest"></span><code>property <strong>OnRequest</strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnRequest write FOnRequest;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -575,9 +591,9 @@ Event fired whenever an incoming IP gets blocked by the server</p>
 Event fired whenever any request is received by the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="OnResponse"></span><code>property <strong>OnResponse</strong>: <a href="RALRoutes.html#TRALOnReply">TRALOnReply</a> read FOnResponse write FOnResponse;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -585,9 +601,9 @@ Event fired whenever any request is received by the server</p>
 Event fired whenever any response is sent by the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="OnServerError"></span><code>property <strong>OnServerError</strong>: <a href="RALServer.html#TRALOnServerError">TRALOnServerError</a> read FOnServerError write FOnServerError;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -595,19 +611,19 @@ Event fired whenever any response is sent by the server</p>
 Event fired whenever any error happens inside the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="Port"></span><code>property <strong>Port</strong>: IntegerRAL read FPort write <a href="RALServer.TRALServer.html#SetPort">SetPort</a>;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="Port"></span><code>property <strong>Port</strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a> read FPort write <a href="RALServer.TRALServer.html#SetPort-IntegerRAL-">SetPort</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 <code>Port</code> to listen to</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="RaiseError"></span><code>property <strong>RaiseError</strong>: boolean read FRaiseError write FRaiseError default false;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -615,17 +631,17 @@ Event fired whenever any error happens inside the server</p>
 Whether the server will raise error to the application or not (exception raise&circ;), default value is false</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="ResponsePages"></span><code>property <strong>ResponsePages</strong>: <a href="RALResponsePages.TRALResponsePages.html">TRALResponsePages</a> read FResponsePages write FResponsePages;</code></td>
 </tr>
 <tr><td colspan="2">
-&nbsp;</td></tr>
+<p class="nodescription">This item has no description.</p></td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="Routes"></span><code>property <strong>Routes</strong>: <a href="RALRoutes.TRALRoutes.html">TRALRoutes</a> read FRoutes write FRoutes;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -633,9 +649,9 @@ Whether the server will raise error to the application or not (exception raise&c
 Route configuration of the server, a.k.a endpoints</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="Security"></span><code>property <strong>Security</strong>: <a href="RALServer.TRALSecurity.html">TRALSecurity</a> read FSecurity write FSecurity;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -643,29 +659,29 @@ Route configuration of the server, a.k.a endpoints</p>
 <code>Security</code> configurations of the server</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="ServerStatus"></span><code>property <strong>ServerStatus</strong>: TStringList read FServerStatus write <a href="RALServer.TRALServer.html#SetServerStatus">SetServerStatus</a>;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="ServerStatus"></span><code>property <strong>ServerStatus</strong>: TStringList read FServerStatus write <a href="RALServer.TRALServer.html#SetServerStatus-TStringList-">SetServerStatus</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Default text answered by the server without WebModule when requesting the route '/'</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
-<td class="itemcode"><span id="SessionTimeout"></span><code>property <strong>SessionTimeout</strong>: IntegerRAL read FSessionTimeout write <a href="RALServer.TRALServer.html#SetSessionTimeout">SetSessionTimeout</a> default 30000;</code></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
+<td class="itemcode"><span id="SessionTimeout"></span><code>property <strong>SessionTimeout</strong>: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a> read FSessionTimeout write <a href="RALServer.TRALServer.html#SetSessionTimeout-IntegerRAL-">SetSessionTimeout</a> default 30000;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
 Timeout (miliseconds) for WebModule to determinate max age of the session</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="published.gif" alt="Published" title="Published"></a></td>
+<table class="detail visibility-published wide_list">
+<tr class="list visibility-published">
+<td class="visibility"><span class="badge vis-published">Published</span></td>
 <td class="itemcode"><span id="ShowServerStatus"></span><code>property <strong>ShowServerStatus</strong>: boolean read FShowServerStatus write FShowServerStatus;</code></td>
 </tr>
 <tr><td colspan="2">
@@ -673,10 +689,10 @@ Timeout (miliseconds) for WebModule to determinate max age of the session</p>
 Boolean check to whether or not show the default text for route '/'</p>
 </td></tr>
 </table>
-<table class="detail wide_list">
-<tr class="list">
-<td class="visibility"><a href="legend.html"><img  src="public.gif" alt="Public" title="Public"></a></td>
-<td class="itemcode"><span id="SubModule"></span><code>property <strong>SubModule</strong>[AIndex:IntegerRAL]: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a> read <a href="RALServer.TRALServer.html#GetSubModule">GetSubModule</a>;</code></td>
+<table class="detail visibility-public wide_list">
+<tr class="list visibility-public">
+<td class="visibility"><span class="badge vis-public">Public</span></td>
+<td class="itemcode"><span id="SubModule"></span><code>property <strong>SubModule</strong>[AIndex: <a href="RALTypes.html#IntegerRAL">IntegerRAL</a>]: <a href="RALServer.TRALModuleRoutes.html">TRALModuleRoutes</a> read <a href="RALServer.TRALServer.html#GetSubModule-IntegerRAL-">GetSubModule</a>;</code></td>
 </tr>
 <tr><td colspan="2">
 <p>
@@ -684,7 +700,9 @@ Returns a <code>submodule</code> based on the provided AIndex</p>
 </td></tr>
 </table>
 <br><br>
-<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
-<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 0.16.0</a>. </em>
+PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+<hr><span class="appinfo"><em>Generated by <a href="https://pasdoc.github.io/">PasDoc 1.0.4</a>. </em>
 </span>
-</div></div></body></html>
+</div></main>
+<script src="bootstrap.bundle.min.js"></script>
+</body></html>
