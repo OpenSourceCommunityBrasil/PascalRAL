@@ -39,11 +39,16 @@ UseTipueSearch=1
 OpenHTML=1
 LineBreakQuality=0
 SpecialMarkerTreatment=1
-Title=PascalRAL
+Title=PascalRAL framework
 VizGraphClasses=0
 VizGraphUses=0
 CheckSpelling=0
 LatexGraphicsPackage=0
+ImplementationComments=0
+InheritedMembers=0
+Bootstrap=1
+Markdown=0
+AutoBackComments=0
 
 [Defines]
 Count=2
@@ -56,7 +61,7 @@ Count=0
 [Footer]
 Count=2
 Item_0=<br><br>
-Item_1=<a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
+Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalRAL">GitHub Repository</a>
 
 [AutoLinkExclude]
 Count=0
