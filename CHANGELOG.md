@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **docs: Ajuste de pasdoc para versão mais nova do pasdoc** (2026-05-30 – mobius1qwe)
+
 - **docs: Ajuste de arquivo-fonte pasdoc** (2026-04-20 – Mobius One)
 
 - **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
@@ -43,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de RaiseError sobrescrevendo tratamento interno de erros. Se RaiseError for true, vai sobrescrever o tratamento interno do código do usuário por um código genérico de erro na resposta.** (2026-05-30 – mobius1qwe)
+
 - **Fix: Correção final do AV no DBWare otimizando consumo de memória** (2026-04-20 – Mobius One)
   Fixed #123
 
