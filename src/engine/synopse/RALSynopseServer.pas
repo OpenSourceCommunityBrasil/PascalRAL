@@ -333,7 +333,7 @@ begin
   inherited;
   FHttp := nil;
   FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
-  FQueueSize := 1000; // padrao do synopse
+  FQueueSize := 1000; // Tamanho da fila de threads. Padrao do synopse: 1000
   SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 

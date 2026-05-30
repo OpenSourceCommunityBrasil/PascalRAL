@@ -721,8 +721,10 @@ begin
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
+      begin
         raise;
-      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+        AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+      end;
     end;
   end;
 end;
