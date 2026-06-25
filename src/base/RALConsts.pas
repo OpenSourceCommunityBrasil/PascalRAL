@@ -13,7 +13,7 @@ type
 
 const
   // Versionamento
-  RALVERSION = '0.12.5-2 RC1';
+  RALVERSION = '0.12.5-3 RC1';
   RALVERSION_MAJOR = 0;
   RALVERSION_MINOR = 12;
   RALVERSION_PATCH = 4;
