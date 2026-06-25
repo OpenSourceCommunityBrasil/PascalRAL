@@ -62,9 +62,14 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    {$IFDEF unleashed}
+    property DriverType: TRALDBDriverType read FDriverType write FDriverType;
+    {$ENDIF}
   published
     property BookMark: TBookMark read FBookMark write FBookMark;
+    {$IFNDEF unleashed}
     property DriverType: TRALDBDriverType read FDriverType write FDriverType;
+    {$ENDIF}
     property ExecType: TRALDBExecType read FExecType write FExecType;
     property Params: TParams read FParams write SetParams;
     property Response: TRALDBSQLResponse read FResponse;

@@ -51,10 +51,15 @@ type
 
     class function DatabaseName : StringRAL; virtual; abstract;
     class function PackageDependency : StringRAL; virtual; abstract;
+    {$IFDEF unleashed}
+    property DriverType: TRALDBDriverType read GetDriverType;
+    {$ENDIF}
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
+    {$IFNDEF unleashed}
     property DriverType: TRALDBDriverType read GetDriverType;
+    {$ENDIF}
     property Hostname: StringRAL read FHostname write FHostname;
     property Username: StringRAL read FUsername write FUsername;
     property Password: StringRAL read FPassword write FPassword;
