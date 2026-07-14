@@ -173,7 +173,6 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="dbrtl.dcp"/>
-        <DCCReference Include="..\..\src\base\RALAuthentication.pas"/>
         <DCCReference Include="..\..\src\base\RALClient.pas"/>
         <DCCReference Include="..\..\src\base\RALConsts.pas"/>
         <DCCReference Include="..\..\src\base\RALParams.pas"/>
@@ -182,8 +181,6 @@
         <DCCReference Include="..\..\src\base\RALRoutes.pas"/>
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
-        <DCCReference Include="..\..\src\base\RALSwaggerModule.pas"/>
-        <DCCReference Include="..\..\src\base\RALWEBModule.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>
         <DCCReference Include="..\..\src\utils\RALCompress.pas"/>
         <DCCReference Include="..\..\src\utils\RALCompressZLib.pas"/>
@@ -196,12 +193,10 @@
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALMultipartCoder.pas"/>
-        <DCCReference Include="..\..\src\utils\RALPostmanExporter.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA1.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_64.pas"/>
         <DCCReference Include="..\..\src\utils\RALStream.pas"/>
-        <DCCReference Include="..\..\src\utils\RALSwaggerExporter.pas"/>
         <DCCReference Include="..\..\src\utils\RALThreadSafe.pas"/>
         <DCCReference Include="..\..\src\utils\RALToken.pas"/>
         <DCCReference Include="..\..\src\utils\RALTools.pas"/>
@@ -214,6 +209,12 @@
         <DCCReference Include="..\..\src\base\RALDBTypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALHashes.pas"/>
         <DCCReference Include="..\..\src\utils\RALHexadecimal.pas"/>
+        <DCCReference Include="..\..\src\base\modules\RALExternalsLibraries.pas"/>
+        <DCCReference Include="..\..\src\base\modules\RALPostmanExporter.pas"/>
+        <DCCReference Include="..\..\src\base\modules\RALSwaggerExporter.pas"/>
+        <DCCReference Include="..\..\src\base\modules\RALSwaggerModule.pas"/>
+        <DCCReference Include="..\..\src\base\modules\RALWebModule.pas"/>
+        <DCCReference Include="..\..\src\base\plugins\RALAuthentication.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -283,7 +284,7 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput"/>
-                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\37.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\PascalRAL.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>PascalRAL.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

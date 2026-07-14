@@ -74,11 +74,11 @@ const
 
 resourcestring
   {$IF DEFINED(LANG_PTBR)}
-    {$I ralconsts_ptbr.inc}
+    {$I ..\languages\ralconsts_ptbr.inc}
   {$ELSEIF DEFINED(LANG_ESES)}
-    {$I ralconsts_eses.inc}
+    {$I ..\languages\ralconsts_eses.inc}
   {$ELSE}
-    {$I ralconsts_enus.inc}
+    {$I ..\languages\ralconsts_enus.inc}
   {$IFEND}
 
 implementation

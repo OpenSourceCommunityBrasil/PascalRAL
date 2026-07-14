@@ -46,7 +46,7 @@ type
     procedure SetSSL(const AValue: TRALSynopseSSL);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
-    procedure OnHttpTerminate(ASender : TObject);
+    procedure OnHttpTerminate(ASender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;

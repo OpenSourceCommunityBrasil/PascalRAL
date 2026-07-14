@@ -34,7 +34,6 @@ requires
   dbrtl;
 
 contains
-  RALAuthentication in '..\..\src\base\RALAuthentication.pas',
   RALClient in '..\..\src\base\RALClient.pas',
   RALConsts in '..\..\src\base\RALConsts.pas',
   RALParams in '..\..\src\base\RALParams.pas',
@@ -43,8 +42,6 @@ contains
   RALRoutes in '..\..\src\base\RALRoutes.pas',
   RALServer in '..\..\src\base\RALServer.pas',
   RALTypes in '..\..\src\base\RALTypes.pas',
-  RALSwaggerModule in '..\..\src\base\RALSwaggerModule.pas',
-  RALWEBModule in '..\..\src\base\RALWEBModule.pas',
   RALBase64 in '..\..\src\utils\RALBase64.pas',
   RALCompress in '..\..\src\utils\RALCompress.pas',
   RALCompressZLib in '..\..\src\utils\RALCompressZLib.pas',
@@ -57,12 +54,10 @@ contains
   RALMD5 in '..\..\src\utils\RALMD5.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
   RALMultipartCoder in '..\..\src\utils\RALMultipartCoder.pas',
-  RALPostmanExporter in '..\..\src\utils\RALPostmanExporter.pas',
   RALSHA1 in '..\..\src\utils\RALSHA1.pas',
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',
   RALSHA2_64 in '..\..\src\utils\RALSHA2_64.pas',
   RALStream in '..\..\src\utils\RALStream.pas',
-  RALSwaggerExporter in '..\..\src\utils\RALSwaggerExporter.pas',
   RALThreadSafe in '..\..\src\utils\RALThreadSafe.pas',
   RALToken in '..\..\src\utils\RALToken.pas',
   RALTools in '..\..\src\utils\RALTools.pas',
@@ -74,6 +69,12 @@ contains
   RALStorageBIN in '..\..\src\utils\RALStorageBIN.pas',
   RALDBTypes in '..\..\src\base\RALDBTypes.pas',
   RALHashes in '..\..\src\utils\RALHashes.pas',
-  RALHexadecimal in '..\..\src\utils\RALHexadecimal.pas';
+  RALHexadecimal in '..\..\src\utils\RALHexadecimal.pas',
+  RALExternalsLibraries in '..\..\src\base\modules\RALExternalsLibraries.pas',
+  RALPostmanExporter in '..\..\src\base\modules\RALPostmanExporter.pas',
+  RALSwaggerExporter in '..\..\src\base\modules\RALSwaggerExporter.pas',
+  RALSwaggerModule in '..\..\src\base\modules\RALSwaggerModule.pas',
+  RALWebModule in '..\..\src\base\modules\RALWebModule.pas',
+  RALAuthentication in '..\..\src\base\plugins\RALAuthentication.pas';
 
 end.
