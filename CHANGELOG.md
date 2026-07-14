@@ -7,9 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **feat: Adição de instruções para agentes de IA** (2026-07-13 – mobius1qwe)
+
+
+### Changed
+- **ai: melhoria de arquivos de agentes com novas instruções** (2026-07-13 – mobius1qwe)
+
+- **refactor: modificação inicial de estrutura de nova versão** (2026-07-13 – mobius1qwe)
+
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-07-13 – mobius1qwe)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-13 – mobius1qwe)
+
+
+## [v1.0] - 2026-07-12
+
 ### Security
 - **add SECURITY.md** (2026-04-20 – Mobius One)
   Updated supported versions and reporting instructions.
+
+- **- Alteração de variável de versionamento pra ser uma string ao invés de concatenação de int  - Remoção de warnings sobre variáveis não utilizadas em diversos métodos no pacote base  + Ajuste de pacote PascalRAL incluindo classes faltantes que estavam sendo importadas implicitamente  * Modificação de atribuição de SetAllowedMethods e SetSkipAuthMethods nas rotas  + Adição de funções isMethodAllowed e isMethodSkipped para facilitar a lógica interna  - Modificação de Options na Types para ser um enumerado próprio da nova classe Security do Server  - Correção de compilação no Delphi da RALDBTypes  + Adição de várias funções na lista ThreadSafe para facilitar o uso  - Utilização de CharInSet na RALTools para resolver warning do Delphi  * Modificação severa no RALServer para incluir 3 options que não eram usados antes: FloodProtection, BruteForceProtection e PathTransversal  * Criação de classe Security como propriedade interna do RALServer para conter todas as definições de segurança  - Removida propriedade BruteForce do server e adicionada à Security  + Novas propriedades para adequar ao uso das Options  * Atualização de Versão para 0.9.4** (2024-03-26 – Mobius One)
 
 
 ### Added
@@ -22,60 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - nova rota de módulo genérica que aceita métodos independentes
   - novo método SetBody para request e response para substituir o body totalmente com a função.
 
-
-### Changed
-- **Docs: Update README.md READMEES.md READMEPT.md** (2026-06-25 – mobius1qwe)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-06-25 – mobius1qwe)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-06-25 – mobius1qwe)
-
-- **docs: Ajuste de pasdoc para versão mais nova do pasdoc** (2026-05-30 – mobius1qwe)
-
-- **docs: Ajuste de arquivo-fonte pasdoc** (2026-04-20 – Mobius One)
-
-- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-20 – Mobius One)
-
-- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
-
-- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-18 – Mobius One)
-
-- **Merge pull request #121 from fortesm/dev** (2026-03-18 – Mobius One)
-  função aninhada (nested funcion).
-
-- **Apply suggestion from @mobius1qwe** (2026-03-18 – Mobius One)
-
-- **função aninhada (nested funcion). Centraliza criação. Reduz duplicação. Mantém escopo local. Não alterar comportamento. Mantém DRY (Dont Repeat Yourself).** (2026-03-18 – Marcelo Fortes)
-
-
-### Fixed
-- **Fix: Ajuste de instalação em FPC Unleashed** (2026-06-25 – mobius1qwe)
-
-- **fix: Correção de RaiseError sobrescrevendo tratamento interno de erros. Se RaiseError for true, vai sobrescrever o tratamento interno do código do usuário por um código genérico de erro na resposta.** (2026-05-30 – mobius1qwe)
-
-- **Fix: Correção final do AV no DBWare otimizando consumo de memória** (2026-04-20 – Mobius One)
-  Fixed #123
-
-- **fix: Ajuste defensivo em GetResponseEncText** (2026-04-18 – Mobius One)
-
-- **Fix: Correção temporária para av no DBWare** (2026-04-18 – Mobius One)
-
-- **fix: Correção de erro de compilação em RALStorageCSV.pas** (2026-04-15 – Mobius One)
-
-- **Fix: Correção de parse de queryParams no request.** (2026-04-15 – Mobius One)
-
-- **fix:  - Correção de instalação do wizard** (2026-03-09 – Mobius One)
-
-
-## [0.12.4] - 2026-03-09
-
-### Security
-- **- Alteração de variável de versionamento pra ser uma string ao invés de concatenação de int  - Remoção de warnings sobre variáveis não utilizadas em diversos métodos no pacote base  + Ajuste de pacote PascalRAL incluindo classes faltantes que estavam sendo importadas implicitamente  * Modificação de atribuição de SetAllowedMethods e SetSkipAuthMethods nas rotas  + Adição de funções isMethodAllowed e isMethodSkipped para facilitar a lógica interna  - Modificação de Options na Types para ser um enumerado próprio da nova classe Security do Server  - Correção de compilação no Delphi da RALDBTypes  + Adição de várias funções na lista ThreadSafe para facilitar o uso  - Utilização de CharInSet na RALTools para resolver warning do Delphi  * Modificação severa no RALServer para incluir 3 options que não eram usados antes: FloodProtection, BruteForceProtection e PathTransversal  * Criação de classe Security como propriedade interna do RALServer para conter todas as definições de segurança  - Removida propriedade BruteForce do server e adicionada à Security  + Novas propriedades para adequar ao uso das Options  * Atualização de Versão para 0.9.4** (2024-03-26 – Mobius One)
-
-
-### Added
 - **fix:  - ajuste de identação de algumas units.  - Ajuste em MIMETypes para usar a função interna do RAL com todos os tipos definidos no IANA pra corrigir erro no tráfego de arquivos web em alguns sistemas operacionais que não preenchiam corretamente todos os MIMETypes.** (2025-12-29 – Mobius One)
   feat:
   - Criação de função StreamToByteString para evitar if no StreamToString, otimizando o processo.
@@ -636,6 +600,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Update versionin RALConsts** (2026-07-12 – Mobius One)
+  Updated version
+
+- **Docs: Update README.md READMEES.md READMEPT.md** (2026-06-25 – mobius1qwe)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-06-25 – mobius1qwe)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-06-25 – mobius1qwe)
+
+- **docs: Ajuste de pasdoc para versão mais nova do pasdoc** (2026-05-30 – mobius1qwe)
+
+- **docs: Ajuste de arquivo-fonte pasdoc** (2026-04-20 – Mobius One)
+
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-20 – Mobius One)
+
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-04-20 – Mobius One)
+
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-04-18 – Mobius One)
+
+- **Merge pull request #121 from fortesm/dev** (2026-03-18 – Mobius One)
+  função aninhada (nested funcion).
+
+- **Apply suggestion from @mobius1qwe** (2026-03-18 – Mobius One)
+
+- **função aninhada (nested funcion). Centraliza criação. Reduz duplicação. Mantém escopo local. Não alterar comportamento. Mantém DRY (Dont Repeat Yourself).** (2026-03-18 – Marcelo Fortes)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2025-12-14 – Fernando Banhos)
 
 - **- correção de typo (erro na digitacao da classe)** (2025-12-14 – Fernando Banhos)
@@ -1613,6 +1605,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Ajuste de instalação em FPC Unleashed** (2026-06-25 – mobius1qwe)
+
+- **fix: Correção de RaiseError sobrescrevendo tratamento interno de erros. Se RaiseError for true, vai sobrescrever o tratamento interno do código do usuário por um código genérico de erro na resposta.** (2026-05-30 – mobius1qwe)
+
+- **Fix: Correção final do AV no DBWare otimizando consumo de memória** (2026-04-20 – Mobius One)
+  Fixed #123
+
+- **fix: Ajuste defensivo em GetResponseEncText** (2026-04-18 – Mobius One)
+
+- **Fix: Correção temporária para av no DBWare** (2026-04-18 – Mobius One)
+
+- **fix: Correção de erro de compilação em RALStorageCSV.pas** (2026-04-15 – Mobius One)
+
+- **Fix: Correção de parse de queryParams no request.** (2026-04-15 – Mobius One)
+
+- **fix:  - Correção de instalação do wizard** (2026-03-09 – Mobius One)
+
 - **fix:  - Correção de instalação do wizard** (2026-03-09 – Mobius One)
 
 - **Fix:  - Revert de arquivos incorretos no commit anterior.** (2025-12-29 – Mobius One)
