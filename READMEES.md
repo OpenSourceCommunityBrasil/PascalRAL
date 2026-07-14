@@ -5,10 +5,10 @@ Pascal REST API Lite es un conjunto de componentes para crear y consumir APIs de
 
 ## Flujo mínimo para agentes de IA (compacto)
 Existe un guía corto orientado a agentes, optimizado para ventanas de contexto pequeñas:
-- `.agents\README.md` (EN)
+- `.agents/README.md` (EN)
 
 ## Seguridad
-Ver `SECURITY.md` para versiones soportadas y cómo reportar vulnerabilidades.
+Ver `SECURITY.md` para las versiones soportadas y cómo reportar vulnerabilidades.
 
 
 
@@ -38,3 +38,4 @@ Comparativo Lazarus Windows
 
 Comparativo Lazarus Linux
 <br/><img src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQQ-tumA_HFJdvoFoztRWFVokDwf_6UrzdFswFo5a-u0QLRFBuLMlmOoa3Hp2qiq0k1S5kE-8IjQein/pubchart?oid=1479879994&format=image" width=640px/>
+

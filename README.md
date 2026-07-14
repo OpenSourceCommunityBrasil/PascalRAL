@@ -5,7 +5,8 @@ Pascal REST API Lite is a component suite to allow creating and consuming APIs i
 
 ## Minimal workflow for AI agents (compact)
 This repo has a short, agent-oriented guide optimized for small context windows:
-- `.agents\README.md`
+- `.agents/README.md`
+
 
 ## Security
 See `SECURITY.md` for supported versions and how to report vulnerabilities.

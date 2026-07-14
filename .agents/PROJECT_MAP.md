@@ -6,7 +6,19 @@ Este arquivo foi criado para ajudar agentes de IA a entenderem rapidamente a est
 
 ---
 
+## 0) TL;DR (leia primeiro)
+
+- Se você está em dúvida: comece por `.agents/AGENT_QUICKSTART.md`.
+
+
+- Se você precisa “onde começar”, use `.agents/AGENT_QUICKSTART.md`.
+- Para entender o fluxo geral, use a visão conceitual (seções 4.1/4.2/4.3).
+- Para navegação por tarefa: use `.agents/TASK_PLAYBOOKS.md`.
+
+---
+
 ## 1) Estrutura raiz
+
 
 - `.gitignore`
 - `.gitmodules`

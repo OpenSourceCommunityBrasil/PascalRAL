@@ -4,9 +4,11 @@ Instruções para acelerar desempenho de agentes de IA usando este repositório.
 
 ---
 
-## 1) Primeiro passo: use o `PROJECT_MAP.md`
-- Leia **`.agents/PROJECT_MAP.md`** para entender onde está o código.
+## 1) Primeiro passo: use o `AGENT_QUICKSTART.md`
+- Leia **`.agents/AGENT_QUICKSTART.md`** para escolher o primeiro arquivo-alvo com baixo consumo de contexto.
+- Em seguida, use **`.agents/PROJECT_MAP.md`** para navegação e entendimento de fluxo.
 - Em seguida, escolha a seção do mapa que corresponde ao seu objetivo:
+
 
 > Para reduzir gasto de tokens, use um cache local (abaixo) antes de refazer indexações/leitura repetitiva.
 
