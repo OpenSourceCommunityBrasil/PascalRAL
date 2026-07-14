@@ -3,6 +3,15 @@
 
 Pascal REST API Lite es un conjunto de componentes para crear y consumir APIs de una manera simple, liviana y rápida.
 
+## Flujo mínimo para agentes de IA (compacto)
+Existe un guía corto orientado a agentes, optimizado para ventanas de contexto pequeñas:
+- `.agents\README.md` (EN)
+
+## Seguridad
+Ver `SECURITY.md` para versiones soportadas y cómo reportar vulnerabilidades.
+
+
+
 ![](https://img.shields.io/badge/compatible-””?style=for-the-badge&logo=Delphi&logoColor=red&label=Delphi-XE+&color=green)
 ![](https://img.shields.io/badge/compatible-""?style=for-the-badge&logo=Lazarus&logoColor=blue&label=Lazarus|FPC&color=green)
 ![](https://img.shields.io/badge/compatible-""?style=for-the-badge&logo=Lazarus&logoColor=blue&label=Lazarus-Unleashed&color=green)
