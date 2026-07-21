@@ -14,7 +14,7 @@ Pascal REST API Lite is a component suite to allow creating and consuming APIs i
 Find Support at:
 <br/><a href="https://discord.gg/pS2xjruCJH"><img alt="join Discord(direct)" src="https://img.shields.io/badge/Discord%20(direct)-_?style=for-the-badge&logo=discord&logoColor=white&color=4929ff"></a>
 <a href="https://discord.me/oscbr"><img alt="join Discord(alt)" src="https://img.shields.io/badge/Discord%20(alt)-_?style=for-the-badge&logo=discord&logoColor=white&color=4929ff"></a>
-<a href="https://t.me/oscbr"><img alt="join telegram" src="https://img.shields.io/badge/Telegram%20(oscbr)-_?style=for-the-badge&logo=telegram&logoColor=white&color=2596be"></a>
+<a href="https://t.me/OSCBrasil"><img alt="join telegram" src="https://img.shields.io/badge/Telegram%20(oscbr)-_?style=for-the-badge&logo=telegram&logoColor=white&color=2596be"></a>
 
 Speed Comparison Graph, sources available at <a href="https://docs.google.com/spreadsheets/d/1662XUSwk4bD6sCRsp2eimDNbBOiYs4zdeVOunv1Iyv0/edit?usp=sharing">Spreadsheet</a>:
 
