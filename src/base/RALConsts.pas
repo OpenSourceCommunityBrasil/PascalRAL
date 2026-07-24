@@ -13,10 +13,10 @@ type
 
 const
   // Versionamento
-  RALVERSION = '1.0';
+  RALVERSION = '1.0.1';
   RALVERSION_MAJOR = 1;
   RALVERSION_MINOR = 0;
-  RALVERSION_PATCH = 0;
+  RALVERSION_PATCH = 1;
   RALVERSION_FULL  = RALVERSION_MAJOR * 10000
                    + RALVERSION_MINOR * 100
                    + RALVERSION_PATCH;
@@ -74,11 +74,11 @@ const
 
 resourcestring
   {$IF DEFINED(LANG_PTBR)}
-    {$I ralconsts_ptbr.inc}
+    {$I ..\languages\ralconsts_ptbr.inc}
   {$ELSEIF DEFINED(LANG_ESES)}
-    {$I ralconsts_eses.inc}
+    {$I ..\languages\ralconsts_eses.inc}
   {$ELSE}
-    {$I ralconsts_enus.inc}
+    {$I ..\languages\ralconsts_enus.inc}
   {$IFEND}
 
 implementation
