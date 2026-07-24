@@ -823,8 +823,8 @@ begin
     if vStr.Count = 3 then
     begin
       FToken := AValue;
-      FHeader.AsJSON := TRALBase64.Decode(vStr.Strings[0]);
-      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
+      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
+      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       FSignature := vStr.Strings[2];
     end;
   finally
