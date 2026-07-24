@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-24 – mobius1qwe)
+
 - **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-07-21 – mobius1qwe)
 
 - **ai: melhoria de arquivos de agentes com novas instruções** (2026-07-13 – mobius1qwe)
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Access Violation no parse do token JWT** (2026-07-24 – mobius1qwe)
+
 - **fix: Correção de link de grupo de suporte do Telegram** (2026-07-21 – mobius1qwe)
 
 
