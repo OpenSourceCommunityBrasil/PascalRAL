@@ -86,6 +86,8 @@ type
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
     /// Adds a string cookie to the body of the request.
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    /// Adds a RALcookie to the header of the request.
+    function AddCookie(const ACookie: TRALCookie): TRALRequest; reintroduce;
     /// Adds a string param with the "Field" kind to the request.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
     /// Adds a file to the body of the request based on the given AFileName.
@@ -247,6 +249,12 @@ function TRALRequest.AddCookie(const AName: StringRAL; const AValue: StringRAL
   ): TRALRequest;
 begin
   inherited AddCookie(AName, AValue);
+  Result := Self;
+end;
+
+function TRALRequest.AddCookie(const ACookie: TRALCookie): TRALRequest;
+begin
+  inherited AddCookie(ACookie);
   Result := Self;
 end;
 

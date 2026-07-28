@@ -52,7 +52,8 @@ type
     destructor Destroy; override;
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual; overload; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
+    function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; virtual; overload;
     function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
@@ -64,7 +65,8 @@ type
     procedure Clear; virtual;
     procedure Clone(ASource: TRALHTTPHeaderInfo);
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
-    function GetCookie(const AName: StringRAL): StringRAL; virtual;
+    function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
+    function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;
     function GetHeader(const AName: StringRAL): StringRAL; virtual;
     function GetQuery(const AName: StringRAL): StringRAL; virtual;
@@ -238,6 +240,13 @@ begin
   Result := Self;
 end;
 
+function TRALHTTPHeaderInfo.AddCookie(const ACookie: TRALCookie
+  ): TRALHTTPHeaderInfo;
+begin
+  Result := Self;
+  FParams.AddParam('Set-Cookie', GetCookieText(ACookie), rpkCOOKIE);
+end;
+
 function TRALHTTPHeaderInfo.AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo;
 var
   vInt1: IntegerRAL;
@@ -316,6 +325,11 @@ begin
   vParam := FParams.GetKind[AName, rpkCOOKIE];
   if vParam <> nil then
     Result := vParam.AsString;
+end;
+
+function TRALHTTPHeaderInfo.GetRALCookie(const AName: StringRAL): TRALCookie;
+begin
+  Result := GetRALCookieFromParam(AName, FParams);
 end;
 
 function TRALHTTPHeaderInfo.GetBody(AIdx: IntegerRAL): TRALParam;

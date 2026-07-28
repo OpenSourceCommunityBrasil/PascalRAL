@@ -9,11 +9,16 @@ uses
   RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder,
   RALMIMETypes;
 
+const
+  RALTOKENName = 'raltoken';
+  RALPAYLOADName = 'ral_payload';
+
+
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              var AResult: boolean) of object;
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
-                             AParams: TRALJWTParams; var AResult: boolean) of object;
+                             AParams: TRALJWTParams; var AResult: boolean);
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
@@ -139,6 +144,8 @@ type
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnValidate: TRALOnTokenJWT;
+    FUseCookie: Boolean;
+    procedure SetUseCookie(AValue: Boolean);
   protected
     function GetAuthRoute: TRALBaseRoute; override;
     procedure SetAuthRoute(ARoute: TRALBaseRoute); override;
@@ -151,14 +158,15 @@ type
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
+    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property AuthRoute;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
-    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
-    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
+    property UseCookie: Boolean read FUseCookie write SetUseCookie;
   end;
 
   { TRALClientOAuth }
@@ -498,6 +506,7 @@ var
   vResult: boolean;
   vParam: TRALParam;
   vParamJWT: TRALJWTParams;
+  vCookie: TRALCookie;
 begin
   if SameText(ARequest.Query, AuthRoute.Route) then
   begin
@@ -520,7 +529,7 @@ begin
     end
     else
     begin
-      vParam := ARequest.ParamByName('ral_payload');
+      vParam := ARequest.ParamByName(RALPAYLOADName);
 
       if vParam = nil then
         vParam := ARequest.Body;
@@ -540,7 +549,23 @@ begin
     if vResult then
     begin
       vStrResult := Format('{"%s":"%s"}', [FJSONKey, vToken]);
-
+      if UseCookie then
+      begin
+        FillChar(vCookie, SizeOf(vCookie), 0);
+        vCookie.Name := RALTOKENName;
+        vCookie.Value := vToken;
+        vCookie.Secure := true;
+        vCookie.HttpOnly := true;
+        vCookie.Path := '/';
+        vParamJWT := TRALJWTParams.Create;
+        try
+          vParamJWT.AsJSON := vStrParams;
+          vCookie.Expires := vParamJWT.Expiration;
+        finally
+          FreeAndNIl(vParamJWT);
+        end;
+        AResponse.AddCookie(vCookie);
+      end;
       AResponse.StatusCode := HTTP_OK;
       AResponse.ContentType := rctAPPLICATIONJSON;
       AResponse.ResponseText := vStrResult;
@@ -561,6 +586,7 @@ constructor TRALServerJWTAuth.Create(AOwner: TComponent);
 begin
   inherited;
   SetAuthType(ratBearer);
+  UseCookie := False;
 
   FCollectionAuth := TOwnedCollection.Create(Self, TRALBaseRoute);
 
@@ -632,6 +658,12 @@ begin
 
   if (not vResult) and (AResponse.StatusCode < HTTP_BadRequest) then
     AResponse.Answer(HTTP_Unauthorized);
+end;
+
+procedure TRALServerJWTAuth.SetUseCookie(AValue: Boolean);
+begin
+  if FUseCookie = AValue then Exit;
+  FUseCookie := AValue;
 end;
 
 function TRALServerJWTAuth.GetAuthRoute: TRALBaseRoute;

@@ -11,6 +11,7 @@ uses
 type
 
   { TRALResponse }
+
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
@@ -31,7 +32,9 @@ type
     /// Append an UTF8 String to the response
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;
     /// Append a name:value cookie to the response
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce; overload; deprecated 'use AddCookie(ACookie: TRALCookie) instead';
+    /// Append a TRALCookie to the response
+    function AddCookie(const ACookie: TRALCookie): TRALResponse; reintroduce; overload;
     /// Append a custom param of type "Field" to the response
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
     /// Loads and append a file to the response from given AFileName
@@ -157,7 +160,8 @@ begin
     if (vParam <> nil) and (vParam.Kind = rpkCOOKIE) then
     begin
       vValue := vParam.ParamName + '=' + vParam.AsString + ';';
-      vValue := vValue + vExpire + '; path=/';
+      vValue := vValue + vExpire //+ '; path=/'
+      ;
       ADest.Add(vValue);
     end;
   end;
@@ -229,6 +233,12 @@ function TRALResponse.AddCookie(const AName: StringRAL; const AValue: StringRAL
   ): TRALResponse;
 begin
   inherited AddCookie(AName, AValue);
+  Result := Self;
+end;
+
+function TRALResponse.AddCookie(const ACookie: TRALCookie): TRALResponse;
+begin
+  inherited AddCookie(ACookie);
   Result := Self;
 end;
 

@@ -36,7 +36,6 @@ type
     FQueueSize: IntegerRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
-    procedure DecodeAuth(AResult: TRALRequest);
     function GetSSL: TRALSynopseSSL;
     function IPv6IsImplemented: boolean; override;
     procedure SetActive(const AValue: boolean); override;
@@ -177,35 +176,6 @@ begin
   Result := True;
 end;
 
-procedure TRALSynopseServer.DecodeAuth(AResult: TRALRequest);
-var
-  vStr, vAux: StringRAL;
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  if Authentication = nil then
-    Exit;
-
-  AResult.Authorization.AuthType := ratNone;
-  AResult.Authorization.AuthString := '';
-
-  vParam := AResult.Params.GetKind['Authorization', rpkHEADER];
-  if not vParam.IsNilOrEmpty then
-  begin
-    vStr := vParam.AsString;
-    if vStr <> EmptyStr then
-    begin
-      vInt := Pos(' ', vStr);
-      vAux := Trim(Copy(vStr, 1, vInt - 1));
-      if SameText(vAux, 'Basic') then
-        AResult.Authorization.AuthType := ratBasic
-      else if SameText(vAux, 'Bearer') then
-        AResult.Authorization.AuthType := ratBearer;
-      AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
-    end;
-  end;
-end;
-
 function TRALSynopseServer.CreateRALSSL: TRALSSL;
 begin
   inherited;
@@ -243,6 +213,10 @@ begin
       vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
 
       vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
+
+      // Parse cookie na entrada
+      vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+
       DecodeAuth(vRequest);
 
       vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
@@ -251,8 +225,6 @@ begin
 
       vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
       vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;
-
-      vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
 
       ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < HTTP_BadRequest then
@@ -292,9 +264,11 @@ begin
         if vResponse.ContentEncription <> EmptyStr then
           Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
 
+        // parse cookie na saída
         vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
-        vHeaders := vHeaders + HTTPLineBreak;
-        vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
+        vHeaders := vHeaders + HTTPLineBreak + Params.AssignParamsListText(rpkCOOKIE, ': ');
+
+        //vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
 
         AContext.OutCustomHeaders := Trim(vHeaders);
 
@@ -305,7 +279,9 @@ begin
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
-          raise;
+          raise
+        else
+          vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
     end;
   finally
     FreeAndNil(vResponse);

@@ -198,22 +198,24 @@ type
     FOnResponse: TRALOnReply;    
     FOnServerError: TRALOnServerError;
   protected
-    // Adds a fixed subroute from other components into server routes
+    /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
-    // Processes CORS headers
+    /// Processes CORS headers
     procedure CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
                         ARequest: TRALRequest; AResponse: TRALResponse);
-    // Used by inherited members to set SSL settings
+    /// Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
-    // Removes a fixed subroute used by other components
+    /// Decode the authentication header of the request
+    procedure DecodeAuth(AResult: TRALRequest);
+    /// Removes a fixed subroute used by other components
     procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
-    // Used by inherited members to return the SSL definitions
+    /// Used by inherited members to return the SSL definitions
     function GetDefaultSSL: TRALSSL;
-    // Checks if the current server component allows IPv6
+    /// Checks if the current server component allows IPv6
     function IPv6IsImplemented: boolean; virtual;
-    // Internal function to properly dispose the component attached to the server
+    /// Internal function to properly dispose the component attached to the server
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    // Function that will call Validate from the current authentication component
+    /// Function that will call Validate from the current authentication component
     function ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
@@ -453,6 +455,43 @@ end;
 function TRALServer.CreateRALSSL: TRALSSL;
 begin
   Result := nil;
+end;
+
+procedure TRALServer.DecodeAuth(AResult: TRALRequest);
+var
+  vStr, vAux: StringRAL;
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+  tempCookie: TRALCookie;
+begin
+  if Authentication = nil then
+    Exit;
+
+  AResult.Authorization.AuthType := ratNone;
+  AResult.Authorization.AuthString := '';
+
+  vParam := AResult.Params.GetKind['Authorization', rpkHEADER];
+  if not vParam.IsNilOrEmpty then
+  begin
+    vStr := vParam.AsString;
+    if vStr <> EmptyStr then
+    begin
+      vInt := Pos(' ', vStr);
+      vAux := Trim(Copy(vStr, 1, vInt - 1));
+      if SameText(vAux, 'Basic') then
+        AResult.Authorization.AuthType := ratBasic
+      else if SameText(vAux, 'Bearer') then
+        AResult.Authorization.AuthType := ratBearer;
+      AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
+    end;
+  end
+  else if (Authentication is TRALServerJWTAuth)
+      And not AResult.ParamByName('Cookie').IsNilOrEmpty then
+  begin
+    tempCookie := GetRALCookieFromText(AResult.ParamByName('Cookie').AsString);
+    AResult.Authorization.AuthType := ratBearer;
+    AResult.Authorization.AuthString := tempCookie.Value;
+  end;
 end;
 
 function TRALServer.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
