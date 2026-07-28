@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat: capacidade de autenticação via cookie e melhoria de tratamento de cookies** (2026-07-28 – mobius1qwe)
+
 - **feat: Adição de instruções para agentes de IA** (2026-07-13 – mobius1qwe)
 
 
 ### Changed
+- **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-07-25 – mobius1qwe)
+
 - **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-07-24 – mobius1qwe)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-24 – mobius1qwe)
@@ -28,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de erro de caminho de arquivo de mensagens do pacote** (2026-07-25 – mobius1qwe)
+
 - **Fix: Access Violation no parse do token JWT** (2026-07-24 – mobius1qwe)
 
 - **Fix: Access Violation no parse do token JWT** (2026-07-24 – mobius1qwe)
