@@ -28,6 +28,7 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
+function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
 
 implementation
 
@@ -180,21 +181,21 @@ begin
   {$IFDEF FPC}
     Result := LocalTimeToUniversal(ADateTime);
   {$ELSE}
-  {$IFDEF DELPHIXE2UP}
-      Result := TTimeZone.Local.ToUniversalTime(ADateTime);
-  {$ELSE}
-  case GetTimeZoneInformation(vTimeZone) of
-    TIME_ZONE_ID_UNKNOWN:
-      vBias := vTimeZone.Bias;
-    TIME_ZONE_ID_STANDARD:
-      vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-    TIME_ZONE_ID_DAYLIGHT:
-      vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-    else
-      vBias := 0;
-  end;
-  Result := IncMinute(ADateTime, -vBias);
-  {$ENDIF}
+    {$IFDEF DELPHIXE2UP}
+        Result := TTimeZone.Local.ToUniversalTime(ADateTime);
+    {$ELSE}
+    case GetTimeZoneInformation(vTimeZone) of
+      TIME_ZONE_ID_UNKNOWN:
+        vBias := vTimeZone.Bias;
+      TIME_ZONE_ID_STANDARD:
+        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
+      TIME_ZONE_ID_DAYLIGHT:
+        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
+      else
+        vBias := 0;
+    end;
+    Result := IncMinute(ADateTime, -vBias);
+    {$ENDIF}
   {$ENDIF}
 end;
 
@@ -209,6 +210,40 @@ begin
       Result := True;
       Break;
     end;
+end;
+
+function HTTPDateTimeToDateTime(const AStr: StringRAL): TDateTime;
+const
+  Months: array[1..12] of string = (
+    'Jan','Feb','Mar','Apr','May','Jun',
+    'Jul','Aug','Sep','Oct','Nov','Dec'
+  );
+var
+  Day, Month, Year, Hour, Min, Sec, i: Integer;
+  MonthStr: string;
+begin
+  // Mon, 27 Jul 2026 20:22:11 GMT
+  // M o n ,   2 7   J  u  l     2  0  2  6     2  0  :  2  2  :  1  1     G  M  T
+  // 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+  Day      := StrToInt(Copy(AStr, 6, 2));
+  MonthStr := Copy(AStr, 9, 3);
+  Year     := StrToInt(Copy(AStr, 13, 4));
+  Hour     := StrToInt(Copy(AStr, 18, 2));
+  Min      := StrToInt(Copy(AStr, 21, 2));
+  Sec      := StrToInt(Copy(AStr, 24, 2));
+
+  Month := 0;
+  for i := 1 to 12 do
+    if SameText(MonthStr, Months[i]) then
+    begin
+      Month := i;
+      Break;
+    end;
+
+  if Month = 0 then
+    raise EConvertError.Create('Mês inválido na data HTTP');
+
+  Result := EncodeDateTime(Year, Month, Day, Hour, Min, Sec, 0);
 end;
 
 function RALCPUCount: integer;

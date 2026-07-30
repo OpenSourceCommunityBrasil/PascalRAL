@@ -14,12 +14,12 @@
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
   emContentCheckError = 'Content check error.';
   emCryptEmptyKey = 'Key must be provided.';
-  emHMACEmptyText = 'Input text must be provided.';
   emDBConnectionUndefined = 'Connection not set.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
+  emHMACEmptyText = 'Input text must be provided.';
   emInvalidFormat = 'Invalid Format.';
   emInvalidJSONFormat = 'Invalid JSON Format.';
   emQueryVersionError = 'Invalid structure version.';
@@ -61,6 +61,7 @@
 
   // RALDBDescriptions
   cmDBApplyUpdDescription = 'Apply Update from a client http';
+  cmDBBinary = 'Binary Format';
   cmDBExecSQLDescription = 'Execute a SQL from a client http';
   cmDBGetFieldsDescription = 'List all fields in a table';
   cmDBGetSQLFieldsDescription = 'List all fields from a SQL';
@@ -68,6 +69,5 @@
   cmDBOpenSQLDescription = 'Open a SQL from a client http';
   cmDBParamSchemaDescription = 'Schema of database';
   cmDBParamSystemDescription = 'Include system tables';
-  cmDBBinary = 'Binary Format';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Table name';

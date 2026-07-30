@@ -11,6 +11,20 @@ uses
   RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
 type
+  TRALCookieSiteScope = (cssLax, cssNone, cssStrict);
+
+  TRALCookie = record
+    Name: StringRAL;
+    Value: StringRAL;
+    Domain: StringRAL;
+    Path: StringRAL;
+    Expires: TDateTime;
+    MaxAge: Int64;
+    HttpOnly: Boolean;
+    SessionOnly: Boolean;
+    Secure: Boolean;
+    SameSite: TRALCookieSiteScope;
+  end;
 
   { TRALParam }
 
@@ -234,12 +248,154 @@ type
       write FContentDispositionInline;
   end;
 
+function GetCookieText(ACookie: TRALCookie): StringRAL;
+function GetRALCookieFromText(ACookieString: StringRAL): TRALCookie;
+function GetRALCookieFromParam(AParamName: StringRAL; AParams: TRALParams): TRALCookie;
+
 implementation
 
 { TRALParam }
 
 uses
   RALJson;
+
+function DateTimeToCookieExpireDate(ADateTime: TDateTime): StringRAL;
+const
+  HTTPMonths: array[1..12] of string[3] = (
+    'Jan', 'Feb', 'Mar', 'Apr',
+    'May', 'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec');
+  HTTPDays: array[1..7] of string[3] = (
+    'Sun', 'Mon', 'Tue', 'Wed',
+    'Thu', 'Fri', 'Sat');
+
+  DateFormat = '"%s", dd "%s" yyyy hh:nn:ss';
+  Expire     = '%s GMT';
+var
+  vInt: integer;
+  vYear, vMonth, vDay: Word;
+  vExpire, vValue : StringRAL;
+  test: String;
+begin
+  // Dia da semana e nome do mês precisam ter a 1a letra maiúscula
+  ADateTime := RALDateTimeToGMT(ADateTime);
+  DecodeDate(ADateTime, vYear, vMonth, vDay);
+
+  vExpire := FormatDateTime(DateFormat, ADateTime);
+  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
+  vExpire := Format(Expire, [vExpire]);
+  Result := vExpire;
+  //Result := 'Mon, 27 Jul 2026 14:00:00 GMT'
+end;
+
+function GetCookieText(ACookie: TRALCookie): StringRAL;
+begin
+  Result := ACookie.Name + '=' + ACookie.Value;
+
+  if ACookie.Domain <> '' then
+    Result := Result + '; Domain=' + ACookie.Domain;
+
+  if ACookie.Path <> '' then
+    Result := Result + '; Path=' + ACookie.Path;
+
+  if (not ACookie.SessionOnly) and (ACookie.Expires <> 0) then
+    Result := Result + '; Expires=' + DateTimeToCookieExpireDate(ACookie.Expires);
+
+  if ACookie.Secure then
+    Result := Result + '; Secure';
+
+  if ACookie.HttpOnly then
+    Result := Result + '; HttpOnly';
+
+  case ACookie.SameSite of
+    cssNone:
+      if ACookie.Secure then
+        Result := Result + '; SameSite=None';
+    cssStrict:
+      Result := Result + '; SameSite=Strict';
+  end;
+end;
+
+function GetRALCookieFromText(ACookieString: StringRAL): TRALCookie;
+var
+  Start, P, EqPos, Len: Integer;
+  S, Part, Name, Value: StringRAL;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+
+  S := StringReplace(ACookieString, '; ', ';', [rfReplaceAll]);
+  Len := Length(S);
+  if Len = 0 then
+    Exit;
+
+  Start := 1;
+  while Start <= Len do
+  begin
+    // Encontra o próximo ';'
+    P := Start;
+    while (P <= Len) and (S[P] <> ';') do
+      Inc(P);
+
+    // Extrai o trecho atual (já sem espaço extra por causa do Replace)
+    Part := Copy(S, Start, P - Start);
+
+    // Avança para o próximo
+    Start := P + 1;
+
+    if Part = '' then
+      Continue;
+
+    EqPos := Pos('=', Part);
+    if EqPos > 0 then
+    begin
+      Name  := Copy(Part, 1, EqPos - 1);
+      Value := Copy(Part, EqPos + 1, MaxInt);
+    end
+    else
+    begin
+      Name  := Part;
+      Value := '';
+    end;
+
+    // Comparações case-sensitive como no original (pode trocar por SameText se quiser case-insensitive)
+    if SameText(Name, 'HttpOnly') then
+      Result.HttpOnly := True
+    else if SameText(Name, 'Secure') then
+      Result.Secure := True
+    else if SameText(Name, 'Path') then
+      Result.Path := Value
+    else if SameText(Name, 'Domain') then
+      Result.Domain := Value
+    else if SameText(Name, 'SameSite') then
+    begin
+      if SameText(Value, 'None') then
+        Result.SameSite := cssNone
+      else if SameText(Value, 'Lax') then
+        Result.SameSite := cssLax
+      else if SameText(Value, 'Strict') then
+        Result.SameSite := cssStrict;
+    end
+    else if SameText(Name, 'Expires') then
+      Result.Expires := HTTPDateTimeToDateTime(Value)
+    else if SameText(Name, 'Max-Age') then
+      Result.MaxAge := StrToInt64Def(Value, 0)
+    else
+    begin
+      // Primeiro (e único) name=value que sobra é o cookie propriamente dito
+      Result.Name  := Name;
+      Result.Value := Value;
+    end;
+  end;
+end;
+
+function GetRALCookieFromParam(AParamName: StringRAL; AParams: TRALParams
+  ): TRALCookie;
+var
+  vCookieStr: StringRAL;
+begin
+  vCookieStr := AParams.GetKind[AParamName, rpkCOOKIE].AsString;
+  Result := GetRALCookieFromText(vCookieStr);
+end;
 
 procedure TRALParam.Clone(ASource: TRALParam);
 begin
