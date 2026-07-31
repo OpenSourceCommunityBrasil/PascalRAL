@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-31 – Fernando Castelano Banhos)
+
+- **- melhorado pesquisa de mimes para MAC - melhorado pesquisa de mimes para Linux** (2026-07-31 – Fernando Castelano Banhos)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-30 – Fernando Castelano Banhos)
 
 - **Merge remote-tracking branch 'remotes/origin/master' into dev** (2026-07-25 – mobius1qwe)
