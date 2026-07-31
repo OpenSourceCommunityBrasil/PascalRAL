@@ -1,4 +1,6 @@
 ﻿/// Class for mapping default MIMETypes according to IANA
+// https://www.iana.org/assignments/media-types
+
 unit RALMIMETypes;
 
 {$I ..\base\PascalRAL.inc}
@@ -10,7 +12,11 @@ interface
 
 uses
   {$IFDEF RALApple}
-    Macapi.CoreFoundation,
+    Macapi.CoreFoundation, Macapi.Helpers, Macapi.ObjectiveC,
+    Macapi.CoreServices,
+  {$ENDIF}
+  {$IFDEF RALAppleFPC}
+    MacOSAll, CFBase, CFString,
   {$ENDIF}
   {$IFDEF RALWindows}
     Windows, Registry,
@@ -147,21 +153,24 @@ type
   TRALMIMEType = class
   private
     FInternalMIMEList: TStringList;
-    FLoading : boolean;
 
     class var FInstance: TRALMIMEType;
-
+  protected
     procedure SetDefaultTypes;
     function GetSystemTypes: boolean;
 
     // busca binaria
     function IndexOfExt(AExt: StringRAL): IntegerRAL;
 
+    {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
+      function GetMimeTypeMACOs(AExtension: string): string;
+    {$IFEND}
+    class procedure ReleaseInstance; static;
+  public
     constructor Create;
     destructor Destroy; override;
-  public
+
     class function GetInstance: TRALMIMEType; static;
-    class procedure ReleaseInstance; static;
 
     function GetMIMEContentExt(const AContentType: StringRAL): StringRAL;
     function GetMIMEType(const AFileName: StringRAL): StringRAL;
@@ -188,12 +197,8 @@ begin
 
   FInternalMIMEList.Clear;
 
-  FLoading := True;
-
   SetDefaultTypes;
   GetSystemTypes;
-
-  FLoading := False;
 end;
 
 destructor TRALMIMEType.Destroy;
@@ -218,7 +223,7 @@ begin
   try
     for vInt := 0 to Pred(FInternalMIMEList.Count) do
     begin
-      if SameText(FInternalMIMEList.ValueFromIndex[vInt], aContentType) then
+      if SameText(FInternalMIMEList.ValueFromIndex[vInt], AContentType) then
       begin
         Result := FInternalMIMEList.Names[vInt];
         Break;
@@ -232,28 +237,86 @@ end;
 function TRALMIMEType.GetMIMEType(const AFileName: StringRAL): StringRAL;
 var
   vIdx : IntegerRAL;
+  vExt : StringRAL;
 begin
   Result := '';
-  vIdx := IndexOfExt(ExtractFileExt(AFileName));
+  vExt := ExtractFileExt(AFileName);
+  vIdx := IndexOfExt(vExt);
   if vIdx >= 0 then
+  begin
     Result := FInternalMIMEList.ValueFromIndex[vIdx];
+  end
+  {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
+    else
+    begin
+      Result := GetMimeTypeMACOs(vExt);
+      if Result <> '' then
+        AddMIMEType(vExt, Result);
+    end
+  {$IFEND};
 end;
 
-function TRALMIMEType.AddMIMEType(AExt, AType: StringRAL): boolean;
+{$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
+function TRALMIMEType.GetMimeTypeMACOs(AExtension: string): string;
 var
-  vIdx : integer;
+  ExtCF, UTI, MimeCF: CFStringRef;
+  {$IFDEF RALAppleFPC}
+    Buffer: array[0..255] of Char;
+  {$ENDIF}
 begin
-  vIdx := IndexOfExt(AExt);
-  Result := vIdx < 0;
-  if Result then
-  begin
-    FInternalMIMEList.Add(AExt + '=' + AType);
-  end
-  else if (not Result) and (not FLoading) then
-  begin
-    FInternalMIMEList.Delete(vIdx);
-    FInternalMIMEList.Add(AExt + '=' + AType);
+  Result := '';
+
+  if (AExtension <> '') and (AExtension[POSINISTR] = '.') then
+    Delete(AExtension, POSINISTR, 1);
+
+  {$IFDEF RALApple}
+    ExtCF := CFStringCreateWithCString(nil,
+                                       MarshaledAString(AnsiString(AExtension))),
+                                       kCFStringEncodingUTF8);
+  {$ELSE}
+    ExtCF := CFStringCreateWithCString(nil, PChar(AExtension), kCFStringEncodingUTF8);
+  {$ENDIF}
+
+  if ExtCF = nil then
+    Exit;
+
+  try
+    UTI := UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension,
+                                                 ExtCF, nil);
+
+    if UTI <> nil then
+    begin
+      try
+        MimeCF := UTTypeCopyPreferredTagWithClass(UTI, kUTTagClassMIMEType);
+
+        if MimeCF <> nil then
+        begin
+          try
+            {$IFDEF RALApple}
+              Result := CFStringRefToStr(MimeCF);
+            {$ELSE}
+              if CFStringGetCString(MimeCF, Buffer, SizeOf(Buffer), kCFStringEncodingUTF8) then
+                Result := Buffer;
+            {$ENDIF}
+          finally
+            CFRelease(MimeCF);
+          end;
+        end
+      finally
+        CFRelease(UTI);
+      end;
+    end;
+  finally
+    CFRelease(ExtCF);
   end;
+end;
+{$IFEND}
+
+function TRALMIMEType.AddMIMEType(AExt, AType: StringRAL): boolean;
+begin
+  Result := IndexOfExt(AExt) < 0;
+  if Result then
+    FInternalMIMEList.Add(AExt + '=' + AType);
 end;
 
 function TRALMIMEType.GetSystemTypes: boolean;
@@ -308,131 +371,108 @@ function TRALMIMEType.GetSystemTypes: boolean;
   end;
   {$ENDIF}
 
-  {$IFDEF RALLinux}
-  procedure LoadFile(const aFileName: string);
+  {$IF DEFINED(RALLinux) OR DEFINED(RALApple) or DEFINED(RALAppleFPC)}
+  procedure LoadMimeTypes(const AFileName: string);
   var
     LTypes: TStringList;
     LItem: string;
-    {$IFDEF DELPHIXE7UP}
-    LArr: TArray<string>;
-    {$ELSE}
-    LArr: array of string;
-    {$ENDIF}
-    i, j: Integer;
+    LInt, LPos : Integer;
+    LExtTmp, LExt, LType: string;
   begin
-    if not FileExists(aFileName) then
-      Exit;
+    // Content Sample
+    // LTYpe                  TABs     LExt LExt LExt LExt
+    // application/onenote #9 #9 #9 #9 one onetoc2 onetmp onepkg
+
     LTypes := TStringList.Create;
     try
-      try
-        LTypes.LoadFromFile(aFileName);
-      except
-        // if file is not accessible (eg, no rights), then just exit
-        Exit;
-      end;
-      for j := 0 to LTypes.Count - 1 do
+      LTypes.LoadFromFile(AFileName);
+
+      for LInt := 0 to Pred(LTypes.Count) do
       begin
-        LItem := LTypes[j].Trim;
-        if (LItem <> '') and not LItem.StartsWith('#') then
+        LItem := Trim(LTypes.Strings[LInt]);
+        if (LItem <> '') and (LItem[POSINISTR] <> '#') then
         begin
-          LArr := LItem.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-          if (LArr[0].Trim <> '') and (Length(LArr) > 1) then
-            FInternalMIMEList.Add(LArr[1].Trim + '=' + LArr[0].Trim);
-        end;
-      end;
-    finally
-      LTypes.Free;
-    end;
-  end;
-  {$ENDIF}
-
-  {$IFDEF RALApple}
-  procedure LoadFile(const aFileName: string);
-  const
-    CBinary: RawByteString = 'bplist';
-  var
-    LItems, LExts: TStringList;
-    i: Integer;
-    LArr: TArray<string>;
-    LType: string;
-    LMode: Integer;
-    j: Integer;
-    LFile: TFileStream;
-    LHeader: RawByteString;
-  begin
-    if not FileExists(aFileName) then
-      Exit;
-
-    LItems := TStringList.Create;
-    try
-      LExts := TStringList.Create;
-      try
-        try
-          LFile := TFileStream.Create(aFileName, fmOpenRead or fmShareDenyWrite);
-          try
-            SetLength(LHeader, Length(CBinary));
-            // ignore binary plist
-            if (LFile.Read(LHeader[1], Length(CBinary)) = Length(CBinary)) and
-              (LHeader = CBinary) then
-              Exit;
-            LFile.Position := 0;
-            LItems.LoadFromStream(LFile);
-          finally
-            LFile.Free;
-          end;
-        except
-          // if file is not accessible (eg, no rights), then just exit
-          Exit;
-        end;
-
-        LMode := -1;
-        for i := 0 to LItems.Count - 1 do
-        begin
-          LArr := LItems[i].Split(['<', '>', #9, ' '], TStringSplitOptions.ExcludeEmpty);
-          if Length(LArr) = 3 then
+          LPos := LastDelimiter(#9, LItem);
+          if LPos > 0 then
           begin
-            if SameText(LArr[0], 'key') and SameText(LArr[1], 'CFBundleTypeExtensions')
-            then
-              LMode := 0
-            else if SameText(LArr[0], 'key') and SameText(LArr[1], 'CFBundleTypeMIMETypes')
-            then
-              LMode := 1
-            else if SameText(LArr[0], 'key') then
-              LMode := 2
-            else if SameText(LArr[0], 'string') then
+            LType := Trim(Copy(LItem, POSINISTR, LPos));
+            LExtTmp := Trim(Copy(LItem, LPos, Length(LItem)));
+
+            while LExtTmp <> '' do
             begin
-              if LMode = 0 then
-                LExts.Add(LArr[1])
-              else if LMode = 1 then
-                LType := LArr[1];
-            end
-          end
-          else if (Length(LArr) = 1) and SameText(LArr[0], '/dict') and (LMode >= 0) then
-          begin
-            if LType.Trim <> '' then
-              for j := 0 to LExts.Count - 1 do
-                FInternalMIMEList.Add(LExt + '=' + LType);
-            LMode := -1;
-            LExts.Clear;
-            LType := '';
-          end
+              LPos := Pos(' ', LExtTmp);
+              if LPos <= POSINISTR then
+                LPos := Length(LExtTmp) + 1;
+
+              LExt := Trim(Copy(LExtTmp, 1, LPos));
+              if (LExt <> '') and (LExt[POSINISTR] <> '.') then
+                LExt := '.' + LExt;
+
+              AddMIMEType(LExt, LType);
+              Delete(LExtTmp, 1, LPos);
+            end;
+          end;
         end;
-      finally
-        LExts.Free;
       end;
     finally
-      LItems.Free;
+      FreeAndNil(LTypes);
     end;
   end;
-  {$ENDIF}
+  {$IFEND}
 
   {$IFDEF RALLinux}
-const
-  CTypeFile = 'mime.types';
-  {$ENDIF}
-  {$IFDEF RALApple}
-const
-  CTypeFile = '/Applications/Safari.app/Contents/Info.plist';
+  procedure LoadGlobs(const AFileName: string);
+  var
+    LTypes: TStringList;
+    LInt : Integer;
+    LItem : string;
+    LPos1, LPos2: Integer;
+    LExt, LType: string;
+  begin
+    LTypes := TStringList.Create;
+    try
+      LTypes.LoadFromFile(AFileName);
+
+      for LInt := 0 to Pred(SL.Count) do
+      begin
+        LItem := Trim(LTypes.Strings[LInt]);
+
+        if (LItem <> '') and (LItem[POSINISTR] <> '#') then
+        begin
+          LPos1 := Pos(':', LItem);
+          if LPos1 >= POSINISTR then
+          begin
+            LPos2 := Pos(':', LItem, LPos1 + 1);
+            if LPos2 > 0 then
+            begin
+              // globs2 -> prioridade:mime:padrao
+              LType := Copy(LItem, LPos1 + 1, LPos2 - LPos1 - 1);
+              LExt := Copy(LItem, LPos2 + 1, Length(LItem));
+            end
+            else
+            begin
+              // globs -> mime:padrao
+              LType := Copy(LItem, 1, LPos1 - 1);
+              LExt := Copy(LItem, LPos1 + 1, Length(LItem));
+            end;
+
+            if (LExt <> '') and ((LExt[POSINISTR] = '*') or (LExt[POSINISTR] = '.')) then
+            begin
+              if (LExt[POSINISTR] = '*') then
+                Delete(LExt, POSINISTR, 1);
+
+              if (LExt <> '') and (LExt[POSINISTR] <> '.') then
+                LExt := '.' + LExt;
+
+              AddMIMEType(LExt, LType);
+            end;
+          end;
+        end;
+      end;
+    finally
+      FreeAndNil(LTypes);
+    end;
+  end;
   {$ENDIF}
 begin
   Result := False;
@@ -441,11 +481,17 @@ begin
     LoadRegistry;
     {$ENDIF}
     {$IFDEF RALLinux}
-    LoadFile('/etc/' + CTypeFile);
+    if FileExists('/etc/mime.types') then
+      LoadMimeTypes('/etc/mime.types');
+    if FileExists('/usr/share/mime/globs2') then
+      LoadGlobs('/usr/share/mime/globs2');
+    if FileExists('/usr/share/mime/globs') then
+      LoadGlobs('/usr/share/mime/globs');
     {$ENDIF}
-    {$IFDEF RALApple}
-    LoadFile(CTypeFile);
-    {$ENDIF}
+    {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
+    if FileExists('/etc/apache2/mime.types') then
+      LoadMimeTypes('/etc/apache2/mime.types');
+    {$IFEND}
     Result := True;
   except
     Result := False;
@@ -467,7 +513,7 @@ begin
   vPinFim := FInternalMIMEList.Count - 1;
   while (vPinIni <= vPinFim) do
   begin
-    vPinMeio := vPinIni + ((vPinFim - vPinIni) div 2);
+    vPinMeio := vPinIni + ((vPinFim - vPinIni) shr 1);
     vName := LowerCase(FInternalMIMEList.Names[vPinMeio]);
     if vName > AExt then
       vPinFim := vPinMeio - 1
