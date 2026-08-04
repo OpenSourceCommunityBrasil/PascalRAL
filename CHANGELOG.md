@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **- correção do package ralbrotlicompress, para aceitar statics links - correção do arquivo PascalRAL.inc diretivas RALApple** (2026-08-04 – Fernando Banhos)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-31 – Fernando Castelano Banhos)
 
 - **- melhorado pesquisa de mimes para MAC - melhorado pesquisa de mimes para Linux** (2026-07-31 – Fernando Castelano Banhos)
