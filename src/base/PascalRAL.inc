@@ -409,7 +409,7 @@
 (*  OS Architecture Directives *)
 
 {$IF Defined(IOS) or Defined(IOS64) or Defined(DCCIOS32) or Defined(MACOS) or
-  Defined(MACOS32)}
+     Defined(MACOS32) or Defined(DARWIN)}
   {$IFDEF FPC}
     {$DEFINE RALAppleFPC}
   {$ELSE}
