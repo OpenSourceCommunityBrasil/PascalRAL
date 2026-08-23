@@ -60,6 +60,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    function AsDateTime: TDateTime; overload;
+    function AsDateTime(ACustomFormat: TFormatSettings): TDateTime; overload;
+
     procedure Clone(ASource: TRALParam);
     function IsNilOrEmpty: Boolean;
     /// Clears and assign a file to the FContent.
@@ -421,6 +424,20 @@ begin
   inherited;
 end;
 
+function TRALParam.AsDateTime: TDateTime;
+begin
+  Result := 0;
+  if Self <> nil then
+    Result := StrToDateTimeDef(StreamToString(FContent), 0);
+end;
+
+function TRALParam.AsDateTime(ACustomFormat: TFormatSettings): TDateTime;
+begin
+  Result := 0;
+  if Self <> nil then
+    Result := StrToDateTimeDef(StreamToString(FContent), 0, ACustomFormat);
+end;
+
 function TRALParam.IsNilOrEmpty: Boolean;
 begin
   Result := (Self = nil) or ((Self <> nil) and (Self.Size = 0));
@@ -454,7 +471,7 @@ function TRALParam.GetAsInt64: Int64;
 begin
   Result := 0;
   if Self <> nil then
-    StrToInt64Def(StreamToString(FContent), 0);
+    Result := StrToInt64Def(StreamToString(FContent), 0);
 end;
 
 procedure TRALParam.SetAsInt64(const AValue: Int64);
