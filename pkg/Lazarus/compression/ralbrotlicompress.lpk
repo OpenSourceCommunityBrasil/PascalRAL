@@ -10,6 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <Libraries Value="..\..\..\src\others\pascal_brotli\static_libs"/>
         <OtherUnitFiles Value="..\..\..\src\others;..\..\..\src\others\pascal_brotli"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
@@ -41,6 +42,9 @@
       </Item2>
     </RequiredPkgs>
     <UsageOptions>
+      <IncludePath Value="$(PkgIncPath)"/>
+      <LibraryPath Value="$(PkgDir)\..\..\..\src\others\pascal_brotli\static_libs"/>
+      <ObjectPath Value="$(PkgDir)\..\..\..\src\others\pascal_brotli\static_libs"/>
       <UnitPath Value="$(PkgOutDir)"/>
     </UsageOptions>
     <PublishOptions>
