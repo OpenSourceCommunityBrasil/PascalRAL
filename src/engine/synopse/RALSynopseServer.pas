@@ -187,7 +187,6 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vHeaders: StringRAL;
-  vInt: IntegerRAL;
 begin
   vRequest := CreateRequest;
   vResponse := CreateResponse;
@@ -232,14 +231,16 @@ begin
         vRequest.Params.CompressType := vRequest.ContentCompress;
         vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
         vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
-        vRequest.RequestText := RawUtf8(AContext.InContent);
 
+        vRequest.RequestText := RawUtf8(AContext.InContent);
         vRequest.Host := AContext.Host;
         vRequest.Protocol := '1.1';
-        if SSL.Enabled then
-          vRequest.HttpVersion := 'HTTPS'
-        else
-          vRequest.HttpVersion := 'HTTP';
+        vRequest.HttpVersion := IfThen(SSL.Enabled, 'HTTPS', 'HTTP');
+
+        //if SSL.Enabled then
+        //  vRequest.HttpVersion := 'HTTPS'
+        //else
+        //  vRequest.HttpVersion := 'HTTP';
 
         AContext.InContent := EmptyStr;
         AContext.InHeaders := EmptyStr;
@@ -247,32 +248,33 @@ begin
 
       ProcessCommands(vRequest, vResponse);
 
-      with vResponse do
+      //with vResponse do
       begin
-        AContext.OutContent := ResponseText;
-        AContext.OutContentType := ContentType;
+        AContext.OutContent := vResponse.ResponseText;
+        AContext.OutContentType := vResponse.ContentType;
 
-        if (vResponse.ContentDisposition <> EmptyStr) then
-          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+        //if (vResponse.ContentDisposition <> EmptyStr) then
+          vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
 
-        if vResponse.ContentEncoding <> EmptyStr then
-          Params.AddParam('Content-Encoding', ContentEncoding, rpkHEADER);
+        //if vResponse.ContentEncoding <> EmptyStr then
+          vResponse.Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
 
-        if vResponse.AcceptEncoding <> EmptyStr then
-          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+        //if vResponse.AcceptEncoding <> EmptyStr then
+          vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
 
-        if vResponse.ContentEncription <> EmptyStr then
-          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+        //if vResponse.ContentEncription <> EmptyStr then
+          vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
         // parse cookie na saída
-        vHeaders := Params.AssignParamsListText(rpkHEADER, ': ');
-        vHeaders := vHeaders + HTTPLineBreak + Params.AssignParamsListText(rpkCOOKIE, ': ');
+        vHeaders := vResponse.Params.AssignParamsListText(rpkHEADER, ': ');
+        if vResponse.Params.Count(rpkCOOKIE) > 0 then
+          vHeaders := vHeaders + HTTPLineBreak + vResponse.Params.AssignParamsListText(rpkCOOKIE, ': ');
 
         //vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
 
         AContext.OutCustomHeaders := Trim(vHeaders);
 
-        Result := StatusCode;
+        Result := vResponse.StatusCode;
       end;
     except
       on e: exception do
