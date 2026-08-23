@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **fix: .AsInt64 Corrigido pra funcionar feat: novo leitor .AsDateTime e .AsDateTime(FormatSettings) para RALParams** (2026-08-23 – mobius1qwe)
+
 - **- implementado funcao AddMIMEType, para usuario adicionar um novo MIMEType no sistema - Melhoria para busca de uma extensão para Lazarus - Criado vetor com as extensões antes adicionadas em SetDefaultTypes** (2026-07-30 – Fernando Castelano Banhos)
 
 - **feat: capacidade de autenticação via cookie e melhoria de tratamento de cookies** (2026-07-28 – mobius1qwe)
@@ -16,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-23 – mobius1qwe)
+
 - **- correção do package ralbrotlicompress, para aceitar statics links - correção do arquivo PascalRAL.inc diretivas RALApple** (2026-08-04 – Fernando Banhos)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-07-31 – Fernando Castelano Banhos)
@@ -42,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: otimizações no RALSynopseServer** (2026-08-23 – mobius1qwe)
+
 - **fix: Correção de erro de caminho de arquivo de mensagens do pacote** (2026-07-25 – mobius1qwe)
 
 - **Fix: Access Violation no parse do token JWT** (2026-07-24 – mobius1qwe)
