@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: correção de declaração de assinatura de cookie para Delphi** (2026-08-24 – mobius1qwe)
+
 - **fix: otimizações no RALSynopseServer** (2026-08-23 – mobius1qwe)
 
 - **fix: Correção de erro de caminho de arquivo de mensagens do pacote** (2026-07-25 – mobius1qwe)
