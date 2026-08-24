@@ -85,9 +85,9 @@ type
     /// Adds an UTF8 String to the body of the request.
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
     /// Adds a string cookie to the body of the request.
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce; overload;
     /// Adds a RALcookie to the header of the request.
-    function AddCookie(const ACookie: TRALCookie): TRALRequest; reintroduce;
+    function AddCookie(const ACookie: TRALCookie): TRALRequest; reintroduce; overload;
     /// Adds a string param with the "Field" kind to the request.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
     /// Adds a file to the body of the request based on the given AFileName.

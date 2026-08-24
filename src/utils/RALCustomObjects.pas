@@ -52,8 +52,8 @@ type
     destructor Destroy; override;
 
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual; overload; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
-    function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; virtual; overload;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; overload; virtual; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
+    function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; overload; virtual;
     function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
