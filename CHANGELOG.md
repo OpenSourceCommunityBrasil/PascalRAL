@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **- Adicionado path para localizar static libs** (2026-08-27 – Fernando Castelano Banhos)
+
+- **- Adicionado search path para static lib** (2026-08-27 – Fernando Castelano Banhos)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-23 – mobius1qwe)
 
 - **- correção do package ralbrotlicompress, para aceitar statics links - correção do arquivo PascalRAL.inc diretivas RALApple** (2026-08-04 – Fernando Banhos)
