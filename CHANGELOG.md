@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-27 – Fernando Castelano Banhos)
+
+- **- modulo pascal_brotli atualizado** (2026-08-27 – Fernando Castelano Banhos)
+
 - **- Adicionado path para localizar static libs** (2026-08-27 – Fernando Castelano Banhos)
 
 - **- Adicionado search path para static lib** (2026-08-27 – Fernando Castelano Banhos)
