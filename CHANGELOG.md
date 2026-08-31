@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **add connection pool to TRALDBModule** (2026-08-31 – tempraturbo)
+  New TRALDBConnectionPool in src/database/RALDBPool.pas keeps open TRALDBBase
+  connections and hands them out one request at a time, so the driver no longer
+  has to connect and disconnect on every call. Off by default: with
+  PoolOptions.Enabled = False the module behaves exactly as it did before.
+  Configuration lives in TRALDBModule.PoolOptions - MinSize/MaxSize, WaitTimeout,
+  OnExhausted (HTTP 503 or an overflow connection), QueueSize, IdleTimeout,
+  MaxLifetime, MaxUses and ValidateOnAcquire.
+  TRALDBBase gains the contract the pool needs: Connect, Disconnect, IsConnected,
+  ResetSession, TestConnection and ValidationSQL. Each driver implements
+  ResetSession according to its own transaction model - FireDAC and Zeos roll back
+  a leftover transaction, while SQLDB closes the transaction with
+  caCommitRetaining, which is what persists the request now that the driver is
+  reused instead of being freed.
+  Routes go through AcquireDatabase/ReleaseDatabase, and a pool timeout is
+  answered as HTTP 503. String constant emDBPoolTimeout in the three language
+  files.
+
 - **fix: .AsInt64 Corrigido pra funcionar feat: novo leitor .AsDateTime e .AsDateTime(FormatSettings) para RALParams** (2026-08-23 – mobius1qwe)
 
 - **- implementado funcao AddMIMEType, para usuario adicionar um novo MIMEType no sistema - Melhoria para busca de uma extensão para Lazarus - Criado vetor com as extensões antes adicionadas em SetDefaultTypes** (2026-07-30 – Fernando Castelano Banhos)
@@ -54,6 +72,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix outdated unit list in pasdoc.pds** (2026-08-31 – tempraturbo)
+  Six units changed folder and pasdoc.pds still pointed at the old paths:
+  RALAuthentication is now under src/base/plugins, and RALSwaggerModule,
+  RALWebModule, RALExternalsLibraries, RALPostmanExporter and RALSwaggerExporter
+  under src/base/modules. Two entries pointed at files that no longer exist, and
+  RALDBPool.pas was missing from the list, so the pool never reached the generated
+  documentation.
+  IncludeDirectories listed src/database/links, which does not exist, and was
+  missing src/base/modules, src/base/plugins and src/languages - the last one is
+  where RALConsts.pas takes its {$I ralconsts_*.inc} from.
+
 - **Fix: correção de declaração de assinatura de cookie para Delphi** (2026-08-24 – mobius1qwe)
 
 - **fix: otimizações no RALSynopseServer** (2026-08-23 – mobius1qwe)
