@@ -176,6 +176,7 @@
         <DCCReference Include="dcldb.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\database\RALDBBase.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBPool.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>

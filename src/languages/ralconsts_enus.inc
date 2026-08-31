@@ -18,6 +18,7 @@
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
+  emDBPoolTimeout = 'Timed out waiting for a free database connection.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
   emHMACEmptyText = 'Input text must be provided.';
   emInvalidFormat = 'Invalid Format.';

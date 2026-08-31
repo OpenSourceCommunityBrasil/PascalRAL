@@ -27,6 +27,9 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
+    procedure Disconnect; override;
+    function IsConnected : boolean; override;
+    procedure ResetSession; override;
     procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
                       var ALastInsertId : Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -125,6 +128,29 @@ begin
   FreeAndNil(FTransaction);
   FreeAndNil(FConnector);
   inherited Destroy;
+end;
+
+procedure TRALDBSQLDB.Disconnect;
+begin
+  ResetSession;
+  if FConnector.Connected then
+    FConnector.Close;
+end;
+
+function TRALDBSQLDB.IsConnected : boolean;
+begin
+  Result := FConnector.Connected;
+end;
+
+procedure TRALDBSQLDB.ResetSession;
+begin
+  { unlike Zeos and FireDAC there is an explicit transaction here, and it is what
+    persists the request: closing it runs Action (caCommitRetaining), exactly what
+    destroying the driver used to do at the end of every request. Rolling back
+    instead would silently throw away every write once pooling is on.
+    SQLDB reopens the transaction by itself on the next query }
+  if FTransaction.Active then
+    FTransaction.Active := False;
 end;
 
 function TRALDBSQLDB.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;

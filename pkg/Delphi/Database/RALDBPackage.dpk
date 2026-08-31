@@ -35,6 +35,7 @@ requires
 
 contains
   RALDBBase in '..\..\..\src\database\RALDBBase.pas',
+  RALDBPool in '..\..\..\src\database\RALDBPool.pas',
   RALDBModule in '..\..\..\src\database\RALDBModule.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
   RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',

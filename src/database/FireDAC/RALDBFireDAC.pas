@@ -41,6 +41,9 @@ type
     destructor Destroy; override;
 
     function CanExportNative: boolean; override;
+    procedure Disconnect; override;
+    function IsConnected: boolean; override;
+    procedure ResetSession; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -123,6 +126,25 @@ destructor TRALDBFireDAC.Destroy;
 begin
   FreeAndNil(FConnector);
   inherited Destroy;
+end;
+
+procedure TRALDBFireDAC.Disconnect;
+begin
+  if FConnector.Connected then
+    FConnector.Close;
+end;
+
+function TRALDBFireDAC.IsConnected: boolean;
+begin
+  Result := FConnector.Connected;
+end;
+
+procedure TRALDBFireDAC.ResetSession;
+begin
+  { with the default TxOptions.AutoCommit there is nothing pending, so this only
+    fires when the application opened a transaction of its own and left it behind }
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Rollback;
 end;
 
 procedure TRALDBFireDAC.OnConnAfterConnect(ASender: TObject);

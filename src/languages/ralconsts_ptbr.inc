@@ -19,6 +19,7 @@
   emDBDriverMissing = 'Driver de conexão não encontrado.';
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
+  emDBPoolTimeout = 'Tempo de espera por uma conexão livre com o banco esgotado.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
   emInvalidFormat = 'Formato Inválido.';
   emInvalidJSONFormat = 'Formato JSON inválido.';

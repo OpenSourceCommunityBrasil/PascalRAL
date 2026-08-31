@@ -26,11 +26,15 @@
     </CompilerOptions>
     <Description Value="Package for DBWare components for PascalRAL."/>
     <Version Major="1"/>
-    <Files Count="6">
+    <Files Count="7">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
       </Item1>
+      <Item7>
+        <Filename Value="..\..\..\src\database\RALDBPool.pas"/>
+        <UnitName Value="RALDBPool"/>
+      </Item7>
       <Item2>
         <Filename Value="..\..\..\src\database\RALDBModule.pas"/>
         <UnitName Value="RALDBModule"/>

@@ -19,6 +19,7 @@
   emDBDriverMissing = 'No se encontró el controlador de conexión.';
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
+  emDBPoolTimeout = 'Se agotó el tiempo de espera por una conexión libre a la base de datos.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
   emInvalidFormat = 'Formato no és válido.';
   emInvalidJSONFormat = 'Formato JSON no és válido.';

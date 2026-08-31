@@ -39,6 +39,22 @@ type
   public
     constructor Create; virtual; abstract;
     function CanExportNative: boolean; virtual;
+    /// Opens the connection. Does nothing when it is already open
+    procedure Connect; virtual;
+    { Closes the connection. Descendants that do not override it simply keep the
+      connection open until the driver is destroyed }
+    procedure Disconnect; virtual;
+    { Tells whether the connection is open. Descendants that cannot answer it
+      report True, so nothing is needlessly reconnected }
+    function IsConnected: boolean; virtual;
+    { Undoes anything the request left behind, pending transactions above all.
+      Called by TRALDBConnectionPool before a connection is reused }
+    procedure ResetSession; virtual;
+    { Runs ValidationSQL to find out whether the connection still answers. Used by
+      the pool when PoolOptions.ValidateOnAcquire is on }
+    function TestConnection: boolean; virtual;
+    /// Cheapest statement that proves the connection is alive on this database
+    function ValidationSQL: StringRAL; virtual;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
     function GetDriverType: TRALDBDriverType; virtual; abstract;
@@ -141,6 +157,55 @@ end;
 function TRALDBBase.CanExportNative: boolean;
 begin
   Result := False;
+end;
+
+procedure TRALDBBase.Connect;
+begin
+  Conectar;
+end;
+
+procedure TRALDBBase.Disconnect;
+begin
+  // implemented by each driver, since closing is connector specific
+end;
+
+function TRALDBBase.IsConnected: boolean;
+begin
+  Result := True;
+end;
+
+procedure TRALDBBase.ResetSession;
+begin
+  // implemented by each driver, since transaction control is connector specific
+end;
+
+function TRALDBBase.ValidationSQL: StringRAL;
+begin
+  case DatabaseType of
+    dtFirebird: Result := 'select 1 from rdb$database';
+  else
+    Result := 'select 1';
+  end;
+end;
+
+function TRALDBBase.TestConnection: boolean;
+var
+  vQuery: TDataSet;
+begin
+  Result := IsConnected;
+  if not Result then
+    Exit;
+
+  { works on every driver, including third party ones, because it only relies on
+    what TRALDBBase already declares }
+  vQuery := nil;
+  try
+    vQuery := OpenCompatible(ValidationSQL, nil);
+    Result := True;
+  except
+    Result := False;
+  end;
+  FreeAndNil(vQuery);
 end;
 
 end.

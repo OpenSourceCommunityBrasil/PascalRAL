@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
   RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
-  RALDBSQLCache, RALStream;
+  RALDBSQLCache, RALStream, RALDBPool;
 
 type
   { TRALDBModule }
@@ -19,6 +19,7 @@ type
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FPassword: StringRAL;
+    FPool: TRALDBConnectionPool;
     FPort: IntegerRAL;
     FUsername: StringRAL;
 
@@ -27,6 +28,13 @@ type
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
   protected
+    /// Fills AResponse with the error, answering 503 when the pool timed out
+    procedure AnswerException(AResponse: TRALResponse; AException: Exception);
+    /// Factory handed to the pool, so it can open connections on its own
+    function CreatePoolConnection(ASender: TObject): TRALDBBase;
+    function GetPoolOptions: TRALDBPoolOptions;
+    procedure SetPoolOptions(AValue: TRALDBPoolOptions);
+
     procedure ApplyUpdates(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
     function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
@@ -41,12 +49,27 @@ type
                                  ABinary : boolean) : TStream;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+    { Takes a connection from the pool, already bound to this request. Also usable
+      from custom routes that need to reach the same database }
+    function AcquireDatabase(ARequest: TRALRequest; AResponse: TRALResponse): TRALDBBase;
+    /// Gives a connection taken by AcquireDatabase back to the pool
+    procedure ReleaseDatabase(ADatabase: TRALDBBase);
+
+    { Live pool, for statistics and for opening the initial connections through
+      Pool.Prepare once the server is up }
+    property Pool: TRALDBConnectionPool read FPool;
   published
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseLink: String read FDataBaseLink write FDataBaseLink;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
     property Password: StringRAL read FPassword write FPassword;
+    { Connection pool settings, editable in the Object Inspector at design time.
+      Turning PoolOptions.Enabled on makes the module reuse open connections
+      instead of opening one per request }
+    property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
     property Port: IntegerRAL read FPort write FPort;
     property Username: StringRAL read FUsername write FUsername;
 
@@ -60,6 +83,45 @@ implementation
 
 { TRALDBModule }
 
+procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
+begin
+  if AException is ERALDBPoolTimeout then
+    AResponse.StatusCode := HTTP_ServiceUnavailable
+  else
+    AResponse.StatusCode := HTTP_InternalError;
+
+  AResponse.ContentType := rctTEXTPLAIN;
+  AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+end;
+
+function TRALDBModule.CreatePoolConnection(ASender: TObject): TRALDBBase;
+begin
+  { the pool binds Request and Response itself on every acquire, so the driver is
+    built here without them }
+  Result := FindDatabaseDriver(nil, nil);
+end;
+
+function TRALDBModule.GetPoolOptions: TRALDBPoolOptions;
+begin
+  Result := FPool.Options;
+end;
+
+procedure TRALDBModule.SetPoolOptions(AValue: TRALDBPoolOptions);
+begin
+  FPool.Options.Assign(AValue);
+end;
+
+function TRALDBModule.AcquireDatabase(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALDBBase;
+begin
+  Result := FPool.Acquire(ARequest, AResponse);
+end;
+
+procedure TRALDBModule.ReleaseDatabase(ADatabase: TRALDBBase);
+begin
+  FPool.Release(ADatabase);
+end;
+
 procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
   vResult: TStream;
@@ -72,28 +134,33 @@ begin
   else
     vQuery := ADatabase.OpenCompatible(ADBSQL.SQL, ADBSQL.Params);
 
-  vResult := TMemoryStream.Create;
+  // the dataset belongs to us: the drivers create it without an owner
   try
-    if (ADatabase.CanExportNative) and (ADBSQL.DriverType = ADatabase.DriverType) then
-    begin
-      vContentType := rctAPPLICATIONOCTETSTREAM;
-      vNative := True;
-      ADatabase.SaveToStream(vQuery, vResult, vContentType, vNative);
-    end
-    else
-    begin
-      vNative := False;
-      vContentType := AStorage.ContentType;
-      AStorage.SaveToStream(vQuery, vResult);
-    end;
+    vResult := TMemoryStream.Create;
+    try
+      if (ADatabase.CanExportNative) and (ADBSQL.DriverType = ADatabase.DriverType) then
+      begin
+        vContentType := rctAPPLICATIONOCTETSTREAM;
+        vNative := True;
+        ADatabase.SaveToStream(vQuery, vResult, vContentType, vNative);
+      end
+      else
+      begin
+        vNative := False;
+        vContentType := AStorage.ContentType;
+        AStorage.SaveToStream(vQuery, vResult);
+      end;
 
-    ADBSQL.Response.Native := vNative;
-    ADBSQL.Response.ContentType := vContentType;
-    ADBSQL.Response.RowsAffected := 0;
-    ADBSQL.Response.LastId := 0;
-    ADBSQL.Response.Stream := vResult;
+      ADBSQL.Response.Native := vNative;
+      ADBSQL.Response.ContentType := vContentType;
+      ADBSQL.Response.RowsAffected := 0;
+      ADBSQL.Response.LastId := 0;
+      ADBSQL.Response.Stream := vResult;
+    finally
+      FreeAndNil(vResult);
+    end;
   finally
-    FreeAndNil(vResult);
+    FreeAndNil(vQuery);
   end;
 end;
 
@@ -184,9 +251,10 @@ var
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vMem := ARequest.Body.AsStream;
@@ -225,14 +293,10 @@ begin
       end;
     except
       on e: Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -251,9 +315,10 @@ var
 begin
   vRowsAffect := 0;
   vLastId := 0;
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vMem := ARequest.Body.AsStream;
@@ -304,14 +369,10 @@ begin
       end;
     except
       on e: Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -326,9 +387,10 @@ begin
   vRowsAffect := 0;
   vLastId := 0;
 
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vMem := ARequest.Body.AsStream;
@@ -369,14 +431,10 @@ begin
       end;
     except
       on e: Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -390,9 +448,10 @@ var
   vJSON: TRALJSONArray;
   vjObj: TRALJSONObject;
 begin
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vSchema := ARequest.ParamByName('schema').AsString;
@@ -476,15 +535,11 @@ begin
         end;
       end;
     except
-      on e : Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+      on e: Exception do
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -709,9 +764,10 @@ var
   end;
 
 begin
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vSchema := ARequest.ParamByName('schema').AsString;
@@ -824,15 +880,11 @@ begin
         end;
       end;
     except
-      on e : Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+      on e: Exception do
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -844,9 +896,10 @@ var
   vQuery: TDataSet;
   vResult: TStream;
 begin
-  vDB := FindDatabaseDriver(ARequest, AResponse);
+  vDB := nil;
   try
     try
+      vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
         vSQL := ARequest.ParamByName('ral_body').AsString;
@@ -864,15 +917,11 @@ begin
         end;
       end;
     except
-      on e : Exception do
-      begin
-        AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ContentType := rctTEXTPLAIN;
-        AResponse.Params.AddParam('Exception', e.Message, rpkBODY);
-      end;
+      on e: Exception do
+        AnswerException(AResponse, e);
     end;
   finally
-    FreeAndNil(vDB);
+    ReleaseDatabase(vDB);
   end;
 end;
 
@@ -882,6 +931,10 @@ var
   vParam: TRALRouteParam;
 begin
   inherited Create(AOwner);
+
+  FPool := TRALDBConnectionPool.Create;
+  FPool.OnCreateConnection := {$IFDEF FPC}@{$ENDIF}CreatePoolConnection;
+
   vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
   vRoute.Name := 'opensql';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
@@ -947,6 +1000,12 @@ begin
   vParam.ParamName := 'binary';
   vParam.ParamType := prtBoolean;
   vParam.Required := False;
+end;
+
+destructor TRALDBModule.Destroy;
+begin
+  FreeAndNil(FPool);
+  inherited Destroy;
 end;
 
 end.

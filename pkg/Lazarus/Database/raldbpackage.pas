@@ -9,7 +9,7 @@ interface
 
 uses
   RALDBBase, RALDBModule, RALDBRegister, RALDBConnection, RALDBSQLCache, 
-  LazarusPackageIntf;
+  RALDBPool, LazarusPackageIntf;
 
 implementation
 

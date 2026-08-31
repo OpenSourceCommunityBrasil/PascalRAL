@@ -30,6 +30,9 @@ type
     destructor Destroy; override;
 
     function CanExportNative: boolean; override;
+    procedure Disconnect; override;
+    function IsConnected: boolean; override;
+    procedure ResetSession; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -188,6 +191,25 @@ end;
 class function TRALDBZeos.PackageDependency: StringRAL;
 begin
   Result := '';
+end;
+
+procedure TRALDBZeos.Disconnect;
+begin
+  if FConnector.Connected then
+    FConnector.Disconnect;
+end;
+
+function TRALDBZeos.IsConnected: boolean;
+begin
+  Result := FConnector.Connected;
+end;
+
+procedure TRALDBZeos.ResetSession;
+begin
+  { with the default AutoCommit there is nothing pending, so this only fires when
+    the application opened a transaction of its own and left it behind }
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Rollback;
 end;
 
 function TRALDBZeos.CanExportNative: boolean;
