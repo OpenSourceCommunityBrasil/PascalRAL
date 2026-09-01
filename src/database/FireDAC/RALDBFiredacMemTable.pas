@@ -33,6 +33,8 @@ type
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
+    { on while a native stream is being loaded: its schema travels with it }
+    FLoadingNative: Boolean;
 
     FOnError: TRALDBTableOnError;
   protected
@@ -89,6 +91,20 @@ type
   end;
 
 implementation
+
+{ Reads the error message the server sent back, by name and then anonymously.
+
+  TRALDBModule.AnswerException answers with a single body param named
+  'Exception'. EncodeBody skips multipart for a lone body param and never puts
+  its name on the wire, so DecodeBody names whatever arrives 'ral_body' and
+  ParamByName('Exception') came back nil - OnError fired with an empty message
+  while the real one sat in the body, unread. }
+function ExceptionFromResponse(AResponse: TRALResponse): StringRAL;
+begin
+  Result := AResponse.ParamByName('Exception').AsString;
+  if Result = '' then
+    Result := AResponse.Body.AsString;
+end;
 
 { TRALDBFDMemTable }
 
@@ -166,6 +182,7 @@ begin
   FStorage := nil;
 
   FLoading := False;
+  FLoadingNative := False;
 
   CachedUpdates := False;
 end;
@@ -186,6 +203,7 @@ begin
 
   Clear;
   FLoading := False;
+  FLoadingNative := False;
 
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
@@ -217,6 +235,13 @@ var
   vTables: TStringList;
 begin
   inherited;
+
+  { A native FireDAC stream describes its own schema, with the real types.
+    Guessing here from the RAL type map - where ftBCD and ftFMTBcd both collapse
+    into sftDouble and come back as ftFloat - makes LoadFromStream pour BCD bytes
+    into a float field, and a NUMERIC(15,4) of 19.9012 reads back as 3.939E-313. }
+  if FLoadingNative then
+    Exit;
 
   vTables := TStringList.Create;
 
@@ -391,7 +416,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -453,7 +478,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -485,7 +510,23 @@ begin
         vDBSQL := vSQLCache.SQLList[0];
 
         if vDBSQL.Response.Native then
-          Self.LoadFromStream(vDBSQL.Response.Stream)
+        begin
+          { A native stream carries its own schema, and that one is the real one.
+            InternalInitFieldDefs has already guessed the fields from the RAL type
+            map, where ftBCD and ftFMTBcd both collapse into sftDouble and come
+            back as ftFloat. Loading native BCD data into an ftFloat field makes
+            FireDAC reinterpret the BCD bytes as a double: a NUMERIC(15,4) holding
+            19.9012 came back as 3.939E-313. Drop the guessed defs and let FireDAC
+            take the ones travelling in the stream - FLoadingNative keeps
+            InternalInitFieldDefs from putting them back while the load reopens
+            the dataset. }
+          FLoadingNative := True;
+          if Self.Active then
+            Self.Close;
+          Self.FieldDefs.Clear;
+          Self.Fields.Clear;
+          Self.LoadFromStream(vDBSQL.Response.Stream);
+        end
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
 
@@ -499,7 +540,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -509,6 +550,7 @@ begin
       FOnError(Self, AException);
   end;
   FLoading := False;
+  FLoadingNative := False;
 end;
 
 procedure TRALDBFDMemTable.OpenCursor(InfoQuery: boolean);

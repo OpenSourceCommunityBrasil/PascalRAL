@@ -93,6 +93,26 @@ procedure Register;
 
 implementation
 
+{ Reads the AffectedRows the server sent back, by name and then anonymously.
+
+  OnReplyQuery answers Type='1' (ExecSQL) and Type='2' (ApplyUpdates) with a
+  single body param. EncodeBody skips multipart for a lone body param and sends
+  the raw value, so the param name never reaches the wire and DecodeBody names
+  whatever arrives 'ral_body' - ParamByName('AffectedRows') came back nil and
+  StrToInt('') raised "'' is not a valid integer value", which made
+  ExecSQLRemote and ApplyUpdatesRemote fail every time. Type='0' (Open) answers
+  with two params (Stream + AffectedRows), multipart preserves both names, and
+  the lookup by name works there - the fallback below never triggers for it.
+
+  Both getters are nil-safe, so an answer carrying neither still lands in
+  StrToInt(''), raising exactly as before instead of silently reporting 0. }
+function AffectedRowsFromResponse(AResponse: TRALResponse): StringRAL;
+begin
+  Result := AResponse.ParamByName('AffectedRows').AsString;
+  if Result = '' then
+    Result := AResponse.Body.AsString;
+end;
+
 { TRALFDQueryMT }
 
 constructor TRALFDQuery.Create(AOwner: TComponent);
@@ -120,8 +140,7 @@ begin
 
       if AResponse.StatusCode = HTTP_OK then
       begin
-        Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
-          .AsString);
+        Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
         raise Exception.Create(AResponse.ResponseText);
@@ -256,8 +275,7 @@ begin
       begin
         Self.CommitUpdates;
 
-        Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
-          .AsString);
+        Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
         raise Exception.Create(AResponse.ResponseText);
@@ -414,8 +432,7 @@ begin
             Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
           end);
 
-        Self.vRowsAffectedRemote := StrToInt(AResponse.ParamByName('AffectedRows')
-          .AsString);
+        Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
 
         Self.CachedUpdates := true;
       end

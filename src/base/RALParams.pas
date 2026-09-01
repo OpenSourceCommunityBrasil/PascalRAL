@@ -5,7 +5,7 @@ unit RALParams;
 interface
 
 uses
-  Classes, SysUtils, TypInfo,
+  Classes, SysUtils, TypInfo, Variants,
   RALHashes,
   RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
   RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
@@ -56,12 +56,60 @@ type
     procedure SetAsString(const AValue: StringRAL);
     procedure SetAsStream(const AValue: TStream);
     procedure SetContentDisposition(AValue: StringRAL);
+
+    { ContentType without its parameters: 'application/x-ral-double; charset=utf-8'
+      answers 'application/x-ral-double'. A lone body param travels as the HTTP
+      Content-Type header, and TRALHTTPHeaderInfo.SetContentType appends the
+      charset on the way, so comparing the whole string would miss every marker
+      that crossed a real connection - it only ever matched in-process. }
+    function MediaType: StringRAL;
+    /// Writes a raw little-endian payload and stamps ContentType with AType.
+    procedure SetTypedValue(const AType: StringRAL; const ABuffer; ASize: Integer);
+    /// Reads a raw payload back; False when the marker or the size do not match.
+    function GetTypedValue(const AType: StringRAL; var ABuffer; ASize: Integer): Boolean;
+    { Reads whatever typed payload the param carries, whichever one it is.
+
+      Every accessor goes through this instead of asking only for its own
+      marker: reading an rptInt64 param with AsInteger has to convert the value,
+      not fall through to the text branch, where the raw bytes would parse as 0
+      and hand back silently wrong data. }
+    function GetTypedVariant(out AValue: Variant): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
 
     function AsDateTime: TDateTime; overload;
     function AsDateTime(ACustomFormat: TFormatSettings): TDateTime; overload;
+    function AsCurrency: Currency;
+
+    { Typed binary writers - see the rctRAL* constants in RALMIMETypes.
+
+      They are new methods instead of a change to AsInteger/AsDouble/..., so
+      existing code keeps producing exactly the same bytes on the wire. The
+      readers are the ordinary AsInteger/AsInt64/AsDouble/AsCurrency/AsBoolean/
+      AsDateTime: they look at ContentType first and fall back to parsing text,
+      so an old writer still talks to a new reader unchanged.
+
+      Works with any number of params. With two or more the multipart encoder
+      copies the stream verbatim and the decoder restores name and content type;
+      with a single body param the value travels as the whole body and the type
+      still survives in the HTTP Content-Type header - only the name is replaced
+      by 'ral_body', which is how a lone body param already behaves today,
+      independently of this.
+
+      Payload is little-endian and fixed size; on big-endian FPC targets the
+      bytes are swapped at both ends so the wire format is the same everywhere.
+      TDate and TTime are TDateTime in Object Pascal, so SetTypedDateTime covers
+      the three of them. }
+    procedure SetTypedInteger(const AValue: IntegerRAL);
+    procedure SetTypedInt64(const AValue: Int64RAL);
+    procedure SetTypedDouble(const AValue: DoubleRAL);
+    procedure SetTypedCurrency(const AValue: Currency);
+    procedure SetTypedBoolean(const AValue: Boolean);
+    procedure SetTypedDateTime(const AValue: TDateTime);
+
+    /// True when this param carries a typed binary payload instead of text.
+    function IsTyped: Boolean;
 
     procedure Clone(ASource: TRALParam);
     function IsNilOrEmpty: Boolean;
@@ -161,6 +209,17 @@ type
     /// AddParam is used to include a TRALParam Object into the internal list.
     function AddParam(const AName: StringRAL; AContent: TStream;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+    { Adds a param stating how the value should travel - see TRALParamType.
+
+        Params.AddParam('quantidade', 2.5, rpkBODY, rptDouble);
+        Params.AddParam('datacoleta', Now, rpkBODY, rptDateTime);
+
+      With rptText it behaves like the string overload, so one call site can
+      switch between text and typed without changing shape. Unlike that
+      overload it does NOT reject an empty value: a typed param still has a
+      value when its text form would be empty. }
+    function AddParam(const AName: StringRAL; const AValue: Variant;
+                      AKind: TRALParamKind; AType: TRALParamType): TRALParam; overload;
     /// AddValue creates a new RALParam in the internal list and fills it with the given parameters.
     function AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     /// AddValue creates a new RALParam in the internal list and fills it with the given parameters.
@@ -403,11 +462,16 @@ end;
 procedure TRALParam.Clone(ASource: TRALParam);
 begin
   ASource.ContentDispositionInline := Self.ContentDispositionInline;
-  ASource.ContentType := Self.ContentType;
   ASource.FileName := Self.FileName;
   ASource.Kind := Self.Kind;
   ASource.ParamName := Self.ParamName;
+
+  { Content first, ContentType after: writing content drops a typed marker (see
+    SetAsStream), so assigning the type before the stream would clear it again
+    and a cloned typed param would come out as a plain octet-stream. The
+    multipart decoder already assigns in this order. }
   ASource.AsStream := Self.Content;
+  ASource.ContentType := Self.ContentType;
 end;
 
 constructor TRALParam.Create;
@@ -425,19 +489,212 @@ begin
 end;
 
 function TRALParam.AsDateTime: TDateTime;
+var
+  vVar: Variant;
 begin
   Result := 0;
-  if Self <> nil then
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
     Result := StrToDateTimeDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.AsDateTime(ACustomFormat: TFormatSettings): TDateTime;
+var
+  vVar: Variant;
 begin
   Result := 0;
-  if Self <> nil then
+  if Self = nil then
+    Exit;
+
+  { A typed payload has no format to interpret, so the custom settings simply do
+    not apply to it - they still drive the text fallback. }
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
     Result := StrToDateTimeDef(StreamToString(FContent), 0, ACustomFormat);
 end;
 
+
+{ Typed binary payloads ------------------------------------------------------
+
+  The wire format is little-endian and fixed size. Object Pascal targets are
+  little-endian in practice, but FPC also builds for big-endian machines, so the
+  bytes are swapped there on both write and read - the format on the wire never
+  changes, only the in-memory representation does. }
+
+procedure RALSwapBytes(var ABuffer; ASize: Integer);
+{$IF Defined(FPC) and Defined(ENDIAN_BIG)}
+var
+  vBytes: PByte;
+  vInt, vFim: Integer;
+  vTmp: Byte;
+begin
+  vBytes := @ABuffer;
+  vFim := ASize - 1;
+  for vInt := 0 to (ASize div 2) - 1 do
+  begin
+    vTmp := vBytes[vInt];
+    vBytes[vInt] := vBytes[vFim - vInt];
+    vBytes[vFim - vInt] := vTmp;
+  end;
+end;
+{$ELSE}
+begin
+  { little-endian target: the wire format already matches memory }
+end;
+{$IFEND}
+
+function TRALParam.IsTyped: Boolean;
+begin
+  Result := (Self <> nil) and
+            (SameText(MediaType, rctRALINT32) or
+             SameText(MediaType, rctRALINT64) or
+             SameText(MediaType, rctRALDOUBLE) or
+             SameText(MediaType, rctRALCURRENCY) or
+             SameText(MediaType, rctRALBOOLEAN) or
+             SameText(MediaType, rctRALDATETIME));
+end;
+
+procedure TRALParam.SetTypedValue(const AType: StringRAL; const ABuffer;
+  ASize: Integer);
+var
+  vBuf: TBytes;
+begin
+  SetLength(vBuf, ASize);
+  Move(ABuffer, vBuf[0], ASize);
+  RALSwapBytes(vBuf[0], ASize);
+
+  if FContent <> nil then
+    FreeAndNil(FContent);
+
+  FContent := TMemoryStream.Create;
+  FContent.WriteBuffer(vBuf[0], ASize);
+  FContent.Position := 0;
+
+  FContentType := AType;
+end;
+
+function TRALParam.MediaType: StringRAL;
+var
+  vPos: IntegerRAL;
+begin
+  Result := '';
+  if Self = nil then
+    Exit;
+
+  Result := FContentType;
+  vPos := Pos(StringRAL(';'), Result);
+  if vPos > 0 then
+    Result := Copy(Result, POSINISTR, vPos - 1);
+end;
+
+function TRALParam.GetTypedValue(const AType: StringRAL; var ABuffer;
+  ASize: Integer): Boolean;
+begin
+  { Size is checked as well as the marker: a truncated or padded payload is
+    treated as "not typed" and falls through to the text reader, which is the
+    safe direction - better to try parsing than to hand back garbage. }
+  Result := (Self <> nil) and SameText(MediaType, AType) and
+            (FContent <> nil) and (FContent.Size = ASize);
+
+  if not Result then
+    Exit;
+
+  FContent.Position := 0;
+  FContent.ReadBuffer(ABuffer, ASize);
+  RALSwapBytes(ABuffer, ASize);
+end;
+
+function TRALParam.GetTypedVariant(out AValue: Variant): Boolean;
+var
+  vInt32: IntegerRAL;
+  vInt64: Int64RAL;
+  vDouble: DoubleRAL;
+  vCur: Currency;
+  vByte: Byte;
+begin
+  Result := True;
+
+  if GetTypedValue(rctRALINT32, vInt32, SizeOf(vInt32)) then
+    AValue := vInt32
+  else if GetTypedValue(rctRALINT64, vInt64, SizeOf(vInt64)) then
+    AValue := vInt64
+  else if GetTypedValue(rctRALDOUBLE, vDouble, SizeOf(vDouble)) then
+    AValue := vDouble
+  else if GetTypedValue(rctRALCURRENCY, vCur, SizeOf(vCur)) then
+    AValue := vCur
+  else if GetTypedValue(rctRALDATETIME, vDouble, SizeOf(vDouble)) then
+    AValue := vDouble
+  else if GetTypedValue(rctRALBOOLEAN, vByte, SizeOf(vByte)) then
+    AValue := vByte <> 0
+  else
+  begin
+    AValue := Null;
+    Result := False;
+  end;
+end;
+
+procedure TRALParam.SetTypedInteger(const AValue: IntegerRAL);
+begin
+  SetTypedValue(rctRALINT32, AValue, SizeOf(AValue));
+end;
+
+procedure TRALParam.SetTypedInt64(const AValue: Int64RAL);
+begin
+  SetTypedValue(rctRALINT64, AValue, SizeOf(AValue));
+end;
+
+procedure TRALParam.SetTypedDouble(const AValue: DoubleRAL);
+begin
+  SetTypedValue(rctRALDOUBLE, AValue, SizeOf(AValue));
+end;
+
+procedure TRALParam.SetTypedCurrency(const AValue: Currency);
+begin
+  { Currency is a scaled Int64 in Object Pascal, so the raw 8 bytes round-trip
+    it exactly - which text never guarantees for money. }
+  SetTypedValue(rctRALCURRENCY, AValue, SizeOf(AValue));
+end;
+
+procedure TRALParam.SetTypedBoolean(const AValue: Boolean);
+var
+  vByte: Byte;
+begin
+  if AValue then
+    vByte := 1
+  else
+    vByte := 0;
+
+  SetTypedValue(rctRALBOOLEAN, vByte, SizeOf(vByte));
+end;
+
+procedure TRALParam.SetTypedDateTime(const AValue: TDateTime);
+var
+  vDouble: Double;
+begin
+  { TDateTime is a Double; sending it raw removes the date-format ambiguity
+    entirely (03/04 being March 4th or April 3rd depending on the machine). }
+  vDouble := AValue;
+  SetTypedValue(rctRALDATETIME, vDouble, SizeOf(vDouble));
+end;
+
+function TRALParam.AsCurrency: Currency;
+var
+  vVar: Variant;
+begin
+  Result := 0;
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
+    Result := StrToCurrDef(StreamToString(FContent), 0);
+end;
 function TRALParam.IsNilOrEmpty: Boolean;
 begin
   Result := (Self = nil) or ((Self <> nil) and (Self.Size = 0));
@@ -465,12 +722,25 @@ begin
   begin
     FContent := TMemoryStream.Create;
   end;
+
+  { Same guard as SetAsString/SetAsStream: file content must not inherit a typed
+    marker from whatever the param held before, or a file that happens to be the
+    right size would be read as a number. }
+  if IsTyped then
+    FContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
 function TRALParam.GetAsInt64: Int64;
+var
+  vVar: Variant;
 begin
   Result := 0;
-  if Self <> nil then
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
     Result := StrToInt64Def(StreamToString(FContent), 0);
 end;
 
@@ -482,9 +752,15 @@ end;
 function TRALParam.GetAsBoolean: Boolean;
 var
   vStr: StringRAL;
+  vVar: Variant;
 begin
   Result := False;
-  if (Self <> nil) then
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
   begin
     vStr := StreamToString(FContent);
     Result := (vStr = '1') or (SameText(vStr, 'true'));
@@ -492,16 +768,32 @@ begin
 end;
 
 function TRALParam.GetAsDouble: DoubleRAL;
+var
+  vVar: Variant;
 begin
   Result := 0;
-  if (Self <> nil) then
+  if Self = nil then
+    Exit;
+
+  { Any typed payload converts; only an untyped one falls back to parsing text,
+    which is what keeps an old client working against a new server. }
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
     Result := StrToFloatDef(StreamToString(FContent), 0);
 end;
 
 function TRALParam.GetAsInteger: IntegerRAL;
+var
+  vVar: Variant;
 begin
   Result := 0;
-  if (Self <> nil) then
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+    Result := vVar
+  else
     Result := StrToIntDef(StreamToString(FContent), 0);
 end;
 
@@ -514,9 +806,42 @@ begin
 end;
 
 function TRALParam.GetAsString: StringRAL;
+var
+  vVar: Variant;
+  vFmt: TFormatSettings;
 begin
   Result := '';
-  if (Self <> nil) then
+  if Self = nil then
+    Exit;
+
+  { A typed param renders as text instead of handing back its raw bytes, which
+    would come out as mojibake. Rendering is invariant so whatever reads it
+    afterwards - a log, generic code, another param - gets something it can
+    parse back. Boolean renders as '1'/'0', which is what GetAsBoolean already
+    accepts, and a date/time renders as its TDateTime number, the same shape it
+    travels in. }
+  if GetTypedVariant(vVar) then
+  begin
+    { built by hand instead of TFormatSettings.Invariant, which does not exist
+      on the oldest IDEs RAL still compiles on }
+    vFmt.DecimalSeparator := '.';
+    vFmt.ThousandSeparator := ',';
+
+    if VarIsType(vVar, varBoolean) then
+    begin
+      if vVar then
+        Result := '1'
+      else
+        Result := '0';
+    end
+    else if VarIsType(vVar, varCurrency) then
+      Result := StringRAL(CurrToStr(vVar, vFmt))
+    else if VarIsType(vVar, varDouble) then
+      Result := StringRAL(FloatToStr(Double(vVar), vFmt))
+    else
+      Result := StringRAL(VarToStr(vVar));
+  end
+  else
     Result := StreamToString(FContent);
 end;
 
@@ -629,6 +954,12 @@ begin
     FContent := TRALStringStream.Create(AValue);
     FContent.Position := 0;
   end;
+
+  { Same reason as SetAsString: arbitrary content must not keep a typed marker
+    that no longer describes it. The decoder assigns AsStream and only then sets
+    ContentType, so restoring a typed param over the wire still works. }
+  if IsTyped then
+    FContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
 procedure TRALParam.SetAsString(const AValue: StringRAL);
@@ -637,6 +968,14 @@ begin
     FreeAndNil(FContent);
 
   FContent := StringToStreamUTF8(AValue);
+
+  { Writing text over a typed param has to drop the marker, otherwise the value
+    is text while ContentType still claims a binary type - and a payload that
+    happens to match the expected size gets read as that type. '12345678'
+    assigned over an rctRALDOUBLE param is eight bytes, so it would come back as
+    6.82E-38 instead of 12345678. Only SetTypedValue may set these markers. }
+  if IsTyped then
+    FContentType := rctTEXTPLAIN;
 end;
 
 procedure TRALParam.SetContentDisposition(AValue: StringRAL);
@@ -711,6 +1050,43 @@ begin
     Result.AsString := AValue;
     Result.ContentType := rctTEXTPLAIN;
     Result.Kind := AKind;
+  end;
+end;
+
+function TRALParams.AddParam(const AName: StringRAL; const AValue: Variant;
+  AKind: TRALParamKind; AType: TRALParamType): TRALParam;
+begin
+  Result := nil;
+  if AName = '' then
+    Exit;
+
+  Result := GetKind[AName, AKind];
+  if Result = nil then
+    Result := NewParam;
+
+  Result.ParamName := AName;
+  Result.Kind := AKind;
+
+  { The Variant conversions below are numeric, not textual, so no locale is
+    involved on this side either. }
+  case AType of
+    rptInteger:
+      Result.SetTypedInteger(AValue);
+    rptInt64:
+      Result.SetTypedInt64(AValue);
+    rptDouble:
+      Result.SetTypedDouble(AValue);
+    rptCurrency:
+      Result.SetTypedCurrency(AValue);
+    rptBoolean:
+      Result.SetTypedBoolean(AValue);
+    rptDateTime:
+      Result.SetTypedDateTime(AValue);
+  else
+    begin
+      Result.AsString := VarToStr(AValue);
+      Result.ContentType := rctTEXTPLAIN;
+    end;
   end;
 end;
 
@@ -832,10 +1208,21 @@ var
   vInt: Integer;
   vSeparator: StringRAL;
 begin
-  if ASource.NameValueSeparator <> '' then
-    vSeparator := ASource.NameValueSeparator
-  else if ASource.Count > 0 then
+  vSeparator := '';
+
+  { A header list holds 'Name: Value' lines, but TStrings.NameValueSeparator is
+    a Char that defaults to '=' and can never be empty, so the sniffer below was
+    unreachable and every header got split on the first '=' found anywhere in
+    the value: 'Content-Type: multipart/form-data; boundary=ral01' came back
+    named 'Content-Type: multipart/form-data; boundary'. Indy's TIdHeaderList
+    does declare ': ', but on a property of its own that is invisible through
+    this TStrings reference. So headers ask the sniffer; everything else - query
+    params, which really are 'name=value' - keeps using NameValueSeparator. }
+  if (AKind = rpkHEADER) and (ASource.Count > 0) then
     vSeparator := FindHeaderNameSeparator(ASource.Strings[0]);
+
+  if vSeparator = '' then
+    vSeparator := ASource.NameValueSeparator;
 
   for vInt := 0 to Pred(ASource.Count) do
     AppendParamLine(ASource.Strings[vInt], vSeparator, AKind);
@@ -1091,6 +1478,12 @@ begin
     vParam.ParamName := 'ral_body';
     vParam.FileName := '';
     vParam.ContentDisposition := AContentDisposition;
+
+    { Content first, ContentType after - the order is load-bearing. A single
+      body param travels with its own content type as the HTTP header, so this
+      is what restores a typed marker on the way in; assigning the type before
+      the stream would clear it again (SetAsStream drops it). Same ordering as
+      TRALParam.Clone. }
     vParam.AsStream := Result;
     vParam.ContentType := AContentType;
     vParam.Kind := rpkBODY;
@@ -1393,26 +1786,35 @@ var
   vPos, vMin: IntegerRAL;
   Engine: StringRAL;
 begin
-  Engine := Self.GetParam('RALEngine').AsString;
-  if SameText(Engine, ENGINESYNOPSE) then
+  { Decide from the data, not from the engine name.
+
+    Engines do not agree on the shape of the list they hand over: Indy and
+    Synopse pass real header lines ('Name: Value'), while fpHTTP passes its
+    TRequest.CustomHeaders, which is a name=value list. Keying off the engine
+    got both wrong at different times - '=' chopped Indy's headers at whatever
+    equals sign sat inside the value (that is how 'Content-Encription' went
+    missing and encrypted bodies reached the multipart decoder undecrypted),
+    and ':' matched nothing at all in fpHTTP's list, silently dropping every
+    header.
+
+    Whichever of ': ' and '=' comes FIRST in the line is the separator, which
+    settles both: 'Content-Type: multipart/form-data; boundary=ral01' splits at
+    the colon, and 'Host=127.0.0.1:18921' splits at the equals. The engine table
+    below only decides when the line carries neither. }
+  vPos := Pos(StringRAL(': '), ASource);
+  vMin := Pos(StringRAL('='), ASource);
+
+  if (vPos > 0) and ((vMin = 0) or (vPos < vMin)) then
     Result := ': '
-  else if SameText(Engine, ENGINEFPHTTP) then
-    Result := ':'
-  else if SameText(Engine, ENGINEINDY) or SameText(Engine, ENGINESAGUI)
-       or SameText(Engine, ENGINENETHTTP) then
+  else if vMin > 0 then
     Result := '='
   else
   begin
-    vMin := Length(ASource);
-    vPos := Pos('=', ASource);
-    if (vPos > 0) and (vPos <= vMin) then
-      Result := '='
+    Engine := Self.GetParam('RALEngine').AsString;
+    if SameText(Engine, ENGINESYNOPSE) or SameText(Engine, ENGINEINDY) then
+      Result := ': '
     else
-    begin
-      vPos := Pos(StringRAL(': '), ASource);
-      if (vPos > 0) and (vPos <= vMin) then
-        Result := ': ';
-    end;
+      Result := '=';
   end;
 end;
 

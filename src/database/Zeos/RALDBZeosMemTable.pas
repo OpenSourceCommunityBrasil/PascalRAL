@@ -88,6 +88,20 @@ type
 
 implementation
 
+{ Reads the error message the server sent back, by name and then anonymously.
+
+  TRALDBModule.AnswerException answers with a single body param named
+  'Exception'. EncodeBody skips multipart for a lone body param and never puts
+  its name on the wire, so DecodeBody names whatever arrives 'ral_body' and
+  ParamByName('Exception') came back nil - OnError fired with an empty message
+  while the real one sat in the body, unread. }
+function ExceptionFromResponse(AResponse: TRALResponse): StringRAL;
+begin
+  Result := AResponse.ParamByName('Exception').AsString;
+  if Result = '' then
+    Result := AResponse.Body.AsString;
+end;
+
 { TRALDBZMemTable }
 
 procedure TRALDBZMemTable.SetUpdateSQL(AValue: TRALDBUpdateSQL);
@@ -347,7 +361,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -387,7 +401,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -457,7 +471,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := AResponse.ParamByName('Exception').AsString;
+    vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end

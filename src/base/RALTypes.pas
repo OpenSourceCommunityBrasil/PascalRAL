@@ -55,6 +55,22 @@ type
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
+
+  { How a param value travels on the wire.
+
+    rptText is what every param has always used: the value becomes UTF-8 text,
+    so reading it back is a locale-dependent parse - a client writing 2,5 and a
+    server parsing with '.' as the decimal separator silently gets 0, and 03/04
+    is March 4th or April 3rd depending on the machine.
+
+    The others carry the raw value instead, little-endian and fixed size, tagged
+    with the matching rctRAL* content type: no parse, no locale. The type is
+    stated explicitly rather than inferred from the value because Object Pascal
+    promotes numeric literals - 2 would fit Integer, Int64 and Double, and
+    Currency could never be told apart from Double. }
+  TRALParamType = (rptText, rptInteger, rptInt64, rptDouble, rptCurrency,
+                   rptBoolean, rptDateTime);
+
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;

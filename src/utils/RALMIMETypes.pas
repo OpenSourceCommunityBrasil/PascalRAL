@@ -131,6 +131,28 @@ const
   rctTEXTHTML = 'text/html';
   rctTEXTJAVASCRIPT = 'text/javascript';
   rctTEXTPLAIN = 'text/plain';
+
+  { Typed binary params.
+
+    A param value normally travels as UTF-8 text, so every numeric read is a
+    locale-dependent parse: a client writing 2,5 and a server reading with '.'
+    as the decimal separator silently gets 0. Dates are worse - 03/04 is March
+    4th or April 3rd depending on the machine.
+
+    These content types mark a param whose payload is the raw value instead:
+    little-endian, fixed size, no parse and no locale involved. They apply to
+    rpkBODY params carried by multipart (two or more params), where the encoder
+    copies the stream verbatim and the decoder restores both the name and the
+    content type. Reading stays tolerant: without one of these markers the
+    accessors fall back to parsing text, so a client that was not updated keeps
+    working exactly as before. }
+  rctRALINT32 = 'application/x-ral-int32';
+  rctRALINT64 = 'application/x-ral-int64';
+  rctRALDOUBLE = 'application/x-ral-double';
+  rctRALCURRENCY = 'application/x-ral-currency';
+  rctRALBOOLEAN = 'application/x-ral-boolean';
+  rctRALDATETIME = 'application/x-ral-datetime';
+
   rctTEXTVCARD = 'text/vcard';
   rctTEXTXGWTRPC = 'text/x-gwt-rpc';
   rctTEXTXJQUERYTMPL = 'text/x-jquery-tmpl';

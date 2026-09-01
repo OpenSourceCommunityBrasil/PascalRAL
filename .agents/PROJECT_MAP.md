@@ -235,6 +235,13 @@ Lazarus
 2. Cada engine (Indy/fpHTTP/netHTTP/...) implementa o transporte.
 3. `RALRequest` é codificado (params/headers/body; compress/cripto quando configurado).
 4. A resposta é decodificada para `RALResponse`.
+5. `TRALClient.ExecuteThread` decide **em qual thread** a chamada roda: `ebMultiThread`
+   (padrão) dispara uma `TRALThreadClient` e volta na hora — o callback chega depois, pela
+   main thread, via `OnTerminate`; `ebSingleThread` roda na própria thread chamadora e
+   chama o callback **antes** de retornar. Quem lê o resultado como propriedade logo após a
+   chamada (ex.: `TRALDBFDMemTable.ExecSQL` → `RowsAffected`/`LastId`) precisa de
+   `ebSingleThread`. O callback sempre recebe uma `TRALResponse` válida; o erro vem em
+   `AException`.
 
 ### 4.3) DBWare
 

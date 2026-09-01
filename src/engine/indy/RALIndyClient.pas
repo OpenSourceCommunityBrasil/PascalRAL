@@ -58,7 +58,7 @@ procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
-  vCookie: TIdCookie;
+  vCookieText: StringRAL;
   vCookies: TStringList;
   vInt: IntegerRAL;
 
@@ -97,14 +97,30 @@ begin
     FHttp.Request.Connection := 'keep-alive';
 
   // cookies
+  { Sent as a plain Cookie header, the way RALSynopseClient already does it.
+
+    Filling TIdHTTP's CookieManager instead did not work on either count: the
+    manager is created lazily inside ProcessCookies, which only runs when a
+    *response* carries cookies, so it was still nil here and every request with a
+    cookie died with an access violation; and even once created, Indy emits from
+    the jar through GenerateClientCookies, which matches on domain and path - a
+    cookie added without them never matches the URL and silently goes nowhere.
+    The jar stays for cookies the server sets; these are the ones the caller
+    asked to send. }
   vCookies := TStringList.Create;
   try
     ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
-    for vInt := 0 to Pred(vCookies.Count) do
+    if vCookies.Count > 0 then
     begin
-      vCookie := FHttp.CookieManager.CookieCollection.Add;
-      vCookie.CookieName := vCookies.Names[vInt];
-      vCookie.Value := vCookies.ValueFromIndex[vInt];
+      vCookieText := '';
+      for vInt := 0 to Pred(vCookies.Count) do
+      begin
+        if vInt > 0 then
+          vCookieText := vCookieText + '; ';
+        vCookieText := vCookieText + vCookies.Strings[vInt];
+      end;
+      { goes in as a header param so it rides the same AssignParams below }
+      ARequest.Params.AddParam('Cookie', vCookieText, rpkHEADER);
     end;
   finally
     vCookies.Free;
@@ -130,7 +146,6 @@ begin
   vSource := ARequest.RequestStream;
   vResult := TMemoryStream.Create;
   try
-    FHttp.AllowCookies := True;
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
 
