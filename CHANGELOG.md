@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
 
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
+
 - **pool exhaustion now answers HTTP 429 instead of 503** (2026-08-31 – tempraturbo)
   TRALDBModule.AnswerException maps ERALDBPoolTimeout to 429 Too Many
   Requests, which describes the situation better than 503: the server is
@@ -84,6 +86,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix ebSingleThread being ignored by TRALClient.ExecuteThread** (2026-08-31 – tempraturbo)
+  ExecuteThread accepted AExecBehavior but never inspected it: every call
+  started a TRALThreadClient and returned at once, so ebSingleThread behaved
+  exactly like ebMultiThread. Callers that rely on the response being ready
+  when the method returns - TRALDBConnection.ApplyUpdatesRemote and
+  ExecSQLRemote, and TRALFDQuery with QueryBehavior = ebSingleThread - read
+  their results before the worker thread had answered.
+  TRALDBFDMemTable.ExecSQL is the visible case: FRowsAffected and FLastId were
+  still stale when ExecSQL returned.
+  ebSingleThread now runs the same sequence as TRALThreadClient on the calling
+  thread and invokes the callback before returning. The response object handed
+  to the callback is always a valid instance, matching the threaded path,
+  because handlers such as TRALDBFDMemTable.OnApplyUpdates dereference it
+  without a nil check. ebMultiThread is untouched.
+  RALDBFiredacDAO also kept vException, a field, across calls: it was only
+  cleared in the constructor, so with ebSingleThread a failed request would
+  surface its exception on the following call, and the call after that would
+  raise an object the RTL had already released. The field is now cleared when
+  each remote call starts and detached from the field before the raise.
+
 - **fix outdated unit list in pasdoc.pds** (2026-08-31 – tempraturbo)
   Six units changed folder and pasdoc.pds still pointed at the old paths:
   RALAuthentication is now under src/base/plugins, and RALSwaggerModule,
