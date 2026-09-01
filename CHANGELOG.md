@@ -36,6 +36,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
+
+- **pool exhaustion now answers HTTP 429 instead of 503** (2026-08-31 – tempraturbo)
+  TRALDBModule.AnswerException maps ERALDBPoolTimeout to 429 Too Many
+  Requests, which describes the situation better than 503: the server is
+  up, the caller just asked for more concurrent connections than the pool
+  allows.
+  Along with it: the HTTP_TooManyRequests constant in RALConsts, the
+  SError429/SError429Page strings in the three language includes, and the
+  matching default response page in TRALResponsePages. The 503 constant,
+  strings and page stay untouched.
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-27 – Fernando Castelano Banhos)
 
 - **- modulo pascal_brotli atualizado** (2026-08-27 – Fernando Castelano Banhos)
