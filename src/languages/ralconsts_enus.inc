@@ -53,6 +53,8 @@
   SError404Page = 'The server informs that the page you''re requesting doesn''t exist in this reality';
   SError415 = 'Unsuported Media Type';
   SError415Page = 'The server informs that it doesn''t know what you''re asking';
+  SError429 = 'Too Many Requests';
+  SError429Page = 'The server informs that you''re asking too much at once. You should try again later';
   SError500 = 'Internal Server Error';
   SError500Page = 'The server made something that it shouldn''t';
   SError501 = 'Not Implemented';

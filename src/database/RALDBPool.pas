@@ -13,7 +13,7 @@ const
 
 type
   { Action taken when every connection is busy and the wait timeout expires.
-    peRaiseError raises ERALDBPoolTimeout, answered as HTTP 503 by TRALDBModule.
+    peRaiseError raises ERALDBPoolTimeout, answered as HTTP 429 by TRALDBModule.
     peOverflow creates a temporary connection, discarded as soon as it is released }
   TRALDBPoolExhausted = (peRaiseError, peOverflow);
 

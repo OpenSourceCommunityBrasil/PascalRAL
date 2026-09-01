@@ -91,6 +91,7 @@ begin
   CreatePage(HTTP_Forbidden, Format(RALPage, [SLangHTTP, 403, SError403, SError403Page]));
   CreatePage(HTTP_NotFound, Format(RALPage, [SLangHTTP, 404, SError404, SError404Page]));
   CreatePage(HTTP_UnsupportedMedia, Format(RALPage, [SLangHTTP, 415, SError415, SError415Page]));
+  CreatePage(HTTP_TooManyRequests, Format(RALPage, [SLangHTTP, 429, SError429, SError429Page]));
   CreatePage(HTTP_InternalError, Format(RALPage, [SLangHTTP, 500, SError500, SError500Page]));
   CreatePage(HTTP_NotImplemented, Format(RALPage, [SLangHTTP, 501, SError501, SError501Page]));
   CreatePage(HTTP_ServiceUnavailable, Format(RALPage, [SLangHTTP, 503, SError503, SError503Page]));
@@ -110,6 +111,8 @@ begin
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError404, SError404Page]);
     HTTP_UnsupportedMedia:
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError415, SError415Page]);
+    HTTP_TooManyRequests:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError429, SError429Page]);
     HTTP_InternalError:
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError500, SError500Page]);
     HTTP_NotImplemented:

@@ -66,6 +66,7 @@ const
   HTTP_MethodNotAllowed    = 405;
   HTTP_RequestTimeout      = 408;
   HTTP_UnsupportedMedia    = 415;
+  HTTP_TooManyRequests     = 429;
   HTTP_InternalError       = 500;
   HTTP_NotImplemented      = 501;
   HTTP_BadGateway          = 502;

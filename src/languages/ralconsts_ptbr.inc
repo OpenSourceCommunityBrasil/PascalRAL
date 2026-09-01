@@ -53,6 +53,8 @@
   SError404Page = 'O servidor informa que a página que você está solicitando não existe nesta realidade';
   SError415 = 'Tipo de mídia não suportado';
   SError415Page = 'O servidor informa que desconhece o que você está perguntando';
+  SError429 = 'Muitas requisições';
+  SError429Page = 'O servidor informa que você está pedindo demais de uma só vez, tente novamente mais tarde';
   SError500 = 'Erro interno do servidor';
   SError500Page = 'O servidor fez algo que não deveria';
   SError501 = 'Não implementado';

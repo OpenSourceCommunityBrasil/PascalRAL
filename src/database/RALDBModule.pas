@@ -28,7 +28,7 @@ type
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
   protected
-    /// Fills AResponse with the error, answering 503 when the pool timed out
+    /// Fills AResponse with the error, answering 429 when the pool timed out
     procedure AnswerException(AResponse: TRALResponse; AException: Exception);
     /// Factory handed to the pool, so it can open connections on its own
     function CreatePoolConnection(ASender: TObject): TRALDBBase;
@@ -86,7 +86,7 @@ implementation
 procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
 begin
   if AException is ERALDBPoolTimeout then
-    AResponse.StatusCode := HTTP_ServiceUnavailable
+    AResponse.StatusCode := HTTP_TooManyRequests
   else
     AResponse.StatusCode := HTTP_InternalError;
 
