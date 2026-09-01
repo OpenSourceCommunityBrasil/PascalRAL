@@ -239,9 +239,19 @@ begin
         DecodeAuth(ARequest, vRequest);
         Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
 
-        ContentDisposition := Params.Get['Content-Disposition'].AsString;
-        ContentEncoding := Params.Get['Content-Encoding'].AsString;
-        AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
+        { Only take what the params actually carry. FPC parses the standard
+          headers into TRequest's own properties and leaves just the unknown
+          ones in CustomHeaders, so these lookups find nothing for
+          Content-Encoding and Accept-Encoding - assigning them unconditionally
+          wiped the values read from ARequest a few lines above, left
+          ContentCompress at ctNone, and a gzipped body reached the decoder
+          still compressed. }
+        if Params.Get['Content-Disposition'] <> nil then
+          ContentDisposition := Params.Get['Content-Disposition'].AsString;
+        if Params.Get['Content-Encoding'] <> nil then
+          ContentEncoding := Params.Get['Content-Encoding'].AsString;
+        if Params.Get['Accept-Encoding'] <> nil then
+          AcceptEncoding := Params.Get['Accept-Encoding'].AsString;
 
         ContentEncription := ParamByName('Content-Encription').AsString;
         AcceptEncription := ParamByName('Accept-Encription').AsString;
@@ -343,7 +353,14 @@ begin
         if ContentDisposition <> '' then
           Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
 
-        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ');
+        { '=' and not ': ': TResponse.CustomHeaders is a name=value list, and
+          FPC writes each entry out as Names[i] + ': ' + Values[i]. Storing a
+          ready-made 'Name: Value' line here left no '=' for it to split on, so
+          the whole line landed in the value and every custom header went out
+          prefixed with a stray ': ' - which is why the client never found
+          Content-Encription and handed still-encrypted bodies to the multipart
+          decoder. }
+        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
 
         AResponse.SendContent;
       end;

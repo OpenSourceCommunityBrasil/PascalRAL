@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   fphttpclient, fphttp, ssockets, opensslsockets,
   RALClient, RALTypes, RALConsts, RALAuthentication, RALParams,
-  RALRequest, RALCompress, RALResponse;
+  RALRequest, RALCompress, RALResponse, RALMIMETypes;
 
 type
   { TRALfpHttpClientHTTP }
@@ -63,6 +63,12 @@ var
   begin
     AResponse.Params.CompressType := ctNone;
     AResponse.Params.CriptoOptions.CriptType := crNone;
+    { and the content type too: ResponseText runs the message through
+      DecodeBody, so leaving the failed response's multipart content type in
+      place made the decoder parse a plain error string as multipart and die
+      with an access violation inside the error handler itself, burying the
+      original error under one raised by the code meant to report it. }
+    AResponse.ContentType := rctTEXTPLAIN;
     AResponse.StatusCode := FHttp.ResponseStatusCode;
     AResponse.ResponseText := AMessage;
     AResponse.ErrorCode := ACode;

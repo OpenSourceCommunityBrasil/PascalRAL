@@ -169,6 +169,17 @@ The real path never touches the storage. `TRALDBModule.OpenSQLResponse` exports 
 
 The same collapse exists for the Zeos and sqldb drivers; only the FireDAC one was reproduced and fixed here.
 
+### Fixed: gzip and AES did nothing on the fpHTTP engine
+Two defects, both from the same misreading of what FPC's TRequest/TResponse actually hold.
+
+On the way in, `RALfpHTTPServer` read `ContentEncoding` and `AcceptEncoding` from `ARequest`, then immediately overwrote both with `Params.Get['Content-Encoding']`. FPC parses the standard headers into TRequest's own properties and leaves only the unknown ones in `CustomHeaders`, so those lookups found nothing and blanked the values just read - `ContentCompress` stayed `ctNone` and a gzipped body reached the decoder still compressed. Now the params only override when they actually carry the header.
+
+On the way out, the server wrote response headers with `Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ')`. `TResponse.CustomHeaders` is a name=value list and FPC emits each entry as `Names[i] + ': ' + Values[i]`, so a ready-made `Name: Value` line left nothing to split on: the whole line became the value and every custom header went out prefixed with a stray `': '` (`: Content-Encription: aes256cbc_pkcs7`). The client never found `Content-Encription`, never decrypted, and handed the encrypted body to the multipart decoder. Writing with `'='` fixes it.
+
+The crash on top of that was in the error handler itself: `tratarExcecao` cleared compression and crypto but not the content type, and `ResponseText` runs the message through `DecodeBody` - so a plain error string was parsed as multipart and died with an access violation, burying the original error under one raised by the code meant to report it. It now resets the content type to text/plain.
+
+Verified on Lazarus/FPC 3.2.2: 230 checks, all four transport combinations green.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 
