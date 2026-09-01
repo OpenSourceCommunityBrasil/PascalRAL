@@ -153,8 +153,13 @@ var
   vStreamAux: TMemoryStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
+  vRaise: Exception;
   i, x, t: integer;
 begin
+  // leftover from a previous call: dropping it here keeps ebSingleThread from
+  // raising an exception that belongs to an earlier request.
+  FreeAndNil(vException);
+
   try
     try
       vBinaryWriter := nil;
@@ -228,7 +233,13 @@ begin
     if QueryBehavior = ebSingleThread then
     begin
       if Assigned(vException) then
-        raise vException;
+      begin
+        // ownership passes to the RTL on raise, so clear the field first -
+        // otherwise the next call would raise an already freed object.
+        vRaise := vException;
+        vException := nil;
+        raise vRaise;
+      end;
     end;
   end;
 end;
@@ -271,8 +282,13 @@ var
   vStreamAux: TMemoryStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
+  vRaise: Exception;
   i, x, t: integer;
 begin
+  // leftover from a previous call: dropping it here keeps ebSingleThread from
+  // raising an exception that belongs to an earlier request.
+  FreeAndNil(vException);
+
   try
     try
       vBinaryWriter := nil;
@@ -355,7 +371,13 @@ begin
     if QueryBehavior = ebSingleThread then
     begin
       if Assigned(vException) then
-        raise vException;
+      begin
+        // ownership passes to the RTL on raise, so clear the field first -
+        // otherwise the next call would raise an already freed object.
+        vRaise := vException;
+        vException := nil;
+        raise vRaise;
+      end;
     end;
   end;
 end;
@@ -421,8 +443,13 @@ var
   vStreamAux: TStream;
   vStringStreamAux: TStringStream;
   vBytesAux: TArray<Byte>;
+  vRaise: Exception;
   i, x, t: integer;
 begin
+  // leftover from a previous call: dropping it here keeps ebSingleThread from
+  // raising an exception that belongs to an earlier request.
+  FreeAndNil(vException);
+
   try
     try
       vBinaryWriter := nil;
@@ -494,7 +521,13 @@ begin
     if QueryBehavior = ebSingleThread then
     begin
       if Assigned(vException) then
-        raise vException;
+      begin
+        // ownership passes to the RTL on raise, so clear the field first -
+        // otherwise the next call would raise an already freed object.
+        vRaise := vException;
+        vException := nil;
+        raise vRaise;
+      end;
     end;
   end;
 end;

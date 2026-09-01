@@ -287,7 +287,46 @@ procedure TRALClient.ExecuteThread(ARoute: StringRAL; AMethod: TRALMethod;
   AOnResponse: TRALThreadClientResponse; AExecBehavior: TRALExecBehavior);
 var
   vThread: TRALThreadClient;
+  vClient: TRALClientHTTP;
+  vRequest: TRALRequest;
+  vResponse: TRALResponse;
+  vException: StringRAL;
 begin
+  if AExecBehavior = ebSingleThread then
+  begin
+    // same sequence as TRALThreadClient, but on the calling thread: AOnResponse
+    // is invoked before this method returns, so the caller can rely on the
+    // response (or the exception) being already available when it continues.
+    vException := '';
+    vClient := CreateClient;
+    vRequest := TRALClientRequest.Create(Self);
+    vResponse := TRALClientResponse.Create(Self);
+    try
+      try
+        FRequest.Clone(vRequest);
+
+        vClient.BeforeSendUrl(ARoute, vRequest, vResponse, AMethod);
+        FIndexUrl := vClient.IndexUrl;
+      except
+        on e: Exception do
+          vException := e.Message;
+      end;
+
+      // AResponse is always a valid object here, exactly as in the threaded
+      // path - handlers dereference it without checking for nil.
+      if Assigned(AOnResponse) then
+        AOnResponse(Self, vResponse, vException)
+      else
+        OnThreadResponse(Self, vResponse, vException);
+    finally
+      FreeAndNil(vClient);
+      FreeAndNil(vResponse);
+      FreeAndNil(vRequest);
+    end;
+
+    Exit;
+  end;
+
   vThread := TRALThreadClient.Create(Self);
   vThread.Route := ARoute;
   vThread.Request := FRequest;
