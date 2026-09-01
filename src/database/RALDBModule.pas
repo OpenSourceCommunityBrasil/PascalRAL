@@ -18,6 +18,7 @@ type
     FDatabaseLink: String;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
+    FLibLocation: String;
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
     FPort: IntegerRAL;
@@ -27,6 +28,7 @@ type
     FOnAfterConnect: TRALDBOnConnect;
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
+    procedure SetLibLocation(AValue: String);
   protected
     /// Fills AResponse with the error, answering 429 when the pool timed out
     procedure AnswerException(AResponse: TRALResponse; AException: Exception);
@@ -45,8 +47,8 @@ type
 
     procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
     procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
-    function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset : TDataSet;
-                                 ABinary : boolean) : TStream;
+    function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset: TDataSet;
+                                 ABinary: boolean): TStream;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -61,17 +63,26 @@ type
       Pool.Prepare once the server is up }
     property Pool: TRALDBConnectionPool read FPool;
   published
+    { Name of the database this DBModule is connecting into }
     property Database: StringRAL read FDatabase write FDatabase;
+    { DAO object that will be used to connect with the Database }
     property DatabaseLink: String read FDataBaseLink write FDataBaseLink;
+    { Database engine that this DBModule is connecting into }
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
+    { Server where the database is located }
     property Hostname: StringRAL read FHostname write FHostname;
+    { Password to connect into the database }
     property Password: StringRAL read FPassword write FPassword;
     { Connection pool settings, editable in the Object Inspector at design time.
       Turning PoolOptions.Enabled on makes the module reuse open connections
       instead of opening one per request }
     property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
+    { Database server port }
     property Port: IntegerRAL read FPort write FPort;
+    { Name of the database server user }
     property Username: StringRAL read FUsername write FUsername;
+    { Location of the library (dll) that is used to connect with the database }
+    property LibLocation: String read FLibLocation write SetLibLocation;
 
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
@@ -83,12 +94,21 @@ implementation
 
 { TRALDBModule }
 
+procedure TRALDBModule.SetLibLocation(AValue: String);
+begin
+  if FLibLocation = AValue then Exit;
+  if AValue = EmptyStr then
+    FLibLocation := EmptyStr
+  else
+    FLibLocation := ExpandFileName(ExtractFilePath(ParamStr(0)) + AValue);
+end;
+
 procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
 begin
   if AException is ERALDBPoolTimeout then
-    AResponse.StatusCode := HTTP_TooManyRequests
+    AResponse.StatusCode := HTTP_RequestTimeout
   else
-    AResponse.StatusCode := HTTP_InternalError;
+    AResponse.StatusCode := HTTP_TooManyRequests;
 
   AResponse.ContentType := rctTEXTPLAIN;
   AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
@@ -211,7 +231,7 @@ begin
   end;
 end;
 
-function TRALDBModule.FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
+function TRALDBModule.FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse): TRALDBBase;
 var
   vClass: TRALDBClass;
   vUnit: StringRAL;
@@ -230,6 +250,7 @@ begin
     Result.Username := FUsername;
     Result.Password := FPassword;
     Result.Port := FPort;
+    Result.LibLocation := FLibLocation;
     Result.Request := ARequest;
     Result.Response := AResponse;
 
@@ -307,14 +328,8 @@ var
   vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
-  vRowsAffect, vLastId: Int64RAL;
   vInt: IntegerRAL;
-  vQuery: TDataSet;
-  vContentType: StringRAL;
-  vNative: Boolean;
 begin
-  vRowsAffect := 0;
-  vLastId := 0;
   vDB := nil;
   try
     try
@@ -339,7 +354,7 @@ begin
                   else
                     OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
                 except
-                  on e : Exception do
+                  on e: Exception do
                     vDBSQL.Response.StrError := e.Message;
                 end;
               end;
@@ -382,11 +397,7 @@ var
   vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
-  vRowsAffect, vLastId: Int64RAL;
 begin
-  vRowsAffect := 0;
-  vLastId := 0;
-
   vDB := nil;
   try
     try

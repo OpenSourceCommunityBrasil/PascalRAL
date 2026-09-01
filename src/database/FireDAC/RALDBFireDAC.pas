@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils, DB,
   {$IFDEF DELPHIXE4UP}
-  FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI,
+  FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI, FireDAC.Phys,
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
@@ -28,12 +28,13 @@ type
   TRALDBFireDAC = class(TRALDBBase)
   private
     FConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
+    FPhysLink: TFDPhysDriverLink;
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
 
-    procedure OnConnBeforeConnect(ASender : TObject);
-    procedure OnConnAfterConnect(ASender : TObject);
+    procedure OnConnBeforeConnect(ASender: TObject);
+    procedure OnConnAfterConnect(ASender: TObject);
     procedure OnConnError(ASender, AInitiator: TObject; var AException: Exception);
     procedure OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
   public
@@ -47,15 +48,15 @@ type
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
-    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); override;
 
-    class function DatabaseName : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
+    class function DatabaseName: StringRAL; override;
+    class function PackageDependency: StringRAL; override;
   end;
 
 implementation
@@ -89,7 +90,26 @@ begin
   FConnector.AfterConnect := OnConnAfterConnect;
   FConnector.OnError := OnConnError;
 
-  FConnector.Open;
+  if FindProtocol = 'PG' then
+    FPhysLink := TFDPhysPgDriverLink.Create(nil)
+  else if FindProtocol = 'FB' then
+    FPhysLink := TFDPhysFBDriverLink.Create(nil)
+  else if FindProtocol = 'MySQL' then
+    FPhysLink := TFDPhysMySQLDriverLink.Create(nil)
+  else if FindProtocol = 'SQLite' then
+    FPhysLink := TFDPhysSQLiteDriverLink.Create(nil);
+
+  FPhysLink.VendorLib := LibLocation;
+  try
+    FConnector.Open;
+  except
+    on e: Exception do
+    begin
+      if Assigned(OnErrorConnect) then
+        OnErrorConnect(FConnector, e.Message, Request);
+      raise;
+    end;
+  end;
 end;
 
 function TRALDBFireDAC.FindProtocol: StringRAL;
@@ -124,6 +144,9 @@ end;
 
 destructor TRALDBFireDAC.Destroy;
 begin
+  if assigned(FPhysLink) then
+    FreeAndNil(FPhysLink);
+
   FreeAndNil(FConnector);
   inherited Destroy;
 end;

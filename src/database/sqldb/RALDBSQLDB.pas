@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  SQLDB, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
+  SQLDB, SQLDBLib, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -15,11 +15,12 @@ type
 
   TRALDBSQLDB = class(TRALDBBase)
   private
-    FConnector : TSQLConnector;
-    FTransaction : TSQLTransaction;
+    FConnector: TSQLConnector;
+    FTransaction: TSQLTransaction;
+    FLibLocator: TSQLDBLibraryLoader;
   protected
     procedure Conectar; override;
-    function FindProtocol : StringRAL;
+    function FindProtocol: StringRAL;
 
     procedure OnConnBeforeConnect(ASender : TObject);
     procedure OnConnAfterConnect(ASender : TObject);
@@ -28,22 +29,22 @@ type
     destructor Destroy; override;
 
     procedure Disconnect; override;
-    function IsConnected : boolean; override;
+    function IsConnected: boolean; override;
     procedure ResetSession; override;
-    procedure ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                      var ALastInsertId : Int64RAL); override;
+    procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                      var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
-    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
-    function OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset; override;
-    function OpenCompatible(ASQL : StringRAL; AParams : TParams) : TDataset; override;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
 
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                              var AContentType: StringRAL;
                              var ANative: boolean); override;
-    function CanExportNative : boolean; override;
+    function CanExportNative: boolean; override;
 
-    class function DatabaseName : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
+    class function DatabaseName: StringRAL; override;
+    class function PackageDependency: StringRAL; override;
   end;
 
 implementation
@@ -63,14 +64,17 @@ begin
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.ConnectorType := FindProtocol;
   FConnector.LoginPrompt   := False;
+  FLibLocator.ConnectionType := FindProtocol;
+  FLibLocator.LibraryName := LibLocation;
 
   FConnector.BeforeConnect := @OnConnBeforeConnect;
   FConnector.AfterConnect := @OnConnAfterConnect;
 
   try
+    FLibLocator.Enabled := True;
     FConnector.Open;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorConnect) then
         OnErrorConnect(FConnector, e.Message, Request);
@@ -79,7 +83,7 @@ begin
   end;
 end;
 
-function TRALDBSQLDB.FindProtocol : StringRAL;
+function TRALDBSQLDB.FindProtocol: StringRAL;
 begin
   case DatabaseType of
     dtFirebird   : Result := 'Firebird';
@@ -108,7 +112,7 @@ end;
 
 function TRALDBSQLDB.GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL;
 var
-  vInfo : TSQLStatementInfo;
+  vInfo: TSQLStatementInfo;
 begin
   vInfo := FConnector.GetStatementInfo(TSQLQuery(ADataset).SQL.Text);
   Result := vInfo.TableName;
@@ -117,6 +121,7 @@ end;
 constructor TRALDBSQLDB.Create;
 begin
   FConnector := TSQLConnector.Create(nil);
+  FLibLocator := TSQLDBLibraryLoader.Create(nil);
 
   FTransaction := TSQLTransaction.Create(nil);
   FTransaction.DataBase := FConnector;
@@ -127,6 +132,7 @@ destructor TRALDBSQLDB.Destroy;
 begin
   FreeAndNil(FTransaction);
   FreeAndNil(FConnector);
+  FreeAndNil(FLibLocator);
   inherited Destroy;
 end;
 
@@ -155,8 +161,8 @@ end;
 
 function TRALDBSQLDB.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
-  vQuery : TSQLQuery;
-  vInt : integer;
+  vQuery: TSQLQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -181,7 +187,7 @@ begin
 
     Result := vQuery;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
@@ -212,11 +218,10 @@ begin
   Result := '';
 end;
 
-function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams
-  ): TDataset;
+function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
-  vQuery : TSQLQuery;
-  vInt : integer;
+  vQuery: TSQLQuery;
+  vInt: integer;
 begin
   Result := nil;
 
@@ -241,7 +246,7 @@ begin
 
     Result := vQuery;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
@@ -250,11 +255,11 @@ begin
   end;
 end;
 
-procedure TRALDBSQLDB.ExecSQL(ASQL : StringRAL; AParams : TParams; var ARowsAffected : Int64RAL;
-                              var ALastInsertId : Int64RAL);
+procedure TRALDBSQLDB.ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                              var ALastInsertId: Int64RAL);
 var
-  vQuery : TSQLQuery;
-  vInt : integer;
+  vQuery: TSQLQuery;
+  vInt: integer;
 begin
   Conectar;
 
@@ -293,7 +298,7 @@ begin
         end;
       end;
     except
-      on e : Exception do
+      on e: Exception do
       begin
         if Assigned(OnErrorQuery) then
           OnErrorQuery(vQuery, e.Message, Request);
