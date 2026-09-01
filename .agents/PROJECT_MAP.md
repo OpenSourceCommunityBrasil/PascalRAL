@@ -255,6 +255,22 @@ Lazarus
 
 - Para entender rotas e execução: `src/base/RALRoutes.pas` e `src/base/RALServer.pas`.
 - Para params/request/response: `src/base/RALParams.pas`, `src/base/RALRequest.pas`, `src/base/RALResponse.pas`.
+- **Parâmetros tipados** (`TRALParamType` em `RALTypes.pas`, content types `rctRAL*`
+  em `RALMIMETypes.pas`): um param de body pode viajar como valor binário
+  little-endian em vez de texto, para não depender do locale das duas pontas.
+  `Params.AddParam(nome, valor, rpkBODY, rptDouble)` na ida; do outro lado
+  qualquer acessor (`AsInt64`, `AsDouble`, `AsString`…) converte a partir do
+  marcador, e `IsTyped` diz se veio tipado. Param de texto continua exatamente
+  como sempre foi: só grava marcador quem chama `SetTyped*`, e qualquer escrita
+  de conteúdo (`AsString`, `AsStream`, `OpenFile`) derruba o marcador.
+  `MediaType` compara o content type ignorando parâmetros como
+  `; charset=utf-8` — que é o que o header HTTP acrescenta no caminho de param
+  único, onde o marcador viaja como content type da resposta inteira.
+- **Separador de header por engine**: cada engine entrega a lista de headers num
+  formato diferente — Indy e Synopse passam linhas `Nome: Valor`, o fpHTTP passa
+  `TRequest.CustomHeaders`, que é `nome=valor`. `FindHeaderNameSeparator` decide
+  pelo dado (vence o que vier primeiro entre `': '` e `'='`), não pelo nome do
+  engine. Mexer nisso quebra headers de um engine ou de outro em silêncio.
 - Para multipart: `src/utils/RALMultipartCoder.pas`.
 - Para compressão/cripto/stream: `src/utils/RALCompress*.pas`, `src/utils/RALCripto*.pas`, `src/utils/RALStream.pas`.
 
