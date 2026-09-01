@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Feat: Adicionada propriedade LibLocation no DBModule e nos componentes DAC Fix: Limpeza de fonte, ajustes de documentação diversos** (2026-09-01 – mobius1qwe)
+
 - **add connection pool to TRALDBModule** (2026-08-31 – tempraturbo)
   New TRALDBConnectionPool in src/database/RALDBPool.pas keeps open TRALDBBase
   connections and hands them out one request at a time, so the driver no longer
@@ -36,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-01 – mobius1qwe)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
