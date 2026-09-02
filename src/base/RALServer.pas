@@ -299,7 +299,7 @@ type
     FRoutes: TRALRoutes;
     FServer: TRALServer;
     FDomain: StringRAL;
-    FOnBeforeAnswer : TRALOnReply;
+    FOnBeforeAnswer: TRALOnReply;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     // Defines the handle of the RALServer in which will be registered the routes
@@ -321,8 +321,11 @@ type
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
+    // The RALServer object which this module is attached to
     property Server: TRALServer read FServer write SetServer;
+    // The domain of routes, added before all routes of this module
     property Domain: StringRAL read FDomain write SetDomain;
+
     property OnBeforeAnswer: TRALOnReply read FOnBeforeAnswer write FOnBeforeAnswer;
   end;
 

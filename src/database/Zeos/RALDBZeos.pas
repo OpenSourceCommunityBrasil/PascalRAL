@@ -56,13 +56,14 @@ begin
   if FConnector.Connected then
     Exit;
 
-  FConnector.Database := Database;
-  FConnector.HostName := Hostname;
-  FConnector.User     := Username;
-  FConnector.Password := Password;
-  FConnector.Port     := Port;
-  FConnector.Protocol := FindProtocol;
-  FConnector.LoginPrompt := False;
+  FConnector.Database               := Database;
+  FConnector.HostName               := Hostname;
+  FConnector.User                   := Username;
+  FConnector.Password               := Password;
+  FConnector.Port                   := Port;
+  FConnector.Protocol               := FindProtocol;
+  FConnector.LibraryLocation        := LibLocation;
+  FConnector.LoginPrompt            := False;
   FConnector.TransactIsolationLevel := tiReadCommitted;
 
   FConnector.BeforeConnect := {$IFDEF FPC}@{$ENDIF}OnConnBeforeConnect;
@@ -71,7 +72,7 @@ begin
   try
     FConnector.Connect;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorConnect) then
         OnErrorConnect(FConnector, e.Message, Request);

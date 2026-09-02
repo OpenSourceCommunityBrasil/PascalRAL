@@ -14,8 +14,8 @@ type
   // sempre jogar a qtOther pra frente, ela tem valor igual a 255
   TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
 
-  TRALDBOnConnect = procedure(ASender : TObject; ARequest : TRALRequest) of object;
-  TRALDBOnError = procedure(ASender : TObject; AException : StringRAL; ARequest : TRALRequest) of object;
+  TRALDBOnConnect = procedure(ASender: TObject; ARequest: TRALRequest) of object;
+  TRALDBOnError = procedure(ASender: TObject; AException: StringRAL; ARequest: TRALRequest) of object;
 
   { TRALDBBase }
 
@@ -24,16 +24,18 @@ type
     FDatabase: StringRAL;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
+    FLibLocation: StringRAL;
     FUsername: StringRAL;
     FPassword: StringRAL;
     FPort: IntegerRAL;
     FRequest: TRALRequest;
     FResponse: TRALResponse;
 
-    FOnBeforeConnect : TRALDBOnConnect;
-    FOnAfterConnect : TRALDBOnConnect;
-    FOnErrorConnect : TRALDBOnError;
-    FOnErrorQuery : TRALDBOnError;
+    FOnBeforeConnect: TRALDBOnConnect;
+    FOnAfterConnect: TRALDBOnConnect;
+    FOnErrorConnect: TRALDBOnError;
+    FOnErrorQuery: TRALDBOnError;
+    procedure SetLibLocation(AValue: StringRAL);
   protected
     procedure Conectar; virtual; abstract;
   public
@@ -63,10 +65,10 @@ type
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
-                           var ANative : boolean); virtual; abstract;
+                           var ANative: boolean); virtual; abstract;
 
-    class function DatabaseName : StringRAL; virtual; abstract;
-    class function PackageDependency : StringRAL; virtual; abstract;
+    class function DatabaseName: StringRAL; virtual; abstract;
+    class function PackageDependency: StringRAL; virtual; abstract;
     {$IFDEF unleashed}
     property DriverType: TRALDBDriverType read GetDriverType;
     {$ENDIF}
@@ -82,6 +84,7 @@ type
     property Port: IntegerRAL read FPort write FPort;
     property Request: TRALRequest read FRequest write FRequest;
     property Response: TRALResponse read FResponse write FResponse;
+    property LibLocation: StringRAL read FLibLocation write SetLibLocation;
 
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
@@ -99,7 +102,7 @@ type
 implementation
 
 var
-  DatabasesDefs : TStringList;
+  DatabasesDefs: TStringList;
 
 procedure CheckDatabaseDefs;
 begin
@@ -124,7 +127,7 @@ end;
 
 procedure UnregisterDatabase(ADatabase: TRALDBClass);
 var
-  vPos : IntegerRAL;
+  vPos: IntegerRAL;
 begin
   CheckDatabaseDefs;
   vPos := DatabasesDefs.IndexOfName(ADatabase.DatabaseName);
@@ -134,7 +137,7 @@ end;
 
 function GetDatabaseClass(ADatabaseName: StringRAL): TRALDBClass;
 var
-  vPos : IntegerRAL;
+  vPos: IntegerRAL;
 begin
   Result := nil;
   CheckDatabaseDefs;
@@ -145,7 +148,7 @@ end;
 
 procedure GetDatabaseList(AList: TStrings);
 var
-  vInt : IntegerRAL;
+  vInt: IntegerRAL;
 begin
   CheckDatabaseDefs;
   for vInt := 0 to Pred(DatabasesDefs.Count) do
@@ -153,6 +156,12 @@ begin
 end;
 
 { TRALDBBase }
+
+procedure TRALDBBase.SetLibLocation(AValue: StringRAL);
+begin
+  if FLibLocation = AValue then Exit;
+  FLibLocation := AValue;
+end;
 
 function TRALDBBase.CanExportNative: boolean;
 begin
