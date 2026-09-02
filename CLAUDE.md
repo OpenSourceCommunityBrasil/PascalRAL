@@ -153,7 +153,22 @@ Two related invariants, both of which used to be broken:
   server could honour a client preference — including the 415 replies at
   `RALServer.pas` that report the supported set.
 
+### `ctDeflate` means raw deflate on both compilers
+
+`TRALCompressZLib` is written twice, once per compiler, and the two halves have
+to agree byte for byte or a Delphi peer cannot talk to an FPC one. The mapping is
+zlib `windowBits`: **15 = zlib, -15 = raw deflate, 31 = gzip**. FPC expresses the
+same thing as the `skipheader` argument (`True` = raw) plus a hand-written gzip
+header and CRC32 trailer for `ctGZip`.
+
+`ctDeflate` used to fall into Delphi's `else` branch and get **31**, i.e. it was
+framed as gzip while `Content-Encoding` still said `deflate`. FPC wrote raw for
+the same format, so gzip interoperated and deflate did not. When touching this
+unit, check both branches produce identical bytes for the same input - a small
+Delphi writer plus an FPC reader is enough to prove it.
+
 ### Known bug: a missing compressor silently discards the whole body
+
 
 `TRALParams.Create` sets `FCompressType := ctGZip`, and `EncodeBody` ends with:
 

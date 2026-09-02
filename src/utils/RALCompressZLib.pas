@@ -61,8 +61,14 @@ begin
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
   {$ELSE}
+  // windowBits: 15 = zlib, -15 = raw deflate, 31 = gzip. ctDeflate used to
+  // fall into the 31 branch, which framed it as GZIP while the header still
+  // said "deflate" - and FPC writes raw deflate for the same format, so the
+  // two compilers could not read each other. -15 is what the wire name means.
   if Format = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
+  else if Format = ctDeflate then
+    vZip := TCompressionStream.Create(AOutStream, zcFastest, -15)
   else
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 31);
   {$ENDIF}
@@ -135,8 +141,11 @@ begin
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
   {$ELSE}
+  // same windowBits mapping as Compress: ctDeflate is raw, not gzip
   if Format = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
+  else if Format = ctDeflate then
+    vZip := TDeCompressionStream.Create(AInStream, -15)
   else
     vZip := TDeCompressionStream.Create(AInStream, 31);
   {$ENDIF}
