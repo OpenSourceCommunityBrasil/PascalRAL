@@ -73,6 +73,14 @@ var
     AResponse.ResponseText := AMessage;
     AResponse.ErrorCode := ACode;
     AResponse.ResponseStream := nil;
+
+    { Drop the socket. A kept-alive connection the server has already closed
+      fails on the next write, and retrying on the same dead socket just fails
+      again - BeforeSendUrl burned all its attempts that way and gave up on a
+      server that was perfectly healthy. Setting KeepConnection to False makes
+      fphttpclient disconnect; the value is reassigned from Parent.KeepAlive at
+      the start of every request, so this only costs one reconnect. }
+    FHttp.KeepConnection := False;
   end;
 
 begin
@@ -89,6 +97,12 @@ begin
 
   ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE);
 
+  // KeepConnection is what actually makes fphttpclient reuse the socket, and it
+  // was set once in the constructor and never touched again. Turning KeepAlive
+  // off therefore stopped the header from being sent while the client went on
+  // reusing the connection anyway - and writing to a socket the server had
+  // already closed raises EWriteError.
+  FHttp.KeepConnection := Parent.KeepAlive;
   if Parent.KeepAlive then
     ARequest.Params.AddParam('Connection', 'keep-alive', rpkHEADER);
 

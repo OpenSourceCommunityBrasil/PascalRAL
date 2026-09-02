@@ -134,7 +134,24 @@ legacy base in another charset. Both the FireDAC and the sqldb drivers honour
 it.
 
 
+
+### The fpHTTP client has to be told to drop a dead connection
+
+`TFPHTTPClient.KeepConnection` is what actually makes fphttpclient reuse a
+socket - the `Connection: keep-alive` header alone does nothing. It used to be
+set once in the constructor and never touched, so turning `Client.KeepAlive` off
+stopped the header from going out while the client kept reusing the connection
+anyway. It now follows `Parent.KeepAlive` on every request.
+
+And when the server closes a kept-alive connection, the next write raises
+`EWriteError`. Retrying on the same dead socket just fails again, so
+`BeforeSendUrl` burned all of its attempts and gave up on a healthy server.
+`tratarExcecao` now sets `KeepConnection := False`, which makes fphttpclient
+disconnect, and the per-request assignment restores it - one reconnect, and the
+retry works.
+
 ### Base64 decoding assumes padded input
+
 
 `TRALBase64.DecodeBase64` walks whole groups of four and used to emit three
 bytes per group unconditionally, while `GetSizeDecode` sized the output with
