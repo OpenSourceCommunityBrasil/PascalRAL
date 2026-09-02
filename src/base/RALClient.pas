@@ -542,43 +542,47 @@ begin
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
-    if (FParent.Authentication <> nil) and
-       (not FParent.Authentication.IsAuthenticated) and
-       (FParent.Authentication.AutoGetToken) then
-    begin
-      FParent.LockSession;
+    // vParams e usado em dois pontos: SetAuthToken, que so roda quando ainda
+    // nao ha token, e SetAuthHeader, que roda sempre. Antes ele era criado e
+    // liberado dentro do primeiro bloco, entao SetAuthHeader recebia um ponteiro
+    // liberado - ou, quando o token ja existia e o bloco nem rodava, uma variavel
+    // nao inicializada. Nem o Basic nem o JWT leem esse argumento, mas o Digest e
+    // o OAuth leem.
+    vParams := TStringList.Create;
+    try
+      vParams.Sorted := True;
+      vParams.Add('method=' + RALMethodToHTTPMethod(AMethod));
+      vParams.Add('url=' + vURL);
 
-      if not FParent.Authentication.IsAuthenticated then
+      if (FParent.Authentication <> nil) and
+         (not FParent.Authentication.IsAuthenticated) and
+         (FParent.Authentication.AutoGetToken) then
       begin
-        vParams := TStringList.Create;
+        FParent.LockSession;
         try
-          // alguns parametros do cliente poderao ser passados por aqui
-          vParams.Sorted := True;
-          vParams.Add('method=' + RALMethodToHTTPMethod(AMethod));
-          vParams.Add('url=' + vURL);
-
-          vErrorCode := SetAuthToken(vParams, ARequest);
+          if not FParent.Authentication.IsAuthenticated then
+            vErrorCode := SetAuthToken(vParams, ARequest);
         finally
-          FreeAndNil(vParams);
+          FParent.UnLockSession;
         end;
       end;
 
-      FParent.UnLockSession;
-    end;
+      vResp := -1;
+      if vErrorCode = 0 then
+      begin
+        if (FParent.Authentication <> nil) then
+          FParent.Authentication.SetAuthHeader(vParams, ARequest.Params);
 
-    vResp := -1;
-    if vErrorCode = 0 then
-    begin
-      if (FParent.Authentication <> nil) then
-        FParent.Authentication.SetAuthHeader(vParams, ARequest.Params);
+        ARequest.Params.CompressType := FParent.CompressType;
+        ARequest.Params.CriptoOptions.CriptType := FParent.CriptoOptions.CriptType;
+        ARequest.Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
 
-      ARequest.Params.CompressType := FParent.CompressType;
-      ARequest.Params.CriptoOptions.CriptType := FParent.CriptoOptions.CriptType;
-      ARequest.Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
-
-      SendUrl(vURL, ARequest, AResponse, AMethod);
-      vResp := AResponse.StatusCode;
-      vErrorCode := AResponse.ErrorCode;
+        SendUrl(vURL, ARequest, AResponse, AMethod);
+        vResp := AResponse.StatusCode;
+        vErrorCode := AResponse.ErrorCode;
+      end;
+    finally
+      FreeAndNil(vParams);
     end;
 
     if (vErrorCode <> 0) and (Parent.BaseURL.Count > 0) then
