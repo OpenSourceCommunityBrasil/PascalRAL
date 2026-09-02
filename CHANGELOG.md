@@ -38,6 +38,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-02 – tempraturbo)
+
+- **Make ctDeflate mean raw deflate on Delphi too** (2026-09-02 – tempraturbo)
+  TRALCompressZLib is written once per compiler and the two halves disagreed.
+  Delphi sent ctDeflate through the same branch as gzip, so it framed the stream
+  with windowBits 31 - gzip - while the header still announced "deflate". FPC
+  writes raw deflate for that format, which is what the wire name means, so gzip
+  interoperated across compilers and deflate never did.
+  Delphi now maps ctDeflate to windowBits -15 on both compression and
+  decompression, matching FPC's skipheader path. For the same input the two
+  compilers produce byte-identical output.
+  Nobody noticed because deflate carries the lowest CompressWeight and is never
+  picked by GetBestCompress while gzip is registered - it only shows up when a
+  client asks for it explicitly.
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-01 – tempraturbo)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-01 – mobius1qwe)
@@ -92,6 +107,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: ajuste de keepalive pra mORMot2 para versões acima do commit 2.4.15007** (2026-09-02 – mobius1qwe)
+
+- **Rewind the stream inside Compress and Decompress** (2026-09-02 – tempraturbo)
+  Callers never rewound. DecodeBody fills its buffer with
+  Result.CopyFrom(ASource, ASource.Size), which leaves the position at the end,
+  and decompresses from there.
+  Only gzip under FPC survived it, and by accident: that branch repositions the
+  stream on its own while reading the gzip header and the CRC32 trailer.
+  ctDeflate and ctZLib have no header to read, so they started at the end of the
+  stream, saw zero bytes and raised Edecompressionerror: buffer error. The fpHTTP
+  server swallows the exception, so a compressed request arrived as an HTTP 200
+  with no params at all instead of failing loudly.
+  Compress and Decompress now normalise the position themselves, which fixes
+  every format on both compilers in one place.
+
+- **Fix response compression precedence and Accept-Encoding advertising** (2026-09-02 – tempraturbo)
+  The server used to let the client win and kept its own CompressType as a mere
+  fallback. It is the other way around: a CompressType set on the server is a
+  deployment decision that a client cannot opt out of, and only a server left at
+  ctNone follows the client's Accept-Encoding. Since ProcessCommands is the single
+  place a response compression is chosen, this covers plain routes, TRALDBModule
+  and the FireDAC DAO alike.
+  GetAcceptCompress built the encoding list and never assigned its Result, so
+  every client advertised an empty Accept-Encoding. No server could honour a
+  client preference, and the 415 replies that report the supported set went out
+  empty as well.
+  Accept-Encoding was also sent only when the client had a CompressType of its
+  own. It states what the client is able to read, not what it sends, so it now
+  goes out unconditionally in all four engines; Content-Encoding stays behind the
+  guard because that one does describe the request body.
+  TRALDBModule.AnswerException had its two branches swapped: a plain exception
+  answered 429 and a pool timeout answered 408. Back to pool -> 429 and anything
+  else -> 500, which is what the client side expects when it reads an error body.
+  TRALDBSQLDB enabled the library loader with an empty LibraryName whenever
+  LibLocation was unset - the default for every existing user - so sqldb tried to
+  load "" and no connection could be opened.
+
 - **Make gzip and AES work on the fpHTTP engine** (2026-09-01 – tempraturbo)
   Three defects, all from reading FPC's TRequest/TResponse.CustomHeaders as a
   list of header lines when it is a name=value list.

@@ -17,9 +17,9 @@ type
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
 
-    class function EngineName : StringRAL; override;
-    class function EngineVersion : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
+    class function EngineName: StringRAL; override;
+    class function EngineVersion: StringRAL; override;
+    class function PackageDependency: StringRAL; override;
   end;
 
 implementation
@@ -61,13 +61,24 @@ begin
     vHttp.ReceiveTimeout := Parent.RequestTimeout;
     vHttp.UserAgent := Parent.UserAgent;
     vHttp.Accept := '*/*';
-    vHttp.KeepAlive := Parent.KeepAlive;
     vHttp.RedirectMax := 3;
 
+    { mORMot2 >= 2.4.15007 removeu o boolean de vHttp.KeepAlive e virou integer com o tempo
+     em milisegundos do keepalive, porém, não tem uma forma precisa dentro da versão 2.4
+     pra detectar o commit 15007.
+     }
+
+    vHttp.KeepAlive := Parent.ConnectTimeout;
+
+    { mORMot2 < 2.4.15007 comente a linha acima e descomente abaixo. Não tem uma forma
+    precisa nos fontes de detectar o commit 15007, infelizmente.
+
+    vHttp.KeepAlive := Parent.KeepAlive;
     if Parent.KeepAlive then
       vKeepAlive := Parent.ConnectTimeout
     else
       vKeepAlive := 0;
+    }
 
     ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
