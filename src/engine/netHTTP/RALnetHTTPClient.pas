@@ -206,22 +206,30 @@ begin
           vResponse := FHttp.Options(AURL, nil, vHeaders);
       end;
 	  
-	  AResponse.Params.CompressType := AResponse.ContentCompress;
-      AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
-      AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
-	  AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
-      AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
-
-      if vResponse <> nil then // Antonio c Gomes AV 
+      if vResponse <> nil then // Antonio c Gomes AV
       begin
+        { Order matters, and it used to be wrong: CompressType and the crypto
+          options were assigned BEFORE the response headers were appended, so
+          ContentCompress and ContentEncription were still empty and both came
+          out as "none". Assigning ResponseStream right after runs DecodeBody
+          with that, and the caller got the body still gzipped - and still
+          encrypted when AES was on. Every response of this engine was affected;
+          it only stayed invisible while tests looked at StatusCode alone. }
         for vInt := 0 to Pred(Length(vResponse.Headers)) do
           AResponse.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 
-        AResponse.ContentEncoding := vResponse.ContentEncoding;      
-        AResponse.ContentType     := vResponse.MimeType;        
-        AResponse.StatusCode      := vResponse.GetStatusCode;
-        AResponse.ResponseStream  := vResponse.ContentStream;
-      end;	 	  
+        AResponse.ContentEncoding := vResponse.ContentEncoding;
+        AResponse.Params.CompressType := AResponse.ContentCompress;
+
+        AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
+        AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+        AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
+
+        AResponse.ContentType := vResponse.MimeType;
+        AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
+        AResponse.StatusCode := vResponse.GetStatusCode;
+        AResponse.ResponseStream := vResponse.ContentStream;
+      end;
     except
       on e: ENetHTTPClientException do
         tratarExcecao(e.Message);

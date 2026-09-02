@@ -355,6 +355,12 @@ The real path never touches the storage. `TRALDBModule.OpenSQLResponse` exports 
 
 The same collapse exists for the Zeos and sqldb drivers; only the FireDAC one was reproduced and fixed here.
 
+### Fixed: the netHTTP client returned every body still compressed
+
+`RALnetHTTPClient.SendUrl` assigned `AResponse.Params.CompressType` and the crypto options **before** appending the response headers. At that point `ContentCompress` and `ContentEncription` were still empty, so both resolved to "none"; the `AResponse.ResponseStream := vResponse.ContentStream` a few lines later then ran `DecodeBody` with that, and the caller received the body exactly as it came off the wire — gzipped, and still encrypted when AES was on. The ordering now matches the Indy client: headers, then `ContentEncoding`, then `CompressType`, then the stream.
+
+Nothing about the status code was wrong, which is why it hid so well: any test that checks `StatusCode` alone passes. What exposed it was JWT — `SetTokenJWT` asks `/gettoken`, gets HTTP 200 with a gzipped `{"token":"…"}`, fails to parse it, and leaves the token empty, so every subsequent request answered 401 with no error anywhere. When testing a client engine, assert on the **body**, not the status.
+
 ### Fixed: gzip and AES did nothing on the fpHTTP engine
 Two defects, both from the same misreading of what FPC's TRequest/TResponse actually hold.
 
