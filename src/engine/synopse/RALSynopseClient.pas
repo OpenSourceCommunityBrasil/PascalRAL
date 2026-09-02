@@ -24,6 +24,12 @@ type
 
 implementation
 
+const
+  { mORMot2 returns this from THttpClientSocket.Request when the request failed
+    on the client side and there is no HTTP answer at all (HTTP_CLIENTERROR in
+    mormot.core.os). Kept local: it is an engine detail, not RAL vocabulary. }
+  HTTP_MORMOT_CLIENTERROR = 666;
+
 { TRALSynopseClientHTTP }
 
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -38,14 +44,9 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(ACode: IntegerRAL; AMessage: StringRAL);
-  begin
-    AResponse.Params.CompressType := ctNone;
-    AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.ResponseText := AMessage;
-    AResponse.ErrorCode := ACode;
-    AResponse.StatusCode := ACode;
-  end;
+  { The two except blocks below are already split by phase, which is exactly the
+    distinction the retry decision needs: the inner one wraps the request on an
+    already open socket, the outer one wraps OpenUri. }
 
 begin
   AResponse.Clear;
@@ -61,7 +62,7 @@ begin
     vHttp.ReceiveTimeout := Parent.RequestTimeout;
     vHttp.UserAgent := Parent.UserAgent;
     vHttp.Accept := '*/*';
-    vHttp.RedirectMax := 3;
+    vHttp.RedirectMax := Parent.MaxRedirects;
 
     { mORMot2 >= 2.4.15007 removeu o boolean de vHttp.KeepAlive e virou integer com o tempo
      em milisegundos do keepalive, porém, não tem uma forma precisa dentro da versão 2.4
@@ -133,60 +134,75 @@ begin
       try
         case AMethod of
           amGET:
-            vResult := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amPOST:
-            vResult := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amPUT:
-            vResult := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amPATCH:
-            vResult := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amDELETE:
-            vResult := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amTRACE:
-            vResult := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amHEAD:
-            vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', True, vSource, nil);
           amOPTIONS:
-            vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', False, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', True, vSource, nil);
         end;
 
-        AResponse.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
+        { mORMot does not raise on a client-side failure: Request returns
+          HTTP_CLIENTERROR (666) and there is no HTTP answer to read, so this
+          has to be checked instead of relying on the except blocks. OpenUri
+          has already connected by this point, so whatever failed happened
+          afterwards and the request may be on the wire - rteTimeout is the
+          conservative reading: an idempotent method may still be tried on
+          another BaseURL, a POST may not. }
+        if vResult = HTTP_MORMOT_CLIENTERROR then
+        begin
+          SetTransportError(AResponse, rteTimeout, vResult,
+            'mORMot2 client error: ' + StringRAL(vHttp.RequestContext));
+        end
+        else
+        begin
+          AResponse.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
-        AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
-        AResponse.Params.CompressType := AResponse.ContentCompress;
+          AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
+          AResponse.Params.CompressType := AResponse.ContentCompress;
 
-        AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
-        AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
-        AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
+          AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
+          AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
+          AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-        AResponse.ContentType := vHttp.ContentType;
-        AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
-        AResponse.StatusCode := vResult;
-        AResponse.ResponseText := vHttp.Content;
+          AResponse.ContentType := vHttp.ContentType;
+          AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
+          AResponse.StatusCode := vResult;
+          AResponse.ResponseText := vHttp.Content;
+        end;
       except
         on e: ENetSock do
         begin
-          if e.LastError in [nrFatalError, nrTimeout]  then
-            tratarExcecao(10061, e.Message)
+          // socket already connected: a timeout here means the request went
+          // out and the server may have run it, so it must not be replayed.
+          if e.LastError = nrTimeout then
+            SetTransportError(AResponse, rteTimeout, 10060, e.Message)
           else
-            tratarExcecao(-1, e.Message);
+            SetTransportError(AResponse, rteOther, 10061, e.Message);
         end;
         on e: Exception do
-          tratarExcecao(-1, e.Message);
+          SetTransportError(AResponse, rteOther, -1, e.Message);
       end;
     finally
       FreeAndNil(vSource);
     end;
   except
+    // only OpenUri and the setup around it reach here - the request itself is
+    // handled by the inner block above. A socket failure at this point means
+    // the request reached no server, so another BaseURL may be tried.
     on e: ENetSock do
-    begin
-      if e.LastError in [nrFatalError, nrTimeout]  then
-        tratarExcecao(10061, e.Message)
-      else
-        tratarExcecao(-1, e.Message);
-    end;
+      SetTransportError(AResponse, rteConnect, 10061, e.Message);
     on e: Exception do
-      tratarExcecao(-1, e.Message);
+      SetTransportError(AResponse, rteOther, -1, e.Message);
   end;
   FreeAndNil(vHttp);
 end;

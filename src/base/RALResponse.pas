@@ -17,6 +17,7 @@ type
   private
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
+    FTransportError: TRALTransportError;
   protected
     /// Returns the response in TStream format
     function GetResponseStream: TStream;
@@ -72,6 +73,13 @@ type
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
     /// HTTP StatusCode
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    /// How the send attempt ended for the transport. rteNone means an HTTP
+    /// response arrived (even a 4xx/5xx one); anything else means it did not,
+    /// and then StatusCode carries no meaning. Filled by the client engines,
+    /// and read by TRALClientHTTP.BeforeSendUrl to decide whether resending on
+    /// another BaseURL is safe.
+    property TransportError: TRALTransportError read FTransportError
+                                                write FTransportError;
   end;
 
   /// Derived class to handle ServerResponse
@@ -192,6 +200,7 @@ begin
   inherited Clear;
   FStatusCode := -1;
   FErrorCode := 0;
+  FTransportError := rteNone;
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);

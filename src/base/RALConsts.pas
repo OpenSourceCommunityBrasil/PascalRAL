@@ -52,6 +52,22 @@ const
   MultipartLineLength = 500;
   DEFAULTBUFFERSTREAMSIZE = 52428800;
   DEFAULTDECODERBUFFERSIZE = 65536;
+
+  // Client defaults and limits.
+  // The two timeouts must be written both in the constructor and in the
+  // published property's "default" directive: they used to disagree (the
+  // directive said 5000/30000 while the constructor set 30000/10000), and
+  // "default" is what tells the streaming system not to write the property to
+  // the dfm/lfm - so typing exactly 5000 in the Object Inspector produced a
+  // component that ran with 30000.
+  DEFAULTCONNECTTIMEOUT = 30000;
+  DEFAULTREQUESTTIMEOUT = 10000;
+  // Consecutive redirects a client follows. Engines used to disagree without
+  // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
+  // THTTPClient defaults to.
+  DEFAULTMAXREDIRECTS = 3;
+  // Attempts to obtain a token, in SetTokenDigest/SetTokenJWT/SetTokenOAuth1.
+  RALMAXTOKENTRIES = 4;
   HTTPLineBreak = #13#10;
   // HTTP Codes
   HTTP_OK                  = 200;

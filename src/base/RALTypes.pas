@@ -77,6 +77,27 @@ type
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
 
+  { How a send attempt ended, from the transport's point of view.
+
+    This is what decides whether resending is safe, so it has to mean the same
+    thing on every engine - StatusCode cannot: when no HTTP response happened
+    there is no status, and each engine used to leave a different made-up value
+    behind (-1 on Indy, 10061 on mORMot2, 0 on fpHTTP).
+
+    The distinction that matters is whether the request reached a server:
+    rteConnect means it provably did not, so another BaseURL may be tried with
+    any method; rteTimeout means it did and may already have run, so only an
+    idempotent method may be sent elsewhere. }
+  TRALTransportError = (
+    /// an HTTP response was received, even a 4xx/5xx one
+    rteNone,
+    /// could not connect: refused, DNS, unreachable, connect timeout
+    rteConnect,
+    /// connected and the request went out; the response did not arrive in time
+    rteTimeout,
+    /// any other transport failure
+    rteOther);
+
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL
   public

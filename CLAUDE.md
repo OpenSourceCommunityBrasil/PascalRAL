@@ -114,6 +114,36 @@ Anything whose result is read as a property right after the call must use `ebSin
 
 `ExecuteThread` is `virtual` and currently has **no override anywhere** — engines vary the transport (`TRALClientHTTP` descendants), never the threading.
 
+### When a client resends, and why `StatusCode` cannot decide it
+
+`TRALClientHTTP.BeforeSendUrl` is the single place a request is resent, for every engine and both compilers — nothing overrides it. Two questions, kept apart: **may it be resent?** (the failure kind and the HTTP method) and **where to?** (always the *next* `BaseURL`, never the same one).
+
+The failure kind is `TRALResponse.TransportError` (`TRALTransportError` in `RALTypes.pas`), filled by each engine from its own exceptions through `TRALClientHTTP.SetTransportError`:
+
+- `rteNone` — an HTTP response arrived, even a 4xx/5xx one.
+- `rteConnect` — never reached a server (refused, DNS, unreachable, connect timeout). Another `BaseURL` may be tried with **any** method: nothing was delivered.
+- `rteTimeout` — connected, the request went out, no answer in time. Only an **idempotent** method (`GET HEAD OPTIONS TRACE PUT DELETE`, RFC 7231 §4.2.2) may go elsewhere; a POST must not, or the write happens twice.
+- `rteOther` — anything else; never resent.
+
+`StatusCode` used to be the criterion (`until vResp > 0`) and that is what broke: when no HTTP response happened there is no status, and each engine invented a different value — Indy `-1`, mORMot2 `10061`, fpHTTP `0`, netHTTP whatever the message text matched. `SetTransportError` now puts **0** there, the one meaning all four can agree on: no response. Test `ErrorCode <> 0` to detect a failure, never `StatusCode`.
+
+The attempt budget is `BaseURL.Count` — one per URL, no floor. It used to be `max(Count, 3)`, so a single URL got the same request three times on any transport failure: a 3 s timeout took 9 s and one timed-out POST was written three times. `FIndexUrl` advances on every transport failure and is written back in a **`finally`**, because `BeforeSendUrl` raises and the failed call is exactly the one whose failover must stick; the next call then starts past the dead server.
+
+A 401 with `AutoGetToken` resends **once**, on the same URL, after `ResetToken`. That block existed before and never ran: `HTTP_Unauthorized` is 401, `401 > 0` satisfied the old exit condition, so the token was dropped and the request never repeated — the call that hit the 401 was simply lost.
+
+Two engine traps live under this:
+
+- **mORMot2 resent by itself.** `THttpClientSocket.Request`'s `AsRetry` parameter means "this is the first attempt, you may retry once"; RAL passed `False`, so `DoRetry` reconnected and replayed. It now passes `True`. Nothing is lost — `RALSynopseClient` opens a fresh socket per `SendUrl`, so there was no kept-alive connection for that reconnect to recover. And mORMot does not raise on a client-side failure: `Request` returns `HTTP_CLIENTERROR` (666), which has to be checked explicitly.
+- **fpHTTP reports a read timeout and a dead kept-alive socket identically** — see below.
+
+Verified with `testes_ral_matriz/timeout` (repro `tmout.dpr`, verifier `tmfix.dpr` + `fpc/tmfixfpc.lpr`), across Indy, mORMot2, netHTTP and fpHTTP.
+
+### A published `default` that disagrees with the constructor silently wins
+
+`TRALClient.ConnectTimeout` declared `default 5000` while the constructor set 30000, and `RequestTimeout` declared `default 30000` while the constructor set 10000 — the two were swapped. The directive is not decoration: streaming skips writing a property whose value equals it, so typing exactly `5000` into the Object Inspector produced a `.dfm` with no `ConnectTimeout` at all and a component that ran with 30000. It never showed up in code-driven tests, where `default` has no effect whatsoever — only in the normal use, dropping the component on a form.
+
+Both sides now read the same constant (`DEFAULTCONNECTTIMEOUT`, `DEFAULTREQUESTTIMEOUT` in `RALConsts.pas`), which is the point of naming them. `DEFAULTMAXREDIRECTS` and `RALMAXTOKENTRIES` live there too; `MaxRedirects` became a published property of `TRALClient` because the engines each hardcoded a different limit (Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever `THTTPClient` defaults to) with nobody having chosen it. When adding a numeric `default`, grep the constructor.
+
 ### Runtime class registry (why linking a unit changes behavior)
 Compression, crypto, and storage backends are discovered at runtime by class name, not by static reference. `RALCompress.GetCompressClass` builds the enum name (`ctBrotli`) via `GetEnumName` and looks the class up with RTL `GetClass`. Optional units self-register in their `initialization`:
 ```pascal
@@ -164,9 +194,31 @@ anyway. It now follows `Parent.KeepAlive` on every request.
 And when the server closes a kept-alive connection, the next write raises
 `EWriteError`. Retrying on the same dead socket just fails again, so
 `BeforeSendUrl` burned all of its attempts and gave up on a healthy server.
-`tratarExcecao` now sets `KeepConnection := False`, which makes fphttpclient
+`tratarExcecao` sets `KeepConnection := False`, which makes fphttpclient
 disconnect, and the per-request assignment restores it - one reconnect, and the
 retry works.
+
+That reconnect now lives **inside `SendUrl`**, not in `BeforeSendUrl`, because
+the token routines (`SetTokenJWT` and friends) call `SendUrl` through loops of
+their own that abort on any `ErrorCode`; only an engine-level retry covers every
+caller. It also stopped depending on the old three-attempt loop, which was what
+had been papering over the case.
+
+Telling it apart from a read timeout is the hard half: fphttpclient raises the
+**same** exception for both - `EHTTPClient` with `SErrReadingSocket` and
+`StatusCode` 0, not `ESocketError`/`seIOTimeOut` as one would expect. And the
+two demand opposite things: a dead socket must be resent (nothing was
+processed), a timeout must not (the server has the request). "The socket was
+being reused" alone is not enough - a POST that times out on a warm connection
+matches it too and would be written twice. The test is both: the socket had been
+left open by this client **and** the failure came back in less than half the
+`RequestTimeout`, far too fast to be a timeout.
+
+`EHTTPClient` also means two different things depending on `StatusCode`:
+above zero the server answered and the status was not allowed, so it belongs in
+`AResponse.StatusCode`; putting it in `ErrorCode` (as it used to) turned every
+4xx/5xx on that path into an exception, since `BeforeSendUrl` ends with
+`if vErrorCode <> 0 then raise`.
 
 ### Base64 decoding assumes padded input
 

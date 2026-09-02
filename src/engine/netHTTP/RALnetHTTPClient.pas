@@ -66,23 +66,55 @@ end;
 procedure TRALnetHTTPClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vInt, vIdx, vErroCode: IntegerRAL;
+  vInt, vIdx: IntegerRAL;
   vSource : TStream;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vParam : TRALParam;
   vCookies: StringRAL;
 
-  procedure tratarExcecao(ACode : IntegerRAL; AMessage : StringRAL);
+  { THTTPClient does not expose the underlying WinHTTP code, only the text, so
+    the number still has to be read out of the message - fragile, and it is why
+    the classification lives here rather than in a shared table.
+      12002 timed out  12007 name not resolved  12029 cannot connect
+    Only 12002 happens after the request is on the wire. }
+  procedure tratarExcecao(AMessage: StringRAL);
+  var
+    vErro: TRALTransportError;
+    vCodigo: IntegerRAL;
   begin
-    AResponse.Params.CompressType := ctNone;
-    AResponse.Params.CriptoOptions.CriptType := crNone;
-    AResponse.ResponseText := AMessage;											   
-    if vResponse <> nil then // Antonio c Gomes
-      AResponse.StatusCode := vResponse.GetStatusCode
+    vErro := rteOther;
+    vCodigo := -1;
+    if Pos('12002', AMessage) > 0 then
+    begin
+      vErro := rteTimeout;
+      vCodigo := 12002;
+    end
+    else if Pos('12029', AMessage) > 0 then
+    begin
+      vErro := rteConnect;
+      vCodigo := 12029;
+    end
+    else if Pos('12007', AMessage) > 0 then
+    begin
+      vErro := rteConnect;
+      vCodigo := 12007;
+    end
+    else if Pos('10061', AMessage) > 0 then
+    begin
+      vErro := rteConnect;
+      vCodigo := 10061;
+    end;
+
+    // when a response did arrive the failure is not a transport one: keep the
+    // status the server sent and leave TransportError at rteNone.
+    if vResponse <> nil then
+    begin
+      SetTransportError(AResponse, rteNone, vCodigo, AMessage);
+      AResponse.StatusCode := vResponse.GetStatusCode;
+    end
     else
-      AResponse.StatusCode := ACode; // Antonio c Gomes													   
-    AResponse.ErrorCode := ACode;
+      SetTransportError(AResponse, vErro, vCodigo, AMessage);
   end;
 
 begin
@@ -93,6 +125,7 @@ begin
   {$IFDEF DELPHI10_1UP}
   FHttp.ConnectionTimeout := Parent.ConnectTimeout;
   FHttp.ResponseTimeout := Parent.RequestTimeout;
+  FHttp.MaxRedirects := Parent.MaxRedirects;
   {$ENDIF}
   FHttp.UserAgent := Parent.UserAgent;
 
@@ -190,17 +223,10 @@ begin
         AResponse.ResponseStream  := vResponse.ContentStream;
       end;	 	  
     except
-      on e: ENetHTTPClientException do begin
-        vErroCode := -1;
-        if Pos('12029', e.Message) > 0 then
-          vErroCode := 12029
-        else if Pos('10061', e.Message) > 0 then
-          vErroCode := 10061;
-
-        tratarExcecao(vErroCode, e.Message);
-      end;
+      on e: ENetHTTPClientException do
+        tratarExcecao(e.Message);
       on e: Exception do
-        tratarExcecao(-1, e.Message);
+        tratarExcecao(e.Message);
     end;
   finally
     FreeAndNil(vSource);

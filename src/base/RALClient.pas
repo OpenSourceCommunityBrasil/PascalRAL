@@ -29,8 +29,19 @@ type
     /// returns the complete URL of a given route.
     function GetURL(ARoute: StringRAL; ARequest: TRALRequest = nil;
                     AIndexUrl: IntegerRAL = -1): StringRAL;
+    /// Tells whether a failed attempt may be sent to the NEXT BaseURL.
+    /// Never to the same one: a refused connection stays refused, and a server
+    /// that has not answered yet is still working on the request.
+    function CanSwitchURL(AMethod: TRALMethod;
+                          AError: TRALTransportError): boolean; virtual;
     /// clears authentication token property.
     procedure ResetToken;
+    /// Fills a response that never got an HTTP answer. Engines call it from
+    /// their exception handlers so that the retry decision reads the same
+    /// information no matter which engine produced the failure.
+    procedure SetTransportError(AResponse: TRALResponse;
+                                AError: TRALTransportError; ACode: IntegerRAL;
+                                const AMessage: StringRAL); virtual;
     /// Configures the Request header with proper authentication info based on the assigned
     /// authenticator.
     function SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
@@ -108,6 +119,7 @@ type
     FEngine: StringRAL;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
+    FMaxRedirects: IntegerRAL;
     FOnResponse: TRALThreadClientResponse;
     FRequestTimeout: IntegerRAL;
     FRequest: TRALRequest;
@@ -176,13 +188,18 @@ type
   published
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
-    property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default 5000;
+    property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default DEFAULTCONNECTTIMEOUT;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
     property EngineType : String read FEngineType write SetEngineType;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
-    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default 30000;
+    /// Consecutive redirects the engine follows before giving up. It lives
+    /// here because the engines used to hardcode different values without
+    /// anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
+    /// THTTPClient defaults to.
+    property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
+    property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
   end;
@@ -303,10 +320,15 @@ begin
     vResponse := TRALClientResponse.Create(Self);
     try
       try
-        FRequest.Clone(vRequest);
-
-        vClient.BeforeSendUrl(ARoute, vRequest, vResponse, AMethod);
-        FIndexUrl := vClient.IndexUrl;
+        try
+          FRequest.Clone(vRequest);
+          vClient.BeforeSendUrl(ARoute, vRequest, vResponse, AMethod);
+        finally
+          // BeforeSendUrl raises when the transport failed, and the failover
+          // index it advanced has to survive that: it is precisely the failed
+          // call that must not leave the next one pointing at the dead server.
+          FIndexUrl := vClient.IndexUrl;
+        end;
       except
         on e: Exception do
           vException := e.Message;
@@ -350,10 +372,14 @@ begin
   try
     vClient := CreateClient;
     try
-      FRequest.Clone(vRequest);
-
-      vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
-      FIndexUrl := vClient.IndexUrl;
+      try
+        FRequest.Clone(vRequest);
+        vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
+      finally
+        // see ExecuteThread: the advanced failover index must survive the
+        // exception BeforeSendUrl raises on a transport failure.
+        FIndexUrl := vClient.IndexUrl;
+      end;
     except
       on e: Exception do
         raise Exception.Create(e.Message);
@@ -394,6 +420,7 @@ begin
   ADest.RequestTimeout := Self.RequestTimeout;
   ADest.UserAgent := Self.UserAgent;
   ADest.KeepAlive := Self.KeepAlive;
+  ADest.MaxRedirects := Self.MaxRedirects;
   ADest.CompressType := Self.CompressType;
 
   ADest.CriptoOptions.CriptType := Self.CriptoOptions.CriptType;
@@ -448,8 +475,9 @@ begin
 
   FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
-  FConnectTimeout := 30000;
-  FRequestTimeout := 10000;
+  FConnectTimeout := DEFAULTCONNECTTIMEOUT;
+  FRequestTimeout := DEFAULTREQUESTTIMEOUT;
+  FMaxRedirects := DEFAULTMAXREDIRECTS;
   FCompressType := ctGZip;
 end;
 
@@ -528,17 +556,26 @@ end;
 procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;
   ARequest: TRALRequest; AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vConta, vMaxConta, vResp, vErrorCode: IntegerRAL;
+  vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL: StringRAL;
+  vRepetir, vTentouToken: boolean;
 begin
   vConta := 0;
+  vTentouToken := False;
 
-  vMaxConta := Parent.BaseURL.Count;
-  if vMaxConta < 3 then
-    vMaxConta := 3;
+  // One attempt per BaseURL, and that is the whole budget. There used to be a
+  // floor of 3 here, which with a single URL meant sending the same request
+  // three times to the same server on any transport failure: a 3 s timeout
+  // took 9 s, and one timed-out POST was written three times. The floor was
+  // there for the 401 block below, which never used it - 401 is greater than
+  // zero and the old "until vResp > 0" ended the loop on the first pass.
+  vMaxUrls := Parent.BaseURL.Count;
+  if vMaxUrls < 1 then // BaseURL empty: the route already is the whole URL
+    vMaxUrls := 1;
 
   repeat
+    vRepetir := False;
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
@@ -585,16 +622,32 @@ begin
       FreeAndNil(vParams);
     end;
 
-    if (vErrorCode <> 0) and (Parent.BaseURL.Count > 0) then
-      FIndexUrl := (FIndexUrl + 1) mod Parent.BaseURL.Count;
-
     vConta := vConta + 1;
 
-    if (vResp = HTTP_Unauthorized) and (vConta = 1) then
-      ResetToken
-    else if (vResp = HTTP_Unauthorized) and (vConta > 1) then
-      Break;
-  until (vResp > 0) or (vConta >= vMaxConta);
+    // The URL that just failed at transport level stops being the preferred
+    // one even when there is no attempt left in THIS call - otherwise the next
+    // call starts on the server already known to be dead and burns another
+    // timeout before moving on. A 401 does not come through here: the server
+    // is alive, so TransportError stays rteNone.
+    if (AResponse.TransportError <> rteNone) and (Parent.BaseURL.Count > 0) then
+      FIndexUrl := (FIndexUrl + 1) mod Parent.BaseURL.Count;
+
+    // 401: drop the token and send once more, to the SAME url. This is what
+    // ResetToken always meant to do and never did.
+    if (vResp = HTTP_Unauthorized) and (not vTentouToken) and
+       (FParent.Authentication <> nil) and
+       (FParent.Authentication.AutoGetToken) then
+    begin
+      vTentouToken := True;
+      ResetToken;
+      vRepetir := True;
+    end
+    else if CanSwitchURL(AMethod, AResponse.TransportError) and
+            (vConta < vMaxUrls) then
+      vRepetir := True;
+    // no Continue here: in a repeat..until it jumps straight to the condition,
+    // on both Delphi and FPC, so it would not repeat anything.
+  until not vRepetir;
 
   if vErrorCode <> 0 then
     raise Exception.Create(AResponse.ResponseText);
@@ -635,6 +688,43 @@ procedure TRALClientHTTP.ResetToken;
 begin
   if FParent.Authentication is TRALClientJWTAuth then
     TRALClientJWTAuth(FParent.Authentication).Token := '';
+end;
+
+function TRALClientHTTP.CanSwitchURL(AMethod: TRALMethod;
+  AError: TRALTransportError): boolean;
+begin
+  case AError of
+    // the request reached no server at all, so resending it is not a resend
+    rteConnect:
+      Result := True;
+    // it reached one and may already have run: only a method whose repetition
+    // does not change the end state may go elsewhere (RFC 7231 4.2.2). This is
+    // what stops a timed-out POST from being written twice.
+    rteTimeout:
+      Result := AMethod in [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+  else
+    Result := False;
+  end;
+end;
+
+procedure TRALClientHTTP.SetTransportError(AResponse: TRALResponse;
+  AError: TRALTransportError; ACode: IntegerRAL; const AMessage: StringRAL);
+begin
+  AResponse.Params.CompressType := ctNone;
+  AResponse.Params.CriptoOptions.CriptType := crNone;
+  // ResponseText runs the message through DecodeBody, so a content type left
+  // over from the failed request would make a plain error string be parsed as
+  // multipart - it used to die with an access violation inside the very code
+  // meant to report the error.
+  AResponse.ContentType := rctTEXTPLAIN;
+  AResponse.ResponseText := AMessage;
+  AResponse.ErrorCode := ACode;
+  AResponse.TransportError := AError;
+  // No HTTP response happened, so there is no status. Zero is the one value
+  // every engine can agree on; each used to invent its own (-1, 10061, 0) and
+  // the retry loop then behaved differently depending on the engine.
+  if AError <> rteNone then
+    AResponse.StatusCode := 0;
 end;
 
 function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
@@ -690,7 +780,7 @@ begin
 
         vStatus := vResponse.StatusCode;
         vConta := vConta + 1;
-      until (Result <> 0) or (vStatus = HTTP_Unauthorized) or (vConta > 3);
+      until (Result <> 0) or (vStatus = HTTP_Unauthorized) or (vConta >= RALMAXTOKENTRIES);
 
       if vStatus = HTTP_Unauthorized then
       begin
@@ -772,7 +862,7 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta > 3) or
+    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
           (Result > 0);
   end;
 end;
@@ -820,7 +910,7 @@ begin
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
-    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta > 3) or
+    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
       (Result > 0);
   end;
 end;
@@ -849,8 +939,13 @@ end;
 procedure TRALThreadClient.Execute;
 begin
   try
-    FClient.BeforeSendUrl(FRoute, FRequest, FResponse, FMethod);
-    FIndexUrl := FClient.IndexUrl;
+    try
+      FClient.BeforeSendUrl(FRoute, FRequest, FResponse, FMethod);
+    finally
+      // see TRALClient.ExecuteThread: the advanced failover index must survive
+      // the exception BeforeSendUrl raises on a transport failure.
+      FIndexUrl := FClient.IndexUrl;
+    end;
   except
     on e: Exception do
       FException := e.Message;

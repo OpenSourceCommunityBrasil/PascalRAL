@@ -62,16 +62,17 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
 
-  procedure tratarExcecao(ACode: IntegerRAL; AMessage: StringRAL);
+  { Winsock codes that mean the request never reached a server: connection
+    refused, timed out, network or host unreachable, host not found. Anything
+    else happened with a live peer and is not safe to replay. }
+  function ErroDeSocket(ALastError: IntegerRAL): TRALTransportError;
   begin
-    AResponse.Params.CompressType := ctNone;
-    AResponse.Params.CriptoOptions.CriptType := crNone;
-    if assigned(FHttp) then
-      AResponse.StatusCode := FHttp.ResponseCode
+    case ALastError of
+      10051, 10060, 10061, 10065, 11001:
+        Result := rteConnect;
     else
-      AResponse.StatusCode := ACode;
-    AResponse.ResponseText := AMessage;
-    AResponse.ErrorCode := ACode;
+      Result := rteOther;
+    end;
   end;
 
 begin
@@ -84,7 +85,7 @@ begin
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.ReadTimeout := Parent.RequestTimeout;
   FHttp.Request.UserAgent := Parent.UserAgent;
-  FHttp.RedirectMaximum := 3;
+  FHttp.RedirectMaximum := Parent.MaxRedirects;
   FHttp.HandleRedirects := true;
 
   FHttp.IOHandler := nil;
@@ -190,14 +191,19 @@ begin
 
       AResponse.ResponseStream := vResult;
     except
-      on e: EIdSocketError do
-        tratarExcecao(e.LastError, e.Message);
+      // the timeouts come first on purpose: they are the two that must not be
+      // told apart by a numeric code, since Indy reports both as 10060 and
+      // only one of them (the read one) means the server already has the
+      // request and may have run it.
       on e: EIdConnectTimeout do
-        tratarExcecao(10060, e.Message);
+        SetTransportError(AResponse, rteConnect, 10060, e.Message);
       on e: EIdReadTimeout do
-        tratarExcecao(10060, e.Message);
+        SetTransportError(AResponse, rteTimeout, 10060, e.Message);
+      on e: EIdSocketError do
+        SetTransportError(AResponse, ErroDeSocket(e.LastError), e.LastError,
+                          e.Message);
       on e: Exception do
-        tratarExcecao(-1, e.Message);
+        SetTransportError(AResponse, rteOther, -1, e.Message);
     end;
   finally
     FreeAndNil(vResult);
