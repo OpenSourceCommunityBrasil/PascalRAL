@@ -733,7 +733,12 @@ begin
         end
         else
         begin
-          vParam := vRequest.Params.AddValue(vObjAuth.Payload.AsJSON);
+          // rpkBODY is not optional here: AddValue defaults the kind to
+          // rpkNONE, and EncodeBody only ever picks rpkBODY/rpkFIELD, so the
+          // payload was built and then dropped - the token request went out
+          // with Content-Length 0 and the server issued a token carrying no
+          // claims at all. Every other AddValue caller already says rpkBODY.
+          vParam := vRequest.Params.AddValue(vObjAuth.Payload.AsJSON, rpkBODY);
           vParam.ContentType := rctAPPLICATIONJSON;
         end;
 
