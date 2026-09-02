@@ -107,6 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: ajuste de keepalive pra mORMot2 para versões acima do commit 2.4.15007** (2026-09-02 – mobius1qwe)
+
 - **Rewind the stream inside Compress and Decompress** (2026-09-02 – tempraturbo)
   Callers never rewound. DecodeBody fills its buffer with
   Result.CopyFrom(ASource, ASource.Size), which leaves the position at the end,
