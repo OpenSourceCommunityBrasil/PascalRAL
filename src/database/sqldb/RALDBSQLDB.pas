@@ -64,6 +64,13 @@ begin
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.ConnectorType := FindProtocol;
   FConnector.LoginPrompt   := False;
+
+  // same reason as the FireDAC driver: without a charset Firebird rejects
+  // accented text. empty means "let us choose", not "leave it unset".
+  if CharacterSet <> '' then
+    FConnector.CharSet := CharacterSet
+  else if DatabaseType = dtFirebird then
+    FConnector.CharSet := 'UTF8';
   FLibLocator.ConnectionType := FindProtocol;
   FLibLocator.LibraryName := LibLocation;
 

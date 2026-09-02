@@ -21,6 +21,7 @@ type
 
   TRALDBBase = class(TPersistent)
   private
+    FCharacterSet: StringRAL;
     FDatabase: StringRAL;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
@@ -73,6 +74,11 @@ type
     property DriverType: TRALDBDriverType read GetDriverType;
     {$ENDIF}
   published
+    { Connection charset. Empty lets the driver pick a sane default for the
+      database type - UTF8 on Firebird, where leaving it unset makes the
+      server reject accented text with "Malformed string". Set it explicitly
+      to talk to a legacy base in another charset. }
+    property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     {$IFNDEF unleashed}

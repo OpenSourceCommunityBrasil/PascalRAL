@@ -18,6 +18,7 @@ type
     FDatabaseLink: String;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
+    FCharacterSet: StringRAL;
     FLibLocation: String;
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
@@ -83,6 +84,8 @@ type
     property Username: StringRAL read FUsername write FUsername;
     { Location of the library (dll) that is used to connect with the database }
     property LibLocation: String read FLibLocation write SetLibLocation;
+    { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
+    property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
 
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
@@ -254,6 +257,7 @@ begin
     Result.Password := FPassword;
     Result.Port := FPort;
     Result.LibLocation := FLibLocation;
+    Result.CharacterSet := FCharacterSet;
     Result.Request := ARequest;
     Result.Response := AResponse;
 

@@ -123,7 +123,27 @@ initialization
 ```
 Consequence: **an algorithm exists only if its unit is linked into the binary.** `GetSuportedCompress`/`GetAcceptCompress` derive the `Accept-Encoding` header from whatever registered. `TRALStorageLink.GetStorageClass` uses the same name-based lookup (`cStorageLinkClass`). Never assume a format is available; go through the lookup functions.
 
+
+### Connection charset is chosen by the driver, not left blank
+
+`TRALDBBase.CharacterSet` (published on `TRALDBModule`) selects it. Empty does
+not mean "unset": the driver picks, and for Firebird that is UTF8, because
+leaving it out makes the server reject accented text with
+`[FireDAC][Phys][FB] Malformed string`. Point it somewhere else only for a
+legacy base in another charset. Both the FireDAC and the sqldb drivers honour
+it.
+
+### `AddValue` defaults the param kind to `rpkNONE`, which sends nothing
+
+`TRALParams.AddValue(content)` leaves `Kind` at `rpkNONE`, and `EncodeBody`
+only ever collects `rpkBODY`/`rpkFIELD` - so a param added that way is built and
+then silently dropped. Always pass `rpkBODY` (or set `Kind` right after). This
+bit the JWT client: the token request went out with `Content-Length: 0`, the
+server issued a token holding nothing but `exp`, and every `OnValidate` that
+read a claim answered 401 against a perfectly valid signature.
+
 ### Who decides the response compression
+
 
 `TRALServer.ProcessCommands` settles it before the route runs, and the rule is
 **server first**:
