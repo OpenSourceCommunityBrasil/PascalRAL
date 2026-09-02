@@ -180,7 +180,10 @@ end;
 
 class function TRALBase64.GetSizeDecode(ASize: Int64RAL): Int64RAL;
 begin
-  Result := Round(ASize / 4 * 3);
+  // ceiling, not rounding: the decoder walks whole groups of four, so an
+  // input of 54 chars still touches 14 groups. Round() gave 40 bytes for a
+  // buffer the loop could write 42 into.
+  Result := ((ASize + 3) div 4) * 3;
 end;
 
 class function TRALBase64.FromBase64Url(const AValue: StringRAL): StringRAL;
@@ -304,7 +307,7 @@ end;
 class function TRALBase64.DecodeBase64(AInput, AOutput: PByte;
   AInputLen: Integer): IntegerRAL;
 var
-  vInt, vChar, vBuf, vRead: IntegerRAL;
+  vInt, vChar, vBuf, vRead, vValid: IntegerRAL;
 begin
   Result := 0;
   while AInputLen > 0 do
@@ -329,13 +332,31 @@ begin
       AInputLen := AInputLen - 1;
     end;
 
-    Result := Result + (3 - (4 - vRead));
-    AOutput^ := ((vChar shr 16) and $ff);
-    Inc(AOutput);
-    AOutput^ := ((vChar shr 8) and $ff);
-    Inc(AOutput);
-    AOutput^ := (vChar and $ff);
-    Inc(AOutput);
+    // vRead counts how many real base64 chars the group had: 4 -> 3 bytes,
+    // 3 -> 2, 2 -> 1. Writing three unconditionally overflowed the output on
+    // any input whose length is not a multiple of 4 - which is exactly what an
+    // unpadded base64url string is, i.e. every JWT segment.
+    vValid := vRead - 1;
+    if vValid < 0 then
+      vValid := 0;
+
+    Result := Result + vValid;
+
+    if vValid > 0 then
+    begin
+      AOutput^ := ((vChar shr 16) and $ff);
+      Inc(AOutput);
+    end;
+    if vValid > 1 then
+    begin
+      AOutput^ := ((vChar shr 8) and $ff);
+      Inc(AOutput);
+    end;
+    if vValid > 2 then
+    begin
+      AOutput^ := (vChar and $ff);
+      Inc(AOutput);
+    end;
   end;
 end;
 

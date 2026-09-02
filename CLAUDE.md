@@ -133,7 +133,24 @@ leaving it out makes the server reject accented text with
 legacy base in another charset. Both the FireDAC and the sqldb drivers honour
 it.
 
+
+### Base64 decoding assumes padded input
+
+`TRALBase64.DecodeBase64` walks whole groups of four and used to emit three
+bytes per group unconditionally, while `GetSizeDecode` sized the output with
+`Round(ASize / 4 * 3)`. For any input whose length is not a multiple of four the
+loop writes past the buffer: a 54-char string gets 40 bytes reserved and 42
+written.
+
+Everything in RAL that produces base64 pads it, so this stayed invisible - until
+a JWT, whose segments are **base64url without padding**. The overflow corrupted
+the heap: an access violation while decoding the token, and the server it was
+talking to died with it. Both halves are fixed now (only the valid bytes of the
+last group are written, and the size calculation rounds up), but keep it in mind
+before feeding this decoder anything that did not come from `TRALBase64.Encode`.
+
 ### `AddValue` defaults the param kind to `rpkNONE`, which sends nothing
+
 
 `TRALParams.AddValue(content)` leaves `Kind` at `rpkNONE`, and `EncodeBody`
 only ever collects `rpkBODY`/`rpkFIELD` - so a param added that way is built and
