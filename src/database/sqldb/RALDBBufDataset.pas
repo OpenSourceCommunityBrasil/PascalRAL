@@ -216,7 +216,14 @@ begin
     FOpened := True;
     if (Fields.Count > 0) then
       FieldDefs.Clear;
+
+    { CreateDataset calls Open on its way out, which re-enters this very method
+      - FOpened is already True by then, so the nested call runs the inherited
+      InternalOpen and allocates the record buffers. Falling through to a second
+      inherited InternalOpen allocated them again and orphaned the first set:
+      one leak per open, which is what heaptrc pinned on these two lines. }
     CreateDataset;
+    Exit;
   end;
   inherited InternalOpen;
 end;

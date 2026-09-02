@@ -135,7 +135,25 @@ it.
 
 
 
+
+### `CreateDataset` opens the dataset, so do not open it again
+
+`TCustomBufDataset.CreateDataset` ends with a call to `Open`. Calling it from
+inside an `InternalOpen` override therefore re-enters that override, and the
+nested pass runs `inherited InternalOpen` and allocates the record buffers.
+Falling through to a second `inherited InternalOpen` allocates them again and
+orphans the first set - one leak per open.
+
+`TRALDBBufDataset.InternalOpen` now returns right after `CreateDataset`.
+
+What is left on the sqldb side is not RAL: roughly three blocks per server-side
+query stay behind in `TSQLQuery`, even though `TRALDBModule.OpenSQLResponse`
+frees it, and they accumulate on the pooled connection. Neither closing the
+query first nor freeing it earlier changes the count. Measure with `-gh`
+(heaptrc) before believing any claim about this.
+
 ### The fpHTTP client has to be told to drop a dead connection
+
 
 `TFPHTTPClient.KeepConnection` is what actually makes fphttpclient reuse a
 socket - the `Connection: keep-alive` header alone does nothing. It used to be
