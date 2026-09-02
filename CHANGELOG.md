@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-01 – tempraturbo)
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-01 – mobius1qwe)
 
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-08-31 – tempraturbo)
@@ -90,6 +92,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Make gzip and AES work on the fpHTTP engine** (2026-09-01 – tempraturbo)
+  Three defects, all from reading FPC's TRequest/TResponse.CustomHeaders as a
+  list of header lines when it is a name=value list.
+  Request side: the server read ContentEncoding and AcceptEncoding from
+  ARequest and then overwrote both with Params.Get['Content-Encoding']. FPC
+  parses the standard headers into TRequest's own properties and leaves only
+  the unknown ones in CustomHeaders, so those lookups found nothing and
+  blanked the values just read - ContentCompress stayed ctNone and a gzipped
+  body reached the decoder still compressed. The params now only override
+  when they actually carry the header.
+  Response side: headers went out through
+  AssignParams(AResponse.CustomHeaders, rpkHEADER, ': '). TResponse.CustomHeaders
+  is a name=value list and FPC emits each entry as Names[i] + ': ' + Values[i],
+  so a ready-made 'Name: Value' line left nothing to split on: the whole line
+  became the value and every custom header shipped with a stray ': ' prefix
+  (': Content-Encription: aes256cbc_pkcs7'). The client never found
+  Content-Encription, never decrypted, and handed the encrypted body to the
+  multipart decoder. Written with '=' now.
+  Error handler: tratarExcecao cleared compression and crypto but not the
+  content type, and ResponseText runs the message through DecodeBody - so a
+  plain error string was parsed as multipart and died with an access
+  violation inside the handler itself, burying the original error under one
+  raised by the code meant to report it. It now resets the content type to
+  text/plain.
+  Verified on Lazarus/FPC 3.2.2 against Firebird 5 over real HTTP: 230 checks
+  across the four transport combinations, including the sqldb CRUD path and
+  the error path. Delphi re-checked at 1282.
+
 - **fix ebSingleThread being ignored by TRALClient.ExecuteThread** (2026-08-31 – tempraturbo)
   ExecuteThread accepted AExecBehavior but never inspected it: every call
   started a TRALThreadClient and returned at once, so ebSingleThread behaved
@@ -132,6 +162,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fix: Access Violation no parse do token JWT** (2026-07-24 – mobius1qwe)
 
 - **fix: Correção de link de grupo de suporte do Telegram** (2026-07-21 – mobius1qwe)
+
+
+### Removed
+- **Document typed params and the header separator rule in the file map** (2026-09-01 – tempraturbo)
+  Two entries in the navigation section, both for things a reader cannot infer
+  from the file names alone.
+  Typed params: what TRALParamType and the rctRAL* content types are for, the
+  AddParam(name, value, kind, type) shape, that any accessor converts from the
+  marker on the way back, that a text param behaves exactly as before, that any
+  content write drops the marker, and why MediaType has to ignore parameters
+  like '; charset=utf-8'.
+  Header separator: engines disagree on the shape of the header list they hand
+  over - Indy and Synopse pass 'Name: Value' lines, fpHTTP passes CustomHeaders,
+  a name=value list - so FindHeaderNameSeparator decides from the data and not
+  from the engine name. Keying it off the engine has already broken headers on
+  one engine or the other twice, both times silently.
+
+- **Add typed body params; fix header parsing, Indy cookies and BCD loading** (2026-09-01 – tempraturbo)
+  Typed params: a body param can now travel as a raw little-endian value
+  tagged with an application/x-ral-* content type, instead of text each side
+  parses with its own locale. Adds TRALParamType, the rctRAL* content types,
+  SetTyped*/IsTyped/GetTypedVariant on TRALParam and an
+  AddParam(name, value, kind, type) overload. Text params keep their exact
+  previous behaviour, and a typed value read through a mismatched accessor
+  converts instead of handing back raw bytes.
+  Header separator: AppendParams keyed it off TStrings.NameValueSeparator,
+  a Char defaulting to '=' that is never empty, so the sniffer below was
+  unreachable. Engines disagree on the shape of the list they pass - Indy and
+  Synopse hand over 'Name: Value' lines, fpHTTP hands over CustomHeaders,
+  a name=value list - so FindHeaderNameSeparator now decides from the data:
+  whichever of ': ' and '=' comes first in the line wins. On Indy this
+  restores every header whose value contained an '=' and every header with
+  none, including Content-Encription, whose loss left encrypted bodies
+  reaching the multipart decoder undecrypted and the route silently unrun.
+  Typed marker on the wire: a lone body param travels with its content type
+  as the HTTP Content-Type header, and SetContentType appends
+  '; charset=utf-8', so comparing the whole string missed every marker that
+  crossed a real connection. TRALParam.MediaType strips the parameters first.
+  Indy cookies: the client filled TIdHTTP's CookieManager, which is only
+  created inside ProcessCookies - when a response carries cookies - so it was
+  nil on the way out and any request with a cookie raised an access
+  violation; and once created, Indy emits from the jar by domain and path,
+  which a cookie added without them never matches. Cookies now go out as a
+  plain Cookie header, the way RALSynopseClient already did.
+  Lone named body params: EncodeBody never transmits the name of a single
+  body param, so a response carrying one could not be read back by name.
+  ExecSQLRemote and ApplyUpdatesRemote always failed on "'' is not a valid
+  integer value", and OnError fired with an empty message in the FireDAC,
+  sqldb and Zeos drivers. Each now reads by name and falls back to the
+  anonymous body, leaving the wire format untouched.
+  BCD columns: TRALDBFDMemTable loaded a native FireDAC stream into fields
+  InternalInitFieldDefs had already guessed from the RAL type map, where
+  ftBCD and ftFMTBcd collapse into sftDouble and come back as ftFloat, so BCD
+  bytes were reinterpreted as a double - a NUMERIC(15,4) holding 19.9012 read
+  back as 3.939E-313. A native load now drops the guessed defs and takes the
+  schema from the stream.
+  Verified against Firebird 5 over real HTTP: 1282 checks on Delphi across
+  16 combinations of server engine, client engine, compression and AES256
+  (Indy and mORMot2), and 131 on Lazarus/FPC 3.2.2 with fpHTTP and sqldb.
 
 
 ## [v1.0] - 2026-07-12
