@@ -189,6 +189,15 @@ end;
 function TRALCompress.Compress(AStream: TStream): TStream;
 begin
   Result := TMemoryStream.Create;
+  if AStream = nil then
+    Exit;
+
+  // start from the beginning whatever the caller left behind. DecodeBody
+  // and EncodeBody hand over a stream still positioned at the end of a
+  // CopyFrom, and only the FPC gzip branch happened to reposition it while
+  // reading its own header and trailer - deflate and zlib read nothing and
+  // raised "buffer error".
+  AStream.Position := 0;
   InitCompress(AStream, Result);
 end;
 
@@ -245,8 +254,12 @@ end;
 function TRALCompress.Decompress(AStream: TStream): TStream;
 begin
   Result := TMemoryStream.Create;
-  if AStream.Size > 0 then
-    InitDeCompress(AStream, Result);
+  if (AStream = nil) or (AStream.Size = 0) then
+    Exit;
+
+  // same reason as Compress: normalise the position instead of trusting it
+  AStream.Position := 0;
+  InitDeCompress(AStream, Result);
 end;
 
 procedure TRALCompress.DecompressFile(AInFile, AOutFile: StringRAL);

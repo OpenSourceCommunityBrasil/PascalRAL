@@ -153,7 +153,23 @@ Two related invariants, both of which used to be broken:
   server could honour a client preference — including the 415 replies at
   `RALServer.pas` that report the supported set.
 
+
+### Compress/Decompress rewind the stream themselves
+
+`TRALCompress.Compress`/`Decompress` set `AStream.Position := 0` before handing
+the stream to `InitCompress`/`InitDeCompress`. Callers do not rewind: `DecodeBody`
+fills its buffer with `Result.CopyFrom(ASource, ASource.Size)`, which leaves the
+position at the *end*, and then decompresses straight away.
+
+This used to work for exactly one combination - gzip under FPC - because that
+branch repositions the stream on its own while reading the gzip header and the
+CRC32 trailer. `ctDeflate` and `ctZLib` have no header to read, started at the end
+of the stream, saw zero bytes and raised `Edecompressionerror: buffer error`. The
+fpHTTP server swallows that exception, so the symptom was an HTTP 200 with an
+empty body rather than an error.
+
 ### `ctDeflate` means raw deflate on both compilers
+
 
 `TRALCompressZLib` is written twice, once per compiler, and the two halves have
 to agree byte for byte or a Delphi peer cannot talk to an FPC one. The mapping is
