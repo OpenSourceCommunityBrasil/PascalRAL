@@ -622,9 +622,15 @@ begin
   try
     vRouteIsAuth := False;
 
-    AResponse.ContentCompress := ARequest.AcceptCompress;
-    if AResponse.ContentCompress = ctNone then
-      AResponse.ContentCompress := FCompressType;
+    // a fixed CompressType on the server always wins: it is an explicit
+    // choice by whoever set up the server, so the client cannot opt out of
+    // it. with no fixed type the server follows the client, limited to what
+    // is actually registered - GetBestCompress only returns a type whose
+    // class is in CompressDefs, and yields ctNone when nothing matches.
+    if FCompressType <> ctNone then
+      AResponse.ContentCompress := FCompressType
+    else
+      AResponse.ContentCompress := ARequest.AcceptCompress;
 
     AResponse.ContentCripto := crNone;
     if CriptoOptions.Key <> '' then

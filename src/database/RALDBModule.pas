@@ -105,10 +105,13 @@ end;
 
 procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
 begin
+  // the two branches were swapped: a plain exception answered 429 and a pool
+  // timeout answered 408. the intent on record ("pool exhaustion now answers
+  // HTTP 429 instead of 503") is pool -> 429 and anything else -> 500.
   if AException is ERALDBPoolTimeout then
-    AResponse.StatusCode := HTTP_RequestTimeout
+    AResponse.StatusCode := HTTP_TooManyRequests
   else
-    AResponse.StatusCode := HTTP_TooManyRequests;
+    AResponse.StatusCode := HTTP_InternalError;
 
   AResponse.ContentType := rctTEXTPLAIN;
   AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);

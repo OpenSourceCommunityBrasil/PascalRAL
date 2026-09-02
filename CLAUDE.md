@@ -123,7 +123,38 @@ initialization
 ```
 Consequence: **an algorithm exists only if its unit is linked into the binary.** `GetSuportedCompress`/`GetAcceptCompress` derive the `Accept-Encoding` header from whatever registered. `TRALStorageLink.GetStorageClass` uses the same name-based lookup (`cStorageLinkClass`). Never assume a format is available; go through the lookup functions.
 
+### Who decides the response compression
+
+`TRALServer.ProcessCommands` settles it before the route runs, and the rule is
+**server first**:
+
+```pascal
+if FCompressType <> ctNone then
+  AResponse.ContentCompress := FCompressType   // explicit server choice wins
+else
+  AResponse.ContentCompress := ARequest.AcceptCompress;
+```
+
+A `CompressType` set on the server is a deployment decision, so a client cannot
+opt out of it. Only when the server leaves it at `ctNone` does the client decide,
+through `Accept-Encoding` — and `GetBestCompress` picks the highest
+`CompressWeight` among the ones actually registered (gzip 3 > zlib 2 > deflate 1),
+returning `ctNone` when nothing matches. This is the single place a response
+compression is chosen; routes, `TRALDBModule` and the FireDAC DAO all reach it.
+
+Two related invariants, both of which used to be broken:
+
+- `Accept-Encoding` is sent by the client **unconditionally**, outside the
+  `if Parent.CompressType <> ctNone` guard in every engine. It states what the
+  client can *read*, which has nothing to do with whether it compresses what it
+  *sends*; `Content-Encoding` is the one that belongs inside the guard.
+- `GetAcceptCompress` must assign its `Result`. It once built the list and
+  returned nothing, so every client advertised an empty `Accept-Encoding` and no
+  server could honour a client preference — including the 415 replies at
+  `RALServer.pas` that report the supported set.
+
 ### Known bug: a missing compressor silently discards the whole body
+
 `TRALParams.Create` sets `FCompressType := ctGZip`, and `EncodeBody` ends with:
 
 ```pascal

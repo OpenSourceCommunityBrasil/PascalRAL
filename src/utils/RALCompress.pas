@@ -175,6 +175,8 @@ begin
       vStrTypes := vStrTypes + CompressNames[vType];
     end;
   end;
+
+  Result := vStrTypes;
 end;
 
 { TRALCompress }

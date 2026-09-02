@@ -71,7 +71,11 @@ begin
   FConnector.AfterConnect := @OnConnAfterConnect;
 
   try
-    FLibLocator.Enabled := True;
+    // only take over library loading when LibLocation was actually given.
+    // enabling the loader with an empty LibraryName makes sqldb try to load ""
+    // and fail - and an empty LibLocation is the default, i.e. every bit of
+    // code that already existed. without it sqldb finds the library as usual.
+    FLibLocator.Enabled := LibLocation <> '';
     FConnector.Open;
   except
     on e: Exception do

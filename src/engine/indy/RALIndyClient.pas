@@ -128,10 +128,16 @@ begin
 
   ARequest.ContentCompress := Parent.CompressType;
   if Parent.CompressType <> ctNone then
-  begin
     FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
-    FHttp.Request.AcceptEncoding := GetAcceptCompress;
-  end;
+
+  // Accept-Encoding states what the client is able to READ, which does not
+  // depend on whether it is compressing what it SENDS - hence it sits
+  // outside the CompressType check. Content-Encoding stays inside, since
+  // that one describes the request body. GetAcceptCompress returns an empty
+  // string when no compression unit is linked, and then the server answers
+  // uncompressed.
+
+  FHttp.Request.AcceptEncoding := GetAcceptCompress;
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
