@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-02 – tempraturbo)
+
 - **Reconnect instead of retrying on a dead keep-alive socket** (2026-09-02 – tempraturbo)
   KeepConnection is what makes fphttpclient reuse a connection; the header on its
   own does nothing. It was assigned once in the constructor, so a client with
@@ -152,6 +154,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the netHTTP client returning every body still compressed** (2026-09-02 – tempraturbo)
+  SendUrl assigned Params.CompressType and the crypto options before appending
+  the response headers, so ContentCompress and ContentEncription were still
+  empty and both resolved to none. Assigning ResponseStream right afterwards ran
+  DecodeBody with that, and the caller got the body exactly as it came off the
+  wire - gzipped, and still encrypted when AES was on. The ordering now matches
+  the Indy client.
+  The status code was always right, which is why it stayed hidden: any check on
+  StatusCode alone passes. JWT is what exposed it. SetTokenJWT asks /gettoken,
+  gets HTTP 200 with a gzipped token payload, cannot parse it and leaves the
+  token empty, so every request afterwards answered 401 with no error reported
+  anywhere.
+  The test matrix now exercises netHTTP as a third client alongside Indy and
+  mORMot2: 5018 cases green over real HTTP against Firebird 5, covering routes,
+  DBWare, the FireDAC DAO, cookies, content negotiation and Basic/JWT, with and
+  without gzip and AES256.
+
+- **Fix the client resending a timed-out request three times** (2026-09-02 – tempraturbo)
+  BeforeSendUrl kept a floor of three attempts even with a single BaseURL, and
+  decided whether to try again from StatusCode, which carries nothing useful when
+  no HTTP response happened - Indy left -1 there, mORMot2 10061, fpHTTP 0. A 3 s
+  timeout therefore took 9 s, and one timed-out POST reached the server three
+  times.
+  The decision now comes from TRALResponse.TransportError, which every engine
+  fills through TRALClientHTTP.SetTransportError: a failure that never reached a
+  server may go to the next BaseURL with any method, a failure after the request
+  went out only with an idempotent one, and nothing is ever resent to the same
+  URL. The budget is BaseURL.Count.
+  Along the way:
+  - mORMot2 was resending on its own. THttpClientSocket.Request took AsRetry
+  False, which lets it reconnect and replay once. It also returns 666 instead
+  of raising, so the outcome was never inspected.
+  - fpHTTP reports a read timeout and a kept-alive socket the peer had closed
+  through the same exception, and only one of the two may be resent. The
+  reconnect moved into SendUrl, where the token routines reach it too, and
+  tells them apart by elapsed time.
+  - FIndexUrl was written back after BeforeSendUrl, which raises on failure, so
+  the failover index never survived the call that needed it.
+  - A 401 with AutoGetToken discarded the token and gave up; it now retries once
+  with a fresh one.
+  - ConnectTimeout and RequestTimeout had their published default directives
+  swapped against the constructor, so setting 5000 in the Object Inspector
+  yielded 30000 at run time.
+  - MaxRedirects is published, since the engines each hardcoded a different
+  limit.
+  Checked against Indy, mORMot2, netHTTP and fpHTTP.
+
 - **fix: ajuste de keepalive pra mORMot2 para versões acima do commit 2.4.15007** (2026-09-02 – mobius1qwe)
 
 - **Rewind the stream inside Compress and Decompress** (2026-09-02 – tempraturbo)
