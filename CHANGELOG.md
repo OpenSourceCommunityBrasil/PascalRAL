@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Keep the auth vars list alive for as long as it is used** (2026-09-02 – tempraturbo)
+  BeforeSendUrl created vParams inside the "fetch a token" branch and freed it
+  right there, then handed the same variable to SetAuthHeader further down. Worse,
+  when a token already existed the branch never ran at all and SetAuthHeader got
+  an uninitialised variable.
+  Basic and JWT ignore that argument, which is why nothing blew up, but Digest and
+  OAuth read it. The list now lives for the whole iteration and is freed once, at
+  the end.
+
+- **Stop base64 decoding from writing past the output buffer** (2026-09-02 – tempraturbo)
+  DecodeBase64 walks whole groups of four and emitted three bytes for every group,
+  valid or not, while GetSizeDecode reserved Round(ASize / 4 * 3) bytes. Any input
+  whose length is not a multiple of four therefore overflows: 54 chars in reserves
+  40 bytes and writes 42.
+  Nothing in RAL hit it because everything here pads its base64 - except a JWT,
+  whose segments are base64url with no padding. Decoding a token corrupted the
+  heap, which showed up as an access violation inside TRALBase64 and took the
+  server on the other end down with it a moment later.
+  Now only the valid bytes of the last group are written, and the size calculation
+  rounds up instead of to nearest.
+
 - **Feat: Adicionada propriedade LibLocation no DBModule e nos componentes DAC Fix: Limpeza de fonte, ajustes de documentação diversos** (2026-09-01 – mobius1qwe)
 
 - **add connection pool to TRALDBModule** (2026-08-31 – tempraturbo)
@@ -38,6 +59,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Reconnect instead of retrying on a dead keep-alive socket** (2026-09-02 – tempraturbo)
+  KeepConnection is what makes fphttpclient reuse a connection; the header on its
+  own does nothing. It was assigned once in the constructor, so a client with
+  KeepAlive turned off stopped sending the header while still reusing the socket.
+  It now follows Parent.KeepAlive on every request.
+  The second half matters more. When the server closes a kept-alive connection the
+  next write raises EWriteError, and retrying on the same socket raises it again -
+  BeforeSendUrl spent all of its attempts that way and reported failure against a
+  server that was answering fine. Clearing KeepConnection in the error path makes
+  fphttpclient disconnect, so the retry opens a fresh socket.
+  This is what made the JWT flow look broken on fpHTTP: the token request left the
+  connection closed and every attempt at the real request died on it.
+
+- **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-02 – tempraturbo)
+
+- **Let the driver choose a connection charset instead of leaving it blank** (2026-09-02 – tempraturbo)
+  TRALDBModule built its FireDAC and sqldb connections without any charset, so
+  Firebird refused accented text with "Malformed string" - the DBWare stack could
+  not store a single accented character, and nothing in the component let anyone
+  configure it.
+  TRALDBBase gains a CharacterSet property, published on TRALDBModule. Empty no
+  longer means "leave it unset": the driver picks, and for Firebird that is UTF8.
+  A legacy base in another charset can still point it elsewhere.
+
 - **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-02 – tempraturbo)
 
 - **Make ctDeflate mean raw deflate on Delphi too** (2026-09-02 – tempraturbo)
@@ -217,6 +262,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Stop opening the buffer dataset twice on every open** (2026-09-02 – tempraturbo)
+  TCustomBufDataset.CreateDataset finishes by calling Open, so calling it from
+  inside an InternalOpen override re-enters that override. FOpened is already set
+  by then, so the nested pass runs inherited InternalOpen and allocates the record
+  buffers - and then the outer pass ran inherited InternalOpen again, allocating a
+  second set and orphaning the first. One leak per open.
+  heaptrc pinned it on those exact two lines. Returning right after CreateDataset
+  removes the client-side leak entirely: 231 unfreed blocks down to 183, and what
+  the Lazarus suite retains per combination drops by about 1.8 KB each.
+  The rest of what heaptrc still reports comes from the sqldb driver, not from
+  here.
+
+- **Send the JWT payload as a body param so claims reach the token** (2026-09-02 – tempraturbo)
+  The client built the payload JSON and handed it to AddValue without a kind.
+  AddValue defaults to rpkNONE and EncodeBody only collects rpkBODY/rpkFIELD, so
+  the payload was dropped on the floor: the token request left with
+  Content-Length 0, the server issued a token carrying nothing but exp, and any
+  OnValidate reading a claim answered 401 against a signature that was perfectly
+  valid. Nothing in that symptom points at the request body.
+  Every other AddValue caller already passes rpkBODY, two of them by setting Kind
+  on the next line. This was the only one that did not.
+
 - **Document typed params and the header separator rule in the file map** (2026-09-01 – tempraturbo)
   Two entries in the navigation section, both for things a reader cannot infer
   from the file names alone.
