@@ -14,6 +14,8 @@
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
   emContentCheckError = 'Error de comprobación de contenido.';
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
+  emCryptInvalidLength = 'Los datos cifrados tienen un tamaño inválido: necesitan IV y bloques enteros.';
+  emCryptInvalidPadding = 'No se pudo descifrar: clave incorrecta o contenido alterado.';
   emHMACEmptyText = 'Se debe proporcionar lo texto.';
   emDBConnectionUndefined = 'Conexión no establecida.';
   emDBDriverMissing = 'No se encontró el controlador de conexión.';

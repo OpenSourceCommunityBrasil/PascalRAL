@@ -372,6 +372,13 @@ The crash on top of that was in the error handler itself: `tratarExcecao` cleare
 
 Verified on Lazarus/FPC 3.2.2: 230 checks, all four transport combinations green.
 
+### Fixed: AES was ECB under a header that said CBC
+`RALCriptoAES` ciphered block by block with no IV and no chaining while `Content-Encription` announced `aesNNNcbc_pkcs7`. Equal plaintext blocks came out as equal ciphertext blocks, and nothing outside RAL could read the body as the CBC it claimed to be. It is now real CBC: the wire format is a random 16-byte IV followed by the ciphertext, PKCS#7 padded, and the padding is validated on the way in (a wrong key raises `emCryptInvalidPadding` instead of handing back garbage). Proven both ways against `openssl enc -aes-{128,192,256}-cbc` and by the full matrix, cross Delphi x FPC included.
+
+**A client and a server on opposite sides of this change cannot talk to each other** - the old side reads the IV as the first block. Ship both together.
+
+The IV comes from `RandomBytes` in `RALTools`, which now uses RtlGenRandom on Windows and `/dev/urandom` elsewhere; it used to be `Randomize + Random`, reseeded from the clock on every call. The per-buffer thread pool that split the stream among `RALCPUCount` threads is gone: CBC cannot be parallelised on the way in, and a hundred-byte body used to spawn seven threads and a `Sleep(1)` polling loop - the full Delphi matrix went from 1013 s to 147 s when it left.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 

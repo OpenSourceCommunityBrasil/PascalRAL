@@ -14,6 +14,8 @@
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
   emContentCheckError = 'Content check error.';
   emCryptEmptyKey = 'Key must be provided.';
+  emCryptInvalidLength = 'Encrypted data has an invalid length: it needs an IV and whole blocks.';
+  emCryptInvalidPadding = 'Encrypted data could not be decoded: wrong key or altered content.';
   emDBConnectionUndefined = 'Connection not set.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';

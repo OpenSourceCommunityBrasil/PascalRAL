@@ -46,14 +46,37 @@ begin
     Delete(Result, RALHighStr(Result), 1);
 end;
 
+{$IFDEF RALWindows}
+{ RtlGenRandom: the system's cryptographic generator, without pulling CryptoAPI }
+function SystemFunction036(ABuffer: Pointer; ALength: LongWord): Boolean; stdcall;
+  external 'advapi32.dll' name 'SystemFunction036';
+{$ENDIF}
+
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
+{$IFNDEF RALWindows}
 var
-  vInt: IntegerRAL;
+  vFile: TFileStream;
+{$ENDIF}
 begin
   SetLength(Result, numOfBytes);
-  Randomize;
-  for vInt := 1 to numOfBytes do
-    Result[vInt - 1] := Random(256);
+  if numOfBytes <= 0 then
+    Exit;
+
+  { Randomize + Random reseeded from the clock on every call: two calls in the
+    same millisecond gave the same bytes, and the nonce, the token id and now
+    the AES IV came out guessable. These are the platform's cryptographic
+    sources instead. }
+  {$IFDEF RALWindows}
+  if not SystemFunction036(@Result[0], numOfBytes) then
+    raise Exception.Create('RandomBytes: RtlGenRandom failed');
+  {$ELSE}
+  vFile := TFileStream.Create('/dev/urandom', fmOpenRead or fmShareDenyNone);
+  try
+    vFile.ReadBuffer(Result[0], numOfBytes);
+  finally
+    vFile.Free;
+  end;
+  {$ENDIF}
 end;
 
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
