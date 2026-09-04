@@ -59,6 +59,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Make multipart bodies survive the Sagui engine** (2026-09-04 – tempraturbo)
+  libsagui hands every multipart body to its upload machinery, and that machinery
+  materialises only the parts that name a file. RAL named none of them, so typed
+  params, plain bodies and cookies reached the handler empty on a server that
+  answered 200 and looked healthy. Every part now carries a filename, falling
+  back to its own name.
+  The engine also never installed upload callbacks, while
+  TRALSaguiUploadMap.AppendToParams already cast the upload handle to TStream -
+  a cast that could not be true. The callbacks are here now, each part backed by
+  a TMemoryStream, which also spares a temporary file per request.
+  A compressed multipart body cannot work on that path at all: libmicrohttpd
+  parses the parts before any decompression layer exists. Multipart REQUESTS
+  therefore go out uncompressed, and Content-Encoding says so. Responses are
+  untouched - what reads those is RAL's own client, which decompresses first - so
+  they keep compressing, and the negotiation contract with them is unchanged.
+  DecodeBody now decides by the bytes instead of the flag: a body that already
+  starts with a delimiter is not inflated. Two TRALParams in one process are both
+  born with CompressType = gzip and no header connects them, and senders from
+  before this change still send their multipart compressed - a deflate stream
+  opens with 0x1F 0x8B and only a plain one opens with two dashes, so both cases
+  land right.
+  Sagui goes from aborting the run to completing it: 368 cases, and what still
+  fails is the AES transport, where an encrypted body is likewise still declared
+  multipart. Indy x Indy, mORMot2 x netHTTP and mORMot2 x mORMot2 stay at
+  1046/1046.
+
 - **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-02 – tempraturbo)
 
 - **Reconnect instead of retrying on a dead keep-alive socket** (2026-09-02 – tempraturbo)
@@ -154,6 +180,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix multipart fields going out as uploads and a plain body mistaken for multipart** (2026-09-04 – tempraturbo)
+  Every multipart part had been given a filename, because libmicrohttpd under
+  the Sagui engine materialises only the parts that name a file. That was more
+  than needed, and it had a cost outside RAL: a server that is not RAL files a
+  named part under uploads instead of fields - PHP's $_FILES, Spring's
+  MultipartFile, Go's MultipartForm.File - so a RAL client posting an ordinary
+  form or a login to such a server had its fields land in the wrong place.
+  The decision moves out of the encoder, which no longer invents filenames, and
+  into EncodeBody, which knows what each part is: a BODY part with no real
+  filename is named after itself (RAL's own envelope - typed params, SQL,
+  ParamCount), a FIELD part goes out as a plain form field. Measured rather than
+  assumed: a field mixed with a named body part still reaches a Sagui server,
+  handed over as a field once the library is processing the multipart; a field
+  on its own travels urlencoded. And a browser-style multipart from curl - two
+  fields and a file - is echoed whole by a Sagui server.
+  ContentTypeDoCorpo, which rebuilds the multipart header from an encrypted
+  body's first line, accepted anything that opened with two dashes. An
+  encrypted plain text starting with "--", a comment or a command line, would
+  have been torn apart as multipart and lost. It now requires the first line to
+  be made of RFC 2046 boundary characters and the closing delimiter to be
+  present at the tail of the body, which every real multipart carries.
+  Both matrices gained a case for each: field and body in one request, and an
+  encrypted text beginning with two dashes. Delphi at 1059/1059 on Sagui x Indy
+  and Indy x Indy; FPC with no data failure.
+
+- **Fix the Sagui engine reading the crypto key from the wrong place** (2026-09-04 – tempraturbo)
+  It took Params.CriptoOptions.Key from CriptoKey, the request's own, which is
+  still empty while the request is being built. Indy, fpHTTP and Synopse all take
+  it from the server's CriptoOptions, and DecodeBody only decrypts when it has
+  both a cipher and a key - so the params ended up naming aes256cbc_pkcs7 with no
+  key, and every encrypted request reached the handler still as ciphertext: no
+  params, no body, no cookies, on a server answering 200.
+  Found by tracing what the engine saw: enc=[aes256cbc_pkcs7] cripto=3 chave=0.
+  This is not the whole AES story on that engine - libmicrohttpd still hands the
+  ciphertext to its multipart machinery, because the body is announced as
+  multipart, and that part is open. It is the half that had to be right either
+  way: without the key, nothing downstream could have worked.
+
+- **Fix LibLocation mangling absolute paths; ship the Zeos memtable in the Lazarus package** (2026-09-04 – tempraturbo)
+  TRALDBModule.SetLibLocation prefixed the executable folder onto every value,
+  so an absolute path became "C:\app\C:\lib\sqlite3.dll" - not a path at all.
+  The library then failed to load with the very message it gives when the file
+  is missing, which sends the search to the wrong place entirely. Absolute paths
+  are now kept as given; relative ones still resolve against the executable,
+  which is what the property is for.
+  raldbzeoslink also lists RALDBZeosMemTable now. The Delphi package always
+  had it and the sibling sqldb package ships RALDBBufDataset the same way, so
+  installing the Zeos link package in Lazarus gave you the server driver and no
+  client memtable.
+
+- **Fix the Zeos memtable losing rows on load and its native export check** (2026-09-03 – tempraturbo)
+  Reading a query through TRALDBZMemTable came back with one record or none,
+  and reopening the same query came back empty: the storage load raised
+  "Field 'X' cannot be modified" between the Append and the Post of the first
+  row, and everything after it was lost.
+  - InternalInitFieldDefs no longer copies faReadonly to the client field defs.
+  The server sets that flag for every column with no base column - a CAST, a
+  SUM, any expression. It describes the SOURCE column, while on a memtable it
+  lands on the local buffer this unit has to fill with the answer, and
+  TZMemTable enforces read-only on every write. Required is still copied:
+  that one is about the data, not about who may write it.
+  - CanExportNative had an empty ELSE branch on Delphi with stock ZeosLib,
+  where ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT is commented out, so it
+  returned whatever was left in the result register. A non-zero leftover made
+  the server export a native stream the client has no import for.
+  - Notification cleared FConnection, inherited from TZAbstractRODataset,
+  instead of FRALConnection: freeing the RAL connection left FRALConnection
+  dangling and nilled the dataset's own connection.
+  - OnQueryResponse calls First only when the load actually opened the dataset.
+  It runs inside the thread that dispatches the response, where an exception
+  does not reach whoever called Open - it terminates the process.
+
 - **Fix the netHTTP client returning every body still compressed** (2026-09-02 – tempraturbo)
   SendUrl assigned Params.CompressType and the crypto options before appending
   the response headers, so ContentCompress and ContentEncription were still
@@ -311,6 +409,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Make encrypted multipart requests survive a server that parses multipart itself** (2026-09-04 – tempraturbo)
+  An encrypted request body still announced multipart/form-data. libmicrohttpd,
+  under the Sagui engine, handed the ciphertext to its multipart machinery, found
+  no parts and dropped the body without an error, so every param sent over the
+  AES transport reached the handler empty. The request now travels declared as
+  application/octet-stream once it is encrypted, and only then - responses are
+  untouched, since what reads those is RAL's own client.
+  Nothing goes with the header: the first line of the plaintext is the
+  delimiter, so DecodeBody rebuilds "multipart/form-data; boundary=..." from it
+  and recognises a multipart body by its bytes whenever there was encryption.
+  The decoder is fed that synthesised content type rather than a bare boundary,
+  because it sets itself up from ContentType.
+  Two things the change exposed had to go with it:
+  - the check that keeps a plain multipart from being inflated only applied
+  when the header said multipart. With the header now saying octet-stream, the
+  server inflated a body that was never deflated and fell over with an access
+  violation. The bytes decide on their own now: a delimiter opens with "--", a
+  deflate stream with 0x1F 0x8B.
+  - all four clients copied Content-Encoding to the transport before encoding
+  the body. EncodeBody declines to compress a multipart request, so the header
+  promised gzip over bytes that were never compressed. The copy happens after
+  RequestStream now, on Indy, netHTTP, fpHTTP and Synopse alike - which also
+  makes the header truthful for servers that are not RAL.
+  Checked: Sagui x Indy, Sagui x mORMot2 and Sagui x netHTTP at 1046/1046 for
+  the first time; Indy x Indy, Indy x netHTTP, mORMot2 x netHTTP and
+  mORMot2 x mORMot2 still 1046/1046. On FPC all six server x client pairs run
+  with no data failure - only the memory-accounting cases the FPC matrix already
+  had.
+
+- **Fix the multipart delimiter and drop charset from the multipart content type** (2026-09-04 – tempraturbo)
+  Two spec violations that had been invisible because every parser this code had
+  ever met is lenient.
+  The body delimiter was twenty-eight dashes plus the boundary, while the header
+  declared the boundary alone. RFC 2046 says the delimiter is "--" plus the
+  boundary and nothing else. RAL's own decoder finds it with Pos(), a substring
+  search that matches "--ralNNN" inside the longer run of dashes, and Indy,
+  mORMot2 and fpHTTP all hand the raw body to that same decoder - so nothing ever
+  complained.
+  SetContentType also appended "; charset=utf-8" to every content type, multipart
+  included, which put a parameter after "boundary=". A charset means nothing on a
+  multipart container - RFC 2046 puts it on each part - and anything after the
+  boundary breaks parsers that read it as the rest of the header value.
+  Both surfaced through the Sagui engine, whose libmicrohttpd anchors the
+  delimiter at the start of the line and took the boundary as
+  "ralNNN; charset=utf-8": it matched nothing and discarded whole request bodies
+  without an error. Requests reached the handler with no params, no body and no
+  cookies, on a server that answered 200.
+  Checked against the engine pairs that already worked - Indy x Indy,
+  mORMot2 x netHTTP and Indy x mORMot2 - all still green.
+
+- **Fix the Sagui server dropping the request Content-Disposition and reporting no content size** (2026-09-04 – tempraturbo)
+  Indy, fpHTTP and Synopse all read the incoming Content-Disposition and hand it
+  to Params.DecodeBody together with the content type; this engine only ever set
+  the one on the response, so bodies were decoded with half the information the
+  other engines give. ContentSize was likewise hardcoded to zero, telling every
+  handler that the request arrived empty no matter what it carried.
+  Neither of these is the cause of the multipart bodies that reach a Sagui
+  handler empty - that one is still open, and it is not for lack of the flags
+  fixed here.
+
 - **Stop opening the buffer dataset twice on every open** (2026-09-02 – tempraturbo)
   TCustomBufDataset.CreateDataset finishes by calling Open, so calling it from
   inside an InternalOpen override re-enters that override. FOpened is already set
