@@ -239,14 +239,26 @@ var
   vItem: TRALMultipartFormData;
   vString: StringRAL;
 begin
-  vHeaderFile := '----------------------------%s' + HTTPLineBreak +
+  { The delimiter is "--" plus the boundary, and nothing else. RFC 2046 defines
+    it that way, and the Content-Type we send declares the boundary alone
+    ("boundary=ralNNN"), so the twenty-eight dashes written here did not match
+    what we announced.
+
+    It went unnoticed because every parser this had met is lenient: RAL's own
+    decoder below looks for the delimiter with Pos(), a substring search that
+    finds "--ralNNN" inside "----------------------------ralNNN", and Indy,
+    mORMot2 and fpHTTP all hand the raw body to that same decoder. The
+    libmicrohttpd parser under the Sagui engine anchors the delimiter at the
+    start of the line, finds no match, and drops the whole body without an
+    error - requests reached the handler with no params, no body, no cookies. }
+  vHeaderFile := '--%s' + HTTPLineBreak +
     'Content-Disposition: %s; name="%s"; filename="%s"' + HTTPLineBreak + 'Content-Type: %s' +
     HTTPLineBreak+HTTPLineBreak;
 
-  vHeaderField := '----------------------------%s' + HTTPLineBreak +
+  vHeaderField := '--%s' + HTTPLineBreak +
     'Content-Disposition: %s; name="%s"' + HTTPLineBreak + 'Content-Type: %s' + HTTPLineBreak+HTTPLineBreak;
 
-  vHeaderEnd := '----------------------------%s--';
+  vHeaderEnd := '--%s--';
 
   Result := TRALStringStream.Create;
   for vInt := 0 to Pred(FFormData.Count) do

@@ -134,7 +134,15 @@ end;
 procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
 begin
   FContentType := AValue;
-  if Pos(StringRAL('charset='), FContentType) = 0 then
+  { Never on a multipart container. RFC 2046 puts the charset on each part, so
+    the parameter means nothing here - and appending anything after "boundary="
+    breaks every parser that reads the boundary as the rest of the header value.
+    libmicrohttpd, under the Sagui engine, is one of those: it took the boundary
+    as "ralNNN; charset=utf-8", matched no delimiter, and discarded the whole
+    body without an error - requests reached the handler with no params, no body
+    and no cookies, on a server that answered 200 and looked healthy. }
+  if (Pos(StringRAL('charset='), FContentType) = 0) and
+     (Pos(StringRAL('multipart/'), LowerCase(FContentType)) = 0) then
     FContentType := FContentType + '; charset=utf-8';
 end;
 
