@@ -362,7 +362,13 @@ begin
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := CriptoKey;
+        { The key comes from the SERVER, like Indy, fpHTTP and Synopse all take
+          it. CriptoKey is the request's own, empty while the request is still
+          being built, so the params ended up with the cipher named and no key -
+          and DecodeBody only decrypts when it has both. Every encrypted request
+          reached the handler still as ciphertext: no params, no body, no
+          cookies, on a server answering 200. }
+        Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
         if vServer.Authentication <> nil then
           DecodeAuth(ParamByName('Authorization').AsString, vRequest);
