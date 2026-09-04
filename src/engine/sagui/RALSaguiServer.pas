@@ -60,6 +60,20 @@ type
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
+    { Uploads backed by a TMemoryStream instead of the library's default, which
+      writes every part to a temporary file. TRALSaguiUploadMap.AppendToParams
+      already casts the upload handle to TStream - these callbacks are what
+      makes that cast true. }
+    class function DoUploadNew(Acls: Pcvoid; Ahandle: PPcvoid; const Adir: Pcchar;
+      const Afield: Pcchar; const Aname: Pcchar; const Amime: Pcchar;
+      const Aencoding: Pcchar): cint; cdecl; static;
+    class function DoUploadWrite(Ahandle: Pcvoid; Aoffset: cuint64_t;
+      const Abuf: Pcchar; Asize: csize_t): cssize_t; cdecl; static;
+    class procedure DoUploadFree(Ahandle: Pcvoid); cdecl; static;
+    class function DoUploadSave(Ahandle: Pcvoid; Aoverwritten: cbool): cint;
+      cdecl; static;
+    class function DoUploadSaveAs(Ahandle: Pcvoid; const Apath: Pcchar;
+      Aoverwritten: cbool): cint; cdecl; static;
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
@@ -208,6 +222,13 @@ var
   e: exception;
 begin
   FHandle := sg_httpsrv_new2(nil, DoRequestCallback, DoErrorCallback, Self);
+  if Assigned(FHandle) then
+    { Without this the library keeps its own upload handling: every part of a
+      multipart body goes to a temporary file and the handle it reports is its
+      own, not a TStream, so AppendToParams cast a foreign handle to a Delphi
+      object. Keeping the parts in memory also spares a disk write per request. }
+    sg_httpsrv_set_upld_cbs(FHandle, DoUploadNew, Self, DoUploadWrite,
+      DoUploadFree, DoUploadSave, DoUploadSaveAs);
   if not Assigned(FHandle) then
   begin
     e := Exception.Create(emSaguiServerCreateError);
@@ -231,6 +252,64 @@ end;
 class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
 begin
   // procedure obrigatoria para instanciar o server (CreateServerHandle)
+end;
+
+{ One TMemoryStream per part of a multipart body. The library owns the lifetime:
+  it calls the free callback for every handle it asked us to create. }
+class function TRALSaguiServer.DoUploadNew(Acls: Pcvoid; Ahandle: PPcvoid;
+  const Adir: Pcchar; const Afield: Pcchar; const Aname: Pcchar;
+  const Amime: Pcchar; const Aencoding: Pcchar): cint;
+begin
+  try
+    Ahandle^ := TMemoryStream.Create;
+    Result := 0;
+  except
+    Ahandle^ := nil;
+    { non-zero aborts this upload, which is what should happen when there is no
+      memory to hold it }
+    Result := -1;
+  end;
+end;
+
+{ Offset is where the library wants the bytes. It fills a part in order, but the
+  contract lets it say otherwise, and a stream that ignored it would corrupt a
+  body that ever arrived out of order. }
+class function TRALSaguiServer.DoUploadWrite(Ahandle: Pcvoid;
+  Aoffset: cuint64_t; const Abuf: Pcchar; Asize: csize_t): cssize_t;
+begin
+  Result := -1;
+  if (Ahandle = nil) or (Abuf = nil) then
+    Exit;
+  try
+    TMemoryStream(Ahandle).Position := Aoffset;
+    TMemoryStream(Ahandle).WriteBuffer(Abuf^, Asize);
+    Result := Asize;
+  except
+    Result := -1;
+  end;
+end;
+
+class procedure TRALSaguiServer.DoUploadFree(Ahandle: Pcvoid);
+begin
+  if Ahandle <> nil then
+    TMemoryStream(Ahandle).Free;
+end;
+
+{ Saving to disk is what the default handling did, and nothing here asks for it:
+  the parts are read straight from memory into the request params. Answering
+  "not supported" is honest - pretending success would lose data quietly. The
+  library reads these as errno values, where zero means success, and ENOSYS is
+  spelled out because neither Delphi nor FPC declares it on Windows. }
+class function TRALSaguiServer.DoUploadSave(Ahandle: Pcvoid;
+  Aoverwritten: cbool): cint;
+begin
+  Result := 38;
+end;
+
+class function TRALSaguiServer.DoUploadSaveAs(Ahandle: Pcvoid;
+  const Apath: Pcchar; Aoverwritten: cbool): cint;
+begin
+  Result := 38;
 end;
 
 class procedure TRALSaguiServer.DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq;

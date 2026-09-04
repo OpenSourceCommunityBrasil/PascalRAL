@@ -279,7 +279,11 @@ type
     /// Removes a RALParam matching the given AName and AKind.
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
     /// Returns a TStream with all RALParams that matches 'Body' Kind.
-    function EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
+    { AComprimirMultipart False leaves a multipart body uncompressed - only the
+      client request path asks for that, and the reason is written where the
+      flag is read. Everything else keeps compressing as it always did. }
+    function EncodeBody(var AContentType, AContentDisposition: StringRAL;
+      AComprimirMultipart: boolean = True): TStream;
     /// Retuns the internal Enumerator type to allow for..in loops
     function GetEnumerator: TEnumerator; inline;
     /// creates and returns an empty param for a more flexible way of coding.
@@ -1427,6 +1431,28 @@ begin
     end;
 end;
 
+{ True when the stream opens with the two dashes that start a multipart
+  delimiter. Enough to tell a plain multipart body from a compressed one: every
+  compressor RAL uses writes a header of its own first, and none of them starts
+  with "--" (deflate opens with 0x1F 0x8B). }
+function ComecaComDelimitador(AStream: TStream): boolean;
+var
+  vDois: array [0 .. 1] of Byte;
+  vPos: Int64RAL;
+begin
+  Result := False;
+  if (AStream = nil) or (AStream.Size < 2) then
+    Exit;
+  vPos := AStream.Position;
+  try
+    AStream.Position := 0;
+    AStream.ReadBuffer(vDois[0], 2);
+    Result := (vDois[0] = Ord('-')) and (vDois[1] = Ord('-'));
+  finally
+    AStream.Position := vPos;
+  end;
+end;
+
 function TRALParams.DecodeBody(ASource: TStream;
   const AContentType, AContentDisposition: StringRAL): TStream;
 var
@@ -1450,7 +1476,19 @@ begin
     Result := vTemp;
   end;
 
-  if FCompressType <> ctNone then
+  { A body that is ALREADY multipart is not decompressed, whatever the settings
+    say. EncodeBody stopped compressing multipart (the reason is written there),
+    and this side has no header to learn that from when both ends are two plain
+    TRALParams in the same process - they are born with CompressType = gzip, so
+    it would try to inflate a body that was never deflated.
+
+    Sniffing the bytes rather than trusting the flag also keeps senders from
+    before that change working: their multipart really is compressed, a deflate
+    stream starts with 0x1F 0x8B, and only a plain one starts with the two
+    dashes of a delimiter. }
+  if (FCompressType <> ctNone) and
+     not ((Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0) and
+          ComecaComDelimitador(Result)) then
   begin
     vTemp := Decompress(Result);
     FreeAndNil(Result);
@@ -1509,7 +1547,8 @@ begin
   end;
 end;
 
-function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL): TStream;
+function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL;
+  AComprimirMultipart: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
@@ -1583,6 +1622,27 @@ begin
       FreeAndNil(vMultPart);
     end;
   end;
+
+  { A multipart body goes out uncompressed, on purpose.
+
+    Compressing it leaves the header saying "multipart/form-data" while the
+    bytes are gzip. That is legal HTTP - Content-Encoding describes a transform
+    over the declared type - but it only works against a server that
+    decompresses before parsing the parts. RAL's own engines do; servers that
+    parse multipart natively do not, and libmicrohttpd under the Sagui engine is
+    one of those: it read the gzip bytes as parts, found none, and dropped the
+    whole body without an error.
+
+    Little is lost by not compressing it. What makes a multipart body here are
+    typed params of a few bytes and files that usually arrive compressed
+    already, while the response - where the volume actually is - still
+    compresses normally. }
+  if (not AComprimirMultipart) and (FCompressType <> ctNone) and
+     (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
+    { and the caller hears about it through CompressType: whoever fills
+      Content-Encoding reads it back from here, and a header promising gzip over
+      bytes that were never compressed makes the other side fail to inflate }
+    FCompressType := ctNone;
 
   if (FCompressType <> ctNone) and (Result <> nil) then
   begin

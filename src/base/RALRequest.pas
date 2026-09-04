@@ -416,9 +416,17 @@ begin
     Params.CriptoOptions.Key := CriptoKey;
     Params.CompressType := ContentCompress;
   end;
-  Result := Params.EncodeBody(vContentType, vContentDisposition);
+  { False: a multipart REQUEST goes out uncompressed. The server is the one that
+    parses it, and a server that reads multipart natively - libmicrohttpd, under
+    the Sagui engine - parses before any decompression layer, so it saw gzip
+    bytes, found no parts and dropped the body without an error. Responses are
+    not affected: what reads those is RAL's own client, which decompresses
+    first, so they keep compressing normally. }
+  Result := Params.EncodeBody(vContentType, vContentDisposition, False);
   ContentType := vContentType;
   ContentDisposition := vContentDisposition;
+  { and the header says what was actually done, not what was asked for }
+  ContentCompress := Params.CompressType;
 end;
 
 function TRALClientRequest.GetRequestEncText(const AEncode: boolean): StringRAL;

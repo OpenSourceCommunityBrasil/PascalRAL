@@ -237,7 +237,7 @@ var
   vInt: IntegerRAL;
   vHeaderFile, vHeaderField, vHeaderEnd: StringRAL;
   vItem: TRALMultipartFormData;
-  vString: StringRAL;
+  vString, vArquivo: StringRAL;
 begin
   { The delimiter is "--" plus the boundary, and nothing else. RFC 2046 defines
     it that way, and the Content-Type we send declares the boundary alone
@@ -264,16 +264,27 @@ begin
   for vInt := 0 to Pred(FFormData.Count) do
   begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
-    if vItem.Filename <> '' then
-    begin
-      vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
-        vItem.Filename, vItem.ContentType]);
-    end
-    else
-    begin
-      vString := Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
-        vItem.ContentType]);
-    end;
+
+    { EVERY part names a file, falling back to the part's own name when there is
+      no real filename.
+
+      Why it has to be every part: libmicrohttpd, under the Sagui engine, routes
+      any multipart body through its upload machinery and materialises only the
+      parts that name a file. The rest vanish in silence - no field, no upload,
+      no payload - and this body is not a form: its parts are RAL's own envelope
+      ("SQL", "ParamCount", "N0", the typed params), carrying octet-stream and
+      text/plain. Naming only some of them left the SQL behind and the query
+      came back empty.
+
+      What it costs outside: a server that is not RAL files a named part under
+      uploads instead of fields. That matters only for a RAL client posting to
+      a foreign server, and such a server could never read this envelope anyway
+      - it is RAL's protocol, not an HTML form. }
+    vArquivo := vItem.Filename;
+    if vArquivo = '' then
+      vArquivo := vItem.Name;
+    vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
+      vArquivo, vItem.ContentType]);
     TRALStringStream(Result).WriteString(vString);
     vItem.AsStream.Position := 0;
     Result.CopyFrom(vItem.AsStream, vItem.AsStream.Size);
