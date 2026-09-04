@@ -21,7 +21,7 @@
     </CompilerOptions>
     <Description Value="Package for ZeosDBO&apos;s DBWare components for PascalRAL."/>
     <Version Major="1"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="..\..\..\src\database\Zeos\RALDBZeos.pas"/>
         <UnitName Value="RALDBZeos"/>
@@ -35,6 +35,10 @@
         <Filename Value="raldbpackage.lrs"/>
         <Type Value="LRS"/>
       </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\database\Zeos\RALDBZeosMemTable.pas"/>
+        <UnitName Value="RALDBZeosMemTable"/>
+      </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">

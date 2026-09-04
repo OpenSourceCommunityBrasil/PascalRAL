@@ -8,7 +8,7 @@ unit raldbzeoslink;
 interface
 
 uses
-  RALDBZeos, RALDBZeosLinkReg, LazarusPackageIntf;
+  RALDBZeos, RALDBZeosLinkReg, RALDBZeosMemTable, LazarusPackageIntf;
 
 implementation
 

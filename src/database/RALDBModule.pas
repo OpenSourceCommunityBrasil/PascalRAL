@@ -98,11 +98,37 @@ implementation
 { TRALDBModule }
 
 procedure TRALDBModule.SetLibLocation(AValue: String);
+
+  { True when the path already says where it starts: a drive ("C:\lib\x.dll"),
+    a UNC share ("\\host\share\x.dll") or a root ("/usr/lib/x.dll"). }
+  function IsAbsolute(const APath: String): Boolean;
+  begin
+    Result := False;
+    if APath = EmptyStr then
+      Exit;
+    {$IFDEF MSWINDOWS}
+      Result := ((Length(APath) >= 2) and (APath[2] = ':')) or
+                (APath[1] = '\') or (APath[1] = '/');
+    {$ELSE}
+      Result := APath[1] = '/';
+    {$ENDIF}
+  end;
+
 begin
   if FLibLocation = AValue then Exit;
   if AValue = EmptyStr then
     FLibLocation := EmptyStr
+  else if IsAbsolute(AValue) then
+    { An absolute path is an answer, not a question: prefixing the executable
+      folder onto it produced "C:\app\C:\lib\x.dll", which is not a path at all.
+      The library then failed to load with the same message it gives when the
+      file is missing, so the setter looked innocent and the search went to the
+      wrong place. }
+    FLibLocation := AValue
   else
+    { Relative stays relative to the executable, which is the point of the
+      property: a server ships with its client library beside it and does not
+      care where it was installed. }
     FLibLocation := ExpandFileName(ExtractFilePath(ParamStr(0)) + AValue);
 end;
 
