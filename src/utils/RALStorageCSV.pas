@@ -53,6 +53,12 @@ type
     function CSVFormatFloat(AValue: Double): StringRAL;
     function CSVFormatStream(AValue: TStream): StringRAL;
     function CSVFormatString(AValue: StringRAL): StringRAL;
+    /// format settings built from FormatOptions on top of the machine defaults
+    function CSVFormatSettings: TFormatSettings;
+    function CSVIsQuoted(const AValue: StringRAL): boolean;
+    /// strips the outer quotes of a value that came quoted
+    function CSVUnquote(const AValue: StringRAL): StringRAL;
+    function CSVParseDateTime(const AValue: StringRAL; var ADate: TDateTime): boolean;
     procedure ReadFields(ADataset: TDataSet; AStream: TStream);
     function ReadLine(AStream: TStream): TStringList;
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
@@ -199,12 +205,72 @@ begin
 end;
 
 function TRALStorageCSV.CSVFormatFloat(AValue: Double): StringRAL;
-var
-  vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := Char(FFormatOptions.DecimalSeparator);
-  vFormat.ThousandSeparator := Char(FFormatOptions.ThousandSeparator);
-  Result := FloatToStr(AValue, vFormat);
+  Result := FloatToStr(AValue, CSVFormatSettings);
+end;
+
+function TRALStorageCSV.CSVFormatSettings: TFormatSettings;
+begin
+  // a bare local TFormatSettings has every other member undefined; start
+  // from the machine defaults and override only what the options say
+  Result := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
+  Result.DecimalSeparator := Char(FFormatOptions.DecimalSeparator);
+  Result.ThousandSeparator := Char(FFormatOptions.ThousandSeparator);
+  if FFormatOptions.DateTimeFormat = dtfCustom then
+  begin
+    Result.ShortDateFormat := FFormatOptions.CustomDateFormat;
+    Result.LongTimeFormat := FFormatOptions.CustomTimeFormat;
+    Result.ShortTimeFormat := FFormatOptions.CustomTimeFormat;
+  end;
+end;
+
+function TRALStorageCSV.CSVIsQuoted(const AValue: StringRAL): boolean;
+begin
+  Result := (Length(AValue) >= 2) and (AValue[POSINISTR] = '"') and
+    (AValue[RALHighStr(AValue)] = '"');
+end;
+
+function TRALStorageCSV.CSVUnquote(const AValue: StringRAL): StringRAL;
+begin
+  if CSVIsQuoted(AValue) then
+    Result := Copy(AValue, POSINISTR + 1, Length(AValue) - 2)
+  else
+    Result := AValue;
+end;
+
+function TRALStorageCSV.CSVParseDateTime(const AValue: StringRAL;
+  var ADate: TDateTime): boolean;
+var
+  vUnix: Int64RAL;
+  vText: StringRAL;
+begin
+  Result := False;
+  vText := Trim(CSVUnquote(AValue));
+  if vText = '' then
+    Exit;
+
+  case FFormatOptions.DateTimeFormat of
+    dtfUnix:
+      begin
+        Result := TryStrToInt64(vText, vUnix);
+        if Result then
+          ADate := UnixToDateTime(vUnix);
+      end;
+    dtfISO8601:
+      begin
+        // ISO8601ToDate raises on garbage; the caller treats False as "not a date"
+        try
+          ADate := ISO8601ToDate(vText);
+          Result := True;
+        except
+          Result := False;
+        end;
+      end;
+    dtfCustom:
+      Result := TryStrToDateTime(vText, ADate, CSVFormatSettings) or
+        TryStrToDate(vText, ADate, CSVFormatSettings) or
+        TryStrToTime(vText, ADate, CSVFormatSettings);
+  end;
 end;
 
 function TRALStorageCSV.CSVFormatStream(AValue: TStream): StringRAL;
@@ -216,6 +282,10 @@ function TRALStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, #13, '', [rfReplaceAll]);
   Result := StringReplace(Result, #10, '', [rfReplaceAll]);
+  // RFC 4180: a quote inside a quoted value is written doubled. Without this
+  // any value with a quote in it broke the reader's quote tracking for the
+  // rest of the line
+  Result := StringReplace(Result, '"', '""', [rfReplaceAll]);
 
   Result := Format('"%s"', [Trim(Result)]);
 end;
@@ -340,69 +410,87 @@ var
   vBytes : TBytes;
 begin
   vBytes := StringToBytesUTF8(AValue);
-  AStream.Write(vBytes[0], Length(vBytes));
+  if Length(vBytes) > 0 then
+    AStream.Write(vBytes[0], Length(vBytes));
 end;
 
+{ One CSV line, one value per entry. Quoted values keep their outer quotes so
+  ReadFields can tell a quoted "123" (text) from a bare 123 (number); a doubled
+  quote inside a quoted value comes back as a single one.
+
+  The stream holds UTF-8 BYTES. The previous reader pulled a Char at a time,
+  which on Delphi is two bytes: every multi-byte sequence was torn apart and
+  the line break was never found, so the whole file became one field. It also
+  had the separator hardcoded to ';' regardless of FormatOptions. }
 function TRALStorageCSV.ReadLine(AStream: TStream): TStringList;
 var
-  vChr1, vChr2: Char;
-  vDoubleQuote, v13: Boolean;
-  vStr: StringRAL;
+  vByte, vNext: Byte;
+  vQuoted: Boolean;
+  vBytes: TBytes;
+  vLen: IntegerRAL;
+  vSep: Byte;
 
-  procedure addString;
+  procedure PutByte(AByte: Byte);
   begin
-    Result.Add(vStr);
-    vStr := '';
+    if vLen = Length(vBytes) then
+      SetLength(vBytes, vLen + 64);
+    vBytes[vLen] := AByte;
+    Inc(vLen);
+  end;
+
+  procedure AddValue;
+  begin
+    SetLength(vBytes, vLen);
+    Result.Add(BytesToStringUTF8(vBytes));
+    SetLength(vBytes, 0);
+    vLen := 0;
   end;
 
 begin
   Result := TStringList.Create;
+  vQuoted := False;
+  vLen := 0;
+  vSep := Ord(FFormatOptions.FColumnSeparator);
 
-  vDoubleQuote := False;
-  vStr := '';
-  vChr2 := #0;
-
-  while AStream.Position < AStream.Size do
+  while AStream.Read(vByte, 1) = 1 do
   begin
-    AStream.Read(vChr1, SizeOf(vChr1));
-    if (vChr1 = '"') and (vChr2 <> '\') then
+    if vByte = Ord('"') then
     begin
-      vDoubleQuote := not vDoubleQuote;
-      vStr := vStr + vChr1;
+      if vQuoted and (AStream.Read(vNext, 1) = 1) then
+      begin
+        if vNext = Ord('"') then
+        begin
+          PutByte(vNext);
+          Continue;
+        end;
+        AStream.Position := AStream.Position - 1;
+      end;
+      vQuoted := not vQuoted;
+      PutByte(vByte);
     end
-    else if (vChr1 = ';') and (not vDoubleQuote) then
+    else if (vByte = vSep) and (not vQuoted) then
+      AddValue
+    else if (vByte = 13) and (not vQuoted) then
     begin
-      addString;
+      // windows ends the line with CR LF: swallow the LF. mac ends with a
+      // bare CR: give the next byte back
+      if (AStream.Read(vNext, 1) = 1) and (vNext <> 10) then
+        AStream.Position := AStream.Position - 1;
+      AddValue;
+      Exit;
     end
-    // mac ou windows
-    else if (vChr1 = #13) and (not vDoubleQuote) then
+    else if (vByte = 10) and (not vQuoted) then
     begin
-      addString;
-      v13 := True;
-    end
-    // windows final
-    else if (vChr1 = #10) and (not vDoubleQuote) and (v13) then
-    begin
-      Break;
-    end
-    // unix
-    else if (vChr1 = #10) and (not vDoubleQuote) and (not v13) then
-    begin
-      addString;
-      Break;
-    end
-    // mac final
-    else if (not vDoubleQuote) and (v13) then
-    begin
-      AStream.Position := AStream.Position - SizeOf(vChr1);
-      Break;
+      AddValue;
+      Exit;
     end
     else
-    begin
-      vStr := vStr + vChr1;
-    end;
-    vChr2 := vChr1;
+      PutByte(vByte);
   end;
+
+  // last line of a file that does not end with a line break
+  if (vLen > 0) or (Result.Count > 0) then
+    AddValue;
 end;
 
 procedure TRALStorageCSV.ReadFields(ADataset: TDataSet; AStream: TStream);
@@ -411,15 +499,24 @@ var
   vInt, vSize: IntegerRAL;
   vInt64: Int64RAL;
   vFloat: Extended;
+  vDate: TDateTime;
   vName, vValue: StringRAL;
   vField: TField;
   vType: TFieldType;
   vFormat: TFormatSettings;
+  vBOM: array [0 .. 2] of Byte;
 begin
   if ADataset.Active then
     ADataset.Close;
 
   ADataset.FieldDefs.Clear;
+
+  // the writer may put a UTF-8 BOM first; left in, it became part of the
+  // first field name and that column was never matched again
+  vInt64 := AStream.Position;
+  if (AStream.Read(vBOM[0], 3) <> 3) or (vBOM[0] <> $EF) or (vBOM[1] <> $BB) or
+     (vBOM[2] <> $BF) then
+    AStream.Position := vInt64;
 
   // capturando cabecalho
   vLine1 := ReadLine(AStream);
@@ -430,8 +527,7 @@ begin
   AStream.Position := vInt64;
 
   try
-    vFormat.DecimalSeparator := Char(FFormatOptions.DecimalSeparator);
-    vFormat.ThousandSeparator := Char(FFormatOptions.ThousandSeparator);
+    vFormat := CSVFormatSettings;
 
     SetLength(FFieldNames, vLine1.Count);
     SetLength(FFieldTypes, vLine1.Count);
@@ -439,7 +535,7 @@ begin
 
     for vInt := 0 to Pred(vLine1.Count) do
     begin
-      vName := vLine1.Strings[vInt];
+      vName := CSVUnquote(Trim(vLine1.Strings[vInt]));
       vField := ADataset.Fields.FindField(vName);
       if vField <> nil then
       begin
@@ -448,10 +544,29 @@ begin
       end
       else
       begin
-        vValue := vLine2.Strings[vInt];
+        // CSV carries no schema: the type is guessed from the first value.
+        // The writer quotes text, dates and blobs and leaves numbers and
+        // booleans bare, so the quotes are the first thing to look at
+        if vInt < vLine2.Count then
+          vValue := Trim(vLine2.Strings[vInt])
+        else
+          vValue := '';
         vSize := 0;
-        if (vValue = FFormatOptions.BoolTrueStr) or (vValue = FFormatOptions.BoolFalseStr)
-        then
+        if CSVIsQuoted(vValue) then
+        begin
+          if (FFormatOptions.DateTimeFormat <> dtfUnix) and
+             CSVParseDateTime(vValue, vDate) then
+            vType := ftDateTime
+          else if Length(vValue) - 2 > 255 then
+            vType := ftMemo
+          else
+          begin
+            vType := ftString;
+            vSize := 255;
+          end;
+        end
+        else if (vValue = FFormatOptions.BoolTrueStr) or
+                (vValue = FFormatOptions.BoolFalseStr) then
         begin
           vType := ftBoolean;
         end
@@ -467,11 +582,6 @@ begin
         begin
           vType := ftString;
           vSize := 255;
-          if Length(vValue) - 2 > 255 then
-          begin
-            vType := ftMemo;
-            vSize := 0;
-          end;
         end
       end;
       FFieldNames[vInt] := vName;
@@ -502,9 +612,70 @@ begin
   end;
 end;
 
+{ This was an empty procedure: LoadFromStream built the fields and then
+  returned an open dataset with no rows. }
 procedure TRALStorageCSV.ReadRecords(ADataset: TDataSet; AStream: TStream);
+var
+  vLine: TStringList;
+  vInt: IntegerRAL;
+  vValue: StringRAL;
+  vFormat: TFormatSettings;
+  vInt64: Int64RAL;
+  vFloat: Extended;
+  vDate: TDateTime;
 begin
+  vFormat := CSVFormatSettings;
 
+  ADataset.DisableControls;
+  try
+    while AStream.Position < AStream.Size do
+    begin
+      vLine := ReadLine(AStream);
+      try
+        // a blank line (typically the trailing line break) is not a record
+        if (vLine.Count = 0) or ((vLine.Count = 1) and (Trim(vLine[0]) = '')) then
+          Continue;
+
+        ADataset.Append;
+        for vInt := 0 to Pred(vLine.Count) do
+        begin
+          if vInt > High(FFoundFields) then
+            Break;
+          vValue := Trim(vLine.Strings[vInt]);
+          // an empty value is a null; a quoted empty value is an empty string
+          if (vValue = '') or (FFoundFields[vInt] = nil) then
+            Continue;
+
+          case FFieldTypes[vInt] of
+            sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord,
+              sftCardinal, sftQWord:
+              if TryStrToInt64(CSVUnquote(vValue), vInt64) then
+                ReadFieldInt64(FFoundFields[vInt], vInt64);
+            sftDouble:
+              if TryStrToFloat(CSVUnquote(vValue), vFloat, vFormat) then
+                ReadFieldFloat(FFoundFields[vInt], vFloat);
+            sftBoolean:
+              ReadFieldBoolean(FFoundFields[vInt],
+                SameText(CSVUnquote(vValue), FFormatOptions.BoolTrueStr));
+            sftString, sftMemo:
+              ReadFieldString(FFoundFields[vInt], CSVUnquote(vValue));
+            sftBlob:
+              ReadFieldStream(FFoundFields[vInt], CSVUnquote(vValue));
+            sftDateTime:
+              if CSVParseDateTime(vValue, vDate) then
+                ReadFieldDateTime(FFoundFields[vInt], vDate)
+              else
+                ReadFieldDateTime(FFoundFields[vInt], CSVUnquote(vValue));
+          end;
+        end;
+        ADataset.Post;
+      finally
+        FreeAndNil(vLine);
+      end;
+    end;
+  finally
+    ADataset.EnableControls;
+  end;
 end;
 
 { TRALCSVFormatOptions }
@@ -567,5 +738,11 @@ begin
   AWriter.WriteChar(FDecimalSeparator);
   AWriter.WriteChar(FThousandSeparator);
 end;
+
+initialization
+  // BIN, JSON and BSON register their link; CSV did not. GetStorageClass
+  // resolves the link by class name, so a server asked for CSV got nil and
+  // died with an access violation at address zero on Create
+  RegisterClass(TRALStorageCSVLink);
 
 end.

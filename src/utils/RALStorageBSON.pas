@@ -232,7 +232,8 @@ begin
     ADataset.First;
   end;
 
-  for vInt1 := 1 to Pred(vRecords^.Values.Count) do
+  // the array is zero-based: starting at 1 silently dropped the first record
+  for vInt1 := 0 to Pred(vRecords^.Values.Count) do
   begin
     vRecord := vRecords^.Values.Items[vInt1];
 

@@ -233,6 +233,7 @@ var
   vField: TFieldDef;
   vType: TRALFieldType;
   vTables: TStringList;
+  vSubstituir: Boolean;
 begin
   inherited;
 
@@ -242,6 +243,15 @@ begin
     into a float field, and a NUMERIC(15,4) of 19.9012 reads back as 3.939E-313. }
   if FLoadingNative then
     Exit;
+
+  { A storage load defines the structure itself, from what travelled in the
+    stream, and this runs in the middle of the Open it triggers. Replacing the
+    FieldDefs here left FireDAC with a data table built from the storage's
+    defs and TFields built from the server's: a CSV that guessed
+    AnsiString(255) got a TWideStringField(60) writing UTF-16 into a one-byte
+    column, and the first record read back as "aeijao". While loading, the
+    server schema is asked only for the update table. }
+  vSubstituir := not FLoading;
 
   vTables := TStringList.Create;
 
@@ -255,7 +265,8 @@ begin
       Exit;
 
     Self.DisableControls;
-    FieldDefs.Clear;
+    if vSubstituir then
+      FieldDefs.Clear;
 
     try
       for vInt := 0 to Pred(vInfo.Count) do
@@ -265,6 +276,9 @@ begin
         // update table
         if vTables.IndexOf(vInfo.Field[vInt].TableName) < 0 then
           vTables.Add(vInfo.Field[vInt].TableName);
+
+        if not vSubstituir then
+          Continue;
 
         vField := FieldDefs.AddFieldDef;
         vField.Name := vInfo.Field[vInt].FieldName;
