@@ -218,6 +218,19 @@ begin
   {$IFNDEF FPC}
     {$IFDEF ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT}
       Result := True;
+    {$ELSE}
+      { Stock ZeosLib ships ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT commented out
+        in Zeos.inc, so on Delphi TZMemTable has no stream import and
+        TRALDBZMemTable.ZeosLoadFromStream compiles to an empty body. Without
+        this ELSE the function assigned nothing and returned whatever was left
+        in the result register: when that came back non-zero the server exported
+        a native stream no client could load, the dataset stayed closed, and the
+        First in OnQueryResponse raised "Cannot perform this operation on a
+        closed dataset" - inside the callback, which takes the process down.
+
+        False makes the server fall back to the RAL storage format, which both
+        sides do support. }
+      Result := False;
     {$ENDIF}
   {$ELSE}
     Result := TZAbstractMemTable.MethodAddress('SaveToStream') <> nil;

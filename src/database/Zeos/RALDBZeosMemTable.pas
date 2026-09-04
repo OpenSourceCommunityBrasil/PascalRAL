@@ -212,8 +212,13 @@ end;
 
 procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
 begin
+  { FRALConnection, not FConnection. The test asks about the RAL connection and
+    the assignment cleared the ZEOS one, inherited from TZAbstractRODataset - so
+    freeing the RAL connection left FRALConnection dangling AND nilled the
+    dataset's own connection. Both show up later as an access violation reading
+    address 0, far from here. }
   if (Operation = opRemove) and (AComponent = FRALConnection) then
-    FConnection := nil
+    FRALConnection := nil
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
@@ -305,8 +310,22 @@ begin
           vField.Precision := vInfo.Field[vInt].Precision;
 
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
-        if vInfo.Field[vInt].Flags and 1 > 0 then
-          vField.Attributes := vField.Attributes + [faReadonly];
+
+        { faReadonly is deliberately NOT copied here.
+
+          The server sets that flag for every column with no base column - a
+          CAST(x) AS alias, a SUM(), any expression. It describes the SOURCE
+          column, and on a client-side memtable it lands on a local buffer that
+          this very unit has to fill with the answer. TZMemTable enforces
+          read-only on every write, so the storage load raised "Field 'X' cannot
+          be modified" between the Append and the Post: the row died there, and
+          with it the rest of the load - one record survived, RecordCount went
+          out of sync and reopening the same query came back empty. The FireDAC
+          memtable only gets away with copying the flag because FireDAC does not
+          enforce it while loading.
+
+          Required is still copied: that one is about the data, not about who
+          may write it. }
         if vInfo.Field[vInt].Flags and 2 > 0 then
           vField.Attributes := vField.Attributes + [faRequired];
       end;
@@ -354,7 +373,13 @@ begin
         FreeAndNil(vSQLCache);
       end;
 
-      Self.First;
+      { Only when the load actually opened the dataset. This runs inside the
+        client callback, and an exception raised here does not reach whoever
+        called Open - it escapes into the thread that dispatches the response
+        and terminates the process. A load that brought nothing has to end as a
+        closed dataset and an OnError, never as a crash in the host. }
+      if Self.Active then
+        Self.First;
     finally
       FreeAndNil(vMem);
     end;
