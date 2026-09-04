@@ -1437,10 +1437,16 @@ end;
   travels declared as octet-stream, see EncodeBody. Hands back the whole header
   on purpose: the decoder sets itself up from ContentType. }
 function ContentTypeDoCorpo(AStream: TStream): StringRAL;
+const
+  { RFC 2046 bchars; anything else on the first line means it is not a
+    delimiter, whatever it starts with }
+  BCHARS = ['0'..'9', 'a'..'z', 'A'..'Z', '''', '(', ')', '+', '_', ',', '-',
+    '.', '/', ':', '=', '?'];
 var
   vByte: Byte;
   vPos: Int64RAL;
-  vBoundary: StringRAL;
+  vBoundary, vFecho, vCauda: StringRAL;
+  vTam: IntegerRAL;
 begin
   Result := '';
   vBoundary := '';
@@ -1454,13 +1460,31 @@ begin
       AStream.ReadBuffer(vByte, 1);
       if (vByte = 13) or (vByte = 10) then
         Break;
+      if (vByte > 127) or not (Chr(vByte) in BCHARS) then
+        Exit; // nao e' delimitador: corpo comum que comeca com dois tracos
       vBoundary := vBoundary + StringRAL(Chr(vByte));
     end;
+    if (vBoundary = '') or (Length(vBoundary) > 70) then
+      Exit;
+
+    { Starting with "--" is not enough: an encrypted plain text that happens to
+      open with two dashes - a comment, a command line - would be torn apart as
+      multipart and lost. A real multipart always ends with the closing
+      delimiter, so the tail of the body has to carry it. Only the tail is
+      read: the body may be large, and the close is always at the end. }
+    vFecho := '--' + vBoundary + '--';
+    vTam := Length(vFecho) + 4; // folga para um CRLF depois do fecho
+    if AStream.Size < vTam then
+      vTam := AStream.Size;
+    SetLength(vCauda, vTam);
+    AStream.Position := AStream.Size - vTam;
+    AStream.ReadBuffer(vCauda[1], vTam);
+    if Pos(vFecho, vCauda) = 0 then
+      Exit;
   finally
     AStream.Position := vPos;
   end;
-  if vBoundary <> '' then
-    Result := rctMULTIPARTFORMDATA + '; boundary=' + vBoundary;
+  Result := rctMULTIPARTFORMDATA + '; boundary=' + vBoundary;
 end;
 
 { True when the stream opens with the two dashes that start a multipart
@@ -1600,7 +1624,7 @@ var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
-  vString, vValor: StringRAL;
+  vString, vValor, vArquivo: StringRAL;
   vTemp: TStream;
 begin
   Result := nil;
@@ -1659,8 +1683,33 @@ begin
         vItem := Index[vInt1];
         if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
+          { A BODY part with no real filename goes out named after itself; a
+            FIELD part goes out as a plain form field.
+
+            Why the body parts must be named: libmicrohttpd, under the Sagui
+            engine, routes any multipart body through its upload machinery and
+            materialises only the parts that name a file - the rest vanish in
+            silence, no field, no upload, no payload. Body parts are RAL's own
+            envelope (typed params, "SQL", "ParamCount", "N0"), so naming them
+            costs nothing outside: no foreign server could read them anyway.
+
+            Why the field parts must NOT be named: a server that is not RAL
+            files a named part under uploads instead of fields - PHP's $_FILES,
+            Spring's MultipartFile, Go's MultipartForm.File. A RAL client
+            posting an ordinary form, or a login, to such a server would have
+            its fields land in the wrong place.
+
+            Measured, not assumed: a field mixed with a named body part still
+            reaches a Sagui server - once the library is processing the
+            multipart it hands the unnamed part over as a field. What it drops
+            is a multipart made ONLY of unnamed parts, and that never happens
+            here: a field on its own travels urlencoded, and a body part is
+            always named. }
+          vArquivo := Index[vInt1].FileName;
+          if (vArquivo = '') and (vItem.Kind = rpkBODY) then
+            vArquivo := Index[vInt1].ParamName;
           vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
-            Index[vInt1].FileName, Index[vInt1].ContentType);
+            vArquivo, Index[vInt1].ContentType);
         end;
       end;
       Result := vMultPart.AsStream;

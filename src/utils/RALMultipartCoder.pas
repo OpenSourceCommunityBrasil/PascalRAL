@@ -265,26 +265,18 @@ begin
   begin
     vItem := TRALMultipartFormData(FFormData.Items[vInt]);
 
-    { EVERY part names a file, falling back to the part's own name when there is
-      no real filename.
-
-      Why it has to be every part: libmicrohttpd, under the Sagui engine, routes
-      any multipart body through its upload machinery and materialises only the
-      parts that name a file. The rest vanish in silence - no field, no upload,
-      no payload - and this body is not a form: its parts are RAL's own envelope
-      ("SQL", "ParamCount", "N0", the typed params), carrying octet-stream and
-      text/plain. Naming only some of them left the SQL behind and the query
-      came back empty.
-
-      What it costs outside: a server that is not RAL files a named part under
-      uploads instead of fields. That matters only for a RAL client posting to
-      a foreign server, and such a server could never read this envelope anyway
-      - it is RAL's protocol, not an HTML form. }
+    { A part names a file only when the caller gave it a filename. The encoder
+      does not invent one: whether a part should look like a file on the wire
+      is a decision about what the part IS, and only the caller knows that -
+      see TRALParams.EncodeBody, which names its own envelope parts and leaves
+      plain form fields alone. }
     vArquivo := vItem.Filename;
-    if vArquivo = '' then
-      vArquivo := vItem.Name;
-    vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
-      vArquivo, vItem.ContentType]);
+    if vArquivo <> '' then
+      vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
+        vArquivo, vItem.ContentType])
+    else
+      vString := Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
+        vItem.ContentType]);
     TRALStringStream(Result).WriteString(vString);
     vItem.AsStream.Position := 0;
     Result.CopyFrom(vItem.AsStream, vItem.AsStream.Size);
