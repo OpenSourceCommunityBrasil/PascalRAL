@@ -16,8 +16,10 @@
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
   emCryptInvalidLength = 'Los datos cifrados tienen un tamaño inválido: necesitan IV y bloques enteros.';
   emCryptInvalidPadding = 'No se pudo descifrar: clave incorrecta o contenido alterado.';
+  emCryptInvalidMAC = 'Los datos cifrados fallaron la verificación de integridad: clave incorrecta o contenido alterado.';
   emHMACEmptyText = 'Se debe proporcionar lo texto.';
   emDBConnectionUndefined = 'Conexión no establecida.';
+  emDBInvalidTableName = 'Nombre de tabla inválido: solo letras, dígitos, _, $ y . son aceptados.';
   emDBDriverMissing = 'No se encontró el controlador de conexión.';
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';

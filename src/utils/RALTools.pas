@@ -29,6 +29,9 @@ function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
+/// Equality in constant time, for MACs and signatures: it does not stop at
+/// the first differing byte, so the time taken says nothing about the data
+function RALSameBytes(const A, B: TBytes): Boolean;
 
 implementation
 
@@ -44,6 +47,19 @@ begin
 
   if (Result <> '') and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
     Delete(Result, RALHighStr(Result), 1);
+end;
+
+function RALSameBytes(const A, B: TBytes): Boolean;
+var
+  vInt, vDiff: IntegerRAL;
+begin
+  vDiff := Length(A) xor Length(B);
+  for vInt := 0 to High(A) do
+    if vInt <= High(B) then
+      vDiff := vDiff or (A[vInt] xor B[vInt])
+    else
+      vDiff := vDiff or A[vInt];
+  Result := vDiff = 0;
 end;
 
 {$IFDEF RALWindows}

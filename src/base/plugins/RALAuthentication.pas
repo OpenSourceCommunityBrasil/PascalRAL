@@ -513,7 +513,16 @@ begin
     vResult := False;
     vToken := '';
     vStrParams := '';
-    if Assigned(FOnGetToken) then
+    if (ARequest.Authorization.AuthString <> '') and
+      (ARequest.Authorization.AuthType = ratBearer) then
+    begin
+      { a valid token in hand renews itself: same claims, new expiration.
+        The signature already proves who is asking, so OnGetToken is not
+        consulted here - it decides who gets a FIRST token }
+      vToken := RenewToken(ARequest.Authorization.AuthString, vStrParams);
+      vResult := vToken <> '';
+    end
+    else if Assigned(FOnGetToken) then
     begin
       vParamJWT := TRALJWTParams.Create;
       try
@@ -529,21 +538,10 @@ begin
     end
     else
     begin
-      vParam := ARequest.ParamByName(RALPAYLOADName);
-
-      if vParam = nil then
-        vParam := ARequest.Body;
-
-      vStrParams := '';
-      if not vParam.IsNilOrEmpty then
-        vStrParams := vParam.AsString;
-
-      if (ARequest.Authorization.AuthString <> '') and
-        (ARequest.Authorization.AuthType = ratBearer) then
-        vToken := RenewToken(ARequest.Authorization.AuthString, vStrParams)
-      else
-        vToken := GetToken(vStrParams);
-      vResult := vToken <> '';
+      { Without OnGetToken nobody checks who is asking: any client could post
+        any claims and walk away with a signed token, which made JWT the same
+        as no authentication. Issuing a first token needs the event. }
+      AResponse.Answer(HTTP_Unauthorized);
     end;
 
     if vResult then
@@ -619,7 +617,8 @@ begin
     vJWT.SignSecretKey := FSignSecretKey;
     if vJWT.isValidToken(AToken) then
     begin
-      vJWT.Payload.AsJSON := AJSONParams;
+      { the claims are the ones already signed in the old token, never the
+        ones the client sends along: a renew must not be a rewrite }
       vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
 
       AJSONParams := vJWT.Payload.AsJSON;

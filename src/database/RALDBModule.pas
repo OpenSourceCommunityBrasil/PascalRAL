@@ -595,6 +595,7 @@ var
   vQuery: TDataSet;
   vFields: TRALDBInfoFields;
   vField: TRALDBInfoField;
+  vInt: IntegerRAL;
 
   procedure AddFieldAttribute(AAttribute: StringRAL);
   begin
@@ -817,6 +818,12 @@ begin
         vSchema := ARequest.ParamByName('schema').AsString;
         vTable := ARequest.ParamByName('table').AsString;
         vQuery := nil;
+
+        { the name goes into the SQL text on SQLite and MySQL, so only an
+          identifier is accepted - anything else was a SQL injection }
+        for vInt := POSINISTR to RALHighStr(vTable) do
+          if not (vTable[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
+            raise Exception.Create(emDBInvalidTableName);
 
         vSQL := TStringList.Create;
         try

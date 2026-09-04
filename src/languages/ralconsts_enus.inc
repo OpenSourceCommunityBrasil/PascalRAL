@@ -16,7 +16,9 @@
   emCryptEmptyKey = 'Key must be provided.';
   emCryptInvalidLength = 'Encrypted data has an invalid length: it needs an IV and whole blocks.';
   emCryptInvalidPadding = 'Encrypted data could not be decoded: wrong key or altered content.';
+  emCryptInvalidMAC = 'Encrypted data failed integrity check: wrong key or altered content.';
   emDBConnectionUndefined = 'Connection not set.';
+  emDBInvalidTableName = 'Invalid table name: only letters, digits, _, $ and . are accepted.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';

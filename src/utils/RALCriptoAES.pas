@@ -13,7 +13,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALCripto, RALTypes, RALConsts, RALTools;
+  RALCripto, RALTypes, RALConsts, RALTools, RALStream, RALHashBase, RALSHA2_32;
 
 type
   TRALAESType = (tAES128, tAES192, tAES256);
@@ -76,6 +76,10 @@ type
     function CheckKey: boolean;
     /// a cipher positioned on this key, ready for SetIV
     function CreateCipher(AForDecrypt: boolean): TRALCriptoAESCipher;
+    /// the HMAC key, derived from the cipher key
+    function MacKey: TBytes;
+    /// HMAC-SHA256 of a whole stream under MacKey
+    function Mac(AData: TStream): TBytes;
 
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
@@ -111,6 +115,7 @@ const
   cNumberRounds: array [TRALAESType] of integer = (10, 12, 14); // nr
   cKeyLength: array [TRALAESType] of integer = (4, 6, 8); // nk
   cBlockSize: integer = 4; // nb
+  cMacSize = 32; // HMAC-SHA256
 
 var
   FDecSBOX: array [0 .. 255] of byte;
@@ -561,6 +566,50 @@ begin
   inherited Destroy;
 end;
 
+function TRALCriptoAES.MacKey: TBytes;
+var
+  vSha: TRALSHA2_32;
+  vBytes, vSalt: TBytes;
+  vStream, vDigest: TStream;
+begin
+  { a key of its own for the MAC, derived from the cipher key: the same bytes
+    must not serve two algorithms. SHA-256 of key || 'ral-mac' is easy to
+    reproduce outside RAL, which keeps the format readable by third parties }
+  vBytes := StringToBytesUTF8(Key);
+  vSalt := StringToBytesUTF8('ral-mac');
+  SetLength(vBytes, Length(vBytes) + Length(vSalt));
+  Move(vSalt[0], vBytes[Length(vBytes) - Length(vSalt)], Length(vSalt));
+
+  vSha := TRALSHA2_32.Create;
+  vStream := BytesToStream(vBytes);
+  try
+    vSha.Version := rsv256;
+    vSha.OutputType := rhotNone;
+    vDigest := vSha.HashAsStream(vStream);
+    try
+      Result := StreamToBytes(vDigest);
+    finally
+      vDigest.Free;
+    end;
+  finally
+    vStream.Free;
+    vSha.Free;
+  end;
+end;
+
+function TRALCriptoAES.Mac(AData: TStream): TBytes;
+var
+  vSha: TRALSHA2_32;
+begin
+  vSha := TRALSHA2_32.Create;
+  try
+    vSha.Version := rsv256;
+    Result := vSha.HMACAsDigest(AData, MacKey);
+  finally
+    vSha.Free;
+  end;
+end;
+
 function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
 var
   vInBuf: array of byte;
@@ -568,7 +617,7 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize, vSizeBuf: Int64RAL;
   vPadding: IntegerRAL;
-  vIV: TBytes;
+  vIV, vMac: TBytes;
   vCipher: TRALCriptoAESCipher;
 begin
   if not CheckKey then
@@ -645,6 +694,14 @@ begin
   end;
 
   Result.Size := Result.Position;
+
+  { encrypt-then-MAC: HMAC-SHA256 over IV and ciphertext, appended. Without
+    it a byte flipped on the wire decrypted to different text with nobody the
+    wiser - the padding check only ever sees the last block }
+  vMac := Mac(Result);
+  Result.Position := Result.Size;
+  Result.Write(vMac[0], Length(vMac));
+
   Result.Position := 0;
 end;
 
@@ -652,11 +709,12 @@ function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
 var
   vInBuf: array of byte;
   vOutBuf: array of byte;
-  vBytesRead: IntegerRAL;
-  vPosition, vSize, vSizeBuf: Int64RAL;
+  vBytesRead, vRead: IntegerRAL;
+  vPosition, vSize, vFim, vSizeBuf: Int64RAL;
   vPad1, vPad2: byte;
-  vIV: TBytes;
+  vIV, vMac, vTag: TBytes;
   vCipher: TRALCriptoAESCipher;
+  vSigned: TStream;
 begin
   if not CheckKey then
     Exit;
@@ -672,16 +730,34 @@ begin
     Exit;
   end;
 
-  // IV plus at least one block, in whole blocks: anything else was never
-  // produced by this cipher, and decrypting it would only hand back garbage
-  if (vSize < 32) or ((vSize - 16) mod 16 <> 0) then
+  // IV, at least one block in whole blocks, and the MAC: anything else was
+  // never produced by this cipher, and decrypting it would only hand back
+  // garbage
+  if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
     raise Exception.Create(emCryptInvalidLength);
 
+  { the MAC is checked before a single block is decrypted, and in constant
+    time: a body altered on the way, or one under another key, stops here }
+  vFim := vSize - cMacSize;
+  vSigned := TMemoryStream.Create;
+  try
+    vSigned.CopyFrom(AValue, vFim);
+    vMac := Mac(vSigned);
+  finally
+    vSigned.Free;
+  end;
+  SetLength(vTag, cMacSize);
+  AValue.Position := vFim;
+  AValue.ReadBuffer(vTag[0], cMacSize);
+  if not RALSameBytes(vMac, vTag) then
+    raise Exception.Create(emCryptInvalidMAC);
+
+  AValue.Position := 0;
   SetLength(vIV, 16);
   AValue.ReadBuffer(vIV[0], 16);
   vPosition := 16;
 
-  vSizeBuf := vSize - 16;
+  vSizeBuf := vFim - 16;
   if vSizeBuf > DEFAULTBUFFERSTREAMSIZE then
     vSizeBuf := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
 
@@ -689,15 +765,19 @@ begin
   SetLength(vOutBuf, vSizeBuf);
 
   Result := TMemoryStream.Create;
-  Result.Size := vSize - 16;
+  Result.Size := vFim - 16;
 
   vCipher := CreateCipher(True);
   try
     vCipher.SetIV(vIV);
 
-    while vPosition < vSize do
+    while vPosition < vFim do
     begin
-      vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+      // never past the ciphertext: the MAC sits right after it
+      vRead := Length(vInBuf);
+      if vRead > vFim - vPosition then
+        vRead := vFim - vPosition;
+      vBytesRead := AValue.Read(vInBuf[0], vRead);
 
       vCipher.Input := @vInBuf[0];
       vCipher.Output := @vOutBuf[0];

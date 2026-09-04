@@ -46,8 +46,6 @@ type
     function GetLenBit: UInt64RAL;
     /// Picks up incoming and compact content according to buffer length
     procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
-    /// Generates an HMAC hash of a given content
-    function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
     /// Used to initialize the hash
     procedure Initialize; virtual;
     /// Used to insert more content that will generate the hash
@@ -64,6 +62,10 @@ type
     function HashAsString(AValue: TStream): StringRAL; overload; virtual;
     /// Returns a stream hash from a stream
     function HashAsStream(AValue: TStream): TStream;
+    /// Raw HMAC digest with a binary key. Public because a binary key must
+    /// not pass through StringRAL: StringToBytesUTF8 rewrites bytes that are
+    /// not valid UTF-8, and a derived key is full of those
+    function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
     /// Returns a string of a HMAC generated given an UTF8String
     function HMACAsString(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;
     /// Returns a string of a HMAC generated given a Stream
