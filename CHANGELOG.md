@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fix AES integrity, JWT token issuing and table-name SQL injection** (2026-09-04 – tempraturbo)
+  AES: the wire now ends with an HMAC-SHA256 over IV+ciphertext, keyed
+  with SHA-256(key || 'ral-mac') and compared in constant time before a
+  single block is decrypted. A wrong key or a byte altered on the wire
+  raises emCryptInvalidMAC instead of handing back garbage. HMACAsDigest
+  of RALHashBase is public for that; RALSameBytes lives in RALTools.
+  JWT: the token route renews a valid Bearer with its original claims and
+  otherwise only issues through OnGetToken. Without the event it answers
+  401 instead of signing whatever JSON the client posted, and RenewToken
+  no longer lets the request body rewrite the payload.
+  DB module: GetFields rejects a table name that is not an identifier,
+  since SQLite and MySQL concatenated it straight into the SQL text.
+
+- **Make AES real CBC with a random IV, and validate the padding on decrypt** (2026-09-04 – tempraturbo)
+  RALCriptoAES ciphered block by block with no IV and no chaining while the
+  Content-Encription header announced aesNNNcbc_pkcs7. Equal plaintext blocks
+  came out as equal ciphertext blocks, and nothing outside RAL could read the
+  body as the CBC it claimed to be. The wire format is now a random 16-byte IV
+  followed by the ciphertext, PKCS#7 padded; the padding is checked on the way
+  in, so a wrong key or an altered body raises instead of handing back garbage.
+  An empty body stays empty on both sides, since a GET without content still
+  passes through the cipher when the connection is encrypted.
+  This changes the wire: a client and a server on opposite sides of this
+  commit cannot talk to each other, because the old side reads the IV as the
+  first block. Ship both together.
+  The IV comes from RandomBytes, which now uses RtlGenRandom on Windows and
+  /dev/urandom elsewhere; it used to be Randomize plus Random, reseeded from
+  the clock on every call, so two calls in the same millisecond gave the same
+  bytes for the nonce, the token id and now the IV.
+  The per-buffer thread pool that split every stream among RALCPUCount threads
+  is gone. CBC cannot be parallelised on the way in, and it never paid for
+  itself anyway: a hundred-byte body spawned seven threads of sixteen bytes and
+  a Sleep(1) polling loop. The full Delphi matrix went from 1013 s to 147 s.
+  Proven both ways against openssl enc -aes-{128,192,256}-cbc, and by the full
+  matrix: 22172 cases, the cross Delphi x FPC suite with AES in both
+  directions among them.
+
 - **Keep the auth vars list alive for as long as it is used** (2026-09-02 – tempraturbo)
   BeforeSendUrl created vParams inside the "fetch a token" branch and freed it
   right there, then handed the same variable to SetAuthHeader further down. Worse,
