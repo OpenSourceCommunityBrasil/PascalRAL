@@ -409,6 +409,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix the CSV and BSON storages, and the FireDAC memtable rebuilding its fields mid-load** (2026-09-04 – tempraturbo)
+  The CSV storage never worked over the wire: its link class was not registered
+  (GetStorageClass returned nil and the server died with an access violation at
+  address zero, then hid it by reading ClassName of that nil class), ReadRecords
+  was an empty procedure, and ReadLine pulled a Char at a time - two bytes on
+  Delphi - so UTF-8 sequences were torn apart and the line break never found.
+  It now reads bytes, honours the column separator, strips the UTF-8 BOM,
+  doubles quotes on write and undoubles on read, and builds format settings on
+  top of the machine defaults instead of a bare local record.
+  The BSON storage dropped the first record: the array is zero-based and the
+  loop started at one.
+  TRALDBFDMemTable.InternalInitFieldDefs replaced the FieldDefs a storage had
+  just defined, in the middle of the Open that storage triggered. FireDAC ended
+  up with a data table built from the storage's defs and TFields built from the
+  server's: a CSV that guessed AnsiString(255) got a TWideStringField(60)
+  writing UTF-16 into a one-byte column, and the first record read back as
+  "aeijao". While a storage is loading, the server schema is only asked for the
+  update table.
+
 - **Make encrypted multipart requests survive a server that parses multipart itself** (2026-09-04 – tempraturbo)
   An encrypted request body still announced multipart/form-data. libmicrohttpd,
   under the Sagui engine, handed the ciphertext to its multipart machinery, found
