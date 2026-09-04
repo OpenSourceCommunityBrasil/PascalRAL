@@ -1431,6 +1431,38 @@ begin
     end;
 end;
 
+{ The content type a multipart body would have declared, rebuilt from the body
+  itself: its first line is the delimiter, so the boundary is what follows the
+  two dashes. Used when the header cannot carry it - an encrypted multipart
+  travels declared as octet-stream, see EncodeBody. Hands back the whole header
+  on purpose: the decoder sets itself up from ContentType. }
+function ContentTypeDoCorpo(AStream: TStream): StringRAL;
+var
+  vByte: Byte;
+  vPos: Int64RAL;
+  vBoundary: StringRAL;
+begin
+  Result := '';
+  vBoundary := '';
+  if (AStream = nil) or (AStream.Size < 3) then
+    Exit;
+  vPos := AStream.Position;
+  try
+    AStream.Position := 2; // depois dos dois tracos
+    while AStream.Position < AStream.Size do
+    begin
+      AStream.ReadBuffer(vByte, 1);
+      if (vByte = 13) or (vByte = 10) then
+        Break;
+      vBoundary := vBoundary + StringRAL(Chr(vByte));
+    end;
+  finally
+    AStream.Position := vPos;
+  end;
+  if vBoundary <> '' then
+    Result := rctMULTIPARTFORMDATA + '; boundary=' + vBoundary;
+end;
+
 { True when the stream opens with the two dashes that start a multipart
   delimiter. Enough to tell a plain multipart body from a compressed one: every
   compressor RAL uses writes a header of its own first, and none of them starts
@@ -1459,6 +1491,7 @@ var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
   vTemp: TStream;
+  vCTMultipart: StringRAL;
 begin
   Result := nil;
   if ASource = nil then
@@ -1486,20 +1519,34 @@ begin
     before that change working: their multipart really is compressed, a deflate
     stream starts with 0x1F 0x8B, and only a plain one starts with the two
     dashes of a delimiter. }
-  if (FCompressType <> ctNone) and
-     not ((Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0) and
-          ComecaComDelimitador(Result)) then
+  { The bytes decide, not the header: a body that opens with a delimiter was
+    never compressed, whatever Content-Encoding claims. This must not depend on
+    the header saying multipart either - an encrypted multipart travels as
+    octet-stream, and the only thing that tells it apart from a deflate stream
+    is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
+  if (FCompressType <> ctNone) and not ComecaComDelimitador(Result) then
   begin
     vTemp := Decompress(Result);
     FreeAndNil(Result);
     Result := vTemp;
   end;
 
+  { Multipart is recognised by the header OR, when it was encrypted, by the
+    bytes: such a body travels declared as octet-stream, because announcing
+    multipart over ciphertext makes a server that parses natively read the
+    ciphertext as parts and drop everything. The header is gone, the boundary is
+    not - the first line of the plaintext is the delimiter. }
+  vCTMultipart := '';
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+    vCTMultipart := AContentType
+  else if (FCriptoOptions.CriptType <> crNone) and ComecaComDelimitador(Result) then
+    vCTMultipart := ContentTypeDoCorpo(Result);
+
+  if vCTMultipart <> '' then
   begin
     vDecoder := TRALMultipartDecoder.Create;
     try
-      vDecoder.ContentType := AContentType;
+      vDecoder.ContentType := vCTMultipart;
       vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
       vDecoder.ProcessMultiPart(Result);
     finally
@@ -1657,6 +1704,18 @@ begin
     vTemp := Encrypt(Result);
     FreeAndNil(Result);
     Result := vTemp;
+
+    { Ciphertext is not multipart in any sense a parser can use, so it stops
+      saying it is. Announcing multipart over ciphertext made libmicrohttpd,
+      under the Sagui engine, hand the ciphertext to its multipart machinery,
+      find no parts and drop the body - which is how the AES transport lost
+      every param. Nothing goes with the header: DecodeBody reads the boundary
+      back from the first line of the plaintext, which IS the delimiter.
+
+      Only on the request path, where the far end may parse on its own. }
+    if (not AComprimirMultipart) and
+       (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
+      AContentType := rctAPPLICATIONOCTETSTREAM;
   end;
 end;
 

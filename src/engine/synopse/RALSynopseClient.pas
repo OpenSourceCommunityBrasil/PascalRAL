@@ -83,9 +83,12 @@ begin
 
     ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
+    { What to compress is decided here; what was ACTUALLY compressed is only
+      known after the body is encoded, so the Content-Encoding header is added
+      further down, after RequestStream. EncodeBody declines to compress a
+      multipart request, and adding the header here announced gzip over a body
+      that was never deflated. }
     ARequest.ContentCompress := Parent.CompressType;
-    if Parent.CompressType <> ctNone then
-      ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
     // Accept-Encoding states what the client is able to READ, which does not
     // depend on whether it is compressing what it SENDS - hence it sits
@@ -110,6 +113,10 @@ begin
         ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
       if ARequest.ContentDisposition <> '' then
         ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
+      { after RequestStream, on purpose: only now ContentEncoding says what
+        EncodeBody actually did to the body - see the note above }
+      if ARequest.ContentCompress <> ctNone then
+        ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
       vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 

@@ -127,9 +127,13 @@ begin
     vCookies.Free;
   end;
 
+  { What to compress is decided here; what was ACTUALLY compressed is only
+    known after the body is encoded, so the Content-Encoding header is copied
+    further down, next to the content type. EncodeBody declines to compress a
+    multipart request, and copying the header here announced gzip over a body
+    that was never deflated - the server then inflated a plain multipart and
+    fell over. }
   ARequest.ContentCompress := Parent.CompressType;
-  if Parent.CompressType <> ctNone then
-    FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
 
   // Accept-Encoding states what the client is able to READ, which does not
   // depend on whether it is compressing what it SENDS - hence it sits
@@ -155,6 +159,10 @@ begin
   try
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
+    { after RequestStream, on purpose: only now ContentEncoding says what
+      EncodeBody actually did to the body - see the note above }
+    if ARequest.ContentCompress <> ctNone then
+      FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
 
     try
       case AMethod of
