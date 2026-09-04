@@ -269,6 +269,12 @@ begin
         end;
 
         ContentType := ParamByName('Content-Type').AsString;
+        { Content-Disposition of the REQUEST, which Indy, fpHTTP and Synopse all
+          read and this one did not - it only ever set the one on the response.
+          SetRequestStream hands it to Params.DecodeBody along with the content
+          type, so leaving it empty makes the body decode with half the
+          information the other engines give it. }
+        ContentDisposition := ParamByName('Content-Disposition').AsString;
         ContentEncoding := ParamByName('Content-Encoding').AsString;
         AcceptEncoding := ParamByName('Accept-Encoding').AsString;
         ContentEncription := ParamByName('Content-Encription').AsString;
@@ -324,6 +330,7 @@ begin
             FreeAndNil(vFileMap);
           end;
 
+          vPayloadLen := 0;
           vPayLoad := sg_httpreq_payload(Areq);
           if Assigned(vPayLoad) then
           begin
@@ -345,7 +352,9 @@ begin
             end;
           end;
 
-          ContentSize := 0;
+          { the real size, like Indy, fpHTTP and Synopse report. Zero here was
+            the server telling every handler that the request arrived empty. }
+          ContentSize := vPayloadLen;
 
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
