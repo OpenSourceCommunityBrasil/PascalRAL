@@ -7,6 +7,7 @@ interface
 uses
   Classes, SysUtils, DB,
   SQLDB, SQLDBLib, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
+  ibase60dyn,
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -49,6 +50,21 @@ type
 
 implementation
 
+var
+  { one reference to the Firebird client library, kept for the life of the
+    process. sqldb loads fbclient on the first connection and, when its own
+    counter drops back to zero, calls fb_shutdown() before unloading it
+    (ibase60.inc, ReleaseIBase60). fb_shutdown is final for that DLL image:
+    every later attach through it answers "connection shutdown" (GDS
+    335544856). With the pool off a driver lives one request, so the counter
+    hits zero after every request - harmless while sqldb is the only user,
+    because the DLL really unloads and the next request loads a fresh one,
+    but fatal as soon as anything else in the process holds the same image
+    (Zeos, or an application connection): the image stays loaded, shut down
+    for everybody. Holding a reference here keeps the counter above zero,
+    so fb_shutdown never runs while the process lives. }
+  gFirebirdSeguro: Boolean = False;
+
 { TRALDBSQLDB }
 
 procedure TRALDBSQLDB.Conectar;
@@ -84,6 +100,14 @@ begin
     // code that already existed. without it sqldb finds the library as usual.
     FLibLocator.Enabled := LibLocation <> '';
     FConnector.Open;
+    { right after a successful open the library is loaded and counted, so the
+      parameterless InitialiseIBase60 only increments - no second load, no
+      name conflict with whatever LibLocation pointed at }
+    if (DatabaseType = dtFirebird) and not gFirebirdSeguro then
+    begin
+      InitialiseIBase60;
+      gFirebirdSeguro := True;
+    end;
   except
     on e: Exception do
     begin
@@ -324,6 +348,10 @@ end;
 initialization
   RegisterClass(TRALDBSQLDB);
   RegisterDatabase(TRALDBSQLDB);
+
+finalization
+  if gFirebirdSeguro then
+    ReleaseIBase60;
 
 end.
 
