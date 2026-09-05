@@ -217,6 +217,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix wide DAO params, Indy error bodies on FPC, the CSV BOM and leaks on failed transforms** (2026-09-05 – tempraturbo)
+  RALDBFiredacDAO stripped the terminator only for varString and sent wide
+  params with their length in bytes, so ftWideString reached the database
+  as garbage. RALIndyClient enabled hoWantProtocolErrorContent only under
+  DELPHI10_1UP, leaving every 4xx/5xx body empty on Lazarus. RALStorageCSV
+  passed BytesOf() to an untyped const, writing three bytes of a pointer
+  instead of the UTF-8 BOM, which is why the CSV round trip failed only
+  sometimes. EncodeBody/DecodeBody and TRALCompress leaked the input or
+  output stream when a transform raised. RALDBBase never called
+  DoneEngineDefs, and the TStream overloads of the storage props were empty.
+
 - **fix: Correção de nomenclatura de funções em português fix: ExpandFileName já faz a tratativa de LibLocation, revertida alteração fix: Correção de mensagem de erro não informando o storage faltante** (2026-09-04 – mobius1qwe)
 
 - **Fix multipart fields going out as uploads and a plain body mistaken for multipart** (2026-09-04 – tempraturbo)
@@ -448,6 +459,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix a late response crashing the process after its dataset or client was freed** (2026-09-05 – tempraturbo)
+  Get/Post with a callback run on a TRALThreadClient that nobody tracked:
+  freeing the memtable that issued the Open, or the client itself, while
+  the request was still on the wire left the thread calling a method of a
+  freed object when the answer arrived - an access violation on Delphi and,
+  on FPC, the end of the whole process. TRALClient now keeps the live
+  request threads: DropCallbacks forgets the callbacks of an object about
+  to die (the memtables call it from their destructors) and Destroy waits
+  for pending requests, bounded by the connect and request timeouts.
+
+- **Fix Firebird "connection shutdown" on FPC when sqldb shares fbclient with Zeos** (2026-09-05 – tempraturbo)
+  ReleaseIBase60 calls fb_shutdown() once sqldb's own reference count drops
+  to zero, and with the pool off that happens after every request. The
+  shutdown is final for the DLL image, so as soon as anything else in the
+  process keeps fbclient loaded - Zeos, an application connection - every
+  later attach fails with GDS 335544856. The sqldb driver now keeps one
+  reference of its own from the first successful Firebird open until unit
+  finalization, the way FireDAC keeps the client library loaded.
+
 - **Fix TRALHashes.Decrypt encrypting and make its string form base64** (2026-09-04 – tempraturbo)
   The Decrypt(string, TRALCriptoType) overload called Encrypt, and the text
   form carried the raw cipher bytes inside a StringRAL, which the UTF-8
