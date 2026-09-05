@@ -1,25 +1,34 @@
+/// Facade over the hash and cipher classes: one call, no object to manage.
 unit RALHashes;
 
 interface
 
 uses
   Classes, SysUtils, RALTypes, RALSHA2_64, RALSHA2_32, RALCriptoAES, RALHashBase,
-  RALBase64, RALStream;
+  RALCripto, RALBase64, RALStream;
 
 type
   THashType = (htSHA224, htSHA256, htSHA384, htSHA512, htSHA512_224, htSHA512_256);
-  TCriptoType = (ctAES128, ctAES192, ctAES256);
 
+  { The cipher is chosen by TRALCriptoType, the same enum TRALCriptoOptions
+    publishes - there used to be a private copy of it here (ctAES128..), and
+    every method existed twice to accept both.
+
+    String in, string out is base64 of the ciphertext: the raw bytes of an
+    AES stream are not text, and pushing them through a StringRAL loses bytes
+    on the way (UTF-8 conversion, #0, line endings). So Encrypt(string)
+    returns the base64 of the encrypted stream, and Decrypt(string) expects
+    exactly that. The TStream overloads stay binary - they are what the
+    request body goes through. crNone is a pass-through on both. }
   TRALHashes = class
+  private
+    class function CreateCipher(const AKey: StringRAL; AAlgorithm: TRALCriptoType): TRALCriptoAES;
+    class function CopyOf(AInput: TStream): TStream;
   public
     class function GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
-    class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL; overload;
     class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
-    class function Encrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TCriptoType): TStream; overload;
     class function Encrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
-    class function Decrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL; overload;
     class function Decrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
-    class function Decrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TCriptoType): TStream; overload;
     class function Decrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
     class function toBase64(AText: StringRAL): StringRAL;
     class function fromBase64(AText: StringRAL): StringRAL;
@@ -29,169 +38,91 @@ implementation
 
 { TRALHashes }
 
-class function TRALHashes.Decrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
-var
-  AES: TRALCriptoAES;
-begin
-  Result := EmptyStr;
-  AES := TRALCriptoAES.Create;
-  try
-    case AAlgorithm of
-      ctAES128: AES.AESType := tAES128;
-      ctAES192: AES.AESType := tAES192;
-      ctAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.Decrypt(AText);
-  finally
-    FreeAndNil(AES);
-  end;
-end;
-
-class function TRALHashes.Decrypt(AText, AKey: StringRAL;
-  AAlgorithm: TRALCriptoType): StringRAL;
-var
-  AES: TRALCriptoAES;
-begin
-  Result := EmptyStr;
-  AES := TRALCriptoAES.Create;
-  try
-    case AAlgorithm of
-      crAES128: AES.AESType := tAES128;
-      crAES192: AES.AESType := tAES192;
-      crAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.Encrypt(AText);
-  finally
-    FreeAndNil(AES);
-  end;
-end;
-
-class function TRALHashes.Decrypt(AInput: TStream; AKey: StringRAL;
-  AAlgorithm: TRALCriptoType): TStream;
-var
-  AES: TRALCriptoAES;
+class function TRALHashes.CreateCipher(const AKey: StringRAL;
+  AAlgorithm: TRALCriptoType): TRALCriptoAES;
 begin
   Result := nil;
-  AES := TRALCriptoAES.Create;
-    try
-    case AAlgorithm of
-      crAES128: AES.AESType := tAES128;
-      crAES192: AES.AESType := tAES192;
-      crAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.DecryptAsStream(AInput);
-  finally
-    FreeAndNil(AES);
+  if AAlgorithm = crNone then
+    Exit;
+  Result := TRALCriptoAES.Create;
+  case AAlgorithm of
+    crAES128: Result.AESType := tAES128;
+    crAES192: Result.AESType := tAES192;
+    crAES256: Result.AESType := tAES256;
   end;
+  Result.Key := AKey;
 end;
 
-class function TRALHashes.Encrypt(AInput: TStream; AKey: StringRAL;
-  AAlgorithm: TRALCriptoType): TStream;
-var
-  AES: TRALCriptoAES;
+class function TRALHashes.CopyOf(AInput: TStream): TStream;
 begin
-  Result := nil;
-  AES := TRALCriptoAES.Create;
-  try
-    case AAlgorithm of
-      crAES128: AES.AESType := tAES128;
-      crAES192: AES.AESType := tAES192;
-      crAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.EncryptAsStream(AInput);
-  finally
-    FreeAndNil(AES);
-  end;
-end;
-
-class function TRALHashes.Encrypt(AInput: TStream; AKey: StringRAL;
-  AAlgorithm: TCriptoType): TStream;
-var
-  AES: TRALCriptoAES;
-begin
-  Result := nil;
-  AES := TRALCriptoAES.Create;
-  try
-    case AAlgorithm of
-      ctAES128: AES.AESType := tAES128;
-      ctAES192: AES.AESType := tAES192;
-      ctAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.EncryptAsStream(AInput);
-  finally
-    FreeAndNil(AES);
-  end;
-end;
-
-class function TRALHashes.Decrypt(AInput: TStream; AKey: StringRAL;
-  AAlgorithm: TCriptoType): TStream;
-var
-  AES: TRALCriptoAES;
-begin
-  Result := nil;
-  AES := TRALCriptoAES.Create;
-    try
-    case AAlgorithm of
-      ctAES128: AES.AESType := tAES128;
-      ctAES192: AES.AESType := tAES192;
-      ctAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.DecryptAsStream(AInput);
-  finally
-    FreeAndNil(AES);
+  Result := TMemoryStream.Create;
+  if AInput <> nil then
+  begin
+    AInput.Position := 0;
+    Result.CopyFrom(AInput, AInput.Size);
+    Result.Position := 0;
   end;
 end;
 
 class function TRALHashes.Encrypt(AText, AKey: StringRAL;
   AAlgorithm: TRALCriptoType): StringRAL;
 var
-  AES: TRALCriptoAES;
+  vAES: TRALCriptoAES;
 begin
-  Result := EmptyStr;
-  AES := TRALCriptoAES.Create;
+  vAES := CreateCipher(AKey, AAlgorithm);
+  if vAES = nil then
+    Exit(AText);
   try
-    case AAlgorithm of
-      crAES128: AES.AESType := tAES128;
-      crAES192: AES.AESType := tAES192;
-      crAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.Encrypt(AText);
+    vAES.OutputType := cotBase64;
+    Result := vAES.Encrypt(AText);
   finally
-    FreeAndNil(AES);
+    FreeAndNil(vAES);
   end;
 end;
 
-class function TRALHashes.Encrypt(AText, AKey: StringRAL; AAlgorithm: TCriptoType): StringRAL;
+class function TRALHashes.Decrypt(AText, AKey: StringRAL;
+  AAlgorithm: TRALCriptoType): StringRAL;
 var
-  AES: TRALCriptoAES;
+  vAES: TRALCriptoAES;
 begin
-  Result := EmptyStr;
-  AES := TRALCriptoAES.Create;
+  vAES := CreateCipher(AKey, AAlgorithm);
+  if vAES = nil then
+    Exit(AText);
   try
-    case AAlgorithm of
-      ctAES128: AES.AESType := tAES128;
-      ctAES192: AES.AESType := tAES192;
-      ctAES256: AES.AESType := tAES256;
-    end;
-
-    AES.Key := AKey;
-    Result := AES.Encrypt(AText);
+    vAES.IntputType := cotBase64;
+    Result := vAES.Decrypt(AText);
   finally
-    FreeAndNil(AES);
+    FreeAndNil(vAES);
+  end;
+end;
+
+class function TRALHashes.Encrypt(AInput: TStream; AKey: StringRAL;
+  AAlgorithm: TRALCriptoType): TStream;
+var
+  vAES: TRALCriptoAES;
+begin
+  vAES := CreateCipher(AKey, AAlgorithm);
+  if vAES = nil then
+    Exit(CopyOf(AInput));
+  try
+    Result := vAES.EncryptAsStream(AInput);
+  finally
+    FreeAndNil(vAES);
+  end;
+end;
+
+class function TRALHashes.Decrypt(AInput: TStream; AKey: StringRAL;
+  AAlgorithm: TRALCriptoType): TStream;
+var
+  vAES: TRALCriptoAES;
+begin
+  vAES := CreateCipher(AKey, AAlgorithm);
+  if vAES = nil then
+    Exit(CopyOf(AInput));
+  try
+    Result := vAES.DecryptAsStream(AInput);
+  finally
+    FreeAndNil(vAES);
   end;
 end;
 
