@@ -217,6 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de nomenclatura de funções em português fix: ExpandFileName já faz a tratativa de LibLocation, revertida alteração fix: Correção de mensagem de erro não informando o storage faltante** (2026-09-04 – mobius1qwe)
+
 - **Fix multipart fields going out as uploads and a plain body mistaken for multipart** (2026-09-04 – tempraturbo)
   Every multipart part had been given a filename, because libmicrohttpd under
   the Sagui engine materialises only the parts that name a file. That was more
