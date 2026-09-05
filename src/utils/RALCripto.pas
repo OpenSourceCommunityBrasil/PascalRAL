@@ -137,13 +137,13 @@ end;
 
 function TRALCripto.BeforeDecrypt(AValue: TStream): TStream;
 var
-  vStreamInput, vStreamEnc : TStream;
+  vStreamInput, vStreamEnc: TStream;
 begin
   if not CanCript then
     Exit;
 
   case FIntputType of
-    cotNone : begin
+    cotNone: begin
       Result := DecryptAsStream(AValue);
     end;
     cotBase64: begin

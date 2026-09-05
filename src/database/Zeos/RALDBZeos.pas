@@ -149,7 +149,7 @@ begin
 
     Result := vQuery;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
@@ -286,7 +286,7 @@ begin
 
     Result := vQuery;
   except
-    on e : Exception do
+    on e: Exception do
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
@@ -337,7 +337,7 @@ begin
         end;
       end;
     except
-      on e : Exception do
+      on e: Exception do
       begin
         if Assigned(OnErrorQuery) then
           OnErrorQuery(vQuery, e.Message, Request);

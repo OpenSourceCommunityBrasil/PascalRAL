@@ -206,10 +206,10 @@ var
   vResponse: TRALResponse;
   vInt: integer;
   vStr1, vStr2: StringRAL;
-  vConnClose : boolean;
-  vCookies : TStringList;
+  vConnClose: boolean;
+  vCookies: TStringList;
   vParam: TRALParam;
-  vCookie : TCookie;
+  vCookie: TCookie;
 begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;

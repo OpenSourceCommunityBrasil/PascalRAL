@@ -341,12 +341,10 @@ begin
     FStorage := vStorageLinkClass.Create(nil);
     FStorage.LoadPropsFromStream(AWriter);
   end
-  else begin
-    // vStorageLinkClass is nil here: reading its ClassName was itself an
-    // access violation, which hid the real message every time a format had
-    // no registered link
+  else
+  begin
     raise Exception.CreateFmt(emStorageLinkNotFound,
-      ['storage format #' + IntToStr(Ord(vFormat))]);
+      [vStorageLinkClass.ClassName]);
   end;
 end;
 

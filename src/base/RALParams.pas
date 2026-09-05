@@ -1436,7 +1436,7 @@ end;
   two dashes. Used when the header cannot carry it - an encrypted multipart
   travels declared as octet-stream, see EncodeBody. Hands back the whole header
   on purpose: the decoder sets itself up from ContentType. }
-function ContentTypeDoCorpo(AStream: TStream): StringRAL;
+function BodyContentType(AStream: TStream): StringRAL;
 const
   { RFC 2046 bchars; anything else on the first line means it is not a
     delimiter, whatever it starts with }
@@ -1491,7 +1491,7 @@ end;
   delimiter. Enough to tell a plain multipart body from a compressed one: every
   compressor RAL uses writes a header of its own first, and none of them starts
   with "--" (deflate opens with 0x1F 0x8B). }
-function ComecaComDelimitador(AStream: TStream): boolean;
+function StartsWithDelim(AStream: TStream): boolean;
 var
   vDois: array [0 .. 1] of Byte;
   vPos: Int64RAL;
@@ -1548,7 +1548,7 @@ begin
     the header saying multipart either - an encrypted multipart travels as
     octet-stream, and the only thing that tells it apart from a deflate stream
     is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
-  if (FCompressType <> ctNone) and not ComecaComDelimitador(Result) then
+  if (FCompressType <> ctNone) and not StartsWithDelim(Result) then
   begin
     vTemp := Decompress(Result);
     FreeAndNil(Result);
@@ -1563,8 +1563,8 @@ begin
   vCTMultipart := '';
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
     vCTMultipart := AContentType
-  else if (FCriptoOptions.CriptType <> crNone) and ComecaComDelimitador(Result) then
-    vCTMultipart := ContentTypeDoCorpo(Result);
+  else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(Result) then
+    vCTMultipart := BodyContentType(Result);
 
   if vCTMultipart <> '' then
   begin
