@@ -223,4 +223,13 @@ begin
   FreeAndNil(vQuery);
 end;
 
+{ DoneEngineDefs existed and nobody called it: the driver registry (one
+  TStringList plus one entry per driver unit) outlived the process and showed
+  up in heaptrc as leaked at exit. The empty initialization is not optional:
+  Delphi refuses a finalization section without one (E2029), FPC does not. }
+initialization
+
+finalization
+  DoneEngineDefs;
+
 end.

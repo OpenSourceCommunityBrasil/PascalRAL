@@ -200,19 +200,36 @@ begin
 
         Self.Params[i].GetData(PByte(vBytesAux));
 
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
+        { GetData hands the string over with its terminator, and the server
+          feeds that buffer to SetData with a LENGTH: the terminator has to
+          go here. It used to be trimmed only for varString (AnsiString), so
+          an ftWideString param - what AsWideString sets, and what any
+          text outside the ANSI codepage needs - arrived with the two zero
+          bytes and a byte count where a char count was expected, and the
+          server bound garbage. Wide strings lose zero PAIRS, never a lone
+          byte: the high byte of a real character can be zero. }
+        if not Self.Params[i].IsNull then
         begin
           t := 0;
-
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
+          case Self.Params[i].DataType of
+            ftString, ftFixedChar, ftMemo:
+              for x := High(vBytesAux) downto 0 do
+              begin
+                if vBytesAux[x] = 0 then
+                  t := t + 1
+                else
+                  break;
+              end;
+            ftWideString, ftFixedWideChar, ftWideMemo:
+              begin
+                x := High(vBytesAux);
+                while (x >= 1) and (vBytesAux[x] = 0) and (vBytesAux[x - 1] = 0) do
+                begin
+                  t := t + 2;
+                  x := x - 2;
+                end;
+              end;
           end;
-
           SetLength(vBytesAux, Length(vBytesAux) - t);
         end;
 
@@ -330,16 +347,29 @@ begin
 
         Self.Params[i].GetData(PByte(vBytesAux));
 
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
+        { same rule as ExecSQLRemote: strip the terminator GetData hands over,
+          by byte for ANSI strings and by zero PAIR for wide ones }
+        if not Self.Params[i].IsNull then
         begin
           t := 0;
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
+          case Self.Params[i].DataType of
+            ftString, ftFixedChar, ftMemo:
+              for x := High(vBytesAux) downto 0 do
+              begin
+                if vBytesAux[x] = 0 then
+                  t := t + 1
+                else
+                  break;
+              end;
+            ftWideString, ftFixedWideChar, ftWideMemo:
+              begin
+                x := High(vBytesAux);
+                while (x >= 1) and (vBytesAux[x] = 0) and (vBytesAux[x - 1] = 0) do
+                begin
+                  t := t + 2;
+                  x := x - 2;
+                end;
+              end;
           end;
           SetLength(vBytesAux, Length(vBytesAux) - t);
         end;
@@ -488,16 +518,29 @@ begin
 
         Self.Params[i].GetData(PByte(vBytesAux));
 
-        if ((Self.Params[i].IsNull = false) and
-          (VarType(Self.Params[i].value) = varString)) then
+        { same rule as ExecSQLRemote: strip the terminator GetData hands over,
+          by byte for ANSI strings and by zero PAIR for wide ones }
+        if not Self.Params[i].IsNull then
         begin
           t := 0;
-          for x := Self.Params[i].GetDataSize - 1 downto 0 do
-          begin
-            if vBytesAux[x] = 0 then
-              t := t + 1
-            else
-              break;
+          case Self.Params[i].DataType of
+            ftString, ftFixedChar, ftMemo:
+              for x := High(vBytesAux) downto 0 do
+              begin
+                if vBytesAux[x] = 0 then
+                  t := t + 1
+                else
+                  break;
+              end;
+            ftWideString, ftFixedWideChar, ftWideMemo:
+              begin
+                x := High(vBytesAux);
+                while (x >= 1) and (vBytesAux[x] = 0) and (vBytesAux[x - 1] = 0) do
+                begin
+                  t := t + 2;
+                  x := x - 2;
+                end;
+              end;
           end;
           SetLength(vBytesAux, Length(vBytesAux) - t);
         end;
@@ -647,7 +690,6 @@ begin
 
           vBytesAux := vBinaryReader.ReadBytes(vAuxParamStream.Size);
           vAuxParamStream.Position := 0;
-
           if vNeedAddParam then
             vQueryAux.Params.Add;
 
@@ -655,7 +697,12 @@ begin
             TFieldType(GetEnumValue(Typeinfo(TFieldType),
             ARequest.ParamByName('F' + i.ToString).AsString));
 
-          vQueryAux.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
+          { SetData wants the length in CHARACTERS for string types; the
+            buffer arrives in bytes, so a wide string halves it }
+          if vQueryAux.Params[i].DataType in [ftWideString, ftFixedWideChar, ftWideMemo] then
+            vQueryAux.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux) div SizeOf(WideChar))
+          else
+            vQueryAux.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
 
           if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
             vQueryAux.Params[i].Clear;
@@ -669,7 +716,10 @@ begin
               TFieldType(GetEnumValue(Typeinfo(TFieldType),
               ARequest.ParamByName('F' + i.ToString).AsString));
 
-            vQueryAux2.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
+            if vQueryAux2.Params[i].DataType in [ftWideString, ftFixedWideChar, ftWideMemo] then
+              vQueryAux2.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux) div SizeOf(WideChar))
+            else
+              vQueryAux2.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux));
 
             if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
               vQueryAux2.Params[i].Clear;

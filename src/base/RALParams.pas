@@ -1528,8 +1528,14 @@ begin
 
   if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
   begin
-    vTemp := Decrypt(Result);
-    FreeAndNil(Result);
+    { the finally is what keeps a failing transform from leaking its input: a
+      raise inside Decrypt/Decompress/Compress/Encrypt used to leave Result
+      behind (heaptrc caught it when libzstd was missing next to the exe) }
+    try
+      vTemp := Decrypt(Result);
+    finally
+      FreeAndNil(Result);
+    end;
     Result := vTemp;
   end;
 
@@ -1550,8 +1556,11 @@ begin
     is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
   if (FCompressType <> ctNone) and not StartsWithDelim(Result) then
   begin
-    vTemp := Decompress(Result);
-    FreeAndNil(Result);
+    try
+      vTemp := Decompress(Result);
+    finally
+      FreeAndNil(Result);
+    end;
     Result := vTemp;
   end;
 
@@ -1742,16 +1751,24 @@ begin
 
   if (FCompressType <> ctNone) and (Result <> nil) then
   begin
-    vTemp := Compress(Result);
-    FreeAndNil(Result);
+    { see DecodeBody: the finally is what stops a failing transform from
+      leaking the input stream }
+    try
+      vTemp := Compress(Result);
+    finally
+      FreeAndNil(Result);
+    end;
     Result := vTemp;
   end;
 
   if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
     (Result <> nil) then
   begin
-    vTemp := Encrypt(Result);
-    FreeAndNil(Result);
+    try
+      vTemp := Encrypt(Result);
+    finally
+      FreeAndNil(Result);
+    end;
     Result := vTemp;
 
     { Ciphertext is not multipart in any sense a parser can use, so it stops

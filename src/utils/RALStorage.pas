@@ -328,7 +328,14 @@ procedure TRALStorageLink.SavePropsToStream(AStream: TStream);
 var
   vWriter: TRALBinaryWriter;
 begin
+  { it used to create the writer and stop there: nothing written, writer
+    leaked }
   vWriter := TRALBinaryWriter.Create(AStream);
+  try
+    SavePropsToStream(vWriter);
+  finally
+    FreeAndNil(vWriter);
+  end;
 end;
 
 procedure TRALStorageLink.SavePropsToStream(AWriter: TRALBinaryWriter);
@@ -383,7 +390,14 @@ procedure TRALStorageLink.LoadPropsFromStream(AStream: TStream);
 var
   vWriter: TRALBinaryWriter;
 begin
+  { same story as SavePropsToStream(AStream): created the reader, read
+    nothing, leaked it }
   vWriter := TRALBinaryWriter.Create(AStream);
+  try
+    LoadPropsFromStream(vWriter);
+  finally
+    FreeAndNil(vWriter);
+  end;
 end;
 
 function TRALStorageLink.GetStorage: TRALStorage;

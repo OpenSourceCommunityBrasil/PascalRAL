@@ -298,10 +298,17 @@ end;
 
 procedure TRALStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
 const
-  UTF8BOM = #$EF#$BB#$BF;
+  { as three bytes, not a string: the old code did
+    Write(BytesOf(UTF8BOM), 3), and a dynamic array handed to an untyped
+    const parameter is its POINTER, so the file started with three bytes of a
+    heap address. Random per run: usually harmless, sometimes a quote or a
+    line break, and then the reader lost the header or swallowed the whole
+    CSV into one quoted field - the "storage csv" cases that failed in one
+    combination out of a hundred. }
+  UTF8BOM: array [0 .. 2] of Byte = ($EF, $BB, $BF);
 begin
   if FUseUTF8BOM then
-    AStream.Write(BytesOf(UTF8BOM), Length(UTF8BOM));
+    AStream.Write(UTF8BOM[0], Length(UTF8BOM));
   WriteFields(ADataset, AStream);
   WriteRecords(ADataset, AStream);
 end;

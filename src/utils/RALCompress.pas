@@ -198,7 +198,14 @@ begin
   // reading its own header and trailer - deflate and zlib read nothing and
   // raised "buffer error".
   AStream.Position := 0;
-  InitCompress(AStream, Result);
+  // a compressor that raises (zstd/brotli without their DLL, for one) must
+  // not leave the output stream behind with the exception
+  try
+    InitCompress(AStream, Result);
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
 end;
 
 function TRALCompress.Compress(const AString: StringRAL): StringRAL;
@@ -259,7 +266,12 @@ begin
 
   // same reason as Compress: normalise the position instead of trusting it
   AStream.Position := 0;
-  InitDeCompress(AStream, Result);
+  try
+    InitDeCompress(AStream, Result);
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
 end;
 
 procedure TRALCompress.DecompressFile(AInFile, AOutFile: StringRAL);

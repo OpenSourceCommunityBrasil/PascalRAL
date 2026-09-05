@@ -40,8 +40,12 @@ begin
   inherited Create(AOwner);
 
   FHttp := TIdHTTP.Create(nil);
+  { hoWantProtocolErrorContent on FPC too: without it Indy discards the body
+    of every 4xx/5xx, so the AnswerException message never reached the
+    Lazarus client - status 500 with an empty body. Indy 10.6.x, the one the
+    Online Package Manager ships, has the option. }
   FHttp.HTTPOptions := [hoKeepOrigProtocol,
-                        {$IFDEF DELPHI10_1UP}hoWantProtocolErrorContent,{$ENDIF}
+                        {$IF DEFINED(DELPHI10_1UP) OR DEFINED(FPC)}hoWantProtocolErrorContent,{$IFEND}
                         hoNoProtocolErrorException];
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
