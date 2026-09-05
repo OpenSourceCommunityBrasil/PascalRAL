@@ -602,6 +602,10 @@ end;
 
 destructor TRALDBZMemTable.Destroy;
 begin
+  { a request may still be in flight, and its callback is a method of this
+    object: the client must forget it before the memory goes }
+  if (FRALConnection <> nil) and (FRALConnection.Client <> nil) then
+    FRALConnection.Client.DropCallbacks(Self);
   FreeAndNil(FSQL);
   FreeAndNil(FParams);
   FreeAndNil(FUpdateSQL);

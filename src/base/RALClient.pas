@@ -123,10 +123,15 @@ type
     FOnResponse: TRALThreadClientResponse;
     FRequestTimeout: IntegerRAL;
     FRequest: TRALRequest;
+    FThreads: TThreadList;
     FUserAgent: StringRAL;
   protected
     procedure LockSession;
     procedure UnLockSession;
+
+    /// bookkeeping of the request threads still alive, kept by TRALThreadClient
+    procedure ThreadStarted(AThread: TRALThreadClient);
+    procedure ThreadFinished(AThread: TRALThreadClient);
 
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -158,6 +163,16 @@ type
     destructor Destroy; override;
 
     function Clone(AOwner: TComponent = nil): TRALClient; virtual;
+
+    { Forgets every pending callback that is a method of AObject. Call it from
+      the destructor of whatever handed a method to Get/Post/... (the memtables
+      do): the request thread is still running, and when it finishes it would
+      call into the freed object. }
+    procedure DropCallbacks(AObject: TObject);
+    { Waits for the request threads still running, without calling anyone
+      back, for at most ConnectTimeout + RequestTimeout. Destroy does it: a
+      thread that outlives its client reads freed memory. }
+    procedure WaitPendingRequests;
 
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; var AResponse : TRALResponse); overload;
@@ -471,6 +486,7 @@ begin
   FCritSession := TCriticalSection.Create;
   FRequest := TRALClientRequest.Create(Self);
   FBaseURL := TStringList.Create;
+  FThreads := TThreadList.Create;
   FIndexUrl := 0;
 
   FUserAgent := 'RALClient ' + RALVERSION;
@@ -483,11 +499,94 @@ end;
 
 destructor TRALClient.Destroy;
 begin
+  WaitPendingRequests;
+  FreeAndNil(FThreads);
   FreeAndNil(FCriptoOptions);
   FreeAndNil(FCritSession);
   FreeAndNil(FRequest);
   FreeAndNil(FBaseURL);
   inherited Destroy;
+end;
+
+procedure TRALClient.ThreadStarted(AThread: TRALThreadClient);
+begin
+  FThreads.Add(AThread);
+end;
+
+procedure TRALClient.ThreadFinished(AThread: TRALThreadClient);
+begin
+  FThreads.Remove(AThread);
+end;
+
+procedure TRALClient.DropCallbacks(AObject: TObject);
+var
+  vLista: TList;
+  vInt: IntegerRAL;
+  vThread: TRALThreadClient;
+begin
+  if FThreads = nil then
+    Exit;
+  vLista := FThreads.LockList;
+  try
+    for vInt := 0 to Pred(vLista.Count) do
+    begin
+      vThread := TRALThreadClient(vLista[vInt]);
+      if TMethod(vThread.FOnResponse).Data = Pointer(AObject) then
+        vThread.FOnResponse := nil;
+    end;
+  finally
+    FThreads.UnlockList;
+  end;
+end;
+
+procedure TRALClient.WaitPendingRequests;
+var
+  vLista: TList;
+  vInt: IntegerRAL;
+  vRestante: IntegerRAL;
+  vPendentes: IntegerRAL;
+  vPrincipal: boolean;
+begin
+  if FThreads = nil then
+    Exit;
+
+  vLista := FThreads.LockList;
+  try
+    for vInt := 0 to Pred(vLista.Count) do
+      TRALThreadClient(vLista[vInt]).FOnResponse := nil;
+    vPendentes := vLista.Count;
+  finally
+    FThreads.UnlockList;
+  end;
+
+  { OnTerminate of a thread is delivered through Synchronize, so from the main
+    thread the queue has to be pumped here or the wait never ends }
+  vPrincipal := {$IFDEF FPC}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$ENDIF} = MainThreadID;
+  vRestante := FConnectTimeout + FRequestTimeout + 1000;
+  while (vPendentes > 0) and (vRestante > 0) do
+  begin
+    if vPrincipal then
+      CheckSynchronize(10)
+    else
+      Sleep(10);
+    Dec(vRestante, 10);
+    vLista := FThreads.LockList;
+    try
+      vPendentes := vLista.Count;
+    finally
+      FThreads.UnlockList;
+    end;
+  end;
+
+  { whatever is still running after the timeouts is on its own: it must not
+    report back to a client that no longer exists }
+  vLista := FThreads.LockList;
+  try
+    for vInt := 0 to Pred(vLista.Count) do
+      TRALThreadClient(vLista[vInt]).FParent := nil;
+  finally
+    FThreads.UnlockList;
+  end;
 end;
 
 function TRALClient.Clone(AOwner: TComponent): TRALClient;
@@ -953,9 +1052,31 @@ begin
 end;
 
 procedure TRALThreadClient.OnTerminateThread(Sender: TObject);
+var
+  vResposta: TRALThreadClientResponse;
+  vParent: TRALClient;
 begin
-  if Assigned(FOnResponse) then
-    FOnResponse(Self, FResponse, FException);
+  { the callback is read under the client's lock because DropCallbacks and
+    WaitPendingRequests clear it from another context: an object that has
+    been freed in the meantime must not be called back }
+  vParent := FParent;
+  if vParent <> nil then
+  begin
+    vParent.FThreads.LockList;
+    try
+      vResposta := FOnResponse;
+    finally
+      vParent.FThreads.UnlockList;
+    end;
+  end
+  else
+    vResposta := FOnResponse;
+
+  if Assigned(vResposta) then
+    vResposta(Self, FResponse, FException);
+
+  if vParent <> nil then
+    vParent.ThreadFinished(Self);
 end;
 
 constructor TRALThreadClient.Create(AOwner: TRALClient);
@@ -971,6 +1092,7 @@ begin
   FResponse := TRALClientResponse.Create(AOwner);
   FClient := FParent.CreateClient;
   FIndexUrl := AOwner.IndexUrl;
+  FParent.ThreadStarted(Self);
 end;
 
 destructor TRALThreadClient.Destroy;
