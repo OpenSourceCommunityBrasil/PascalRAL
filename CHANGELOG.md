@@ -446,6 +446,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix TRALHashes.Decrypt encrypting and make its string form base64** (2026-09-04 – tempraturbo)
+  The Decrypt(string, TRALCriptoType) overload called Encrypt, and the text
+  form carried the raw cipher bytes inside a StringRAL, which the UTF-8
+  conversion mangles. Encrypt(string) now returns the base64 of the encrypted
+  stream and Decrypt(string) expects it; the TStream overloads stay binary.
+  Drops the private copy of TRALCriptoType (TCriptoType) and the duplicated
+  overloads that existed for it, and treats crNone as a pass-through.
+
 - **Fix the CSV and BSON storages, and the FireDAC memtable rebuilding its fields mid-load** (2026-09-04 – tempraturbo)
   The CSV storage never worked over the wire: its link class was not registered
   (GetStorageClass returned nil and the server died with an access violation at
