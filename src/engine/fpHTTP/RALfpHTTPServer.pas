@@ -342,6 +342,14 @@ begin
           Params.AssignParams(vCookies, rpkCOOKIE);
           for vInt := 0 to Pred(vCookies.Count) do
           begin
+            { a param named Set-Cookie carries a complete Set-Cookie value
+              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
+              Building a TCookie from it made a cookie CALLED Set-Cookie }
+            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
+            begin
+              AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies.ValueFromIndex[vInt]);
+              Continue;
+            end;
             vCookie := AResponse.Cookies.Add;
             vCookie.Name := vCookies.Names[vInt];
             vCookie.Value := vCookies.ValueFromIndex[vInt];

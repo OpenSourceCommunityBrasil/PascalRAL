@@ -171,7 +171,12 @@ begin
         ContentEncription := ParamByName('Content-Encription').AsString;
         AcceptEncription := ParamByName('Accept-Encription').AsString;
 
-        vKeepAlive := SameText(ARequestInfo.Connection, 'keep-alive');
+        { HTTP/1.1 is persistent by default (RFC 7230 6.3): only an explicit
+          "close" ends it. Requiring the keep-alive token closed every
+          connection of every 1.1 client that, correctly, does not send it }
+        vKeepAlive := SameText(ARequestInfo.Connection, 'keep-alive') or
+          ((Pos('1.1', ARequestInfo.Version) > 0) and
+           not SameText(ARequestInfo.Connection, 'close'));
 
         ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
@@ -255,6 +260,14 @@ begin
           Params.AssignParams(vCookies, rpkCOOKIE);
           for vInt := 0 to Pred(vCookies.Count) do
           begin
+            { a param named Set-Cookie carries a complete Set-Cookie value
+              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
+              Building a TIdCookie from it made a cookie CALLED Set-Cookie }
+            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
+            begin
+              AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies.ValueFromIndex[vInt]);
+              Continue;
+            end;
             vIdCookie := AResponseInfo.Cookies.Add;
             vIdCookie.CookieName := vCookies.Names[vInt];
             vIdCookie.Value := vCookies.ValueFromIndex[vInt];
@@ -399,8 +412,11 @@ begin
 
   FHttp.DefaultPort := AValue;
 
-  Active := vActive;
+  { inherited BEFORE reactivating: SetActive binds Self.Port, which is still
+    the old value until the base class stores the new one - a port changed on
+    a live server came back up listening on the old port }
   inherited;
+  Active := vActive;
 end;
 
 function TRALIndyServer.IPv6IsImplemented: Boolean;

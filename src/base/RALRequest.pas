@@ -374,6 +374,10 @@ function TRALServerRequest.GetRequestEncText(const AEncode: boolean): StringRAL;
 var
   vStream : TRALStringStream;
 begin
+  Result := '';
+  { through the getter: FStream is only built from the params on demand }
+  if GetRequestEncStream(AEncode) = nil then
+    Exit;
   vStream := TRALStringStream.Create(FStream);
   try
     Result := StreamToString(vStream);

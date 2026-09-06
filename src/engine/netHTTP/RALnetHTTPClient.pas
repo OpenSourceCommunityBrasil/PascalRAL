@@ -70,6 +70,7 @@ var
   vSource : TStream;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
+  vRespCookies: TCookies;
   vParam : TRALParam;
   vCookies: StringRAL;
 
@@ -224,6 +225,15 @@ begin
           it only stayed invisible while tests looked at StatusCode alone. }
         for vInt := 0 to Pred(Length(vResponse.Headers)) do
           AResponse.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
+
+        { WinHTTP keeps Set-Cookie for its own cookie jar and does not list it
+          among the headers: hand the cookies over as rpkCOOKIE params, the
+          same shape fpHTTP and Indy deliver them in }
+        vRespCookies := vResponse.Cookies;
+        if vRespCookies <> nil then
+          for vInt := 0 to vRespCookies.Count - 1 do
+            AResponse.Params.AddParam(StringRAL(vRespCookies[vInt].Name),
+              StringRAL(vRespCookies[vInt].Value), rpkCOOKIE);
 
         AResponse.ContentEncoding := vResponse.ContentEncoding;
         AResponse.Params.CompressType := AResponse.ContentCompress;

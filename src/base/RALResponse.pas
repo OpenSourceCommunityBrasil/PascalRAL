@@ -167,10 +167,14 @@ begin
     vParam := TRALParam(Params.Index[vInt]);
     if (vParam <> nil) and (vParam.Kind = rpkCOOKIE) then
     begin
-      vValue := vParam.ParamName + '=' + vParam.AsString + ';';
-      vValue := vValue + vExpire //+ '; path=/'
-      ;
-      ADest.Add(vValue);
+      { AddCookie(TRALCookie) stores the whole Set-Cookie value - name,
+        value, Expires, Path, HttpOnly, Secure - in a param named Set-Cookie:
+        that one goes out as it is. A plain name=value param gets the
+        server's CookieLife. Every engine builds its cookies from this list }
+      if SameText(vParam.ParamName, 'Set-Cookie') then
+        ADest.Add(vParam.AsString)
+      else
+        ADest.Add(vParam.ParamName + '=' + vParam.AsString + ';' + vExpire);
     end;
   end;
 end;
@@ -365,9 +369,30 @@ end;
 
 function TRALClientResponse.GetResponseEncStream(
   const AEncode: boolean): TStream;
+var
+  vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
+  { built from the params on demand, like TRALServerRequest does: DecodeBody
+    no longer hands back a second copy of the decoded body, so the stream an
+    application asks for is assembled here, once, and only when asked }
+  if FStream = nil then
+  begin
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
+    Params.CompressType := ctNone;
+    Params.CriptoOptions.CriptType := crNone;
+    try
+      FStream := Params.EncodeBody(vContentType, vContentDisposition);
+    finally
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
+  end;
   Result := FStream;
-  Result.Position := 0;
+  if Result <> nil then
+    Result.Position := 0;
 end;
 
 function TRALClientResponse.GetResponseEncText(
@@ -375,8 +400,9 @@ function TRALClientResponse.GetResponseEncText(
 var
   vStream : TStream;
 begin
-//  {$IFDEF FPC}
-  if not Assigned(FStream) then exit;
+  Result := '';
+  if GetResponseEncStream(AEncode) = nil then
+    Exit;
 
   vStream := TRALStringStream.Create(FStream);
   try

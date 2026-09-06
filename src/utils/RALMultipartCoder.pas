@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALMIMETypes, RALStream, RALConsts;
+  RALTypes, RALMIMETypes, RALStream, RALConsts, RALTools;
 
 type
   { TRALMultipartFormData }
@@ -290,9 +290,19 @@ begin
 end;
 
 function TRALMultipartEncoder.GetBoundary: StringRAL;
+var
+  vBytes: TBytes;
+  vInt: IntegerRAL;
 begin
+  { random, not the clock: a boundary an attacker can predict lets a crafted
+    part value end the multipart early }
   if FBoundary = '' then
-    FBoundary := 'ral' + FormatDateTime('ddmmyyyyhhnnsszzz', Now);
+  begin
+    vBytes := RandomBytes(12);
+    FBoundary := 'ral';
+    for vInt := 0 to High(vBytes) do
+      FBoundary := FBoundary + StringRAL(IntToHex(vBytes[vInt], 2));
+  end;
   Result := FBoundary;
 end;
 
@@ -452,8 +462,9 @@ var
 begin
   if FItemForm <> nil then
   begin
-    // tirando HTTPLineBreak do fim do arquivo
-    FItemForm.AsStream.Size := FItemForm.AsStream.Size - 2;
+    // drop the HTTPLineBreak that closes the part; an empty part has none
+    if FItemForm.AsStream.Size >= 2 then
+      FItemForm.AsStream.Size := FItemForm.AsStream.Size - 2;
     FItemForm.AsStream.Position := 0;
 
     vFreeItem := False;

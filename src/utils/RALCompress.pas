@@ -166,6 +166,7 @@ var
   vClass: TRALCompressClass;
 begin
   Result := [];
+  CheckCompressDefs; // nil until the first RegisterCompress: an AV otherwise
   for vInt := 0 to Pred(CompressDefs.Count) do
   begin
     vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));
@@ -350,6 +351,7 @@ begin
   end;
 
   vMax := -1;
+  CheckCompressDefs; // nil until the first RegisterCompress: an AV otherwise
   for vInt := 0 to Pred(CompressDefs.Count) do
   begin
     vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));

@@ -270,12 +270,12 @@ begin
         //if vResponse.ContentEncription <> EmptyStr then
           vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
-        // parse cookie na saída
         vHeaders := vResponse.Params.AssignParamsListText(rpkHEADER, ': ');
+        { Set-Cookie lines, like Indy, fpHTTP and Sagui send them: a cookie
+          param used to go out as a header NAMED after the cookie }
         if vResponse.Params.Count(rpkCOOKIE) > 0 then
-          vHeaders := vHeaders + HTTPLineBreak + vResponse.Params.AssignParamsListText(rpkCOOKIE, ': ');
-
-        //vHeaders := vHeaders + GetParamsCookiesText(IncMinute(Now, CookieLife));
+          vHeaders := vHeaders + HTTPLineBreak +
+            vResponse.GetParamsCookiesText(IncMinute(Now, CookieLife));
 
         AContext.OutCustomHeaders := Trim(vHeaders);
 

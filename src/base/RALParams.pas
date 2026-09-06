@@ -121,6 +121,11 @@ type
     procedure SaveToFile(const AFileName: StringRAL); overload;
     /// Save FContent with the given Filename and the foldername.
     procedure SaveToFile(AFolderName, AFileName: StringRAL); overload;
+    { Takes AStream as the content WITHOUT copying it: the param owns it from
+      here on and frees it. AsStream := X copies X; this is for a stream that
+      was created for the param anyway (DecodeBody's decrypted or inflated
+      body), where the copy only cost memory and time }
+    procedure AdoptStream(AStream: TStream);
     function SaveToStream: TStream; overload;
     procedure SaveToStream(AStream: TStream); overload;
     function Size: Int64;
@@ -974,6 +979,20 @@ begin
     FContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
+procedure TRALParam.AdoptStream(AStream: TStream);
+begin
+  if FContent <> nil then
+    FreeAndNil(FContent);
+
+  FContent := AStream;
+  if FContent <> nil then
+    FContent.Position := 0;
+
+  // same rule as SetAsStream: new content, no stale typed marker
+  if IsTyped then
+    FContentType := rctAPPLICATIONOCTETSTREAM;
+end;
+
 procedure TRALParam.SetAsString(const AValue: StringRAL);
 begin
   if FContent <> nil then
@@ -1522,29 +1541,40 @@ function TRALParams.DecodeBody(ASource: TStream;
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
-  vTemp: TStream;
+  vTemp, vCur: TStream;
   vCTMultipart: StringRAL;
+  vOwned: Boolean;
 begin
+  { Returns nil: the body ends up in the params, nothing else. It used to
+    copy ASource into a fresh TMemoryStream, decrypt into another, inflate
+    into another, copy THAT into the body param and hand the last stage back
+    to the caller, who kept it alive next to the param's copy - a 100 MB
+    upload went through half a gigabyte. Now the stages run on the caller's
+    stream until a transform has to produce a new one; that one is owned
+    here and handed to the param without a copy (AdoptStream). The request
+    and client response rebuild their RequestStream/ResponseStream from the
+    params on demand, which is what they already did for Sagui. }
   Result := nil;
   if ASource = nil then
     Exit;
 
   ASource.Position := 0;
-
-  Result := TMemoryStream.Create;
-  Result.CopyFrom(ASource, ASource.Size);
+  vCur := ASource;
+  vOwned := False;
 
   if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
   begin
     { the finally is what keeps a failing transform from leaking its input: a
-      raise inside Decrypt/Decompress/Compress/Encrypt used to leave Result
-      behind (heaptrc caught it when libzstd was missing next to the exe) }
+      raise inside Decrypt/Decompress/Compress/Encrypt used to leave the
+      intermediate behind (heaptrc caught it when libzstd was missing) }
     try
-      vTemp := Decrypt(Result);
+      vTemp := Decrypt(vCur);
     finally
-      FreeAndNil(Result);
+      if vOwned then
+        FreeAndNil(vCur);
     end;
-    Result := vTemp;
+    vCur := vTemp;
+    vOwned := True;
   end;
 
   { A body that is ALREADY multipart is not decompressed, whatever the settings
@@ -1562,14 +1592,16 @@ begin
     the header saying multipart either - an encrypted multipart travels as
     octet-stream, and the only thing that tells it apart from a deflate stream
     is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
-  if (FCompressType <> ctNone) and not StartsWithDelim(Result) then
+  if (FCompressType <> ctNone) and not StartsWithDelim(vCur) then
   begin
     try
-      vTemp := Decompress(Result);
+      vTemp := Decompress(vCur);
     finally
-      FreeAndNil(Result);
+      if vOwned then
+        FreeAndNil(vCur);
     end;
-    Result := vTemp;
+    vCur := vTemp;
+    vOwned := True;
   end;
 
   { Multipart is recognised by the header OR, when it was encrypted, by the
@@ -1580,39 +1612,51 @@ begin
   vCTMultipart := '';
   if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
     vCTMultipart := AContentType
-  else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(Result) then
-    vCTMultipart := BodyContentType(Result);
+  else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(vCur) then
+    vCTMultipart := BodyContentType(vCur);
 
-  if vCTMultipart <> '' then
-  begin
-    vDecoder := TRALMultipartDecoder.Create;
-    try
-      vDecoder.ContentType := vCTMultipart;
-      vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-      vDecoder.ProcessMultiPart(Result);
-    finally
-      FreeAndNil(vDecoder);
+  try
+    if vCTMultipart <> '' then
+    begin
+      vDecoder := TRALMultipartDecoder.Create;
+      try
+        vDecoder.ContentType := vCTMultipart;
+        vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
+        vDecoder.ProcessMultiPart(vCur);
+      finally
+        FreeAndNil(vDecoder);
+      end;
+    end
+    else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
+    begin
+      DecodeFields(StreamToString(vCur));
+    end
+    else
+    begin
+      vParam := NewParam;
+      vParam.ParamName := 'ral_body';
+      vParam.FileName := '';
+      vParam.ContentDisposition := AContentDisposition;
+
+      { Content first, ContentType after - the order is load-bearing. A single
+        body param travels with its own content type as the HTTP header, so this
+        is what restores a typed marker on the way in; assigning the type before
+        the stream would clear it again (SetAsStream drops it). Same ordering as
+        TRALParam.Clone. A stream born here (decrypted or inflated) is handed
+        over; the caller's own stream has to be copied, it stays theirs }
+      if vOwned then
+      begin
+        vParam.AdoptStream(vCur);
+        vOwned := False;
+      end
+      else
+        vParam.AsStream := vCur;
+      vParam.ContentType := AContentType;
+      vParam.Kind := rpkBODY;
     end;
-  end
-  else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
-  begin
-    DecodeFields(StreamToString(Result));
-  end
-  else
-  begin
-    vParam := NewParam;
-    vParam.ParamName := 'ral_body';
-    vParam.FileName := '';
-    vParam.ContentDisposition := AContentDisposition;
-
-    { Content first, ContentType after - the order is load-bearing. A single
-      body param travels with its own content type as the HTTP header, so this
-      is what restores a typed marker on the way in; assigning the type before
-      the stream would clear it again (SetAsStream drops it). Same ordering as
-      TRALParam.Clone. }
-    vParam.AsStream := Result;
-    vParam.ContentType := AContentType;
-    vParam.Kind := rpkBODY;
+  finally
+    if vOwned then
+      FreeAndNil(vCur);
   end;
 end;
 

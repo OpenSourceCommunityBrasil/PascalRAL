@@ -654,8 +654,10 @@ begin
   vActive := Self.Active;
   Active := False;
 
-  Active := vActive;
+  { inherited BEFORE reactivating: sg_httpsrv_listen reads Self.Port, still
+    the old value until the base class stores the new one }
   inherited;
+  Active := vActive;
 end;
 
 function TRALSaguiServer.InitializeServer: boolean;

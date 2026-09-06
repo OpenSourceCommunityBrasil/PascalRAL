@@ -842,7 +842,10 @@ begin
 
     if vStr.Count = 3 then
     begin
-      FPayload.AsJSON := TRALBase64.Decode(vStr.Strings[1]);
+      { the segments are base64url (RFC 7515): "-" and "_" instead of "+"
+        and "/", no padding. Decoding them as plain base64 left any claim
+        whose bytes hit those two characters unreadable on the client }
+      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       FToken := AValue;
     end;
   finally
