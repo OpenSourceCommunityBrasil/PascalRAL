@@ -250,6 +250,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix idle fpHTTP spinning a core, GetBody past the end, GetRoute garbage, empty memtable OnError and raw form encoding** (2026-09-06 – tempraturbo)
+  TRALfpHttpServerThread.Execute had nothing in the else of "if
+  FParent.Active then FHttp.Active := True", so the thread spun a full
+  core whenever the server was alive and inactive. It sleeps 50 ms per
+  turn on that path; the activation itself blocks until deactivation.
+  GetBody iterated 0..Count and read one param past the list. GetRoute
+  (behind Routes.Find[]) left Result uninitialised when nothing matched.
+  The three memtables fired OnError with an empty string on every status
+  that was not 200 or 500 (401, 404, 429...). The message now starts
+  with "HTTP <status>" and carries the body when there is one.
+  TRALDBSQLCache.SetStorage called Clone on nil; Storage := nil is legal.
+  EncodeBody wrote form fields as name=value escaping only "&": "=",
+  "%", "+", spaces and every byte above 127 reached the wire raw and a
+  third-party server split the fields wrong. Name and value go through
+  EncodeURL now. DecodeURL had to change with it: on Delphi it appended
+  CharRAL(byte) to a UTF8String, which converts the byte from the ANSI
+  codepage first, so %C3%A7 came back as "Ã§"; it decodes into bytes and
+  copies them whole.
+
 - **Fix handler exceptions answering 200, uploads escaping their folder, and gzip shortening its input on FPC** (2026-09-06 – tempraturbo)
   ProcessCommands caught a handler exception and, with neither
   OnServerError nor RaiseError set (the defaults), left the response as
