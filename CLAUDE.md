@@ -403,6 +403,18 @@ The IV comes from `RandomBytes` in `RALTools`, which now uses RtlGenRandom on Wi
 ### Fixed: `TRALHashes.Decrypt(string)` encrypted instead of decrypting
 `TRALHashes` (`src/utils/RALHashes.pas`) is the one-call facade over `TRALCriptoAES`. It carried a private copy of `TRALCriptoType` (`TCriptoType`, `ctAES128..`), every method twice to accept both, and the `Decrypt(string, TRALCriptoType)` overload called `Encrypt`. Now there is one enum (`TRALCriptoType`, `crNone` is a pass-through) and one contract for text: **`Encrypt(string)` returns the base64 of the encrypted stream, and `Decrypt(string)` expects that base64**. The `TStream` overloads stay binary - they are what `TRALParams` pushes the body through. Do not put raw ciphertext in a `StringRAL`: the UTF-8 conversion mangles it.
 
+### Fixed: JWT `exp`/`iat`/`nbf` were local time stamped as if UTC
+`TRALJWTParams` keeps its dates as `TDateTime` filled from `Now`, which is local time, and `GetAsJSON` passed them straight to `DateTimeToUnix`, which treats its input as UTC. A token issued at UTC-3 therefore claimed to expire three hours earlier than intended, and a token from another library was read with the zone offset as the error. `RALToken.pas` now converts through `RALDateTimeToGMT` on the way out and the new `RALGMTToDateTime` (in `RALTools`) on the way in; `IsValidToken` keeps comparing with `Now`, which is consistent again. Both helpers exist because `DateTimeToUnix(..., AInputIsUTC)` is not available on every supported compiler.
+
+### Secrets are compared in constant time
+`RALSameSecret(A, B: StringRAL)` in `RALTools` (next to `RALSameBytes` for `TBytes`) is what `TRALJWT.IsValidToken` uses for the signature and `TRALServerBasicAuth` for user name and password. A plain `=`/`<>` stops at the first differing character, so the time to refuse a wrong password grows with the length of the correct prefix - enough to guess it character by character over the network. Use it for anything that is a secret; keep `=` for everything else.
+
+### `TRALDBModule.OnValidateSQL` is the application's say on wire SQL
+Every statement `opensql`, `execsql`, `applyupdates` and `getsqlfields` run comes from the client as text. Without `Authentication` the database is open on the network; with it, every logged-in user can still run anything. The module now fires `OnValidateSQL(Sender, Request, SQL, var Allow)` before touching the driver; set `Allow := False` and the request is answered 500 with `emDBSQLRejected`, nothing reaches the database. Unassigned means allow, as before. `TRALFDConnection` (the FireDAC DAO routes) is a different component and does not go through it.
+
+### Fixed: `TRALDBBufDataset` never opened again after a failed open
+`SetActive(True)` sets `FOpening` and fires `OpenRemote`; `FOpening` was cleared only by `SetActive(False)`, which nothing calls when the answer is an error. After one failed `Open` (invalid SQL, a rejected statement) every later `Open` on the same dataset skipped the server and died inside `TBufDataset` with "Missing (compatible) underlying dataset, can not open". `OnQueryResponse` now clears `FOpening` on the error branches. The FireDAC and Zeos memtables do not have the flag.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 

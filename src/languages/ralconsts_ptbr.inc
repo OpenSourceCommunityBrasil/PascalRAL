@@ -20,6 +20,7 @@
   emHMACEmptyText = 'Texto de entrada não pode ser vazio.';
   emDBConnectionUndefined = 'Conexão não definida.';
   emDBInvalidTableName = 'Nome de tabela inválido: só letras, dígitos, _, $ e . são aceitos.';
+  emDBSQLRejected = 'SQL recusado pelo OnValidateSQL.';
   emDBDriverMissing = 'Driver de conexão não encontrado.';
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';

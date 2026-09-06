@@ -19,6 +19,7 @@
   emCryptInvalidMAC = 'Encrypted data failed integrity check: wrong key or altered content.';
   emDBConnectionUndefined = 'Connection not set.';
   emDBInvalidTableName = 'Invalid table name: only letters, digits, _, $ and . are accepted.';
+  emDBSQLRejected = 'SQL rejected by OnValidateSQL.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';

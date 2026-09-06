@@ -16,6 +16,10 @@ type
 
   TRALDBOnConnect = procedure(ASender: TObject; ARequest: TRALRequest) of object;
   TRALDBOnError = procedure(ASender: TObject; AException: StringRAL; ARequest: TRALRequest) of object;
+  { Fired before the DBWare module runs a statement that came over the wire.
+    AAllow starts True; set it False to refuse this one }
+  TRALDBOnValidateSQL = procedure(ASender: TObject; ARequest: TRALRequest;
+    const ASQL: StringRAL; var AAllow: Boolean) of object;
 
   { TRALDBBase }
 

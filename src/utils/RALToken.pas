@@ -667,11 +667,16 @@ begin
     if FAudience <> '' then
       vJson.Add('aud', FAudience);
 
+    { exp/iat/nbf are Unix time, which is UTC by definition; the fields hold
+      local time (they come from Now). DateTimeToUnix treats its input as
+      UTC, so without the conversion a token issued at UTC-3 said it would
+      expire three hours earlier than meant, and one from another library
+      was refused or accepted with the zone offset as the error }
     if FExpiration > 0 then
-      vJson.Add('exp', DateTimeToUnix(FExpiration));
+      vJson.Add('exp', DateTimeToUnix(RALDateTimeToGMT(FExpiration)));
 
     if FIssuedAt > 0 then
-      vJson.Add('iat', DateTimeToUnix(FIssuedAt));
+      vJson.Add('iat', DateTimeToUnix(RALDateTimeToGMT(FIssuedAt)));
 
     if FIssuer <> '' then
       vJson.Add('iss', FIssuer);
@@ -680,7 +685,7 @@ begin
       vJson.Add('jti', FId);
 
     if FNotBefore > 0 then
-      vJson.Add('nbf', DateTimeToUnix(FNotBefore));
+      vJson.Add('nbf', DateTimeToUnix(RALDateTimeToGMT(FNotBefore)));
 
     if FSubject <> '' then
       vJson.Add('sub', FSubject);
@@ -747,14 +752,14 @@ begin
         else if SameText(vName, 'exp') then
         begin
           if vValue.JsonType = rjtNumber then
-            FExpiration := UnixToDateTime(vValue.AsInteger)
+            FExpiration := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FExpiration := StrToDateTimeDef(vValue.AsString, 0);
         end
         else if SameText(vName, 'iat') then
         begin
           if vValue.JsonType = rjtNumber then
-            FIssuedAt := UnixToDateTime(vValue.AsInteger)
+            FIssuedAt := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FIssuedAt := StrToDateTimeDef(vValue.AsString, 0);
         end
@@ -769,7 +774,7 @@ begin
         else if SameText(vName, 'nbf') then
         begin
           if vValue.JsonType = rjtNumber then
-            FNotBefore := UnixToDateTime(vValue.AsInteger)
+            FNotBefore := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FNotBefore := StrToDateTimeDef(vValue.AsString, 0);
         end
@@ -932,7 +937,8 @@ begin
   begin
     vSignature := FSignature;
     GetToken;
-    if vSignature = FSignature then
+    { constant time: the signature is the secret here }
+    if RALSameSecret(vSignature, FSignature) then
     begin
       Result := True;
       if (FPayload.Expiration > 0) and (FPayload.Expiration < Now) then

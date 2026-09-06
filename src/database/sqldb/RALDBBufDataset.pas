@@ -346,12 +346,17 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
+    { the open failed, so nothing will call SetActive(False) to clear
+      FOpening: without this every later Open skipped the server and died
+      inside TBufDataset with "Missing (compatible) underlying dataset" }
+    FOpening := False;
     vException := ExceptionFromResponse(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
   else
   begin
+    FOpening := False;
     if Assigned(FOnError) then
       FOnError(Self, AException);
   end;

@@ -26,12 +26,16 @@ function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
+/// The inverse of RALDateTimeToGMT: a UTC value back to the local zone
+function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
 /// Equality in constant time, for MACs and signatures: it does not stop at
 /// the first differing byte, so the time taken says nothing about the data
 function RALSameBytes(const A, B: TBytes): Boolean;
+/// Same thing for secrets kept as strings (passwords, signatures)
+function RALSameSecret(const A, B: StringRAL): Boolean;
 
 implementation
 
@@ -59,6 +63,22 @@ begin
       vDiff := vDiff or (A[vInt] xor B[vInt])
     else
       vDiff := vDiff or A[vInt];
+  Result := vDiff = 0;
+end;
+
+function RALSameSecret(const A, B: StringRAL): Boolean;
+var
+  vInt, vDiff: IntegerRAL;
+begin
+  { "=" on strings stops at the first differing character, so a wrong
+    password that shares a longer prefix with the real one took longer to be
+    refused - enough, over many tries, to guess it character by character }
+  vDiff := Length(A) xor Length(B);
+  for vInt := POSINISTR to RALHighStr(A) do
+    if vInt <= RALHighStr(B) then
+      vDiff := vDiff or (Ord(A[vInt]) xor Ord(B[vInt]))
+    else
+      vDiff := vDiff or Ord(A[vInt]);
   Result := vDiff = 0;
 end;
 
@@ -234,6 +254,34 @@ begin
         vBias := 0;
     end;
     Result := IncMinute(ADateTime, -vBias);
+    {$ENDIF}
+  {$ENDIF}
+end;
+
+function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
+  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+var
+  vTimeZone: TTimeZoneInformation;
+  vBias: cardinal;
+  {$IFEND}
+begin
+  {$IFDEF FPC}
+    Result := UniversalTimeToLocal(ADateTime);
+  {$ELSE}
+    {$IFDEF DELPHIXE2UP}
+        Result := TTimeZone.Local.ToLocalTime(ADateTime);
+    {$ELSE}
+    case GetTimeZoneInformation(vTimeZone) of
+      TIME_ZONE_ID_UNKNOWN:
+        vBias := vTimeZone.Bias;
+      TIME_ZONE_ID_STANDARD:
+        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
+      TIME_ZONE_ID_DAYLIGHT:
+        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
+      else
+        vBias := 0;
+    end;
+    Result := IncMinute(ADateTime, vBias);
     {$ENDIF}
   {$ENDIF}
 end;

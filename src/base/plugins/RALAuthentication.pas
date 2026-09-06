@@ -744,9 +744,12 @@ begin
   else
   begin
     vAuthBasic := ARequest.Authorization.AsAuthBasic;
+    { both compared in constant time: "<>" stops at the first wrong character,
+      and the time it takes to refuse leaks how much of the secret is right }
     if (ARequest.Authorization.AuthType <> ratBasic) or (vAuthBasic = nil) or
        (Trim(FUserName) = '') or (Trim(FPassword) = '') or
-       (vAuthBasic.UserName <> FUserName) or (vAuthBasic.Password <> FPassword) then
+       (not RALSameSecret(vAuthBasic.UserName, FUserName)) or
+       (not RALSameSecret(vAuthBasic.Password, FPassword)) then
       Error401;
   end;
 end;

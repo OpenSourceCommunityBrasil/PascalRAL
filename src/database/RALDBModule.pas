@@ -29,7 +29,10 @@ type
     FOnAfterConnect: TRALDBOnConnect;
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
+    FOnValidateSQL: TRALDBOnValidateSQL;
     procedure SetLibLocation(AValue: String);
+    /// Asks OnValidateSQL about a statement from the wire; raises when refused
+    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
   protected
     /// Fills AResponse with the error, answering 429 when the pool timed out
     procedure AnswerException(AResponse: TRALResponse; AException: Exception);
@@ -91,6 +94,13 @@ type
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
     property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
     property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
+    { Every statement the routes opensql, execsql, applyupdates and getsqlfields
+      run comes from the client as text. Without Authentication on the server
+      that is the whole database open on the network; with it, every logged
+      user can still run anything. This event is where the application says
+      which statements it accepts: set AAllow to False and the request gets
+      a 500 with the reason, nothing reaches the database }
+    property OnValidateSQL: TRALDBOnValidateSQL read FOnValidateSQL write FOnValidateSQL;
   end;
 
 implementation
@@ -147,6 +157,18 @@ begin
   FPool.Release(ADatabase);
 end;
 
+procedure TRALDBModule.CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
+var
+  vAllow: Boolean;
+begin
+  if not Assigned(FOnValidateSQL) then
+    Exit;
+  vAllow := True;
+  FOnValidateSQL(Self, ARequest, ASQL, vAllow);
+  if not vAllow then
+    raise Exception.Create(emDBSQLRejected);
+end;
+
 procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
   vResult: TStream;
@@ -154,6 +176,8 @@ var
   vNative: Boolean;
   vContentType: StringRAL;
 begin
+  { the connection came from AcquireDatabase, which bound it to the request }
+  CheckSQL(ADatabase.Request, ADBSQL.SQL);
   if ADBSQL.DriverType = ADatabase.DriverType then
     vQuery := ADatabase.OpenNative(ADBSQL.SQL, ADBSQL.Params)
   else
@@ -193,6 +217,7 @@ procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL;
 var
   vRowsAffect, vLastId: Int64RAL;
 begin
+  CheckSQL(ADatabase.Request, ADBSQL.SQL);
   ADatabase.ExecSQL(ADBSQL.SQL, ADBSQL.Params, vRowsAffect, vLastId);
 
   ADBSQL.Response.Native := False;
@@ -927,6 +952,7 @@ begin
       if vDB <> nil then
       begin
         vSQL := ARequest.ParamByName('ral_body').AsString;
+        CheckSQL(ARequest, vSQL);
         vQuery := vDB.OpenNative(vSQL, nil);
         try
           vResult := GetInfoFieldsStream(vDB, vQuery, False);
