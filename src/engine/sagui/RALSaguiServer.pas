@@ -51,7 +51,6 @@ type
     FLibPath: TFileName;
     FPoolCount: IntegerRAL;
     FConnectionLimit: Int64RAL;
-    class procedure DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
@@ -370,8 +369,10 @@ begin
           cookies, on a server answering 200. }
         Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
 
-        if vServer.Authentication <> nil then
-          DecodeAuth(ParamByName('Authorization').AsString, vRequest);
+        { the server's own decoder, like the other engines: it also reads
+          the raltoken cookie, which the copy this unit used to carry never
+          did - UseCookie on the JWT auth silently did nothing under Sagui }
+        vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
         ClientInfo.MACAddress := '';
@@ -557,26 +558,6 @@ begin
   SetLength(Result, Length(vIP));
   Move(vIP[0], Result[PosIniStr], Length(vIP));
   Result := Trim(Result);
-end;
-
-class procedure TRALSaguiServer.DecodeAuth(AAuthorization: StringRAL; AResult: TRALRequest);
-var
-  vInt: IntegerRAL;
-  vAux: StringRAL;
-begin
-  AResult.Authorization.AuthType := ratNone;
-  AResult.Authorization.AuthString := '';
-
-  if AAuthorization <> '' then
-  begin
-    vInt := Pos(' ', AAuthorization);
-    vAux := Trim(Copy(AAuthorization, 1, vInt - 1));
-    if SameText(vAux, 'Basic') then
-      AResult.Authorization.AuthType := ratBasic
-    else if SameText(vAux, 'Bearer') then
-      AResult.Authorization.AuthType := ratBearer;
-    AResult.Authorization.AuthString := Copy(AAuthorization, vInt + 1, Length(AAuthorization));
-  end;
 end;
 
 function TRALSaguiServer.GetSSL: TRALSaguiSSL;

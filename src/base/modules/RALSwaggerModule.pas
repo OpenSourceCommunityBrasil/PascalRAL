@@ -32,6 +32,7 @@ type
     FLicense: TRALSwaggerLicense;
     FPostmanFile: TFileName;
     FPostmanTag: boolean;
+    FRequireAuth: boolean;
     FServersUrl: TStrings;
     FShowCustomNames: boolean;
     FSwaggerFile: TFileName;
@@ -41,9 +42,12 @@ type
     FTitle: StringRAL;
   protected
     procedure CreateRoutes;
+    /// GET only, and public unless RequireAuth is on
+    procedure Publica(ARoute: TRALRoute);
     procedure SetDomain(const AValue: StringRAL); override;
     procedure SetPostmanFile(const AValue: TFileName);
     procedure SetPostmanTag(AValue: boolean);
+    procedure SetRequireAuth(AValue: boolean);
     procedure SetServersUrl(AValue: TStrings);
     procedure SetSystemDescription(const AValue: TStrings);
     procedure SetSwaggerFile(const AValue: TFileName);
@@ -64,6 +68,11 @@ type
     property License: TRALSwaggerLicense read FLicense write FLicense;
     property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
     property PostmanTag: boolean read FPostmanTag write SetPostmanTag;
+    { The swagger routes skip the server's Authentication by default, so the
+      whole route map is public even on a server that requires a login. True
+      makes them ordinary routes: the same 401 the API answers. The page keeps
+      working, Swagger UI sends what the user types in "Authorize" }
+    property RequireAuth: boolean read FRequireAuth write SetRequireAuth default False;
     property ServersUrl: TStrings read FServersUrl write SetServersUrl;
     property ShowCustomNames: boolean read FShowCustomNames write FShowCustomNames;
     property SwaggerFile: TFileName read FSwaggerFile write SetSwaggerFile;
@@ -77,6 +86,20 @@ implementation
 
 uses
   RALSwaggerExporter, RALPostmanExporter;
+
+const
+  { The page loads Swagger UI from the CDN. The version is pinned, so the
+    SHA-384 of each file is fixed: with "integrity" the browser refuses a
+    file that does not match, which is what protects the page (and the
+    credentials typed into it) if the CDN or the path to it is ever
+    tampered with. Bump the version and these three hashes TOGETHER - they
+    were computed from unpkg and cross-checked against jsdelivr, e.g.
+    PowerShell: [Convert]::ToBase64String([Security.Cryptography.SHA384]::
+    Create().ComputeHash([IO.File]::ReadAllBytes('swagger-ui.css'))) }
+  SWAGGER_UI_CDN = 'https://unpkg.com/swagger-ui-dist@5.17.9/';
+  SWAGGER_UI_CSS_SRI = 'sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn';
+  SWAGGER_UI_BUNDLE_SRI = 'sha384-/dEFsSqOkmDC4Li0Md5TtTcP7+H/mXJappHjKJMlSChNZC+tIWPVzRPsrAe8wHla';
+  SWAGGER_UI_PRESET_SRI = 'sha384-galk03E+Pl0FjoMG8/Q/YDvlX1EBQuy2m/ZtQyd2rxoBEB5bzmAMiGC0GO11pjJz';
 
   { TRALSwaggerLicense }
 
@@ -99,6 +122,7 @@ begin
   FLicense := TRALSwaggerLicense.Create;
   FPostmanFile := '';
   FPostmanTag := False;
+  FRequireAuth := False;
   FServersUrl := TStringList.Create;
   FShowCustomNames := False;
   FSwaggerFile := '';
@@ -120,27 +144,38 @@ begin
   Routes.Clear;
 
   vRoute := CreateRoute('/',{$IFDEF FPC}@{$ENDIF}SwaggerIndex);
-  vRoute.AllowedMethods := [amGET];
-  vRoute.SkipAuthMethods := [amALL];
+  Publica(vRoute);
 
   vRoute := CreateRoute('/swagger.css',{$IFDEF FPC}@{$ENDIF}SwaggerCSS);
-  vRoute.AllowedMethods := [amGET];
-  vRoute.SkipAuthMethods := [amALL];
+  Publica(vRoute);
 
   vRoute := CreateRoute('/swagger-initializer.js',{$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
-  vRoute.AllowedMethods := [amGET];
-  vRoute.SkipAuthMethods := [amALL];
+  Publica(vRoute);
 
   vRoute := CreateRoute('/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
-  vRoute.AllowedMethods := [amGET];
-  vRoute.SkipAuthMethods := [amALL];
+  Publica(vRoute);
 
   if FPostmanTag then
   begin
     vRoute := CreateRoute('/postman.json',{$IFDEF FPC}@{$ENDIF}SwaggerPostman);
-    vRoute.AllowedMethods := [amGET];
-    vRoute.SkipAuthMethods := [amALL];
+    Publica(vRoute);
   end;
+end;
+
+procedure TRALSwaggerModule.Publica(ARoute: TRALRoute);
+begin
+  ARoute.AllowedMethods := [amGET];
+  if not FRequireAuth then
+    ARoute.SkipAuthMethods := [amALL];
+end;
+
+procedure TRALSwaggerModule.SetRequireAuth(AValue: boolean);
+begin
+  if FRequireAuth = AValue then
+    Exit;
+
+  FRequireAuth := AValue;
+  CreateRoutes;
 end;
 
 destructor TRALSwaggerModule.Destroy;
@@ -159,7 +194,7 @@ var
 begin
   AResponse.ContentType := rctTEXTHTML;
 
-  vURL := 'https://unpkg.com/swagger-ui-dist@5.17.9/';
+  vURL := SWAGGER_UI_CDN;
 
   vHTML := TStringList.Create;
   try
@@ -168,7 +203,8 @@ begin
     vHTML.Add('  <head>');
     vHTML.Add('    <meta charset="UTF-8">');
     vHTML.Add('    <title>RAL Swagger</title>');
-    vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css" />');
+    vHTML.Add('    <link rel="stylesheet" type="text/css" href="' + vURL + 'swagger-ui.css"' +
+      ' integrity="' + SWAGGER_UI_CSS_SRI + '" crossorigin="anonymous" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL +
       'favicon-32x32.png" sizes="32x32" />');
     vHTML.Add('    <link rel="icon" type="image/png" href="' + vURL +
@@ -177,10 +213,10 @@ begin
     vHTML.Add('  </head>');
     vHTML.Add('  <body>');
     vHTML.Add('    <div id="swagger-ui"></div>');
-    vHTML.Add('    <script src="' + vURL +
-      'swagger-ui-bundle.js" charset="UTF-8" crossorigin></script>');
-    vHTML.Add('    <script src="' + vURL +
-      'swagger-ui-standalone-preset.js" charset="UTF-8" crossorigin></script>');
+    vHTML.Add('    <script src="' + vURL + 'swagger-ui-bundle.js" charset="UTF-8"' +
+      ' integrity="' + SWAGGER_UI_BUNDLE_SRI + '" crossorigin="anonymous"></script>');
+    vHTML.Add('    <script src="' + vURL + 'swagger-ui-standalone-preset.js" charset="UTF-8"' +
+      ' integrity="' + SWAGGER_UI_PRESET_SRI + '" crossorigin="anonymous"></script>');
     vHTML.Add('    <script src=".' + Domain +
       '/swagger-initializer.js" charset="UTF-8"></script>');
     vHTML.Add('  </body>');
@@ -304,7 +340,10 @@ begin
     vScript.Add('    ],');
     vScript.Add('    layout: "StandaloneLayout",');
     vScript.Add('    queryConfigEnabled: true,');
-    vScript.Add('    validatorUrl: "https://validator.swagger.io/validator",');
+    { null is how Swagger UI turns the online validator off. With the URL
+      there, every browser that opened this page sent the whole swagger.json
+      - routes, params, table names - to validator.swagger.io }
+    vScript.Add('    validatorUrl: null,');
     vScript.Add('  })');
     vScript.Add('};');
 
@@ -338,7 +377,9 @@ begin
       vSwagger.SwaggerModule := Self;
       vMem := vSwagger.ExportToStream(Server);
       try
-        AResponse.ContentEncoding := rctAPPLICATIONJSON;
+        { it was ContentEncoding: "Content-Encoding: application/json" is
+          not a compression a client knows, and the JSON went out untyped }
+        AResponse.ContentType := rctAPPLICATIONJSON;
         AResponse.ResponseStream := vMem;
       finally
         FreeAndNil(vMem);

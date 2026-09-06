@@ -213,8 +213,6 @@ type
                         ARequest: TRALRequest; AResponse: TRALResponse);
     /// Used by inherited members to set SSL settings
     function CreateRALSSL: TRALSSL; virtual;
-    /// Decode the authentication header of the request
-    procedure DecodeAuth(AResult: TRALRequest);
     /// Removes a fixed subroute used by other components
     procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
     /// Used by inherited members to return the SSL definitions
@@ -249,6 +247,11 @@ type
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     // Validate requests headers before ProcessCommands
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+    { Fills Request.Authorization from the Authorization header param or, for
+      a JWT server, from the raltoken cookie. Public because the engines call
+      it from their own classes (Sagui's callback, fpHTTP's thread), after
+      the header and cookie params are in place }
+    procedure DecodeAuth(AResult: TRALRequest);
     // Create handle request of server
     function CreateRequest: TRALRequest;
     // Create handle response of server
@@ -478,10 +481,9 @@ end;
 
 procedure TRALServer.DecodeAuth(AResult: TRALRequest);
 var
-  vStr, vAux: StringRAL;
+  vStr, vAux, vPart: StringRAL;
   vInt: IntegerRAL;
   vParam: TRALParam;
-  tempCookie: TRALCookie;
 begin
   if Authentication = nil then
     Exit;
@@ -504,12 +506,45 @@ begin
       AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
     end;
   end
-  else if (Authentication is TRALServerJWTAuth)
-      And not AResult.ParamByName('Cookie').IsNilOrEmpty then
+  else if Authentication is TRALServerJWTAuth then
   begin
-    tempCookie := GetRALCookieFromText(AResult.ParamByName('Cookie').AsString);
-    AResult.Authorization.AuthType := ratBearer;
-    AResult.Authorization.AuthString := tempCookie.Value;
+    { the Cookie header carries every cookie the browser has for the site,
+      in whatever order; only the one named raltoken is the bearer. This
+      used to take the first cookie, whatever its name, and any site cookie
+      ahead of the token made a logged-in browser fail with 401.
+      Every engine splits the cookies into rpkCOOKIE params, so the param
+      named raltoken is the first place to look; the raw header is the
+      fallback for an engine that kept it whole }
+    vAux := '';
+    vParam := AResult.Params.GetKind[RALTOKENName, rpkCOOKIE];
+    if not vParam.IsNilOrEmpty then
+      vAux := Trim(vParam.AsString);
+    vStr := '';
+    if vAux = '' then
+      vStr := AResult.ParamByName('Cookie').AsString;
+    { one "name=value" per "; " - the name has to be exactly raltoken, so a
+      cookie called "xraltoken" does not match either }
+    while (vStr <> '') and (vAux = '') do
+    begin
+      vInt := Pos(StringRAL(';'), vStr);
+      if vInt > 0 then
+      begin
+        vPart := Trim(Copy(vStr, 1, vInt - 1));
+        vStr := Copy(vStr, vInt + 1, Length(vStr));
+      end
+      else
+      begin
+        vPart := Trim(vStr);
+        vStr := '';
+      end;
+      if Pos(StringRAL(RALTOKENName + '='), vPart) = 1 then
+        vAux := Trim(Copy(vPart, Length(RALTOKENName) + 2, Length(vPart)));
+    end;
+    if vAux <> '' then
+    begin
+      AResult.Authorization.AuthType := ratBearer;
+      AResult.Authorization.AuthString := vAux;
+    end;
   end;
 end;
 

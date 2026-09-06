@@ -190,6 +190,12 @@ begin
             Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
           end;
 
+          { Indy parsed the Authorization header in OnParseAuthentication;
+            without one, the JWT may still be in the raltoken cookie, which
+            this engine never looked at (UseCookie did nothing here) }
+          if Authorization.AuthType = ratNone then
+            DecodeAuth(vRequest);
+
           Params.CompressType := ContentCompress;
           Params.CriptoOptions.CriptType := ContentCripto;
           Params.CriptoOptions.Key := CriptoOptions.Key;

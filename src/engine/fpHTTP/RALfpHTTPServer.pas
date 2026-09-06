@@ -274,6 +274,13 @@ begin
           Params.AppendParams(ARequest.QueryFields, rpkQUERY);
           Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
 
+          { the Authorization header is a known one and never reaches the
+            params here, so the thread's DecodeAuth above reads it straight
+            from the request; without it, the JWT may still be in the
+            raltoken cookie, which only the server's decoder looks at }
+          if Authorization.AuthType = ratNone then
+            FParent.DecodeAuth(vRequest);
+
           Params.CompressType := ContentCompress;
           Params.CriptoOptions.CriptType := ContentCripto;
           Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
