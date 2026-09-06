@@ -479,6 +479,9 @@ function TRALRoutes.GetRoute(const ARoute: StringRAL): TRALRoute;
 var
   I: integer;
 begin
+  { nil when nothing matches: the Result used to be whatever was on the
+    stack, and the caller dereferenced it }
+  Result := nil;
   for I := 0 to pred(Self.Count) do
   if SameText(ARoute, Self.Items[I].DisplayName) then
   begin

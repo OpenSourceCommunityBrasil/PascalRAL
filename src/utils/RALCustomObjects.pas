@@ -349,7 +349,8 @@ var
   vInt: IntegerRAL;
 begin
   Result := nil;
-  for vInt := 0 to FParams.Count do
+  { Pred: "0 to Count" read one item past the list on every body lookup }
+  for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := FParams.Index[vInt];
     if vParam.Kind = rpkBODY then

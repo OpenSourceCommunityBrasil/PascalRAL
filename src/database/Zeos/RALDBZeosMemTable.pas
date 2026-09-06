@@ -392,8 +392,15 @@ begin
   end
   else
   begin
+    { 401, 404, 429 and the like: AException is the transport error, empty
+      when the server answered. OnError fired with nothing on every one of
+      them - the status is always said now, and the body when there is one }
+    vException := AException;
+    if vException = '' then
+      vException := ExceptionFromResponse(AResponse);
+    vException := Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException);
     if Assigned(FOnError) then
-      FOnError(Self, AException);
+      FOnError(Self, vException);
   end;
   FLoading := False;
 end;

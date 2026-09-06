@@ -420,8 +420,14 @@ procedure TRALfpHttpServerThread.Execute;
 begin
   while not Terminated do
   begin
+    { FHttp.Active := True only returns when the server is deactivated, so
+      the loop is idle-only: without the Sleep it spun at 100% of a core
+      the whole time the server was inactive and the thread alive (a server
+      created and not yet started, or stopped and not freed) }
     if (FParent.Active) then
-      FHttp.Active := FParent.Active;
+      FHttp.Active := FParent.Active
+    else
+      Sleep(50);
   end;
 end;
 

@@ -1679,9 +1679,12 @@ begin
         if vString <> '' then
           vString := vString + '&';
 
-        vValor := vItem.ParamName + '=' + vItem.AsString;
-        vValor := StringReplace(vValor, '&', '%26', [rfReplaceAll]);
-        vValor := StringReplace(vValor, '&amp;', '%26', [rfReplaceAll]);
+        { real form encoding, name and value: '=', '%', '+', '&' and every
+          byte above 127 used to go out raw (only '&' was escaped), and a
+          third-party server split the fields wrong. AppendParamLine on the
+          RAL side already decodes, so nothing changes between two RALs }
+        vValor := TRALHTTPCoder.EncodeURL(vItem.ParamName) + '=' +
+          TRALHTTPCoder.EncodeURL(vItem.AsString);
 
         vString := vString + vValor;
       end;

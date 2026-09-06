@@ -95,44 +95,36 @@ const
 
 class function TRALHTTPCoder.DecodeURL(const AUrl: StringRAL): StringRAL;
 var
-  vInt, vChr, vLen: IntegerRAL;
-  vStr: StringRAL;
+  vInt, vChr, vLen, vFim: IntegerRAL;
+  vBytes: TBytes;
 begin
+  { decoded into BYTES and copied into the result whole: "%C3%A7" is the
+    UTF-8 of "ç", and appending CharRAL(#$C3) to a UTF8String on Delphi
+    converted that byte from the ANSI codepage first - every non-ASCII
+    character came out doubly encoded ("Ã§") }
   Result := '';
+  SetLength(vBytes, Length(AUrl));
+  vFim := 0;
   vInt := POSINISTR;
   vLen := RALHighStr(AUrl);
   while vInt <= vLen do
   begin
     if AUrl[vInt] = '+' then
+      vBytes[vFim] := 32
+    else if (AUrl[vInt] = '%') and (vInt + 2 <= vLen) and
+      TryStrToInt('$' + string(Copy(AUrl, vInt + 1, 2)), vChr) then
     begin
-      Result := Result + ' ';
-    end
-    else if AUrl[vInt] = '%' then
-    begin
-      if vInt + 2 <= vLen then
-      begin
-        vStr := '$' + Copy(AUrl, vInt + 1, 2);
-        if TryStrToInt(vStr, vChr) then
-        begin
-          Result := Result + CharRAL(vChr);
-          vInt := vInt + 2;
-        end
-        else
-        begin
-          Result := Result + '%';
-        end;
-      end
-      else
-      begin
-        Result := Result + '%';
-      end;
+      vBytes[vFim] := Byte(vChr);
+      vInt := vInt + 2;
     end
     else
-    begin
-      Result := Result + AUrl[vInt];
-    end;
+      vBytes[vFim] := Ord(AUrl[vInt]);
+    vFim := vFim + 1;
     vInt := vInt + 1;
   end;
+  SetLength(Result, vFim);
+  if vFim > 0 then
+    Move(vBytes[0], Result[POSINISTR], vFim);
 end;
 
 class function TRALHTTPCoder.EncodeURL(const AUrl: StringRAL): StringRAL;

@@ -504,7 +504,10 @@ begin
   if FStorage <> nil then
     FreeAndNil(FStorage);
 
-  FStorage := AValue.Clone;
+  { nil is a legitimate value - the memtables pass it on Storage := nil and
+    when their storage component is freed - and Clone on nil was an AV }
+  if AValue <> nil then
+    FStorage := AValue.Clone;
 end;
 
 procedure TRALDBSQLCache.SaveToFile(AFileName: StringRAL);
