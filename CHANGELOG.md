@@ -129,6 +129,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Rename the Portuguese identifiers and comments introduced since 31/08 to English** (2026-09-06 – tempraturbo)
+  PascalRAL is a global project and its sources are in English. The work
+  of the last week left 27 Portuguese names behind - locals, fields, a
+  parameter, a global and two methods - plus a few comments; all renamed
+  with the same meaning: IsSocketError, SocketIsDead, Reconnect,
+  FSocketReused, vReusing, vRetry, vAttempt, vStart (fpHTTP and Indy
+  clients); vRepeat, vTriedToken, vList, vPending, vMainThread, vAnswer,
+  vRemaining (RALClient); ACompressMultipart, vFile, vTail, vDashes,
+  vClose, vLast, vSize (RALParams); vEnd (AES, URL coder); vCode, vError
+  (netHTTP); gFirebirdPinned (sqldb); PublishRoute (Swagger); vReplace
+  (FireDAC memtable). The older tratarExcecao of the fpHTTP and netHTTP
+  clients became HandleException in the same pass. Translations of the
+  messages in ralconsts_ptbr and ralconsts_eses are on purpose and stay.
+
 - **Make multipart bodies survive the Sagui engine** (2026-09-04 – tempraturbo)
   libsagui hands every multipart body to its upload machinery, and that machinery
   materialises only the parts that name a file. RAL named none of them, so typed
