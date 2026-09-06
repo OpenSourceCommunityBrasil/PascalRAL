@@ -22,6 +22,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Fix response cookies on every engine, JWT client payload, port change on a live server, Indy keep-alive, multipart edge cases; stop copying the received body twice** (2026-09-06 – tempraturbo)
+  A response cookie is an rpkCOOKIE param and every engine now builds its
+  Set-Cookie lines from TRALResponse.GetParamsCookies: a param named
+  Set-Cookie holds a complete cookie text (what AddCookie(TRALCookie)
+  stores) and goes out as it is, a plain name=value gets CookieLife.
+  mORMot2 wrote every cookie param as a header named after the cookie,
+  Indy and fpHTTP turned the Set-Cookie param into a cookie called
+  Set-Cookie, so TRALServerJWTAuth.UseCookie never produced a usable
+  raltoken. The netHTTP client hands response cookies over as rpkCOOKIE
+  params too: WinHTTP keeps Set-Cookie for its jar and does not list it.
+  TRALClientJWTAuth.SetToken decodes the payload as base64url, as RFC
+  7515 defines the segments. TRALIndyServer.SetPort and
+  TRALSaguiServer.SetPort call inherited before reactivating, so the
+  rebind uses the new port. Indy treats HTTP/1.1 as persistent unless
+  the client says close. The multipart decoder no longer gives an empty
+  part a negative size, and the encoder's boundary is random instead of
+  the clock. GetSuportedCompress and GetBestCompress call
+  CheckCompressDefs first.
+  DecodeBody used to copy the engine's stream, decrypt and inflate into
+  new ones, copy the last into the body param and hand it back to the
+  caller, who kept it next to the param's copy: a 100 MB upload went
+  through half a gigabyte. It runs the stages on the caller's stream,
+  hands the one it owns to the param without a copy (TRALParam.
+  AdoptStream) and returns nil; the client response and the server
+  request assemble ResponseStream/RequestStream from the params on demand.
+
 - **Fix JWT time claims, compare secrets in constant time and add OnValidateSQL to TRALDBModule** (2026-09-06 – tempraturbo)
   exp, iat and nbf came from Now (local time) and went through
   DateTimeToUnix, which treats its input as UTC: a token issued at UTC-3
