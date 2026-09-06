@@ -237,7 +237,7 @@ var
   vInt: IntegerRAL;
   vHeaderFile, vHeaderField, vHeaderEnd: StringRAL;
   vItem: TRALMultipartFormData;
-  vString, vArquivo: StringRAL;
+  vString, vFile: StringRAL;
 begin
   { The delimiter is "--" plus the boundary, and nothing else. RFC 2046 defines
     it that way, and the Content-Type we send declares the boundary alone
@@ -270,10 +270,10 @@ begin
       is a decision about what the part IS, and only the caller knows that -
       see TRALParams.EncodeBody, which names its own envelope parts and leaves
       plain form fields alone. }
-    vArquivo := vItem.Filename;
-    if vArquivo <> '' then
+    vFile := vItem.Filename;
+    if vFile <> '' then
       vString := Format(vHeaderFile, [Boundary, vItem.Disposition, vItem.Name,
-        vArquivo, vItem.ContentType])
+        vFile, vItem.ContentType])
     else
       vString := Format(vHeaderField, [Boundary, vItem.Disposition, vItem.Name,
         vItem.ContentType]);

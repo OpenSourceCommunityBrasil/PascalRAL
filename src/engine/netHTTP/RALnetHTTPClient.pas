@@ -78,43 +78,43 @@ var
     the classification lives here rather than in a shared table.
       12002 timed out  12007 name not resolved  12029 cannot connect
     Only 12002 happens after the request is on the wire. }
-  procedure tratarExcecao(AMessage: StringRAL);
+  procedure HandleException(AMessage: StringRAL);
   var
-    vErro: TRALTransportError;
-    vCodigo: IntegerRAL;
+    vError: TRALTransportError;
+    vCode: IntegerRAL;
   begin
-    vErro := rteOther;
-    vCodigo := -1;
+    vError := rteOther;
+    vCode := -1;
     if Pos('12002', AMessage) > 0 then
     begin
-      vErro := rteTimeout;
-      vCodigo := 12002;
+      vError := rteTimeout;
+      vCode := 12002;
     end
     else if Pos('12029', AMessage) > 0 then
     begin
-      vErro := rteConnect;
-      vCodigo := 12029;
+      vError := rteConnect;
+      vCode := 12029;
     end
     else if Pos('12007', AMessage) > 0 then
     begin
-      vErro := rteConnect;
-      vCodigo := 12007;
+      vError := rteConnect;
+      vCode := 12007;
     end
     else if Pos('10061', AMessage) > 0 then
     begin
-      vErro := rteConnect;
-      vCodigo := 10061;
+      vError := rteConnect;
+      vCode := 10061;
     end;
 
     // when a response did arrive the failure is not a transport one: keep the
     // status the server sent and leave TransportError at rteNone.
     if vResponse <> nil then
     begin
-      SetTransportError(AResponse, rteNone, vCodigo, AMessage);
+      SetTransportError(AResponse, rteNone, vCode, AMessage);
       AResponse.StatusCode := vResponse.GetStatusCode;
     end
     else
-      SetTransportError(AResponse, vErro, vCodigo, AMessage);
+      SetTransportError(AResponse, vError, vCode, AMessage);
   end;
 
 begin
@@ -239,9 +239,9 @@ begin
       end;
     except
       on e: ENetHTTPClientException do
-        tratarExcecao(e.Message);
+        HandleException(e.Message);
       on e: Exception do
-        tratarExcecao(e.Message);
+        HandleException(e.Message);
     end;
   finally
     FreeAndNil(vSource);

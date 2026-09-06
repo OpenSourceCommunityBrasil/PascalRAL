@@ -279,11 +279,11 @@ type
     /// Removes a RALParam matching the given AName and AKind.
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
     /// Returns a TStream with all RALParams that matches 'Body' Kind.
-    { AComprimirMultipart False leaves a multipart body uncompressed - only the
+    { ACompressMultipart False leaves a multipart body uncompressed - only the
       client request path asks for that, and the reason is written where the
       flag is read. Everything else keeps compressing as it always did. }
     function EncodeBody(var AContentType, AContentDisposition: StringRAL;
-      AComprimirMultipart: boolean = True): TStream;
+      ACompressMultipart: boolean = True): TStream;
     /// Retuns the internal Enumerator type to allow for..in loops
     function GetEnumerator: TEnumerator; inline;
     /// creates and returns an empty param for a more flexible way of coding.
@@ -534,16 +534,16 @@ procedure RALSwapBytes(var ABuffer; ASize: Integer);
 {$IF Defined(FPC) and Defined(ENDIAN_BIG)}
 var
   vBytes: PByte;
-  vInt, vFim: Integer;
+  vInt, vLast: Integer;
   vTmp: Byte;
 begin
   vBytes := @ABuffer;
-  vFim := ASize - 1;
+  vLast := ASize - 1;
   for vInt := 0 to (ASize div 2) - 1 do
   begin
     vTmp := vBytes[vInt];
-    vBytes[vInt] := vBytes[vFim - vInt];
-    vBytes[vFim - vInt] := vTmp;
+    vBytes[vInt] := vBytes[vLast - vInt];
+    vBytes[vLast - vInt] := vTmp;
   end;
 end;
 {$ELSE}
@@ -1453,8 +1453,8 @@ const
 var
   vByte: Byte;
   vPos: Int64RAL;
-  vBoundary, vFecho, vCauda: StringRAL;
-  vTam: IntegerRAL;
+  vBoundary, vClose, vTail: StringRAL;
+  vSize: IntegerRAL;
 begin
   Result := '';
   vBoundary := '';
@@ -1462,14 +1462,14 @@ begin
     Exit;
   vPos := AStream.Position;
   try
-    AStream.Position := 2; // depois dos dois tracos
+    AStream.Position := 2; // past the two dashes
     while AStream.Position < AStream.Size do
     begin
       AStream.ReadBuffer(vByte, 1);
       if (vByte = 13) or (vByte = 10) then
         Break;
       if (vByte > 127) or not (Chr(vByte) in BCHARS) then
-        Exit; // nao e' delimitador: corpo comum que comeca com dois tracos
+        Exit; // not a delimiter: an ordinary body that starts with two dashes
       vBoundary := vBoundary + StringRAL(Chr(vByte));
     end;
     if (vBoundary = '') or (Length(vBoundary) > 70) then
@@ -1480,14 +1480,14 @@ begin
       multipart and lost. A real multipart always ends with the closing
       delimiter, so the tail of the body has to carry it. Only the tail is
       read: the body may be large, and the close is always at the end. }
-    vFecho := '--' + vBoundary + '--';
-    vTam := Length(vFecho) + 4; // folga para um CRLF depois do fecho
-    if AStream.Size < vTam then
-      vTam := AStream.Size;
-    SetLength(vCauda, vTam);
-    AStream.Position := AStream.Size - vTam;
-    AStream.ReadBuffer(vCauda[1], vTam);
-    if Pos(vFecho, vCauda) = 0 then
+    vClose := '--' + vBoundary + '--';
+    vSize := Length(vClose) + 4; // room for a CRLF after the close
+    if AStream.Size < vSize then
+      vSize := AStream.Size;
+    SetLength(vTail, vSize);
+    AStream.Position := AStream.Size - vSize;
+    AStream.ReadBuffer(vTail[1], vSize);
+    if Pos(vClose, vTail) = 0 then
       Exit;
   finally
     AStream.Position := vPos;
@@ -1501,7 +1501,7 @@ end;
   with "--" (deflate opens with 0x1F 0x8B). }
 function StartsWithDelim(AStream: TStream): boolean;
 var
-  vDois: array [0 .. 1] of Byte;
+  vDashes: array [0 .. 1] of Byte;
   vPos: Int64RAL;
 begin
   Result := False;
@@ -1510,8 +1510,8 @@ begin
   vPos := AStream.Position;
   try
     AStream.Position := 0;
-    AStream.ReadBuffer(vDois[0], 2);
-    Result := (vDois[0] = Ord('-')) and (vDois[1] = Ord('-'));
+    AStream.ReadBuffer(vDashes[0], 2);
+    Result := (vDashes[0] = Ord('-')) and (vDashes[1] = Ord('-'));
   finally
     AStream.Position := vPos;
   end;
@@ -1636,12 +1636,12 @@ begin
 end;
 
 function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL;
-  AComprimirMultipart: boolean): TStream;
+  ACompressMultipart: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
-  vString, vValor, vArquivo: StringRAL;
+  vString, vValor, vFile: StringRAL;
   vTemp: TStream;
 begin
   Result := nil;
@@ -1725,11 +1725,11 @@ begin
             is a multipart made ONLY of unnamed parts, and that never happens
             here: a field on its own travels urlencoded, and a body part is
             always named. }
-          vArquivo := Index[vInt1].FileName;
-          if (vArquivo = '') and (vItem.Kind = rpkBODY) then
-            vArquivo := Index[vInt1].ParamName;
+          vFile := Index[vInt1].FileName;
+          if (vFile = '') and (vItem.Kind = rpkBODY) then
+            vFile := Index[vInt1].ParamName;
           vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
-            vArquivo, Index[vInt1].ContentType);
+            vFile, Index[vInt1].ContentType);
         end;
       end;
       Result := vMultPart.AsStream;
@@ -1753,7 +1753,7 @@ begin
     typed params of a few bytes and files that usually arrive compressed
     already, while the response - where the volume actually is - still
     compresses normally. }
-  if (not AComprimirMultipart) and (FCompressType <> ctNone) and
+  if (not ACompressMultipart) and (FCompressType <> ctNone) and
      (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
     { and the caller hears about it through CompressType: whoever fills
       Content-Encoding reads it back from here, and a header promising gzip over
@@ -1790,7 +1790,7 @@ begin
       back from the first line of the plaintext, which IS the delimiter.
 
       Only on the request path, where the far end may parse on its own. }
-    if (not AComprimirMultipart) and
+    if (not ACompressMultipart) and
        (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
       AContentType := rctAPPLICATIONOCTETSTREAM;
   end;

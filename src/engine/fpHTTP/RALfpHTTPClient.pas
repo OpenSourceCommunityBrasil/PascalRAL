@@ -19,7 +19,7 @@ type
       same way for a read timeout and for a kept-alive connection the server
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
-    FSocketReusado: boolean;
+    FSocketReused: boolean;
   protected
     procedure OnGetSSLHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
   public
@@ -52,7 +52,7 @@ begin
   FHttp.AllowRedirect := True;
   FHttp.KeepConnection := True;
   FHttp.OnGetSocketHandler := @OnGetSSLHandler;
-  FSocketReusado := False;
+  FSocketReused := False;
 end;
 
 destructor TRALfpHttpClientHTTP.Destroy;
@@ -65,9 +65,9 @@ procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
-  vTentativa: IntegerRAL;
-  vRefazer, vReusando: boolean;
-  vInicio: QWord;
+  vAttempt: IntegerRAL;
+  vRetry, vReusing: boolean;
+  vStart: QWord;
 
   { SetTransportError resets compression, crypto and the content type - that
     last one matters here because ResponseText runs the message through
@@ -80,7 +80,7 @@ var
     was wiped and BeforeSendUrl raised with an empty text. SetResponseText
     already frees the previous stream, so the line was redundant on top of
     being harmful. }
-  procedure tratarExcecao(AError: TRALTransportError; ACode: IntegerRAL;
+  procedure HandleException(AError: TRALTransportError; ACode: IntegerRAL;
     AMessage: StringRAL);
   begin
     SetTransportError(AResponse, AError, ACode, AMessage);
@@ -92,25 +92,25 @@ var
       fphttpclient disconnect; the value is reassigned from Parent.KeepAlive at
       the start of every request, so this only costs one reconnect. }
     FHttp.KeepConnection := False;
-    FSocketReusado := False;
+    FSocketReused := False;
   end;
 
   { True when the failure is best explained by the peer having closed a socket
     this client had left open: it has to have been a reused socket, this has to
     be the first attempt, and the failure has to have come back far too fast to
     be a read timeout. }
-  function SocketMorto: boolean;
+  function SocketIsDead: boolean;
   begin
-    Result := vReusando and (vTentativa = 1) and
-              (GetTickCount64 - vInicio < Cardinal(Parent.RequestTimeout) div 2);
+    Result := vReusing and (vAttempt = 1) and
+              (GetTickCount64 - vStart < Cardinal(Parent.RequestTimeout) div 2);
   end;
 
-  procedure Reconectar;
+  procedure Reconnect;
   begin
     FHttp.KeepConnection := False;  // makes fphttpclient drop the dead socket
-    FSocketReusado := False;
+    FSocketReused := False;
     FHttp.KeepConnection := Parent.KeepAlive;
-    vRefazer := True;
+    vRetry := True;
   end;
 
 begin
@@ -187,7 +187,7 @@ begin
       What must NOT be reissued is a read timeout, and fphttpclient reports
       both the same way (EHTTPClient with SErrReadingSocket and StatusCode 0).
       Two conditions separate them: the socket has to have been one this client
-      left open (FSocketReusado), and the failure has to come back far too fast
+      left open (FSocketReused), and the failure has to come back far too fast
       to be a timeout. Without the second test, a POST that times out on a warm
       connection would be written twice - the exact defect this whole change
       exists to remove.
@@ -195,12 +195,12 @@ begin
       The retry lives here rather than in BeforeSendUrl because the token
       routines (SetTokenJWT and friends) call SendUrl through their own loops
       and abort on any ErrorCode; only an engine-level reconnect covers them. }
-    vTentativa := 0;
+    vAttempt := 0;
     repeat
-      vRefazer := False;
-      vTentativa := vTentativa + 1;
-      vReusando := FSocketReusado;
-      vInicio := GetTickCount64;
+      vRetry := False;
+      vAttempt := vAttempt + 1;
+      vReusing := FSocketReused;
+      vStart := GetTickCount64;
 
       vResult.Size := 0;
       if vSource <> nil then
@@ -236,19 +236,19 @@ begin
       AResponse.ResponseStream := vResult;
       // the request went through; if keep-alive is on, the socket stays open
       // and the NEXT request will be reusing it.
-      FSocketReusado := Parent.KeepAlive;
+      FSocketReused := Parent.KeepAlive;
     except
       on e: ESocketError do
       begin
         case e.Code of
           // never reached a server
           seConnectTimeOut, seConnectFailed, seHostNotFound:
-            tratarExcecao(rteConnect, 10060, e.Message);
+            HandleException(rteConnect, 10060, e.Message);
           // connected, the request went out, the answer did not come back
           seIOTimeOut:
-            tratarExcecao(rteTimeout, 10060, e.Message);
+            HandleException(rteTimeout, 10060, e.Message);
         else
-          tratarExcecao(rteOther, -1, e.Message);
+          HandleException(rteOther, -1, e.Message);
         end;
       end;
       { EHTTPClient means two different things in fphttpclient, and only the
@@ -262,31 +262,31 @@ begin
 
           StatusCode = 0 - SErrReadingSocket: the socket was connected and the
             answer could not be read. A read timeout lands here, NOT on
-            ESocketError; SocketMorto tells that case apart from an aged-out
+            ESocketError; SocketIsDead tells that case apart from an aged-out
             kept-alive connection. }
       on e: EHTTPClient do
       begin
         if e.StatusCode > 0 then
         begin
-          tratarExcecao(rteNone, 0, e.Message);
+          HandleException(rteNone, 0, e.Message);
           AResponse.StatusCode := e.StatusCode;
         end
-        else if SocketMorto then
-          Reconectar
+        else if SocketIsDead then
+          Reconnect
         else
-          tratarExcecao(rteTimeout, 10060, e.Message);
+          HandleException(rteTimeout, 10060, e.Message);
       end;
       { Writing to a socket the peer has closed: the same aged-out kept-alive
         connection, caught one step earlier - the request did not even go out. }
       on e: EWriteError do
-        if SocketMorto then
-          Reconectar
+        if SocketIsDead then
+          Reconnect
         else
-          tratarExcecao(rteOther, -1, e.Message);
+          HandleException(rteOther, -1, e.Message);
       on e: Exception do
-        tratarExcecao(rteOther, -1, e.Message);
+        HandleException(rteOther, -1, e.Message);
     end;
-    until not vRefazer;
+    until not vRetry;
   finally
     FreeAndNil(vResult);
     FreeAndNil(vSource);

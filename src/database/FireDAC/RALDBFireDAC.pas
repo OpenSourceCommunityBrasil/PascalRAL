@@ -80,9 +80,9 @@ begin
     FConnector.Params.Add('Port=' + IntToStr(Port));
   FConnector.LoginPrompt := False;
 
-  { Charset da conexao: o que o usuario pediu, ou o default do banco. Sem
-    isso o Firebird recusa texto acentuado com "Malformed string" - o
-    StringFormat=Unicode abaixo so vale para SQLite. }
+  { Connection charset: what the user asked for, or the database default.
+    Without it Firebird refuses accented text with "Malformed string" - the
+    StringFormat=Unicode below only applies to SQLite. }
   if CharacterSet <> '' then
     FConnector.Params.Add('CharacterSet=' + CharacterSet)
   else if DatabaseType = dtFirebird then

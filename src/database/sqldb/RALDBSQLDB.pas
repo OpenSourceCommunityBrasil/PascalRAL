@@ -63,7 +63,7 @@ var
     (Zeos, or an application connection): the image stays loaded, shut down
     for everybody. Holding a reference here keeps the counter above zero,
     so fb_shutdown never runs while the process lives. }
-  gFirebirdSeguro: Boolean = False;
+  gFirebirdPinned: Boolean = False;
 
 { TRALDBSQLDB }
 
@@ -103,10 +103,10 @@ begin
     { right after a successful open the library is loaded and counted, so the
       parameterless InitialiseIBase60 only increments - no second load, no
       name conflict with whatever LibLocation pointed at }
-    if (DatabaseType = dtFirebird) and not gFirebirdSeguro then
+    if (DatabaseType = dtFirebird) and not gFirebirdPinned then
     begin
       InitialiseIBase60;
-      gFirebirdSeguro := True;
+      gFirebirdPinned := True;
     end;
   except
     on e: Exception do
@@ -350,7 +350,7 @@ initialization
   RegisterDatabase(TRALDBSQLDB);
 
 finalization
-  if gFirebirdSeguro then
+  if gFirebirdPinned then
     ReleaseIBase60;
 
 end.

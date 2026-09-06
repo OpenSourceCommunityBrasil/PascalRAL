@@ -237,7 +237,7 @@ var
   vField: TFieldDef;
   vType: TRALFieldType;
   vTables: TStringList;
-  vSubstituir: Boolean;
+  vReplace: Boolean;
 begin
   inherited;
 
@@ -255,7 +255,7 @@ begin
     AnsiString(255) got a TWideStringField(60) writing UTF-16 into a one-byte
     column, and the first record read back as "aeijao". While loading, the
     server schema is asked only for the update table. }
-  vSubstituir := not FLoading;
+  vReplace := not FLoading;
 
   vTables := TStringList.Create;
 
@@ -269,7 +269,7 @@ begin
       Exit;
 
     Self.DisableControls;
-    if vSubstituir then
+    if vReplace then
       FieldDefs.Clear;
 
     try
@@ -281,7 +281,7 @@ begin
         if vTables.IndexOf(vInfo.Field[vInt].TableName) < 0 then
           vTables.Add(vInfo.Field[vInt].TableName);
 
-        if not vSubstituir then
+        if not vReplace then
           Continue;
 
         vField := FieldDefs.AddFieldDef;

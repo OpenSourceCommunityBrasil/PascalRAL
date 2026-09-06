@@ -69,7 +69,7 @@ var
   { Winsock codes that mean the request never reached a server: connection
     refused, timed out, network or host unreachable, host not found. Anything
     else happened with a live peer and is not safe to replay. }
-  function ErroDeSocket(ALastError: IntegerRAL): TRALTransportError;
+  function IsSocketError(ALastError: IntegerRAL): TRALTransportError;
   begin
     case ALastError of
       10051, 10060, 10061, 10065, 11001:
@@ -212,7 +212,7 @@ begin
       on e: EIdReadTimeout do
         SetTransportError(AResponse, rteTimeout, 10060, e.Message);
       on e: EIdSocketError do
-        SetTransportError(AResponse, ErroDeSocket(e.LastError), e.LastError,
+        SetTransportError(AResponse, IsSocketError(e.LastError), e.LastError,
                           e.Message);
       on e: Exception do
         SetTransportError(AResponse, rteOther, -1, e.Message);

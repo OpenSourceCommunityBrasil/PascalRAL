@@ -43,7 +43,7 @@ type
   protected
     procedure CreateRoutes;
     /// GET only, and public unless RequireAuth is on
-    procedure Publica(ARoute: TRALRoute);
+    procedure PublishRoute(ARoute: TRALRoute);
     procedure SetDomain(const AValue: StringRAL); override;
     procedure SetPostmanFile(const AValue: TFileName);
     procedure SetPostmanTag(AValue: boolean);
@@ -144,25 +144,25 @@ begin
   Routes.Clear;
 
   vRoute := CreateRoute('/',{$IFDEF FPC}@{$ENDIF}SwaggerIndex);
-  Publica(vRoute);
+  PublishRoute(vRoute);
 
   vRoute := CreateRoute('/swagger.css',{$IFDEF FPC}@{$ENDIF}SwaggerCSS);
-  Publica(vRoute);
+  PublishRoute(vRoute);
 
   vRoute := CreateRoute('/swagger-initializer.js',{$IFDEF FPC}@{$ENDIF}SwaggerInitializer);
-  Publica(vRoute);
+  PublishRoute(vRoute);
 
   vRoute := CreateRoute('/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
-  Publica(vRoute);
+  PublishRoute(vRoute);
 
   if FPostmanTag then
   begin
     vRoute := CreateRoute('/postman.json',{$IFDEF FPC}@{$ENDIF}SwaggerPostman);
-    Publica(vRoute);
+    PublishRoute(vRoute);
   end;
 end;
 
-procedure TRALSwaggerModule.Publica(ARoute: TRALRoute);
+procedure TRALSwaggerModule.PublishRoute(ARoute: TRALRoute);
 begin
   ARoute.AllowedMethods := [amGET];
   if not FRequireAuth then

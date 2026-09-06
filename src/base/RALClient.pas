@@ -520,17 +520,17 @@ end;
 
 procedure TRALClient.DropCallbacks(AObject: TObject);
 var
-  vLista: TList;
+  vList: TList;
   vInt: IntegerRAL;
   vThread: TRALThreadClient;
 begin
   if FThreads = nil then
     Exit;
-  vLista := FThreads.LockList;
+  vList := FThreads.LockList;
   try
-    for vInt := 0 to Pred(vLista.Count) do
+    for vInt := 0 to Pred(vList.Count) do
     begin
-      vThread := TRALThreadClient(vLista[vInt]);
+      vThread := TRALThreadClient(vList[vInt]);
       if TMethod(vThread.FOnResponse).Data = Pointer(AObject) then
         vThread.FOnResponse := nil;
     end;
@@ -541,38 +541,38 @@ end;
 
 procedure TRALClient.WaitPendingRequests;
 var
-  vLista: TList;
+  vList: TList;
   vInt: IntegerRAL;
-  vRestante: IntegerRAL;
-  vPendentes: IntegerRAL;
-  vPrincipal: boolean;
+  vRemaining: IntegerRAL;
+  vPending: IntegerRAL;
+  vMainThread: boolean;
 begin
   if FThreads = nil then
     Exit;
 
-  vLista := FThreads.LockList;
+  vList := FThreads.LockList;
   try
-    for vInt := 0 to Pred(vLista.Count) do
-      TRALThreadClient(vLista[vInt]).FOnResponse := nil;
-    vPendentes := vLista.Count;
+    for vInt := 0 to Pred(vList.Count) do
+      TRALThreadClient(vList[vInt]).FOnResponse := nil;
+    vPending := vList.Count;
   finally
     FThreads.UnlockList;
   end;
 
   { OnTerminate of a thread is delivered through Synchronize, so from the main
     thread the queue has to be pumped here or the wait never ends }
-  vPrincipal := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND} = MainThreadID;
-  vRestante := FConnectTimeout + FRequestTimeout + 1000;
-  while (vPendentes > 0) and (vRestante > 0) do
+  vMainThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND} = MainThreadID;
+  vRemaining := FConnectTimeout + FRequestTimeout + 1000;
+  while (vPending > 0) and (vRemaining > 0) do
   begin
-    if vPrincipal then
+    if vMainThread then
       CheckSynchronize(10)
     else
       Sleep(10);
-    Dec(vRestante, 10);
-    vLista := FThreads.LockList;
+    Dec(vRemaining, 10);
+    vList := FThreads.LockList;
     try
-      vPendentes := vLista.Count;
+      vPending := vList.Count;
     finally
       FThreads.UnlockList;
     end;
@@ -580,10 +580,10 @@ begin
 
   { whatever is still running after the timeouts is on its own: it must not
     report back to a client that no longer exists }
-  vLista := FThreads.LockList;
+  vList := FThreads.LockList;
   try
-    for vInt := 0 to Pred(vLista.Count) do
-      TRALThreadClient(vLista[vInt]).FParent := nil;
+    for vInt := 0 to Pred(vList.Count) do
+      TRALThreadClient(vList[vInt]).FParent := nil;
   finally
     FThreads.UnlockList;
   end;
@@ -658,10 +658,10 @@ var
   vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL: StringRAL;
-  vRepetir, vTentouToken: boolean;
+  vRepeat, vTriedToken: boolean;
 begin
   vConta := 0;
-  vTentouToken := False;
+  vTriedToken := False;
 
   // One attempt per BaseURL, and that is the whole budget. There used to be a
   // floor of 3 here, which with a single URL meant sending the same request
@@ -674,16 +674,16 @@ begin
     vMaxUrls := 1;
 
   repeat
-    vRepetir := False;
+    vRepeat := False;
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
-    // vParams e usado em dois pontos: SetAuthToken, que so roda quando ainda
-    // nao ha token, e SetAuthHeader, que roda sempre. Antes ele era criado e
-    // liberado dentro do primeiro bloco, entao SetAuthHeader recebia um ponteiro
-    // liberado - ou, quando o token ja existia e o bloco nem rodava, uma variavel
-    // nao inicializada. Nem o Basic nem o JWT leem esse argumento, mas o Digest e
-    // o OAuth leem.
+    // vParams is used in two places: SetAuthToken, which only runs while there
+    // is no token yet, and SetAuthHeader, which always runs. It used to be
+    // created and freed inside the first block, so SetAuthHeader received a
+    // freed pointer - or, when the token already existed and the block did not
+    // run at all, an uninitialised variable. Neither Basic nor JWT read this
+    // argument, but Digest and OAuth do.
     vParams := TStringList.Create;
     try
       vParams.Sorted := True;
@@ -733,20 +733,20 @@ begin
 
     // 401: drop the token and send once more, to the SAME url. This is what
     // ResetToken always meant to do and never did.
-    if (vResp = HTTP_Unauthorized) and (not vTentouToken) and
+    if (vResp = HTTP_Unauthorized) and (not vTriedToken) and
        (FParent.Authentication <> nil) and
        (FParent.Authentication.AutoGetToken) then
     begin
-      vTentouToken := True;
+      vTriedToken := True;
       ResetToken;
-      vRepetir := True;
+      vRepeat := True;
     end
     else if CanSwitchURL(AMethod, AResponse.TransportError) and
             (vConta < vMaxUrls) then
-      vRepetir := True;
+      vRepeat := True;
     // no Continue here: in a repeat..until it jumps straight to the condition,
     // on both Delphi and FPC, so it would not repeat anything.
-  until not vRepetir;
+  until not vRepeat;
 
   if vErrorCode <> 0 then
     raise Exception.Create(AResponse.ResponseText);
@@ -1053,7 +1053,7 @@ end;
 
 procedure TRALThreadClient.OnTerminateThread(Sender: TObject);
 var
-  vResposta: TRALThreadClientResponse;
+  vAnswer: TRALThreadClientResponse;
   vParent: TRALClient;
 begin
   { the callback is read under the client's lock because DropCallbacks and
@@ -1064,16 +1064,16 @@ begin
   begin
     vParent.FThreads.LockList;
     try
-      vResposta := FOnResponse;
+      vAnswer := FOnResponse;
     finally
       vParent.FThreads.UnlockList;
     end;
   end
   else
-    vResposta := FOnResponse;
+    vAnswer := FOnResponse;
 
-  if Assigned(vResposta) then
-    vResposta(Self, FResponse, FException);
+  if Assigned(vAnswer) then
+    vAnswer(Self, FResponse, FException);
 
   if vParent <> nil then
     vParent.ThreadFinished(Self);

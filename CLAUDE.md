@@ -194,7 +194,7 @@ anyway. It now follows `Parent.KeepAlive` on every request.
 And when the server closes a kept-alive connection, the next write raises
 `EWriteError`. Retrying on the same dead socket just fails again, so
 `BeforeSendUrl` burned all of its attempts and gave up on a healthy server.
-`tratarExcecao` sets `KeepConnection := False`, which makes fphttpclient
+`HandleException` sets `KeepConnection := False`, which makes fphttpclient
 disconnect, and the per-request assignment restores it - one reconnect, and the
 retry works.
 
@@ -368,7 +368,7 @@ On the way in, `RALfpHTTPServer` read `ContentEncoding` and `AcceptEncoding` fro
 
 On the way out, the server wrote response headers with `Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, ': ')`. `TResponse.CustomHeaders` is a name=value list and FPC emits each entry as `Names[i] + ': ' + Values[i]`, so a ready-made `Name: Value` line left nothing to split on: the whole line became the value and every custom header went out prefixed with a stray `': '` (`: Content-Encription: aes256cbc_pkcs7`). The client never found `Content-Encription`, never decrypted, and handed the encrypted body to the multipart decoder. Writing with `'='` fixes it.
 
-The crash on top of that was in the error handler itself: `tratarExcecao` cleared compression and crypto but not the content type, and `ResponseText` runs the message through `DecodeBody` - so a plain error string was parsed as multipart and died with an access violation, burying the original error under one raised by the code meant to report it. It now resets the content type to text/plain.
+The crash on top of that was in the error handler itself: `HandleException` cleared compression and crypto but not the content type, and `ResponseText` runs the message through `DecodeBody` - so a plain error string was parsed as multipart and died with an access violation, burying the original error under one raised by the code meant to report it. It now resets the content type to text/plain.
 
 Verified on Lazarus/FPC 3.2.2: 230 checks, all four transport combinations green.
 

@@ -679,7 +679,7 @@ begin
       vPosition := vPosition + (vBytesRead - (vBytesRead mod 16));
     end;
 
-    // padding nao complementar
+    // nothing to complete: PKCS#7 pads a whole block
     if vPadding = 0 then
     begin
       FillChar(vInBuf[0], 16, 16);
@@ -710,7 +710,7 @@ var
   vInBuf: array of byte;
   vOutBuf: array of byte;
   vBytesRead, vRead: IntegerRAL;
-  vPosition, vSize, vFim, vSizeBuf: Int64RAL;
+  vPosition, vSize, vEnd, vSizeBuf: Int64RAL;
   vPad1, vPad2: byte;
   vIV, vMac, vTag: TBytes;
   vCipher: TRALCriptoAESCipher;
@@ -738,16 +738,16 @@ begin
 
   { the MAC is checked before a single block is decrypted, and in constant
     time: a body altered on the way, or one under another key, stops here }
-  vFim := vSize - cMacSize;
+  vEnd := vSize - cMacSize;
   vSigned := TMemoryStream.Create;
   try
-    vSigned.CopyFrom(AValue, vFim);
+    vSigned.CopyFrom(AValue, vEnd);
     vMac := Mac(vSigned);
   finally
     vSigned.Free;
   end;
   SetLength(vTag, cMacSize);
-  AValue.Position := vFim;
+  AValue.Position := vEnd;
   AValue.ReadBuffer(vTag[0], cMacSize);
   if not RALSameBytes(vMac, vTag) then
     raise Exception.Create(emCryptInvalidMAC);
@@ -757,7 +757,7 @@ begin
   AValue.ReadBuffer(vIV[0], 16);
   vPosition := 16;
 
-  vSizeBuf := vFim - 16;
+  vSizeBuf := vEnd - 16;
   if vSizeBuf > DEFAULTBUFFERSTREAMSIZE then
     vSizeBuf := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
 
@@ -765,18 +765,18 @@ begin
   SetLength(vOutBuf, vSizeBuf);
 
   Result := TMemoryStream.Create;
-  Result.Size := vFim - 16;
+  Result.Size := vEnd - 16;
 
   vCipher := CreateCipher(True);
   try
     vCipher.SetIV(vIV);
 
-    while vPosition < vFim do
+    while vPosition < vEnd do
     begin
       // never past the ciphertext: the MAC sits right after it
       vRead := Length(vInBuf);
-      if vRead > vFim - vPosition then
-        vRead := vFim - vPosition;
+      if vRead > vEnd - vPosition then
+        vRead := vEnd - vPosition;
       vBytesRead := AValue.Read(vInBuf[0], vRead);
 
       vCipher.Input := @vInBuf[0];

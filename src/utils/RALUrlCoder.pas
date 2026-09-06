@@ -95,7 +95,7 @@ const
 
 class function TRALHTTPCoder.DecodeURL(const AUrl: StringRAL): StringRAL;
 var
-  vInt, vChr, vLen, vFim: IntegerRAL;
+  vInt, vChr, vLen, vEnd: IntegerRAL;
   vBytes: TBytes;
 begin
   { decoded into BYTES and copied into the result whole: "%C3%A7" is the
@@ -104,27 +104,27 @@ begin
     character came out doubly encoded ("Ã§") }
   Result := '';
   SetLength(vBytes, Length(AUrl));
-  vFim := 0;
+  vEnd := 0;
   vInt := POSINISTR;
   vLen := RALHighStr(AUrl);
   while vInt <= vLen do
   begin
     if AUrl[vInt] = '+' then
-      vBytes[vFim] := 32
+      vBytes[vEnd] := 32
     else if (AUrl[vInt] = '%') and (vInt + 2 <= vLen) and
       TryStrToInt('$' + string(Copy(AUrl, vInt + 1, 2)), vChr) then
     begin
-      vBytes[vFim] := Byte(vChr);
+      vBytes[vEnd] := Byte(vChr);
       vInt := vInt + 2;
     end
     else
-      vBytes[vFim] := Ord(AUrl[vInt]);
-    vFim := vFim + 1;
+      vBytes[vEnd] := Ord(AUrl[vInt]);
+    vEnd := vEnd + 1;
     vInt := vInt + 1;
   end;
-  SetLength(Result, vFim);
-  if vFim > 0 then
-    Move(vBytes[0], Result[POSINISTR], vFim);
+  SetLength(Result, vEnd);
+  if vEnd > 0 then
+    Move(vBytes[0], Result[POSINISTR], vEnd);
 end;
 
 class function TRALHTTPCoder.EncodeURL(const AUrl: StringRAL): StringRAL;
