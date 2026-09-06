@@ -123,6 +123,8 @@ type
     FWhiteIPList: TRALStringListSafe;
     // Creates and returns the internal Blacklisted IPs
     function GetBlackIPList: TStringList;
+    function GetBlockedCount: IntegerRAL;
+    function GetFloodCount: IntegerRAL;
     // Creates and returns the internal Whitelisted IPs
     function GetWhiteIPList: TStringList;
     // Setter functions for class properties
@@ -154,6 +156,11 @@ type
     function GetBlockClientTry(const AClientIP: StringRAL): integer;
     // Checks if the number de tries of client exceed the established limit
     function CheckBlockClientTry(const AClienteIP: StringRAL): boolean;
+
+    // IPs currently tracked for brute force (any failed try) and for flood;
+    // ClearExpiredIPs trims both, so they are bounded and worth watching
+    property BlockedCount: IntegerRAL read GetBlockedCount;
+    property FloodCount: IntegerRAL read GetFloodCount;
   published
     // List of IPs that will not receive a response from the server
     property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
@@ -1018,10 +1025,12 @@ begin
     if (vBlock = nil) then
     begin
       vBlock := TRALClientBlockList.Create;
-      vBlock.LastAccess := Now;
       FBlockedList.AddObject(AClientIP, vBlock);
     end;
     vBlock.NumTry := vBlock.NumTry + 1;
+    { the expiration counts from the LAST failed try: an attacker that keeps
+      trying stays blocked, and a client that stopped is forgiven in time }
+    vBlock.LastAccess := Now;
   end;
 end;
 
@@ -1031,8 +1040,18 @@ begin
 end;
 
 function TRALSecurity.CheckBlockClientIP(const AClientIP: StringRAL): boolean;
+var
+  vMax: IntegerRAL;
 begin
-  Result := (((rsoBruteForceProtection in Options) and FBlockedList.Exists(AClientIP)) or
+  { blocked only from MaxTry failed tries on: the list holds every IP that
+    failed once, and testing membership alone locked an IP out at the first
+    wrong password, whatever MaxTry said. A successful login clears the
+    counter (ProcessCommands unblocks on the way to the route) }
+  vMax := FBruteForce.MaxTry;
+  if vMax < 1 then
+    vMax := 1;
+  Result := (((rsoBruteForceProtection in Options) and
+              (GetBlockClientTry(AClientIP) >= vMax)) or
     (FBlackIPList.Exists(AClientIP))) and (not FWhiteIPList.Exists(AClientIP));
 end;
 
@@ -1064,6 +1083,7 @@ procedure TRALSecurity.ClearExpiredIPs;
 var
   vInt: integer;
   vBlock: TRALClientBlockList;
+  vIdle: Int64RAL;
 begin
   if rsoBruteForceProtection in Options then
   begin
@@ -1077,6 +1097,21 @@ begin
           FBlockedList.Remove(vInt, True);
       end;
     end;
+  end;
+
+  { the flood list grew one entry per distinct client address forever: a
+    scan from random sources was a memory leak. An entry only matters for
+    FloodTimeInterval after its last access; anything idle for a minute (or
+    a generous multiple of the interval) cannot be flooding any more }
+  if rsoFloodProtection in Options then
+  begin
+    vIdle := 60000;
+    if Int64RAL(FFloodTimeInterval) * 10 > vIdle then
+      vIdle := Int64RAL(FFloodTimeInterval) * 10;
+    for vInt := Pred(FFloodList.Count) downto 0 do
+      if MilliSecondsBetween(Now,
+           TRALClientList(FFloodList.GetObject(vInt)).LastAccess) >= vIdle then
+        FFloodList.Remove(vInt, True);
   end;
 end;
 
@@ -1121,6 +1156,16 @@ end;
 function TRALSecurity.GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
 begin
   Result := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
+end;
+
+function TRALSecurity.GetBlockedCount: IntegerRAL;
+begin
+  Result := FBlockedList.Count;
+end;
+
+function TRALSecurity.GetFloodCount: IntegerRAL;
+begin
+  Result := FFloodList.Count;
 end;
 
 function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): integer;

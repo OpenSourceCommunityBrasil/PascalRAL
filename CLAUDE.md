@@ -433,6 +433,9 @@ The name comes from the wire when it is the multipart `filename` or a value the 
 ### Trap: on FPC, decompressing gzip used to shorten the caller's stream
 `TRALCompressZLib.InitDeCompress` cuts the 8-byte gzip trailer off the *input* stream so FPC's `TDecompressionStream` does not choke on it, then checks the CRC by hand. It never put the trailer back, so a second `Decompress` of the same stream failed. The trailer is restored in a `finally` now; Delphi's zlib reads the trailer itself and never had the problem.
 
+### Fixed: brute-force protection blocked at the first wrong password, and the flood list never shrank
+`TRALSecurity` keeps every IP that failed once in `FBlockedList` (that is what counts the tries), and `CheckBlockClientIP` tested membership, so with `rsoBruteForceProtection` one 401 locked the client out until `ExpirationTime`, whatever `MaxTry` said. It now blocks from `MaxTry` failed tries on (`MaxTry < 1` behaves as 1); a successful login still clears the counter, and `BlockClient` refreshes `LastAccess` on every failure so the expiration counts from the last attempt. `ClearExpiredIPs`, which `ValidateRequest` calls on every request, also trims `FFloodList` now: with `rsoFloodProtection` it gained one entry per distinct source address forever. Entries idle for a minute (or ten times `FloodTimeInterval`, whichever is larger) go. `BlockedCount` and `FloodCount` expose both sizes.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 
