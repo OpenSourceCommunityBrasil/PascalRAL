@@ -23,6 +23,7 @@
   emDBSQLRejected = 'SQL rechazado por OnValidateSQL.';
   emStreamSizeBeyondEnd = 'El stream binario anuncia más bytes de los que contiene.';
   emDecompressLimit = 'Los datos descomprimidos exceden RALMaxDecompressedSize.';
+  emParamFileNameEmpty = 'No queda nombre de archivo para guardar el parámetro.';
   emDBDriverMissing = 'No se encontró el controlador de conexión.';
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';

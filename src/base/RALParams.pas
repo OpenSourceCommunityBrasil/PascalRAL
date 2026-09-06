@@ -920,6 +920,14 @@ begin
     end;
   end;
 
+  { the name may have come from the wire (the multipart filename, or a value
+    the caller took from a param): "..\..\x" or "C:\x" must not leave the
+    folder. Only the last path component survives, on either separator }
+  AFileName := ExtractFileName(StringReplace(StringReplace(AFileName,
+    '\', PathDelim, [rfReplaceAll]), '/', PathDelim, [rfReplaceAll]));
+  if AFileName = '' then
+    raise Exception.Create(emParamFileNameEmpty);
+
   SaveToFile(AFolderName + AFileName);
 end;
 

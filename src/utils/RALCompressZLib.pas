@@ -115,17 +115,26 @@ var
   vCRCFile, vCRCFinal, vFileSize: LongWord;
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
+  {$IFDEF FPC}
+  vOrigSize: Int64;
+  {$ENDIF}
 begin
   {$IFDEF FPC}
+    vOrigSize := AInStream.Size;
     if Format = ctGZip then
     begin
       AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
       AInStream.Read(vCRCFile, SizeOf(vCRCFile));
       AInStream.Read(vFileSize, SizeOf(vFileSize));
 
+      { FPC's TDecompressionStream wants the gzip trailer out of the way, so
+        it is cut off the CALLER's stream here and put back in the finally
+        below: without that a second Decompress of the same stream (a retry
+        after an error, a cached body) found it 8 bytes short and failed }
       AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
       AInStream.Position := Length(GZipHeader);
     end;
+  try
   {$ELSE}
     AInStream.Position := 0;
   {$ENDIF}
@@ -186,6 +195,16 @@ begin
       AOutStream.Size := 0;
       raise Exception.Create(emContentCheckError);
     end;
+  finally
+    if Format = ctGZip then
+    begin
+      AInStream.Size := vOrigSize;
+      AInStream.Position := vOrigSize - (2 * SizeOf(LongWord));
+      AInStream.Write(vCRCFile, SizeOf(vCRCFile));
+      AInStream.Write(vFileSize, SizeOf(vFileSize));
+      AInStream.Position := 0;
+    end;
+  end;
   {$ENDIF}
 end;
 

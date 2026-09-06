@@ -775,13 +775,15 @@ begin
   except
     on e: exception do
     begin
+      { the answer comes first: a handler that blew up must not leave the
+        200 the response started with and an empty body. Without
+        OnServerError and with RaiseError off (the defaults) the exception
+        used to be swallowed and the client got exactly that }
+      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
-      begin
         raise;
-        AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
-      end;
     end;
   end;
 end;

@@ -424,6 +424,15 @@ Three separate ceilings, two of them opt-in. **Defaults reproduce the old behavi
 ### Fixed: an empty response body broke the Sagui engine, and got a charset without a type
 `TRALSaguiServer.DoStreamRead` handled a nil stream by calling `sg_eor(True)` - the *error* end of stream - and returning nothing. Every `Answer(status)` without text (413, 415, any bodiless error) therefore went out as a chunked body with no terminator, and libmicrohttpd dropped the connection. Indy tolerated it; WinHTTP (the netHTTP client) rejected the whole response as invalid. It now returns `sg_eor(False)`. In the same pass `SetContentType` stopped turning an empty type into `; charset=utf-8`.
 
+### Fixed: an exception in a route handler answered 200 with an empty body
+`TRALServer.ProcessCommands` caught the exception and, with neither `OnServerError` nor `RaiseError` set (the defaults), did nothing: the response kept the 200 it was created with. The `Answer(500)` after the `raise` was dead code. Now the 500 with the message is set first, then `OnServerError` runs if assigned, otherwise `RaiseError` re-raises. With `RaiseError` on, the engine still lets the exception through and nothing is sent, as before.
+
+### Fixed: `TRALParam.SaveToFile(folder, name)` walked out of the folder
+The name comes from the wire when it is the multipart `filename` or a value the caller took from a param. `..\..\x` and `C:\x` were concatenated to the folder as they came. Only the last path component is kept now, on either separator; an empty result raises `emParamFileNameEmpty`.
+
+### Trap: on FPC, decompressing gzip used to shorten the caller's stream
+`TRALCompressZLib.InitDeCompress` cuts the 8-byte gzip trailer off the *input* stream so FPC's `TDecompressionStream` does not choke on it, then checks the CRC by hand. It never put the trailer back, so a second `Decompress` of the same stream failed. The trailer is restored in a `finally` now; Delphi's zlib reads the trailer itself and never had the problem.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 

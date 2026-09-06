@@ -22,6 +22,7 @@
   emDBSQLRejected = 'SQL rejected by OnValidateSQL.';
   emStreamSizeBeyondEnd = 'Binary stream announces more bytes than it holds.';
   emDecompressLimit = 'Decompressed data exceeds RALMaxDecompressedSize.';
+  emParamFileNameEmpty = 'No file name left to save the param to.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
