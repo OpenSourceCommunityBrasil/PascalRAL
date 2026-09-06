@@ -561,7 +561,7 @@ begin
 
   { OnTerminate of a thread is delivered through Synchronize, so from the main
     thread the queue has to be pumped here or the wait never ends }
-  vPrincipal := {$IFDEF FPC}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$ENDIF} = MainThreadID;
+  vPrincipal := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND} = MainThreadID;
   vRestante := FConnectTimeout + FRequestTimeout + 1000;
   while (vPendentes > 0) and (vRestante > 0) do
   begin

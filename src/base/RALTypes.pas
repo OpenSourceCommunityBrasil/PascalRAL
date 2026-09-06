@@ -23,18 +23,18 @@ type
   Int64RAL = Int64;
   DoubleRAL = Double;
 
-  {$IF Defined(FPC) OR Defined(DELPHIXE3UP)}
+  {$IF Defined(FPC) OR Defined(DELPHIXE2UP)}
     UInt64RAL = UInt64;
   {$ELSE}
     UInt64RAL = Int64;
   {$IFEND}
 
-  {$IF Defined(FPC) OR NOT Defined(DELPHIXE3UP)}
+  {$IF Defined(FPC) OR Defined(DELPHI10_1UP)}
     StringRAL = UTF8String;
     CharRAL = UTF8Char;
   {$ELSE}
     StringRAL = UTF8String;
-    CharRAL = UTF8Char;
+    CharRAL = Char;
   {$IFEND}
   PCharRAL = ^CharRAL;
 

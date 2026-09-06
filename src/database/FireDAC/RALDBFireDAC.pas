@@ -28,7 +28,7 @@ type
   TRALDBFireDAC = class(TRALDBBase)
   private
     FConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
-    FPhysLink: TFDPhysDriverLink;
+    {$IFDEF DELPHIXE4UP}FPhysLink: TFDPhysDriverLink;{$ENDIF}
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
@@ -98,6 +98,7 @@ begin
   FConnector.AfterConnect := OnConnAfterConnect;
   FConnector.OnError := OnConnError;
 
+  {$IFDEF DELPHIXE4UP}
   if FindProtocol = 'PG' then
     FPhysLink := TFDPhysPgDriverLink.Create(nil)
   else if FindProtocol = 'FB' then
@@ -118,6 +119,7 @@ begin
       raise;
     end;
   end;
+  {$ENDIF}
 end;
 
 function TRALDBFireDAC.FindProtocol: StringRAL;
@@ -152,9 +154,10 @@ end;
 
 destructor TRALDBFireDAC.Destroy;
 begin
+  {$IFDEF DELPHIXE4UP}
   if assigned(FPhysLink) then
     FreeAndNil(FPhysLink);
-
+  {$ENDIF}
   FreeAndNil(FConnector);
   inherited Destroy;
 end;
