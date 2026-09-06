@@ -183,6 +183,7 @@ type
     FEngine: StringRAL;
     FIPConfig: TRALIPConfig;
     FListSubModules: TList;
+    FMaxRequestSize: Int64RAL;
     FPort: IntegerRAL;
     FRaiseError: boolean;
     FRoutes: TRALRoutes;
@@ -220,6 +221,8 @@ type
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     procedure SetEngine(const AValue: StringRAL);
+    /// Engines that can refuse a body before reading it override this
+    procedure SetMaxRequestSize(const AValue: Int64RAL); virtual;
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
@@ -268,6 +271,12 @@ type
     property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
     // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
+    { Largest request body accepted, in bytes; anything bigger is answered 413
+      before the body is decoded. Zero (the default) keeps the old behaviour:
+      no limit. The check runs after the engine has read the body, so it
+      protects the handlers and the decoders, not the engine's own buffer -
+      mORMot2 is the exception, it also refuses at the socket }
+    property MaxRequestSize: Int64RAL read FMaxRequestSize write SetMaxRequestSize default 0;
     // Route configuration of the server, a.k.a endpoints
     property Routes: TRALRoutes read FRoutes write FRoutes;
     // Whether the server will raise error to the application or not (exception raise^), default value is false
@@ -777,13 +786,28 @@ begin
   end;
 end;
 
+procedure TRALServer.SetMaxRequestSize(const AValue: Int64RAL);
+begin
+  if AValue < 0 then
+    FMaxRequestSize := 0
+  else
+    FMaxRequestSize := AValue;
+end;
+
 procedure TRALServer.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vCheckPathTransversal: boolean;
   vCheckClientBlock: boolean;
   vCheckFlood: boolean;
 begin
-  if not ARequest.HasValidContentEncoding then
+  { first, and on the raw size: the engines only decode the body (decompress,
+    decrypt, split the multipart) when this leaves the status below 400 }
+  if (FMaxRequestSize > 0) and (ARequest.ContentSize > FMaxRequestSize) then
+  begin
+    AResponse.Answer(HTTP_RequestEntityTooLarge);
+    Exit;
+  end
+  else if not ARequest.HasValidContentEncoding then
   begin
     AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.ContentEncoding := ARequest.ContentEncoding;

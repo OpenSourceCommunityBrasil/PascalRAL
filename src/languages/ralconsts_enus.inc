@@ -20,6 +20,8 @@
   emDBConnectionUndefined = 'Connection not set.';
   emDBInvalidTableName = 'Invalid table name: only letters, digits, _, $ and . are accepted.';
   emDBSQLRejected = 'SQL rejected by OnValidateSQL.';
+  emStreamSizeBeyondEnd = 'Binary stream announces more bytes than it holds.';
+  emDecompressLimit = 'Decompressed data exceeds RALMaxDecompressedSize.';
   emDBDriverMissing = 'Connection driver not found.';
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';

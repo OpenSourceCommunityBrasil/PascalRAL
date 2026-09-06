@@ -380,6 +380,15 @@ begin
         Query := sg_httpreq_path(Areq);
         Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
+        { the real size, like Indy, fpHTTP and Synopse report. Zero here was
+          the server telling every handler that the request arrived empty.
+          Read BEFORE ValidateRequest, which compares it with MaxRequestSize }
+        vPayloadLen := 0;
+        vPayLoad := sg_httpreq_payload(Areq);
+        if Assigned(vPayLoad) then
+          vPayloadLen := sg_str_length(vPayLoad);
+        ContentSize := vPayloadLen;
+
         vServer.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
         begin
@@ -415,31 +424,21 @@ begin
             FreeAndNil(vFileMap);
           end;
 
-          vPayloadLen := 0;
-          vPayLoad := sg_httpreq_payload(Areq);
-          if Assigned(vPayLoad) then
+          if vPayloadLen > 0 then
           begin
-            vPayloadLen := sg_str_length(vPayLoad);
-            if vPayloadLen > 0 then
-            begin
-              vPPayload := sg_str_content(vPayLoad);
-              SetLength(vPay, vPayloadLen);
-              Move(vPPayload^, vPay[1], vPayloadLen);
-              vPayloadStream := TMemoryStream.Create;
-              try
-                vPayloadStream.Write(vPay[1], Length(vPay));
-                vPayloadStream.Position := 0;
+            vPPayload := sg_str_content(vPayLoad);
+            SetLength(vPay, vPayloadLen);
+            Move(vPPayload^, vPay[1], vPayloadLen);
+            vPayloadStream := TMemoryStream.Create;
+            try
+              vPayloadStream.Write(vPay[1], Length(vPay));
+              vPayloadStream.Position := 0;
 
-                RequestStream := vPayloadStream;
-              finally
-                 FreeAndNil(vPayloadStream);
-              end;
+              RequestStream := vPayloadStream;
+            finally
+               FreeAndNil(vPayloadStream);
             end;
           end;
-
-          { the real size, like Indy, fpHTTP and Synopse report. Zero here was
-            the server telling every handler that the request arrived empty. }
-          ContentSize := vPayloadLen;
 
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
@@ -509,11 +508,13 @@ end;
 class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
   Abuf: Pcchar; Asize: csize_t): cssize_t;
 begin
+  { no body: a normal end of stream. This used to call sg_eor(True) - the
+    ERROR end - and return garbage, so every empty response (413, 415, any
+    Answer(status) without text) went out as a chunked body with no
+    terminator and libmicrohttpd dropped the connection: Indy shrugged, but
+    WinHTTP (netHTTP) refused the whole response as invalid }
   if Acls = nil then
-  begin
-    sg_eor(True);
-    Exit;
-  end;
+    Exit(sg_eor(False));
 
   Result := TStream(Acls).Read(Abuf^, Asize);
   if Result = 0 then

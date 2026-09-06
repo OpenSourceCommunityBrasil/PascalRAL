@@ -75,6 +75,7 @@ begin
     repeat
       vCount := vZip.Read(vBuf[0], Length(vBuf));
       AOutStream.Write(vBuf[0], vCount);
+      RALCheckDecompressedSize(AOutStream.Size);
     until (vCount = 0);
   finally
     FreeAndNil(vZip);

@@ -21,6 +21,8 @@
   emDBConnectionUndefined = 'Conexión no establecida.';
   emDBInvalidTableName = 'Nombre de tabla inválido: solo letras, dígitos, _, $ y . son aceptados.';
   emDBSQLRejected = 'SQL rechazado por OnValidateSQL.';
+  emStreamSizeBeyondEnd = 'El stream binario anuncia más bytes de los que contiene.';
+  emDecompressLimit = 'Los datos descomprimidos exceden RALMaxDecompressedSize.';
   emDBDriverMissing = 'No se encontró el controlador de conexión.';
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';

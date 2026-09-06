@@ -49,8 +49,24 @@ type
   procedure GetCompressList(AList : TStrings);
   function GetSuportedCompress : TRALCompressTypes;
   function GetAcceptCompress : StringRAL;
+  /// Raises emDecompressLimit when ACurrent passes RALMaxDecompressedSize;
+  /// every compressor calls it from its decompression loop
+  procedure RALCheckDecompressedSize(ACurrent: Int64);
+
+var
+  { Ceiling, in bytes, for what one Decompress may produce. A 1 MB gzip of
+    zeros inflates to 1 GB, and without a ceiling that is one request worth
+    of memory per attacker. Zero (the default) keeps the old behaviour: no
+    limit at all. 512 MB is a sane value for a server }
+  RALMaxDecompressedSize: Int64 = 0;
 
 implementation
+
+procedure RALCheckDecompressedSize(ACurrent: Int64);
+begin
+  if (RALMaxDecompressedSize > 0) and (ACurrent > RALMaxDecompressedSize) then
+    raise Exception.Create(emDecompressLimit);
+end;
 
 const
   CompressWeight : array[TRALCompressType] of integer = (0, 1, 2, 3, 5, 4);

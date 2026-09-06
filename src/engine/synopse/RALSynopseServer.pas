@@ -94,6 +94,11 @@ begin
 
     FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
     FHttp.HttpQueueLength := FQueueSize;
+    { MaximumAllowedContentLength is deliberately NOT set from MaxRequestSize:
+      mORMot2 enforces it by resetting the socket while the client is still
+      sending, so no client ever sees the 413 - Indy, netHTTP and mORMot2's
+      own client all fail with a transport error instead. The RAL check in
+      ValidateRequest answers 413 after the body is read, like every engine }
     FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.OnTerminate := {$IFDEF FPC}@{$ENDIF}OnHttpTerminate;

@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes;
+  RALTypes, RALConsts;
 
 type
 
@@ -16,6 +16,8 @@ type
   TRALBinaryWriter = class
   private
     FStream: TStream;
+    /// Refuses a size prefix that announces more than the stream still holds
+    procedure CheckSize(ASize: UInt64RAL);
   protected
     // read and write UTF-7
     function ReadSize: UInt64RAL;
@@ -190,7 +192,9 @@ begin
       Exit;
 
     vByte := ReadByte;
-    Result := Result + ((vByte and 127) shl vMult);
+    { widened before the shift: "(vByte and 127) shl 28" is 32-bit arithmetic
+      on both compilers, so every size from 2 GB up wrapped to garbage }
+    Result := Result + (UInt64RAL(vByte and 127) shl vMult);
     vMult := vMult + 7;
   until (vByte and 128) = 0;
 end;
@@ -363,11 +367,21 @@ begin
   FStream.Read(Result, SizeOf(Result));
 end;
 
+{ the size prefix is a varint: nine bytes can announce 2^63 bytes. Allocating
+  or copying what it says before checking what the stream still holds let a
+  twenty-byte packet ask for gigabytes - out of memory on the server }
+procedure TRALBinaryWriter.CheckSize(ASize: UInt64RAL);
+begin
+  if ASize > UInt64RAL(FStream.Size - FStream.Position) then
+    raise Exception.Create(emStreamSizeBeyondEnd);
+end;
+
 procedure TRALBinaryWriter.ReadStream(AStream: TStream);
 var
   vQWord : UInt64RAL;
 begin
   vQWord := ReadSize;
+  CheckSize(vQWord);
   AStream.CopyFrom(FStream, vQWord);
   AStream.Position := 0;
 end;
@@ -377,6 +391,7 @@ var
   vQWord: UInt64RAL;
 begin
   vQWord := ReadSize;
+  CheckSize(vQWord);
   SetLength(Result, vQWord);
   if vQWord > 0 then
     FStream.Read(Result[0], vQWord);
@@ -388,6 +403,7 @@ var
   vBytes : TBytes;
 begin
   vQWord := ReadSize;
+  CheckSize(vQWord);
   Result := '';
   if vQWord > 0 then
   begin

@@ -81,6 +81,7 @@ const
   HTTP_NotFound            = 404;
   HTTP_MethodNotAllowed    = 405;
   HTTP_RequestTimeout      = 408;
+  HTTP_RequestEntityTooLarge = 413;
   HTTP_UnsupportedMedia    = 415;
   HTTP_TooManyRequests     = 429;
   HTTP_InternalError       = 500;

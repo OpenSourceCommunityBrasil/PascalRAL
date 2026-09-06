@@ -141,7 +141,10 @@ begin
     as "ralNNN; charset=utf-8", matched no delimiter, and discarded the whole
     body without an error - requests reached the handler with no params, no body
     and no cookies, on a server that answered 200 and looked healthy. }
-  if (Pos(StringRAL('charset='), FContentType) = 0) and
+  { and never on an empty type: "Content-Type: ; charset=utf-8" is what a
+    bodiless error answer used to carry }
+  if (FContentType <> '') and
+     (Pos(StringRAL('charset='), FContentType) = 0) and
      (Pos(StringRAL('multipart/'), LowerCase(FContentType)) = 0) then
     FContentType := FContentType + '; charset=utf-8';
 end;
