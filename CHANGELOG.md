@@ -217,6 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correções de compatibilidade com XE2** (2026-09-06 – mobius1qwe)
+
 - **Fix wide DAO params, Indy error bodies on FPC, the CSV BOM and leaks on failed transforms** (2026-09-05 – tempraturbo)
   RALDBFiredacDAO stripped the terminator only for varString and sent wide
   params with their length in bytes, so ftWideString reached the database
