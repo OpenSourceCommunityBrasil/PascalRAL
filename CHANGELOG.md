@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Fix brute-force blocking at the first wrong password, and the flood list growing forever** (2026-09-06 – tempraturbo)
+  The blocked list is where TRALSecurity counts failed tries, and
+  CheckBlockClientIP only tested membership: with rsoBruteForceProtection
+  one 401 locked the client out until ExpirationTime, whatever MaxTry
+  said. It now blocks from MaxTry failed tries on (below 1 means 1); a
+  successful login keeps clearing the counter, and every failure renews
+  LastAccess so the expiration counts from the last attempt.
+  ClearExpiredIPs, called on every request, also trims the flood list:
+  with rsoFloodProtection it gained one entry per distinct source
+  address and never lost any. Entries idle for a minute, or ten times
+  FloodTimeInterval, go. BlockedCount and FloodCount expose both sizes.
+
+
 ### Added
+- **Fix JWT time claims, compare secrets in constant time and add OnValidateSQL to TRALDBModule** (2026-09-06 – tempraturbo)
+  exp, iat and nbf came from Now (local time) and went through
+  DateTimeToUnix, which treats its input as UTC: a token issued at UTC-3
+  claimed to expire three hours early, and tokens from other libraries
+  were read with the zone offset as the error. The claims now go out via
+  RALDateTimeToGMT and come back via the new RALGMTToDateTime, because
+  the AInputIsUTC parameter is not available on every supported compiler.
+  RALSameSecret replaces "=" on the JWT signature and on the Basic user
+  name and password: the plain comparison stops at the first wrong
+  character, so the time to refuse grew with the length of the correct
+  prefix.
+  Every statement opensql, execsql, applyupdates and getsqlfields run
+  comes from the client as text. OnValidateSQL fires before the driver
+  is touched; a refused statement answers 500 with emDBSQLRejected.
+  Unassigned keeps the old behaviour.
+  Found by the new test: TRALDBBufDataset never cleared FOpening after
+  an Open that failed, so every later Open on the same dataset skipped
+  the server and died inside TBufDataset.
+
 - **Fix AES integrity, JWT token issuing and table-name SQL injection** (2026-09-04 – tempraturbo)
   AES: the wire now ends with an HMAC-SHA256 over IV+ciphertext, keyed
   with SHA-256(key || 'ral-mac') and compared in constant time before a
@@ -217,6 +250,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix handler exceptions answering 200, uploads escaping their folder, and gzip shortening its input on FPC** (2026-09-06 – tempraturbo)
+  ProcessCommands caught a handler exception and, with neither
+  OnServerError nor RaiseError set (the defaults), left the response as
+  it started: 200 with an empty body. The Answer(500) sat after the raise
+  and never ran. The 500 with the message is set first now; the event
+  and RaiseError keep their meaning.
+  TRALParam.SaveToFile(folder, name) concatenated the name as it came,
+  and it comes from the wire when it is the multipart filename: "..\x"
+  and "C:\x" wrote outside the folder. Only the last path component is
+  kept, on either separator.
+  On FPC, InitDeCompress cut the 8-byte gzip trailer off the caller's
+  stream so TDecompressionStream would accept it, and never put it back,
+  so a second Decompress of the same stream failed. The trailer is
+  restored in a finally.
+
 - **fix: Correções de compatibilidade com XE2** (2026-09-06 – mobius1qwe)
 
 - **Fix wide DAO params, Indy error bodies on FPC, the CSV BOM and leaks on failed transforms** (2026-09-05 – tempraturbo)
@@ -461,6 +509,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix the JWT cookie being any cookie, and stop Swagger leaking the spec and loading unchecked assets** (2026-09-06 – tempraturbo)
+  TRALServer.DecodeAuth took the first cookie of the header as the
+  bearer, whatever its name, so any site cookie ahead of raltoken made a
+  logged-in browser fail with 401. It now takes the rpkCOOKIE param named
+  exactly raltoken, then the raw header as a fallback. Three engines
+  never reached that code, so UseCookie did nothing on them: Sagui had a
+  private DecodeAuth without the cookie path (removed, it calls the
+  server's, now public), and Indy and fpHTTP parse the Authorization
+  header themselves and stopped there - both call DecodeAuth when no
+  header was found.
+  The Swagger initializer pointed validatorUrl at validator.swagger.io,
+  so every browser that opened the page sent the whole swagger.json
+  there; it is null now. The three swagger-ui-dist assets carry SRI
+  hashes for the pinned version, computed from unpkg and cross-checked
+  against jsdelivr. RequireAuth (default False, the old behaviour) makes
+  the swagger routes honour the server's Authentication. swagger.json
+  also put application/json in Content-Encoding instead of Content-Type.
+
+- **Fix unbounded body, decompression and binary-reader sizes; fix empty responses on Sagui** (2026-09-06 – tempraturbo)
+  Three ceilings, defaults reproducing the old behaviour so nothing
+  changes for existing users until they opt in:
+  - TRALServer.MaxRequestSize (0 = unlimited): ValidateRequest answers
+  413 before the body is decompressed, decrypted or split. mORMot2's
+  MaximumAllowedContentLength is deliberately not wired to it - it
+  resets the socket while the client is still sending, and no client
+  ever sees the 413.
+  - RALMaxDecompressedSize (0 = unlimited): zlib, zstd and brotli check
+  it on every loop turn. A 1 MB gzip of zeros inflated to 1 GB.
+  - TRALBinaryWriter refuses a size prefix beyond what the stream still
+  holds: nine varint bytes could announce 2^63 and the reader allocated
+  it. ReadSize also widens before the shift; "(vByte and 127) shl 28"
+  was 32-bit arithmetic, so sizes from 2 GB up wrapped.
+  Found on the way: TRALSaguiServer.DoStreamRead answered a nil stream
+  with sg_eor(True), the error end, and no Result. Every bodiless answer
+  went out as chunked with no terminator and libmicrohttpd dropped the
+  connection; WinHTTP rejected the whole response. SetContentType also
+  stops turning an empty type into "; charset=utf-8".
+
 - **Fix a late response crashing the process after its dataset or client was freed** (2026-09-05 – tempraturbo)
   Get/Post with a callback run on a TRALThreadClient that nobody tracked:
   freeing the memtable that issued the Open, or the client itself, while
