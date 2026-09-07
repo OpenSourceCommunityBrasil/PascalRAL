@@ -572,6 +572,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Make FPC servers stop on Linux: wake mORMot2's accept() before WaitFor, bound the fpHTTP wake-up GET and free the server before dropping its parent** (2026-09-07 – tempraturbo)
+  On Linux/FPC Active := False never returned on either engine and the
+  process had to be killed. mORMot2 closed the listening socket and waited
+  for the server thread, but closing does not wake a blocked accept() there:
+  the FPC branch now terminates, closes and makes a touch-and-go connection
+  to the port first, as THttpServer.Destroy does; Delphi is untouched. fpHTTP
+  depended on a wake-up GET with no timeout, and the thread destructor nilled
+  FParent before the server waited for connection threads that still read it.
+  fcl-web's AcceptIdleTimeout is deliberately left at 0: with an idle loop the
+  faster stop races its connection-thread cleanup on Windows and the FPC
+  matrix died with an access violation in the next server.
+
 - **Fix charset on binary types, HS384, client engine reuse and nine smaller bugs; cache the memtable schema and wake the pool by event** (2026-09-06 – tempraturbo)
   The charset was appended to every non-multipart type, so an octet-stream
   went out as text. HS384 never reached the JWT header, and Token := x left
