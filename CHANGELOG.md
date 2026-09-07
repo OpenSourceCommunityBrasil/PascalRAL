@@ -290,6 +290,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de carga de MIMETypes no Linux** (2026-09-06 – mobius1qwe)
+
+- **fix: Correção de compatibilidade com FPC 3.3.1** (2026-09-06 – mobius1qwe)
+
 - **Fix idle fpHTTP spinning a core, GetBody past the end, GetRoute garbage, empty memtable OnError and raw form encoding** (2026-09-06 – tempraturbo)
   TRALfpHttpServerThread.Execute had nothing in the else of "if
   FParent.Active then FHttp.Active := True", so the thread spun a full
