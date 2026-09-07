@@ -22,6 +22,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Fix the fpHTTP server thread freed alive, Sagui thread pool set after listen, SQLite busy waits and sqldb library loading under concurrency** (2026-09-07 – tempraturbo)
+  All four found by the new connection-pool suite of the orchestrator.
+  TRALfpHttpServerThread.Destroy never called inherited, so TThread.Destroy
+  never terminated or waited for the thread: a server stopped with
+  Active := False and then freed left its accept loop alive on freed memory
+  with the port still bound, and the next connection to that port took the
+  process down (the access violation once blamed on AcceptIdleTimeout, and
+  most likely the Linux process that would not exit). The destructor now
+  terminates and waits first, Active := False makes the wake-up GET itself
+  so the port is free at once, and connections run on the RAL's own thread
+  class so the server is only freed after every handler is gone (fcl-web
+  decrements ConnectionCount before the thread leaves the list its
+  destructor frees).
+  TRALSaguiServer applied PoolCount after sg_httpsrv_listen, where libsagui
+  ignores it, so every request was served on one thread.
+  Eight concurrent writers on SQLite lost rows to SQLITE_BUSY on the FPC
+  drivers: Zeos gets busytimeout=10000 when the user set none, sqldb calls
+  sqlite3_busy_timeout after the open. Eight sqldb connections opening at
+  once crashed in the non-thread-safe reference counts of sqlite3dyn and
+  ibase60dyn: open, close and free are serialized in a unit-level lock,
+  queries still run in parallel.
+
 - **Fix response cookies on every engine, JWT client payload, port change on a live server, Indy keep-alive, multipart edge cases; stop copying the received body twice** (2026-09-06 – tempraturbo)
   A response cookie is an rpkCOOKIE param and every engine now builds its
   Set-Cookie lines from TRALResponse.GetParamsCookies: a param named
