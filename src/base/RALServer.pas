@@ -1241,7 +1241,14 @@ end;
 
 procedure TRALSecurity.SetBruteForce(const Value: TRALBruteForceProtection);
 begin
-  FBruteForce := Value;
+  { copy the values instead of taking the object: the one created in the
+    constructor is the one Destroy frees, and swapping the pointer both leaked
+    it and left the server holding an object the caller may free }
+  if (Value <> nil) and (Value <> FBruteForce) then
+  begin
+    FBruteForce.ExpirationTime := Value.ExpirationTime;
+    FBruteForce.MaxTry := Value.MaxTry;
+  end;
 end;
 
 procedure TRALSecurity.SetFloodTimeInterval(const Value: IntegerRAL);

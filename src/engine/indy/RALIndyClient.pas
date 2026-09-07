@@ -92,14 +92,30 @@ begin
   FHttp.RedirectMaximum := Parent.MaxRedirects;
   FHttp.HandleRedirects := true;
 
-  FHttp.IOHandler := nil;
+  { the IOHandler is what holds the socket: resetting it to nil on every call
+    made TIdHTTP build a new one, and open a new connection, per request.
+    It is only swapped when the scheme changes }
   if SameText(Copy(AURL, 1, 5), 'https') then
-    FHttp.IOHandler := FHandlerSSL;
+  begin
+    if FHttp.IOHandler <> FHandlerSSL then
+    begin
+      FHttp.Disconnect;
+      FHttp.IOHandler := FHandlerSSL;
+    end;
+  end
+  else if FHttp.IOHandler = FHandlerSSL then
+  begin
+    FHttp.Disconnect;
+    FHttp.IOHandler := nil;
+  end;
 
   FHttp.Response.Clear;
 
+  // "close" is explicit now that the socket survives between calls
   if Parent.KeepAlive then
-    FHttp.Request.Connection := 'keep-alive';
+    FHttp.Request.Connection := 'keep-alive'
+  else
+    FHttp.Request.Connection := 'close';
 
   // cookies
   { Sent as a plain Cookie header, the way RALSynopseClient already does it.

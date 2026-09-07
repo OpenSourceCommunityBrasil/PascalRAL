@@ -4,12 +4,14 @@ unit RALDBPool;
 interface
 
 uses
-  Classes, SysUtils, DateUtils,
+  Classes, SysUtils, DateUtils, SyncObjs,
   RALTypes, RALConsts, RALThreadSafe, RALDBBase, RALRequest, RALResponse;
 
 const
-  /// Interval, in milliseconds, between checks while waiting for a free connection
-  cRALPoolWaitStep = 5;
+  { Upper bound, in milliseconds, of one wait for a free connection. Release
+    wakes a waiter through an event, so this is only the fallback re-check for
+    the signal that two releases in a row collapse into one }
+  cRALPoolWaitStep = 100;
 
 type
   { Action taken when every connection is busy and the wait timeout expires.
@@ -118,6 +120,10 @@ type
     FTotalCreated: Int64RAL;
     FTotalTimeouts: Int64RAL;
     FWaiting: IntegerRAL;
+    { auto-reset: set whenever a connection or a slot becomes free, consumed
+      by one waiting Acquire. The signal is kept until someone waits, so a
+      Release that lands between a waiter's check and its wait is not lost }
+    FFreeEvent: TEvent;
 
     FOnCreateConnection: TRALDBOnPoolCreate;
     FOnError: TRALDBOnError;
@@ -137,6 +143,9 @@ type
     function GetOverflowCount: IntegerRAL;
     function GetPooledCount: IntegerRAL;
     function GetWaitingCount: IntegerRAL;
+
+    // wakes one waiting Acquire; call it after a connection or a slot is freed
+    procedure SignalFree;
 
     function DoCreateConnection: TRALDBBase;
     function ExhaustedItem(ARequest: TRALRequest; AWaited: IntegerRAL): TRALDBPoolItem;
@@ -284,6 +293,7 @@ begin
   FTotalCreated := 0;
   FTotalTimeouts := 0;
   FWaiting := 0;
+  FFreeEvent := TEvent.Create(nil, False, False, '');
 end;
 
 destructor TRALDBConnectionPool.Destroy;
@@ -301,7 +311,13 @@ begin
 
   FreeAndNil(FItems);
   FreeAndNil(FOptions);
+  FreeAndNil(FFreeEvent);
   inherited Destroy;
+end;
+
+procedure TRALDBConnectionPool.SignalFree;
+begin
+  FFreeEvent.SetEvent;
 end;
 
 function TRALDBConnectionPool.CountLocked(AOverflow: boolean;
@@ -525,6 +541,7 @@ begin
       finally
         Unlock;
       end;
+      SignalFree; // the slot is open again: a waiter may create there
 
       if Assigned(FOnError) then
         FOnError(Self, e.Message, ARequest);
@@ -597,9 +614,14 @@ begin
       if vWaited >= FOptions.WaitTimeout then
         Break;
 
-      { plain sleep instead of an event: waits only happen once the pool is full,
-        and this keeps the unit portable across every supported Delphi and FPC }
-      Sleep(cRALPoolWaitStep);
+      { sleep until Release (or a freed slot) signals, instead of polling every
+        5 ms: a waiter now wakes the moment a connection comes back. The wait is
+        capped so a signal swallowed by two back-to-back releases still costs
+        at most cRALPoolWaitStep, and never the remaining WaitTimeout }
+      if FOptions.WaitTimeout - vWaited < cRALPoolWaitStep then
+        FFreeEvent.WaitFor(FOptions.WaitTimeout - vWaited)
+      else
+        FFreeEvent.WaitFor(cRALPoolWaitStep);
     until False;
   finally
     if vQueued then
@@ -607,6 +629,10 @@ begin
       Lock;
       try
         Dec(FWaiting);
+        { pass the wake-up on: this waiter is served (or gave up), and the
+          signal it consumed may have covered more than one freed connection }
+        if (FWaiting > 0) and (vItem <> nil) then
+          SignalFree;
       finally
         Unlock;
       end;
@@ -655,7 +681,9 @@ begin
 
   // connections created with pooling off are not tracked, so they die here
   if vItem = nil then
-    ADatabase.Free;
+    ADatabase.Free
+  else
+    SignalFree; // freed connection, or freed slot: wake one waiter
 end;
 
 procedure TRALDBConnectionPool.Clear;
@@ -711,6 +739,7 @@ begin
         finally
           Unlock;
         end;
+        SignalFree;
       except
         on e: Exception do
         begin

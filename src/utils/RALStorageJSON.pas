@@ -59,6 +59,8 @@ type
     function WriteInt64(AValue: Int64RAL): StringRAL;
     function WriteString(AValue: StringRAL): StringRAL;
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
+    /// One ASCII byte straight into the stream: the separators and brackets
+    procedure WriteCharToStream(AStream: TStream; AValue: Byte);
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions
       write FFormatOptions;
@@ -217,6 +219,11 @@ begin
   AStream.Write(vBytes[0], Length(vBytes));
 end;
 
+procedure TRALStorageJSON.WriteCharToStream(AStream: TStream; AValue: Byte);
+begin
+  AStream.Write(AValue, 1);
+end;
+
 function TRALStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
   : StringRAL;
 begin
@@ -333,10 +340,14 @@ begin
   end;
 end;
 
+{ Every piece goes straight into the stream. The row used to be assembled by
+  string concatenation and written once - each "+" reallocated and copied the
+  growing row, so a wide record cost O(fields^2) copies before reaching the
+  stream. }
 procedure TRALStorageJSON_RAW.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
-  vJson, vValue: StringRAL;
+  vValue: StringRAL;
   vVirg1, vVirg2: Boolean;
   vInt: IntegerRAL;
   vMem: TStream;
@@ -352,10 +363,9 @@ begin
   vVirg1 := False;
   while not ADataset.EOF do
   begin
-    vJson := '';
     if vVirg1 then
-      vJson := vJson + ',';
-    vJson := vJson + '{';
+      WriteCharToStream(AStream, Ord(','));
+    WriteCharToStream(AStream, Ord('{'));
 
     vVirg2 := False;
     for vInt := 0 to Pred(ADataset.FieldCount) do
@@ -404,15 +414,13 @@ begin
       end;
 
       if vVirg2 then
-        vJson := vJson + ',';
+        WriteCharToStream(AStream, Ord(','));
 
-      vJson := vJson + vValue;
+      WriteStringToStream(AStream, vValue);
       vVirg2 := True;
     end;
 
-    vJson := vJson + '}';
-
-    WriteStringToStream(AStream, vJson);
+    WriteCharToStream(AStream, Ord('}'));
 
     vVirg1 := True;
     ADataset.Next;
@@ -622,58 +630,53 @@ end;
 
 procedure TRALStorageJSON_DBWare.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
-  vJson: StringRAL;
   vInt: IntegerRAL;
   vByte: Byte;
   vType: TRALFieldType;
-  vVirg1: Boolean;
 begin
-  vJson := ',"fd":[';
+  WriteStringToStream(AStream, ',"fd":[');
 
   SetLength(FFieldNames, ADataset.FieldCount);
   SetLength(FFieldTypes, ADataset.FieldCount);
 
-  vVirg1 := False;
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    if vVirg1 then
-      vJson := vJson + ',';
-    vJson := vJson + '[';
+    if vInt > 0 then
+      WriteCharToStream(AStream, Ord(','));
+    WriteCharToStream(AStream, Ord('['));
 
     // name
     FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
-    vJson := vJson + WriteString(FFieldNames[vInt]) + ',';
+    WriteStringToStream(AStream, WriteString(FFieldNames[vInt]) + ',');
 
     // type
     vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
-    vJson := vJson + WriteInt64(Ord(vType)) + ',';
+    WriteStringToStream(AStream, WriteInt64(Ord(vType)) + ',');
     FFieldTypes[vInt] := vType;
 
     // flags
     vByte := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
-    vJson := vJson + WriteInt64(vByte) + ',';
+    WriteStringToStream(AStream, WriteInt64(vByte) + ',');
 
     // size
-    vJson := vJson + WriteInt64(ADataset.Fields[vInt].Size);
+    WriteStringToStream(AStream, WriteInt64(ADataset.Fields[vInt].Size));
 
-    vJson := vJson + ']';
-    vVirg1 := True;
+    WriteCharToStream(AStream, Ord(']'));
   end;
 
-  vJson := vJson + ']';
-  WriteStringToStream(AStream, vJson);
+  WriteCharToStream(AStream, Ord(']'));
 end;
 
+// same as TRALStorageJSON_RAW.WriteRecords: straight into the stream, no row string
 procedure TRALStorageJSON_DBWare.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
-  vJson, vValue: StringRAL;
+  vValue: StringRAL;
   vVirg1, vVirg2: Boolean;
   vInt: IntegerRAL;
   vMem: TStream;
 begin
-  vJson := ',"rc":[';
-  WriteStringToStream(AStream, vJson);
+  WriteStringToStream(AStream, ',"rc":[');
 
   ADataset.DisableControls;
 
@@ -686,10 +689,9 @@ begin
   vVirg1 := False;
   while not ADataset.EOF do
   begin
-    vJson := '';
     if vVirg1 then
-      vJson := vJson + ',';
-    vJson := vJson + '[';
+      WriteCharToStream(AStream, Ord(','));
+    WriteCharToStream(AStream, Ord('['));
 
     vVirg2 := False;
     for vInt := 0 to Pred(ADataset.FieldCount) do
@@ -729,15 +731,13 @@ begin
       end;
 
       if vVirg2 then
-        vJson := vJson + ',';
+        WriteCharToStream(AStream, Ord(','));
 
-      vJson := vJson + vValue;
+      WriteStringToStream(AStream, vValue);
       vVirg2 := True;
     end;
 
-    vJson := vJson + ']';
-
-    WriteStringToStream(AStream, vJson);
+    WriteCharToStream(AStream, Ord(']'));
 
     vVirg1 := True;
     ADataset.Next;
@@ -751,8 +751,7 @@ begin
 
   ADataset.EnableControls;
 
-  vJson := ']';
-  WriteStringToStream(AStream, vJson);
+  WriteCharToStream(AStream, Ord(']'));
 end;
 
 function TRALStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): Boolean;

@@ -149,7 +149,7 @@ begin
         ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
         ContentType := ARequestInfo.ContentType;
-        ContentDisposition := AResponseInfo.ContentDisposition;
+        ContentDisposition := ARequestInfo.ContentDisposition; // the REQUEST's, not the empty response's
         ContentEncoding := ARequestInfo.ContentEncoding;
         AcceptEncoding := ARequestInfo.AcceptEncoding;
         ContentSize := ARequestInfo.ContentLength;

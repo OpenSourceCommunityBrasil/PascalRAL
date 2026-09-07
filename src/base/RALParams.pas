@@ -392,6 +392,9 @@ var
   Start, P, EqPos, Len: Integer;
   S, Part, Name, Value: StringRAL;
 begin
+  // the record holds strings: release whatever the caller's variable still
+  // referenced before zeroing it, or those strings leak
+  Finalize(Result);
   FillChar(Result, SizeOf(Result), 0);
 
   S := StringReplace(ACookieString, '; ', ';', [rfReplaceAll]);
@@ -2210,7 +2213,9 @@ var
   vStream, vResult: TStream;
 begin
   Result := '';
-  if Result <> '' then
+  // the test used to read Result, which had just been emptied: the string
+  // overload never decompressed anything
+  if ASource <> '' then
   begin
     vStream := StringToStream(ASource);
     try

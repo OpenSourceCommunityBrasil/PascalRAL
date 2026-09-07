@@ -117,6 +117,10 @@ type
     FCriptoOptions: TRALCriptoOptions;
     FEngineType : String;
     FEngine: StringRAL;
+    { the engine instance kept between requests, and the thread it belongs
+      to - see AcquireEngine }
+    FEngineHTTP: TRALClientHTTP;
+    FEngineThread: TThreadID;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
     FMaxRedirects: IntegerRAL;
@@ -146,6 +150,11 @@ type
     procedure OnThreadResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
 
     function CreateClient: TRALClientHTTP;
+    /// Engine for a request on the calling thread. AShared tells whether it is
+    /// the instance kept by the client (do not free) or a private one (free it)
+    function AcquireEngine(out AShared: boolean): TRALClientHTTP;
+    /// Frees the kept engine, and with it whatever connection it held open
+    procedure DropEngine;
     /// Copy all properties of current TRALClientBase object
     procedure CopyProperties(ADest: TRALClient); virtual;
 
@@ -291,6 +300,7 @@ begin
     Exit;
 
   FEngineType := AValue;
+  DropEngine; // the kept instance is of the old class
   vClass := GetEngineClass(AValue);
   if vClass <> nil then
     FEngine := Trim(vClass.EngineName + ' ' + vClass.EngineVersion);
@@ -323,6 +333,7 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vException: StringRAL;
+  vShared: boolean;
 begin
   if AExecBehavior = ebSingleThread then
   begin
@@ -330,12 +341,15 @@ begin
     // is invoked before this method returns, so the caller can rely on the
     // response (or the exception) being already available when it continues.
     vException := '';
-    vClient := CreateClient;
+    vClient := AcquireEngine(vShared);
     vRequest := TRALClientRequest.Create(Self);
     vResponse := TRALClientResponse.Create(Self);
     try
       try
         try
+          // a thread may have advanced the failover index since the kept
+          // engine last ran: start from the client's, not the engine's
+          vClient.IndexUrl := FIndexUrl;
           FRequest.Clone(vRequest);
           vClient.BeforeSendUrl(ARoute, vRequest, vResponse, AMethod);
         finally
@@ -356,7 +370,8 @@ begin
       else
         OnThreadResponse(Self, vResponse, vException);
     finally
-      FreeAndNil(vClient);
+      if not vShared then
+        FreeAndNil(vClient);
       FreeAndNil(vResponse);
       FreeAndNil(vRequest);
     end;
@@ -381,13 +396,15 @@ function TRALClient.ExecuteSingle(ARoute: StringRAL; AMethod: TRALMethod): TRALR
 var
   vClient: TRALClientHTTP;
   vRequest: TRALRequest;
+  vShared: boolean;
 begin
   Result := TRALClientResponse.Create(Self);
   vRequest := TRALClientRequest.Create(Self);
   try
-    vClient := CreateClient;
+    vClient := AcquireEngine(vShared);
     try
       try
+        vClient.IndexUrl := FIndexUrl; // see ExecuteThread
         FRequest.Clone(vRequest);
         vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
       finally
@@ -400,7 +417,8 @@ begin
         raise Exception.Create(e.Message);
     end;
   finally
-    FreeAndNil(vClient);
+    if not vShared then
+      FreeAndNil(vClient);
     FreeAndNil(vRequest);
   end;
 end;
@@ -424,6 +442,47 @@ begin
     Result := vClass.Create(Self)
   else
     raise Exception.CreateFmt('Class %s não encontrada', [EngineType]);
+end;
+
+{ An engine used to be created and freed around every request, which threw
+  away whatever it kept between calls: the mORMot2 socket, Indy's and
+  WinHTTP's keep-alive connection, fpHTTP's KeepConnection. One instance is
+  now kept for the thread that first used it - the usual single-thread loop.
+  A request from any other thread still gets a private, throw-away engine,
+  exactly as before, so a connection is never shared between threads. The
+  multi-thread path (TRALThreadClient) is unchanged: one engine per thread. }
+function TRALClient.AcquireEngine(out AShared: boolean): TRALClientHTTP;
+var
+  vThread: TThreadID;
+begin
+  vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+
+  LockSession;
+  try
+    if FEngineHTTP = nil then
+    begin
+      FEngineHTTP := CreateClient;
+      FEngineThread := vThread;
+    end;
+    AShared := FEngineThread = vThread;
+  finally
+    UnLockSession;
+  end;
+
+  if AShared then
+    Result := FEngineHTTP
+  else
+    Result := CreateClient;
+end;
+
+procedure TRALClient.DropEngine;
+begin
+  LockSession;
+  try
+    FreeAndNil(FEngineHTTP);
+  finally
+    UnLockSession;
+  end;
 end;
 
 procedure TRALClient.CopyProperties(ADest: TRALClient);
@@ -500,6 +559,7 @@ end;
 destructor TRALClient.Destroy;
 begin
   WaitPendingRequests;
+  DropEngine;
   FreeAndNil(FThreads);
   FreeAndNil(FCriptoOptions);
   FreeAndNil(FCritSession);

@@ -13,7 +13,17 @@ type
   { TRALSynopseClientHTTP }
 
   TRALSynopseClientHTTP = class(TRALClientHTTP)
+  private
+    { the socket outlives one SendUrl: opening a TCP connection (and a TLS
+      handshake) per request was the whole cost of small calls. Kept while
+      the client asks for KeepAlive and the next URL points at the same
+      scheme://host:port; dropped after any transport error }
+    FHttp: THttpClientSocket;
+    FServer: StringRAL;
+    procedure DropSocket;
   public
+    destructor Destroy; override;
+
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
 
@@ -32,6 +42,18 @@ const
 
 { TRALSynopseClientHTTP }
 
+destructor TRALSynopseClientHTTP.Destroy;
+begin
+  DropSocket;
+  inherited;
+end;
+
+procedure TRALSynopseClientHTTP.DropSocket;
+begin
+  FreeAndNil(FHttp);
+  FServer := '';
+end;
+
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
@@ -43,6 +65,9 @@ var
   vKeepAlive: Cardinal;
   vCookies: TStringList;
   vInt: IntegerRAL;
+  vUri: TUri;
+  vServer: StringRAL;
+  vFailed: boolean;
 
   { The two except blocks below are already split by phase, which is exactly the
     distinction the retry decision needs: the inner one wraps the request on an
@@ -53,9 +78,38 @@ begin
   AResponse.AddHeader('RALEngine', ENGINESYNOPSE);
 
   vHttp := nil;
+  vFailed := False;
+  vKeepAlive := 0;
 
   try
-    vHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout);
+    { same scheme://host:port as the socket we already hold: reuse it. mORMot
+      reopens the connection by itself (DoRetry) when the server dropped an
+      idle one, so a stale socket costs one retry, never a failed request }
+    vServer := '';
+    if vUri.From(UTF8String(AURL)) then
+      vServer := StringRAL(vUri.Scheme) + '://' + StringRAL(vUri.Server) + ':' +
+                 StringRAL(vUri.Port);
+
+    if (FHttp <> nil) and ((vServer = '') or (vServer <> FServer)) then
+      DropSocket;
+
+    { a kept socket the server has since closed (restart, idle timeout) must
+      not be used: Request is called with AsRetry=True on purpose - RAL, not
+      mORMot, decides what may be replayed - so mORMot would not reopen it
+      and the request would fail without ever reaching the server. Zero wait:
+      this only asks the socket what it already knows }
+    if (FHttp <> nil) and (FHttp.SockReceivePending(0) <> cspNoData) then
+      DropSocket;
+
+    if FHttp = nil then
+    begin
+      FHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout);
+      FServer := vServer;
+    end
+    else
+      vAddress := vUri.Address;
+
+    vHttp := FHttp;
 
     vHttp.TLS.Enabled := SameText(Copy(AURL, 1, 5), 'https');
     vHttp.SendTimeout := Parent.ConnectTimeout;
@@ -64,22 +118,17 @@ begin
     vHttp.Accept := '*/*';
     vHttp.RedirectMax := Parent.MaxRedirects;
 
-    { mORMot2 >= 2.4.15007 removeu o boolean de vHttp.KeepAlive e virou integer com o tempo
-     em milisegundos do keepalive, porém, não tem uma forma precisa dentro da versão 2.4
-     pra detectar o commit 15007.
-     }
-
+    { mORMot2 >= 2.4.15007 turned KeepAlive from a boolean into the keep-alive
+      time in milliseconds, and nothing in the 2.4 sources tells that commit
+      apart. On an older mORMot2 replace the line below with
+      "vHttp.KeepAlive := Parent.KeepAlive". }
     vHttp.KeepAlive := Parent.ConnectTimeout;
 
-    { mORMot2 < 2.4.15007 comente a linha acima e descomente abaixo. Não tem uma forma
-    precisa nos fontes de detectar o commit 15007, infelizmente.
-
-    vHttp.KeepAlive := Parent.KeepAlive;
+    { the value handed to Request: zero asks for "Connection: Close", so the
+      server hangs up and the socket cannot be reused. It used to be passed
+      uninitialised - whatever the stack held decided the header. }
     if Parent.KeepAlive then
-      vKeepAlive := Parent.ConnectTimeout
-    else
-      vKeepAlive := 0;
-    }
+      vKeepAlive := Parent.ConnectTimeout;
 
     ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
@@ -167,6 +216,7 @@ begin
           another BaseURL, a POST may not. }
         if vResult = HTTP_MORMOT_CLIENTERROR then
         begin
+          vFailed := True;
           SetTransportError(AResponse, rteTimeout, vResult,
             'mORMot2 client error: ' + StringRAL(vHttp.RequestContext));
         end
@@ -189,6 +239,7 @@ begin
       except
         on e: ENetSock do
         begin
+          vFailed := True;
           // socket already connected: a timeout here means the request went
           // out and the server may have run it, so it must not be replayed.
           if e.LastError = nrTimeout then
@@ -197,7 +248,10 @@ begin
             SetTransportError(AResponse, rteOther, 10061, e.Message);
         end;
         on e: Exception do
+        begin
+          vFailed := True;
           SetTransportError(AResponse, rteOther, -1, e.Message);
+        end;
       end;
     finally
       FreeAndNil(vSource);
@@ -207,11 +261,20 @@ begin
     // handled by the inner block above. A socket failure at this point means
     // the request reached no server, so another BaseURL may be tried.
     on e: ENetSock do
+    begin
+      vFailed := True;
       SetTransportError(AResponse, rteConnect, 10061, e.Message);
+    end;
     on e: Exception do
+    begin
+      vFailed := True;
       SetTransportError(AResponse, rteOther, -1, e.Message);
+    end;
   end;
-  FreeAndNil(vHttp);
+
+  // a socket that failed, or one the server was told to close, is not kept
+  if vFailed or (vKeepAlive = 0) then
+    DropSocket;
 end;
 
 class function TRALSynopseClientHTTP.EngineName: StringRAL;

@@ -233,8 +233,9 @@ var
   vInt: Integer;
   vField: TRALDBInfoField;
 begin
+  Result := nil; // both early exits and the binary path used to leave it undefined
   if not Assigned(ADataset) then exit;
-  
+
   vFields:= TRALDBInfoFields.Create;
   try
     for vInt := 0 to Pred(ADataset.FieldCount) do

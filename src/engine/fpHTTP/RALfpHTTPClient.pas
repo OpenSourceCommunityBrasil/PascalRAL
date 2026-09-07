@@ -125,8 +125,6 @@ begin
   FHttp.AllowRedirect := true;
   FHttp.MaxRedirects := Parent.MaxRedirects;
 
-  ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE);
-
   // KeepConnection is what actually makes fphttpclient reuse the socket, and it
   // was set once in the constructor and never touched again. Turning KeepAlive
   // off therefore stopped the header from being sent while the client went on
@@ -159,9 +157,6 @@ begin
     ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
     ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
-
-  // cookies
-  ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE, '=');
 
   ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
@@ -206,6 +201,13 @@ begin
       if vSource <> nil then
         vSource.Position := 0;
       FHttp.RequestBody := vSource;
+
+      { per attempt, not once: fphttpclient hands Cookies over to the wire and
+        drops the list on every send, so a request reissued after a dead
+        kept-alive socket went out without its cookies. They used to be
+        assigned twice before the loop, which also doubled every cookie. }
+      FHttp.Cookies.Clear;
+      ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE, '=');
 
     // não deve ser usado o método direto e sim como HTTPMethod,
     // devido o parâmetro AllowedResponseCodes

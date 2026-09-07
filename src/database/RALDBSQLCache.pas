@@ -295,6 +295,7 @@ var
   vParam: TParam;
   vValue: Variant;
 begin
+  Result := nil; // a dataset without a Params property used to return garbage
   vColetion := TCollection(GetObjectProp(ADataset, 'Params'));
   if vColetion <> nil then
   begin
@@ -381,7 +382,8 @@ begin
   vDBSQL.BookMark := ABookMark;
   vDBSQL.DriverType := ADriverType;
   vDBSQL.ExecType := AExecType;
-  vDBSQL.Params := AParams;
+  if AParams <> nil then // the setter Assigns, and Assign(nil) raises
+    vDBSQL.Params := AParams;
   vDBSQL.SQL := ASQL;
 
   FSQLList.Add(vDBSQL);

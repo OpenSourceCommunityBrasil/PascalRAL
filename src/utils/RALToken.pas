@@ -555,6 +555,7 @@ begin
 
     case FAlgorithm of
       tjaHSHA256: vJson.Add('alg', 'HS256');
+      tjaHSHA384: vJson.Add('alg', 'HS384');
       tjaHSHA512: vJson.Add('alg', 'HS512');
     end;
 
@@ -603,6 +604,8 @@ begin
           FAlgorithm := tjaHSHA256;
           if SameText(vAux1, 'hs256') then
             FAlgorithm := tjaHSHA256
+          else if SameText(vAux1, 'hs384') then
+            FAlgorithm := tjaHSHA384
           else if SameText(vAux1, 'hs512') then
             FAlgorithm := tjaHSHA512;
         end
@@ -809,8 +812,10 @@ procedure TRALJWT.SetToken(AValue: StringRAL);
 var
   vInt: IntegerRAL;
   vStr: TStringList;
+  vWhole: StringRAL;
 begin
   FToken := '';
+  vWhole := AValue;
   vStr := TStringList.Create;
   try
     repeat
@@ -827,7 +832,10 @@ begin
 
     if vStr.Count = 3 then
     begin
-      FToken := AValue;
+      { the loop above eats AValue segment by segment, and FToken used to be
+        assigned AFTER it - always empty, so IsValidToken with no argument
+        answered False for a token that had just been assigned }
+      FToken := vWhole;
       FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
       FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       FSignature := vStr.Strings[2];

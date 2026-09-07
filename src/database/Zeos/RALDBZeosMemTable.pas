@@ -30,6 +30,10 @@ type
     FUpdateSQL: TRALDBUpdateSQL;
     FUpdateMode: TUpdateMode;
     FUpdateTable: StringRAL;
+    { last answer of /getsqlfields and the SQL it describes: every Open used
+      to pay that round trip again before /opensql }
+    FSchema: TRALDBInfoFields;
+    FSchemaSQL: StringRAL;
 
     FOnError: TRALDBTableOnError;
   protected
@@ -38,6 +42,10 @@ type
 
     procedure InternalPost; override;
     procedure InternalDelete; override;
+
+    /// Server schema for ASQL, fetched once per SQL text and kept until the SQL or the connection changes
+    function SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
+    procedure DropSchema;
 
     procedure SetSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
@@ -198,8 +206,35 @@ begin
   end;
 end;
 
+function TRALDBZMemTable.SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
+begin
+  if FRALConnection = nil then
+  begin
+    DropSchema;
+    Result := nil;
+    Exit;
+  end;
+
+  if (FSchema = nil) or (FSchemaSQL <> ASQL) then
+  begin
+    DropSchema;
+    FSchema := FRALConnection.InfoFieldsFromSQL(ASQL);
+    FSchemaSQL := ASQL;
+  end;
+  Result := FSchema;
+end;
+
+procedure TRALDBZMemTable.DropSchema;
+begin
+  FreeAndNil(FSchema);
+  FSchemaSQL := '';
+end;
+
 procedure TRALDBZMemTable.SetRALConnection(AValue: TRALDBConnection);
 begin
+  if AValue <> FRALConnection then
+    DropSchema; // another server, another schema
+
   if FRALConnection <> nil then
     FRALConnection.RemoveFreeNotification(Self);
 
@@ -276,9 +311,7 @@ var
 begin
   vTables := TStringList.Create;
 
-  vInfo := nil;
-  if FRALConnection <> nil then
-    vInfo := FRALConnection.InfoFieldsFromSQL(FSQL.Text);
+  vInfo := SchemaFor(FSQL.Text);
 
   try
     if vInfo = nil then
@@ -340,8 +373,7 @@ begin
       FUpdateTable := vTables.Strings[0];
   finally
     Self.EnableControls;
-    FreeAndNil(vInfo);
-    FreeAndNil(vTables);
+    FreeAndNil(vTables); // vInfo belongs to the schema cache
   end;
 
   inherited;
@@ -613,6 +645,7 @@ begin
     object: the client must forget it before the memory goes }
   if (FRALConnection <> nil) and (FRALConnection.Client <> nil) then
     FRALConnection.Client.DropCallbacks(Self);
+  DropSchema;
   FreeAndNil(FSQL);
   FreeAndNil(FParams);
   FreeAndNil(FUpdateSQL);

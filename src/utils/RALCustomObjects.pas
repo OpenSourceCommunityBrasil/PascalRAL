@@ -51,6 +51,9 @@ type
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
 
+    /// True for the media types a charset parameter applies to (text/*, JSON, XML, JavaScript, forms)
+    class function IsTextualType(const AContentType: StringRAL): boolean;
+
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; overload; virtual; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
     function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; overload; virtual;
@@ -143,10 +146,26 @@ begin
     and no cookies, on a server that answered 200 and looked healthy. }
   { and never on an empty type: "Content-Type: ; charset=utf-8" is what a
     bodiless error answer used to carry }
+  { and only on textual types: a charset means nothing on image/png or
+    application/octet-stream, and "octet-stream; charset=utf-8" made browsers
+    and proxies treat binary downloads as text. Multipart is not textual
+    either, which keeps the boundary guard above. }
   if (FContentType <> '') and
      (Pos(StringRAL('charset='), FContentType) = 0) and
-     (Pos(StringRAL('multipart/'), LowerCase(FContentType)) = 0) then
+     IsTextualType(FContentType) then
     FContentType := FContentType + '; charset=utf-8';
+end;
+
+class function TRALHTTPHeaderInfo.IsTextualType(const AContentType: StringRAL): boolean;
+var
+  vType: StringRAL;
+begin
+  vType := LowerCase(AContentType);
+  Result := (Pos(StringRAL('text/'), vType) = 1) or
+            (Pos(StringRAL('json'), vType) > 0) or
+            (Pos(StringRAL('xml'), vType) > 0) or
+            (Pos(StringRAL('javascript'), vType) > 0) or
+            (Pos(StringRAL('x-www-form-urlencoded'), vType) > 0);
 end;
 
 function TRALHTTPHeaderInfo.GetAcceptCripto: TRALCriptoType;

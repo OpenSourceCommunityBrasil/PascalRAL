@@ -549,6 +549,7 @@ begin
       vStrResult := Format('{"%s":"%s"}', [FJSONKey, vToken]);
       if UseCookie then
       begin
+        Finalize(vCookie); // strings inside: never FillChar over live references
         FillChar(vCookie, SizeOf(vCookie), 0);
         vCookie.Name := RALTOKENName;
         vCookie.Value := vToken;

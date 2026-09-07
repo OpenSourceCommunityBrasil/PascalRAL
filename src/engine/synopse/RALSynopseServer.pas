@@ -134,7 +134,7 @@ procedure TRALSynopseServer.SetPoolCount(const AValue: IntegerRAL);
 var
   vActive: boolean;
 begin
-  if AValue = Port then
+  if AValue = FPoolCount then // compared against Port before, so it never exited
     Exit;
 
   if AValue > 256 then
