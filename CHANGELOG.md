@@ -568,6 +568,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix charset on binary types, HS384, client engine reuse and nine smaller bugs; cache the memtable schema and wake the pool by event** (2026-09-06 – tempraturbo)
+  The charset was appended to every non-multipart type, so an octet-stream
+  went out as text. HS384 never reached the JWT header, and Token := x left
+  FToken empty. TRALClient created and freed its engine around every request,
+  which is why no engine ever reused a connection: the engine now lives with
+  the thread that first used it, the mORMot2 socket is probed before reuse,
+  the Indy IOHandler is no longer reset per call, and the fpHTTP client
+  reassigns cookies per attempt because fphttpclient drops them on send.
+  Memtables ask /getsqlfields once per SQL text, the JSON storage writes
+  straight into the stream, and the pool waits on a TEvent instead of a
+  5 ms poll. Also: Decompress(string) never ran, two uninitialised results,
+  Assign(nil) on params, FillChar over string records, BruteForce := x
+  swapped the object, SetPoolCount compared with Port, Indy read the
+  response's Content-Disposition, and the mORMot2 keep-alive value was
+  uninitialised.
+
 - **Fix the JWT cookie being any cookie, and stop Swagger leaking the spec and loading unchecked assets** (2026-09-06 – tempraturbo)
   TRALServer.DecodeAuth took the first cookie of the header as the
   bearer, whatever its name, so any site cookie ahead of raltoken made a
