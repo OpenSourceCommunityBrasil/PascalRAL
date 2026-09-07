@@ -446,8 +446,8 @@ function TRALMIMEType.GetSystemTypes: boolean;
   procedure LoadGlobs(const AFileName: string);
   var
     LTypes: TStringList;
-    LInt : Integer;
-    LItem : string;
+    LInt: Integer;
+    LItem: string;
     LPos1, LPos2: Integer;
     LExt, LType: string;
   begin
@@ -455,7 +455,7 @@ function TRALMIMEType.GetSystemTypes: boolean;
     try
       LTypes.LoadFromFile(AFileName);
 
-      for LInt := 0 to Pred(SL.Count) do
+      for LInt := 0 to Pred(LTypes.Count) do
       begin
         LItem := Trim(LTypes.Strings[LInt]);
 
