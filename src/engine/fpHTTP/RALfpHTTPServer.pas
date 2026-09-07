@@ -421,6 +421,8 @@ begin
   Result := 'http';
   if FParent.SSL.Enabled then
     Result := Result + 's';
+  { the server never binds to one interface (fcl-web's Address stays
+    empty), so the loopback always reaches the listening socket }
   Result := Result + '://127.0.0.1:' + IntToStr(Port);
 end;
 
@@ -453,6 +455,12 @@ begin
     vFP := TFPHTTPClient.Create(nil);
     try
       try
+        { bounded: this GET only exists to wake accept() up. Without a
+          timeout a server that accepted but did not answer kept the
+          destructor waiting forever; the accept idle timeout (Create)
+          covers the case where the GET cannot connect at all }
+        vFP.ConnectTimeout := 2000;
+        vFP.IOTimeout := 2000;
         {$warnings off}
         vFP.Get(GetURLServer);
         {$warnings on}
@@ -476,6 +484,12 @@ begin
   FHttp.QueueSize := SOMAXCONN;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
+  { AcceptIdleTimeout stays at fcl-web's default (0, a blocking accept):
+    with an idle loop the server stops on its own within the timeout, but
+    that faster teardown races fcl-web's own connection-thread cleanup on
+    Windows and took the FPC matrix down with an access violation nine
+    cases into the next server (07/09/2026). The stop keeps relying on
+    the wake-up connection made in TerminatedSet }
 
   inherited Create(True);
 end;
@@ -484,8 +498,13 @@ destructor TRALfpHttpServerThread.Destroy;
 begin
   if FHttp.Active then
     FHttp.Active := False;
-  FParent := nil;
+  { FHttp's destructor waits for the connection threads still handling a
+    request - the wake-up GET of TerminatedSet among them - and those
+    threads read FParent (CreateRequest, ProcessCommands...). It used to be
+    nilled BEFORE that wait: a handler finishing a moment later hit nil and
+    took the process down with an access violation }
   FreeAndNil(FHttp);
+  FParent := nil;
 end;
 
 { TRALfpHTTPSSL }

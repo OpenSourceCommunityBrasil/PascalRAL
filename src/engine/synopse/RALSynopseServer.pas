@@ -64,6 +64,9 @@ var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
   vActive: boolean;
+  {$IFDEF FPC}
+  vDummy: TNetSocket;
+  {$ENDIF}
 begin
   vActive := Active;
 
@@ -122,8 +125,23 @@ begin
   begin
     if FHttp <> nil then begin
       FHttp.Shutdown;
+      {$IFDEF FPC}
+      { Terminate before closing, then a touch-and-go connection to the
+        port: closing the listening socket wakes a blocked accept() on
+        Windows but not on Linux, where the thread stayed in accept() and
+        WaitFor never returned - a FPC server on Linux could neither be
+        deactivated nor let the process close. It is the same release
+        THttpServer.Destroy itself performs; done here because the WaitFor
+        below runs first. Delphi keeps the order it always had. }
+      FHttp.Terminate;
+      FHttp.Sock.Close;
+      if NewSocket(FHttp.Sock.Server, FHttp.Sock.Port, nlTcp, False,
+           10, 10, 10, 0, vDummy) = nrOK then
+        vDummy^.ShutdownAndClose(False); // TNetSocket is ^TNetSocketWrap (an object) on FPC
+      {$ELSE}
       FHttp.Sock.Close;
       FHttp.Terminate;
+      {$ENDIF}
       FHttp.WaitFor;
       FreeAndNil(FHttp);
     end;
