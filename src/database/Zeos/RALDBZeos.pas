@@ -65,6 +65,15 @@ begin
   FConnector.LibraryLocation        := LibLocation;
   FConnector.LoginPrompt            := False;
   FConnector.TransactIsolationLevel := tiReadCommitted;
+  { SQLite refuses a second writer with "database is locked" the moment the
+    file is busy, and Zeos passes that straight through: with the pool
+    handing out two connections, one of eight concurrent writes was refused
+    (pooler suite, 07/09/2026). FireDAC waits up to 10 s by default
+    (BusyTimeout); ask Zeos for the same, so a pooled SQLite behaves alike
+    under both drivers. Only when the application did not set it }
+  if (DatabaseType = dtSQLite) and
+     (Trim(FConnector.Properties.Values['busytimeout']) = '') then
+    FConnector.Properties.Values['busytimeout'] := '10000';
 
   FConnector.BeforeConnect := {$IFDEF FPC}@{$ENDIF}OnConnBeforeConnect;
   FConnector.AfterConnect := {$IFDEF FPC}@{$ENDIF}OnConnAfterConnect;

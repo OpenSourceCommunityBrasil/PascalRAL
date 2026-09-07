@@ -593,10 +593,19 @@ begin
   begin
     SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
+    { BEFORE listening: libmicrohttpd only takes the thread pool size while
+      the server is being set up, and applied after sg_httpsrv_listen the
+      value was silently ignored - every request was served one at a time,
+      whatever PoolCount said (found by the pooler suite, 07/09/2026: with
+      Sagui no two requests ever competed for the connection pool). The
+      connection limit goes first for the same reason. }
+    if FHandle <> nil then
+    begin
+      SetConnectionLimit(ConnectionLimit);
+      SetPoolCount(PoolCount);
+    end;
     if not InitializeServer then
       FreeServerHandle;
-    SetConnectionLimit(ConnectionLimit);
-    SetPoolCount(PoolCount);
   end
   else
   begin

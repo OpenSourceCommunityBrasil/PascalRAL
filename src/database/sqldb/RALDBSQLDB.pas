@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, DB,
   SQLDB, SQLDBLib, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
-  ibase60dyn,
+  ibase60dyn, sqlite3dyn, SyncObjs,
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -64,6 +64,13 @@ var
     for everybody. Holding a reference here keeps the counter above zero,
     so fb_shutdown never runs while the process lives. }
   gFirebirdPinned: Boolean = False;
+  { Opening a connection loads and reference-counts the client library
+    (sqlite3dyn, ibase60dyn, the SQLDBLib loader), and none of that counting
+    is thread-safe: eight requests connecting at once, each with its own
+    driver (the pool off, the default), crashed with access violations in
+    the first burst of the process (pooler suite, 07/09/2026). One open at a
+    time costs nothing next to the request itself }
+  gOpenLock: TCriticalSection;
 
 { TRALDBSQLDB }
 
@@ -93,28 +100,42 @@ begin
   FConnector.BeforeConnect := @OnConnBeforeConnect;
   FConnector.AfterConnect := @OnConnAfterConnect;
 
+  gOpenLock.Enter;
   try
-    // only take over library loading when LibLocation was actually given.
-    // enabling the loader with an empty LibraryName makes sqldb try to load ""
-    // and fail - and an empty LibLocation is the default, i.e. every bit of
-    // code that already existed. without it sqldb finds the library as usual.
-    FLibLocator.Enabled := LibLocation <> '';
-    FConnector.Open;
-    { right after a successful open the library is loaded and counted, so the
-      parameterless InitialiseIBase60 only increments - no second load, no
-      name conflict with whatever LibLocation pointed at }
-    if (DatabaseType = dtFirebird) and not gFirebirdPinned then
-    begin
-      InitialiseIBase60;
-      gFirebirdPinned := True;
+    try
+      // only take over library loading when LibLocation was actually given.
+      // enabling the loader with an empty LibraryName makes sqldb try to load ""
+      // and fail - and an empty LibLocation is the default, i.e. every bit of
+      // code that already existed. without it sqldb finds the library as usual.
+      FLibLocator.Enabled := LibLocation <> '';
+      FConnector.Open;
+      { SQLite refuses a second connection touching a busy file with "database
+        is locked" at once, and sqldb has no property to make it wait: with the
+        pool handing out several connections, concurrent reads and writes died
+        on that (pooler suite, 07/09/2026). FireDAC waits up to 10 s by
+        default; set the same on the handle right after the open, so a pooled
+        SQLite behaves alike under every driver }
+      if (DatabaseType = dtSQLite) and Assigned(sqlite3_busy_timeout) and
+         (FConnector.Handle <> nil) then
+        sqlite3_busy_timeout(FConnector.Handle, 10000);
+      { right after a successful open the library is loaded and counted, so the
+        parameterless InitialiseIBase60 only increments - no second load, no
+        name conflict with whatever LibLocation pointed at }
+      if (DatabaseType = dtFirebird) and not gFirebirdPinned then
+      begin
+        InitialiseIBase60;
+        gFirebirdPinned := True;
+      end;
+    except
+      on e: Exception do
+      begin
+        if Assigned(OnErrorConnect) then
+          OnErrorConnect(FConnector, e.Message, Request);
+        raise;
+      end;
     end;
-  except
-    on e: Exception do
-    begin
-      if Assigned(OnErrorConnect) then
-        OnErrorConnect(FConnector, e.Message, Request);
-      raise;
-    end;
+  finally
+    gOpenLock.Leave;
   end;
 end;
 
@@ -166,8 +187,17 @@ end;
 destructor TRALDBSQLDB.Destroy;
 begin
   FreeAndNil(FTransaction);
-  FreeAndNil(FConnector);
-  FreeAndNil(FLibLocator);
+  { closing releases the library reference - the same unprotected counting
+    that Conectar serialises, so it takes the same lock }
+  if gOpenLock <> nil then
+    gOpenLock.Enter;
+  try
+    FreeAndNil(FConnector);
+    FreeAndNil(FLibLocator);
+  finally
+    if gOpenLock <> nil then
+      gOpenLock.Leave;
+  end;
   inherited Destroy;
 end;
 
@@ -175,7 +205,14 @@ procedure TRALDBSQLDB.Disconnect;
 begin
   ResetSession;
   if FConnector.Connected then
-    FConnector.Close;
+  begin
+    gOpenLock.Enter;
+    try
+      FConnector.Close;
+    finally
+      gOpenLock.Leave;
+    end;
+  end;
 end;
 
 function TRALDBSQLDB.IsConnected : boolean;
@@ -346,12 +383,14 @@ begin
 end;
 
 initialization
+  gOpenLock := TCriticalSection.Create;
   RegisterClass(TRALDBSQLDB);
   RegisterDatabase(TRALDBSQLDB);
 
 finalization
   if gFirebirdPinned then
     ReleaseIBase60;
+  FreeAndNil(gOpenLock);
 
 end.
 

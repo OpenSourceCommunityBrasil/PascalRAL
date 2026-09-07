@@ -42,12 +42,46 @@ type
 
   TRALfpHttpServer = class;
 
+  { TRALfpHttpConnectionThread }
+
+  { fcl-web's own connection thread frees the connection (which decrements
+    the server's ConnectionCount) BEFORE taking itself out of the server's
+    thread list. TFPCustomHttpServer.Destroy sees the count reach zero, frees
+    that list, and the thread's Remove then runs on freed memory: an access
+    violation that took whole test processes down as soon as a server was
+    freed while a request was finishing (07/09/2026). This thread lives in a
+    list the RAL owns and leaves it FIRST, so that a server waiting on
+    TRALfpHttpServerCore.WaitHandlers can free everything afterwards }
+  TRALfpHttpConnectionThread = class(TFPHTTPConnectionThread)
+  private
+    FHandlers: TThreadList;
+  public
+    constructor CreateHandler(AConnection: TFPHTTPConnection; AHandlers: TThreadList);
+    procedure Execute; override;
+  end;
+
+  { TRALfpHttpServerCore }
+
+  TRALfpHttpServerCore = class(TFPHttpServer)
+  private
+    FHandlers: TThreadList;
+  protected
+    function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    { waits until every connection thread has finished. Past ATimeoutMs it
+      closes the sockets still open (a client that connected and never sent
+      a request would otherwise hold a thread forever) and waits again }
+    procedure WaitHandlers(ATimeoutMs: Integer);
+  end;
+
   { TRALfpHttpServerThread }
 
   TRALfpHttpServerThread = class(TThread)
   private
     FParent: TRALfpHttpServer;
-    FHttp: TFPHttpServer;
+    FHttp: TRALfpHttpServerCore;
   protected
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
@@ -56,6 +90,9 @@ type
     procedure SetQueueSize(const AValue: Word);
 
     function GetURLServer: StringRAL;
+    { one bounded GET to the server itself: fcl-web's accept loop only
+      notices it was stopped when a connection arrives }
+    procedure WakeUpAccept;
 
     function GetPort: IntegerRAL;
     procedure SetPort(AValue: IntegerRAL);
@@ -108,10 +145,10 @@ implementation
 uses
   // units usadas para capturar a constante SOMAXCONN
   {$IFDEF RALWINDOWS}
-    WinSock2;
-  {$ELSE}
-    sockets;
+    WinSock2,
   {$ENDIF}
+  // CloseSocket for the handlers still open past the wait
+  sockets;
 
 { TRALfpHTTPCertData }
 
@@ -135,6 +172,90 @@ begin
     3 : PFX.FileName := AValue;
     4 : CertCA.FileName := AValue;
   end;
+end;
+
+{ TRALfpHttpConnectionThread }
+
+constructor TRALfpHttpConnectionThread.CreateHandler(AConnection: TFPHTTPConnection;
+  AHandlers: TThreadList);
+begin
+  FHandlers := AHandlers;
+  FHandlers.Add(Self);
+  { the one-argument constructor: fcl-web's list stays out of it }
+  inherited CreateConnection(AConnection);
+end;
+
+procedure TRALfpHttpConnectionThread.Execute;
+var
+  vConnection: TFPHTTPConnection;
+begin
+  vConnection := Connection;
+  try
+    try
+      vConnection.HandleRequest;
+    finally
+      { out of the list first: whoever waits on the list then frees the
+        server only after the connection (and its count) is gone too }
+      FHandlers.Remove(Self);
+      vConnection.Free;
+    end;
+  except
+    // silently ignore errors, as fcl-web does
+  end;
+end;
+
+{ TRALfpHttpServerCore }
+
+constructor TRALfpHttpServerCore.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FHandlers := TThreadList.Create;
+end;
+
+destructor TRALfpHttpServerCore.Destroy;
+begin
+  inherited Destroy;
+  FreeAndNil(FHandlers);
+end;
+
+function TRALfpHttpServerCore.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;
+begin
+  Result := TRALfpHttpConnectionThread.CreateHandler(Conn, FHandlers);
+end;
+
+procedure TRALfpHttpServerCore.WaitHandlers(ATimeoutMs: Integer);
+var
+  vList: TList;
+  vInt: Integer;
+  vStart: TDateTime;
+
+  function Pending: Boolean;
+  begin
+    vList := FHandlers.LockList;
+    try
+      Result := vList.Count > 0;
+    finally
+      FHandlers.UnlockList;
+    end;
+    Result := Result or (ConnectionCount > 0);
+  end;
+
+begin
+  vStart := Now;
+  while Pending and (MilliSecondsBetween(Now, vStart) < ATimeoutMs) do
+    Sleep(10);
+  if not Pending then
+    Exit;
+
+  vList := FHandlers.LockList;
+  try
+    for vInt := vList.Count - 1 downto 0 do
+      CloseSocket(TRALfpHttpConnectionThread(vList[vInt]).Connection.Socket.Handle);
+  finally
+    FHandlers.UnlockList;
+  end;
+  while Pending do
+    Sleep(10);
 end;
 
 { TRALfpHttpServerThread }
@@ -413,6 +534,38 @@ begin
   end
   else if (not AValue) and (FHttp.Active) then begin
     FHttp.Active := False;
+    { fcl-web only clears a flag here: the accept loop, and the port with
+      it, stay until the next connection arrives. Making that connection
+      now is what turns Active := False into a stopped server }
+    WakeUpAccept;
+  end;
+end;
+
+procedure TRALfpHttpServerThread.WakeUpAccept;
+var
+  vFP : TFPHTTPClient;
+begin
+  // fernando - 30/07/2023
+  // POG para fechar o socket assim q ele for desativado
+  // ao ativar o Server ele congela a thread e ao desativar ele mantem ela
+  // congelada ate que uma conexao client tente conectar, permitindo assim
+  // destruir a thread.
+  vFP := TFPHTTPClient.Create(nil);
+  try
+    try
+      { bounded: this GET only exists to wake accept() up. Without a
+        timeout a server that accepted but did not answer kept the
+        destructor waiting forever }
+      vFP.ConnectTimeout := 2000;
+      vFP.IOTimeout := 2000;
+      {$warnings off}
+      vFP.Get(GetURLServer);
+      {$warnings on}
+    except
+
+    end;
+  finally
+    FreeAndNil(vFP);
   end;
 end;
 
@@ -442,34 +595,11 @@ begin
 end;
 
 procedure TRALfpHttpServerThread.TerminatedSet;
-var
-  vFP : TFPHTTPClient;
 begin
+  { still listening: stop it and wake accept() up so Execute can end }
   if FHttp.Active then begin
-    Active := False;
-    // fernando - 30/07/2023
-    // POG para fechar o socket assim q ele for desativado
-    // ao ativar o Server ele congela a thread e ao desativar ele mantem ela
-    // congelada ate que uma conexao client tente conectar, permitindo assim
-    // destruir a thread.
-    vFP := TFPHTTPClient.Create(nil);
-    try
-      try
-        { bounded: this GET only exists to wake accept() up. Without a
-          timeout a server that accepted but did not answer kept the
-          destructor waiting forever; the accept idle timeout (Create)
-          covers the case where the GET cannot connect at all }
-        vFP.ConnectTimeout := 2000;
-        vFP.IOTimeout := 2000;
-        {$warnings off}
-        vFP.Get(GetURLServer);
-        {$warnings on}
-      except
-
-      end;
-    finally
-      FreeAndNil(vFP);
-    end;
+    FHttp.Active := False;
+    WakeUpAccept;
   end;
   inherited TerminatedSet;
 end;
@@ -480,7 +610,7 @@ begin
 
   FreeOnTerminate := False;
 
-  FHttp := TFPHttpServer.Create(AOwner);
+  FHttp := TRALfpHttpServerCore.Create(AOwner);
   FHttp.QueueSize := SOMAXCONN;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
@@ -496,15 +626,38 @@ end;
 
 destructor TRALfpHttpServerThread.Destroy;
 begin
+  { This destructor never called inherited, so TThread.Destroy - the one
+    that terminates and waits for the thread - never ran: the object was
+    released with the accept loop still running on it. A server stopped
+    with Active := False and then freed left a thread parked in accept()
+    with the port still bound; the next connection to that port (another
+    server on it, in the same process or a child of it) woke the thread up
+    on freed memory and took the process down, and on Linux the process
+    would not exit at all (07/09/2026). The thread ends first, and only
+    then does anything it touches go away }
+  if not Finished then
+  begin
+    { TerminatedSet wakes accept() up when the server is still listening }
+    Terminate;
+    { created suspended and never started: Start lets it run to its end,
+      Execute is skipped once Terminated is set }
+    if Suspended then
+      Start;
+    WaitFor;
+  end;
   if FHttp.Active then
     FHttp.Active := False;
-  { FHttp's destructor waits for the connection threads still handling a
-    request - the wake-up GET of TerminatedSet among them - and those
-    threads read FParent (CreateRequest, ProcessCommands...). It used to be
-    nilled BEFORE that wait: a handler finishing a moment later hit nil and
-    took the process down with an access violation }
+  { the connection threads still handling a request - the wake-up GET of
+    TerminatedSet among them - read FParent (CreateRequest,
+    ProcessCommands...) and the server itself, so both outlive them: the
+    RAL's own wait (see TRALfpHttpConnectionThread) comes before the free.
+    Ten seconds is more than any request in flight needs; whatever is still
+    open then is a client that never sent its request, and gets its socket
+    closed }
+  FHttp.WaitHandlers(10000);
   FreeAndNil(FHttp);
   FParent := nil;
+  inherited Destroy;
 end;
 
 { TRALfpHTTPSSL }
@@ -538,11 +691,7 @@ end;
 
 destructor TRALfpHttpServer.Destroy;
 begin
-  if Active then
-  begin
-    FHttpThread.Terminate;
-    FHttpThread.WaitFor;
-  end;
+  { the thread's destructor terminates and waits for it, active or not }
   FreeAndNil(FHttpThread);
   inherited;
 end;
