@@ -17,8 +17,19 @@ const
 type
   TRALOnValidate = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              var AResult: boolean) of object;
+  { of object, like every other callback declared around it. OnGetToken decides
+    who gets a token and OnValidate says whether one still counts, so both need
+    to reach a database - that is, the object that owns the connection. Without
+    of object they can only be plain procedures, which have no Self and get at
+    their state through globals.
+
+    This was the only exception in the group: TRALOnValidate,
+    TRALOnBeforeGetToken, TRALOnResolve and TRALOnGetTokenSecret are all of
+    object. And TRALServerBasicAuth.OnValidate already took the of-object form
+    while TRALServerJWTAuth.OnValidate - same property name, same unit - did
+    not. Assigning a plain procedure to these two no longer compiles. }
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
-                             AParams: TRALJWTParams; var AResult: boolean);
+                             AParams: TRALJWTParams; var AResult: boolean) of object;
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
@@ -620,7 +631,14 @@ begin
     begin
       { the claims are the ones already signed in the old token, never the
         ones the client sends along: a renew must not be a rewrite }
-      vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
+
+      { guarded like GetToken does. ExpirationSecs = 0 means "the payload owns
+        the expiration" - an application that sets its own exp in OnGetToken,
+        because the token has to die with something else (a licence, a session,
+        a shift), leaves this at zero. Unguarded, a renew wrote
+        IncSecond(Now, 0) = Now and handed back a token already expired. }
+      if FExpSecs > 0 then
+        vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
 
       AJSONParams := vJWT.Payload.AsJSON;
 
