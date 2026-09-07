@@ -177,6 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-07 – tempraturbo)
+
 - **Rename the Portuguese identifiers and comments introduced since 31/08 to English** (2026-09-06 – tempraturbo)
   PascalRAL is a global project and its sources are in English. The work
   of the last week left 27 Portuguese names behind - locals, fields, a
@@ -312,6 +314,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the server DAO owning its per-request queries on a shared component** (2026-09-07 – tempraturbo)
+  OnReplyQuery runs on the engine's thread pool, but the one or two TFDQuery it
+  builds per request were owned by Self - the single TRALFDConnection sitting on
+  the application's datamodule. TComponent does not guard the owner's component
+  list, so every concurrent request was mutating the same one at once; both
+  queries are released in the finally, so nothing depended on that owner. The
+  TFDMemTable in TRALFDQuery.ApplyUpdatesRemote had the same shape on the client
+  side, per call and released in its own finally.
+  OpenRemoteResponse keeps its owner on purpose: the TFDConnection it builds when
+  the query has none is never released explicitly and relies on the query to take
+  it down.
+
 - **fix: Correção de carga de MIMETypes no Linux** (2026-09-06 – mobius1qwe)
 
 - **fix: Correção de compatibilidade com FPC 3.3.1** (2026-09-06 – mobius1qwe)
