@@ -21,6 +21,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   FloodTimeInterval, go. BlockedCount and FloodCount expose both sizes.
 
 
+### Breaking Changes
+- **Breaking: JWT callbacks take a method, and a renew keeps the payload expiration** (2026-09-07 – tempraturbo)
+  TRALOnTokenJWT - behind TRALServerJWTAuth.OnGetToken and .OnValidate - was the
+  only callback in RALAuthentication.pas declared without "of object";
+  TRALOnValidate, TRALOnBeforeGetToken, TRALOnResolve and TRALOnGetTokenSecret,
+  declared in the same block, all have it. TRALServerBasicAuth.OnValidate already
+  took a method while TRALServerJWTAuth.OnValidate, same property name and same
+  unit, took a plain procedure. Nothing needed it that way: the library calls both
+  directly, with no RTTI in between. What it cost the caller is real - deciding
+  who gets a token means reading a database, so the handler wants the object that
+  owns the connection, and a plain procedure has no Self. Assigning one now stops
+  compiling with E2009; the caller turns the handler into a method. Nothing inside
+  src/ assigned them, so it lands entirely downstream.
+  The second one is a plain defect. GetToken writes the expiration only when
+  FExpSecs > 0, leaving zero to mean "the payload owns the exp" - how an
+  application ties a token to something else's lifetime, setting Expiration from
+  OnGetToken. RenewToken did the same assignment unguarded, so with
+  ExpirationSecs = 0 a renew wrote IncSecond(Now, 0) = Now and handed back a token
+  that had already expired, in the same second. Same field, same object, two
+  different rules. With a non-zero ExpirationSecs nothing changes.
+
+
 ### Added
 - **Fix the fpHTTP server thread freed alive, Sagui thread pool set after listen, SQLite busy waits and sqldb library loading under concurrency** (2026-09-07 – tempraturbo)
   All four found by the new connection-pool suite of the orchestrator.
@@ -177,6 +199,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-07 – tempraturbo)
+
 - **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-07 – tempraturbo)
 
 - **Rename the Portuguese identifiers and comments introduced since 31/08 to English** (2026-09-06 – tempraturbo)
