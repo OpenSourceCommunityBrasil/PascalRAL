@@ -331,7 +331,10 @@ begin
       vStringStreamAux := nil;
       vAuxMemTable := nil;
 
-      vAuxMemTable := TFDMemTable.Create(Self);
+      { nil owner: the memtable is freed in the finally below, so owning it only
+        costs an insert and a remove on the query's own component list - and two
+        ebMultiThread calls on the same query would do it at the same time. }
+      vAuxMemTable := TFDMemTable.Create(nil);
       vStreamAux := TMemoryStream.Create;
       vBinaryWriter := TBinaryWriter.Create(vStreamAux);
       vStringStreamAux := TStringStream.Create(SQL.Text, TEncoding.UTF8);
@@ -664,13 +667,18 @@ begin
       ARequest.ParamByName('SQL').SaveToStream(vAuxStringStream);
       vAuxStringStream.Position := 0;
 
-      vQueryAux := TFDQuery.Create(Self);
+      { nil owner, not Self: this runs on the server's thread pool and Self is
+        the one TRALFDConnection of the datamodule, so concurrent requests were
+        all inserting into and removing from the same component list, which is
+        not guarded. Both queries are freed in the finally below, so nothing
+        relied on the owner to clean them up. }
+      vQueryAux := TFDQuery.Create(nil);
       vQueryAux.Connection := vAuxConnClone;
       vQueryAux.SQL.Text := TStringStream(vAuxStringStream).DataString;
 
       if ARequest.ParamByName('Type').AsString = '1' then
       begin
-        vQueryAux2 := TFDQuery.Create(Self);
+        vQueryAux2 := TFDQuery.Create(nil);
         vQueryAux2.Connection := vAuxConnClone;
         vQueryAux2.SQL.Text := TStringStream(vAuxStringStream).DataString;
       end;
