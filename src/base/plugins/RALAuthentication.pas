@@ -30,6 +30,8 @@ type
     not. Assigning a plain procedure to these two no longer compiles. }
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              AParams: TRALJWTParams; var AResult: boolean) of object;
+  TRALOnTokenJWTGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
+                             AParams: TRALJWTParams; var AResult: boolean);
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
@@ -154,7 +156,9 @@ type
     FJSONKey: StringRAL;
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
+    FOnGetTokenGen: TRALOnTokenJWTGen;
     FOnValidate: TRALOnTokenJWT;
+    FOnValidateGen: TRALOnTokenJWTGen;
     FUseCookie: Boolean;
     procedure SetUseCookie(AValue: Boolean);
   protected
@@ -169,8 +173,8 @@ type
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
-    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
+    property OnGetTokenGen: TRALOnTokenJWTGen read FOnGetTokenGen write FOnGetTokenGen;
+    property OnValidateGen: TRALOnTokenJWTGen read FOnValidateGen write FOnValidateGen;
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property AuthRoute;
@@ -178,6 +182,9 @@ type
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property UseCookie: Boolean read FUseCookie write SetUseCookie;
+
+    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
+    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
   end;
 
   { TRALClientOAuth }
@@ -547,6 +554,20 @@ begin
         FreeAndNil(vParamJWT);
       end;
     end
+    else if Assigned(FOnGetTokenGen) then
+    begin
+      vParamJWT := TRALJWTParams.Create;
+      try
+        FOnGetTokenGen(ARequest, AResponse, vParamJWT, vResult);
+        if vResult then
+        begin
+          vStrParams := vParamJWT.AsJSON;
+          vToken := GetToken(vStrParams);
+        end;
+      finally
+        FreeAndNil(vParamJWT);
+      end;
+    end
     else
     begin
       { Without OnGetToken nobody checks who is asking: any client could post
@@ -668,8 +689,14 @@ begin
     vJWT.Header.Algorithm := FAlgorithm;
     vJWT.SignSecretKey := FSignSecretKey;
     vResult := vJWT.isValidToken(ARequest.Authorization.AuthString);
-    if vResult and Assigned(FOnValidate) then
-      FOnValidate(ARequest, AResponse, vJWT.Payload, vResult);
+    if vResult then
+    begin
+      if Assigned(FOnValidate) then
+        FOnValidate(ARequest, AResponse, vJWT.Payload, vResult)
+      else if Assigned(FOnValidateGen) then
+        FOnValidateGen(ARequest, AResponse, vJWT.Payload, vResult);
+    end;
+
   finally
     FreeAndNil(vJWT);
   end;
