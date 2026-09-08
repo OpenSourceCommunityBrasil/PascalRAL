@@ -398,28 +398,44 @@ var
   vRequest: TRALRequest;
   vShared: boolean;
 begin
+  // both are read in the finally below, which also runs when the lines that
+  // set them are the ones that raised - AcquireEngine does, when the engine
+  // class is not registered
+  vClient := nil;
+  vRequest := nil;
+
   Result := TRALClientResponse.Create(Self);
-  vRequest := TRALClientRequest.Create(Self);
   try
-    vClient := AcquireEngine(vShared);
     try
-      try
-        vClient.IndexUrl := FIndexUrl; // see ExecuteThread
-        FRequest.Clone(vRequest);
-        vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
-      finally
+      vRequest := TRALClientRequest.Create(Self);
+      vClient := AcquireEngine(vShared);
+      vClient.IndexUrl := FIndexUrl; // see ExecuteThread
+      FRequest.Clone(vRequest);
+      vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
+    finally
+      if vClient <> nil then
+      begin
         // see ExecuteThread: the advanced failover index must survive the
-        // exception BeforeSendUrl raises on a transport failure.
+        // exception BeforeSendUrl raises on a transport failure - so it is
+        // read here, before the engine goes away.
         FIndexUrl := vClient.IndexUrl;
+        if not vShared then
+          FreeAndNil(vClient);
       end;
-    except
-      on e: Exception do
-        raise Exception.Create(e.Message);
+      FreeAndNil(vRequest);
     end;
-  finally
-    if not vShared then
-      FreeAndNil(vClient);
-    FreeAndNil(vRequest);
+  except
+    on e: Exception do
+    begin
+      // The caller never receives this response when the method raises: the
+      // assignment at the call site (AResponse := ExecuteSingle(...)) does not
+      // run, so what was created here has to die here. Otherwise every failed
+      // request leaked a whole TRALClientResponse, with its params and crypto
+      // options - and a transport error is enough, since BeforeSendUrl raises
+      // on one.
+      FreeAndNil(Result);
+      raise Exception.Create(e.Message);
+    end;
   end;
 end;
 
