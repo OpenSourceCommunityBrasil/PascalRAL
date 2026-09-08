@@ -8,6 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Add SSL.Pin, SSL.Required and OnValidateServerCert to the client** (2026-09-08 – tempraturbo)
+  A client can now say which server certificate it accepts, with nothing
+  installed on the machine: SSL.Pin holds the SHA-256 of the expected
+  certificate, OnValidateServerCert takes the decision in code, SSL.Required
+  refuses plain http. They live on TRALClient and not on an engine, which is what
+  keeps them identical whatever EngineType is set to - each engine only
+  translates its own callback into TRALCertInfo, the same record on every
+  compiler and platform, and asks TRALClientHTTP.AcceptServerCert, where the
+  single rule lives: the event decides, else the pin, else the engine's own
+  verdict. Same shape as SetTransportError for the retry rule.
+  Defaults are untouched, and that is checked and not assumed: plain http and
+  https against a public CA answer 200 on every engine with neither property set.
+  In particular Indy and fpHTTP still do not verify certificates at all unless
+  one of the two asks for it - enabling that for everyone would break plain HTTPS
+  on Windows, where the OpenSSL they load has no certificate store.
+  Where an engine cannot produce a fingerprint it refuses the request and names
+  itself, instead of comparing something weaker - a security option that quietly
+  degrades is worse than one that refuses. That is netHTTP on every platform (the
+  RTL's TCertificate carries no fingerprint) and mORMot2 when it falls back to
+  SChannel, which never calls the TLS callbacks.
+  Four engine details that are easy to get backwards, and are documented in
+  CLAUDE.md:
+  - netHTTP: on Windows the RTL calls OnValidateServerCertificate from
+  SENDING_REQUEST exactly when its own validation PASSED, handing Accepted =
+  True so the application may veto a good certificate. The handler is therefore
+  hooked up per request and only when asked, and TRALCertInfo.Trusted comes
+  from that incoming verdict.
+  - mORMot2: IgnoreCertificateErrors maps to SSL_VERIFY_NONE and makes it skip
+  the callback entirely; and the TLS context is reset with InitNetTlsContext on
+  every connection, because TCrtSocket.Open copies it back into the caller's
+  record once connected.
+  - mORMot2: the callback fires per chain link with no depth, so the verdict is
+  taken after the handshake and before the first byte goes out.
+  - fpHTTP: VerifyPeerCert aborts the handshake before its own callback runs, and
+  PeerFingerprint returns raw bytes, not hex.
+  Exercised against a TLS server with a self-signed certificate and against a
+  public HTTPS server: Indy, mORMot2 and netHTTP on Delphi (Win32/Win64), fpHTTP
+  and mORMot2 on FPC 3.2.2.
+
 - **Fix brute-force blocking at the first wrong password, and the flood list growing forever** (2026-09-06 – tempraturbo)
   The blocked list is where TRALSecurity counts failed tries, and
   CheckBlockClientIP only tested membership: with rsoBruteForceProtection
@@ -44,6 +83,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Turn SSL.Pin into SSL.Pins, resolved per connection** (2026-09-08 – tempraturbo)
+  One pin was the wrong shape for the case that actually shows up: an
+  application talks to several servers with different characters - some with a
+  certificate from a public CA, some self-signed - and only the second kind
+  should be pinned. With a single value, pinning one server broke every other
+  one, because "a pin is set" was a property of the client instead of a question
+  about where it was going.
+  SSL.Pins is a list, one line each:
+  AB12CD...                  accepted from any host
+  192.168.0.11=CD34EF...     accepted only from that host
+  10.0.0.7:8443=90FFEE...    only from that host on that port
+  [2001:db8::1]:9988=1234... IPv6 goes in brackets
+  and the rule is per connection: if any line applies to the host being called,
+  only a certificate whose SHA-256 is one of those lines is accepted, even one
+  the machine's store trusts; if no line applies, the certificate is validated as
+  usual. That is what leaves the public CA servers alone - they need no entry and
+  nothing breaks when they renew - and it is also why "this engine cannot pin"
+  now raises only when a pin applies to the connection at hand, instead of on
+  every call the moment a pin existed anywhere.
+  Several lines for the same host all count, which is how a certificate is
+  rotated without a window where nothing connects.
+  The place and the hash are separated by '=' and not by ':' because both sides
+  are full of colons: AB:CD:... as openssl prints a fingerprint, and [::1]:8443
+  for an IPv6 host. RALSplitHostPort is the single place that parses either, and
+  it is published, so whatever writes this configuration can read it back the
+  same way: brackets mean the port comes after ']', a single colon separates a
+  port, and more than one colon without brackets means the whole thing is an
+  IPv6 address.
+  TRALCertInfo also carries Host and Port now - filled by RAL itself, so no
+  engine had to change - which is what lets one OnValidateServerCert handler
+  serve several servers with policies the list cannot express.
+  Matrix run on both compilers: 68 cases on Delphi Win32 and 53 on FPC 3.2.2
+  Win64, no failures, including a pin for one host leaving a public CA server
+  reachable on the very engine that cannot pin at all.
+
+- **Add SSL.Verify, and report a refused certificate as rteCertificate** (2026-09-08 – tempraturbo)
+  Two gaps the certificate work left behind, both found by running the whole
+  matrix rather than by reading it.
+  SSL.Verify says what the ENGINE does about the certificate, which until now was
+  not the same thing everywhere and could not be changed: netHTTP and mORMot2
+  validate, Indy and fpHTTP do not verify at all, and the only way to get either
+  behaviour was to pick an engine. svEngine (the default) keeps exactly what each
+  one already did, so nothing moves for anybody; svAlways turns verification on
+  where it is off; svNever accepts anything. It only decides when there is
+  neither a pin nor an event - those two, when set, are the decision. Each engine
+  implements only the direction it lacks.
+  A refused certificate now reports TransportError = rteCertificate on every
+  engine, so a caller can tell it apart from a server being down without matching
+  message text - which is what it had to do before, since the four engines word
+  it differently. The value is last in the enum, so the four that were there keep
+  their ordinal, and CanSwitchURL never resends it: its else already declines
+  what it does not know.
+  Getting that classification right needed one thing per engine, none of them
+  guessable:
+  - Indy raises EIdOSSLUnderlyingCryptoError when OpenSSL refuses (SSL_ERROR_SSL,
+  not the EIdOSSLConnectError the message text suggests), and something
+  indistinguishable when our own callback refuses - hence a flag.
+  - fpHTTP reports every refusal as a failed connect, so it needs the same flag;
+  and svAlways goes through the callback instead of VerifyPeerCert, which
+  aborts the handshake before FPC ever calls it and throws the reason away.
+  - mORMot2 folds every TLS cause into one formatted message, and the usable
+  signal is ENetSock.LastError = nrUnknownError - what ENetSock.Create stores
+  when the raise carried no TNetResult, as DoTlsAfter's does, while a real
+  transport failure carries nrRefused or nrTimeout. In that engine RAL also
+  leaves through SetTransportError instead of raising: a raise inside SendUrl
+  is caught by SendUrl's own handler, reclassified as a transport failure, and
+  the message replaced by the response body - which was still carrying the
+  multipart boundary of the request.
+  Matrix run again after the change, certificate (public CA, self-signed) x case
+  (no pin, right pin, wrong pin, event accepts, event refuses, svAlways, svNever)
+  x engine: 56 cases on Delphi Win32 and 42 on FPC 3.2.2 Win64, no failures, and
+  every refusal classified.
+
 - **Fix a response leaked on every request that fails at transport level** (2026-09-08 – tempraturbo)
   ExecuteSingle creates the response and hands it over through the return value,
   which the var-AResponse overloads assign at the call site. When BeforeSendUrl
@@ -351,6 +463,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the mORMot2 client rejecting every certificate on Windows with OpenSSL** (2026-09-08 – tempraturbo)
+  Once OpenSSL is loaded, mORMot uses it instead of SChannel - and on Windows
+  OpenSSL has no certificate store of its own, so SetupCtx fell back to
+  SSL_CTX_set_default_verify_paths, which finds nothing there. The result was
+  that no certificate could be verified at all: an https request to a public CA
+  failed with "certificate verify failed", while the same client on SChannel, or
+  on POSIX, worked.
+  The TLS context now fills CASystemStores with mORMot's own default set
+  ([scsCA, scsRoot]) on Windows, which makes SetupCtx load the OS roots - cached,
+  once per process - instead of looking for files that are not there.
+  Windows only on purpose: on POSIX the default verify paths do find
+  /etc/ssl/certs, and changing what works buys nothing. SChannel is untouched
+  either way, since it ignores the field and uses the OS store by itself.
+  Nothing is loosened: this hands OpenSSL the roots the machine already trusts,
+  the same ones SChannel uses. A self-signed certificate is still refused unless
+  SSL.Pin or OnValidateServerCert says otherwise.
+  Measured on the full matrix - compiler x engine x public CA or self-signed x
+  with and without pin: exactly one cell changes, mORMot2/OpenSSL against a
+  public CA with no pin, from refused to 200. Delphi Win32 goes 39/40 to 40/40
+  and FPC 3.2.2 Win64 29/30 to 30/30, with Indy, netHTTP, fpHTTP and
+  mORMot2/SChannel identical.
+
 - **fix: Ajustes de autenticação JWT nos eventos** (2026-09-08 – mobius1qwe)
 
 - **Fix the server DAO owning its per-request queries on a shared component** (2026-09-07 – tempraturbo)
