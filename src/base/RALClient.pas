@@ -32,6 +32,12 @@ type
     Trusted: boolean;
     /// why not, when Trusted is False - free text, as the engine reported it
     Error: StringRAL;
+    /// who was being called - the host and port of the BaseURL this attempt
+    /// used, not anything the certificate says. It is what lets one handler
+    /// serve several servers with different policies, and RAL fills it in
+    /// itself, so no engine has to know about it
+    Host: StringRAL;
+    Port: IntegerRAL;
   end;
 
   /// Decides whether a server certificate is acceptable. Assigning it takes
@@ -56,25 +62,45 @@ type
   /// TLS options of the client, the mirror of TRALServer.SSL on the other side
   TRALClientSSL = class(TPersistent)
   private
-    FPin: StringRAL;
+    FPins: TStringList;
     FRequired: boolean;
     FVerify: TRALSSLVerify;
-    procedure SetPin(const AValue: StringRAL);
+    procedure PinsChanged(Sender: TObject);
+    procedure SetPins(AValue: TStrings);
+    function GetPins: TStrings;
   public
     constructor Create;
+    destructor Destroy; override;
     procedure Assign(ASource: TPersistent); override;
   published
     /// whether the engine validates the certificate by itself - see TRALSSLVerify
     property Verify: TRALSSLVerify read FVerify write FVerify default svEngine;
-    /// SHA-256 of the one certificate this client accepts. Set it and the
-    /// system certificate store stops mattering: nothing has to be installed
-    /// on the machine, and a certificate the store DOES trust is refused
-    /// unless it is this one. Empty leaves validation to the engine.
-    /// - written in any usual notation (colons, spaces, lower case): it is
-    ///   normalised on assignment, so the value can be pasted straight out of
-    ///   "openssl x509 -fingerprint -sha256"
-    /// - implies Required: pinning over plain http would check nothing
-    property Pin: StringRAL read FPin write SetPin;
+    /// The certificates this client accepts, one per line, and WHERE each one
+    /// is accepted - which is the point: an application talks to several
+    /// servers, some with a certificate from a public CA and some self-signed,
+    /// and only the second kind needs to be listed here.
+    ///
+    ///   AB12CD...                 accepted from any host
+    ///   192.168.0.11=CD34EF...    accepted only from that host
+    ///   10.0.0.7:8443=90FFEE...   only from that host on that port
+    ///
+    /// The rule, per connection: if any line applies to the host being called,
+    /// then ONLY a certificate whose SHA-256 is one of those lines is accepted
+    /// - even one the machine's certificate store trusts. If no line applies,
+    /// the certificate is validated as usual, which is what leaves the public
+    /// CA servers alone: they need no entry, and nothing breaks when they
+    /// renew.
+    ///
+    /// Several lines for the same host all count, which is how a certificate
+    /// is rotated without a window where nothing connects.
+    ///
+    /// The hash goes in any usual notation - colons, spaces, lower case, or
+    /// pasted whole out of "openssl x509 -fingerprint -sha256". A line that is
+    /// not a SHA-256 raises as soon as it is added, not at request time.
+    ///
+    /// A host with a pin implies Required for it: pinning over plain http
+    /// would be checking nothing.
+    property Pins: TStrings read GetPins write SetPins;
     /// Refuses to send anything over plain http, whatever the URL says - so a
     /// hand-edited config cannot silently drop the connection to clear text
     property Required: boolean read FRequired write FRequired default False;
@@ -90,6 +116,11 @@ type
   private
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
+    { host e porta da tentativa em curso, preenchidos pelo BeforeSendUrl: qual
+      pin vale e' pergunta sobre PARA ONDE o cliente esta' indo, e o
+      TRALCertInfo.Host tambem }
+    FHost: StringRAL;
+    FPort: IntegerRAL;
   protected
     /// allows manipulation of params before executing request.
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
@@ -124,6 +155,12 @@ type
     /// placeholder
     function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 
+    /// Walks SSL.Pins once: whether any line applies to this connection, and
+    /// whether the presented fingerprint is one of them
+    procedure ResolvePin(const AFingerprint: StringRAL;
+                         out AApplies, AMatches: boolean);
+    /// Whether SSL.Pins has anything to say about the host being called
+    function HasPinForHost: boolean;
     /// The single place a server certificate is judged, for every engine:
     /// the event decides, else the pin, else what the engine itself concluded.
     /// Engines only translate their native callback into TRALCertInfo and ask
@@ -337,6 +374,12 @@ type
   /// whatever the stack held. Default(T) would do it, and does not exist on
   /// the older compilers RAL still supports
   function RALEmptyCertInfo: TRALCertInfo;
+  /// Splits "host", "host:port" or "[ipv6]:port" - the very format of the left
+  /// side of an SSL.Pins line, published so that whatever writes that config
+  /// can read it back the same way. An IPv6 without brackets is all host,
+  /// since its own colons would otherwise pass for a port
+  procedure RALSplitHostPort(const AValue: StringRAL; out AHost: StringRAL;
+                             out APort: IntegerRAL);
 
 implementation
 
@@ -876,6 +919,127 @@ begin
   SetLength(Result, vLen);
 end;
 
+{ Separa "host", "host:porta" ou "[ipv6]:porta" - o formato tanto do que vem da
+  BaseURL quanto do lado esquerdo de uma linha de SSL.Pins.
+
+  O IPv6 e' o motivo dos colchetes: ele tem ':' no meio, entao sem eles nao ha'
+  como saber se o ultimo ':' separa a porta ou faz parte do endereco. A regra:
+  entre colchetes, o que vem depois de ']' e' porta; sem colchetes, um unico
+  ':' separa a porta e mais de um quer dizer que a coisa toda e' um IPv6. }
+procedure RALSplitHostPort(const AValue: StringRAL; out AHost: StringRAL;
+  out APort: IntegerRAL);
+var
+  vInt, vColchete, vDoisPontos, vQuantos: IntegerRAL;
+begin
+  AHost := Trim(AValue);
+  APort := 0;
+
+  vColchete := 0;
+  vDoisPontos := 0;
+  vQuantos := 0;
+  for vInt := 1 to Length(AHost) do
+  begin
+    if AHost[vInt] = ']' then
+      vColchete := vInt
+    else if AHost[vInt] = ':' then
+    begin
+      vDoisPontos := vInt;
+      vQuantos := vQuantos + 1;
+    end;
+  end;
+
+  if vColchete > 0 then
+  begin
+    { [::1]:8443 - a porta e' o que vier depois do ']' }
+    if vDoisPontos > vColchete then
+    begin
+      APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
+      AHost := Copy(AHost, 1, vDoisPontos - 1);
+    end;
+    AHost := Copy(AHost, 2, Length(AHost) - 2); // tira os colchetes
+  end
+  else if vQuantos = 1 then
+  begin
+    APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
+    AHost := Copy(AHost, 1, vDoisPontos - 1);
+  end;
+  { vQuantos > 1 sem colchetes: IPv6 sem porta, fica inteiro em AHost }
+end;
+
+{ Host e porta de uma URL, com a porta padrao do esquema quando ela nao aparece }
+procedure RALURLHostPort(const AURL: StringRAL; out AHost: StringRAL;
+  out APort: IntegerRAL);
+var
+  vValue: StringRAL;
+  vInt: IntegerRAL;
+  vHttps: boolean;
+begin
+  vValue := AURL;
+  vHttps := SameText(Copy(vValue, 1, 6), 'https:');
+
+  vInt := Pos(StringRAL('://'), vValue);
+  if vInt > 0 then
+    vValue := Copy(vValue, vInt + 3, Length(vValue));
+
+  for vInt := 1 to Length(vValue) do
+    if vValue[vInt] = '/' then
+    begin
+      vValue := Copy(vValue, 1, vInt - 1);
+      Break;
+    end;
+
+  RALSplitHostPort(vValue, AHost, APort);
+  if APort = 0 then
+  begin
+    if vHttps then
+      APort := 443
+    else
+      APort := 80;
+  end;
+end;
+
+{ A impressao digital de uma linha de SSL.Pins, normalizada - ou vazia quando a
+  linha nao termina num SHA-256, que e' como o PinsChanged detecta erro de
+  digitacao. O lado esquerdo, quando existe, vem antes de um '='. }
+function RALPinFingerprint(const ALine: StringRAL): StringRAL;
+var
+  vInt, vIgual: IntegerRAL;
+begin
+  vIgual := 0;
+  for vInt := 1 to Length(ALine) do
+    if ALine[vInt] = '=' then
+    begin
+      vIgual := vInt;
+      Break;
+    end;
+
+  Result := RALNormalizeFingerprint(Copy(ALine, vIgual + 1, Length(ALine)));
+  if Length(Result) <> 64 then
+    Result := '';
+end;
+
+{ True quando a linha vale so' para um host - e ai devolve qual. False quer
+  dizer "vale para qualquer host", que e' a linha so' com a impressao digital. }
+function RALPinPlace(const ALine: StringRAL; out AHost: StringRAL;
+  out APort: IntegerRAL): boolean;
+var
+  vInt, vIgual: IntegerRAL;
+begin
+  vIgual := 0;
+  for vInt := 1 to Length(ALine) do
+    if ALine[vInt] = '=' then
+    begin
+      vIgual := vInt;
+      Break;
+    end;
+
+  Result := vIgual > 0;
+  AHost := '';
+  APort := 0;
+  if Result then
+    RALSplitHostPort(Copy(ALine, 1, vIgual - 1), AHost, APort);
+end;
+
 function RALEmptyCertInfo: TRALCertInfo;
 begin
   Result.Fingerprint := '';
@@ -886,6 +1050,8 @@ begin
   Result.NotAfter := 0;
   Result.Trusted := False;
   Result.Error := '';
+  Result.Host := '';
+  Result.Port := 0;
 end;
 
 { TRALClientSSL }
@@ -894,43 +1060,43 @@ constructor TRALClientSSL.Create;
 begin
   inherited Create;
   FVerify := svEngine;
+  FPins := TStringList.Create;
+  FPins.OnChange := {$IFDEF FPC}@{$ENDIF}PinsChanged;
 end;
 
-procedure TRALClientSSL.SetPin(const AValue: StringRAL);
+destructor TRALClientSSL.Destroy;
+begin
+  FreeAndNil(FPins);
+  inherited Destroy;
+end;
+
+function TRALClientSSL.GetPins: TStrings;
+begin
+  Result := FPins;
+end;
+
+procedure TRALClientSSL.SetPins(AValue: TStrings);
+begin
+  FPins.Assign(AValue);
+end;
+
+{ Cada linha e' conferida assim que entra na lista, e nao na hora do request:
+  um pin com um digito a menos que so' aparecesse na primeira conexao pareceria
+  troca de certificado do servidor - o erro certo e' aqui, na configuracao. }
+procedure TRALClientSSL.PinsChanged(Sender: TObject);
 var
-  vValue: StringRAL;
   vInt: IntegerRAL;
 begin
-  { "openssl x509 -fingerprint -sha256" prints "sha256 Fingerprint=AB:CD:...",
-    and that prefix is itself made of hex letters - left alone, the filter
-    below would swallow "a", "256", "e", "f"... into the value and the pin
-    would never match anything, refusing every connection for no visible
-    reason. So everything up to the last '=' goes first. }
-  vValue := AValue;
-  for vInt := Length(vValue) downto 1 do
-    if vValue[vInt] = '=' then
-    begin
-      vValue := Copy(vValue, vInt + 1, Length(vValue));
-      Break;
-    end;
-
-  FPin := RALNormalizeFingerprint(vValue);
-
-  { a SHA-256 is 64 hex digits, always. Anything else is a typo or the wrong
-    hash, and saying so here - while the value is being set - beats a runtime
-    refusal that looks like the server changed its certificate. }
-  if (FPin <> '') and (Length(FPin) <> 64) then
-  begin
-    FPin := '';
-    raise Exception.Create(emCertPinInvalid);
-  end;
+  for vInt := 0 to Pred(FPins.Count) do
+    if RALPinFingerprint(StringRAL(FPins.Strings[vInt])) = '' then
+      raise Exception.Create(emCertPinInvalid);
 end;
 
 procedure TRALClientSSL.Assign(ASource: TPersistent);
 begin
   if ASource is TRALClientSSL then
   begin
-    FPin := TRALClientSSL(ASource).Pin;
+    FPins.Assign(TRALClientSSL(ASource).Pins);
     FRequired := TRALClientSSL(ASource).Required;
     FVerify := TRALClientSSL(ASource).Verify;
   end
@@ -940,17 +1106,75 @@ begin
   end;
 end;
 
-function TRALClientHTTP.AcceptServerCert(const ACert: TRALCertInfo): boolean;
+{ Percorre SSL.Pins UMA vez e responde as duas perguntas que a decisao precisa:
+  algum pin vale para o host desta conexao, e o certificado apresentado casa com
+  algum deles. Uma linha sem '=' vale para qualquer host; com host, so' para
+  ele; com host e porta, so' para aquele servico - e' o que permite um cliente
+  so' falar com varios servidores de politicas diferentes. }
+procedure TRALClientHTTP.ResolvePin(const AFingerprint: StringRAL;
+  out AApplies, AMatches: boolean);
+var
+  vInt, vPinPort: IntegerRAL;
+  vLine, vPinHost: StringRAL;
+  vVale: boolean;
 begin
+  AApplies := False;
+  AMatches := False;
+
+  for vInt := 0 to Pred(FParent.SSL.Pins.Count) do
+  begin
+    vLine := StringRAL(FParent.SSL.Pins.Strings[vInt]);
+    if not RALPinPlace(vLine, vPinHost, vPinPort) then
+      vVale := True  // linha so' com a impressao digital: qualquer host
+    else
+      vVale := SameText(string(vPinHost), string(FHost)) and
+               ((vPinPort = 0) or (vPinPort = FPort));
+
+    if not vVale then
+      Continue;
+
+    AApplies := True;
+    { varias linhas para o mesmo host valem todas: e' assim que se troca um
+      certificado sem uma janela em que nada conecta }
+    if (AFingerprint <> '') and (AFingerprint = RALPinFingerprint(vLine)) then
+    begin
+      AMatches := True;
+      Break;
+    end;
+  end;
+end;
+
+function TRALClientHTTP.HasPinForHost: boolean;
+var
+  vMatches: boolean;
+begin
+  ResolvePin('', Result, vMatches);
+end;
+
+function TRALClientHTTP.AcceptServerCert(const ACert: TRALCertInfo): boolean;
+var
+  vCert: TRALCertInfo;
+  vApplies, vMatches: boolean;
+begin
+  { quem esta' sendo chamado nao vem do engine - vem de onde o RAL escolheu a
+    URL, e e' preenchido aqui para os quatro engines de uma vez }
+  vCert := ACert;
+  vCert.Host := FHost;
+  vCert.Port := FPort;
+
   if Assigned(FParent.OnValidateServerCert) then
-    Result := FParent.OnValidateServerCert(FParent, ACert)
-  else if FParent.SSL.Pin <> '' then
-    { both sides are already normalised, so this is a plain compare. An empty
-      fingerprint never matches: BeforeSendUrl has refused the request long
-      before, but an engine added later must not accidentally pass here. }
-    Result := (ACert.Fingerprint <> '') and (ACert.Fingerprint = FParent.SSL.Pin)
+    Result := FParent.OnValidateServerCert(FParent, vCert)
   else
-    Result := ACert.Trusted;
+  begin
+    ResolvePin(vCert.Fingerprint, vApplies, vMatches);
+    if vApplies then
+      { com pin para este host, so' ele serve - nem o que a loja do sistema
+        confia passa. Impressao digital vazia nunca casa: o BeforeSendUrl ja'
+        recusou antes, mas um engine acrescentado depois nao pode escapar aqui }
+      Result := vMatches
+    else
+      Result := vCert.Trusted;
+  end;
 end;
 
 function TRALClientHTTP.SupportsCertPin: boolean;
@@ -960,7 +1184,7 @@ end;
 
 function TRALClientHTTP.CertCheckWanted: boolean;
 begin
-  Result := (FParent.SSL.Pin <> '') or Assigned(FParent.OnValidateServerCert);
+  Result := HasPinForHost or Assigned(FParent.OnValidateServerCert);
 end;
 
 procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;
@@ -989,10 +1213,14 @@ begin
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
+    { quem esta' sendo chamado nesta tentativa - de onde sai tanto o pin que
+      vale para ela quanto o Host que chega no OnValidateServerCert }
+    RALURLHostPort(vURL, FHost, FPort);
+
     { Both refusals happen HERE, before a socket is opened, and not inside the
       TLS callback: that one runs on the stack of a C library (OpenSSL), where
       an exception would unwind through frames that cannot handle it. }
-    if (FParent.SSL.Required or (FParent.SSL.Pin <> '')) and
+    if (FParent.SSL.Required or HasPinForHost) and
        (not SameText(Copy(vURL, 1, 6), 'https:')) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
@@ -1000,7 +1228,10 @@ begin
       raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
     end;
 
-    if (FParent.SSL.Pin <> '') and (not SupportsCertPin) then
+    { so' quando um pin vale para ESTA conexao: um cliente que fala com varios
+      servidores nao pode parar de falar com os de CA publica so' porque existe
+      pin para outro }
+    if HasPinForHost and (not SupportsCertPin) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertPinUnsupported, [EngineName])));

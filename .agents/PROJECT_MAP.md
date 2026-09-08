@@ -243,7 +243,8 @@ Lazarus
    `ebSingleThread`. O callback sempre recebe uma `TRALResponse` válida; o erro vem em
    `AException`.
 6. Qual certificado o cliente aceita é decidido no `TRALClient`, nunca no engine:
-   `SSL.Pin` (SHA-256 do certificado esperado), `SSL.Required` (recusa http puro),
+   `SSL.Pins` (lista: `fp`, `host=fp` ou `host:porta=fp` — resolvida por conexão,
+   então pin de um servidor não afeta os outros), `SSL.Required` (recusa http puro),
    `SSL.Verify` (o que o próprio engine faz: `svEngine` mantém o de hoje, que não é
    igual em todos, `svAlways` liga onde está desligado, `svNever` aceita qualquer um)
    e `OnValidateServerCert`. Recusa de certificado chega como

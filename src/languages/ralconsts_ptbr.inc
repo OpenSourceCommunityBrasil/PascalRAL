@@ -10,11 +10,11 @@
   Do NOT replace wildcards starting with '%' or your package will throw errors
 }
   // general error messages
-  emCertNotInspectable = 'O engine %s não conseguiu inspecionar o certificado do servidor nesta conexão, então SSL.Pin e OnValidateServerCert não podem ser aplicados. Use o engine Indy.';
-  emCertPinInvalid = 'SSL.Pin deve ser o SHA-256 do certificado: 64 dígitos hexadecimais, com ou sem separadores.';
-  emCertPinUnsupported = 'SSL.Pin não é suportado pelo engine %s nesta plataforma: ele não consegue ler a impressão digital do certificado. Use o engine Indy ou decida no OnValidateServerCert.';
+  emCertNotInspectable = 'O engine %s não conseguiu inspecionar o certificado do servidor nesta conexão, então SSL.Pins e OnValidateServerCert não podem ser aplicados. Use o engine Indy.';
+  emCertPinInvalid = 'Toda linha de SSL.Pins deve terminar no SHA-256 do certificado: 64 dígitos hexadecimais, com ou sem separadores.';
+  emCertPinUnsupported = 'SSL.Pins não é suportado pelo engine %s nesta plataforma: ele não consegue ler a impressão digital do certificado. Use o engine Indy ou decida no OnValidateServerCert.';
   emCertRejected = 'Certificado do servidor recusado.';
-  emCertRequiresTLS = 'SSL.Required ou SSL.Pin está definido, então http puro é recusado: %s.';
+  emCertRequiresTLS = 'SSL.Required está definido, ou uma linha de SSL.Pins vale para este host, então http puro é recusado: %s.';
   emCompressInvalidFormat = 'Formato de compressão inválido.';
   emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
   emContentCheckError = 'Erro de verificação de conteúdo.';
