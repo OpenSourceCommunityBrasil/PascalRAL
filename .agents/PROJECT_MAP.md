@@ -242,6 +242,13 @@ Lazarus
    chamada (ex.: `TRALDBFDMemTable.ExecSQL` → `RowsAffected`/`LastId`) precisa de
    `ebSingleThread`. O callback sempre recebe uma `TRALResponse` válida; o erro vem em
    `AException`.
+6. Qual certificado o cliente aceita é decidido no `TRALClient`, nunca no engine:
+   `SSL.Pin` (SHA-256 do certificado esperado), `SSL.Required` (recusa http puro) e
+   `OnValidateServerCert`. Cada engine só traduz o callback nativo dele para
+   `TRALCertInfo` e pergunta ao `TRALClientHTTP.AcceptServerCert`, onde mora a regra
+   única — evento, senão pin, senão o veredito do próprio engine. Sem pin e sem evento
+   nada muda, inclusive o fato de Indy e fpHTTP não validarem certificado por padrão.
+   Ver `CLAUDE.md`, "Which server certificate a client accepts".
 
 ### 4.3) DBWare
 

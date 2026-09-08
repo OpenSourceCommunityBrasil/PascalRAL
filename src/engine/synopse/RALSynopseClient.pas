@@ -1,11 +1,31 @@
 /// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
+{ mORMot builds its OpenSSL unit for every target except Android, and honours a
+  global DISABLE_OPENSSL (mormot.defines.inc). Its own USE_OPENSSL define does
+  not cross unit boundaries, so the two conditions are mirrored here with
+  defines every compiler has. Without that unit the peer certificate is an
+  opaque pointer and no fingerprint can be read - and then SSL.Pin refuses the
+  request instead of comparing against nothing. }
+{$IFNDEF ANDROID}
+  {$DEFINE RALSYNOPSE_OPENSSL}
+{$ENDIF}
+{$IFDEF DISABLE_OPENSSL}
+  {$UNDEF RALSYNOPSE_OPENSSL}
+{$ENDIF}
+
 interface
 
 uses
   Classes, SysUtils,
   mormot.net.client, mormot.core.base, mormot.net.sock,
+  {$IFDEF RALSYNOPSE_OPENSSL}
+  { only for the certificate fingerprint: mORMot hands the peer over as an
+    opaque pointer, and this is the unit that knows it is a PX509. It compiles
+    as a void unit when the conditional is off, hence the guard - and then
+    SSL.Pin fails loudly, see EachPeerVerify }
+  mormot.lib.openssl11,
+  {$ENDIF}
   RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
   RALCompress, RALResponse;
 
@@ -20,7 +40,22 @@ type
       scheme://host:port; dropped after any transport error }
     FHttp: THttpClientSocket;
     FServer: StringRAL;
+    { handed to OpenUri, so it has to outlive the call - and it is read at
+      connection time, which is when the socket is opened, not per request }
+    FTLS: TNetTlsContext;
+    { the last certificate EachPeerVerify saw, and whether it saw any.
+      OpenSSL walks the chain from the root down, so the last one is the
+      server's - and mORMot's callback, unlike Indy's, does not say at which
+      depth it is. SChannel never calls it at all (mormot.net.sock: "not
+      implemented on SChannel"), which FCertSeen is what tells apart }
+    FCert: TRALCertInfo;
+    FCertSeen: boolean;
+
     procedure DropSocket;
+    function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
+                            AWasOk: boolean; ATLS, APeer: pointer): boolean;
+  protected
+    function SupportsCertPin: boolean; override;
   public
     destructor Destroy; override;
 
@@ -52,6 +87,54 @@ procedure TRALSynopseClientHTTP.DropSocket;
 begin
   FreeAndNil(FHttp);
   FServer := '';
+  FCertSeen := False;
+end;
+
+function TRALSynopseClientHTTP.SupportsCertPin: boolean;
+begin
+  { True as a rule, and the exceptions - SChannel, or a build without OpenSSL -
+    are caught right after the handshake in SendUrl, where the fingerprint
+    either arrived or did not. They cannot be answered here: which TLS layer
+    mORMot ends up using is only known once it connects. }
+  Result := True;
+end;
+
+{ Called once per certificate of the chain, from the root down - so the last
+  call carries the server's own certificate. It only RECORDS: the verdict is
+  taken in SendUrl, once, after the handshake and before a single byte goes
+  out. Three reasons, and any one of them would be enough:
+  - one decision about one certificate, which is what the other engines do and
+    what an OnValidateServerCert handler expects;
+  - refusing here means returning False into OpenSSL, which aborts the
+    handshake with an error that says nothing about a pin;
+  - and raising here would unwind through C frames. }
+function TRALSynopseClientHTTP.EachPeerVerify(ASocket: TNetSocket;
+  AContext: PNetTlsContext; AWasOk: boolean; ATLS, APeer: pointer): boolean;
+begin
+  FCert := RALEmptyCertInfo;
+
+  {$IFDEF RALSYNOPSE_OPENSSL}
+  if APeer <> nil then
+  begin
+    FCert.Fingerprint := RALNormalizeFingerprint(
+      StringRAL(PX509(APeer)^.FingerPrint(EVP_sha256)));
+    FCert.Subject := StringRAL(PX509(APeer)^.SubjectName);
+    FCert.Issuer := StringRAL(PX509(APeer)^.IssuerName);
+    FCert.SerialNumber := StringRAL(PX509(APeer)^.SerialNumber);
+    FCert.NotBefore := PX509(APeer)^.NotBefore;
+    FCert.NotAfter := PX509(APeer)^.NotAfter;
+  end;
+  {$ENDIF}
+
+  if AContext <> nil then
+    FCert.Error := StringRAL(AContext^.LastError);
+  FCert.Trusted := AWasOk;
+  FCertSeen := True;
+
+  { True keeps the handshake going even for a certificate OpenSSL rejected -
+    which is the point when the trust comes from a pin and not from a store.
+    Nothing is accepted by this: SendUrl still has to agree. }
+  Result := True;
 end;
 
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -103,8 +186,47 @@ begin
 
     if FHttp = nil then
     begin
-      FHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout);
+      { the TLS options have to be in place BEFORE the socket is opened - the
+        handshake happens inside OpenUri - so they are set here and not on the
+        vHttp lines below }
+      { IgnoreCertificateErrors is deliberately left alone: it maps to
+        SSL_VERIFY_NONE, and mORMot then does not install the verification
+        callback at all (mormot.lib.openssl11, SetupCtx) - the client would
+        accept everything and OnValidateServerCert would never be called. }
+      { zerado a cada conexao, e nao so' no primeiro uso: TCrtSocket.Open copia
+        o contexto DE VOLTA para quem o passou (aTLSContext^ := TLS), entao o
+        campo volta de uma conexao carregando Enabled, CipherName, PeerSubject
+        e LastError daquela - e reenviar isso na proxima e' passar entrada suja
+        onde o mORMot espera um contexto limpo. InitNetTlsContext e' o proprio
+        zera-tudo do mORMot. }
+      InitNetTlsContext(FTLS);
+      FCertSeen := False;
+      if CertCheckWanted then
+        FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify;
+
+      FHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout,
+                                         @FTLS);
       FServer := vServer;
+
+      { The verdict, taken once and on our own stack. Refusing costs a closed
+        connection and nothing else: not one byte of the request - the token
+        included - has been sent yet. }
+      if CertCheckWanted then
+      begin
+        if not FCertSeen then
+        begin
+          { SChannel completed the handshake without ever asking us, or the
+            unit that reads certificates was not compiled in }
+          DropSocket;
+          raise Exception.Create(Format(emCertNotInspectable, [EngineName]));
+        end;
+
+        if not AcceptServerCert(FCert) then
+        begin
+          DropSocket;
+          raise Exception.Create(emCertRejected);
+        end;
+      end;
     end
     else
       vAddress := vUri.Address;

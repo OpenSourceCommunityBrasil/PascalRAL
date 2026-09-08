@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fphttpclient, fphttp, ssockets, opensslsockets,
+  fphttpclient, fphttp, ssockets, sslsockets, opensslsockets, fpopenssl,
   RALClient, RALTypes, RALConsts, RALAuthentication, RALParams,
   RALRequest, RALCompress, RALResponse, RALMIMETypes;
 
@@ -20,8 +20,11 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+
+    procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
     procedure OnGetSSLHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
+    function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -38,11 +41,72 @@ implementation
 
 { TRALfpHttpClientHTTP }
 
+function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := True;
+end;
+
+{ WARNING about what this engine does when nobody asks for certificate control:
+  nothing. TOpenSSLSocketHandler.Connect has the chain check commented out in
+  FPC 3.2.2, and TSSLSocketHandler.DoVerifyCert returns True when no handler is
+  assigned - so an https URL is accepted whatever certificate answers. Assigning
+  the callback below is what makes verification exist at all, and it is done
+  only when SSL.Pin or OnValidateServerCert is set, because turning it on for
+  everyone would break plain HTTPS on Windows, where OpenSSL has no store. }
+procedure TRALfpHttpClientHTTP.VerifyCert(Sender: TObject; var Allow: boolean);
+var
+  vCert: TRALCertInfo;
+  vSSL: TSSL;
+  vRaw, vHex: string;
+  vInt: Integer;
+begin
+  vCert := RALEmptyCertInfo;
+  if Sender is TOpenSSLSocketHandler then
+  begin
+    vSSL := TOpenSSLSocketHandler(Sender).SSL;
+
+    { PeerFingerprint gives the digest as RAW BYTES, not as text (fpopenssl:
+      it is a StringOfChar buffer handed to X509Digest). Hexing it here, byte
+      by byte, and not by assigning the string to a StringRAL: the two have
+      different code pages, and the conversion would rewrite the very bytes
+      that are the fingerprint. }
+    vRaw := vSSL.PeerFingerprint('SHA256');
+    vHex := '';
+    for vInt := 1 to Length(vRaw) do
+      vHex := vHex + IntToHex(Ord(vRaw[vInt]), 2);
+
+    vCert.Fingerprint := RALNormalizeFingerprint(StringRAL(vHex));
+    vCert.Trusted := vSSL.VerifyResult = 0;
+    if not vCert.Trusted then
+      vCert.Error := StringRAL(Format('OpenSSL verify result %d',
+                                      [vSSL.VerifyResult]));
+  end
+  else
+  begin
+    { another handler was plugged in: nothing can be said about the peer, and
+      saying nothing is the honest answer - the pin then fails to match }
+    vCert.Error := StringRAL('certificate not available on this socket handler');
+  end;
+
+  Allow := AcceptServerCert(vCert);
+end;
+
 procedure TRALfpHttpClientHTTP.OnGetSSLHandler(Sender: TObject;
   const UseSSL: Boolean; out AHandler: TSocketHandler);
 begin
-  if UseSSL then
-    AHandler := TOpenSSLSocketHandler.create;
+  if not UseSSL then
+    Exit;
+
+  AHandler := TOpenSSLSocketHandler.create;
+  if CertCheckWanted then
+    { only the callback, and deliberately NOT VerifyPeerCert: that one maps to
+      SSL_VERIFY_PEER with a nil callback (opensslsockets, InitContext), so
+      OpenSSL aborts the handshake on an unknown CA before FPC ever calls
+      DoVerifyCert - and a certificate trusted by a pin instead of by a store
+      would never get the chance to be looked at. With it off the handshake
+      completes, OpenSSL still records its verdict in VerifyResult, and the
+      callback below decides. }
+    TSSLSocketHandler(AHandler).OnVerifyCertificate := @VerifyCert;
 end;
 
 constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClient);

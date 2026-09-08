@@ -12,6 +12,58 @@ type
   TRALThreadClientResponse = procedure(ASender: TObject; AResponse: TRALResponse;
                                        AException: StringRAL) of object;
 
+  { TRALCertInfo }
+
+  /// The server certificate, with the same fields on every engine, compiler and
+  /// platform - which is the whole point: each transport hands its own type to
+  /// its own callback (TIdX509 on Indy, TCertificate on netHTTP, PX509 on
+  /// OpenSSL), and a validation written against any of them would only work
+  /// there. Fields an engine cannot produce come back empty, never invented.
+  TRALCertInfo = record
+    /// SHA-256 of the certificate, uppercase hex with no separator.
+    /// EMPTY when the engine cannot produce it - see TRALClientHTTP.SupportsCertPin
+    Fingerprint: StringRAL;
+    Subject: StringRAL;
+    Issuer: StringRAL;
+    SerialNumber: StringRAL;
+    NotBefore: TDateTime;
+    NotAfter: TDateTime;
+    /// what the engine's own validation concluded (chain, host, dates)
+    Trusted: boolean;
+    /// why not, when Trusted is False - free text, as the engine reported it
+    Error: StringRAL;
+  end;
+
+  /// Decides whether a server certificate is acceptable. Assigning it takes
+  /// the decision away from both the pin and the engine: it is the last word.
+  TRALOnValidateCert = function(ASender: TObject;
+                                const ACert: TRALCertInfo): boolean of object;
+
+  { TRALClientSSL }
+
+  /// TLS options of the client, the mirror of TRALServer.SSL on the other side
+  TRALClientSSL = class(TPersistent)
+  private
+    FPin: StringRAL;
+    FRequired: boolean;
+    procedure SetPin(const AValue: StringRAL);
+  public
+    procedure Assign(ASource: TPersistent); override;
+  published
+    /// SHA-256 of the one certificate this client accepts. Set it and the
+    /// system certificate store stops mattering: nothing has to be installed
+    /// on the machine, and a certificate the store DOES trust is refused
+    /// unless it is this one. Empty leaves validation to the engine.
+    /// - written in any usual notation (colons, spaces, lower case): it is
+    ///   normalised on assignment, so the value can be pasted straight out of
+    ///   "openssl x509 -fingerprint -sha256"
+    /// - implies Required: pinning over plain http would check nothing
+    property Pin: StringRAL read FPin write SetPin;
+    /// Refuses to send anything over plain http, whatever the URL says - so a
+    /// hand-edited config cannot silently drop the connection to clear text
+    property Required: boolean read FRequired write FRequired default False;
+  end;
+
   TRALClient = class;
 
   /// Base class of engine
@@ -55,6 +107,24 @@ type
     function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// placeholder
     function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+
+    /// The single place a server certificate is judged, for every engine:
+    /// the event decides, else the pin, else what the engine itself concluded.
+    /// Engines only translate their native callback into TRALCertInfo and ask
+    /// here - so the rule cannot drift from one transport to another, the same
+    /// way SetTransportError keeps the retry rule in one place.
+    function AcceptServerCert(const ACert: TRALCertInfo): boolean;
+    /// Whether this engine, on this platform, can fill TRALCertInfo.Fingerprint.
+    /// False makes SSL.Pin raise on the first request instead of silently
+    /// checking something weaker - a security option that quietly degrades is
+    /// worse than one that refuses.
+    function SupportsCertPin: boolean; virtual;
+    /// True while the client asked for certificate control, which is what tells
+    /// an engine to turn its verification on. Engines that verify by default
+    /// (netHTTP, Synopse) ignore it; the OpenSSL ones (Indy, fpHTTP) do not
+    /// verify at all unless asked, and enabling it unconditionally would break
+    /// plain HTTPS on Windows, where OpenSSL has no certificate store
+    function CertCheckWanted: boolean;
 
     property Parent: TRALClient read FParent write FParent;
   public
@@ -125,8 +195,10 @@ type
     FKeepAlive: boolean;
     FMaxRedirects: IntegerRAL;
     FOnResponse: TRALThreadClientResponse;
+    FOnValidateServerCert: TRALOnValidateCert;
     FRequestTimeout: IntegerRAL;
     FRequest: TRALRequest;
+    FSSL: TRALClientSSL;
     FThreads: TThreadList;
     FUserAgent: StringRAL;
   protected
@@ -164,6 +236,7 @@ type
     procedure SetEngineType(AValue: String);
     procedure SetKeepAlive(AValue: boolean); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
+    procedure SetSSL(AValue: TRALClientSSL);
     procedure SetUserAgent(AValue: StringRAL); virtual;
 
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
@@ -224,14 +297,30 @@ type
     /// THTTPClient defaults to.
     property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
+    /// TLS options - see TRALClientSSL
+    property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
+    /// Judges the server certificate yourself. Assigned, it is the last word:
+    /// it overrides both SSL.Pin and the engine's own verdict, and receives
+    /// the same TRALCertInfo whatever the engine underneath.
+    property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
+                                                      write FOnValidateServerCert;
   end;
 
   procedure RegisterEngine(AEngine : TRALClientHTTPClass);
   procedure UnregisterEngine(AEngine : TRALClientHTTPClass);
   function GetEngineClass(AEngineName : StringRAL) : TRALClientHTTPClass;
   procedure GetEngineList(AList : TStrings);
+
+  /// Strips separators and upper-cases a certificate hash, so that the value
+  /// the user pasted and the value the engine produced compare as plain strings
+  function RALNormalizeFingerprint(const AValue: StringRAL): StringRAL;
+  /// An empty TRALCertInfo for an engine to start from, so that a field the
+  /// engine cannot fill reaches the validation handler empty and never as
+  /// whatever the stack held. Default(T) would do it, and does not exist on
+  /// the older compilers RAL still supports
+  function RALEmptyCertInfo: TRALCertInfo;
 
 implementation
 
@@ -515,6 +604,11 @@ begin
 
   ADest.CriptoOptions.CriptType := Self.CriptoOptions.CriptType;
   ADest.CriptoOptions.Key := Self.CriptoOptions.Key;
+
+  { a clone that lost the pin would talk to any server, which is the opposite
+    of what the pin was set for - and the DAO clones its client }
+  ADest.SSL := Self.SSL;
+  ADest.OnValidateServerCert := Self.OnValidateServerCert;
 end;
 
 procedure TRALClient.SetAuthentication(AValue: TRALAuthClient);
@@ -548,6 +642,14 @@ begin
   FRequestTimeout := AValue;
 end;
 
+procedure TRALClient.SetSSL(AValue: TRALClientSSL);
+begin
+  { copies into the object we own, as the other sub-objects do: the component
+    keeps the one it created, so assigning at design time or from a clone
+    cannot leave two owners of the same instance }
+  FSSL.Assign(AValue);
+end;
+
 procedure TRALClient.SetUserAgent(AValue: StringRAL);
 begin
   FUserAgent := AValue;
@@ -558,6 +660,7 @@ begin
   inherited Create(AOwner);
   FAuthentication := nil;
   FCriptoOptions := TRALCriptoOptions.Create;
+  FSSL := TRALClientSSL.Create;
   FCritSession := TCriticalSection.Create;
   FRequest := TRALClientRequest.Create(Self);
   FBaseURL := TStringList.Create;
@@ -578,6 +681,7 @@ begin
   DropEngine;
   FreeAndNil(FThreads);
   FreeAndNil(FCriptoOptions);
+  FreeAndNil(FSSL);
   FreeAndNil(FCritSession);
   FreeAndNil(FRequest);
   FreeAndNil(FBaseURL);
@@ -728,6 +832,114 @@ end;
 
 { TRALClientHTTP }
 
+function RALNormalizeFingerprint(const AValue: StringRAL): StringRAL;
+var
+  vInt, vLen: IntegerRAL;
+  vByte: Byte;
+begin
+  { engines spell the same hash differently - OpenSSL and mORMot separate the
+    bytes with ':', Indy uses its own layout, and people paste it in lower
+    case. Comparing raw text would fail on presentation, so both sides are
+    reduced to hex digits once: here on assignment, and in the engine when the
+    certificate arrives - never per comparison. }
+  SetLength(Result, Length(AValue));
+  vLen := 0;
+  for vInt := 1 to Length(AValue) do
+  begin
+    vByte := Ord(AValue[vInt]);
+    if (vByte >= Ord('a')) and (vByte <= Ord('f')) then
+      vByte := vByte - 32;
+
+    if ((vByte >= Ord('0')) and (vByte <= Ord('9'))) or
+       ((vByte >= Ord('A')) and (vByte <= Ord('F'))) then
+    begin
+      vLen := vLen + 1;
+      Result[vLen] := CharRAL(vByte);
+    end;
+  end;
+  SetLength(Result, vLen);
+end;
+
+function RALEmptyCertInfo: TRALCertInfo;
+begin
+  Result.Fingerprint := '';
+  Result.Subject := '';
+  Result.Issuer := '';
+  Result.SerialNumber := '';
+  Result.NotBefore := 0;
+  Result.NotAfter := 0;
+  Result.Trusted := False;
+  Result.Error := '';
+end;
+
+{ TRALClientSSL }
+
+procedure TRALClientSSL.SetPin(const AValue: StringRAL);
+var
+  vValue: StringRAL;
+  vInt: IntegerRAL;
+begin
+  { "openssl x509 -fingerprint -sha256" prints "sha256 Fingerprint=AB:CD:...",
+    and that prefix is itself made of hex letters - left alone, the filter
+    below would swallow "a", "256", "e", "f"... into the value and the pin
+    would never match anything, refusing every connection for no visible
+    reason. So everything up to the last '=' goes first. }
+  vValue := AValue;
+  for vInt := Length(vValue) downto 1 do
+    if vValue[vInt] = '=' then
+    begin
+      vValue := Copy(vValue, vInt + 1, Length(vValue));
+      Break;
+    end;
+
+  FPin := RALNormalizeFingerprint(vValue);
+
+  { a SHA-256 is 64 hex digits, always. Anything else is a typo or the wrong
+    hash, and saying so here - while the value is being set - beats a runtime
+    refusal that looks like the server changed its certificate. }
+  if (FPin <> '') and (Length(FPin) <> 64) then
+  begin
+    FPin := '';
+    raise Exception.Create(emCertPinInvalid);
+  end;
+end;
+
+procedure TRALClientSSL.Assign(ASource: TPersistent);
+begin
+  if ASource is TRALClientSSL then
+  begin
+    FPin := TRALClientSSL(ASource).Pin;
+    FRequired := TRALClientSSL(ASource).Required;
+  end
+  else
+  begin
+    inherited Assign(ASource);
+  end;
+end;
+
+function TRALClientHTTP.AcceptServerCert(const ACert: TRALCertInfo): boolean;
+begin
+  if Assigned(FParent.OnValidateServerCert) then
+    Result := FParent.OnValidateServerCert(FParent, ACert)
+  else if FParent.SSL.Pin <> '' then
+    { both sides are already normalised, so this is a plain compare. An empty
+      fingerprint never matches: BeforeSendUrl has refused the request long
+      before, but an engine added later must not accidentally pass here. }
+    Result := (ACert.Fingerprint <> '') and (ACert.Fingerprint = FParent.SSL.Pin)
+  else
+    Result := ACert.Trusted;
+end;
+
+function TRALClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := False;
+end;
+
+function TRALClientHTTP.CertCheckWanted: boolean;
+begin
+  Result := (FParent.SSL.Pin <> '') or Assigned(FParent.OnValidateServerCert);
+end;
+
 procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;
   ARequest: TRALRequest; AResponse: TRALResponse; AMethod: TRALMethod);
 var
@@ -753,6 +965,16 @@ begin
     vRepeat := False;
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
+
+    { Both refusals happen HERE, before a socket is opened, and not inside the
+      TLS callback: that one runs on the stack of a C library (OpenSSL), where
+      an exception would unwind through frames that cannot handle it. }
+    if (FParent.SSL.Required or (FParent.SSL.Pin <> '')) and
+       (not SameText(Copy(vURL, 1, 6), 'https:')) then
+      raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
+
+    if (FParent.SSL.Pin <> '') and (not SupportsCertPin) then
+      raise Exception.Create(Format(emCertPinUnsupported, [EngineName]));
 
     // vParams is used in two places: SetAuthToken, which only runs while there
     // is no token yet, and SetAuthHeader, which always runs. It used to be

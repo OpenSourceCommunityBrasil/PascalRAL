@@ -19,6 +19,11 @@ type
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
+
+    function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
+                        ADepth, AError: Integer): boolean;
+  protected
+    function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -34,6 +39,40 @@ type
 implementation
 
 { TRALIndyClientHTTP }
+
+function TRALIndyClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := True;
+end;
+
+function TRALIndyClientHTTP.VerifyPeer(ACertificate: TIdX509; AOk: boolean;
+  ADepth, AError: Integer): boolean;
+var
+  vCert: TRALCertInfo;
+begin
+  { OpenSSL walks the chain from the root down and calls this for every link.
+    Only the leaf (depth zero) identifies the server, so the ones above it are
+    let through - rejecting them here would refuse the certificate before the
+    one that matters is even seen. }
+  if ADepth > 0 then
+    Exit(True);
+
+  vCert := RALEmptyCertInfo;
+  vCert.Fingerprint := RALNormalizeFingerprint(
+    StringRAL(ACertificate.Fingerprints.SHA256AsString));
+  vCert.Subject := StringRAL(ACertificate.Subject.OneLine);
+  vCert.Issuer := StringRAL(ACertificate.Issuer.OneLine);
+  vCert.SerialNumber := StringRAL(ACertificate.SerialNumber);
+  vCert.NotBefore := ACertificate.notBefore;
+  vCert.NotAfter := ACertificate.notAfter;
+  vCert.Trusted := AOk;
+  if AOk then
+    vCert.Error := ''
+  else
+    vCert.Error := StringRAL(Format('OpenSSL verify error %d', [AError]));
+
+  Result := AcceptServerCert(vCert);
+end;
 
 constructor TRALIndyClientHTTP.Create(AOwner: TRALClient);
 begin
@@ -97,6 +136,20 @@ begin
     It is only swapped when the scheme changes }
   if SameText(Copy(AURL, 1, 5), 'https') then
   begin
+    { Verification is turned on only when the client asked to control the
+      certificate (SSL.Pin or OnValidateServerCert). Indy leaves VerifyMode
+      empty, which is SSL_VERIFY_NONE - so today this engine accepts any
+      certificate - and switching that on for everyone would break plain HTTPS
+      on Windows, where the OpenSSL Indy loads has no certificate store.
+      Set here, not in Create: the engine is built before the client is
+      configured, and this reflects whatever is set at request time. }
+    if CertCheckWanted then
+    begin
+      FHandlerSSL.SSLOptions.VerifyMode := [sslvrfPeer];
+      FHandlerSSL.SSLOptions.VerifyDepth := 9;
+      FHandlerSSL.OnVerifyPeer := {$IFDEF FPC}@{$ENDIF}VerifyPeer;
+    end;
+
     if FHttp.IOHandler <> FHandlerSSL then
     begin
       FHttp.Disconnect;

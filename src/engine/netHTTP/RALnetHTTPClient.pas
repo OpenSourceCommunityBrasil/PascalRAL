@@ -17,6 +17,9 @@ type
   TRALnetHTTPClientHTTP = class(TRALClientHTTP)
   private
     FHttp: TNetHTTPClient;
+
+    procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
+                           const Certificate: TCertificate; var Accepted: boolean);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -40,6 +43,41 @@ begin
   {$IFDEF DELPHI10_1UP}
   FHttp.Asynchronous := False;
   {$ENDIF}
+end;
+
+{ SSL.Pin is refused on this engine - SupportsCertPin stays False - because the
+  RTL's TCertificate carries no fingerprint on ANY platform: it has Subject,
+  Issuer, SerialNum and (except on Android) the public key, and nothing that
+  identifies the certificate itself. Matching on those text fields would look
+  like pinning and would not be: they are copyable.
+
+  What is left is OnValidateServerCert, and it is only hooked up when the client
+  asked for it - see SendUrl. Assigning it always would not be free: on Windows
+  the RTL calls this from WINHTTP_CALLBACK_STATUS_SENDING_REQUEST precisely when
+  its own validation PASSED (System.Net.HttpClient.Win.pas), handing Accepted =
+  True so the application may veto a good certificate. Answering that call
+  without being asked to is how a perfectly valid certificate ends up refused. }
+procedure TRALnetHTTPClientHTTP.ValidateCert(const Sender: TObject;
+  const ARequest: TURLRequest; const Certificate: TCertificate;
+  var Accepted: boolean);
+var
+  vCert: TRALCertInfo;
+begin
+  vCert := RALEmptyCertInfo;
+  vCert.Subject := StringRAL(Certificate.Subject);
+  vCert.Issuer := StringRAL(Certificate.Issuer);
+  vCert.SerialNumber := StringRAL(Certificate.SerialNum);
+  vCert.NotBefore := Certificate.Start;
+  vCert.NotAfter := Certificate.Expiry;
+
+  { Accepted arrives carrying the engine's own verdict - True when it validated
+    the certificate, False when it did not - on both the Windows and the
+    Android paths. It is the only place that verdict is available here. }
+  vCert.Trusted := Accepted;
+  if not Accepted then
+    vCert.Error := StringRAL('the engine did not validate the certificate');
+
+  Accepted := AcceptServerCert(vCert);
 end;
 
 destructor TRALnetHTTPClientHTTP.Destroy;
@@ -122,6 +160,14 @@ begin
   inherited;
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINENETHTTP);
+
+  { Hooked up per request and only when asked, exactly like the Indy engine:
+    with nothing assigned the RTL keeps the behaviour it always had, and does
+    not even go fetch the certificate to show it to us. }
+  if CertCheckWanted then
+    FHttp.OnValidateServerCertificate := ValidateCert
+  else
+    FHttp.OnValidateServerCertificate := nil;
 
   {$IFDEF DELPHI10_1UP}
   FHttp.ConnectionTimeout := Parent.ConnectTimeout;
