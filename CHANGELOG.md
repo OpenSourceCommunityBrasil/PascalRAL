@@ -210,6 +210,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-09-08 – mobius1qwe)
+
 - **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-07 – tempraturbo)
 
 - **Merge remote-tracking branch 'origin/dev' into dev** (2026-09-07 – tempraturbo)
@@ -349,6 +351,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Ajustes de autenticação JWT nos eventos** (2026-09-08 – mobius1qwe)
+
 - **Fix the server DAO owning its per-request queries on a shared component** (2026-09-07 – tempraturbo)
   OnReplyQuery runs on the engine's thread pool, but the one or two TFDQuery it
   builds per request were owned by Self - the single TRALFDConnection sitting on
