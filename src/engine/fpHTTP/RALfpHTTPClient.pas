@@ -20,6 +20,8 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+    { True quando foi a nossa validacao que recusou o certificado - ver VerifyCert }
+    FCertRefused: boolean;
 
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
@@ -88,7 +90,17 @@ begin
     vCert.Error := StringRAL('certificate not available on this socket handler');
   end;
 
-  Allow := AcceptServerCert(vCert);
+  if CertCheckWanted then
+    Allow := AcceptServerCert(vCert)
+  else
+    { so' o svAlways nos trouxe aqui: quem decide e' o proprio OpenSSL, e o
+      veredito dele e' o que veio no VerifyResult }
+    Allow := vCert.Trusted;
+
+  { fphttpclient turns a refusal into "Connect ... failed", indistinguishable
+    from a server that is down. This is the only place that knows the
+    difference, so it records it for SendUrl to classify. }
+  FCertRefused := not Allow;
 end;
 
 procedure TRALfpHttpClientHTTP.OnGetSSLHandler(Sender: TObject;
@@ -98,7 +110,14 @@ begin
     Exit;
 
   AHandler := TOpenSSLSocketHandler.create;
-  if CertCheckWanted then
+
+  { svAlways tambem entra pelo callback, e nao pelo VerifyPeerCert: aquele e'
+    SSL_VERIFY_PEER com callback nulo, que derruba o handshake antes de o FPC
+    chamar o DoVerifyCert - a falha entao chega como "Connect failed", igual a
+    servidor fora do ar, e nao ha' onde dizer que foi o certificado. Pelo
+    callback o handshake completa, o VerifyResult do OpenSSL continua sendo o
+    veredito, e a recusa sai classificada. }
+  if CertCheckWanted or (Parent.SSL.Verify = svAlways) then
     { only the callback, and deliberately NOT VerifyPeerCert: that one maps to
       SSL_VERIFY_PEER with a nil callback (opensslsockets, InitContext), so
       OpenSSL aborts the handshake on an unknown CA before FPC ever calls
@@ -181,6 +200,7 @@ begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEFPHTTP);
 
+  FCertRefused := False;
   FHttp.ConnectTimeout := Parent.ConnectTimeout;
   FHttp.IOTimeout := Parent.RequestTimeout;
 
@@ -306,6 +326,12 @@ begin
     except
       on e: ESocketError do
       begin
+        { a nossa validacao recusou o certificado: para o fphttpclient isso e'
+          um Connect que falhou, igual a servidor fora do ar, e so' aqui da'
+          para dizer qual dos dois foi }
+        if FCertRefused then
+          HandleException(rteCertificate, -1, e.Message)
+        else
         case e.Code of
           // never reached a server
           seConnectTimeOut, seConnectFailed, seHostNotFound:

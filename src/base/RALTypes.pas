@@ -96,7 +96,12 @@ type
     /// connected and the request went out; the response did not arrive in time
     rteTimeout,
     /// any other transport failure
-    rteOther);
+    rteOther,
+    /// the TLS handshake failed over the server certificate - refused by the
+    /// engine's own validation, by SSL.Pin or by OnValidateServerCert
+    /// - last on purpose: the four values above keep their ordinal, and
+    /// CanSwitchURL's "else" already declines to resend what it does not know
+    rteCertificate);
 
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL

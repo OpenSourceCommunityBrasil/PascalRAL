@@ -218,10 +218,35 @@ begin
       {$ENDIF}
       FCertSeen := False;
       if CertCheckWanted then
-        FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify;
+        FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify
+      else
+        { sem pin e sem evento, quem manda e' o SSL.Verify. svAlways nao precisa
+          de nada: este engine ja' valida por padrao, nas duas pilhas. }
+        FTLS.IgnoreCertificateErrors := Parent.SSL.Verify = svNever;
 
-      FHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout,
-                                         @FTLS);
+      try
+        FHttp := THttpClientSocket.OpenUri(AUrl, vAddress, '', Parent.ConnectTimeout,
+                                           @FTLS);
+      except
+        { mORMot collapses every TLS cause into one formatted message raised by
+          DoTlsAfter, and what survives on the exception itself is LastError.
+          DoTlsAfter raises without a TNetResult, and ENetSock.Create turns
+          that into nrUnknownError - while a connection that really failed
+          carries its actual TNetResult (nrRefused, nrTimeout...). That is what
+          tells a refused certificate apart from a server that is down, and it
+          is data on the exception, not text in the message. }
+        on e: ENetSock do
+        begin
+          if e.LastError = nrUnknownError then
+          begin
+            { mesma razao do bloco do veredito abaixo: sair pela resposta, e
+              nao por raise, senao o except externo reclassifica }
+            SetTransportError(AResponse, rteCertificate, -1, e.Message);
+            Exit;
+          end;
+          raise;
+        end;
+      end;
       FServer := vServer;
 
       { The verdict, taken once and on our own stack. Refusing costs a closed
@@ -229,18 +254,26 @@ begin
         included - has been sent yet. }
       if CertCheckWanted then
       begin
+        { Sai por SetTransportError e Exit, e nao por raise: um raise daqui
+          seria apanhado pelo except deste mesmo SendUrl, que o reclassificaria
+          como falha de transporte e trocaria a mensagem. Quem transforma isto
+          em excecao para quem chamou e' o BeforeSendUrl, no "if vErrorCode
+          <> 0", com o texto que ficou na resposta. }
         if not FCertSeen then
         begin
           { SChannel completed the handshake without ever asking us, or the
             unit that reads certificates was not compiled in }
           DropSocket;
-          raise Exception.Create(Format(emCertNotInspectable, [EngineName]));
+          SetTransportError(AResponse, rteCertificate, -1,
+                            StringRAL(Format(emCertNotInspectable, [EngineName])));
+          Exit;
         end;
 
         if not AcceptServerCert(FCert) then
         begin
           DropSocket;
-          raise Exception.Create(emCertRejected);
+          SetTransportError(AResponse, rteCertificate, -1, emCertRejected);
+          Exit;
         end;
       end;
     end

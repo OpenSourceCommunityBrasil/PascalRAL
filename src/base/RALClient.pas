@@ -39,6 +39,18 @@ type
   TRALOnValidateCert = function(ASender: TObject;
                                 const ACert: TRALCertInfo): boolean of object;
 
+  /// What the ENGINE itself does about the server certificate - the pin and
+  /// OnValidateServerCert are a separate question, and when either is set it is
+  /// the one that decides
+  /// - svEngine keeps what each engine has always done, which is not the same
+  ///   thing everywhere: netHTTP and mORMot2 validate, Indy and fpHTTP do not
+  ///   verify at all. It is the default because changing it would break plain
+  ///   HTTPS on Windows for the two that do not, where their OpenSSL has no
+  ///   certificate store
+  /// - svAlways turns verification on wherever it is off
+  /// - svNever accepts any certificate, on every engine
+  TRALSSLVerify = (svEngine, svAlways, svNever);
+
   { TRALClientSSL }
 
   /// TLS options of the client, the mirror of TRALServer.SSL on the other side
@@ -46,10 +58,14 @@ type
   private
     FPin: StringRAL;
     FRequired: boolean;
+    FVerify: TRALSSLVerify;
     procedure SetPin(const AValue: StringRAL);
   public
+    constructor Create;
     procedure Assign(ASource: TPersistent); override;
   published
+    /// whether the engine validates the certificate by itself - see TRALSSLVerify
+    property Verify: TRALSSLVerify read FVerify write FVerify default svEngine;
     /// SHA-256 of the one certificate this client accepts. Set it and the
     /// system certificate store stops mattering: nothing has to be installed
     /// on the machine, and a certificate the store DOES trust is refused
@@ -874,6 +890,12 @@ end;
 
 { TRALClientSSL }
 
+constructor TRALClientSSL.Create;
+begin
+  inherited Create;
+  FVerify := svEngine;
+end;
+
 procedure TRALClientSSL.SetPin(const AValue: StringRAL);
 var
   vValue: StringRAL;
@@ -910,6 +932,7 @@ begin
   begin
     FPin := TRALClientSSL(ASource).Pin;
     FRequired := TRALClientSSL(ASource).Required;
+    FVerify := TRALClientSSL(ASource).Verify;
   end
   else
   begin
@@ -971,10 +994,18 @@ begin
       an exception would unwind through frames that cannot handle it. }
     if (FParent.SSL.Required or (FParent.SSL.Pin <> '')) and
        (not SameText(Copy(vURL, 1, 6), 'https:')) then
+    begin
+      SetTransportError(AResponse, rteCertificate, 0,
+                        StringRAL(Format(emCertRequiresTLS, [vURL])));
       raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
+    end;
 
     if (FParent.SSL.Pin <> '') and (not SupportsCertPin) then
+    begin
+      SetTransportError(AResponse, rteCertificate, 0,
+                        StringRAL(Format(emCertPinUnsupported, [EngineName])));
       raise Exception.Create(Format(emCertPinUnsupported, [EngineName]));
+    end;
 
     // vParams is used in two places: SetAuthToken, which only runs while there
     // is no token yet, and SetAuthHeader, which always runs. It used to be

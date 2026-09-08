@@ -7,7 +7,8 @@ interface
 
 uses
   Classes, SysUtils,
-  IdSSLOpenSSL, IdHTTP, IdMultipartFormData, IdAuthentication, IdGlobal,
+  IdSSLOpenSSL, IdSSLOpenSSLHeaders, IdHTTP, IdMultipartFormData,
+  IdAuthentication, IdGlobal,
   IdCookie, IdException, IdExceptionCore, IdStack,
   RALClient, RALParams, RALTypes, RALConsts, RALCompress, RALRequest,
   RALResponse, RALStream;
@@ -19,6 +20,9 @@ type
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
+    { True quando foi a NOSSA validacao que recusou o certificado: de fora, a
+      falha e' indistinguivel da que o proprio OpenSSL levanta }
+    FCertRefused: boolean;
 
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
@@ -72,6 +76,7 @@ begin
     vCert.Error := StringRAL(Format('OpenSSL verify error %d', [AError]));
 
   Result := AcceptServerCert(vCert);
+  FCertRefused := not Result;
 end;
 
 constructor TRALIndyClientHTTP.Create(AOwner: TRALClient);
@@ -121,6 +126,7 @@ var
 begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEINDY);
+  FCertRefused := False;
 
   FHttp.Request.Clear;
   FHttp.Request.CustomHeaders.Clear;
@@ -148,6 +154,21 @@ begin
       FHandlerSSL.SSLOptions.VerifyMode := [sslvrfPeer];
       FHandlerSSL.SSLOptions.VerifyDepth := 9;
       FHandlerSSL.OnVerifyPeer := {$IFDEF FPC}@{$ENDIF}VerifyPeer;
+    end
+    else
+    begin
+      { nobody asked us to decide, so SSL.Verify does: svAlways turns OpenSSL's
+        own check on - with no callback, which is what makes it enforce - and
+        anything else leaves VerifyMode empty, which is SSL_VERIFY_NONE and
+        what this engine has always done }
+      FHandlerSSL.OnVerifyPeer := nil;
+      if Parent.SSL.Verify = svAlways then
+      begin
+        FHandlerSSL.SSLOptions.VerifyMode := [sslvrfPeer];
+        FHandlerSSL.SSLOptions.VerifyDepth := 9;
+      end
+      else
+        FHandlerSSL.SSLOptions.VerifyMode := [];
     end;
 
     if FHttp.IOHandler <> FHandlerSSL then
@@ -283,8 +304,21 @@ begin
       on e: EIdSocketError do
         SetTransportError(AResponse, IsSocketError(e.LastError), e.LastError,
                           e.Message);
+      { the handshake did not get past the certificate. Two ways in, and the
+        class alone does not tell them apart: when OpenSSL refuses, the error
+        is SSL_ERROR_SSL and Indy raises EIdOSSLUnderlyingCryptoError
+        (IdSSLOpenSSLHeaders, RaiseExceptionCode) - and when it was our own
+        VerifyPeer that returned False, the failure looks exactly the same from
+        outside, which is what FCertRefused is for. A library that failed to
+        load is a different class and stays rteOther, because it is not a
+        certificate problem. }
+      on e: EIdOSSLUnderlyingCryptoError do
+        SetTransportError(AResponse, rteCertificate, -1, e.Message);
       on e: Exception do
-        SetTransportError(AResponse, rteOther, -1, e.Message);
+        if FCertRefused then
+          SetTransportError(AResponse, rteCertificate, -1, e.Message)
+        else
+          SetTransportError(AResponse, rteOther, -1, e.Message);
     end;
   finally
     FreeAndNil(vResult);

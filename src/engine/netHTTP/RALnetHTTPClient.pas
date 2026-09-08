@@ -77,7 +77,12 @@ begin
   if not Accepted then
     vCert.Error := StringRAL('the engine did not validate the certificate');
 
-  Accepted := AcceptServerCert(vCert);
+  { svNever with nothing else set: take it as it comes. With a pin or an event
+    those decide, and Verify has nothing to say. }
+  if (not CertCheckWanted) and (Parent.SSL.Verify = svNever) then
+    Accepted := True
+  else
+    Accepted := AcceptServerCert(vCert);
 end;
 
 destructor TRALnetHTTPClientHTTP.Destroy;
@@ -163,8 +168,10 @@ begin
 
   { Hooked up per request and only when asked, exactly like the Indy engine:
     with nothing assigned the RTL keeps the behaviour it always had, and does
-    not even go fetch the certificate to show it to us. }
-  if CertCheckWanted then
+    not even go fetch the certificate to show it to us. svNever also needs the
+    handler, since accepting a certificate the engine rejected is the only
+    thing this engine cannot do without one - it always validates by itself. }
+  if CertCheckWanted or (Parent.SSL.Verify = svNever) then
     FHttp.OnValidateServerCertificate := ValidateCert
   else
     FHttp.OnValidateServerCertificate := nil;
@@ -294,6 +301,11 @@ begin
         AResponse.ResponseStream := vResponse.ContentStream;
       end;
     except
+      { the certificate is the one failure the RTL gives a class of its own, so
+        it is classified by type instead of by digging a number out of the
+        message like everything else here }
+      on e: ENetHTTPCertificateException do
+        SetTransportError(AResponse, rteCertificate, -1, e.Message);
       on e: ENetHTTPClientException do
         HandleException(e.Message);
       on e: Exception do
