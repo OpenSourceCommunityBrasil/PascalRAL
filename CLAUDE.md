@@ -110,6 +110,8 @@ Every callback-taking client call — `TRALClient.Get/Post/Put/Patch/Delete(ARou
 
 The callback always receives a valid `TRALResponse`, even when the request failed — the message goes in the `AException` parameter. Handlers rely on this: `TRALDBFDMemTable.OnApplyUpdates`/`OnExecSQLResponse` dereference `AResponse.StatusCode` with no nil check.
 
+**The other overloads — `Get/Post/...(ARoute, var AResponse)` — do the opposite: ownership goes to the caller.** They funnel into `ExecuteSingle`, which *returns* the response, so the caller frees it; `TRALResponse.Create(AOwner: TObject)` takes a plain reference, not component ownership, so freeing the `TRALClient` frees nothing. And the caller only receives it on a **normal return** — when the request fails at transport level `BeforeSendUrl` raises, the assignment at the call site never runs, so `ExecuteSingle` frees the response itself before letting the exception out. That is not defensive coding: without it every failed request leaked a whole response.
+
 Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` is deliberately async and lets `SetActive`'s `FLoading` flag close the loop. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebMultiThread`; its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
 
 `ExecuteThread` is `virtual` and currently has **no override anywhere** — engines vary the transport (`TRALClientHTTP` descendants), never the threading.

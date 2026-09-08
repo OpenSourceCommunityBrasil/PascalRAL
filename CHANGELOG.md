@@ -44,6 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Fix a response leaked on every request that fails at transport level** (2026-09-08 – tempraturbo)
+  ExecuteSingle creates the response and hands it over through the return value,
+  which the var-AResponse overloads assign at the call site. When BeforeSendUrl
+  raises - and any transport failure makes it raise - that assignment never runs:
+  the caller is left with nil, has nothing to free, and the response is orphaned
+  along with its params, streams and crypto options. One whole response per failed
+  request, which a client polling a server that goes up and down accumulates
+  quietly, since the failure is already handled.
+  AcquireEngine can raise as well, when the engine class is not registered, and
+  the finally ran anyway - freeing an uninitialised pointer.
+
 - **Fix the fpHTTP server thread freed alive, Sagui thread pool set after listen, SQLite busy waits and sqldb library loading under concurrency** (2026-09-07 – tempraturbo)
   All four found by the new connection-pool suite of the orchestrator.
   TRALfpHttpServerThread.Destroy never called inherited, so TThread.Destroy
