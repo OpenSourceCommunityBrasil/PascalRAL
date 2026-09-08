@@ -18,7 +18,7 @@ interface
 
 uses
   Classes, SysUtils,
-  mormot.net.client, mormot.core.base, mormot.net.sock,
+  mormot.net.client, mormot.core.base, mormot.net.sock, mormot.core.os.security,
   {$IFDEF RALSYNOPSE_OPENSSL}
   { only for the certificate fingerprint: mORMot hands the peer over as an
     opaque pointer, and this is the unit that knows it is a PX509. It compiles
@@ -200,6 +200,22 @@ begin
         onde o mORMot espera um contexto limpo. InitNetTlsContext e' o proprio
         zera-tudo do mORMot. }
       InitNetTlsContext(FTLS);
+      {$IFDEF MSWINDOWS}
+      { Windows only, and it is what makes https to a public CA work at all on
+        this engine once OpenSSL is loaded: OpenSSL has no certificate store of
+        its own on Windows, so mORMot's fallback - SSL_CTX_set_default_verify_paths
+        - finds nothing and EVERY certificate fails to verify. Filling
+        CASystemStores makes SetupCtx load the OS roots instead (cached, once
+        per process). [scsCA, scsRoot] is mORMot's own default set.
+
+        Not done on POSIX: there the default verify paths do find /etc/ssl/certs,
+        so there is nothing to fix and no reason to change what works.
+
+        This does not loosen anything: it teaches OpenSSL the roots the machine
+        already trusts - the same ones SChannel uses - so a self-signed
+        certificate is still refused unless a pin or the event says otherwise. }
+      FTLS.CASystemStores := [scsCA, scsRoot];
+      {$ENDIF}
       FCertSeen := False;
       if CertCheckWanted then
         FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify;
