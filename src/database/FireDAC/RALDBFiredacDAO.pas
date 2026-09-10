@@ -10,7 +10,7 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALWebModule, RALRequest, RALResponse,
   RALConsts,
   System.SyncObjs;
 
@@ -244,8 +244,7 @@ begin
 
         vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
-          Ord(Self.Params[i].DataType)), rpkBODY);
+        vRALClient.Request.Params.AddParam('F' + i.ToString, RALFieldTypeName(Self.Params[i].DataType), rpkBODY);
       end;
 
       vRALClient.Request.Params.AddParam('Type', '2', rpkBODY);
@@ -388,8 +387,7 @@ begin
 
         vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
-                                           Ord(Self.Params[i].DataType)), rpkBODY);
+        vRALClient.Request.Params.AddParam('F' + i.ToString, RALFieldTypeName(Self.Params[i].DataType), rpkBODY);
       end;
 
       vRALClient.Request.Params.AddParam('Type', '1', rpkBODY);
@@ -559,8 +557,7 @@ begin
 
         vRALClient.Request.Params.AddParam('P' + i.ToString, vStreamAux, rpkBODY);
 
-        vRALClient.Request.Params.AddParam('F' + i.ToString, GetEnumName(Typeinfo(TFieldType),
-                                           Ord(Self.Params[i].DataType)), rpkBODY);
+        vRALClient.Request.Params.AddParam('F' + i.ToString, RALFieldTypeName(Self.Params[i].DataType), rpkBODY);
       end;
 
       vRALClient.Request.Params.AddParam('Type', '0', rpkBODY);
@@ -702,8 +699,7 @@ begin
             vQueryAux.Params.Add;
 
           vQueryAux.Params[i].DataType :=
-            TFieldType(GetEnumValue(Typeinfo(TFieldType),
-            ARequest.ParamByName('F' + i.ToString).AsString));
+            RALNameToFieldType(ARequest.ParamByName('F' + i.ToString).AsString);
 
           { SetData wants the length in CHARACTERS for string types; the
             buffer arrives in bytes, so a wide string halves it }
@@ -721,8 +717,7 @@ begin
               vQueryAux2.Params.Add;
 
             vQueryAux2.Params[i].DataType :=
-              TFieldType(GetEnumValue(Typeinfo(TFieldType),
-              ARequest.ParamByName('F' + i.ToString).AsString));
+              RALNameToFieldType(ARequest.ParamByName('F' + i.ToString).AsString);
 
             if vQueryAux2.Params[i].DataType in [ftWideString, ftFixedWideChar, ftWideMemo] then
               vQueryAux2.Params[i].SetData(PByte(vBytesAux), Length(vBytesAux) div SizeOf(WideChar))

@@ -499,9 +499,9 @@ begin
     begin
       vInt := Pos(' ', vStr);
       vAux := Trim(Copy(vStr, 1, vInt - 1));
-      if SameText(vAux, 'Basic') then
+      if RALSameName(vAux, 'Basic') then
         AResult.Authorization.AuthType := ratBasic
-      else if SameText(vAux, 'Bearer') then
+      else if RALSameName(vAux, 'Bearer') then
         AResult.Authorization.AuthType := ratBearer;
       AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
     end;
@@ -713,7 +713,12 @@ begin
 
     if Assigned(vRoute) then
     begin
-      CheckCORS(vRoute.IsMethodAllowed(amOPTIONS), vRoute.GetAllowMethods, ARequest, AResponse);
+      { GetAllowMethods was evaluated unconditionally - it walks the nine methods,
+        builds the string of each one and concatenates - and CheckCORS only uses
+        the result when OPTIONS is allowed. With AAllowOptions False the call
+        does nothing, so not calling it is the same behaviour without the cost }
+      if vRoute.IsMethodAllowed(amOPTIONS) then
+        CheckCORS(True, vRoute.GetAllowMethods, ARequest, AResponse);
       if ARequest.Method = amOPTIONS then
       begin
         if vRoute.IsMethodAllowed(amOPTIONS) then

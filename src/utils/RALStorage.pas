@@ -96,6 +96,26 @@ const
   cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
     'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink');
 
+var
+  { GetClass takes MonitorEnter on the RTL's global class registry, and these
+    lookups happen once per database request. There is no registration routine
+    here to keep the class in - the storage units only call RegisterClass in
+    their own initialization - so the resolution is cached on first use.
+    Only a NON-nil result is kept: a design-time package loaded later is still
+    found, and two threads racing here are harmless, both compute the same
+    pointer. }
+  gStorageLinkClasses: array[TRALStorageFormat] of TRALStorageLinkClass;
+
+function StorageLinkClassOf(AFormat: TRALStorageFormat): TRALStorageLinkClass;
+begin
+  Result := gStorageLinkClasses[AFormat];
+  if Result = nil then
+  begin
+    Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[AFormat]));
+    gStorageLinkClasses[AFormat] := Result;
+  end;
+end;
+
   { TRALStorage }
 
 function TRALStorage.GetStoreVersion: byte;
@@ -273,7 +293,9 @@ begin
   Result := nil;
   for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
   begin
-    Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[vLinks]));
+    { through the cache: GetClass takes the global lock of the RTL's class
+       registry }
+    Result := StorageLinkClassOf(vLinks);
     if Result <> nil then
       Break;
   end;
@@ -406,34 +428,27 @@ begin
 end;
 
 class function TRALStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
+const
+  { the same rsfAuto order of preference that was being built into a
+    TStringList on every call }
+  cAuto: array [0 .. 3] of TRALStorageFormat = (rsfBIN, rsfJSON, rsfBSON, rsfCSV);
 var
-  vStr: TStringList;
   vInt: IntegerRAL;
 begin
-  Result := nil;
-  vStr := TStringList.Create;
-  try
-    case AFormat of
-      rsfAuto : begin
-        vStr.Add(cStorageLinkClass[rsfBIN]);
-        vStr.Add(cStorageLinkClass[rsfJSON]);
-        vStr.Add(cStorageLinkClass[rsfBSON]);
-        vStr.Add(cStorageLinkClass[rsfCSV]);
-      end;
-      rsfBIN  : vStr.Add(cStorageLinkClass[rsfBIN]);
-      rsfJSON : vStr.Add(cStorageLinkClass[rsfJSON]);
-      rsfBSON : vStr.Add(cStorageLinkClass[rsfBSON]);
-      rsfCSV  : vStr.Add(cStorageLinkClass[rsfCSV]);
-    end;
+  { the per-call TStringList went away with the GetClass: an object allocated,
+    filled and freed only to pick between four formats known at compile time }
+  if AFormat <> rsfAuto then
+  begin
+    Result := StorageLinkClassOf(AFormat);
+    Exit;
+  end;
 
-    for vInt := 0 to Pred(vStr.Count) do
-    begin
-      Result := TRALStorageLinkClass(GetClass(vStr.Strings[vInt]));
-      if Result <> nil then
-        Break;
-    end;
-  finally
-    FreeAndNil(vStr);
+  Result := nil;
+  for vInt := Low(cAuto) to High(cAuto) do
+  begin
+    Result := StorageLinkClassOf(cAuto[vInt]);
+    if Result <> nil then
+      Break;
   end;
 end;
 

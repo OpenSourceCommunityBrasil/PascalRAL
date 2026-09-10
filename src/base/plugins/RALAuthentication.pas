@@ -526,7 +526,7 @@ var
   vParamJWT: TRALJWTParams;
   vCookie: TRALCookie;
 begin
-  if SameText(ARequest.Query, AuthRoute.Route) then
+  if RALSameName(ARequest.Query, AuthRoute.Route) then
   begin
     vResult := False;
     vToken := '';
@@ -910,7 +910,7 @@ function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALRes
   : TRALRoute;
 begin
   Result := TRALRoute(GetAuthRoute);
-  if not SameText(Result.GetFullRoute, ARequest.Query) then
+  if not RALSameName(Result.GetFullRoute, ARequest.Query) then
     Result := nil;
 end;
 

@@ -9,6 +9,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, DB,
+  RALTools,
   RALTypes, RALJson;
 
 type
@@ -181,7 +182,72 @@ type
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
   end;
 
+/// The name of a TFieldType, memoised. Same result as GetEnumName, without
+/// walking the RTTI name table on every field of every row.
+function RALFieldTypeName(AFieldType: TFieldType): StringRAL; overload;
+/// Same for RAL's own field type. It is the conversion that costs, not the size
+/// of the enum: GetEnumName hands back a 'string' (UTF-16 on Delphi) that then
+/// converts into StringRAL, and that price is identical for both enums.
+function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL; overload;
+/// The inverse: the TFieldType a name stands for, or ftUnknown when it matches
+/// none. GetEnumValue answers -1 there, and every caller cast that straight to
+/// TFieldType, which has no member -1. TRALFieldType needs no inverse - its
+/// name is written into the JSON for readers, never read back.
+function RALNameToFieldType(const AName: StringRAL): TFieldType;
+
 implementation
+
+var
+  { Resolved once per value and kept. GetEnumName walks the RTTI short-string
+    table from the start, and on Delphi it also hands back a UTF-16 string that
+    then converts into StringRAL - both per field, per row, on every DBWare
+    answer. The cache is filled BY GetEnumName, so it stays correct on any
+    compiler whatever members TFieldType happens to have; a hand-written table
+    would not. Two threads racing here compute the same string, so no lock. }
+  gFieldTypeNames: array of StringRAL;
+  gRALFieldTypeNames: array [TRALFieldType] of StringRAL;
+
+function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL;
+begin
+  if gRALFieldTypeNames[AFieldType] = '' then
+    gRALFieldTypeNames[AFieldType] :=
+      StringRAL(GetEnumName(TypeInfo(TRALFieldType), Ord(AFieldType)));
+  Result := gRALFieldTypeNames[AFieldType];
+end;
+
+function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
+var
+  vOrd: IntegerRAL;
+begin
+  vOrd := Ord(AFieldType);
+  if Length(gFieldTypeNames) = 0 then
+    SetLength(gFieldTypeNames, Ord(High(TFieldType)) + 1);
+
+  if (vOrd < 0) or (vOrd > High(gFieldTypeNames)) then
+  begin
+    Result := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
+    Exit;
+  end;
+
+  if gFieldTypeNames[vOrd] = '' then
+    gFieldTypeNames[vOrd] := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
+  Result := gFieldTypeNames[vOrd];
+end;
+
+function RALNameToFieldType(const AName: StringRAL): TFieldType;
+var
+  vInt: IntegerRAL;
+begin
+  Result := ftUnknown;
+  for vInt := 0 to Ord(High(TFieldType)) do
+  begin
+    if RALSameName(AName, RALFieldTypeName(TFieldType(vInt))) then
+    begin
+      Result := TFieldType(vInt);
+      Exit;
+    end;
+  end;
+end;
 
 { TRALDB }
 
@@ -489,12 +555,12 @@ begin
   Result.Add('attributes', FAttributes);
   Result.Add('fieldname', FFieldName);
   Result.Add('fieldtype', Ord(FFieldType));
-  Result.Add('fieldtypename', GetEnumName(TypeInfo(TFieldType), Ord(FFieldType)));
+  Result.Add('fieldtypename', RALFieldTypeName(FFieldType));
   Result.Add('flags', FFlags);
   Result.Add('length', FLength);
   Result.Add('precision', FPrecision);
   Result.Add('ralfieldtype', Ord(RALFieldType));
-  Result.Add('ralfieldtypename', GetEnumName(TypeInfo(TRALFieldType), Ord(RALFieldType)));
+  Result.Add('ralfieldtypename', RALFieldTypeName(RALFieldType));
   Result.Add('scale', FScale);
   Result.Add('schema', FSchema);
   Result.Add('tablename', FTableName);

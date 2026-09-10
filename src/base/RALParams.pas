@@ -432,26 +432,26 @@ begin
     end;
 
     // Comparações case-sensitive como no original (pode trocar por SameText se quiser case-insensitive)
-    if SameText(Name, 'HttpOnly') then
+    if RALSameName(Name, 'HttpOnly') then
       Result.HttpOnly := True
-    else if SameText(Name, 'Secure') then
+    else if RALSameName(Name, 'Secure') then
       Result.Secure := True
-    else if SameText(Name, 'Path') then
+    else if RALSameName(Name, 'Path') then
       Result.Path := Value
-    else if SameText(Name, 'Domain') then
+    else if RALSameName(Name, 'Domain') then
       Result.Domain := Value
-    else if SameText(Name, 'SameSite') then
+    else if RALSameName(Name, 'SameSite') then
     begin
-      if SameText(Value, 'None') then
+      if RALSameName(Value, 'None') then
         Result.SameSite := cssNone
-      else if SameText(Value, 'Lax') then
+      else if RALSameName(Value, 'Lax') then
         Result.SameSite := cssLax
-      else if SameText(Value, 'Strict') then
+      else if RALSameName(Value, 'Strict') then
         Result.SameSite := cssStrict;
     end
-    else if SameText(Name, 'Expires') then
+    else if RALSameName(Name, 'Expires') then
       Result.Expires := HTTPDateTimeToDateTime(Value)
-    else if SameText(Name, 'Max-Age') then
+    else if RALSameName(Name, 'Max-Age') then
       Result.MaxAge := StrToInt64Def(Value, 0)
     else
     begin
@@ -561,14 +561,26 @@ end;
 {$IFEND}
 
 function TRALParam.IsTyped: Boolean;
+var
+  vType: StringRAL;
 begin
-  Result := (Self <> nil) and
-            (SameText(MediaType, rctRALINT32) or
-             SameText(MediaType, rctRALINT64) or
-             SameText(MediaType, rctRALDOUBLE) or
-             SameText(MediaType, rctRALCURRENCY) or
-             SameText(MediaType, rctRALBOOLEAN) or
-             SameText(MediaType, rctRALDATETIME));
+  Result := False;
+  if Self = nil then
+    Exit;
+
+  { MediaType is a function and was being called SIX times - once per
+    comparison - and each call redoes the Pos and the Copy. On top of that,
+    SameText on Delphi converts both sides from UTF-8 to UTF-16 every call:
+    twelve conversions for a param that is not typed, which is the normal case.
+    And this runs in every SetAsString/SetAsStream/AdoptStream/OpenFile, that
+    is, once per value received on every request }
+  vType := MediaType;
+  Result := RALSameName(vType, rctRALINT32) or
+            RALSameName(vType, rctRALINT64) or
+            RALSameName(vType, rctRALDOUBLE) or
+            RALSameName(vType, rctRALCURRENCY) or
+            RALSameName(vType, rctRALBOOLEAN) or
+            RALSameName(vType, rctRALDATETIME);
 end;
 
 procedure TRALParam.SetTypedValue(const AType: StringRAL; const ABuffer;
@@ -610,8 +622,10 @@ begin
   { Size is checked as well as the marker: a truncated or padded payload is
     treated as "not typed" and falls through to the text reader, which is the
     safe direction - better to try parsing than to hand back garbage. }
-  Result := (Self <> nil) and SameText(MediaType, AType) and
-            (FContent <> nil) and (FContent.Size = ASize);
+  { size before type: an integer test that discards most params without
+    calling MediaType (Pos + Copy) or comparing any string }
+  Result := (Self <> nil) and (FContent <> nil) and (FContent.Size = ASize) and
+            RALSameName(MediaType, AType);
 
   if not Result then
     Exit;
@@ -1048,9 +1062,9 @@ var
   function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
   begin
     Result := True;
-    if SameText(AHeader, 'name') then
+    if RALSameName(AHeader, 'name') then
       FParamName := AValue
-    else if SameText(AHeader, 'filename') then
+    else if RALSameName(AHeader, 'filename') then
       FFileName := AValue
     else
       Result := False;
@@ -1927,7 +1941,10 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if (SameText(vParam.ParamName, AName)) and (vParam.Kind = AKind) then
+    { Kind first, which is an enum, and only then the name: this lookup runs
+      once per param inserted, and SameText on Delphi converts both sides from
+      UTF-8 to UTF-16 every call - two heap allocations per comparison }
+    if (vParam.Kind = AKind) and RALSameName(vParam.ParamName, AName) then
     begin
       Result := vParam;
       Break;
@@ -1985,7 +2002,7 @@ begin
   for vInt := 0 to FParams.Count - 1 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) then
+    if RALSameName(vParam.ParamName, AName) then
     begin
       Result := vParam;
       Break;
@@ -2302,7 +2319,7 @@ begin
   for vInt := Pred(FParams.Count) downto 0 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) and (vParam.Kind = AKind) then
+    if (vParam.Kind = AKind) and RALSameName(vParam.ParamName, AName) then
     begin
       vParam.Free;
       FParams.Delete(vInt);
@@ -2318,7 +2335,7 @@ begin
   for vInt := Pred(FParams.Count) downto 0 do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if SameText(vParam.ParamName, AName) then
+    if RALSameName(vParam.ParamName, AName) then
     begin
       vParam.Free;
       FParams.Delete(vInt);

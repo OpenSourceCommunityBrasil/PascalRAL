@@ -171,7 +171,7 @@ begin
         value, Expires, Path, HttpOnly, Secure - in a param named Set-Cookie:
         that one goes out as it is. A plain name=value param gets the
         server's CookieLife. Every engine builds its cookies from this list }
-      if SameText(vParam.ParamName, 'Set-Cookie') then
+      if RALSameName(vParam.ParamName, 'Set-Cookie') then
         ADest.Add(vParam.AsString)
       else
         ADest.Add(vParam.ParamName + '=' + vParam.AsString + ';' + vExpire);

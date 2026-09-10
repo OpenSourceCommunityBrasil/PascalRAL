@@ -10,7 +10,7 @@ uses
   IdSSLOpenSSL, IdSSLOpenSSLHeaders, IdHTTP, IdMultipartFormData,
   IdAuthentication, IdGlobal,
   IdCookie, IdException, IdExceptionCore, IdStack,
-  RALClient, RALParams, RALTypes, RALConsts, RALCompress, RALRequest,
+  RALClient, RALParams, RALTypes, RALTools, RALConsts, RALCompress, RALRequest,
   RALResponse, RALStream;
 
 type
@@ -140,7 +140,7 @@ begin
   { the IOHandler is what holds the socket: resetting it to nil on every call
     made TIdHTTP build a new one, and open a new connection, per request.
     It is only swapped when the scheme changes }
-  if SameText(Copy(AURL, 1, 5), 'https') then
+  if RALSameName(Copy(AURL, 1, 5), 'https') then
   begin
     { Verification is turned on only when the client asked to control the
       certificate (SSL.Pin or OnValidateServerCert). Indy leaves VerifyMode

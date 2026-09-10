@@ -303,7 +303,7 @@ begin
       vParam.Name := GetStrProp(vColetItem, 'Name');
 
       vType := GetEnumProp(vColetItem, 'DataType');
-      vParam.DataType := TFieldType(GetEnumValue(TypeInfo(TFieldType), vType));
+      vParam.DataType := RALNameToFieldType(vType);
 
       vParam.Size := GetInt64Prop(vColetItem, 'Size');
       vParam.Clear;

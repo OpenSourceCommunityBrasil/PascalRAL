@@ -405,7 +405,10 @@ begin
   CheckEngineDefs;
 
   if EnginesDefs.IndexOfName(AEngine.EngineName) < 0 then
-    EnginesDefs.Add(AEngine.EngineName + '=' + AEngine.ClassName);
+    { AddObject: RegisterEngine already holds the class, and keeping only the
+      name forced GetEngineClass through GetClass - which takes MonitorEnter on
+      the RTL's process-wide class registry }
+    EnginesDefs.AddObject(AEngine.EngineName + '=' + AEngine.ClassName, TObject(AEngine));
 end;
 
 procedure UnregisterEngine(AEngine: TRALClientHTTPClass);
@@ -426,7 +429,7 @@ begin
   CheckEngineDefs;
   vPos := EnginesDefs.IndexOfName(AEngineName);
   if vPos >= 0 then
-    Result := TRALClientHTTPClass(GetClass(EnginesDefs.ValueFromIndex[vPos]));
+    Result := TRALClientHTTPClass(EnginesDefs.Objects[vPos]);
 end;
 
 procedure GetEngineList(AList: TStrings);

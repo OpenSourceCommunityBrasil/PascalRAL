@@ -593,11 +593,11 @@ begin
       begin
         vName := vJson.GetName(vInt);
         vValue := vJson.Get(vInt);
-        if SameText(vName, 'typ') then
+        if RALSameName(vName, 'typ') then
         begin
           FHeaderType := vValue.AsString;
         end
-        else if SameText(vName, 'alg') then
+        else if RALSameName(vName, 'alg') then
         begin
           vAux1 := vValue.AsString;
 
@@ -609,7 +609,7 @@ begin
           else if SameText(vAux1, 'hs512') then
             FAlgorithm := tjaHSHA512;
         end
-        else if SameText(vName, 'kid') then
+        else if RALSameName(vName, 'kid') then
         begin
           FKeyID := vValue.AsString;
         end;
@@ -748,40 +748,40 @@ begin
       begin
         vName := vJson.GetName(vInt);
         vValue := vJson.Get(vInt);
-        if SameText(vName, 'aud') then
+        if RALSameName(vName, 'aud') then
         begin
           FAudience := vValue.AsString;
         end
-        else if SameText(vName, 'exp') then
+        else if RALSameName(vName, 'exp') then
         begin
           if vValue.JsonType = rjtNumber then
             FExpiration := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FExpiration := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'iat') then
+        else if RALSameName(vName, 'iat') then
         begin
           if vValue.JsonType = rjtNumber then
             FIssuedAt := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FIssuedAt := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'iss') then
+        else if RALSameName(vName, 'iss') then
         begin
           FIssuer := vValue.AsString;
         end
-        else if SameText(vName, 'jti') then
+        else if RALSameName(vName, 'jti') then
         begin
           FId := vValue.AsString;
         end
-        else if SameText(vName, 'nbf') then
+        else if RALSameName(vName, 'nbf') then
         begin
           if vValue.JsonType = rjtNumber then
             FNotBefore := RALGMTToDateTime(UnixToDateTime(vValue.AsInteger))
           else
             FNotBefore := StrToDateTimeDef(vValue.AsString, 0);
         end
-        else if SameText(vName, 'sub') then
+        else if RALSameName(vName, 'sub') then
         begin
           FSubject := vValue.AsString;
         end

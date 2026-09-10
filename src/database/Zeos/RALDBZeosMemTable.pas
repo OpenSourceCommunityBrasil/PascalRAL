@@ -609,9 +609,9 @@ begin
         vParam.DataType := vField.DataType;
         if vPrefix = '' then
           vParam.Value := vField.Value
-        else if SameText(vPrefix, 'OLD') then
+        else if RALSameName(vPrefix, 'OLD') then
           vParam.Value := vField.OldValue
-        else if SameText(vPrefix, 'NEW') then
+        else if RALSameName(vPrefix, 'NEW') then
           vParam.Value := vField.NewValue;
       end;
     end;

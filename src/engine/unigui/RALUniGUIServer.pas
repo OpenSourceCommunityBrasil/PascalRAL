@@ -58,9 +58,9 @@ begin
   if vStr <> '' then begin
     vInt := Pos(' ', vStr);
     vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if SameText(vAux, 'Basic') then
+    if RALSameName(vAux, 'Basic') then
       AResult.Authorization.AuthType := ratBasic
-    else if SameText(vAux, 'Bearer') then
+    else if RALSameName(vAux, 'Bearer') then
       AResult.Authorization.AuthType := ratBearer;
     AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
   end;

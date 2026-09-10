@@ -127,7 +127,9 @@ procedure RegisterDatabase(ADatabase: TRALDBClass);
 begin
   CheckDatabaseDefs;
   if DatabasesDefs.IndexOfName(ADatabase.DatabaseName) < 0 then
-    DatabasesDefs.Add(ADatabase.DatabaseName + '=' + ADatabase.ClassName);
+    { AddObject: same reason as RegisterEngine - keeping only the name forced
+      GetDatabaseClass through the global lock of the class registry }
+    DatabasesDefs.AddObject(ADatabase.DatabaseName + '=' + ADatabase.ClassName, TObject(ADatabase));
 end;
 
 procedure UnregisterDatabase(ADatabase: TRALDBClass);
@@ -148,7 +150,7 @@ begin
   CheckDatabaseDefs;
   vPos := DatabasesDefs.IndexOfName(ADatabaseName);
   if vPos >= 0 then
-    Result := TRALDBClass(GetClass(DatabasesDefs.ValueFromIndex[vPos]));
+    Result := TRALDBClass(DatabasesDefs.Objects[vPos]);
 end;
 
 procedure GetDatabaseList(AList: TStrings);

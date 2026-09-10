@@ -74,6 +74,14 @@ const
 
 var
   CompressDefs : TStringList;
+  { The class of each type, kept at registration time. The lookup used to go
+    by NAME and end in GetClass, which takes MonitorEnter on the RTL's global
+    class registry - a process-wide lock, taken several times per request
+    (GetBestCompress alone takes one per registered compressor).
+    RegisterCompress already receives the class; keeping the pointer removes the
+    lock, the GetEnumName and the list search from the hot path in one go.
+    CompressDefs stays for the by-name listing at design time. }
+  CompressClasses : array[TRALCompressType] of TRALCompressClass;
 
 procedure CheckCompressDefs;
 begin
@@ -100,7 +108,10 @@ begin
   for vType := Low(TRALCompressType) to High(TRALCompressType) do begin
     vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
     if (vType in vTypes) and (CompressDefs.IndexOfName(vStrType) < 0) then
+    begin
       CompressDefs.Add(vStrType + '=' + ACompress.ClassName);
+      CompressClasses[vType] := ACompress;
+    end;
   end;
 end;
 
@@ -120,21 +131,17 @@ begin
       vPos := CompressDefs.IndexOfName(vStrType);
       if vPos >= 0 then
         CompressDefs.Delete(vPos);
+      if CompressClasses[vType] = ACompress then
+        CompressClasses[vType] := nil;
     end;
   end;
 end;
 
 function GetCompressClass(ACompressType: TRALCompressType): TRALCompressClass;
-var
-  vPos : IntegerRAL;
-  vStrType : StringRAL;
 begin
-  Result := nil;
-  CheckCompressDefs;
-  vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(ACompressType));
-  vPos := CompressDefs.IndexOfName(vStrType);
-  if vPos >= 0 then
-    Result := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vPos]));
+  { was GetEnumName + IndexOfName + GetClass, with the global lock; now it is
+    an array index }
+  Result := CompressClasses[ACompressType];
 end;
 
 procedure GetCompressList(AList: TStrings);
@@ -162,16 +169,16 @@ end;
 
 function GetSuportedCompress: TRALCompressTypes;
 var
-  vInt: IntegerRAL;
-  vClass: TRALCompressClass;
+  vType: TRALCompressType;
 begin
+  { through the class array: the by-name version called GetClass - and the
+    RTL's global lock - once per registered entry. And GetClass could answer nil
+    when a class was listed without RegisterClass, which made the vClass
+    .CompressTypes right after it an access violation }
   Result := [];
-  CheckCompressDefs; // nil until the first RegisterCompress: an AV otherwise
-  for vInt := 0 to Pred(CompressDefs.Count) do
-  begin
-    vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));
-    Result := Result + vClass.CompressTypes;
-  end;
+  for vType := Low(TRALCompressType) to High(TRALCompressType) do
+    if CompressClasses[vType] <> nil then
+      Result := Result + [vType];
 end;
 
 function GetAcceptCompress: StringRAL;
@@ -330,31 +337,44 @@ end;
 
 class function TRALCompress.GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
 var
-  vInt: IntegerRAL;
+  vInt, vIni, vHigh: IntegerRAL;
   vClass: TRALCompressClass;
-  vList: TStringList;
   vTypes: TRALCompressTypes;
-  vType: TRALCompressType;
+  vType, vRegType: TRALCompressType;
   vMax: integer;
 begin
   Result := ctNone;
 
+  { the per-call TStringList is gone: besides the allocation, "Text :=
+    AEncoding" and reading it back through Strings[] converted the header from
+    UTF-8 to UTF-16 and back on Delphi. This loop splits on the comma straight
+    over the StringRAL. An empty run is skipped, which comes to the same thing:
+    it stood for ctNone, and ctNone is the neutral element in
+    BestCompressFromClass }
   vTypes := [];
-  vList := TStringList.Create;
-  try
-    vList.LineBreak := ',';
-    vList.Text := AEncoding;
-    for vInt := 0 to Pred(vList.Count) do
-      vTypes := vTypes + [StringToCompress(Trim(vList.Strings[vInt]))];
-  finally
-    FreeAndNil(vList);
+  vHigh := RALHighStr(AEncoding);
+  vIni := POSINISTR;
+  vInt := POSINISTR;
+  while vInt <= vHigh + 1 do
+  begin
+    if (vInt > vHigh) or (AEncoding[vInt] = ',') then
+    begin
+      if vInt > vIni then
+        vTypes := vTypes + [StringToCompress(Trim(Copy(AEncoding, vIni, vInt - vIni)))];
+      vIni := vInt + 1;
+    end;
+    Inc(vInt);
   end;
 
+  { through the class array, no GetClass: this loop ran on every read of
+    AcceptCompress or ContentCompress - several times per request - and each
+    turn took the global lock of the RTL's class registry }
   vMax := -1;
-  CheckCompressDefs; // nil until the first RegisterCompress: an AV otherwise
-  for vInt := 0 to Pred(CompressDefs.Count) do
+  for vRegType := Low(TRALCompressType) to High(TRALCompressType) do
   begin
-    vClass := TRALCompressClass(GetClass(CompressDefs.ValueFromIndex[vInt]));
+    vClass := CompressClasses[vRegType];
+    if vClass = nil then
+      Continue;
     vType := vClass.BestCompressFromClass(vTypes);
     if CompressWeight[vType] > vMax then
     begin

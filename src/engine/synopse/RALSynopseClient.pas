@@ -26,7 +26,7 @@ uses
     SSL.Pin fails loudly, see EachPeerVerify }
   mormot.lib.openssl11,
   {$ENDIF}
-  RALClient, RALParams, RALTypes, RALConsts, RALAuthentication, RALRequest,
+  RALClient, RALParams, RALTypes, RALTools, RALConsts, RALAuthentication, RALRequest,
   RALCompress, RALResponse;
 
 type
@@ -282,7 +282,7 @@ begin
 
     vHttp := FHttp;
 
-    vHttp.TLS.Enabled := SameText(Copy(AURL, 1, 5), 'https');
+    vHttp.TLS.Enabled := RALSameName(Copy(AURL, 1, 5), 'https');
     vHttp.SendTimeout := Parent.ConnectTimeout;
     vHttp.ReceiveTimeout := Parent.RequestTimeout;
     vHttp.UserAgent := Parent.UserAgent;

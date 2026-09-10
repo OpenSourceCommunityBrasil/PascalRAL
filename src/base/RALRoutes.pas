@@ -443,7 +443,9 @@ begin
         System.Delete(vStr1, POSINISTR, 1);
         AURI.Add(vStr1 + '=' + vStr2);
       end
-      else if not SameText(vStr1, vStr2) then
+      { per segment, per route, per request: SameText on Delphi converts both
+        sides from UTF-8 to UTF-16 on every call }
+      else if not RALSameName(vStr1, vStr2) then
       begin
         Exit;
       end;
@@ -483,7 +485,7 @@ begin
     stack, and the caller dereferenced it }
   Result := nil;
   for I := 0 to pred(Self.Count) do
-  if SameText(ARoute, Self.Items[I].DisplayName) then
+  if RALSameName(ARoute, StringRAL(Self.Items[I].DisplayName)) then
   begin
     Result := TRALRoute(Self.Items[I]);
     break;
@@ -608,7 +610,7 @@ begin
   Result := -1;
   for vInt := 0 to Pred(Count) do
   begin
-    if SameText(AName, TRALRouteParam(Items[vInt]).ParamName) then
+    if RALSameName(AName, TRALRouteParam(Items[vInt]).ParamName) then
     begin
       Result := vInt;
       Break;

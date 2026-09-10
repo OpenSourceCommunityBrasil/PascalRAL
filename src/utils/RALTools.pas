@@ -36,21 +36,128 @@ function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
 function RALSameBytes(const A, B: TBytes): Boolean;
 /// Same thing for secrets kept as strings (passwords, signatures)
 function RALSameSecret(const A, B: StringRAL): Boolean;
+/// Case-insensitive name comparison without leaving StringRAL. Use it for param
+/// and header names; SameText is the general-purpose one and stays for text.
+function RALSameName(const A, B: StringRAL): Boolean;
 
 implementation
 
+const
+  { method names without the 'am' prefix, in the order of the enum }
+  RALMethodNames: array [TRALMethod] of StringRAL = (
+    'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE');
+
+function RALSameName(const A, B: StringRAL): Boolean;
+var
+  vInt, vHighA, vHighB: IntegerRAL;
+  vA, vB: Byte;
+begin
+  { byte by byte, without leaving StringRAL: on Delphi SameText has no
+    AnsiString overload and converts BOTH sides from UTF-8 to UTF-16 on every
+    call - two heap allocations per comparison, in a lookup that runs once per
+    param inserted. FPC does not convert, but the ASCII path is shorter there
+    too. }
+  vHighA := RALHighStr(A);
+  vHighB := RALHighStr(B);
+
+  vInt := POSINISTR;
+  while (vInt <= vHighA) and (vInt <= vHighB) do
+  begin
+    vA := Ord(A[vInt]);
+    vB := Ord(B[vInt]);
+
+    { outside ASCII, case equivalence belongs to the RTL and not to us: a
+      dotless 'i' and 'I' have different UTF-8 lengths and may still match.
+      Hand the decision back instead of risking a different answer }
+    if (vA > 127) or (vB > 127) then
+    begin
+      Result := SameText(A, B);
+      Exit;
+    end;
+
+    if vA <> vB then
+    begin
+      if (vA >= Ord('a')) and (vA <= Ord('z')) then
+        Dec(vA, 32);
+      if (vB >= Ord('a')) and (vB <= Ord('z')) then
+        Dec(vB, 32);
+      if vA <> vB then
+      begin
+        Result := False;
+        Exit;
+      end;
+    end;
+    Inc(vInt);
+  end;
+
+  { only reached when everything compared was ASCII and equal - then the
+    length decides, and in ASCII a byte and a character are the same thing }
+  Result := Length(A) = Length(B);
+end;
+
 function FixRoute(ARoute: StringRAL): StringRAL;
+var
+  vInt, vOut, vHigh: IntegerRAL;
+  vPrevSlash: boolean;
 begin
   Result := '/' + ARoute;
 
-  // path transversal fix
-  Result := StringReplace(Result, '../', '', [rfReplaceAll]);
+  { path transversal fix - same semantics as StringReplace(...,'../','',
+    rfReplaceAll): it scans left to right and, on a match, carries on AFTER the
+    removed run without re-examining what is left. Written by hand because
+    StringReplace on Delphi converts the whole string to UTF-16 and back, and
+    FixRoute runs once per route evaluated on every request. The Pos in front
+    lets the common case - a route with no dot at all - leave without rebuilding
+    anything. }
+  if Pos(StringRAL('..'), Result) > 0 then
+  begin
+    vHigh := RALHighStr(Result);
+    vOut := POSINISTR - 1;
+    vInt := POSINISTR;
+    while vInt <= vHigh do
+    begin
+      if (vInt + 2 <= vHigh) and (Result[vInt] = '.') and
+         (Result[vInt + 1] = '.') and (Result[vInt + 2] = '/') then
+      begin
+        vInt := vInt + 3;
+      end
+      else
+      begin
+        Inc(vOut);
+        if vOut <> vInt then
+          Result[vOut] := Result[vInt];
+        Inc(vInt);
+      end;
+    end;
+    SetLength(Result, vOut - POSINISTR + 1);
+  end;
 
-  while Pos(StringRAL('//'), Result) > 0 do
-    Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+  { the "while Pos('//') > 0 do StringReplace" rebuilt the whole string on
+    every turn: quadratic in the number of slashes, and a URI carrying
+    thousands of them was a denial of service on its own }
+  vHigh := RALHighStr(Result);
+  vOut := POSINISTR - 1;
+  vPrevSlash := False;
+  for vInt := POSINISTR to vHigh do
+  begin
+    if Result[vInt] = '/' then
+    begin
+      if vPrevSlash then
+        Continue;
+      vPrevSlash := True;
+    end
+    else
+    begin
+      vPrevSlash := False;
+    end;
+    Inc(vOut);
+    if vOut <> vInt then
+      Result[vOut] := Result[vInt];
+  end;
+  SetLength(Result, vOut - POSINISTR + 1);
 
   if (Result <> '') and (Result <> '/') and (Result[RALHighStr(Result)] = '/') then
-    Delete(Result, RALHighStr(Result), 1);
+    SetLength(Result, Length(Result) - 1);
 end;
 
 function RALSameBytes(const A, B: TBytes): Boolean;
@@ -117,20 +224,29 @@ end;
 
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 var
-  vInt: IntegerRAL;
+  vMethod: TRALMethod;
 begin
-  AMethod := 'am' + UpperCase(AMethod);
-  vInt := GetEnumValue(TypeInfo(TRALMethod), AMethod);
-  if vInt <> -1 then
-    Result := TRALMethod(vInt)
-  else
-    Result := amGET;
+  { a table instead of GetEnumValue: the RTTI version built 'am' + UpperCase -
+    two UTF-8/UTF-16 conversions on Delphi, plus a concatenation - and only then
+    walked the enum names comparing strings, once per request. The accepted set
+    is the same, and an unknown method still becomes amGET }
+  Result := amGET;
+  for vMethod := Low(TRALMethod) to High(TRALMethod) do
+  begin
+    if RALSameName(AMethod, RALMethodNames[vMethod]) then
+    begin
+      Result := vMethod;
+      Break;
+    end;
+  end;
 end;
 
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
 begin
-  Result := GetEnumName(TypeInfo(TRALMethod), Ord(AMethod));
-  Delete(Result, 1, 2); // delete 'am'
+  { GetEnumName hands back a 'string' (UTF-16 on Delphi) and still needed a
+    Delete to drop the 'am' prefix. GetAllowMethods calls it nine times in a
+    row }
+  Result := RALMethodNames[AMethod];
 end;
 
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
@@ -292,7 +408,7 @@ var
 begin
   Result := False;
   for I := 0 to Pred(Length(AArray)) do
-    if SameText(AStr, AArray[I]) then
+    if RALSameName(AStr, AArray[I]) then
     begin
       Result := True;
       Break;

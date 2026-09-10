@@ -168,18 +168,25 @@ begin
 end;
 
 function StringToBytesUTF8(const AString: StringRAL): TBytes;
-{$IFNDEF HAS_Encoding}
-  var
-    vStr : ansistring;
-{$ENDIF}
 begin
-  {$IFDEF HAS_Encoding}
-    Result := TEncoding.UTF8.GetBytes(AString);
-  {$ELSE}
-    vStr := UTF8Encode(AString);
-    SetLength(Result, Length(vStr));
-    Move(vStr[POSINISTR], Result[0], Length(vStr));
-  {$ENDIF}
+  { StringRAL already IS UTF-8: TEncoding.UTF8.GetBytes forced the whole string
+    into UTF-16 before the call and encoded it back afterwards - a full round
+    trip, two allocations, to hand back exactly the bytes the string already
+    held.
+
+    And it was not only slow: the decoder does not refuse an invalid sequence,
+    it substitutes. The bytes A3 9A 4F C2 00 7E FF 10 came back as EF BF BD
+    EF BF BD 4F EF BF BD 00 7E EF BF BD 10 - half of them destroyed, every
+    invalid one collapsing into the same U+FFFD, and the length doubled. A
+    derived key is made of bytes like those, which is what RALHashBase works
+    around with HMACAsDigest.
+
+    BytesToStringUTF8 already copied straight through (its TEncoding.UTF8
+    .GetString is commented out just below); the pair now closes and the round
+    trip is byte for byte. }
+  SetLength(Result, Length(AString));
+  if Length(AString) > 0 then
+    Move(AString[POSINISTR], Result[0], Length(AString));
 end;
 
 function BytesToString(const ABytes: TBytes): StringRAL;

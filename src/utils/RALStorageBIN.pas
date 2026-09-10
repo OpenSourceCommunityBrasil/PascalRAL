@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALStorage, RALMIMETypes, RALDBTypes, RALConsts, RALStream;
+  RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALConsts, RALStream;
 
 type
 
@@ -353,7 +353,7 @@ begin
 
     for vSize := 0 to Pred(vFields) do
     begin
-      if SameText(vName, FFieldNames[vSize]) then
+      if RALSameName(vName, FFieldNames[vSize]) then
       begin
         FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;

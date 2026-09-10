@@ -168,13 +168,17 @@ Verified with `testes_ral_matriz/timeout` (repro `tmout.dpr`, verifier `tmfix.dp
 Both sides now read the same constant (`DEFAULTCONNECTTIMEOUT`, `DEFAULTREQUESTTIMEOUT` in `RALConsts.pas`), which is the point of naming them. `DEFAULTMAXREDIRECTS` and `RALMAXTOKENTRIES` live there too; `MaxRedirects` became a published property of `TRALClient` because the engines each hardcoded a different limit (Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever `THTTPClient` defaults to) with nobody having chosen it. When adding a numeric `default`, grep the constructor.
 
 ### Runtime class registry (why linking a unit changes behavior)
-Compression, crypto, and storage backends are discovered at runtime by class name, not by static reference. `RALCompress.GetCompressClass` builds the enum name (`ctBrotli`) via `GetEnumName` and looks the class up with RTL `GetClass`. Optional units self-register in their `initialization`:
+Compression, crypto, and storage backends are discovered at runtime, not by static reference. Optional units self-register in their `initialization`:
 ```pascal
 initialization
   RegisterClass(TRALCompressBrotli);
   RegisterCompress(TRALCompressBrotli);
 ```
-Consequence: **an algorithm exists only if its unit is linked into the binary.** `GetSuportedCompress`/`GetAcceptCompress` derive the `Accept-Encoding` header from whatever registered. `TRALStorageLink.GetStorageClass` uses the same name-based lookup (`cStorageLinkClass`). Never assume a format is available; go through the lookup functions.
+Consequence: **an algorithm exists only if its unit is linked into the binary.** `GetSuportedCompress`/`GetAcceptCompress` derive the `Accept-Encoding` header from whatever registered. Never assume a format is available; go through the lookup functions.
+
+**The lookup keeps the class, it does not resolve a name.** It used to: `GetCompressClass` built the enum name with `GetEnumName` and asked the RTL for `GetClass(name)` — and `System.Classes.GetClass` takes `RegGroups.Lock` (`MonitorEnter`), a **process-wide** lock, on every call. `GetBestCompress` took one per registered compressor and runs several times per request, so a handful of that lock was taken on every request of every engine. `RegisterCompress`/`RegisterEngine`/`RegisterDatabase` already receive the class, so they now keep the pointer: an `array[TRALCompressType]` in `RALCompress`, the `Objects[]` of the definition list in `RALClient` and `RALDBBase`. Measured on the mORMot2 sample, taking that lock out of the hot path was worth about nine points of throughput at 50 concurrent connections — a lock costs where it is contended, not where it is counted.
+
+`TRALStorageLink.GetStorageClass` is the exception: the storage units only call `RegisterClass`, there is no `RegisterStorage` to keep the class in, so `StorageLinkClassOf` caches the resolution on first use. Only a non-nil result is cached, so a design-time package loaded later is still found. `RegisterClass` stays mandatory for storages — that is what `GetClass` reads.
 
 
 ### Connection charset is chosen by the driver, not left blank
@@ -530,6 +534,18 @@ The pool knows nothing about FireDAC/Zeos/SQLDB. It drives six virtuals on `TRAL
 Two behaviors worth knowing before tuning: waiting for a free connection is an event wait (`FFreeEvent`, signalled by `Release`) capped at `cRALPoolWaitStep` per turn, and `MinSize` is a floor for idle reaping, not a level the pool maintains — only `Prepare` opens connections up front. An exhausted pool raises `ERALDBPoolTimeout`, which `TRALDBModule.AnswerException` turns into HTTP 429.
 
 ## Cross-compiler conventions
+
+**The whole project is written in English** — identifiers, `///` doc comments and ordinary comments alike. A few older comments are in Portuguese; new code is not.
+
+### On Delphi, every RTL string call over a `StringRAL` converts UTF-8 to UTF-16 and back
+
+`StringRAL` is `UTF8String` on both compilers, but Delphi's RTL is UTF-16 and `System.SysUtils` has no AnsiString overloads. So `SameText`, `LowerCase`, `UpperCase`, `Trim` and `StringReplace` over a `StringRAL` convert **both** arguments and the result — two heap allocations and two transcodings per call. FPC has the overloads and converts nothing, which is the bulk of the performance difference between the two compilers on a request whose real work is small. `Pos` is the exception: it has the overload and does not convert.
+
+Compiling the core with `dcc32` reports it: **W1057 "Implicit string cast"**, ~500 of them. The warning is on, it just drowns in the volume. `grep -c W1057` on a build log is the way to see whether an edit made it worse.
+
+For anything on the per-request path, prefer `RALTools.RALSameName` — ASCII case-insensitive comparison byte by byte, handing anything above 127 back to `SameText` so Unicode case equivalence is unchanged. It is what the param, header, route, cookie and claim lookups use. `TRALParam.IsTyped` shows why it matters: it called `MediaType` six times and did twelve conversions per value received, on every `SetAsString`.
+
+Same reason behind `RALFieldTypeName`/`RALNameToFieldType` (`RALDBTypes`) and the `RALMethodNames` table (`RALTools`): `GetEnumName` and `GetEnumValue` hand back a `string`, so RTTI per field or per request paid the conversion too. The caches are filled **by** `GetEnumName`, never by a hand-written table — `TFieldType` has different members across compilers and versions.
 
 `src/base/PascalRAL.inc` is included (`{$I PascalRAL.inc}`) by essentially every unit and is the **only** place compiler/OS/framework conditionals are defined. Use the symbols it exports (`DELPHIXE7UP`, `RALWindows`, `RALLinuxFPC`, `NewDelphiAndLazarus`, `HAS_FMX`, `CPU64`, …) instead of raw `CompilerVersion` or `VERxxx` checks. The IFEND block must stay at the top of that file.
 

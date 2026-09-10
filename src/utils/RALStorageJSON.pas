@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils,
-  RALTypes, RALStorage, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
+  RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
   RALJSON, RALConsts;
 
 type
@@ -507,7 +507,7 @@ begin
 
     for vSize := 0 to Pred(vjObj.Count) do
     begin
-      if SameText(vName, FFieldNames[vSize]) then
+      if RALSameName(vName, FFieldNames[vSize]) then
       begin
         FFoundFields[vSize] := ADataset.Fields[vInt];
         Break;
@@ -844,7 +844,7 @@ begin
 
       for vSize := 0 to Pred(vjArr1.Count) do
       begin
-        if SameText(vName, FFieldNames[vSize]) then
+        if RALSameName(vName, FFieldNames[vSize]) then
         begin
           FFoundFields[vSize] := ADataset.Fields[vInt];
           Break;

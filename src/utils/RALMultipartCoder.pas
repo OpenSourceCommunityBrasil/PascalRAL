@@ -395,15 +395,15 @@ var
   function ProcessVar(const AHeader, AValue: StringRAL): boolean;
   begin
     Result := True;
-    if SameText(AHeader, 'content-disposition') then
+    if RALSameName(AHeader, 'content-disposition') then
       FDisposition := AValue
-    else if SameText(AHeader, 'name') then
+    else if RALSameName(AHeader, 'name') then
       FName := AValue
-    else if SameText(AHeader, 'filename') then
+    else if RALSameName(AHeader, 'filename') then
       FFilename := AValue
-    else if SameText(AHeader, 'content-description') then
+    else if RALSameName(AHeader, 'content-description') then
       FDescription := AValue
-    else if SameText(AHeader, 'content-type') then
+    else if RALSameName(AHeader, 'content-type') then
       FContentType := AValue
     else
       Result := False;
