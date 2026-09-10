@@ -333,6 +333,12 @@ begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
   vResponse := vServer.CreateResponse;
+  { the finally below frees vStrMap, and the block that first assigns it is
+    skipped whenever ValidateRequest already answered 4xx - so a raise before
+    the response headers are built would hand FreeAndNil whatever the stack
+    happened to hold. In a cdecl callback invoked from C that is a silent
+    process death, not an exception }
+  vStrMap := nil;
   try
     try
       with vRequest do
@@ -591,6 +597,19 @@ begin
   SgLib.Check;
   if AValue then
   begin
+    { Every worker thread of this engine is created inside libmicrohttpd, so
+      BeginThread never runs and IsMultiThread stays False - and that flag is
+      what the memory manager reads to decide whether to lock at all:
+      LockAllSmallBlockTypes and LockMediumBlocks (getmem.inc) both open with
+      "if IsMultiThread then", and so does the assembler path of FastGetMem.
+      A hundred foreign threads then allocate and free on unlocked free lists,
+      the heap corrupts, and the process dies with no exception and no dialog.
+      One connection at a time never overlaps, which is why it only appears
+      under load. Every other engine gets this for free - Indy, mORMot2 and
+      fpHTTP all start their workers through TThread. Never set back to False:
+      threads already handed out keep running after a deactivation. }
+    IsMultiThread := True;
+
     SetEngine('Sagui ' + sg_version_str);
     CreateServerHandle;
     { BEFORE listening: libmicrohttpd only takes the thread pool size while
