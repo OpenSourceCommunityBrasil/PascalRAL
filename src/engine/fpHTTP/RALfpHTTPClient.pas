@@ -25,7 +25,7 @@ type
 
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
-    procedure OnGetSSLHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
+    procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
     function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
@@ -40,6 +40,64 @@ type
   end;
 
 implementation
+
+uses
+  // fpsetsockopt, IPPROTO_TCP and TCP_NODELAY
+  sockets;
+
+type
+  { fphttpclient keeps its socket private and exposes no way to set an option
+    on it. The socket handler's Connect - called right after the connect call
+    succeeded - is the only hook over it, and fphttpclient asks for the handler
+    through OnGetSocketHandler, which RAL already answers. Two classes because
+    the plain and the TLS handlers share no ancestor below TSocketHandler. }
+
+  { TRALfpNoDelayHandler }
+
+  TRALfpNoDelayHandler = class(TSocketHandler)
+  public
+    function Connect: boolean; override;
+  end;
+
+  { TRALfpNoDelaySSLHandler }
+
+  TRALfpNoDelaySSLHandler = class(TOpenSSLSocketHandler)
+  public
+    function Connect: boolean; override;
+  end;
+
+{ TCP_NODELAY on the connected socket. Without it a request carrying a body
+  stalls: SendRequest writes the headers and then the body as two sends, Nagle
+  holds the second until the server acknowledges the first, and the server
+  delays that acknowledgement by ~40 ms - paid on every POST, PUT and PATCH.
+  Both handlers set it before their own Connect, so the TLS handshake, which
+  is several round trips of its own, is not delayed either. }
+procedure RALSocketNoDelay(ASocket: TSocketStream);
+var
+  vNoDelay: LongInt;
+begin
+  if ASocket = nil then
+    Exit;
+
+  vNoDelay := 1;
+  fpsetsockopt(ASocket.Handle, IPPROTO_TCP, TCP_NODELAY, @vNoDelay, SizeOf(vNoDelay));
+end;
+
+{ TRALfpNoDelayHandler }
+
+function TRALfpNoDelayHandler.Connect: boolean;
+begin
+  RALSocketNoDelay(Socket);
+  Result := inherited Connect;
+end;
+
+{ TRALfpNoDelaySSLHandler }
+
+function TRALfpNoDelaySSLHandler.Connect: boolean;
+begin
+  RALSocketNoDelay(Socket);
+  Result := inherited Connect;
+end;
 
 { TRALfpHttpClientHTTP }
 
@@ -103,13 +161,18 @@ begin
   FCertRefused := not Allow;
 end;
 
-procedure TRALfpHttpClientHTTP.OnGetSSLHandler(Sender: TObject;
+procedure TRALfpHttpClientHTTP.OnGetSocketHandler(Sender: TObject;
   const UseSSL: Boolean; out AHandler: TSocketHandler);
 begin
   if not UseSSL then
+  begin
+    { what fphttpclient would have built here is a plain TSocketHandler; this
+      is the same thing with Nagle off }
+    AHandler := TRALfpNoDelayHandler.Create;
     Exit;
+  end;
 
-  AHandler := TOpenSSLSocketHandler.create;
+  AHandler := TRALfpNoDelaySSLHandler.Create;
 
   { svAlways tambem entra pelo callback, e nao pelo VerifyPeerCert: aquele e'
     SSL_VERIFY_PEER com callback nulo, que derruba o handshake antes de o FPC
@@ -134,7 +197,7 @@ begin
   FHttp := TFPHTTPClient.Create(nil);
   FHttp.AllowRedirect := True;
   FHttp.KeepConnection := True;
-  FHttp.OnGetSocketHandler := @OnGetSSLHandler;
+  FHttp.OnGetSocketHandler := @Self.OnGetSocketHandler;
   FSocketReused := False;
 end;
 

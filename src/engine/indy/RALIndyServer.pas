@@ -76,6 +76,17 @@ begin
   FHttp := TIdHTTPServer.Create(nil);
   FHttp.SessionState := False;
   FHttp.AutoStartSession := True;
+
+  { Indy defaults UseNagle to True, and it writes a response as two sends -
+    header, then content. Nagle holds the second one back until the client
+    acknowledges the first, and the client delays that acknowledgement by its
+    own timer (~40 ms), so every request pays a fixed floor of about 40 ms and
+    a single connection tops out near 10 requests per second. Indy applies
+    this to each listening socket right after Bind, and an accepted socket
+    inherits TCP_NODELAY from the one that accepted it. mORMot2 does the same
+    thing on its own, in TCrtSocket.SetupConnection. }
+  FHttp.UseNagle := False;
+
   MaxConnections := -1;
   ListenQueue := -1;
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);

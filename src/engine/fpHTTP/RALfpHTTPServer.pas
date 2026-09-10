@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
-  HTTPDefs, DateUtils,
+  ssockets, HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;
 
@@ -66,6 +66,8 @@ type
   private
     FHandlers: TThreadList;
   protected
+    { turns Nagle off on the accepted socket - see the implementation }
+    function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
     function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -216,6 +218,25 @@ destructor TRALfpHttpServerCore.Destroy;
 begin
   inherited Destroy;
   FreeAndNil(FHandlers);
+end;
+
+function TRALfpHttpServerCore.CreateConnection(Data: TSocketStream): TFPHTTPConnection;
+var
+  vNoDelay: LongInt;
+begin
+  { fcl-web never sets TCP_NODELAY, and it answers with two sends -
+    DoSendHeaders writes the status line and the headers, DoSendContent the
+    body. Nagle holds the second one back until the client acknowledges the
+    first, and the client delays that acknowledgement by its own timer
+    (~40 ms), so every request pays a fixed floor and a single connection tops
+    out near 10 requests per second. Every other HTTP server disables it:
+    mORMot2 in TCrtSocket.SetupConnection, Indy through
+    TIdCustomTCPServer.UseNagle. This is the accepted socket, so it is the one
+    that carries the answer. }
+  vNoDelay := 1;
+  fpsetsockopt(Data.Handle, IPPROTO_TCP, TCP_NODELAY, @vNoDelay, SizeOf(vNoDelay));
+
+  Result := inherited CreateConnection(Data);
 end;
 
 function TRALfpHttpServerCore.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;

@@ -91,6 +91,14 @@ begin
   FHttp.HTTPOptions := [hoKeepOrigProtocol,
                         {$IF DEFINED(DELPHI10_1UP) OR DEFINED(FPC)}hoWantProtocolErrorContent,{$IFEND}
                         hoNoProtocolErrorException];
+
+  { Same reason as the server: a request carrying a body leaves as two sends,
+    headers then content, and Nagle would hold the content back until the
+    server acknowledges the headers - a fixed ~40 ms on every POST, PUT and
+    PATCH. TIdTCPClientCustom.Connect copies this onto the socket, so it also
+    survives the IOHandler being swapped for the SSL one. }
+  FHttp.UseNagle := False;
+
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
 end;
