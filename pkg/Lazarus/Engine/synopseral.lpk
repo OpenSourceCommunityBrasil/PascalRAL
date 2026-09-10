@@ -25,7 +25,7 @@
       </Other>
     </CompilerOptions>
     <Description Value="Package for installing mORMot2 data engine components for PascalRAL."/>
-    <Version Major="1"/>
+    <Version Major="1" Minor="1"/>
     <Files Count="4">
       <Item1>
         <Filename Value="SynopseRAL.lrs"/>

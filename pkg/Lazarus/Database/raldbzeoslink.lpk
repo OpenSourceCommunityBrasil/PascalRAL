@@ -20,7 +20,7 @@
       </Linking>
     </CompilerOptions>
     <Description Value="Package for ZeosDBO&apos;s DBWare components for PascalRAL."/>
-    <Version Major="1"/>
+    <Version Major="1" Minor="1"/>
     <Files Count="4">
       <Item1>
         <Filename Value="..\..\..\src\database\Zeos\RALDBZeos.pas"/>
