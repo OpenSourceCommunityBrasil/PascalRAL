@@ -492,6 +492,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the ~40 ms per-request stall on the Indy and fpHTTP engines** (2026-09-10 – tempraturbo)
+  Both engines write a response as two sends and left Nagle on, so the second
+  one waited for the peer's delayed acknowledgement: a fixed floor of about
+  40 ms on every request, and about 10 requests per second on one connection.
+  Measured on the Indy sample over a LAN, one thread, 5000 samples: 10 req/s
+  before and 1218 after, with the minimum latency going from 41 ms to 0. At
+  full concurrency it is still worth 54%.
+  TCP_NODELAY now goes on every socket RAL owns: the Indy server and client
+  through UseNagle, the fpHTTP server on the accepted socket and the fpHTTP
+  client through its socket handler. mORMot2 was already doing it on its own;
+  Sagui, netHTTP, UniGUI and CGI give no access to the socket.
+
 - **Fix the mORMot2 client rejecting every certificate on Windows with OpenSSL** (2026-09-08 – tempraturbo)
   Once OpenSSL is loaded, mORMot uses it instead of SChannel - and on Windows
   OpenSSL has no certificate store of its own, so SetupCtx fell back to
