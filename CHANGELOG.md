@@ -492,6 +492,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the Sagui server dying under load with the memory manager unlocked** (2026-09-10 – tempraturbo)
+  Every worker thread of that engine is started inside libsagui/libmicrohttpd
+  and enters Pascal through a cdecl callback, so BeginThread never runs and
+  IsMultiThread stays False. That flag is what the memory manager reads to
+  decide whether to lock at all: LockAllSmallBlockTypes and LockMediumBlocks in
+  getmem.inc both open with "if IsMultiThread then", and so does the assembler
+  path of FastGetMem. A hundred foreign threads then allocate and free on
+  unlocked free lists, the heap corrupts, and the process vanishes with no
+  exception and no dialog - it blows up inside a callback invoked from C.
+  One request at a time is always fine and a handful of threads usually is too:
+  it takes real concurrency for two threads to land in the allocator together.
+  Seen at 100 and at 300 JMeter threads, clean at 1.
+  Indy, mORMot2 and fpHTTP were never affected, for the same reason Sagui was:
+  they all start their workers through TThread, which turns the flag on for the
+  whole process.
+  DoRequestCallback also initialises vStrMap to nil. The block that first
+  assigns it is skipped whenever ValidateRequest already answered 4xx, so a
+  raise before the response headers were built handed FreeAndNil whatever the
+  stack happened to hold - the same silent death, by a narrower path.
+
 - **Fix the ~40 ms per-request stall on the Indy and fpHTTP engines** (2026-09-10 – tempraturbo)
   Both engines write a response as two sends and left Nagle on, so the second
   one waited for the peer's delayed acknowledgement: a fixed floor of about
