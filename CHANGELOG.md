@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Fix races, unbounded growth and per-request locking in the security lists** (2026-09-10 – tempraturbo)
+  TRALSecurity is consulted on every request of every engine, and the lists it
+  keeps were locked three times per request to answer nothing: CheckBlockClientIP
+  asked Exists on the black and white lists whatever the options said, and
+  UnblockClient walked the blocked list on every successful request. All three sit
+  behind IsEmpty now, and IsEmpty reads the count without the lock - the answer was
+  already stale the instant it returned either way. That cost nothing while Nagle
+  held each connection to ten requests a second; at a few thousand a second with
+  hundreds of threads it is a convoy.
+  BlockClient and CheckFlood checked and then inserted through two separate
+  acquisitions. Two threads both found nothing, both built an object, and the
+  sorted list's dupIgnore swallowed the second insert without a word: the loser
+  leaked and the try counter went back to one, so the attempt that should have
+  crossed MaxTry did not. Both hold the lock across the whole sequence now, and so
+  does TRALWebModule.CreateSession, where the same gap between drawing the session
+  GUID and inserting it handed two clients one session.
+  TRALStringListSafe.AddObject reports whether it inserted, which is what makes
+  that trap visible at all.
+  The blocked list grew forever: BlockClient ran from the 401 and 403 labels
+  whatever the options said, nothing read those entries back with
+  rsoBruteForceProtection off, and ClearExpiredIPs refused to prune them. Blocking
+  follows the option now, pruning follows ExpirationTime, and ClearExpiredIPs runs
+  at the top of ValidateRequest instead of the last line, which the 413 and 415
+  branches skip by exiting.
+  A verb outside AllowedMethods answers 405 and counts nothing. It used to land on
+  the 403 label, which counts a failed try and fires OnClientBlock, so three
+  preflights locked an address out for the whole ExpirationTime.
+  Unchanged on purpose and marked in the code: CheckFlood still counts the first
+  request of every address as a flood, because TRALClientList.Create stamps
+  LastAccess with Now.
+
 - **Add SSL.Pin, SSL.Required and OnValidateServerCert to the client** (2026-09-08 – tempraturbo)
   A client can now say which server certificate it accepts, with nothing
   installed on the machine: SSL.Pin holds the SHA-256 of the expected
