@@ -35,7 +35,10 @@ type
     destructor Destroy; override;
 
     procedure Add(const AItem: StringRAL);
-    procedure AddObject(const AItem: StringRAL; AObject: TObject);
+    /// Inserts AItem with AObject. Returns False when AItem was already there:
+    /// the list is sorted with dupIgnore, so nothing is inserted and AObject
+    /// stays with the caller, who must free it or it leaks
+    function AddObject(const AItem: StringRAL; AObject: TObject): boolean;
     procedure Clear(AFreeObjects: boolean = false);
     function Count: IntegerRAL;
     function Exists(const AItem: StringRAL): boolean;
@@ -135,11 +138,19 @@ begin
   end;
 end;
 
-procedure TRALStringListSafe.AddObject(const AItem: StringRAL; AObject: TObject);
+function TRALStringListSafe.AddObject(const AItem: StringRAL; AObject: TObject): boolean;
 begin
   Lock;
   try
-    FValue.AddObject(AItem, AObject);
+    { FValue is Sorted with Duplicates at its default, dupIgnore: AddObject on a
+      key that is already there inserts nothing and reports nothing, so AObject
+      is orphaned on the spot. Saying whether the insert happened is what lets a
+      caller free what it built for nothing - and a caller that has to check and
+      then insert should hold the lock across both through Lock/Unlock, not call
+      this after a separate lookup. }
+    Result := FValue.IndexOf(AItem) < 0;
+    if Result then
+      FValue.AddObject(AItem, AObject);
   finally
     Unlock;
   end;
@@ -178,12 +189,15 @@ end;
 
 function TRALStringListSafe.IsEmpty: boolean;
 begin
-  Lock;
-  try
-    Result := FValue.Count = 0;
-  finally
-    Unlock;
-  end;
+  { deliberately outside the lock. TStringList.Count is a plain field read, and
+    the answer is already stale the instant it returns whether we take the lock
+    or not - a caller can only use it as a hint, never as a decision it then
+    acts on without re-checking. What skipping the lock buys is the hot path:
+    the security lists are empty on almost every server, and ValidateRequest
+    consults two of them on every single request. Taking a critical section to
+    read one integer is free while requests are rare and turns into a convoy
+    once hundreds of threads do it thousands of times a second. }
+  Result := (FValue = nil) or (FValue.Count = 0);
 end;
 
 function TRALStringListSafe.Lock: TStringList;

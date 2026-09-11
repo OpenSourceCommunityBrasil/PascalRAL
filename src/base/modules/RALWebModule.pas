@@ -212,6 +212,10 @@ begin
     Result := vFile;
 end;
 
+{ Proposes a name that is free RIGHT NOW, which is all a separate lookup can
+  ever promise: by the time the caller inserts, another thread may have taken
+  it. Reserving a name means naming and inserting under the same lock, which is
+  what CreateSession does - do not build a session on top of this alone. }
 function TRALWebModule.NewSessionName: StringRAL;
 var
   vGuid: TGuid;
@@ -247,11 +251,31 @@ var
   vSession: TRALParam;
   vWebSession: TRALWebSession;
   vWesSessionName: StringRAL;
+  { Naming and inserting under ONE lock. It used to draw the GUID and ask
+    FSessions.Exists (one lock), then insert with AddObject (another): between
+    the two, another thread could take the same name, and the sorted list's
+    dupIgnore then dropped this insert without a word or an error. The session
+    object was orphaned - a leak - and, worse, the cookie still went out naming
+    it, so the client walked away holding the name of a session that belongs to
+    somebody else. The GUID makes the collision remote, not impossible, and the
+    consequence is not a lost allocation but two clients on one session. }
   function CreateNewSession: TRALWebSession;
+  var
+    vList: TStringList;
+    vGuid: TGuid;
   begin
-    vWesSessionName := NewSessionName;
     Result := TRALWebSession.Create;
-    FSessions.AddObject(vWesSessionName, Result);
+    vList := FSessions.Lock;
+    try
+      repeat
+        CreateGUID(vGuid);
+        vWesSessionName := GUIDToString(vGuid);
+      until vList.IndexOf(vWesSessionName) < 0;
+
+      vList.AddObject(vWesSessionName, Result);
+    finally
+      FSessions.Unlock;
+    end;
   end;
 
 begin

@@ -665,7 +665,7 @@ var
   vRouteIsAuth: boolean;
 
 label
-  aSTATUS, aOK, a401, a403, a404, aFIM;
+  aSTATUS, aOK, a401, a403, a404, a405, aFIM;
 
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
@@ -762,7 +762,7 @@ begin
           goto aOK;
       end
       else
-        goto a403;
+        goto a405;
     end
     else if (ARequest.Query = '/') and (FShowServerStatus) then
       goto aSTATUS
@@ -792,16 +792,29 @@ begin
 
     a401:
     begin
-      Security.BlockClient(ARequest.ClientInfo.IP);
+      { only when the counting is switched on. BlockClient was called from here
+        whatever the options said, and nothing ever read the entry back with
+        rsoBruteForceProtection off, while ClearExpiredIPs only pruned with it
+        on: one permanent object per distinct address that ever failed to
+        authenticate. A scan from varying sources was an unbounded allocation
+        with no protection in exchange. }
+      if rsoBruteForceProtection in Security.Options then
+        Security.BlockClient(ARequest.ClientInfo.IP);
       AResponse.Answer(HTTP_Unauthorized);
       goto aFIM;
     end;
 
     a403:
     begin
-      Security.BlockClient(ARequest.ClientInfo.IP);
-      if Assigned(FOnClientBlock) then
-        FOnClientBlock(Self, ARequest.ClientInfo.IP);
+      { same as a401, and the event follows the block: OnClientBlock says a
+        client WAS blocked, so firing it when nothing was counted reported
+        something that did not happen }
+      if rsoBruteForceProtection in Security.Options then
+      begin
+        Security.BlockClient(ARequest.ClientInfo.IP);
+        if Assigned(FOnClientBlock) then
+          FOnClientBlock(Self, ARequest.ClientInfo.IP);
+      end;
       AResponse.Answer(HTTP_Forbidden);
       goto aFIM;
     end;
@@ -809,6 +822,18 @@ begin
     a404:
     begin
       AResponse.Answer(HTTP_NotFound);
+      goto aFIM;
+    end;
+
+    a405:
+    begin
+      { a verb outside AllowedMethods is not an intrusion attempt. It used to
+        fall into a403, which counts a failed try and fires OnClientBlock, so
+        three requests with the wrong verb - a preflight, a client pointed at
+        the wrong route - locked the address out for the whole ExpirationTime.
+        And the answer for a route that exists but does not take that method is
+        405, not 403. }
+      AResponse.Answer(HTTP_MethodNotAllowed);
       goto aFIM;
     end;
 
@@ -849,6 +874,14 @@ var
   vCheckClientBlock: boolean;
   vCheckFlood: boolean;
 begin
+  { at the top, not at the bottom: the three branches below leave through Exit,
+    so a server answering mostly 413 or 415 never reached the pruning and both
+    lists grew without end. Running it first also means the checks that follow
+    read a list with the expired entries already gone, instead of one turn
+    behind. It costs nothing when there is nothing to prune - both lists answer
+    IsEmpty without taking a lock. }
+  Security.ClearExpiredIPs;
+
   { first, and on the raw size: the engines only decode the body (decompress,
     decrypt, split the multipart) when this leaves the status below 400 }
   if (FMaxRequestSize > 0) and (ARequest.ContentSize > FMaxRequestSize) then
@@ -897,7 +930,6 @@ begin
       AResponse.Answer(HTTP_Forbidden);
     end;
   end;
-  Security.ClearExpiredIPs;
 end;
 
 function TRALServer.CreateRequest: TRALRequest;
@@ -1058,19 +1090,38 @@ end;
 procedure TRALSecurity.BlockClient(const AClientIP: StringRAL);
 var
   vBlock: TRALClientBlockList;
+  vList: TStringList;
+  vIndex: IntegerRAL;
 begin
-  if (not FWhiteIPList.Exists(AClientIP)) then
-  begin
-    vBlock := GetBlockClient(AClientIP);
-    if (vBlock = nil) then
+  if (not FWhiteIPList.IsEmpty) and (FWhiteIPList.Exists(AClientIP)) then
+    Exit;
+
+  { the whole check-and-insert under ONE lock. It used to be GetBlockClient -
+    which locks, reads and unlocks - followed by AddObject, which locks again:
+    two threads could both find nothing, both build a TRALClientBlockList, and
+    the second insert was then swallowed by the sorted list's dupIgnore. The
+    loser's object leaked and the try counter went back to one, so the attempt
+    that should have crossed MaxTry did not. The window only opens under
+    concurrency, which is exactly when brute-force counting has to be right. }
+  vList := FBlockedList.Lock;
+  try
+    vIndex := vList.IndexOf(AClientIP);
+    if vIndex >= 0 then
+    begin
+      vBlock := TRALClientBlockList(vList.Objects[vIndex]);
+    end
+    else
     begin
       vBlock := TRALClientBlockList.Create;
-      FBlockedList.AddObject(AClientIP, vBlock);
+      vList.AddObject(AClientIP, vBlock);
     end;
+
     vBlock.NumTry := vBlock.NumTry + 1;
     { the expiration counts from the LAST failed try: an attacker that keeps
       trying stays blocked, and a client that stopped is forgiven in time }
     vBlock.LastAccess := Now;
+  finally
+    FBlockedList.Unlock;
   end;
 end;
 
@@ -1087,36 +1138,78 @@ begin
     failed once, and testing membership alone locked an IP out at the first
     wrong password, whatever MaxTry said. A successful login clears the
     counter (ProcessCommands unblocks on the way to the route) }
-  vMax := FBruteForce.MaxTry;
-  if vMax < 1 then
-    vMax := 1;
-  Result := (((rsoBruteForceProtection in Options) and
-              (GetBlockClientTry(AClientIP) >= vMax)) or
-    (FBlackIPList.Exists(AClientIP))) and (not FWhiteIPList.Exists(AClientIP));
+  { Same verdict as before - (blocked by tries OR black-listed) AND NOT
+    white-listed - but asking each list only when it can possibly answer yes.
+    This runs on every request of every engine, and each Exists takes a
+    critical section shared by all of them; with the lists empty, which is the
+    default and the common case, that was two acquisitions per request buying
+    nothing. Free while requests are rare, a convoy at a few thousand a second
+    with hundreds of threads. IsEmpty reads the count without locking - see
+    TRALStringListSafe.IsEmpty for why that is honest. }
+  Result := False;
+
+  if rsoBruteForceProtection in Options then
+  begin
+    vMax := FBruteForce.MaxTry;
+    if vMax < 1 then
+      vMax := 1;
+    Result := GetBlockClientTry(AClientIP) >= vMax;
+  end;
+
+  if (not Result) and (not FBlackIPList.IsEmpty) then
+    Result := FBlackIPList.Exists(AClientIP);
+
+  if Result and (not FWhiteIPList.IsEmpty) then
+    Result := not FWhiteIPList.Exists(AClientIP);
 end;
 
 function TRALSecurity.CheckFlood(const AClientIP: StringRAL): boolean;
 var
   vInterval: Int64RAL;
   vFlood: TRALClientList;
+  vList: TStringList;
+  vIndex: IntegerRAL;
+  vLastAccess: TDateTime;
 begin
   Result := False;
-  if rsoFloodProtection in Options then
-  begin
-    vFlood := GetClientList(AClientIP);
-    if vFlood = nil then
+  if not (rsoFloodProtection in Options) then
+    Exit;
+
+  { check-and-insert under one lock, same reason as BlockClient: the pair
+    GetClientList + AddObject let two threads build two TRALClientList for the
+    same address, and dupIgnore dropped one of them on the floor. Reading and
+    replacing LastAccess inside the same lock also keeps the interval of two
+    simultaneous requests from being measured against a value one of them has
+    already overwritten. CheckBlockClientIP is asked afterwards, outside, so
+    this lock is never held while another is taken. }
+  vList := FFloodList.Lock;
+  try
+    vIndex := vList.IndexOf(AClientIP);
+    if vIndex >= 0 then
+    begin
+      vFlood := TRALClientList(vList.Objects[vIndex]);
+    end
+    else
     begin
       vFlood := TRALClientList.Create;
-      FFloodList.AddObject(AClientIP, vFlood);
+      vList.AddObject(AClientIP, vFlood);
     end;
 
-    vInterval := MilliSecondsBetween(Now, vFlood.LastAccess);
-
-    if (CheckBlockClientIP(AClientIP)) or (vInterval <= FFloodTimeInterval) then
-      Result := True;
-
+    vLastAccess := vFlood.LastAccess;
     vFlood.LastAccess := Now;
+  finally
+    FFloodList.Unlock;
   end;
+
+  vInterval := MilliSecondsBetween(Now, vLastAccess);
+
+  { unchanged on purpose, including the part that surprises: TRALClientList
+    .Create stamps LastAccess with Now, so a brand new address measures an
+    interval of zero and the FIRST request of every client counts as a flood.
+    Changing that is a decision about what the protection means, not a
+    refactor, so it stays as it was }
+  if (CheckBlockClientIP(AClientIP)) or (vInterval <= FFloodTimeInterval) then
+    Result := True;
 end;
 
 procedure TRALSecurity.ClearExpiredIPs;
@@ -1125,17 +1218,19 @@ var
   vBlock: TRALClientBlockList;
   vIdle: Int64RAL;
 begin
-  if rsoBruteForceProtection in Options then
+  { No longer gated on rsoBruteForceProtection. BlockClient is reached from the
+    401 and 403 paths and from an application calling it directly, so entries
+    exist whether or not the option is on - and while the pruning was gated,
+    every distinct address that ever failed stayed in the list for the life of
+    the process. Expiration is what decides here, not the option: zero still
+    means never expire, and with it set the list is bounded again. }
+  if (BruteForce.ExpirationTime > 0) and (not FBlockedList.IsEmpty) then
   begin
-    // 0 means no expiration
-    if BruteForce.ExpirationTime > 0 then
+    for vInt := Pred(FBlockedList.Count) downto 0 do
     begin
-      for vInt := Pred(FBlockedList.Count) downto 0 do
-      begin
-        vBlock := TRALClientBlockList(FBlockedList.GetObject(vInt));
-        if MilliSecondsBetween(Now, vBlock.LastAccess) >= BruteForce.ExpirationTime then
-          FBlockedList.Remove(vInt, True);
-      end;
+      vBlock := TRALClientBlockList(FBlockedList.GetObject(vInt));
+      if MilliSecondsBetween(Now, vBlock.LastAccess) >= BruteForce.ExpirationTime then
+        FBlockedList.Remove(vInt, True);
     end;
   end;
 
@@ -1143,7 +1238,7 @@ begin
     scan from random sources was a memory leak. An entry only matters for
     FloodTimeInterval after its last access; anything idle for a minute (or
     a generous multiple of the interval) cannot be flooding any more }
-  if rsoFloodProtection in Options then
+  if not FFloodList.IsEmpty then
   begin
     vIdle := 60000;
     if Int64RAL(FFloodTimeInterval) * 10 > vIdle then
@@ -1277,6 +1372,14 @@ end;
 
 procedure TRALSecurity.UnblockClient(const AClientIP: StringRAL);
 begin
+  { ProcessCommands calls this on the way to every route that answers, so this
+    runs on every SUCCESSFUL request - the hottest path there is. Remove takes
+    the lock and walks the list; with nothing blocked, which is the normal
+    state of a server, that was a critical section per request for a list that
+    has nothing to remove. }
+  if FBlockedList.IsEmpty then
+    Exit;
+
   FBlockedList.Remove(AClientIP, True);
 end;
 
