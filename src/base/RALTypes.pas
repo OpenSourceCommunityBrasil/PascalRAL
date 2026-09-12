@@ -99,9 +99,13 @@ type
     rteOther,
     /// the TLS handshake failed over the server certificate - refused by the
     /// engine's own validation, by SSL.Pin or by OnValidateServerCert
-    /// - last on purpose: the four values above keep their ordinal, and
-    /// CanSwitchURL's "else" already declines to resend what it does not know
-    rteCertificate);
+    rteCertificate,
+    /// the application refused the attempt from OnBeforeExecute, so nothing
+    /// went out and there is nothing to resend
+    /// - new values are APPENDED, never inserted: every value above keeps its
+    ///   ordinal, and CanSwitchURL's "else" already declines to resend what it
+    ///   does not know
+    rteCancelled);
 
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL

@@ -13,6 +13,7 @@
   emCertNotInspectable = 'The %s engine could not inspect the server certificate on this connection, so SSL.Pins and OnValidateServerCert cannot be applied. Use the Indy engine.';
   emCertPinInvalid = 'Every SSL.Pins line must end in the SHA-256 of the certificate: 64 hex digits, with or without separators.';
   emCertPinUnsupported = 'SSL.Pins is not supported by the %s engine on this platform: it cannot read the certificate fingerprint. Use the Indy engine, or decide in OnValidateServerCert.';
+  emRequestCancelled = 'The request was refused by OnBeforeExecute: %s.';
   emCertRejected = 'Server certificate refused.';
   emCertRequiresTLS = 'SSL.Required is set, or a line of SSL.Pins applies to this host, so plain http is refused: %s.';
   emCompressInvalidFormat = 'Invalid compression Format.';

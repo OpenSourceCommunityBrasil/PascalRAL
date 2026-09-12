@@ -161,6 +161,20 @@ Two engine traps live under this:
 
 Verified with `testes_ral_matriz/timeout` (repro `tmout.dpr`, verifier `tmfix.dpr` + `fpc/tmfixfpc.lpr`), across Indy, mORMot2, netHTTP and fpHTTP.
 
+### The application's own say over each attempt (`OnBeforeExecute`/`OnAfterExecute`)
+
+`TRALClient.OnBeforeExecute` and `OnAfterExecute` live in `TRALClientHTTP.BeforeSendUrl` — the same single funnel as the resend above — so **one implementation serves every engine on both compilers**: no engine unit knows they exist, and `ExecuteThread`, `ExecuteSingle` and `TRALThreadClient` all pass through them.
+
+They report an **attempt, not a call**, and that is deliberate: `BeforeSendUrl` rotates `BaseURL` on a transport failure and repeats once on a 401, so one `Post` can be three attempts. Each reports itself with `TRALExecInfo.Attempt` one higher; collapsing them would hide the failover and time the wrong thing. Whoever wants the call rather than the attempt ignores `Attempt > 1`. Fields the client cannot know yet come back empty, never invented — the same rule as `TRALCertInfo`.
+
+`OnBeforeExecute` runs **after** the URL is settled and the TLS policy for it enforced, and **before any network work at all** — the `AutoGetToken` fetch included, since that one is a request of its own: whoever refuses for lack of connectivity should not pay for a token round trip first. `AInfo` is `const` on purpose (rewriting the URL there would slip past the pin decided just above), while `ARequest` is not — adding a header or a param is the point of the hook.
+
+Setting `ACancel` fails the attempt with `TransportError = rteCancelled` and raises, instead of the application having to raise from inside the engine's stack. `rteCancelled` is **appended** to `TRALTransportError`, so every existing value keeps its ordinal and `CanSwitchURL`'s `else` already declines to resend it — nothing went out, so there is nothing to resend anywhere. `ACancelReason`, when given, *becomes* the message verbatim; left empty, RAL uses `emRequestCancelled` with the URL.
+
+`OnAfterExecute` **always pairs with `OnBeforeExecute`** — including when the attempt raised, and including when the application itself refused it, which is why the refusal is raised from *inside* the `try` whose `finally` calls it. A handler may therefore count in one and discount in the other without ever losing a pair. `TRALExecInfo.ErrorMessage` comes from `ExceptObject`, not from `AResponse`: an exception that never reached `SetTransportError` would otherwise arrive indistinguishable from success. Both hooks run on the **calling** thread with no `Synchronize`, so under the default `ebMultiThread` they run on the `TRALThreadClient` and not on the main thread — reaching the UI from there is the handler's own business.
+
+`CopyProperties` carries both, next to `SSL` and `OnValidateServerCert`: the DAO clones its client, and a clone that lost the hooks would stop reporting.
+
 ### A published `default` that disagrees with the constructor silently wins
 
 `TRALClient.ConnectTimeout` declared `default 5000` while the constructor set 30000, and `RequestTimeout` declared `default 30000` while the constructor set 10000 — the two were swapped. The directive is not decoration: streaming skips writing a property whose value equals it, so typing exactly `5000` into the Object Inspector produced a `.dfm` with no `ConnectTimeout` at all and a component that ran with 30000. It never showed up in code-driven tests, where `default` has no effect whatsoever — only in the normal use, dropping the component on a form.

@@ -3,7 +3,7 @@
 interface
 
 uses
-  Classes, SysUtils, SyncObjs,
+  Classes, SysUtils, SyncObjs, DateUtils,
   RALCustomObjects, RALTypes, RALAuthentication, RALRequest, RALResponse,
   RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJSON, RALParams,
   RALMimeTypes;
@@ -44,6 +44,62 @@ type
   /// the decision away from both the pin and the engine: it is the last word.
   TRALOnValidateCert = function(ASender: TObject;
                                 const ACert: TRALCertInfo): boolean of object;
+
+  { TRALExecInfo }
+
+  /// One ATTEMPT of one request - what the client is about to do, or has just
+  /// done. An attempt is not a call: BeforeSendUrl rotates BaseURL on a
+  /// transport failure and repeats once on a 401, and each pass reports itself
+  /// with Attempt one higher. Collapsing them would hide the failover and
+  /// report the wrong latency, so they come as they happen, and whoever wants
+  /// the call instead of the attempt ignores Attempt > 1.
+  /// Fields the client cannot know yet come back empty, never invented - the
+  /// same rule as TRALCertInfo.
+  TRALExecInfo = record
+    /// the URL of THIS attempt, already after the BaseURL rotation
+    URL: StringRAL;
+    Method: TRALMethod;
+    /// 1-based
+    Attempt: IntegerRAL;
+    /// which engine carried it, for an application that mixes engines
+    Engine: StringRAL;
+    /// milliseconds the attempt took - OnAfterExecute only, zero on Before
+    Elapsed: Int64RAL;
+    /// OnAfterExecute only; zero when no HTTP response happened
+    StatusCode: IntegerRAL;
+    /// OnAfterExecute only
+    TransportError: TRALTransportError;
+    /// OnAfterExecute only: the message of whatever ended the attempt, empty
+    /// when nothing did. It is not AResponse.ResponseText: an exception that
+    /// never reached SetTransportError would otherwise arrive indistinguishable
+    /// from success
+    ErrorMessage: StringRAL;
+  end;
+
+  /// Called before each attempt goes out - after RAL settled the URL and
+  /// enforced the TLS policy for it, and BEFORE any network work, the token
+  /// fetch included, since that one is a request of its own.
+  /// - set ACancel to refuse the attempt: RAL fails it with rteCancelled, the
+  ///   same way it fails a refused pin, instead of the application having to
+  ///   raise through the engine's stack
+  /// - ACancelReason, when given, BECOMES the message, verbatim; left empty,
+  ///   RAL uses its own text with the URL. Only read when ACancel is True
+  /// - AInfo is read-only on purpose: rewriting the URL here would slip past
+  ///   the pin and the TLS check decided just above. ARequest is not - adding a
+  ///   header or a param is the point of the hook
+  TRALOnBeforeExecute = procedure(ASender: TObject; ARequest: TRALRequest;
+                                  const AInfo: TRALExecInfo;
+                                  var ACancel: boolean;
+                                  var ACancelReason: StringRAL) of object;
+
+  /// Called when the attempt ends, whatever ended it - a response, a transport
+  /// failure, an exception, or OnBeforeExecute refusing it. It ALWAYS pairs
+  /// with OnBeforeExecute, so a handler may count in one and discount in the
+  /// other. It runs on the calling thread, with no Synchronize: reaching the UI
+  /// from here is the handler's own business.
+  TRALOnAfterExecute = procedure(ASender: TObject; ARequest: TRALRequest;
+                                 AResponse: TRALResponse;
+                                 const AInfo: TRALExecInfo) of object;
 
   /// What the ENGINE itself does about the server certificate - the pin and
   /// OnValidateServerCert are a separate question, and when either is set it is
@@ -247,6 +303,8 @@ type
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
     FMaxRedirects: IntegerRAL;
+    FOnAfterExecute: TRALOnAfterExecute;
+    FOnBeforeExecute: TRALOnBeforeExecute;
     FOnResponse: TRALThreadClientResponse;
     FOnValidateServerCert: TRALOnValidateCert;
     FRequestTimeout: IntegerRAL;
@@ -353,6 +411,12 @@ type
     /// TLS options - see TRALClientSSL
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
+    /// Runs before each attempt leaves, and may refuse it - see TRALOnBeforeExecute
+    property OnBeforeExecute: TRALOnBeforeExecute read FOnBeforeExecute
+                                                  write FOnBeforeExecute;
+    /// Runs when each attempt ends, whatever ended it - see TRALOnAfterExecute
+    property OnAfterExecute: TRALOnAfterExecute read FOnAfterExecute
+                                                write FOnAfterExecute;
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
     /// Judges the server certificate yourself. Assigned, it is the last word:
     /// it overrides both SSL.Pin and the engine's own verdict, and receives
@@ -374,6 +438,9 @@ type
   /// whatever the stack held. Default(T) would do it, and does not exist on
   /// the older compilers RAL still supports
   function RALEmptyCertInfo: TRALCertInfo;
+  /// A TRALExecInfo with every field zeroed - what the client starts from, so
+  /// no field ever reaches a handler carrying what was on the stack
+  function RALEmptyExecInfo: TRALExecInfo;
   /// Splits "host", "host:port" or "[ipv6]:port" - the very format of the left
   /// side of an SSL.Pins line, published so that whatever writes that config
   /// can read it back the same way. An IPv6 without brackets is all host,
@@ -671,6 +738,11 @@ begin
     of what the pin was set for - and the DAO clones its client }
   ADest.SSL := Self.SSL;
   ADest.OnValidateServerCert := Self.OnValidateServerCert;
+
+  { a clone that lost the hooks would stop reporting, and the DAO clones its
+    client }
+  ADest.OnBeforeExecute := Self.OnBeforeExecute;
+  ADest.OnAfterExecute := Self.OnAfterExecute;
 end;
 
 procedure TRALClient.SetAuthentication(AValue: TRALAuthClient);
@@ -1043,6 +1115,18 @@ begin
     RALSplitHostPort(Copy(ALine, 1, vIgual - 1), AHost, APort);
 end;
 
+function RALEmptyExecInfo: TRALExecInfo;
+begin
+  Result.URL := '';
+  Result.Method := amGET;
+  Result.Attempt := 0;
+  Result.Engine := '';
+  Result.Elapsed := 0;
+  Result.StatusCode := 0;
+  Result.TransportError := rteNone;
+  Result.ErrorMessage := '';
+end;
+
 function RALEmptyCertInfo: TRALCertInfo;
 begin
   Result.Fingerprint := '';
@@ -1195,8 +1279,10 @@ procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;
 var
   vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
-  vURL: StringRAL;
-  vRepeat, vTriedToken: boolean;
+  vURL, vCancelReason: StringRAL;
+  vRepeat, vTriedToken, vCancel: boolean;
+  vInfo: TRALExecInfo;
+  vStart: TDateTime;
 begin
   vConta := 0;
   vTriedToken := False;
@@ -1247,8 +1333,39 @@ begin
     // freed pointer - or, when the token already existed and the block did not
     // run at all, an uninitialised variable. Neither Basic nor JWT read this
     // argument, but Digest and OAuth do.
+    { The application's own say over THIS attempt. It runs here, with the URL
+      and the TLS policy for it already settled, and BEFORE any network work -
+      the token fetch below included, since that one is a request of its own:
+      whoever refuses for lack of connectivity should not pay for it. }
+    vCancel := False;
+    vCancelReason := '';
+    vStart := Now;
+
+    if Assigned(FParent.OnBeforeExecute) or Assigned(FParent.OnAfterExecute) then
+    begin
+      vInfo := RALEmptyExecInfo;
+      vInfo.URL := vURL;
+      vInfo.Method := AMethod;
+      vInfo.Attempt := vConta + 1;
+      vInfo.Engine := EngineName;
+    end;
+
+    if Assigned(FParent.OnBeforeExecute) then
+      FParent.OnBeforeExecute(FParent, ARequest, vInfo, vCancel, vCancelReason);
+
     vParams := TStringList.Create;
     try
+      { the refusal lives INSIDE this try so that the OnAfterExecute in the
+        finally below covers it as well - a handler may count in one event and
+        discount in the other without ever losing a pair }
+      if vCancel then
+      begin
+        if vCancelReason = '' then
+          vCancelReason := StringRAL(Format(emRequestCancelled, [vURL]));
+        SetTransportError(AResponse, rteCancelled, 0, vCancelReason);
+        raise Exception.Create(string(vCancelReason));
+      end;
+
       vParams.Sorted := True;
       vParams.Add('method=' + RALMethodToHTTPMethod(AMethod));
       vParams.Add('url=' + vURL);
@@ -1282,6 +1399,22 @@ begin
       end;
     finally
       FreeAndNil(vParams);
+
+      { Always paired with OnBeforeExecute - including when the attempt raised,
+        and including when the application refused it. ExceptObject is whatever
+        is unwinding right now, and it is the only way to name the failure here
+        without wrapping the whole attempt in one more try just to catch it and
+        re-raise. }
+      if Assigned(FParent.OnAfterExecute) then
+      begin
+        vInfo.Elapsed := MilliSecondsBetween(Now, vStart);
+        vInfo.StatusCode := AResponse.StatusCode;
+        vInfo.TransportError := AResponse.TransportError;
+        if ExceptObject is Exception then
+          vInfo.ErrorMessage := StringRAL(Exception(ExceptObject).Message);
+
+        FParent.OnAfterExecute(FParent, ARequest, AResponse, vInfo);
+      end;
     end;
 
     vConta := vConta + 1;

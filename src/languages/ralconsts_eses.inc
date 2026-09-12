@@ -13,6 +13,7 @@
   emCertNotInspectable = 'El motor %s no pudo inspeccionar el certificado del servidor en esta conexión, por lo que SSL.Pins y OnValidateServerCert no pueden aplicarse. Use el motor Indy.';
   emCertPinInvalid = 'Cada línea de SSL.Pins debe terminar en el SHA-256 del certificado: 64 dígitos hexadecimales, con o sin separadores.';
   emCertPinUnsupported = 'SSL.Pins no es compatible con el motor %s en esta plataforma: no puede leer la huella digital del certificado. Use el motor Indy o decida en OnValidateServerCert.';
+  emRequestCancelled = 'La solicitud fue rechazada por OnBeforeExecute: %s.';
   emCertRejected = 'Certificado del servidor rechazado.';
   emCertRequiresTLS = 'SSL.Required está definido, o una línea de SSL.Pins aplica a este host, por lo que se rechaza http sin cifrar: %s.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';

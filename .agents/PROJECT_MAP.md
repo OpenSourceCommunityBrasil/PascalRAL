@@ -253,6 +253,18 @@ Lazarus
    única — evento, senão pin, senão o veredito do próprio engine. Sem pin e sem evento
    nada muda, inclusive o fato de Indy e fpHTTP não validarem certificado por padrão.
    Ver `CLAUDE.md`, "Which server certificate a client accepts".
+7. `OnBeforeExecute` e `OnAfterExecute` também moram no `TRALClient` e também rodam
+   dentro do `BeforeSendUrl`, então valem para os seis engines em Delphi e FPC sem
+   tocar em unit de engine nenhuma. Eles dão à aplicação a palavra sobre **cada
+   tentativa**: o primeiro roda depois da URL e da política de TLS dela decididas e
+   antes de qualquer trabalho de rede (inclusive a busca de token), pode acrescentar
+   header ou param no `ARequest` e pode recusar a tentativa com `ACancel` +
+   `ACancelReason`, que falha com `rteCancelled`; o segundo roda quando a tentativa
+   termina, seja como for que ela termine, e sempre pareado com o primeiro.
+   `TRALExecInfo` leva URL, método, tentativa (1-based), engine, `Elapsed` em ms,
+   `StatusCode`, `TransportError` e `ErrorMessage`. Tentativa não é chamada: o failover
+   e o reenvio do 401 disparam o par de novo, com `Attempt` maior. Ver `CLAUDE.md`,
+   "The application's own say over each attempt".
 
 ### 4.3) DBWare
 
