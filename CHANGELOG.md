@@ -114,6 +114,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Add OnBeforeExecute and OnAfterExecute to the client** (2026-09-12 – tempraturbo)
+  Both live in TRALClientHTTP.BeforeSendUrl, the single funnel every engine
+  already goes through, so one implementation serves all six engines on Delphi
+  and FPC without touching an engine unit.
+  They report an attempt, not a call: the BaseURL failover and the 401 resend
+  fire the pair again with Attempt one higher, which is the only way a handler
+  can see the failover and time the right thing.
+  OnBeforeExecute runs after the URL and its TLS policy are settled and before
+  any network work, the token fetch included, and may refuse the attempt through
+  ACancel/ACancelReason - failing it with the new rteCancelled, appended so every
+  existing TRALTransportError value keeps its ordinal and CanSwitchURL's else
+  already declines to resend it. OnAfterExecute always pairs with it, the refusal
+  included, so a handler may count in one and discount in the other.
+
 - **Speed up the request path; fix StringToBytesUTF8 destroying invalid bytes** (2026-09-10 – tempraturbo)
   The class registries kept only the class NAME and went through GetClass on
   every lookup, and System.Classes.GetClass takes MonitorEnter on the RTL class
