@@ -265,6 +265,13 @@ Lazarus
    `StatusCode`, `TransportError` e `ErrorMessage`. Tentativa não é chamada: o failover
    e o reenvio do 401 disparam o par de novo, com `Attempt` maior. Ver `CLAUDE.md`,
    "The application's own say over each attempt".
+8. O autenticador do cliente e' COMPARTILHADO de proposito (Authentication usa
+   FreeNotification, nao posse), entao o que ele guarda entre requisicoes e' tocado
+   por todas as threads dos clientes que o dividem. A trava disso e'
+   `TRALAuthClient.Lock`/`Unlock` - no autenticador, nao no cliente, porque o
+   `LockSession` so protegia um cliente contra ele mesmo. O `BeforeSendUrl` a segura
+   durante todo o `SetAuthToken`, o que transforma N clientes sem token em UM
+   `/gettoken` em vez de N. Ver `CLAUDE.md`, "One authenticator, many clients".
 
 ### 4.3) DBWare
 

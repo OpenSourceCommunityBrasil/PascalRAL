@@ -4,7 +4,7 @@ unit RALAuthentication;
 interface
 
 uses
-  Classes, SysUtils, DateUtils,
+  Classes, SysUtils, DateUtils, SyncObjs,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
   RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder,
   RALMIMETypes;
@@ -52,14 +52,28 @@ type
   { TRALAuthClient }
 
   /// Base class of client components' Authenticator
+  /// One authenticator is meant to be SHARED by several clients - Authentication
+  /// takes a FreeNotification, never ownership - so whatever an authenticator
+  /// keeps between requests is touched by every thread those clients run on.
+  /// Lock/Unlock is that guard, and it lives here rather than on TRALClient
+  /// because a per-client lock cannot serialise what the clients share.
   TRALAuthClient = class(TRALAuthentication)
   private
     FAutoGetToken: boolean;
+    FCritAuth: TCriticalSection;
     FOnBeforeGetToken: TRALOnBeforeGetToken;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     function IsAuthenticated: boolean; virtual;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
+
+    /// Serialises everything that reads or writes the authenticator's own state.
+    /// Reentrant, like the critical section behind it: the client holds it
+    /// around the whole token fetch, and the SetToken that ends the fetch takes
+    /// it again on the same thread.
+    procedure Lock;
+    procedure Unlock;
 
     property OnBeforeGetToken: TRALOnBeforeGetToken read FOnBeforeGetToken
       write FOnBeforeGetToken;
@@ -136,8 +150,18 @@ type
     destructor Destroy; override;
     function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
+
+    /// Reads one claim of the token currently held, under the lock.
+    /// This is the thread-safe way in: the raw Payload below is an object this
+    /// class rewrites whenever a token arrives, so reading it while another
+    /// thread refreshes the token walks its lists mid-swap.
+    function GetClaim(const AKey: StringRAL): StringRAL;
   published
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
+    /// The decoded claims of the current token. Held between requests and
+    /// REPLACED on every SetToken, so anything reading it from another thread
+    /// has to hold Lock for as long as it uses what it read - or call GetClaim,
+    /// which does that for a single claim.
     property Payload: TRALJWTParams read FPayload write FPayload;
     property Route: StringRAL read FRoute write SetRoute;
     property Token: StringRAL read FToken write SetToken;
@@ -288,6 +312,23 @@ constructor TRALAuthClient.Create(AOwner: TComponent);
 begin
   inherited;
   FAutoGetToken := True;
+  FCritAuth := TCriticalSection.Create;
+end;
+
+destructor TRALAuthClient.Destroy;
+begin
+  FreeAndNil(FCritAuth);
+  inherited;
+end;
+
+procedure TRALAuthClient.Lock;
+begin
+  FCritAuth.Acquire;
+end;
+
+procedure TRALAuthClient.Unlock;
+begin
+  FCritAuth.Release;
 end;
 
 function TRALAuthClient.IsAuthenticated: boolean;
@@ -848,13 +889,40 @@ end;
 
 function TRALClientJWTAuth.IsAuthenticated: boolean;
 begin
-  Result := FToken <> '';
+  Lock;
+  try
+    Result := FToken <> '';
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALClientJWTAuth.GetClaim(const AKey: StringRAL): StringRAL;
+begin
+  Lock;
+  try
+    Result := FPayload.GetClaim(AKey);
+  finally
+    Unlock;
+  end;
 end;
 
 procedure TRALClientJWTAuth.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
+var
+  vToken: StringRAL;
 begin
-  if FToken <> '' then
-    AParams.AddParam('Authorization', 'Bearer ' + FToken, rpkHEADER);
+  { copied out under the lock and used from the copy: reading FToken twice - once
+    to test it, once to build the header - could otherwise pick up two different
+    values and send half a token }
+  Lock;
+  try
+    vToken := FToken;
+  finally
+    Unlock;
+  end;
+
+  if vToken <> '' then
+    AParams.AddParam('Authorization', 'Bearer ' + vToken, rpkHEADER);
 end;
 
 procedure TRALClientJWTAuth.SetRoute(const AValue: StringRAL);
@@ -868,10 +936,25 @@ procedure TRALClientJWTAuth.SetToken(const AValue: StringRAL);
 var
   vStr: TStringList;
   vInt: IntegerRAL;
-  vValue: StringRAL;
+  vValue, vPayload: StringRAL;
+  vOk: boolean;
 begin
-  FToken := '';
+  { Not an assignment: this splits the token, decodes a segment and rewrites
+    FPayload, which is an OBJECT. Several clients share one authenticator, so
+    several threads reach here at once whenever a token expires - each 401
+    resets it and asks for another. Unguarded, that is a data race on a
+    refcounted string AND on FPayload's own lists.
+
+    Two rules here, and the second is not cosmetic:
+    - it all happens under Lock;
+    - nothing is published until it is known good. Clearing FToken first, the
+      way this used to, made every OTHER thread read IsAuthenticated = False
+      during the decode and go fetch a token of its own - so a single expiry
+      turned into one /gettoken per client. }
   vValue := AValue;
+  vPayload := '';
+  vOk := False;
+
   vStr := TStringList.Create;
   try
     repeat
@@ -891,11 +974,28 @@ begin
       { the segments are base64url (RFC 7515): "-" and "_" instead of "+"
         and "/", no padding. Decoding them as plain base64 left any claim
         whose bytes hit those two characters unreadable on the client }
-      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
-      FToken := AValue;
+      vPayload := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
+      vOk := True;
     end;
   finally
     vStr.Free;
+  end;
+
+  Lock;
+  try
+    if vOk then
+    begin
+      FPayload.AsJSON := vPayload;
+      FToken := AValue;
+    end
+    else
+    begin
+      { a token that does not parse leaves the client unauthenticated, exactly
+        as before - and FPayload keeps whatever it had, also as before }
+      FToken := '';
+    end;
+  finally
+    Unlock;
   end;
 end;
 

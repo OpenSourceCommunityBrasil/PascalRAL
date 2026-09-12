@@ -578,6 +578,23 @@ Still there on purpose: `TRALClientList.Create` stamps `LastAccess` with `Now`, 
 
 Auth (`src/base/plugins/RALAuthentication.pas`) is symmetric by design: every scheme ships a `TRALClient*`/`TRALServer*` pair (Basic, JWT, OAuth, OAuth2, Digest) descending from `TRALAuthClient`/`TRALAuthServer`.
 
+### One authenticator, many clients — and the lock that has to follow
+
+`TRALClient.Authentication` takes a `FreeNotification`, never ownership, so **one authenticator is meant to be shared by several clients** — and applications do exactly that: `TRALFDQuery` needs one client per dataset (the `Request` is one object per client), and all of them want the same token. Everything an authenticator keeps between requests is therefore touched by every thread those clients run on.
+
+`TRALAuthClient.Lock`/`Unlock` is that guard. It lives on the authenticator, **not** on the client, because a per-client lock cannot serialise what the clients share: `TRALClient.LockSession` only ever protected a client against itself. `TRALClientHTTP.BeforeSendUrl` now holds the authenticator's lock across the whole `SetAuthToken`, which is what turns N clients discovering "no token" into **one** `/gettoken` instead of N — each one being a full round trip and a full handler on the server. It is reentrant on purpose, and both compilers agree it can be: `SetAuthToken` → `SetTokenJWT` calls `IsAuthenticated` and assigns `Token` on the same thread that already holds it (Win32 `CRITICAL_SECTION` is recursive; FPC's `InitCriticalSection` asks for `PTHREAD_MUTEX_RECURSIVE` in `cthreads.pp`).
+
+`TRALClientJWTAuth.SetToken` is where this stopped being theoretical. It is not an assignment: it splits the token, base64url-decodes a segment and rewrites `FPayload`, which is an **object**. Two rules now hold there, and the second is not cosmetic:
+
+- it all happens under the lock;
+- **nothing is published until it is known good.** Clearing `FToken` as the first statement, the way it used to, made every *other* thread read `IsAuthenticated = False` during the decode and go fetch a token of its own — so a single expiry turned into one `/gettoken` per client even when the refresh was succeeding.
+
+Measured before the change, with eight clients on one authenticator: 8 concurrent `/gettoken` where one was enough, and a hammer on `SetToken` (8 threads × 30 000 real JWTs) produced **239 768 exceptions out of 240 000 writes** — `EAccessViolation` writing to `0x8`/`0x0`, `EInvalidPointer`, and `EStringListError: TStringList is empty` from the payload's own lists being read mid-swap. After: **1** `/gettoken`, and **0** exceptions with 0 torn token/payload pairs over the same hammer.
+
+`Payload` stays published because callers configure it, but it is the one thing the lock cannot cover for you: it is an object this class *replaces* on every `SetToken`, so reading it from another thread needs `Lock` held for as long as you use what you read. `GetClaim(AKey)` does that for a single claim and is the thread-safe way in.
+
+The other client authenticators (Basic, OAuth, OAuth2, Digest) keep no per-request mutable state — none of them writes a field in `SetAuthHeader` — so the lock sits on the base class for them to use, and only JWT needs it today. Nothing changed on the server side: `TRALServerJWTAuth`'s fields are written in the constructor and the configuration setters, and read-only while requests run.
+
 ### Database connection pool
 `TRALDBConnectionPool` (`src/database/RALDBPool.pas`) sits between `TRALDBModule` and the driver. Every DBWare route takes a connection with `AcquireDatabase(ARequest, AResponse)` and gives it back in a `finally` with `ReleaseDatabase(vDB)` — never construct a `TRALDBBase` in a route. Configuration is `TRALDBModule.PoolOptions` (`TRALDBPoolOptions`), **off by default**: with `Enabled = False` `Acquire` builds a fresh driver per request and `Release` frees it, which is the pre-pool behavior exactly.
 

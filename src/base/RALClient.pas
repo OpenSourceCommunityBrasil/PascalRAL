@@ -1374,12 +1374,19 @@ begin
          (not FParent.Authentication.IsAuthenticated) and
          (FParent.Authentication.AutoGetToken) then
       begin
-        FParent.LockSession;
+        { The lock is the AUTHENTICATOR's, not this client's. An application
+          normally gives one authenticator to many clients - the DAO alone makes
+          one client per dataset - and LockSession only ever serialised a client
+          against itself, so N clients finding no token fetched N tokens, each
+          one a full round trip and a full handler on the server.
+          Holding it across the fetch is the point: the others wait, then find
+          the token already there and skip the double-check below. }
+        FParent.Authentication.Lock;
         try
           if not FParent.Authentication.IsAuthenticated then
             vErrorCode := SetAuthToken(vParams, ARequest);
         finally
-          FParent.UnLockSession;
+          FParent.Authentication.Unlock;
         end;
       end;
 
