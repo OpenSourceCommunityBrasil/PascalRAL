@@ -873,6 +873,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Removed
+- **Fix the crash, the lost rows and the ERangeError in the database half** (2026-09-12 – tempraturbo)
+  TRALDBModule.OpenSQLResponse took the client's storage link and used it without
+  looking: a client that sends none - which is exactly what a dataset with no
+  Storage assigned asks for, since CreateStorage leaves it nil for rsfAuto - took
+  the whole server down with an access violation on an ordinary select. Only the
+  non-native branch reaches it, and that branch is chosen when the client's driver
+  differs from the server's, so a client on the other compiler is what finds it
+  first. It raises emStorageNotFound now, which is the honest answer: without a
+  link the client cannot read that response either, so inventing a format here
+  would only move the failure one step.
+  Right next to it, CreateStorage asked a nil class reference for its ClassName
+  while building the message that says the link was not found, so the message
+  itself faulted instead of explaining anything. It reports the storage format
+  number, which is what identifies what is missing.
+  GetQueryParams read TParam.Size, an Integer, with GetInt64Prop. Assigning that
+  back into an Integer is a checked conversion, and range checking is on in every
+  Debug build the IDE produces: any query carrying a parameter died there, while
+  Release truncated the value silently and worked. GetOrdProp is the right width.
+  The three drivers share this cache, so the one line covers FireDAC, Zeos and
+  sqldb, and it was verified with range checking on, which is the only way this
+  proves anything - Open and ExecSQL, both with parameters.
+  The four storages write their rows through TField, and a field the server
+  reports as read-only - an aggregate like count(*), a computed column - refused
+  the assignment and took the whole record with it: the dataset arrived with the
+  right columns and no rows at all. Read-only describes what the server accepts on
+  an update; it cannot mean the client may not fill in the row it was just sent.
+  TRALStorage lifts it around the record loop and puts it back afterwards, so
+  nothing changes for a grid, and BIN, JSON, BSON and CSV all call it - the sweep
+  found no fifth place that writes records through fields.
+  TRALDBBufDataset cleared the field definitions when the SQL changed and left the
+  TField objects of the previous statement behind. The next open kept that
+  structure: a one-column select after a select * came back describing the old
+  thirteen fields and finding no rows, and a later Post failed on a required field
+  the new statement never mentioned. Nothing does this for us - FPC never calls
+  DestroyFields, and DefaultFields is already False by then because the dataset
+  builds its fields before TDataSet evaluates it - so the fields it created itself
+  are dropped by owner, and only while closed. The other two drivers were measured
+  rather than assumed: FireDAC and Zeos rebuild the structure on their own and
+  were left alone.
+  Also in that unit, Dialogs sat in the uses clause without a single call to it.
+  An LCL unit there drags the widgetset into every project that touches the
+  dataset, and a console server or a service then fails to link, asking for
+  WSRegisterControl and the rest of the widgetset registration.
+  Checked on both compilers: an FPC client drives a Delphi server end to end -
+  events, open, insert, edit, delete, and the error paths in both RaiseErrors
+  modes - and the structure and aggregate cases were run again through the Zeos
+  driver to be sure the fix landed where the defect was and nowhere else.
+
 - **Make FPC servers stop on Linux: wake mORMot2's accept() before WaitFor, bound the fpHTTP wake-up GET and free the server before dropping its parent** (2026-09-07 – tempraturbo)
   On Linux/FPC Active := False never returned on either engine and the
   process had to be killed. mORMot2 closed the listening socket and waited
