@@ -537,6 +537,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the data race on an authenticator shared by several clients** (2026-09-12 – tempraturbo)
+  TRALClient.Authentication takes a FreeNotification and never ownership, so one
+  authenticator is meant to be shared - the FireDAC DAO alone needs one client per
+  dataset, and all of them want the same token. The only lock around that token was
+  TRALClient.LockSession, which is per client and therefore never serialised
+  anything the clients actually share.
+  Measured with eight clients on one authenticator: eight /gettoken where one was
+  enough, and a hammer on SetToken (8 threads x 30000 real JWTs) raised 239768
+  exceptions in 240000 writes - access violations writing to 0x8, EInvalidPointer,
+  and the payload's own TStringList read while another thread cleared it. After
+  the change: one /gettoken, and no exception at all over the same hammer.
+  TRALAuthClient now carries the lock and BeforeSendUrl holds it across the whole
+  SetAuthToken. It is reentrant on purpose, since SetTokenJWT reads IsAuthenticated
+  and assigns Token on the thread that already holds it - Win32 critical sections
+  and FPC's recursive pthread mutex both allow that.
+  SetToken also stopped clearing FToken as its first statement: every other thread
+  read IsAuthenticated = False during the decode and went for a token of its own,
+  so a single expiry became one /gettoken per client even when the refresh was
+  succeeding. It now publishes only what parsed. Payload stays published for
+  configuration and gained GetClaim, which reads one claim under the lock, because
+  the object behind it is replaced on every SetToken.
+
 - **Fix the Sagui server dying under load with the memory manager unlocked** (2026-09-10 – tempraturbo)
   Every worker thread of that engine is started inside libsagui/libmicrohttpd
   and enters Pascal through a cdecl callback, so BeginThread never runs and
