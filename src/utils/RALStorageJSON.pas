@@ -525,6 +525,7 @@ var
 begin
   vInt64 := 0;
   ADataset.DisableControls;
+  LiftReadOnly;
 
   while vInt64 < AJSON.Count do
   begin
@@ -573,6 +574,7 @@ begin
     vInt64 := vInt64 + 1;
   end;
 
+  RestoreReadOnly;
   ADataset.EnableControls;
 
   SetLength(FFieldNames, 0);
@@ -866,6 +868,7 @@ begin
   if vjArr1 <> nil then
   begin
     ADataset.DisableControls;
+    LiftReadOnly;
 
     vInt64 := 0;
     while vInt64 < vjArr1.Count do
@@ -923,6 +926,7 @@ begin
       vInt64 := vInt64 + 1;
     end;
 
+    RestoreReadOnly;
     ADataset.EnableControls;
   end;
 

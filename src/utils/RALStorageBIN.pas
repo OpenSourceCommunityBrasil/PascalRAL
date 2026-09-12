@@ -375,6 +375,8 @@ begin
 
   ADataset.DisableControls;
 
+  LiftReadOnly;
+
   vInt64 := 1;
   while vInt64 <= vRecords do
   begin
@@ -423,6 +425,8 @@ begin
     ADataset.Post;
     vInt64 := vInt64 + 1;
   end;
+
+  RestoreReadOnly;
 
   ADataset.EnableControls;
 

@@ -305,7 +305,12 @@ begin
       vType := GetEnumProp(vColetItem, 'DataType');
       vParam.DataType := RALNameToFieldType(vType);
 
-      vParam.Size := GetInt64Prop(vColetItem, 'Size');
+      { TParam.Size is an Integer, and reading it as Int64 made the assignment
+        back into an Integer a checked conversion: with range checking on - the
+        default of every Debug build the IDE produces - any query carrying a
+        parameter died here with ERangeError, while Release truncated silently
+        and worked. }
+      vParam.Size := GetOrdProp(vColetItem, 'Size');
       vParam.Clear;
 
       vValue := GetVariantProp(vColetItem, 'Value');
@@ -339,8 +344,10 @@ begin
   end
   else
   begin
-    raise Exception.CreateFmt(emStorageLinkNotFound,
-      [vStorageLinkClass.ClassName]);
+    { the class is nil in this branch - that is what put us here - so asking it
+      for a ClassName faulted instead of showing the message it was meant to.
+      The format number is what identifies the link that is missing. }
+    raise Exception.CreateFmt(emStorageLinkNotFound, [IntToStr(Ord(vFormat))]);
   end;
 end;
 

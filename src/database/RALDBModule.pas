@@ -195,6 +195,20 @@ begin
       end
       else
       begin
+        { Answering without the native format takes the client's storage link,
+          and the client does not always send one: TRALDBSQLCache.CreateStorage
+          leaves it nil for rsfAuto, which is what a dataset with no Storage
+          assigned asks for. Using it blindly killed the whole server with an
+          access violation on an ordinary select - and the quickest way to get
+          here is a client on the other compiler, because a driver that differs
+          from the server's never takes the native path.
+
+          Raising is the honest answer: the client cannot read this response
+          either (LoadFromRALStorage raises emStorageClassNotFound with no link),
+          so inventing a format here would only move the failure. }
+        if AStorage = nil then
+          raise Exception.Create(emStorageNotFound);
+
         vNative := False;
         vContentType := AStorage.ContentType;
         AStorage.SaveToStream(vQuery, vResult);

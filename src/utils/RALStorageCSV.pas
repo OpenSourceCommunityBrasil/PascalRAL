@@ -634,6 +634,7 @@ begin
   vFormat := CSVFormatSettings;
 
   ADataset.DisableControls;
+  LiftReadOnly;
   try
     while AStream.Position < AStream.Size do
     begin
@@ -681,6 +682,7 @@ begin
       end;
     end;
   finally
+    RestoreReadOnly;
     ADataset.EnableControls;
   end;
 end;

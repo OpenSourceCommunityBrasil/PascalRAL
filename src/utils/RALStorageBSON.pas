@@ -225,6 +225,7 @@ begin
   vRecords := ADocument.Values.ByName('rc');
 
   ADataset.DisableControls;
+  LiftReadOnly;
 
   if not ADataset.IsUniDirectional then
   begin
@@ -269,6 +270,7 @@ begin
     ADataset.FreeBookmark(vBookMark);
   end;
 
+  RestoreReadOnly;
   ADataset.EnableControls;
 end;
 

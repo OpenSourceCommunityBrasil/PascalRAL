@@ -3,7 +3,11 @@ unit RALDBBufDataset;
 interface
 
 uses
-  Classes, SysUtils, DB, Dialogs,
+  { no LCL unit belongs here: Dialogs was in this list without a single call to
+    it, and it drags the widgetset into every project that touches the dataset -
+    a console server or a service then fails to link, asking for WSRegisterControl
+    and the rest of the widgetset registration }
+  Classes, SysUtils, DB,
   BufDataset,
   RALStorage, RALTools, RALTypes, RALResponse, RALMIMETypes,
   RALStorageBIN, RALStorageJSON, RALDBTypes, RALDBSQLCache,
@@ -323,6 +327,7 @@ end;
 procedure TRALDBBufDataset.OnChangeSQL(Sender: TObject);
 var
   vSQL: StringRAL;
+  vInt: IntegerRAL;
 begin
   if FParamCheck then
   begin
@@ -338,6 +343,25 @@ begin
   try
     FieldDefs.Clear;
     FieldDefs.Updated := False;
+
+    { The fields built from those defs have to go with them. Clearing only the
+      defs left the TField objects of the previous statement in place, and the
+      next open kept that structure: a one-column select after a select * came
+      back describing the old thirteen fields and finding no rows at all, and a
+      later Post then failed on a required field the new statement never
+      mentioned.
+
+      Nothing does this for us here. FPC never calls DestroyFields on its own,
+      and DefaultFields cannot be the test: TDataSet sets it from FieldCount = 0
+      at open, and by then this dataset has already built its fields, so it is
+      always False. What does tell them apart is the owner - CreateFields passes
+      the dataset itself, while fields declared at design time belong to the
+      form - so only the ones created here are dropped, and only while closed,
+      since freeing fields under an open cursor takes the buffers with them. }
+    if not Active then
+      for vInt := Pred(Fields.Count) downto 0 do
+        if Fields[vInt].Owner = Self then
+          Fields[vInt].Free;
   finally
     Self.EnableControls;
   end;

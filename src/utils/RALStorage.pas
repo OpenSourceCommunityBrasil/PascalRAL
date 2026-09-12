@@ -25,9 +25,20 @@ type
     FFieldNames: array of StringRAL;
     FFieldTypes: array of TRALFieldType;
     FFoundFields: array of TField;
+    FWasReadOnly: array of boolean;
 
     function GetStoreVersion: byte;
     function CharCaseValue(AValue: StringRAL): StringRAL;
+
+    { Every format writes its records through TField, and a field the server
+      reported as read-only - an aggregate like count(*), a computed column -
+      refuses the assignment and takes the whole record with it: the dataset
+      arrived with the right columns and no rows at all. Read-only describes
+      what the server accepts on an update; it cannot mean the client may not
+      fill in the row it was just sent. Each format lifts it around its record
+      loop and puts it back afterwards, so what a grid allows does not change. }
+    procedure LiftReadOnly;
+    procedure RestoreReadOnly;
 
     procedure ReadFieldBoolean(AField: TField; AValue: Boolean);
     procedure ReadFieldByte(AField: TField; AValue: byte);
@@ -121,6 +132,29 @@ end;
 function TRALStorage.GetStoreVersion: byte;
 begin
   Result := 1;
+end;
+
+procedure TRALStorage.LiftReadOnly;
+var
+  vInt: IntegerRAL;
+begin
+  SetLength(FWasReadOnly, Length(FFoundFields));
+  for vInt := 0 to Pred(Length(FFoundFields)) do
+  begin
+    FWasReadOnly[vInt] := (FFoundFields[vInt] <> nil) and FFoundFields[vInt].ReadOnly;
+    if FWasReadOnly[vInt] then
+      FFoundFields[vInt].ReadOnly := False;
+  end;
+end;
+
+procedure TRALStorage.RestoreReadOnly;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to Pred(Length(FWasReadOnly)) do
+    if FWasReadOnly[vInt] then
+      FFoundFields[vInt].ReadOnly := True;
+  SetLength(FWasReadOnly, 0);
 end;
 
 function TRALStorage.CharCaseValue(AValue: StringRAL): StringRAL;
