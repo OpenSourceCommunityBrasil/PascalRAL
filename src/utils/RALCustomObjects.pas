@@ -33,6 +33,7 @@ type
     FContentEncription: StringRAL;
     FContentType: StringRAL;
     FCriptoKey: StringRAL;
+    FProtocolVersion: TRALHTTPVersion;
     FParams: TRALParams;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
@@ -93,6 +94,16 @@ type
     property ContentType: StringRAL read FContentType write SetContentType;
     property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    /// Which HTTP version carried this message, as the transport REPORTS it -
+    /// never what was asked for, since ALPN settles that during the TLS
+    /// handshake. A transport that cannot tell leaves rhvDefault.
+    ///
+    /// On a RESPONSE it is what the client engine could read back. On a
+    /// REQUEST it is what the server saw the client arrive on, which is the
+    /// only place the answer is reliable: the http.sys server reads it from
+    /// the driver, while a client on Windows has to guess from the status
+    /// line - and an HTTP/2 response does not have one, so it under-reports.
+    property ProtocolVersion: TRALHTTPVersion read FProtocolVersion write FProtocolVersion;
     property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
     property Parent: TObject read FParent;
@@ -191,6 +202,7 @@ end;
 procedure TRALHTTPHeaderInfo.Clear;
 begin
   FParams.ClearParams;
+  FProtocolVersion := rhvDefault;
 end;
 
 procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);

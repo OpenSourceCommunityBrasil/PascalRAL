@@ -33,6 +33,7 @@ const
   ENGINESAGUI              = 'Sagui';
   ENGINENETHTTP            = 'netHttp';
   ENGINEFPHTTP             = 'fpHttp';
+  ENGINEOKHTTP             = 'OkHttp';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'

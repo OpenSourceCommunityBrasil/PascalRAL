@@ -107,6 +107,31 @@ type
     ///   does not know
     rteCancelled);
 
+  { Which HTTP protocol version to speak.
+
+    RAL does not implement HTTP/2 itself: what frames it is the platform under
+    an engine - WinHTTP on Windows, OkHttp under HttpURLConnection on Android -
+    and only some engines reach such a platform at all. So this is what the
+    client ASKS for; what was actually negotiated comes back in
+    TRALResponse.ProtocolVersion, because ALPN may always settle on less.
+
+    rhvDefault leaves every engine with the behaviour it has today, so nothing
+    changes for an application that does not ask. Asking rhv2 of an engine
+    whose SupportsHTTP2 is False raises on the first request instead of
+    quietly falling back - a transport that silently is not what was asked for
+    is how one spends an afternoon wondering why nothing got faster.
+
+    In practice HTTP/2 only happens over TLS: both platforms negotiate it by
+    ALPN and neither offers the cleartext upgrade (h2c). }
+  TRALHTTPVersion = (
+    /// whatever the engine does today - HTTP/1.1 everywhere, at present
+    rhvDefault,
+    /// force HTTP/1.1, declining an HTTP/2 the platform might have taken
+    rhv11,
+    /// ask for HTTP/2, falling back to 1.1 when the server does not offer it
+    /// - new values are APPENDED, never inserted
+    rhv2);
+
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL
   public

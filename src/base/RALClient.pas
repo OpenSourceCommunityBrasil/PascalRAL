@@ -1,4 +1,4 @@
-﻿unit RALClient;
+unit RALClient;
 
 interface
 
@@ -228,6 +228,12 @@ type
     /// checking something weaker - a security option that quietly degrades is
     /// worse than one that refuses.
     function SupportsCertPin: boolean; virtual;
+    /// Whether this engine, on this platform and compiler, can speak HTTP/2.
+    /// RAL frames nothing itself: the answer is whether the library under the
+    /// engine does it and exposes the switch. False makes HTTPVersion = rhv2
+    /// raise on the first request, for the same reason SupportsCertPin does -
+    /// see TRALHTTPVersion.
+    function SupportsHTTP2: boolean; virtual;
     /// True while the client asked for certificate control, which is what tells
     /// an engine to turn its verification on. Engines that verify by default
     /// (netHTTP, Synopse) ignore it; the OpenSSL ones (Indy, fpHTTP) do not
@@ -300,8 +306,10 @@ type
       to - see AcquireEngine }
     FEngineHTTP: TRALClientHTTP;
     FEngineThread: TThreadID;
+    FHTTPVersion: TRALHTTPVersion;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
+    FShareConnection: boolean;
     FMaxRedirects: IntegerRAL;
     FOnAfterExecute: TRALOnAfterExecute;
     FOnBeforeExecute: TRALOnBeforeExecute;
@@ -401,6 +409,12 @@ type
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
     property EngineType : String read FEngineType write SetEngineType;
+    /// Which HTTP version to ask the transport for - see TRALHTTPVersion. It
+    /// is a REQUEST, not a guarantee: read TRALResponse.ProtocolVersion to learn
+    /// what was negotiated. rhv2 on an engine that cannot do it raises on the
+    /// first request rather than falling back in silence.
+    property HTTPVersion: TRALHTTPVersion read FHTTPVersion write FHTTPVersion
+      default rhvDefault;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     /// Consecutive redirects the engine follows before giving up. It lives
     /// here because the engines used to hardcode different values without
@@ -408,6 +422,26 @@ type
     /// THTTPClient defaults to.
     property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
+    /// Lets this client share its underlying transport - and therefore its TCP
+    /// connection - with every other client aimed at the same host with the
+    /// same settings. Off by default, because it changes two things a caller
+    /// may be relying on: the engine's cookie jar becomes common to the
+    /// sharers, and their requests queue on one connection unless the
+    /// transport can multiplex (which is what HTTPVersion = rhv2 buys).
+    ///
+    /// It is a HINT, not a contract: engines that cannot share ignore it
+    /// silently instead of raising, because the same client is often
+    /// configured once and run over a different engine per platform, and
+    /// refusing there would turn an optimisation into a portability problem.
+    /// Today netHTTP and OkHttp honour it - netHTTP through a transport pool
+    /// of its own, OkHttp by handing the question to OkHttp's client cache.
+    ///
+    /// What it is for: an application that gives each dataset its own client -
+    /// which is the arrangement RAL asks for, since Request is one object per
+    /// client - otherwise opens one connection per dataset, and pays a cold
+    /// TCP and TLS handshake on each.
+    property ShareConnection: boolean read FShareConnection
+                                      write FShareConnection default False;
     /// TLS options - see TRALClientSSL
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
@@ -675,7 +709,7 @@ begin
   if vClass <> nil then
     Result := vClass.Create(Self)
   else
-    raise Exception.CreateFmt('Class %s não encontrada', [EngineType]);
+    raise Exception.CreateFmt('Class %s n�o encontrada', [EngineType]);
 end;
 
 { An engine used to be created and freed around every request, which threw
@@ -1269,6 +1303,11 @@ begin
   Result := False;
 end;
 
+function TRALClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := False;
+end;
+
 function TRALClientHTTP.CertCheckWanted: boolean;
 begin
   Result := HasPinForHost or Assigned(FParent.OnValidateServerCert);
@@ -1325,6 +1364,16 @@ begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertPinUnsupported, [EngineName])));
       raise Exception.Create(Format(emCertPinUnsupported, [EngineName]));
+    end;
+
+    { Same reasoning as the pin above, and in the same place: refuse before a
+      socket is opened. Only rhv2 is checked - rhv11 is what every engine does
+      anyway, so asking for it is never a reason to refuse. }
+    if (FParent.HTTPVersion = rhv2) and (not SupportsHTTP2) then
+    begin
+      SetTransportError(AResponse, rteOther, 0,
+                        StringRAL(Format(emHTTP2Unsupported, [EngineName])));
+      raise Exception.Create(Format(emHTTP2Unsupported, [EngineName]));
     end;
 
     // vParams is used in two places: SetAuthToken, which only runs while there

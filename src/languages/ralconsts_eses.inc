@@ -16,6 +16,8 @@
   emRequestCancelled = 'La solicitud fue rechazada por OnBeforeExecute: %s.';
   emCertRejected = 'Certificado del servidor rechazado.';
   emCertRequiresTLS = 'SSL.Required está definido, o una línea de SSL.Pins aplica a este host, por lo que se rechaza http sin cifrar: %s.';
+  emHTTP2Unsupported = 'HTTPVersion es rhv2 y el motor %s no habla HTTP/2 en esta plataforma. Use el motor netHTTP, o deje HTTPVersion en rhvDefault.';
+  emHttpSysAddUrl = 'http.sys rechazo escuchar en el puerto %d (codigo %d). El codigo 5 significa que el puerto no esta reservado para este usuario: ejecute una vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuario>", o inicie el servidor elevado.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
   emContentCheckError = 'Error de comprobación de contenido.';

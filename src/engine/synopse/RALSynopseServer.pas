@@ -1,10 +1,16 @@
-﻿/// Base unit for RALServer component using mORMot2 Engine
+/// Base unit for RALServer component using mORMot2 Engine
 unit RALSynopseServer;
 
 interface
 
 uses
   Classes, SysUtils, syncobjs, StrUtils, DateUtils,
+  {$IFDEF MSWINDOWS}
+  { only to read the request version from http.sys - see OnCommandProcess.
+    Before the mORMot units on purpose: on an ambiguous name the last one in
+    the list wins, and nothing here should start resolving through this one. }
+  mormot.lib.winhttp,
+  {$ENDIF}
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
@@ -27,11 +33,60 @@ type
     property PrivateKeyPassword: StringRAL read FPrivateKeyPassword write FPrivateKeyPassword;
   end;
 
+  { How mORMot2 waits for the sockets underneath this server.
+
+    smThreads is what RAL has always done and stays the default: a pool answers
+    the accept and the first headers, and then every KEPT-ALIVE connection gets
+    a thread of its own for as long as it lives. It is simple and fast per
+    request, and it puts a ceiling on how many clients can stay connected -
+    MaxKeepAlive, 512 by default, for the whole server. Past that the server
+    keeps answering but stops granting keep-alive, so every request goes back
+    to paying a fresh TCP (and TLS) handshake.
+
+    smAsync is one event loop instead - IOCP on Windows, epoll/kqueue on POSIX.
+    An idle connection then costs a socket and a buffer rather than a thread,
+    so thousands of them stay open, and MaxKeepAlive stops meaning anything.
+    The request itself is still processed on a worker thread, so a handler that
+    blocks on a database does not stall the loop.
+
+    Which one to pick: many connections that are mostly idle - handheld
+    scanners, mobile apps, anything polling - is what smAsync is for. Few
+    clients hammering the server is what smThreads is best at.
+
+    smHttpSys hands the sockets to the Windows kernel (http.sys) instead, and
+    is the ONLY mode that serves HTTP/2 - neither of the other two implements
+    it, and mORMot2 has no HTTP/2 of its own. The kernel also gives the same
+    connection scale as smAsync, since nothing in user space waits on a socket.
+
+    It costs a different deployment, though, and the difference is not
+    cosmetic:
+      - the TLS certificate does NOT come from SSL.CertificateFile. http.sys
+        takes it from the machine store, bound to the port from outside, with
+        "netsh http add sslcert", which takes the port, the certificate
+        thumbprint and an application GUID.
+        SSL.Enabled still matters - it is what makes RAL listen on https - but
+        the file properties are ignored, and saying so here is cheaper than
+        letting someone wonder why their .pem is not being read.
+      - the port must be reserved for the user, or the process needs
+        Administrator rights:
+          netsh http add urlacl url=https://+:<port>/ user=<user>
+      - Windows only.
+    HTTP/2 itself needs nothing else: http.sys offers it by ALPN as soon as
+    TLS is bound, and turns it off with EnableHttp2Tls in the registry. }
+  TRALSynopseMode = (smThreads, smAsync, smHttpSys);
+
   { TRALSynopseServer }
 
   TRALSynopseServer = class(TRALServer)
   private
-    FHttp: THttpServerSocketGeneric;
+    { THttpServerGeneric, and not THttpServerSocketGeneric: http.sys is a
+      sibling branch of the tree, and what the three modes have in common lives
+      in the wider ancestor - OnRequest, OnSendFile, ServerName, Shutdown. What
+      only the socket ones have is guarded by "is" further down. }
+    FHttp: THttpServerGeneric;
+    FHttpSysDomain: StringRAL;
+    FMaxKeepAlive: IntegerRAL;
+    FMode: TRALSynopseMode;
     FPoolCount: IntegerRAL;
     FQueueSize: IntegerRAL;
   protected
@@ -50,6 +105,30 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    /// How many clients may hold a kept-alive connection AT THE SAME TIME,
+    /// server-wide. Only smThreads is limited by it, because there the limit
+    /// is really "how many threads", and mORMot2's default of 512 was chosen
+    /// for a 32-bit process (each thread reserves stack). On a 64-bit server
+    /// raising it costs reserved address space and little else.
+    /// Past the limit the server still answers, but WITHOUT keep-alive: it
+    /// closes the socket after each response, and every request of every
+    /// client goes back to paying a whole TCP and TLS handshake. That is a
+    /// latency cliff, and it arrives silently - which is why the number is
+    /// here instead of buried in the engine. 0 keeps mORMot2's default.
+    /// smHttpSys only: which host part of the URL to listen on, and it has to
+    /// be the SAME text the reservation used. http.sys matches prefixes
+    /// literally, so a server asking for "*" is not covered by a reservation
+    /// made for "localhost", and the AddUrl comes back with access denied.
+    ///   '*'         - any host name that reaches this machine (weak wildcard)
+    ///   '+'         - every interface, including by IP (strong wildcard)
+    ///   'localhost' - loopback only, which needs no firewall exception and
+    ///                 raises no prompt: the right choice for a local service
+    ///                 or for a test.
+    /// Ignored by the other two modes, which bind a socket themselves.
+    property HttpSysDomain: StringRAL read FHttpSysDomain write FHttpSysDomain;
+    property MaxKeepAlive: IntegerRAL read FMaxKeepAlive write FMaxKeepAlive default 0;
+    /// Thread per kept-alive connection, or one event loop - see TRALSynopseMode
+    property Mode: TRALSynopseMode read FMode write FMode default smThreads;
     property PoolCount: IntegerRAL read FPoolCount write SetPoolCount;
     property QueueSize: IntegerRAL read FQueueSize write SetQueueSize;
     property SSL: TRALSynopseSSL read GetSSL write SetSSL;
@@ -64,8 +143,12 @@ var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
   vActive: boolean;
+  {$IFDEF MSWINDOWS}
+  vError: IntegerRAL;
+  {$ENDIF}
   {$IFDEF FPC}
   vDummy: TNetSocket;
+  vSock: THttpServerSocketGeneric;
   {$ENDIF}
 begin
   vActive := Active;
@@ -95,8 +178,31 @@ begin
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
-    FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount, SessionTimeout, vOptions);
-    FHttp.HttpQueueLength := FQueueSize;
+    {$IFDEF MSWINDOWS}
+    if FMode = smHttpSys then
+      { The queue belongs to the kernel, there is no address to hand over and
+        no thread per connection: the only number left is how many requests are
+        processed at once. The URL comes later, in the TLS block below, because
+        that is where http or https is known. }
+      FHttp := THttpApiServer.Create('', nil, nil, '', vOptions, nil, FPoolCount)
+    else
+    {$ENDIF}
+    { The socket ones descend from THttpServerSocketGeneric and share the SAME
+      constructor, so everything that follows holds for both without an "if". }
+    if FMode = smAsync then
+      FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount,
+                                       SessionTimeout, vOptions)
+    else
+      FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+                                  SessionTimeout, vOptions);
+
+    if FHttp is THttpServerSocketGeneric then
+      THttpServerSocketGeneric(FHttp).HttpQueueLength := FQueueSize;
+
+    { Only the threads mode has that ceiling, and only it has the pool it lives in }
+    if (FMaxKeepAlive > 0) and (FHttp is THttpServer) and
+       (THttpServer(FHttp).ThreadPool <> nil) then
+      THttpServer(FHttp).ThreadPool.MaxBodyThreadCount := FMaxKeepAlive;
     { MaximumAllowedContentLength is deliberately NOT set from MaxRequestSize:
       mORMot2 enforces it by resetting the socket while the client is still
       sending, so no client ever sees the 413 - Indy, netHTTP and mORMot2's
@@ -107,24 +213,51 @@ begin
     FHttp.OnTerminate := {$IFDEF FPC}@{$ENDIF}OnHttpTerminate;
     //    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
+
+    {$IFDEF MSWINDOWS}
+    if FHttp is THttpApiServer then
+    begin
+      { aRegisterUri is False on purpose: registering the URL needs
+        administrator rights, and a server that only starts elevated is worse
+        than one that says to reserve the port once. AddUrl's error already
+        tells which case it is - 5 is access denied, and that is the missing
+        netsh add urlacl. }
+      vError := THttpApiServer(FHttp).AddUrl('', IntToStr(Self.Port), SSL.Enabled,
+                                            RawUtf8(FHttpSysDomain), False);
+      if vError <> 0 then
+        raise Exception.CreateFmt(emHttpSysAddUrl, [Self.Port, vError]);
+      THttpApiServer(FHttp).WaitStarted(30);
+    end
+    else
+    {$ENDIF}
     if SSL.Enabled then
     begin
       with SSL as TRALSynopseSSL do
       begin
-        FHttp.WaitStarted(30, CertificateFile, PrivateKeyFile,
-          PrivateKeyPassword, CACertificatesFile);
-        FHttp.InitializeTlsAfterBind;
+        THttpServerSocketGeneric(FHttp).WaitStarted(30, CertificateFile,
+          PrivateKeyFile, PrivateKeyPassword, CACertificatesFile);
+        THttpServerSocketGeneric(FHttp).InitializeTlsAfterBind;
       end;
     end
     else
     begin
-      FHttp.WaitStarted;
+      THttpServerSocketGeneric(FHttp).WaitStarted;
     end;
   end
   else
   begin
     if FHttp <> nil then begin
       FHttp.Shutdown;
+      { http.sys has no socket of ours to close, and it does not shut down with
+        Terminate + WaitFor: it serves with SEVERAL threads on the same kernel
+        queue, and waiting on the first one alone hangs forever - which is
+        exactly what happened. What wakes them all is THttpApiServer's
+        destructor, which closes the queue; so that is all this calls. }
+      if not (FHttp is THttpServerSocketGeneric) then
+      begin
+        FreeAndNil(FHttp);
+        Exit;
+      end;
       {$IFDEF FPC}
       { Terminate before closing, then a touch-and-go connection to the
         port: closing the listening socket wakes a blocked accept() on
@@ -134,12 +267,13 @@ begin
         THttpServer.Destroy itself performs; done here because the WaitFor
         below runs first. Delphi keeps the order it always had. }
       FHttp.Terminate;
-      FHttp.Sock.Close;
-      if NewSocket(FHttp.Sock.Server, FHttp.Sock.Port, nlTcp, False,
+      vSock := THttpServerSocketGeneric(FHttp);
+      vSock.Sock.Close;
+      if NewSocket(vSock.Sock.Server, vSock.Sock.Port, nlTcp, False,
            10, 10, 10, 0, vDummy) = nrOK then
         vDummy^.ShutdownAndClose(False); // TNetSocket is ^TNetSocketWrap (an object) on FPC
       {$ELSE}
-      FHttp.Sock.Close;
+      THttpServerSocketGeneric(FHttp).Sock.Close;
       FHttp.Terminate;
       {$ENDIF}
       FHttp.WaitFor;
@@ -210,6 +344,9 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vHeaders: StringRAL;
+  {$IFDEF MSWINDOWS}
+  vApiReq: PHTTP_REQUEST;
+  {$ENDIF}
 begin
   vRequest := CreateRequest;
   vResponse := CreateResponse;
@@ -244,6 +381,60 @@ begin
       vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
       vRequest.ContentEncoding := vRequest.Params.Get['Content-Encoding'].AsString;
       vRequest.AcceptEncoding := vRequest.Params.Get['Accept-Encoding'].AsString;
+
+      { Not every mORMot2 server hands these three over in InHeaders.
+        ParseHeader consumes them into fields of its own and only returns them
+        to the list when HeadersUnFiltered is on - and the one reading that
+        option is THttpServer; THttpAsyncServer never consults it, so there
+        they arrive empty even with hsoHeadersUnfiltered asked for.
+
+        The effect was silent and only on the ERROR answer: with CompressType
+        ctNone the server follows the client's Accept-Encoding, and without it
+        the 401 went out with no compression at all while the 200 went out
+        compressed - the 200 goes through the handler, which rebuilds what it
+        needs; the 401 is born inside RAL.
+
+        The parsed context is published in ConnectionHttp, so the way out is to
+        fill from it whatever the list did not bring. Always reading from there
+        would be worse: not every engine has the record, and the list's value
+        is what the client actually sent. }
+      if AContext.ConnectionHttp <> nil then
+      begin
+        if vRequest.AcceptEncoding = '' then
+          vRequest.AcceptEncoding := StringRAL(AContext.ConnectionHttp^.AcceptEncoding);
+        if vRequest.ClientInfo.UserAgent = '' then
+          vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);
+      end;
+
+      {$IFDEF MSWINDOWS}
+      { WHICH VERSION THIS CLIENT ARRIVED ON - and only the server knows.
+
+        The version is settled by ALPN, inside the TLS handshake, before any
+        request exists. There is nowhere to read it on the client side: WinHTTP
+        only tells by the status line, which an HTTP/2 response does not have.
+        Here it comes from the driver itself, the one that negotiated it.
+
+        And it is NOT read from the Version field - that is the trap, and it
+        cost one wrong measurement. HTTP_REQUEST has the shape of HTTP/1, and
+        http.sys hands back Version=1.1 for those who arrived on HTTP/2 too:
+        checked against a real h2 client, which reported HTTP_2 on its side
+        while this field said 1.1. What tells the truth is the flag.
+
+        Only the smHttpSys mode has this, because it is the only one that
+        speaks HTTP/2. On the others the record does not exist and it stays
+        rhvDefault, as it always was. }
+      if AContext is THttpServerRequest then
+      begin
+        vApiReq := THttpServerRequest(AContext).HttpApiRequest;
+        if vApiReq <> nil then
+        begin
+          if (vApiReq^.Flags and HTTP_REQUEST_FLAG_HTTP2) <> 0 then
+            vRequest.ProtocolVersion := rhv2
+          else
+            vRequest.ProtocolVersion := rhv11;
+        end;
+      end;
+      {$ENDIF}
 
       vRequest.ContentEncription := vRequest.ParamByName('Content-Encription').AsString;
       vRequest.AcceptEncription := vRequest.ParamByName('Accept-Encription').AsString;
@@ -335,6 +526,7 @@ begin
   FHttp := nil;
   FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
   FQueueSize := 1000; // Tamanho da fila de threads. Padrao do synopse: 1000
+  FHttpSysDomain := '*'; // mORMot2's own default in AddUrl
   SetEngine('mORMot2 ' + SYNOPSE_FRAMEWORK_FULLVERSION);
 end;
 

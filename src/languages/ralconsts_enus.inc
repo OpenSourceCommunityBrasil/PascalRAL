@@ -16,6 +16,8 @@
   emRequestCancelled = 'The request was refused by OnBeforeExecute: %s.';
   emCertRejected = 'Server certificate refused.';
   emCertRequiresTLS = 'SSL.Required is set, or a line of SSL.Pins applies to this host, so plain http is refused: %s.';
+  emHTTP2Unsupported = 'HTTPVersion is rhv2, and the %s engine cannot speak HTTP/2 on this platform. Use the netHTTP engine, or leave HTTPVersion at rhvDefault.';
+  emHttpSysAddUrl = 'http.sys refused to listen on port %d (code %d). Code 5 means the port is not reserved for this user: run "netsh http add urlacl url=http://+:%0:d/ user=<user>" once, as Administrator, or start the server elevated.';
   emCompressInvalidFormat = 'Invalid compression Format.';
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
   emContentCheckError = 'Content check error.';
