@@ -167,9 +167,12 @@ type
     destructor Destroy; override;
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
-    { Turns the one-connection cap on or off to match the version that was
-      actually NEGOTIATED. THE POOL LOCK MUST ALREADY BE HELD - PoolMatchCap
-      takes it, because finding the holder needs it anyway. }
+    { Caps this transport at one connection, which is what turns h2 into
+      multiplexing. Called before the first request, from PoolAcquire. }
+    procedure CapConnections;
+    { Takes the cap off when an answer says the version is NOT h2. THE POOL
+      LOCK MUST ALREADY BE HELD - PoolMatchCap takes it, because finding the
+      holder needs it anyway. }
     procedure MatchConnectionCap(AVersion: TRALHTTPVersion);
   end;
 
@@ -367,32 +370,39 @@ function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL; stdcall
   private FWRequest of its own, which is the same door ServerCertFingerprint
   already opens one level up - and the same RTTI caveat applies: any step that
   fails gives rhvDefault back, and the caller falls back to what the RTL said. }
-{ The pool lock is already held by PoolMatchCap - see the declaration. }
-procedure TRALnetHTTPHolder.MatchConnectionCap(AVersion: TRALHTTPVersion);
+{ ONE CONNECTION FOR THIS TRANSPORT - see the long note on LimitToOneConnection.
+  Remembers what WinHTTP had, so taking it off puts back the real value and not
+  a guess at the default. Called from PoolAcquire, under the pool lock. }
+procedure TRALnetHTTPHolder.CapConnections;
 {$IFDEF MSWINDOWS}
 var
   vWas: DWORD;
 {$ENDIF}
 begin
   {$IFDEF MSWINDOWS}
-  if AVersion = rhv2 then
+  if ConnCapped then
+    Exit;
+  if not GetMaxConnsPerServer(Http, vWas) then
+    Exit;
+  if not SetMaxConnsPerServer(Http, 1) then
+    Exit;
+  ConnWas := vWas;
+  ConnCapped := True;
+  {$ENDIF}
+end;
+
+{ The pool lock is already held by PoolMatchCap - see the declaration. }
+procedure TRALnetHTTPHolder.MatchConnectionCap(AVersion: TRALHTTPVersion);
+begin
+  {$IFDEF MSWINDOWS}
+  { Only ever takes the cap OFF, and only when an answer contradicts what was
+    asked. Putting it on is PoolAcquire's job, because by the time an answer
+    exists the connections have already been opened.
+
+    rhvDefault does not count as a contradiction: it means the transport could
+    not tell, not that it spoke 1.1. }
+  if ConnCapped and (AVersion in [rhv10, rhv11]) then
   begin
-    if ConnCapped then
-      Exit;
-    { remember what WinHTTP really had before touching it: putting back a
-      guessed default would be worse than not capping at all }
-    if not GetMaxConnsPerServer(Http, vWas) then
-      Exit;
-    if not SetMaxConnsPerServer(Http, 1) then
-      Exit;
-    ConnWas := vWas;
-    ConnCapped := True;
-  end
-  else if ConnCapped then
-  begin
-    { the answer stopped being h2 - a server restarted onto another
-      configuration, a proxy in the way. Under 1.1 one connection queues, so
-      the cap comes off. }
     if SetMaxConnsPerServer(Http, ConnWas) then
       ConnCapped := False;
   end;
@@ -576,9 +586,19 @@ begin
       end;
       {$ENDIF}
 
-      { The one-connection cap is NOT set here. It belongs to the version that
-        was negotiated, not to the one that was asked for, and nothing has been
-        negotiated yet - see TRALnetHTTPHolder.MatchConnectionCap. }
+      {$IFDEF MSWINDOWS}
+      { The cap goes on HERE, before the first request, when h2 was asked for -
+        and it has to be here. Measured: 20 threads on a fresh transport all
+        open their socket in the first burst, BEFORE any response comes back,
+        and WinHTTP does not close what it already pooled. Capping only after
+        the answer left 16 connections where 1 was the point.
+
+        Asking is not getting, so MatchConnectionCap takes it off again the
+        moment an answer says the version is not h2 - one burst pays for the
+        wrong guess, and it is right from there on. }
+      if ASetup.Version = rhv2 then
+        vHolder.CapConnections;
+      {$ENDIF}
 
       vPool.AddObject(vKey, vHolder);
     end;
