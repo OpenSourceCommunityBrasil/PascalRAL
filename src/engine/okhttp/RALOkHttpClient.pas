@@ -15,22 +15,26 @@ interface
   Edge, to a Java 17 client and to WinHTTP, the same application on the handset
   always arrived as HTTP/1.1.
 
-  So this engine exists to close exactly that gap, and compiling it anywhere
-  else would only duplicate what netHTTP already does better.
+  So this engine exists to close exactly that gap. Everywhere else the class is
+  still here and still registers itself - otherwise its name would never reach
+  the IDE, where the engine list is what RegisterEngine filled in - but it has
+  no implementation: a request refuses and says why, instead of duplicating
+  what netHTTP already does better.
 
   It needs two jars in the project - okhttp itself and the bridge below. What
   okhttp depends on, okio and kotlin-stdlib, already ships with the RAD Studio
   Android runtime. See PackageDependency. }
 
-{$IFDEF ANDROID}
-
 uses
   Classes, SysUtils,
+  {$IFDEF ANDROID}
   Androidapi.Jni, Androidapi.JNIBridge, Androidapi.JNI.JavaTypes, Androidapi.Helpers,
+  {$ENDIF}
   RALClient, RALTypes, RALConsts, RALRequest, RALResponse, RALParams,
   RALCompress, RALTools;
 
 type
+  {$IFDEF ANDROID}
   TRALOkHttpClientHTTP = class;
 
   { ------------------------------------------------- pascalral.RalCertJudge ---
@@ -92,9 +96,12 @@ type
                 platformTrusted: Boolean): Boolean; cdecl;
   end;
 
+  {$ENDIF}
+
   { TRALOkHttpClientHTTP }
 
   TRALOkHttpClientHTTP = class(TRALClientHTTP)
+  {$IFDEF ANDROID}
   private
     FJudge: JRalCertJudge;
     /// Identifies THIS client's own transport, used only when it refuses to
@@ -113,15 +120,19 @@ type
     procedure ClassifyFailure(AResponse: TRALResponse; const AError: StringRAL);
     /// The verdict on one certificate, in the shape the judge needs it
     function JudgeCertificate(const ACert: TRALCertInfo): boolean;
+  {$ENDIF}
   protected
-    /// True: the fingerprint arrives with the certificate, so SSL.Pins works
-    /// here - which it never did through TNetHTTPClient on Android
+    /// True on Android, where the fingerprint arrives with the certificate, so
+    /// SSL.Pins works - which it never did through TNetHTTPClient there. False
+    /// anywhere else, where this engine has no implementation at all.
     function SupportsCertPin: boolean; override;
-    /// True: it is the whole reason this engine exists
+    /// True on Android: it is the whole reason this engine exists
     function SupportsHTTP2: boolean; override;
   public
+    {$IFDEF ANDROID}
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
+    {$ENDIF}
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
@@ -130,8 +141,6 @@ type
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
   end;
-
-{$ENDIF}
 
 implementation
 
@@ -463,6 +472,35 @@ begin
   end;
 end;
 
+{$ELSE}
+
+{ Everywhere but Android this engine is a name and nothing else. It is still
+  declared and still registered so that the IDE can offer it - the property
+  editor lists what RegisterEngine filled in, and a name missing from that list
+  cannot be chosen at all - and a request refuses here, loudly, rather than
+  letting an application believe it has a transport it does not. }
+
+function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := False;
+end;
+
+function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := False;
+end;
+
+procedure TRALOkHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod);
+begin
+  inherited;
+  AResponse.Clear;
+  SetTransportError(AResponse, rteOther, 0, StringRAL(emOkHttpAndroidOnly));
+  raise Exception.Create(emOkHttpAndroidOnly);
+end;
+
+{$ENDIF}
+
 class function TRALOkHttpClientHTTP.EngineName: StringRAL;
 begin
   Result := ENGINEOKHTTP;
@@ -481,13 +519,8 @@ begin
   Result := 'okhttp-4.11.0.jar; ralokhttp.jar';
 end;
 
-{$ENDIF}
-
 initialization
-
-{$IFDEF ANDROID}
   RegisterClass(TRALOkHttpClientHTTP);
   RegisterEngine(TRALOkHttpClientHTTP);
-{$ENDIF}
 
 end.
