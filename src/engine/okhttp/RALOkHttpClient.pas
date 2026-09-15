@@ -61,9 +61,9 @@ type
     ['{2E8C3F96-6D7A-4B20-9C53-94A7FAE63B85}']
     function execute(method: JString; url: JString; headerBlock: JString;
                      body: TJavaArray<Byte>; contentType: JString;
-                     connectMs: Integer; readMs: Integer; allowHttp2: Boolean;
-                     followRedirects: Boolean; shareKey: JString;
-                     judge: JRalCertJudge): Integer; cdecl;
+                     connectMs: Integer; readMs: Integer; pingMs: Integer;
+                     allowHttp2: Boolean; followRedirects: Boolean;
+                     shareKey: JString; judge: JRalCertJudge): Integer; cdecl;
     procedure release(shareKey: JString); cdecl;
     function status: Integer; cdecl;
     function protocol: JString; cdecl;
@@ -145,6 +145,9 @@ type
     /// clients on one OkHttpClient still get every socket the traffic needs -
     /// and multiplex onto a single one under h2, which is the point.
     class function SupportsSharedConnection: boolean; override;
+    /// True on Android: o OkHttp manda PING de HTTP/2 e derruba a conexao
+    /// quando nao vem pong - ver TRALClient.KeepAliveInterval
+    class function SupportsKeepAliveInterval: boolean; override;
   end;
 
 implementation
@@ -212,6 +215,11 @@ begin
 end;
 
 class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
   Result := True;
 end;
@@ -434,7 +442,7 @@ procedure TRALOkHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
 var
   vBody: TJavaArray<Byte>;
   vContentType, vHeaders: StringRAL;
-  vRC: Integer;
+  vRC, vPing: Integer;
 begin
   inherited;
   AResponse.Clear;
@@ -463,6 +471,15 @@ begin
 
     vHeaders := HeaderBlock(ARequest);
 
+    { KeepAliveInterval so' faz sentido com h2: o que ele sonda e' a conexao
+      ociosa e multiplexada, que so' existe la'. Pedindo 1.1 vai zero, e o
+      OkHttp nao manda PING nenhum - o mesmo efeito de a propriedade estar
+      escondida na IDE, e pelo mesmo motivo. }
+    if Parent.HTTPVersion = rhv2 then
+      vPing := Parent.KeepAliveInterval
+    else
+      vPing := 0;
+
     vRC := TJRalOkHttp.JavaClass.execute(
       StringToJString(string(RALMethodToHTTPMethod(AMethod))),
       StringToJString(string(AURL)),
@@ -471,6 +488,7 @@ begin
       StringToJString(string(vContentType)),
       Parent.ConnectTimeout,
       Parent.RequestTimeout,
+      vPing,
       Parent.HTTPVersion <> rhv11,
       { OkHttp has no ceiling of its own to set - it stops at 20 follow-ups and
         does not expose the number. So MaxRedirects is honoured where it can
@@ -508,6 +526,11 @@ begin
 end;
 
 class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
   Result := False;
 end;

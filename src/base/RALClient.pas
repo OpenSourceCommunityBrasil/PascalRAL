@@ -276,6 +276,12 @@ type
     /// transport is one-object-one-connection would SERIALISE concurrent calls
     /// if it honoured it. It is what hides the property in the IDE.
     class function SupportsSharedConnection: boolean; virtual;
+    /// Whether this engine can probe a live connection - see
+    /// TRALClient.KeepAliveInterval. Only where the library underneath has a
+    /// mechanism for it: OkHttp has HTTP/2 PING frames, WinHTTP does not
+    /// expose one (its TCP keepalive is a different thing and is not wired
+    /// here). False hides the property in the IDE and ignores any value.
+    class function SupportsKeepAliveInterval: boolean; virtual;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -334,6 +340,7 @@ type
     FHTTPVersion: TRALHTTPVersion;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
+    FKeepAliveInterval: IntegerRAL;
     FShareConnection: boolean;
     FMaxRedirects: IntegerRAL;
     FOnAfterExecute: TRALOnAfterExecute;
@@ -474,6 +481,28 @@ type
     /// TCP and TLS handshake on each.
     property ShareConnection: boolean read FShareConnection
                                       write FShareConnection default False;
+    /// How often, in milliseconds, to prove the connection is still there.
+    /// 0 - the default - is off, and is what every engine did before.
+    ///
+    /// It exists because of what HTTP/2 changed: the connection became long
+    /// lived and shared, so a peer that vanishes - Wi-Fi dropping, the phone
+    /// changing access point, the server restarting - leaves no trace. TCP
+    /// does not tell, and the client only finds out when RequestTimeout
+    /// expires. With 60 seconds of read timeout, that is a minute of a frozen
+    /// screen for a network that died in the first second.
+    ///
+    /// Set, the engine probes the connection on that interval and drops it the
+    /// moment the peer does not answer, so the call fails in seconds. It costs
+    /// traffic on an idle connection, which on a handset is battery: a value
+    /// near ConnectTimeout is a sensible starting point, not a small one.
+    ///
+    /// Only engines whose library has a mechanism for it honour this -
+    /// SupportsKeepAliveInterval says which. Today that is OkHttp, with HTTP/2
+    /// PING frames. Elsewhere the value is IGNORED, never refused, and the IDE
+    /// hides the property. It has no meaning under HTTP/1.1 either, for the
+    /// same reason it exists: there is no idle multiplexed connection to probe.
+    property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
+                                           write FKeepAliveInterval default 0;
     /// TLS options - see TRALClientSSL
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
@@ -580,12 +609,22 @@ function TRALClient.IsPropertyRelevant(const AName: StringRAL): boolean;
 var
   vClass: TRALClientHTTPClass;
 begin
+  { the CLASS answers, not an instance: at design time there is none, since
+    SetEngineType drops the engine it was holding. A name that is not known
+    yet answers True - better to show a property than to hide one by accident. }
+  vClass := GetEngineClass(FEngineType);
+
   if SameText(AName, 'ShareConnection') then
   begin
-    { the CLASS answers, not an instance: at design time there is none, since
-      SetEngineType drops the engine it was holding }
-    vClass := GetEngineClass(FEngineType);
     Result := (vClass = nil) or vClass.SupportsSharedConnection;
+  end
+  else if SameText(AName, 'KeepAliveInterval') then
+  begin
+    { TWO conditions, and both are needed. The engine has to have a mechanism -
+      only OkHttp does - and h2 has to be the version asked for, because what
+      this probes is the idle multiplexed connection that only h2 has. }
+    Result := (vClass <> nil) and vClass.SupportsKeepAliveInterval and
+              (FHTTPVersion = rhv2);
   end
   else
   begin
@@ -1376,6 +1415,11 @@ begin
 end;
 
 class function TRALClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
   Result := False;
 end;

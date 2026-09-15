@@ -184,11 +184,12 @@ public final class RalOkHttp {
    * every client an application creates.
    */
   private static synchronized OkHttpClient client(int connectMs, int readMs,
+                                                  int pingMs,
                                                   boolean allowHttp2,
                                                   boolean followRedirects,
                                                   String shareKey) {
     String key = (shareKey == null ? "" : shareKey) + "|" + connectMs + "|" + readMs
-               + "|" + allowHttp2 + "|" + followRedirects;
+               + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects;
     OkHttpClient cached = CLIENTS.get(key);
     if (cached != null) {
       return cached;
@@ -201,6 +202,23 @@ public final class RalOkHttp {
         .followRedirects(followRedirects)
         .followSslRedirects(followRedirects)
         .retryOnConnectionFailure(true);
+
+    // WHY THIS EXISTS: an HTTP/2 connection is long lived and shared, so a peer
+    // that vanishes - Wi-Fi dropping, the phone changing access point, the
+    // server restarting - leaves no trace at all. TCP does not say, and the
+    // call only fails when readTimeout expires: with 60s of read timeout that
+    // is a minute of frozen screen for a network that died in the first second.
+    //
+    // With a ping interval OkHttp sends HTTP/2 PING frames and fails the whole
+    // connection the moment a pong does not come back in time, so every call on
+    // it fails in seconds instead. Zero, the default, keeps the old behaviour.
+    //
+    // It is part of the cache key above on purpose: two clients asking for
+    // different intervals must not land on the same OkHttpClient, or the first
+    // one to arrive would decide for both.
+    if (pingMs > 0) {
+      b.pingInterval(pingMs, TimeUnit.MILLISECONDS);
+    }
 
     // h2 first, with 1.1 alongside it in the same ALPN offer. Asking for h2
     // alone would fail outright against any server that does not have it.
@@ -275,9 +293,9 @@ public final class RalOkHttp {
    */
   public static int execute(String method, String url, String headerBlock,
                             byte[] body, String contentType,
-                            int connectMs, int readMs, boolean allowHttp2,
-                            boolean followRedirects, String shareKey,
-                            RalCertJudge judge) {
+                            int connectMs, int readMs, int pingMs,
+                            boolean allowHttp2, boolean followRedirects,
+                            String shareKey, RalCertJudge judge) {
     Result r = new Result();
     RESULT.set(r);
     JUDGE.set(judge);
@@ -318,7 +336,7 @@ public final class RalOkHttp {
         }
       }
 
-      resp = client(connectMs, readMs, allowHttp2, followRedirects, shareKey)
+      resp = client(connectMs, readMs, pingMs, allowHttp2, followRedirects, shareKey)
                .newCall(q.build()).execute();
       r.status = resp.code();
       r.protocol = resp.protocol().toString();
@@ -359,7 +377,7 @@ public final class RalOkHttp {
   /** Which protocol a plain GET settles on - used to prove h2 on a device. */
   public static String probe(String url, int connectMs, int readMs) {
     int rc = execute("GET", url, "", null, "", connectMs, readMs,
-                     true, true, "", ACCEPT_ALL);
+                     0, true, true, "", ACCEPT_ALL);
     return (rc == 0) ? (protocol() + " status=" + status()) : ("error: " + error());
   }
 
