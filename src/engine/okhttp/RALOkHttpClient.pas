@@ -107,7 +107,8 @@ type
     /// Identifies THIS client's own transport, used only when it refuses to
     /// share - see ShareKey
     FOwnShareKey: StringRAL;
-    /// '' to share by configuration, FOwnShareKey to stand alone
+    /// The certificate policy to share by configuration with whoever judges
+    /// alike, FOwnShareKey to stand alone
     function ShareKey: StringRAL;
     /// "Name: Value" per line - one string instead of an array across JNI
     function HeaderBlock(ARequest: TRALRequest): StringRAL;
@@ -121,13 +122,6 @@ type
     /// The verdict on one certificate, in the shape the judge needs it
     function JudgeCertificate(const ACert: TRALCertInfo): boolean;
   {$ENDIF}
-  protected
-    /// True on Android, where the fingerprint arrives with the certificate, so
-    /// SSL.Pins works - which it never did through TNetHTTPClient there. False
-    /// anywhere else, where this engine has no implementation at all.
-    function SupportsCertPin: boolean; override;
-    /// True on Android: it is the whole reason this engine exists
-    function SupportsHTTP2: boolean; override;
   public
     {$IFDEF ANDROID}
     constructor Create(AOwner: TRALClient); override;
@@ -140,6 +134,17 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    /// True on Android, where the fingerprint arrives with the certificate, so
+    /// SSL.Pins works - which it never did through TNetHTTPClient there. False
+    /// anywhere else, where this engine has no implementation at all.
+    class function SupportsCertPin: boolean; override;
+    /// True on Android: it is the whole reason this engine exists
+    class function SupportsHTTP2: boolean; override;
+    /// True on Android: OkHttp keeps a ConnectionPool of its own, so several
+    /// clients on one OkHttpClient still get every socket the traffic needs -
+    /// and multiplex onto a single one under h2, which is the point.
+    class function SupportsSharedConnection: boolean; override;
   end;
 
 implementation
@@ -196,12 +201,17 @@ begin
   inherited;
 end;
 
-function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
+class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
 end;
 
-function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+class function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
 begin
   Result := True;
 end;
@@ -209,12 +219,21 @@ end;
 function TRALOkHttpClientHTTP.ShareKey: StringRAL;
 begin
   { Sharing here is not RAL's pool, it is OkHttp's: one client per combination
-    of settings, each with its own connection pool. The effect is the one
-    ShareConnection asks for, so honouring the property is a matter of handing
-    over an empty key - everyone alike shares - or this client's own, which
-    isolates it. }
+    of settings, each with its own connection pool. The Java side already puts
+    the timeouts, the h2 flag and the redirect setting in the key it builds, so
+    what this hands over is what is left to tell one group from another.
+
+    AND THAT IS THE CERTIFICATE POLICY, not an empty string. OkHttp keeps a
+    ConnectionPool per client and reuses a TLS connection WITHOUT a new
+    handshake - so the judge of a reused connection is whoever opened it, and a
+    client with a pin could inherit a connection accepted under a looser rule,
+    its pin never running. With the policy in the key, only those who judge
+    alike share, which is the same rule the netHTTP engine's pool follows.
+
+    Destroy releases FOwnShareKey and only that, so nothing here tears down a
+    client somebody else is still using. }
   if Parent.ShareConnection then
-    Result := ''
+    Result := CertPolicyKey
   else
     Result := FOwnShareKey;
 end;
@@ -309,14 +328,12 @@ var
   vProtocol: StringRAL;
 begin
   { Which version actually carried it. Unlike the Windows path, this is not a
-    guess from the status line: OkHttp reports what ALPN settled on. }
+    guess from the status line: OkHttp reports what ALPN settled on, and it
+    names them exactly as StrToRALHTTPVersion reads them - 'h2', 'http/1.1',
+    'http/1.0'. Anything else it might name one day (h3, spdy) lands on
+    rhvDefault, which reads as "the transport did not say". }
   vProtocol := StringRAL(JStringToString(TJRalOkHttp.JavaClass.protocol));
-  if vProtocol = 'h2' then
-    AResponse.ProtocolVersion := rhv2
-  else if (vProtocol = 'http/1.1') or (vProtocol = 'http/1.0') then
-    AResponse.ProtocolVersion := rhv11
-  else
-    AResponse.ProtocolVersion := rhvDefault;
+  AResponse.Protocol := vProtocol;
 
   vLines := TStringList.Create;
   try
@@ -480,12 +497,17 @@ end;
   cannot be chosen at all - and a request refuses here, loudly, rather than
   letting an application believe it has a transport it does not. }
 
-function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
+class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
 begin
   Result := False;
 end;
 
-function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+class function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
 begin
   Result := False;
 end;

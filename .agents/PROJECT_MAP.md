@@ -122,6 +122,15 @@ A pasta `src/` está organizada em:
 - `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseRegister.pas`, `RALSynopseServer.pas`
 - `engine/unigui/`: `RALUniGUIRegister.pas`, `RALUniGUIServer.pas`
 
+**O que é igual entre os motores, e onde não dá para ser (2026-09-15)**
+
+- `MaxConnections` — teto de conexões abertas ao mesmo tempo, mesmo nome e mesma semântica (`0` = sem teto, e quem passa do teto tem a conexão NOVA recusada) no Indy, no fpHTTP, no Sagui e no Synopse. No Sagui chamava-se `ConnectionLimit` até esta data; o nome velho continua compilando (propriedade pública, não publicada) e um `.dfm`/`.lfm` antigo ainda carrega, por `DefineProperties`. **UniGUI e CGI ficam de fora por natureza**: um não tem escuta própria, o outro não tem servidor.
+- `MaxKeepAliveConnections` (Synopse) **não** é a mesma coisa: não recusa ninguém, só para de conceder keep-alive, e só o `smThreads` tem esse teto.
+- `Protocol`/`ProtocolVersion` — **todos** os seis servidores e **todos** os cinco clientes preenchem, mesmo os que só falam HTTP/1.1.
+- `ShareConnection` — só netHTTP e OkHttp, e `SupportsSharedConnection` diz quais. Nos outros o transporte é um objeto por conexão: honrar a propriedade **serializaria** chamada concorrente.
+
+**Propriedade que não se aplica some do Object Inspector, e nunca levanta.** Quem decide é o próprio componente, em `TRALComponent.IsPropertyRelevant` (`RALCustomObjects`), e a cola de IDE fica num lugar só, `TRALSelectionEditor` em `RALRegister` — assim nenhum motor precisa depender da IDE. Esconder é conforto: o valor escondido pode ser sobra de outra configuração, então é **ignorado**. O que levanta é escolha explícita impossível (`smHttpSys` fora do Windows, `rhv2` num motor sem h2), e essa nunca fica escondida.
+
 ---
 
 ### 3.4) `src/languages/`

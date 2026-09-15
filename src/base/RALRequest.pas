@@ -65,7 +65,6 @@ type
     FHost: StringRAL;
     FHttpVersion: StringRAL;
     FMethod: TRALMethod;
-    FProtocol: StringRAL;
     FQuery: StringRAL;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
@@ -110,9 +109,11 @@ type
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Host: StringRAL read FHost write FHost;
+    /// The SCHEME, not the version: 'HTTP' or 'HTTPS'. Which version carried
+    /// the request is Protocol/ProtocolVersion, inherited from
+    /// TRALHTTPHeaderInfo - the two names have always meant different things.
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Method: TRALMethod read FMethod write FMethod;
-    property Protocol: StringRAL read FProtocol write FProtocol;
     property Query: StringRAL read FQuery write SetQuery;
   end;
 
@@ -205,7 +206,8 @@ begin
   ASource.Host := Self.Host;
   ASource.HttpVersion := Self.HttpVersion;
   ASource.Method := Self.Method;
-  ASource.Protocol := Self.Protocol;
+  { Protocol is not copied here: it is a face of ProtocolVersion, which the
+    inherited Clone above already carried over }
   ASource.Query := Self.Query;
 end;
 

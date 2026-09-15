@@ -26,7 +26,6 @@ type
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
     procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
-    function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -37,6 +36,8 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
@@ -101,7 +102,7 @@ end;
 
 { TRALfpHttpClientHTTP }
 
-function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
+class function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
 end;
@@ -382,6 +383,11 @@ begin
       AResponse.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
       AResponse.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
       AResponse.StatusCode := FHttp.ResponseStatusCode;
+      { Which version answered - TFPHTTPClient kept it from the status line.
+        This engine is HTTP/1.x only, so it is always 1.0 or 1.1, and that is
+        the point: every engine fills ProtocolVersion, so an application never
+        has to know which one is running in order to ask. }
+      AResponse.Protocol := StringRAL(FHttp.ServerHTTPVersion);
       AResponse.ResponseStream := vResult;
       // the request went through; if keep-alive is on, the socket stays open
       // and the NEXT request will be reusing it.

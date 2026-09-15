@@ -107,6 +107,14 @@ begin
     vRequest.Query := vAux1;
     vRequest.Params.AppendParamsUrl(vAux2, rpkQUERY);
 
+    { The version the FRONT-END server received, which is the only one that
+      exists here: a CGI process never sees a socket. It is also the one place
+      in RAL where HTTP/2 can turn up without any engine implementing it, since
+      nginx or IIS may well have taken the request on h2 and handed it over as
+      SERVER_PROTOCOL. Protocol/ProtocolVersion are two faces of one field, so
+      this fills both.      Anything the parse does not recognise leaves rhvDefault. }
+    vRequest.Protocol := GetEnvironmentVariable('SERVER_PROTOCOL');
+
     vAux1 := GetEnvironmentVariable('REQUEST_METHOD');
     vRequest.Method := HTTPMethodToRALMethod(vAux1);
     vRequest.AcceptEncoding := GetEnvironmentVariable('HTTP_ACCEPT_ENCODING');

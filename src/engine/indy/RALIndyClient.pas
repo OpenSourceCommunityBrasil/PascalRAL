@@ -26,8 +26,6 @@ type
 
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
-  protected
-    function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -38,13 +36,15 @@ type
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
     class function PackageDependency : StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
 
 { TRALIndyClientHTTP }
 
-function TRALIndyClientHTTP.SupportsCertPin: boolean;
+class function TRALIndyClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
 end;
@@ -259,6 +259,13 @@ begin
   vSource := ARequest.RequestStream;
   vResult := TMemoryStream.Create;
   try
+    { These three are state of the TIdHTTP OBJECT, not of this call, and they
+      survive until the next one overwrites them. Harmless while each engine
+      instance owns its own TIdHTTP, which is the case here - but it is exactly
+      what had to be undone in the netHTTP engine when clients started sharing
+      a transport, where one client's ContentType became another's. Anyone
+      giving this engine a shared TIdHTTP has to move them into the per-request
+      headers first. }
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
     { after RequestStream, on purpose: only now ContentEncoding says what
@@ -298,6 +305,15 @@ begin
       AResponse.ContentType := FHttp.Response.ContentType;
       AResponse.ContentDisposition := FHttp.Response.ContentDisposition;
       AResponse.StatusCode := FHttp.ResponseCode;
+
+      { Which version answered. Indy parsed it out of the status line, and this
+        engine is HTTP/1.x only, so the answer is always 1.0 or 1.1 - which is
+        the point: every engine fills ProtocolVersion, so an application never
+        has to know which one is running in order to ask. }
+      case FHttp.Response.ResponseVersion of
+        pv1_0: AResponse.ProtocolVersion := rhv10;
+        pv1_1: AResponse.ProtocolVersion := rhv11;
+      end;
 
       AResponse.ResponseStream := vResult;
     except

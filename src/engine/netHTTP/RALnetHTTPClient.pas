@@ -22,7 +22,9 @@ type
   private
     { this engine's own transport, used when it is not sharing }
     FHttp: TNetHTTPClient;
-    { the borrowed one, and the key it was asked for - '' when there is none }
+    { the borrowed one, and the key it was asked for - '' when there is none.
+      The key is also how the holder is found again: the connection cap is
+      state of the shared TRANSPORT, not of one client - see PoolMatchCap }
     FShared: TNetHTTPClient;
     FSharedKey: StringRAL;
 
@@ -37,20 +39,11 @@ type
     /// KEY, so everyone on a shared transport judges certificates by the same
     /// rules - see CertPolicyKey and TRALnetHTTPHolder.Owner.
     function CanShare: boolean;
-    /// Signature of this client's certificate policy - see CertPolicy
-    function CertPolicyKey: StringRAL;
   protected
-    /// True on Windows, where the server certificate fingerprint is reachable
-    /// - see ServerCertFingerprint. It stays False on every other platform,
-    /// and SSL.Pins then refuses on the first request instead of quietly
-    /// checking something weaker.
-    function SupportsCertPin: boolean; override;
     /// Picks the transport for this call, borrowing or giving back as the
     /// settings require, and returns it already configured.
     function PickTransport(const AURL: StringRAL): TNetHTTPClient;
     procedure DropShared;
-  protected
-    function SupportsHTTP2: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -61,6 +54,19 @@ type
     class function EngineName : StringRAL; override;
     class function EngineVersion : StringRAL; override;
     class function PackageDependency : StringRAL; override;
+
+    /// True on Windows, where the server certificate fingerprint is reachable
+    /// - see ServerCertFingerprint. It stays False on every other platform,
+    /// and SSL.Pins then refuses on the first request instead of quietly
+    /// checking something weaker.
+    class function SupportsCertPin: boolean; override;
+    class function SupportsHTTP2: boolean; override;
+    /// True: WinHTTP (and every other library the RTL puts under this engine)
+    /// keeps a connection pool of its own, so one shared transport still opens
+    /// as many sockets as the traffic needs - and multiplexes onto one under
+    /// HTTP/2. Sharing costs nothing in parallelism here, which is exactly what
+    /// is not true of the one-socket-per-object engines.
+    class function SupportsSharedConnection: boolean; override;
   end;
 
 implementation
@@ -149,10 +155,22 @@ type
       handler and the host all go into the pool key, so whoever shares a
       transport has an IDENTICAL policy - see CertPolicy. }
     Owner: TRALnetHTTPClientHTTP;
+    {$IFDEF MSWINDOWS}
+    { Whether this transport is currently capped at one connection, and what
+      WinHTTP had there before - so putting it back means putting back the
+      value it really had, not a guess at the default. See the cap block of
+      LimitToOneConnection's comment. }
+    ConnCapped: boolean;
+    ConnWas: DWORD;
+    {$ENDIF}
     constructor Create;
     destructor Destroy; override;
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
+    { Turns the one-connection cap on or off to match the version that was
+      actually NEGOTIATED. THE POOL LOCK MUST ALREADY BE HELD - PoolMatchCap
+      takes it, because finding the holder needs it anyway. }
+    procedure MatchConnectionCap(AVersion: TRALHTTPVersion);
   end;
 
 var
@@ -179,6 +197,7 @@ begin
   FreeAndNil(Sharers);
   inherited;
 end;
+
 
 procedure TRALnetHTTPHolder.ValidateCert(const Sender: TObject;
   const ARequest: TURLRequest; const Certificate: TCertificate;
@@ -231,19 +250,26 @@ end;
   more connections. Degrade without breaking, the way SupportsCertPin already
   does.
 
+  AND IT IS APPLIED ONLY ONCE HTTP/2 IS CONFIRMED, never because it was asked
+  for. ALPN may always settle on 1.1 - an older server, a proxy, or plain http,
+  which has no h2 at all - and under 1.1 a single connection does not multiplex,
+  it QUEUES. Capping on the request instead of on the answer made "ask for h2"
+  slower than asking for nothing whenever the other side did not have it, with
+  nothing to show for it. So the holder caps after the first response that says
+  rhv2, and puts back what it found if the answer ever says otherwise.
+
   Outside Windows none of this exists nor is needed: on Android
   HttpURLConnection is OkHttp underneath, which multiplexes h2 in its own pool,
   and on macOS/iOS NSURLSession does the same. }
-procedure LimitToOneConnection(AHttp: TNetHTTPClient);
+function WinHttpSessionOf(AHttp: TNetHTTPClient): Pointer;
 var
   vCtx: TRttiContext;
   vType: TRttiType;
   vField: TRttiField;
   vValue: TValue;
   vPlatform: TObject;
-  vSession: Pointer;
-  vOption, vOne: DWORD;
 begin
+  Result := nil;
   vCtx := TRttiContext.Create;
   try
     vType := vCtx.GetType(AHttp.ClassType);
@@ -265,20 +291,44 @@ begin
     vField := vType.GetField('FWSession');
     if vField = nil then
       Exit;
-    vSession := vField.GetValue(vPlatform).AsType<Pointer>;
-    if vSession = nil then
-      Exit;
-
-    vOption := WINHTTP_OPTION_MAX_CONNS_PER_SERVER;
-    vOne := 1;
-    WinHttpSetOption(vSession, vOption, @vOne, SizeOf(vOne));
+    Result := vField.GetValue(vPlatform).AsType<Pointer>;
   except
     { RTTI over a field whose type has changed may raise, and an optimisation
       has no right to bring down the application of someone who only wanted to
       make a request }
-    on E: Exception do ;
+    on E: Exception do
+      Result := nil;
   end;
   vCtx.Free;
+end;
+
+function GetMaxConnsPerServer(AHttp: TNetHTTPClient; out AValue: DWORD): boolean;
+var
+  vSession: Pointer;
+  vSize: DWORD;
+begin
+  AValue := 0;
+  vSession := WinHttpSessionOf(AHttp);
+  Result := vSession <> nil;
+  if not Result then
+    Exit;
+
+  vSize := SizeOf(AValue);
+  Result := WinHttpQueryOption(vSession, WINHTTP_OPTION_MAX_CONNS_PER_SERVER,
+                               AValue, vSize);
+end;
+
+function SetMaxConnsPerServer(AHttp: TNetHTTPClient; AValue: DWORD): boolean;
+var
+  vSession: Pointer;
+begin
+  vSession := WinHttpSessionOf(AHttp);
+  Result := vSession <> nil;
+  if not Result then
+    Exit;
+
+  Result := WinHttpSetOption(vSession, WINHTTP_OPTION_MAX_CONNS_PER_SERVER,
+                             @AValue, SizeOf(AValue));
 end;
 {$ENDIF}
 
@@ -305,6 +355,118 @@ function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL; stdcall
   Through RTTI for the same reason as LimitToOneConnection: the field is
   private. Should any step fail it returns '', and RAL then treats it as an
   engine that cannot read a fingerprint, exactly as before. }
+{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
+
+  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
+  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
+  comes back reported as 1.1, and it is not a rounding error: it was measured
+  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
+
+  WinHTTP does know, and it answers on the REQUEST handle, under
+  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
+  private FWRequest of its own, which is the same door ServerCertFingerprint
+  already opens one level up - and the same RTTI caveat applies: any step that
+  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
+{ The pool lock is already held by PoolMatchCap - see the declaration. }
+procedure TRALnetHTTPHolder.MatchConnectionCap(AVersion: TRALHTTPVersion);
+{$IFDEF MSWINDOWS}
+var
+  vWas: DWORD;
+{$ENDIF}
+begin
+  {$IFDEF MSWINDOWS}
+  if AVersion = rhv2 then
+  begin
+    if ConnCapped then
+      Exit;
+    { remember what WinHTTP really had before touching it: putting back a
+      guessed default would be worse than not capping at all }
+    if not GetMaxConnsPerServer(Http, vWas) then
+      Exit;
+    if not SetMaxConnsPerServer(Http, 1) then
+      Exit;
+    ConnWas := vWas;
+    ConnCapped := True;
+  end
+  else if ConnCapped then
+  begin
+    { the answer stopped being h2 - a server restarted onto another
+      configuration, a proxy in the way. Under 1.1 one connection queues, so
+      the cap comes off. }
+    if SetMaxConnsPerServer(Http, ConnWas) then
+      ConnCapped := False;
+  end;
+  {$ENDIF}
+end;
+
+{ Finds the holder this key belongs to and lets it match the cap to the version
+  that was actually negotiated. Called once per response, and the lookup is a
+  string compare over a list with one entry per DISTINCT configuration - never
+  one per client - so it costs nothing next to the request that just went out. }
+procedure PoolMatchCap(const AKey: StringRAL; AVersion: TRALHTTPVersion);
+var
+  vIdx: IntegerRAL;
+begin
+  if (AKey = '') or (vPool = nil) then
+    Exit;
+
+  vPoolLock.Enter;
+  try
+    vIdx := vPool.IndexOf(AKey);
+    if vIdx >= 0 then
+      TRALnetHTTPHolder(vPool.Objects[vIdx]).MatchConnectionCap(AVersion);
+  finally
+    vPoolLock.Leave;
+  end;
+end;
+
+function NegotiatedProtocol(const AResponse: IHTTPResponse): TRALHTTPVersion;
+var
+  vCtx: TRttiContext;
+  vType: TRttiType;
+  vField: TRttiField;
+  vObj: TObject;
+  vHandle: Pointer;
+  vFlags, vSize: DWORD;
+begin
+  Result := rhvDefault;
+  if AResponse = nil then
+    Exit;
+
+  vCtx := TRttiContext.Create;
+  try
+    vObj := AResponse as TObject;
+    if vObj = nil then
+      Exit;
+    vType := vCtx.GetType(vObj.ClassType);
+    if vType = nil then
+      Exit;
+    vField := vType.GetField('FWRequest');
+    if vField = nil then
+      Exit;
+    vHandle := vField.GetValue(vObj).AsType<Pointer>;
+    if vHandle = nil then
+      Exit;
+
+    vFlags := 0;
+    vSize := SizeOf(vFlags);
+    if not WinHttpQueryOption(vHandle, WINHTTP_OPTION_HTTP_PROTOCOL_USED,
+                              vFlags, vSize) then
+      Exit;
+
+    if (vFlags and WINHTTP_PROTOCOL_FLAG_HTTP2) <> 0 then
+      Result := rhv2
+    else
+      { the option answered, and it said no h2 - which is an answer, not a
+        failure to read: 1.1 is then the truth and not a fallback }
+      Result := rhv11;
+  except
+    on E: Exception do
+      Result := rhvDefault;
+  end;
+  vCtx.Free;
+end;
+
 function ServerCertFingerprint(const ARequest: TURLRequest): StringRAL;
 var
   vCtx: TRttiContext;
@@ -414,14 +576,9 @@ begin
       end;
       {$ENDIF}
 
-      {$IFDEF MSWINDOWS}
-      { Only makes sense when HTTP/2 was ASKED for: limited to one connection,
-        HTTP/1.1 QUEUES concurrent requests instead of running them in
-        parallel, which would be trading connections for slowness. See
-        LimitToOneConnection. }
-      if ASetup.Version = rhv2 then
-        LimitToOneConnection(vHolder.Http);
-      {$ENDIF}
+      { The one-connection cap is NOT set here. It belongs to the version that
+        was negotiated, not to the one that was asked for, and nothing has been
+        negotiated yet - see TRALnetHTTPHolder.MatchConnectionCap. }
 
       vPool.AddObject(vKey, vHolder);
     end;
@@ -493,31 +650,44 @@ begin
   {$ENDIF}
 end;
 
-{ Every platform this engine compiles for has a library able to frame HTTP/2,
+{ Most platforms this engine compiles for have a library able to frame HTTP/2,
   and the RTL hands ProtocolVersion to each of them: WinHTTP on Windows,
   libcurl on Linux (System.Net.HttpClient.Curl sets CURLOPT_HTTP_VERSION),
-  HttpURLConnection - OkHttp underneath - on Android, NSURLSession on
-  macOS/iOS. So the only thing left to decide is whether the RTL declares the
-  property at all, which is what the conditional above answers.
+  NSURLSession on macOS/iOS. So the first thing to decide is whether the RTL
+  declares the property at all, which is what the conditional above answers.
 
-  Note this is the Delphi RTL: under FPC there is no netHTTP engine, and no
-  other RAL client engine speaks HTTP/2 today. }
-function TRALnetHTTPClientHTTP.SupportsHTTP2: boolean;
+  ANDROID IS THE EXCEPTION, and it is not a matter of the RTL version. There
+  the RTL goes through HttpURLConnection, which runs on the copy of OkHttp
+  inside AOSP - and AOSP hands that copy a protocol list WITHOUT h2. Setting
+  ProtocolVersion there is accepted and then ignored: measured on a handset
+  against an http.sys server serving h2 to everything else, 70 of 71 requests
+  came back HTTP/1.1, with no error and nothing in any log. Answering True
+  would make HTTPVersion = rhv2 a silent no-op, which is the one outcome
+  TRALHTTPVersion exists to prevent - so it answers False, the request raises,
+  and the message points at the OkHttp engine, which does speak h2 there.
+
+  Note this is the Delphi RTL: under FPC there is no netHTTP engine. }
+class function TRALnetHTTPClientHTTP.SupportsHTTP2: boolean;
 begin
-  {$IFDEF RALNETHTTP_VERSIONED}
+  {$IF Defined(RALNETHTTP_VERSIONED) and not Defined(ANDROID)}
   Result := True;
   {$ELSE}
   Result := False;
-  {$ENDIF}
+  {$IFEND}
 end;
 
-function TRALnetHTTPClientHTTP.SupportsCertPin: boolean;
+class function TRALnetHTTPClientHTTP.SupportsCertPin: boolean;
 begin
   {$IFDEF MSWINDOWS}
   Result := True;
   {$ELSE}
   Result := False;
   {$ENDIF}
+end;
+
+class function TRALnetHTTPClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := True;
 end;
 
 { The RTL's TCertificate carries no fingerprint on any platform - only Subject,
@@ -589,18 +759,6 @@ end;
   TRALnetHTTPSetup. It includes the event method by CODE and INSTANCE: two
   clients of the same datamodule pointing at the same handler produce the same
   signature and may share a transport; different handlers may not. }
-function TRALnetHTTPClientHTTP.CertPolicyKey: StringRAL;
-var
-  vMethod: TMethod;
-begin
-  Result := IntToStr(Ord(Parent.SSL.Verify)) + ';' + Parent.SSL.Pins.Text + ';';
-  if Assigned(Parent.OnValidateServerCert) then
-  begin
-    vMethod := TMethod(Parent.OnValidateServerCert);
-    Result := Result + IntToHex(NativeUInt(vMethod.Code), 8) + ':' +
-                       IntToHex(NativeUInt(vMethod.Data), 8);
-  end;
-end;
 
 function TRALnetHTTPClientHTTP.WantsCertHandler: boolean;
 begin
@@ -878,25 +1036,29 @@ begin
           client that asked for 2. Reported per response, never cached on the
           client - two BaseURLs may well negotiate differently.
 
-          It UNDER-reports on Windows, and knowingly so. The RTL reads
-          WINHTTP_QUERY_VERSION, which is the text of the status line - and an
-          HTTP/2 response has no status line, so WinHTTP answers "HTTP/1.1"
-          there even on a connection it really framed as h2 (measured against
-          this very engine: WINHTTP_OPTION_HTTP_PROTOCOL_USED, the option that
-          actually knows, came back HTTP/2 while GetVersion said 1.1). Reading
-          that option here would need the WinHTTP handle, which the RTL keeps
-          private, so the honest thing is to report what the RTL knows: rhv2
-          here means h2 for sure, rhv11 means "the transport did not say
-          otherwise", never "HTTP/2 failed". }
-        {$IFDEF RALNETHTTP_VERSIONED}
-        case vResponse.Version of
-          THTTPProtocolVersion.HTTP_1_0,
-          THTTPProtocolVersion.HTTP_1_1: AResponse.ProtocolVersion := rhv11;
-          THTTPProtocolVersion.HTTP_2_0: AResponse.ProtocolVersion := rhv2;
-        else
-          AResponse.ProtocolVersion := rhvDefault; // the RTL could not tell
-        end;
+          Windows is asked FIRST and separately, because the RTL's own answer
+          under-reports there: it reads the status line, which an HTTP/2
+          response does not have - see NegotiatedProtocol. The RTL is the
+          fallback, for when that door is shut. }
+        {$IFDEF MSWINDOWS}
+        AResponse.ProtocolVersion := NegotiatedProtocol(vResponse);
         {$ENDIF}
+
+        {$IFDEF RALNETHTTP_VERSIONED}
+        if AResponse.ProtocolVersion = rhvDefault then
+          case vResponse.Version of
+            THTTPProtocolVersion.HTTP_1_0: AResponse.ProtocolVersion := rhv10;
+            THTTPProtocolVersion.HTTP_1_1: AResponse.ProtocolVersion := rhv11;
+            THTTPProtocolVersion.HTTP_2_0: AResponse.ProtocolVersion := rhv2;
+          else
+            AResponse.ProtocolVersion := rhvDefault; // the RTL could not tell
+          end;
+        {$ENDIF}
+
+        { AND ONLY NOW the one-connection cap, because only now is there an
+          answer to cap for. Asking for h2 is not getting it, and one connection
+          under HTTP/1.1 queues what it should run in parallel. }
+        PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
 
         { Order matters, and it used to be wrong: CompressType and the crypto
           options were assigned BEFORE the response headers were appended, so

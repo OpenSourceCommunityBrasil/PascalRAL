@@ -1,4 +1,4 @@
-unit RALClient;
+﻿unit RALClient;
 
 interface
 
@@ -223,17 +223,20 @@ type
     /// here - so the rule cannot drift from one transport to another, the same
     /// way SetTransportError keeps the retry rule in one place.
     function AcceptServerCert(const ACert: TRALCertInfo): boolean;
-    /// Whether this engine, on this platform, can fill TRALCertInfo.Fingerprint.
-    /// False makes SSL.Pin raise on the first request instead of silently
-    /// checking something weaker - a security option that quietly degrades is
-    /// worse than one that refuses.
-    function SupportsCertPin: boolean; virtual;
-    /// Whether this engine, on this platform and compiler, can speak HTTP/2.
-    /// RAL frames nothing itself: the answer is whether the library under the
-    /// engine does it and exposes the switch. False makes HTTPVersion = rhv2
-    /// raise on the first request, for the same reason SupportsCertPin does -
-    /// see TRALHTTPVersion.
-    function SupportsHTTP2: boolean; virtual;
+    { Signature of this client's certificate policy: SSL.Verify, SSL.Pins and
+      the OnValidateServerCert handler, down to the very instance. Two clients
+      with the SAME signature judge every certificate alike.
+
+      Why an engine that shares transports needs it: a TLS connection lives in
+      the transport, and it was judged ONCE, during its handshake, by whoever
+      opened it. A second client reusing that connection makes no handshake at
+      all - so its pin and its event never run, and it inherits a verdict it
+      never gave. Putting this in the sharing key means only those who judge
+      alike ever share, and there is nothing left to inherit.
+
+      It is here, and not in one engine, because both engines that share need
+      exactly the same answer. }
+    function CertPolicyKey: StringRAL; virtual;
     /// True while the client asked for certificate control, which is what tells
     /// an engine to turn its verification on. Engines that verify by default
     /// (netHTTP, Synopse) ignore it; the OpenSSL ones (Indy, fpHTTP) do not
@@ -251,6 +254,28 @@ type
     class function EngineName : StringRAL; virtual; abstract;
     class function EngineVersion : StringRAL; virtual; abstract;
     class function PackageDependency : StringRAL; virtual; abstract;
+
+    { The two below answer what this engine CAN do, on this platform and this
+      compiler. They are class functions on purpose: the IDE has to be able to
+      ask an engine that was merely picked in the Object Inspector, with no
+      instance created yet - see TRALClientSelectionEditor. }
+
+    /// Whether this engine, on this platform, can fill TRALCertInfo.Fingerprint.
+    /// False makes SSL.Pin raise on the first request instead of silently
+    /// checking something weaker - a security option that quietly degrades is
+    /// worse than one that refuses.
+    class function SupportsCertPin: boolean; virtual;
+    /// Whether this engine, on this platform and compiler, can speak HTTP/2.
+    /// RAL frames nothing itself: the answer is whether the library under the
+    /// engine does it and exposes the switch. False makes HTTPVersion = rhv2
+    /// raise on the first request, for the same reason SupportsCertPin does -
+    /// see TRALHTTPVersion.
+    class function SupportsHTTP2: boolean; virtual;
+    /// Whether ShareConnection means anything here. False is not a failure and
+    /// never raises: the property is documented as a hint, and an engine whose
+    /// transport is one-object-one-connection would SERIALISE concurrent calls
+    /// if it honoured it. It is what hides the property in the IDE.
+    class function SupportsSharedConnection: boolean; virtual;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -374,6 +399,13 @@ type
       back, for at most ConnectTimeout + RequestTimeout. Destroy does it: a
       thread that outlives its client reads freed memory. }
     procedure WaitPendingRequests;
+
+    /// ShareConnection belongs to the engine currently chosen - see the base.
+    /// HTTPVersion deliberately does NOT: it is a request every engine
+    /// understands, and one that cannot be honoured says so out loud on the
+    /// first call. Hiding it would leave an rhv2 from another engine sitting
+    /// invisible in the .dfm, which is the trap this whole thing avoids.
+    function IsPropertyRelevant(const AName: StringRAL): boolean; override;
 
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; var AResponse : TRALResponse); overload;
@@ -544,6 +576,23 @@ end;
 
 { TRALClient }
 
+function TRALClient.IsPropertyRelevant(const AName: StringRAL): boolean;
+var
+  vClass: TRALClientHTTPClass;
+begin
+  if SameText(AName, 'ShareConnection') then
+  begin
+    { the CLASS answers, not an instance: at design time there is none, since
+      SetEngineType drops the engine it was holding }
+    vClass := GetEngineClass(FEngineType);
+    Result := (vClass = nil) or vClass.SupportsSharedConnection;
+  end
+  else
+  begin
+    Result := inherited IsPropertyRelevant(AName);
+  end;
+end;
+
 procedure TRALClient.SetEngineType(AValue: String);
 var
   vClass: TRALClientHTTPClass;
@@ -709,7 +758,7 @@ begin
   if vClass <> nil then
     Result := vClass.Create(Self)
   else
-    raise Exception.CreateFmt('Class %s n�o encontrada', [EngineType]);
+    raise Exception.CreateFmt('Class %s não encontrada', [EngineType]);
 end;
 
 { An engine used to be created and freed around every request, which threw
@@ -1298,12 +1347,35 @@ begin
   end;
 end;
 
-function TRALClientHTTP.SupportsCertPin: boolean;
+function TRALClientHTTP.CertPolicyKey: StringRAL;
+var
+  vMethod: TMethod;
+begin
+  { one line on purpose: this ends up as a key, and Pins.Text brings line
+    breaks with it }
+  Result := IntToStr(Ord(Parent.SSL.Verify)) + ';' +
+            StringReplace(StringReplace(Parent.SSL.Pins.Text,
+                                        StringRAL(#13), StringRAL(''), [rfReplaceAll]),
+                          StringRAL(#10), StringRAL(','), [rfReplaceAll]) + ';';
+  if Assigned(Parent.OnValidateServerCert) then
+  begin
+    vMethod := TMethod(Parent.OnValidateServerCert);
+    Result := Result + IntToHex(NativeUInt(vMethod.Code), 8) + ':' +
+                       IntToHex(NativeUInt(vMethod.Data), 8);
+  end;
+end;
+
+class function TRALClientHTTP.SupportsCertPin: boolean;
 begin
   Result := False;
 end;
 
-function TRALClientHTTP.SupportsHTTP2: boolean;
+class function TRALClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALClientHTTP.SupportsSharedConnection: boolean;
 begin
   Result := False;
 end;
@@ -1367,13 +1439,23 @@ begin
     end;
 
     { Same reasoning as the pin above, and in the same place: refuse before a
-      socket is opened. Only rhv2 is checked - rhv11 is what every engine does
-      anyway, so asking for it is never a reason to refuse. }
+      socket is opened. rhv11 is what every engine does anyway, so asking for
+      it is never a reason to refuse. }
     if (FParent.HTTPVersion = rhv2) and (not SupportsHTTP2) then
     begin
       SetTransportError(AResponse, rteOther, 0,
                         StringRAL(Format(emHTTP2Unsupported, [EngineName])));
       raise Exception.Create(Format(emHTTP2Unsupported, [EngineName]));
+    end;
+
+    { rhv10 belongs to the OTHER direction of TRALHTTPVersion: it is a version a
+      server RECEIVES, never one a client can ask a transport for. No engine has
+      a switch for it, so accepting it here would mean sending 1.1 and reporting
+      1.0 - the exact disagreement ProtocolVersion exists to rule out. }
+    if FParent.HTTPVersion = rhv10 then
+    begin
+      SetTransportError(AResponse, rteOther, 0, StringRAL(emHTTP10NotRequestable));
+      raise Exception.Create(emHTTP10NotRequestable);
     end;
 
     // vParams is used in two places: SetAuthToken, which only runs while there

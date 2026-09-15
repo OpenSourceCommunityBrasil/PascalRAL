@@ -54,8 +54,6 @@ type
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
-  protected
-    function SupportsCertPin: boolean; override;
   public
     destructor Destroy; override;
 
@@ -65,6 +63,8 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
@@ -90,7 +90,7 @@ begin
   FCertSeen := False;
 end;
 
-function TRALSynopseClientHTTP.SupportsCertPin: boolean;
+class function TRALSynopseClientHTTP.SupportsCertPin: boolean;
 begin
   { True as a rule, and the exceptions - SChannel, or a build without OpenSSL -
     are caught right after the handshake in SendUrl, where the fingerprint
@@ -405,6 +405,13 @@ begin
           AResponse.ContentType := vHttp.ContentType;
           AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
           AResponse.StatusCode := vResult;
+          { Which version answered. CommandResp is the status line mORMot2 read
+            back, 'HTTP/1.1 200 OK' - and the parse takes the scheme off, so it
+            can be handed over whole. THttpClientSocket is HTTP/1.x only, so it
+            is always 1.0 or 1.1, and that is the point: every engine fills
+            ProtocolVersion, so an application never has to know which one is
+            running in order to ask. }
+          AResponse.Protocol := StringRAL(vHttp.Http.CommandResp);
           AResponse.ResponseText := vHttp.Content;
         end;
       except

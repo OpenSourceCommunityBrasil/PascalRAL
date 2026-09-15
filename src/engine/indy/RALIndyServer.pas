@@ -60,6 +60,11 @@ type
     destructor Destroy; override;
   published
     property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
+    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
+    /// knob TRALfpHTTPServer, TRALSaguiServer and TRALSynopseServer publish
+    /// under this name: past it Indy refuses a NEW connection
+    /// (DoMaxConnectionsExceeded), so no existing client is dropped to make
+    /// room. 0 means no ceiling.
     property MaxConnections: IntegerRAL read GetMaxConnections write SetMaxConnections;
     property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
@@ -87,7 +92,9 @@ begin
     thing on its own, in TCrtSocket.SetupConnection. }
   FHttp.UseNagle := False;
 
-  MaxConnections := -1;
+  { 0, not -1: Indy reads anything <= 0 as "no ceiling" all the same, and 0 is
+    what the other three RAL servers publish under this name }
+  MaxConnections := 0;
   ListenQueue := -1;
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 

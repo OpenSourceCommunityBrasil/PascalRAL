@@ -20,7 +20,7 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   // generic
-  RALConsts, RALAuthentication, RALCompress, RALTypes,
+  RALConsts, RALAuthentication, RALCompress, RALTypes, RALCustomObjects,
   // server
   RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
   RALStorageCSV,
@@ -42,17 +42,46 @@ type
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
-  {$IFNDEF FPC}
-    TRALServerSelectionEditor = class(TSelectionEditor)
-    public
-      procedure RequiresUnits(Proc: TGetStrProc); override;
-    end;
+  { Drops from the Object Inspector the published properties that say nothing
+    about the component as it is configured right now - the mORMot2 server's
+    HttpSysDomain outside smHttpSys, ShareConnection on an engine with one
+    socket per object. What is irrelevant is decided by the component itself,
+    in TRALComponent.IsPropertyRelevant, so this unit never has to know one
+    engine from another - and an engine never has to link against the IDE.
 
-    TRALClientSelectionEditor = class(TSelectionEditor)
-    public
+    It is COMFORT, not enforcement: what is hidden keeps whatever value it had
+    and is ignored, never refused, because it may simply be left over from
+    another configuration. A choice that cannot work is a different matter and
+    is never hidden - it raises, and says why.
+
+    Delphi filters through a second interface on the selection editor,
+    ISelectionPropertyFilter; Lazarus through a virtual method plus an
+    attribute. Same idea, two shapes. }
+  TRALSelectionEditor = class(TSelectionEditor{$IFNDEF FPC}, ISelectionPropertyFilter{$ENDIF})
+  public
+    {$IFDEF FPC}
+      function GetAttributes: TSelectionEditorAttributes; override;
+      procedure FilterProperties(ASelection: TPersistentSelectionList;
+                                 AProperties: TPropertyEditorList); override;
+    {$ELSE}
+      procedure FilterProperties(const ASelection: IDesignerSelections;
+                                 const ASelectionProperties: IInterfaceList);
+    {$ENDIF}
+  end;
+
+  TRALServerSelectionEditor = class(TRALSelectionEditor)
+  public
+    {$IFNDEF FPC}
       procedure RequiresUnits(Proc: TGetStrProc); override;
-    end;
-  {$ENDIF}
+    {$ENDIF}
+  end;
+
+  TRALClientSelectionEditor = class(TRALSelectionEditor)
+  public
+    {$IFNDEF FPC}
+      procedure RequiresUnits(Proc: TGetStrProc); override;
+    {$ENDIF}
+  end;
 
   { TRALClientEngines }
 
@@ -101,10 +130,11 @@ begin
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
-  {$IFNDEF FPC}
-    RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
-    RegisterSelectionEditor(TRALClient,  TRALClientSelectionEditor);
-  {$ENDIF}
+  { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,
+    so every engine's server and every client gets the property filter without
+    a line of design-time code of its own. }
+  RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
+  RegisterSelectionEditor(TRALClient, TRALClientSelectionEditor);
 
   // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClient, 'BaseURL', TRALBaseURLEditor);
@@ -265,6 +295,80 @@ begin
     FPCRequiresUnits(AValue);
   {$ENDIF}
 end;
+
+{ TRALSelectionEditor }
+
+{$IFDEF FPC}
+  function TRALSelectionEditor.GetAttributes: TSelectionEditorAttributes;
+  begin
+    Result := [seaFilterProperties];
+  end;
+
+  procedure TRALSelectionEditor.FilterProperties(ASelection: TPersistentSelectionList;
+    AProperties: TPropertyEditorList);
+  var
+    vProp, vSel: IntegerRAL;
+    vName: StringRAL;
+    vShow: boolean;
+  begin
+    if (ASelection = nil) or (AProperties = nil) then
+      Exit;
+
+    for vProp := AProperties.Count - 1 downto 0 do
+    begin
+      vName := StringRAL(AProperties[vProp].GetName);
+
+      { hidden only when it says nothing for EVERY selected component: with a
+        mixed selection the honest thing is to go on showing it }
+      vShow := False;
+      for vSel := 0 to ASelection.Count - 1 do
+      begin
+        if (ASelection[vSel] is TRALComponent) and
+           (not TRALComponent(ASelection[vSel]).IsPropertyRelevant(vName)) then
+          Continue;
+        vShow := True;
+        Break;
+      end;
+
+      if not vShow then
+        AProperties.Delete(vProp); // the list owns the editor and frees it here
+    end;
+  end;
+{$ELSE}
+  procedure TRALSelectionEditor.FilterProperties(const ASelection: IDesignerSelections;
+    const ASelectionProperties: IInterfaceList);
+  var
+    vProp, vSel: IntegerRAL;
+    vName: StringRAL;
+    vShow: boolean;
+    vEditor: IProperty;
+  begin
+    if (ASelection = nil) or (ASelectionProperties = nil) then
+      Exit;
+
+    for vProp := ASelectionProperties.Count - 1 downto 0 do
+    begin
+      if not Supports(ASelectionProperties[vProp], IProperty, vEditor) then
+        Continue;
+      vName := StringRAL(vEditor.GetName);
+
+      { hidden only when it says nothing for EVERY selected component: with a
+        mixed selection the honest thing is to go on showing it }
+      vShow := False;
+      for vSel := 0 to ASelection.Count - 1 do
+      begin
+        if (ASelection[vSel] is TRALComponent) and
+           (not TRALComponent(ASelection[vSel]).IsPropertyRelevant(vName)) then
+          Continue;
+        vShow := True;
+        Break;
+      end;
+
+      if not vShow then
+        ASelectionProperties.Delete(vProp);
+    end;
+  end;
+{$ENDIF}
 
 {$IFNDEF FPC}
   { TRALServerSelectionEditor }

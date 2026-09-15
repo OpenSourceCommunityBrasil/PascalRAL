@@ -1,4 +1,4 @@
-/// Base unit for RALServer component using mORMot2 Engine
+﻿/// Base unit for RALServer component using mORMot2 Engine
 unit RALSynopseServer;
 
 interface
@@ -39,15 +39,15 @@ type
     the accept and the first headers, and then every KEPT-ALIVE connection gets
     a thread of its own for as long as it lives. It is simple and fast per
     request, and it puts a ceiling on how many clients can stay connected -
-    MaxKeepAlive, 512 by default, for the whole server. Past that the server
-    keeps answering but stops granting keep-alive, so every request goes back
-    to paying a fresh TCP (and TLS) handshake.
+    MaxKeepAliveConnections, 512 by default, for the whole server. Past that
+    the server keeps answering but stops granting keep-alive, so every request
+    goes back to paying a fresh TCP (and TLS) handshake.
 
     smAsync is one event loop instead - IOCP on Windows, epoll/kqueue on POSIX.
     An idle connection then costs a socket and a buffer rather than a thread,
-    so thousands of them stay open, and MaxKeepAlive stops meaning anything.
-    The request itself is still processed on a worker thread, so a handler that
-    blocks on a database does not stall the loop.
+    so thousands of them stay open, and MaxKeepAliveConnections stops meaning
+    anything. The request itself is still processed on a worker thread, so a
+    handler that blocks on a database does not stall the loop.
 
     Which one to pick: many connections that are mostly idle - handheld
     scanners, mobile apps, anything polling - is what smAsync is for. Few
@@ -85,7 +85,8 @@ type
       only the socket ones have is guarded by "is" further down. }
     FHttp: THttpServerGeneric;
     FHttpSysDomain: StringRAL;
-    FMaxKeepAlive: IntegerRAL;
+    FMaxConnections: IntegerRAL;
+    FMaxKeepAliveConnections: IntegerRAL;
     FMode: TRALSynopseMode;
     FPoolCount: IntegerRAL;
     FQueueSize: IntegerRAL;
@@ -95,26 +96,23 @@ type
     function IPv6IsImplemented: boolean; override;
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetMaxConnections(const AValue: IntegerRAL);
+    procedure SetMode(const AValue: TRALSynopseMode);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetQueueSize(const AValue: IntegerRAL);
     procedure SetSSL(const AValue: TRALSynopseSSL);
+    /// Hands MaxConnections to whichever server object this mode created, if
+    /// that object has anywhere to put it - see the property.
+    procedure ApplyMaxConnections;
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
     procedure OnHttpTerminate(ASender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    /// Three of the properties below belong to one mode each - see the base
+    function IsPropertyRelevant(const AName: StringRAL): boolean; override;
   published
-    /// How many clients may hold a kept-alive connection AT THE SAME TIME,
-    /// server-wide. Only smThreads is limited by it, because there the limit
-    /// is really "how many threads", and mORMot2's default of 512 was chosen
-    /// for a 32-bit process (each thread reserves stack). On a 64-bit server
-    /// raising it costs reserved address space and little else.
-    /// Past the limit the server still answers, but WITHOUT keep-alive: it
-    /// closes the socket after each response, and every request of every
-    /// client goes back to paying a whole TCP and TLS handshake. That is a
-    /// latency cliff, and it arrives silently - which is why the number is
-    /// here instead of buried in the engine. 0 keeps mORMot2's default.
     /// smHttpSys only: which host part of the URL to listen on, and it has to
     /// be the SAME text the reservation used. http.sys matches prefixes
     /// literally, so a server asking for "*" is not covered by a reservation
@@ -126,15 +124,45 @@ type
     ///                 or for a test.
     /// Ignored by the other two modes, which bind a socket themselves.
     property HttpSysDomain: StringRAL read FHttpSysDomain write FHttpSysDomain;
-    property MaxKeepAlive: IntegerRAL read FMaxKeepAlive write FMaxKeepAlive default 0;
+    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
+    /// knob TRALIndyServer, TRALfpHTTPServer and TRALSaguiServer publish under
+    /// this name: past it a NEW connection is refused, so an existing client is
+    /// never dropped to make room. 0 means no ceiling.
+    ///
+    /// smThreads IGNORES it - mORMot2's socket server has no such ceiling there,
+    /// only the keep-alive one below. A leftover value is not an error and never
+    /// raises: the property simply does not apply to that mode, and the IDE
+    /// hides it while the mode is selected.
+    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
+    /// How many clients may hold a KEPT-ALIVE connection at the same time,
+    /// server-wide. Only smThreads is limited by it, because there the limit
+    /// is really "how many threads", and mORMot2's default of 512 was chosen
+    /// for a 32-bit process (each thread reserves stack). On a 64-bit server
+    /// raising it costs reserved address space and little else.
+    /// Past the limit the server still answers, but WITHOUT keep-alive: it
+    /// closes the socket after each response, and every request of every
+    /// client goes back to paying a whole TCP and TLS handshake. That is a
+    /// latency cliff, and it arrives silently - which is why the number is
+    /// here instead of buried in the engine. 0 keeps mORMot2's default.
+    ///
+    /// Not the same thing as MaxConnections above: this one never refuses a
+    /// client, it only stops granting keep-alive. The other two modes have no
+    /// such ceiling at all - an idle connection there costs a socket, not a
+    /// thread - so they ignore it, and the IDE hides it for them.
+    property MaxKeepAliveConnections: IntegerRAL read FMaxKeepAliveConnections
+      write FMaxKeepAliveConnections default 0;
     /// Thread per kept-alive connection, or one event loop - see TRALSynopseMode
-    property Mode: TRALSynopseMode read FMode write FMode default smThreads;
+    property Mode: TRALSynopseMode read FMode write SetMode default smThreads;
     property PoolCount: IntegerRAL read FPoolCount write SetPoolCount;
     property QueueSize: IntegerRAL read FQueueSize write SetQueueSize;
     property SSL: TRALSynopseSSL read GetSSL write SetSSL;
   end;
 
 implementation
+
+const
+  /// What mORMot2's own TAsyncServer constructor uses to mean "no ceiling"
+  ASYNC_NO_MAXCONNECTIONS = 7777777;
 
 { TRALSynopseServer }
 
@@ -160,6 +188,15 @@ begin
 
   if AValue then
   begin
+    {$IFNDEF MSWINDOWS}
+    { http.sys IS the Windows kernel, so THttpApiServer does not even exist
+      here. Without this the smHttpSys branch below is compiled away and the
+      "else" quietly starts a smThreads server instead: no error, no HTTP/2,
+      and an application convinced it is running on the kernel queue. }
+    if FMode = smHttpSys then
+      raise Exception.Create(emHttpSysWindowsOnly);
+    {$ENDIF}
+
     if IPConfig.IPv6Enabled then
       vAddr := Format('[%s]:%d', [IPConfig.IPv6Bind, Self.Port])
     else
@@ -200,9 +237,11 @@ begin
       THttpServerSocketGeneric(FHttp).HttpQueueLength := FQueueSize;
 
     { Only the threads mode has that ceiling, and only it has the pool it lives in }
-    if (FMaxKeepAlive > 0) and (FHttp is THttpServer) and
+    if (FMaxKeepAliveConnections > 0) and (FHttp is THttpServer) and
        (THttpServer(FHttp).ThreadPool <> nil) then
-      THttpServer(FHttp).ThreadPool.MaxBodyThreadCount := FMaxKeepAlive;
+      THttpServer(FHttp).ThreadPool.MaxBodyThreadCount := FMaxKeepAliveConnections;
+
+    ApplyMaxConnections;
     { MaximumAllowedContentLength is deliberately NOT set from MaxRequestSize:
       mORMot2 enforces it by resetting the socket while the client is still
       sending, so no client ever sees the 413 - Indy, netHTTP and mORMot2's
@@ -280,6 +319,83 @@ begin
       FreeAndNil(FHttp);
     end;
   end;
+end;
+
+function TRALSynopseServer.IsPropertyRelevant(const AName: StringRAL): boolean;
+begin
+  { Only what the CURRENT mode can act on. A value left behind by another mode
+    stays where it is and is ignored - see the note on the base method. }
+  if SameText(AName, 'HttpSysDomain') then
+    Result := FMode = smHttpSys
+  else if SameText(AName, 'MaxKeepAliveConnections') then
+    Result := FMode = smThreads
+  else if SameText(AName, 'MaxConnections') then
+    Result := FMode <> smThreads
+  else
+    Result := inherited IsPropertyRelevant(AName);
+end;
+
+procedure TRALSynopseServer.ApplyMaxConnections;
+begin
+  if FHttp = nil then
+    Exit;
+
+  {$IFDEF MSWINDOWS}
+  { http.sys keeps it as a QoS setting on the URL group, which exists from the
+    constructor on, so this takes effect with the server already running. It
+    reads 0 as HTTP_LIMIT_INFINITE by itself, which is what 0 means here. }
+  if FHttp is THttpApiServer then
+  begin
+    THttpApiServer(FHttp).MaxConnections := FMaxConnections;
+    Exit;
+  end;
+  {$ENDIF}
+
+  if FHttp is THttpAsyncServer then
+  begin
+    if FMaxConnections > 0 then
+      THttpAsyncServer(FHttp).Async.MaxConnections := FMaxConnections
+    else
+      { the async loop rejects when the count is ABOVE this number, so a literal
+        0 would refuse every connection. mORMot2 says no ceiling with a huge one
+        instead, and this is the value its own constructor uses. }
+      THttpAsyncServer(FHttp).Async.MaxConnections := ASYNC_NO_MAXCONNECTIONS;
+  end;
+
+  { smThreads falls through on purpose: THttpServer accepts everything the
+    backlog hands it, and the only ceiling it has is MaxKeepAliveConnections.
+    Silence here is the documented behaviour of the property, not an oversight -
+    a leftover value from another mode must not stop a server from starting. }
+end;
+
+procedure TRALSynopseServer.SetMaxConnections(const AValue: IntegerRAL);
+begin
+  if AValue = FMaxConnections then
+    Exit;
+
+  if AValue < 0 then
+    FMaxConnections := 0
+  else
+    FMaxConnections := AValue;
+
+  ApplyMaxConnections; // no restart needed: both modes that have it take it live
+end;
+
+procedure TRALSynopseServer.SetMode(const AValue: TRALSynopseMode);
+var
+  vActive: boolean;
+begin
+  if AValue = FMode then
+    Exit;
+
+  FMode := AValue;
+
+  { The mode IS the class of the server object, so it can only change by
+    building another one - same as SetPoolCount and SetPort. Assigning it to a
+    running server used to do nothing at all until the next restart. }
+  vActive := Active;
+  Active := False;
+  Active := vActive;
 end;
 
 procedure TRALSynopseServer.SetPoolCount(const AValue: IntegerRAL);
@@ -406,7 +522,6 @@ begin
           vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);
       end;
 
-      {$IFDEF MSWINDOWS}
       { WHICH VERSION THIS CLIENT ARRIVED ON - and only the server knows.
 
         The version is settled by ALPN, inside the TLS handshake, before any
@@ -414,25 +529,31 @@ begin
         only tells by the status line, which an HTTP/2 response does not have.
         Here it comes from the driver itself, the one that negotiated it.
 
-        And it is NOT read from the Version field - that is the trap, and it
+        Every mode answers, because Protocol/ProtocolVersion is what the other
+        five engines fill from the request line and an application must not
+        have to know which engine is running to ask. 1.1 is the floor: a
+        request that reached this handler was parsed as HTTP/1.x unless a flag
+        below says otherwise. }
+      if hsrHttp10 in AContext.ConnectionFlags then
+        vRequest.ProtocolVersion := rhv10
+      else
+        vRequest.ProtocolVersion := rhv11;
+
+      {$IFDEF MSWINDOWS}
+      { And it is NOT read from the Version field - that is the trap, and it
         cost one wrong measurement. HTTP_REQUEST has the shape of HTTP/1, and
         http.sys hands back Version=1.1 for those who arrived on HTTP/2 too:
         checked against a real h2 client, which reported HTTP_2 on its side
         while this field said 1.1. What tells the truth is the flag.
 
-        Only the smHttpSys mode has this, because it is the only one that
-        speaks HTTP/2. On the others the record does not exist and it stays
-        rhvDefault, as it always was. }
+        Only the smHttpSys mode gets here, because it is the only one that
+        speaks HTTP/2 - mORMot2 has no h2 of its own. }
       if AContext is THttpServerRequest then
       begin
         vApiReq := THttpServerRequest(AContext).HttpApiRequest;
-        if vApiReq <> nil then
-        begin
-          if (vApiReq^.Flags and HTTP_REQUEST_FLAG_HTTP2) <> 0 then
-            vRequest.ProtocolVersion := rhv2
-          else
-            vRequest.ProtocolVersion := rhv11;
-        end;
+        if (vApiReq <> nil) and
+           ((vApiReq^.Flags and HTTP_REQUEST_FLAG_HTTP2) <> 0) then
+          vRequest.ProtocolVersion := rhv2;
       end;
       {$ENDIF}
 
@@ -448,7 +569,10 @@ begin
 
         vRequest.RequestText := RawUtf8(AContext.InContent);
         vRequest.Host := AContext.Host;
-        vRequest.Protocol := '1.1';
+        { Protocol is NOT set here: it is a face of ProtocolVersion, filled
+          further up from what the connection actually negotiated. It used to
+          be a hardcoded '1.1', which stopped being true the day this engine
+          learned to serve HTTP/2. }
         vRequest.HttpVersion := IfThen(SSL.Enabled, 'HTTPS', 'HTTP');
 
         //if SSL.Enabled then
