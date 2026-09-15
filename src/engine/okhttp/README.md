@@ -18,18 +18,24 @@ connection: on a real application with 81 clients, HTTP/1.1 held 5 connections
 and h2 holds 2 — one per timeout configuration, which is what `ShareConnection`
 asks for.
 
-## What the project needs
+## Putting it in a client, step by step
 
-Two jars, declared as `<JavaReference>` in the `.dproj`:
+Everything needed is in `java/`, next to this file.
 
-| jar | where from |
+**1. Copy the two jars into the project.** Any folder will do; the examples
+below assume a `java\` folder beside the `.dpr`.
+
+| jar | what it is |
 |---|---|
-| `okhttp-4.11.0.jar` | Maven Central, `com.squareup.okhttp3:okhttp:4.11.0` |
-| `ralokhttp.jar` | `java/ralokhttp.jar`, next to this file |
+| `okhttp-4.11.0.jar` | OkHttp itself, from Maven Central (`com.squareup.okhttp3:okhttp:4.11.0`), Apache License 2.0 |
+| `ralokhttp.jar` | the bridge this engine talks to, built from `java/pascalral/` |
 
-What okhttp itself depends on — **okio** and **kotlin-stdlib** — already ships
-with the RAD Studio Android runtime (`EnabledSysJars`), so nothing else is
-needed.
+What OkHttp itself depends on — **okio** and **kotlin-stdlib** — already ships
+with the RAD Studio Android runtime (they are in `EnabledSysJars`), so nothing
+else has to be added.
+
+**2. Declare both in the `.dproj`**, inside the same `<ItemGroup>` that holds
+the `<DCCReference>` entries:
 
 ```xml
 <JavaReference Include="java\okhttp-4.11.0.jar">
@@ -40,16 +46,25 @@ needed.
 </JavaReference>
 ```
 
-Then, in the client:
+In the IDE the same thing is done through **Project ▸ Add… ▸ Libraries**. The
+build dexes them into `classes2.dex` and the deployment step packages it; both
+the IDE and a headless MSBuild honour it.
+
+**3. Point the client at the engine:**
 
 ```pascal
 uses
   RALClient, RALOkHttpClient;   // the unit has to be linked in - the engine
-                                // is resolved by NAME at runtime
+                                // is resolved by NAME at runtime, so leaving
+                                // it out fails only when a request is sent
 
 Client.EngineType := ENGINEOKHTTP;
 Client.HTTPVersion := rhv2;
 ```
+
+**4. Check it took.** `TRALResponse.ProtocolVersion` comes back `rhv2` when ALPN
+settled on HTTP/2. If the jars did not make it into the APK the failure is a
+`ClassNotFoundException` on the first request, not at build time.
 
 ## The bridge
 
@@ -64,7 +79,9 @@ Client.HTTPVersion := rhv2;
   stays where RAL already makes it, in `AcceptServerCert`, instead of a second
   rule growing inside the bridge.
 
-To rebuild `ralokhttp.jar` after changing them:
+`ralokhttp.jar` is committed already built, so that using the engine needs no
+Java toolchain. After changing the sources it has to be rebuilt, or the jar and
+the `.java` beside it drift apart:
 
 ```
 javac --release 8 -cp okhttp-4.11.0.jar;okio-jvm-3.4.0.jar;kotlin-stdlib-1.8.22.jar ^
@@ -72,15 +89,29 @@ javac --release 8 -cp okhttp-4.11.0.jar;okio-jvm-3.4.0.jar;kotlin-stdlib-1.8.22.
 jar --create --file java/ralokhttp.jar -C classes .
 ```
 
-The okio and kotlin-stdlib jars are in
-`$(BDS)\lib\android\debug`.
+`okio-jvm` and `kotlin-stdlib` are in `$(BDS)\lib\android\debug`, and `javac`
+comes with the JDK that RAD Studio already requires for Android.
 
 ## Limits
 
 - **Android only.** On any other platform the unit compiles to nothing, and
   netHTTP already does this better.
+- **Delphi only.** There is no Lazarus/FPC package and there cannot be one as
+  written: the unit is built on `Androidapi.JNIBridge`, `TJavaGenericImport`,
+  `TJavaLocal` and `TJavaArray<T>`, all of them Delphi RTL. FPC would need a
+  JNI layer written from scratch.
+- **No design-time package yet.** The other engines have one each under
+  `pkg/Delphi/Engine/`; this one is reached through the library path. An
+  `OkHttpRAL` package would be Android-only, so it is left to the maintainers
+  to decide whether it is worth one.
 - **`MaxRedirects` is honoured as on/off.** OkHttp stops at 20 follow-ups and
   does not expose the number, so zero means do not follow and anything else
   means follow.
 - **Network calls may not run on the main thread.** Android throws
   `NetworkOnMainThreadException`, exactly as it does for `HttpURLConnection`.
+
+## License
+
+OkHttp is © Square, Inc. and is distributed under the Apache License 2.0. The
+jar is redistributed here unmodified; the license text is at
+<https://github.com/square/okhttp/blob/master/LICENSE.txt>.
