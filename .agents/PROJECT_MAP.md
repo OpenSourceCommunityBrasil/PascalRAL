@@ -47,7 +47,7 @@ A pasta `src/` está organizada em:
 
 - `src/base/` — tipos base, core do servidor/cliente, rotas, requisições/respostas e registro.
 - `src/database/` — camada de DBWare/DBModule e conectores (FireDAC/SQLDB/Zeos).
-- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, netHTTP, Sagui, Synopse, UniGUI).
+- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, netHTTP, OkHttp, Sagui, Synopse, UniGUI).
 - `src/languages/` — arquivos de constantes/strings por idioma.
 - `src/others/` — integrações e implementações externas (ex.: kxBSON, brotli, ZSTD).
 - `src/utils/` — utilitários (JSON, compressões, hash, stream, storage, criptografia, multipart etc.).
@@ -117,6 +117,7 @@ A pasta `src/` está organizada em:
 - `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPRegister.pas`, `RALfpHTTPServer.pas`
 - `engine/indy/`: `RALIndyClient.pas`, `RALIndyRegister.pas`, `RALIndyServer.pas`
 - `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPRegister.pas`
+- `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpRegister.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
 - `engine/sagui/`: `RALSaguiRegister.pas`, `RALSaguiServer.pas`
 - `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseRegister.pas`, `RALSynopseServer.pas`
 - `engine/unigui/`: `RALUniGUIRegister.pas`, `RALUniGUIServer.pas`
