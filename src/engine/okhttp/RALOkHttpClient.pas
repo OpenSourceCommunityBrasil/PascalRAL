@@ -145,8 +145,8 @@ type
     /// clients on one OkHttpClient still get every socket the traffic needs -
     /// and multiplex onto a single one under h2, which is the point.
     class function SupportsSharedConnection: boolean; override;
-    /// True on Android: o OkHttp manda PING de HTTP/2 e derruba a conexao
-    /// quando nao vem pong - ver TRALClient.KeepAliveInterval
+    /// True on Android: OkHttp sends HTTP/2 PING frames and drops the
+    /// connection when no pong comes back - see TRALClient.KeepAliveInterval
     class function SupportsKeepAliveInterval: boolean; override;
   end;
 
@@ -481,10 +481,10 @@ begin
 
     vHeaders := HeaderBlock(ARequest);
 
-    { KeepAliveInterval so' faz sentido com h2: o que ele sonda e' a conexao
-      ociosa e multiplexada, que so' existe la'. Pedindo 1.1 vai zero, e o
-      OkHttp nao manda PING nenhum - o mesmo efeito de a propriedade estar
-      escondida na IDE, e pelo mesmo motivo. }
+    { KeepAliveInterval only means anything under h2: what it probes is the
+      idle, multiplexed connection, which exists nowhere else. Asking for 1.1
+      sends zero and OkHttp emits no PING at all - the same effect the IDE gets
+      by hiding the property, and for the same reason. }
     if Parent.HTTPVersion = rhv2 then
       vPing := Parent.KeepAliveInterval
     else

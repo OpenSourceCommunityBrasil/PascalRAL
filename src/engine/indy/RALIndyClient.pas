@@ -20,8 +20,8 @@ type
   private
     FHttp: TIdHTTP;
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
-    { True quando foi a NOSSA validacao que recusou o certificado: de fora, a
-      falha e' indistinguivel da que o proprio OpenSSL levanta }
+    { True when it was OUR validation that refused the certificate: from the
+      outside the failure is indistinguishable from the one OpenSSL raises }
     FCertRefused: boolean;
 
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;

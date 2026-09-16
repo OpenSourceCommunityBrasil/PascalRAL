@@ -172,9 +172,9 @@ type
   private
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
-    { host e porta da tentativa em curso, preenchidos pelo BeforeSendUrl: qual
-      pin vale e' pergunta sobre PARA ONDE o cliente esta' indo, e o
-      TRALCertInfo.Host tambem }
+    { host and port of the attempt in progress, filled in by BeforeSendUrl:
+      which pin applies is a question about WHERE the client is going, and so
+      is TRALCertInfo.Host }
     FHost: StringRAL;
     FPort: IntegerRAL;
   protected
@@ -1187,54 +1187,55 @@ begin
   SetLength(Result, vLen);
 end;
 
-{ Separa "host", "host:porta" ou "[ipv6]:porta" - o formato tanto do que vem da
-  BaseURL quanto do lado esquerdo de uma linha de SSL.Pins.
+{ Splits "host", "host:port" or "[ipv6]:port" - the shape of both what comes
+  from BaseURL and the left-hand side of an SSL.Pins line.
 
-  O IPv6 e' o motivo dos colchetes: ele tem ':' no meio, entao sem eles nao ha'
-  como saber se o ultimo ':' separa a porta ou faz parte do endereco. A regra:
-  entre colchetes, o que vem depois de ']' e' porta; sem colchetes, um unico
-  ':' separa a porta e mais de um quer dizer que a coisa toda e' um IPv6. }
+  IPv6 is the reason for the brackets: it has ':' inside it, so without them
+  there is no way to tell whether the last ':' separates the port or is part of
+  the address. The rule: inside brackets, what follows ']' is the port; without
+  brackets, a single ':' separates the port and more than one means the whole
+  thing is an IPv6. }
 procedure RALSplitHostPort(const AValue: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL);
 var
-  vInt, vColchete, vDoisPontos, vQuantos: IntegerRAL;
+  vInt, vBracket, vColon, vColonCount: IntegerRAL;
 begin
   AHost := Trim(AValue);
   APort := 0;
 
-  vColchete := 0;
-  vDoisPontos := 0;
-  vQuantos := 0;
+  vBracket := 0;
+  vColon := 0;
+  vColonCount := 0;
   for vInt := 1 to Length(AHost) do
   begin
     if AHost[vInt] = ']' then
-      vColchete := vInt
+      vBracket := vInt
     else if AHost[vInt] = ':' then
     begin
-      vDoisPontos := vInt;
-      vQuantos := vQuantos + 1;
+      vColon := vInt;
+      vColonCount := vColonCount + 1;
     end;
   end;
 
-  if vColchete > 0 then
+  if vBracket > 0 then
   begin
-    { [::1]:8443 - a porta e' o que vier depois do ']' }
-    if vDoisPontos > vColchete then
+    { [::1]:8443 - the port is whatever comes after the ']' }
+    if vColon > vBracket then
     begin
-      APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
-      AHost := Copy(AHost, 1, vDoisPontos - 1);
+      APort := StrToIntDef(string(Copy(AHost, vColon + 1, Length(AHost))), 0);
+      AHost := Copy(AHost, 1, vColon - 1);
     end;
-    AHost := Copy(AHost, 2, Length(AHost) - 2); // tira os colchetes
+    AHost := Copy(AHost, 2, Length(AHost) - 2); // strip the brackets
   end
-  else if vQuantos = 1 then
+  else if vColonCount = 1 then
   begin
-    APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
-    AHost := Copy(AHost, 1, vDoisPontos - 1);
+    APort := StrToIntDef(string(Copy(AHost, vColon + 1, Length(AHost))), 0);
+    AHost := Copy(AHost, 1, vColon - 1);
   end;
-  { vQuantos > 1 sem colchetes: IPv6 sem porta, fica inteiro em AHost }
+  { vColonCount > 1 with no brackets: IPv6 with no port, stays whole in AHost }
 end;
 
-{ Host e porta de uma URL, com a porta padrao do esquema quando ela nao aparece }
+{ Host and port of a URL, with the scheme's default port when none is given }
 procedure RALURLHostPort(const AURL: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL);
 var
@@ -1266,46 +1267,46 @@ begin
   end;
 end;
 
-{ A impressao digital de uma linha de SSL.Pins, normalizada - ou vazia quando a
-  linha nao termina num SHA-256, que e' como o PinsChanged detecta erro de
-  digitacao. O lado esquerdo, quando existe, vem antes de um '='. }
+{ The fingerprint of an SSL.Pins line, normalized - or empty when the line does
+  not end in a SHA-256, which is how PinsChanged spots a typo. The left-hand
+  side, when there is one, comes before an '='. }
 function RALPinFingerprint(const ALine: StringRAL): StringRAL;
 var
-  vInt, vIgual: IntegerRAL;
+  vInt, vEquals: IntegerRAL;
 begin
-  vIgual := 0;
+  vEquals := 0;
   for vInt := 1 to Length(ALine) do
     if ALine[vInt] = '=' then
     begin
-      vIgual := vInt;
+      vEquals := vInt;
       Break;
     end;
 
-  Result := RALNormalizeFingerprint(Copy(ALine, vIgual + 1, Length(ALine)));
+  Result := RALNormalizeFingerprint(Copy(ALine, vEquals + 1, Length(ALine)));
   if Length(Result) <> 64 then
     Result := '';
 end;
 
-{ True quando a linha vale so' para um host - e ai devolve qual. False quer
-  dizer "vale para qualquer host", que e' a linha so' com a impressao digital. }
+{ True when the line applies to one host only - and then says which. False
+  means "applies to any host", which is the line with the fingerprint alone. }
 function RALPinPlace(const ALine: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL): boolean;
 var
-  vInt, vIgual: IntegerRAL;
+  vInt, vEquals: IntegerRAL;
 begin
-  vIgual := 0;
+  vEquals := 0;
   for vInt := 1 to Length(ALine) do
     if ALine[vInt] = '=' then
     begin
-      vIgual := vInt;
+      vEquals := vInt;
       Break;
     end;
 
-  Result := vIgual > 0;
+  Result := vEquals > 0;
   AHost := '';
   APort := 0;
   if Result then
-    RALSplitHostPort(Copy(ALine, 1, vIgual - 1), AHost, APort);
+    RALSplitHostPort(Copy(ALine, 1, vEquals - 1), AHost, APort);
 end;
 
 function RALEmptyExecInfo: TRALExecInfo;
@@ -1360,9 +1361,10 @@ begin
   FPins.Assign(AValue);
 end;
 
-{ Cada linha e' conferida assim que entra na lista, e nao na hora do request:
-  um pin com um digito a menos que so' aparecesse na primeira conexao pareceria
-  troca de certificado do servidor - o erro certo e' aqui, na configuracao. }
+{ Every line is checked as it enters the list, not at request time: a pin one
+  digit short that only surfaced on the first connection would look like the
+  server changing certificate - the right place for the error is here, in the
+  configuration. }
 procedure TRALClientSSL.PinsChanged(Sender: TObject);
 var
   vInt: IntegerRAL;
@@ -1386,17 +1388,17 @@ begin
   end;
 end;
 
-{ Percorre SSL.Pins UMA vez e responde as duas perguntas que a decisao precisa:
-  algum pin vale para o host desta conexao, e o certificado apresentado casa com
-  algum deles. Uma linha sem '=' vale para qualquer host; com host, so' para
-  ele; com host e porta, so' para aquele servico - e' o que permite um cliente
-  so' falar com varios servidores de politicas diferentes. }
+{ Walks SSL.Pins ONCE and answers the two questions the decision needs: whether
+  any pin applies to this connection's host, and whether the certificate
+  presented matches one of them. A line with no '=' applies to any host; with a
+  host, only to it; with host and port, only to that service - which is what
+  lets one client talk to several servers under different policies. }
 procedure TRALClientHTTP.ResolvePin(const AFingerprint: StringRAL;
   out AApplies, AMatches: boolean);
 var
   vInt, vPinPort: IntegerRAL;
   vLine, vPinHost: StringRAL;
-  vVale: boolean;
+  vLineApplies: boolean;
 begin
   AApplies := False;
   AMatches := False;
@@ -1405,17 +1407,17 @@ begin
   begin
     vLine := StringRAL(FParent.SSL.Pins.Strings[vInt]);
     if not RALPinPlace(vLine, vPinHost, vPinPort) then
-      vVale := True  // linha so' com a impressao digital: qualquer host
+      vLineApplies := True  // fingerprint alone: any host
     else
-      vVale := SameText(string(vPinHost), string(FHost)) and
+      vLineApplies := SameText(string(vPinHost), string(FHost)) and
                ((vPinPort = 0) or (vPinPort = FPort));
 
-    if not vVale then
+    if not vLineApplies then
       Continue;
 
     AApplies := True;
-    { varias linhas para o mesmo host valem todas: e' assim que se troca um
-      certificado sem uma janela em que nada conecta }
+    { several lines for the same host all count: that is how a certificate is
+      rotated without a window in which nothing connects }
     if (AFingerprint <> '') and (AFingerprint = RALPinFingerprint(vLine)) then
     begin
       AMatches := True;
@@ -1436,8 +1438,8 @@ var
   vCert: TRALCertInfo;
   vApplies, vMatches: boolean;
 begin
-  { quem esta' sendo chamado nao vem do engine - vem de onde o RAL escolheu a
-    URL, e e' preenchido aqui para os quatro engines de uma vez }
+  { who is being called does not come from the engine - it comes from wherever
+    RAL chose the URL, and is filled in here for all four engines at once }
   vCert := ACert;
   vCert.Host := FHost;
   vCert.Port := FPort;
@@ -1448,9 +1450,10 @@ begin
   begin
     ResolvePin(vCert.Fingerprint, vApplies, vMatches);
     if vApplies then
-      { com pin para este host, so' ele serve - nem o que a loja do sistema
-        confia passa. Impressao digital vazia nunca casa: o BeforeSendUrl ja'
-        recusou antes, mas um engine acrescentado depois nao pode escapar aqui }
+      { with a pin for this host, only it will do - not even what the system
+        store trusts gets through. An empty fingerprint never matches:
+        BeforeSendUrl already refused earlier, but an engine added later must
+        not slip past here }
       Result := vMatches
     else
       Result := vCert.Trusted;
@@ -1533,8 +1536,8 @@ begin
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
-    { quem esta' sendo chamado nesta tentativa - de onde sai tanto o pin que
-      vale para ela quanto o Host que chega no OnValidateServerCert }
+    { who is being called on this attempt - the source of both the pin that
+      applies to it and the Host that reaches OnValidateServerCert }
     RALURLHostPort(vURL, FHost, FPort);
 
     { Both refusals happen HERE, before a socket is opened, and not inside the
@@ -1548,9 +1551,9 @@ begin
       raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
     end;
 
-    { so' quando um pin vale para ESTA conexao: um cliente que fala com varios
-      servidores nao pode parar de falar com os de CA publica so' porque existe
-      pin para outro }
+    { only when a pin applies to THIS connection: a client that talks to
+      several servers must not stop talking to the public-CA ones just because
+      a pin exists for another }
     if HasPinForHost and (not SupportsCertPin) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
