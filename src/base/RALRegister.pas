@@ -83,7 +83,40 @@ type
     {$ENDIF}
   end;
 
+  { A sieve ONE level down: it receives every sub-property the object editor
+    was about to hand the Object Inspector, and passes on only those at least
+    one of the selected components calls relevant - the same rule as the level
+    above, which is why it is written the same way. }
+  TRALNestedSieve = class
+  private
+    FOuter: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF};
+    FOwners: TList;
+    FPrefix: StringRAL;
+    function IsRelevant(const AName: StringRAL): boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure PassOn({$IFDEF FPC}AProp: TPropertyEditor{$ELSE}const AProp: IProperty{$ENDIF});
+  end;
+
+  { Drops, INSIDE an object property, the sub-properties the component does not
+    use as it is configured right now - SSL.CertificateFile on a mORMot2 server
+    in smHttpSys, where the certificate comes from the machine store through
+    netsh and the file is never read.
+
+    The name the component is asked is the DOTTED one, 'SSL.CertificateFile',
+    so that a single IsPropertyRelevant answers for both levels and this unit
+    still never has to know one engine from another.
+
+    Same rule as the level above: what is hidden keeps the value it had and is
+    ignored, never refused. }
+  TRALNestedProperty = class(TClassProperty)
+  public
+    procedure GetProperties(Proc: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF}); override;
+  end;
+
   { TRALClientEngines }
+
 
   TRALClientEngines = class(TStringProperty)
   private
@@ -141,6 +174,13 @@ begin
   RegisterPropertyEditor(TypeInfo(String), TRALClient, 'EngineType', TRALClientEngines);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClient, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
+
+  { By the BASE TYPE, tied to no component: the IDE matches a descendant class
+    with the editor registered for its ancestor, so this covers the SSL of
+    every server engine at once. With no rule on the component nothing changes
+    - IsPropertyRelevant answers True by default. }
+  RegisterPropertyEditor(TypeInfo(TRALSSL), nil, '', TRALNestedProperty);
+  RegisterPropertyEditor(TypeInfo(TRALClientSSL), nil, '', TRALNestedProperty);
 end;
 
 { TRALBaseURLEditor }
@@ -296,7 +336,72 @@ begin
   {$ENDIF}
 end;
 
+{ TRALNestedSieve }
+
+constructor TRALNestedSieve.Create;
+begin
+  inherited Create;
+  FOwners := TList.Create;
+end;
+
+destructor TRALNestedSieve.Destroy;
+begin
+  FOwners.Free;
+  inherited;
+end;
+
+function TRALNestedSieve.IsRelevant(const AName: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  { hidden only when it says nothing for ANY of the selected ones - with a
+    mixed selection the honest thing is to go on showing it }
+  for vInt := 0 to FOwners.Count - 1 do
+    if TRALComponent(FOwners[vInt]).IsPropertyRelevant(AName) then
+      Exit(True);
+  Result := FOwners.Count = 0;
+end;
+
+procedure TRALNestedSieve.PassOn({$IFDEF FPC}AProp: TPropertyEditor{$ELSE}const AProp: IProperty{$ENDIF});
+begin
+  if IsRelevant(FPrefix + StringRAL(AProp.GetName)) then
+    FOuter(AProp);
+end;
+
+{ TRALNestedProperty }
+
+procedure TRALNestedProperty.GetProperties(Proc: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF});
+var
+  vSieve: TRALNestedSieve;
+  vObj: TPersistent;
+  vInt: IntegerRAL;
+begin
+  vSieve := TRALNestedSieve.Create;
+  try
+    for vInt := 0 to PropCount - 1 do
+    begin
+      vObj := GetComponent(vInt);
+      if vObj is TRALComponent then
+        vSieve.FOwners.Add(vObj);
+    end;
+
+    { no RAL component in the selection: nothing to sieve }
+    if vSieve.FOwners.Count = 0 then
+    begin
+      inherited GetProperties(Proc);
+      Exit;
+    end;
+
+    vSieve.FOuter := Proc;
+    vSieve.FPrefix := StringRAL(GetName) + '.';
+    inherited GetProperties({$IFDEF FPC}@{$ENDIF}vSieve.PassOn);
+  finally
+    vSieve.Free;
+  end;
+end;
+
 { TRALSelectionEditor }
+
 
 {$IFDEF FPC}
   function TRALSelectionEditor.GetAttributes: TSelectionEditorAttributes;

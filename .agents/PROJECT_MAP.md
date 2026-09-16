@@ -128,8 +128,11 @@ A pasta `src/` está organizada em:
 - `MaxKeepAliveConnections` (Synopse) **não** é a mesma coisa: não recusa ninguém, só para de conceder keep-alive, e só o `smThreads` tem esse teto.
 - `Protocol`/`ProtocolVersion` — **todos** os seis servidores e **todos** os cinco clientes preenchem, mesmo os que só falam HTTP/1.1.
 - `ShareConnection` — só netHTTP e OkHttp, e `SupportsSharedConnection` diz quais. Nos outros o transporte é um objeto por conexão: honrar a propriedade **serializaria** chamada concorrente.
+- `KeepAliveInterval` — netHTTP e OkHttp, os dois com frame PING de HTTP/2 de verdade: o OkHttp por `pingInterval`, o netHTTP por `WINHTTP_OPTION_HTTP2_KEEPALIVE` (164) no handle de sessão, que **só existe do Windows 11 em diante** e onde não existe é ignorado em silêncio. O piso é do motor (`MinKeepAliveInterval`: 5000 no netHTTP, nenhum no OkHttp) e é aplicado **na atribuição**, para o valor que se lê ser o que vale.
 
 **Propriedade que não se aplica some do Object Inspector, e nunca levanta.** Quem decide é o próprio componente, em `TRALComponent.IsPropertyRelevant` (`RALCustomObjects`), e a cola de IDE fica num lugar só, `TRALSelectionEditor` em `RALRegister` — assim nenhum motor precisa depender da IDE. Esconder é conforto: o valor escondido pode ser sobra de outra configuração, então é **ignorado**. O que levanta é escolha explícita impossível (`smHttpSys` fora do Windows, `rhv2` num motor sem h2), e essa nunca fica escondida.
+
+Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades de arquivo do `SSL` somem do servidor Synopse em `smHttpSys`, onde o certificado vem da loja da máquina pelo `netsh` e nenhum `.pem` é lido. O componente é perguntado pelo nome **composto** (`IsPropertyRelevant('SSL.CertificateFile')`), então um método só responde pelos dois níveis, e a cola de IDE é o `TRALNestedProperty`, registrado pelo tipo base — o que faz valer para o `SSL` de qualquer motor sem uma linha de design-time em cada um.
 
 ---
 

@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs,
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   { only to reach WinHTTP's session handle - see LimitToOneConnection }
   Winapi.Windows, Winapi.WinHTTP, System.Rtti, System.Hash,
   {$ENDIF}
@@ -67,6 +67,10 @@ type
     /// HTTP/2. Sharing costs nothing in parallelism here, which is exactly what
     /// is not true of the one-socket-per-object engines.
     class function SupportsSharedConnection: boolean; override;
+    /// True on Windows - see SetHttp2KeepAlive and the body below
+    class function SupportsKeepAliveInterval: boolean; override;
+    /// 5000 ms on Windows: the smallest value WinHTTP will take
+    class function MinKeepAliveInterval: IntegerRAL; override;
   end;
 
 implementation
@@ -111,6 +115,12 @@ type
     RequestTimeout: IntegerRAL;
     MaxRedirects: IntegerRAL;
     Version: TRALHTTPVersion;
+    { THE PING INTERVAL ALSO TELLS ONE TRANSPORT FROM ANOTHER, for the same
+      reason as the certificate policy below: it is a SESSION option, installed
+      by whoever gets there first. Out of the key, two clients asking for
+      different intervals would share a transport and one would decide for the
+      other. }
+    KeepAlive: IntegerRAL;
     { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER.
 
       The validation handler is installed ON THE TRANSPORT, and the one who
@@ -155,7 +165,7 @@ type
       handler and the host all go into the pool key, so whoever shares a
       transport has an IDENTICAL policy - see CertPolicy. }
     Owner: TRALnetHTTPClientHTTP;
-    {$IFDEF MSWINDOWS}
+    {$IFDEF RALWindows}
     { Whether this transport is currently capped at one connection, and what
       WinHTTP had there before - so putting it back means putting back the
       value it really had, not a guess at the default. See the cap block of
@@ -185,7 +195,7 @@ begin
   Result := Authority + '|' + UserAgent + '|' +
             IntToStr(ConnectTimeout) + '|' + IntToStr(RequestTimeout) + '|' +
             IntToStr(MaxRedirects) + '|' + IntToStr(Ord(Version)) + '|' +
-            CertPolicy;
+            IntToStr(KeepAlive) + '|' + CertPolicy;
 end;
 
 constructor TRALnetHTTPHolder.Create;
@@ -224,7 +234,7 @@ begin
   end;
 end;
 
-{$IFDEF MSWINDOWS}
+{$IFDEF RALWindows}
 { ONE CONNECTION FOR EVERY REQUEST, which is what HTTP/2 promises and WinHTTP
   does not do on its own.
 
@@ -305,6 +315,26 @@ begin
   vCtx.Free;
 end;
 
+const
+  { NOT in Winapi.WinHTTP: the Delphi 12 RTL stops at 151, and this is 164 -
+    WINHTTP_OPTION_HTTP2_KEEPALIVE. With it WinHTTP itself sends the HTTP/2
+    PING frames, which is exactly what the OkHttp engine does on Android with
+    pingInterval. It is not traffic of our own invention: it is frame 0x6 of
+    RFC 7540, on stream 0, answered by the peer's HTTP/2 layer without the
+    server ever knowing.
+
+    Measured on 2026-09-15 with a probe on all three handle types:
+      Windows 11 24H2 (build 26100) - accepted, on the SESSION handle ONLY,
+                                      with a buffer of EXACTLY 4 bytes, and it
+                                      refuses any value below 5000 ms
+      Windows 10 22H2 (build 19045) - ERROR_WINHTTP_INVALID_OPTION on all three
+
+    Where it does not exist, WinHttpSetOption returns False and does NOT touch
+    the session - checked: in that same probe, two refused SetOption calls were
+    followed by requests that came back 200 over HTTP/2. That is why nothing
+    checks its result to raise: a missing feature is not an error. }
+  WINHTTP_OPTION_HTTP2_KEEPALIVE = 164;
+
 function GetMaxConnsPerServer(AHttp: TNetHTTPClient; out AValue: DWORD): boolean;
 var
   vSession: Pointer;
@@ -333,9 +363,39 @@ begin
   Result := WinHttpSetOption(vSession, WINHTTP_OPTION_MAX_CONNS_PER_SERVER,
                              @AValue, SizeOf(AValue));
 end;
+
+{ THE HTTP/2 PING, SENT BY WINDOWS ITSELF - see the constant further up.
+
+  It is a SESSION option, so it holds for every connection of that transport -
+  and that is why the interval goes into the pool key: two clients asking for
+  different intervals on one transport would get whichever arrived first, and
+  the second would never know.
+
+  Silent on purpose. On a Windows without the option this is not a failure, it
+  is a feature that does not exist there - the same rule as ShareConnection on
+  an engine that cannot share. The request goes out just the same, over HTTP/2,
+  without a ping. }
+function SetHttp2KeepAlive(AHttp: TNetHTTPClient; AMs: IntegerRAL): boolean;
+var
+  vSession: Pointer;
+  vValue: DWORD;
+begin
+  vSession := WinHttpSessionOf(AHttp);
+  Result := vSession <> nil;
+  if not Result then
+    Exit;
+
+  { Nothing is corrected here: the MINKEEPALIVEMS floor is guaranteed on the
+    property assignment, in TRALClient.SetKeepAliveInterval, which is where it
+    stays visible to whoever configured it. Repeating the correction in here
+    would only create a second place for it to drift. }
+  vValue := AMs;
+  Result := WinHttpSetOption(vSession, WINHTTP_OPTION_HTTP2_KEEPALIVE,
+                             @vValue, SizeOf(vValue));
+end;
 {$ENDIF}
 
-{$IFDEF MSWINDOWS}
+{$IFDEF RALWindows}
 { Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
   commented out in Winapi.Windows. One line settles it. }
 function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL; stdcall;
@@ -374,12 +434,12 @@ function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL; stdcall
   Remembers what WinHTTP had, so taking it off puts back the real value and not
   a guess at the default. Called from PoolAcquire, under the pool lock. }
 procedure TRALnetHTTPHolder.CapConnections;
-{$IFDEF MSWINDOWS}
+{$IFDEF RALWindows}
 var
   vWas: DWORD;
 {$ENDIF}
 begin
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   if ConnCapped then
     Exit;
   if not GetMaxConnsPerServer(Http, vWas) then
@@ -394,7 +454,7 @@ end;
 { The pool lock is already held by PoolMatchCap - see the declaration. }
 procedure TRALnetHTTPHolder.MatchConnectionCap(AVersion: TRALHTTPVersion);
 begin
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   { Only ever takes the cap OFF, and only when an answer contradicts what was
     asked. Putting it on is PoolAcquire's job, because by the time an answer
     exists the connections have already been opened.
@@ -586,7 +646,7 @@ begin
       end;
       {$ENDIF}
 
-      {$IFDEF MSWINDOWS}
+      {$IFDEF RALWindows}
       { The cap goes on HERE, before the first request, when h2 was asked for -
         and it has to be here. Measured: 20 threads on a fresh transport all
         open their socket in the first burst, BEFORE any response comes back,
@@ -598,6 +658,12 @@ begin
         wrong guess, and it is right from there on. }
       if ASetup.Version = rhv2 then
         vHolder.CapConnections;
+
+      { And the ping, here and not after the answer for the same reason: it is
+        transport configuration, done once, before the first request. It only
+        means anything under h2 - there is no PING in HTTP/1.1. }
+      if (ASetup.Version = rhv2) and (ASetup.KeepAlive > 0) then
+        SetHttp2KeepAlive(vHolder.Http, ASetup.KeepAlive);
       {$ENDIF}
 
       vPool.AddObject(vKey, vHolder);
@@ -698,7 +764,7 @@ end;
 
 class function TRALnetHTTPClientHTTP.SupportsCertPin: boolean;
 begin
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   Result := True;
   {$ELSE}
   Result := False;
@@ -708,6 +774,39 @@ end;
 class function TRALnetHTTPClientHTTP.SupportsSharedConnection: boolean;
 begin
   Result := True;
+end;
+
+class function TRALnetHTTPClientHTTP.MinKeepAliveInterval: IntegerRAL;
+begin
+  { WinHTTP answers ERROR_INVALID_PARAMETER to anything below this in
+    WINHTTP_OPTION_HTTP2_KEEPALIVE - measured, not assumed. Stating the floor
+    here, what corrects it is the property assignment, where the number stays
+    visible; the engine never has to fix anything behind anyone's back. }
+  {$IF Defined(RALWindows) and Defined(RALNETHTTP_VERSIONED)}
+  Result := MINKEEPALIVEMS;
+  {$ELSE}
+  Result := 0;
+  {$IFEND}
+end;
+
+class function TRALnetHTTPClientHTTP.SupportsKeepAliveInterval: boolean;
+begin
+  { The answer is about the PLATFORM, not about the machine answering.
+
+    What asks is the Object Inspector, at design time, of a class - with no
+    instance and no way of knowing where the program will run. Probing here
+    whether THIS Windows has option 164 would answer the wrong question: it
+    would hide the property from someone developing on Windows 10 and
+    deploying on 11.
+
+    So the class promises what the platform can give, and what decides whether
+    there is a ping is the machine the request leaves from - in silence, as the
+    rule that an irrelevant value is ignored and never refused requires. }
+  {$IF Defined(RALWindows) and Defined(RALNETHTTP_VERSIONED)}
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$IFEND}
 end;
 
 { The RTL's TCertificate carries no fingerprint on any platform - only Subject,
@@ -738,7 +837,7 @@ begin
   vCert.NotBefore := Certificate.Start;
   vCert.NotAfter := Certificate.Expiry;
 
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   { this is what makes SSL.Pins hold on this engine - see ServerCertFingerprint }
   vCert.Fingerprint := ServerCertFingerprint(ARequest);
   {$ENDIF}
@@ -820,6 +919,7 @@ begin
   vSetup.RequestTimeout := Parent.RequestTimeout;
   vSetup.MaxRedirects := Parent.MaxRedirects;
   vSetup.Version := Parent.HTTPVersion;
+  vSetup.KeepAlive := Parent.KeepAliveInterval;
   vSetup.CertPolicy := CertPolicyKey;
 
   vKey := vSetup.Key;
@@ -944,6 +1044,13 @@ begin
       vHttp.ProtocolVersion := THTTPProtocolVersion.UNKNOWN_HTTP;
     end;
     {$ENDIF}
+
+    {$IFDEF RALWindows}
+    { on its own transport the pool never runs, so the ping is applied here
+      directly - same rule, same silence }
+    if (Parent.HTTPVersion = rhv2) and (Parent.KeepAliveInterval > 0) then
+      SetHttp2KeepAlive(vHttp, Parent.KeepAliveInterval);
+    {$ENDIF}
   end;
 
   { "Connection" is one of the connection-specific headers HTTP/2 forbids
@@ -1060,7 +1167,7 @@ begin
           under-reports there: it reads the status line, which an HTTP/2
           response does not have - see NegotiatedProtocol. The RTL is the
           fallback, for when that door is shut. }
-        {$IFDEF MSWINDOWS}
+        {$IFDEF RALWindows}
         AResponse.ProtocolVersion := NegotiatedProtocol(vResponse);
         {$ENDIF}
 

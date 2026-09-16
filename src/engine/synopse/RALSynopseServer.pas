@@ -1,11 +1,13 @@
 ﻿/// Base unit for RALServer component using mORMot2 Engine
 unit RALSynopseServer;
 
+{$I ..\\..\\base\\PascalRAL.inc}
+
 interface
 
 uses
   Classes, SysUtils, syncobjs, StrUtils, DateUtils,
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   { only to read the request version from http.sys - see OnCommandProcess.
     Before the mORMot units on purpose: on an ambiguous name the last one in
     the list wins, and nothing here should start resolving through this one. }
@@ -86,6 +88,15 @@ type
     FHttp: THttpServerGeneric;
     FHttpSysDomain: StringRAL;
     FMaxConnections: IntegerRAL;
+    { WHAT mORMot2 ITSELF CALLS "NO CEILING".
+
+      The async loop rejects when the count goes ABOVE Async.MaxConnections, so
+      writing 0 there does not say "no ceiling": it says "refuse everything",
+      since any count is greater than zero. mORMot2 solves it with a huge
+      number that its own constructor writes - and which is READ from there
+      here, rather than copied. Copying would leave two sources for one number,
+      and ours would age in silence the day it changed its own. }
+    FAsyncNoCeiling: IntegerRAL;
     FMaxKeepAliveConnections: IntegerRAL;
     FMode: TRALSynopseMode;
     FPoolCount: IntegerRAL;
@@ -160,10 +171,6 @@ type
 
 implementation
 
-const
-  /// What mORMot2's own TAsyncServer constructor uses to mean "no ceiling"
-  ASYNC_NO_MAXCONNECTIONS = 7777777;
-
 { TRALSynopseServer }
 
 procedure TRALSynopseServer.SetActive(const AValue: boolean);
@@ -171,7 +178,7 @@ var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
   vActive: boolean;
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   vError: IntegerRAL;
   {$ENDIF}
   {$IFDEF FPC}
@@ -188,7 +195,7 @@ begin
 
   if AValue then
   begin
-    {$IFNDEF MSWINDOWS}
+    {$IFNDEF RALWindows}
     { http.sys IS the Windows kernel, so THttpApiServer does not even exist
       here. Without this the smHttpSys branch below is compiled away and the
       "else" quietly starts a smThreads server instead: no error, no HTTP/2,
@@ -215,7 +222,7 @@ begin
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
-    {$IFDEF MSWINDOWS}
+    {$IFDEF RALWindows}
     if FMode = smHttpSys then
       { The queue belongs to the kernel, there is no address to hand over and
         no thread per connection: the only number left is how many requests are
@@ -232,6 +239,10 @@ begin
     else
       FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount,
                                   SessionTimeout, vOptions);
+
+    { as soon as the object exists, before any setting of ours }
+    if FHttp is THttpAsyncServer then
+      FAsyncNoCeiling := THttpAsyncServer(FHttp).Async.MaxConnections;
 
     if FHttp is THttpServerSocketGeneric then
       THttpServerSocketGeneric(FHttp).HttpQueueLength := FQueueSize;
@@ -253,7 +264,7 @@ begin
     //    FHttp.RegisterCompressGzStatic := True;
     FHttp.OnRequest := {$IFDEF FPC}@{$ENDIF}OnCommandProcess;
 
-    {$IFDEF MSWINDOWS}
+    {$IFDEF RALWindows}
     if FHttp is THttpApiServer then
     begin
       { aRegisterUri is False on purpose: registering the URL needs
@@ -331,6 +342,18 @@ begin
     Result := FMode = smThreads
   else if SameText(AName, 'MaxConnections') then
     Result := FMode <> smThreads
+  { The certificate of smHttpSys does NOT come from these four: http.sys
+    takes it from the machine store, bound to the port from outside with
+    "netsh http add sslcert". Leaving a CertificateFile on screen there
+    invites someone to fill it in and then wonder why the .pem is never
+    read - so it goes away, and comes back for the two socket modes, which
+    do read it. SSL.Enabled stays in all three: it is what makes RAL listen
+    on https, whoever ends up holding the certificate. }
+  else if SameText(AName, 'SSL.CertificateFile') or
+          SameText(AName, 'SSL.PrivateKeyFile') or
+          SameText(AName, 'SSL.PrivateKeyPassword') or
+          SameText(AName, 'SSL.CACertificatesFile') then
+    Result := FMode <> smHttpSys
   else
     Result := inherited IsPropertyRelevant(AName);
 end;
@@ -340,7 +363,7 @@ begin
   if FHttp = nil then
     Exit;
 
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   { http.sys keeps it as a QoS setting on the URL group, which exists from the
     constructor on, so this takes effect with the server already running. It
     reads 0 as HTTP_LIMIT_INFINITE by itself, which is what 0 means here. }
@@ -356,10 +379,8 @@ begin
     if FMaxConnections > 0 then
       THttpAsyncServer(FHttp).Async.MaxConnections := FMaxConnections
     else
-      { the async loop rejects when the count is ABOVE this number, so a literal
-        0 would refuse every connection. mORMot2 says no ceiling with a huge one
-        instead, and this is the value its own constructor uses. }
-      THttpAsyncServer(FHttp).Async.MaxConnections := ASYNC_NO_MAXCONNECTIONS;
+      { back to what mORMot2's constructor had written - see FAsyncNoCeiling }
+      THttpAsyncServer(FHttp).Async.MaxConnections := FAsyncNoCeiling;
   end;
 
   { smThreads falls through on purpose: THttpServer accepts everything the
@@ -460,7 +481,7 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vHeaders: StringRAL;
-  {$IFDEF MSWINDOWS}
+  {$IFDEF RALWindows}
   vApiReq: PHTTP_REQUEST;
   {$ENDIF}
 begin
@@ -539,7 +560,7 @@ begin
       else
         vRequest.ProtocolVersion := rhv11;
 
-      {$IFDEF MSWINDOWS}
+      {$IFDEF RALWindows}
       { And it is NOT read from the Version field - that is the trap, and it
         cost one wrong measurement. HTTP_REQUEST has the shape of HTTP/1, and
         http.sys hands back Version=1.1 for those who arrived on HTTP/2 too:

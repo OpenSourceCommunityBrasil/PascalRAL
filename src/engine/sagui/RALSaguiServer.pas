@@ -121,6 +121,10 @@ type
 
 implementation
 
+const
+  { What the constructor uses, and where any invalid value goes back to }
+  DEFAULTPOOLCOUNT = 32;
+
 type
   { TRALSaguiStringMap }
 
@@ -224,7 +228,7 @@ begin
     FLibPath := SgLib.GetLastName;
   {$ENDIF}
 
-  PoolCount := 32;
+  PoolCount := DEFAULTPOOLCOUNT;
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -708,9 +712,22 @@ begin
     sg_httpsrv_shutdown(FHandle);
 end;
 
+{ Negative or zero goes back to the default, and not out of a taste for
+  rounding: FPoolCount ends up in sg_httpsrv_set_thr_pool_size, which takes a
+  cuint - so -1 does not mean "automatic" there, it means 4294967295 threads
+  asked of libmicrohttpd, and 0 means a server with nobody to answer. Three
+  samples in the examples repository carried exactly that -1 in a form file,
+  typed meaning "automatic", which is another library's convention and not
+  this one's.
+
+  Same rule as MaxConnections right above: a value the layer below cannot
+  keep never reaches it. }
 procedure TRALSaguiServer.SetPoolCount(const AValue: IntegerRAL);
 begin
-  FPoolCount := AValue;
+  if AValue <= 0 then
+    FPoolCount := DEFAULTPOOLCOUNT
+  else
+    FPoolCount := AValue;
   if FHandle <> nil then
     sg_httpsrv_set_thr_pool_size(FHandle, AValue);
 end;

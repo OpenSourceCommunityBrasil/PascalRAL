@@ -1,6 +1,8 @@
 /// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
+{$I ..\\..\\base\\PascalRAL.inc}
+
 { mORMot builds its OpenSSL unit for every target except Android, and honours a
   global DISABLE_OPENSSL (mormot.defines.inc). Its own USE_OPENSSL define does
   not cross unit boundaries, so the two conditions are mirrored here with
@@ -200,7 +202,7 @@ begin
         onde o mORMot espera um contexto limpo. InitNetTlsContext e' o proprio
         zera-tudo do mORMot. }
       InitNetTlsContext(FTLS);
-      {$IFDEF MSWINDOWS}
+      {$IFDEF RALWindows}
       { Windows only, and it is what makes https to a public CA work at all on
         this engine once OpenSSL is loaded: OpenSSL has no certificate store of
         its own on Windows, so mORMot's fallback - SSL_CTX_set_default_verify_paths

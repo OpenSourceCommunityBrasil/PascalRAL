@@ -282,6 +282,17 @@ type
     /// expose one (its TCP keepalive is a different thing and is not wired
     /// here). False hides the property in the IDE and ignores any value.
     class function SupportsKeepAliveInterval: boolean; virtual;
+    { The SMALLEST interval this engine can keep, or 0 where there is no
+      floor. It exists because the two engines that honour KeepAliveInterval
+      disagree: OkHttp takes any value above zero, WinHTTP refuses anything
+      under 5000 ms.
+
+      What uses it is the property ASSIGNMENT, so that a value the chosen
+      engine cannot keep is corrected there and then, where the result is
+      read back - in the Object Inspector, or on the next line of code. The
+      alternative is a screen saying 3000 while the connection uses something
+      else. }
+    class function MinKeepAliveInterval: IntegerRAL; virtual;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -386,6 +397,7 @@ type
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetEngineType(AValue: String);
     procedure SetKeepAlive(AValue: boolean); virtual;
+    procedure SetKeepAliveInterval(AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
     procedure SetSSL(AValue: TRALClientSSL);
     procedure SetUserAgent(AValue: StringRAL); virtual;
@@ -497,12 +509,27 @@ type
     /// near ConnectTimeout is a sensible starting point, not a small one.
     ///
     /// Only engines whose library has a mechanism for it honour this -
-    /// SupportsKeepAliveInterval says which. Today that is OkHttp, with HTTP/2
-    /// PING frames. Elsewhere the value is IGNORED, never refused, and the IDE
-    /// hides the property. It has no meaning under HTTP/1.1 either, for the
-    /// same reason it exists: there is no idle multiplexed connection to probe.
+    /// SupportsKeepAliveInterval says which. Two do, and both send real HTTP/2
+    /// PING frames rather than traffic of their own invention:
+    ///
+    ///   OkHttp, on Android. Pings every interval, and fails the connection
+    ///   when a pong does not come back within the same interval. No minimum.
+    ///
+    ///   netHTTP, on Windows, through WINHTTP_OPTION_HTTP2_KEEPALIVE. Two
+    ///   differences worth knowing: WinHTTP starts pinging after the interval
+    ///   of INACTIVITY - not every interval - and it refuses anything under
+    ///   5000 ms, so a smaller value is RAISED to 5000 instead of raising an
+    ///   exception (the same property is configured once and runs over a
+    ///   different engine per platform). The option only exists on Windows 11
+    ///   and newer - measured present on 24H2 build 26100, absent on Windows
+    ///   10 22H2 build 19045 - and where it is absent the request still goes
+    ///   out over HTTP/2, just without a ping.
+    ///
+    /// Elsewhere the value is IGNORED, never refused, and the IDE hides the
+    /// property. It has no meaning under HTTP/1.1 either, for the same reason
+    /// it exists: there is no idle multiplexed connection to probe.
     property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
-                                           write FKeepAliveInterval default 0;
+                                           write SetKeepAliveInterval default 0;
     /// TLS options - see TRALClientSSL
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
@@ -646,6 +673,10 @@ begin
     FEngine := Trim(vClass.EngineName + ' ' + vClass.EngineVersion);
 
   FUserAgent := 'RALClient ' + RALVERSION + '; Engine ' + FEngine;
+
+  { the interval's floor belongs to the engine, and the engine has just
+    changed: a value the previous one could keep may not suit this one }
+  SetKeepAliveInterval(FKeepAliveInterval);
 end;
 
 procedure TRALClient.LockSession;
@@ -886,6 +917,46 @@ end;
 procedure TRALClient.SetConnectTimeout(const AValue: IntegerRAL);
 begin
   FConnectTimeout := AValue;
+end;
+
+{ Zero turns it off, and that is what BOTH engines read as "no ping": OkHttp
+  does not call pingInterval, netHTTP does not touch the WinHTTP option.
+
+  On, the floor is the CHOSEN ENGINE's - MinKeepAliveInterval - because the two
+  disagree: OkHttp takes any value above zero and WinHTTP refuses anything
+  under 5000 ms. A single floor for both would take from Android a faster
+  detection it is perfectly able to do.
+
+  The correction happens HERE, on assignment - which covers the Object
+  Inspector and code at run time, since both go through this setter - and not
+  inside the engine. There is one reason: this way the value read back is the
+  value in effect. Correcting it inside the engine would leave the screen
+  showing 3000 while the connection used 5000, which is worse than the limit.
+
+  Negative becomes 0 for the usual reason: there is no negative interval, and
+  keeping one would keep a setting no engine can honour. }
+procedure TRALClient.SetKeepAliveInterval(AValue: IntegerRAL);
+var
+  vClass: TRALClientHTTPClass;
+  vMinimum: IntegerRAL;
+begin
+  if AValue <= 0 then
+  begin
+    FKeepAliveInterval := 0;
+    Exit;
+  end;
+
+  { the CLASS answers, as in IsPropertyRelevant: at design time there is no
+    instance, and an EngineType not known yet imposes no floor at all }
+  vMinimum := 0;
+  vClass := GetEngineClass(FEngineType);
+  if vClass <> nil then
+    vMinimum := vClass.MinKeepAliveInterval;
+
+  if (vMinimum > 0) and (AValue < vMinimum) then
+    FKeepAliveInterval := vMinimum
+  else
+    FKeepAliveInterval := AValue;
 end;
 
 procedure TRALClient.SetKeepAlive(AValue: boolean);
@@ -1422,6 +1493,11 @@ end;
 class function TRALClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
   Result := False;
+end;
+
+class function TRALClientHTTP.MinKeepAliveInterval: IntegerRAL;
+begin
+  Result := 0; // no floor, which is the case for whoever ignores the property
 end;
 
 function TRALClientHTTP.CertCheckWanted: boolean;
