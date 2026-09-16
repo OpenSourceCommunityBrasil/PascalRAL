@@ -152,6 +152,16 @@ Anything whose result is read as a property right after the call must use `ebSin
 
 Which engines can actually **fill** `TRALCertInfo.Fingerprint` is what `SupportsCertPin` answers, and `SSL.Pins` raises on the first request where it is False rather than checking something weaker in silence. Indy reads it everywhere; **netHTTP reads it on Windows**, from the WinHTTP handle under the RTL's `TCertificate`, which carries no fingerprint on any platform; **okhttp reads it on Android**, which is the only way pinning works there at all. Everywhere else it stays False.
 
+**When a pin or `OnValidateServerCert` decides, the host name stops mattering** - that is the
+documented contract in [`src/engine/SSL.md`](src/engine/SSL.md), and each engine has to honour it
+in whatever its platform calls hostname verification. On okhttp that is a `HostnameVerifier`, and
+the thing to get right there is *what* it keys on: **only whether a judge is installed, never
+whether the judge has already run on this thread**. On a RESUMED TLS session the trust manager is
+not called at all - the peer identity comes from the cached session, validated when that session
+was created - so a "the judge approved" flag is still false and a strict verifier then refuses a
+host the certificate never named, which is the normal case for a pinned certificate. Leaving Wi-Fi
+and coming back on mobile data is enough to reach it; measured on Android on 2026-09-16.
+
 Defaults are unchanged: with neither the pin nor the event set, nothing new happens. That matters most for **Indy and fpHTTP, which do not verify certificates at all** (Indy leaves `SSLOptions.VerifyMode` empty = `SSL_VERIFY_NONE`; fpHTTP has the chain check commented out in FPC 3.2.2's `TOpenSSLSocketHandler.Connect` and `DoVerifyCert` returns True when nobody assigned the callback). Turning that on for everyone would break plain HTTPS on Windows, where the OpenSSL those two load has no certificate store — so verification is enabled per client, only when one of the two properties asks for it.
 
 What each engine can honour, and how it had to be wired:

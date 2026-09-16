@@ -76,11 +76,6 @@ public final class RalOkHttp {
    */
   private static final ThreadLocal<RalCertJudge> JUDGE = new ThreadLocal<RalCertJudge>();
 
-  /** Whether the judge has already approved this thread's certificate. */
-  private static final ThreadLocal<Boolean> APPROVED = new ThreadLocal<Boolean>() {
-    @Override protected Boolean initialValue() { return Boolean.FALSE; }
-  };
-
   /** One client per configuration, mirroring RAL's own transport pool. */
   private static final Map<String, OkHttpClient> CLIENTS = new HashMap<String, OkHttpClient>();
 
@@ -141,7 +136,6 @@ public final class RalOkHttp {
 
     private void judge(X509Certificate[] chain, String authType) throws CertificateException {
       Result r = RESULT.get();
-      APPROVED.set(Boolean.FALSE);
 
       boolean trusted = false;
       if (PLATFORM != null) {
@@ -172,7 +166,6 @@ public final class RalOkHttp {
         r.certRefused = true;
         throw new CertificateException("certificate refused by PascalRAL");
       }
-      APPROVED.set(Boolean.TRUE);
     }
   }
 
@@ -236,9 +229,20 @@ public final class RalOkHttp {
       // certificate is the certificate, whatever name the URL used, and that
       // is the same latitude the other engines give their handler. With no
       // judge installed the platform verdict rules, and this stays strict.
+      //
+      // What decides is ONLY whether a judge is installed - never whether it
+      // has already run on this thread. On a RESUMED TLS session the trust
+      // manager is not called at all: the peer identity comes from the cached
+      // session, validated when that session was created. Gating on a "the
+      // judge approved" flag therefore failed exactly there, and the way to
+      // reach it is mundane - leave Wi-Fi, come back on mobile data, and the
+      // next call resumes onto a fresh connection. Measured on Android on
+      // 2026-09-16, as SSLPeerUnverifiedException against a host the
+      // certificate never named, which is the normal case when the trust
+      // comes from a pin rather than from a name.
       b.hostnameVerifier(new HostnameVerifier() {
         public boolean verify(String hostname, SSLSession session) {
-          if (JUDGE.get() != null && Boolean.TRUE.equals(APPROVED.get())) {
+          if (JUDGE.get() != null) {
             return true;
           }
           return okhttp3.internal.tls.OkHostnameVerifier.INSTANCE.verify(hostname, session);
@@ -299,7 +303,6 @@ public final class RalOkHttp {
     Result r = new Result();
     RESULT.set(r);
     JUDGE.set(judge);
-    APPROVED.set(Boolean.FALSE);
     Response resp = null;
     try {
       RequestBody rb = null;
@@ -367,7 +370,6 @@ public final class RalOkHttp {
       return -1;
     } finally {
       JUDGE.remove();
-      APPROVED.remove();
       if (resp != null) {
         resp.close();
       }
