@@ -390,18 +390,28 @@ begin
   AResponse.StatusCode := TJRalOkHttp.JavaClass.status;
 
   vBytes := TJRalOkHttp.JavaClass.body;
-  if (vBytes = nil) or (vBytes.Length <= 0) then
+  if vBytes = nil then
     Exit;
 
-  vStream := TMemoryStream.Create;
+  { The wrapper is ours to free, and forgetting it is not small: its destructor
+    is what hands back the JNI global reference and the element copy that
+    GetByteArrayElements made. Left behind, every response leaked one
+    reference and one copy of its body - at a heartbeat every two seconds, a
+    leak that only ended with the process. }
+  vStream := nil;
   try
-    vStream.Size := vBytes.Length;
-    Move(vBytes.Data^, vStream.Memory^, vBytes.Length);
-    vStream.Position := 0;
-    { The setter decodes into a stream of its own and does not take this one }
-    AResponse.ResponseStream := vStream;
+    if vBytes.Length > 0 then
+    begin
+      vStream := TMemoryStream.Create;
+      vStream.Size := vBytes.Length;
+      Move(vBytes.Data^, vStream.Memory^, vBytes.Length);
+      vStream.Position := 0;
+      { The setter decodes into a stream of its own and does not take this one }
+      AResponse.ResponseStream := vStream;
+    end;
   finally
     vStream.Free;
+    vBytes.Free;
   end;
 end;
 

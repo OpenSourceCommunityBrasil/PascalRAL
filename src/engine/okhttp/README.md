@@ -79,6 +79,13 @@ settled on HTTP/2. If the jars did not make it into the APK the failure is a
   stays where RAL already makes it, in `AcceptServerCert`, instead of a second
   rule growing inside the bridge.
 
+Arrays that come back from Java are the caller's to free. A `TJavaArray<T>` is
+a plain object, and its destructor is what returns the JNI global reference and
+the element copy that `GetByteArrayElements` made; that is why `ReadResponse`
+frees the response body in a `finally`. Left behind, every response leaked one
+reference and one copy of its body — with a heartbeat every couple of seconds,
+a leak that only ended with the process (fixed 2026-09-16).
+
 `ralokhttp.jar` is committed already built, so that using the engine needs no
 Java toolchain. After changing the sources it has to be rebuilt, or the jar and
 the `.java` beside it drift apart:
