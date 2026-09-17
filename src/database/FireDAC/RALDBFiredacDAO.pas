@@ -10,7 +10,7 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALRequest, RALResponse,
   RALConsts,
   System.SyncObjs;
 
@@ -66,7 +66,7 @@ type
   private
     vDriverName: StringRAL;
     vRALServer: TRALServer;
-    vRALWebModule: TRALWebModule;
+    vRALModule: TRALModuleRoutes;
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
     procedure SetDriverName(const value: StringRAL);
@@ -617,16 +617,13 @@ end;
 
 constructor TRALFDConnection.Create(AOwner: TComponent);
 begin
-  vRALWebModule := nil;
+  vRALModule := nil;
   inherited;
 end;
 
 destructor TRALFDConnection.Destroy;
 begin
-  if Assigned(vRALWebModule) then
-  begin
-    FreeAndNil(vRALWebModule);
-  end;
+  FreeAndNil(vRALModule);
   inherited;
 end;
 
@@ -850,8 +847,6 @@ begin
 end;
 
 procedure TRALFDConnection.SetRALServer(const value: TRALServer);
-var
-  vRALRoute: TRALRoute;
 begin
   vRALServer := value;
 
@@ -860,15 +855,17 @@ begin
     if not(Assigned(vRALServer)) then
       raise Exception.Create(emInvalidServer);
 
-    if Assigned(vRALWebModule) then
-    begin
-      FreeAndNil(vRALWebModule);
-    end;
+    FreeAndNil(vRALModule);
 
-    vRALWebModule := TRALWebModule.Create(Self);
-    vRALWebModule.Server := vRALServer;
+    { A plain TRALModuleRoutes, not a TRALWebModule: this needs one route and
+      nothing else. TRALWebModule also registers a default route that skips
+      authentication and serves files, falling back to the executable's own
+      directory when DocumentRoot is empty - which it always was here, since
+      the module is created internally and never configured }
+    vRALModule := TRALModuleRoutes.Create(Self);
+    vRALModule.Server := vRALServer;
 
-    vRALRoute := vRALWebModule.CreateRoute(Self.Name + 'Route/Query', OnReplyQuery);
+    vRALModule.CreateRoute(Self.Name + 'Route/Query', OnReplyQuery);
   end;
 
 end;
