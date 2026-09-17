@@ -10,7 +10,7 @@ uses
   Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
 {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALDBBase, RALRequest, RALResponse,
   RALConsts,
   System.SyncObjs;
 
@@ -69,11 +69,13 @@ type
     vRALModule: TRALModuleRoutes;
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
+    vOnValidateSQL: TRALDBOnValidateSQL;
     procedure SetDriverName(const value: StringRAL);
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetRALServer(const value: TRALServer);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -83,6 +85,12 @@ type
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
     property RALServer: TRALServer read vRALServer write SetRALServer;
+    { Fired before a statement that came over the wire reaches the database.
+      The DAO route carries whatever SQL the client sends, so without this the
+      caller can run anything the connection user is allowed to run. Set AAllow
+      to False and the request gets an error, nothing is executed }
+    property OnValidateSQL: TRALDBOnValidateSQL read vOnValidateSQL
+      write vOnValidateSQL;
   end;
 
 resourcestring
@@ -627,6 +635,19 @@ begin
   inherited;
 end;
 
+procedure TRALFDConnection.CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
+var
+  vAllow: Boolean;
+begin
+  if not Assigned(vOnValidateSQL) then
+    Exit;
+
+  vAllow := True;
+  vOnValidateSQL(Self, ARequest, ASQL, vAllow);
+  if not vAllow then
+    raise Exception.Create(emDBSQLRejected);
+end;
+
 procedure TRALFDConnection.OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vQueryAux, vQueryAux2: TFDQuery;
@@ -639,6 +660,7 @@ var
   vAuxException: string;
   i: integer;
   vAuxConnClone: TFDConnection;
+  vSQL: StringRAL;
 begin
   try
     try
@@ -661,6 +683,11 @@ begin
       ARequest.ParamByName('SQL').SaveToStream(vAuxStringStream);
       vAuxStringStream.Position := 0;
 
+      { Read once: both queries get the same text, and OnValidateSQL has to see
+        it before either of them reaches the database }
+      vSQL := TStringStream(vAuxStringStream).DataString;
+      CheckSQL(ARequest, vSQL);
+
       { nil owner, not Self: this runs on the server's thread pool and Self is
         the one TRALFDConnection of the datamodule, so concurrent requests were
         all inserting into and removing from the same component list, which is
@@ -668,13 +695,13 @@ begin
         relied on the owner to clean them up. }
       vQueryAux := TFDQuery.Create(nil);
       vQueryAux.Connection := vAuxConnClone;
-      vQueryAux.SQL.Text := TStringStream(vAuxStringStream).DataString;
+      vQueryAux.SQL.Text := vSQL;
 
       if ARequest.ParamByName('Type').AsString = '1' then
       begin
         vQueryAux2 := TFDQuery.Create(nil);
         vQueryAux2.Connection := vAuxConnClone;
-        vQueryAux2.SQL.Text := TStringStream(vAuxStringStream).DataString;
+        vQueryAux2.SQL.Text := vSQL;
       end;
 
       if StrToInt(ARequest.ParamByName('ParamCount').AsString) > 0 then
