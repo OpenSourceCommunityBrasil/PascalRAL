@@ -9,9 +9,8 @@
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ralinstaller"/>
-        <EditorIndex Value="6"/>
-        <CursorPos X="42" Y="23"/>
-        <UsageCount Value="92"/>
+        <CursorPos X="57" Y="38"/>
+        <UsageCount Value="96"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -23,7 +22,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="146"/>
         <CursorPos X="3" Y="153"/>
-        <UsageCount Value="92"/>
+        <UsageCount Value="96"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ufrm_modelo.pas"/>
@@ -31,10 +30,13 @@
         <ComponentName Value="frm_modelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="136"/>
-        <CursorPos X="20" Y="146"/>
-        <UsageCount Value="92"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="159"/>
+        <CursorPos X="51" Y="173"/>
+        <UsageCount Value="96"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_idioma.pas"/>
@@ -42,19 +44,20 @@
         <ComponentName Value="frm_idioma"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="8"/>
-        <CursorPos Y="41"/>
-        <UsageCount Value="92"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="26"/>
+        <CursorPos X="55" Y="45"/>
+        <UsageCount Value="96"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\utools.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="9"/>
-        <TopLine Value="71"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="92"/>
         <CursorPos X="24" Y="92"/>
-        <UsageCount Value="92"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="96"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide.pas"/>
@@ -63,9 +66,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="36"/>
+        <TopLine Value="58"/>
         <CursorPos Y="54"/>
-        <UsageCount Value="91"/>
+        <UsageCount Value="95"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
@@ -73,12 +76,10 @@
         <ComponentName Value="frm_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="4"/>
         <CursorPos X="36" Y="116"/>
-        <UsageCount Value="90"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
+        <UsageCount Value="94"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ufrm_ide_version.pas"/>
@@ -86,32 +87,28 @@
         <ComponentName Value="frm_ide_version"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="20"/>
         <CursorPos X="42" Y="50"/>
-        <UsageCount Value="89"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
+        <UsageCount Value="93"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\delphiutils.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="10"/>
-        <TopLine Value="125"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="231"/>
         <CursorPos X="16" Y="172"/>
-        <UsageCount Value="89"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="93"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\lazarusutils.pas"/>
         <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="91"/>
-        <UsageCount Value="85"/>
+        <UsageCount Value="89"/>
         <Bookmarks Count="1">
           <Item0 X="5" Y="343" ID="1"/>
         </Bookmarks>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_recursos.pas"/>
@@ -120,8 +117,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <CursorPos X="3" Y="15"/>
-        <UsageCount Value="71"/>
+        <TopLine Value="198"/>
+        <CursorPos X="45" Y="212"/>
+        <UsageCount Value="75"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\udm.pas"/>
@@ -130,7 +128,8 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="70"/>
+        <CursorPos X="70" Y="9"/>
+        <UsageCount Value="74"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_install.pas"/>
@@ -139,16 +138,15 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="7"/>
-        <CursorPos X="10" Y="18"/>
-        <UsageCount Value="69"/>
+        <CursorPos X="28" Y="10"/>
+        <UsageCount Value="73"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\githubral.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="20"/>
-        <UsageCount Value="68"/>
+        <UsageCount Value="72"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\installparser.pas"/>
@@ -156,13 +154,13 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="367"/>
         <CursorPos X="15" Y="385"/>
-        <UsageCount Value="65"/>
+        <UsageCount Value="69"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\githubutils.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="47"/>
+        <UsageCount Value="51"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ralzipper.pas"/>
@@ -170,7 +168,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="5"/>
         <CursorPos X="30" Y="32"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="45"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\i18n_utils.pas"/>
@@ -178,7 +176,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="105"/>
         <CursorPos X="3" Y="114"/>
-        <UsageCount Value="36"/>
+        <UsageCount Value="40"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ideutils.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="28" Y="42"/>
+        <UsageCount Value="28"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ideutils_base.pas"/>
@@ -301,11 +306,10 @@
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-extra\src\fileinfo.pp"/>
         <UnitName Value="FileInfo"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="15"/>
         <CursorPos X="22" Y="198"/>
         <UsageCount Value="14"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\telas\frconfigrecursos.pas"/>
@@ -345,10 +349,9 @@
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\lazarus\lcl\stdctrls.pp"/>
         <UnitName Value="StdCtrls"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="14" Y="18"/>
         <UsageCount Value="12"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\rtl\objpas\sysutils\finah.inc"/>
@@ -600,11 +603,10 @@
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\fcl-res\src\versionresource.pp"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="40"/>
         <CursorPos X="21" Y="164"/>
         <UsageCount Value="14"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\fpcupdeluxe\laz32\fpcsrc\packages\winunits-base\src\shellapi.pp"/>
@@ -624,21 +626,11 @@
         <UsageCount Value="11"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\ideutils.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="7"/>
-        <TopLine Value="15"/>
-        <CursorPos X="28" Y="42"/>
-        <UsageCount Value="24"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="fontes\retirados\delphiutils.pas"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="40"/>
         <CursorPos X="6" Y="56"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="D:\ral_db\icon\unit1.pas"/>
@@ -646,134 +638,20 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="100"/>
         <CursorPos Y="140"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
+    <JumpHistory HistoryIndex="1">
       <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="160" TopLine="142"/>
+        <Filename Value="fontes\telas\ufrm_idioma.pas"/>
+        <Caret Line="8" Column="39"/>
       </Position>
       <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="161" TopLine="142"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="162" TopLine="142"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="164" TopLine="145"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="168" TopLine="145"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="170" TopLine="145"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="172" TopLine="145"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\delphiutils.pas"/>
-        <Caret Line="173" TopLine="145"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="32" Column="19" TopLine="16"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="104" Column="27" TopLine="94"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="37" Column="31" TopLine="12"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="32" Column="25" TopLine="16"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="101" Column="7" TopLine="96"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\lazarusutils.pas"/>
-        <Caret Line="91" Column="15" TopLine="58"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="106" Column="18" TopLine="85"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\lazarusutils.pas"/>
-        <Caret Line="74" Column="30" TopLine="53"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="26" Column="26" TopLine="2"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\utools.pas"/>
-        <Caret Line="34" Column="50"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\utools.pas"/>
-        <Caret Line="99" TopLine="74"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ufrm_ide_version.pas"/>
-        <Caret Line="16" Column="26" TopLine="20"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ufrm_ide_version.pas"/>
-        <Caret Line="28" Column="33" TopLine="21"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ufrm_ide_version.pas"/>
-        <Caret Line="46" Column="3" TopLine="20"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="26" Column="27"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="33" Column="18" TopLine="6"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="110" Column="3" TopLine="106"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="26" Column="16" TopLine="12"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="25" Column="24" TopLine="16"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="83" TopLine="77"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ideutils.pas"/>
-        <Caret Line="22" Column="20"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ufrm_ide_version.pas"/>
-        <Caret Line="28" Column="22" TopLine="21"/>
+        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Caret Line="170" Column="51" TopLine="152"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -783,13 +661,6 @@
   </ProjectSession>
   <Debugging>
     <BreakPoints>
-      <Item>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="fontes\telas\ufrm_idioma.pas"/>
-        <Line Value="59"/>
-      </Item>
       <Item>
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>

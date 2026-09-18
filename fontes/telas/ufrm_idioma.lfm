@@ -1,18 +1,36 @@
 inherited frm_idioma: Tfrm_idioma
+  Color = clDefault
+  ParentColor = False
+  inherited imFundo: TImage
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+  end
   inherited imNext: TImage
     AnchorSideRight.Control = Owner
     AnchorSideBottom.Control = Owner
   end
-  inherited imBack: TImage[6]
+  inherited imBack: TImage
     AnchorSideLeft.Control = Owner
     AnchorSideBottom.Control = Owner
     Visible = False
   end
-  inherited lbBack: TLabel[7]
+  inherited lbBack: TLabel
     Top = 554
     Visible = False
   end
-  object imSelect: TImage[8]
+  inherited Panel1: TPanel
+    AnchorSideLeft.Control = nil
+    AnchorSideTop.Control = nil
+    AnchorSideRight.Control = nil
+    AnchorSideRight.Side = asrTop
+    Color = clDefault
+    ParentColor = False
+  end
+  object imSelect: TImage[6]
     Left = 112
     Height = 68
     Top = 400
@@ -40,7 +58,7 @@ inherited frm_idioma: Tfrm_idioma
     }
     Visible = False
   end
-  object imUSA: TImage[9]
+  object imUSA: TImage[7]
     Tag = 1
     Cursor = crHandPoint
     Left = 136
@@ -199,7 +217,7 @@ inherited frm_idioma: Tfrm_idioma
       AE426082
     }
   end
-  object imEspanha: TImage[10]
+  object imEspanha: TImage[8]
     Tag = 2
     Cursor = crHandPoint
     Left = 300
@@ -301,7 +319,7 @@ inherited frm_idioma: Tfrm_idioma
       17813FBC7DE3BF0700820E28D147A2574D0000000049454E44AE426082
     }
   end
-  object imBrasil: TImage[11]
+  object imBrasil: TImage[9]
     Cursor = crHandPoint
     Left = 464
     Height = 60
@@ -453,19 +471,18 @@ inherited frm_idioma: Tfrm_idioma
       00000049454E44AE426082
     }
   end
-  object lbSubTitle: TLabel[12]
-    AnchorSideLeft.Control = Owner
-    AnchorSideLeft.Side = asrCenter
-    AnchorSideTop.Control = Owner
-    AnchorSideRight.Control = Owner
-    AnchorSideRight.Side = asrCenter
-    Left = 100
+  object lbSubTitle: TLabel[10]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Panel1
+    AnchorSideRight.Side = asrBottom
+    Left = 0
     Height = 30
-    Top = 120
-    Width = 500
+    Top = 110
+    Width = 700
     Alignment = taCenter
     Anchors = [akTop, akLeft, akRight]
-    BorderSpacing.Top = 120
     Caption = 'Escolha o Idioma'
     Font.Height = -21
     ParentColor = False

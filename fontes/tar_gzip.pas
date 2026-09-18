@@ -3,7 +3,7 @@ unit tar_gzip;
 interface
 
 uses
-  Classes, SysUtils, gzio;
+  Classes, SysUtils, gzio{$IFDEF UNIX}, BaseUnix{$ENDIF};
 
 type
   TTGZHeader = record
@@ -111,7 +111,7 @@ begin
             if vUseLongName then
               FpChmod(FOutputFolder + vLongName, OctToInt(vHeader.mode))
             else
-              FpChmod(FOutputFolder + Headder.name, OctToInt(vHeader.mode));
+              FpChmod(FOutputFolder + vHeader.name, OctToInt(vHeader.mode));
           {$ENDIF}
           vUseLongName := False;
         end
@@ -126,7 +126,7 @@ begin
         else if vHeader.typeflag = '2' then
         begin
           {$IFDEF UNIX}
-            FpLink(vHeader.linkname, FOutputFolder + vHeader.name)
+            FpSymlink(@vHeader.linkname[0], PChar(FOutputFolder + vHeader.name));
           {$ENDIF}
         end
         else if vHeader.typeflag = 'L' then

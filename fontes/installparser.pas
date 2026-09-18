@@ -1212,6 +1212,7 @@ end;
 destructor TInstaller.Destroy;
 begin
   FreeAndNil(FPackages);
+  FreeAndNil(FDepedancies);
   inherited Destroy;
 end;
 

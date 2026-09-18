@@ -41,9 +41,9 @@ type
     procedure NextPage;
     procedure PriorPage;
 
-    procedure installRAL(ALog : TMemo);
-    procedure downloadRAL(ALog: TMemo);
-    function checkDepedancy(ALog : TMemo) : boolean;
+    // o plano de todas as IDEs marcadas com os recursos escolhidos
+    function PlanoInstalacao: string;
+    function installRAL(ALog : TMemo): boolean;
   published
     property Theme : TThemes read FTheme write SetTheme;
     property Language : TLanguages read FLanguage write SetLanguage;
@@ -127,6 +127,10 @@ begin
   begin
     FPage := AValue;
     ntPages.PageIndex := AValue;
+    // a tela de instalacao comeca mostrando o plano, antes de qualquer escrita
+    if (ntPages.Page[AValue].ControlCount > 0) and
+       (ntPages.Page[AValue].Controls[0] = FPgInstall) then
+      FPgInstall.MostrarPlano;
   end;
 end;
 
@@ -182,19 +186,14 @@ begin
   Page := FPage - 1;
 end;
 
-procedure Tfmain.installRAL(ALog: TMemo);
+function Tfmain.PlanoInstalacao: string;
 begin
-  FPgIDEVersions.installRAL(ALog, FPgRecursos.Install, FPgRecursos.PathDownload);
+  Result := FPgIDEVersions.Plano(FPgRecursos.Escolha);
 end;
 
-procedure Tfmain.downloadRAL(ALog: TMemo);
+function Tfmain.installRAL(ALog: TMemo): boolean;
 begin
-  FPgRecursos.Install.Download(FPgRecursos.PathDownload, ALog);
-end;
-
-function Tfmain.checkDepedancy(ALog: TMemo): boolean;
-begin
-  Result := FPgRecursos.Install.CheckDepedancy(ALog);
+  Result := FPgIDEVersions.installRAL(ALog, FPgRecursos.Escolha);
 end;
 
 end.

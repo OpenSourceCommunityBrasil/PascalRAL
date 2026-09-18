@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <UserPkgLinks Version="3" Count="5">
+    <Item1>
+      <Name Value="fphttpral"/>
+      <Version Major="1" Minor="1"/>
+      <Filename Value="D:\Projetos\Delphi\OpenSourceCommunityBrasil\PascalRAL\PascalRAL-dev\pkg\Lazarus\Engine\fphttpral.lpk"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item1>
+    <Item2>
+      <Name Value="MetaDarkStyle"/>
+      <Version Minor="9"/>
+      <Filename Value="D:\IDE\lazarus\4.6\ccr\metadarkstyle\metadarkstyle.lpk"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item2>
+    <Item3>
+      <Name Value="metadarkstyledsgn"/>
+      <Version Minor="9"/>
+      <Filename Value="D:\IDE\lazarus\4.6\ccr\metadarkstyle\metadarkstyledsgn.lpk"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item3>
+    <Item4>
+      <Name Value="PascalRAL"/>
+      <Version Major="1" Minor="1"/>
+      <Filename Value="D:\Projetos\Delphi\OpenSourceCommunityBrasil\PascalRAL\PascalRAL-dev\pkg\Lazarus\pascalral.lpk"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item4>
+    <Item5>
+      <Name Value="ralbrotlicompress"/>
+      <Version Major="1" Minor="1"/>
+      <Filename Value="D:\Projetos\Delphi\OpenSourceCommunityBrasil\PascalRAL\PascalRAL-dev\pkg\Lazarus\compression\ralbrotlicompress.lpk"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item5>
+  </UserPkgLinks>
+  <GlobalPkgLinks Version="3" Count="51">
+    <Item1>
+      <Name Value="anchordocking"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item1>
+    <Item2>
+      <Name Value="anchordockingdsgn"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item2>
+    <Item3>
+      <Name Value="buildintf"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item3>
+    <Item4>
+      <Name Value="chmhelppkg"/>
+      <Version Minor="2" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item4>
+    <Item5>
+      <Name Value="cmdlinedebuggerbase"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item5>
+    <Item6>
+      <Name Value="codetools"/>
+      <Version Major="1" Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item6>
+    <Item7>
+      <Name Value="cody"/>
+      <Version Major="1" Minor="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item7>
+    <Item8>
+      <Name Value="datetimectrls"/>
+      <Version Major="1" Minor="5" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item8>
+    <Item9>
+      <Name Value="datetimectrlsdsgn"/>
+      <Version Major="1" Minor="5" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item9>
+    <Item10>
+      <Name Value="dbflaz"/>
+      <Version Minor="1" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item10>
+    <Item11>
+      <Name Value="debuggerintf"/>
+      <Version Minor="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item11>
+    <Item12>
+      <Name Value="dockedformeditor"/>
+      <LastUsed Value="2026/08/24 16:50:36"/>
+    </Item12>
+    <Item13>
+      <Name Value="externhelp"/>
+      <Version Major="1" Minor="3"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item13>
+    <Item14>
+      <Name Value="fcl"/>
+      <Version Major="1" Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item14>
+    <Item15>
+      <Name Value="fpcunitide"/>
+      <Version Minor="1"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item15>
+    <Item16>
+      <Name Value="fpdebug"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item16>
+    <Item17>
+      <Name Value="freetypelaz"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item17>
+    <Item18>
+      <Name Value="ideconfig"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item18>
+    <Item19>
+      <Name Value="idedebugger"/>
+      <Version Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item19>
+    <Item20>
+      <Name Value="ideintf"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item20>
+    <Item21>
+      <Name Value="idepackager"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item21>
+    <Item22>
+      <Name Value="ideproject"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item22>
+    <Item23>
+      <Name Value="ideutilspkg"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item23>
+    <Item24>
+      <Name Value="instantfpclaz"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item24>
+    <Item25>
+      <Name Value="jcfbase"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item25>
+    <Item26>
+      <Name Value="jcfidelazarus"/>
+      <Version Major="2"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item26>
+    <Item27>
+      <Name Value="laz.virtualtreeview_package"/>
+      <Version Major="5" Minor="5" Release="3" Build="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item27>
+    <Item28>
+      <Name Value="lazcontroldsgn"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item28>
+    <Item29>
+      <Name Value="lazcontrols"/>
+      <Version Major="1" Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item29>
+    <Item30>
+      <Name Value="lazdaemon"/>
+      <Version Minor="9" Release="9"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item30>
+    <Item31>
+      <Name Value="lazdebuggerfp"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item31>
+    <Item32>
+      <Name Value="lazdebuggerfplldb"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item32>
+    <Item33>
+      <Name Value="lazdebuggergdbmi"/>
+      <Version Minor="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item33>
+    <Item34>
+      <Name Value="lazdebuggerintf"/>
+      <Version Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item34>
+    <Item35>
+      <Name Value="lazdebuggerlldb"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item35>
+    <Item36>
+      <Name Value="lazedit"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item36>
+    <Item37>
+      <Name Value="laztestinsight"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item37>
+    <Item38>
+      <Name Value="lazutils"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item38>
+    <Item39>
+      <Name Value="lcl"/>
+      <Version Major="4" Minor="7"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item39>
+    <Item40>
+      <Name Value="lclbase"/>
+      <Version Major="4" Minor="7"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item40>
+    <Item41>
+      <Name Value="lclextensions_package"/>
+      <Version Minor="6" Release="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item41>
+    <Item42>
+      <Name Value="leakview"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:36"/>
+    </Item42>
+    <Item43>
+      <Name Value="lhelpcontrolpkg"/>
+      <Version Minor="2"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item43>
+    <Item44>
+      <Name Value="memdslaz"/>
+      <Version Major="1" Minor="2" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item44>
+    <Item45>
+      <Name Value="onlinepackagemanager"/>
+      <Version Major="1" Release="1" Build="2"/>
+      <LastUsed Value="2026/08/24 16:50:36"/>
+    </Item45>
+    <Item46>
+      <Name Value="projtemplates"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item46>
+    <Item47>
+      <Name Value="sdflaz"/>
+      <Version Minor="1" Release="1"/>
+      <LastUsed Value="2026/08/24 16:50:34"/>
+    </Item47>
+    <Item48>
+      <Name Value="sqldblaz"/>
+      <Version Major="1" Release="2"/>
+      <LastUsed Value="2026/08/24 16:50:35"/>
+    </Item48>
+    <Item49>
+      <Name Value="synedit"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/09/18 02:43:50"/>
+    </Item49>
+    <Item50>
+      <Name Value="syneditdsgn"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:36"/>
+    </Item50>
+    <Item51>
+      <Name Value="tachartlazaruspkg"/>
+      <Version Major="1"/>
+      <LastUsed Value="2026/08/24 16:50:36"/>
+    </Item51>
+  </GlobalPkgLinks>
+</CONFIG>

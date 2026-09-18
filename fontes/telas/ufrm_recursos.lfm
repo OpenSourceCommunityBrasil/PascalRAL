@@ -7,43 +7,32 @@ inherited frm_recursos: Tfrm_recursos
     AnchorSideLeft.Control = Owner
     AnchorSideBottom.Control = Owner
   end
-  object lbSubTitle: TLabel[9]
+  inherited Panel1: TPanel
     AnchorSideLeft.Control = Owner
-    AnchorSideLeft.Side = asrCenter
     AnchorSideTop.Control = Owner
     AnchorSideRight.Control = Owner
-    AnchorSideRight.Side = asrCenter
-    Left = 165
+    TabOrder = 1
+  end
+  object lbSubTitle: TLabel[6]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Panel1
+    AnchorSideRight.Side = asrBottom
+    Left = 0
     Height = 30
-    Top = 120
-    Width = 370
+    Top = 110
+    Width = 700
     Alignment = taCenter
     Anchors = [akTop, akLeft, akRight]
-    BorderSpacing.Top = 120
     Caption = 'Escolha os recursos'
     Font.Height = -21
     ParentColor = False
     ParentFont = False
   end
-  object Label1: TLabel[10]
+  object tvRecursos: TTreeView[7]
     Left = 48
-    Height = 15
-    Top = 166
-    Width = 107
-    Caption = 'Path para Download'
-    ParentColor = False
-  end
-  object ePathDownload: TEdit[11]
-    Left = 48
-    Height = 23
-    Top = 184
-    Width = 576
-    ReadOnly = True
-    TabOrder = 0
-  end
-  object tvRecursos: TTreeView[12]
-    Left = 48
-    Height = 296
+    Height = 244
     Top = 232
     Width = 601
     Images = dm.imgList
@@ -51,15 +40,15 @@ inherited frm_recursos: Tfrm_recursos
     ScrollBars = ssAutoVertical
     ShowLines = False
     ShowRoot = False
-    TabOrder = 1
+    TabOrder = 0
     OnDblClick = tvRecursosDblClick
     OnKeyDown = tvRecursosKeyDown
     Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoToolTips, tvoThemedDraw]
   end
-  object bAddVersion: TSpeedButton[13]
+  object bAddVersion: TSpeedButton[8]
     Left = 626
     Height = 23
-    Hint = 'Adicionar um IDE pela sua pasta de instalação'
+    Hint = 'Escolher a pasta dos fontes do PascalRAL'
     Top = 184
     Width = 23
     Images = dm.imgList
@@ -68,15 +57,70 @@ inherited frm_recursos: Tfrm_recursos
     ShowHint = True
     ParentShowHint = False
   end
-  object Label2: TLabel[14]
+  object Label2: TLabel[9]
     Left = 48
     Height = 15
     Top = 213
-    Width = 114
-    Caption = 'Recursos para Instalar'
+    Width = 250
+    Caption = 'Recursos (duplo clique marca ou desmarca)'
     ParentColor = False
   end
-  object dirSelect: TSelectDirectoryDialog[15]
+  object lbedDownloadPath: TLabeledEdit[10]
+    Left = 48
+    Height = 23
+    Top = 184
+    Width = 568
+    EditLabel.Height = 15
+    EditLabel.Width = 568
+    EditLabel.Caption = 'Pasta dos fontes do PascalRAL (a que contém pkg e src)'
+    TabOrder = 2
+    OnEditingDone = lbedDownloadPathEditingDone
+  end
+  object lbInfo: TLabel[11]
+    Left = 300
+    Height = 15
+    Top = 213
+    Width = 349
+    Alignment = taRightJustify
+    AutoSize = False
+    Caption = ''
+    ParentColor = False
+  end
+  object ckSomentePaths: TCheckBox[12]
+    Left = 48
+    Height = 19
+    Top = 484
+    Width = 20
+    TabOrder = 3
+  end
+  object lbSomentePaths: TLabel[13]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 15
+    Top = 486
+    Width = 400
+    Caption = 'Somente library path (não compila nem instala pacotes na IDE)'
+    ParentColor = False
+    OnClick = lbSomentePathsClick
+  end
+  object ckWin64: TCheckBox[14]
+    Left = 48
+    Height = 19
+    Top = 506
+    Width = 20
+    TabOrder = 4
+  end
+  object lbWin64: TLabel[15]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 15
+    Top = 508
+    Width = 400
+    Caption = 'Também Win64 (pacotes de runtime e library path)'
+    ParentColor = False
+    OnClick = lbWin64Click
+  end
+  object dirSelect: TSelectDirectoryDialog[16]
     Left = 204
     Top = 284
   end

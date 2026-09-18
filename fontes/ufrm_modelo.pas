@@ -22,6 +22,7 @@ type
     lbBack: TLabel;
     lbNext: TLabel;
     lVersion: TLabel;
+    Panel1: TPanel;
     procedure imBannerMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure imBannerMouseMove(Sender: TObject; Shift: TShiftState; X,

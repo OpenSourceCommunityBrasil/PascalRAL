@@ -5,7 +5,7 @@ unit ufrm_idioma;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+  Classes, SysUtils, Forms, Controls, Dialogs, ExtCtrls, StdCtrls,
   ufrm_modelo, utools;
 
 type

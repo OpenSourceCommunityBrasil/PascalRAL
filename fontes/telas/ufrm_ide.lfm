@@ -10,7 +10,12 @@ inherited frm_ide: Tfrm_ide
   inherited lbBack: TLabel
     Top = 554
   end
-  object imSelDelphi: TImage[9]
+  inherited Panel1: TPanel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+  end
+  object imSelDelphi: TImage[6]
     Left = 161
     Height = 112
     Top = 344
@@ -79,7 +84,7 @@ inherited frm_ide: Tfrm_ide
     }
     Visible = False
   end
-  object imSelLazarus: TImage[10]
+  object imSelLazarus: TImage[7]
     Left = 344
     Height = 112
     Top = 344
@@ -146,7 +151,7 @@ inherited frm_ide: Tfrm_ide
     }
     Visible = False
   end
-  object imDelphi: TImage[11]
+  object imDelphi: TImage[8]
     Cursor = crHandPoint
     Left = 201
     Height = 104
@@ -739,7 +744,7 @@ inherited frm_ide: Tfrm_ide
       000049454E44AE426082
     }
   end
-  object imLazarus: TImage[12]
+  object imLazarus: TImage[9]
     Cursor = crHandPoint
     Left = 384
     Height = 104
@@ -1241,19 +1246,18 @@ inherited frm_ide: Tfrm_ide
       0049454E44AE426082
     }
   end
-  object lbSubTitle: TLabel[13]
-    AnchorSideLeft.Control = Owner
-    AnchorSideLeft.Side = asrCenter
-    AnchorSideTop.Control = Owner
-    AnchorSideRight.Control = Owner
-    AnchorSideRight.Side = asrCenter
-    Left = 165
+  object lbSubTitle: TLabel[10]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Panel1
+    AnchorSideRight.Side = asrBottom
+    Left = 0
     Height = 30
-    Top = 120
-    Width = 370
+    Top = 110
+    Width = 700
     Alignment = taCenter
     Anchors = [akTop, akLeft, akRight]
-    BorderSpacing.Top = 120
     Caption = 'Escolha a IDE'
     Font.Height = -21
     ParentColor = False

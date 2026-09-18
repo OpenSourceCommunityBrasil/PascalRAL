@@ -1,0 +1,216 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.4.1\n"
+
+#: frconfigrecursos.ccancel
+msgid "Cancelar"
+msgstr "Cancelar"
+
+#: frconfigrecursos.ccaption
+msgid "RAL Installer"
+msgstr "RAL Installer"
+
+#: frconfigrecursos.cok
+msgid "Buscar"
+msgstr "Buscar"
+
+#: frconfigrecursos.cselectide
+msgid "Selecione uma IDE antes de continuar"
+msgstr "Selecione uma IDE antes de continuar"
+
+#: frconfigrecursos.ctext
+msgid ""
+"Esse processo demora bastante pra ser concluído, tem certeza que quer "
+"continuar?"
+msgstr ""
+"Esse processo demora bastante pra ser concluído, tem certeza que quer "
+"continuar?"
+
+#: frconfigrecursos.ctitle
+msgid "Confirma varredura"
+msgstr "Confirma varredura"
+
+#: install_types.themedark
+msgctxt "install_types.themedark"
+msgid "Escuro"
+msgstr "Escuro"
+
+#: install_types.themelight
+msgctxt "install_types.themelight"
+msgid "Claro"
+msgstr "Claro"
+
+#: tfconfigrecursos.baddlazpath.hint
+msgctxt "tfconfigrecursos.baddlazpath.hint"
+msgid "Apontar a pasta onde o Lazarus está instalado"
+msgstr "Apontar a pasta onde o Lazarus está instalado"
+
+#: tfconfigrecursos.bfindlazpaths.hint
+msgid "Buscar automaticamente (muito lento)"
+msgstr "Buscar automaticamente (muito lento)"
+
+#: tfconfigrecursos.epathfolder.texthint
+msgctxt "tfconfigrecursos.epathfolder.texthint"
+msgid "Escolha o caminho onde baixar os fontes"
+msgstr "Escolha o caminho onde baixar os fontes"
+
+#: tfconfigrecursos.lbback.caption
+msgctxt "tfconfigrecursos.lbback.caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: tfconfigrecursos.lbnext.caption
+msgctxt "tfconfigrecursos.lbnext.caption"
+msgid "Próximo >"
+msgstr "Próximo >"
+
+#: tfconfigrecursos.lbsubtitle.caption
+msgctxt "tfconfigrecursos.lbsubtitle.caption"
+msgid "Caminho da Instalação"
+msgstr "Caminho da Instalação"
+
+#: tfconfigrecursos.llatestversion.caption
+msgctxt "tfconfigrecursos.llatestversion.caption"
+msgid "Versão mais recente dos fontes:"
+msgstr "Versão mais recente dos fontes:"
+
+#: tfconfigrecursos.lpathideversion.caption
+msgid "IDEs Instaladas"
+msgstr "IDEs Instaladas"
+
+#: tfconfigrecursos.lversionnotes.caption
+msgctxt "tfconfigrecursos.lversionnotes.caption"
+msgid "Notas da versão:"
+msgstr "Notas da versão:"
+
+#: tfconfigrecursos.lversionnotes1.caption
+msgctxt "tfconfigrecursos.lversionnotes1.caption"
+msgid "Caminho para baixar os fontes"
+msgstr "Caminho para baixar os fontes"
+
+#: tfconfirmrecursos.lbback.caption
+msgctxt "tfconfirmrecursos.lbback.caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: tfconfirmrecursos.lbnext.caption
+msgctxt "tfconfirmrecursos.lbnext.caption"
+msgid "Instalar"
+msgstr "Instalar"
+
+#: tfconfirmrecursos.lbsubtitle.caption
+msgctxt "tfconfirmrecursos.lbsubtitle.caption"
+msgid "Resumo dos recursos escolhidos"
+msgstr "Resumo dos recursos escolhidos"
+
+#: tfframe_ide_versions.lbname.caption
+msgid "lazarusversion"
+msgstr "lazarusversion"
+
+#: tfframe_ide_versions.lbpath.caption
+msgid "lazaruspath"
+msgstr "lazaruspath"
+
+#: tfide.lbback.caption
+msgctxt "tfide.lbback.caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: tfide.lbdelphi.caption
+msgid "Delphi"
+msgstr "Delphi"
+
+#: tfide.lblazarus.caption
+msgid "Lazarus"
+msgstr "Lazarus"
+
+#: tfide.lbnext.caption
+msgctxt "tfide.lbnext.caption"
+msgid "Próximo >"
+msgstr "Próximo >"
+
+#: tfide.lbsubtitle.caption
+msgctxt "tfide.lbsubtitle.caption"
+msgid "Escolha a IDE"
+msgstr "Escolha a IDE"
+
+#: tfidioma.lbnext.caption
+msgctxt "tfidioma.lbnext.caption"
+msgid "Próximo >"
+msgstr "Próximo >"
+
+#: tfidioma.lbsubtitle.caption
+msgctxt "tfidioma.lbsubtitle.caption"
+msgid "Escolha o Idioma"
+msgstr "Escolha o Idioma"
+
+#: tfinstall.button1.caption
+msgctxt "tfinstall.button1.caption"
+msgid "test logo anim"
+msgstr "test logo anim"
+
+#: tfinstall.lbnext.caption
+msgctxt "tfinstall.lbnext.caption"
+msgid "Fechar"
+msgstr "Fechar"
+
+#: tfinstall.lbsubtitle.caption
+msgctxt "tfinstall.lbsubtitle.caption"
+msgid "Instalação"
+msgstr "Instalação"
+
+#: tfinstallrecursos.checkbox1.caption
+msgctxt "tfinstallrecursos.checkbox1.caption"
+msgid "Instalar Dependências"
+msgstr "Instalar Dependências"
+
+#: tfinstallrecursos.epathfolder.texthint
+msgctxt "tfinstallrecursos.epathfolder.texthint"
+msgid "Escolha o caminho onde baixar os fontes"
+msgstr "Escolha o caminho onde baixar os fontes"
+
+#: tfinstallrecursos.label1.caption
+msgid "Motor de Dados"
+msgstr "Motor de Dados"
+
+#: tfinstallrecursos.lbback.caption
+msgctxt "tfinstallrecursos.lbback.caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: tfinstallrecursos.lbnext.caption
+msgctxt "tfinstallrecursos.lbnext.caption"
+msgid "Próximo >"
+msgstr "Próximo >"
+
+#: tfinstallrecursos.lbsubtitle.caption
+msgctxt "tfinstallrecursos.lbsubtitle.caption"
+msgid "Escolha os recursos a instalar"
+msgstr "Escolha os recursos a instalar"
+
+#: tfinstallrecursos.lversionnotes1.caption
+msgid "Caminho para baixar os fontes das dependências"
+msgstr "Caminho para baixar os fontes das dependências"
+
+#: tfmodelo.lbsubtitle.caption
+msgid "Título"
+msgstr "Título"
+
+#: tfprincipal.caption
+msgctxt "tfprincipal.caption"
+msgid "PascalRAL Instalador"
+msgstr "PascalRAL Instalador"
+
+#: tfprincipal.lversion.caption
+msgctxt "tfprincipal.lversion.caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versão 1.0"

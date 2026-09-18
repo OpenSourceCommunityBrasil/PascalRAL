@@ -67,3 +67,11 @@ __recovery/
 
 # Boss dependency manager vendor folder https://github.com/HashLoad/boss
 modules/
+
+# Saida de build do Lazarus/FPC
+lib/
+*.dbg
+*.app/
+ralinstaller_*
+link*.res
+backup/

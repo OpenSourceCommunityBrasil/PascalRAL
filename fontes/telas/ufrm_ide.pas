@@ -54,7 +54,8 @@ begin
   imSelDelphi.Visible := False;
   imSelLazarus.Visible := False;
 
-  {$IFDEF LINUX}
+  // o Delphi so existe no Windows: fora dele a opcao nem aparece
+  {$IFNDEF MSWINDOWS}
     imDelphi.Visible := False;
     imLazarus.Left := (Self.Width div 2) - (imLazarus.Width div 2);
   {$ENDIF}

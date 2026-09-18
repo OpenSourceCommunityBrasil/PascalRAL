@@ -1,4 +1,5 @@
 inherited frm_ide_versions: Tfrm_ide_versions
+  BorderSpacing.Right = 20
   inherited imNext: TImage
     AnchorSideRight.Control = Owner
     AnchorSideBottom.Control = Owner
@@ -7,72 +8,116 @@ inherited frm_ide_versions: Tfrm_ide_versions
     AnchorSideLeft.Control = Owner
     AnchorSideBottom.Control = Owner
   end
-  object lbSubTitle: TLabel[9]
+  inherited Panel1: TPanel
     AnchorSideLeft.Control = Owner
-    AnchorSideLeft.Side = asrCenter
     AnchorSideTop.Control = Owner
     AnchorSideRight.Control = Owner
-    AnchorSideRight.Side = asrCenter
-    Left = 165
+    TabOrder = 1
+  end
+  object lbSubTitle: TLabel[6]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Panel1
+    AnchorSideRight.Side = asrBottom
+    Left = 0
     Height = 30
-    Top = 120
-    Width = 370
+    Top = 110
+    Width = 700
     Alignment = taCenter
     Anchors = [akTop, akLeft, akRight]
-    BorderSpacing.Top = 120
     Caption = 'Escolha as Versões do IDE'
     Font.Height = -21
     ParentColor = False
     ParentFont = False
   end
-  object sbIDEVersions: TScrollBox[10]
-    Left = 50
-    Height = 320
-    Top = 188
-    Width = 600
+  object sbIDEVersions: TScrollBox[7]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = lbIDEListing
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = imFundo
+    AnchorSideBottom.Side = asrBottom
+    Left = 10
+    Height = 360
+    Top = 160
+    Width = 655
     HorzScrollBar.Page = 1
     VertScrollBar.Page = 1
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Left = 10
+    BorderSpacing.Right = 35
+    BorderSpacing.Bottom = 80
     ParentBackground = False
     TabOrder = 0
   end
-  object bAddVersion: TSpeedButton[11]
-    Left = 656
+  object bAddVersion: TSpeedButton[8]
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = sbIDEVersions
+    AnchorSideRight.Control = imFundo
+    AnchorSideRight.Side = asrBottom
+    Left = 667
     Height = 23
     Hint = 'Adicionar um IDE pela sua pasta de instalação'
-    Top = 188
+    Top = 160
     Width = 23
+    Anchors = [akTop, akRight]
+    BorderSpacing.Right = 10
     Images = dm.imgList
     ImageIndex = 0
     OnClick = bAddVersionClick
     ShowHint = True
     ParentShowHint = False
   end
-  object bAutoBusca: TSpeedButton[12]
-    Left = 656
+  object bAutoBusca: TSpeedButton[9]
+    AnchorSideLeft.Control = bAddVersion
+    AnchorSideTop.Control = bAddVersion
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = imFundo
+    AnchorSideRight.Side = asrBottom
+    Left = 667
     Height = 23
     Hint = 'Buscar automaticamente os IDE (processo lento)'
-    Top = 216
+    Top = 183
     Width = 23
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Right = 10
     Images = dm.imgList
     ImageIndex = 1
     OnClick = bAutoBuscaClick
     ShowHint = True
     ParentShowHint = False
   end
-  object lbFind: TLabel[13]
-    Left = 50
+  object lbFind: TLabel[10]
+    AnchorSideLeft.Control = sbIDEVersions
+    AnchorSideTop.Control = sbIDEVersions
+    AnchorSideTop.Side = asrBottom
+    AnchorSideBottom.Control = imFundo
+    AnchorSideBottom.Side = asrBottom
+    Left = 10
     Height = 15
     Top = 520
     Width = 600
+    Anchors = [akLeft, akBottom]
     AutoSize = False
+    BorderSpacing.Bottom = 65
     Caption = 'lbFind'
   end
-  object bStopBusca: TSpeedButton[14]
-    Left = 656
+  object bStopBusca: TSpeedButton[11]
+    AnchorSideLeft.Control = bAddVersion
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = imFundo
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = sbIDEVersions
+    AnchorSideBottom.Side = asrBottom
+    Left = 667
     Height = 23
     Hint = 'Cancelar a Busca'
-    Top = 513
+    Top = 497
     Width = 23
+    Anchors = [akLeft, akRight, akBottom]
+    BorderSpacing.Right = 10
     Images = dm.imgList
     ImageIndex = 2
     Visible = False
@@ -80,14 +125,19 @@ inherited frm_ide_versions: Tfrm_ide_versions
     ShowHint = True
     ParentShowHint = False
   end
-  object lbFind1: TLabel[15]
-    Left = 50
+  object lbIDEListing: TLabel[12]
+    AnchorSideLeft.Control = imFundo
+    AnchorSideTop.Control = lbSubTitle
+    AnchorSideTop.Side = asrBottom
+    Left = 10
     Height = 15
-    Top = 169
-    Width = 66
-    Caption = 'Lista dos IDE'
+    Top = 145
+    Width = 65
+    BorderSpacing.Left = 10
+    BorderSpacing.Top = 5
+    Caption = 'Lista de IDEs'
   end
-  object dirSelect: TSelectDirectoryDialog[16]
+  object dirSelect: TSelectDirectoryDialog[13]
     Left = 176
     Top = 256
   end
