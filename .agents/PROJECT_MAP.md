@@ -47,7 +47,7 @@ A pasta `src/` está organizada em:
 
 - `src/base/` — tipos base, core do servidor/cliente, rotas, requisições/respostas e registro.
 - `src/database/` — camada de DBWare/DBModule e conectores (FireDAC/SQLDB/Zeos).
-- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, netHTTP, Sagui, Synopse, UniGUI).
+- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, netHTTP, OkHttp, Sagui, Synopse, UniGUI).
 - `src/languages/` — arquivos de constantes/strings por idioma.
 - `src/others/` — integrações e implementações externas (ex.: kxBSON, brotli, ZSTD).
 - `src/utils/` — utilitários (JSON, compressões, hash, stream, storage, criptografia, multipart etc.).
@@ -117,9 +117,22 @@ A pasta `src/` está organizada em:
 - `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPRegister.pas`, `RALfpHTTPServer.pas`
 - `engine/indy/`: `RALIndyClient.pas`, `RALIndyRegister.pas`, `RALIndyServer.pas`
 - `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPRegister.pas`
+- `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpRegister.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
 - `engine/sagui/`: `RALSaguiRegister.pas`, `RALSaguiServer.pas`
 - `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseRegister.pas`, `RALSynopseServer.pas`
 - `engine/unigui/`: `RALUniGUIRegister.pas`, `RALUniGUIServer.pas`
+
+**O que é igual entre os motores, e onde não dá para ser (2026-09-15)**
+
+- `MaxConnections` — teto de conexões abertas ao mesmo tempo, mesmo nome e mesma semântica (`0` = sem teto, e quem passa do teto tem a conexão NOVA recusada) no Indy, no fpHTTP, no Sagui e no Synopse. No Sagui chamava-se `ConnectionLimit` até esta data; o nome velho continua compilando (propriedade pública, não publicada) e um `.dfm`/`.lfm` antigo ainda carrega, por `DefineProperties`. **UniGUI e CGI ficam de fora por natureza**: um não tem escuta própria, o outro não tem servidor.
+- `MaxKeepAliveConnections` (Synopse) **não** é a mesma coisa: não recusa ninguém, só para de conceder keep-alive, e só o `smThreads` tem esse teto.
+- `Protocol`/`ProtocolVersion` — **todos** os seis servidores e **todos** os cinco clientes preenchem, mesmo os que só falam HTTP/1.1.
+- `ShareConnection` — só netHTTP e OkHttp, e `SupportsSharedConnection` diz quais. Nos outros o transporte é um objeto por conexão: honrar a propriedade **serializaria** chamada concorrente.
+- `KeepAliveInterval` — netHTTP e OkHttp, os dois com frame PING de HTTP/2 de verdade: o OkHttp por `pingInterval`, o netHTTP por `WINHTTP_OPTION_HTTP2_KEEPALIVE` (164) no handle de sessão, que **só existe do Windows 11 em diante** e onde não existe é ignorado em silêncio. O piso é do motor (`MinKeepAliveInterval`: 5000 no netHTTP, nenhum no OkHttp) e é aplicado **na atribuição**, para o valor que se lê ser o que vale.
+
+**Propriedade que não se aplica some do Object Inspector, e nunca levanta.** Quem decide é o próprio componente, em `TRALComponent.IsPropertyRelevant` (`RALCustomObjects`), e a cola de IDE fica num lugar só, `TRALSelectionEditor` em `RALRegister` — assim nenhum motor precisa depender da IDE. Esconder é conforto: o valor escondido pode ser sobra de outra configuração, então é **ignorado**. O que levanta é escolha explícita impossível (`smHttpSys` fora do Windows, `rhv2` num motor sem h2), e essa nunca fica escondida.
+
+Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades de arquivo do `SSL` somem do servidor Synopse em `smHttpSys`, onde o certificado vem da loja da máquina pelo `netsh` e nenhum `.pem` é lido. O componente é perguntado pelo nome **composto** (`IsPropertyRelevant('SSL.CertificateFile')`), então um método só responde pelos dois níveis, e a cola de IDE é o `TRALNestedProperty`, registrado pelo tipo base — o que faz valer para o `SSL` de qualquer motor sem uma linha de design-time em cada um.
 
 ---
 

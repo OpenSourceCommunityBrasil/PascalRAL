@@ -20,13 +20,12 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
-    { True quando foi a nossa validacao que recusou o certificado - ver VerifyCert }
+    { True when it was our validation that refused the certificate - see VerifyCert }
     FCertRefused: boolean;
 
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
     procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
-    function SupportsCertPin: boolean; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -37,6 +36,8 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
@@ -101,7 +102,7 @@ end;
 
 { TRALfpHttpClientHTTP }
 
-function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
+class function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
 end;
@@ -151,8 +152,8 @@ begin
   if CertCheckWanted then
     Allow := AcceptServerCert(vCert)
   else
-    { so' o svAlways nos trouxe aqui: quem decide e' o proprio OpenSSL, e o
-      veredito dele e' o que veio no VerifyResult }
+    { only svAlways brings us here: OpenSSL itself decides, and its verdict is
+      what arrived in VerifyResult }
     Allow := vCert.Trusted;
 
   { fphttpclient turns a refusal into "Connect ... failed", indistinguishable
@@ -174,12 +175,6 @@ begin
 
   AHandler := TRALfpNoDelaySSLHandler.Create;
 
-  { svAlways tambem entra pelo callback, e nao pelo VerifyPeerCert: aquele e'
-    SSL_VERIFY_PEER com callback nulo, que derruba o handshake antes de o FPC
-    chamar o DoVerifyCert - a falha entao chega como "Connect failed", igual a
-    servidor fora do ar, e nao ha' onde dizer que foi o certificado. Pelo
-    callback o handshake completa, o VerifyResult do OpenSSL continua sendo o
-    veredito, e a recusa sai classificada. }
   if CertCheckWanted or (Parent.SSL.Verify = svAlways) then
     { only the callback, and deliberately NOT VerifyPeerCert: that one maps to
       SSL_VERIFY_PEER with a nil callback (opensslsockets, InitContext), so
@@ -382,6 +377,11 @@ begin
       AResponse.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
       AResponse.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
       AResponse.StatusCode := FHttp.ResponseStatusCode;
+      { Which version answered - TFPHTTPClient kept it from the status line.
+        This engine is HTTP/1.x only, so it is always 1.0 or 1.1, and that is
+        the point: every engine fills ProtocolVersion, so an application never
+        has to know which one is running in order to ask. }
+      AResponse.Protocol := StringRAL(FHttp.ServerHTTPVersion);
       AResponse.ResponseStream := vResult;
       // the request went through; if keep-alive is on, the socket stays open
       // and the NEXT request will be reusing it.
@@ -389,9 +389,9 @@ begin
     except
       on e: ESocketError do
       begin
-        { a nossa validacao recusou o certificado: para o fphttpclient isso e'
-          um Connect que falhou, igual a servidor fora do ar, e so' aqui da'
-          para dizer qual dos dois foi }
+        { our validation refused the certificate: to fphttpclient that is just
+          a Connect that failed, the same as a server that is down, and here is
+          the only place that can tell the two apart }
         if FCertRefused then
           HandleException(rteCertificate, -1, e.Message)
         else

@@ -15,6 +15,23 @@ type
   TRALComponent = class(TComponent)
   private
     function GetVersion: string;
+  public
+    { Whether a published property still means anything with the component
+      configured as it is RIGHT NOW - the mORMot2 server's HttpSysDomain says
+      nothing outside smHttpSys, and ShareConnection says nothing on an engine
+      whose transport is one socket per object.
+
+      It is what the Object Inspector filter asks (see TRALSelectionEditor in
+      RALRegister), and it lives here, on the component, so that the design
+      package never has to know one engine from another.
+
+      HIDDEN IS NOT FORBIDDEN, and nothing may be built on top of this: a
+      property left over from another configuration has to stay harmless, so
+      an irrelevant value is ignored and never raises. What does raise is an
+      explicit choice that cannot work - a Mode this platform has no server
+      for, an HTTPVersion this engine cannot ask for - and those are never
+      hidden. }
+    function IsPropertyRelevant(const AName: StringRAL): boolean; virtual;
   published
     property Version: string read GetVersion;
   end;
@@ -33,6 +50,7 @@ type
     FContentEncription: StringRAL;
     FContentType: StringRAL;
     FCriptoKey: StringRAL;
+    FProtocolVersion: TRALHTTPVersion;
     FParams: TRALParams;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
@@ -44,9 +62,11 @@ type
     /// Grabs the kind of criptography that will be used on the traffic
     function GetContentCripto: TRALCriptoType;
     function GetParams: TRALParams;
+    function GetProtocol: StringRAL;
     procedure SetContentCompress(const AValue: TRALCompressType);
     procedure SetContentCripto(AValue: TRALCriptoType);
     procedure SetContentType(const AValue: StringRAL);
+    procedure SetProtocol(const AValue: StringRAL);
   public
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
@@ -93,6 +113,24 @@ type
     property ContentType: StringRAL read FContentType write SetContentType;
     property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    /// Which HTTP version carried this message, as the transport REPORTS it -
+    /// never what was asked for, since ALPN settles that during the TLS
+    /// handshake. A transport that cannot tell leaves rhvDefault.
+    ///
+    /// On a RESPONSE it is what the client engine could read back. On a
+    /// REQUEST it is what the server saw the client arrive on, which is the
+    /// only place the answer is reliable: the http.sys server reads it from
+    /// the driver, while a client on Windows has to guess from the status
+    /// line - and an HTTP/2 response does not have one, so it under-reports.
+    property ProtocolVersion: TRALHTTPVersion read FProtocolVersion write FProtocolVersion;
+    /// The SAME fact as ProtocolVersion, spelled the way the wire spells it -
+    /// '1.0', '1.1', '2.0', or '' when the transport could not tell.
+    ///
+    /// There is ONE field behind the two, on purpose: an engine that fills
+    /// either one has filled both, and they can never disagree. Writing text
+    /// a version cannot be parsed out of leaves rhvDefault, so Protocol reads
+    /// back as '' - it is not a free-text field.
+    property Protocol: StringRAL read GetProtocol write SetProtocol stored False;
     property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
     property Parent: TObject read FParent;
@@ -105,6 +143,11 @@ implementation
 function TRALComponent.getVersion: string;
 begin
   Result := RALVERSION;
+end;
+
+function TRALComponent.IsPropertyRelevant(const AName: StringRAL): boolean;
+begin
+  Result := True; // everything shows unless a descendant says otherwise
 end;
 
 { TRALHTTPHeaderInfo }
@@ -188,9 +231,20 @@ begin
   Result := FParams;
 end;
 
+function TRALHTTPHeaderInfo.GetProtocol: StringRAL;
+begin
+  Result := RALHTTPVersionToStr(FProtocolVersion);
+end;
+
+procedure TRALHTTPHeaderInfo.SetProtocol(const AValue: StringRAL);
+begin
+  FProtocolVersion := StrToRALHTTPVersion(AValue);
+end;
+
 procedure TRALHTTPHeaderInfo.Clear;
 begin
   FParams.ClearParams;
+  FProtocolVersion := rhvDefault;
 end;
 
 procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);
@@ -210,6 +264,7 @@ begin
   ASource.ContentType := Self.ContentType;
   ASource.ContentDisposition := Self.ContentDisposition;
   ASource.CriptoKey := Self.CriptoKey;
+  ASource.ProtocolVersion := Self.ProtocolVersion;
 
   for vInt := 0 to Pred(FParams.Count) do begin
     vParamSource := FParams.Index[vInt];

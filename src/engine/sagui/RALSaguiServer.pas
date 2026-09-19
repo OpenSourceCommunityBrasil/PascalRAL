@@ -50,7 +50,7 @@ type
     FHandle: Psg_httpsrv;
     FLibPath: TFileName;
     FPoolCount: IntegerRAL;
-    FConnectionLimit: Int64RAL;
+    FMaxConnections: IntegerRAL;
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
@@ -81,11 +81,12 @@ type
     function InitializeServer: boolean;
     function IPv6IsImplemented: boolean; override;
 
-    function GetConnectionLimit: Int64RAL;
     function GetPoolCount: IntegerRAL;
     function GetSSL: TRALSaguiSSL;
     procedure SetActive(const AValue: boolean); override;
-    procedure SetConnectionLimit(const AValue: Int64RAL);
+    procedure SetMaxConnections(const AValue: IntegerRAL);
+    /// Streaming-only reader for the old ConnectionLimit - see DefineProperties
+    procedure ReadOldConnectionLimit(Reader: TReader);
     procedure SetLibPath(const AValue: TFileName);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetPort(const AValue: IntegerRAL); override;
@@ -95,14 +96,34 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { Reads a ConnectionLimit written by a .dfm/.lfm from before the rename, so
+      no existing project stops loading. It never WRITES it - nil writer and
+      HasData False - so the old name dies out with the next save. }
+    procedure DefineProperties(Filer: TFiler); override;
+    /// DEPRECATED, use MaxConnections - the old name of the same property,
+    /// kept so existing code still compiles. It is not published, so the
+    /// Object Inspector shows the new name only, and it carries no
+    /// "deprecated" directive because Delphi 12 does not accept one on a
+    /// property (FPC does, and a hint on one compiler only is worse than a
+    /// comment on both).
+    property ConnectionLimit: IntegerRAL read FMaxConnections write SetMaxConnections;
   published
-    property ConnectionLimit: Int64RAL read GetConnectionLimit write SetConnectionLimit;
+    /// Ceiling on how many connections may be open AT THE SAME TIME: past it
+    /// libmicrohttpd refuses a NEW one, so no existing client is dropped to
+    /// make room. 0 means no ceiling, the same as on the Indy, fpHTTP and
+    /// mORMot2 servers - this was called ConnectionLimit until 2026-09-15, and
+    /// the name is now the same on all four.
+    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
     property LibPath: TFileName read FLibPath write SetLibPath;
     property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
   end;
 
 implementation
+
+const
+  { What the constructor uses, and where any invalid value goes back to }
+  DEFAULTPOOLCOUNT = 32;
 
 type
   { TRALSaguiStringMap }
@@ -207,8 +228,7 @@ begin
     FLibPath := SgLib.GetLastName;
   {$ENDIF}
 
-  ConnectionLimit := 9999999;
-  PoolCount := 32;
+  PoolCount := DEFAULTPOOLCOUNT;
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -537,11 +557,6 @@ begin
   FHandle := nil;
 end;
 
-function TRALSaguiServer.GetConnectionLimit: Int64RAL;
-begin
-  Result := FConnectionLimit;
-end;
-
 function TRALSaguiServer.GetPoolCount: IntegerRAL;
 begin
   Result := FPoolCount;
@@ -620,7 +635,7 @@ begin
       connection limit goes first for the same reason. }
     if FHandle <> nil then
     begin
-      SetConnectionLimit(ConnectionLimit);
+      SetMaxConnections(FMaxConnections);
       SetPoolCount(PoolCount);
     end;
     if not InitializeServer then
@@ -633,11 +648,43 @@ begin
   end;
 end;
 
-procedure TRALSaguiServer.SetConnectionLimit(const AValue: Int64RAL);
+procedure TRALSaguiServer.SetMaxConnections(const AValue: IntegerRAL);
 begin
-  FConnectionLimit := AValue;
-  if FHandle <> nil then
-    sg_httpsrv_set_con_limit(FHandle, AValue);
+  if AValue < 0 then
+    FMaxConnections := 0
+  else
+    FMaxConnections := AValue;
+
+  if FHandle = nil then
+    Exit;
+
+  if FMaxConnections > 0 then
+    sg_httpsrv_set_con_limit(FHandle, FMaxConnections)
+  else
+    { 0 means NO ceiling, as it does on every other RAL server - and
+      libmicrohttpd reads a literal 0 as "accept nothing", so it never sees
+      one. This is the number this engine used as its own default until
+      2026-09-15. }
+    sg_httpsrv_set_con_limit(FHandle, 9999999);
+end;
+
+procedure TRALSaguiServer.DefineProperties(Filer: TFiler);
+begin
+  inherited;
+  Filer.DefineProperty('ConnectionLimit', ReadOldConnectionLimit, nil, False);
+end;
+
+procedure TRALSaguiServer.ReadOldConnectionLimit(Reader: TReader);
+var
+  vOld: Int64RAL;
+begin
+  { ReadInt64 and not ReadInteger: the old property was Int64RAL, and it falls
+    back to the 32-bit read for the values that were really written }
+  vOld := Reader.ReadInt64;
+  if (vOld <= 0) or (vOld >= 9999999) then
+    MaxConnections := 0 // the old default, which is what 0 means now
+  else
+    MaxConnections := IntegerRAL(vOld);
 end;
 
 procedure TRALSaguiServer.SetLibPath(const AValue: TFileName);
@@ -665,9 +712,22 @@ begin
     sg_httpsrv_shutdown(FHandle);
 end;
 
+{ Negative or zero goes back to the default, and not out of a taste for
+  rounding: FPoolCount ends up in sg_httpsrv_set_thr_pool_size, which takes a
+  cuint - so -1 does not mean "automatic" there, it means 4294967295 threads
+  asked of libmicrohttpd, and 0 means a server with nobody to answer. Three
+  samples in the examples repository carried exactly that -1 in a form file,
+  typed meaning "automatic", which is another library's convention and not
+  this one's.
+
+  Same rule as MaxConnections right above: a value the layer below cannot
+  keep never reaches it. }
 procedure TRALSaguiServer.SetPoolCount(const AValue: IntegerRAL);
 begin
-  FPoolCount := AValue;
+  if AValue <= 0 then
+    FPoolCount := DEFAULTPOOLCOUNT
+  else
+    FPoolCount := AValue;
   if FHandle <> nil then
     sg_httpsrv_set_thr_pool_size(FHandle, AValue);
 end;

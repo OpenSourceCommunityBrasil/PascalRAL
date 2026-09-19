@@ -98,20 +98,6 @@ type
 
 implementation
 
-{ Reads the error message the server sent back, by name and then anonymously.
-
-  TRALDBModule.AnswerException answers with a single body param named
-  'Exception'. EncodeBody skips multipart for a lone body param and never puts
-  its name on the wire, so DecodeBody names whatever arrives 'ral_body' and
-  ParamByName('Exception') came back nil - OnError fired with an empty message
-  while the real one sat in the body, unread. }
-function ExceptionFromResponse(AResponse: TRALResponse): StringRAL;
-begin
-  Result := AResponse.ParamByName('Exception').AsString;
-  if Result = '' then
-    Result := AResponse.Body.AsString;
-end;
-
 { TRALDBBufDataset }
 
 procedure TRALDBBufDataset.SetUpdateSQL(AValue: TRALDBUpdateSQL);
@@ -406,7 +392,7 @@ begin
       FOpening: without this every later Open skipped the server and died
       inside TBufDataset with "Missing (compatible) underlying dataset" }
     FOpening := False;
-    vException := ExceptionFromResponse(AResponse);
+    vException := RALDBResponseError(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -418,7 +404,7 @@ begin
       them - the status is always said now, and the body when there is one }
     vException := AException;
     if vException = '' then
-      vException := ExceptionFromResponse(AResponse);
+      vException := RALDBResponseError(AResponse);
     vException := Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException);
     if Assigned(FOnError) then
       FOnError(Self, vException);
@@ -454,7 +440,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := ExceptionFromResponse(AResponse);
+    vException := RALDBResponseError(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -524,7 +510,7 @@ begin
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := ExceptionFromResponse(AResponse);
+    vException := RALDBResponseError(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end

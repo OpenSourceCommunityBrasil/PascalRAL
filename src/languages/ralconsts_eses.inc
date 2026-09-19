@@ -16,6 +16,11 @@
   emRequestCancelled = 'La solicitud fue rechazada por OnBeforeExecute: %s.';
   emCertRejected = 'Certificado del servidor rechazado.';
   emCertRequiresTLS = 'SSL.Required está definido, o una línea de SSL.Pins aplica a este host, por lo que se rechaza http sin cifrar: %s.';
+  emHTTP2Unsupported = 'HTTPVersion es rhv2 y el motor %s no habla HTTP/2 en esta plataforma. Use el motor netHTTP, o deje HTTPVersion en rhvDefault.';
+  emOkHttpAndroidOnly = 'El motor OkHttp solo tiene implementacion en Android: se registra en las demas plataformas para poder elegirlo, pero no puede enviar una peticion. Use el motor netHTTP en esta plataforma.';
+  emHttpSysAddUrl = 'http.sys rechazo escuchar en el puerto %d (codigo %d). El codigo 5 significa que el puerto no esta reservado para este usuario: ejecute una vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuario>", o inicie el servidor elevado.';
+  emHttpSysWindowsOnly = 'Mode es smHttpSys, servido por el kernel de Windows (http.sys), y no tiene implementación en esta plataforma. Use smThreads o smAsync, teniendo en cuenta que ninguno de los dos sirve HTTP/2.';
+  emHTTP10NotRequestable = 'HTTPVersion es rhv10, y HTTP/1.0 no se puede solicitar: ningún motor expone esa opción. rhv10 solo aparece de vuelta, en una petición que el servidor recibió. Deje HTTPVersion en rhvDefault.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
   emContentCheckError = 'Error de comprobación de contenido.';
@@ -34,6 +39,7 @@
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
   emDBPoolTimeout = 'Se agotó el tiempo de espera por una conexión libre a la base de datos.';
+  emDBStatusNoMessage = 'El servidor respondió HTTP %d y no envió ningún mensaje.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
   emInvalidFormat = 'Formato no és válido.';
   emInvalidJSONFormat = 'Formato JSON no és válido.';

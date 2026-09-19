@@ -172,9 +172,9 @@ type
   private
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
-    { host e porta da tentativa em curso, preenchidos pelo BeforeSendUrl: qual
-      pin vale e' pergunta sobre PARA ONDE o cliente esta' indo, e o
-      TRALCertInfo.Host tambem }
+    { host and port of the attempt in progress, filled in by BeforeSendUrl:
+      which pin applies is a question about WHERE the client is going, and so
+      is TRALCertInfo.Host }
     FHost: StringRAL;
     FPort: IntegerRAL;
   protected
@@ -198,16 +198,22 @@ type
                                 AError: TRALTransportError; ACode: IntegerRAL;
                                 const AMessage: StringRAL); virtual;
     /// Configures the Request header with proper authentication info based on the assigned
-    /// authenticator.
-    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    /// authenticator. AResponse belongs to the caller: the three that fetch a token
+    /// over the network write a transport failure into it, so the caller can say
+    /// what went wrong instead of raising an exception with no message.
+    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
+                          AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: Basic.
     function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: DigestAuth.
-    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
+                            AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: JWT.
-    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
+                         AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: OAuth1.
-    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
+                            AResponse: TRALResponse): IntegerRAL;
     /// placeholder
     function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 
@@ -223,11 +229,20 @@ type
     /// here - so the rule cannot drift from one transport to another, the same
     /// way SetTransportError keeps the retry rule in one place.
     function AcceptServerCert(const ACert: TRALCertInfo): boolean;
-    /// Whether this engine, on this platform, can fill TRALCertInfo.Fingerprint.
-    /// False makes SSL.Pin raise on the first request instead of silently
-    /// checking something weaker - a security option that quietly degrades is
-    /// worse than one that refuses.
-    function SupportsCertPin: boolean; virtual;
+    { Signature of this client's certificate policy: SSL.Verify, SSL.Pins and
+      the OnValidateServerCert handler, down to the very instance. Two clients
+      with the SAME signature judge every certificate alike.
+
+      Why an engine that shares transports needs it: a TLS connection lives in
+      the transport, and it was judged ONCE, during its handshake, by whoever
+      opened it. A second client reusing that connection makes no handshake at
+      all - so its pin and its event never run, and it inherits a verdict it
+      never gave. Putting this in the sharing key means only those who judge
+      alike ever share, and there is nothing left to inherit.
+
+      It is here, and not in one engine, because both engines that share need
+      exactly the same answer. }
+    function CertPolicyKey: StringRAL; virtual;
     /// True while the client asked for certificate control, which is what tells
     /// an engine to turn its verification on. Engines that verify by default
     /// (netHTTP, Synopse) ignore it; the OpenSSL ones (Indy, fpHTTP) do not
@@ -245,6 +260,45 @@ type
     class function EngineName : StringRAL; virtual; abstract;
     class function EngineVersion : StringRAL; virtual; abstract;
     class function PackageDependency : StringRAL; virtual; abstract;
+
+    { The two below answer what this engine CAN do, on this platform and this
+      compiler. They are class functions on purpose: the IDE has to be able to
+      ask an engine that was merely picked in the Object Inspector, with no
+      instance created yet - see TRALClientSelectionEditor. }
+
+    /// Whether this engine, on this platform, can fill TRALCertInfo.Fingerprint.
+    /// False makes SSL.Pin raise on the first request instead of silently
+    /// checking something weaker - a security option that quietly degrades is
+    /// worse than one that refuses.
+    class function SupportsCertPin: boolean; virtual;
+    /// Whether this engine, on this platform and compiler, can speak HTTP/2.
+    /// RAL frames nothing itself: the answer is whether the library under the
+    /// engine does it and exposes the switch. False makes HTTPVersion = rhv2
+    /// raise on the first request, for the same reason SupportsCertPin does -
+    /// see TRALHTTPVersion.
+    class function SupportsHTTP2: boolean; virtual;
+    /// Whether ShareConnection means anything here. False is not a failure and
+    /// never raises: the property is documented as a hint, and an engine whose
+    /// transport is one-object-one-connection would SERIALISE concurrent calls
+    /// if it honoured it. It is what hides the property in the IDE.
+    class function SupportsSharedConnection: boolean; virtual;
+    /// Whether this engine can probe a live connection - see
+    /// TRALClient.KeepAliveInterval. Only where the library underneath has a
+    /// mechanism for it: OkHttp has HTTP/2 PING frames, WinHTTP does not
+    /// expose one (its TCP keepalive is a different thing and is not wired
+    /// here). False hides the property in the IDE and ignores any value.
+    class function SupportsKeepAliveInterval: boolean; virtual;
+    { The SMALLEST interval this engine can keep, or 0 where there is no
+      floor. It exists because the two engines that honour KeepAliveInterval
+      disagree: OkHttp takes any value above zero, WinHTTP refuses anything
+      under 5000 ms.
+
+      What uses it is the property ASSIGNMENT, so that a value the chosen
+      engine cannot keep is corrected there and then, where the result is
+      read back - in the Object Inspector, or on the next line of code. The
+      alternative is a screen saying 3000 while the connection uses something
+      else. }
+    class function MinKeepAliveInterval: IntegerRAL; virtual;
   published
     property IndexUrl: IntegerRAL read FIndexUrl write FIndexUrl;
   end;
@@ -300,8 +354,11 @@ type
       to - see AcquireEngine }
     FEngineHTTP: TRALClientHTTP;
     FEngineThread: TThreadID;
+    FHTTPVersion: TRALHTTPVersion;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
+    FKeepAliveInterval: IntegerRAL;
+    FShareConnection: boolean;
     FMaxRedirects: IntegerRAL;
     FOnAfterExecute: TRALOnAfterExecute;
     FOnBeforeExecute: TRALOnBeforeExecute;
@@ -346,6 +403,7 @@ type
     procedure SetConnectTimeout(const AValue: IntegerRAL); virtual;
     procedure SetEngineType(AValue: String);
     procedure SetKeepAlive(AValue: boolean); virtual;
+    procedure SetKeepAliveInterval(AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
     procedure SetSSL(AValue: TRALClientSSL);
     procedure SetUserAgent(AValue: StringRAL); virtual;
@@ -366,6 +424,13 @@ type
       back, for at most ConnectTimeout + RequestTimeout. Destroy does it: a
       thread that outlives its client reads freed memory. }
     procedure WaitPendingRequests;
+
+    /// ShareConnection belongs to the engine currently chosen - see the base.
+    /// HTTPVersion deliberately does NOT: it is a request every engine
+    /// understands, and one that cannot be honoured says so out loud on the
+    /// first call. Hiding it would leave an rhv2 from another engine sitting
+    /// invisible in the .dfm, which is the trap this whole thing avoids.
+    function IsPropertyRelevant(const AName: StringRAL): boolean; override;
 
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; var AResponse : TRALResponse); overload;
@@ -401,6 +466,12 @@ type
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
     property Engine: StringRAL read FEngine;
     property EngineType : String read FEngineType write SetEngineType;
+    /// Which HTTP version to ask the transport for - see TRALHTTPVersion. It
+    /// is a REQUEST, not a guarantee: read TRALResponse.ProtocolVersion to learn
+    /// what was negotiated. rhv2 on an engine that cannot do it raises on the
+    /// first request rather than falling back in silence.
+    property HTTPVersion: TRALHTTPVersion read FHTTPVersion write FHTTPVersion
+      default rhvDefault;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
     /// Consecutive redirects the engine follows before giving up. It lives
     /// here because the engines used to hardcode different values without
@@ -408,6 +479,63 @@ type
     /// THTTPClient defaults to.
     property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
+    /// Lets this client share its underlying transport - and therefore its TCP
+    /// connection - with every other client aimed at the same host with the
+    /// same settings. Off by default, because it changes two things a caller
+    /// may be relying on: the engine's cookie jar becomes common to the
+    /// sharers, and their requests queue on one connection unless the
+    /// transport can multiplex (which is what HTTPVersion = rhv2 buys).
+    ///
+    /// It is a HINT, not a contract: engines that cannot share ignore it
+    /// silently instead of raising, because the same client is often
+    /// configured once and run over a different engine per platform, and
+    /// refusing there would turn an optimisation into a portability problem.
+    /// Today netHTTP and OkHttp honour it - netHTTP through a transport pool
+    /// of its own, OkHttp by handing the question to OkHttp's client cache.
+    ///
+    /// What it is for: an application that gives each dataset its own client -
+    /// which is the arrangement RAL asks for, since Request is one object per
+    /// client - otherwise opens one connection per dataset, and pays a cold
+    /// TCP and TLS handshake on each.
+    property ShareConnection: boolean read FShareConnection
+                                      write FShareConnection default False;
+    /// How often, in milliseconds, to prove the connection is still there.
+    /// 0 - the default - is off, and is what every engine did before.
+    ///
+    /// It exists because of what HTTP/2 changed: the connection became long
+    /// lived and shared, so a peer that vanishes - Wi-Fi dropping, the phone
+    /// changing access point, the server restarting - leaves no trace. TCP
+    /// does not tell, and the client only finds out when RequestTimeout
+    /// expires. With 60 seconds of read timeout, that is a minute of a frozen
+    /// screen for a network that died in the first second.
+    ///
+    /// Set, the engine probes the connection on that interval and drops it the
+    /// moment the peer does not answer, so the call fails in seconds. It costs
+    /// traffic on an idle connection, which on a handset is battery: a value
+    /// near ConnectTimeout is a sensible starting point, not a small one.
+    ///
+    /// Only engines whose library has a mechanism for it honour this -
+    /// SupportsKeepAliveInterval says which. Two do, and both send real HTTP/2
+    /// PING frames rather than traffic of their own invention:
+    ///
+    ///   OkHttp, on Android. Pings every interval, and fails the connection
+    ///   when a pong does not come back within the same interval. No minimum.
+    ///
+    ///   netHTTP, on Windows, through WINHTTP_OPTION_HTTP2_KEEPALIVE. Two
+    ///   differences worth knowing: WinHTTP starts pinging after the interval
+    ///   of INACTIVITY - not every interval - and it refuses anything under
+    ///   5000 ms, so a smaller value is RAISED to 5000 instead of raising an
+    ///   exception (the same property is configured once and runs over a
+    ///   different engine per platform). The option only exists on Windows 11
+    ///   and newer - measured present on 24H2 build 26100, absent on Windows
+    ///   10 22H2 build 19045 - and where it is absent the request still goes
+    ///   out over HTTP/2, just without a ping.
+    ///
+    /// Elsewhere the value is IGNORED, never refused, and the IDE hides the
+    /// property. It has no meaning under HTTP/1.1 either, for the same reason
+    /// it exists: there is no idle multiplexed connection to probe.
+    property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
+                                           write SetKeepAliveInterval default 0;
     /// TLS options - see TRALClientSSL
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
@@ -510,6 +638,33 @@ end;
 
 { TRALClient }
 
+function TRALClient.IsPropertyRelevant(const AName: StringRAL): boolean;
+var
+  vClass: TRALClientHTTPClass;
+begin
+  { the CLASS answers, not an instance: at design time there is none, since
+    SetEngineType drops the engine it was holding. A name that is not known
+    yet answers True - better to show a property than to hide one by accident. }
+  vClass := GetEngineClass(FEngineType);
+
+  if SameText(AName, 'ShareConnection') then
+  begin
+    Result := (vClass = nil) or vClass.SupportsSharedConnection;
+  end
+  else if SameText(AName, 'KeepAliveInterval') then
+  begin
+    { TWO conditions, and both are needed. The engine has to have a mechanism -
+      only OkHttp does - and h2 has to be the version asked for, because what
+      this probes is the idle multiplexed connection that only h2 has. }
+    Result := (vClass <> nil) and vClass.SupportsKeepAliveInterval and
+              (FHTTPVersion = rhv2);
+  end
+  else
+  begin
+    Result := inherited IsPropertyRelevant(AName);
+  end;
+end;
+
 procedure TRALClient.SetEngineType(AValue: String);
 var
   vClass: TRALClientHTTPClass;
@@ -524,6 +679,10 @@ begin
     FEngine := Trim(vClass.EngineName + ' ' + vClass.EngineVersion);
 
   FUserAgent := 'RALClient ' + RALVERSION + '; Engine ' + FEngine;
+
+  { the interval's floor belongs to the engine, and the engine has just
+    changed: a value the previous one could keep may not suit this one }
+  SetKeepAliveInterval(FKeepAliveInterval);
 end;
 
 procedure TRALClient.LockSession;
@@ -766,6 +925,46 @@ begin
   FConnectTimeout := AValue;
 end;
 
+{ Zero turns it off, and that is what BOTH engines read as "no ping": OkHttp
+  does not call pingInterval, netHTTP does not touch the WinHTTP option.
+
+  On, the floor is the CHOSEN ENGINE's - MinKeepAliveInterval - because the two
+  disagree: OkHttp takes any value above zero and WinHTTP refuses anything
+  under 5000 ms. A single floor for both would take from Android a faster
+  detection it is perfectly able to do.
+
+  The correction happens HERE, on assignment - which covers the Object
+  Inspector and code at run time, since both go through this setter - and not
+  inside the engine. There is one reason: this way the value read back is the
+  value in effect. Correcting it inside the engine would leave the screen
+  showing 3000 while the connection used 5000, which is worse than the limit.
+
+  Negative becomes 0 for the usual reason: there is no negative interval, and
+  keeping one would keep a setting no engine can honour. }
+procedure TRALClient.SetKeepAliveInterval(AValue: IntegerRAL);
+var
+  vClass: TRALClientHTTPClass;
+  vMinimum: IntegerRAL;
+begin
+  if AValue <= 0 then
+  begin
+    FKeepAliveInterval := 0;
+    Exit;
+  end;
+
+  { the CLASS answers, as in IsPropertyRelevant: at design time there is no
+    instance, and an EngineType not known yet imposes no floor at all }
+  vMinimum := 0;
+  vClass := GetEngineClass(FEngineType);
+  if vClass <> nil then
+    vMinimum := vClass.MinKeepAliveInterval;
+
+  if (vMinimum > 0) and (AValue < vMinimum) then
+    FKeepAliveInterval := vMinimum
+  else
+    FKeepAliveInterval := AValue;
+end;
+
 procedure TRALClient.SetKeepAlive(AValue: boolean);
 begin
   FKeepAlive := AValue;
@@ -994,54 +1193,55 @@ begin
   SetLength(Result, vLen);
 end;
 
-{ Separa "host", "host:porta" ou "[ipv6]:porta" - o formato tanto do que vem da
-  BaseURL quanto do lado esquerdo de uma linha de SSL.Pins.
+{ Splits "host", "host:port" or "[ipv6]:port" - the shape of both what comes
+  from BaseURL and the left-hand side of an SSL.Pins line.
 
-  O IPv6 e' o motivo dos colchetes: ele tem ':' no meio, entao sem eles nao ha'
-  como saber se o ultimo ':' separa a porta ou faz parte do endereco. A regra:
-  entre colchetes, o que vem depois de ']' e' porta; sem colchetes, um unico
-  ':' separa a porta e mais de um quer dizer que a coisa toda e' um IPv6. }
+  IPv6 is the reason for the brackets: it has ':' inside it, so without them
+  there is no way to tell whether the last ':' separates the port or is part of
+  the address. The rule: inside brackets, what follows ']' is the port; without
+  brackets, a single ':' separates the port and more than one means the whole
+  thing is an IPv6. }
 procedure RALSplitHostPort(const AValue: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL);
 var
-  vInt, vColchete, vDoisPontos, vQuantos: IntegerRAL;
+  vInt, vBracket, vColon, vColonCount: IntegerRAL;
 begin
   AHost := Trim(AValue);
   APort := 0;
 
-  vColchete := 0;
-  vDoisPontos := 0;
-  vQuantos := 0;
+  vBracket := 0;
+  vColon := 0;
+  vColonCount := 0;
   for vInt := 1 to Length(AHost) do
   begin
     if AHost[vInt] = ']' then
-      vColchete := vInt
+      vBracket := vInt
     else if AHost[vInt] = ':' then
     begin
-      vDoisPontos := vInt;
-      vQuantos := vQuantos + 1;
+      vColon := vInt;
+      vColonCount := vColonCount + 1;
     end;
   end;
 
-  if vColchete > 0 then
+  if vBracket > 0 then
   begin
-    { [::1]:8443 - a porta e' o que vier depois do ']' }
-    if vDoisPontos > vColchete then
+    { [::1]:8443 - the port is whatever comes after the ']' }
+    if vColon > vBracket then
     begin
-      APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
-      AHost := Copy(AHost, 1, vDoisPontos - 1);
+      APort := StrToIntDef(string(Copy(AHost, vColon + 1, Length(AHost))), 0);
+      AHost := Copy(AHost, 1, vColon - 1);
     end;
-    AHost := Copy(AHost, 2, Length(AHost) - 2); // tira os colchetes
+    AHost := Copy(AHost, 2, Length(AHost) - 2); // strip the brackets
   end
-  else if vQuantos = 1 then
+  else if vColonCount = 1 then
   begin
-    APort := StrToIntDef(string(Copy(AHost, vDoisPontos + 1, Length(AHost))), 0);
-    AHost := Copy(AHost, 1, vDoisPontos - 1);
+    APort := StrToIntDef(string(Copy(AHost, vColon + 1, Length(AHost))), 0);
+    AHost := Copy(AHost, 1, vColon - 1);
   end;
-  { vQuantos > 1 sem colchetes: IPv6 sem porta, fica inteiro em AHost }
+  { vColonCount > 1 with no brackets: IPv6 with no port, stays whole in AHost }
 end;
 
-{ Host e porta de uma URL, com a porta padrao do esquema quando ela nao aparece }
+{ Host and port of a URL, with the scheme's default port when none is given }
 procedure RALURLHostPort(const AURL: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL);
 var
@@ -1073,46 +1273,46 @@ begin
   end;
 end;
 
-{ A impressao digital de uma linha de SSL.Pins, normalizada - ou vazia quando a
-  linha nao termina num SHA-256, que e' como o PinsChanged detecta erro de
-  digitacao. O lado esquerdo, quando existe, vem antes de um '='. }
+{ The fingerprint of an SSL.Pins line, normalized - or empty when the line does
+  not end in a SHA-256, which is how PinsChanged spots a typo. The left-hand
+  side, when there is one, comes before an '='. }
 function RALPinFingerprint(const ALine: StringRAL): StringRAL;
 var
-  vInt, vIgual: IntegerRAL;
+  vInt, vEquals: IntegerRAL;
 begin
-  vIgual := 0;
+  vEquals := 0;
   for vInt := 1 to Length(ALine) do
     if ALine[vInt] = '=' then
     begin
-      vIgual := vInt;
+      vEquals := vInt;
       Break;
     end;
 
-  Result := RALNormalizeFingerprint(Copy(ALine, vIgual + 1, Length(ALine)));
+  Result := RALNormalizeFingerprint(Copy(ALine, vEquals + 1, Length(ALine)));
   if Length(Result) <> 64 then
     Result := '';
 end;
 
-{ True quando a linha vale so' para um host - e ai devolve qual. False quer
-  dizer "vale para qualquer host", que e' a linha so' com a impressao digital. }
+{ True when the line applies to one host only - and then says which. False
+  means "applies to any host", which is the line with the fingerprint alone. }
 function RALPinPlace(const ALine: StringRAL; out AHost: StringRAL;
   out APort: IntegerRAL): boolean;
 var
-  vInt, vIgual: IntegerRAL;
+  vInt, vEquals: IntegerRAL;
 begin
-  vIgual := 0;
+  vEquals := 0;
   for vInt := 1 to Length(ALine) do
     if ALine[vInt] = '=' then
     begin
-      vIgual := vInt;
+      vEquals := vInt;
       Break;
     end;
 
-  Result := vIgual > 0;
+  Result := vEquals > 0;
   AHost := '';
   APort := 0;
   if Result then
-    RALSplitHostPort(Copy(ALine, 1, vIgual - 1), AHost, APort);
+    RALSplitHostPort(Copy(ALine, 1, vEquals - 1), AHost, APort);
 end;
 
 function RALEmptyExecInfo: TRALExecInfo;
@@ -1167,9 +1367,10 @@ begin
   FPins.Assign(AValue);
 end;
 
-{ Cada linha e' conferida assim que entra na lista, e nao na hora do request:
-  um pin com um digito a menos que so' aparecesse na primeira conexao pareceria
-  troca de certificado do servidor - o erro certo e' aqui, na configuracao. }
+{ Every line is checked as it enters the list, not at request time: a pin one
+  digit short that only surfaced on the first connection would look like the
+  server changing certificate - the right place for the error is here, in the
+  configuration. }
 procedure TRALClientSSL.PinsChanged(Sender: TObject);
 var
   vInt: IntegerRAL;
@@ -1193,17 +1394,17 @@ begin
   end;
 end;
 
-{ Percorre SSL.Pins UMA vez e responde as duas perguntas que a decisao precisa:
-  algum pin vale para o host desta conexao, e o certificado apresentado casa com
-  algum deles. Uma linha sem '=' vale para qualquer host; com host, so' para
-  ele; com host e porta, so' para aquele servico - e' o que permite um cliente
-  so' falar com varios servidores de politicas diferentes. }
+{ Walks SSL.Pins ONCE and answers the two questions the decision needs: whether
+  any pin applies to this connection's host, and whether the certificate
+  presented matches one of them. A line with no '=' applies to any host; with a
+  host, only to it; with host and port, only to that service - which is what
+  lets one client talk to several servers under different policies. }
 procedure TRALClientHTTP.ResolvePin(const AFingerprint: StringRAL;
   out AApplies, AMatches: boolean);
 var
   vInt, vPinPort: IntegerRAL;
   vLine, vPinHost: StringRAL;
-  vVale: boolean;
+  vLineApplies: boolean;
 begin
   AApplies := False;
   AMatches := False;
@@ -1212,17 +1413,17 @@ begin
   begin
     vLine := StringRAL(FParent.SSL.Pins.Strings[vInt]);
     if not RALPinPlace(vLine, vPinHost, vPinPort) then
-      vVale := True  // linha so' com a impressao digital: qualquer host
+      vLineApplies := True  // fingerprint alone: any host
     else
-      vVale := SameText(string(vPinHost), string(FHost)) and
+      vLineApplies := SameText(string(vPinHost), string(FHost)) and
                ((vPinPort = 0) or (vPinPort = FPort));
 
-    if not vVale then
+    if not vLineApplies then
       Continue;
 
     AApplies := True;
-    { varias linhas para o mesmo host valem todas: e' assim que se troca um
-      certificado sem uma janela em que nada conecta }
+    { several lines for the same host all count: that is how a certificate is
+      rotated without a window in which nothing connects }
     if (AFingerprint <> '') and (AFingerprint = RALPinFingerprint(vLine)) then
     begin
       AMatches := True;
@@ -1243,8 +1444,8 @@ var
   vCert: TRALCertInfo;
   vApplies, vMatches: boolean;
 begin
-  { quem esta' sendo chamado nao vem do engine - vem de onde o RAL escolheu a
-    URL, e e' preenchido aqui para os quatro engines de uma vez }
+  { who is being called does not come from the engine - it comes from wherever
+    RAL chose the URL, and is filled in here for all four engines at once }
   vCert := ACert;
   vCert.Host := FHost;
   vCert.Port := FPort;
@@ -1255,18 +1456,57 @@ begin
   begin
     ResolvePin(vCert.Fingerprint, vApplies, vMatches);
     if vApplies then
-      { com pin para este host, so' ele serve - nem o que a loja do sistema
-        confia passa. Impressao digital vazia nunca casa: o BeforeSendUrl ja'
-        recusou antes, mas um engine acrescentado depois nao pode escapar aqui }
+      { with a pin for this host, only it will do - not even what the system
+        store trusts gets through. An empty fingerprint never matches:
+        BeforeSendUrl already refused earlier, but an engine added later must
+        not slip past here }
       Result := vMatches
     else
       Result := vCert.Trusted;
   end;
 end;
 
-function TRALClientHTTP.SupportsCertPin: boolean;
+function TRALClientHTTP.CertPolicyKey: StringRAL;
+var
+  vMethod: TMethod;
+begin
+  { one line on purpose: this ends up as a key, and Pins.Text brings line
+    breaks with it }
+  Result := IntToStr(Ord(Parent.SSL.Verify)) + ';' +
+            StringReplace(StringReplace(Parent.SSL.Pins.Text,
+                                        StringRAL(#13), StringRAL(''), [rfReplaceAll]),
+                          StringRAL(#10), StringRAL(','), [rfReplaceAll]) + ';';
+  if Assigned(Parent.OnValidateServerCert) then
+  begin
+    vMethod := TMethod(Parent.OnValidateServerCert);
+    Result := Result + IntToHex(NativeUInt(vMethod.Code), 8) + ':' +
+                       IntToHex(NativeUInt(vMethod.Data), 8);
+  end;
+end;
+
+class function TRALClientHTTP.SupportsCertPin: boolean;
 begin
   Result := False;
+end;
+
+class function TRALClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALClientHTTP.SupportsKeepAliveInterval: boolean;
+begin
+  Result := False;
+end;
+
+class function TRALClientHTTP.MinKeepAliveInterval: IntegerRAL;
+begin
+  Result := 0; // no floor, which is the case for whoever ignores the property
 end;
 
 function TRALClientHTTP.CertCheckWanted: boolean;
@@ -1302,8 +1542,8 @@ begin
     vURL := GetURL(ARoute, ARequest);
     vErrorCode := 0;
 
-    { quem esta' sendo chamado nesta tentativa - de onde sai tanto o pin que
-      vale para ela quanto o Host que chega no OnValidateServerCert }
+    { who is being called on this attempt - the source of both the pin that
+      applies to it and the Host that reaches OnValidateServerCert }
     RALURLHostPort(vURL, FHost, FPort);
 
     { Both refusals happen HERE, before a socket is opened, and not inside the
@@ -1317,14 +1557,34 @@ begin
       raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
     end;
 
-    { so' quando um pin vale para ESTA conexao: um cliente que fala com varios
-      servidores nao pode parar de falar com os de CA publica so' porque existe
-      pin para outro }
+    { only when a pin applies to THIS connection: a client that talks to
+      several servers must not stop talking to the public-CA ones just because
+      a pin exists for another }
     if HasPinForHost and (not SupportsCertPin) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertPinUnsupported, [EngineName])));
       raise Exception.Create(Format(emCertPinUnsupported, [EngineName]));
+    end;
+
+    { Same reasoning as the pin above, and in the same place: refuse before a
+      socket is opened. rhv11 is what every engine does anyway, so asking for
+      it is never a reason to refuse. }
+    if (FParent.HTTPVersion = rhv2) and (not SupportsHTTP2) then
+    begin
+      SetTransportError(AResponse, rteOther, 0,
+                        StringRAL(Format(emHTTP2Unsupported, [EngineName])));
+      raise Exception.Create(Format(emHTTP2Unsupported, [EngineName]));
+    end;
+
+    { rhv10 belongs to the OTHER direction of TRALHTTPVersion: it is a version a
+      server RECEIVES, never one a client can ask a transport for. No engine has
+      a switch for it, so accepting it here would mean sending 1.1 and reporting
+      1.0 - the exact disagreement ProtocolVersion exists to rule out. }
+    if FParent.HTTPVersion = rhv10 then
+    begin
+      SetTransportError(AResponse, rteOther, 0, StringRAL(emHTTP10NotRequestable));
+      raise Exception.Create(emHTTP10NotRequestable);
     end;
 
     // vParams is used in two places: SetAuthToken, which only runs while there
@@ -1384,7 +1644,7 @@ begin
         FParent.Authentication.Lock;
         try
           if not FParent.Authentication.IsAuthenticated then
-            vErrorCode := SetAuthToken(vParams, ARequest);
+            vErrorCode := SetAuthToken(vParams, ARequest, AResponse);
         finally
           FParent.Authentication.Unlock;
         end;
@@ -1529,18 +1789,21 @@ begin
     AResponse.StatusCode := 0;
 end;
 
-function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 begin
+  { Only the three that go to the network take AResponse - Basic and OAuth2
+    build a header and cannot fail at transport level. }
   if FParent.Authentication is TRALClientBasicAuth then
     Result := SetTokenBasic(AVars, ARequest)
   else if FParent.Authentication is TRALClientJWTAuth then
-    Result := SetTokenJWT(AVars, ARequest)
+    Result := SetTokenJWT(AVars, ARequest, AResponse)
   else if FParent.Authentication is TRALClientOAuth then
-    Result := SetTokenOAuth1(AVars, ARequest)
+    Result := SetTokenOAuth1(AVars, ARequest, AResponse)
   else if FParent.Authentication is TRALClientOAuth2 then
     Result := SetTokenOAuth2(AVars, ARequest)
   else if FParent.Authentication is TRALClientDigest then
-    Result := SetTokenDigest(AVars, ARequest);
+    Result := SetTokenDigest(AVars, ARequest, AResponse);
 end;
 
 function TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
@@ -1552,7 +1815,8 @@ begin
   Result := 0; // no http error code
 end;
 
-function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vObjAuth: TRALClientDigest;
   vConta, vStatus: IntegerRAL;
@@ -1597,13 +1861,18 @@ begin
         end;
       end;
     finally
+      if Result <> 0 then
+        SetTransportError(AResponse, vResponse.TransportError,
+                          vResponse.ErrorCode, vResponse.ResponseText);
+
       FreeAndNil(vRequest);
       FreeAndNil(vResponse);
     end;
   end;
 end;
 
-function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -1660,16 +1929,31 @@ begin
           end;
         end;
       finally
+        { The reason a token request failed used to die with its response: the
+          caller only got a number back and raised an exception with an EMPTY
+          message - which was all the application had to show the user. The
+          failure now travels to the response the caller owns, where both the
+          message and the transport error are read from. }
+        if Result <> 0 then
+          SetTransportError(AResponse, vResponse.TransportError,
+                            vResponse.ErrorCode, vResponse.ResponseText);
+
         FreeAndNil(vRequest);
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
+      { Result <> 0, not Result > 0: an engine that cannot number the failure
+        reports -1 (OkHttp does), and the loop then burned all four attempts on
+        a server already known to be unreachable - four connect timeouts before
+        the application heard about the first one. SetTokenDigest always read
+        it this way. }
     until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-          (Result > 0);
+          (Result <> 0);
   end;
 end;
 
-function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vObjAuth: TRALClientOAuth;
   vRequest: TRALRequest;
@@ -1708,12 +1992,18 @@ begin
           vStatus := vResponse.StatusCode;
         end;
       finally
+        { Same as SetTokenJWT: the failure goes to the response the caller owns,
+          or the exception it raises carries no message at all. }
+        if Result <> 0 then
+          SetTransportError(AResponse, vResponse.TransportError,
+                            vResponse.ErrorCode, vResponse.ResponseText);
+
         FreeAndNil(vRequest);
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
     until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-      (Result > 0);
+      (Result <> 0);
   end;
 end;
 

@@ -16,6 +16,11 @@
   emRequestCancelled = 'A requisição foi recusada pelo OnBeforeExecute: %s.';
   emCertRejected = 'Certificado do servidor recusado.';
   emCertRequiresTLS = 'SSL.Required está definido, ou uma linha de SSL.Pins vale para este host, então http puro é recusado: %s.';
+  emHTTP2Unsupported = 'HTTPVersion está em rhv2 e o engine %s não fala HTTP/2 nesta plataforma. Use o engine netHTTP, ou deixe HTTPVersion em rhvDefault.';
+  emOkHttpAndroidOnly = 'O engine OkHttp só tem implementação no Android: ele é registrado nas outras plataformas para poder ser escolhido, mas não consegue enviar requisição. Use o engine netHTTP nesta plataforma.';
+  emHttpSysAddUrl = 'O http.sys recusou escutar na porta %d (código %d). Código 5 significa que a porta não está reservada para este usuário: rode uma vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuário>", ou suba o servidor elevado.';
+  emHttpSysWindowsOnly = 'Mode está em smHttpSys, que é servido pelo kernel do Windows (http.sys) e não tem implementação nesta plataforma. Use smThreads ou smAsync, lembrando que nenhum dos dois serve HTTP/2.';
+  emHTTP10NotRequestable = 'HTTPVersion está em rhv10, e HTTP/1.0 não pode ser solicitado: nenhum engine tem essa opção. O rhv10 só aparece na volta, numa requisição que o servidor recebeu. Deixe HTTPVersion em rhvDefault.';
   emCompressInvalidFormat = 'Formato de compressão inválido.';
   emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
   emContentCheckError = 'Erro de verificação de conteúdo.';
@@ -34,6 +39,7 @@
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
   emDBPoolTimeout = 'Tempo de espera por uma conexão livre com o banco esgotado.';
+  emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
   emInvalidFormat = 'Formato Inválido.';
   emInvalidJSONFormat = 'Formato JSON inválido.';

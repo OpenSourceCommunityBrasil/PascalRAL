@@ -107,6 +107,10 @@ type
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
 
+    { fcl-web asks before it accepts, which is where a connection ceiling has
+      to be answered - see TRALfpHttpServer.MaxConnections }
+    procedure OnAllowConnect(Sender: TObject; ASocket: Longint; var AAllow: Boolean);
+
     procedure Execute; override;
     procedure TerminatedSet; override;
   public
@@ -122,7 +126,9 @@ type
   TRALfpHttpServer = class(TRALServer)
   private
     FHttpThread: TRALfpHttpServerThread;
+    FMaxConnections: IntegerRAL;
   protected
+    procedure SetMaxConnections(const AValue: IntegerRAL);
     procedure SetActive(const AValue: boolean); override;
     procedure SetPort(const AValue: IntegerRAL); override;
 
@@ -138,6 +144,15 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
+    /// knob TRALIndyServer, TRALSaguiServer and TRALSynopseServer publish under
+    /// this name: past it a NEW connection is refused, so no existing client is
+    /// dropped to make room. 0 means no ceiling.
+    ///
+    /// fcl-web has no such setting of its own - what it has is the question it
+    /// asks before accepting (OnAllowConnect) and the count of connections it
+    /// already has (ConnectionCount), and the two together are exactly this.
+    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
     property QueueSize : Word read GetQueueSize write SetQueueSize;
     property SSL: TRALfpHTTPSSL read GetSSL write SetSSL;
   end;
@@ -625,6 +640,18 @@ begin
   inherited TerminatedSet;
 end;
 
+procedure TRALfpHttpServerThread.OnAllowConnect(Sender: TObject; ASocket: Longint;
+  var AAllow: Boolean);
+begin
+  { ConnectionCount is kept by TFPHTTPConnection's own constructor and
+    destructor, so it counts whether or not the server is Threaded, and it is
+    already interlocked. The connection being asked about is NOT in it yet:
+    "<" is what makes MaxConnections the number of connections that may be
+    open, and not one more than that. }
+  AAllow := (FParent.MaxConnections <= 0) or
+            (FHttp.ConnectionCount < FParent.MaxConnections);
+end;
+
 constructor TRALfpHttpServerThread.Create(AOwner: TRALfpHttpServer);
 begin
   FParent := AOwner;
@@ -635,6 +662,7 @@ begin
   FHttp.QueueSize := SOMAXCONN;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
+  FHttp.OnAllowConnect := @OnAllowConnect;
   { AcceptIdleTimeout stays at fcl-web's default (0, a blocking accept):
     with an idle loop the server stops on its own within the timeout, but
     that faster teardown races fcl-web's own connection-thread cleanup on
@@ -703,6 +731,16 @@ begin
   SetEngine('fpHTTP ' + {$I %FPCVERSION%});
   FHttpThread := TRALfpHttpServerThread.Create(Self);
   FHttpThread.Port := Port;
+end;
+
+procedure TRALfpHttpServer.SetMaxConnections(const AValue: IntegerRAL);
+begin
+  { Nothing to hand over and nothing to restart: OnAllowConnect reads it on
+    every accept, so it takes effect on a running server too }
+  if AValue < 0 then
+    FMaxConnections := 0
+  else
+    FMaxConnections := AValue;
 end;
 
 function TRALfpHttpServer.CreateRALSSL: TRALSSL;

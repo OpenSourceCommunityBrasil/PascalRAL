@@ -33,6 +33,7 @@ const
   ENGINESAGUI              = 'Sagui';
   ENGINENETHTTP            = 'netHttp';
   ENGINEFPHTTP             = 'fpHttp';
+  ENGINEOKHTTP             = 'OkHttp';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'
@@ -66,6 +67,11 @@ const
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
   // THTTPClient defaults to.
   DEFAULTMAXREDIRECTS = 3;
+  { Floor for TRALClient.KeepAliveInterval while it is on. It comes from
+    WinHTTP, which refuses WINHTTP_OPTION_HTTP2_KEEPALIVE below 5000 ms with
+    ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to
+    MinKeepAliveInterval and are not held to this one. }
+  MINKEEPALIVEMS = 5000;
   // Attempts to obtain a token, in SetTokenDigest/SetTokenJWT/SetTokenOAuth1.
   RALMAXTOKENTRIES = 4;
   HTTPLineBreak = #13#10;

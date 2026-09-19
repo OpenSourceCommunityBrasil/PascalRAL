@@ -1,6 +1,8 @@
 /// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
+{$I ..\\..\\base\\PascalRAL.inc}
+
 { mORMot builds its OpenSSL unit for every target except Android, and honours a
   global DISABLE_OPENSSL (mormot.defines.inc). Its own USE_OPENSSL define does
   not cross unit boundaries, so the two conditions are mirrored here with
@@ -54,8 +56,6 @@ type
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
-  protected
-    function SupportsCertPin: boolean; override;
   public
     destructor Destroy; override;
 
@@ -65,6 +65,8 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
@@ -90,7 +92,7 @@ begin
   FCertSeen := False;
 end;
 
-function TRALSynopseClientHTTP.SupportsCertPin: boolean;
+class function TRALSynopseClientHTTP.SupportsCertPin: boolean;
 begin
   { True as a rule, and the exceptions - SChannel, or a build without OpenSSL -
     are caught right after the handshake in SendUrl, where the fingerprint
@@ -193,14 +195,14 @@ begin
         SSL_VERIFY_NONE, and mORMot then does not install the verification
         callback at all (mormot.lib.openssl11, SetupCtx) - the client would
         accept everything and OnValidateServerCert would never be called. }
-      { zerado a cada conexao, e nao so' no primeiro uso: TCrtSocket.Open copia
-        o contexto DE VOLTA para quem o passou (aTLSContext^ := TLS), entao o
-        campo volta de uma conexao carregando Enabled, CipherName, PeerSubject
-        e LastError daquela - e reenviar isso na proxima e' passar entrada suja
-        onde o mORMot espera um contexto limpo. InitNetTlsContext e' o proprio
-        zera-tudo do mORMot. }
+      { cleared on every connection, not just on first use: TCrtSocket.Open
+        copies the context BACK to whoever passed it (aTLSContext^ := TLS), so
+        the field comes back from a connection carrying that one's Enabled,
+        CipherName, PeerSubject and LastError - and sending that again on the
+        next one feeds dirty input where mORMot expects a clean context.
+        InitNetTlsContext is mORMot's own reset-everything. }
       InitNetTlsContext(FTLS);
-      {$IFDEF MSWINDOWS}
+      {$IFDEF RALWindows}
       { Windows only, and it is what makes https to a public CA work at all on
         this engine once OpenSSL is loaded: OpenSSL has no certificate store of
         its own on Windows, so mORMot's fallback - SSL_CTX_set_default_verify_paths
@@ -220,8 +222,9 @@ begin
       if CertCheckWanted then
         FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify
       else
-        { sem pin e sem evento, quem manda e' o SSL.Verify. svAlways nao precisa
-          de nada: este engine ja' valida por padrao, nas duas pilhas. }
+        { with no pin and no event, SSL.Verify has the say. svAlways needs
+          nothing here: this engine already validates by default, on both
+          stacks. }
         FTLS.IgnoreCertificateErrors := Parent.SSL.Verify = svNever;
 
       try
@@ -239,8 +242,9 @@ begin
         begin
           if e.LastError = nrUnknownError then
           begin
-            { mesma razao do bloco do veredito abaixo: sair pela resposta, e
-              nao por raise, senao o except externo reclassifica }
+            { same reason as the verdict block below: leave through the
+              response and not through a raise, or the outer except
+              reclassifies it }
             SetTransportError(AResponse, rteCertificate, -1, e.Message);
             Exit;
           end;
@@ -254,11 +258,11 @@ begin
         included - has been sent yet. }
       if CertCheckWanted then
       begin
-        { Sai por SetTransportError e Exit, e nao por raise: um raise daqui
-          seria apanhado pelo except deste mesmo SendUrl, que o reclassificaria
-          como falha de transporte e trocaria a mensagem. Quem transforma isto
-          em excecao para quem chamou e' o BeforeSendUrl, no "if vErrorCode
-          <> 0", com o texto que ficou na resposta. }
+        { Leaves through SetTransportError and Exit, not through a raise: a
+          raise from here would be caught by this very SendUrl's except, which
+          would reclassify it as a transport failure and replace the message.
+          What turns this into an exception for the caller is BeforeSendUrl, at
+          the "if vErrorCode <> 0", with the text left in the response. }
         if not FCertSeen then
         begin
           { SChannel completed the handshake without ever asking us, or the
@@ -405,6 +409,13 @@ begin
           AResponse.ContentType := vHttp.ContentType;
           AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
           AResponse.StatusCode := vResult;
+          { Which version answered. CommandResp is the status line mORMot2 read
+            back, 'HTTP/1.1 200 OK' - and the parse takes the scheme off, so it
+            can be handed over whole. THttpClientSocket is HTTP/1.x only, so it
+            is always 1.0 or 1.1, and that is the point: every engine fills
+            ProtocolVersion, so an application never has to know which one is
+            running in order to ask. }
+          AResponse.Protocol := StringRAL(vHttp.Http.CommandResp);
           AResponse.ResponseText := vHttp.Content;
         end;
       except
