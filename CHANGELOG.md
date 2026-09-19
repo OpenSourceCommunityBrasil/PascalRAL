@@ -537,6 +537,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Hallucination fix** (2026-09-19 – mobius1qwe)
+
 - **Fix the data race on an authenticator shared by several clients** (2026-09-12 – tempraturbo)
   TRALClient.Authentication takes a FreeNotification and never ownership, so one
   authenticator is meant to be shared - the FireDAC DAO alone needs one client per
