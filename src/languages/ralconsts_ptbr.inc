@@ -39,6 +39,7 @@
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
   emDBPoolTimeout = 'Tempo de espera por uma conexão livre com o banco esgotado.';
+  emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
   emInvalidFormat = 'Formato Inválido.';
   emInvalidJSONFormat = 'Formato JSON inválido.';

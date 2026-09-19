@@ -10,7 +10,7 @@ interface
 uses
   Classes, SysUtils, TypInfo, DB,
   RALTools,
-  RALTypes, RALJson;
+  RALTypes, RALJson, RALParams, RALResponse, RALConsts;
 
 type
   {
@@ -195,7 +195,42 @@ function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL; overload;
 /// name is written into the JSON for readers, never read back.
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
 
+/// The message a failed database request came back with - never an empty one.
+function RALDBResponseError(AResponse: TRALResponse): StringRAL;
+
 implementation
+
+{ Three steps, and each one is there because the step before it can come up
+  empty:
+
+  - TRALDBModule.AnswerException answers with a single body param NAMED
+    'Exception', but EncodeBody skips multipart for a lone body param and never
+    puts its name on the wire, so what usually arrives is the anonymous body;
+  - a param that is not there is nil, not an empty one, so neither read can be
+    chained onto the other without a guard - and this runs on the error path,
+    where an access violation is the last thing anyone needs;
+  - an answer carrying a status and no body at all - a proxy in the middle, a
+    bare Answer(status) - used to raise an exception with an EMPTY message, and
+    an empty message tells the user nothing at all. The status is the least
+    that can be said, and it is written so that a caller matching on the number
+    still finds it. }
+function RALDBResponseError(AResponse: TRALResponse): StringRAL;
+var
+  vParam: TRALParam;
+begin
+  Result := '';
+  if AResponse = nil then
+    Exit;
+
+  vParam := AResponse.ParamByName('Exception');
+  if vParam = nil then
+    vParam := AResponse.Body;
+  if vParam <> nil then
+    Result := vParam.AsString;
+
+  if Result = '' then
+    Result := StringRAL(Format(emDBStatusNoMessage, [AResponse.StatusCode]));
+end;
 
 var
   { Resolved once per value and kept. GetEnumName walks the RTTI short-string

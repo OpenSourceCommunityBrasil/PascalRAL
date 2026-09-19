@@ -151,7 +151,7 @@ begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
@@ -302,7 +302,7 @@ begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
@@ -476,7 +476,7 @@ begin
         Self.CachedUpdates := true;
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin

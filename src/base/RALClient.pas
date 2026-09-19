@@ -198,16 +198,22 @@ type
                                 AError: TRALTransportError; ACode: IntegerRAL;
                                 const AMessage: StringRAL); virtual;
     /// Configures the Request header with proper authentication info based on the assigned
-    /// authenticator.
-    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    /// authenticator. AResponse belongs to the caller: the three that fetch a token
+    /// over the network write a transport failure into it, so the caller can say
+    /// what went wrong instead of raising an exception with no message.
+    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
+                          AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: Basic.
     function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: DigestAuth.
-    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
+                            AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: JWT.
-    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
+                         AResponse: TRALResponse): IntegerRAL;
     /// used by SetAuthToken to set authentication on the header: OAuth1.
-    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
+                            AResponse: TRALResponse): IntegerRAL;
     /// placeholder
     function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
 
@@ -1638,7 +1644,7 @@ begin
         FParent.Authentication.Lock;
         try
           if not FParent.Authentication.IsAuthenticated then
-            vErrorCode := SetAuthToken(vParams, ARequest);
+            vErrorCode := SetAuthToken(vParams, ARequest, AResponse);
         finally
           FParent.Authentication.Unlock;
         end;
@@ -1783,18 +1789,21 @@ begin
     AResponse.StatusCode := 0;
 end;
 
-function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 begin
+  { Only the three that go to the network take AResponse - Basic and OAuth2
+    build a header and cannot fail at transport level. }
   if FParent.Authentication is TRALClientBasicAuth then
     Result := SetTokenBasic(AVars, ARequest)
   else if FParent.Authentication is TRALClientJWTAuth then
-    Result := SetTokenJWT(AVars, ARequest)
+    Result := SetTokenJWT(AVars, ARequest, AResponse)
   else if FParent.Authentication is TRALClientOAuth then
-    Result := SetTokenOAuth1(AVars, ARequest)
+    Result := SetTokenOAuth1(AVars, ARequest, AResponse)
   else if FParent.Authentication is TRALClientOAuth2 then
     Result := SetTokenOAuth2(AVars, ARequest)
   else if FParent.Authentication is TRALClientDigest then
-    Result := SetTokenDigest(AVars, ARequest);
+    Result := SetTokenDigest(AVars, ARequest, AResponse);
 end;
 
 function TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
@@ -1806,7 +1815,8 @@ begin
   Result := 0; // no http error code
 end;
 
-function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vObjAuth: TRALClientDigest;
   vConta, vStatus: IntegerRAL;
@@ -1851,13 +1861,18 @@ begin
         end;
       end;
     finally
+      if Result <> 0 then
+        SetTransportError(AResponse, vResponse.TransportError,
+                          vResponse.ErrorCode, vResponse.ResponseText);
+
       FreeAndNil(vRequest);
       FreeAndNil(vResponse);
     end;
   end;
 end;
 
-function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -1914,16 +1929,31 @@ begin
           end;
         end;
       finally
+        { The reason a token request failed used to die with its response: the
+          caller only got a number back and raised an exception with an EMPTY
+          message - which was all the application had to show the user. The
+          failure now travels to the response the caller owns, where both the
+          message and the transport error are read from. }
+        if Result <> 0 then
+          SetTransportError(AResponse, vResponse.TransportError,
+                            vResponse.ErrorCode, vResponse.ResponseText);
+
         FreeAndNil(vRequest);
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
+      { Result <> 0, not Result > 0: an engine that cannot number the failure
+        reports -1 (OkHttp does), and the loop then burned all four attempts on
+        a server already known to be unreachable - four connect timeouts before
+        the application heard about the first one. SetTokenDigest always read
+        it this way. }
     until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-          (Result > 0);
+          (Result <> 0);
   end;
 end;
 
-function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
+function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
+  AResponse: TRALResponse): IntegerRAL;
 var
   vObjAuth: TRALClientOAuth;
   vRequest: TRALRequest;
@@ -1962,12 +1992,18 @@ begin
           vStatus := vResponse.StatusCode;
         end;
       finally
+        { Same as SetTokenJWT: the failure goes to the response the caller owns,
+          or the exception it raises carries no message at all. }
+        if Result <> 0 then
+          SetTransportError(AResponse, vResponse.TransportError,
+                            vResponse.ErrorCode, vResponse.ResponseText);
+
         FreeAndNil(vRequest);
         FreeAndNil(vResponse);
       end;
       vConta := vConta + 1;
     until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-      (Result > 0);
+      (Result <> 0);
   end;
 end;
 
