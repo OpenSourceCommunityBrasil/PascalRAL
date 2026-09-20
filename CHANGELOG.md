@@ -8,6 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Fix security holes and errors in the MsQuic engine, plus what they exposed elsewhere** (2026-09-20 – tempraturbo)
+  MsQuic client: every transport failure carried ErrorCode 0, so a server that
+  was down came back as a success - BeforeSendUrl only raises on a non-zero
+  code, and SetTransportError itself now refuses a zero. SSL.Pins and
+  OnValidateServerCert were ignored in silence: the certificate is judged
+  through INDICATE + DEFER + PORTABLE, its SHA-256 computed from the DER, and a
+  refusal is rteCertificate. Cookies never left the client and repeated
+  Set-Cookie collapsed; the Host header was missing; the idle timeout was the
+  ConnectTimeout; a BaseURL without a port went to 4710 instead of 8000; the
+  ALPN and the library path were unreachable (class vars DefaultAlpn and
+  DefaultLibPath).
+  MsQuic server: every peer arrived as 127.0.0.1, so brute-force and flood
+  protection counted all clients as one; the listener now keeps the peer's IP
+  per connection. Active := False hung until the idle timeout with a client
+  still connected (RegistrationShutdown before RegistrationClose). A failure
+  inside SetActive left the base believing it was active. PoolCount lets the
+  dispatch run on more than one thread, which a route that waits on a database
+  needs. PrivateKeyPassword loads a protected key, MaxRequestSize is enforced
+  before the bytes are kept, and a refused StreamSend aborts the stream.
+  Binding: status codes per platform (HRESULT on Windows, errno on Linux),
+  QUIC_FAILED accordingly, and a refusal to load on Apple, where the errno
+  numbering differs.
+  Elsewhere: a bind that fails in the Indy, Sagui and mORMot2 servers also
+  left Active True; a Set-Cookie is a cookie param of the response on every
+  engine (TRALParams.AddSetCookie), not only on netHTTP, fpHTTP and OkHttp;
+  a pooled engine on the threaded path starts from the client's failover
+  index; CopyProperties carries PoolConnection, ShareConnection, HTTPVersion
+  and KeepAliveInterval; a thread's Request is swept by its own 30-minute
+  timeout and starts as a copy of the creator's; the three memtables report a
+  200 they cannot load through OnError instead of raising out of the callback.
+  Verified with a 28-case functional program on Delphi x64 and FPC x64 (gzip,
+  AES-256, both, multipart, cookies, peer IP, IPv6, pin, event, 413, 3 MB,
+  PoolCount, stop time) and the matrix: Indy x Indy 4183/4183, mORMot2 x
+  netHTTP 4151/4151.
+
 - **Fix a security hole: the FireDAC DAO served every file next to the executable** (2026-09-17 – tempraturbo)
   TRALFDConnection.SetRALServer attached a TRALWebModule only to register its one
   route. That module also carries a default route that skips authentication and
@@ -23,7 +58,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   given. TRALWebModule used directly is untouched: set its DocumentRoot.
 
 
+### Breaking Changes
+- **Breaking change: synchronous calls, a shared connection and the engine pool by default** (2026-09-20 – tempraturbo)
+  TRALClient.Get/Post/Put/Patch/Delete with a callback default to
+  ebSingleThread: the callback has run when the call returns and the result
+  can be read on the next line. A call from a form's event handler blocks the
+  UI for the duration - pass ebMultiThread where that matters. TRALFDQuery's
+  QueryBehavior follows the same default. ShareConnection and
+  PoolConnection.Enabled start True, so the engines that can share a transport
+  do, and every engine keeps its connection between requests instead of
+  opening one per request from a second thread. TRALSynopseServer.Mode goes
+  back to smThreads, which is what every existing form was saved with and the
+  mode in which MaxKeepAliveConnections applies.
+
+
 ### Added
+- **Add a QUIC engine (MsQuic) and a connection pool for TRALClient** (2026-09-20 – tempraturbo)
+  The engine puts RAL's own length-prefixed frame straight onto QUIC streams, so
+  it is not HTTP/3 and both ends have to be RAL - curl, a browser, a proxy or a
+  CDN cannot read it. What the transport gives back is one stream per request, so
+  a lost packet delays only its own request instead of the whole connection, and
+  a one round-trip handshake where TCP with TLS 1.2 takes three. Measured against
+  the mORMot2 engine across a 171 ms link: half the time to open a connection,
+  and 100 to 200 devices served at 178-182 us of server CPU per request against
+  246-292, over a third of the connections. On loopback and on a LAN HTTP/1.1
+  stays ahead, which is the honest summary of when to reach for either.
+  The server runs a single dispatch worker on purpose. One, two and four were all
+  measured; one wins in every shape, so there is no property to raise it.
+  MaxAckDelay stays at the protocol's own 25 ms, and KeepAliveInterval and
+  Migration are the two settings worth exposing.
+  TRALClient gained two things the engine needed and every engine profits from.
+  Each thread now carries its own Request, because the way the client is used -
+  fill Request, then call - cannot be made safe by locking when the caller holds
+  the object across statements; the thread that built the client keeps the
+  original instance, so no existing call site changes. And PoolConnection (off by
+  default, with MaxIdle and IdleTimeout) keeps the engine object, and the socket
+  it has open, between calls, keyed by destination. That one also settles a
+  collapse any client called from more than one thread has always suffered, where
+  every request built a connection and threw it away.
+  TRALParam keeps a string param as a string and materialises a stream only when
+  something asks for one; it used to build a TMemoryStream per param per request.
+  RALTools grew RALAtomicInc/RALAtomicDec because AtomicIncrement is Delphi only
+  and FPC has no 64-bit interlocked primitive on 32-bit CPUs.
+  TRALClientHTTP.BeginSendUrl/EndSendUrl and TRALClient.BeginRequest/EndRequest
+  are gone, along with SupportsPipelining: only one engine could ever honour them and
+  nothing in the library called them.
+  Packages for both IDEs, the palette glyph and the pasdoc file list come with
+  it. The library itself - msquic.dll or libmsquic.so.2, the OpenSSL build - is
+  only loaded by SetActive(True), so the component can sit on a form on a
+  machine that has none of it installed.
+
 - **Add OnValidateSQL to the FireDAC DAO, the hook TRALDBModule already had** (2026-09-17 – tempraturbo)
   The DAO route carries whatever SQL the client sends and hands it straight to the
   driver, so an authenticated caller can run anything the connection user is
@@ -202,6 +286,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge remote-tracking branch 'remotes/origin/1.2-plugin' into dev** (2026-09-20 – mobius1qwe)
+
+- **Make smAsync the default mode of the mORMot2 server** (2026-09-20 – tempraturbo)
+  One thread per kept-alive connection does not scale: six hundred connections
+  became six hundred threads, and each stack costs memory before it costs CPU.
+  smAsync runs an event loop - IOCP on Windows - and is the mode every
+  measurement of this engine was ever taken in.
+  The constructor and the property's default directive now carry the same value,
+  which is what keeps the Object Inspector honest: streaming skips a property
+  whose value equals its default, so the two disagreeing makes the component run
+  with one value while the inspector shows another.
+  Upgrading: a .dfm saved while smThreads was the default has no Mode line at
+  all, for exactly that reason, so those forms start running in smAsync. Anyone
+  who picked smAsync deliberately has the line written and sees no difference.
+
 - **Merge remote-tracking branch 'remotes/origin/1.2-plugin' into dev** (2026-09-19 – mobius1qwe)
 
 - **Ship the OkHttp jars with the engine and document wiring a client** (2026-09-15 – tempraturbo)
