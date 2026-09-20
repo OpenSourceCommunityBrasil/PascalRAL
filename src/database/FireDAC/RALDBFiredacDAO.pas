@@ -48,7 +48,7 @@ type
     procedure OpenRemote;
   published
     property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
-      default ebMultiThread;
+      default ebSingleThread;
     property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
@@ -128,7 +128,10 @@ begin
   vRALClient := nil;
   vException := nil;
 
-  vQueryBehavior := ebMultiThread;
+  { the same default TRALClient.Get/Post carry: synchronous, results readable
+    on the next line; ebMultiThread is one assignment away for a form that
+    must not block }
+  vQueryBehavior := ebSingleThread;
 
   inherited;
 end;

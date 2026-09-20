@@ -236,7 +236,7 @@ Reading the version back takes a different door on each side. The http.sys serve
 
 **netHTTP answers `SupportsHTTP2` False on Android**, and that is deliberate: the RTL lands on `HttpURLConnection` there, so `ProtocolVersion` is accepted and then ignored - measured against a server serving h2 to everything else, 70 of 71 requests came back HTTP/1.1, with no error and nothing in any log. Answering True would make `rhv2` a silent no-op, which is the one outcome `TRALHTTPVersion` exists to prevent.
 
-`TRALClient.ShareConnection` is the other half of the gain: one connection for every client aimed at the same place with the same settings, instead of one per dataset. It is a hint, not a contract — engines that cannot share ignore it. netHTTP honours it with a transport pool of its own and okhttp by handing the question to OkHttp's client cache - and **both key that cache by the certificate policy**, so only clients that judge certificates alike ever share. That is not tidiness: a TLS connection is judged ONCE, during its handshake, and a reused one has no handshake at all, so a client sharing a pool inherits a verdict it never gave. `CertPolicyKey` on `TRALClientHTTP` is the one signature both engines use.
+`TRALClient.ShareConnection` is the other half of the gain: one connection for every client aimed at the same place with the same settings, instead of one per dataset. It is a hint, not a contract — engines that cannot share ignore it. netHTTP honours it with a transport pool of its own and okhttp by handing the question to OkHttp's client cache - and **both key that cache by the certificate policy**, so only clients that judge certificates alike ever share. That is not tidiness: a TLS connection is judged ONCE, during its handshake, and a reused one has no handshake at all, so a client sharing a pool inherits a verdict it never gave. `CertPolicyKey` on `TRALClientHTTP` is the one signature all three engines use - MsQuic keys its connection pool by it too. `ShareConnection` is **on by default since 20/09/2026**; it started off.
 
 One trap worth knowing on Windows: asking for h2 also caps the transport at one connection (`MAX_CONNS_PER_SERVER`), which is what turns h2 into multiplexing. The cap goes on when the transport is CREATED, and it has to: measured with 20 threads on a fresh transport, every one of them opens its socket in the first burst, before any response exists, and WinHTTP never closes what it already pooled - capping after the answer left 16 connections where 1 was the point. Asking is not getting, though, so `MatchConnectionCap` takes the cap off the moment an answer reports 1.0 or 1.1; one burst pays for the wrong guess and it is right from there on. That matters because under HTTP/1.1 a single connection queues concurrent requests instead of running them. Which engines can is `SupportsSharedConnection`, a class function like the other two - the ones that cannot are not slower for ignoring it, they would be slower for honouring it, since one object there means one socket and sharing would serialise concurrent calls.
 
@@ -249,8 +249,8 @@ One trap worth knowing on Windows: asking for h2 also caps the transport at one 
 ### Client execution model (`ebSingleThread` vs `ebMultiThread`)
 Every callback-taking client call — `TRALClient.Get/Post/Put/Patch/Delete(ARoute, AOnResponse, AExecBehavior)` — funnels into `TRALClient.ExecuteThread`, and the `TRALExecBehavior` picks *which thread runs the request*, not whether a callback is used:
 
-- `ebMultiThread` (the default) starts a `TRALThreadClient` and returns immediately. The callback fires later from `TThread.OnTerminate`, which the RTL marshals to the **main thread**. The `TRALResponse` is owned by the thread and freed right after the callback, so handlers must consume it, not retain it.
-- `ebSingleThread` runs the same sequence on the **calling** thread and invokes the callback *before returning*. Callers can read results on the next line.
+- `ebSingleThread` (**the default since 20/09/2026**; it used to be `ebMultiThread`) runs the whole sequence on the **calling** thread and invokes the callback *before returning*. Callers can read results on the next line - and a `Get` from a button handler blocks the UI for the duration, so pass `ebMultiThread` where that matters.
+- `ebMultiThread` starts a `TRALThreadClient` and returns immediately. The callback fires later from `TThread.OnTerminate`, which the RTL marshals to the **main thread**. The `TRALResponse` is owned by the thread and freed right after the callback, so handlers must consume it, not retain it.
 
 The callback always receives a valid `TRALResponse`, even when the request failed — the message goes in the `AException` parameter. Handlers rely on this: `TRALDBFDMemTable.OnApplyUpdates`/`OnExecSQLResponse` dereference `AResponse.StatusCode` with no nil check.
 
@@ -258,7 +258,7 @@ A 200 whose body the memtable cannot load (a route answering the wrong thing, a 
 
 **The other overloads — `Get/Post/...(ARoute, var AResponse)` — do the opposite: ownership goes to the caller.** They funnel into `ExecuteSingle`, which *returns* the response, so the caller frees it; `TRALResponse.Create(AOwner: TObject)` takes a plain reference, not component ownership, so freeing the `TRALClient` frees nothing. And the caller only receives it on a **normal return** — when the request fails at transport level `BeforeSendUrl` raises, the assignment at the call site never runs, so `ExecuteSingle` frees the response itself before letting the exception out. That is not defensive coding: without it every failed request leaked a whole response.
 
-Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` is deliberately async and lets `SetActive`'s `FLoading` flag close the loop. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebMultiThread`; its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
+Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` passes none and follows the client's default - synchronous since 20/09/2026 - with `SetActive`'s `FLoading` flag closing the loop either way. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebSingleThread` (it was `ebMultiThread` until 20/09/2026); its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
 
 `ExecuteThread` is `virtual` and currently has **no override anywhere** — engines vary the transport (`TRALClientHTTP` descendants), never the threading.
 
@@ -271,9 +271,15 @@ Anything whose result is read as a property right after the call must use `ebSin
   is used - fill `Request`, then call - cannot be made safe by locking, because
   the caller holds the object across statements, so each thread gets its own and
   no call site changes: the thread that built the client keeps the original
-  instance, and single-threaded code sees nothing.
+  instance, and single-threaded code sees nothing. A thread's **first** read of
+  `Request` gets a **copy of the creator thread's** `Request` as it is at that
+  moment, so "fill on the main thread, call from a worker" still sends what was
+  filled; after that the two are independent. A thread silent for
+  `RALTHREADREQUESTTIMEOUT` (30 min, its own constant - not the pool's idle
+  timeout) has its copy discarded and starts over from a fresh copy.
 
-`TRALClient.PoolConnection` (`Enabled`, **default False**, plus `MaxIdle` and
+`TRALClient.PoolConnection` (`Enabled`, **default True** since 20/09/2026 - it
+started off - plus `MaxIdle` and
 `IdleTimeout`) keeps the *engine object* - and with it the socket it has open -
 between calls, keyed by destination, so `scheme://host:port` from `BaseURL` with
 the route cut off. Handing an engine to a request for somewhere else is not

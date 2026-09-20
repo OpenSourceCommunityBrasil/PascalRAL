@@ -348,7 +348,7 @@ type
     An engine owns a connection and may only be inside one request at a time.
     With the pool on, a thread borrows one for the duration of a request and
     gives it back, so a connection is opened once and used by whoever needs it
-    next. With it off - the default - the client does what it always did: ONE
+    next. With it off - it is on by default - the client does what it used to: ONE
     engine kept for the thread that first asked, and a brand new one, thrown
     away when the request ends, for every other thread. On the HTTP engines
     that is a socket and a TLS handshake per request.
@@ -411,8 +411,10 @@ type
   public
     constructor Create(AOwner: TObject);
   published
-    /// Turns the pool on. False keeps the behaviour the client always had.
-    property Enabled: boolean read FEnabled write SetEnabled default False;
+    /// On by default. False restores what the client did before the pool:
+    /// one engine kept for the thread that first asked, and a throwaway - a
+    /// fresh connection - for every request from any other thread.
+    property Enabled: boolean read FEnabled write SetEnabled default True;
     { How many engines are kept idle. A returned engine past it is closed -
       exactly what used to happen to every engine. Below one it is read as one.
 
@@ -491,7 +493,7 @@ type
     /// core method of the client. Must override on children.
     procedure ExecuteThread(ARoute: StringRAL; AMethod: TRALMethod;
                             AOnResponse: TRALThreadClientResponse = nil;
-                            AExecBehavior : TRALExecBehavior = ebMultiThread); virtual;
+                            AExecBehavior : TRALExecBehavior = ebSingleThread); virtual;
     function ExecuteSingle(ARoute: StringRAL; AMethod: TRALMethod) : TRALResponse; virtual;
 
     /// event called when client thread finishes
@@ -563,27 +565,27 @@ type
     /// Defines method on the client: Delete.
     procedure Delete(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     procedure Delete(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                     AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
+                     AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
 
     /// Defines method on the client: Get.
     procedure Get(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     procedure Get(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
+                  AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
 
     /// Defines method on the client: Patch.
     procedure Patch(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     procedure Patch(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                    AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
+                    AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
 
     /// Defines method on the client: Post.
     procedure Post(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     procedure Post(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                   AExecBehavior : TRALExecBehavior = ebMultiThread); overload;
+                   AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
 
     /// Defines method on the client: Put.
     procedure Put(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     procedure Put(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                  AExecBehavior: TRALExecBehavior = ebMultiThread); overload;
+                  AExecBehavior: TRALExecBehavior = ebSingleThread); overload;
 
     { The calling thread's request. Two threads never share one, so the
       fill-then-call pattern is safe from either - see TRALThreadRequest. }
@@ -603,7 +605,7 @@ type
     property HTTPVersion: TRALHTTPVersion read FHTTPVersion write FHTTPVersion
       default rhvDefault;
     /// Engine and connection reuse across threads - see TRALPoolConnection.
-    /// Off by default, so an upgrade changes nothing until it is turned on.
+    /// On by default - see TRALPoolConnection.Enabled for what False restores.
     property PoolConnection: TRALPoolConnection read FPoolConnection
                                                 write SetPoolConnection;
     property KeepAlive: boolean read FKeepAlive write SetKeepAlive;
@@ -615,10 +617,12 @@ type
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
     /// Lets this client share its underlying transport - and therefore its TCP
     /// connection - with every other client aimed at the same host with the
-    /// same settings. Off by default, because it changes two things a caller
-    /// may be relying on: the engine's cookie jar becomes common to the
-    /// sharers, and their requests queue on one connection unless the
-    /// transport can multiplex (which is what HTTPVersion = rhv2 buys).
+    /// same settings. On by default: the engines that honour it (netHTTP,
+    /// OkHttp, MsQuic) are the ones where a connection per client is pure
+    /// cost. Two things change with it that a caller may be relying on: the
+    /// engine's cookie jar becomes common to the sharers, and their requests
+    /// queue on one connection unless the transport can multiplex (which is
+    /// what HTTPVersion = rhv2 buys, and what QUIC does by construction).
     ///
     /// It is a HINT, not a contract: engines that cannot share ignore it
     /// silently instead of raising, because the same client is often
@@ -632,7 +636,7 @@ type
     /// client - otherwise opens one connection per dataset, and pays a cold
     /// TCP and TLS handshake on each.
     property ShareConnection: boolean read FShareConnection
-                                      write FShareConnection default False;
+                                      write FShareConnection default True;
     /// How often, in milliseconds, to prove the connection is still there.
     /// 0 - the default - is off, and is what every engine did before.
     ///
@@ -1296,7 +1300,7 @@ constructor TRALPoolConnection.Create(AOwner: TObject);
 begin
   inherited Create;
   FOwner := AOwner;
-  FEnabled := False;
+  FEnabled := True;
   FMaxIdle := RALMAXIDLEENGINES;
   FIdleTimeout := RALENGINEIDLETIMEOUT;
 end;
@@ -1497,6 +1501,9 @@ begin
 
   FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
+  { written here AND in the published default - see ConnectTimeout for what
+    happens when the two disagree }
+  FShareConnection := True;
   FConnectTimeout := DEFAULTCONNECTTIMEOUT;
   FRequestTimeout := DEFAULTREQUESTTIMEOUT;
   FMaxRedirects := DEFAULTMAXREDIRECTS;
@@ -2628,7 +2635,7 @@ begin
     there is no affinity; an engine is out of the pool while borrowed, so
     whoever holds it holds it alone.
 
-    Building one here was what made the callback API - the default one - pay a
+    Building one here was what made the callback API pay a
     connection and a TLS handshake per request. }
   FFromPool := AOwner.PoolConnection.Enabled;
   if FFromPool then

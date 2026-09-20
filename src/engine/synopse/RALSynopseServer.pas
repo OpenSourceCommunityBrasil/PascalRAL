@@ -163,7 +163,7 @@ type
     property MaxKeepAliveConnections: IntegerRAL read FMaxKeepAliveConnections
       write FMaxKeepAliveConnections default 0;
     /// Thread per kept-alive connection, or one event loop - see TRALSynopseMode
-    property Mode: TRALSynopseMode read FMode write SetMode default smAsync;
+    property Mode: TRALSynopseMode read FMode write SetMode default smThreads;
     property PoolCount: IntegerRAL read FPoolCount write SetPoolCount;
     property QueueSize: IntegerRAL read FQueueSize write SetQueueSize;
     property SSL: TRALSynopseSSL read GetSSL write SetSSL;
@@ -689,17 +689,15 @@ constructor TRALSynopseServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := nil;
-  { smAsync, not smThreads. One thread per kept-alive connection does not
-    scale: six hundred connections become six hundred threads, and each
-    stack costs address space before it costs CPU. The event loop - IOCP on
-    Windows - serves the same six hundred from the pool, and it is the mode
-    every measurement of this engine was taken in.
-
-    The value has to be written HERE and in the property's default at the
-    same time: streaming skips a property whose value equals its default, so
-    the two disagreeing makes the component run with one value while the
-    Object Inspector shows another. }
-  FMode := smAsync;
+  { smThreads: what the engine always did, and what every existing form was
+    saved with. Streaming skips a property whose value equals its default, so
+    a form saved under this default carries no Mode at all and would silently
+    switch to whatever the default became - and in smAsync
+    MaxKeepAliveConnections is not applied. smAsync scales better (an event
+    loop instead of a thread per kept-alive connection) and is one assignment
+    away; it is just not chosen for anyone. Written HERE and in the property's
+    default at the same time, for that same streaming reason. }
+  FMode := smThreads;
   FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
   FQueueSize := 1000; // Tamanho da fila de threads. Padrao do synopse: 1000
   FHttpSysDomain := '*'; // mORMot2's own default in AddUrl
