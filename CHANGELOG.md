@@ -315,6 +315,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix an access violation in TRALFDConnection when it has no owner** (2026-09-20 – tempraturbo)
+  SetRALServer read Owner.ComponentState to skip the route at design time, so
+  a connection built in code with a nil owner died there. The component's own
+  ComponentState carries csDesigning on a form at design time just the same.
+
 - **Fix error messages that came back empty, on token fetch and on DB responses** (2026-09-18 – tempraturbo)
   A token fetch is a request of its own, and with AutoGetToken it is the first
   one every call makes - so a server that is down, slow, or presenting a
