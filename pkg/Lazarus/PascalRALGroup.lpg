@@ -10,6 +10,7 @@
       <Target FileName="Engine\indyral.lpk"/>
       <Target FileName="Engine\saguiral.lpk"/>
       <Target FileName="Engine\synopseral.lpk"/>
+      <Target FileName="Engine\msquicral.lpk"/>
       <Target FileName="Database\raldbpackage.lpk"/>
       <Target FileName="Database\raldbsqldblink.lpk"/>
       <Target FileName="Database\raldbzeoslink.lpk"/>

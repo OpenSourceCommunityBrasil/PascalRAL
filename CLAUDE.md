@@ -41,13 +41,45 @@ msbuild pkg\Delphi\Engine\IndyRAL.dproj /t:Build /p:Config=Release /p:Platform=W
   /p:DCC_UsePackage="rtl;IndySystem;IndyProtocols;IndyCore;PascalRAL;PascalRALDsgn"
 ```
 
-Three traps, in the order they bite:
+Seven traps, in the order they bite:
 
 1. **`/p:UsePackages=true` is mandatory.** The targets emit `-LU` only `Condition="'$(UsePackages)'==true Or '$(DCC_EnabledPackages)'=='true'"`, and **no `.dproj` in this repo sets either**. Without it `msbuild` produces a package with Indy/FireDAC linked *statically* — it compiles clean and the IDE then refuses it with a duplicate-unit error. Watch the size: `IndyRAL.bpl` comes out at 1.5 MB instead of 45 KB, `RALDBFireDACLink.bpl` at 2.9 MB instead of 104 KB.
 2. **Filter `DCC_UsePackage` against the `.dcp` that actually exist.** These lists accumulate whatever was installed when the `.dproj` was last saved; `IndyRAL.dproj` still names `IndyCore160`/`IndySystem160`/`IndyProtocols160`, and `RALDBFireDACObjects.dproj` still names `RESTDWCore`/`RESTDWSocketIndy`. With `-LU` on, a name with no `.dcp` is a hard `E2202: Required package 'IndyCore160' not found`. Keep only the entries with a matching `.dcp` under the lib or `Dcp` directory.
 3. **The `Base` PropertyGroup's `DCC_UnitSearchPath` does not get applied this way.** It only matters for `SynopseRAL`, because every other package names its units with explicit `in '..\..\src\...'` paths in the `.dpk` while the mORMot units are external. Pass them yourself, `$(mormot2)` expanded:
    `/p:DCC_UnitSearchPath="<src\base>;<src\utils>;<src\engine\synopse>;<m>;<m>\core;<m>\lib;<m>\crypt;<m>\net;<m>\db;<m>\rest;<m>\orm;<m>\soa;<m>\app;<m>\script;<m>\ui;<m>\tools;<m>\misc"`.
    `mormot2` is an **IDE** environment variable, so `msbuild` does not see it — pass `/p:mormot2=...` or set it in the shell.
+4. **Set `BDS`, `BDSCOMMONDIR` and `BDSLIB` yourself** when the shell was not
+   initialized by `rsvars.bat`. Without `BDS` the `.dproj` never imports
+   `CodeGear.Delphi.Targets` and `msbuild` answers
+   `MSB4057: the "Build" target does not exist in the project` — which reads like
+   a broken package and is not. `rsvars.bat` lists every variable it sets.
+5. **A `;` inside a `/p:` *value* is a property separator**, not part of the
+   value: `/p:DelphiLibraryPath=a;b` tries to set a second property `b` and dies
+   with `MSB1006: invalid property`. Escape each one as `%3B`.
+6. **`DCC_CBuilderOutput` is `All` in the `Base` group, and only Debug/Win32
+   turns it off.** Build Release and the compiler tries to emit C++ headers,
+   which rejects mORMot's old-style `object` types:
+   `E1025: Unsupported language feature: 'Object'` at line 1 of
+   `mormot.lib.openssl11.pas`. Only `SynopseRAL` hits it, so it reads like a
+   mORMot problem — it is not. Pass `/p:DCC_CBuilderOutput=None`; no package here
+   is consumed from C++Builder. This is also why the `.bpl` installed on a
+   developer machine are usually **Debug** builds, six times the sizes below:
+   Debug is the configuration that happens to disable the flag.
+7. **When a unit is "not found", add the package that owns it to
+   `DCC_UsePackage` — never this repo's `src` to `DCC_UnitSearchPath`.**
+   `RALDBFireDACObjects` stops at `F2613: Unit 'RALDBBase' not found`, because
+   that unit lives in `RALDBPackage`, which appears neither in the `.dpk`'s
+   `requires` nor in the `.dproj`'s `DCC_UsePackage`; add `RALDBPackage` and it
+   builds. Putting `src` on the unit search path also makes it build — and
+   silently **compiles `RALDBBase` into the `.bpl`** instead of referencing it.
+   Nothing complains until the IDE starts and refuses the package with
+   `Cannot load package 'RALDBFireDACObjects'. It contains unit 'RALDBBase',
+   which is also contained in package 'RALDBPackage'` — and answering **No**
+   there moves it to `Disabled Packages`, where it stays ignored even after the
+   `.bpl` is fixed (see the end of this section). To tell the two apart without
+   the IDE: the offending unit's name appears as a string inside the `.bpl` of
+   both packages. A healthy `RALDBFireDACObjects.bpl` has **zero** occurrences of
+   `RALDBBase`; a broken one has three.
 
 Healthy sizes after a full rebuild (Win32/Release): `PascalRAL` 542 KB, `PascalRALDsgn` 80, `IndyRAL` 45, `NetHttpRAL` 32, `SynopseRAL` 4432 (mORMot is statically linked — it has no runtime package, so this one is meant to be large), `RALDBPackage` 122, `RALDBFireDACLink` 104, `RALDBFireDACObjects` 91, `RALWizard` 136, `RALZStdCompress` 51, `RALBSONStorage` 66.
 
@@ -102,6 +134,41 @@ Routes are created with `Server.CreateRoute('name', HandlerProc, 'description')`
 ### Engines are subclasses, not adapters
 Each engine subclasses the core class rather than wrapping it: `TRALIndyServer`, `TRALSynopseServer`, `TRALfpHttpServer`, `TRALSaguiServer`, `TRALUniGUIServer` all descend from `TRALServer` and override `SetActive`, `SetPort`, `CreateRALSSL`, `IPv6IsImplemented`. Clients follow the same shape via `TRALClientHTTP` descendants (`TRALIndyClientHTTP`, etc.), selected at runtime by `TRALClient`. **Adding an engine means adding `RAL<Name>Server.pas`/`RAL<Name>Client.pas`, a `RAL<Name>Register.pas`, a package in both `pkg/Delphi/Engine` and `pkg/Lazarus/Engine`, and a `.dcr` (Delphi) + `.lrs` (Lazarus) icon resource.**
 
+### The MsQuic engine does not speak HTTP
+
+`TRALMsQuicServer` / `TRALMsQuicClientHTTP` (`src/engine/msquic`) put RAL's own
+length-prefixed binary frame straight onto QUIC streams. MsQuic implements the
+transport only - streams, TLS 1.3, ALPN - so there is no HTTP/3 framing and no
+QPACK, and **both ends must be RAL**: curl, a browser, a reverse proxy or a CDN
+cannot read it. That is the trade for what the transport gives, which is one
+stream per request (a lost packet delays only its own request, not the
+connection) and a 1-RTT handshake against TCP+TLS 1.2's 3.
+
+`MsQuic.pas` is a standalone binding - `SysUtils` plus the loader, no RAL unit -
+and is shared with a project outside this repo, so keep it free of RAL
+dependencies. Two things about it that do not announce themselves: `QUIC_SETTINGS`
+must stay 144 bytes in the MSVC layout, because the library reads the fields at
+fixed offsets and configures something else in silence when they move (the loader
+checks the size and refuses to load); and the library is only loaded by
+`SetActive(True)`, never from a constructor or an `initialization`, so the
+component drops onto a form on a machine with no `msquic.dll`.
+
+It needs `msquic.dll` / `libmsquic.so.2` from the **OpenSSL** build at runtime -
+the SChannel build has no TLS 1.3 on Windows 10 - or a path in `LibPath`.
+
+Two traps it hit that any unit here can hit:
+
+- **`Windows` goes before `SyncObjs` in a `uses` clause.** FPC's `Windows`
+  declares `TCriticalSection` as a *record* (the `TRTLCriticalSection` alias),
+  which shadows the class from `SyncObjs` and turns a plain
+  `vLock: TCriticalSection = nil` into `Syntax error, "(" expected but "NIL"
+  found` - pointing at the variable, not at the `uses`. Delphi has no such
+  declaration, so it is FPC-only.
+- **`AtomicIncrement`/`AtomicDecrement` are Delphi-only.** FPC 3.2.2 spells them
+  `InterLocked*` and declares the 64-bit pair only on 64-bit CPUs. Use
+  `RALAtomicInc`/`RALAtomicDec` (`RALTools`), which return the **new** value on
+  both compilers - `InterLockedExchangeAdd` returns the old one.
+
 `okhttp` is the one engine that does not follow all of it, and the reasons are worth knowing before copying it as a template: it is **Delphi-only** (the unit is built on `Androidapi.JNIBridge`/`TJavaLocal`, which FPC has no equivalent of, so there is no `pkg/Lazarus/Engine` package and cannot be one as written) and it carries **no `.dcr`**, because it puts nothing on the palette. It is also **client-only** — there is no OkHttp server.
 
 A platform-specific engine still has to be **declared and registered on every platform**, even where it does nothing. `TRALClientEngines`, the property editor behind `EngineType`, lists whatever `RegisterEngine` put in — and that runs from a unit initialization, so an engine wrapped entirely in `{$IFDEF ANDROID}` compiles to nothing on the IDE's own platform and its name can never be chosen. `RALOkHttpClient` keeps the class and the registration outside the IFDEF and lets `SendUrl` refuse with `emOkHttpAndroidOnly` elsewhere.
@@ -141,6 +208,31 @@ The callback always receives a valid `TRALResponse`, even when the request faile
 Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` is deliberately async and lets `SetActive`'s `FLoading` flag close the loop. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebMultiThread`; its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
 
 `ExecuteThread` is `virtual` and currently has **no override anywhere** — engines vary the transport (`TRALClientHTTP` descendants), never the threading.
+
+### Three things on `TRALClient` that look alike and are not
+
+- `TRALExecBehavior` decides **which thread** runs the request.
+- `PoolConnection` decides **which connection** it runs on, and applies to both
+  behaviours - it is not an execution mode.
+- The per-thread `Request` decides **whose data** it carries. The way the client
+  is used - fill `Request`, then call - cannot be made safe by locking, because
+  the caller holds the object across statements, so each thread gets its own and
+  no call site changes: the thread that built the client keeps the original
+  instance, and single-threaded code sees nothing.
+
+`TRALClient.PoolConnection` (`Enabled`, **default False**, plus `MaxIdle` and
+`IdleTimeout`) keeps the *engine object* - and with it the socket it has open -
+between calls, keyed by destination, so `scheme://host:port` from `BaseURL` with
+the route cut off. Handing an engine to a request for somewhere else is not
+wrong, every engine notices and reconnects, but it throws away the connection
+that was the point of keeping it.
+
+**It is not `ShareConnection`, and the two do not cancel out.** `ShareConnection`
+shares the *transport* between engines and only netHTTP, OkHttp and MsQuic
+implement it; with it on, a throwaway engine already finds the connection open,
+which is why those three never showed the collapse this pool fixes. The pool
+reuses the *engine*, which is what Indy, mORMot2 and fpHTTP - with no
+`ShareConnection` - have to rely on. Both on is fine.
 
 ### Which server certificate a client accepts
 

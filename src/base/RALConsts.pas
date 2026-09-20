@@ -34,6 +34,7 @@ const
   ENGINENETHTTP            = 'netHttp';
   ENGINEFPHTTP             = 'fpHttp';
   ENGINEOKHTTP             = 'OkHttp';
+  ENGINEMSQUIC             = 'MsQuic';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'
@@ -62,6 +63,16 @@ const
   // the dfm/lfm - so typing exactly 5000 in the Object Inspector produced a
   // component that ran with 30000.
   DEFAULTCONNECTTIMEOUT = 30000;
+  { How many idle client engines TRALClient keeps for reuse. An engine owns a
+    connection, so this is also the ceiling on connections one client holds
+    open while nothing is in flight. Past it a released engine is closed
+    instead of pooled, which is what the client did for EVERY engine before
+    the pool existed. }
+  RALMAXIDLEENGINES = 32;
+  { Milliseconds an engine may sit idle in TRALClient's pool before it is
+    closed instead of handed out again. Zero keeps it forever. Five minutes
+    is below what a server usually allows a kept-alive connection. }
+  RALENGINEIDLETIMEOUT = 300000;
   DEFAULTREQUESTTIMEOUT = 10000;
   // Consecutive redirects a client follows. Engines used to disagree without
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
