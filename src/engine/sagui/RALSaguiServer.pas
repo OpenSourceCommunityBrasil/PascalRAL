@@ -609,9 +609,16 @@ begin
     end;
   end;
 
-  SgLib.Check;
+  try
+    SgLib.Check;
+  except
+    if AValue then
+      inherited SetActive(False);
+    raise;
+  end;
   if AValue then
   begin
+    try
     { Every worker thread of this engine is created inside libmicrohttpd, so
       BeginThread never runs and IsMultiThread stays False - and that flag is
       what the memory manager reads to decide whether to lock at all:
@@ -639,7 +646,17 @@ begin
       SetPoolCount(PoolCount);
     end;
     if not InitializeServer then
+    begin
       FreeServerHandle;
+      raise Exception.CreateFmt(emServerListenFailed, ['Sagui', Port]);
+    end;
+    except
+      { the base already wrote Active := True; a server that says it is
+        active while nothing listens cannot even be started again, since
+        SetActive(True) is then a no-op. Same guard on every engine. }
+      inherited SetActive(False);
+      raise;
+    end;
   end
   else
   begin
@@ -756,9 +773,11 @@ begin
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
     begin
+      { it used to report the error and then call the nil pointer anyway }
       e := Exception.Create(emSaguiServerUnsupportedTLS);
       if assigned(OnServerError) then
         OnServerError(e);
+      raise e;
     end;
 
     Result := sg_httpsrv_tls_listen3(FHandle, pansichar(SSL.PrivateKey),

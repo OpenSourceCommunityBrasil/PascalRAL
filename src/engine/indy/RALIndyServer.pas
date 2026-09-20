@@ -394,7 +394,17 @@ begin
     IPVersion := Id_IPv4;
   end;
 
-  FHttp.Active := AValue;
+  { a bind that fails - port in use, no rights - must leave Active False: the
+    base already wrote True, and a server that says it is active while nothing
+    listens cannot even be started again, since SetActive(True) is then a
+    no-op. Same guard on every engine. }
+  try
+    FHttp.Active := AValue;
+  except
+    if AValue then
+      inherited SetActive(False);
+    raise;
+  end;
 end;
 
 procedure TRALIndyServer.SetListenQueue(const AValue: IntegerRAL);

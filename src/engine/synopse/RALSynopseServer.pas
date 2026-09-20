@@ -195,6 +195,11 @@ begin
 
   if AValue then
   begin
+    { anything below that raises must leave Active False: the base already
+      wrote True, and a server that says it is active while nothing listens
+      cannot even be started again, since SetActive(True) is then a no-op.
+      Same guard on every engine. }
+    try
     {$IFNDEF RALWindows}
     { http.sys IS the Windows kernel, so THttpApiServer does not even exist
       here. Without this the smHttpSys branch below is compiled away and the
@@ -292,6 +297,21 @@ begin
     else
     begin
       THttpServerSocketGeneric(FHttp).WaitStarted;
+    end;
+    except
+      if FHttp <> nil then
+      begin
+        { OnHttpTerminate would call Active := False on a server that is being
+          torn down right here }
+        FHttp.OnTerminate := nil;
+        try
+          FreeAndNil(FHttp);
+        except
+          FHttp := nil;
+        end;
+      end;
+      inherited SetActive(False);
+      raise;
     end;
   end
   else

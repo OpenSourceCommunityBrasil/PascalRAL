@@ -1,8 +1,12 @@
 /// Object Pascal binding for the MsQuic library (Microsoft QUIC), API version 2.
 ///
-/// Translated against the msquic.h shipped with MsQuic 2.6.1 (kept beside this
-/// unit as msquic.h.ref). Windows is the reference platform; the POSIX status
-/// codes differ and are not translated here.
+/// Translated against src/inc/msquic.h of the MsQuic 2.6.1 release
+/// (github.com/microsoft/msquic). Status codes are per platform - HRESULTs on
+/// Windows, errno values on Linux, as msquic_winuser.h and msquic_posix.h
+/// define them - and so is QUIC_FAILED: on Windows failure is the high bit, on
+/// POSIX it is any positive value, with PENDING and CONTINUE negative. Apple's
+/// errno numbering differs from Linux and is not translated, so MsQuicLoad
+/// refuses there instead of misreading every status.
 ///
 /// Three things decide whether this binding is correct, and all three are
 /// deliberate:
@@ -70,6 +74,8 @@ type
   QUIC_ADDRESS_FAMILY = Word;
 
 const
+{$IFDEF MSWINDOWS}
+  // msquic_winuser.h: HRESULTs, failure is the high bit
   QUIC_STATUS_SUCCESS               = QUIC_STATUS($00000000);
   QUIC_STATUS_PENDING               = QUIC_STATUS($000703E5);
   QUIC_STATUS_CONTINUE              = QUIC_STATUS($000704DE);
@@ -98,6 +104,47 @@ const
   QUIC_STATUS_ALPN_IN_USE           = QUIC_STATUS($80410009);
   QUIC_STATUS_CERT_EXPIRED          = QUIC_STATUS($800B0101);
   QUIC_STATUS_CERT_UNTRUSTED_ROOT   = QUIC_STATUS($800B0109);
+  QUIC_STATUS_CERT_NO_CERT          = QUIC_STATUS($8009030E);
+  /// QUIC_STATUS_TLS_ALERT(42): what a callback returns to refuse a peer's
+  /// certificate. The alerts occupy $80410100..$804101FF.
+  QUIC_STATUS_BAD_CERTIFICATE       = QUIC_STATUS($8041012A);
+  QUIC_STATUS_TLS_ALERT_BASE        = QUIC_STATUS($80410100);
+{$ELSE}
+  // msquic_posix.h on Linux: errno values, failure is any positive value.
+  // Apple numbers most of these differently; MsQuicLoad refuses there.
+  QUIC_STATUS_SUCCESS               = QUIC_STATUS(0);
+  QUIC_STATUS_PENDING               = QUIC_STATUS($FFFFFFFE); // -2
+  QUIC_STATUS_CONTINUE              = QUIC_STATUS($FFFFFFFF); // -1
+  QUIC_STATUS_OUT_OF_MEMORY         = QUIC_STATUS(12);       // ENOMEM
+  QUIC_STATUS_INVALID_PARAMETER     = QUIC_STATUS(22);       // EINVAL
+  QUIC_STATUS_INVALID_STATE         = QUIC_STATUS(1);        // EPERM
+  QUIC_STATUS_NOT_SUPPORTED         = QUIC_STATUS(95);       // EOPNOTSUPP
+  QUIC_STATUS_NOT_FOUND             = QUIC_STATUS(2);        // ENOENT
+  QUIC_STATUS_FILE_NOT_FOUND        = QUIC_STATUS(2);        // ENOENT
+  QUIC_STATUS_BUFFER_TOO_SMALL      = QUIC_STATUS(75);       // EOVERFLOW
+  QUIC_STATUS_HANDSHAKE_FAILURE     = QUIC_STATUS(103);      // ECONNABORTED
+  QUIC_STATUS_ABORTED               = QUIC_STATUS(125);      // ECANCELED
+  QUIC_STATUS_ADDRESS_IN_USE        = QUIC_STATUS(98);       // EADDRINUSE
+  QUIC_STATUS_INVALID_ADDRESS       = QUIC_STATUS(97);       // EAFNOSUPPORT
+  QUIC_STATUS_CONNECTION_TIMEOUT    = QUIC_STATUS(110);      // ETIMEDOUT
+  QUIC_STATUS_CONNECTION_IDLE       = QUIC_STATUS(62);       // ETIME
+  QUIC_STATUS_UNREACHABLE           = QUIC_STATUS(113);      // EHOSTUNREACH
+  QUIC_STATUS_INTERNAL_ERROR        = QUIC_STATUS(5);        // EIO
+  QUIC_STATUS_CONNECTION_REFUSED    = QUIC_STATUS(111);      // ECONNREFUSED
+  QUIC_STATUS_PROTOCOL_ERROR        = QUIC_STATUS(71);       // EPROTO
+  QUIC_STATUS_VER_NEG_ERROR         = QUIC_STATUS(93);       // EPROTONOSUPPORT
+  QUIC_STATUS_TLS_ERROR             = QUIC_STATUS(126);      // ENOKEY
+  QUIC_STATUS_USER_CANCELED         = QUIC_STATUS(130);      // EOWNERDEAD
+  QUIC_STATUS_ALPN_NEG_FAILURE      = QUIC_STATUS(92);       // ENOPROTOOPT
+  QUIC_STATUS_STREAM_LIMIT_REACHED  = QUIC_STATUS(86);       // ESTRPIPE
+  QUIC_STATUS_ALPN_IN_USE           = QUIC_STATUS(91);       // EPROTOTYPE
+  // QUIC_STATUS_CERT_ERROR(n) = $BEBC200 + n, QUIC_STATUS_TLS_ALERT(n) = $BEBC300 + n
+  QUIC_STATUS_CERT_EXPIRED          = QUIC_STATUS($0BEBC201);
+  QUIC_STATUS_CERT_UNTRUSTED_ROOT   = QUIC_STATUS($0BEBC202);
+  QUIC_STATUS_CERT_NO_CERT          = QUIC_STATUS($0BEBC203);
+  QUIC_STATUS_BAD_CERTIFICATE       = QUIC_STATUS($0BEBC32A);
+  QUIC_STATUS_TLS_ALERT_BASE        = QUIC_STATUS($0BEBC300);
+{$ENDIF}
 
   // QUIC_EXECUTION_PROFILE
   QUIC_EXECUTION_PROFILE_LOW_LATENCY         = 0;
@@ -203,10 +250,10 @@ const
   QUIC_STREAM_EVENT_PEER_ACCEPTED          = 9;
   QUIC_STREAM_EVENT_CANCEL_ON_LOSS         = 10;
 
-  // Address families. These are the Windows numbers; AF_INET6 is 10 on Linux.
+  // Address families: AF_INET6 is 23 on Windows and 10 on Linux.
   QUIC_ADDRESS_FAMILY_UNSPEC = 0;
   QUIC_ADDRESS_FAMILY_INET   = 2;
-  QUIC_ADDRESS_FAMILY_INET6  = 23;
+  QUIC_ADDRESS_FAMILY_INET6  = {$IFDEF MSWINDOWS}23{$ELSE}10{$ENDIF};
 
   // QUIC_PARAM_*
   QUIC_PARAM_GLOBAL_LIBRARY_VERSION  = $01000004;
@@ -294,6 +341,15 @@ type
     CertificateFile: PAnsiChar;
   end;
   PQUIC_CERTIFICATE_FILE = ^QUIC_CERTIFICATE_FILE;
+
+  /// QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE_PROTECTED: the same two files plus
+  /// the password of an encrypted private key.
+  QUIC_CERTIFICATE_FILE_PROTECTED = record
+    PrivateKeyFile: PAnsiChar;
+    CertificateFile: PAnsiChar;
+    PrivateKeyPassword: PAnsiChar;
+  end;
+  PQUIC_CERTIFICATE_FILE_PROTECTED = ^QUIC_CERTIFICATE_FILE_PROTECTED;
 
   QUIC_CERTIFICATE_PKCS12 = record
     Asn1Blob: PByte;
@@ -457,6 +513,21 @@ type
   end;
   PQuicPeerStreamStartedData = ^TQuicPeerStreamStartedData;
 
+  /// QUIC_CONNECTION_EVENT.PEER_CERTIFICATE_RECEIVED, indicated only with
+  /// QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED. With
+  /// QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES the two pointers are
+  /// QUIC_BUFFERs: the DER of the peer's certificate, and the PKCS#7 DER of
+  /// its chain. With DEFER_CERTIFICATE_VALIDATION the library's own verdict
+  /// arrives in DeferredStatus (SUCCESS when it trusted the certificate) and
+  /// the callback's return value is the final decision.
+  TQuicPeerCertificateReceivedData = packed record
+    Certificate: Pointer;
+    DeferredErrorFlags: Cardinal;
+    DeferredStatus: QUIC_STATUS;
+    Chain: Pointer;
+  end;
+  PQuicPeerCertificateReceivedData = ^TQuicPeerCertificateReceivedData;
+
   /// QUIC_STREAM_EVENT.RECEIVE
   TQuicReceiveData = packed record
     AbsoluteOffset: UInt64;
@@ -576,6 +647,14 @@ var
 
 function QUIC_FAILED(const AStatus: QUIC_STATUS): Boolean;
 function QUIC_SUCCEEDED(const AStatus: QUIC_STATUS): Boolean;
+/// Whether a status is about the peer's certificate - a TLS alert or one of
+/// the CERT_* codes - as opposed to the network or the library.
+function QuicStatusIsCertError(const AStatus: QUIC_STATUS): Boolean;
+/// Text of a QUIC_ADDR: dotted IPv4, or IPv6 with its longest zero run
+/// collapsed the way RFC 5952 writes it. An IPv4-mapped IPv6 address comes
+/// back as the IPv4 it carries, which is what a dual-stack listener reports
+/// for a v4 peer. APort receives the port in host order.
+function QuicAddrToStr(const AAddr: QUIC_ADDR; out APort: Word): string;
 
 /// Loads msquic and fills MsQuicApi. Returns QUIC_STATUS_SUCCESS, or the status
 /// MsQuicOpenVersion failed with; QUIC_STATUS_NOT_FOUND when the library or the
@@ -610,12 +689,101 @@ var
 
 function QUIC_FAILED(const AStatus: QUIC_STATUS): Boolean;
 begin
+  {$IFDEF MSWINDOWS}
   Result := (AStatus and $80000000) <> 0;
+  {$ELSE}
+  Result := Integer(AStatus) > 0;
+  {$ENDIF}
 end;
 
 function QUIC_SUCCEEDED(const AStatus: QUIC_STATUS): Boolean;
 begin
-  Result := (AStatus and $80000000) = 0;
+  Result := not QUIC_FAILED(AStatus);
+end;
+
+function QuicStatusIsCertError(const AStatus: QUIC_STATUS): Boolean;
+begin
+  Result := (AStatus = QUIC_STATUS_CERT_EXPIRED) or
+            (AStatus = QUIC_STATUS_CERT_UNTRUSTED_ROOT) or
+            (AStatus = QUIC_STATUS_CERT_NO_CERT) or
+            ((AStatus and $FFFFFF00) = QUIC_STATUS_TLS_ALERT_BASE)
+            {$IFNDEF MSWINDOWS} or ((AStatus and $FFFFFF00) = $0BEBC200){$ENDIF};
+end;
+
+function QuicAddrToStr(const AAddr: QUIC_ADDR; out APort: Word): string;
+var
+  vWords: array[0..7] of Word;
+  vInt, vRun, vRunLen, vBest, vBestLen: Integer;
+  vMapped: Boolean;
+begin
+  Result := '';
+  // same offset for both families, network order
+  APort := (AAddr.v4_port shr 8) or ((AAddr.v4_port and $FF) shl 8);
+
+  if AAddr.si_family = QUIC_ADDRESS_FAMILY_INET then
+  begin
+    // v4_addr holds the four bytes in network order
+    Result := Format('%d.%d.%d.%d', [AAddr.v4_addr and $FF, (AAddr.v4_addr shr 8) and $FF,
+      (AAddr.v4_addr shr 16) and $FF, (AAddr.v4_addr shr 24) and $FF]);
+    Exit;
+  end;
+  if AAddr.si_family <> QUIC_ADDRESS_FAMILY_INET6 then
+    Exit;
+
+  // ::ffff:a.b.c.d - a v4 peer seen through a dual-stack socket
+  vMapped := (AAddr.v6_addr[10] = $FF) and (AAddr.v6_addr[11] = $FF);
+  for vInt := 0 to 9 do
+    if AAddr.v6_addr[vInt] <> 0 then
+      vMapped := False;
+  if vMapped then
+  begin
+    Result := Format('%d.%d.%d.%d', [AAddr.v6_addr[12], AAddr.v6_addr[13],
+      AAddr.v6_addr[14], AAddr.v6_addr[15]]);
+    Exit;
+  end;
+
+  for vInt := 0 to 7 do
+    vWords[vInt] := (Word(AAddr.v6_addr[vInt * 2]) shl 8) or AAddr.v6_addr[vInt * 2 + 1];
+
+  // longest run of zero groups, two or more, is written as '::'
+  vBest := -1;
+  vBestLen := 0;
+  vInt := 0;
+  while vInt < 8 do
+  begin
+    if vWords[vInt] = 0 then
+    begin
+      vRun := vInt;
+      vRunLen := 0;
+      while (vInt < 8) and (vWords[vInt] = 0) do
+      begin
+        Inc(vRunLen);
+        Inc(vInt);
+      end;
+      if (vRunLen >= 2) and (vRunLen > vBestLen) then
+      begin
+        vBest := vRun;
+        vBestLen := vRunLen;
+      end;
+    end
+    else
+      Inc(vInt);
+  end;
+
+  vInt := 0;
+  while vInt < 8 do
+  begin
+    if vInt = vBest then
+    begin
+      Result := Result + '::';
+      Inc(vInt, vBestLen);
+      Continue;
+    end;
+    if (Result <> '') and (Result[Length(Result)] <> ':') then
+      Result := Result + ':';
+    Result := Result + LowerCase(IntToHex(vWords[vInt], 1));
+    Inc(vInt);
+  end;
 end;
 
 function MsQuicIsLoaded: Boolean;
@@ -639,7 +807,9 @@ begin
     QUIC_STATUS_INVALID_STATE:        Result := 'INVALID_STATE';
     QUIC_STATUS_NOT_SUPPORTED:        Result := 'NOT_SUPPORTED';
     QUIC_STATUS_NOT_FOUND:            Result := 'NOT_FOUND';
+    {$IFDEF MSWINDOWS} // the same errno as NOT_FOUND on POSIX
     QUIC_STATUS_FILE_NOT_FOUND:       Result := 'FILE_NOT_FOUND';
+    {$ENDIF}
     QUIC_STATUS_BUFFER_TOO_SMALL:     Result := 'BUFFER_TOO_SMALL';
     QUIC_STATUS_HANDSHAKE_FAILURE:    Result := 'HANDSHAKE_FAILURE';
     QUIC_STATUS_ABORTED:              Result := 'ABORTED';
@@ -659,8 +829,13 @@ begin
     QUIC_STATUS_ALPN_IN_USE:          Result := 'ALPN_IN_USE';
     QUIC_STATUS_CERT_EXPIRED:         Result := 'CERT_EXPIRED';
     QUIC_STATUS_CERT_UNTRUSTED_ROOT:  Result := 'CERT_UNTRUSTED_ROOT';
+    QUIC_STATUS_CERT_NO_CERT:         Result := 'CERT_NO_CERT';
+    QUIC_STATUS_BAD_CERTIFICATE:      Result := 'BAD_CERTIFICATE';
   else
-    Result := '0x' + IntToHex(AStatus, 8);
+    if (AStatus and $FFFFFF00) = QUIC_STATUS_TLS_ALERT_BASE then
+      Result := 'TLS_ALERT_' + IntToStr(AStatus and $FF)
+    else
+      Result := '0x' + IntToHex(AStatus, 8);
   end;
 end;
 
@@ -696,6 +871,14 @@ begin
     Result := QUIC_STATUS_SUCCESS;
     Exit;
   end;
+
+  {$IF DEFINED(DARWIN) OR DEFINED(MACOS) OR DEFINED(IOS)}
+  // errno values are not the Linux ones here and the tables above would misread
+  // every status - a failure as success included. Refusing is the honest answer.
+  FLoadError := 'the MsQuic status codes of this platform are not translated';
+  Result := QUIC_STATUS_NOT_SUPPORTED;
+  Exit;
+  {$IFEND}
 
   // A mismatch here would not fail loudly: MsQuic would read the settings it is
   // given at the offsets it expects and silently configure something else.
@@ -744,7 +927,7 @@ begin
     FreeLibrary(FLibHandle);
     FLibHandle := 0;
     FClose := nil;
-    FLoadError := Format('MsQuicOpenVersion falhou: %s', [QuicStatusToStr(Result)]);
+    FLoadError := Format('MsQuicOpenVersion failed: %s', [QuicStatusToStr(Result)]);
     if QUIC_SUCCEEDED(Result) then
       Result := QUIC_STATUS_INTERNAL_ERROR;
     Exit;

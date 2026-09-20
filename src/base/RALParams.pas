@@ -193,6 +193,8 @@ type
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
       AKind: TRALParamKind);
+    /// The name=value pair of a Set-Cookie header, as an rpkCOOKIE param.
+    procedure AddSetCookie(const AValue: StringRAL);
     /// Compresses the input stream into a TStream.
     function Compress(AStream: TStream): TStream;
     /// Decompresses the input string into an UTF8 String.
@@ -229,6 +231,11 @@ type
     function AddFile(const AParamName: StringRAL; const AFileName: StringRAL): TRALParam; overload;
     /// Creates a new RALParam in the internal list and fills it with a file from the AFileName.
     function AddFile(const AFileName: StringRAL): TRALParam; overload;
+    /// A header received from the wire. Same as AddParam with rpkHEADER, plus
+    /// what every engine owes the application: a Set-Cookie also lands as an
+    /// rpkCOOKIE param, so cookies a server sets read the same whatever the
+    /// transport was.
+    procedure AddHeader(const AName, AValue: StringRAL);
     /// AddParam is used to include a TRALParam Object into the internal list.
     function AddParam(const AName: StringRAL; const AValue: StringRAL;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
@@ -2235,7 +2242,44 @@ begin
       vParam.AsString := vValue;
     vParam.ContentType := rctTEXTPLAIN;
     vParam.Kind := AKind;
+
+    { the Indy and mORMot2 clients feed their response headers through here }
+    if (AKind = rpkHEADER) and (vValue <> '') and RALSameName(vName, 'Set-Cookie') then
+      AddSetCookie(vValue);
   end;
+end;
+
+{ ONE RULE FOR EVERY ENGINE: a Set-Cookie the server sent is also a cookie
+  param of the response - name and value only, the attributes after the first
+  ';' are the browser's business. netHTTP, fpHTTP and OkHttp each did this in
+  their own way while Indy, mORMot2 and MsQuic did not, so whether an
+  application could read a cookie the server set depended on the transport.
+  It also keeps several cookies alive: AddParam replaces a param by name and
+  kind, so as headers alone only the LAST Set-Cookie of an answer survived. }
+procedure TRALParams.AddSetCookie(const AValue: StringRAL);
+var
+  vPos: IntegerRAL;
+  vPair, vName: StringRAL;
+begin
+  vPos := Pos(StringRAL(';'), AValue);
+  if vPos > 0 then
+    vPair := Copy(AValue, POSINISTR, vPos - 1)
+  else
+    vPair := AValue;
+
+  vPos := Pos(StringRAL('='), vPair);
+  if vPos <= 0 then
+    Exit;
+  vName := RALTrim(Copy(vPair, POSINISTR, vPos - 1));
+  if vName <> '' then
+    AddParam(vName, RALTrim(Copy(vPair, vPos + 1, Length(vPair))), rpkCOOKIE);
+end;
+
+procedure TRALParams.AddHeader(const AName, AValue: StringRAL);
+begin
+  AddParam(AName, AValue, rpkHEADER);
+  if RALSameName(AName, 'Set-Cookie') then
+    AddSetCookie(AValue);
 end;
 
 function TRALParams.NextParamInt: IntegerRAL;

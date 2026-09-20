@@ -36,7 +36,7 @@ type
     property CertificateFile: TFileName read FCertificateFile write FCertificateFile;
     /// PEM private key matching CertificateFile. Required.
     property PrivateKeyFile: TFileName read FPrivateKeyFile write FPrivateKeyFile;
-    /// Password of the private key, when it is encrypted.
+    /// Password of the private key, when it is encrypted. Empty for a plain key.
     property PrivateKeyPassword: StringRAL read FPrivateKeyPassword
       write FPrivateKeyPassword;
   end;
@@ -50,6 +50,19 @@ type
   { named on purpose: two anonymous "array of TRALMsQuicWork" are different types
     to the compiler and cannot be assigned to each other }
   TRALMsQuicWorkArray = array of TRALMsQuicWork;
+
+  { TRALMsQuicConn }
+
+  /// One accepted connection: what the listener learned about the peer, kept
+  /// for every stream the peer opens on it. It is the connection callback's
+  /// context, created when the connection is accepted and freed right after
+  /// the handle is closed, when the library promises no further event.
+  TRALMsQuicConn = class
+  public
+    Server: TRALMsQuicServer;
+    ClientIP: StringRAL;
+    ClientPort: IntegerRAL;
+  end;
 
   { TRALMsQuicStream }
 
@@ -68,6 +81,11 @@ type
     Received: TMemoryStream;
     Stream: HQUIC;
     RefCount: Integer;
+    ClientIP: StringRAL;
+    ClientPort: IntegerRAL;
+    /// the peer sent more than MaxRequestSize: the rest was dropped as it
+    /// arrived and the answer is a 413, without the body ever being held
+    Oversized: boolean;
     constructor Create(AServer: TRALMsQuicServer);
     destructor Destroy; override;
     procedure AddRef;
@@ -98,17 +116,17 @@ type
   /// One request per bidirectional stream, and the stream itself delimits the
   /// message: the peer closes its send side when the request is complete and
   /// this engine closes its own when the answer is. There is no need for a
-  /// total length, and no header block to parse - the headers travel as the
-  /// same "Name: Value" lines RAL already builds for every other engine.
+  /// total length. Headers travel as (name, value) pairs, never as text.
   ///
   ///   request   uint8  method (TRALMethod ordinal)
   ///             uint32 length + URL bytes
-  ///             uint32 length + header lines
+  ///             uint32 count, then per header: uint32 length + name,
+  ///                                            uint32 length + value
   ///             uint32 length + body
   ///
   ///   response  uint16 status code
   ///             uint32 length + content type
-  ///             uint32 length + header lines
+  ///             uint32 count + header pairs, as above
   ///             uint32 length + body
   ///
   /// All sizes are little endian. A frame that does not fit what arrived is
@@ -127,12 +145,10 @@ type
   /// - An exception must never cross back into the C frame that called us, so
   ///   every callback ends in an except that turns it into a QUIC status.
   ///
-  /// The route handler therefore runs on a MsQuic thread, exactly as it runs on
-  /// an engine thread everywhere else.
+  /// The route handler does NOT run on those threads: a request is queued and
+  /// answered by the dispatch pool - see PoolCount.
   { TRALMsQuicWorker }
 
-  /// The server has exactly one of these - see TRALMsQuicServer.StartPool for
-  /// why a second one costs instead of paying.
   TRALMsQuicWorker = class(TThread)
   private
     FServer: TRALMsQuicServer;
@@ -158,6 +174,7 @@ type
     FKeepAliveMs: IntegerRAL;
     FMigration: boolean;
     FPacing: boolean;
+    FPoolCount: IntegerRAL;
     { The dispatch pool. MsQuic gives a request to one of ITS worker threads,
       and that thread cannot move another packet until the callback returns -
       so running the RAL pipeline there caps the whole server at however many
@@ -168,12 +185,13 @@ type
       instead, and the MsQuic thread only queues. }
     FQueue: TRALMsQuicWorkArray;
     FQHead, FQTail, FQCount: IntegerRAL;
-    { whether the worker is parked on FQSignal. Enqueue only pays for a kernel
-      signal when it actually is asleep. }
-    FQWaiting: boolean;
+    { how many workers are parked on FQSignal. Enqueue only pays for a kernel
+      signal when somebody is actually asleep, and a worker with others parked
+      takes one item instead of a batch, so they get to run too. }
+    FQWaiters: IntegerRAL;
     FQLock: TCriticalSection;
     FQSignal: TEvent;
-    FWorker: TRALMsQuicWorker;
+    FWorkers: array of TRALMsQuicWorker;
     FPoolRunning: boolean;
     procedure StartPool;
     procedure StopPool;
@@ -185,6 +203,8 @@ type
     function GetSSL: TRALMsQuicSSL;
     procedure SetAlpn(const AValue: StringRAL);
     function GetAlpn: StringRAL;
+    procedure SetMaxStreamsPerConnection(const AValue: IntegerRAL);
+    procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetSSL(const AValue: TRALMsQuicSSL);
   protected
     function CreateRALSSL: TRALSSL; override;
@@ -194,34 +214,37 @@ type
     /// Builds the answer bytes for one request frame. Public to the unit's
     /// callbacks only; it is where ValidateRequest and ProcessCommands run.
     function HandleFrame(ARequest: PByte; ASize: IntegerRAL;
-                         const AClientIP: StringRAL): TBytes;
+                         const AClientIP: StringRAL; AClientPort: IntegerRAL;
+                         AOversized: boolean): TBytes;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// How many connections this listener has accepted since it started, and
-    /// how many requests came in on them. The RATIO is the only direct proof
-    /// that a client is multiplexing: many requests over few connections is
-    /// what ShareConnection is supposed to produce, and counting is the way to
-    /// know instead of assuming.
+    /// How many connections this listener has accepted since it was last
+    /// activated, and how many requests came in on them. The RATIO is the
+    /// only direct proof that a client is multiplexing: many requests over
+    /// few connections is what ShareConnection is supposed to produce, and
+    /// counting is the way to know instead of assuming.
     property ConnectionCount: IntegerRAL read FConnections;
     property RequestCount: IntegerRAL read FRequests;
   published
     /// ALPN both ends must agree on. A server and a client with different
     /// values never complete a handshake, which is the point: it keeps two
-    /// unrelated services on the same UDP port apart.
+    /// unrelated services on the same UDP port apart. RALQUICALPN is what the
+    /// RAL client offers unless TRALMsQuicClientHTTP.DefaultAlpn is changed.
     property Alpn: StringRAL read GetAlpn write SetAlpn;
     /// How long a connection may sit idle before QUIC closes it, in
-    /// milliseconds. Zero disables the timeout.
+    /// milliseconds. Zero disables the timeout. QUIC settles on the smaller
+    /// of the two peers' values; the RAL client starts from the same one.
     property IdleTimeout: IntegerRAL read FIdleTimeoutMs write FIdleTimeoutMs
-      default 30000;
+      default RALQUICIDLETIMEOUT;
     /// Where to load msquic from. Empty means the platform default name, found
     /// through the usual search path.
     property LibPath: TFileName read FLibPath write FLibPath;
     /// How many requests one client may have in flight on a single connection.
     /// This is the ceiling on multiplexing, and it is what the peer is told
-    /// during the handshake.
+    /// during the handshake. QUIC carries it in 16 bits: 1 to 65535.
     property MaxStreamsPerConnection: IntegerRAL read FMaxStreamsPerConnection
-      write FMaxStreamsPerConnection default 1024;
+      write SetMaxStreamsPerConnection default 1024;
     /// How long QUIC may sit on an acknowledgement, in milliseconds. The
     /// protocol default is 25, which suits bulk transfer and punishes
     /// request/response - see the note in OpenConfiguration.
@@ -250,6 +273,19 @@ type
     /// Whether QUIC paces its sends. Off by default here - see the note in
     /// OpenConfiguration; turn it on for a server that ships large bodies.
     property Pacing: boolean read FPacing write FPacing default False;
+    { How many threads answer requests - see StartPool for the measurements.
+
+      ONE is the default and is right for a route that only computes: the
+      transport hands a request over for about 18 us of CPU, a single thread
+      answers them as fast as they arrive, and a second one measured flat to
+      worse on every client shape. It is WRONG for a route that waits - a
+      database call, a file, a slow peer - because with one thread that wait
+      is the whole server's wait: a 50 ms query caps the server at 20 requests
+      a second whatever the number of connections. TRALDBModule and the DAO
+      are exactly that kind of route, so a server that publishes them wants
+      this at the size of its database pool. Assigning it on a running server
+      restarts it, the way Port does. }
+    property PoolCount: IntegerRAL read FPoolCount write SetPoolCount default 1;
     property SSL: TRALMsQuicSSL read GetSSL write SetSSL;
   end;
 
@@ -274,9 +310,9 @@ type
 
 const
   RALMsQuicSrvPhaseName: array[TRALMsQuicSrvPhase] of StringRAL = (
-    'criar request+response', 'decodificar frame', 'ValidateRequest',
-    'ProcessCommands (rota + handler)', 'montar resposta',
-    '  .. AddParam x4', '  .. texto dos headers', '  .. ResponseText', '  .. montar bytes');
+    'create request+response', 'decode frame', 'ValidateRequest',
+    'ProcessCommands (route + handler)', 'build answer',
+    '  .. AddParam x4', '  .. header pairs', '  .. ResponseStream', '  .. assemble bytes');
 
 var
   gSrvPhase: array[TRALMsQuicSrvPhase] of Int64;
@@ -288,10 +324,9 @@ var
   gCbTicks: Int64;
   gInFlight: Integer;
   gMaxInFlight: Integer;
-  { How many DIFFERENT MsQuic worker threads ever ran a request. If that number
-    is far below the number of cores while twenty requests are in flight, the
-    work is not being spread and no amount of shaving inside HandleFrame will
-    help. }
+  { How many DIFFERENT threads ever ran a request. If that number is far below
+    the number of cores while twenty requests are in flight, the work is not
+    being spread and no amount of shaving inside HandleFrame will help. }
   gWorkers: Integer;
   { what the pool threads actually spend their time on: blocked waiting for
     work, versus doing it - and how often a wake found nothing }
@@ -337,32 +372,32 @@ var
 begin
   if (gSrvReqs = 0) or (gSrvFreq = 0) then
   begin
-    Result := 'sem amostras';
+    Result := 'no samples';
     Exit;
   end;
   vTotal := 0;
   for vPhase := Low(TRALMsQuicSrvPhase) to High(TRALMsQuicSrvPhase) do
     if vPhase <> spBuild then
       vTotal := vTotal + gSrvPhase[vPhase];
-  Result := Format('%d requisicoes, %.3f ms dentro de HandleFrame por requisicao',
+  Result := Format('%d requests, %.3f ms inside HandleFrame per request',
     [gSrvReqs, vTotal / gSrvFreq * 1000 / gSrvReqs]) + HTTPLineBreak;
-  Result := Result + Format('  callback inteiro: %.3f ms/req   ' +
-    'threads worker usadas: %d   concorrencia maxima: %d',
+  Result := Result + Format('  whole callback: %.3f ms/req   ' +
+    'worker threads used: %d   peak concurrency: %d',
     [gCbTicks / gSrvFreq * 1000 / gSrvReqs, gWorkers, gMaxInFlight]) +
     HTTPLineBreak;
   vSamples := gQSamples;
   if vSamples < 1 then
     vSamples := 1;
-  Result := Result + Format('  HandleFrame %.3f  SendAndFinish %.3f  pegar da fila %.3f ms/req',
+  Result := Result + Format('  HandleFrame %.3f  SendAndFinish %.3f  dequeue %.3f ms/req',
     [gHandleTicks / gSrvFreq * 1000 / gSrvReqs,
      gSendTicks / gSrvFreq * 1000 / gSrvReqs,
      gDeqTicks / gSrvFreq * 1000 / gSrvReqs]) + HTTPLineBreak;
-  Result := Result + Format('  fechar o stream (fora do callback): %.3f ms/req',
+  Result := Result + Format('  closing the stream (outside the callback): %.3f ms/req',
     [gRelTicks / gSrvFreq * 1000 / gSrvReqs]) + HTTPLineBreak;
-  Result := Result + Format('  fila: profundidade media %.2f  maxima %d  (%d amostras)',
+  Result := Result + Format('  queue: mean depth %.2f  max %d  (%d samples)',
     [gQDepthSum / vSamples, gQDepthMax, gQSamples]) + HTTPLineBreak;
-  Result := Result + Format('  bloqueado esperando trabalho: %.3f ms/req   ' +
-    'acordou com trabalho: %d   acordou vazio: %d',
+  Result := Result + Format('  blocked waiting for work: %.3f ms/req   ' +
+    'woke with work: %d   woke empty: %d',
     [gWaitTicks / gSrvFreq * 1000 / gSrvReqs, gWakeOk, gWakeEmpty]) +
     HTTPLineBreak;
   for vPhase := Low(TRALMsQuicSrvPhase) to High(TRALMsQuicSrvPhase) do
@@ -445,7 +480,6 @@ begin
   Result := True;
 end;
 
-
 { HEADERS TRAVEL AS PAIRS, NOT AS TEXT.
 
   They used to be one block built with AssignParamsListText on the sending side
@@ -525,7 +559,6 @@ function AddTextHeaders(var AHeaders: TRALMsQuicHeaders; var ACount: IntegerRAL;
   ASize: IntegerRAL; const AText: StringRAL): IntegerRAL;
 var
   vStart, vInt, vHigh, vSep: IntegerRAL;
-  vLine: StringRAL;
 
   procedure PutLine(const ALine: StringRAL);
   begin
@@ -578,13 +611,6 @@ begin
     ADest := PutBlockStr(ADest, AHeaders[vInt].Value);
   end;
   Result := ADest;
-end;
-
-function BytesOfStr(const AText: StringRAL): TBytes;
-begin
-  SetLength(Result, Length(AText));
-  if Length(Result) > 0 then
-    Move(AText[POSINISTR], Result[0], Length(Result));
 end;
 
 /// Hands ABytes to MsQuic as the last thing on AStream. Ownership of the bytes
@@ -647,6 +673,8 @@ function RALMsQuicListenerCallback(Listener: HQUIC; Context: Pointer;
 var
   vServer: TRALMsQuicServer;
   vNew: PQuicNewConnectionData;
+  vConn: TRALMsQuicConn;
+  vPort: Word;
 begin
   Result := QUIC_STATUS_SUCCESS;
   try
@@ -655,10 +683,27 @@ begin
       vServer := TRALMsQuicServer(Context);
       vNew := PQuicNewConnectionData(@Event^.Data[0]);
       RALAtomicInc(vServer.FConnections);
+
+      { the peer's address is known here and nowhere cheaper: every stream on
+        this connection will report it, and TRALSecurity keys IP blocking,
+        brute force and flood protection on it }
+      vConn := TRALMsQuicConn.Create;
+      vConn.Server := vServer;
+      if (vNew^.Info <> nil) and (vNew^.Info^.RemoteAddress <> nil) then
+      begin
+        vConn.ClientIP := StringRAL(QuicAddrToStr(vNew^.Info^.RemoteAddress^, vPort));
+        vConn.ClientPort := vPort;
+      end;
+
       MsQuicApi^.SetCallbackHandler(vNew^.Connection,
-        @RALMsQuicConnectionCallback, vServer);
+        @RALMsQuicConnectionCallback, vConn);
       Result := MsQuicApi^.ConnectionSetConfiguration(vNew^.Connection,
         vServer.FConfiguration);
+      { on failure the library rejects the connection itself. The context is
+        deliberately not freed here: whether a SHUTDOWN_COMPLETE still reaches
+        the handler is the library's call, and a freed context under it would
+        be worse than one small object left behind on a path that needs a
+        broken configuration to be reached at all. }
     end;
   except
     Result := QUIC_STATUS_INTERNAL_ERROR;
@@ -668,25 +713,30 @@ end;
 function RALMsQuicConnectionCallback(Connection: HQUIC; Context: Pointer;
   Event: PQUIC_CONNECTION_EVENT): QUIC_STATUS; cdecl;
 var
-  vServer: TRALMsQuicServer;
+  vConn: TRALMsQuicConn;
   vStarted: PQuicPeerStreamStartedData;
   vCtx: TRALMsQuicStream;
 begin
   Result := QUIC_STATUS_SUCCESS;
   try
-    vServer := TRALMsQuicServer(Context);
+    vConn := TRALMsQuicConn(Context);
     case Event^.EventType of
       QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
         begin
           vStarted := PQuicPeerStreamStartedData(@Event^.Data[0]);
-          vCtx := TRALMsQuicStream.Create(vServer);
+          vCtx := TRALMsQuicStream.Create(vConn.Server);
           vCtx.Stream := vStarted^.Stream;
+          vCtx.ClientIP := vConn.ClientIP;
+          vCtx.ClientPort := vConn.ClientPort;
           MsQuicApi^.SetCallbackHandler(vStarted^.Stream,
             @RALMsQuicStreamCallback, vCtx);
         end;
       QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
-        // MsQuic is done with the handle and will not call back again.
-        MsQuicApi^.ConnectionClose(Connection);
+        begin
+          // MsQuic is done with the handle and will not call back again.
+          MsQuicApi^.ConnectionClose(Connection);
+          vConn.Free;
+        end;
     end;
   except
     Result := QUIC_STATUS_INTERNAL_ERROR;
@@ -700,7 +750,7 @@ var
   vRecv: PQuicReceiveData;
   vSendCtx: PRALMsQuicSendCtx;
   vIndex: Cardinal;
-  vResponse: TBytes;
+  vLimit: Int64RAL;
 begin
   Result := QUIC_STATUS_SUCCESS;
   vCtx := TRALMsQuicStream(Context);
@@ -709,7 +759,19 @@ begin
       QUIC_STREAM_EVENT_RECEIVE:
         begin
           vRecv := PQuicReceiveData(@Event^.Data[0]);
-          if vRecv^.BufferCount > 0 then
+          { MaxRequestSize is enforced HERE, before the bytes are kept: the
+            other engines read a whole body before RAL sees it, and this one
+            used to as well - a peer could hold as much memory as it cared to
+            send. Past the limit the rest is drained and dropped, and the
+            answer is the same 413 ValidateRequest gives. }
+          vLimit := vCtx.Server.MaxRequestSize;
+          if (not vCtx.Oversized) and (vLimit > 0) and
+             (vCtx.Received.Position + Int64RAL(vRecv^.TotalBufferLength) > vLimit) then
+          begin
+            vCtx.Oversized := True;
+            vCtx.Received.Clear;
+          end;
+          if (not vCtx.Oversized) and (vRecv^.BufferCount > 0) then
             for vIndex := 0 to vRecv^.BufferCount - 1 do
               if vRecv^.Buffers^[vIndex].Length > 0 then
                 vCtx.Received.WriteBuffer(vRecv^.Buffers^[vIndex].Buffer^,
@@ -744,8 +806,6 @@ begin
     Result := QUIC_STATUS_INTERNAL_ERROR;
   end;
 end;
-
-{ TRALMsQuicServer }
 
 { TRALMsQuicWorker }
 
@@ -787,18 +847,18 @@ end;
 
 { pool }
 
-{ ONE dispatch thread, and it is deliberately not configurable.
+{ THE DISPATCH POOL, PoolCount threads of it, one by default.
 
-  The thread is here so that a route which blocks - a database call, a file, a
-  slow peer - does not hold a MsQuic transport thread. MsQuic binds a
+  The threads are here so that a route which blocks - a database call, a file,
+  a slow peer - does not hold a MsQuic transport thread. MsQuic binds a
   connection to one thread, so a route running there stalls every other stream
   on that connection. That hand-off earns its keep on its own.
 
-  A SECOND thread does not, and that was re-measured after the per-request
-  allocations came down - TRALParam no longer keeps every value in a heap
-  stream of its own, which was the reason to expect more threads to start
-  paying. They still do not, on any of the three client shapes (12000
-  requests, median of three):
+  Why ONE is the default: a SECOND thread does not pay for a route that only
+  computes, and that was re-measured after the per-request allocations came
+  down - TRALParam no longer keeps every value in a heap stream of its own,
+  which was the reason to expect more threads to start paying. They still do
+  not, on any of the three client shapes (12000 requests, median of three):
 
     threads   20 conx x 1st   1 conx x 20st   1 conx x 20 pipelined
       1           5618            4668              4037
@@ -810,9 +870,13 @@ end;
   request over for about 18 us of CPU on a multiplexed connection, and the
   single thread is answering them as fast as they arrive.
 
-  So there is no knob: the property that offered one is gone, and with it the
-  array that held the extra threads. }
+  Why it is a property anyway: those numbers are for a route that never waits.
+  A route that does - the DBWare module, the DAO - turns one thread into the
+  whole server's queue, and there the count has to match what the server is
+  waiting on. }
 procedure TRALMsQuicServer.StartPool;
+var
+  vInt: IntegerRAL;
 begin
   FQLock := TCriticalSection.Create;
   { auto-reset: a signal raised while the worker is running is kept for its
@@ -822,29 +886,36 @@ begin
   FQHead := 0;
   FQTail := 0;
   FQCount := 0;
-  FQWaiting := False;
+  FQWaiters := 0;
   SetLength(FQueue, 256);
   FPoolRunning := True;
 
-  FWorker := TRALMsQuicWorker.Create(Self);
+  SetLength(FWorkers, FPoolCount);
+  for vInt := 0 to FPoolCount - 1 do
+    FWorkers[vInt] := TRALMsQuicWorker.Create(Self);
 end;
 
 procedure TRALMsQuicServer.StopPool;
 var
   vWork: TRALMsQuicWork;
+  vInt: IntegerRAL;
 begin
   if not FPoolRunning then
     Exit;
   FPoolRunning := False;
 
-  if FWorker <> nil then
-  begin
-    FWorker.Terminate;
-    { the wait in Dequeue is bounded, so this only shortens the stop }
+  for vInt := 0 to High(FWorkers) do
+    FWorkers[vInt].Terminate;
+  { one signal per worker: the event is auto-reset and wakes one at a time.
+    The wait in Dequeue is bounded anyway, so this only shortens the stop }
+  for vInt := 0 to High(FWorkers) do
     FQSignal.SetEvent;
-    FWorker.WaitFor;
-    FreeAndNil(FWorker);
+  for vInt := 0 to High(FWorkers) do
+  begin
+    FWorkers[vInt].WaitFor;
+    FreeAndNil(FWorkers[vInt]);
   end;
+  SetLength(FWorkers, 0);
 
   { anything still queued was accepted and will never be answered - give its
     reference back, or the contexts leak with their stream handles. Read
@@ -897,7 +968,7 @@ begin
       the lock was held - so the transport thread that produced the work waited
       on a worker that was inside the kernel. A worker that is keeping up is
       never asleep, so there is nobody to wake. }
-    vSignal := FQWaiting;
+    vSignal := FQWaiters > 0;
   finally
     FQLock.Leave;
   end;
@@ -922,7 +993,10 @@ function TRALMsQuicServer.Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
   var
     vMax: IntegerRAL;
   begin
-    vMax := Length(AWork);
+    if FQWaiters > 0 then
+      vMax := 1
+    else
+      vMax := Length(AWork);
     while (FQCount > 0) and (Result < vMax) do
     begin
       AWork[Result] := FQueue[FQHead];
@@ -946,7 +1020,7 @@ begin
   try
     Drain;
     if Result = 0 then
-      FQWaiting := True;
+      Inc(FQWaiters);
   finally
     FQLock.Leave;
   end;
@@ -966,7 +1040,7 @@ begin
 
   FQLock.Enter;
   try
-    FQWaiting := False;
+    Dec(FQWaiters);
     Drain;
   finally
     FQLock.Leave;
@@ -1000,12 +1074,19 @@ begin
   try
     try
       RALAtomicInc(FRequests);
-      vResponse := HandleFrame(PByte(vCtx.Received.Memory), vCtx.Received.Size, '');
+      vResponse := HandleFrame(PByte(vCtx.Received.Memory), vCtx.Received.Size,
+        vCtx.ClientIP, vCtx.ClientPort, vCtx.Oversized);
       {$IFDEF RALMSQUIC_PROFILE}
       vNow2 := SrvTicks;
       RALAtomicInc(gHandleTicks, vNow2 - vCbStart);
       {$ENDIF}
-      SendAndFinish(vCtx.Stream, vResponse);
+      { a send the library refuses - the peer already aborted, the connection
+        is going down - leaves a stream with neither FIN nor abort, and the
+        client then waits its whole RequestTimeout for an answer that will
+        never come. Aborting tells it now. }
+      if QUIC_FAILED(SendAndFinish(vCtx.Stream, vResponse)) then
+        MsQuicApi^.StreamShutdown(vCtx.Stream,
+          QUIC_STREAM_SHUTDOWN_FLAG_ABORT or QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE, 0);
       {$IFDEF RALMSQUIC_PROFILE}RALAtomicInc(gSendTicks, SrvTicks - vNow2);{$ENDIF}
     except
       { a route that raised past HandleFrame's own handler must not take the
@@ -1031,13 +1112,14 @@ begin
   FRegistration := nil;
   FConfiguration := nil;
   FListener := nil;
-  FAlpn := 'ralq1';
-  FIdleTimeoutMs := 30000;
+  FAlpn := AnsiString(RALQUICALPN);
+  FIdleTimeoutMs := RALQUICIDLETIMEOUT;
   FMaxStreamsPerConnection := 1024;
   FMaxAckDelayMs := 25;
   FKeepAliveMs := 0;
   FMigration := True;
   FPacing := False;
+  FPoolCount := 1;
 end;
 
 destructor TRALMsQuicServer.Destroy;
@@ -1074,13 +1156,45 @@ begin
   FAlpn := AnsiString(AValue);
 end;
 
+procedure TRALMsQuicServer.SetMaxStreamsPerConnection(const AValue: IntegerRAL);
+begin
+  { the peer is told this in a 16-bit transport parameter, and a value above
+    it used to be truncated in silence - 65536 became zero streams }
+  if AValue < 1 then
+    FMaxStreamsPerConnection := 1
+  else if AValue > 65535 then
+    FMaxStreamsPerConnection := 65535
+  else
+    FMaxStreamsPerConnection := AValue;
+end;
+
+procedure TRALMsQuicServer.SetPoolCount(const AValue: IntegerRAL);
+var
+  vActive: boolean;
+begin
+  if AValue < 1 then
+    FPoolCount := 1
+  else
+    FPoolCount := AValue;
+
+  { the threads are created at activation: a running server restarts so the
+    new number is the one answering }
+  vActive := Active;
+  if vActive and (Length(FWorkers) <> FPoolCount) then
+  begin
+    Active := False;
+    Active := True;
+  end;
+end;
+
 function TRALMsQuicServer.IPv6IsImplemented: boolean;
 begin
   Result := True;
 end;
 
 function TRALMsQuicServer.HandleFrame(ARequest: PByte; ASize: IntegerRAL;
-  const AClientIP: StringRAL): TBytes;
+  const AClientIP: StringRAL; AClientPort: IntegerRAL;
+  AOversized: boolean): TBytes;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
@@ -1103,9 +1217,16 @@ begin
   try
     try
       vPos := 0;
-      if ASize < 1 then
+      if AOversized then
       begin
-        vResponse.Answer(HTTP_BadRequest, 'malformed frame', rctTEXTPLAIN);
+        { the body was dropped as it arrived - see the RECEIVE callback - so
+          the frame cannot be parsed, and the answer is what ValidateRequest
+          gives for the same thing }
+        vResponse.Answer(HTTP_RequestEntityTooLarge);
+      end
+      else if ASize < 1 then
+      begin
+        vResponse.Answer(HTTP_BadRequest, emQuicFrameMalformed, rctTEXTPLAIN);
       end
       else
       begin
@@ -1115,29 +1236,20 @@ begin
            (not ReadHeaders(ARequest, ASize, vPos, vRequest.Params)) or
            (not ReadBlockStr(ARequest, ASize, vPos, vBody)) then
         begin
-          vResponse.Answer(HTTP_BadRequest, 'malformed frame', rctTEXTPLAIN);
+          vResponse.Answer(HTTP_BadRequest, emQuicFrameMalformed, rctTEXTPLAIN);
         end
         else
         begin
           vRequest.AddHeader('RALEngine', ENGINEMSQUIC);
 
-          { KNOWN LIMITATION: nothing fills AClientIP yet, so every request
-            arrives here as loopback. The address is available - the listener
-            gets RemoteAddress in the new-connection event, and
-            QUIC_PARAM_CONN_REMOTE_ADDRESS reads it back - but carrying it to
-            the stream needs a per-connection context, which this callback
-            does not have (its Context is the server itself).
-            Until then TRALSecurity sees one address for everybody: IP
-            blocking, brute force and flood protection all key on this field,
-            so on this engine one client's failures would count against all. }
-          if AClientIP <> '' then
-            vRequest.ClientInfo.IP := AClientIP
-          else
-            vRequest.ClientInfo.IP := '127.0.0.1';
-          vRequest.ClientInfo.Port := 0;
+          { the listener saw the peer's address and every stream carries it -
+            TRALSecurity keys IP blocking, brute force and flood protection on
+            this field, so it has to be the peer's and not a placeholder }
+          vRequest.ClientInfo.IP := AClientIP;
+          vRequest.ClientInfo.Port := AClientPort;
           vRequest.ClientInfo.MACAddress := '';
 
-          if vMethod <= Ord(High(TRALMethod)) then
+          if vMethod <= Byte(Ord(High(TRALMethod))) then
             vRequest.Method := TRALMethod(vMethod)
           else
             vRequest.Method := amGET;
@@ -1257,7 +1369,8 @@ var
   vSettings: QUIC_SETTINGS;
   vCred: QUIC_CREDENTIAL_CONFIG;
   vCertFile: QUIC_CERTIFICATE_FILE;
-  vCertPath, vKeyPath: AnsiString;
+  vCertProtected: QUIC_CERTIFICATE_FILE_PROTECTED;
+  vCertPath, vKeyPath, vPassword: AnsiString;
   vStatus: QUIC_STATUS;
 begin
   FillChar(vSettings, SizeOf(vSettings), 0);
@@ -1298,23 +1411,37 @@ begin
   vStatus := MsQuicApi^.ConfigurationOpen(FRegistration, @FAlpnBuffer, 1,
     @vSettings, SizeOf(vSettings), nil, FConfiguration);
   if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt('MsQuic ConfigurationOpen: %s',
-      [QuicStatusToStr(vStatus)]);
+    raise Exception.CreateFmt(emQuicApiFailed,
+      ['ConfigurationOpen', QuicStatusToStr(vStatus)]);
 
   vCertPath := AnsiString(SSL.CertificateFile);
   vKeyPath := AnsiString(SSL.PrivateKeyFile);
-  vCertFile.CertificateFile := PAnsiChar(vCertPath);
-  vCertFile.PrivateKeyFile := PAnsiChar(vKeyPath);
+  vPassword := AnsiString(SSL.PrivateKeyPassword);
 
   FillChar(vCred, SizeOf(vCred), 0);
-  vCred.CredType := QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE;
   vCred.Flags := QUIC_CREDENTIAL_FLAG_NONE; // absence of CLIENT means server
-  vCred.CertificateRef := @vCertFile;
+  if vPassword <> '' then
+  begin
+    { an encrypted key needs the PROTECTED credential; the plain one used to
+      be sent regardless, and the password sat in the property unread }
+    vCertProtected.CertificateFile := PAnsiChar(vCertPath);
+    vCertProtected.PrivateKeyFile := PAnsiChar(vKeyPath);
+    vCertProtected.PrivateKeyPassword := PAnsiChar(vPassword);
+    vCred.CredType := QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE_PROTECTED;
+    vCred.CertificateRef := @vCertProtected;
+  end
+  else
+  begin
+    vCertFile.CertificateFile := PAnsiChar(vCertPath);
+    vCertFile.PrivateKeyFile := PAnsiChar(vKeyPath);
+    vCred.CredType := QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE;
+    vCred.CertificateRef := @vCertFile;
+  end;
 
   vStatus := MsQuicApi^.ConfigurationLoadCredential(FConfiguration, @vCred);
   if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt('MsQuic ConfigurationLoadCredential: %s',
-      [QuicStatusToStr(vStatus)]);
+    raise Exception.CreateFmt(emQuicApiFailed,
+      ['ConfigurationLoadCredential', QuicStatusToStr(vStatus)]);
 end;
 
 procedure TRALMsQuicServer.CloseServerHandles;
@@ -1325,6 +1452,16 @@ begin
     MsQuicApi^.ListenerClose(FListener);
     FListener := nil;
   end;
+  { RegistrationClose blocks until every connection under it has been closed,
+    and a connection is only closed in its SHUTDOWN_COMPLETE - which a client
+    sitting on an open, idle connection never produces on its own: with the
+    RAL client's shared connection that meant Active := False hung for the
+    whole IdleTimeout, and with a keep-alive on the client, forever. Shutting
+    the registration down first ends every connection, each one completes,
+    and the close returns. }
+  if FRegistration <> nil then
+    MsQuicApi^.RegistrationShutdown(FRegistration,
+      QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, 0);
   if FConfiguration <> nil then
   begin
     MsQuicApi^.ConfigurationClose(FConfiguration);
@@ -1368,34 +1505,41 @@ begin
     Exit;
   end;
 
-  if (SSL.CertificateFile = '') or (SSL.PrivateKeyFile = '') then
-    raise Exception.Create('QUIC requires TLS: set SSL.CertificateFile and ' +
-      'SSL.PrivateKeyFile');
-  if not FileExists(SSL.CertificateFile) then
-    raise Exception.CreateFmt('certificate not found: %s', [SSL.CertificateFile]);
-  if not FileExists(SSL.PrivateKeyFile) then
-    raise Exception.CreateFmt('private key not found: %s', [SSL.PrivateKeyFile]);
-
-  vStatus := MsQuicLoad(FLibPath);
-  if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt('MsQuic: %s', [MsQuicLoadError]);
-
-  { Every worker thread of MsQuic is created inside the C library, so
-    BeginThread never runs and the flag the memory manager reads to decide
-    whether to lock would stay False - N foreign threads then allocate on
-    unlocked free lists and the process dies with no exception under load.
-    Never set back to False: threads already handed out keep running. }
-  IsMultiThread := True;
-
+  { EVERYTHING that can fail sits inside the try: the base has already written
+    Active := True, and a server that says it is active while nothing listens
+    cannot even be started again, since SetActive(True) is then a no-op. The
+    certificate checks used to sit above it, so a wrong path left exactly that. }
   try
+    if (SSL.CertificateFile = '') or (SSL.PrivateKeyFile = '') then
+      raise Exception.Create(emQuicRequiresTLS);
+    if not FileExists(SSL.CertificateFile) then
+      raise Exception.CreateFmt(emQuicFileNotFound, [SSL.CertificateFile]);
+    if not FileExists(SSL.PrivateKeyFile) then
+      raise Exception.CreateFmt(emQuicFileNotFound, [SSL.PrivateKeyFile]);
+
+    vStatus := MsQuicLoad(FLibPath);
+    if QUIC_FAILED(vStatus) then
+      raise Exception.CreateFmt(emQuicLibrary, [MsQuicLoadError]);
+
+    { Every worker thread of MsQuic is created inside the C library, so
+      BeginThread never runs and the flag the memory manager reads to decide
+      whether to lock would stay False - N foreign threads then allocate on
+      unlocked free lists and the process dies with no exception under load.
+      Never set back to False: threads already handed out keep running. }
+    IsMultiThread := True;
+
+    { "since it was last activated" - a restart starts the count over }
+    FConnections := 0;
+    FRequests := 0;
+
     FillChar(vRegCfg, SizeOf(vRegCfg), 0);
     vAppName := AnsiString(RALPACKAGESHORT);
     vRegCfg.AppName := PAnsiChar(vAppName);
     vRegCfg.ExecutionProfile := QUIC_EXECUTION_PROFILE_LOW_LATENCY;
     vStatus := MsQuicApi^.RegistrationOpen(@vRegCfg, FRegistration);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt('MsQuic RegistrationOpen: %s',
-        [QuicStatusToStr(vStatus)]);
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['RegistrationOpen', QuicStatusToStr(vStatus)]);
 
     QuicSetAlpn(FAlpnBuffer, FAlpn);
     OpenConfiguration;
@@ -1407,8 +1551,8 @@ begin
     vStatus := MsQuicApi^.ListenerOpen(FRegistration, RALMsQuicListenerCallback,
       Self, FListener);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt('MsQuic ListenerOpen: %s',
-        [QuicStatusToStr(vStatus)]);
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['ListenerOpen', QuicStatusToStr(vStatus)]);
 
     FillChar(vAddr, SizeOf(vAddr), 0);
     // Unspecified family with a port binds both stacks on every interface.
@@ -1418,8 +1562,7 @@ begin
 
     vStatus := MsQuicApi^.ListenerStart(FListener, @FAlpnBuffer, 1, @vAddr);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt('MsQuic ListenerStart on port %d: %s',
-        [Port, QuicStatusToStr(vStatus)]);
+      raise Exception.CreateFmt(emQuicListenFailed, [Port, QuicStatusToStr(vStatus)]);
   except
     CloseServerHandles;
     StopPool;

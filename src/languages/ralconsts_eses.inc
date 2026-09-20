@@ -21,6 +21,18 @@
   emHttpSysAddUrl = 'http.sys rechazo escuchar en el puerto %d (codigo %d). El codigo 5 significa que el puerto no esta reservado para este usuario: ejecute una vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuario>", o inicie el servidor elevado.';
   emHttpSysWindowsOnly = 'Mode es smHttpSys, servido por el kernel de Windows (http.sys), y no tiene implementación en esta plataforma. Use smThreads o smAsync, teniendo en cuenta que ninguno de los dos sirve HTTP/2.';
   emHTTP10NotRequestable = 'HTTPVersion es rhv10, y HTTP/1.0 no se puede solicitar: ningún motor expone esa opción. rhv10 solo aparece de vuelta, en una petición que el servidor recibió. Deje HTTPVersion en rhvDefault.';
+  emServerListenFailed = 'El servidor %s no pudo escuchar en el puerto %d.';
+  emQuicRequiresTLS = 'QUIC no tiene modo sin cifrado: defina SSL.CertificateFile y SSL.PrivateKeyFile antes de activar el servidor.';
+  emQuicFileNotFound = 'QUIC: archivo no encontrado: %s.';
+  emQuicLibrary = 'No se pudo cargar MsQuic: %s.';
+  emQuicApiFailed = 'MsQuic %s falló: %s.';
+  emQuicListenFailed = 'MsQuic no pudo escuchar en el puerto UDP %d: %s.';
+  emQuicHandshakeTimeout = 'El handshake QUIC con %s:%d agotó el tiempo.';
+  emQuicConnectFailed = 'La conexión QUIC con %s:%d falló: %s.';
+  emQuicFrameMalformed = 'Frame QUIC malformado.';
+  emQuicAnswerTimeout = 'QUIC: tiempo agotado esperando la respuesta.';
+  emQuicPeerAborted = 'QUIC: el otro extremo abortó el stream.';
+  emQuicPlatformUnsupported = 'El motor MsQuic solo traduce los códigos de estado de Windows y Linux; todavía no funciona en esta plataforma.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
   emContentCheckError = 'Error de comprobación de contenido.';

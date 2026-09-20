@@ -73,6 +73,22 @@ const
     closed instead of handed out again. Zero keeps it forever. Five minutes
     is below what a server usually allows a kept-alive connection. }
   RALENGINEIDLETIMEOUT = 300000;
+  { Milliseconds a thread's own Request - TRALClient.Request is one object per
+    thread - may sit untouched before the client discards it. Deliberately NOT
+    the pool's idle timeout: a thread that set a header once and calls every
+    ten minutes must not lose it in between. Thirty minutes. }
+  RALTHREADREQUESTTIMEOUT = 1800000;
+  { The port a TRALServer listens on when nobody chose one, and the port a
+    client assumes for a BaseURL without one on the engines that have to know
+    - the QUIC engine has no 80/443 convention to fall back on. }
+  DEFAULTSERVERPORT = 8000;
+  { ALPN the QUIC engine offers on both ends. A server and a client with
+    different values never complete a handshake. }
+  RALQUICALPN = 'ralq1';
+  { Milliseconds a QUIC connection may sit idle before either end closes it.
+    QUIC negotiates the smaller of the two peers' values, so the client and
+    the server start from the same one. }
+  RALQUICIDLETIMEOUT = 30000;
   DEFAULTREQUESTTIMEOUT = 10000;
   // Consecutive redirects a client follows. Engines used to disagree without
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever

@@ -864,6 +864,7 @@ begin
     // is invoked before this method returns, so the caller can rely on the
     // response (or the exception) being already available when it continues.
     vException := '';
+    vIndexFrom := 0;
     vClient := AcquireEngine;
     vRequest := TRALClientRequest.Create(Self);
     vResponse := TRALClientResponse.Create(Self);
@@ -928,6 +929,7 @@ begin
   // class is not registered
   vClient := nil;
   vRequest := nil;
+  vIndexFrom := 0;
 
   Result := TRALClientResponse.Create(Self);
   try
@@ -1067,6 +1069,7 @@ var
   vInt: IntegerRAL;
   vItem: TRALThreadRequest;
   vDead: array of TRALThreadRequest;
+  vNow: TDateTime;
 begin
   vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
   if vThread = FRequestThread then
@@ -1083,6 +1086,7 @@ begin
   end;
 
   SetLength(vDead, 0);
+  vNow := Now;
   LockSession;
   try
     for vInt := FRequests.Count - 1 downto 0 do
@@ -1092,12 +1096,17 @@ begin
       begin
         { touched on every use, including the one the send path makes, so a
           thread in the middle of fill-then-call is never swept from under it }
-        vItem.Touched := Now;
+        vItem.Touched := vNow;
         Result := vItem.Request;
       end
-      else if (FPoolConnection <> nil) and (FPoolConnection.IdleTimeout > 0) and
-              ((Now - vItem.Touched) * 86400000 > FPoolConnection.IdleTimeout) then
+      else if (vNow - vItem.Touched) * 86400000 > RALTHREADREQUESTTIMEOUT then
       begin
+        { A thread that has not touched its Request for half an hour is taken
+          to be gone - thread IDs are recycled, and a new thread must not
+          inherit a dead one's params. Its OWN timeout on purpose: this used to
+          ride on PoolConnection.IdleTimeout, five minutes, which a thread
+          calling every ten minutes fell foul of, and it applied with the pool
+          off as well, where nobody had asked for a timeout at all. }
         SetLength(vDead, Length(vDead) + 1);
         vDead[High(vDead)] := vItem;
         FRequests.Delete(vInt);
@@ -1109,7 +1118,14 @@ begin
       vItem := TRALThreadRequest.Create;
       vItem.ThreadID := vThread;
       vItem.Request := TRALClientRequest.Create(Self);
-      vItem.Touched := Now;
+      { BORN AS A COPY OF THE CREATOR'S REQUEST, not empty. Before requests
+        were per thread there was one object, so "fill Request on the main
+        thread, call from a worker" sent what the main thread had filled; a
+        worker starting from nothing would send an empty request in that
+        pattern, with no error to say why. Copied once, here: from then on the
+        two are independent, which is the point of one per thread. }
+      FRequest.Clone(vItem.Request);
+      vItem.Touched := vNow;
       FRequests.Add(vItem);
       Result := vItem.Request;
     end;
@@ -1371,6 +1387,14 @@ begin
     client }
   ADest.OnBeforeExecute := Self.OnBeforeExecute;
   ADest.OnAfterExecute := Self.OnAfterExecute;
+
+  { the clone runs on the same transport arrangement as the original: the DAO
+    gives each dataset a client of its own, and a clone that lost the pool
+    would be back to a connection per request }
+  ADest.PoolConnection := Self.PoolConnection;
+  ADest.ShareConnection := Self.ShareConnection;
+  ADest.HTTPVersion := Self.HTTPVersion;
+  ADest.KeepAliveInterval := Self.KeepAliveInterval;
 end;
 
 procedure TRALClient.SetAuthentication(AValue: TRALAuthClient);
@@ -2269,7 +2293,14 @@ begin
   // meant to report the error.
   AResponse.ContentType := rctTEXTPLAIN;
   AResponse.ResponseText := AMessage;
-  AResponse.ErrorCode := ACode;
+  { ErrorCode is the failure signal everything downstream reads - BeforeSendUrl
+    raises on it, applications test it - so a transport error must never leave
+    it at zero, whatever code the engine had at hand. The MsQuic client passed
+    0 on every failure, and a server that was down came back as a success. }
+  if (AError <> rteNone) and (ACode = 0) then
+    AResponse.ErrorCode := -1
+  else
+    AResponse.ErrorCode := ACode;
   AResponse.TransportError := AError;
   // No HTTP response happened, so there is no status. Zero is the one value
   // every engine can agree on; each used to invent its own (-1, 10061, 0) and
@@ -2606,6 +2637,10 @@ begin
     FClient := FParent.CreateClient;
   FIndexUrl := AOwner.IndexUrl;
   FIndexUrlStart := FIndexUrl;
+  { a pooled engine remembers where ITS last request ended, which may be a
+    server this client has since found dead: it starts from the client's
+    index, exactly as the two single-thread paths do (see ExecuteThread) }
+  FClient.IndexUrl := FIndexUrl;
   FParent.ThreadStarted(Self);
 end;
 

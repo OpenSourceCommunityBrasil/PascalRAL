@@ -467,7 +467,7 @@ begin
   FAuthentication := nil;
   FCompressType := ctNone;
   FEngine := '';
-  FPort := 8000;
+  FPort := DEFAULTSERVERPORT;
   FSessionTimeout := 30000;
   FShowServerStatus := True;
   FCookieLife := 30;

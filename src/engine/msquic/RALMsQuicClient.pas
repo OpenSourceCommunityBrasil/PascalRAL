@@ -14,9 +14,27 @@ uses
   Classes, SysUtils, SyncObjs,
   MsQuic,
   RALClient, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress;
+  RALParams, RALTools, RALCompress, RALHashBase, RALSHA2_32;
 
 type
+  TRALMsQuicClientHTTP = class;
+
+  /// How the server's certificate is judged on a connection.
+  TRALMsQuicCertMode = (
+    /// the library validates against the system store, and its verdict stands
+    qcmSystem,
+    /// SSL.Verify = svNever with nobody else to ask: anything is accepted
+    qcmNone,
+    /// SSL.Pins or OnValidateServerCert is set: the library still validates
+    /// but DEFERS its verdict, and TRALClientHTTP.AcceptServerCert decides -
+    /// the event, else the pin, else what the library concluded. Same rule as
+    /// every other engine.
+    qcmJudge);
+
+  /// Raised by TRALMsQuicConnection.Open when the certificate is what failed,
+  /// so SendUrl reports rteCertificate and not a server being down.
+  ERALMsQuicCertError = class(Exception);
+
   { TRALMsQuicConnection }
 
   /// One QUIC connection, and the thing ShareConnection actually shares.
@@ -32,17 +50,23 @@ type
     FConnectedEvent: TEvent;
     FConnectStatus: QUIC_STATUS;
     FConnected: boolean;
+    FCertRefused: boolean;
+    { the engine whose policy judges the certificate. Valid only while Open is
+      waiting for the handshake, which is when PEER_CERTIFICATE_RECEIVED
+      arrives; the connection is shared afterwards and belongs to nobody. }
+    FJudge: TRALMsQuicClientHTTP;
     FRefCount: IntegerRAL;
     FKey: StringRAL;
     FAlpn: AnsiString;
-    FAlpnBuffer: QUIC_BUFFER;
     procedure Close;
+    function JudgeCertificate(AData: PQuicPeerCertificateReceivedData): QUIC_STATUS;
   public
     constructor Create(const AKey: StringRAL; const AAlpn: AnsiString);
     destructor Destroy; override;
-    /// Opens the connection and waits for the handshake. Raises on failure.
+    /// Opens the connection and waits for the handshake. Raises on failure -
+    /// ERALMsQuicCertError when the certificate is the reason.
     procedure Open(const AHost: StringRAL; APort: IntegerRAL;
-                   AVerifyCertificate: boolean;
+                   ACertMode: TRALMsQuicCertMode; AJudge: TRALMsQuicClientHTTP;
                    AConnectTimeout, AKeepAlive: IntegerRAL);
     procedure AddRef;
     procedure Release;
@@ -66,12 +90,12 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Release;
-    /// Puts it back to the state Create leaves it in, WITHOUT giving the
-    /// receive buffer back to the memory manager: only the position is
-    /// rewound, so the next answer writes over the previous one and the
-    /// capacity is reached once instead of once per request. Size would
-    /// shrink it to zero - TMemoryStream reallocates on SetSize - which is
-    /// exactly what this avoids.
+    /// Puts it back to the state Create leaves it in. The receive buffer is
+    /// kept - only the position is rewound, so the next answer writes over
+    /// the previous one and the capacity is reached once instead of once per
+    /// request - unless it grew past RALMSQUIC_KEEP_BUFFER: one large
+    /// download must not pin that much memory to every pooled engine for the
+    /// life of the client.
     procedure Reset;
   end;
 
@@ -80,7 +104,7 @@ type
   /// RALClient over QUIC, talking to TRALMsQuicServer.
   ///
   /// NOT HTTP. What travels is the binary frame TRALMsQuicServer documents -
-  /// method, URL, header lines, body, each length prefixed - over one QUIC
+  /// method, URL, header pairs, body, each length prefixed - over one QUIC
   /// stream per request. SupportsHTTP2 is False for that reason and not
   /// because something is missing: this engine is below HTTP, not beside it.
   ///
@@ -95,6 +119,7 @@ type
   /// With ShareConnection False this engine opens a connection per client
   /// instance, which is what TRALClient hands each thread - correct, and the
   /// arrangement that leaves the transport's main advantage on the table.
+  /// ShareConnection is on by default for that reason.
   TRALMsQuicClientHTTP = class(TRALClientHTTP)
   private
     FOwnConnection: TRALMsQuicConnection;
@@ -106,11 +131,17 @@ type
       is where the multiplexed arrangement was losing its transport advantage.
       A context a callback still holds (the timeout path) is never reused. }
     FSpare: TRALMsQuicPending;
-    FLibPath: TFileName;
     FAlpn: AnsiString;
+    { host and port of the last URL: a client hammering one route does not
+      split the same string on every request }
+    FTargetUrl: StringRAL;
+    FTargetHost: StringRAL;
+    FTargetPort: IntegerRAL;
     function AcquirePending: TRALMsQuicPending;
-    function ConnectionKey(const AHost: StringRAL; APort: IntegerRAL): StringRAL;
-    function PickConnection(const AURL: StringRAL): TRALMsQuicConnection;
+    function CertMode: TRALMsQuicCertMode;
+    function ConnectionKey: StringRAL;
+    procedure ResolveTarget(const AURL: StringRAL);
+    function PickConnection: TRALMsQuicConnection;
     procedure DropShared;
     procedure DropOwn;
     /// The headers every request carries, whatever the execution shape.
@@ -119,10 +150,21 @@ type
                         const ARoute: StringRAL): TBytes;
     procedure ParseFrame(AFrame: PByte; ASize: IntegerRAL; AResponse: TRALResponse);
   public
+    /// ALPN offered to the server. Both ends must agree or the handshake never
+    /// completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
+    /// class variable because the engine object is built by TRALClient and
+    /// never seen by the application.
+    class var DefaultAlpn: StringRAL;
+    /// Where to load msquic from; empty means the platform default name. The
+    /// first load wins for the whole process.
+    class var DefaultLibPath: TFileName;
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest;
                       AResponse: TRALResponse; AMethod: TRALMethod); override;
+    /// The single decision about a server certificate, reached from the
+    /// connection's callback: the event, else the pin, else the library.
+    function JudgeServerCert(const AInfo: TRALCertInfo): boolean;
     class function EngineName: StringRAL; override;
     /// The version of the msquic actually loaded, asked of the library itself.
     /// Empty when it has not been loaded yet - there is nothing to report
@@ -132,8 +174,8 @@ type
     /// True, and it is the point of this engine - see the class comment.
     class function SupportsSharedConnection: boolean; override;
     class function SupportsKeepAliveInterval: boolean; override;
-    /// Where to load msquic from; empty means the platform default name.
-    property LibPath: TFileName read FLibPath write FLibPath;
+    /// True: the certificate arrives as DER and its SHA-256 is computed here.
+    class function SupportsCertPin: boolean; override;
   end;
 
 {$IFDEF RALMSQUIC_PROFILE}
@@ -154,6 +196,8 @@ implementation
 
 const
   RALMSQUIC_MAX_FIELD = 64 * 1024 * 1024;
+  /// A receive buffer above this is released instead of kept between requests.
+  RALMSQUIC_KEEP_BUFFER = 1024 * 1024;
 
 type
   PRALMsQuicSendCtx = ^TRALMsQuicSendCtx;
@@ -179,8 +223,8 @@ var
     throughput.
 
     Configurations are cached beside it for the same reason, keyed by what
-    actually distinguishes them: the ALPN and whether the certificate is
-    checked. Building one costs a credential load. }
+    actually distinguishes them: the ALPN, how the certificate is judged and
+    the two timeouts. Building one costs a credential load. }
   vRegistration: HQUIC = nil;
   vConfigs: TStringList = nil;
   vGlobalLock: TCriticalSection = nil;
@@ -205,8 +249,8 @@ begin
       if QUIC_FAILED(vStatus) then
       begin
         vRegistration := nil;
-        raise Exception.CreateFmt('MsQuic RegistrationOpen: %s',
-          [QuicStatusToStr(vStatus)]);
+        raise Exception.CreateFmt(emQuicApiFailed,
+          ['RegistrationOpen', QuicStatusToStr(vStatus)]);
       end;
     end;
     Result := vRegistration;
@@ -215,8 +259,8 @@ begin
   end;
 end;
 
-function SharedConfiguration(const AAlpn: AnsiString; AVerify: boolean;
-  AIdleTimeout, AKeepAlive: IntegerRAL): HQUIC;
+function SharedConfiguration(const AAlpn: AnsiString; ACertMode: TRALMsQuicCertMode;
+  AHandshakeTimeout, AKeepAlive: IntegerRAL): HQUIC;
 var
   vKey: StringRAL;
   vIdx: IntegerRAL;
@@ -226,8 +270,8 @@ var
   vAlpnBuf: QUIC_BUFFER;
   vStatus: QUIC_STATUS;
 begin
-  vKey := StringRAL(AAlpn) + '|' + IntToStr(Ord(AVerify)) + '|' +
-          IntToStr(AIdleTimeout) + '|' + IntToStr(AKeepAlive);
+  vKey := StringRAL(AAlpn) + '|' + StringRAL(IntToStr(Ord(ACertMode))) + '|' +
+          StringRAL(IntToStr(AHandshakeTimeout)) + '|' + StringRAL(IntToStr(AKeepAlive));
   vGlobalLock.Enter;
   try
     vIdx := vConfigs.IndexOf(vKey);
@@ -238,7 +282,13 @@ begin
     end;
 
     FillChar(vSettings, SizeOf(vSettings), 0);
-    vSettings.IdleTimeoutMs := AIdleTimeout;
+    { How long a connection may sit idle before QUIC closes it. Its OWN
+      number, the same one the server starts from: it used to be the client's
+      ConnectTimeout, which is a different question - with ConnectTimeout at
+      5 s the shared connection died after five quiet seconds and every pause
+      cost a handshake, and since QUIC negotiates the smaller of the two
+      peers' values, the server's setting was silently capped by it. }
+    vSettings.IdleTimeoutMs := RALQUICIDLETIMEOUT;
     { THE PROTOCOL DEFAULT, 25 ms, and not the 1 ms this used to force.
 
       Sitting on an acknowledgement only stalls the peer's next send when the
@@ -253,6 +303,16 @@ begin
       millisecond on every idle connection - on a handset, that is battery. }
     vSettings.MaxAckDelayMs := 25;
     vSettings.IsSetFlags := QUIC_SETTING_IdleTimeoutMs or QUIC_SETTING_MaxAckDelayMs;
+
+    { ConnectTimeout is the handshake's budget, and it is handed to the library
+      rather than only waited on here: a handshake the library gives up on
+      carries a status - refused, unreachable, certificate - where a bare wait
+      only ever says "timed out". }
+    if AHandshakeTimeout > 0 then
+    begin
+      vSettings.HandshakeIdleTimeoutMs := AHandshakeTimeout;
+      vSettings.IsSetFlags := vSettings.IsSetFlags or QUIC_SETTING_HandshakeIdleTimeoutMs;
+    end;
 
     { CONNECTION MIGRATION ON, stated rather than inherited. It is what lets a
       handset walk from Wi-Fi to mobile data and keep the connection: QUIC
@@ -280,20 +340,33 @@ begin
     vStatus := MsQuicApi^.ConfigurationOpen(SharedRegistration, @vAlpnBuf, 1,
       @vSettings, SizeOf(vSettings), nil, vCfg);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt('MsQuic ConfigurationOpen: %s',
-        [QuicStatusToStr(vStatus)]);
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['ConfigurationOpen', QuicStatusToStr(vStatus)]);
 
     FillChar(vCred, SizeOf(vCred), 0);
     vCred.CredType := QUIC_CREDENTIAL_TYPE_NONE;
     vCred.Flags := QUIC_CREDENTIAL_FLAG_CLIENT;
-    if not AVerify then
-      vCred.Flags := vCred.Flags or QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+    case ACertMode of
+      qcmNone:
+        vCred.Flags := vCred.Flags or QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+      qcmJudge:
+        { INDICATE: hand the certificate to the connection callback. DEFER: the
+          library still validates, but reports instead of refusing, so its
+          verdict becomes TRALCertInfo.Trusted and the callback has the last
+          word. PORTABLE: the certificate arrives as DER bytes rather than as a
+          handle of whichever TLS library msquic was built with - the same
+          bytes on OpenSSL and on Schannel, which is what the SHA-256 needs. }
+        vCred.Flags := vCred.Flags or
+                       QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED or
+                       QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION or
+                       QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES;
+    end;
     vStatus := MsQuicApi^.ConfigurationLoadCredential(vCfg, @vCred);
     if QUIC_FAILED(vStatus) then
     begin
       MsQuicApi^.ConfigurationClose(vCfg);
-      raise Exception.CreateFmt('MsQuic ConfigurationLoadCredential: %s',
-        [QuicStatusToStr(vStatus)]);
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['ConfigurationLoadCredential', QuicStatusToStr(vStatus)]);
     end;
 
     vConfigs.AddObject(vKey, TObject(vCfg));
@@ -310,10 +383,10 @@ type
 
 const
   RALMsQuicPhaseName: array[TRALMsQuicPhase] of StringRAL = (
-    'preparar headers', 'pegar conexao', 'montar frame',
-    'criar pendente', 'abrir+enviar stream', 'esperar resposta',
-    'parsear resposta', 'liberar pendente',
-    '  .. headers', '  .. propriedades', '  .. corpo');
+    'prepare headers', 'pick connection', 'build frame',
+    'create pending', 'open+send stream', 'wait for the answer',
+    'parse the answer', 'release pending',
+    '  .. headers', '  .. properties', '  .. body');
 
 var
   gPhase: array[TRALMsQuicPhase] of Int64;
@@ -356,14 +429,14 @@ var
 begin
   if (gPhaseReqs = 0) or (gPhaseFreq = 0) then
   begin
-    Result := 'sem amostras';
+    Result := 'no samples';
     Exit;
   end;
   vTotal := 0;
   for vPhase := Low(TRALMsQuicPhase) to qpFree do
     vTotal := vTotal + gPhase[vPhase];
 
-  Result := Format('%d requisicoes, %.3f ms dentro de SendUrl por requisicao',
+  Result := Format('%d requests, %.3f ms inside SendUrl per request',
     [gPhaseReqs, vTotal / gPhaseFreq * 1000 / gPhaseReqs]) + HTTPLineBreak;
   for vPhase := Low(TRALMsQuicPhase) to High(TRALMsQuicPhase) do
     Result := Result + Format('  %-22s %8.3f ms  %5.1f%%',
@@ -405,7 +478,12 @@ begin
     MsQuicApi^.StreamClose(Stream);
     Stream := nil;
   end;
-  Received.Position := 0;
+  { Size is the high-water mark of the buffer, Position what the last answer
+    used; a buffer that grew past the limit goes back to the memory manager }
+  if Received.Size > RALMSQUIC_KEEP_BUFFER then
+    Received.Clear
+  else
+    Received.Position := 0;
   Done.ResetEvent;
   Failed := False;
 end;
@@ -474,6 +552,11 @@ begin
           vConn.FConnected := True;
           vConn.FConnectedEvent.SetEvent;
         end;
+      QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED:
+        { only ever indicated in qcmJudge, during the handshake, on the thread
+          the library runs it on - the same place OpenSSL calls the other
+          engines' verify callbacks }
+        Result := vConn.JudgeCertificate(PQuicPeerCertificateReceivedData(@Event^.Data[0]));
       QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
         begin
           { where a refused connection, a timeout and a rejected certificate
@@ -564,6 +647,9 @@ type
   end;
   TRALMsQuicHeaders = array of TRALMsQuicHeader;
 
+/// The response headers, into the response's params. AddHeader rather than
+/// AddParam: a Set-Cookie also lands as a cookie param, the same rule the
+/// Indy and mORMot2 clients follow through AppendParamLine.
 function ReadHeaders(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
   AParams: TRALParams): Boolean;
 var
@@ -585,7 +671,7 @@ begin
     if (not ReadBlockStr(ABuf, ASize, APos, vName)) or
        (not ReadBlockStr(ABuf, ASize, APos, vValue)) then
       Exit;
-    AParams.AddParam(vName, vValue, rpkHEADER);
+    AParams.AddHeader(vName, vValue);
   end;
   Result := True;
 end;
@@ -745,45 +831,121 @@ begin
   FConnected := False;
 end;
 
+{ Builds the TRALCertInfo every engine hands to AcceptServerCert and returns
+  the verdict as the status the library expects: SUCCESS to go on, a TLS
+  "bad certificate" alert to refuse. The DER is what PORTABLE_CERTIFICATES
+  delivers, so the fingerprint is SHA-256 over exactly the bytes the server
+  sent - what "openssl x509 -fingerprint -sha256" prints for the same file.
+  Subject, issuer and dates would need an ASN.1 walk and stay empty: fields
+  the engine cannot know come back empty, never invented. }
+function TRALMsQuicConnection.JudgeCertificate(
+  AData: PQuicPeerCertificateReceivedData): QUIC_STATUS;
+var
+  vInfo: TRALCertInfo;
+  vBuf: PQUIC_BUFFER;
+  vDer: TMemoryStream;
+  vSha: TRALSHA2_32;
+begin
+  if FJudge = nil then
+  begin
+    { not asked for: whatever the library concluded stands }
+    if QUIC_SUCCEEDED(AData^.DeferredStatus) then
+      Result := QUIC_STATUS_SUCCESS
+    else
+      Result := AData^.DeferredStatus;
+    Exit;
+  end;
+
+  vInfo := RALEmptyCertInfo;
+  vBuf := PQUIC_BUFFER(AData^.Certificate);
+  if (vBuf <> nil) and (vBuf^.Length > 0) then
+  begin
+    vDer := TMemoryStream.Create;
+    vSha := TRALSHA2_32.Create;
+    try
+      vSha.OutputType := rhotHex;
+      vDer.WriteBuffer(vBuf^.Buffer^, vBuf^.Length);
+      vDer.Position := 0;
+      vInfo.Fingerprint := RALNormalizeFingerprint(vSha.HashAsString(vDer));
+    finally
+      vSha.Free;
+      vDer.Free;
+    end;
+  end;
+  vInfo.Trusted := QUIC_SUCCEEDED(AData^.DeferredStatus);
+  if not vInfo.Trusted then
+    vInfo.Error := StringRAL(Format('MsQuic %s (flags 0x%x)',
+      [QuicStatusToStr(AData^.DeferredStatus), AData^.DeferredErrorFlags]));
+
+  if FJudge.JudgeServerCert(vInfo) then
+    Result := QUIC_STATUS_SUCCESS
+  else
+  begin
+    FCertRefused := True;
+    Result := QUIC_STATUS_BAD_CERTIFICATE;
+  end;
+end;
+
 procedure TRALMsQuicConnection.Open(const AHost: StringRAL; APort: IntegerRAL;
-  AVerifyCertificate: boolean; AConnectTimeout, AKeepAlive: IntegerRAL);
+  ACertMode: TRALMsQuicCertMode; AJudge: TRALMsQuicClientHTTP;
+  AConnectTimeout, AKeepAlive: IntegerRAL);
 var
   vHost: AnsiString;
   vStatus: QUIC_STATUS;
   vReg: HQUIC;
+  vWait: IntegerRAL;
 begin
   vReg := SharedRegistration;
-  FConfiguration := SharedConfiguration(FAlpn, AVerifyCertificate,
-                                        AConnectTimeout, AKeepAlive);
+  FConfiguration := SharedConfiguration(FAlpn, ACertMode, AConnectTimeout, AKeepAlive);
 
   FConnectStatus := QUIC_STATUS_CONNECTION_TIMEOUT;
   FConnected := False;
+  FCertRefused := False;
   FConnectedEvent.ResetEvent;
+  if ACertMode = qcmJudge then
+    FJudge := AJudge
+  else
+    FJudge := nil;
 
-  vStatus := MsQuicApi^.ConnectionOpen(vReg, RALMsQuicClientConnCallback,
-    Self, FConnection);
-  if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt('MsQuic ConnectionOpen: %s',
-      [QuicStatusToStr(vStatus)]);
+  try
+    vStatus := MsQuicApi^.ConnectionOpen(vReg, RALMsQuicClientConnCallback,
+      Self, FConnection);
+    if QUIC_FAILED(vStatus) then
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['ConnectionOpen', QuicStatusToStr(vStatus)]);
 
-  vHost := AnsiString(AHost);
-  vStatus := MsQuicApi^.ConnectionStart(FConnection, FConfiguration,
-    QUIC_ADDRESS_FAMILY_UNSPEC, PAnsiChar(vHost), Word(APort));
-  if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt('MsQuic ConnectionStart: %s',
-      [QuicStatusToStr(vStatus)]);
+    vHost := AnsiString(AHost);
+    vStatus := MsQuicApi^.ConnectionStart(FConnection, FConfiguration,
+      QUIC_ADDRESS_FAMILY_UNSPEC, PAnsiChar(vHost), Word(APort));
+    if QUIC_FAILED(vStatus) then
+      raise Exception.CreateFmt(emQuicApiFailed,
+        ['ConnectionStart', QuicStatusToStr(vStatus)]);
 
-  if FConnectedEvent.WaitFor(AConnectTimeout) <> wrSignaled then
-  begin
-    Close;
-    raise Exception.Create('QUIC handshake timed out');
-  end;
-  if not FConnected then
-  begin
-    vStatus := FConnectStatus;
-    Close;
-    raise Exception.CreateFmt('QUIC connect failed: %s',
-      [QuicStatusToStr(vStatus)]);
+    { the library itself gives up at HandshakeIdleTimeoutMs and says why; this
+      wait is only the backstop, a second behind it }
+    vWait := AConnectTimeout;
+    if vWait <= 0 then
+      vWait := 10000; // MsQuic's own handshake default
+    if FConnectedEvent.WaitFor(vWait + 1000) <> wrSignaled then
+    begin
+      Close;
+      raise Exception.CreateFmt(emQuicHandshakeTimeout, [AHost, APort]);
+    end;
+    if not FConnected then
+    begin
+      vStatus := FConnectStatus;
+      Close;
+      if FCertRefused then
+        raise ERALMsQuicCertError.Create(emCertRejected)
+      else if QuicStatusIsCertError(vStatus) then
+        raise ERALMsQuicCertError.CreateFmt(emQuicConnectFailed,
+          [AHost, APort, QuicStatusToStr(vStatus)])
+      else
+        raise Exception.CreateFmt(emQuicConnectFailed,
+          [AHost, APort, QuicStatusToStr(vStatus)]);
+    end;
+  finally
+    FJudge := nil;
   end;
 end;
 
@@ -792,7 +954,7 @@ end;
 constructor TRALMsQuicClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited Create(AOwner);
-  FAlpn := 'ralq1';
+  FAlpn := AnsiString(DefaultAlpn);
 end;
 
 destructor TRALMsQuicClientHTTP.Destroy;
@@ -836,6 +998,16 @@ begin
   Result := True;
 end;
 
+class function TRALMsQuicClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := True;
+end;
+
+function TRALMsQuicClientHTTP.JudgeServerCert(const AInfo: TRALCertInfo): boolean;
+begin
+  Result := AcceptServerCert(AInfo);
+end;
+
 function TRALMsQuicClientHTTP.AcquirePending: TRALMsQuicPending;
 begin
   if (FSpare <> nil) and (FSpare.RefCount = 1) then
@@ -857,17 +1029,38 @@ begin
   FSpare := Result;
 end;
 
-function TRALMsQuicClientHTTP.ConnectionKey(const AHost: StringRAL;
-  APort: IntegerRAL): StringRAL;
+function TRALMsQuicClientHTTP.CertMode: TRALMsQuicCertMode;
+begin
+  if CertCheckWanted then
+    Result := qcmJudge
+  else if Parent.SSL.Verify = svNever then
+    Result := qcmNone
+  else
+    Result := qcmSystem;
+end;
+
+function TRALMsQuicClientHTTP.ConnectionKey: StringRAL;
 begin
   { Where it goes, under which ALPN, and with which certificate policy - the
     policy belongs in the key because a TLS connection carries the decision
     taken once at handshake time: two clients sharing one must judge a
-    certificate the same way. }
-  { the keep-alive interval is part of it: two clients that disagree on how
-    often to prove the connection is alive must not end up on the same one }
-  Result := Format('%s:%d|%s|%d|%s|%d', [AHost, APort, StringRAL(FAlpn),
-    Ord(Parent.SSL.Verify), CertPolicyKey, Parent.KeepAliveInterval]);
+    certificate the same way. The keep-alive interval is part of it too: two
+    clients that disagree on how often to prove the connection is alive must
+    not end up on the same one. }
+  Result := StringRAL(Format('%s:%d|%s|%s|%d', [FTargetHost, FTargetPort,
+    StringRAL(FAlpn), CertPolicyKey, Parent.KeepAliveInterval]));
+end;
+
+procedure TRALMsQuicClientHTTP.ResolveTarget(const AURL: StringRAL);
+begin
+  if (FTargetUrl <> '') and (AURL = FTargetUrl) then
+    Exit;
+  QuicHostPort(AURL, FTargetHost, FTargetPort);
+  { a BaseURL with no port means the port TRALServer listens on when nobody
+    chose one - there is no 80/443 convention below HTTP to fall back on }
+  if FTargetPort <= 0 then
+    FTargetPort := DEFAULTSERVERPORT;
+  FTargetUrl := AURL;
 end;
 
 procedure TRALMsQuicClientHTTP.DropShared;
@@ -894,18 +1087,15 @@ begin
   end;
 end;
 
-function TRALMsQuicClientHTTP.PickConnection(const AURL: StringRAL): TRALMsQuicConnection;
+function TRALMsQuicClientHTTP.PickConnection: TRALMsQuicConnection;
 var
   vKey: StringRAL;
   vIdx: IntegerRAL;
   vConn: TRALMsQuicConnection;
-  vHost: StringRAL;
-  vPort: IntegerRAL;
+  vMode: TRALMsQuicCertMode;
 begin
-  QuicHostPort(AURL, vHost, vPort);
-  if vPort <= 0 then
-    vPort := 4710;
-  vKey := ConnectionKey(vHost, vPort);
+  vKey := ConnectionKey;
+  vMode := CertMode;
 
   if not Parent.ShareConnection then
   begin
@@ -918,7 +1108,7 @@ begin
     if FOwnConnection = nil then
     begin
       FOwnConnection := TRALMsQuicConnection.Create(vKey, FAlpn);
-      FOwnConnection.Open(vHost, vPort, Parent.SSL.Verify <> svNever,
+      FOwnConnection.Open(FTargetHost, FTargetPort, vMode, Self,
         Parent.ConnectTimeout, Parent.KeepAliveInterval);
     end;
     Result := FOwnConnection;
@@ -954,7 +1144,7 @@ begin
       end;
       vConn := TRALMsQuicConnection.Create(vKey, FAlpn);
       try
-        vConn.Open(vHost, vPort, Parent.SSL.Verify <> svNever,
+        vConn.Open(FTargetHost, FTargetPort, vMode, Self,
           Parent.ConnectTimeout, Parent.KeepAliveInterval);
       except
         vConn.Free;
@@ -971,9 +1161,14 @@ begin
   Result := FShared;
 end;
 
-
 procedure TRALMsQuicClientHTTP.PrepareRequest(ARequest: TRALRequest);
+var
+  vCookies: StringRAL;
 begin
+  { the frame carries only the path, so the host the request was aimed at goes
+    in the header every HTTP client sends - TRALRequest rebuilds its full URL
+    from it on the server }
+  ARequest.Params.AddParam('Host', FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)), rpkHEADER);
   ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
   ARequest.ContentCompress := Parent.CompressType;
   { Accept-Encoding states what the client can READ, which does not depend on
@@ -987,15 +1182,22 @@ begin
     ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
     ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
+  { the cookies the application set travel as one Cookie header, the way the
+    Indy and mORMot2 clients send them; the server reads that header back
+    into cookie params }
+  vCookies := ARequest.Params.AssignParamsText(rpkCOOKIE, False, '=', '; ');
+  if vCookies <> '' then
+    ARequest.Params.AddParam('Cookie', vCookies, rpkHEADER);
 end;
+
 function TRALMsQuicClientHTTP.BuildFrame(ARequest: TRALRequest;
   AMethod: TRALMethod; const ARoute: StringRAL): TBytes;
 var
-  vBody: StringRAL;
   vHeaders: TRALMsQuicHeaders;
   vHdrCount, vHdrSize: IntegerRAL;
   vSource: TStream;
   vDest: PByte;
+  vBodyLen: IntegerRAL;
 begin
   { THE BODY IS ENCODED FIRST, and the headers are built afterwards. Not a
     style choice: RequestStream runs EncodeBody, which decides between a raw
@@ -1005,39 +1207,40 @@ begin
     Content-Encoding, which is exactly what the round-trip battery caught:
     every multipart case came back empty and every compressed case came back
     unreadable. TRALSynopseClientHTTP orders it the same way. }
-  vBody := '';
   vSource := ARequest.RequestStream;
   try
-    if (vSource <> nil) and (vSource.Size > 0) then
+    vBodyLen := 0;
+    if vSource <> nil then
+      vBodyLen := vSource.Size;
+
+    if ARequest.ContentType <> '' then
+      ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
+    if ARequest.ContentDisposition <> '' then
+      ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
+    if ARequest.ContentCompress <> ctNone then
+      ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
+
+    vHdrSize := CollectHeaders(ARequest.Params, vHeaders, vHdrCount);
+
+    { one allocation, sized up front, and the body read from the encoded stream
+      straight into it - the string it used to pass through was a full copy of
+      the body per request }
+    SetLength(Result, 1 + BlockSize(Length(ARoute)) + vHdrSize + BlockSize(vBodyLen));
+    vDest := PByte(Result);
+    vDest^ := Ord(AMethod);
+    Inc(vDest);
+    vDest := PutBlockStr(vDest, ARoute);
+    vDest := PutHeaders(vDest, vHeaders, vHdrCount);
+    PCardinal(vDest)^ := vBodyLen;
+    Inc(vDest, 4);
+    if vBodyLen > 0 then
     begin
-      SetLength(vBody, vSource.Size);
       vSource.Position := 0;
-      vSource.ReadBuffer(vBody[POSINISTR], vSource.Size);
+      vSource.ReadBuffer(vDest^, vBodyLen);
     end;
   finally
     FreeAndNil(vSource);
   end;
-
-  if ARequest.ContentType <> '' then
-    ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
-  if ARequest.ContentDisposition <> '' then
-    ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-  if ARequest.ContentCompress <> ctNone then
-    ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
-
-  vHdrSize := CollectHeaders(ARequest.Params, vHeaders, vHdrCount);
-
-  { one allocation, sized up front - the TMemoryStream that used to grow here
-    and then be copied out was two more allocations and a full copy per
-    request }
-  SetLength(Result, 1 + BlockSize(Length(ARoute)) + vHdrSize +
-                    BlockSize(Length(vBody)));
-  vDest := PByte(Result);
-  vDest^ := Ord(AMethod);
-  Inc(vDest);
-  vDest := PutBlockStr(vDest, ARoute);
-  vDest := PutHeaders(vDest, vHeaders, vHdrCount);
-  PutBlockStr(vDest, vBody);
 end;
 
 procedure TRALMsQuicClientHTTP.ParseFrame(AFrame: PByte; ASize: IntegerRAL;
@@ -1050,7 +1253,7 @@ var
 begin
   if ASize < 2 then
   begin
-    SetTransportError(AResponse, rteOther, -1, 'truncated QUIC response frame');
+    SetTransportError(AResponse, rteOther, -1, emQuicFrameMalformed);
     Exit;
   end;
   Move(AFrame^, vStatus, 2);
@@ -1059,7 +1262,7 @@ begin
      (not ReadHeaders(AFrame, ASize, vPos, AResponse.Params)) or
      (not ReadBlockStr(AFrame, ASize, vPos, vBody)) then
   begin
-    SetTransportError(AResponse, rteOther, -1, 'malformed QUIC response frame');
+    SetTransportError(AResponse, rteOther, -1, emQuicFrameMalformed);
     Exit;
   end;
 
@@ -1076,9 +1279,8 @@ begin
   AResponse.ContentType := vContentType;
   AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
   AResponse.StatusCode := vStatus;
-  { there is no status line to quote: QUIC is the protocol, and it is not a
-    version of HTTP }
-  AResponse.Protocol := 'QUIC';
+  { ProtocolVersion stays rhvDefault: it is a version of HTTP, and QUIC is not
+    one - the transport could not tell, which is what rhvDefault means }
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpParseProps, vPMark);{$ENDIF}
   AResponse.ResponseText := vBody;
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpParseBody, vPMark);{$ENDIF}
@@ -1089,7 +1291,7 @@ procedure TRALMsQuicClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
 var
   vConn: TRALMsQuicConnection;
   vPending: TRALMsQuicPending;
-  vFrame, vAnswer: TBytes;
+  vFrame: TBytes;
   vStatus: QUIC_STATUS;
   vRoute: StringRAL;
   vLoadStatus: QUIC_STATUS;
@@ -1099,10 +1301,11 @@ begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEMSQUIC);
 
-  vLoadStatus := MsQuicLoad(FLibPath);
+  vLoadStatus := MsQuicLoad(string(DefaultLibPath));
   if QUIC_FAILED(vLoadStatus) then
   begin
-    SetTransportError(AResponse, rteOther, -1, MsQuicLoadError);
+    SetTransportError(AResponse, rteOther, -1,
+      StringRAL(Format(emQuicLibrary, [MsQuicLoadError])));
     Exit;
   end;
   { MsQuic creates its worker threads inside the C library, so BeginThread
@@ -1110,18 +1313,28 @@ begin
     would stay False - see TRALMsQuicServer for the full note. }
   IsMultiThread := True;
 
+  ResolveTarget(AURL);
   PrepareRequest(ARequest);
 
   vRoute := RouteFromUrl(AURL);
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpSetup, vMark);{$ENDIF}
 
+  { every code below is non-zero: ErrorCode is what BeforeSendUrl raises on
+    and what applications test, and zero there reads as success }
   try
-    vConn := PickConnection(AURL);
+    vConn := PickConnection;
   except
+    on e: ERALMsQuicCertError do
+    begin
+      { a refused certificate is never resent elsewhere - CanSwitchURL
+        declines rteCertificate - and it is told apart from a server down }
+      SetTransportError(AResponse, rteCertificate, -1, e.Message);
+      Exit;
+    end;
     on e: Exception do
     begin
       { nothing was delivered, so another BaseURL may be tried with any method }
-      SetTransportError(AResponse, rteConnect, 0, e.Message);
+      SetTransportError(AResponse, rteConnect, -1, e.Message);
       Exit;
     end;
   end;
@@ -1134,82 +1347,81 @@ begin
   { the engine keeps its reference to the context between requests - see
     AcquirePending - so nothing is released here on the normal path }
   vPending := AcquirePending;
-  try
-    vStatus := MsQuicApi^.StreamOpen(vConn.Handle, QUIC_STREAM_OPEN_FLAG_NONE,
-      RALMsQuicClientStreamCallback, vPending, vPending.Stream);
-    if QUIC_FAILED(vStatus) then
-    begin
-      { no stream was opened, so no callback chain will ever give back the
-        reference it was counted for: hand that one back here. The engine
-        keeps its own, and the context stays reusable. }
-      vPending.Release;
-      SetTransportError(AResponse, rteConnect, 0, 'StreamOpen: ' +
-        QuicStatusToStr(vStatus));
-      Exit;
-    end;
-
-    { SHUTDOWN_ON_FAIL guarantees a SHUTDOWN_COMPLETE even when the start
-      fails, and that event is the only thing that releases the callback's
-      reference. }
-    vStatus := MsQuicApi^.StreamStart(vPending.Stream,
-      QUIC_STREAM_START_FLAG_NONE or QUIC_STREAM_START_FLAG_SHUTDOWN_ON_FAIL);
-    if QUIC_FAILED(vStatus) then
-    begin
-      SetTransportError(AResponse, rteConnect, 0, 'StreamStart: ' +
-        QuicStatusToStr(vStatus));
-      Exit;
-    end;
-
-    vStatus := SendAndFinish(vPending.Stream, vFrame);
-    if QUIC_FAILED(vStatus) then
-    begin
-      MsQuicApi^.StreamShutdown(vPending.Stream,
-        QUIC_STREAM_SHUTDOWN_FLAG_ABORT or QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE, 0);
-      SetTransportError(AResponse, rteConnect, 0, 'StreamSend: ' +
-        QuicStatusToStr(vStatus));
-      Exit;
-    end;
-
-    {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpStart, vMark);{$ENDIF}
-
-    if vPending.Done.WaitFor(Parent.RequestTimeout) <> wrSignaled then
-    begin
-      MsQuicApi^.StreamShutdown(vPending.Stream,
-        QUIC_STREAM_SHUTDOWN_FLAG_ABORT or QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE, 0);
-      { the request went out and the server may have run it, so only an
-        idempotent method may be replayed elsewhere - which is what rteTimeout
-        means to CanSwitchURL }
-      SetTransportError(AResponse, rteTimeout, 0, 'timed out waiting for the answer');
-      Exit;
-    end;
-
-    {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpWait, vMark);{$ENDIF}
-
-    if vPending.Failed then
-    begin
-      SetTransportError(AResponse, rteOther, 0, 'the peer aborted the stream');
-      Exit;
-    end;
-
-    { parsed straight out of the accumulator: Position is the length written,
-      and Size is only the high water mark of the buffer being reused }
-    ParseFrame(PByte(vPending.Received.Memory), vPending.Received.Position,
-      AResponse);
-    {$IFDEF RALMSQUIC_PROFILE}
-    ProfMark(qpParse, vMark);
-    RALAtomicInc(gPhaseReqs, 1);
-    {$ENDIF}
-  finally
-    { deliberately NOT released here: the engine keeps the context for the
-      next request (see AcquirePending), and the callback chain gives its own
-      reference back on SHUTDOWN_COMPLETE }
+  vStatus := MsQuicApi^.StreamOpen(vConn.Handle, QUIC_STREAM_OPEN_FLAG_NONE,
+    RALMsQuicClientStreamCallback, vPending, vPending.Stream);
+  if QUIC_FAILED(vStatus) then
+  begin
+    { no stream was opened, so no callback chain will ever give back the
+      reference it was counted for: hand that one back here. The engine
+      keeps its own, and the context stays reusable. }
+    vPending.Release;
+    SetTransportError(AResponse, rteConnect, -1,
+      StringRAL(Format(emQuicApiFailed, ['StreamOpen', QuicStatusToStr(vStatus)])));
+    Exit;
   end;
+
+  { SHUTDOWN_ON_FAIL guarantees a SHUTDOWN_COMPLETE even when the start
+    fails, and that event is the only thing that releases the callback's
+    reference. }
+  vStatus := MsQuicApi^.StreamStart(vPending.Stream,
+    QUIC_STREAM_START_FLAG_NONE or QUIC_STREAM_START_FLAG_SHUTDOWN_ON_FAIL);
+  if QUIC_FAILED(vStatus) then
+  begin
+    SetTransportError(AResponse, rteConnect, -1,
+      StringRAL(Format(emQuicApiFailed, ['StreamStart', QuicStatusToStr(vStatus)])));
+    Exit;
+  end;
+
+  vStatus := SendAndFinish(vPending.Stream, vFrame);
+  if QUIC_FAILED(vStatus) then
+  begin
+    MsQuicApi^.StreamShutdown(vPending.Stream,
+      QUIC_STREAM_SHUTDOWN_FLAG_ABORT or QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE, 0);
+    SetTransportError(AResponse, rteConnect, -1,
+      StringRAL(Format(emQuicApiFailed, ['StreamSend', QuicStatusToStr(vStatus)])));
+    Exit;
+  end;
+
+  {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpStart, vMark);{$ENDIF}
+
+  if vPending.Done.WaitFor(Parent.RequestTimeout) <> wrSignaled then
+  begin
+    MsQuicApi^.StreamShutdown(vPending.Stream,
+      QUIC_STREAM_SHUTDOWN_FLAG_ABORT or QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE, 0);
+    { the request went out and the server may have run it, so only an
+      idempotent method may be replayed elsewhere - which is what rteTimeout
+      means to CanSwitchURL }
+    SetTransportError(AResponse, rteTimeout, -1, emQuicAnswerTimeout);
+    Exit;
+  end;
+
+  {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpWait, vMark);{$ENDIF}
+
+  if vPending.Failed then
+  begin
+    SetTransportError(AResponse, rteOther, -1, emQuicPeerAborted);
+    Exit;
+  end;
+
+  { parsed straight out of the accumulator: Position is the length written,
+    and Size is only the high water mark of the buffer being reused }
+  ParseFrame(PByte(vPending.Received.Memory), vPending.Received.Position,
+    AResponse);
+  {$IFDEF RALMSQUIC_PROFILE}
+  ProfMark(qpParse, vMark);
+  RALAtomicInc(gPhaseReqs, 1);
+  {$ENDIF}
+  { deliberately NOT released here: the engine keeps the context for the next
+    request (see AcquirePending), and the callback chain gives its own
+    reference back on SHUTDOWN_COMPLETE }
 end;
 
 initialization
   {$IFDEF RALMSQUIC_PROFILE}
   {$IFDEF RALWindows}QueryPerformanceFrequency(gPhaseFreq);{$ENDIF}
   {$ENDIF}
+  TRALMsQuicClientHTTP.DefaultAlpn := RALQUICALPN;
+  TRALMsQuicClientHTTP.DefaultLibPath := '';
   vPool := TStringList.Create;
   vPool.Sorted := True;
   vPoolLock := TCriticalSection.Create;

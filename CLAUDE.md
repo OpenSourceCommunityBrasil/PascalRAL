@@ -169,6 +169,57 @@ Two traps it hit that any unit here can hit:
   `RALAtomicInc`/`RALAtomicDec` (`RALTools`), which return the **new** value on
   both compilers - `InterLockedExchangeAdd` returns the old one.
 
+What changed on 20/09/2026, after the review of the engine (report 4 of the
+audits, IDs `MQ-*`; verified by a 28-case functional program on Delphi x64 and
+FPC x64 - gzip, AES-256, both, multipart, cookies, address, pin, event, 413,
+3 MB, `PoolCount`, stop time):
+
+- **The client reports failure like every other engine.** Every transport
+  failure carried `ErrorCode = 0`, and `BeforeSendUrl` raises only on a non-zero
+  code, so a server that was down came back as a success. The engine passes -1
+  now, and `SetTransportError` itself turns a 0 into -1 for any engine that
+  tries it again.
+- **The server knows who is calling.** The listener keeps the peer's address in
+  a `TRALMsQuicConn` context per connection (`QuicAddrToStr` in the binding;
+  an IPv4-mapped address comes back as the IPv4), every stream copies it, and
+  `ClientInfo.IP`/`Port` are the peer's - `TRALSecurity` keys everything on
+  them. It used to be `127.0.0.1` for everybody.
+- **`Active := False` returns at once.** `RegistrationShutdown` runs before
+  `RegistrationClose`: the close waits for every connection to be closed, and a
+  client sitting on an idle shared connection never closes it on its own.
+- **`SSL.Pins` and `OnValidateServerCert` work** (`SupportsCertPin` is True).
+  With either set the configuration asks for `INDICATE_CERTIFICATE_RECEIVED +
+  DEFER_CERTIFICATE_VALIDATION + USE_PORTABLE_CERTIFICATES`; the certificate
+  arrives as DER in `PEER_CERTIFICATE_RECEIVED`, its SHA-256 is computed there
+  and `AcceptServerCert` decides, with the library's own verdict as `Trusted`.
+  A refusal is `rteCertificate`, whether from the callback or from a status in
+  the certificate family (`QuicStatusIsCertError`). A connection is judged once,
+  at its handshake, so a reused one is not asked again - the same as everywhere.
+- **Cookies travel both ways**: the `Cookie` header is built from `rpkCOOKIE`
+  params, and a `Set-Cookie` lands as an `rpkCOOKIE` param of the response
+  through `TRALParams.AddHeader`. The same rule now serves Indy and mORMot2
+  through `AppendParamLine` (`TRALParams.AddSetCookie`); as headers alone only
+  the last `Set-Cookie` of an answer ever survived, since `AddParam` replaces
+  by name.
+- **`PoolCount`** on the server, default 1. One dispatch thread is right for a
+  route that computes and wrong for one that waits on a database; the property
+  comment carries the measurements, and assigning it restarts a live server.
+- **Status codes per platform** in `MsQuic.pas`: HRESULTs on Windows, errno on
+  Linux, and `QUIC_FAILED` accordingly - on POSIX failure is any positive value.
+  Apple's errno numbering differs and `MsQuicLoad` refuses there rather than
+  misread every status.
+- Smaller ones: a failure inside `SetActive` leaves `Active` False (the same
+  guard went into Indy, Sagui and mORMot2, where a bind that failed also left
+  the base saying True); the connection's idle timeout is `RALQUICIDLETIMEOUT`
+  and the handshake budget is `ConnectTimeout` (it used to be the idle
+  timeout); a `BaseURL` without a port means `DEFAULTSERVERPORT`; `Host` is
+  sent; the client's ALPN and library path are the class vars
+  `TRALMsQuicClientHTTP.DefaultAlpn`/`DefaultLibPath`, since the engine object
+  is never seen by the application; `PrivateKeyPassword` loads a protected key;
+  `MaxRequestSize` is enforced in the RECEIVE callback before the bytes are
+  kept; a refused `StreamSend` aborts the stream instead of leaving the client
+  to its timeout; the receive buffer kept between requests is released past 1 MB.
+
 `okhttp` is the one engine that does not follow all of it, and the reasons are worth knowing before copying it as a template: it is **Delphi-only** (the unit is built on `Androidapi.JNIBridge`/`TJavaLocal`, which FPC has no equivalent of, so there is no `pkg/Lazarus/Engine` package and cannot be one as written) and it carries **no `.dcr`**, because it puts nothing on the palette. It is also **client-only** — there is no OkHttp server.
 
 A platform-specific engine still has to be **declared and registered on every platform**, even where it does nothing. `TRALClientEngines`, the property editor behind `EngineType`, lists whatever `RegisterEngine` put in — and that runs from a unit initialization, so an engine wrapped entirely in `{$IFDEF ANDROID}` compiles to nothing on the IDE's own platform and its name can never be chosen. `RALOkHttpClient` keeps the class and the registration outside the IFDEF and lets `SendUrl` refuse with `emOkHttpAndroidOnly` elsewhere.
@@ -202,6 +253,8 @@ Every callback-taking client call — `TRALClient.Get/Post/Put/Patch/Delete(ARou
 - `ebSingleThread` runs the same sequence on the **calling** thread and invokes the callback *before returning*. Callers can read results on the next line.
 
 The callback always receives a valid `TRALResponse`, even when the request failed — the message goes in the `AException` parameter. Handlers rely on this: `TRALDBFDMemTable.OnApplyUpdates`/`OnExecSQLResponse` dereference `AResponse.StatusCode` with no nil check.
+
+A 200 whose body the memtable cannot load (a route answering the wrong thing, a truncated stream) is reported through `OnError` on all three memtables since 20/09/2026, with `FLoading` (and `FOpening` on sqldb) reset in a `finally`. It used to raise out of the callback - lost in the response thread on the threaded path, escaping `Open` on the synchronous one - and left the dataset unopenable either way.
 
 **The other overloads — `Get/Post/...(ARoute, var AResponse)` — do the opposite: ownership goes to the caller.** They funnel into `ExecuteSingle`, which *returns* the response, so the caller frees it; `TRALResponse.Create(AOwner: TObject)` takes a plain reference, not component ownership, so freeing the `TRALClient` frees nothing. And the caller only receives it on a **normal return** — when the request fails at transport level `BeforeSendUrl` raises, the assignment at the call site never runs, so `ExecuteSingle` frees the response itself before letting the exception out. That is not defensive coding: without it every failed request leaked a whole response.
 
@@ -242,7 +295,7 @@ reuses the *engine*, which is what Indy, mORMot2 and fpHTTP - with no
 
 `SSL.Verify` exists because the engines do not agree on their own: `svEngine` (the default) keeps what each one has always done — netHTTP and mORMot2 validate, Indy and fpHTTP do not verify at all — `svAlways` turns verification on where it is off, and `svNever` accepts anything. It only decides when there is neither a pin nor an event; those two, when set, are the decision. A refused certificate reports `TransportError = rteCertificate` on every engine, so a caller can tell it apart from a server being down without matching message text — `CanSwitchURL` never resends it, since its `else` refuses what it does not know. Each engine only translates its own callback into `TRALCertInfo` — the same record on every compiler and platform — and asks `TRALClientHTTP.AcceptServerCert`, where the single rule lives: **the event decides, else the pin, else what the engine itself concluded**. Same shape as `SetTransportError` for retries.
 
-Which engines can actually **fill** `TRALCertInfo.Fingerprint` is what `SupportsCertPin` answers, and `SSL.Pins` raises on the first request where it is False rather than checking something weaker in silence. Indy reads it everywhere; **netHTTP reads it on Windows**, from the WinHTTP handle under the RTL's `TCertificate`, which carries no fingerprint on any platform; **okhttp reads it on Android**, which is the only way pinning works there at all. Everywhere else it stays False.
+Which engines can actually **fill** `TRALCertInfo.Fingerprint` is what `SupportsCertPin` answers, and `SSL.Pins` raises on the first request where it is False rather than checking something weaker in silence. Indy reads it everywhere; **netHTTP reads it on Windows**, from the WinHTTP handle under the RTL's `TCertificate`, which carries no fingerprint on any platform; **okhttp reads it on Android**, which is the only way pinning works there at all; **MsQuic reads it wherever it runs**, because the certificate reaches it as DER bytes and the engine hashes them itself. Everywhere else it stays False.
 
 **When a pin or `OnValidateServerCert` decides, the host name stops mattering** - that is the
 documented contract in [`src/engine/SSL.md`](src/engine/SSL.md), and each engine has to honour it
