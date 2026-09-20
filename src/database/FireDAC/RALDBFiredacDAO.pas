@@ -880,7 +880,10 @@ procedure TRALFDConnection.SetRALServer(const value: TRALServer);
 begin
   vRALServer := value;
 
-  if not(csDesigning in Self.Owner.ComponentState) then
+  { the component's OWN state: a form at design time marks every component on
+    it csDesigning, and a connection created in code with a nil owner used to
+    die here reading Owner.ComponentState }
+  if not(csDesigning in ComponentState) then
   begin
     if not(Assigned(vRALServer)) then
       raise Exception.Create(emInvalidServer);
