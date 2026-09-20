@@ -21,6 +21,18 @@
   emHttpSysAddUrl = 'http.sys refused to listen on port %d (code %d). Code 5 means the port is not reserved for this user: run "netsh http add urlacl url=http://+:%0:d/ user=<user>" once, as Administrator, or start the server elevated.';
   emHttpSysWindowsOnly = 'Mode is smHttpSys, which is served by the Windows kernel (http.sys) and has no implementation on this platform. Use smThreads or smAsync - bearing in mind that neither of them serves HTTP/2.';
   emHTTP10NotRequestable = 'HTTPVersion is rhv10, and HTTP/1.0 cannot be asked for: no engine exposes a switch for it. rhv10 only ever comes back, on a request a server received. Leave HTTPVersion at rhvDefault.';
+  emServerListenFailed = 'The %s server could not start listening on port %d.';
+  emQuicRequiresTLS = 'QUIC has no unencrypted mode: set SSL.CertificateFile and SSL.PrivateKeyFile before activating the server.';
+  emQuicFileNotFound = 'QUIC: file not found: %s.';
+  emQuicLibrary = 'MsQuic could not be loaded: %s.';
+  emQuicApiFailed = 'MsQuic %s failed: %s.';
+  emQuicListenFailed = 'MsQuic could not listen on UDP port %d: %s.';
+  emQuicHandshakeTimeout = 'QUIC handshake with %s:%d timed out.';
+  emQuicConnectFailed = 'QUIC connection to %s:%d failed: %s.';
+  emQuicFrameMalformed = 'Malformed QUIC frame.';
+  emQuicAnswerTimeout = 'QUIC: timed out waiting for the answer.';
+  emQuicPeerAborted = 'QUIC: the peer aborted the stream.';
+  emQuicPlatformUnsupported = 'The MsQuic engine only translates the status codes of Windows and Linux; it cannot run on this platform yet.';
   emCompressInvalidFormat = 'Invalid compression Format.';
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
   emContentCheckError = 'Content check error.';

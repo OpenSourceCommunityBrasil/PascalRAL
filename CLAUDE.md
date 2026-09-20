@@ -41,13 +41,45 @@ msbuild pkg\Delphi\Engine\IndyRAL.dproj /t:Build /p:Config=Release /p:Platform=W
   /p:DCC_UsePackage="rtl;IndySystem;IndyProtocols;IndyCore;PascalRAL;PascalRALDsgn"
 ```
 
-Three traps, in the order they bite:
+Seven traps, in the order they bite:
 
 1. **`/p:UsePackages=true` is mandatory.** The targets emit `-LU` only `Condition="'$(UsePackages)'==true Or '$(DCC_EnabledPackages)'=='true'"`, and **no `.dproj` in this repo sets either**. Without it `msbuild` produces a package with Indy/FireDAC linked *statically* — it compiles clean and the IDE then refuses it with a duplicate-unit error. Watch the size: `IndyRAL.bpl` comes out at 1.5 MB instead of 45 KB, `RALDBFireDACLink.bpl` at 2.9 MB instead of 104 KB.
 2. **Filter `DCC_UsePackage` against the `.dcp` that actually exist.** These lists accumulate whatever was installed when the `.dproj` was last saved; `IndyRAL.dproj` still names `IndyCore160`/`IndySystem160`/`IndyProtocols160`. With `-LU` on, a name with no `.dcp` is a hard `E2202: Required package 'IndyCore160' not found`. Keep only the entries with a matching `.dcp` under the lib or `Dcp` directory.
 3. **The `Base` PropertyGroup's `DCC_UnitSearchPath` does not get applied this way.** It only matters for `SynopseRAL`, because every other package names its units with explicit `in '..\..\src\...'` paths in the `.dpk` while the mORMot units are external. Pass them yourself, `$(mormot2)` expanded:
    `/p:DCC_UnitSearchPath="<src\base>;<src\utils>;<src\engine\synopse>;<m>;<m>\core;<m>\lib;<m>\crypt;<m>\net;<m>\db;<m>\rest;<m>\orm;<m>\soa;<m>\app;<m>\script;<m>\ui;<m>\tools;<m>\misc"`.
    `mormot2` is an **IDE** environment variable, so `msbuild` does not see it — pass `/p:mormot2=...` or set it in the shell.
+4. **Set `BDS`, `BDSCOMMONDIR` and `BDSLIB` yourself** when the shell was not
+   initialized by `rsvars.bat`. Without `BDS` the `.dproj` never imports
+   `CodeGear.Delphi.Targets` and `msbuild` answers
+   `MSB4057: the "Build" target does not exist in the project` — which reads like
+   a broken package and is not. `rsvars.bat` lists every variable it sets.
+5. **A `;` inside a `/p:` *value* is a property separator**, not part of the
+   value: `/p:DelphiLibraryPath=a;b` tries to set a second property `b` and dies
+   with `MSB1006: invalid property`. Escape each one as `%3B`.
+6. **`DCC_CBuilderOutput` is `All` in the `Base` group, and only Debug/Win32
+   turns it off.** Build Release and the compiler tries to emit C++ headers,
+   which rejects mORMot's old-style `object` types:
+   `E1025: Unsupported language feature: 'Object'` at line 1 of
+   `mormot.lib.openssl11.pas`. Only `SynopseRAL` hits it, so it reads like a
+   mORMot problem — it is not. Pass `/p:DCC_CBuilderOutput=None`; no package here
+   is consumed from C++Builder. This is also why the `.bpl` installed on a
+   developer machine are usually **Debug** builds, six times the sizes below:
+   Debug is the configuration that happens to disable the flag.
+7. **When a unit is "not found", add the package that owns it to
+   `DCC_UsePackage` — never this repo's `src` to `DCC_UnitSearchPath`.**
+   `RALDBFireDACObjects` stops at `F2613: Unit 'RALDBBase' not found`, because
+   that unit lives in `RALDBPackage`, which appears neither in the `.dpk`'s
+   `requires` nor in the `.dproj`'s `DCC_UsePackage`; add `RALDBPackage` and it
+   builds. Putting `src` on the unit search path also makes it build — and
+   silently **compiles `RALDBBase` into the `.bpl`** instead of referencing it.
+   Nothing complains until the IDE starts and refuses the package with
+   `Cannot load package 'RALDBFireDACObjects'. It contains unit 'RALDBBase',
+   which is also contained in package 'RALDBPackage'` — and answering **No**
+   there moves it to `Disabled Packages`, where it stays ignored even after the
+   `.bpl` is fixed (see the end of this section). To tell the two apart without
+   the IDE: the offending unit's name appears as a string inside the `.bpl` of
+   both packages. A healthy `RALDBFireDACObjects.bpl` has **zero** occurrences of
+   `RALDBBase`; a broken one has three.
 
 Healthy sizes after a full rebuild (Win32/Release): `PascalRAL` 542 KB, `PascalRALDsgn` 80, `IndyRAL` 45, `NetHttpRAL` 32, `SynopseRAL` 4432 (mORMot is statically linked — it has no runtime package, so this one is meant to be large), `RALDBPackage` 122, `RALDBFireDACLink` 104, `RALDBFireDACObjects` 91, `RALWizard` 136, `RALZStdCompress` 51, `RALBSONStorage` 66.
 
@@ -102,6 +134,92 @@ Routes are created with `Server.CreateRoute('name', HandlerProc, 'description')`
 ### Engines are subclasses, not adapters
 Each engine subclasses the core class rather than wrapping it: `TRALIndyServer`, `TRALSynopseServer`, `TRALfpHttpServer`, `TRALSaguiServer`, `TRALUniGUIServer` all descend from `TRALServer` and override `SetActive`, `SetPort`, `CreateRALSSL`, `IPv6IsImplemented`. Clients follow the same shape via `TRALClientHTTP` descendants (`TRALIndyClientHTTP`, etc.), selected at runtime by `TRALClient`. **Adding an engine means adding `RAL<Name>Server.pas`/`RAL<Name>Client.pas`, a `RAL<Name>Register.pas`, a package in both `pkg/Delphi/Engine` and `pkg/Lazarus/Engine`, and a `.dcr` (Delphi) + `.lrs` (Lazarus) icon resource.**
 
+### The MsQuic engine does not speak HTTP
+
+`TRALMsQuicServer` / `TRALMsQuicClientHTTP` (`src/engine/msquic`) put RAL's own
+length-prefixed binary frame straight onto QUIC streams. MsQuic implements the
+transport only - streams, TLS 1.3, ALPN - so there is no HTTP/3 framing and no
+QPACK, and **both ends must be RAL**: curl, a browser, a reverse proxy or a CDN
+cannot read it. That is the trade for what the transport gives, which is one
+stream per request (a lost packet delays only its own request, not the
+connection) and a 1-RTT handshake against TCP+TLS 1.2's 3.
+
+`MsQuic.pas` is a standalone binding - `SysUtils` plus the loader, no RAL unit -
+and is shared with a project outside this repo, so keep it free of RAL
+dependencies. Two things about it that do not announce themselves: `QUIC_SETTINGS`
+must stay 144 bytes in the MSVC layout, because the library reads the fields at
+fixed offsets and configures something else in silence when they move (the loader
+checks the size and refuses to load); and the library is only loaded by
+`SetActive(True)`, never from a constructor or an `initialization`, so the
+component drops onto a form on a machine with no `msquic.dll`.
+
+It needs `msquic.dll` / `libmsquic.so.2` from the **OpenSSL** build at runtime -
+the SChannel build has no TLS 1.3 on Windows 10 - or a path in `LibPath`.
+
+Two traps it hit that any unit here can hit:
+
+- **`Windows` goes before `SyncObjs` in a `uses` clause.** FPC's `Windows`
+  declares `TCriticalSection` as a *record* (the `TRTLCriticalSection` alias),
+  which shadows the class from `SyncObjs` and turns a plain
+  `vLock: TCriticalSection = nil` into `Syntax error, "(" expected but "NIL"
+  found` - pointing at the variable, not at the `uses`. Delphi has no such
+  declaration, so it is FPC-only.
+- **`AtomicIncrement`/`AtomicDecrement` are Delphi-only.** FPC 3.2.2 spells them
+  `InterLocked*` and declares the 64-bit pair only on 64-bit CPUs. Use
+  `RALAtomicInc`/`RALAtomicDec` (`RALTools`), which return the **new** value on
+  both compilers - `InterLockedExchangeAdd` returns the old one.
+
+What changed on 20/09/2026, after the review of the engine (report 4 of the
+audits, IDs `MQ-*`; verified by a 28-case functional program on Delphi x64 and
+FPC x64 - gzip, AES-256, both, multipart, cookies, address, pin, event, 413,
+3 MB, `PoolCount`, stop time):
+
+- **The client reports failure like every other engine.** Every transport
+  failure carried `ErrorCode = 0`, and `BeforeSendUrl` raises only on a non-zero
+  code, so a server that was down came back as a success. The engine passes -1
+  now, and `SetTransportError` itself turns a 0 into -1 for any engine that
+  tries it again.
+- **The server knows who is calling.** The listener keeps the peer's address in
+  a `TRALMsQuicConn` context per connection (`QuicAddrToStr` in the binding;
+  an IPv4-mapped address comes back as the IPv4), every stream copies it, and
+  `ClientInfo.IP`/`Port` are the peer's - `TRALSecurity` keys everything on
+  them. It used to be `127.0.0.1` for everybody.
+- **`Active := False` returns at once.** `RegistrationShutdown` runs before
+  `RegistrationClose`: the close waits for every connection to be closed, and a
+  client sitting on an idle shared connection never closes it on its own.
+- **`SSL.Pins` and `OnValidateServerCert` work** (`SupportsCertPin` is True).
+  With either set the configuration asks for `INDICATE_CERTIFICATE_RECEIVED +
+  DEFER_CERTIFICATE_VALIDATION + USE_PORTABLE_CERTIFICATES`; the certificate
+  arrives as DER in `PEER_CERTIFICATE_RECEIVED`, its SHA-256 is computed there
+  and `AcceptServerCert` decides, with the library's own verdict as `Trusted`.
+  A refusal is `rteCertificate`, whether from the callback or from a status in
+  the certificate family (`QuicStatusIsCertError`). A connection is judged once,
+  at its handshake, so a reused one is not asked again - the same as everywhere.
+- **Cookies travel both ways**: the `Cookie` header is built from `rpkCOOKIE`
+  params, and a `Set-Cookie` lands as an `rpkCOOKIE` param of the response
+  through `TRALParams.AddHeader`. The same rule now serves Indy and mORMot2
+  through `AppendParamLine` (`TRALParams.AddSetCookie`); as headers alone only
+  the last `Set-Cookie` of an answer ever survived, since `AddParam` replaces
+  by name.
+- **`PoolCount`** on the server, default 1. One dispatch thread is right for a
+  route that computes and wrong for one that waits on a database; the property
+  comment carries the measurements, and assigning it restarts a live server.
+- **Status codes per platform** in `MsQuic.pas`: HRESULTs on Windows, errno on
+  Linux, and `QUIC_FAILED` accordingly - on POSIX failure is any positive value.
+  Apple's errno numbering differs and `MsQuicLoad` refuses there rather than
+  misread every status.
+- Smaller ones: a failure inside `SetActive` leaves `Active` False (the same
+  guard went into Indy, Sagui and mORMot2, where a bind that failed also left
+  the base saying True); the connection's idle timeout is `RALQUICIDLETIMEOUT`
+  and the handshake budget is `ConnectTimeout` (it used to be the idle
+  timeout); a `BaseURL` without a port means `DEFAULTSERVERPORT`; `Host` is
+  sent; the client's ALPN and library path are the class vars
+  `TRALMsQuicClientHTTP.DefaultAlpn`/`DefaultLibPath`, since the engine object
+  is never seen by the application; `PrivateKeyPassword` loads a protected key;
+  `MaxRequestSize` is enforced in the RECEIVE callback before the bytes are
+  kept; a refused `StreamSend` aborts the stream instead of leaving the client
+  to its timeout; the receive buffer kept between requests is released past 1 MB.
+
 `okhttp` is the one engine that does not follow all of it, and the reasons are worth knowing before copying it as a template: it is **Delphi-only** (the unit is built on `Androidapi.JNIBridge`/`TJavaLocal`, which FPC has no equivalent of, so there is no `pkg/Lazarus/Engine` package and cannot be one as written) and it carries **no `.dcr`**, because it puts nothing on the palette. It is also **client-only** — there is no OkHttp server.
 
 A platform-specific engine still has to be **declared and registered on every platform**, even where it does nothing. `TRALClientEngines`, the property editor behind `EngineType`, lists whatever `RegisterEngine` put in — and that runs from a unit initialization, so an engine wrapped entirely in `{$IFDEF ANDROID}` compiles to nothing on the IDE's own platform and its name can never be chosen. `RALOkHttpClient` keeps the class and the registration outside the IFDEF and lets `SendUrl` refuse with `emOkHttpAndroidOnly` elsewhere.
@@ -118,7 +236,7 @@ Reading the version back takes a different door on each side. The http.sys serve
 
 **netHTTP answers `SupportsHTTP2` False on Android**, and that is deliberate: the RTL lands on `HttpURLConnection` there, so `ProtocolVersion` is accepted and then ignored - measured against a server serving h2 to everything else, 70 of 71 requests came back HTTP/1.1, with no error and nothing in any log. Answering True would make `rhv2` a silent no-op, which is the one outcome `TRALHTTPVersion` exists to prevent.
 
-`TRALClient.ShareConnection` is the other half of the gain: one connection for every client aimed at the same place with the same settings, instead of one per dataset. It is a hint, not a contract — engines that cannot share ignore it. netHTTP honours it with a transport pool of its own and okhttp by handing the question to OkHttp's client cache - and **both key that cache by the certificate policy**, so only clients that judge certificates alike ever share. That is not tidiness: a TLS connection is judged ONCE, during its handshake, and a reused one has no handshake at all, so a client sharing a pool inherits a verdict it never gave. `CertPolicyKey` on `TRALClientHTTP` is the one signature both engines use.
+`TRALClient.ShareConnection` is the other half of the gain: one connection for every client aimed at the same place with the same settings, instead of one per dataset. It is a hint, not a contract — engines that cannot share ignore it. netHTTP honours it with a transport pool of its own and okhttp by handing the question to OkHttp's client cache - and **both key that cache by the certificate policy**, so only clients that judge certificates alike ever share. That is not tidiness: a TLS connection is judged ONCE, during its handshake, and a reused one has no handshake at all, so a client sharing a pool inherits a verdict it never gave. `CertPolicyKey` on `TRALClientHTTP` is the one signature all three engines use - MsQuic keys its connection pool by it too. `ShareConnection` is **on by default since 20/09/2026**; it started off.
 
 One trap worth knowing on Windows: asking for h2 also caps the transport at one connection (`MAX_CONNS_PER_SERVER`), which is what turns h2 into multiplexing. The cap goes on when the transport is CREATED, and it has to: measured with 20 threads on a fresh transport, every one of them opens its socket in the first burst, before any response exists, and WinHTTP never closes what it already pooled - capping after the answer left 16 connections where 1 was the point. Asking is not getting, though, so `MatchConnectionCap` takes the cap off the moment an answer reports 1.0 or 1.1; one burst pays for the wrong guess and it is right from there on. That matters because under HTTP/1.1 a single connection queues concurrent requests instead of running them. Which engines can is `SupportsSharedConnection`, a class function like the other two - the ones that cannot are not slower for ignoring it, they would be slower for honouring it, since one object there means one socket and sharing would serialise concurrent calls.
 
@@ -131,16 +249,49 @@ One trap worth knowing on Windows: asking for h2 also caps the transport at one 
 ### Client execution model (`ebSingleThread` vs `ebMultiThread`)
 Every callback-taking client call — `TRALClient.Get/Post/Put/Patch/Delete(ARoute, AOnResponse, AExecBehavior)` — funnels into `TRALClient.ExecuteThread`, and the `TRALExecBehavior` picks *which thread runs the request*, not whether a callback is used:
 
-- `ebMultiThread` (the default) starts a `TRALThreadClient` and returns immediately. The callback fires later from `TThread.OnTerminate`, which the RTL marshals to the **main thread**. The `TRALResponse` is owned by the thread and freed right after the callback, so handlers must consume it, not retain it.
-- `ebSingleThread` runs the same sequence on the **calling** thread and invokes the callback *before returning*. Callers can read results on the next line.
+- `ebSingleThread` (**the default since 20/09/2026**; it used to be `ebMultiThread`) runs the whole sequence on the **calling** thread and invokes the callback *before returning*. Callers can read results on the next line - and a `Get` from a button handler blocks the UI for the duration, so pass `ebMultiThread` where that matters.
+- `ebMultiThread` starts a `TRALThreadClient` and returns immediately. The callback fires later from `TThread.OnTerminate`, which the RTL marshals to the **main thread**. The `TRALResponse` is owned by the thread and freed right after the callback, so handlers must consume it, not retain it.
 
 The callback always receives a valid `TRALResponse`, even when the request failed — the message goes in the `AException` parameter. Handlers rely on this: `TRALDBFDMemTable.OnApplyUpdates`/`OnExecSQLResponse` dereference `AResponse.StatusCode` with no nil check.
 
+A 200 whose body the memtable cannot load (a route answering the wrong thing, a truncated stream) is reported through `OnError` on all three memtables since 20/09/2026, with `FLoading` (and `FOpening` on sqldb) reset in a `finally`. It used to raise out of the callback - lost in the response thread on the threaded path, escaping `Open` on the synchronous one - and left the dataset unopenable either way.
+
 **The other overloads — `Get/Post/...(ARoute, var AResponse)` — do the opposite: ownership goes to the caller.** They funnel into `ExecuteSingle`, which *returns* the response, so the caller frees it; `TRALResponse.Create(AOwner: TObject)` takes a plain reference, not component ownership, so freeing the `TRALClient` frees nothing. And the caller only receives it on a **normal return** — when the request fails at transport level `BeforeSendUrl` raises, the assignment at the call site never runs, so `ExecuteSingle` frees the response itself before letting the exception out. That is not defensive coding: without it every failed request leaked a whole response.
 
-Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` is deliberately async and lets `SetActive`'s `FLoading` flag close the loop. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebMultiThread`; its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
+Anything whose result is read as a property right after the call must use `ebSingleThread` — that is why `TRALDBConnection.ApplyUpdatesRemote`/`ExecSQLRemote` pass it (`TRALDBFDMemTable.ExecSQL` reads `RowsAffected`/`LastId` immediately), while `OpenRemote` passes none and follows the client's default - synchronous since 20/09/2026 - with `SetActive`'s `FLoading` flag closing the loop either way. `TRALFDQuery` (`RALDBFiredacDAO.pas`) exposes the choice as the published `QueryBehavior`, defaulting to `ebSingleThread` (it was `ebMultiThread` until 20/09/2026); its `OpenRemote`/`ExecSQLRemote`/`ApplyUpdatesRemote` only re-raise a failure when it is `ebSingleThread`.
 
 `ExecuteThread` is `virtual` and currently has **no override anywhere** — engines vary the transport (`TRALClientHTTP` descendants), never the threading.
+
+### Three things on `TRALClient` that look alike and are not
+
+- `TRALExecBehavior` decides **which thread** runs the request.
+- `PoolConnection` decides **which connection** it runs on, and applies to both
+  behaviours - it is not an execution mode.
+- The per-thread `Request` decides **whose data** it carries. The way the client
+  is used - fill `Request`, then call - cannot be made safe by locking, because
+  the caller holds the object across statements, so each thread gets its own and
+  no call site changes: the thread that built the client keeps the original
+  instance, and single-threaded code sees nothing. A thread's **first** read of
+  `Request` gets a **copy of the creator thread's** `Request` as it is at that
+  moment, so "fill on the main thread, call from a worker" still sends what was
+  filled; after that the two are independent. A thread silent for
+  `RALTHREADREQUESTTIMEOUT` (30 min, its own constant - not the pool's idle
+  timeout) has its copy discarded and starts over from a fresh copy.
+
+`TRALClient.PoolConnection` (`Enabled`, **default True** since 20/09/2026 - it
+started off - plus `MaxIdle` and
+`IdleTimeout`) keeps the *engine object* - and with it the socket it has open -
+between calls, keyed by destination, so `scheme://host:port` from `BaseURL` with
+the route cut off. Handing an engine to a request for somewhere else is not
+wrong, every engine notices and reconnects, but it throws away the connection
+that was the point of keeping it.
+
+**It is not `ShareConnection`, and the two do not cancel out.** `ShareConnection`
+shares the *transport* between engines and only netHTTP, OkHttp and MsQuic
+implement it; with it on, a throwaway engine already finds the connection open,
+which is why those three never showed the collapse this pool fixes. The pool
+reuses the *engine*, which is what Indy, mORMot2 and fpHTTP - with no
+`ShareConnection` - have to rely on. Both on is fine.
 
 ### Which server certificate a client accepts
 
@@ -150,7 +301,7 @@ Anything whose result is read as a property right after the call must use `ebSin
 
 `SSL.Verify` exists because the engines do not agree on their own: `svEngine` (the default) keeps what each one has always done — netHTTP and mORMot2 validate, Indy and fpHTTP do not verify at all — `svAlways` turns verification on where it is off, and `svNever` accepts anything. It only decides when there is neither a pin nor an event; those two, when set, are the decision. A refused certificate reports `TransportError = rteCertificate` on every engine, so a caller can tell it apart from a server being down without matching message text — `CanSwitchURL` never resends it, since its `else` refuses what it does not know. Each engine only translates its own callback into `TRALCertInfo` — the same record on every compiler and platform — and asks `TRALClientHTTP.AcceptServerCert`, where the single rule lives: **the event decides, else the pin, else what the engine itself concluded**. Same shape as `SetTransportError` for retries.
 
-Which engines can actually **fill** `TRALCertInfo.Fingerprint` is what `SupportsCertPin` answers, and `SSL.Pins` raises on the first request where it is False rather than checking something weaker in silence. Indy reads it everywhere; **netHTTP reads it on Windows**, from the WinHTTP handle under the RTL's `TCertificate`, which carries no fingerprint on any platform; **okhttp reads it on Android**, which is the only way pinning works there at all. Everywhere else it stays False.
+Which engines can actually **fill** `TRALCertInfo.Fingerprint` is what `SupportsCertPin` answers, and `SSL.Pins` raises on the first request where it is False rather than checking something weaker in silence. Indy reads it everywhere; **netHTTP reads it on Windows**, from the WinHTTP handle under the RTL's `TCertificate`, which carries no fingerprint on any platform; **okhttp reads it on Android**, which is the only way pinning works there at all; **MsQuic reads it wherever it runs**, because the certificate reaches it as DER bytes and the engine hashes them itself. Everywhere else it stays False.
 
 **When a pin or `OnValidateServerCert` decides, the host name stops mattering** - that is the
 documented contract in [`src/engine/SSL.md`](src/engine/SSL.md), and each engine has to honour it

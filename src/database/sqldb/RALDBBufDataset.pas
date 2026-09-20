@@ -364,11 +364,18 @@ begin
   if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.Body.AsStream;
+    vSQLCache := nil;
     try
       FLoading := True;
 
-      vSQLCache := TRALDBSQLCache.Create;
+      { A 200 whose body is not a query response - a route answering the
+        wrong thing, a truncated stream - used to raise out of this callback:
+        lost in the response thread on the ebMultiThread path, escaping Open
+        on the synchronous one, and FLoading and FOpening stayed True either
+        way, so the dataset could never be opened again. It is an error of the
+        same family as a 500 and is reported the same way, through OnError. }
       try
+        vSQLCache := TRALDBSQLCache.Create;
         vSQLCache.ResponseFromStream(vMem);
         vDBSQL := vSQLCache.SQLList[0];
 
@@ -378,12 +385,20 @@ begin
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
 
         Self.First;
-      finally
-        FreeAndNil(vSQLCache);
+      except
+        on e: Exception do
+        begin
+          FOpening := False;
+          if Assigned(FOnError) then
+            FOnError(Self, StringRAL(e.Message));
+        end;
       end;
     finally
+      FreeAndNil(vSQLCache);
       FreeAndNil(vMem);
-      MergeChangeLog;
+      if Self.Active then
+        MergeChangeLog;
+      FLoading := False;
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then

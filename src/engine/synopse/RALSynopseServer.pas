@@ -195,6 +195,11 @@ begin
 
   if AValue then
   begin
+    { anything below that raises must leave Active False: the base already
+      wrote True, and a server that says it is active while nothing listens
+      cannot even be started again, since SetActive(True) is then a no-op.
+      Same guard on every engine. }
+    try
     {$IFNDEF RALWindows}
     { http.sys IS the Windows kernel, so THttpApiServer does not even exist
       here. Without this the smHttpSys branch below is compiled away and the
@@ -292,6 +297,21 @@ begin
     else
     begin
       THttpServerSocketGeneric(FHttp).WaitStarted;
+    end;
+    except
+      if FHttp <> nil then
+      begin
+        { OnHttpTerminate would call Active := False on a server that is being
+          torn down right here }
+        FHttp.OnTerminate := nil;
+        try
+          FreeAndNil(FHttp);
+        except
+          FHttp := nil;
+        end;
+      end;
+      inherited SetActive(False);
+      raise;
     end;
   end
   else
@@ -669,6 +689,15 @@ constructor TRALSynopseServer.Create(AOwner: TComponent);
 begin
   inherited;
   FHttp := nil;
+  { smThreads: what the engine always did, and what every existing form was
+    saved with. Streaming skips a property whose value equals its default, so
+    a form saved under this default carries no Mode at all and would silently
+    switch to whatever the default became - and in smAsync
+    MaxKeepAliveConnections is not applied. smAsync scales better (an event
+    loop instead of a thread per kept-alive connection) and is one assignment
+    away; it is just not chosen for anyone. Written HERE and in the property's
+    default at the same time, for that same streaming reason. }
+  FMode := smThreads;
   FPoolCount := 32; // ou SystemInfo.dwNumberOfProcessors + 1
   FQueueSize := 1000; // Tamanho da fila de threads. Padrao do synopse: 1000
   FHttpSysDomain := '*'; // mORMot2's own default in AddUrl

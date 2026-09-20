@@ -376,10 +376,17 @@ begin
   if AResponse.StatusCode = HTTP_OK then
   begin
     vMem := AResponse.Body.AsStream;
+    vSQLCache := nil;
     try
       FLoading := True;
-      vSQLCache := TRALDBSQLCache.Create;
+      { A 200 whose body is not a query response - a route answering the
+        wrong thing, a truncated stream - used to raise out of this callback:
+        lost in the response thread on the ebMultiThread path, escaping Open
+        on the synchronous one, and FLoading stayed True either way, so the
+        dataset could never be opened again. It is an error of the same family
+        as a 500 and is reported the same way, through OnError. }
       try
+        vSQLCache := TRALDBSQLCache.Create;
         vSQLCache.ResponseFromStream(vMem);
         vDBSQL := vSQLCache.SQLList[0];
 
@@ -387,19 +394,19 @@ begin
           ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
-      finally
-        FreeAndNil(vSQLCache);
-      end;
 
-      { Only when the load actually opened the dataset. This runs inside the
-        client callback, and an exception raised here does not reach whoever
-        called Open - it escapes into the thread that dispatches the response
-        and terminates the process. A load that brought nothing has to end as a
-        closed dataset and an OnError, never as a crash in the host. }
-      if Self.Active then
-        Self.First;
+        { only when the load actually opened the dataset }
+        if Self.Active then
+          Self.First;
+      except
+        on e: Exception do
+          if Assigned(FOnError) then
+            FOnError(Self, StringRAL(e.Message));
+      end;
     finally
+      FreeAndNil(vSQLCache);
       FreeAndNil(vMem);
+      FLoading := False;
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then

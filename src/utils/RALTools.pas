@@ -39,13 +39,68 @@ function RALSameSecret(const A, B: StringRAL): Boolean;
 /// Case-insensitive name comparison without leaving StringRAL. Use it for param
 /// and header names; SameText is the general-purpose one and stays for text.
 function RALSameName(const A, B: StringRAL): Boolean;
+/// Drops trailing blanks without leaving StringRAL. Same rule as the RTL's
+/// TrimRight - everything up to and including a space goes - and the same
+/// result: a byte above 127 is always part of a multibyte character and never
+/// compares below 33, so scanning bytes can never cut one in half.
+function RALTrimRight(const A: StringRAL): StringRAL;
+/// The same, both ends.
+function RALTrim(const A: StringRAL): StringRAL;
+
+/// Atomic counters, spelled the same way on both compilers: Delphi has
+/// AtomicIncrement/AtomicDecrement in the RTL, FPC calls them InterLocked* and
+/// only declares the 64-bit pair on 64-bit CPUs. All three return the NEW value
+/// - InterLockedExchangeAdd, which FPC does have, returns the old one.
+function RALAtomicInc(var ATarget: IntegerRAL): IntegerRAL; overload;
+function RALAtomicDec(var ATarget: IntegerRAL): IntegerRAL; overload;
+/// Adds to a 64-bit counter. Only the addition is atomic: a reader still sees
+/// the value move under it, which is what the statistics counters expect.
+function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL; overload;
 
 implementation
+
+{$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
+var
+  gAtomic64: System.TRTLCriticalSection;
+{$IFEND}
 
 const
   { method names without the 'am' prefix, in the order of the enum }
   RALMethodNames: array [TRALMethod] of StringRAL = (
     'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE');
+
+function RALTrimRight(const A: StringRAL): StringRAL;
+var
+  vLast: IntegerRAL;
+begin
+  { on Delphi TrimRight has no AnsiString overload, so a StringRAL goes UTF-8 ->
+    UTF-16 -> UTF-8 around it: two conversions and two heap allocations to drop
+    blanks that are ASCII by definition. This one only ever copies when there is
+    something to drop. }
+  vLast := RALHighStr(A);
+  while (vLast >= POSINISTR) and (Ord(A[vLast]) <= 32) do
+    Dec(vLast);
+  if vLast = RALHighStr(A) then
+    Result := A
+  else
+    Result := Copy(A, POSINISTR, vLast - POSINISTR + 1);
+end;
+
+function RALTrim(const A: StringRAL): StringRAL;
+var
+  vFirst, vLast: IntegerRAL;
+begin
+  vFirst := POSINISTR;
+  vLast := RALHighStr(A);
+  while (vFirst <= vLast) and (Ord(A[vFirst]) <= 32) do
+    Inc(vFirst);
+  while (vLast >= vFirst) and (Ord(A[vLast]) <= 32) do
+    Dec(vLast);
+  if (vFirst = POSINISTR) and (vLast = RALHighStr(A)) then
+    Result := A
+  else
+    Result := Copy(A, vFirst, vLast - vFirst + 1);
+end;
 
 function RALSameName(const A, B: StringRAL): Boolean;
 var
@@ -467,5 +522,53 @@ begin
   Result := GetSystemThreadCount;
 {$ENDIF}
 end;
+
+function RALAtomicInc(var ATarget: IntegerRAL): IntegerRAL;
+begin
+  {$IFDEF FPC}
+  Result := InterLockedIncrement(ATarget);
+  {$ELSE}
+  Result := AtomicIncrement(ATarget);
+  {$ENDIF}
+end;
+
+function RALAtomicDec(var ATarget: IntegerRAL): IntegerRAL;
+begin
+  {$IFDEF FPC}
+  Result := InterLockedDecrement(ATarget);
+  {$ELSE}
+  Result := AtomicDecrement(ATarget);
+  {$ENDIF}
+end;
+
+function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL;
+begin
+  {$IFDEF FPC}
+    {$IFDEF CPU64}
+    Result := InterLockedExchangeAdd64(ATarget, AValue) + AValue;
+    {$ELSE}
+    { 32-bit FPC declares no 64-bit interlocked primitive at all (rtl/i386/i386.inc
+      has only the longint ones), and a 64-bit write can tear there, so this one
+      serialises instead of pretending to be lock free. }
+    System.EnterCriticalSection(gAtomic64);
+    try
+      ATarget := ATarget + AValue;
+      Result := ATarget;
+    finally
+      System.LeaveCriticalSection(gAtomic64);
+    end;
+    {$ENDIF}
+  {$ELSE}
+  Result := AtomicIncrement(ATarget, AValue);
+  {$ENDIF}
+end;
+
+{$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
+initialization
+  System.InitCriticalSection(gAtomic64);
+
+finalization
+  System.DoneCriticalSection(gAtomic64);
+{$IFEND}
 
 end.
