@@ -156,6 +156,28 @@ component drops onto a form on a machine with no `msquic.dll`.
 It needs `msquic.dll` / `libmsquic.so.2` from the **OpenSSL** build at runtime -
 the SChannel build has no TLS 1.3 on Windows 10 - or a path in `LibPath`.
 
+**On Android the client is the same engine, not a port.** Nothing in
+`RALMsQuicClient.pas` is platform specific - it registers unconditionally, so
+`EngineType := 'MsQuic'` is offered there like `netHttp` or `Indy`, and
+`IsMultiThread` is already set for the worker threads msquic creates inside the
+C library. What Android changes is the **name of the library**: the packager
+only carries `lib/<abi>/*.so` into the APK, so a file called `libmsquic.so.2`
+never reaches the device and `MSQUIC_LIBRARY` is `libmsquic.so` there. Deploy it
+to the remote path `library\lib\arm64-v8a\` (plus `armeabi-v7a` if the arm32
+slice ships) and leave `DefaultLibPath` empty - that folder is the application's
+own, which is where `dlopen` resolves a plain name. As with every engine, the
+app has to `uses RALMsQuicClient` or the registration never runs. Verified by
+compiling for Android ARM64 and ARM32: both agree `QUIC_SETTINGS` is 144 bytes,
+which is what the loader's guard checks, and the POSIX status table is errno,
+which bionic numbers like Linux. What is **not** verified here is a running
+device - that needs a `libmsquic.so` built with the NDK, which this repo does
+not ship.
+
+`MsQuicLoad` reports **why** the load failed, from `dlerror` (`GetLoadErrorStr`
+on FPC, `SysErrorMessage` on Windows). Worth the few lines because the failures
+are indistinguishable otherwise and each has its own fix: on Android the library
+was never deployed, or it is the wrong ABI, or it wants a newer API level.
+
 Two traps it hit that any unit here can hit:
 
 - **`Windows` goes before `SyncObjs` in a `uses` clause.** FPC's `Windows`

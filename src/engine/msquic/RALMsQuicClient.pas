@@ -155,8 +155,15 @@ type
     /// class variable because the engine object is built by TRALClient and
     /// never seen by the application.
     class var DefaultAlpn: StringRAL;
-    /// Where to load msquic from; empty means the platform default name. The
-    /// first load wins for the whole process.
+    /// Where to load msquic from; empty means the platform default name -
+    /// msquic.dll on Windows, libmsquic.so.2 on POSIX and libmsquic.so on
+    /// Android, where the packager carries no versioned soname. The first load
+    /// wins for the whole process.
+    ///
+    /// Leave it empty on Android too: the library deployed to
+    /// library\lib\arm64-v8a\ lands in the application's own folder, which is
+    /// where dlopen looks for a plain name. It is here for the odd case of a
+    /// library kept somewhere else.
     class var DefaultLibPath: TFileName;
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;

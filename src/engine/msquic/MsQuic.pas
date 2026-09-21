@@ -39,7 +39,11 @@ interface
 
 uses
   SysUtils
-  {$IFDEF FPC}, DynLibs{$ELSE}{$IFDEF MSWINDOWS}, Windows{$ENDIF}{$ENDIF};
+  {$IFDEF FPC}
+  , DynLibs
+  {$ELSE}
+  {$IFDEF MSWINDOWS}, Windows{$ELSE}, Posix.Dlfcn{$ENDIF}
+  {$ENDIF};
 
 // Pointer width, which decides where one of the event unions begins. Delphi
 // defines CPUX64/CPUARM64, FPC defines CPU64.
@@ -51,7 +55,15 @@ const
 {$IFDEF MSWINDOWS}
   MSQUIC_LIBRARY = 'msquic.dll';
 {$ELSE}
+{$IFDEF ANDROID}
+  // Android has no versioned sonames: the packager only carries lib/<abi>/*.so
+  // into the APK, so a file called libmsquic.so.2 never reaches the device and
+  // the plain name is what dlopen resolves, in the application's own library
+  // folder. Both compilers define ANDROID for that target.
+  MSQUIC_LIBRARY = 'libmsquic.so';
+{$ELSE}
   MSQUIC_LIBRARY = 'libmsquic.so.2';
+{$ENDIF}
 {$ENDIF}
 
   QUIC_API_VERSION_2 = 2;
@@ -687,6 +699,32 @@ var
   FClose: TMsQuicClose = nil;
   FLoadError: string = '';
 
+{ What the loader itself has to say about the load that just failed. Worth the
+  few lines because the ways it fails look identical from here and each has its
+  own fix: on Android the library was never deployed, or it is the wrong ABI, or
+  it needs a newer API level; on Windows a 32/64 bit mismatch reads the same as
+  a missing file. Empty when the platform has nothing to add. }
+function LibLoadError: string;
+{$IF not Defined(FPC) and not Defined(MSWINDOWS)}
+var
+  vText: MarshaledAString;
+{$IFEND}
+begin
+  {$IFDEF FPC}
+  Result := GetLoadErrorStr;
+  {$ELSE}
+  {$IFDEF MSWINDOWS}
+  Result := SysErrorMessage(GetLastError);
+  {$ELSE}
+  vText := dlerror;
+  if vText <> nil then
+    Result := string(vText)
+  else
+    Result := '';
+  {$ENDIF}
+  {$ENDIF}
+end;
+
 function QUIC_FAILED(const AStatus: QUIC_STATUS): Boolean;
 begin
   {$IFDEF MSWINDOWS}
@@ -862,6 +900,7 @@ end;
 function MsQuicLoad(const ALibrary: string = ''): QUIC_STATUS;
 var
   vName: string;
+  vDetail: string;
   vOpen: TMsQuicOpenVersion;
   vApi: Pointer;
 begin
@@ -903,7 +942,11 @@ begin
   {$ENDIF}
   if FLibHandle = 0 then
   begin
-    FLoadError := Format('could not load "%s"', [vName]);
+    vDetail := LibLoadError;
+    if vDetail <> '' then
+      FLoadError := Format('could not load "%s": %s', [vName, vDetail])
+    else
+      FLoadError := Format('could not load "%s"', [vName]);
     Result := QUIC_STATUS_NOT_FOUND;
     Exit;
   end;
