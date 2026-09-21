@@ -117,6 +117,7 @@ A pasta `src/` está organizada em:
 - `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPRegister.pas`, `RALfpHTTPServer.pas`
 - `engine/indy/`: `RALIndyClient.pas`, `RALIndyRegister.pas`, `RALIndyServer.pas`
 - `engine/msquic/`: `MsQuic.pas` (binding da API C, carga dinamica), `RALMsQuicClient.pas`, `RALMsQuicRegister.pas`, `RALMsQuicServer.pas` — QUIC (RFC 9000) por MsQuic; **nao e HTTP/3**: o que trafega e um frame binario proprio, entao as DUAS pontas tem de ser RAL. Precisa da `msquic.dll`/`libmsquic.so.2` (build OpenSSL) em runtime — no Android e `libmsquic.so`, deployada em `library\lib\arm64-v8a\`, porque la nao ha soname versionado; a lib so e carregada no `Active := True`, e o cliente e o mesmo em toda plataforma (nenhum IFDEF fora do nome da lib)
+- `engine/kwik/`: `RALKwikClient.pas`, `RALKwikRegister.pas`, `java/` (ponte JNI + 5 jars), `README.md` — cliente QUIC de **Android**, so Delphi; fala o MESMO frame do MsQuic (os dois usam `RALQuicFrame`), entao conversa com o `TRALMsQuicServer`; existe porque o MsQuic no Android exigiria uma `libmsquic.so` que ninguem publica, e nenhuma pilha oficial de la expoe stream crua. Piso Android 8 (API 26); Kwik e LGPL v3
 - `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPRegister.pas`
 - `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpRegister.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
 - `engine/sagui/`: `RALSaguiRegister.pas`, `RALSaguiServer.pas`

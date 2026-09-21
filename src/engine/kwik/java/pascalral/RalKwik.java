@@ -24,6 +24,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
+import tech.kwik.agent15.env.PlatformMapping;
 import tech.kwik.core.QuicClientConnection;
 import tech.kwik.core.QuicStream;
 
@@ -48,6 +49,24 @@ import tech.kwik.core.QuicStream;
 public final class RalKwik {
 
   private RalKwik() {
+  }
+
+  static {
+    /*
+     * WITHOUT THIS LINE NOTHING CONNECTS. agent15 - the TLS 1.3 of Kwik - asks
+     * the JCA for "RSASSA-PSS", which is the JDK's name for it; Android calls
+     * the same thing "SHA256withRSA/PSS" and answers that the algorithm does
+     * not exist. The handshake then dies with
+     *
+     *   Missing RSASSA-PSS support. Did you set
+     *   PlatformMapping.usePlatformMapping(PlatformMapping.Platform.Android)?
+     *
+     * which reads like a warning and is in fact the whole instruction: the
+     * mapping is built into agent15 and has to be switched on once per
+     * process. A static block is that "once" - it runs when this class is
+     * first touched, which is before any connection can exist.
+     */
+    PlatformMapping.usePlatformMapping(PlatformMapping.Platform.Android);
   }
 
   /** execute() answers one of these; the Pascal side maps them to TRALTransportError. */
@@ -132,50 +151,62 @@ public final class RalKwik {
   private static final String REFUSED = "ral-certificate-refused";
 
   /**
-   * Hands the leaf certificate to the Pascal side and lets it decide. The
-   * platform's own verdict travels as a flag rather than as an exception,
-   * because RAL wants it as TRALCertInfo.Trusted even when it is going to
-   * accept a certificate the platform refused - a pinned self signed one.
+   * Hands the leaf certificate to the Pascal side and lets it decide, AFTER
+   * the handshake and before a single byte of the request has been written.
+   *
+   * WHY NOT A TRUST MANAGER, which is where this obviously belongs.
+   * Builder.customTrustManager() replaces only the trust manager, and agent15
+   * keeps its DefaultHostnameVerifier running beside it - so a certificate
+   * this judge would accept is still refused for naming the wrong host. That
+   * breaks the contract in src/engine/SSL.md: when a pin or
+   * OnValidateServerCert decides, the host name stops mattering, which is the
+   * normal case for the self signed certificate of a server reached by IP.
+   * Only noServerCertificateCheck() turns BOTH off, and the builder exposes no
+   * way to set a hostname verifier of our own.
+   *
+   * So the check moves here. The platform's own verdict is computed rather
+   * than thrown, because RAL wants it as TRALCertInfo.Trusted even when it is
+   * about to accept a certificate the platform refused - a pinned self signed
+   * one. The mORMot2 engine settles it the same way and for the same reason:
+   * one decision, on a Pascal stack, after the handshake.
    */
-  private static final class JudgingTrustManager implements X509TrustManager {
+  private static void judgeCertificate(QuicClientConnection connection,
+      RalQuicCertJudge judge) throws CertificateException {
 
-    public X509Certificate[] getAcceptedIssuers() {
-      return new X509Certificate[0];
+    Result result = RESULT.get();
+    List<X509Certificate> chain = null;
+    try {
+      chain = connection.getServerCertificateChain();
+    } catch (Throwable t) {
+      // treated as no chain at all, below
+    }
+    if (chain == null || chain.isEmpty()) {
+      result.certRefused = true;
+      throw new CertificateException(REFUSED);
     }
 
-    public void checkClientTrusted(X509Certificate[] chain, String authType) {
+    X509Certificate[] asArray = chain.toArray(new X509Certificate[0]);
+    boolean trusted = false;
+    if (PLATFORM != null) {
+      try {
+        PLATFORM.checkServerTrusted(asArray, "UNKNOWN");
+        trusted = true;
+      } catch (Exception e) {
+        trusted = false;
+      }
     }
 
-    public void checkServerTrusted(X509Certificate[] chain, String authType)
-        throws CertificateException {
-      if (chain == null || chain.length == 0) {
-        throw new CertificateException(REFUSED);
-      }
+    result.certSha256 = sha256Hex(asArray[0]);
+    result.certSubject = String.valueOf(asArray[0].getSubjectDN());
+    result.certIssuer = String.valueOf(asArray[0].getIssuerDN());
 
-      boolean trusted = false;
-      if (PLATFORM != null) {
-        try {
-          PLATFORM.checkServerTrusted(chain, authType);
-          trusted = true;
-        } catch (Exception e) {
-          trusted = false;
-        }
-      }
+    boolean accepted = (judge == null)
+        ? trusted
+        : judge.ok(result.certSha256, result.certSubject, result.certIssuer, trusted);
 
-      Result result = RESULT.get();
-      result.certSha256 = sha256Hex(chain[0]);
-      result.certSubject = String.valueOf(chain[0].getSubjectDN());
-      result.certIssuer = String.valueOf(chain[0].getIssuerDN());
-
-      RalQuicCertJudge judge = JUDGE.get();
-      boolean accepted = (judge == null)
-          ? trusted
-          : judge.ok(result.certSha256, result.certSubject, result.certIssuer, trusted);
-
-      if (!accepted) {
-        result.certRefused = true;
-        throw new CertificateException(REFUSED);
-      }
+    if (!accepted) {
+      result.certRefused = true;
+      throw new CertificateException(REFUSED);
     }
   }
 
@@ -224,14 +255,24 @@ public final class RalKwik {
         .connectTimeout(Duration.ofMillis(connectMs))
         .maxIdleTimeout(Duration.ofMillis(idleMs));
 
-    if (certMode == CERT_NONE) {
-      builder = builder.noServerCertificateCheck();
-    } else if (certMode == CERT_JUDGE) {
-      builder = builder.customTrustManager(new JudgingTrustManager());
+    { /* CERT_JUDGE turns the library's own checks off and judges below - see
+         judgeCertificate for why it cannot be a trust manager. */
+      if (certMode == CERT_NONE || certMode == CERT_JUDGE) {
+        builder = builder.noServerCertificateCheck();
+      }
     }
 
     QuicClientConnection connection = builder.build();
     connection.connect();
+
+    if (certMode == CERT_JUDGE) {
+      try {
+        judgeCertificate(connection, JUDGE.get());
+      } catch (CertificateException e) {
+        closeQuietly(connection);
+        throw e;
+      }
+    }
 
     if (keepAliveSec > 0) {
       connection.keepAlive(keepAliveSec);
