@@ -277,6 +277,14 @@ type
     /// raise on the first request, for the same reason SupportsCertPin does -
     /// see TRALHTTPVersion.
     class function SupportsHTTP2: boolean; virtual;
+    /// Whether asking for an HTTP version means anything on this engine at all.
+    /// True everywhere except the QUIC engines, which are BELOW HTTP: what they
+    /// put on a stream is RAL's own frame, so there is no version to request
+    /// and none to report - TRALResponse.ProtocolVersion stays rhvDefault there
+    /// by construction. It decides what HTTPVersion is pinned to when the
+    /// engine cannot choose: 1.1 for an HTTP engine that only speaks 1.1,
+    /// rhvDefault for one that speaks no HTTP.
+    class function SupportsHTTPVersion: boolean; virtual;
     /// Whether ShareConnection means anything here. False is not a failure and
     /// never raises: the property is documented as a hint, and an engine whose
     /// transport is one-object-one-connection would SERIALISE concurrent calls
@@ -789,6 +797,15 @@ begin
   begin
     Result := (vClass = nil) or vClass.SupportsSharedConnection;
   end
+  else if SameText(AName, 'HTTPVersion') then
+  begin
+    { Only where there is a choice to make. An engine that speaks HTTP/1.1 and
+      nothing else has one possible answer, and an engine below HTTP has none -
+      showing the property on either invites setting rhv2 and getting a raise on
+      the first request. SetEngineType pins the value for both, so what is
+      hidden here is a knob, never information. }
+    Result := (vClass = nil) or vClass.SupportsHTTP2;
+  end
   else if SameText(AName, 'KeepAliveInterval') then
   begin
     { The engine has to have a mechanism, and - on the HTTP engines - h2 has to
@@ -822,6 +839,20 @@ begin
     FEngine := Trim(vClass.EngineName + ' ' + vClass.EngineVersion);
 
   FUserAgent := 'RALClient ' + RALVERSION + '; Engine ' + FEngine;
+
+  { HTTPVersion is a choice only where more than one version is on offer. The
+    engine has just changed, so a value the previous one could honour may now
+    be one this one raises on - an rhv2 left behind by netHTTP turns every
+    request on Indy into emHTTP2Unsupported. Pin it instead of leaving a trap:
+    1.1 for an engine that speaks HTTP and only that, and rhvDefault for one
+    that speaks no HTTP at all, where no version was ever requested. }
+  if (vClass <> nil) and (not vClass.SupportsHTTP2) then
+  begin
+    if vClass.SupportsHTTPVersion then
+      FHTTPVersion := rhv11
+    else
+      FHTTPVersion := rhvDefault;
+  end;
 
   { the interval's floor belongs to the engine, and the engine has just
     changed: a value the previous one could keep may not suit this one }
@@ -2012,6 +2043,12 @@ end;
 class function TRALClientHTTP.SupportsHTTP2: boolean;
 begin
   Result := False;
+end;
+
+class function TRALClientHTTP.SupportsHTTPVersion: boolean;
+begin
+  { every engine but the QUIC ones carries HTTP over something }
+  Result := True;
 end;
 
 class function TRALClientHTTP.SupportsSharedConnection: boolean;

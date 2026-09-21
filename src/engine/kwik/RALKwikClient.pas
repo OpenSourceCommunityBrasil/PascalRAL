@@ -147,6 +147,11 @@ type
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
+    /// False on every platform: this engine is below HTTP, so there is no
+    /// version to ask for. It is what hides HTTPVersion in the IDE and keeps
+    /// it at rhvDefault - and it must not depend on the platform, because the
+    /// property editor runs on the IDE's while the target is Android.
+    class function SupportsHTTPVersion: boolean; override;
     /// True on Android: the certificate arrives as a chain in the trust
     /// manager, and its SHA-256 is computed there - so SSL.Pins works.
     class function SupportsCertPin: boolean; override;
@@ -415,26 +420,6 @@ begin
   end;
 end;
 
-class function TRALKwikClientHTTP.SupportsCertPin: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALKwikClientHTTP.SupportsSharedConnection: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALKwikClientHTTP.SupportsKeepAliveInterval: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALKwikClientHTTP.MinKeepAliveInterval: IntegerRAL;
-begin
-  Result := 1000;
-end;
-
 class function TRALKwikClientHTTP.EngineVersion: StringRAL;
 begin
   { asked of the jar actually linked; empty when it cannot answer, the same
@@ -464,32 +449,51 @@ begin
   raise Exception.Create(emKwikAndroidOnly);
 end;
 
-class function TRALKwikClientHTTP.SupportsCertPin: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALKwikClientHTTP.SupportsSharedConnection: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALKwikClientHTTP.SupportsKeepAliveInterval: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALKwikClientHTTP.MinKeepAliveInterval: IntegerRAL;
-begin
-  Result := 1000;
-end;
-
 class function TRALKwikClientHTTP.EngineVersion: StringRAL;
 begin
   Result := '';
 end;
 
 {$ENDIF}
+
+{ THE FOUR BELOW ARE OUTSIDE THE IFDEF, and deliberately so: they answer what
+  the ENGINE can do, and this engine only ever runs on Android. The Object
+  Inspector asks them on the IDE's platform - Windows - while the project
+  being edited targets Android, so an answer that changed with the platform
+  would hide HTTPVersion, ShareConnection and KeepAliveInterval from a client
+  that honours all three. Same reason the class is registered everywhere. }
+
+class function TRALKwikClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALKwikClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALKwikClientHTTP.SupportsKeepAliveInterval: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALKwikClientHTTP.MinKeepAliveInterval: IntegerRAL;
+begin
+  { Kwik takes the interval in whole seconds, so the value read back has to be
+    the value in effect - SetKeepAliveInterval applies this floor on assignment }
+  Result := 1000;
+end;
+
+{ OUTSIDE the IFDEF on purpose, unlike the other Supports: this one is asked by
+  the property editor, which runs on the IDE's platform while the target is
+  Android. An answer that changed with the platform would hide or show
+  HTTPVersion by where the IDE happens to run, and QUIC is below HTTP wherever
+  it runs. }
+class function TRALKwikClientHTTP.SupportsHTTPVersion: boolean;
+begin
+  Result := False;
+end;
 
 class function TRALKwikClientHTTP.EngineName: StringRAL;
 begin

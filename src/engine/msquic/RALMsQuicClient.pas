@@ -173,6 +173,9 @@ type
     /// before the first request, and inventing a number would be worse.
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+    /// False: this engine is below HTTP, so there is no version to ask for.
+    /// It is what hides HTTPVersion in the IDE and keeps it at rhvDefault.
+    class function SupportsHTTPVersion: boolean; override;
     /// True, and it is the point of this engine - see the class comment.
     class function SupportsSharedConnection: boolean; override;
     class function SupportsKeepAliveInterval: boolean; override;
@@ -796,6 +799,11 @@ end;
 class function TRALMsQuicClientHTTP.PackageDependency: StringRAL;
 begin
   Result := 'msquic';
+end;
+
+class function TRALMsQuicClientHTTP.SupportsHTTPVersion: boolean;
+begin
+  Result := False;
 end;
 
 class function TRALMsQuicClientHTTP.SupportsSharedConnection: boolean;

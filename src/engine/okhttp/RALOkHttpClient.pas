@@ -204,26 +204,6 @@ begin
   inherited;
 end;
 
-class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
-begin
-  Result := True;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
-begin
-  Result := True;
-end;
-
 function TRALOkHttpClientHTTP.ShareKey: StringRAL;
 begin
   { Sharing here is not RAL's pool, it is OkHttp's: one client per combination
@@ -525,26 +505,6 @@ end;
   cannot be chosen at all - and a request refuses here, loudly, rather than
   letting an application believe it has a transport it does not. }
 
-class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
-begin
-  Result := False;
-end;
-
-class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
-begin
-  Result := False;
-end;
-
 procedure TRALOkHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 begin
@@ -555,6 +515,38 @@ begin
 end;
 
 {$ENDIF}
+
+{ THE FOUR BELOW ARE OUTSIDE THE IFDEF, and that is the point of them being
+  here rather than beside the code they describe.
+
+  They answer what the ENGINE can do, and this engine only ever runs on
+  Android - everywhere else SendUrl refuses. But the Object Inspector asks
+  them on the IDE's platform, which is Windows, while the project being edited
+  targets Android. Answered per platform, they all said False in the IDE and
+  the properties they gate - HTTPVersion, ShareConnection, KeepAliveInterval -
+  vanished from the Object Inspector of an Android client that honours every
+  one of them. Same reason the class is registered on every platform: what the
+  IDE offers has to describe the target, not the machine the IDE runs on. }
+
+class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsHTTP2: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsSharedConnection: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
+begin
+  Result := True;
+end;
 
 class function TRALOkHttpClientHTTP.EngineName: StringRAL;
 begin
