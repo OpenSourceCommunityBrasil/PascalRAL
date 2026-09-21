@@ -35,6 +35,7 @@ const
   ENGINEFPHTTP             = 'fpHttp';
   ENGINEOKHTTP             = 'OkHttp';
   ENGINEMSQUIC             = 'MsQuic';
+  ENGINEKWIK               = 'Kwik';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'

@@ -14,7 +14,7 @@ uses
   Classes, SysUtils, SyncObjs,
   MsQuic,
   RALClient, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALHashBase, RALSHA2_32;
+  RALParams, RALTools, RALCompress, RALHashBase, RALSHA2_32, RALQuicFrame;
 
 type
   TRALMsQuicClientHTTP = class;
@@ -144,11 +144,6 @@ type
     function PickConnection: TRALMsQuicConnection;
     procedure DropShared;
     procedure DropOwn;
-    /// The headers every request carries, whatever the execution shape.
-    procedure PrepareRequest(ARequest: TRALRequest);
-    function BuildFrame(ARequest: TRALRequest; AMethod: TRALMethod;
-                        const ARoute: StringRAL): TBytes;
-    procedure ParseFrame(AFrame: PByte; ASize: IntegerRAL; AResponse: TRALResponse);
   public
     /// ALPN offered to the server. Both ends must agree or the handshake never
     /// completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
@@ -202,7 +197,6 @@ procedure RALMsQuicProfileReset;
 implementation
 
 const
-  RALMSQUIC_MAX_FIELD = 64 * 1024 * 1024;
   /// A receive buffer above this is released instead of kept between requests.
   RALMSQUIC_KEEP_BUFFER = 1024 * 1024;
 
@@ -386,14 +380,13 @@ end;
 {$IFDEF RALMSQUIC_PROFILE}
 type
   TRALMsQuicPhase = (qpSetup, qpConnect, qpBuild, qpAlloc, qpStart, qpWait,
-                   qpParse, qpFree, qpParseHdr, qpParseProps, qpParseBody);
+                   qpParse, qpFree);
 
 const
   RALMsQuicPhaseName: array[TRALMsQuicPhase] of StringRAL = (
     'prepare headers', 'pick connection', 'build frame',
     'create pending', 'open+send stream', 'wait for the answer',
-    'parse the answer', 'release pending',
-    '  .. headers', '  .. properties', '  .. body');
+    'parse the answer', 'release pending');
 
 var
   gPhase: array[TRALMsQuicPhase] of Int64;
@@ -585,192 +578,6 @@ begin
   except
     Result := QUIC_STATUS_INTERNAL_ERROR;
   end;
-end;
-
-{ frame helpers }
-
-function BlockSize(ALength: IntegerRAL): IntegerRAL;
-begin
-  Result := 4 + ALength;
-end;
-
-function PutBlockStr(ADest: PByte; const AText: StringRAL): PByte;
-var
-  vLen: Cardinal;
-begin
-  vLen := Length(AText);
-  Move(vLen, ADest^, 4);
-  Inc(ADest, 4);
-  if vLen > 0 then
-  begin
-    Move(AText[POSINISTR], ADest^, vLen);
-    Inc(ADest, vLen);
-  end;
-  Result := ADest;
-end;
-
-/// Reads a length-prefixed block straight out of the receive buffer. A size
-/// prefix read from the network is an allocation request from a stranger, so
-/// it is bounded before it is believed.
-function ReadBlockStr(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
-  out AText: StringRAL): boolean;
-var
-  vLen: Cardinal;
-begin
-  Result := False;
-  AText := '';
-  if APos + 4 > ASize then
-    Exit;
-  Move(PByte(ABuf + APos)^, vLen, 4);
-  Inc(APos, 4);
-  if (vLen > RALMSQUIC_MAX_FIELD) or (APos + IntegerRAL(vLen) > ASize) then
-    Exit;
-  if vLen > 0 then
-  begin
-    SetLength(AText, vLen);
-    Move(PByte(ABuf + APos)^, AText[POSINISTR], vLen);
-  end;
-  Inc(APos, IntegerRAL(vLen));
-  Result := True;
-end;
-
-{ HEADERS TRAVEL AS PAIRS, NOT AS TEXT.
-
-  They used to be one block built with AssignParamsListText on the sending side
-  and taken apart with AppendParamsListText on the receiving one - an HTTP shape
-  inside a frame that is not HTTP. That cost a string built, grown, trimmed and
-  copied into the frame, then split line by line with a separator sniffer on the
-  other end, twice per request. Measured on the server: 0.028 ms building them
-  out of 0.19 ms for the whole request.
-
-  The layout is a count followed by that many (name, value) length-prefixed
-  blocks, the same prefix ReadBlockStr already reads. Nothing about the values
-  changes, so a header carrying a colon, a line break or bytes above 127 now
-  survives by construction instead of by the sniffer guessing right. }
-type
-  TRALMsQuicHeader = record
-    Name: StringRAL;
-    Value: StringRAL;
-  end;
-  TRALMsQuicHeaders = array of TRALMsQuicHeader;
-
-/// The response headers, into the response's params. AddHeader rather than
-/// AddParam: a Set-Cookie also lands as a cookie param, the same rule the
-/// Indy and mORMot2 clients follow through AppendParamLine.
-function ReadHeaders(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
-  AParams: TRALParams): Boolean;
-var
-  vCount, vIndex: Cardinal;
-  vName, vValue: StringRAL;
-begin
-  Result := False;
-  if APos + 4 > ASize then
-    Exit;
-  Move(PByte(ABuf + APos)^, vCount, 4);
-  Inc(APos, 4);
-  { a count read from the network is a promise, not a fact: the smallest pair
-    is eight bytes, so anything above what is left in the buffer is a lie, and
-    the caller answers with a transport error instead of looping on it }
-  if vCount > Cardinal(ASize - APos) div 8 then
-    Exit;
-  for vIndex := 1 to vCount do
-  begin
-    if (not ReadBlockStr(ABuf, ASize, APos, vName)) or
-       (not ReadBlockStr(ABuf, ASize, APos, vValue)) then
-      Exit;
-    AParams.AddHeader(vName, vValue);
-  end;
-  Result := True;
-end;
-
-/// Reads every rpkHEADER param once - AsString materialises the value, so
-/// asking twice would allocate twice - and answers how many bytes the block
-/// will take.
-function CollectHeaders(AParams: TRALParams; var AHeaders: TRALMsQuicHeaders;
-  out ACount: IntegerRAL): IntegerRAL;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  ACount := 0;
-  Result := 4;
-  if AParams = nil then
-    Exit;
-  if Length(AHeaders) < AParams.Count then
-    SetLength(AHeaders, AParams.Count);
-  for vInt := 0 to Pred(AParams.Count) do
-  begin
-    vParam := AParams.Index[vInt];
-    if vParam.Kind <> rpkHEADER then
-      Continue;
-    AHeaders[ACount].Name := vParam.ParamName;
-    AHeaders[ACount].Value := vParam.AsString;
-    Inc(Result, 8 + Length(AHeaders[ACount].Name) + Length(AHeaders[ACount].Value));
-    Inc(ACount);
-  end;
-end;
-
-function PutHeaders(ADest: PByte; const AHeaders: TRALMsQuicHeaders;
-  ACount: IntegerRAL): PByte;
-var
-  vInt: IntegerRAL;
-  vLen: Cardinal;
-begin
-  vLen := ACount;
-  Move(vLen, ADest^, 4);
-  Inc(ADest, 4);
-  for vInt := 0 to ACount - 1 do
-  begin
-    ADest := PutBlockStr(ADest, AHeaders[vInt].Name);
-    ADest := PutBlockStr(ADest, AHeaders[vInt].Value);
-  end;
-  Result := ADest;
-end;
-
-/// Host and port of a full URL. RALSplitHostPort is exported by RALClient but
-/// takes a BARE "host:port" - handing it a whole URL makes the scheme part of
-/// the host, and every connection then fails with WSAHOST_NOT_FOUND. The
-/// scheme and the path are cut off here first. There is an equivalent inside
-/// RALClient, but it is implementation-only.
-procedure QuicHostPort(const AURL: StringRAL; out AHost: StringRAL;
-  out APort: IntegerRAL);
-var
-  vValue: StringRAL;
-  vPos: IntegerRAL;
-begin
-  vValue := AURL;
-  vPos := Pos(StringRAL('://'), vValue);
-  if vPos > 0 then
-    vValue := Copy(vValue, vPos + 3, Length(vValue));
-
-  for vPos := POSINISTR to Length(vValue) + POSINISTR - 1 do
-    if vValue[vPos] = '/' then
-    begin
-      vValue := Copy(vValue, POSINISTR, vPos - POSINISTR);
-      Break;
-    end;
-
-  RALSplitHostPort(vValue, AHost, APort);
-end;
-
-/// The path of a full URL, which is all the frame carries: the host lives in
-/// the connection, not in the request. Returns '/' when the URL has no path.
-function RouteFromUrl(const AURL: StringRAL): StringRAL;
-var
-  vPos, vLen: IntegerRAL;
-begin
-  Result := '/';
-  vPos := Pos(StringRAL('://'), AURL);
-  if vPos > 0 then
-    vPos := vPos + 3
-  else
-    vPos := POSINISTR;
-
-  vLen := Length(AURL) + POSINISTR;
-  while (vPos < vLen) and (AURL[vPos] <> '/') do
-    Inc(vPos);
-  if vPos < vLen then
-    Result := Copy(AURL, vPos, MaxInt);
 end;
 
 function SendAndFinish(AStream: HQUIC; const ABytes: TBytes): QUIC_STATUS;
@@ -1062,7 +869,7 @@ procedure TRALMsQuicClientHTTP.ResolveTarget(const AURL: StringRAL);
 begin
   if (FTargetUrl <> '') and (AURL = FTargetUrl) then
     Exit;
-  QuicHostPort(AURL, FTargetHost, FTargetPort);
+  RALQuicHostPort(AURL, FTargetHost, FTargetPort);
   { a BaseURL with no port means the port TRALServer listens on when nobody
     chose one - there is no 80/443 convention below HTTP to fall back on }
   if FTargetPort <= 0 then
@@ -1168,131 +975,6 @@ begin
   Result := FShared;
 end;
 
-procedure TRALMsQuicClientHTTP.PrepareRequest(ARequest: TRALRequest);
-var
-  vCookies: StringRAL;
-begin
-  { the frame carries only the path, so the host the request was aimed at goes
-    in the header every HTTP client sends - TRALRequest rebuilds its full URL
-    from it on the server }
-  ARequest.Params.AddParam('Host', FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)), rpkHEADER);
-  ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
-  ARequest.ContentCompress := Parent.CompressType;
-  { Accept-Encoding states what the client can READ, which does not depend on
-    whether it compresses what it sends - so it is outside the CompressType
-    check, the same rule every other engine follows. }
-  ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
-  ARequest.CriptoKey := Parent.CriptoOptions.Key;
-  ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
-  if Parent.CriptoOptions.CriptType <> crNone then
-  begin
-    ARequest.Params.AddParam('Content-Encription', ARequest.ContentEncription, rpkHEADER);
-    ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
-  end;
-  { the cookies the application set travel as one Cookie header, the way the
-    Indy and mORMot2 clients send them; the server reads that header back
-    into cookie params }
-  vCookies := ARequest.Params.AssignParamsText(rpkCOOKIE, False, '=', '; ');
-  if vCookies <> '' then
-    ARequest.Params.AddParam('Cookie', vCookies, rpkHEADER);
-end;
-
-function TRALMsQuicClientHTTP.BuildFrame(ARequest: TRALRequest;
-  AMethod: TRALMethod; const ARoute: StringRAL): TBytes;
-var
-  vHeaders: TRALMsQuicHeaders;
-  vHdrCount, vHdrSize: IntegerRAL;
-  vSource: TStream;
-  vDest: PByte;
-  vBodyLen: IntegerRAL;
-begin
-  { THE BODY IS ENCODED FIRST, and the headers are built afterwards. Not a
-    style choice: RequestStream runs EncodeBody, which decides between a raw
-    body and multipart and WRITES BACK ContentType - with the boundary - and
-    ContentEncoding, with what it actually compressed. Reading either before
-    sends a multipart request with no boundary and a gzipped body with no
-    Content-Encoding, which is exactly what the round-trip battery caught:
-    every multipart case came back empty and every compressed case came back
-    unreadable. TRALSynopseClientHTTP orders it the same way. }
-  vSource := ARequest.RequestStream;
-  try
-    vBodyLen := 0;
-    if vSource <> nil then
-      vBodyLen := vSource.Size;
-
-    if ARequest.ContentType <> '' then
-      ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
-    if ARequest.ContentDisposition <> '' then
-      ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-    if ARequest.ContentCompress <> ctNone then
-      ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
-
-    vHdrSize := CollectHeaders(ARequest.Params, vHeaders, vHdrCount);
-
-    { one allocation, sized up front, and the body read from the encoded stream
-      straight into it - the string it used to pass through was a full copy of
-      the body per request }
-    SetLength(Result, 1 + BlockSize(Length(ARoute)) + vHdrSize + BlockSize(vBodyLen));
-    vDest := PByte(Result);
-    vDest^ := Ord(AMethod);
-    Inc(vDest);
-    vDest := PutBlockStr(vDest, ARoute);
-    vDest := PutHeaders(vDest, vHeaders, vHdrCount);
-    PCardinal(vDest)^ := vBodyLen;
-    Inc(vDest, 4);
-    if vBodyLen > 0 then
-    begin
-      vSource.Position := 0;
-      vSource.ReadBuffer(vDest^, vBodyLen);
-    end;
-  finally
-    FreeAndNil(vSource);
-  end;
-end;
-
-procedure TRALMsQuicClientHTTP.ParseFrame(AFrame: PByte; ASize: IntegerRAL;
-  AResponse: TRALResponse);
-var
-  vPos: IntegerRAL;
-  vStatus: Word;
-  vContentType, vBody: StringRAL;
-  {$IFDEF RALMSQUIC_PROFILE}vPMark: Int64;{$ENDIF}
-begin
-  if ASize < 2 then
-  begin
-    SetTransportError(AResponse, rteOther, -1, emQuicFrameMalformed);
-    Exit;
-  end;
-  Move(AFrame^, vStatus, 2);
-  vPos := 2;
-  if (not ReadBlockStr(AFrame, ASize, vPos, vContentType)) or
-     (not ReadHeaders(AFrame, ASize, vPos, AResponse.Params)) or
-     (not ReadBlockStr(AFrame, ASize, vPos, vBody)) then
-  begin
-    SetTransportError(AResponse, rteOther, -1, emQuicFrameMalformed);
-    Exit;
-  end;
-
-  {$IFDEF RALMSQUIC_PROFILE}vPMark := ProfTicks;{$ENDIF}
-  {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpParseHdr, vPMark);{$ENDIF}
-
-  AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
-  AResponse.Params.CompressType := AResponse.ContentCompress;
-
-  AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
-  AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
-  AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
-
-  AResponse.ContentType := vContentType;
-  AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
-  AResponse.StatusCode := vStatus;
-  { ProtocolVersion stays rhvDefault: it is a version of HTTP, and QUIC is not
-    one - the transport could not tell, which is what rhvDefault means }
-  {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpParseProps, vPMark);{$ENDIF}
-  AResponse.ResponseText := vBody;
-  {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpParseBody, vPMark);{$ENDIF}
-end;
-
 procedure TRALMsQuicClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
@@ -1321,9 +1003,11 @@ begin
   IsMultiThread := True;
 
   ResolveTarget(AURL);
-  PrepareRequest(ARequest);
+  RALQuicPrepareRequest(ARequest, FTargetHost, FTargetPort, Parent.UserAgent,
+    Parent.CompressType, GetAcceptCompress, Parent.CriptoOptions.Key,
+    Parent.CriptoOptions.CriptType, SupportedEncriptKind);
 
-  vRoute := RouteFromUrl(AURL);
+  vRoute := RALQuicRouteFromUrl(AURL);
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpSetup, vMark);{$ENDIF}
 
   { every code below is non-zero: ErrorCode is what BeforeSendUrl raises on
@@ -1348,7 +1032,7 @@ begin
 
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpConnect, vMark);{$ENDIF}
 
-  vFrame := BuildFrame(ARequest, AMethod, vRoute);
+  vFrame := RALQuicBuildFrame(ARequest, AMethod, vRoute);
   {$IFDEF RALMSQUIC_PROFILE}ProfMark(qpBuild, vMark);{$ENDIF}
 
   { the engine keeps its reference to the context between requests - see
@@ -1412,8 +1096,10 @@ begin
 
   { parsed straight out of the accumulator: Position is the length written,
     and Size is only the high water mark of the buffer being reused }
-  ParseFrame(PByte(vPending.Received.Memory), vPending.Received.Position,
-    AResponse);
+  if not RALQuicParseFrame(PByte(vPending.Received.Memory),
+                           vPending.Received.Position, AResponse,
+                           Parent.CriptoOptions.Key) then
+    SetTransportError(AResponse, rteOther, -1, emQuicFrameMalformed);
   {$IFDEF RALMSQUIC_PROFILE}
   ProfMark(qpParse, vMark);
   RALAtomicInc(gPhaseReqs, 1);

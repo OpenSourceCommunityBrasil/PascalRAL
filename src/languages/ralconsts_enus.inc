@@ -18,6 +18,9 @@
   emCertRequiresTLS = 'SSL.Required is set, or a line of SSL.Pins applies to this host, so plain http is refused: %s.';
   emHTTP2Unsupported = 'HTTPVersion is rhv2, and the %s engine cannot speak HTTP/2 on this platform. Use the netHTTP engine, or leave HTTPVersion at rhvDefault.';
   emOkHttpAndroidOnly = 'The OkHttp engine only has an implementation on Android: it is registered elsewhere so that it can be chosen, but it cannot send a request. Use the netHTTP engine on this platform.';
+  emKwikAndroidOnly = 'The Kwik engine only has an implementation on Android: it is registered elsewhere so that it can be chosen, but it cannot send a request. Use the MsQuic engine on this platform.';
+  emKwikCryptoMissing = 'This Android version cannot run the TLS 1.3 of Kwik, it has no: %s.';
+  emKwikBridgeMissing = 'The Kwik bridge did not answer: %s. Check that kwik, agent15, hkdf, siphash and ralkwik jars are all declared in the project.';
   emHttpSysAddUrl = 'http.sys refused to listen on port %d (code %d). Code 5 means the port is not reserved for this user: run "netsh http add urlacl url=http://+:%0:d/ user=<user>" once, as Administrator, or start the server elevated.';
   emHttpSysWindowsOnly = 'Mode is smHttpSys, which is served by the Windows kernel (http.sys) and has no implementation on this platform. Use smThreads or smAsync - bearing in mind that neither of them serves HTTP/2.';
   emHTTP10NotRequestable = 'HTTPVersion is rhv10, and HTTP/1.0 cannot be asked for: no engine exposes a switch for it. rhv10 only ever comes back, on a request a server received. Leave HTTPVersion at rhvDefault.';

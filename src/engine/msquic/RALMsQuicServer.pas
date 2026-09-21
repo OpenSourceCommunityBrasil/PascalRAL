@@ -14,7 +14,7 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   MsQuic,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALStream;
+  RALParams, RALTools, RALCompress, RALStream, RALQuicFrame;
 
 type
   { TRALMsQuicSSL }
@@ -298,11 +298,6 @@ function RALMsQuicSrvProfileReport: StringRAL;
 
 implementation
 
-const
-  /// Reading a size prefix from the network is an allocation request from a
-  /// stranger, so it is bounded before it is believed.
-  RALMSQUIC_MAX_FIELD = 64 * 1024 * 1024;
-
 {$IFDEF RALMSQUIC_PROFILE}
 type
   TRALMsQuicSrvPhase = (spObjects, spDecode, spValidate, spProcess, spBuild,
@@ -432,130 +427,9 @@ function RALMsQuicConnectionCallback(Connection: HQUIC; Context: Pointer;
   request against 96us for the HTTP/1.1 engine. The bytes are only copied where
   somebody has to own them. }
 
-/// How many bytes a length-prefixed block of ALength will take on the wire.
-function BlockSize(ALength: IntegerRAL): IntegerRAL;
-begin
-  Result := 4 + ALength;
-end;
-
-/// Writes a length-prefixed block at ADest and returns the position after it.
-function PutBlockStr(ADest: PByte; const AText: StringRAL): PByte;
-var
-  vLen: Cardinal;
-begin
-  vLen := Length(AText);
-  Move(vLen, ADest^, 4);
-  Inc(ADest, 4);
-  if vLen > 0 then
-  begin
-    Move(AText[POSINISTR], ADest^, vLen);
-    Inc(ADest, vLen);
-  end;
-  Result := ADest;
-end;
-
-/// Reads a length-prefixed block straight out of the receive buffer, refusing
-/// a size the buffer cannot hold. Returns False instead of raising, because
-/// the caller answers 400 with it - a size prefix read from the network is an
-/// allocation request from a stranger.
-function ReadBlockStr(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
-  out AText: StringRAL): Boolean;
-var
-  vLen: Cardinal;
-begin
-  Result := False;
-  AText := '';
-  if APos + 4 > ASize then
-    Exit;
-  Move(PByte(ABuf + APos)^, vLen, 4);
-  Inc(APos, 4);
-  if (vLen > RALMSQUIC_MAX_FIELD) or (APos + IntegerRAL(vLen) > ASize) then
-    Exit;
-  if vLen > 0 then
-  begin
-    SetLength(AText, vLen);
-    Move(PByte(ABuf + APos)^, AText[POSINISTR], vLen);
-  end;
-  Inc(APos, IntegerRAL(vLen));
-  Result := True;
-end;
-
-{ HEADERS TRAVEL AS PAIRS, NOT AS TEXT.
-
-  They used to be one block built with AssignParamsListText on the sending side
-  and taken apart with AppendParamsListText on the receiving one - an HTTP shape
-  inside a frame that is not HTTP. That cost a string built, grown, trimmed,
-  copied into the frame, and then split line by line with a separator sniffer on
-  the other end, twice per request. Measured on the server: 0.028 ms building
-  them out of 0.19 ms for the whole request.
-
-  The layout is a count followed by that many (name, value) length-prefixed
-  blocks, the same prefix ReadBlockStr already reads. Nothing about the values
-  changes, so a header carrying a colon, a line break or bytes above 127 now
-  survives by construction instead of by the sniffer guessing right. }
-type
-  TRALMsQuicHeader = record
-    Name: StringRAL;
-    Value: StringRAL;
-  end;
-  TRALMsQuicHeaders = array of TRALMsQuicHeader;
-
-function ReadHeaders(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
-  AParams: TRALParams): Boolean;
-var
-  vCount, vIndex: Cardinal;
-  vName, vValue: StringRAL;
-begin
-  Result := False;
-  if APos + 4 > ASize then
-    Exit;
-  Move(PByte(ABuf + APos)^, vCount, 4);
-  Inc(APos, 4);
-  { a count read from the network is a promise, not a fact: the smallest pair
-    is eight bytes, so anything above what is left in the buffer is a lie and
-    the caller answers 400 rather than looping on it }
-  if vCount > Cardinal(ASize - APos) div 8 then
-    Exit;
-  for vIndex := 1 to vCount do
-  begin
-    if (not ReadBlockStr(ABuf, ASize, APos, vName)) or
-       (not ReadBlockStr(ABuf, ASize, APos, vValue)) then
-      Exit;
-    AParams.AddParam(vName, vValue, rpkHEADER);
-  end;
-  Result := True;
-end;
-
-/// Reads every rpkHEADER param once - AsString materialises the value, so
-/// asking twice would allocate twice - and answers how many bytes the block
-/// will take.
-function CollectHeaders(AParams: TRALParams; var AHeaders: TRALMsQuicHeaders;
-  out ACount: IntegerRAL): IntegerRAL;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
-begin
-  ACount := 0;
-  Result := 4;
-  if AParams = nil then
-    Exit;
-  if Length(AHeaders) < AParams.Count then
-    SetLength(AHeaders, AParams.Count);
-  for vInt := 0 to Pred(AParams.Count) do
-  begin
-    vParam := AParams.Index[vInt];
-    if vParam.Kind <> rpkHEADER then
-      Continue;
-    AHeaders[ACount].Name := vParam.ParamName;
-    AHeaders[ACount].Value := vParam.AsString;
-    Inc(Result, 8 + Length(AHeaders[ACount].Name) + Length(AHeaders[ACount].Value));
-    Inc(ACount);
-  end;
-end;
-
 /// Adds ready-made 'Name: Value' lines - what GetParamsCookiesText produces -
 /// as pairs, and returns the new block size.
-function AddTextHeaders(var AHeaders: TRALMsQuicHeaders; var ACount: IntegerRAL;
+function AddTextHeaders(var AHeaders: TRALQuicHeaders; var ACount: IntegerRAL;
   ASize: IntegerRAL; const AText: StringRAL): IntegerRAL;
 var
   vStart, vInt, vHigh, vSep: IntegerRAL;
@@ -594,23 +468,6 @@ begin
     end;
   if vStart <= vHigh then
     PutLine(Copy(AText, vStart, MaxInt));
-end;
-
-function PutHeaders(ADest: PByte; const AHeaders: TRALMsQuicHeaders;
-  ACount: IntegerRAL): PByte;
-var
-  vInt: IntegerRAL;
-  vLen: Cardinal;
-begin
-  vLen := ACount;
-  Move(vLen, ADest^, 4);
-  Inc(ADest, 4);
-  for vInt := 0 to ACount - 1 do
-  begin
-    ADest := PutBlockStr(ADest, AHeaders[vInt].Name);
-    ADest := PutBlockStr(ADest, AHeaders[vInt].Value);
-  end;
-  Result := ADest;
 end;
 
 /// Hands ABytes to MsQuic as the last thing on AStream. Ownership of the bytes
@@ -1209,7 +1066,7 @@ var
   vMethod: Byte;
   vUrl, vBody: StringRAL;
   vCType: StringRAL;
-  vHeaders: TRALMsQuicHeaders;
+  vHeaders: TRALQuicHeaders;
   vHdrCount, vHdrSize: IntegerRAL;
   vDest: PByte;
   vStream: TStream;
@@ -1239,9 +1096,9 @@ begin
       begin
         vMethod := ARequest^;
         vPos := 1;
-        if (not ReadBlockStr(ARequest, ASize, vPos, vUrl)) or
-           (not ReadHeaders(ARequest, ASize, vPos, vRequest.Params)) or
-           (not ReadBlockStr(ARequest, ASize, vPos, vBody)) then
+        if (not RALQuicReadBlockStr(ARequest, ASize, vPos, vUrl)) or
+           (not RALQuicReadHeaders(ARequest, ASize, vPos, vRequest.Params)) or
+           (not RALQuicReadBlockStr(ARequest, ASize, vPos, vBody)) then
         begin
           vResponse.Answer(HTTP_BadRequest, emQuicFrameMalformed, rctTEXTPLAIN);
         end
@@ -1334,7 +1191,7 @@ begin
       if vResponse.ContentEncription <> '' then
         vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
 
-      vHdrSize := CollectHeaders(vResponse.Params, vHeaders, vHdrCount);
+      vHdrSize := RALQuicCollectHeaders(vResponse.Params, vHeaders, vHdrCount);
       if vResponse.Params.Count(rpkCOOKIE) > 0 then
         vHdrSize := AddTextHeaders(vHeaders, vHdrCount, vHdrSize,
           vResponse.GetParamsCookiesText(IncMinute(Now, CookieLife)));
@@ -1344,13 +1201,13 @@ begin
       if vStream <> nil then
         vBodyLen := vStream.Size;
 
-      SetLength(Result, 2 + BlockSize(Length(vCType)) + vHdrSize +
-                        BlockSize(vBodyLen));
+      SetLength(Result, 2 + RALQuicBlockSize(Length(vCType)) + vHdrSize +
+                        RALQuicBlockSize(vBodyLen));
       vDest := PByte(Result);
       PWord(vDest)^ := vResponse.StatusCode;
       Inc(vDest, 2);
-      vDest := PutBlockStr(vDest, vCType);
-      vDest := PutHeaders(vDest, vHeaders, vHdrCount);
+      vDest := RALQuicPutBlockStr(vDest, vCType);
+      vDest := RALQuicPutHeaders(vDest, vHeaders, vHdrCount);
       PCardinal(vDest)^ := vBodyLen;
       Inc(vDest, 4);
       if vBodyLen > 0 then

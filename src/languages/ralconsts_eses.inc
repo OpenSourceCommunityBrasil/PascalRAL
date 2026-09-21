@@ -18,6 +18,9 @@
   emCertRequiresTLS = 'SSL.Required está definido, o una línea de SSL.Pins aplica a este host, por lo que se rechaza http sin cifrar: %s.';
   emHTTP2Unsupported = 'HTTPVersion es rhv2 y el motor %s no habla HTTP/2 en esta plataforma. Use el motor netHTTP, o deje HTTPVersion en rhvDefault.';
   emOkHttpAndroidOnly = 'El motor OkHttp solo tiene implementacion en Android: se registra en las demas plataformas para poder elegirlo, pero no puede enviar una peticion. Use el motor netHTTP en esta plataforma.';
+  emKwikAndroidOnly = 'El motor Kwik solo tiene implementacion en Android: se registra en las demas plataformas para poder elegirlo, pero no puede enviar una peticion. Use el motor MsQuic en esta plataforma.';
+  emKwikCryptoMissing = 'Esta version de Android no puede ejecutar el TLS 1.3 de Kwik, le falta: %s.';
+  emKwikBridgeMissing = 'El puente de Kwik no respondio: %s. Verifique que los jars kwik, agent15, hkdf, siphash y ralkwik esten todos declarados en el proyecto.';
   emHttpSysAddUrl = 'http.sys rechazo escuchar en el puerto %d (codigo %d). El codigo 5 significa que el puerto no esta reservado para este usuario: ejecute una vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuario>", o inicie el servidor elevado.';
   emHttpSysWindowsOnly = 'Mode es smHttpSys, servido por el kernel de Windows (http.sys), y no tiene implementación en esta plataforma. Use smThreads o smAsync, teniendo en cuenta que ninguno de los dos sirve HTTP/2.';
   emHTTP10NotRequestable = 'HTTPVersion es rhv10, y HTTP/1.0 no se puede solicitar: ningún motor expone esa opción. rhv10 solo aparece de vuelta, en una petición que el servidor recibió. Deje HTTPVersion en rhvDefault.';

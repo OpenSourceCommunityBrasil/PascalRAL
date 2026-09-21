@@ -14,7 +14,8 @@ uses
   RALMultipartCoder, RALCustomObjects, RALUrlCoder, RALCripto, RALCriptoAES, 
   RALSHA1, RALCompressZLib, RALCompress, RALStorage, RALStorageBIN, 
   RALStorageCSV, RALStorageJSON, RALExternalsLibraries, RALPostmanExporter, 
-  RALSwaggerExporter, RALSwaggerModule, RALWebModule, RALAuthentication;
+  RALSwaggerExporter, RALSwaggerModule, RALWebModule, RALAuthentication, 
+  RALQuicFrame;
 
 implementation
 
