@@ -328,9 +328,9 @@ wrong, every engine notices and reconnects, but it throws away the connection
 that was the point of keeping it.
 
 **It is not `ShareConnection`, and the two do not cancel out.** `ShareConnection`
-shares the *transport* between engines and only netHTTP, OkHttp and MsQuic
-implement it; with it on, a throwaway engine already finds the connection open,
-which is why those three never showed the collapse this pool fixes. The pool
+shares the *transport* between engines and only netHTTP, OkHttp, MsQuic and
+Kwik implement it; with it on, a throwaway engine already finds the connection
+open, which is why those four never showed the collapse this pool fixes. The pool
 reuses the *engine*, which is what Indy, mORMot2 and fpHTTP - with no
 `ShareConnection` - have to rely on. Both on is fine.
 
