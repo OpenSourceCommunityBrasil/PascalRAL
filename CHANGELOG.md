@@ -73,6 +73,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Add a Kwik QUIC client engine for Android** (2026-09-21 – tempraturbo)
+  Android has no other way to speak QUIC on a stream of its own. Every official
+  stack there is an HTTP client - OkHttp declares Protocol.HTTP_3 and implements
+  nothing behind it, Cronet and HttpEngine expose HTTP/3 only - while this
+  engine's frame wants a raw bidirectional stream. MsQuic would mean a
+  libmsquic.so built with the NDK, a platform its own project does not claim and
+  for which nobody publishes a binary. Kwik is QUIC in pure Java: four jars,
+  646 KB, one set of files whatever the ABI.
+  TRALKwikClientHTTP answers the same surface as TRALMsQuicClientHTTP -
+  SupportsCertPin, SupportsSharedConnection and SupportsKeepAliveInterval all
+  True, DefaultAlpn, the certificate judged by AcceptServerCert through a
+  TJavaLocal, and a connection shared only among clients that judge alike, since
+  a reused one has no handshake to judge at. MinKeepAliveInterval is 1000 because
+  Kwik takes whole seconds, so the value read back is the value in effect. Off
+  Android the class is still declared and registered and refuses at SendUrl, the
+  shape RALOkHttpClient uses, so the name still reaches the EngineType editor.
+  The wire format now lives in RALQuicFrame, in the runtime package, and the
+  MsQuic client and server read it from there. Three copies of one format is how
+  two ends stop agreeing: the frame is the contract between them, and a field
+  changed in one copy fails silently - no compile error, just answers that never
+  arrive. The two engines are wire compatible by construction now.
+  What the platform costs: Android 8 / API 26, from java.time in Kwik's builder.
+  agent15 reaches for XDH only on the X25519 branch, so secp256r1 - its default -
+  keeps the floor off API 33. RAD Studio 12 dexes with D8/R8, so the Java 11
+  bytecode of those jars goes through; the old dx could not have read it.
+  Kwik is LGPL v3, the first dependency here carrying a relink clause.
+  Compiled for Android ARM64 and ARM32, Win32, Win64, Linux64 and the Lazarus
+  package. Not yet run against a server.
+
 - **Add a QUIC engine (MsQuic) and a connection pool for TRALClient** (2026-09-20 – tempraturbo)
   The engine puts RAL's own length-prefixed frame straight onto QUIC streams, so
   it is not HTTP/3 and both ends have to be RAL - curl, a browser, a proxy or a
@@ -286,6 +315,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Offer each engine package only the platforms it can serve** (2026-09-21 – tempraturbo)
+  The three lists said whatever the template they were copied from said. MsQuic
+  listed Android, where its library has no binary anybody publishes; OkHttp and
+  Kwik listed Windows, Linux and iOS, where neither of them runs at all. What
+  the IDE offers as a target should be somewhere the engine works.
+  KwikRAL     Android, Android64, Win32
+  OkHttpRAL   Android, Android64, Win32
+  MsQuicRAL   Win32, Win64, Win64x, Linux64, OSX64, OSXARM64
+  Win32 stays on the two Android ones on purpose, and it is not an oversight: a
+  design package is loaded by the IDE, which is Win32, so without that target
+  the package cannot be built or installed - and then the engine name never
+  reaches the EngineType editor, which is the one thing it exists for there.
+  macOS on MsQuic is the target, not a promise: MsQuicLoad still refuses to load
+  under Darwin, because the status codes there are not the errno values the
+  tables translate and misreading every status is worse than saying no. The
+  platform is listed for when those tables cover it.
+  Also states in CLAUDE.md that four engines share a transport, not three -
+  Kwik joined netHTTP, OkHttp and MsQuic and the sentence had not caught up.
+
 - **Merge remote-tracking branch 'remotes/origin/1.2-plugin' into dev** (2026-09-20 – mobius1qwe)
 
 - **Make smAsync the default mode of the mORMot2 server** (2026-09-20 – tempraturbo)
@@ -315,6 +363,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix HTTPVersion offering a choice the engine cannot make** (2026-09-21 – tempraturbo)
+  It was published on every engine, and two of those cannot answer it at all.
+  Indy, fpHTTP and mORMot2 speak HTTP/1.1 and nothing else; MsQuic and Kwik are
+  below HTTP, where no version is ever requested and none is reported back.
+  IsPropertyRelevant now shows the property only where SupportsHTTP2 is True -
+  netHTTP and okhttp - which is the only place the answer can be more than one
+  thing.
+  The half that was a defect and not merely noise is the value. SetEngineType
+  left it alone, so an rhv2 chosen under netHTTP survived the switch to Indy and
+  turned EVERY request into emHTTP2Unsupported, from a property the engine no
+  longer showed. It is settled on the switch now: rhv11 for an engine that
+  speaks HTTP and only 1.1, rhvDefault for one that speaks no HTTP - which is
+  what the SupportsHTTPVersion class function tells apart. Only netHTTP reads
+  Parent.HTTPVersion at all, so pinning it elsewhere changes nothing on the wire.
+  The same mistake was hiding three more properties, and it is worth stating on
+  its own: a Supports* answered inside {$IFDEF ANDROID} is answered for the
+  wrong machine. The Object Inspector asks those class functions on the IDE's
+  platform, Windows, while the project targets Android - so okhttp's four all
+  said False there and HTTPVersion, ShareConnection and KeepAliveInterval
+  vanished from a client that honours every one of them. Kwik inherited the
+  shape from okhttp and the same silence with it. The four live outside the
+  IFDEF in both engines now and answer what the ENGINE does; only the code they
+  describe stays conditional. Same reasoning that keeps the class registered on
+  every platform so the IDE can offer it.
+  Compiled for Win32 and Android ARM64, and the Lazarus package on FPC.
+
+- **Fix the Kwik engine against a real Android handset** (2026-09-21 – tempraturbo)
+  Two defects that only a device could show, both in the Java bridge.
+  agent15 asks the JCA for RSASSA-PSS, the JDK's name for it, while Android
+  calls the same thing SHA256withRSA/PSS - so every handshake died with "Missing
+  RSASSA-PSS support. Did you set PlatformMapping.usePlatformMapping(
+  PlatformMapping.Platform.Android)?". That reads like a warning and is in fact
+  the whole instruction: the mapping ships inside agent15 and is opt-in. RalKwik
+  switches it on from a static block, which is the once-per-process it wants.
+  The second hid behind the first. Kwik's customTrustManager() replaces the trust
+  manager and leaves agent15's DefaultHostnameVerifier running beside it; only
+  noServerCertificateCheck() turns both off, and the builder exposes no way to
+  install a verifier of our own - read off the bytecode of
+  QuicClientConnectionImpl. So a certificate the application's judge accepts was
+  still refused for naming the wrong host, which is the normal case for a self
+  signed certificate reached by IP, and is what src/engine/SSL.md says must not
+  happen: with a pin or OnValidateServerCert the host name stops mattering.
+  CERT_JUDGE now turns both checks off and judges the chain itself, after the
+  handshake and before the first byte of the request - the shape the mORMot2
+  engine already uses, for the same reason.
+  It surfaces as every request failing the moment ShareConnection goes on,
+  because that is when the benchmark sample assigns the event.
+  The docs that were waiting for the device go with it: the engine README, the
+  CLAUDE.md section carrying both traps and what the platform costs (Android 8 /
+  API 26, D8/R8 dexing, LGPL v3), the map entry, and RALQuicFrame in pasdoc.pds.
+
+- **Fix TRALMsQuicServer not compiling for Delphi on Linux** (2026-09-21 – tempraturbo)
+  Priority := tpHigher has been in the dispatch worker since the engine was
+  written, and Delphi has no TThreadPriority on POSIX - Priority is the nice
+  value there. So the unit never built for Delphi/Linux at all, while the engine
+  documents Linux as one of its platforms. It hid because the client unit
+  compiles on its own and nothing in the test matrix pulls the server unit into a
+  Delphi/Linux target. FPC keeps the enum on every platform and is untouched.
+  Raising a thread above normal on POSIX also wants a privilege a server process
+  usually does not have, so skipping it there is right on its own terms and not
+  only a way around the type.
+
+- **Fix the MsQuic library load for POSIX clients, Android included** (2026-09-21 – tempraturbo)
+  Two halves, and only the second one has anything to do with Android.
+  MsQuicLoad now reports why the library would not load - dlerror on POSIX,
+  GetLoadErrorStr on FPC, SysErrorMessage on Windows. Linux answered the same
+  mute "could not load" whether the library was absent, was the wrong ELF class
+  or had a symbol it could not resolve, and those three want three different
+  answers from whoever reads the message. TRALMsQuicServer shares the loader, so
+  it says the same.
+  The name is where Android differs: the loader asked for libmsquic.so.2, which
+  cannot exist there, because the packager only carries lib/<abi>/*.so into the
+  APK. MSQUIC_LIBRARY is libmsquic.so under that one IFDEF, and it is the only
+  platform specific line of the whole change - RALMsQuicClient itself needed
+  nothing, so the engine registers and answers EngineType := 'MsQuic' wherever it
+  is compiled. The library goes to library\lib\arm64-v8a\ and DefaultLibPath
+  stays empty, since that folder is the application's own and is where dlopen
+  resolves a plain name.
+  That is the RAL side alone. MsQuic does not claim Android: its build
+  documentation does not mention the platform and no release carries a binary for
+  it, so the library has to be built with the NDK by whoever wants one.
+  Compiled for Android ARM64 and ARM32, Linux64, Win32, Win64 and FPC. Both
+  Android targets agree QUIC_SETTINGS is 144 bytes, which is what the loader
+  guard checks before it accepts the library, and the POSIX status table is
+  errno, which bionic numbers like Linux. Not run on a device.
+
 - **Fix an access violation in TRALFDConnection when it has no owner** (2026-09-20 – tempraturbo)
   SetRALServer read Owner.ComponentState to skip the route at design time, so
   a connection built in code with a nil owner died there. The component's own
