@@ -816,8 +816,15 @@ begin
   inherited Create(False);
   { MsQuic runs its transport threads above normal priority (the low-latency
     execution profile), so a dispatch worker left at normal priority is
-    preempted by them on every turn and the queue drains slower than it fills. }
+    preempted by them on every turn and the queue drains slower than it fills.
+
+    Delphi has no TThreadPriority on POSIX - Priority is the nice value there,
+    and raising it needs a privilege a server process normally does not have -
+    so the whole unit did not compile for Delphi/Linux until this guard. FPC
+    keeps the enum on every platform. }
+  {$IF Defined(FPC) or Defined(MSWINDOWS)}
   Priority := tpHigher;
+  {$IFEND}
 end;
 
 procedure TRALMsQuicWorker.Execute;
