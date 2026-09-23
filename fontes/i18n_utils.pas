@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, ExtCtrls, Buttons, Forms, HTTPDefs,
-  Translations, fpjson, http_client, utools;
+  Translations, fpjson, jsonparser, RALInst.HTTP, utools;
 
 type
 
@@ -105,8 +105,8 @@ end;
 function TTranslate.google_translate(AText: string): string;
 var
   vURL: string;
-  vHttp: THttpClient;
-  vStream: TStream;
+  vHttp: TClienteHTTP;
+  vStream: TMemoryStream;
   vInt: integer;
   vjdResponse, vjdTranslation, vjdTranslationArray: TJSONData;
   vjaTranslation, vjaTranslationArray: TJSONArray;
@@ -127,10 +127,13 @@ begin
           +'&dt=t'
           +'&ie=UTF-8&oe=UTF-8';
 
-  vHttp := THttpClient.Create;
+  vHttp := TClienteHTTP.Create;
   try
-    vStream := vHttp.DownloadLink(vURL);
+    vStream := TMemoryStream.Create;
     try
+      if not vHttp.Obter(vURL, vStream) then
+        Exit;
+      vStream.Position := 0;
       vjdResponse := GetJSON(vStream);
       try
         vjdTranslation:= vjdResponse.FindPath('[0]');

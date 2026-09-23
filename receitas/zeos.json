@@ -1,0 +1,51 @@
+{
+  "nome": "Zeos",
+  "descricao": "ZeosLib (ZeosDBO): o acesso a bancos do RALDBZeosLink",
+  "site": "https://sourceforge.net/projects/zeoslib/",
+  "fonte": { "github": "marsupilami79/zeoslib", "versao": "estavel",
+             "comentario": "espelho git do SVN do Zeos (o repositorio oficial e o SourceForge); as versoes sao ramos ('estavel' = o x.y.z-stable mais alto, hoje 8.0.0-stable). Matriz conferida em 2026-09-23 (zcore..zcomponentdesign pelo lazbuild): 8.0.0-stable compila no FPC 3.2.2 e 3.3.1 e falha no 3.2.3/3.2.4 (ZAbstractRODataset.pas: Expected another 1 array elements); o 8.0-patches e o trunk de 2026 so compilam no 3.3.1 (ZeosLazarus.inc define HAVE_TFORMATSETTINGS_CREATE desde o FPC 3.2.0); o master de frones/ZeosLib (trunk de 2025-07) compila nos quatro. No Delphi 12, a 8.0.0-stable compila.",
+             "versoes": [
+               { "fpc-min": "3.3", "versao": "8.0-patches",
+                 "comentario": "o ramo de correcoes, que o FPC 3.3 compila" },
+               { "fpc-min": "3.2.3", "fpc-max": "3.2.x", "github": "frones/ZeosLib", "versao": "master",
+                 "comentario": "nenhuma versao do espelho compila no FPC 3.2.3/3.2.4; o trunk do outro espelho (parado em 2025-07) compila" }
+             ] },
+  "delphi": {
+    "fornece": { "pacotes": ["ZComponent", "ZComponentDesign", "ZCore", "ZDbc", "ZParseSql", "ZPlain"] },
+    "deteccao": [ { "dcp": "ZComponent" } ],
+    "busca": [ "ZComponent.inc" ],
+    "acoes": [
+      { "acao": "dpk", "instalar": true, "pastas": {
+        "37.0": "packages/Delphi13", "23.0": "packages/Delphi12", "22.0": "packages/Delphi11",
+        "21.0": "packages/DelphiXE10.4", "20.0": "packages/DelphiXE10.3", "19.0": "packages/DelphiXE10.2",
+        "18.0": "packages/DelphiXE10.1", "17.0": "packages/DelphiXE10", "16.0": "packages/DelphiXE8",
+        "15.0": "packages/DelphiXE7", "14.0": "packages/DelphiXE6", "12.0": "packages/DelphiXE5",
+        "11.0": "packages/DelphiXE4", "10.0": "packages/DelphiXE3", "9.0": "packages/DelphiXE2",
+        "8.0": "packages/DelphiXE", "7.0": "packages/Delphi2010", "6.0": "packages/Delphi2009" } },
+      { "acao": "libpath", "caminhos": [
+        "{raiz}/src/component", "{raiz}/src/core", "{raiz}/src/dbc",
+        "{raiz}/src/parsesql", "{raiz}/src/plain" ] }
+    ]
+  },
+  "lazarus": {
+    "fornece": { "pacotes": ["zcomponent", "zcomponentdesign", "zcore", "zdbc", "zparsesql", "zplain"] },
+    "deteccao": [ { "pacote": "zcomponent" } ],
+    "verificacoes": [
+      { "arquivo": "src/ZeosLazarus.inc", "fpc-max": "3.2.x",
+        "expressao": "\\{\\$DEFINE HAVE_TFORMATSETTINGS_CREATE\\}\\s*\\{\\$IF FPC_FULLVERSION>=30203\\}",
+        "aviso": "o ZeosLazarus.inc dele define HAVE_TFORMATSETTINGS_CREATE para o FPC 3.2, mas TFormatSettings.Create só existe no FPC 3.3 (ZCbor.pas não compila). É o 8.0-patches/trunk atual do SourceForge. Correção de uma linha: mover o {$DEFINE HAVE_TFORMATSETTINGS_CREATE} para dentro do {$IF FPC_FULLVERSION >= 30300} logo abaixo",
+        "comentario": "conferido: com a linha movida, o 8.0-patches compila no FPC 3.2.2, 3.2.3, 3.2.4 e 3.3.1" },
+      { "arquivo": "src/core/ZClasses.pas", "fpc-min": "3.2.3", "fpc-max": "3.2.x",
+        "expressao": "ZEOS_SUB_VERSION\\s*=\\s*0\\s*;.*?ZEOS_STATUS\\s*=\\s*'release'",
+        "aviso": "é a 8.0.0-stable (a do OPM também), que não compila no FPC 3.2.3/3.2.4 (ZAbstractRODataset.pas: Expected another 1 array elements). Use o FPC 3.2.2 ou 3.3, ou o Zeos do trunk" }
+    ],
+    "acoes": [
+      { "acao": "lpk", "arquivo": "packages/lazarus/zcore.lpk", "modo": "link" },
+      { "acao": "lpk", "arquivo": "packages/lazarus/zparsesql.lpk", "modo": "link" },
+      { "acao": "lpk", "arquivo": "packages/lazarus/zplain.lpk", "modo": "link" },
+      { "acao": "lpk", "arquivo": "packages/lazarus/zdbc.lpk", "modo": "link" },
+      { "acao": "lpk", "arquivo": "packages/lazarus/zcomponent.lpk", "modo": "link" },
+      { "acao": "lpk", "arquivo": "packages/lazarus/zcomponentdesign.lpk", "modo": "instalar" }
+    ]
+  }
+}

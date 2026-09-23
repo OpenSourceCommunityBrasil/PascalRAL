@@ -48,6 +48,9 @@ type
     function validatePageNext : boolean; virtual;
     function validatePagePrior : boolean; virtual;
   public
+    // a pagina acabou de aparecer: e a hora de carregar o que depende das
+    // telas anteriores (versoes, plano)
+    procedure AoMostrar; virtual;
 
   published
     property Theme : TThemes read FTheme write SetTheme;
@@ -140,6 +143,10 @@ begin
     tDark  : imTheme.Hint := ThemeLight;
     tLight : imTheme.Hint := ThemeDark;
   end;
+end;
+
+procedure Tfrm_modelo.AoMostrar;
+begin
 end;
 
 function Tfrm_modelo.validatePageNext: boolean;

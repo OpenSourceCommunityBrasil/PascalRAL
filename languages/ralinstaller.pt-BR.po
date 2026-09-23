@@ -174,3 +174,12 @@ msgstr "Claro"
 msgid "Escuro"
 msgstr "Escuro"
 
+#: Tfrm_ide.lbAmbos.Caption
+msgctxt "Tfrm_ide.lbAmbos.Caption"
+msgid "Delphi e Lazarus juntos"
+msgstr "Delphi e Lazarus juntos"
+
+#: Tfrm_install.lbDesinstalar.Caption
+msgctxt "Tfrm_install.lbDesinstalar.Caption"
+msgid "Desinstalar o RAL destas IDEs"
+msgstr "Desinstalar o RAL destas IDEs"

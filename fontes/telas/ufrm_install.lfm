@@ -37,4 +37,26 @@ inherited frm_install: Tfrm_install
     ReadOnly = True
     TabOrder = 0
   end
+  object lbDesinstalar: TLabel[11]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Cursor = crHandPoint
+    Left = 250
+    Height = 20
+    Top = 562
+    Width = 200
+    Alignment = taCenter
+    Anchors = [akLeft, akBottom]
+    AutoSize = False
+    BorderSpacing.Bottom = 18
+    Caption = 'Desinstalar o RAL destas IDEs'
+    Font.Height = -13
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    OnClick = lbDesinstalarClick
+  end
 end

@@ -54,9 +54,9 @@ consequências que atravessam o plano:
 1. **Nada é baixado antes de o usuário confirmar.** As telas de escolha precisam
    saber quais pacotes existem na versão escolhida *sem* o RAL em disco: o
    catálogo (F2) lê de uma origem abstrata, e na GUI essa origem é o GitHub —
-   uma chamada `git/trees/<ref>?recursive=1` (a árvore inteira, com o commit de
-   cada submódulo) mais os `.dpk`/`.lpk`/`.dproj`/`.gitmodules` crus pelo
-   `raw.githubusercontent.com`, que não conta no limite da API (F8).
+   o **zip da versão**, baixado para o cache pelo `codeload.github.com` (fora do
+   limite da API) e lido sem extrair; o mesmo zip vai para a pasta na execução
+   (F8). Nada é gravado na pasta do usuário antes da confirmação.
 2. **A pasta escolhida é permanente.** Library path, variáveis de ambiente,
    links de `.lpk` e o recibo apontam para ela: não é pasta temporária, e apagar
    depois quebra as IDEs. A tela tem de dizer isso, e o layout dentro dela é
@@ -497,6 +497,125 @@ a descoberta da F2 como rede de segurança quando os dois discordarem.
 **Pronto quando:** recurso incompatível com a IDE escolhida aparece desmarcável
 e explicado, em vez de falhar na compilação.
 
+**Estado (2026-09-23):** feito; a matriz conferida contra as 13 instalações
+Delphi e as 14 Lazarus desta máquina, só lendo; ligado na tela.
+- **Mudança de desenho: a matriz sai do disco, não de uma tabela.** Pelo mesmo
+  motivo da F2 — pacote novo não pode depender de alguém lembrar de escrever a
+  regra. `RALInst.Compatibilidade`:
+  - **Pacote que a IDE não tem:** o que o `requires` exige, e o Indy/FireDAC
+    que o `.dproj` usa, tem de existir como `.dcp` em `lib\win32\release` ou
+    `<BDSCOMMONDIR>\Dcp`. O XE2 e o 2010 não têm `FireDAC.dcp`.
+  - **Unidade da RTL que a IDE não tem:** os `uses` das unidades do pacote
+    (namespaces `System.`, `Vcl.`, `FireDAC.`...) têm de existir como `.dcu`
+    em `lib\win32\release`. Os `{$IFDEF}` são avaliados com os símbolos daquela
+    IDE (`DELPHIXE4UP` do `PascalRAL.inc`, `VER230`, `MSWINDOWS`, `UNICODE`);
+    símbolo desconhecido e `{$IF expressão}` deixam o trecho de fora — na
+    dúvida, não acusa. Assim o `NetHttpRAL` sai do XE8 para baixo
+    (`System.Net.HttpClient`), e o `RALDBFireDACLink` sai do XE5, que entra no
+    `{$IFDEF DELPHIXE4UP}` do `RALDBFireDAC.pas` e não tem
+    `FireDAC.Stan.StorageBin`/`StorageJSON`.
+  - **Dependência sem versão para aquele compilador:** vem da receita (abaixo).
+    Se a IDE já tem a dependência, vale a que está lá (§8), seja qual for.
+- **Manifesto só para o que não dá para deduzir** (`manifesto/ral.json`,
+  embutido como `RCDATA MANIFESTO_RAL`; um `ralinstaller.json` na raiz da versão
+  do RAL substitui — responde "onde mora o manifesto" da §8: na própria versão,
+  com o embutido de reserva). Duas regras de pacote, da wiki (`SynopseRAL` e
+  `SaguiRAL` a partir do 2009), e a versão de dependência que o RAL exige: o
+  mORMot2 do `master` (saiu da receita, que voltou a `estavel`). Formato
+  fechado como o das receitas: campo desconhecido recusa o manifesto inteiro, e
+  um recusado não apaga o anterior.
+- **Versão da dependência por compilador:** `fonte.versoes` na receita, regras
+  com faixa (`delphi-min/max` pelo nome do produto — XE8, 10.1, 12 —,
+  `lazarus-min/max`, `fpc-min/max`, `sistemas`) e `versao` ou `incompativel`;
+  a primeira que vale decide. Zeos: `8.0-patches` no FPC 3.3; **nenhuma** do
+  3.2.3 em diante (conferido: 3.2.3 e 3.2.4 falham nas duas; 3.3.1 compila o
+  8.0-patches); a estável no resto. FPC de versão desconhecida não casa regra
+  nenhuma — fica a padrão.
+- **Versão do FPC:** `fpc -iV` quando o caminho não diz (o fpcupdeluxe não diz);
+  antes, os Lazarus do fpcupdeluxe ficavam sem versão de compilador.
+- **A mesma dependência em duas versões:** as pastas já eram
+  `dependencias/<nome>/<versão>/`; `PastasDependencias` passou a ser
+  `nome@versão=pasta` (`ChaveDependencia`), e cada IDE pede a sua
+  (`VersaoDependencia` nos dois motores). `TBaixaDependencia.VersaoPedida`.
+- **Tabela de produtos do Delphi** foi de `RALInst.IDE.Delphi` para
+  `RALInst.IDE` (é dado, compila em qualquer sistema) com `ProdutoPorNome`.
+- **Tela:** a árvore diz, por pacote, em quais IDEs marcadas ele fica de fora e
+  por quê; fora de todas, fica indisponível e não marca. O plano de cada IDE
+  lista "fica de fora: X — motivo", e só baixa a dependência na versão que
+  alguma IDE marcada de fato pede. Leitura do zip da versão: ~230 ms por versão
+  de IDE na primeira vez, depois em cache.
+- **Rodadas reais:** XE2 (cópia do registro) — os três pacotes de fora
+  anunciados no plano; Delphi 12 — 6/6 Zeos + 6/6 RAL com as dependências por
+  versão (`mORMot2@master`, `Zeos@estavel`); Lazarus 4.7 (FPC 3.2.3) —
+  `raldbzeoslink` fora, com o motivo, sem baixar o Zeos; Lazarus 4.99 (FPC
+  3.3.1) — Zeos `8.0-patches`.
+- **Achado no RAL, não no instalador:** o `dev` e o `1.2` não compilam mais no
+  XE2 — `RALTools.pas:531` chama `AtomicIncrement`, que só existe do XE3 em
+  diante (o `master` não tem isso). O instalador mostra o erro com a linha. Se
+  for decisão do projeto subir o mínimo para XE3, é regra para o
+  `ralinstaller.json` daquelas versões, não para o manifesto embutido.
+- Ferramenta: `tests/compatibilidade/compatibilidade.lpr` (`--testes`: 43
+  testes sem IDE; `<raiz ou .zip> [--lazarus=pasta]`: a matriz da máquina).
+  `instalar_delphi` e `instalar_lazarus` ganharam `--manifesto=`.
+- Falta: a checagem de unidade do lado Lazarus (hoje só faixa e dependência —
+  pacote externo ausente continua aviso no plano).
+
+**Estado (2026-09-23, segunda rodada):** Zeos, AnyDAC e plataformas.
+- **Zeos: matriz de verdade** (zcore…zcomponentdesign pelo `lazbuild -B`, em
+  cópias dos fontes e da configuração):
+
+  | Zeos | FPC 3.2.2 | 3.2.3 | 3.2.4 | 3.3.1 |
+  | --- | --- | --- | --- | --- |
+  | 8.0.0-stable (OPM = tag do espelho) | ok | falha | falha | ok |
+  | 8.0-patches (SVN do SF e espelho) | falha | falha | falha | ok |
+  | trunk (espelho, 2026-08) | falha | falha | falha | ok |
+  | `frones/ZeosLib` master (trunk 2025-07) | ok | ok | ok | ok |
+
+  O defeito é **do fonte do Zeos, não do OPM**. A estável falha em
+  `ZAbstractRODataset.pas(5929)` ("Expected another 1 array elements") nos
+  *fixes* 3.2.3/3.2.4. O 8.0-patches e o trunk atuais: `ZeosLazarus.inc` define
+  `HAVE_TFORMATSETTINGS_CREATE` no bloco `FPC_FULLVERSION>=30200`, mas
+  `TFormatSettings.Create` só existe no FPC 3.3 (`ZCbor.pas(854)`). **Mover
+  essa linha para o bloco `>= 30300` resolve**: conferido, o 8.0-patches passa a
+  compilar nos quatro FPC. É para reportar no SourceForge.
+- **Receita do Zeos:** FPC 3.3 → `8.0-patches`; FPC 3.2.3/3.2.x →
+  `frones/ZeosLib:master` (regra com `github` próprio: a versão vira
+  `dono/repo:ref`, a pasta `dependencias/Zeos/frones-master`); o resto →
+  estável. Ponta a ponta no Lazarus 4.7 (FPC 3.2.3, configuração numa cópia):
+  baixou o master do frones (commit `66c3ce2`), registrou, e o `raldbzeoslink`
+  compilou contra ele.
+- **Cópia já instalada que não compila (o alerta):** `verificacoes` no bloco da
+  receita — arquivo da cópia, expressão, faixa e aviso. A raiz vem do link do
+  `.lpk` em `packagefiles.xml`. Casou: o pacote que precisava dela fica de fora,
+  com o aviso (o instalador não mexe na cópia do usuário, §8). Duas no Zeos: o
+  define no lugar errado (com a correção de uma linha no aviso) e a 8.0.0
+  "release" no FPC 3.2.3/3.2.x. Conferido contra as cópias desta máquina: o SVN
+  acusa no 3.2.3 e não no 3.3.1; o do GitHub não acusa; o do OPM acusa no 3.2.3
+  e não no 3.2.2 — igual à matriz. Link de `.lpk` que não existe mais deixou de
+  contar como "já instalado".
+- **AnyDAC (XE2 a XE4):** receita `firedac.json` ("FireDAC/AnyDAC", comercial,
+  só detecção): vale o `FireDAC.dcp` da IDE ou o `AnyDAC_Comp_D*.dcp`. Campo
+  novo `pacotes-ligados`: os `.dcp` da dependência entram no `-LU`, senão o
+  `dcc32` embute as `uAD*` no `.bpl` e a IDE o recusa ao lado do AnyDAC. No XE2
+  daqui, `RALDBFireDACLink` passou a caber e compilou até o código do RAL:
+  **o ramo AnyDAC do RAL não compila** — `TADErrorEvent` recebe
+  `AInitiator: IADStanObject`, o RAL declara `TObject` (`RALDBFireDAC.pas`).
+  Dependência comercial não instalada também passou a deixar o pacote de fora
+  na tela (uniGUI, AnyDAC), não só na execução.
+- **O RAL no XE2:** além do `AtomicIncrement` do `dev`, o **1.1** também não
+  compila: `RALClient.pas(991)` atribui `CharRAL` (Char) a um `UTF8String`.
+  Com um `AnsiChar(...)` ali (só na cópia de teste), PascalRAL, PascalRALDsgn e
+  RALDBPackage compilam.
+- **Plataformas:** o catálogo lê do `.dproj` as plataformas habilitadas; fora
+  da lista, o pacote é pulado naquela plataforma, com o motivo, e quem depende
+  dele também. No Delphi 12 com Win64: `XSocketRAL` e `KwikRAL` pulados em
+  Win64 ("o .dproj não habilita win64"), `IndyRAL` compilou. O relatório passou
+  a dizer "pulado" (não "FALHOU") para pulado.
+- `CompararVersoes` aceita `x`: `"fpc-max": "3.2.x"` é "qualquer 3.2".
+- Ferramentas: `compatibilidade --testes` cobre a receita real do Zeos e as
+  cópias da máquina; `instalar_lazarus --config=<pasta>` usa uma configuração
+  preparada para o teste.
+
 ### F7 — Dependências: baixar e instalar sozinho
 Marcar `SynopseRAL` tem de bastar: o instalador baixa o mORMot2 na versão
 suportada mais recente, instala do jeito que aquela dependência pede, e só então
@@ -562,6 +681,71 @@ e instala mORMot2 e ZSTD e compila os dois pacotes do RAL, sem o usuário aponta
 pasta nenhuma; e uma dependência nova é atendida **só** acrescentando um arquivo
 de receita, sem tocar no Pascal.
 
+**Estado (2026-09-23):** feito e exercitado de ponta a ponta no Delphi 12 (registro
+numa cópia) e em três Lazarus (configuração numa cópia); ligado na tela.
+- **Quem precisa de qual receita sai dos próprios pacotes.** O catálogo passou a
+  ler o caminho de busca de cada pacote (`DCC_UnitSearchPath` do `.dproj`,
+  `OtherUnitFiles` do `.lpk`): o `SynopseRAL.dproj` declara `$(mormot2)`, e é
+  assim que o Delphi diz que precisa do mORMot2, que não tem pacote. A receita
+  diz o que **fornece** (variáveis e pacotes); `ZComponent`, `indylaz`,
+  `zcomponent` e `mormot2` casam pelo `requires`. Só o que não é declarado em
+  lugar nenhum (uniGUI) usa a lista `pacotes-ral`. O mesmo caminho de busca
+  resolveu o `SaguiRAL` da F3: o `libsagui.pas` mora em `src\others`, que o
+  `.dproj` declara e o `.dpk` não lista.
+- `receitas/*.json` (mORMot2, Zeos, Indy, uniGUI), embutidas no `.exe` como
+  `RCDATA RECEITA_*`; uma pasta `receitas` ao lado do executável ou na pasta de
+  dados acrescenta ou substitui, **sem recompilar**. Vocabulário fechado —
+  `variavel`, `libpath`, `dpk` (só Delphi), `lpk` (só Lazarus): ação ou campo
+  desconhecido recusa a receita inteira, com o nome (testado com `executar`,
+  campo estranho e `lpk` no bloco do Delphi).
+- `RALInst.Receitas`, `RALInst.Dependencias` (download para
+  `<pasta>/dependencias/<nome>/<versão>/`, com a marca e a troca segura da F8,
+  mais os extras de release), `RALInst.Tar` (extrator `.tgz` novo: o
+  `tar_gzip` antigo lia o tamanho errado e não conhecia `pax`; o novo bate
+  arquivo por arquivo com o `tar` do Windows nos 108 arquivos do
+  `mormot2static.tgz`).
+- **Detectar antes de baixar** (resolve a pergunta da §8): variável da IDE,
+  unidade no library path ou `.dcp` no Delphi; pacote registrado no Lazarus.
+  Achou, usa a que está lá e diz onde; só baixa o que alguma IDE marcada não
+  tem. `--ignorar-existentes` nas ferramentas força o caminho do download.
+- **No Delphi:** `variavel` + `libpath` no registro, os caminhos entram no `-U`
+  da compilação do RAL, e `dpk` compila e registra os pacotes da dependência com
+  o mesmo motor da F3 (catálogo com `PastaDelphi` por versão do BDS). O que
+  depende do que faltou fica de fora, com o motivo — e quem depende dele também.
+  Rodada real: Zeos 6/6 + RAL 7/7 (IndyRAL 48 KB, RALDBFireDACLink 105,
+  RALDBZeosLink 100, SynopseRAL 4947 com o mORMot2 baixado); UniGUIRAL fora,
+  "comercial".
+- **No Lazarus:** os `.lpk` da dependência entram antes dos do RAL nas mesmas
+  chamadas do `lazbuild` (continua um `--build-ide`). Com Indy e mORMot2
+  baixados, `indyral` e `synopseral` compilam (`lazbuild` do pacote sobre a
+  cópia da configuração).
+- **O que a rodada real ensinou** (e ficou no código):
+  - `{$LIBSUFFIX}` muda o nome do `.bpl` (`ZCore280.bpl` — o pacote do Zeos
+    para o Delphi 12 declara `'280'`, não o sufixo da IDE); o motor procurava
+    `ZCore.bpl`.
+  - O `ZPlain` do Zeos usa `Xml.*` sem exigir `xmlrtl`: a IDE resolve sozinha,
+    o `dcc32` puro embute (1763 KB) e o pacote seguinte cai em `E2199`. O `-LU`
+    passou a oferecer sempre os pacotes-base do Delphi (`rtl`, `vcl`,
+    `xmlrtl`, `dbrtl`...) — só entra o que é usado; o `ZPlain` caiu para 581 KB
+    e os tamanhos do RAL não mudaram.
+  - `F2063` é erro de compilação dentro da unidade, não "dependência ausente":
+    a mensagem agora cita o primeiro erro.
+  - Caminho longo: exemplos do mORMot2 e documentação do Zeos passam de 260
+    caracteres numa pasta funda. Extração e remoção usam `\\?\`. O **FPC não**:
+    compilar do Lazarus numa pasta muito funda falha com "unidade não
+    encontrada" — a pasta de instalação precisa ser curta.
+  - **Versão da dependência importa.** O RAL 1.1 usa
+    `mormot.core.os.security`, que a 2.4-stable do mORMot2 não tem: a receita
+    usa o `master` (com os estáticos do último release). O Zeos depende do
+    FPC: 8.0.0-stable compila no Delphi 12 e no FPC 3.2.2 (o do Lazarus
+    oficial); 8.0-patches exige FPC 3.3; no FPC 3.2.3 (*fixes*, do
+    fpcupdeluxe) nenhum dos dois compila. A receita usa a estável.
+- Ferramentas: `tests/dependencias/dependencias.lpr` (`--listar`,
+  `--exigidas=`, `--baixar=`); `instalar_delphi` e `instalar_lazarus` ganharam
+  `--receitas=`, `--deps=` e `--ignorar-existentes`.
+- Falta: libsagui (a DLL em tempo de execução); `copiar-arquivo` do
+  vocabulário ainda não existe. (A versão por compilador e por versão do RAL
+  veio na F6.)
 ### F8 — Qual versão do RAL instalar
 Listar os *releases* e as *tags* do repositório do RAL e deixar o usuário
 escolher; o padrão é sempre a **estável mais recente** — o release mais novo com
@@ -581,6 +765,55 @@ no commit fixado) só acontece na execução, para a pasta escolhida.
 **Pronto quando:** abrir o instalador e mandar instalar, sem mexer em nada,
 instala a última estável; e escolher uma tag antiga instala aquela, com a tela
 dizendo qual versão está sendo instalada em cada IDE.
+
+**Estado (2026-09-22):** feito e exercitado de ponta a ponta contra o GitHub e
+o Delphi 12 (registro numa cópia); ligado na tela; falta a verificação pela GUI.
+- **Mudança de desenho:** o catálogo das telas vem do **zip da versão**, não da
+  árvore + arquivos crus. Uma requisição ao `codeload.github.com` (fora do
+  limite da API; 2,5 MB para a 1.1) contra ~47 GETs, e o mesmo zip, guardado
+  no cache, é o que vai para a pasta escolhida: nada é baixado duas vezes. A
+  API fica para listar versões e, na execução, para o commit dos submódulos
+  (`git/trees/<ref>`). O comentário do zip traz o commit exato.
+- `RALInst.HTTP`: WinINet no Windows (TLS e proxy do sistema, sem DLL de
+  OpenSSL ao lado do `.exe`), `fphttpclient` nos outros. `RALInst.GitHub`:
+  releases, tags e ramos (sem os que não são código: `documentation`,
+  `external`, `installer`, `tests`), a recomendada é a estável de número mais
+  alto (`1.1` hoje; `v1.0` e `1.1` convivem, por isso `CompararTags`).
+  `RALInst.Zip`: `TOrigemZip` (catálogo lido de dentro do zip) e a extração
+  sem a pasta de topo, recusando entrada com `..`. `RALInst.Fontes`: a pasta
+  `<pasta>/PascalRAL/<versão>/`.
+- **Cota:** consulta com menos de 10 min no cache nem vai à rede, e a árvore de
+  uma tag fica guardada para sempre. O ETag vai junto, mas **sem token o 304
+  conta na cota** (conferido: 42 → 41 com `If-None-Match`) — só economiza
+  banda. Sem rede ou sem cota, a lista guardada serve e o aviso diz de quando
+  ela é. `GITHUB_TOKEN` no ambiente sobe o limite para 5000/h.
+- **Submódulos:** só os que os pacotes escolhidos usam (o `pascal_brotli` tem
+  9,3 MB). O teste real achou que o `RALBSONStorage` não trazia o kxBSON — o
+  `.dpk` não lista as unidades dele. Regra nova no catálogo: **pacote que divide
+  uma unidade com um pacote da outra IDE herda os submódulos dele** (o
+  `raldbbson.lpk` lista o kxBSON). Com isso o library path do Delphi passa a
+  usar a lista de cada pacote, em vez de todo submódulo "ao lado" (que punha o
+  brotli no path de quem só pediu BSON).
+- **A pasta é tratada como permanente:** extração numa pasta ao lado e troca no
+  fim (falha no meio não estraga a que funciona); arquivo de marca
+  `.ralinstaller.json` (versão, commit, submódulos); pasta que existe e não tem
+  a marca **nunca** é tocada (testado); mesma versão já na pasta baixa só o
+  submódulo que faltar; troca de versão mantém os submódulos que a anterior
+  tinha.
+- Ponta a ponta: `instalar_delphi github:estavel --pasta=... --chave-teste`
+  baixou a 1.1 com o kxBSON, compilou 5/5 no Delphi 12 e registrou na cópia. O
+  plano avisa quando `$(PascalRAL)` vai mudar de pasta — ela é da IDE, e os
+  projetos do usuário que a usam passam a ver a pasta nova.
+- Tela: versão (a estável mais recente já escolhida; a última opção é a pasta
+  local, para quem desenvolve o RAL), pasta de instalação com o destino e o
+  aviso de permanência, recursos do catálogo do zip. A execução tem duas etapas:
+  **baixar** (falhou, nenhuma IDE é tocada) e **instalar**.
+- Ferramentas: `tests/github/versoes_ral.lpr` (`--listar`, `--catalogo=`,
+  `--baixar= --pasta=`); `instalar_delphi` aceita `github:<versão>`.
+- Saíram do projeto `installparser`, `githubutils`, `ralzipper` e `http_client`
+  (o manifesto de teste e o download antigo); `tar_gzip` fica para a F7.
+- Em aberto: escolher a versão numa tela própria, antes das IDEs (§F9); o
+  cache de zips não é limpo nunca.
 
 ### F9 — UI multi-IDE
 Uma lista só, com Delphi e Lazarus juntos, seleção por IDE e por recurso, tela de
@@ -606,6 +839,32 @@ marcada antes de executar, pede confirmação, e grava o log da rodada em
 Continua uma IDE de um tipo por rodada, e a origem é pasta local — baixar a
 versão escolhida é a F8.
 
+**Estado (2026-09-23):** feito o "pronto quando"; conferido pela tela de
+verdade (Delphi 12 + XE2 + Lazarus 4.99, 4.7 e 3.2 numa passada, até o plano,
+sem clicar em Instalar).
+- **Tela de IDE:** terceira opção "Delphi e Lazarus juntos" (`IDE = 2`, os dois
+  destaques acesos); fora do Windows ela some com o Delphi.
+- **Lista de IDEs:** as duas buscas juntas; as pastas acrescentadas à mão são
+  lembradas em `<dados>\pastas-ide.txt` e entram na busca rápida seguinte.
+  Corrigido no caminho: uma `TBuscaDelphi` nova (acrescentar pasta, varredura
+  completa) não lia as chaves de HKCU e marcava toda IDE como "nunca aberta",
+  sem poder marcar — `Finalizar` agora chama `LerChavesHKCU`.
+- **Árvore de recursos unificada:** um nó por nome de pacote sem caixa
+  (`IndyRAL` = `indyral.lpk`), "(só Delphi)"/"(só Lazarus)" quando existe de um
+  lado só, "[fica de fora em Delphi XE2: …]" quando o manifesto/compatibilidade
+  (F6) tira de uma parte das IDEs e "[indisponível: …]" quando tira de todas.
+  Cada IDE recebe só os pacotes do tipo dela (`TEscolhaInstalacao.PacotesDoTipo`).
+- **Plano:** downloads com a versão por IDE (`Zeos 8.0-patches` para o FPC 3.3,
+  `frones/ZeosLib:master` para o 3.2.3+, nada para quem já tem), depois o plano
+  de cada IDE com o que fica de fora e por quê.
+- **Execução em duas etapas:** fontes → dependências (falha deixa de fora só
+  quem precisava) → cada IDE; no fim, "==== Resumo" com uma linha por IDE (o que
+  entrou, o que ficou de fora, avisos).
+- **Versão** na barra de título e no cabeçalho (o "Installer Version 1.0" vinha
+  dos `.po`; `AjustarVersao`). Aviso de versão nova (F12) ao abrir.
+- Falta: versão do RAL e pasta de destino em páginas próprias (hoje a versão e
+  a pasta estão na tela de recursos); barra de progresso real (hoje é o log).
+
 ### F10 — Desinstalar e reinstalar
 Recibo em JSON por IDE (o que foi instalado, onde, qual versão do RAL e de cada
 dependência, quais paths) → desinstalação e upgrade determinísticos, com rollback
@@ -615,6 +874,55 @@ já era do usuário.
 **Pronto quando:** desinstalar devolve a IDE ao estado anterior, registro e
 library path incluídos.
 
+**Estado (2026-09-23):** feito e conferido nos dois lados, sobre cópias.
+- **Recibo por rodada**, nos dois motores, em `<dados>\recibos`: IDE, versão do
+  RAL (a marca da pasta), pacotes, e **dependências com a origem** —
+  `instalada` (de onde, que versão) ou `encontrada` (onde estava). Desinstalar
+  nunca toca a encontrada.
+  - Delphi: as escritas no registro com o valor de antes (já existia) e,
+    novo, os `.bpl`/`.dcp` gravados, com tamanho e data.
+  - Lazarus (novo): as duas listas que o `lazbuild` muda — links de `.lpk`
+    (`packagefiles.xml`) e pacotes da IDE (`StaticAutoInstallPackages` em
+    `miscellaneousoptions.xml`) —, antes e depois.
+- **Desfazer é aplicar o inverso da mudança sobre o estado atual**
+  (`RALInst.Config.Lazarus`): o que a rodada acrescentou sai, o que ela trocou
+  volta, e o que o usuário mudou depois fica. `.bpl` só é apagado se ainda tem
+  o tamanho e a data do recibo. Recibos de uma IDE se desfazem do mais novo ao
+  mais velho (desfazer um velho antes poria de volta valores que o novo já
+  tinha trocado); desfeito vira `*.desfeito.json`. No Lazarus, tirar pacote da
+  IDE reconstrói a IDE uma vez no fim.
+- **Rollback:** no Lazarus, `lazbuild` que falha em qualquer etapa (link,
+  marcar, `--build-ide`) devolve a configuração ao que era — o executável da
+  IDE não mudou, e sem isso ela abriria pedindo para reconstruir com pacotes
+  que não compilam. No Delphi o registro já só recebia o que compilou (F4).
+- **IDE aberta:** `ProgramaEmExecucao` (`RALInst.Processo`, Toolhelp no
+  Windows, `/proc` no Linux) passou a valer para o Lazarus também, na
+  instalação e na desinstalação.
+- **Conferido:**
+  - Lazarus 4.7, configuração numa cópia: instalou RAL 1.1 + Indy + Zeos
+    (frones), desinstalou, e as duas listas ficaram **idênticas** às de antes
+    (inclusive os links do Zeos que a instalação tinha trocado); o `lazbuild`
+    lê a configuração regravada.
+  - Delphi 12, registro numa cópia: instalou IndyRAL + RALDBZeosLink,
+    desinstalou, e a cópia ficou **idêntica** à chave de verdade (os `.bpl` que
+    já estavam registrados antes voltaram), e os 10 `.bpl`/`.dcp` gerados
+    foram apagados.
+- **Achado no caminho (F7):** dependência encontrada pelo `.dcp` não dizia onde
+  estão os fontes, e o `RALDBZeos.pas` inclui `ZComponent.inc` do Zeos — o
+  RALDBZeosLink não compilava contra o Zeos que o usuário já tem. Campo novo
+  `busca` na receita: as pastas do library path da IDE que têm aqueles
+  arquivos entram na compilação. Com isso compilou contra o Zeos desta
+  máquina (`$(zeos)\component`).
+- **Tela:** a última página diz o que o instalador já pôs nas IDEs marcadas, e
+  o link "Desinstalar o RAL destas IDEs" desfaz (com confirmação e log em
+  `<dados>\logs\desinstalacao-*.log`).
+- Ferramentas: `tests/desinstalar/desinstalar.lpr` (`--listar`,
+  `--desfazer=<recibo>`, `--ide=<raiz>`); `tests/recibos/recibos.lpr` (a
+  semântica do desfazer e a ida e volta dos dois XML); `--recibos=` nos dois
+  `instalar_*`.
+- Falta: "reinstalar" como ação própria (hoje é instalar de novo, que passa por
+  cima e grava outro recibo).
+
 ### F11 — Entrega
 CLI com os mesmos verbos da GUI (serve em sessão remota e em servidor de build),
 versionamento próprio (hoje o `.lpi` só tem `MajorVersionNr=1`), build mode de
@@ -623,6 +931,35 @@ Os binários de Linux e macOS saem sem a metade Delphi, e isso é dito na págin
 release e na própria tela, para ninguém procurar o que não está faltando.
 **Pronto quando:** uma tag gera binários de Windows, Linux e macOS, todos do
 mesmo fonte, e a versão do instalador é independente da versão do pacote.
+
+**Estado (2026-09-23):** feito o que dá para conferir aqui; o workflow não foi
+rodado (só roda no GitHub, com uma tag).
+- **`RALInst.Rodada`** — a rodada inteira sem LCL: versão do RAL (GitHub ou
+  pasta local) → catálogo do zip → IDEs, **Delphi e Lazarus juntas** → pacotes
+  pelo nome sem caixa (`IndyRAL` vale para o `indyral.lpk`; nome de um lado só
+  vale só para aquele) → plano → baixar (fontes, submódulos, dependências por
+  IDE e versão) → instalar → desinstalar. Recibos e "IDE aberta" configuráveis
+  (os testes apontam para cópias).
+- **CLI `cli/ralcli`** (`cli/ralcli.lpi`, com as receitas e o manifesto
+  embutidos como na tela): `ides`, `versoes`, `pacotes`, `plano`, `instalar`
+  (pergunta antes, `--sim` não), `recibos`, `desinstalar`, `versao`,
+  `atualizar`. `--ide=` aceita a raiz ou `#n` da lista. Opção desconhecida é
+  erro (código 2). Conferido: plano misto Delphi 12 + Lazarus 3.2 + Lazarus 4.7
+  com a dependência certa em cada um (Zeos do usuário no Delphi, o do OPM no
+  3.2, o `frones` baixado no 4.7).
+- **Rodada de ponta a ponta** (`tests/rodada`, configuração numa cópia): baixou
+  o RAL 1.1, Indy e Zeos do GitHub, registrou, os três pacotes compilaram
+  contra o baixado, e a desinstalação deixou a configuração **idêntica**.
+- **Versão própria:** `RALInst.Versao` (`VersaoInstalador = '0.9.0'`) é a única
+  fonte; a tela mostra na barra de título; o `.lpi` foi para 0.9.
+- **Workflow** `.github/workflows/instalador.yml`, na tag
+  `instalador-v<versão>`: confere que a tag bate com `RALInst.Versao`, grava a
+  versão no VersionInfo dos dois `.lpi`, compila Windows64, Linux64 (GTK2) e
+  macOS x86_64 com o `gcarreno/setup-lazarus`, roda os testes sem IDE, e
+  publica os binários + `SHA256SUMS` com o texto dizendo que Linux e macOS são
+  só Lazarus. Fora do Windows, a tela de IDE também diz isso.
+- Falta: rodar o workflow de verdade (e o Windows32 e o macOS ARM, que o
+  `setup-lazarus` não garante); assinar o binário do macOS.
 
 ### F12 — Auto-atualização do instalador
 Depende da F11: só faz sentido quando existem releases com binário publicado.
@@ -657,6 +994,31 @@ Como a troca é feita, que é onde isso costuma quebrar:
 **Pronto quando:** um binário de versão anterior, aberto numa máquina com
 internet, volta atualizado e no mesmo ponto do wizard; e o mesmo binário, sem
 internet, abre normalmente dizendo que não conseguiu verificar.
+
+**Estado (2026-09-23):** feito e testado sem release publicado (não há nenhum
+ainda: a consulta real diz "atualizado").
+- `RALInst.AutoAtualizacao`: releases do próprio repositório com tag
+  `instalador-v*` (os do RAL são `v1.0`, `1.1`...), sem rascunho nem
+  pré-lançamento, o de versão mais alta; comparado com `VersaoInstalador`.
+  **Falha de rede não é "atualizado"**: sem internet, sem cota, ou lista vinda
+  de cache velho → `rvNaoVerificou`, e a tela diz na barra de título que não
+  deu para verificar. Versão nova sem binário deste sistema também não vira
+  "atualizado".
+- Baixa para `<exe>.novo` ao lado do atual, confere **tamanho** e o **SHA-256**
+  do `SHA256SUMS` do release (`RALInst.SHA256`, próprio: o `fpsha256` só existe
+  do FPC 3.2.3 em diante), troca por rename (atual → `.old`, novo → nome; falhou
+  a segunda parte, desfaz a primeira), repõe o bit de execução fora do Windows,
+  reinicia com `--pos-atualizacao`; a abertura seguinte apaga o `.old`.
+- Tela: consulta uma vez, depois que a janela aparece; oferece, com as notas do
+  release. A consulta é no início do wizard, então "voltar no mesmo ponto" é
+  voltar no começo.
+- CLI: **nunca sozinha** — só `ralcli atualizar` (`--verificar` só diz).
+- Testes (`tests/atualizacao`): vetores do FIPS 180-4 (inclusive 1 milhão de
+  "a"); escolha do release numa lista montada (rascunho, pré-lançamento e tag
+  do RAL ficam de fora); download de um servidor HTTP local de teste com hash
+  certo, hash errado e tamanho errado; troca e troca que falha no meio.
+- Falta: um release de verdade para o teste de ponta a ponta; conferir a troca
+  no macOS (assinatura).
 
 ---
 
@@ -722,7 +1084,9 @@ https://raw.githubusercontent.com/<dono>/<repo>/<ref>/<caminho>
 
 Sem autenticação são 60 requisições por hora **por IP**: consulta com cache em
 disco, e um 403 dessa API significa "não deu para verificar", nunca "não há
-versão nova". O zipball **não** traz submódulos — cada um é download próprio.
+versão nova". Sem token, **o 304 de um pedido com `If-None-Match`
+também conta** (conferido em 2026-09-22): o ETag economiza banda, não cota —
+quem economiza cota é não perguntar (cache com validade). O zipball **não** traz submódulos — cada um é download próprio.
 `tag_name` costuma vir com `v` na frente; comparar versão exige normalizar isso
 antes, e comparar número a número, nunca como texto (`v1.10` > `v1.9`).
 
@@ -756,7 +1120,11 @@ antes, e comparar número a número, nunca como texto (`v1.10` > `v1.9`).
 - Versionar os `.res` no repositório do RAL, ou seguir gerando no instalador?
   (o plano segue gerando; a decisão é do projeto principal).
 - O manifesto v3 mora em qual branch do RAL, e quem o atualiza quando um pacote
-  novo entra?
+  novo entra? **F6 (2026-09-23):** um `ralinstaller.json` na raiz de cada
+  versão do RAL, com o embutido no instalador de reserva; quase tudo é deduzido
+  do disco, então pacote novo só precisa de regra quando o que o limita não
+  aparece nos `uses` nem no `requires`. Falta o projeto decidir se cria o
+  arquivo.
 - Atualização do Indy pelo próprio instalador (baixar, compilar e instalar os
   pacotes do Indy com o sufixo da IDE) entra no escopo ou fica como
   pré-requisito documentado? Pela F7 ela é uma receita como as outras — o que
@@ -766,7 +1134,8 @@ antes, e comparar número a número, nunca como texto (`v1.10` > `v1.9`).
   *dependência* muda, não quando o RAL muda.
 - Dependência que já existe na máquina (um mORMot2 com variável de ambiente, um
   Zeos instalado): o fluxo da §0 diz "baixar tudo para a pasta"; a F7 propõe
-  usar a existente por padrão e baixar por cima só a pedido. Qual vale?
+  usar a existente por padrão e baixar por cima só a pedido. **Decidido na F7
+  (2026-09-23): usa a existente**; só baixa o que alguma IDE marcada não tem.
 - Layout dentro da pasta escolhida: versionado por subpasta (proposta da §0) ou
   uma pasta só por produto, sobrescrita a cada atualização?
 - Conferir o download com hash publicado no release, ou basta o HTTPS? Para o

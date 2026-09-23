@@ -26,9 +26,6 @@ uses
   ufrm_recursos,
   udm,
   ufrm_install,
-  installparser,
-  githubutils,
-  ralzipper,
   i18n_utils,
   ideutils;
 

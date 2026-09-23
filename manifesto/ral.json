@@ -1,0 +1,14 @@
+{
+  "formato": 1,
+  "comentario": "O que os pacotes do RAL nao declaram e o instalador nao consegue deduzir do disco. Copia embutida no instalador (RCDATA MANIFESTO_RAL); um ralinstaller.json na raiz da versao do RAL substitui esta. A falta de FireDAC no XE2 e o System.Net.HttpClient do NetHttpRAL (XE8+) o instalador ja deduz sozinho: nao precisam de regra.",
+  "pacotes": [
+    { "pacote": "SynopseRAL", "delphi-min": "2009",
+      "motivo": "wiki: compatibilidade dos motores" },
+    { "pacote": "SaguiRAL", "delphi-min": "2009",
+      "motivo": "wiki: compatibilidade dos motores" }
+  ],
+  "dependencias": [
+    { "receita": "mORMot2", "versao": "master",
+      "comentario": "o RAL 1.1 usa mormot.core.os.security (TSystemCertificateStore), que a 2.4-stable nao tem: ela declara o tipo em mormot.core.os. Voltar para a estavel quando sair a 2.5" }
+  ]
+}

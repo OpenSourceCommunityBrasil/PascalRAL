@@ -75,3 +75,6 @@ lib/
 ralinstaller_*
 link*.res
 backup/
+# a linha de comando (F11): o binario e o .res que o lazbuild gera
+cli/ralcli
+cli/ralcli.res

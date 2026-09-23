@@ -1,0 +1,31 @@
+{
+  "nome": "mORMot2",
+  "descricao": "Synopse mORMot 2: o motor HTTP do SynopseRAL",
+  "site": "https://github.com/synopse/mORMot2",
+  "fonte": { "github": "synopse/mORMot2", "versao": "estavel",
+             "comentario": "a versao que cada RAL exige vem do manifesto (o 1.1 quer o master)" },
+  "extras": [
+    { "asset": "mormot2static.tgz", "destino": "static", "release": "estavel",
+      "comentario": "bibliotecas estaticas (sqlite3, libdeflate...) que as units ligam com {$L}; o master usa as do ultimo release" }
+  ],
+  "delphi": {
+    "comentario": "o SynopseRAL.dproj declara $(mormot2) no caminho de busca; nao ha pacote Delphi do mORMot2",
+    "fornece": { "variaveis": ["mormot2"] },
+    "deteccao": [ { "variavel": "mormot2" }, { "unidade": "mormot.core.base.pas" } ],
+    "acoes": [
+      { "acao": "variavel", "nome": "mormot2", "valor": "{raiz}/src" },
+      { "acao": "libpath", "caminhos": [
+        "$(mormot2)", "$(mormot2)/core", "$(mormot2)/lib", "$(mormot2)/crypt",
+        "$(mormot2)/net", "$(mormot2)/db", "$(mormot2)/rest", "$(mormot2)/orm",
+        "$(mormot2)/soa", "$(mormot2)/app", "$(mormot2)/script", "$(mormot2)/ui",
+        "$(mormot2)/tools", "$(mormot2)/misc" ] }
+    ]
+  },
+  "lazarus": {
+    "fornece": { "pacotes": ["mormot2"] },
+    "deteccao": [ { "pacote": "mormot2" } ],
+    "acoes": [
+      { "acao": "lpk", "arquivo": "packages/lazarus/mormot2.lpk", "modo": "link" }
+    ]
+  }
+}

@@ -178,3 +178,13 @@ msgstr "Claro"
 #: utools.themedark
 msgid "Escuro"
 msgstr "Oscuro"
+
+#: Tfrm_ide.lbAmbos.Caption
+msgctxt "Tfrm_ide.lbAmbos.Caption"
+msgid "Delphi e Lazarus juntos"
+msgstr "Delphi y Lazarus juntos"
+
+#: Tfrm_install.lbDesinstalar.Caption
+msgctxt "Tfrm_install.lbDesinstalar.Caption"
+msgid "Desinstalar o RAL destas IDEs"
+msgstr "Desinstalar RAL de estos IDEs"

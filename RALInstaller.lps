@@ -3,13 +3,13 @@
   <ProjectSession>
     <PathDelim Value="\"/>
     <Version Value="12"/>
-    <BuildModes Active="Windows32"/>
+    <BuildModes Active="Windows64"/>
     <Units>
       <Unit>
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ralinstaller"/>
-        <CursorPos X="57" Y="38"/>
+        <CursorPos X="27" Y="10"/>
         <UsageCount Value="96"/>
         <Loaded Value="True"/>
       </Unit>
@@ -32,7 +32,7 @@
         <ResourceBaseClass Value="Frame"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="159"/>
+        <TopLine Value="157"/>
         <CursorPos X="51" Y="173"/>
         <UsageCount Value="96"/>
         <Loaded Value="True"/>
@@ -142,40 +142,11 @@
         <UsageCount Value="73"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\githubral.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos Y="20"/>
-        <UsageCount Value="72"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\installparser.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="367"/>
-        <CursorPos X="15" Y="385"/>
-        <UsageCount Value="69"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\githubutils.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <UsageCount Value="51"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\ralzipper.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="5"/>
-        <CursorPos X="30" Y="32"/>
-        <UsageCount Value="45"/>
-      </Unit>
-      <Unit>
         <Filename Value="fontes\i18n_utils.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="105"/>
-        <CursorPos X="3" Y="114"/>
+        <TopLine Value="9"/>
+        <CursorPos X="40" Y="19"/>
         <UsageCount Value="40"/>
       </Unit>
       <Unit>
@@ -184,6 +155,31 @@
         <EditorIndex Value="-1"/>
         <CursorPos X="28" Y="42"/>
         <UsageCount Value="28"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubral.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="20"/>
+        <UsageCount Value="72"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\installparser.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="367"/>
+        <CursorPos X="15" Y="385"/>
+        <UsageCount Value="69"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\githubutils.pas"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="51"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\ralzipper.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="5"/>
+        <CursorPos X="30" Y="32"/>
+        <UsageCount Value="45"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\ideutils_base.pas"/>
@@ -644,7 +640,7 @@
         <UsageCount Value="10"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="1">
+    <JumpHistory HistoryIndex="2">
       <Position>
         <Filename Value="fontes\telas\ufrm_idioma.pas"/>
         <Caret Line="8" Column="39"/>
@@ -652,6 +648,10 @@
       <Position>
         <Filename Value="fontes\ufrm_modelo.pas"/>
         <Caret Line="170" Column="51" TopLine="152"/>
+      </Position>
+      <Position>
+        <Filename Value="RALInstaller.lpr"/>
+        <Caret Line="10" Column="27"/>
       </Position>
     </JumpHistory>
     <RunParams>

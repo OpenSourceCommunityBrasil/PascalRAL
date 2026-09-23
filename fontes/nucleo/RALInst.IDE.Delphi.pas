@@ -21,23 +21,16 @@ uses
   Classes, SysUtils, RALInst.IDE;
 
 type
-  // uma versao do Delphi, como dado: o salto do BDS 23.0 para o 37.0 mostra
-  // por que isto nao pode ser um if encadeado
-  TDelphiProduto = record
-    Nome: string;          // 'Delphi 12 Athens'
-    BDS: string;           // '23.0'; vazio no Delphi 7
-    Compilador: string;    // 'VER360'
-    VersaoNum: string;     // '36.0', para ordenar e comparar
-    Sufixo: string;        // '290'
-    RegBase: string;       // '\Software\Embarcadero\BDS'
-  end;
-
   { TBuscaDelphi }
 
   TBuscaDelphi = class(TBuscaIDE)
   private
     FChavesHKCU: TStringList;
     procedure LerRegistro(ALista: TIDEList);
+    // as chaves das versoes que ja abriram nesta conta (HKCU): uma busca que
+    // nao passou pelo registro (pasta escolhida, varredura dos discos) tambem
+    // precisa delas, senao toda IDE parece nunca ter sido aberta
+    procedure LerChavesHKCU;
     procedure CompletarRegistro(AIDE: TIDEInstance);
   protected
     function PastaIgnorada(const ANome: string): boolean; override;
@@ -51,31 +44,6 @@ type
   end;
 
 const
-  DelphiProdutos: array[0..21] of TDelphiProduto = (
-    (Nome: 'Delphi 7';                BDS: '';     Compilador: 'VER150'; VersaoNum: '15.0'; Sufixo: '70';  RegBase: '\Software\Borland\Delphi'),
-    (Nome: 'Delphi 2005';             BDS: '3.0';  Compilador: 'VER170'; VersaoNum: '17.0'; Sufixo: '90';  RegBase: '\Software\Borland\BDS'),
-    (Nome: 'Delphi 2006';             BDS: '4.0';  Compilador: 'VER180'; VersaoNum: '18.0'; Sufixo: '100'; RegBase: '\Software\Borland\BDS'),
-    (Nome: 'Delphi 2007';             BDS: '5.0';  Compilador: 'VER185'; VersaoNum: '18.5'; Sufixo: '100'; RegBase: '\Software\Borland\BDS'),
-    (Nome: 'Delphi 2009';             BDS: '6.0';  Compilador: 'VER200'; VersaoNum: '20.0'; Sufixo: '120'; RegBase: '\Software\CodeGear\BDS'),
-    (Nome: 'Delphi 2010';             BDS: '7.0';  Compilador: 'VER210'; VersaoNum: '21.0'; Sufixo: '140'; RegBase: '\Software\CodeGear\BDS'),
-    (Nome: 'Delphi XE';               BDS: '8.0';  Compilador: 'VER220'; VersaoNum: '22.0'; Sufixo: '150'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE2';              BDS: '9.0';  Compilador: 'VER230'; VersaoNum: '23.0'; Sufixo: '160'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE3';              BDS: '10.0'; Compilador: 'VER240'; VersaoNum: '24.0'; Sufixo: '170'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE4';              BDS: '11.0'; Compilador: 'VER250'; VersaoNum: '25.0'; Sufixo: '180'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE5';              BDS: '12.0'; Compilador: 'VER260'; VersaoNum: '26.0'; Sufixo: '190'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE6';              BDS: '14.0'; Compilador: 'VER270'; VersaoNum: '27.0'; Sufixo: '200'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE7';              BDS: '15.0'; Compilador: 'VER280'; VersaoNum: '28.0'; Sufixo: '210'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi XE8';              BDS: '16.0'; Compilador: 'VER290'; VersaoNum: '29.0'; Sufixo: '220'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 10 Seattle';       BDS: '17.0'; Compilador: 'VER300'; VersaoNum: '30.0'; Sufixo: '230'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 10.1 Berlin';      BDS: '18.0'; Compilador: 'VER310'; VersaoNum: '31.0'; Sufixo: '240'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 10.2 Tokyo';       BDS: '19.0'; Compilador: 'VER320'; VersaoNum: '32.0'; Sufixo: '250'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 10.3 Rio';         BDS: '20.0'; Compilador: 'VER330'; VersaoNum: '33.0'; Sufixo: '260'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 10.4 Sydney';      BDS: '21.0'; Compilador: 'VER340'; VersaoNum: '34.0'; Sufixo: '270'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 11 Alexandria';    BDS: '22.0'; Compilador: 'VER350'; VersaoNum: '35.0'; Sufixo: '280'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 12 Athens';        BDS: '23.0'; Compilador: 'VER360'; VersaoNum: '36.0'; Sufixo: '290'; RegBase: '\Software\Embarcadero\BDS'),
-    (Nome: 'Delphi 13 Florence';      BDS: '37.0'; Compilador: 'VER370'; VersaoNum: '37.0'; Sufixo: '370'; RegBase: '\Software\Embarcadero\BDS')
-  );
-
   // pasta em lib\ -> compilador em bin\ -> nome normalizado da plataforma
   DelphiPlataformas: array[0..11] of array[0..2] of string = (
     ('win32',        'dcc32.exe',          'win32'),
@@ -92,9 +60,6 @@ const
     ('iossimarm64',  'dcciossimarm64.exe', 'iossimarm64')
   );
 
-function ProdutoPorBDS(const ABDS: string): integer;
-function ProdutoPorSufixo(const ASufixo: string): integer;
-
 implementation
 
 uses
@@ -107,32 +72,6 @@ const
     '\Software\CodeGear\BDS',
     '\Software\Embarcadero\BDS'
   );
-
-function ProdutoPorBDS(const ABDS: string): integer;
-var
-  vInt: integer;
-begin
-  Result := -1;
-  if ABDS = '' then
-    Exit;
-  for vInt := Low(DelphiProdutos) to High(DelphiProdutos) do
-    if SameText(DelphiProdutos[vInt].BDS, ABDS) then
-      Exit(vInt);
-end;
-
-function ProdutoPorSufixo(const ASufixo: string): integer;
-var
-  vInt: integer;
-begin
-  // 2006 e 2007 dividem o sufixo 100; aqui ganha o primeiro, e quem tem o
-  // BDS em maos nao chega a perguntar pelo sufixo
-  Result := -1;
-  if ASufixo = '' then
-    Exit;
-  for vInt := Low(DelphiProdutos) to High(DelphiProdutos) do
-    if DelphiProdutos[vInt].Sufixo = ASufixo then
-      Exit(vInt);
-end;
 
 // valor de uma linha "@SET NOME=valor" do rsvars.bat
 function LerRsvars(const AArquivo, ANome: string): string;
@@ -489,10 +428,37 @@ begin
   end;
 end;
 
+procedure TBuscaDelphi.LerChavesHKCU;
+var
+  vReg: TRegistry;
+  vVersoes: TStringList;
+  vIntBase, vIntVer: integer;
+begin
+  vVersoes := TStringList.Create;
+  vReg := TRegistry.Create(KEY_READ);
+  try
+    vReg.RootKey := HKEY_CURRENT_USER;
+    for vIntBase := Low(RegBases) to High(RegBases) do
+    begin
+      if not vReg.OpenKeyReadOnly(RegBases[vIntBase]) then
+        Continue;
+      vReg.GetKeyNames(vVersoes);
+      vReg.CloseKey;
+      for vIntVer := 0 to Pred(vVersoes.Count) do
+        if FChavesHKCU.IndexOf(RegBases[vIntBase] + '\' + vVersoes[vIntVer]) < 0 then
+          FChavesHKCU.Add(RegBases[vIntBase] + '\' + vVersoes[vIntVer]);
+    end;
+  finally
+    vReg.Free;
+    vVersoes.Free;
+  end;
+end;
+
 procedure TBuscaDelphi.Finalizar(ALista: TIDEList);
 var
   vInt, vOutra: integer;
 begin
+  LerChavesHKCU;
   for vInt := 0 to Pred(ALista.Count) do
   begin
     if ALista[vInt].Tipo <> tiDelphi then

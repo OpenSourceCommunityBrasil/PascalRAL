@@ -51,6 +51,7 @@ type
     FPastaDcp: string;
     FPastaDcu: string;
     FCaminhosExtras: TStringList;
+    FPacotesExtras: TStringList;
     FLog: TLogLinha;
     FSimular: boolean;
     FResultados: array of TResultadoPacote;
@@ -89,6 +90,9 @@ type
     property PastaDcu: string read FPastaDcu write FPastaDcu;
     // library paths das dependencias externas (mORMot2, Zeos...) — F7
     property CaminhosExtras: TStringList read FCaminhosExtras;
+    // .dcp de dependencias ja resolvidos (AnyDAC_Comp_D16) que entram no -LU de
+    // todo pacote: so e ligado o que o pacote de fato usa
+    property PacotesExtras: TStringList read FPacotesExtras;
     property Log: TLogLinha read FLog write FLog;
     // monta e mostra os comandos sem executar nenhum
     property Simular: boolean read FSimular write FSimular;
@@ -104,6 +108,11 @@ const
     'IndyCore', 'IndySystem', 'IndyProtocols',
     'FireDAC', 'FireDACCommon', 'FireDACCommonDriver',
     'ZComponent', 'ZCore', 'ZDbc', 'ZParseSql', 'ZPlain'
+  );
+
+  // os pacotes de runtime do proprio Delphi que o -LU sempre oferece
+  PacotesBase: array[0..8] of string = (
+    'rtl', 'vcl', 'vclx', 'vclimg', 'vcldb', 'dbrtl', 'xmlrtl', 'soaprtl', 'inet'
   );
 
   // namespaces que todo pacote precisa; o .dproj acrescenta os dele
@@ -150,14 +159,35 @@ var
   vInt: integer;
 begin
   Result := '';
-  vRegex := TRegExpr.Create('(?:F2613 Unit|F2063 Could not compile used unit|' +
-                            'E1026 File not found:|E2202 Required package)\s*''?([^'']+)''?');
+  // F2063 ("could not compile used unit") nao entra: a unidade existe e tem
+  // erro — nao e dependencia ausente
+  vRegex := TRegExpr.Create('(?:F2613 Unit|E1026 File not found:|E2202 Required package)' +
+                            '\s*''?([^'']+)''?');
   try
     for vInt := 0 to Pred(ASaida.Count) do
       if vRegex.Exec(ASaida[vInt]) then
         Exit(Trim(vRegex.Match[1]));
   finally
     vRegex.Free;
+  end;
+end;
+
+// 'X.pas(219) Error: E2003 Undeclared identifier: 'scsCA'' -> 'X.pas(219): E2003 ...'
+function PrimeiroErro(ASaida: TStrings): string;
+var
+  vInt, vPos: integer;
+  vLinha: string;
+begin
+  Result := '';
+  for vInt := 0 to Pred(ASaida.Count) do
+  begin
+    vLinha := ASaida[vInt];
+    vPos := Pos(' Error: ', vLinha);
+    if vPos = 0 then
+      vPos := Pos(' Fatal: ', vLinha);
+    if vPos > 0 then
+      Exit(ExtractFileName(Trim(Copy(vLinha, 1, vPos - 1))) + ': ' +
+           Trim(Copy(vLinha, vPos + 8, MaxInt)));
   end;
 end;
 
@@ -183,6 +213,7 @@ begin
   FCatalogo := ACatalogo;
   FPlataforma := 'win32';
   FCaminhosExtras := TStringList.Create;
+  FPacotesExtras := TStringList.Create;
 
   if (FCatalogo <> nil) and (FCatalogo.Origem is TOrigemLocal) then
     FRaizFontes := TOrigemLocal(FCatalogo.Origem).Raiz;
@@ -191,6 +222,7 @@ end;
 
 destructor TBuildDelphi.Destroy;
 begin
+  FPacotesExtras.Free;
   FCaminhosExtras.Free;
   inherited Destroy;
 end;
@@ -386,6 +418,19 @@ begin
        (Copy(LowerCase(vNome), 1, 7) = 'firedac') then
       Tentar(vNome, False);
   end;
+
+  // os pacotes-base do proprio Delphi: pacote que usa uma unidade deles sem
+  // declarar (o ZPlain do Zeos usa Xml.XMLDoc e nao exige xmlrtl) a IDE
+  // resolve sozinha ("implicitly imported"); o dcc32 puro linka a unidade
+  // dentro do .bpl, e o proximo pacote cai em E2199 (duas copias). No -LU so
+  // entra no .bpl o que for de fato usado
+  for vInt := Low(PacotesBase) to High(PacotesBase) do
+    Tentar(PacotesBase[vInt], False);
+
+  // os que as dependencias pedem (pacotes-ligados das receitas: o AnyDAC)
+  for vInt := 0 to Pred(FPacotesExtras.Count) do
+    if ALista.IndexOf(FPacotesExtras[vInt]) < 0 then
+      ALista.Add(FPacotesExtras[vInt]);
 end;
 
 procedure TBuildDelphi.MontarBusca(APacote: TPacote; ALista: TStrings);
@@ -411,6 +456,16 @@ begin
   begin
     vPasta := ExcludeTrailingPathDelimiter(ExtractFilePath(
                 FRaizFontes + StringReplace(vUnidade, '/', PathDelim, [rfReplaceAll])));
+    if ALista.IndexOf(vPasta) < 0 then
+      ALista.Add(vPasta);
+  end;
+
+  // o caminho de busca que o .dproj declara: o SaguiRAL acha o libsagui.pas
+  // em src\others, que o .dpk nao lista
+  for vUnidade in APacote.CaminhosBusca do
+  begin
+    vPasta := ExcludeTrailingPathDelimiter(FRaizFontes +
+                StringReplace(vUnidade, '/', PathDelim, [rfReplaceAll]));
     if ALista.IndexOf(vPasta) < 0 then
       ALista.Add(vPasta);
   end;
@@ -492,7 +547,7 @@ var
   vParams, vLU, vBusca, vObjetos, vNamespaces: TStringList;
   vExec: TExecucao;
   vInicio: QWord;
-  vArquivoDpk, vFaltando: string;
+  vArquivoDpk, vFaltando, vSufixo: string;
 begin
   AResultado := Default(TResultadoPacote);
   AResultado.Nome := APacote.Nome;
@@ -502,6 +557,16 @@ begin
   begin
     AResultado.Motivo := 'arquivo não encontrado: ' + vArquivoDpk;
     Exit(False);
+  end;
+
+  // F6: o .dproj nao habilita esta plataforma (o XSocketRAL so tem Win32)
+  if (APacote.PlataformasDproj.Count > 0) and
+     (APacote.PlataformasDproj.IndexOf(LowerCase(FPlataforma)) < 0) then
+  begin
+    AResultado.Pulado := True;
+    AResultado.Ok := False;
+    AResultado.Motivo := 'o .dproj não habilita ' + FPlataforma;
+    Exit(True);
   end;
 
   // design-time no Delphi e sempre Win32: para as outras plataformas so faz
@@ -591,8 +656,13 @@ begin
     Result := vExec.Executar;
     AResultado.Segundos := (GetTickCount64 - vInicio) / 1000;
 
+    // {$LIBSUFFIX AUTO} (o Zeos) poe o sufixo da IDE no nome do .bpl
+    // (ZCore290.bpl); o .dcp continua sem ele
+    vSufixo := APacote.LibSuffix;
+    if SameText(vSufixo, 'AUTO') then
+      vSufixo := FIDE.SufixoPacote;
     AResultado.Bpl := IncludeTrailingPathDelimiter(FPastaBpl) +
-                      ChangeFileExt(ExtractFileName(vArquivoDpk), '.bpl');
+                      ChangeFileExt(ExtractFileName(vArquivoDpk), '') + vSufixo + '.bpl';
     AResultado.Dcp := IncludeTrailingPathDelimiter(FPastaDcp) +
                       ChangeFileExt(ExtractFileName(vArquivoDpk), '.dcp');
 
@@ -612,6 +682,14 @@ begin
                                ' não foi encontrada';
           Logar('  ' + AResultado.Motivo + '. Instale a biblioteca do recurso, ' +
                 'aponte a pasta dela, ou desmarque este pacote.');
+        end
+        else
+        begin
+          // a unidade existe e nao compila: quase sempre versao da biblioteca
+          // de terceiro diferente da que o RAL espera
+          vFaltando := PrimeiroErro(vExec.Saida);
+          if vFaltando <> '' then
+            AResultado.Motivo := 'erro de compilação: ' + vFaltando;
         end;
       end;
       Exit(False);
@@ -739,7 +817,13 @@ begin
         Result := False;
       end
       else if vResultado.Pulado then
-        Logar('  pulado: ' + vResultado.Motivo)
+      begin
+        Logar('  pulado: ' + vResultado.Motivo);
+        // pulado sem .dcp (plataforma que o .dproj desliga): quem depende
+        // dele nesta plataforma tambem nao tem contra o que compilar
+        if not vResultado.Ok then
+          vFalhados.Add(vPacote.Nome);
+      end
       else
         Logar(Format('  ok: %s (%d KB, %.1f s)',
                      [ExtractFileName(vResultado.Bpl),
@@ -764,10 +848,12 @@ begin
     vLista.Add(Format('%-24s %-10s %-10s %s', ['pacote', 'resultado', 'tamanho', 'observação']));
     for vInt := 0 to Pred(Total) do
     begin
-      if not FResultados[vInt].Ok then
-        vEstado := 'FALHOU'
-      else if FResultados[vInt].Pulado then
+      // pulado (plataforma que o .dproj nao habilita, dependencia que falhou)
+      // nao e falha deste pacote: o motivo diz de quem e
+      if FResultados[vInt].Pulado then
         vEstado := 'pulado'
+      else if not FResultados[vInt].Ok then
+        vEstado := 'FALHOU'
       else
         vEstado := 'ok';
       vLista.Add(Format('%-24s %-10s %7d KB %s',

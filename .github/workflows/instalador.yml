@@ -1,0 +1,127 @@
+# F11: os binarios do instalador, do mesmo fonte, a cada tag instalador-v<versao>.
+#
+# A versao do instalador e independente da do RAL: a unica fonte e
+# VersaoInstalador em fontes/nucleo/RALInst.Versao.pas. A tag tem de bater com
+# ela (o job falha se nao bater), e os numeros vao para o VersionInfo dos .lpi.
+# O release leva, por sistema, o instalador grafico e a linha de comando, mais
+# SHA256SUMS — que a auto-atualizacao (F12) confere antes de trocar o binario.
+#
+# Os binarios de Linux e macOS instalam so no Lazarus: o Delphi so existe no
+# Windows. Isso vai dito no texto do release.
+
+name: Instalador
+
+on:
+  push:
+    tags: [ 'instalador-v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compilar:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            modo: Windows64
+            gui: ralinstaller_w64.exe
+            cli: ralcli.exe
+            cli_final: ralcli_w64.exe
+          - os: ubuntu-latest
+            modo: Linux64
+            gui: ralinstaller_l64
+            cli: ralcli
+            cli_final: ralcli_l64
+          - os: macos-13
+            modo: MacOS64
+            gui: ralinstaller_m64
+            cli: ralcli
+            cli_final: ralcli_m64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: A tag bate com RALInst.Versao
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#instalador-v}"
+          codigo=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" fontes/nucleo/RALInst.Versao.pas)
+          echo "tag: $tag  codigo: $codigo"
+          if [ "$tag" != "$codigo" ]; then
+            echo "::error::a tag ($tag) nao bate com VersaoInstalador ($codigo) em RALInst.Versao.pas"
+            exit 1
+          fi
+
+      - name: VersionInfo dos .lpi
+        shell: bash
+        run: |
+          versao=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" fontes/nucleo/RALInst.Versao.pas)
+          IFS=. read -r maior menor revisao <<< "$versao"
+          for lpi in RALInstaller.lpi cli/ralcli.lpi; do
+            perl -0pi -e 's/\s*<(Major|Minor|Revision)VersionNr Value="\d+"\/>//g' "$lpi"
+            perl -0pi -e "s/(<UseVersionInfo Value=\"True\"\/>)/\$1\n      <MajorVersionNr Value=\"$maior\"\/>\n      <MinorVersionNr Value=\"$menor\"\/>\n      <RevisionNr Value=\"${revisao:-0}\"\/>/" "$lpi"
+          done
+
+      - name: GTK2 (o widgetset do Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk2.0-dev
+
+      - uses: gcarreno/setup-lazarus@v3
+        with:
+          lazarus-version: stable
+          with-cache: false
+
+      - name: Compilar
+        shell: bash
+        run: |
+          lazbuild -B --bm=${{ matrix.modo }} RALInstaller.lpi
+          # os recursos do .lpi sao relativos a pasta dele: compila de dentro dela
+          (cd cli && lazbuild -B ralcli.lpi)
+          mkdir -p saida
+          cp "${{ matrix.gui }}" saida/
+          cp "cli/${{ matrix.cli }}" "saida/${{ matrix.cli_final }}"
+
+      - name: Testes sem IDE
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          mkdir -p lib/testes
+          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/catalogo" tests/catalogo/catalogo.lpr
+          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/compatibilidade" tests/compatibilidade/compatibilidade.lpr
+          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/recibos" tests/recibos/recibos.lpr
+          ./lib/testes/catalogo
+          ./lib/testes/compatibilidade --testes --receitas=receitas
+          ./lib/testes/recibos
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binarios-${{ matrix.modo }}
+          path: saida/*
+
+  release:
+    needs: compilar
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: saida
+          merge-multiple: true
+
+      - name: SHA256SUMS
+        run: cd saida && sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: saida/*
+          body: |
+            RAL Installer ${{ github.ref_name }} — a versão do instalador é independente da versão do PascalRAL.
+
+            - Windows (`ralinstaller_w64.exe`): Delphi e Lazarus.
+            - Linux (`ralinstaller_l64`) e macOS (`ralinstaller_m64`): **só Lazarus** — o Delphi só existe no Windows, e esses binários saem sem a parte do Delphi.
+            - `ralcli_*`: a linha de comando, com os mesmos passos da tela (`ralcli` sem argumentos mostra o uso).
+            - `SHA256SUMS`: o que a auto-atualização confere antes de trocar o binário.

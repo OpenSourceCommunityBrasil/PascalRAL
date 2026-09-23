@@ -111,7 +111,8 @@ begin
   Result := Result + 'end.';
 end;
 
-function Lpk(const ANome, ATipo: string; ARequires: array of string): string;
+function Lpk(const ANome, ATipo: string; ARequires: array of string;
+  AArquivos: array of string): string;
 var
   vInt: integer;
 begin
@@ -123,7 +124,21 @@ begin
   for vInt := 0 to High(ARequires) do
     Result := Result + '<Item' + IntToStr(vInt + 1) + '><PackageName Value="' + ARequires[vInt] +
               '"/><MinVersion Major="1" Minor="2" Valid="True"/></Item' + IntToStr(vInt + 1) + '>';
-  Result := Result + '</RequiredPkgs></Package></CONFIG>';
+  Result := Result + '</RequiredPkgs>';
+  if Length(AArquivos) > 0 then
+  begin
+    Result := Result + '<Files Count="' + IntToStr(Length(AArquivos)) + '">';
+    for vInt := 0 to High(AArquivos) do
+      Result := Result + '<Item' + IntToStr(vInt + 1) + '><Filename Value="' + AArquivos[vInt] +
+                '"/><UnitName Value="x"/></Item' + IntToStr(vInt + 1) + '>';
+    Result := Result + '</Files>';
+  end;
+  Result := Result + '</Package></CONFIG>';
+end;
+
+function Lpk(const ANome, ATipo: string; ARequires: array of string): string;
+begin
+  Result := Lpk(ANome, ATipo, ARequires, []);
 end;
 
 function Posicao(ACat: TCatalogo; ATipo: TTipoPacote; const ANome: string): integer;
@@ -171,7 +186,10 @@ begin
                                    '  Falta in ''..\..\..\src\engine\Falta.pas'''));
   Gravar('pkg/Delphi/Engine/AANovo.dproj',
          '<Project><PropertyGroup><DCC_UsePackage>rtl;IndyCore;IndySystem160;Base;$(DCC_UsePackage)</DCC_UsePackage></PropertyGroup>' +
-         '<PropertyGroup><DCC_UsePackage>IndyCore160;BaseDsgn</DCC_UsePackage></PropertyGroup></Project>');
+         '<PropertyGroup><DCC_UsePackage>IndyCore160;BaseDsgn</DCC_UsePackage></PropertyGroup>' +
+         '<ProjectExtensions><BorlandProject><Platforms><Platform value="Win32">True</Platform>' +
+         '<Platform value="Win64">False</Platform><Platform value="Android">True</Platform>' +
+         '</Platforms></BorlandProject></ProjectExtensions></Project>');
   Gravar('pkg/Delphi/Engine/__history/AANovo.dpk', Dpk('Fantasma', 'Base', ''));
   Gravar('pkg/Delphi/Ciclo/CicloA.dpk', Dpk('CicloA', 'CicloB', ''));
   Gravar('pkg/Delphi/Ciclo/CicloB.dpk', Dpk('CicloB', 'CicloA', ''));
@@ -181,6 +199,12 @@ begin
   Gravar('pkg/Lazarus/basedsgn.lpk', Lpk('basedsgn', 'DesignTime', ['base', 'IDEIntf']));
   Gravar('pkg/Lazarus/Engine/indyx.lpk', Lpk('IndyX', 'RunAndDesignTime', ['indylaz', 'Base']));
   Gravar('pkg/Lazarus/Engine/sorun.lpk', Lpk('sorun', 'RunTimeOnly', ['Base']));
+  // o par que divide unidade: o .lpk lista o submodulo, o .dpk nao (RALBSONStorage)
+  Gravar('src/utils/Irmao.pas', 'unit Irmao; interface implementation end.');
+  Gravar('pkg/Delphi/Database/IrmaoD.dpk',
+         Dpk('IrmaoD', 'Base', 'Irmao in ''..\..\..\src\utils\Irmao.pas'''));
+  Gravar('pkg/Lazarus/Database/irmaol.lpk', Lpk('irmaol', 'RunAndDesignTime', ['Base'],
+         ['..\..\..\src\others\SUB\Sub.pas', '..\..\..\src\utils\Irmao.pas']));
 end;
 
 procedure Verificar(AOrigem: TOrigemArquivos);
@@ -227,6 +251,9 @@ begin
              'so a unidade fora de submodulo e fonte ausente: ' + vPacote.FontesAusentes.CommaText);
     Conferir(vPacote.Implicitos.CommaText = 'IndyCore,IndySystem',
              'implicitos do .dproj sem sufixo, sem repetir e sem pacote do catalogo: ' + vPacote.Implicitos.CommaText);
+    Conferir(vPacote.PlataformasDproj.CommaText = 'win32,android',
+             'plataformas habilitadas no .dproj (Win64 False fica fora): ' + vPacote.PlataformasDproj.CommaText);
+    Conferir(vCat.Buscar(tpDelphi, 'Base').PlataformasDproj.Count = 0, 'sem .dproj, lista vazia');
 
     vNomes.CommaText := 'AANovo,Inexistente';
     vCat.Fechamento(tpDelphi, vNomes, vLista, vNomes);
@@ -242,6 +269,14 @@ begin
     Conferir(vCat.Buscar(tpLazarus, 'IndyX').Externos.CommaText = 'indylaz', 'indylaz e externo');
     Conferir(vCat.Buscar(tpLazarus, 'IndyX').VersoesMinimas.Values['indylaz'] = '1.2', 'versao minima lida');
     Conferir(vCat.Buscar(tpLazarus, 'IndyX').Grupo = 'Engine', 'grupo Lazarus');
+    Conferir(vCat.Buscar(tpLazarus, 'irmaol').Submodulos.CommaText = 'src/others/SUB',
+             '.lpk lista o submodulo');
+    Conferir(vCat.Buscar(tpDelphi, 'IrmaoD').Submodulos.CommaText = 'src/others/SUB',
+             '.dpk herda o submodulo do .lpk que divide unidade com ele');
+    Conferir(vCat.Buscar(tpDelphi, 'IrmaoD').SubmodulosAusentes.CommaText = 'src/others/SUB',
+             'submodulo herdado e nao baixado conta como ausente');
+    Conferir(vCat.Buscar(tpDelphi, 'Base').Submodulos.Count = 0,
+             'quem nao divide unidade nao herda');
 
     WriteLn;
     WriteLn(vCat.Plano(tpDelphi));

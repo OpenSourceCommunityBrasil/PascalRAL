@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="ralcli"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+      <Resources Count="6">
+        <Resource_0 FileName="..\receitas\mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
+        <Resource_1 FileName="..\receitas\zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
+        <Resource_2 FileName="..\receitas\indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
+        <Resource_3 FileName="..\receitas\unigui.json" Type="RCDATA" ResourceName="RECEITA_UNIGUI"/>
+        <Resource_4 FileName="..\receitas\firedac.json" Type="RCDATA" ResourceName="RECEITA_FIREDAC"/>
+        <Resource_5 FileName="..\manifesto\ral.json" Type="RCDATA" ResourceName="MANIFESTO_RAL"/>
+      </Resources>
+    </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <MinorVersionNr Value="9"/>
+      <StringTable CompanyName="Pascal RAL" FileDescription="RAL Installer (linha de comando)" ProductName="RAL Installer"/>
+    </VersionInfo>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <Units>
+      <Unit>
+        <Filename Value="ralcli.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="ralcli"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="..\fontes\nucleo"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <CodeGeneration>
+      <Optimizations>
+        <OptimizationLevel Value="2"/>
+      </Optimizations>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <GenerateDebugInfo Value="False"/>
+      </Debugging>
+    </Linking>
+  </CompilerOptions>
+</CONFIG>

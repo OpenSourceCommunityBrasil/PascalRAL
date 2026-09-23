@@ -16,19 +16,24 @@ type
   { Tfrm_install }
 
   Tfrm_install = class(Tfrm_modelo)
+    lbDesinstalar: TLabel;
     lbSubTitle: TLabel;
     mLogInstall: TMemo;
+    procedure lbDesinstalarClick(Sender: TObject);
     procedure lbNextClick(Sender: TObject);
   private
     FInstalling : boolean;
     FPlano: string;
-    function SalvarLog: string;
+    FExistentes: string;
+    function SalvarLog(const APrefixo: string): string;
   protected
     function validatePagePrior : boolean; override;
   public
     constructor Create(AOwner : TComponent); override;
-    // chamado ao entrar na tela
-    procedure MostrarPlano;
+    // ao entrar na tela: o plano, antes de qualquer escrita
+    procedure AoMostrar; override;
+    // uma linha no log da rodada (a etapa de download escreve aqui)
+    procedure LogarLinha(const ALinha: string);
   end;
 
 implementation
@@ -45,7 +50,13 @@ end;
 
 { Tfrm_install }
 
-procedure Tfrm_install.MostrarPlano;
+procedure Tfrm_install.LogarLinha(const ALinha: string);
+begin
+  mLogInstall.Lines.Add(ALinha);
+  Application.ProcessMessages;
+end;
+
+procedure Tfrm_install.AoMostrar;
 begin
   if FInstalling then
     Exit;
@@ -57,19 +68,67 @@ begin
   end;
   mLogInstall.Lines.Text := 'O que será feito:' + LineEnding + LineEnding + FPlano +
                             LineEnding + 'Clique em Instalar para executar.';
+  // F10: o que o instalador ja pos nestas IDEs; instalar de novo passa por
+  // cima, desinstalar desfaz
+  FExistentes := fmain.InstalacoesExistentes;
+  if FExistentes <> '' then
+    mLogInstall.Lines.Add(LineEnding + 'Já instalado pelo instalador nestas IDEs ' +
+      '(instalar de novo passa por cima; "Desinstalar" desfaz):' + LineEnding + FExistentes);
+  lbDesinstalar.Visible := FExistentes <> '';
   mLogInstall.SelStart := 0;
 end;
 
-function Tfrm_install.SalvarLog: string;
+procedure Tfrm_install.lbDesinstalarClick(Sender: TObject);
+var
+  vOk: boolean;
+  vLog: string;
+begin
+  if FInstalling or (FExistentes = '') then
+    Exit;
+  if MessageDlg('Desinstalar o PascalRAL',
+       'Desfazer o que o instalador fez nestas IDEs:' + LineEnding + LineEnding + FExistentes +
+       LineEnding + 'O registro, o library path e a configuração voltam ao que eram antes; ' +
+       'os .bpl gravados são apagados e o Lazarus é reconstruído sem os pacotes. As ' +
+       'dependências que já estavam instaladas não são tocadas. Feche as IDEs antes.' +
+       LineEnding + LineEnding + 'Desinstalar agora?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  FInstalling := True;
+  AoEsperarProcesso := @ProcessarMensagens;
+  Screen.Cursor := crHourGlass;
+  try
+    mLogInstall.Clear;
+    vOk := fmain.DesinstalarRAL;
+    vLog := SalvarLog('desinstalacao');
+    mLogInstall.Lines.Add('');
+    if vOk then
+      mLogInstall.Lines.Add('Desinstalação concluída.')
+    else
+      mLogInstall.Lines.Add('Desinstalação terminou com erros — veja as linhas ERRO acima.');
+    if vLog <> '' then
+    begin
+      mLogInstall.Lines.Add('Log: ' + vLog);
+      mLogInstall.Lines.SaveToFile(vLog);
+    end;
+    FExistentes := fmain.InstalacoesExistentes;
+    lbDesinstalar.Visible := FExistentes <> '';
+  finally
+    Screen.Cursor := crDefault;
+    AoEsperarProcesso := nil;
+    FInstalling := False;
+  end;
+end;
+
+function Tfrm_install.SalvarLog(const APrefixo: string): string;
 var
   vPasta: string;
 begin
   Result := '';
-  vPasta := IncludeTrailingPathDelimiter(GetAppConfigDir(False)) + 'logs';
+  vPasta := PastaDadosInstalador + 'logs';
   try
     ForceDirectories(vPasta);
     Result := IncludeTrailingPathDelimiter(vPasta) +
-              'instalacao-' + FormatDateTime('yyyymmdd-hhnnss', Now) + '.log';
+              APrefixo + '-' + FormatDateTime('yyyymmdd-hhnnss', Now) + '.log';
     mLogInstall.Lines.SaveToFile(Result);
   except
     Result := '';
@@ -102,8 +161,11 @@ begin
 
     vOk := fmain.installRAL(mLogInstall);
 
-    vLog := SalvarLog;
+    vLog := SalvarLog('instalacao');
     mLogInstall.Lines.Add('');
+    // o que acabou de ser instalado passa a poder ser desfeito daqui
+    FExistentes := fmain.InstalacoesExistentes;
+    lbDesinstalar.Visible := FExistentes <> '';
     if vOk then
       mLogInstall.Lines.Add('Instalação concluída.')
     else

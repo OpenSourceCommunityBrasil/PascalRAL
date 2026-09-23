@@ -1263,4 +1263,21 @@ inherited frm_ide: Tfrm_ide
     ParentColor = False
     ParentFont = False
   end
+  object lbAmbos: TLabel[11]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    Cursor = crHandPoint
+    Left = 200
+    Height = 24
+    Top = 430
+    Width = 300
+    Alignment = taCenter
+    AutoSize = False
+    Caption = 'Delphi e Lazarus juntos'
+    Font.Height = -15
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    OnClick = lbAmbosClick
+  end
 end

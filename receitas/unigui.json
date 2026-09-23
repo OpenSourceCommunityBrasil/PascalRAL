@@ -1,0 +1,10 @@
+{
+  "nome": "uniGUI",
+  "descricao": "uniGUI: o servidor do UniGUIRAL (comercial, instalado pelo proprio usuario)",
+  "site": "https://www.unigui.com",
+  "pago": true,
+  "pacotes-ral": ["UniGUIRAL"],
+  "delphi": {
+    "deteccao": [ { "dcp": "uniGUI*Core" } ]
+  }
+}

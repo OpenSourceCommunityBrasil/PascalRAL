@@ -1,0 +1,14 @@
+{
+  "nome": "Indy",
+  "descricao": "Indy 10 para Lazarus: o motor HTTP do IndyRAL (no Delphi o Indy ja vem com a IDE)",
+  "site": "https://github.com/IndySockets/Indy",
+  "fonte": { "github": "IndySockets/Indy", "versao": "master",
+             "comentario": "o Indy nao publica release; as tags sao por versao do RAD Studio" },
+  "lazarus": {
+    "fornece": { "pacotes": ["indylaz"] },
+    "deteccao": [ { "pacote": "indylaz" } ],
+    "acoes": [
+      { "acao": "lpk", "arquivo": "Lib/indylaz.lpk", "modo": "instalar" }
+    ]
+  }
+}

@@ -108,14 +108,7 @@ function CopiarChave(const AOrigem, ADestino: string): boolean;
 implementation
 
 uses
-  Windows, Registry, JwaTlHelp32, StrUtils, jsonparser;
-
-const
-  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
-
-function QueryFullProcessImageNameW(hProcess: THandle; dwFlags: DWORD;
-  lpExeName: PWideChar; var lpdwSize: DWORD): BOOL; stdcall;
-  external 'kernel32' name 'QueryFullProcessImageNameW';
+  Windows, Registry, StrUtils, jsonparser;
 
 function PlataformaRegistro(const APlataforma: string): string;
 const
@@ -306,47 +299,9 @@ begin
 end;
 
 function TRegistroDelphi.IDEEmExecucao: boolean;
-var
-  vSnap, vProc: THandle;
-  vEntrada: TProcessEntry32W;
-  vNome, vCaminho: string;
-  vBuf: array[0..MAX_PATH] of WideChar;
-  vTam: DWORD;
 begin
-  Result := False;
-  vSnap := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if vSnap = INVALID_HANDLE_VALUE then
-    Exit;
-  try
-    vEntrada.dwSize := SizeOf(vEntrada);
-    if not Process32FirstW(vSnap, vEntrada) then
-      Exit;
-    repeat
-      vNome := LowerCase(UTF8Encode(WideString(vEntrada.szExeFile)));
-      if (vNome = 'bds.exe') or (vNome = 'delphi32.exe') then
-      begin
-        // com o caminho do processo, so conta a IDE desta pasta; sem acesso
-        // ao caminho, conta qualquer uma — melhor recusar a toa do que
-        // perder a instalacao
-        vCaminho := '';
-        vProc := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, vEntrada.th32ProcessID);
-        if vProc <> 0 then
-        try
-          vTam := Length(vBuf);
-          if QueryFullProcessImageNameW(vProc, 0, @vBuf[0], vTam) then
-            vCaminho := UTF8Encode(WideString(Copy(vBuf, 0, vTam)));
-        finally
-          CloseHandle(vProc);
-        end;
-
-        if (vCaminho = '') or
-           MesmaPasta(ExtractFilePath(ExtractFileDir(vCaminho)), FIDE.RootDir) then
-          Exit(True);
-      end;
-    until not Process32NextW(vSnap, vEntrada);
-  finally
-    CloseHandle(vSnap);
-  end;
+  // bds.exe/delphi32.exe desta instalacao (<raiz>\bin)
+  Result := ProgramaEmExecucao(['bds.exe', 'delphi32.exe'], FIDE.RootDir + 'bin');
 end;
 
 function TRegistroDelphi.ChaveLibrary(const APlataforma: string): string;

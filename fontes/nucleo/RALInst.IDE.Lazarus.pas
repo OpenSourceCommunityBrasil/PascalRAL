@@ -51,7 +51,7 @@ function ConfigPadraoLazarus: string;
 implementation
 
 uses
-  RegExpr {$IFDEF MSWINDOWS}, FileInfo{$ENDIF};
+  RegExpr, RALInst.Processo {$IFDEF MSWINDOWS}, FileInfo{$ENDIF};
 
 function ConfigPadraoLazarus: string;
 begin
@@ -114,6 +114,23 @@ begin
     Result := ExpandFileName(vCaminho)
   else
     Result := ExpandFileName(IncludeTrailingPathDelimiter(ABase) + vCaminho);
+end;
+
+// 'fpc -iV' -> '3.2.3'; vazio se o compilador nao respondeu
+function VersaoDoFPC(const AFPC: string): string;
+var
+  vExec: TExecucao;
+begin
+  Result := '';
+  vExec := TExecucao.Create;
+  try
+    vExec.Executavel := AFPC;
+    vExec.Parametros.Add('-iV');
+    if vExec.Executar and (vExec.Saida.Count > 0) then
+      Result := Extrair(vExec.Saida.Text, '^(\d+\.\d+(\.\d+)?)');
+  finally
+    vExec.Free;
+  end;
 end;
 
 function VersaoCurta(const AVersao: string): string;
@@ -235,8 +252,12 @@ begin
     Exit;
   end;
 
-  // versao do FPC so quando o caminho diz (instalador oficial: fpc\3.2.2\bin)
+  // versao do FPC: o caminho diz no instalador oficial (fpc\3.2.2\bin); no
+  // fpcupdeluxe nao, e so perguntando ao compilador. Ela decide a versao das
+  // dependencias (o Zeos 8.0 nao compila no FPC 3.2.3)
   AIDE.VersaoCompilador := Extrair(vFPC, '[\\/](\d+\.\d+\.\d+)[\\/]');
+  if AIDE.VersaoCompilador = '' then
+    AIDE.VersaoCompilador := VersaoDoFPC(vFPC);
 
   // plataformas: units compiladas de cada alvo, na raiz do FPC
   // (<raiz>\bin\<alvo>\fpc.exe -> <raiz>\units\<alvo>)

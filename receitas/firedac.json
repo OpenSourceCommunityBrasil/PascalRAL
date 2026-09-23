@@ -1,0 +1,17 @@
+{
+  "nome": "FireDAC/AnyDAC",
+  "descricao": "FireDAC: vem com o Delphi do XE5 em diante. Do XE2 ao XE4 o RALDBFireDACLink usa o antecessor, o AnyDAC (da DA-SOFT, comercial)",
+  "site": "https://www.embarcadero.com/products/rad-studio/firedac",
+  "pago": true,
+  "comentario": "So deteccao: o FireDAC e da IDE, o AnyDAC e pago. O RALDBFireDAC.pas usa FireDAC.* sob {$IFDEF DELPHIXE4UP} e uAD* (AnyDAC) abaixo disso; o RALDBFireDACObjects exige o FireDAC e nao tem o caminho do AnyDAC.",
+  "delphi": {
+    "fornece": { "pacotes": ["FireDAC", "FireDACCommon", "FireDACCommonDriver", "FireDACPgDriver",
+                             "FireDACIBDriver", "FireDACMySQLDriver", "FireDACSqliteDriver",
+                             "fmxFireDAC", "vclFireDAC"] },
+    "deteccao": [ { "dcp": "FireDAC" }, { "dcp": "AnyDAC_Comp_D*" } ],
+    "pacotes-ligados": [ "AnyDAC_ComI_D*", "AnyDAC_Comp_D*", "AnyDAC_Phys_D*", "AnyDAC_GUIxForms_D*",
+                         "AnyDAC_PhysIB_D*", "AnyDAC_PhysMySQL_D*", "AnyDAC_PhysPg_D*",
+                         "AnyDAC_PhysSQLITE_D*" ],
+    "acoes": []
+  }
+}

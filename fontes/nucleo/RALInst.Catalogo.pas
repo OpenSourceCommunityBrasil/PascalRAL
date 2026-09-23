@@ -40,6 +40,11 @@ type
     function Ler(const ACaminho: string): string; virtual; abstract;
     // onde o arquivo esta de verdade (caminho em disco ou URL)
     function Localizar(const ACaminho: string): string; virtual; abstract;
+    // os submodulos nunca estao nesta origem e chegam por download proprio
+    // (o zip do GitHub): submodulo ausente nao torna o pacote indisponivel
+    function BaixaSubmodulos: boolean; virtual;
+    // ha algum arquivo sob a pasta
+    function ExistePasta(const APasta: string): boolean; virtual;
   end;
 
   { TOrigemLocal }
@@ -55,6 +60,7 @@ type
     function Existe(const ACaminho: string): boolean; override;
     function Ler(const ACaminho: string): string; override;
     function Localizar(const ACaminho: string): string; override;
+    function ExistePasta(const APasta: string): boolean; override;
     property Raiz: string read FRaiz;
   end;
 
@@ -88,6 +94,9 @@ type
     FFontesAusentes: TStringList;
     FSubmodulos: TStringList;
     FSubmodulosAusentes: TStringList;
+    FCaminhosBusca: TStringList;
+    FVariaveis: TStringList;
+    FPlataformasDproj: TStringList;
     FOrdem: integer;
     function GetInstalavel: boolean;
   public
@@ -129,6 +138,18 @@ type
     // dos Submodulos, os que a origem nao tem (checkout sem submodule update,
     // zip do GitHub)
     property SubmodulosAusentes: TStringList read FSubmodulosAusentes;
+    // pastas do repositorio que o pacote poe no caminho de busca
+    // (DCC_UnitSearchPath do .dproj, OtherUnitFiles do .lpk), com '/', so as
+    // que existem: e onde mora o que o pacote usa sem listar (o libsagui.pas
+    // do SaguiRAL)
+    property CaminhosBusca: TStringList read FCaminhosBusca;
+    // variaveis que o caminho de busca exige ($(mormot2) no SynopseRAL.dproj):
+    // e assim que o pacote Delphi declara uma dependencia que nao tem pacote
+    property Variaveis: TStringList read FVariaveis;
+    // Delphi: plataformas que o .dproj habilita (<Platform value="Win64">True),
+    // em minusculas ('win64'); vazia quando o .dproj nao diz. Plataforma fora
+    // da lista nao e para o pacote (o XSocketRAL so tem Win32)
+    property PlataformasDproj: TStringList read FPlataformasDproj;
     // posicao na ordem de instalacao do seu tipo (0 = primeiro); -1 em ciclo
     property Ordem: integer read FOrdem;
     // vai para a IDE (design ou ambos); runtime puro so e compilado
@@ -143,6 +164,8 @@ type
     FPacotes: TObjectList;
     FErros: TStringList;
     FSubmodulos: TStringList;
+    FPastaDelphi: string;
+    FPastaLazarus: string;
     function GetCount: integer;
     function GetPacote(AIndex: integer): TPacote;
     function GetRaiz: string;
@@ -150,6 +173,7 @@ type
     procedure LerLpk(const AArquivo: string);
     procedure LerSubmodulos;
     procedure ListarPacotes(const APasta, AExtensao: string; ALista: TStrings);
+    procedure LerCaminhosBusca(APacote: TPacote; const APastaPacote, ALista: string);
     procedure Resolver;
     procedure Ordenar(ATipo: TTipoPacote);
   public
@@ -182,6 +206,10 @@ type
     property Pacotes[AIndex: integer]: TPacote read GetPacote; default;
     // falhas de leitura e ciclos: o catalogo continua usavel sem esses pacotes
     property Erros: TStringList read FErros;
+    // onde ficam os pacotes, relativo a raiz: 'pkg/Delphi' e 'pkg/Lazarus' no
+    // RAL; uma dependencia (o Zeos) diz as dela antes de Carregar
+    property PastaDelphi: string read FPastaDelphi write FPastaDelphi;
+    property PastaLazarus: string read FPastaLazarus write FPastaLazarus;
   end;
 
 function NomeUso(AUso: TUsoPacote): string;
@@ -277,6 +305,26 @@ begin
     Delete(Result, 1, 3);
 end;
 
+{ TOrigemArquivos }
+
+function TOrigemArquivos.BaixaSubmodulos: boolean;
+begin
+  Result := False;
+end;
+
+function TOrigemArquivos.ExistePasta(const APasta: string): boolean;
+var
+  vLista: TStringList;
+begin
+  vLista := TStringList.Create;
+  try
+    Listar(APasta, vLista);
+    Result := vLista.Count > 0;
+  finally
+    vLista.Free;
+  end;
+end;
+
 { TOrigemLocal }
 
 constructor TOrigemLocal.Create(const ARaiz: string);
@@ -330,6 +378,11 @@ begin
   Result := FileExists(Localizar(ACaminho));
 end;
 
+function TOrigemLocal.ExistePasta(const APasta: string): boolean;
+begin
+  Result := DirectoryExists(Localizar(APasta));
+end;
+
 function TOrigemLocal.Ler(const ACaminho: string): string;
 var
   vLista: TStringList;
@@ -360,10 +413,16 @@ begin
   FFontesAusentes := NovaLista;
   FSubmodulos := NovaLista;
   FSubmodulosAusentes := NovaLista;
+  FCaminhosBusca := NovaLista;
+  FVariaveis := NovaLista;
+  FPlataformasDproj := NovaLista;
 end;
 
 destructor TPacote.Destroy;
 begin
+  FCaminhosBusca.Free;
+  FPlataformasDproj.Free;
+  FVariaveis.Free;
   FRequires.Free;
   FInternos.Free;
   FExternos.Free;
@@ -389,6 +448,54 @@ begin
   FPacotes := TObjectList.Create(True);
   FErros := TStringList.Create;
   FSubmodulos := TStringList.Create;
+  FPastaDelphi := 'pkg/Delphi';
+  FPastaLazarus := 'pkg/Lazarus';
+end;
+
+procedure TCatalogo.LerCaminhosBusca(APacote: TPacote; const APastaPacote, ALista: string);
+const
+  // variaveis da propria IDE ou do projeto: nao sao dependencia de ninguem
+  DaIDE: array[0..14] of string = (
+    'DCC_UnitSearchPath', 'BDS', 'BDSLIB', 'BDSBIN', 'BDSINCLUDE', 'BDSCOMMONDIR',
+    'BDSUSERDIR', 'Platform', 'Config', 'ProjectDir', 'OUTPUTDIR', 'PkgDir',
+    'LazarusDir', 'TargetCPU', 'TargetOS');
+var
+  vItem, vCaminho, vVar: string;
+  vRegex: TRegExpr;
+  vInt: integer;
+  vDaIDE: boolean;
+begin
+  vRegex := TRegExpr.Create('\$\(([\w.]+)\)');
+  try
+    for vItem in ALista.Split([';']) do
+    begin
+      vCaminho := Trim(vItem);
+      if vCaminho = '' then
+        Continue;
+      if Pos('$(', vCaminho) > 0 then
+      begin
+        if vRegex.Exec(vCaminho) then
+          repeat
+            vVar := vRegex.Match[1];
+            vDaIDE := False;
+            for vInt := Low(DaIDE) to High(DaIDE) do
+              if SameText(vVar, DaIDE[vInt]) then
+                vDaIDE := True;
+            if not vDaIDE and not Contem(APacote.FVariaveis, vVar) then
+              APacote.FVariaveis.Add(vVar);
+          until not vRegex.ExecNext;
+        Continue;
+      end;
+      // caminhos errados sao comuns (..\..\src a partir de pkg\Delphi\Engine):
+      // so vale o que existe
+      vCaminho := ResolverRelativo(APastaPacote, vCaminho);
+      if (vCaminho <> '') and not Contem(APacote.FCaminhosBusca, vCaminho) and
+         FOrigem.ExistePasta(vCaminho) then
+        APacote.FCaminhosBusca.Add(vCaminho);
+    end;
+  finally
+    vRegex.Free;
+  end;
 end;
 
 destructor TCatalogo.Destroy;
@@ -583,6 +690,17 @@ begin
     vDproj := ChangeFileExt(AArquivo, '.dproj');
     if FOrigem.Existe(vDproj) then
     begin
+      // o caminho de busca de todas as configuracoes (Base, Win32, Release...)
+      vRegex := TRegExpr.Create('<DCC_UnitSearchPath>([^<]*)</DCC_UnitSearchPath>');
+      try
+        if vRegex.Exec(FOrigem.Ler(vDproj)) then
+          repeat
+            LerCaminhosBusca(vPacote, vPastaPkg, vRegex.Match[1]);
+          until not vRegex.ExecNext;
+      finally
+        vRegex.Free;
+      end;
+
       vRegex := TRegExpr.Create('<DCC_UsePackage>([^<]*)</DCC_UsePackage>');
       try
         if vRegex.Exec(FOrigem.Ler(vDproj)) then
@@ -602,9 +720,23 @@ begin
         vRegex.Free;
       end;
       vPacote.FImplicitos.Sort;
+
+      // plataformas que o .dproj habilita: o XSocketRAL so tem Win32, o
+      // KwikRAL e o OkHttpRAL nem citam o Win64
+      vRegex := TRegExpr.Create('<Platform value="(\w+)">True</Platform>');
+      try
+        vRegex.ModifierI := True;
+        if vRegex.Exec(FOrigem.Ler(vDproj)) then
+          repeat
+            if not Contem(vPacote.FPlataformasDproj, LowerCase(vRegex.Match[1])) then
+              vPacote.FPlataformasDproj.Add(LowerCase(vRegex.Match[1]));
+          until not vRegex.ExecNext;
+      finally
+        vRegex.Free;
+      end;
     end;
 
-    vGrupo := Copy(vPastaPkg, Length('pkg/Delphi/') + 1, MaxInt);
+    vGrupo := Copy(vPastaPkg, Length(FPastaDelphi + '/') + 1, MaxInt);
     vPacote.FGrupo := vGrupo;
 
     FPacotes.Add(vPacote);
@@ -720,11 +852,15 @@ begin
               vPacote.FUnidades.Add(vArq);
           end;
         end;
+      // <CompilerOptions><SearchPaths><OtherUnitFiles Value="a;b"/>
+      vNo := Filho(Filho(vPkg, 'CompilerOptions'), 'SearchPaths');
+      if vNo <> nil then
+        LerCaminhosBusca(vPacote, PastaRelativa(AArquivo), Valor(Filho(vNo, 'OtherUnitFiles')));
     finally
       vDoc.Free;
     end;
 
-    vGrupo := Copy(PastaRelativa(AArquivo), Length('pkg/Lazarus/') + 1, MaxInt);
+    vGrupo := Copy(PastaRelativa(AArquivo), Length(FPastaLazarus + '/') + 1, MaxInt);
     vPacote.FGrupo := vGrupo;
 
     FPacotes.Add(vPacote);
@@ -754,6 +890,29 @@ var
       if SameText(Copy(AUnidade, 1, Length(FSubmodulos.Names[vIdx]) + 1),
                   FSubmodulos.Names[vIdx] + '/') then
         Exit(FSubmodulos.Names[vIdx]);
+  end;
+
+  function DividemUnidade(A, B: TPacote): boolean;
+  var
+    vUni: string;
+  begin
+    Result := False;
+    for vUni in A.FUnidades do
+      if (SubmoduloDe(vUni) = '') and Contem(B.FUnidades, vUni) then
+        Exit(True);
+  end;
+
+  function SubmoduloPresente(const ASub: string): boolean;
+  var
+    vArquivos: TStringList;
+  begin
+    vArquivos := TStringList.Create;
+    try
+      FOrigem.Listar(ASub, vArquivos);
+      Result := vArquivos.Count > 0;
+    finally
+      vArquivos.Free;
+    end;
   end;
 
   // requires de todas as dependencias internas, transitivamente; o conjunto
@@ -806,6 +965,32 @@ begin
       else if not FOrigem.Existe(vUnidade) then
         vPacote.FFontesAusentes.Add(vUnidade);
     end;
+  end;
+
+  // o .dpk nem sempre lista as unidades dos submodulos: o RALBSONStorage.dpk
+  // nao lista o kxBSON, que o raldbbson.lpk lista. Pacote que divide uma
+  // unidade com um pacote da outra IDE herda os submodulos dele — sem isso o
+  // download da versao nao traria o kxBSON para o Delphi
+  vHerdados := NovaLista;
+  try
+    for vInt := 0 to Pred(Count) do
+    begin
+      vPacote := Pacotes[vInt];
+      vHerdados.Clear;
+      for vReq := 0 to Pred(Count) do
+        if (Pacotes[vReq].Tipo <> vPacote.Tipo) and DividemUnidade(vPacote, Pacotes[vReq]) then
+          for vSub in Pacotes[vReq].FSubmodulos do
+            if not Contem(vPacote.FSubmodulos, vSub) and not Contem(vHerdados, vSub) then
+              vHerdados.Add(vSub);
+      for vSub in vHerdados do
+      begin
+        vPacote.FSubmodulos.Add(vSub);
+        if not SubmoduloPresente(vSub) then
+          vPacote.FSubmodulosAusentes.Add(vSub);
+      end;
+    end;
+  finally
+    vHerdados.Free;
   end;
 
   // implicito so interessa quando nada no grafo o traz: o rtl que o
@@ -932,13 +1117,13 @@ begin
 
   vArquivos := TStringList.Create;
   try
-    ListarPacotes('pkg/Delphi', '.dpk', vArquivos);
+    ListarPacotes(FPastaDelphi, '.dpk', vArquivos);
     vArquivos.Sort;
     for vArquivo in vArquivos do
       LerDpk(vArquivo);
 
     vArquivos.Clear;
-    ListarPacotes('pkg/Lazarus', '.lpk', vArquivos);
+    ListarPacotes(FPastaLazarus, '.lpk', vArquivos);
     vArquivos.Sort;
     for vArquivo in vArquivos do
       LerLpk(vArquivo);
@@ -1050,6 +1235,12 @@ begin
       if vPacote.Implicitos.Count > 0 then
         vSaida.Add('      implícitos (.dproj, fora do requires): ' +
                    StringReplace(vPacote.Implicitos.CommaText, ',', ', ', [rfReplaceAll]));
+      if vPacote.Variaveis.Count > 0 then
+        vSaida.Add('      variáveis exigidas: $(' +
+                   StringReplace(vPacote.Variaveis.CommaText, ',', '), $(', [rfReplaceAll]) + ')');
+      if vPacote.CaminhosBusca.Count > 0 then
+        vSaida.Add('      caminho de busca: ' +
+                   StringReplace(vPacote.CaminhosBusca.CommaText, ',', ', ', [rfReplaceAll]));
       if vPacote.Unidades.Count = 0 then
         vSaida.Add('      VAZIO: o pacote não contém nenhuma unidade');
       for vSub in vPacote.Submodulos do

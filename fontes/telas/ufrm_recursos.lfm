@@ -25,15 +25,83 @@ inherited frm_recursos: Tfrm_recursos
     Width = 700
     Alignment = taCenter
     Anchors = [akTop, akLeft, akRight]
-    Caption = 'Escolha os recursos'
+    Caption = 'Escolha a versão e os recursos'
     Font.Height = -21
     ParentColor = False
     ParentFont = False
   end
-  object tvRecursos: TTreeView[7]
+  object lbVersao: TLabel[7]
     Left = 48
-    Height = 244
-    Top = 232
+    Height = 15
+    Top = 146
+    Width = 200
+    Caption = 'Versão do PascalRAL'
+    ParentColor = False
+  end
+  object cbVersao: TComboBox[8]
+    Left = 48
+    Height = 23
+    Top = 162
+    Width = 601
+    ItemHeight = 15
+    Style = csDropDownList
+    TabOrder = 5
+    OnChange = cbVersaoChange
+  end
+  object lbedDownloadPath: TLabeledEdit[9]
+    Left = 48
+    Height = 23
+    Top = 208
+    Width = 568
+    EditLabel.Height = 15
+    EditLabel.Width = 568
+    EditLabel.Caption = 'Pasta de instalação'
+    TabOrder = 2
+    OnEditingDone = lbedDownloadPathEditingDone
+  end
+  object bAddVersion: TSpeedButton[10]
+    Left = 626
+    Height = 23
+    Hint = 'Escolher a pasta'
+    Top = 208
+    Width = 23
+    Images = dm.imgList
+    ImageIndex = 0
+    OnClick = bAddVersionClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object lbDestino: TLabel[11]
+    Left = 48
+    Height = 15
+    Top = 234
+    Width = 601
+    AutoSize = False
+    Caption = ''
+    ParentColor = False
+  end
+  object Label2: TLabel[12]
+    Left = 48
+    Height = 15
+    Top = 256
+    Width = 250
+    Caption = 'Recursos (duplo clique marca ou desmarca)'
+    ParentColor = False
+  end
+  object lbInfo: TLabel[13]
+    Left = 300
+    Height = 15
+    Top = 256
+    Width = 349
+    Alignment = taRightJustify
+    AutoSize = False
+    Caption = ''
+    ParentColor = False
+  end
+  object tvRecursos: TTreeView[14]
+    Left = 48
+    Height = 202
+    Top = 274
     Width = 601
     Images = dm.imgList
     ReadOnly = True
@@ -45,55 +113,14 @@ inherited frm_recursos: Tfrm_recursos
     OnKeyDown = tvRecursosKeyDown
     Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoToolTips, tvoThemedDraw]
   end
-  object bAddVersion: TSpeedButton[8]
-    Left = 626
-    Height = 23
-    Hint = 'Escolher a pasta dos fontes do PascalRAL'
-    Top = 184
-    Width = 23
-    Images = dm.imgList
-    ImageIndex = 0
-    OnClick = bAddVersionClick
-    ShowHint = True
-    ParentShowHint = False
-  end
-  object Label2: TLabel[9]
-    Left = 48
-    Height = 15
-    Top = 213
-    Width = 250
-    Caption = 'Recursos (duplo clique marca ou desmarca)'
-    ParentColor = False
-  end
-  object lbedDownloadPath: TLabeledEdit[10]
-    Left = 48
-    Height = 23
-    Top = 184
-    Width = 568
-    EditLabel.Height = 15
-    EditLabel.Width = 568
-    EditLabel.Caption = 'Pasta dos fontes do PascalRAL (a que contém pkg e src)'
-    TabOrder = 2
-    OnEditingDone = lbedDownloadPathEditingDone
-  end
-  object lbInfo: TLabel[11]
-    Left = 300
-    Height = 15
-    Top = 213
-    Width = 349
-    Alignment = taRightJustify
-    AutoSize = False
-    Caption = ''
-    ParentColor = False
-  end
-  object ckSomentePaths: TCheckBox[12]
+  object ckSomentePaths: TCheckBox[15]
     Left = 48
     Height = 19
     Top = 484
     Width = 20
     TabOrder = 3
   end
-  object lbSomentePaths: TLabel[13]
+  object lbSomentePaths: TLabel[16]
     Cursor = crHandPoint
     Left = 70
     Height = 15
@@ -103,14 +130,14 @@ inherited frm_recursos: Tfrm_recursos
     ParentColor = False
     OnClick = lbSomentePathsClick
   end
-  object ckWin64: TCheckBox[14]
+  object ckWin64: TCheckBox[17]
     Left = 48
     Height = 19
     Top = 506
     Width = 20
     TabOrder = 4
   end
-  object lbWin64: TLabel[15]
+  object lbWin64: TLabel[18]
     Cursor = crHandPoint
     Left = 70
     Height = 15
@@ -120,7 +147,7 @@ inherited frm_recursos: Tfrm_recursos
     ParentColor = False
     OnClick = lbWin64Click
   end
-  object dirSelect: TSelectDirectoryDialog[16]
+  object dirSelect: TSelectDirectoryDialog[19]
     Left = 204
     Top = 284
   end

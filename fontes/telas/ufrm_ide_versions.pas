@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Buttons,
-  ufrm_modelo, ufrm_ide_version, ideutils, RALInst.IDE;
+  ufrm_modelo, ufrm_ide_version, ideutils, RALInst.IDE, RALInst.Catalogo,
+  RALInst.Receitas;
 
 type
 
@@ -33,7 +34,8 @@ type
 
     procedure clearVersions;
     procedure mostrarVersoes;
-    function criarBusca: TBuscaIDE;
+    // as buscas do tipo escolhido: uma, ou as duas (F9: Delphi e Lazarus juntos)
+    procedure criarBuscas(ALista: TList);
     procedure iniciarBusca;
     procedure terminarBusca;
 
@@ -49,7 +51,11 @@ type
     function Marcadas: integer;
     // o plano de todas as IDEs marcadas, antes de executar
     function Plano(AEscolha: TEscolhaInstalacao): string;
+    // as IDEs marcadas (TIDEObjectData, que pertencem a esta tela)
+    procedure ListarMarcadas(ALista: TList);
     function installRAL(ALog: TMemo; AEscolha: TEscolhaInstalacao): boolean;
+    // F9: o relatorio final, uma entrada por IDE marcada
+    function Resumos: string;
   end;
 
 implementation
@@ -57,22 +63,80 @@ implementation
 {$R *.lfm}
 
 uses
-  udm, lazarusutils, RALInst.IDE.Lazarus
+  udm, lazarusutils, RALInst.IDE.Lazarus, RALInst.Processo
   {$IFDEF MSWINDOWS}, delphiutils, RALInst.IDE.Delphi{$ENDIF};
+
+// as pastas que o usuario ja apontou com "adicionar pasta": entram na busca
+// rapida das proximas vezes (IDE fora dos lugares de sempre, D:\IDE\lazarus)
+function ArquivoPastas: string;
+begin
+  Result := PastaDadosInstalador + 'pastas-ide.txt';
+end;
+
+procedure LerPastas(ALista: TStrings);
+begin
+  ALista.Clear;
+  if FileExists(ArquivoPastas) then
+    try
+      ALista.LoadFromFile(ArquivoPastas);
+    except
+      ALista.Clear;
+    end;
+end;
+
+procedure LembrarPasta(const APasta: string);
+var
+  vLista: TStringList;
+begin
+  vLista := TStringList.Create;
+  try
+    vLista.CaseSensitive := False;
+    LerPastas(vLista);
+    if vLista.IndexOf(ExcludeTrailingPathDelimiter(APasta)) >= 0 then
+      Exit;
+    vLista.Add(ExcludeTrailingPathDelimiter(APasta));
+    try
+      ForceDirectories(ExtractFilePath(ArquivoPastas));
+      vLista.SaveToFile(ArquivoPastas);
+    except
+      // lembrar e conveniencia: sem gravar, a busca so nao a acha sozinha
+    end;
+  finally
+    vLista.Free;
+  end;
+end;
 
 { Tfrm_ide_versions }
 
-function Tfrm_ide_versions.criarBusca: TBuscaIDE;
+procedure Tfrm_ide_versions.criarBuscas(ALista: TList);
+var
+  vBusca: TBuscaIDE;
 begin
-  // 0 - Delphi
-  // 1 - Lazarus
+  // 0 - Delphi, 1 - Lazarus, 2 - os dois
+  ALista.Clear;
   {$IFDEF MSWINDOWS}
-    if IDE = 0 then
-      Result := TBuscaDelphi.Create
-    else
+    if (IDE = 0) or (IDE = 2) then
+    begin
+      vBusca := TBuscaDelphi.Create;
+      vBusca.OnBusca := @OnIDEFind;
+      ALista.Add(vBusca);
+    end;
   {$ENDIF}
-    Result := TBuscaLazarus.Create;
-  Result.OnBusca := @OnIDEFind;
+  if (IDE = 1) or (IDE = 2) then
+  begin
+    vBusca := TBuscaLazarus.Create;
+    vBusca.OnBusca := @OnIDEFind;
+    ALista.Add(vBusca);
+  end;
+end;
+
+procedure LiberarBuscas(ALista: TList);
+var
+  vInt: integer;
+begin
+  for vInt := 0 to Pred(ALista.Count) do
+    TObject(ALista[vInt]).Free;
+  ALista.Clear;
 end;
 
 procedure Tfrm_ide_versions.iniciarBusca;
@@ -96,17 +160,23 @@ end;
 
 procedure Tfrm_ide_versions.bAutoBuscaClick(Sender: TObject);
 var
-  vBusca: TBuscaIDE;
+  vBuscas: TList;
+  vInt: integer;
 begin
   // a busca rapida ja rodou ao abrir a tela; este botao varre os discos inteiros
   iniciarBusca;
-  vBusca := criarBusca;
+  vBuscas := TList.Create;
   try
-    if vBusca is TBuscaLazarus then
-      TBuscaLazarus(vBusca).BuscarCompleta(FLista);
-    vBusca.Finalizar(FLista);
+    criarBuscas(vBuscas);
+    for vInt := 0 to Pred(vBuscas.Count) do
+    begin
+      if TObject(vBuscas[vInt]) is TBuscaLazarus then
+        TBuscaLazarus(vBuscas[vInt]).BuscarCompleta(FLista);
+      TBuscaIDE(vBuscas[vInt]).Finalizar(FLista);
+    end;
   finally
-    vBusca.Free;
+    LiberarBuscas(vBuscas);
+    vBuscas.Free;
     terminarBusca;
   end;
   mostrarVersoes;
@@ -119,8 +189,8 @@ end;
 
 procedure Tfrm_ide_versions.bAddVersionClick(Sender: TObject);
 var
-  vBusca: TBuscaIDE;
-  vAntes: integer;
+  vBuscas: TList;
+  vAntes, vInt: integer;
   vConhecida: boolean;
 begin
   if not dirSelect.Execute then
@@ -128,21 +198,28 @@ begin
 
   // a pasta pode ser a propria IDE ou uma pasta com varias (D:\IDE\lazarus)
   iniciarBusca;
-  vBusca := criarBusca;
+  vBuscas := TList.Create;
   try
+    criarBuscas(vBuscas);
     vAntes := FLista.Count;
     vConhecida := FLista.BuscarPorRaiz(dirSelect.FileName) <> nil;
-    vBusca.BuscarEm(FLista, dirSelect.FileName, 4);
-    vBusca.Finalizar(FLista);
+    for vInt := 0 to Pred(vBuscas.Count) do
+    begin
+      TBuscaIDE(vBuscas[vInt]).BuscarEm(FLista, dirSelect.FileName, 4);
+      TBuscaIDE(vBuscas[vInt]).Finalizar(FLista);
+    end;
   finally
-    vBusca.Free;
+    LiberarBuscas(vBuscas);
+    vBuscas.Free;
     terminarBusca;
   end;
 
   mostrarVersoes;
 
   if (FLista.Count = vAntes) and not vConhecida then
-    ShowMessage('Nenhuma instalação encontrada em ' + dirSelect.FileName);
+    ShowMessage('Nenhuma instalação encontrada em ' + dirSelect.FileName)
+  else
+    LembrarPasta(dirSelect.FileName);
 end;
 
 procedure Tfrm_ide_versions.clearVersions;
@@ -246,34 +323,48 @@ end;
 procedure Tfrm_ide_versions.SetIDE(AValue: integer);
 var
   vMudou: boolean;
-  vBusca: TBuscaIDE;
+  vBuscas: TList;
+  vInt: integer;
+  vPastas: TStringList;
+  vPasta: string;
 begin
-  // 0 - Delphi
-  // 1 - Lazarus
+  // 0 - Delphi, 1 - Lazarus, 2 - os dois (F9)
   vMudou := IDE <> AValue;
   inherited SetIDE(AValue);
 
   // a varredura de discos inteiros so faz sentido para o Lazarus; o Delphi
   // e achado pelo registro e pelas pastas ao lado das IDEs registradas
-  bAddVersion.Visible := (AValue = 0) or (AValue = 1);
-  bAutoBusca.Visible := AValue = 1;
+  bAddVersion.Visible := (AValue >= 0) and (AValue <= 2);
+  bAutoBusca.Visible := (AValue = 1) or (AValue = 2);
 
   if not vMudou then
     Exit;
 
   clearVersions;
   FLista.Clear;
-  if (AValue <> 0) and (AValue <> 1) then
+  if (AValue < 0) or (AValue > 2) then
     Exit;
 
-  // busca rapida (registro e raizes conhecidas) assim que a tela abre
+  // busca rapida (registro, raizes conhecidas e as pastas que o usuario ja
+  // apontou antes) assim que a tela abre
   iniciarBusca;
-  vBusca := criarBusca;
+  vBuscas := TList.Create;
+  vPastas := TStringList.Create;
   try
-    vBusca.BuscarPadrao(FLista);
-    vBusca.Finalizar(FLista);
+    LerPastas(vPastas);
+    criarBuscas(vBuscas);
+    for vInt := 0 to Pred(vBuscas.Count) do
+    begin
+      TBuscaIDE(vBuscas[vInt]).BuscarPadrao(FLista);
+      for vPasta in vPastas do
+        if DirectoryExists(vPasta) then
+          TBuscaIDE(vBuscas[vInt]).BuscarEm(FLista, vPasta, 4);
+      TBuscaIDE(vBuscas[vInt]).Finalizar(FLista);
+    end;
   finally
-    vBusca.Free;
+    vPastas.Free;
+    LiberarBuscas(vBuscas);
+    vBuscas.Free;
     terminarBusca;
   end;
   mostrarVersoes;
@@ -334,6 +425,38 @@ begin
       if vFrm.ckSelecionado.Checked then
         Result := Result + vFrm.ObjectData.Plano(AEscolha) + LineEnding;
     end;
+end;
+
+procedure Tfrm_ide_versions.ListarMarcadas(ALista: TList);
+var
+  vInt: Integer;
+  vFrm: Tfrm_ide_version;
+begin
+  ALista.Clear;
+  for vInt := 0 to Pred(sbIDEVersions.ControlCount) do
+    if sbIDEVersions.Controls[vInt] is Tfrm_ide_version then
+    begin
+      vFrm := Tfrm_ide_version(sbIDEVersions.Controls[vInt]);
+      if vFrm.ckSelecionado.Checked then
+        ALista.Add(vFrm.ObjectData);
+    end;
+end;
+
+function Tfrm_ide_versions.Resumos: string;
+var
+  vLista: TList;
+  vInt: integer;
+begin
+  Result := '';
+  vLista := TList.Create;
+  try
+    ListarMarcadas(vLista);
+    for vInt := 0 to Pred(vLista.Count) do
+      if TIDEObjectData(vLista[vInt]).Resumo <> '' then
+        Result := Result + TIDEObjectData(vLista[vInt]).Resumo + LineEnding;
+  finally
+    vLista.Free;
+  end;
 end;
 
 function Tfrm_ide_versions.installRAL(ALog: TMemo; AEscolha: TEscolhaInstalacao): boolean;

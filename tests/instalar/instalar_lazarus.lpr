@@ -12,6 +12,9 @@ program instalar_lazarus;
 //                    configuracao de verdade nao e tocada. Implica --sem-build
 //                    (reconstruir a IDE grava o executavel na pasta dela)
 //   --sem-build      registra e marca os pacotes, sem --build-ide
+//   --recibos=<pasta> onde gravar o recibo (padrao: a pasta de dados)
+//   --config=<pasta> usa esta configuracao (uma copia preparada para o teste);
+//                    implica --sem-build
 //   --plano          so mostra o plano
 //   --simular        mostra os comandos, sem executar
 //
@@ -20,7 +23,7 @@ program instalar_lazarus;
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, RALInst.IDE, RALInst.IDE.Lazarus, RALInst.Catalogo,
-  RALInst.Instalar.Lazarus
+  RALInst.Instalar.Lazarus, RALInst.Receitas, RALInst.Dependencias, RALInst.Compatibilidade
   {$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 type
@@ -100,8 +103,16 @@ var
   GInst: TInstalacaoLazarus;
   GIDE: TIDEInstance;
   GNomes: TStringList;
-  GRaiz, GLazarus, GParam, GCopia: string;
+  GRaiz, GLazarus, GParam, GCopia, GConfig, GRecibos: string;
   GConfigTeste, GSemBuild, GPlano, GSimular, GOk: boolean;
+  GReceitas: TReceitas;
+  GReceita: TReceita;
+  GExigidas: TStringList;
+  GBaixa: TBaixaDependencia;
+  GManifesto: TManifesto;
+  GArqManifesto, GVersaoDep, GMotivoDep: string;
+  GPastaReceitas, GPastaDeps: string;
+  GIgnorar: boolean;
   vInt: integer;
 
 begin
@@ -131,6 +142,22 @@ begin
       GPlano := True
     else if GParam = '--simular' then
       GSimular := True
+    else if Copy(GParam, 1, 11) = '--receitas=' then
+      GPastaReceitas := Copy(GParam, 12, MaxInt)
+    else if Copy(GParam, 1, 12) = '--manifesto=' then
+      GArqManifesto := Copy(GParam, 13, MaxInt)
+    else if Copy(GParam, 1, 10) = '--recibos=' then
+      GRecibos := Copy(GParam, 11, MaxInt)
+    else if Copy(GParam, 1, 9) = '--config=' then
+    begin
+      // uma configuracao preparada para o teste; implica --sem-build
+      GConfig := Copy(GParam, 10, MaxInt);
+      GSemBuild := True;
+    end
+    else if Copy(GParam, 1, 7) = '--deps=' then
+      GPastaDeps := Copy(GParam, 8, MaxInt)
+    else if GParam = '--ignorar-existentes' then
+      GIgnorar := True
     else if Copy(GParam, 1, 2) = '--' then
     begin
       WriteLn('opção desconhecida: ', GParam);
@@ -146,6 +173,7 @@ begin
   GIDEs := TIDEList.Create(True);
   GBusca := TBuscaLazarus.Create;
   GCatalogo := TCatalogo.Create;
+  GReceitas := TReceitas.Create;
   try
     GIDE := GBusca.InspecionarPasta(GLazarus);
     if GIDE = nil then
@@ -159,6 +187,12 @@ begin
     begin
       WriteLn('nenhum pacote em ', GRaiz);
       Halt(1);
+    end;
+
+    if GConfig <> '' then
+    begin
+      WriteLn('configuração: ', GConfig);
+      GIDE.ConfigDir := IncludeTrailingPathDelimiter(GConfig);
     end;
 
     if GConfigTeste then
@@ -178,8 +212,80 @@ begin
     try
       GInst.Pacotes.AddStrings(GNomes);
       GInst.ConstruirIDE := not GSemBuild;
+      if GRecibos <> '' then
+        GInst.PastaRecibos := GRecibos;
+      // numa copia da configuracao, a IDE aberta nao atrapalha
+      if (GConfig <> '') or GConfigTeste then
+        GInst.ExigirIDEFechada := False;
       GInst.Simular := GSimular;
       GInst.Log := @GSaida.Linha;
+
+      // F7: receitas e, com --deps=, o download do que a IDE nao tem
+      if GPastaReceitas <> '' then
+      begin
+        GReceitas.CarregarPasta(GPastaReceitas);
+        for vInt := 0 to Pred(GReceitas.Erros.Count) do
+          WriteLn('ERRO: ', GReceitas.Erros[vInt]);
+        GInst.Receitas := GReceitas;
+        GInst.IgnorarExistentes := GIgnorar;
+      end;
+
+      // F6: o manifesto da versao do RAL; sem ele, o do repositorio do instalador
+      GManifesto := TManifesto.Create;
+      GManifesto.CarregarPadrao(GCatalogo.Origem);
+      if GManifesto.Origem = '' then
+      begin
+        if GArqManifesto = '' then
+          GArqManifesto := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..' +
+                                          PathDelim + 'manifesto' + PathDelim + 'ral.json');
+        GManifesto.CarregarArquivo(GArqManifesto);
+      end;
+      for vInt := 0 to Pred(GManifesto.Erros.Count) do
+        WriteLn('ERRO: ', GManifesto.Erros[vInt]);
+      WriteLn('manifesto: ', GManifesto.Origem);
+      GInst.Manifesto := GManifesto;
+      if GPastaDeps <> '' then
+      begin
+        GExigidas := TStringList.Create;
+        try
+          GReceitas.Exigidas(GCatalogo, tpLazarus, GNomes, GExigidas);
+          for vInt := 0 to Pred(GExigidas.Count) do
+          begin
+            GReceita := TReceita(GExigidas.Objects[vInt]);
+            if not GReceita.PodeBaixar or not GReceita.Lazarus.Existe or
+               (not GIgnorar and (GInst.DependenciaInstalada(GReceita) <> '')) then
+              Continue;
+            // F6: a versao que este FPC pede (o Zeos 8.0-patches no 3.3)
+            GVersaoDep := GInst.VersaoDependencia(GReceita, GMotivoDep);
+            if GMotivoDep <> '' then
+            begin
+              WriteLn('não baixa ', GReceita.Nome, ': ', GMotivoDep);
+              Continue;
+            end;
+            GBaixa := TBaixaDependencia.Create(GReceita);
+            try
+              GBaixa.PastaBase := GPastaDeps;
+              GBaixa.Log := @GSaida.Linha;
+              GBaixa.VersaoPedida := GVersaoDep;
+              if GPlano then
+              begin
+                if GBaixa.ResolverVersao then
+                  GInst.PastasDependencias.Values[ChaveDependencia(GReceita.Nome, GVersaoDep)] :=
+                    GBaixa.PastaDestino;
+              end
+              else if GBaixa.Executar then
+                GInst.PastasDependencias.Values[ChaveDependencia(GReceita.Nome, GVersaoDep)] :=
+                  GBaixa.PastaDestino
+              else
+                WriteLn('ERRO: ', GBaixa.Erro);
+            finally
+              GBaixa.Free;
+            end;
+          end;
+        finally
+          GExigidas.Free;
+        end;
+      end;
 
       WriteLn(GInst.Plano);
       if GPlano then
@@ -194,6 +300,7 @@ begin
       GInst.Free;
     end;
   finally
+    GReceitas.Free;
     GCatalogo.Free;
     GBusca.Free;
     GIDEs.Free;

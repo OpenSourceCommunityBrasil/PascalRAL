@@ -13,13 +13,19 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="6">
+      <Resources Count="12">
         <Resource_0 FileName="assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
         <Resource_1 FileName="assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
         <Resource_2 FileName="assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
         <Resource_3 FileName="assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
         <Resource_4 FileName="assets\Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
         <Resource_5 FileName="assets\Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
+        <Resource_6 FileName="receitas\mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
+        <Resource_7 FileName="receitas\zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
+        <Resource_8 FileName="receitas\indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
+        <Resource_9 FileName="receitas\unigui.json" Type="RCDATA" ResourceName="RECEITA_UNIGUI"/>
+        <Resource_10 FileName="manifesto\ral.json" Type="RCDATA" ResourceName="MANIFESTO_RAL"/>
+        <Resource_11 FileName="receitas\firedac.json" Type="RCDATA" ResourceName="RECEITA_FIREDAC"/>
       </Resources>
     </General>
     <i18n>
@@ -27,7 +33,7 @@
     </i18n>
     <VersionInfo>
       <UseVersionInfo Value="True"/>
-      <MajorVersionNr Value="1"/>
+      <MinorVersionNr Value="9"/>
       <StringTable CompanyName="Pascal RAL"/>
     </VersionInfo>
     <BuildModes>
@@ -133,6 +139,9 @@
         </CompilerOptions>
       </Item>
       <Item Name="MacOS64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -164,6 +173,9 @@
         </CompilerOptions>
       </Item>
       <Item Name="MacOSARM64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -290,18 +302,6 @@
         <ComponentName Value="frm_install"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\installparser.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\githubutils.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\ralzipper.pas"/>
-        <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\i18n_utils.pas"/>
