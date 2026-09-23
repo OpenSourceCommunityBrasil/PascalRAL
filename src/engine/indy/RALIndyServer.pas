@@ -163,6 +163,10 @@ begin
         AddHeader('RALEngine', ENGINEINDY);
         ClientInfo.IP := ARequestInfo.RemoteIP;
         ClientInfo.Port := AContext.Binding.PeerPort;
+        { the socket of THIS connection: Indy keeps one TIdContext per
+          connection, so a kept-alive client's requests all report the same
+          handle, and a new connection gets a new one }
+        ClientInfo.ConnectionID := AContext.Binding.Handle;
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequestInfo.UserAgent;
 

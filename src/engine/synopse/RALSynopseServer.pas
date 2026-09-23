@@ -503,6 +503,10 @@ var
   vHeaders: StringRAL;
   {$IFDEF RALWindows}
   vApiReq: PHTTP_REQUEST;
+  vPeer: PNetAddr;
+  vPeerText: RawUtf8;
+  vHash: UInt64;
+  vInt: IntegerRAL;
   {$ENDIF}
 begin
   vRequest := CreateRequest;
@@ -516,6 +520,11 @@ begin
         vRequest.ClientInfo.IP := '127.0.0.1';
       //ClientInfo.Porta := StrToInt(AContext.RemotePort);
       vRequest.ClientInfo.Port := 0;
+      { The connection underneath. The socket modes fill it from their
+        connection object; smHttpSys overrides it below with the peer's
+        address and port, because what mORMot2 hands over here is http.sys's
+        ConnectionId, and that one is per STREAM under HTTP/2. }
+      vRequest.ClientInfo.ConnectionID := AContext.ConnectionID;
 
       vRequest.ClientInfo.MACAddress := EmptyStr;
       vRequest.ClientInfo.UserAgent := RawUtf8(AContext.UserAgent);
@@ -595,6 +604,44 @@ begin
         if (vApiReq <> nil) and
            ((vApiReq^.Flags and HTTP_REQUEST_FLAG_HTTP2) <> 0) then
           vRequest.ProtocolVersion := rhv2;
+        { WHICH TCP CONNECTION, taken from the peer's address AND PORT - the
+          definition of a TCP connection, which no Windows version can report
+          differently.
+
+          Both ids http.sys offers failed this, one after the other.
+          ConnectionId is per STREAM under HTTP/2, so a multiplexing client
+          counted one connection per request - and an afternoon of
+          measurements concluded WinHTTP did not reuse h2 connections, while a
+          relay counting TCP sockets showed it did. RawConnectionId fixed it on
+          Windows 10 and not on a Windows Server VPS: there 1500 h2 requests
+          still counted as 1500 connections, while the server's own TCP table
+          showed a peak of 10. The source port is what every stream of one
+          connection shares, and what two connections never do at the same
+          time.
+
+          IPv4 packs losslessly - address in the upper bits, port in the lower
+          16. IPv6 does not fit in 64 bits with its port, so it is hashed
+          (FNV-1a over address and port); a collision would merge two
+          connections in a COUNT, which is the only use this value has. }
+        if (vApiReq <> nil) and (vApiReq^.Address.pRemoteAddress <> nil) then
+        begin
+          vPeer := vApiReq^.Address.pRemoteAddress;
+          vRequest.ClientInfo.Port := vPeer^.Port;
+          if vPeer^.Family = nfIP4 then
+            vRequest.ClientInfo.ConnectionID :=
+              (Int64RAL(vPeer^.IP4) shl 16) or vPeer^.Port
+          else
+          begin
+            vPeerText := vPeer^.IPWithPort;
+            vHash := UInt64(14695981039346656037);
+            { FNV overflows by design; a Debug build with $Q+ would raise }
+            {$IFOPT Q+}{$DEFINE RALSYNOPSE_QON}{$Q-}{$ENDIF}
+            for vInt := 1 to Length(vPeerText) do
+              vHash := (vHash xor Ord(vPeerText[vInt])) * UInt64(1099511628211);
+            {$IFDEF RALSYNOPSE_QON}{$Q+}{$UNDEF RALSYNOPSE_QON}{$ENDIF}
+            vRequest.ClientInfo.ConnectionID := Int64RAL(vHash);
+          end;
+        end;
       end;
       {$ENDIF}
 

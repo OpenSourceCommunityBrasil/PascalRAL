@@ -379,6 +379,12 @@ begin
         if ClientInfo.IP = '' then
           ClientInfo.IP := ARequest.RemoteHost;
 
+        { the socket of THIS connection: fcl-web keeps one TFPHTTPConnection
+          per connection, so a kept-alive client's requests all report the same
+          handle, and a new connection gets a new one }
+        if (ARequest.Connection <> nil) and (ARequest.Connection.Socket <> nil) then
+          ClientInfo.ConnectionID := ARequest.Connection.Socket.Handle;
+
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequest.UserAgent;
 

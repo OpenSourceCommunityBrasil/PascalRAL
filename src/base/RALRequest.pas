@@ -1,4 +1,4 @@
-﻿/// Unit that contains everything related to the "Request" part of the communication.
+/// Unit that contains everything related to the "Request" part of the communication.
 unit RALRequest;
 
 interface
@@ -15,6 +15,7 @@ type
   /// Class that stores information from the client. Some of them can only be obtained with RALClient
   TRALClientInfo = class(TPersistent)
   private
+    FConnectionID: Int64RAL;
     FIP: StringRAL;
     FMACAddress: StringRAL;
     FPort: IntegerRAL;
@@ -22,6 +23,29 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
   public
+    /// Which CONNECTION carried this request, as the engine identifies it.
+    ///
+    /// It is not an address and not a client: it is the transport underneath,
+    /// and its whole point is that SEVERAL requests can share one. Under
+    /// HTTP/1.1 a kept-alive socket serves them one after the other; under
+    /// HTTP/2 and QUIC they travel at the same time, multiplexed, and telling
+    /// the two apart is otherwise impossible from inside a handler - the
+    /// requests look identical. Counting distinct values against the number of
+    /// requests is what says whether multiplexing actually happened, which is
+    /// also how a server tells one busy client from many.
+    ///
+    /// The value is only unique and only comparable WITHIN one running server:
+    /// each engine hands over whatever it already has - http.sys the peer's
+    /// address and port (its own ConnectionId is per stream under HTTP/2, and
+    /// its RawConnectionId is not filled on every Windows), the socket engines
+    /// the connection object or its handle - so it must never be persisted,
+    /// sent to a client, or compared across servers. A reused connection keeps the same value for its whole life;
+    /// a value may be reused after its connection is gone.
+    ///
+    /// ZERO means the engine cannot tell, which is a legitimate answer and not
+    /// an error - CGI has no connection of its own, and UniGUI's belongs to
+    /// UniGUI. Code that counts must skip it rather than treat it as one more.
+    property ConnectionID: Int64RAL read FConnectionID write FConnectionID;
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
     property Port: IntegerRAL read FPort write FPort;
@@ -479,6 +503,7 @@ var
   vDest : TRALClientInfo;
 begin
   vDest := TRALClientInfo(Dest);
+  vDest.ConnectionID := Self.ConnectionID;
   vDest.IP := Self.IP;
   vDest.MACAddress := Self.MACAddress;
   vDest.Port := Self.Port;

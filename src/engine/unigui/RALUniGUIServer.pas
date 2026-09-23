@@ -100,6 +100,10 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
+      { ClientInfo.ConnectionID stays 0 on purpose: the server here is UniGUI's,
+        RAL only hooks its events, and the hook hands over the request info
+        without the context that owns the socket. Zero is the documented
+        answer for "the engine cannot tell" - see TRALClientInfo.ConnectionID }
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 

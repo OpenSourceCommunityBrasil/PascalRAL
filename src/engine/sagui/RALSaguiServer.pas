@@ -401,6 +401,10 @@ begin
         vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
+        { libmicrohttpd's client handle, which is per CONNECTION - the same
+          pointer GetSaguiIP reads the address from. A kept-alive client's
+          requests all report it; nil (no client) stays 0, meaning unknown }
+        ClientInfo.ConnectionID := Int64RAL(NativeUInt(sg_httpreq_client(Areq)));
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 

@@ -83,6 +83,11 @@ type
     RefCount: Integer;
     ClientIP: StringRAL;
     ClientPort: IntegerRAL;
+    /// which CONNECTION this stream belongs to - see TRALClientInfo.ConnectionID.
+    /// A QUIC connection carries many streams at once, so every request of a
+    /// client that keeps its connection reports the same value, and that is
+    /// what turns "N requests" into "N requests over how many connections"
+    ConnID: Int64RAL;
     /// the peer sent more than MaxRequestSize: the rest was dropped as it
     /// arrived and the answer is a 413, without the body ever being held
     Oversized: boolean;
@@ -215,7 +220,7 @@ type
     /// callbacks only; it is where ValidateRequest and ProcessCommands run.
     function HandleFrame(ARequest: PByte; ASize: IntegerRAL;
                          const AClientIP: StringRAL; AClientPort: IntegerRAL;
-                         AOversized: boolean): TBytes;
+                         AConnID: Int64RAL; AOversized: boolean): TBytes;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -585,6 +590,9 @@ begin
           vCtx.Stream := vStarted^.Stream;
           vCtx.ClientIP := vConn.ClientIP;
           vCtx.ClientPort := vConn.ClientPort;
+          { the connection object itself is the identity: MsQuic builds one per
+            connection and it lives exactly as long as the connection does }
+          vCtx.ConnID := Int64RAL(NativeUInt(vConn));
           MsQuicApi^.SetCallbackHandler(vStarted^.Stream,
             @RALMsQuicStreamCallback, vCtx);
         end;
@@ -939,7 +947,7 @@ begin
     try
       RALAtomicInc(FRequests);
       vResponse := HandleFrame(PByte(vCtx.Received.Memory), vCtx.Received.Size,
-        vCtx.ClientIP, vCtx.ClientPort, vCtx.Oversized);
+        vCtx.ClientIP, vCtx.ClientPort, vCtx.ConnID, vCtx.Oversized);
       {$IFDEF RALMSQUIC_PROFILE}
       vNow2 := SrvTicks;
       RALAtomicInc(gHandleTicks, vNow2 - vCbStart);
@@ -1057,7 +1065,7 @@ begin
 end;
 
 function TRALMsQuicServer.HandleFrame(ARequest: PByte; ASize: IntegerRAL;
-  const AClientIP: StringRAL; AClientPort: IntegerRAL;
+  const AClientIP: StringRAL; AClientPort: IntegerRAL; AConnID: Int64RAL;
   AOversized: boolean): TBytes;
 var
   vRequest: TRALRequest;
@@ -1111,6 +1119,7 @@ begin
             this field, so it has to be the peer's and not a placeholder }
           vRequest.ClientInfo.IP := AClientIP;
           vRequest.ClientInfo.Port := AClientPort;
+          vRequest.ClientInfo.ConnectionID := AConnID;
           vRequest.ClientInfo.MACAddress := '';
 
           if vMethod <= Byte(Ord(High(TRALMethod))) then
