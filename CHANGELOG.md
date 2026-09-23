@@ -73,6 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **Add TRALClientInfo.ConnectionID to tell requests apart by connection** (2026-09-22 – tempraturbo)
+  Every server engine now reports which connection carried each request,
+  so a server can count requests against connections and see whether a
+  client is multiplexing. Zero means the engine cannot tell (CGI, UniGUI).
+  Under http.sys the id comes from the peer's address and port:
+  HTTP_REQUEST.ConnectionId is per stream under HTTP/2, and RawConnectionId
+  is not filled on every Windows. On that engine ClientInfo.Port is now
+  filled as well, where it used to be 0.
+
 - **Add a Kwik QUIC client engine for Android** (2026-09-21 – tempraturbo)
   Android has no other way to speak QUIC on a stream of its own. Every official
   stack there is an HTTP client - OkHttp declares Protocol.HTTP_3 and implements
