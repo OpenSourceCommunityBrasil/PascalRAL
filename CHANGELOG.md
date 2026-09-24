@@ -372,6 +372,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Linux installation fix** (2026-09-24 – mobius1qwe)
+
 - **Fix HTTPVersion offering a choice the engine cannot make** (2026-09-21 – tempraturbo)
   It was published on every engine, and two of those cannot answer it at all.
   Indy, fpHTTP and mORMot2 speak HTTP/1.1 and nothing else; MsQuic and Kwik are
