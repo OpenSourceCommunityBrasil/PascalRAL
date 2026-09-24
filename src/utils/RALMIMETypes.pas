@@ -208,7 +208,7 @@ const
 
 implementation
 
-{$I RALMimeTypes.inc}
+{$I RALMIMETypes.inc}
 
 { TRALMIMEType }
 
