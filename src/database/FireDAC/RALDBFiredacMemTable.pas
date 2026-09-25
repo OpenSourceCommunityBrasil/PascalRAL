@@ -256,7 +256,7 @@ begin
   vInfo := nil;
 
   try
-    vInfo := SchemaFor(StringRAL(FSQL.Text.Trim));
+    vInfo := SchemaFor(StringRAL(Trim(FSQL.Text)));
 
     if vInfo = nil then
       Exit;

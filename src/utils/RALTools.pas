@@ -59,6 +59,13 @@ function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL; overlo
 
 implementation
 
+{ AtomicIncrement/AtomicDecrement are intrinsics from Delphi XE3 on; before that
+  TInterlocked does the same, also returning the new value }
+{$IF NOT DEFINED(FPC) AND NOT DEFINED(DELPHIXE3UP)}
+uses
+  SyncObjs;
+{$IFEND}
+
 {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
 var
   gAtomic64: System.TRTLCriticalSection;
@@ -528,7 +535,11 @@ begin
   {$IFDEF FPC}
   Result := InterLockedIncrement(ATarget);
   {$ELSE}
+  {$IFDEF DELPHIXE3UP}
   Result := AtomicIncrement(ATarget);
+  {$ELSE}
+  Result := TInterlocked.Increment(ATarget);
+  {$ENDIF}
   {$ENDIF}
 end;
 
@@ -537,7 +548,11 @@ begin
   {$IFDEF FPC}
   Result := InterLockedDecrement(ATarget);
   {$ELSE}
+  {$IFDEF DELPHIXE3UP}
   Result := AtomicDecrement(ATarget);
+  {$ELSE}
+  Result := TInterlocked.Decrement(ATarget);
+  {$ENDIF}
   {$ENDIF}
 end;
 
@@ -559,7 +574,11 @@ begin
     end;
     {$ENDIF}
   {$ELSE}
+  {$IFDEF DELPHIXE3UP}
   Result := AtomicIncrement(ATarget, AValue);
+  {$ELSE}
+  Result := TInterlocked.Add(ATarget, AValue);
+  {$ENDIF}
   {$ENDIF}
 end;
 

@@ -18,7 +18,7 @@ type
 
   TOnQueryRemoteFinish = procedure(ASender: TObject; AException: Exception) of object;
 
-  [ComponentPlatforms(pidAllPlatforms)]
+  {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
   TRALFDQuery = class(TFDQuery)
   private
     vQueryBehavior: TRALExecBehavior;
@@ -61,7 +61,7 @@ type
     of object;
   TOnQueryAfterOpen = procedure(DataSet: TDataSet) of object;
 
-  [ComponentPlatforms(pidAllPlatforms)]
+  {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
   TRALFDConnection = class(TFDConnection)
   private
     vDriverName: StringRAL;

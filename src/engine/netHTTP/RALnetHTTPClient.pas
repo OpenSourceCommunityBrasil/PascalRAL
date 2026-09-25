@@ -80,7 +80,9 @@ implementation
   would have to be right about which release introduced THTTPProtocolVersion
   and kept right forever, while this answers the only question that matters -
   is it there, in the RTL being compiled against. }
-{$IF Declared(THTTPProtocolVersion)}
+{ The type is older than the property: Delphi 10.x declares THTTPProtocolVersion
+  and its THTTPClient has no ProtocolVersion yet - that came with Delphi 11. }
+{$IF Declared(THTTPProtocolVersion) and Defined(DELPHI11UP)}
   {$DEFINE RALNETHTTP_VERSIONED}
 {$IFEND}
 
@@ -335,6 +337,11 @@ const
     checks its result to raise: a missing feature is not an error. }
   WINHTTP_OPTION_HTTP2_KEEPALIVE = 164;
 
+  { declared here because the RTL of Delphi 10 Seattle and older lacks them; the
+    newer ones declare the same values, which these simply repeat }
+  WINHTTP_OPTION_HTTP_PROTOCOL_USED = 147;
+  WINHTTP_PROTOCOL_FLAG_HTTP2 = $1;
+
 function GetMaxConnsPerServer(AHttp: TNetHTTPClient; out AValue: DWORD): boolean;
 var
   vSession: Pointer;
@@ -396,9 +403,21 @@ end;
 {$ENDIF}
 
 {$IFDEF RALWindows}
+type
+  { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
+    Delphi 10.1 on, so the engine carries its own. }
+  TRALCertContext = record
+    dwCertEncodingType: DWORD;
+    pbCertEncoded: PByte;
+    cbCertEncoded: DWORD;
+    pCertInfo: Pointer;
+    hCertStore: Pointer;
+  end;
+  PRALCertContext = ^TRALCertContext;
+
 { Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
   commented out in Winapi.Windows. One line settles it. }
-function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL; stdcall;
+function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
   external 'crypt32.dll' name 'CertFreeCertificateContext';
 
 { THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
@@ -543,7 +562,7 @@ var
   vType: TRttiType;
   vField: TRttiField;
   vHandle: Pointer;
-  vCert: PCCERT_CONTEXT;
+  vCert: PRALCertContext;
   vSize: DWORD;
   vOption: DWORD;
   vHash: THashSHA2;
@@ -833,7 +852,9 @@ begin
   vCert := RALEmptyCertInfo;
   vCert.Subject := StringRAL(Certificate.Subject);
   vCert.Issuer := StringRAL(Certificate.Issuer);
+  {$IFDEF DELPHI10_3UP}
   vCert.SerialNumber := StringRAL(Certificate.SerialNum);
+  {$ENDIF}
   vCert.NotBefore := Certificate.Start;
   vCert.NotAfter := Certificate.Expiry;
 

@@ -35,8 +35,13 @@ type
 
     procedure OnConnBeforeConnect(ASender: TObject);
     procedure OnConnAfterConnect(ASender: TObject);
-    procedure OnConnError(ASender, AInitiator: TObject; var AException: Exception);
-    procedure OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
+    // AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
+    procedure OnConnError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
+    procedure OnQueryError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -193,13 +198,17 @@ begin
     OnBeforeConnect(ASender, Request);
 end;
 
-procedure TRALDBFireDAC.OnConnError(ASender, AInitiator: TObject; var AException: Exception);
+procedure TRALDBFireDAC.OnConnError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
 begin
   if Assigned(OnErrorConnect) then
     OnErrorConnect(ASender, AException.Message, Request);
 end;
 
-procedure TRALDBFireDAC.OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
+procedure TRALDBFireDAC.OnQueryError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
 begin
   if Assigned(OnErrorQuery) then
     OnErrorQuery(ASender, AException.Message, Request);

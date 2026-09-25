@@ -1738,7 +1738,9 @@ begin
        ((vByte >= Ord('A')) and (vByte <= Ord('F'))) then
     begin
       vLen := vLen + 1;
-      Result[vLen] := CharRAL(vByte);
+      // a StringRAL element is AnsiChar everywhere; CharRAL is WideChar
+      // before Delphi 10.1
+      Result[vLen] := AnsiChar(vByte);
     end;
   end;
   SetLength(Result, vLen);
