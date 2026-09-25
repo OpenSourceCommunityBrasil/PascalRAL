@@ -14,20 +14,25 @@ uses
   elfreader,
   machoreader,
   Forms,
-  umain,
-  ufrm_modelo,
-  ufrm_idioma,
-  utools,
-  ufrm_ide,
-  ufrm_ide_versions,
-  ufrm_ide_version,
-  {$IFDEF MSWINDOWS}delphiutils,{$ENDIF}
-  lazarusutils,
-  ufrm_recursos,
-  udm,
-  ufrm_install,
-  i18n_utils,
-  ideutils;
+  {$IFDEF MSWINDOWS}
+  RALInst.Tela.Delphi,
+  {$ENDIF}
+  RALInst.Tela.GeradorPO,
+  RALInst.Tela.IDE,
+  RALInst.Tela.Idioma,
+  RALInst.Tela.Imagens,
+  RALInst.Tela.Instalacao,
+  RALInst.Tela.Instalar,
+  RALInst.Tela.ItemIDE,
+  RALInst.Tela.Lazarus,
+  RALInst.Tela.Mensagens,
+  RALInst.Tela.Modelo,
+  RALInst.Tela.Principal,
+  RALInst.Tela.Recursos,
+  RALInst.Tela.Tarefa,
+  RALInst.Tela.Temas,
+  RALInst.Tela.Traducao,
+  RALInst.Tela.VersoesIDE;
 
   {$R *.res}
 
@@ -36,7 +41,7 @@ begin
   Application.Title := 'RAL Installer';
   Application.Scaled := True;
   Application.Initialize;
-  Application.CreateForm(Tdm, dm);
-  Application.CreateForm(Tfmain, fmain);
+  Application.CreateForm(TImagens, Imagens);
+  Application.CreateForm(TTelaPrincipal, TelaPrincipal);
   Application.Run;
 end.

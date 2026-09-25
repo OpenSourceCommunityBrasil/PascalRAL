@@ -1,7 +1,7 @@
 # F11: os binarios do instalador, do mesmo fonte, a cada tag instalador-v<versao>.
 #
 # A versao do instalador e independente da do RAL: a unica fonte e
-# VersaoInstalador em fontes/nucleo/RALInst.Versao.pas. A tag tem de bater com
+# VersaoInstalador em src/classes/RALInst.Versao.pas. A tag tem de bater com
 # ela (o job falha se nao bater), e os numeros vao para o VersionInfo dos .lpi.
 # O release leva, por sistema, o instalador grafico e a linha de comando, mais
 # SHA256SUMS — que a auto-atualizacao (F12) confere antes de trocar o binario.
@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           tag="${GITHUB_REF_NAME#instalador-v}"
-          codigo=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" fontes/nucleo/RALInst.Versao.pas)
+          codigo=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" src/classes/RALInst.Versao.pas)
           echo "tag: $tag  codigo: $codigo"
           if [ "$tag" != "$codigo" ]; then
             echo "::error::a tag ($tag) nao bate com VersaoInstalador ($codigo) em RALInst.Versao.pas"
@@ -59,7 +59,7 @@ jobs:
       - name: VersionInfo dos .lpi
         shell: bash
         run: |
-          versao=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" fontes/nucleo/RALInst.Versao.pas)
+          versao=$(sed -n "s/.*VersaoInstalador = '\(.*\)';.*/\1/p" src/classes/RALInst.Versao.pas)
           IFS=. read -r maior menor revisao <<< "$versao"
           for lpi in RALInstaller.lpi cli/ralcli.lpi; do
             perl -0pi -e 's/\s*<(Major|Minor|Revision)VersionNr Value="\d+"\/>//g' "$lpi"
@@ -90,12 +90,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p lib/testes
-          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/catalogo" tests/catalogo/catalogo.lpr
-          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/compatibilidade" tests/compatibilidade/compatibilidade.lpr
-          fpc -B -Fufontes/nucleo -FUlib/testes -o"lib/testes/recibos" tests/recibos/recibos.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/catalogo" tests/catalogo/catalogo.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/compatibilidade" tests/compatibilidade/compatibilidade.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/recibos" tests/recibos/recibos.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/traducao" tests/traducao/traducao.lpr
           ./lib/testes/catalogo
           ./lib/testes/compatibilidade --testes --receitas=receitas
           ./lib/testes/recibos
+          ./lib/testes/traducao .
 
       - uses: actions/upload-artifact@v4
         with:

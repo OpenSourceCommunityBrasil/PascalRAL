@@ -9,13 +9,138 @@
         <Filename Value="RALInstaller.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ralinstaller"/>
-        <CursorPos X="27" Y="10"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="13"/>
+        <CursorPos X="35" Y="25"/>
         <UsageCount Value="96"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\umain.pas"/>
+        <Filename Value="fontes\telas\RALInst.Tela.Principal.pas"/>
         <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaPrincipal"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="304"/>
+        <CursorPos X="38" Y="324"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Modelo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaModelo"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Idioma.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaIdioma"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.IDE.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaIDE"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.VersoesIDE.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaVersoesIDE"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.ItemIDE.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ItemIDE"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Recursos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaRecursos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Instalar.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TelaInstalar"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="172"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Imagens.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Imagens"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Delphi.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.GeradorPO.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Instalacao.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Lazarus.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Mensagens.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Tarefa.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Temas.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\telas\RALInst.Tela.Traducao.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fontes\umain.pas"/>
         <ComponentName Value="fmain"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
@@ -26,34 +151,25 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\ufrm_modelo.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_modelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="157"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="51" Y="173"/>
         <UsageCount Value="96"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_idioma.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_idioma"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="26"/>
         <CursorPos X="55" Y="45"/>
         <UsageCount Value="96"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\utools.pas"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="92"/>
         <CursorPos X="24" Y="92"/>
@@ -61,7 +177,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_ide"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
@@ -72,7 +187,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_ide_versions"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
@@ -83,7 +197,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\ufrm_ide_version.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_ide_version"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
@@ -94,15 +207,13 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\delphiutils.pas"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="231"/>
-        <CursorPos X="16" Y="172"/>
+        <TopLine Value="83"/>
+        <CursorPos X="16" Y="106"/>
         <UsageCount Value="93"/>
       </Unit>
       <Unit>
         <Filename Value="fontes\lazarusutils.pas"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="91"/>
         <UsageCount Value="89"/>
@@ -112,7 +223,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_recursos.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_recursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
@@ -123,7 +233,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\udm.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="dm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
@@ -133,7 +242,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\telas\ufrm_install.pas"/>
-        <IsPartOfProject Value="True"/>
         <ComponentName Value="frm_install"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
@@ -143,7 +251,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\i18n_utils.pas"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="9"/>
         <CursorPos X="40" Y="19"/>
@@ -151,7 +258,6 @@
       </Unit>
       <Unit>
         <Filename Value="fontes\ideutils.pas"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="28" Y="42"/>
         <UsageCount Value="28"/>
@@ -640,15 +746,7 @@
         <UsageCount Value="10"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="2">
-      <Position>
-        <Filename Value="fontes\telas\ufrm_idioma.pas"/>
-        <Caret Line="8" Column="39"/>
-      </Position>
-      <Position>
-        <Filename Value="fontes\ufrm_modelo.pas"/>
-        <Caret Line="170" Column="51" TopLine="152"/>
-      </Position>
+    <JumpHistory>
       <Position>
         <Filename Value="RALInstaller.lpr"/>
         <Caret Line="10" Column="27"/>

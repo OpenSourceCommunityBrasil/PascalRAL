@@ -13,19 +13,22 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="12">
-        <Resource_0 FileName="assets\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
-        <Resource_1 FileName="assets\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
-        <Resource_2 FileName="assets\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
-        <Resource_3 FileName="assets\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
-        <Resource_4 FileName="assets\Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
-        <Resource_5 FileName="assets\Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
+      <Resources Count="15">
+        <Resource_0 FileName="Assets\images\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
+        <Resource_1 FileName="Assets\images\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
+        <Resource_2 FileName="Assets\images\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
+        <Resource_3 FileName="Assets\images\Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
+        <Resource_4 FileName="Assets\images\Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
+        <Resource_5 FileName="Assets\images\Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
         <Resource_6 FileName="receitas\mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
         <Resource_7 FileName="receitas\zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
         <Resource_8 FileName="receitas\indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
         <Resource_9 FileName="receitas\unigui.json" Type="RCDATA" ResourceName="RECEITA_UNIGUI"/>
         <Resource_10 FileName="manifesto\ral.json" Type="RCDATA" ResourceName="MANIFESTO_RAL"/>
         <Resource_11 FileName="receitas\firedac.json" Type="RCDATA" ResourceName="RECEITA_FIREDAC"/>
+        <Resource_12 FileName="src\languages\ralinstaller.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
+        <Resource_13 FileName="src\languages\ralinstaller.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
+        <Resource_14 FileName="src\languages\ralinstaller.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
       </Resources>
     </General>
     <i18n>
@@ -47,7 +50,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+            <OtherUnitFiles Value="src\telas;src\classes"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -83,7 +86,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+            <OtherUnitFiles Value="src\telas;src\classes"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -115,7 +118,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+            <OtherUnitFiles Value="src\telas;src\classes"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -150,7 +153,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+            <OtherUnitFiles Value="src\telas;src\classes"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -184,7 +187,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+            <OtherUnitFiles Value="src\telas;src\classes"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -229,86 +232,98 @@
         <UnitName Value="ralinstaller"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\umain.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.Principal.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="fmain"/>
+        <ComponentName Value="TelaPrincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\ufrm_modelo.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.Modelo.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_modelo"/>
+        <ComponentName Value="TelaModelo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\telas\ufrm_idioma.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.Idioma.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_idioma"/>
+        <ComponentName Value="TelaIdioma"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\utools.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.IDE.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\telas\ufrm_ide.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_ide"/>
+        <ComponentName Value="TelaIDE"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\telas\ufrm_ide_versions.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.VersoesIDE.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_ide_versions"/>
+        <ComponentName Value="TelaVersoesIDE"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\ufrm_ide_version.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.ItemIDE.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_ide_version"/>
+        <ComponentName Value="ItemIDE"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\delphiutils.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.Recursos.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\lazarusutils.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\telas\ufrm_recursos.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_recursos"/>
+        <ComponentName Value="TelaRecursos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\udm.pas"/>
+        <Filename Value="src\telas\RALInst.Tela.Instalar.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="dm"/>
+        <ComponentName Value="TelaInstalar"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Imagens.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Imagens"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\telas\ufrm_install.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="frm_install"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fontes\i18n_utils.pas"/>
+        <Filename Value="src\classes\RALInst.Tela.Delphi.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="fontes\ideutils.pas"/>
+        <Filename Value="src\classes\RALInst.Tela.GeradorPO.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Instalacao.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Lazarus.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Mensagens.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Tarefa.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Temas.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\classes\RALInst.Tela.Traducao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
@@ -321,7 +336,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="fontes;fontes\telas;fontes\nucleo"/>
+      <OtherUnitFiles Value="src\telas;src\classes"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

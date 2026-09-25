@@ -1,0 +1,1876 @@
+msgid ""
+msgstr ""
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: RAL Installer\n"
+
+#: ralinst.mensagens.cmorigemdisco
+msgid "disco"
+msgstr ""
+
+#: ralinst.mensagens.cmorigemmanual
+msgid "manual"
+msgstr ""
+
+#: ralinst.mensagens.cmorigemregistro
+msgid "registro"
+msgstr ""
+
+#: ralinst.mensagens.cmdelphinaoreconhecido
+msgid "Delphi não reconhecido"
+msgstr ""
+
+#: ralinst.mensagens.wmdelphidesconhecido
+msgid "Versão do Delphi que este instalador não conhece: atualize o instalador."
+msgstr ""
+
+#: ralinst.mensagens.wmdelphidivideregistro
+msgid "Divide a configuração do registro com %s: o que for instalado numa aparece na outra."
+msgstr ""
+
+#: ralinst.mensagens.wmdelphiforadoregistro
+msgid "Instalação fora do registro: ela usa a configuração de HKCU%s, que é compartilhada por toda instalação desta mesma versão."
+msgstr ""
+
+#: ralinst.mensagens.wmdelphinuncaaberta
+msgid "Esta versão nunca foi aberta nesta conta de usuário: abra a IDE uma vez antes de instalar nela. Compilar os pacotes funciona."
+msgstr ""
+
+#: ralinst.mensagens.wmdelphisufixo
+msgid "O compilador desta pasta tem sufixo %s, mas %s usa %s: confira se a pasta não mistura versões."
+msgstr ""
+
+#: ralinst.mensagens.cmprefixoaviso
+msgid "  aviso: "
+msgstr ""
+
+#: ralinst.mensagens.cmprefixoerro
+msgid "ERRO: "
+msgstr ""
+
+#: ralinst.mensagens.emarquivonaoexiste
+msgid "%s não existe"
+msgstr ""
+
+#: ralinst.mensagens.emcriar
+msgid "não foi possível criar %s"
+msgstr ""
+
+#: ralinst.mensagens.emlimpar
+msgid "não foi possível limpar %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbaixandoarquivo
+msgid "  baixando %s"
+msgstr ""
+
+#: ralinst.mensagens.cmextraindoem
+msgid "  extraindo %s em %s"
+msgstr ""
+
+#: ralinst.mensagens.emextrasemrelease
+msgid "%s: o extra %s vem de um release, e a versão %s não é um release"
+msgstr ""
+
+#: ralinst.mensagens.emfalhabaixar
+msgid "%s: falha ao baixar %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.emformatoextra
+msgid "formato do extra não suportado (só .zip, .tgz, .tar.gz): %s"
+msgstr ""
+
+#: ralinst.mensagens.emsemdownload
+msgid "%s não tem download"
+msgstr ""
+
+#: ralinst.mensagens.emsemreleaseextra
+msgid "%s: não achei release estável para o extra %s"
+msgstr ""
+
+#: ralinst.mensagens.emsemversaoestavel
+msgid "%s: não achei versão estável em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmextraindo
+msgid "  extraindo %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfontes
+msgid "Fontes: %s %s em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfontesjanapasta
+msgid "  já está na pasta (commit %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmfontespronto
+msgid "  pronto: commit %s, %d submódulo(s)"
+msgstr ""
+
+#: ralinst.mensagens.cmsubmodulo
+msgid "  submódulo %s: %s/%s @ %s"
+msgstr ""
+
+#: ralinst.mensagens.empastadeoutro
+msgid "a pasta %s já existe e não foi criada pelo instalador; escolha outra pasta de instalação ou esvazie esta"
+msgstr ""
+
+#: ralinst.mensagens.emsubmoduloforagithub
+msgid "submódulo %s: endereço fora do GitHub (%s)"
+msgstr ""
+
+#: ralinst.mensagens.emsubmodulonaodeclarado
+msgid "a versão %s não declara o submódulo %s"
+msgstr ""
+
+#: ralinst.mensagens.emsubmoduloscommit
+msgid "não deu para saber o commit dos submódulos: %s"
+msgstr ""
+
+#: ralinst.mensagens.emsubstituirpasta
+msgid "não foi possível substituir %s (algum arquivo aberto? feche as IDEs). A versão nova ficou em %s"
+msgstr ""
+
+#: ralinst.mensagens.wmsubmodulonaoexiste
+msgid "  submódulo %s não existe na versão %s; fica de fora"
+msgstr ""
+
+#: ralinst.mensagens.wmversaoanteriorficou
+msgid "  aviso: a versão anterior ficou em %s; pode ser apagada à mão"
+msgstr ""
+
+#: ralinst.mensagens.cmhashconferido
+msgid "hash conferido: %s"
+msgstr ""
+
+#: ralinst.mensagens.ematuapagar
+msgid "não consegui apagar %s"
+msgstr ""
+
+#: ralinst.mensagens.ematudownload
+msgid "o download falhou: %s"
+msgstr ""
+
+#: ralinst.mensagens.ematuhash
+msgid "o hash do arquivo baixado não confere com o SHA256SUMS do release"
+msgstr ""
+
+#: ralinst.mensagens.ematunenhumaversao
+msgid "nenhuma versão nova escolhida (chame Verificar antes)"
+msgstr ""
+
+#: ralinst.mensagens.ematunovonaoexiste
+msgid "o arquivo novo não existe: %s"
+msgstr ""
+
+#: ralinst.mensagens.ematureiniciar
+msgid "não consegui reiniciar: %s"
+msgstr ""
+
+#: ralinst.mensagens.ematurenomear
+msgid "não consegui renomear %s"
+msgstr ""
+
+#: ralinst.mensagens.ematusembinario
+msgid "a versão %s não tem binário para este sistema (%s)"
+msgstr ""
+
+#: ralinst.mensagens.ematusemescrita
+msgid "sem permissão de escrita na pasta do instalador (%s): %s"
+msgstr ""
+
+#: ralinst.mensagens.ematusomas
+msgid "não consegui baixar o SHA256SUMS do release: %s"
+msgstr ""
+
+#: ralinst.mensagens.ematusomassemasset
+msgid "o SHA256SUMS do release não tem %s"
+msgstr ""
+
+#: ralinst.mensagens.ematutamanho
+msgid "o arquivo baixado não tem o tamanho do release"
+msgstr ""
+
+#: ralinst.mensagens.ematutrocar
+msgid "não consegui pôr o arquivo novo no lugar; o instalador continua o de antes"
+msgstr ""
+
+#: ralinst.mensagens.ematuverificar
+msgid "não foi possível verificar: %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubrespostainesperada
+msgid "resposta inesperada da API do GitHub"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildcodigo
+msgid "dcc terminou com código %d"
+msgstr ""
+
+#: ralinst.mensagens.cmbuilddependefalhou
+msgid "depende de %s, que falhou"
+msgstr ""
+
+#: ralinst.mensagens.cmbuilddesignwin32
+msgid "pacote de design-time: só existe em Win32"
+msgstr ""
+
+#: ralinst.mensagens.cmbuilderrocompilacao
+msgid "erro de compilação: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildfalhou
+msgid "  FALHOU: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildfonteausente
+msgid "fonte ausente na árvore: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildplataformadproj
+msgid "o .dproj não habilita %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildpulado
+msgid "  pulado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildsemarquivo
+msgid "arquivo não encontrado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildsembpl
+msgid "compilou, mas o .bpl não apareceu em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildsemres
+msgid "não foi possível gerar o .res"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildsemsubmodulo
+msgid "submódulo não baixado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildunidadeausente
+msgid "dependência externa ausente: unidade %s não foi encontrada"
+msgstr ""
+
+#: ralinst.mensagens.cmcolunaobservacao
+msgid "observação"
+msgstr ""
+
+#: ralinst.mensagens.cmcolunapacote
+msgid "pacote"
+msgstr ""
+
+#: ralinst.mensagens.cmcolunaresultado
+msgid "resultado"
+msgstr ""
+
+#: ralinst.mensagens.cmcolunatamanho
+msgid "tamanho"
+msgstr ""
+
+#: ralinst.mensagens.cmcompilando
+msgid "Compilando %d pacote(s) em %s (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmestadofalhou
+msgid "FALHOU"
+msgstr ""
+
+#: ralinst.mensagens.cmestadook
+msgid "ok"
+msgstr ""
+
+#: ralinst.mensagens.cmestadopulado
+msgid "pulado"
+msgstr ""
+
+#: ralinst.mensagens.cmgerandores
+msgid "  gerando %s (não vem no repositório)"
+msgstr ""
+
+#: ralinst.mensagens.cmsimulacao
+msgid "simulação"
+msgstr ""
+
+#: ralinst.mensagens.cmsimulacaocomando
+msgid "  (simulação) %s"
+msgstr ""
+
+#: ralinst.mensagens.embrcc32
+msgid "  ERRO: brcc32 não gerou %s"
+msgstr ""
+
+#: ralinst.mensagens.embuildcompiladorausente
+msgid "ERRO: compilador não encontrado: %s"
+msgstr ""
+
+#: ralinst.mensagens.embuildplataforma
+msgid "ERRO: %s não compila para %s"
+msgstr ""
+
+#: ralinst.mensagens.embuildsemcommondir
+msgid "ERRO: não sei onde gravar .bpl/.dcp desta IDE (BDSCOMMONDIR vazio)."
+msgstr ""
+
+#: ralinst.mensagens.embuildsemcompilador
+msgid "ERRO: %s não tem compilador de linha de comando utilizável."
+msgstr ""
+
+#: ralinst.mensagens.embuildsemfontes
+msgid "ERRO: os fontes do RAL precisam estar em disco para compilar."
+msgstr ""
+
+#: ralinst.mensagens.wmbplgrande
+msgid "  AVISO: %s tem %d KB para %d unidade(s): confira o -LU, pode ter linkado biblioteca de terceiro dentro do pacote"
+msgstr ""
+
+#: ralinst.mensagens.wmbuildsemsubmodulo
+msgid ". O zip do GitHub não traz submódulo: baixe-o antes (o instalador faz isso na etapa de download)."
+msgstr ""
+
+#: ralinst.mensagens.wmbuildunidadeausente
+msgid ". Instale a biblioteca do recurso, aponte a pasta dela, ou desmarque este pacote."
+msgstr ""
+
+#: ralinst.mensagens.wmsemdcp
+msgid "  AVISO: pacote exigido sem .dcp em disco: %s (o compilador vai linkar as unidades dele dentro do .bpl)"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogobaixar
+msgid "  (não está na origem: baixar)"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogocaminhobusca
+msgid "      caminho de busca: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogodepoisde
+msgid "      depois de: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogodesconhecidos
+msgid "Pedidos que o catálogo não conhece: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogoexternos
+msgid "Pacotes externos exigidos: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogofontesausentes
+msgid "      FONTES AUSENTES: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogoimplicitos
+msgid "      implícitos (.dproj, fora do requires): %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogoplano
+msgid "Plano %s: %d pacote(s), a partir de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogosubmodulo
+msgid "      submódulo: %s  <- %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogosubmodulos
+msgid "Submódulos a baixar junto com o RAL: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogovariaveis
+msgid "      variáveis exigidas: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcatalogovazio
+msgid "      VAZIO: o pacote não contém nenhuma unidade"
+msgstr ""
+
+#: ralinst.mensagens.cmcompilarinstalar
+msgid "compilar e instalar"
+msgstr ""
+
+#: ralinst.mensagens.cmsocompilar
+msgid "só compilar"
+msgstr ""
+
+#: ralinst.mensagens.emcatalogociclo
+msgid "Dependência circular entre pacotes %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.emcatalogosemnopackage
+msgid "%s: nó <Package> não encontrado"
+msgstr ""
+
+#: ralinst.mensagens.emcatalogosempackage
+msgid "%s: cláusula \"package\" não encontrada"
+msgstr ""
+
+#: ralinst.mensagens.cmmanifestodaversao
+msgid "ralinstaller.json de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmanifestoembutido
+msgid "manifesto embutido"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivocomercial
+msgid "%s é comercial e não está instalado no %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivodepende
+msgid "depende de %s, que não cabe nesta IDE"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivoexige
+msgid "exige %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivoinstaladanaocompila
+msgid "o %s instalado nesta IDE (%s) não compila aqui: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivosempacote
+msgid "o %s não tem o pacote %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivosemunidade
+msgid "usa %s, que o %s não tem"
+msgstr ""
+
+#: ralinst.mensagens.emmanifestoformato
+msgid "formato %d desconhecido (este instalador lê o 1)"
+msgstr ""
+
+#: ralinst.mensagens.emmanifestonaoobjeto
+msgid "%s: o manifesto deveria ser um objeto JSON"
+msgstr ""
+
+#: ralinst.mensagens.emmanifestorecusado
+msgid "%s: manifesto recusado: %s"
+msgstr ""
+
+#: ralinst.mensagens.emmanifestosempacote
+msgid "regra de pacote sem \"pacote\""
+msgstr ""
+
+#: ralinst.mensagens.emmanifestosemreceita
+msgid "regra de dependência sem \"receita\""
+msgstr ""
+
+#: ralinst.mensagens.emsemautoinstall
+msgid "%s: sem StaticAutoInstallPackages"
+msgstr ""
+
+#: ralinst.mensagens.cmbaixando
+msgid "baixando %s/%s @ %s"
+msgstr ""
+
+#: ralinst.mensagens.cmversaoestavel
+msgid "%s  —  estável"
+msgstr ""
+
+#: ralinst.mensagens.cmversaoestavelrecente
+msgid "%s  —  estável mais recente"
+msgstr ""
+
+#: ralinst.mensagens.cmversaoprelancamento
+msgid "%s  —  pré-lançamento"
+msgstr ""
+
+#: ralinst.mensagens.cmversaoramo
+msgid "%s  —  ramo (muda a cada commit)"
+msgstr ""
+
+#: ralinst.mensagens.cmversaotag
+msgid "%s  —  tag"
+msgstr ""
+
+#: ralinst.mensagens.emgithubarvore
+msgid "resposta inesperada da árvore de %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubfalhabaixar
+msgid "falha ao baixar %s/%s @ %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubinvalida
+msgid "resposta inválida do GitHub: %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithublimite
+msgid "limite de pedidos à API do GitHub esgotado (volta em %d min; defina GITHUB_TOKEN para um limite maior)"
+msgstr ""
+
+#: ralinst.mensagens.emgithubnaoexiste
+msgid "não existe no GitHub: %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubnaozip
+msgid "o GitHub não devolveu um zip para %s/%s @ %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubrecusou
+msgid "a API do GitHub recusou o pedido (%s)"
+msgstr ""
+
+#: ralinst.mensagens.emgithubsemaversao
+msgid "%s/%s não tem a versão %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubsemresposta
+msgid "sem resposta do GitHub: %s"
+msgstr ""
+
+#: ralinst.mensagens.emgithubsemversoes
+msgid "o repositório %s/%s não tem nenhuma versão publicada"
+msgstr ""
+
+#: ralinst.mensagens.emgravar
+msgid "não foi possível gravar %s"
+msgstr ""
+
+#: ralinst.mensagens.wmgithubarvoretruncada
+msgid "a árvore de %s veio truncada pelo GitHub"
+msgstr ""
+
+#: ralinst.mensagens.wmgithubcache
+msgid "%s; usando a consulta guardada de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmerrocodigo
+msgid "%s (erro %d)"
+msgstr ""
+
+#: ralinst.mensagens.cmconfigpadraosistema
+msgid "padrão do sistema"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusversaodesconhecida
+msgid "Lazarus (versão desconhecida)"
+msgstr ""
+
+#: ralinst.mensagens.wmlazarusconfigdeoutro
+msgid "A configuração em %s pertence a outro Lazarus (%s)."
+msgstr ""
+
+#: ralinst.mensagens.wmlazarusdivideconfig
+msgid "Divide a pasta de configuração %s com %s: pacotes instalados numa entram na outra."
+msgstr ""
+
+#: ralinst.mensagens.wmlazarussemescrita
+msgid "Sem permissão de escrita na pasta do Lazarus: reconstruir a IDE vai exigir executar como administrador."
+msgstr ""
+
+#: ralinst.mensagens.wmlazarussemfpc
+msgid "Compilador FPC não identificado: o lazbuild vai usar o que estiver configurado no ambiente."
+msgstr ""
+
+#: ralinst.mensagens.cmarquivoem
+msgid "  %s em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmcompilacontra
+msgid "  compila contra %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdepcomercial
+msgid "%s é comercial e não está instalado nesta IDE; instale-o (%s) e rode o instalador de novo"
+msgstr ""
+
+#: ralinst.mensagens.cmdependedefora
+msgid "depende de %s, que ficou de fora"
+msgstr ""
+
+#: ralinst.mensagens.cmdependenciapara
+msgid "Dependência %s (para %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmdepfalhou
+msgid "a instalação de %s falhou (detalhes acima)"
+msgstr ""
+
+#: ralinst.mensagens.cmdepinstalandode
+msgid "  instalando de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdepjainstalada
+msgid "  já instalada, usando a que está lá: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdepnaobaixada
+msgid "%s não está instalado nesta IDE e a versão %s não foi baixada"
+msgstr ""
+
+#: ralinst.mensagens.cmdepsemacoes
+msgid "%s: a receita não diz como instalar no %s"
+msgstr ""
+
+#: ralinst.mensagens.cmficadefora
+msgid "%s fica de fora: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmjatinhacaminhos
+msgid "  %s Search Path: já tinha todos os caminhos"
+msgstr ""
+
+#: ralinst.mensagens.cmnadacompilou
+msgid "Nada compilou: o registro da IDE não foi alterado."
+msgstr ""
+
+#: ralinst.mensagens.cmnaocompilounaoregistrado
+msgid "%s não compilou e não foi registrado; se havia uma versão anterior registrada, ela continua lá."
+msgstr ""
+
+#: ralinst.mensagens.cmnenhumcabedelphi
+msgid "Nenhum pacote escolhido cabe nesta IDE: o registro não foi alterado."
+msgstr ""
+
+#: ralinst.mensagens.cmnenhumsobrou
+msgid "Nenhum pacote sobrou para instalar: faltam as dependências acima."
+msgstr ""
+
+#: ralinst.mensagens.cmnolibrarypath
+msgid "%s no library path (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmoutracopiaral
+msgid "%s: outra cópia do RAL no library path: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoaberta
+msgid "  ATENÇÃO: a IDE está aberta agora; feche antes de instalar"
+msgstr ""
+
+#: ralinst.mensagens.cmplanobplem
+msgid "  %s: .bpl em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanocompilar
+msgid "  compilar, na ordem:"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodepcomercial
+msgid "  FALTA %s (%s): é comercial; instale-o antes (%s). Sem ele, %s fica de fora"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodepfalta
+msgid "  FALTA %s (%s): não está instalado. Sem ele, %s fica de fora"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodepinstalar
+msgid "  dependência %s %s (%s): instalar de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodepjainstalada
+msgid "  dependência %s (%s): já instalada — %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoficadefora
+msgid "    fica de fora: %s — %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoinstalarnaide
+msgid "    %s  (instalar na IDE)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanolibrarypath
+msgid "  library path (%s):"
+msgstr ""
+
+#: ralinst.mensagens.cmplanonuncaaberta
+msgid "  ATENÇÃO: a IDE nunca foi aberta; abra e feche uma vez antes de instalar"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoruntime
+msgid "    %s  (runtime)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosomentelibrarypath
+msgid "  modo: somente library path (nenhum pacote compilado ou instalado)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanovariavelmuda
+msgid "  ATENÇÃO: $(%s) hoje aponta para %s; os projetos que usam a variável passam a ver a pasta nova"
+msgstr ""
+
+#: ralinst.mensagens.cmplataformaignorada
+msgid "%s não compila para %s; plataforma ignorada."
+msgstr ""
+
+#: ralinst.mensagens.cmprefixoavisorelatorio
+msgid "AVISO: "
+msgstr ""
+
+#: ralinst.mensagens.cmrecibo
+msgid "Recibo: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmregistro
+msgid "Registro: HKCU%s"
+msgstr ""
+
+#: ralinst.mensagens.cmregistroalteracoes
+msgid "Registro: %d alteração(ões) em HKCU%s%s"
+msgstr ""
+
+#: ralinst.mensagens.cmsimulado
+msgid " (simulado)"
+msgstr ""
+
+#: ralinst.mensagens.emdelphiaberto
+msgid "ERRO: %s está aberto. Feche a IDE antes de instalar: ela regrava o registro ao fechar e a instalação se perderia."
+msgstr ""
+
+#: ralinst.mensagens.emdelphinuncaaberto
+msgid "ERRO: %s nunca foi aberto (não há HKCU%s). Abra a IDE uma vez, feche, e rode o instalador de novo."
+msgstr ""
+
+#: ralinst.mensagens.emdepsemdpk
+msgid "ERRO: nenhum .dpk de %s em %s"
+msgstr ""
+
+#: ralinst.mensagens.emdepsempacotesbds
+msgid "ERRO: %s não tem pacotes para %s (BDS %s)"
+msgstr ""
+
+#: ralinst.mensagens.emgravarrecibo
+msgid "não foi possível gravar o recibo: %s"
+msgstr ""
+
+#: ralinst.mensagens.eminstalarsemfontes
+msgid "ERRO: os fontes do RAL precisam estar em disco para instalar."
+msgstr ""
+
+#: ralinst.mensagens.emnenhumpacote
+msgid "ERRO: nenhum pacote escolhido."
+msgstr ""
+
+#: ralinst.mensagens.empacotesdesconhecidos
+msgid "ERRO: pacotes que não existem nesta versão do RAL: %s"
+msgstr ""
+
+#: ralinst.mensagens.wmbuscaforadopath
+msgid "  AVISO: %s não está no library path da IDE; a compilação pode não achá-lo"
+msgstr ""
+
+#: ralinst.mensagens.cmconfiguracaodevolvida
+msgid "A configuração do Lazarus voltou ao que era antes desta rodada."
+msgstr ""
+
+#: ralinst.mensagens.cmficadeforalinha
+msgid "fica de fora: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfonteausente
+msgid "fonte ausente: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmforalinha
+msgid "fora: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusinstalado
+msgid "instalado"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusmarcado
+msgid "marcado, IDE não reconstruída"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusnaoinstalado
+msgid "não instalado (configuração devolvida ao que era)"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusregistrado
+msgid "registrado"
+msgstr ""
+
+#: ralinst.mensagens.cmlpknaoexiste
+msgid "%s: %s não existe na versão baixada"
+msgstr ""
+
+#: ralinst.mensagens.cmnadaainstalarlazarus
+msgid "Nada a instalar: a configuração da IDE não foi alterada."
+msgstr ""
+
+#: ralinst.mensagens.cmpacotejaregistrado
+msgid "pacote %s já registrado nesta IDE"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoconfiguracao
+msgid "  configuração: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoexternosausentes
+msgid "  ATENÇÃO: não encontrei nesta IDE %s — instale antes, ou a reconstrução da IDE vai falhar"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoficadeforalinha
+msgid "    fica de fora: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanopacotes
+msgid "  pacotes, na ordem:"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoreconstroi
+msgid "  reconstrói a IDE no fim (lazbuild --build-ide)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosoregistrar
+msgid "    %s  (só registrar)"
+msgstr ""
+
+#: ralinst.mensagens.cmsubmoduloausente
+msgid "submódulo ausente: %s"
+msgstr ""
+
+#: ralinst.mensagens.emdevolverconfiguracao
+msgid "ERRO: não consegui devolver a configuração: %s"
+msgstr ""
+
+#: ralinst.mensagens.emlazarusaberto
+msgid "ERRO: %s está aberto. Feche a IDE antes de instalar: ela regrava a configuração ao fechar e a instalação se perderia."
+msgstr ""
+
+#: ralinst.mensagens.emlazbuildausente
+msgid "ERRO: lazbuild não encontrado: %s"
+msgstr ""
+
+#: ralinst.mensagens.emlazbuildcodigo
+msgid "ERRO: lazbuild terminou com código %d"
+msgstr ""
+
+#: ralinst.mensagens.emlazbuildmarcar
+msgid "ERRO: falha ao marcar os pacotes para instalar."
+msgstr ""
+
+#: ralinst.mensagens.emlazbuildreconstruir
+msgid "ERRO: falha ao reconstruir a IDE (o erro do compilador está acima)."
+msgstr ""
+
+#: ralinst.mensagens.emlazbuildregistrar
+msgid "ERRO: falha ao registrar os pacotes."
+msgstr ""
+
+#: ralinst.mensagens.wmexternosausentes
+msgid "não encontrei nesta IDE %s; se não estiverem instalados, a reconstrução da IDE falha"
+msgstr ""
+
+#: ralinst.mensagens.wmidenaoreconstruida
+msgid "IDE não reconstruída: ela pede para reconstruir ao abrir."
+msgstr ""
+
+#: ralinst.mensagens.emexecutar
+msgid "ERRO: não foi possível executar %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfaixadea
+msgid "%s de %s a %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfaixamax
+msgid "%s até %s"
+msgstr ""
+
+#: ralinst.mensagens.cmfaixamin
+msgid "%s %s ou mais novo"
+msgstr ""
+
+#: ralinst.mensagens.cmfaixasistemas
+msgid "só em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmrecurso
+msgid "recurso %s"
+msgstr ""
+
+#: ralinst.mensagens.emacaodesconhecida
+msgid "ação desconhecida \"%s\" em %s: o instalador não executa ação que não conhece"
+msgstr ""
+
+#: ralinst.mensagens.emacaodpk
+msgid "acao dpk sem \"pastas\" (versao do BDS -> pasta dos .dpk)"
+msgstr ""
+
+#: ralinst.mensagens.emacaolpk
+msgid "acao lpk sem arquivo"
+msgstr ""
+
+#: ralinst.mensagens.emacaovariavel
+msgid "acao variavel sem nome ou valor"
+msgstr ""
+
+#: ralinst.mensagens.emcampodesconhecido
+msgid "campo desconhecido \"%s\" em %s"
+msgstr ""
+
+#: ralinst.mensagens.emdelphidesconhecido
+msgid "versão do Delphi desconhecida: %s"
+msgstr ""
+
+#: ralinst.mensagens.emextrasemasset
+msgid "extra sem asset"
+msgstr ""
+
+#: ralinst.mensagens.emjsoninvalido
+msgid "%s: JSON inválido: %s"
+msgstr ""
+
+#: ralinst.mensagens.emreceitabusca
+msgid "busca só existe no Delphi (no Lazarus o .lpk da dependência já diz as pastas)"
+msgstr ""
+
+#: ralinst.mensagens.emreceitaitemobjeto
+msgid "%s: cada item e um objeto"
+msgstr ""
+
+#: ralinst.mensagens.emreceitalista
+msgid "%s deveria ser uma lista"
+msgstr ""
+
+#: ralinst.mensagens.emreceitanaoobjeto
+msgid "%s: a receita deveria ser um objeto JSON"
+msgstr ""
+
+#: ralinst.mensagens.emreceitaobjeto
+msgid "%s deveria ser um objeto"
+msgstr ""
+
+#: ralinst.mensagens.emreceitapacotesligados
+msgid "pacotes-ligados só existe no Delphi (é o -LU do dcc32)"
+msgstr ""
+
+#: ralinst.mensagens.emreceitarecusada
+msgid "%s: receita recusada: %s"
+msgstr ""
+
+#: ralinst.mensagens.emreceitasemnome
+msgid "receita sem nome"
+msgstr ""
+
+#: ralinst.mensagens.emregragithub
+msgid "%s: github deveria ser \"dono/repositorio\""
+msgstr ""
+
+#: ralinst.mensagens.emregraversao
+msgid "%s: cada regra tem \"versao\" ou \"incompativel\", e só um dos dois"
+msgstr ""
+
+#: ralinst.mensagens.emsistemadesconhecido
+msgid "sistema desconhecido: %s (windows, linux, darwin)"
+msgstr ""
+
+#: ralinst.mensagens.emverificacaoarquivo
+msgid "verificacao: o arquivo e relativo a raiz da dependencia: %s"
+msgstr ""
+
+#: ralinst.mensagens.emverificacaoexpressao
+msgid "verificacao: expressao invalida: %s"
+msgstr ""
+
+#: ralinst.mensagens.emverificacaoincompleta
+msgid "verificacao sem arquivo, expressao ou aviso"
+msgstr ""
+
+#: ralinst.mensagens.cmconfiguracaolimpa
+msgid "  configuração %s: links e pacotes da instalação removidos"
+msgstr ""
+
+#: ralinst.mensagens.cmdesfazendo
+msgid "Desfazendo %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdesfeito
+msgid "Desfeito."
+msgstr ""
+
+#: ralinst.mensagens.cmidenaoreconstruidadesinstalar
+msgid "  a IDE não foi reconstruída: ela pede para reconstruir ao abrir"
+msgstr ""
+
+#: ralinst.mensagens.cmmantidomudou
+msgid "  mantido (mudou depois da instalação): %s"
+msgstr ""
+
+#: ralinst.mensagens.cmnenhumainstalacao
+msgid "Nenhuma instalação do RAL registrada para %s"
+msgstr ""
+
+#: ralinst.mensagens.cmrecibodesfeito
+msgid " [desfeito]"
+msgstr ""
+
+#: ralinst.mensagens.cmrecibojadesfeito
+msgid "Recibo já desfeito: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmrecibopacotes
+msgid " (%d pacote(s))"
+msgstr ""
+
+#: ralinst.mensagens.emapagararquivo
+msgid "  ERRO: não consegui apagar %s (em uso?)"
+msgstr ""
+
+#: ralinst.mensagens.emideabertadesinstalar
+msgid "ERRO: %s está aberto; feche a IDE antes de desinstalar"
+msgstr ""
+
+#: ralinst.mensagens.emrecibodelphiwindows
+msgid "ERRO: recibo do Delphi só se desfaz no Windows"
+msgstr ""
+
+#: ralinst.mensagens.emrecibomaisnovo
+msgid "ERRO: há uma instalação mais nova nesta IDE (%s); desfaça ela antes, ou desinstale a IDE inteira"
+msgstr ""
+
+#: ralinst.mensagens.emrecibosemlistas
+msgid "ERRO: recibo do Lazarus sem as listas da configuração"
+msgstr ""
+
+#: ralinst.mensagens.emrecibotipo
+msgid "ERRO: tipo de recibo desconhecido: %s"
+msgstr ""
+
+#: ralinst.mensagens.emreconstrucaofalhou
+msgid "ERRO: a reconstrução da IDE falhou; a configuração já está sem os pacotes, e a IDE pede para reconstruir ao abrir"
+msgstr ""
+
+#: ralinst.mensagens.cmregistroapagado
+msgid "  apagado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrojaregistrado
+msgid "  %s: %s já registrado"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrooutrapasta
+msgid "  %s -= %s  (mesmo pacote em outra pasta)"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrorestaurado
+msgid "  restaurado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrovariavel
+msgid "  variável $(%s) = %s"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrovariavelera
+msgid "  variável $(%s) = %s  (era %s)"
+msgstr ""
+
+#: ralinst.mensagens.emregistroabrir
+msgid "ERRO: não foi possível abrir %s"
+msgstr ""
+
+#: ralinst.mensagens.emregistrogravar
+msgid "ERRO: não foi possível gravar %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbaixandodep
+msgid "== Baixando %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbaixandoral
+msgid "== Baixando o PascalRAL %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdelphisowindows
+msgid "o Delphi só existe no Windows"
+msgstr ""
+
+#: ralinst.mensagens.cmdesinstalacaocomerro
+msgid "%s: a desinstalação terminou com erro"
+msgstr ""
+
+#: ralinst.mensagens.cmdesinstalado
+msgid "%s: desinstalado"
+msgstr ""
+
+#: ralinst.mensagens.cmnadaainstalar
+msgid "%s: nada a instalar"
+msgstr ""
+
+#: ralinst.mensagens.cmnenhumaidealterada
+msgid "Nenhuma IDE foi alterada."
+msgstr ""
+
+#: ralinst.mensagens.cmnenhumpedidoexiste
+msgid "%s: nenhum dos pacotes pedidos existe no %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanobaixardep
+msgid "Baixar %s %s%s para %s (para %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanobaixarral
+msgid "Baixar o PascalRAL %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanocommit
+msgid " (commit %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanode
+msgid " de %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoerrodep
+msgid "ERRO: %s — sem ela, %s fica de fora"
+msgstr ""
+
+#: ralinst.mensagens.cmplanofonteslocal
+msgid "Fontes do RAL: %s (pasta local, nada é baixado)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanonaoexistem
+msgid "ATENÇÃO: não existem nesta versão do RAL: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanopara
+msgid " para %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosubmodulos
+msgid "  com os submódulos: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmrelatorioavisos
+msgid "%s: %s; %d aviso(s): %s"
+msgstr ""
+
+#: ralinst.mensagens.cmterminoucomerro
+msgid "terminou com erro"
+msgstr ""
+
+#: ralinst.mensagens.embaixadossempacotes
+msgid "os fontes baixados em %s não têm pacotes"
+msgstr ""
+
+#: ralinst.mensagens.emescolhaversaooupasta
+msgid "escolha a versão do RAL ou uma pasta local"
+msgstr ""
+
+#: ralinst.mensagens.emlerversao
+msgid "não foi possível ler a versão %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.emnenhumaide
+msgid "nenhuma IDE escolhida"
+msgstr ""
+
+#: ralinst.mensagens.emsempacotesnapasta
+msgid "nenhum pacote do RAL em %s (a pasta deve conter pkg e src)"
+msgstr ""
+
+#: ralinst.mensagens.emversaodesconhecida
+msgid "versão desconhecida: %s"
+msgstr ""
+
+#: ralinst.mensagens.emversaosempacotes
+msgid "a versão %s não tem pacotes do RAL"
+msgstr ""
+
+#: ralinst.mensagens.cmexistentesopaths
+msgid "só o library path"
+msgstr ""
+
+#: ralinst.mensagens.cmapagarvariavel
+msgid "  apagar a variável $(PascalRAL) (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmbplsficam
+msgid "  os .bpl de uma instalação feita à mão ficam no disco"
+msgstr ""
+
+#: ralinst.mensagens.cmcaminhoremovido
+msgid "  %s: tirado do library path %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdesfazerdesinstalacao
+msgid "  para desfazer: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmdesfazerrecibos
+msgid "  desfazer %d instalação(ões) feitas pelo instalador"
+msgstr ""
+
+#: ralinst.mensagens.cmdesinstaladosemresto
+msgid "  nada mais do RAL na IDE"
+msgstr ""
+
+#: ralinst.mensagens.cmdesinstalarnadaafazer
+msgid "  nenhum RAL instalado nesta IDE: nada a desinstalar"
+msgstr ""
+
+#: ralinst.mensagens.cmlinkremovido
+msgid "  link tirado: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmoutrosusamral
+msgid "  continuam na IDE, e sem o RAL não carregam: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmoutrosusamralaviso
+msgid "continuam na IDE e sem o RAL não carregam: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmpacoteremovidolazarus
+msgid "  tirado da IDE: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodesinstalar
+msgid "Desinstalar o RAL:"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoide64
+msgid "  IDE de 64 bits: os pacotes de design também em Win64 (Known Packages x64)"
+msgstr ""
+
+#: ralinst.mensagens.cmtirarcaminhos
+msgid "  tirar %d entrada(s) do RAL do library path"
+msgstr ""
+
+#: ralinst.mensagens.cmtirardaide
+msgid "  tirar da IDE: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmtirardaide64
+msgid "  tirar da IDE de 64 bits: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmtirarlinks
+msgid "  tirar os links dos pacotes: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmvariavelremovida
+msgid "  variável $(PascalRAL) apagada (%s)"
+msgstr ""
+
+#: ralinst.mensagens.emtarabrir
+msgid "não foi possível abrir %s"
+msgstr ""
+
+#: ralinst.mensagens.emtartruncado
+msgid "tar truncado"
+msgstr ""
+
+#: ralinst.mensagens.emtartruncadoem
+msgid "tar truncado em %s"
+msgstr ""
+
+#: ralinst.mensagens.wmtarentradasuspeita
+msgid "entrada suspeita no tar, ignorada: %s"
+msgstr ""
+
+#: ralinst.mensagens.emzipextrair
+msgid "não foi possível extrair %s: %s"
+msgstr ""
+
+#: ralinst.mensagens.emzipnaoexiste
+msgid "%s não existe em %s"
+msgstr ""
+
+#: ralinst.mensagens.emzipnaolido
+msgid "%s não pôde ser lido de %s"
+msgstr ""
+
+#: ralinst.mensagens.wmzipentradasuspeita
+msgid "entrada suspeita no zip, ignorada: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmtemaclaro
+msgid "Claro"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmtemaescuro
+msgid "Escuro"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmversaoinstalador
+msgid "Instalador versão %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdelphisonowindows
+msgid "O Delphi só existe no Windows: este instalador instala o PascalRAL no Lazarus."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmescolhaide
+msgid "Escolha uma IDE."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmavisoside
+msgid "  (%d aviso(s))"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdicaconfiguracao
+msgid "Configuração: %s (%s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdicaorigem
+msgid "Origem: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdicaral
+msgid "RAL instalado: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdicaregistro
+msgid "Registro: HKCU%s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmralnaide
+msgid "  — RAL instalado"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmidecomerro
+msgid "==== %s: terminou com erro (detalhes acima)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmideconcluida
+msgid "==== %s: concluído"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnadaainstalartipo
+msgid "%s: nada a instalar (os recursos escolhidos não existem no %s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnaosuportada
+msgid "ERRO: instalação ainda não suportada nesta IDE: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnaosuportadaplano
+msgid "%s: instalação ainda não suportada"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnenhumrecursoexiste
+msgid "Nenhum dos recursos escolhidos existe no %s."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnenhumrecursoexisteplano
+msgid "%s: nenhum dos recursos escolhidos existe no %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmralporrecibos
+msgid "pelo instalador (%d instalação(ões))"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumocomerro
+msgid "%s: terminou com erro (veja o log acima)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumodesinstalado
+msgid "%s: RAL desinstalado"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumodesinstalarerro
+msgid "%s: a desinstalação terminou com erro (veja o log acima)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumoinstalado
+msgid "%s: instalado"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumosemral
+msgid "%s: sem RAL, nada a desinstalar"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmaguardebusca
+msgid "Aguarde a busca das IDEs terminar (ou cancele a busca)."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmerrobusca
+msgid "A busca das IDEs parou com erro: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmmarqueumaide
+msgid "Marque ao menos uma IDE para instalar."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnenhumaidenapasta
+msgid "Nenhuma instalação encontrada em %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmprocurandoides
+msgid "Procurando as IDEs instaladas..."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmaguardecarga
+msgid "Aguarde: a versão do PascalRAL ainda está sendo lida."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbaixandodemb
+msgid "baixando... %.1f de %.1f MB"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbaixandomb
+msgid "baixando... %.1f MB"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcarregando
+msgid "Carregando..."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcatalogoavisos
+msgid " — %d aviso(s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmconsultandoversoes
+msgid "Consultando as versões no GitHub..."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcontinuamarcado
+msgid "%s continua marcado: é necessário para %s."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdependenciacircular
+msgid "dependência circular"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdependede
+msgid "depende de %s, que não serve nas IDEs escolhidas"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdestinoescolha
+msgid "Escolha a pasta onde o PascalRAL será instalado."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdestinolocal
+msgid "Os fontes são usados onde estão; nada é baixado."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdestinopasta
+msgid "O RAL fica em %s. Pasta permanente: as IDEs passam a apontar para ela."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmescolhapastafontes
+msgid "Escolha a pasta dos fontes do PascalRAL."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmescolhapastainstalacao
+msgid "Escolha a pasta de instalação."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmescolhaversao
+msgid "Escolha a versão do PascalRAL."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmfaltafonte
+msgid "falta o fonte %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmfaltasubmodulo
+msgid "falta o submódulo %s (git submodule update --init)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmficadeforaem
+msgid "  [fica de fora em %s]"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupobase
+msgid "Pacotes base"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupocompressao
+msgid "Bibliotecas de compressão"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupodbware
+msgid "Módulos DBWare"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupomotores
+msgid "Motores (engines)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupooutros
+msgid "Outros"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupostorage
+msgid "Storage"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgruposwagger
+msgid "Swagger"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlendoversao
+msgid "Lendo a versão %s..."
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstaladoem
+msgid "  (instalado em %s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstaladonaide
+msgid "  (instalado)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmmarqueumrecurso
+msgid "Marque ao menos um recurso. Sem nenhum marcado, o instalador desinstala o RAL das IDEs que já o têm, e nenhuma das IDEs marcadas tem."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnadamarcadodesinstala
+msgid "Nenhum recurso marcado: o RAL será desinstalado destas IDEs:\n\n%s\nContinuar?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnecessario
+msgid "  (necessário)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmocultosdica
+msgid "Não aparecem na lista porque nenhuma IDE escolhida os aceita:"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastadeoutro
+msgid "A pasta %s já existe e não foi criada pelo instalador. Escolha outra pasta de instalação."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastafonteslocal
+msgid "Pasta dos fontes do PascalRAL (a que contém pkg e src)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastainstalacao
+msgid "Pasta de instalação (os fontes do RAL e das dependências ficam nela)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastalocalfontes
+msgid "Pasta local com os fontes (desenvolvimento do RAL)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastanaoencontrada
+msgid "Pasta não encontrada."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmpastasempacotes
+msgid "Nenhum pacote do RAL nesta pasta (ela deve conter pkg e src)."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmrecursosnaversao
+msgid "%d recurso(s); %d marcado(s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmrecursosocultos
+msgid "; %d oculto(s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmsemversoes
+msgid "Não foi possível consultar as versões do PascalRAL: %s\n\nSó dá para instalar a partir de uma pasta local."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmsodotipo
+msgid "  (só %s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbotaodesinstalar
+msgid "Desinstalar"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbotaoinstalar
+msgid "Instalar"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcliquedesinstalar
+msgid "Clique em Desinstalar para executar."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcliqueinstalar
+msgid "Clique em Instalar para executar."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdesinstalacaocomerros
+msgid "Desinstalação terminou com erros — veja as linhas ERRO acima."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdesinstalacaoconcluida
+msgid "Desinstalação concluída."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdesinstalarpergunta
+msgid "Remover o RAL destas IDEs:\n\n%s\nO que o instalador fez é desfeito: o registro, o library path e a configuração voltam ao que eram e os .bpl gravados são apagados. O que foi instalado à mão sai do registro e da configuração (os .bpl ficam no disco), com um registro para desfazer. O Lazarus é reconstruído sem os pacotes; as dependências não são tocadas. Feche as IDEs antes.\n\nDesinstalar agora?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmdesinstalartitulo
+msgid "Desinstalar o PascalRAL"
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstalacaocomerros
+msgid "Instalação terminou com erros — veja as linhas ERRO acima."
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstalacaoconcluida
+msgid "Instalação concluída."
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstalarpergunta
+msgid "As IDEs marcadas terão a configuração alterada (pacotes, library path e, no Delphi, o registro). Feche-as antes de continuar.\n\nInstalar agora?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstalartitulo
+msgid "Instalar o PascalRAL"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmjainstalado
+msgid "O RAL já está nestas IDEs (instalar de novo passa por cima; \"Desinstalar\" remove):"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlog
+msgid "Log: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmoqueserafeito
+msgid "O que será feito:"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmplanotitulo
+msgid "Plano:"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmabradenovo
+msgid "Atualizado para a versão %s; abra o instalador de novo. (%s)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmatualizacaonaofeita
+msgid "A atualização não foi feita: %s\nO instalador continua na versão %s."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmatualizadopara
+msgid "O RAL Installer foi atualizado para a versão %s."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbaixarreiniciar
+msgid "Baixar e reiniciar agora?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmmaisinstalacoes
+msgid " (e mais %d instalação(ões) antes)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnaoverificouversao
+msgid " — não foi possível verificar se há versão nova"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumotitulo
+msgid "==== Resumo"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmversaonovadisponivel
+msgid "A versão %s está disponível (esta é a %s)."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmversaonovatitulo
+msgid "Versão nova do RAL Installer"
+msgstr ""
+
+#: TTelaIDE.lbNext.Caption
+msgctxt "TTelaIDE.lbNext.Caption"
+msgid "Próximo >"
+msgstr ""
+
+#: TTelaIDE.lbBack.Caption
+msgctxt "TTelaIDE.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaIDE.lVersion.Caption
+msgctxt "TTelaIDE.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaIDE.lbSubTitle.Caption
+msgctxt "TTelaIDE.lbSubTitle.Caption"
+msgid "Escolha a IDE"
+msgstr ""
+
+#: TTelaIDE.lbAmbos.Caption
+msgctxt "TTelaIDE.lbAmbos.Caption"
+msgid "Delphi e Lazarus juntos"
+msgstr ""
+
+#: TTelaIdioma.lbNext.Caption
+msgctxt "TTelaIdioma.lbNext.Caption"
+msgid "Próximo >"
+msgstr ""
+
+#: TTelaIdioma.lbBack.Caption
+msgctxt "TTelaIdioma.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaIdioma.lVersion.Caption
+msgctxt "TTelaIdioma.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaIdioma.lbSubTitle.Caption
+msgctxt "TTelaIdioma.lbSubTitle.Caption"
+msgid "Escolha o Idioma"
+msgstr ""
+
+#: TTelaInstalar.lbNext.Caption
+msgctxt "TTelaInstalar.lbNext.Caption"
+msgid "Instalar"
+msgstr ""
+
+#: TTelaInstalar.lbBack.Caption
+msgctxt "TTelaInstalar.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaInstalar.lVersion.Caption
+msgctxt "TTelaInstalar.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaInstalar.lbSubTitle.Caption
+msgctxt "TTelaInstalar.lbSubTitle.Caption"
+msgid "Instalação dos Componentes"
+msgstr ""
+
+#: TTelaInstalar.lbDesinstalar.Caption
+msgctxt "TTelaInstalar.lbDesinstalar.Caption"
+msgid "Desinstalar o RAL destas IDEs"
+msgstr ""
+
+#: TItemIDE.lbIDEName.Caption
+msgctxt "TItemIDE.lbIDEName.Caption"
+msgid "IDE Name:"
+msgstr ""
+
+#: TItemIDE.lbPath.Caption
+msgctxt "TItemIDE.lbPath.Caption"
+msgid "Path:"
+msgstr ""
+
+#: TTelaModelo.lbNext.Caption
+msgctxt "TTelaModelo.lbNext.Caption"
+msgid "Próximo >"
+msgstr ""
+
+#: TTelaModelo.lbBack.Caption
+msgctxt "TTelaModelo.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaModelo.lVersion.Caption
+msgctxt "TTelaModelo.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaPrincipal.Caption
+msgctxt "TTelaPrincipal.Caption"
+msgid "RAL Installer"
+msgstr ""
+
+#: TTelaPrincipal.bTranslate.Caption
+msgctxt "TTelaPrincipal.bTranslate.Caption"
+msgid "Translate"
+msgstr ""
+
+#: TTelaRecursos.lbNext.Caption
+msgctxt "TTelaRecursos.lbNext.Caption"
+msgid "Próximo >"
+msgstr ""
+
+#: TTelaRecursos.lbBack.Caption
+msgctxt "TTelaRecursos.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaRecursos.lVersion.Caption
+msgctxt "TTelaRecursos.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaRecursos.lbSubTitle.Caption
+msgctxt "TTelaRecursos.lbSubTitle.Caption"
+msgid "Escolha a versão e os recursos"
+msgstr ""
+
+#: TTelaRecursos.lbVersao.Caption
+msgctxt "TTelaRecursos.lbVersao.Caption"
+msgid "Versão do PascalRAL"
+msgstr ""
+
+#: TTelaRecursos.lbedDownloadPath.EditLabel.Caption
+msgctxt "TTelaRecursos.lbedDownloadPath.EditLabel.Caption"
+msgid "Pasta de instalação"
+msgstr ""
+
+#: TTelaRecursos.bAddVersion.Hint
+msgctxt "TTelaRecursos.bAddVersion.Hint"
+msgid "Escolher a pasta"
+msgstr ""
+
+#: TTelaRecursos.Label2.Caption
+msgctxt "TTelaRecursos.Label2.Caption"
+msgid "Recursos (duplo clique marca ou desmarca)"
+msgstr ""
+
+#: TTelaRecursos.lbSomentePaths.Caption
+msgctxt "TTelaRecursos.lbSomentePaths.Caption"
+msgid "Somente library path (não compila nem instala pacotes na IDE)"
+msgstr ""
+
+#: TTelaRecursos.lbWin64.Caption
+msgctxt "TTelaRecursos.lbWin64.Caption"
+msgid "Também Win64 (pacotes de runtime e library path)"
+msgstr ""
+
+#: TTelaRecursos.lbMarcarTodos.Caption
+msgctxt "TTelaRecursos.lbMarcarTodos.Caption"
+msgid "Selecionar todos"
+msgstr ""
+
+#: TTelaRecursos.lbDesmarcarTodos.Caption
+msgctxt "TTelaRecursos.lbDesmarcarTodos.Caption"
+msgid "Desmarcar todos"
+msgstr ""
+
+#: TTelaVersoesIDE.lbNext.Caption
+msgctxt "TTelaVersoesIDE.lbNext.Caption"
+msgid "Próximo >"
+msgstr ""
+
+#: TTelaVersoesIDE.lbBack.Caption
+msgctxt "TTelaVersoesIDE.lbBack.Caption"
+msgid "< Anterior"
+msgstr ""
+
+#: TTelaVersoesIDE.lVersion.Caption
+msgctxt "TTelaVersoesIDE.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr ""
+
+#: TTelaVersoesIDE.lbSubTitle.Caption
+msgctxt "TTelaVersoesIDE.lbSubTitle.Caption"
+msgid "Escolha as Versões do IDE"
+msgstr ""
+
+#: TTelaVersoesIDE.bAddVersion.Hint
+msgctxt "TTelaVersoesIDE.bAddVersion.Hint"
+msgid "Adicionar um IDE pela sua pasta de instalação"
+msgstr ""
+
+#: TTelaVersoesIDE.bAutoBusca.Hint
+msgctxt "TTelaVersoesIDE.bAutoBusca.Hint"
+msgid "Buscar automaticamente os IDE (processo lento)"
+msgstr ""
+
+#: TTelaVersoesIDE.bStopBusca.Hint
+msgctxt "TTelaVersoesIDE.bStopBusca.Hint"
+msgid "Cancelar a Busca"
+msgstr ""
+
+#: TTelaVersoesIDE.lbIDEListing.Caption
+msgctxt "TTelaVersoesIDE.lbIDEListing.Caption"
+msgid "Lista de IDEs"
+msgstr ""

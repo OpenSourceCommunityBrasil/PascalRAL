@@ -89,6 +89,18 @@ instalação. Tema claro/escuro e i18n própria, com gerador de `.po`
 | Instalação Lazarus | `fontes/lazarusutils.pas` | Monta listas de `.lpk` e chama `lazbuild --build-ide= --add-package[-link]` |
 | Instalação Delphi | — | **não existe** |
 
+> **2026-09-25:** a tabela acima é a foto de 2026-09-16. As units das telas
+> seguem hoje o padrão do RAL e moram em `fontes/telas` (ver "Revisão de
+> 2026-09-25" no fim da §5): `umain` → `RALInst.Tela.Principal`, `ufrm_modelo`
+> → `RALInst.Tela.Modelo`, `ufrm_idioma` → `RALInst.Tela.Idioma`, `ufrm_ide` →
+> `RALInst.Tela.IDE`, `ufrm_ide_versions` → `RALInst.Tela.VersoesIDE`,
+> `ufrm_ide_version` → `RALInst.Tela.ItemIDE`, `ufrm_recursos` →
+> `RALInst.Tela.Recursos`, `ufrm_install` → `RALInst.Tela.Instalar`, `udm` →
+> `RALInst.Tela.Imagens`, `utools` → `RALInst.Tela.Temas`, `ideutils` →
+> `RALInst.Tela.Instalacao` (`TIDEObjectData` → `TIDETela`), `delphiutils` →
+> `RALInst.Tela.Delphi`, `lazarusutils` → `RALInst.Tela.Lazarus`, `i18n_utils`
+> → `RALInst.Tela.GeradorPO`; `tar_gzip` saiu (era `RALInst.Tar`).
+
 Lixo a remover: `fontes/githubral.pas` (aponta para o repositório do
 REST-DataWare, morto e substituído por `githubutils`), `assets_old/` (imagens
 antigas) e `src/` (telas não versionadas de um desenho anterior).
@@ -1020,6 +1032,122 @@ ainda: a consulta real diz "atualizado").
 - Falta: um release de verdade para o teste de ponta a ponta; conferir a troca
   no macOS (assinatura).
 
+### Revisão de 2026-09-25 — o que o dono apontou testando a tela
+
+Conferido pela tela de verdade (captura), em português, inglês e espanhol,
+nos dois temas.
+- **Banner seguia sempre o tema claro:** a faixa (`Panel1`) ganhou a cor do
+  tema (`TEstiloTema.CorBanner`); o logo tem fundo transparente.
+- **Idioma:** todo texto escrito em código virou `resourcestring`, com prefixo
+  como no `RALConsts` (em/wm/cm): o núcleo em `RALInst.Mensagens`, as telas em
+  `RALInst.Tela.Mensagens`. Os `.po` (`src/languages/ralinstaller.<idioma>.po`)
+  estão embutidos no executável (RCDATA `PO_PT_BR`, `PO_EN_US`, `PO_ES_ES`);
+  um `.po` em `languages/` ao lado do exe vale mais (tradutor testa sem
+  recompilar). `RALInst.Traducao` (sem LCL) troca as `resourcestring`;
+  `RALInst.Tela.Traducao` também passa os textos dos `.lfm` pelo tradutor do
+  LCL, e cada página reescreve o que ela escreve em código
+  (`TTelaModelo.AtualizarTextos`). Plano, log e relatório saem no idioma
+  escolhido. O idioma do sistema já vem escolhido. Traduções revisadas à mão;
+  o gerador (`RALInst.Tela.GeradorPO`, botão `bTranslate`) guarda as que já
+  existem e só manda ao Google os textos novos. Teste: `tests/traducao`. A CLI
+  continua só em português (os textos dela e os do núcleo).
+- **Tela da IDE deslocada:** os ícones e os anéis de seleção são centralizados
+  em código a cada `Resize`, com o tamanho escalado (`Scale96ToForm`), e o
+  texto dos botões fica ancorado sobre a figura deles — a mesma coisa vale para
+  as bandeiras. Os ícones das IDEs na lista não apareciam (o `bds.exe` é 32
+  bits): lidos com `LoadLibraryEx` só como recurso.
+- **Busca das IDEs congelava a tela:** roda numa thread (`RALInst.Tela.Tarefa`),
+  com o progresso por `TThread.Queue` e o botão de parar funcionando. Também
+  saíram da thread principal a lista de versões e a leitura do zip da versão
+  (tela de recursos) e a consulta de versão nova do instalador.
+- **Ordem dos recursos:** grupos na ordem pacotes base → motores → módulos
+  DBWare → Swagger → compressão → storage (`CategoriaDoPacote`); dentro de cada
+  grupo, primeiro o que os outros exigem (PascalRAL, depois PascalRALDsgn;
+  RALDBPackage antes dos links).
+- **Recurso que a escolha não aceita não é oferecido:** o que não serve em
+  nenhuma IDE marcada (ou exige um que não serve) some da árvore e sai do que
+  estava marcado; a linha de contagem diz quantos ficaram ocultos e a dica diz
+  por quê. O que serve só em parte das IDEs continua com "[fica de fora em …]".
+- **Padrão de código do RAL** (wiki `padrao-codigo`): `///` em inglês nas
+  classes e métodos da interface, seções private/protected/public/published,
+  membros em ordem alfabética (campos, construtor, destrutor, métodos,
+  eventos, propriedades), `uses` por grupo (diretivas, IDE, dependência,
+  projeto), margem de 90 colunas, units `RALInst.*` na pasta do escopo. A
+  seção que o designer do Lazarus mantém (componentes e seus eventos) fica no
+  topo da classe, como o Lazarus exige. Identificadores e comentários de
+  implementação continuam em português, como o resto do instalador.
+- Falta: conferir numa tela com escala de 125%/150%; os textos das receitas e
+  do manifesto (`aviso`, `descricao`, `motivo`) são dados e continuam em
+  português.
+
+### Revisão 2 de 2026-09-25 — instalação existente, desinstalar, IDE de 64 bits
+
+- **Pastas** (pedido do dono): o que tem tela em `src/telas` (`RALInst.Tela.*`
+  com `.lfm` visual), o resto em `src/classes` (o núcleo sem LCL e as units de
+  apoio das telas: `Tela.Delphi`, `Tela.Lazarus`, `Tela.Instalacao`,
+  `Tela.Mensagens`, `Tela.Tarefa`, `Tela.Temas`, `Tela.Traducao`,
+  `Tela.GeradorPO`, `Tela.Imagens`); `.po`/`.mo` em `src/languages`; imagens em
+  `Assets/images`, documentos e arquivos soltos em `Assets/docs`. `fontes/`,
+  `lang/` e `languages/` saíram. Onde as seções acima dizem `fontes/nucleo`,
+  hoje é `src/classes`.
+- **Instalação que não foi feita pelo instalador** (`RALInst.Existente`): o
+  Delphi é lido do registro — `$(PascalRAL)` (a raiz diz os nomes dos pacotes
+  daquela árvore), `Known Packages` e `Known Packages x64`, e as entradas do
+  library path com `$(PascalRAL)` ou dentro da raiz; o Lazarus, dos links
+  (`packagefiles.xml`) e da lista da IDE (`StaticAutoInstallPackages`). Conta
+  como do RAL o nome do catálogo, da pasta `pkg/` da árvore apontada ou
+  PascalRAL/PascalRALDsgn; RALRESTDW e `$(RDW2RAL)` nunca. A lista de IDEs
+  mostra "— RAL instalado", a tela de recursos já vem com o que está instalado
+  marcado e cada recurso diz "(instalado em …)".
+- **Selecionar todos / Desmarcar todos** na tela de recursos.
+- **Desinstalar = nenhum recurso marcado numa IDE que tem o RAL** (pergunta
+  antes; sem RAL em nenhuma IDE marcada continua "Marque ao menos um recurso").
+  A última página vira "Desinstalar". Ordem: desfaz os recibos do instalador
+  (do mais novo ao mais velho), depois tira o que sobrou feito à mão — Known
+  Packages das duas IDEs, `Disabled Packages*`, as entradas do RAL no library
+  path, a variável; no Lazarus, links e pacotes da IDE, e reconstrói. Os
+  `.bpl` de instalação à mão ficam no disco. O que foi tirado vira um registro
+  em `<recibos>\desinstalacoes\*.json` (mesmo formato de recibo), que
+  `DesfazerDesinstalacao` / `ralcli desinstalar --desfazer=<arquivo>` devolve.
+  Pacotes que usam o RAL e não são dele (RALRESTDW) ficam e geram aviso. A
+  `ralcli desinstalar` faz o mesmo. `DesfazerMudanca` passou a devolver também
+  o que a mudança tirou.
+- **IDE de 64 bits** (Delphi 12+, `bin64\bds.exe` + `lib\win64\release\designide.dcp`):
+  o Win64 entra na rodada sozinho, os pacotes de design (do RAL e das
+  dependências) compilam em Win64 e vão para `Known Packages x64`. Pacote que
+  exige `designide` onde a plataforma não tem o `.dcp` dele (Win64 do Seattle,
+  do XE2) é pulado — não é falha — e quem depende dele também, com o motivo.
+- **`-LU`**: entraram `vclFireDAC`/`fmxFireDAC` (o cursor de espera do FireDAC
+  vinha estático no RALDBFireDACObjects) e `DbxCommonDriver` (o JSON do RAL no
+  XE2 é o `Data.DBXJSON`; sem ele o `PascalRAL.bpl` embutia `Data.DBXPlatform`).
+- **Receita do Zeos**: Delphi 13 usa o ramo `8.0-patches` (a 8.0.0-stable não
+  tem `packages/Delphi13`).
+- **Testes**: `tests/existente --testes <raízes>` desinstala e desfaz em
+  cópias (registro em `HKCU\Software\RALInstaller-Teste`, config do Lazarus em
+  pasta temporária) e confere que o original não mudou; precisa das IDEs, então
+  não está no workflow.
+- **Instalação prática** (2026-09-25): Delphi 13 (IDE de 32 e de 64 bits, 15
+  recursos incluindo Zeos, mORMot2 e Sagui, 30 `.bpl`), Seattle, XE2 e Lazarus
+  4.9 (pasta 4.8, IDE reconstruída) — todas abertas depois, com os pacotes
+  carregados e nada em `Disabled Packages`. Pela tela: a 1.1 do GitHub no
+  Delphi 13 (baixa RAL, submódulos, mORMot2 e Zeos) e a desinstalação completa
+  do Seattle.
+- **Correções no PascalRAL-dev** (sem commit): `RALDBFireDACObjects` exige o
+  `RALDBPackage`; Brotli no Delphi — o `.obj` COFF só liga do 10.1 em diante e
+  com o nome exato do símbolo, Win64 e versões anteriores usam as DLLs
+  (submódulo `pascal_brotli`, que é outro repositório); `RALClient`
+  (`AnsiChar` no lugar de `CharRAL` numa `StringRAL`, Seattle); netHTTP
+  (`CERT_CONTEXT` e constantes do WinHTTP próprios, `ProtocolVersion` só do
+  Delphi 11, `SerialNum` do 10.3); `RALDBFiredacDAO` (`pidAllPlatforms`);
+  `RALTools` (`TInterlocked` antes do XE3); `RALDBFireDAC` (evento de erro do
+  AnyDAC); `RALDBFiredacMemTable` (helper de string, XE2); `libsagui` (sobre a
+  alteração local que já estava lá: `Pcchar` = `PAnsiChar` no Delphi antigo,
+  `UTF8ToString` antes do Seattle, `TrimRight(S)`, e sem `inline` em
+  `CheckVersion`/`CheckLastError` no XE2, que dá erro interno URW1147 no
+  `RALSaguiServer`). SaguiRAL conferido no XE2, Seattle, Delphi 13 e Lazarus.
+- Falta: o `ZComponentDesign` do Zeos não vai para a IDE de 64 bits (o `.dproj`
+  dele não habilita Win64); a 1.1 publicada não compila o Brotli em Win64 nem o
+  resto que foi corrigido no dev.
 ---
 
 ## 6. Dados de referência
@@ -1112,6 +1240,14 @@ antes, e comparar número a número, nunca como texto (`v1.10` > `v1.9`).
 - No Windows não se apaga um `.exe` em execução — mas se renomeia. É por aí que
   a auto-atualização (F12) passa, e por isso ela nunca apaga nada antes de ter o
   binário novo gravado.
+
+- `Select-Object -First` num pipeline com a `ralcli` mata o processo no meio
+  da compilação (o PowerShell para quem está antes no pipe): grave em arquivo e
+  filtre depois.
+- O `.obj` de uma biblioteca C em Delphi: `external 'x'` sem `{$L}` vira import
+  de DLL (o pacote compila e a IDE não carrega: "módulo não encontrado");
+  `external name` para `.obj` só nos Delphi novos. Confira os imports com
+  `tdump -em`.
 
 ---
 

@@ -1,9 +1,11 @@
+/// The installer from the command line: the same steps as the screens, for
+/// remote sessions, build servers and whoever prefers the terminal. The texts
+/// are Portuguese.
 program ralcli;
 
 {$mode ObjFPC}{$H+}
 
-// F11: o instalador pela linha de comando — os mesmos passos da tela, para
-// sessao remota, servidor de build e quem prefere o terminal.
+// o instalador pela linha de comando:
 //
 //   ralcli ides [--buscar-em=<pasta>]...
 //   ralcli versoes
@@ -12,6 +14,7 @@ program ralcli;
 //   ralcli instalar --ide=<raiz> [--ide=<raiz>]... [opcoes] [--sim]
 //   ralcli recibos  [--todos]
 //   ralcli desinstalar --ide=<raiz> [--ide=<raiz>]... [--sim] [--sem-reconstruir]
+//   ralcli desinstalar --desfazer=<registro> [--sim]
 //   ralcli versao
 //   ralcli atualizar [--verificar]
 //
@@ -35,15 +38,18 @@ program ralcli;
 // e defeito, nao recurso (F12). So 'ralcli atualizar' troca o binario.
 
 uses
-  {$IFDEF UNIX}cthreads,{$ENDIF}
-  Classes, SysUtils, RALInst.Processo, RALInst.IDE, RALInst.IDE.Lazarus, RALInst.Catalogo,
-  RALInst.GitHub, RALInst.Rodada, RALInst.Recibos, RALInst.Versao, RALInst.AutoAtualizacao
-  {$IFDEF MSWINDOWS}, Windows, RALInst.IDE.Delphi{$ENDIF};
+  {$IFDEF UNIX} cthreads, {$ENDIF}
+  {$IFDEF MSWINDOWS} Windows, RALInst.IDE.Delphi, RALInst.Instalar.Delphi, {$ENDIF}
+  Classes, SysUtils,
+  RALInst.AutoAtualizacao, RALInst.Catalogo, RALInst.GitHub, RALInst.IDE,
+  RALInst.IDE.Lazarus, RALInst.Instalar.Lazarus, RALInst.Processo, RALInst.Recibos,
+  RALInst.Rodada, RALInst.Versao;
 
 // as receitas e o manifesto embutidos (ralcli.lpi, como no instalador grafico)
 {$R *.res}
 
 type
+  /// Writes the core log lines to the console.
   TSaida = class
   public
     procedure Linha(const ALinha: string);
@@ -66,12 +72,14 @@ begin
   WriteLn('  ralcli ides [--buscar-em=<pasta>]');
   WriteLn('  ralcli versoes');
   WriteLn('  ralcli pacotes [--versao=<ref>|--local=<pasta>]');
-  WriteLn('  ralcli plano --ide=<raiz|#n> [--versao=<ref>|--local=<pasta>] [--pasta=<pasta>]');
-  WriteLn('               [--pacotes=a,b] [--win64] [--somente-paths] [--ignorar-existentes]');
+  WriteLn('  ralcli plano --ide=<raiz|#n> [--versao=<ref>|--local=<pasta>]');
+  WriteLn('               [--pasta=<pasta>] [--pacotes=a,b] [--win64] [--somente-paths]');
+  WriteLn('               [--ignorar-existentes]');
   WriteLn('               [--sem-reconstruir]');
   WriteLn('  ralcli instalar (as mesmas opções do plano) [--sim]');
   WriteLn('  ralcli recibos [--todos]');
   WriteLn('  ralcli desinstalar --ide=<raiz|#n> [--sim] [--sem-reconstruir]');
+  WriteLn('  ralcli desinstalar --desfazer=<registro em recibos\desinstalacoes> [--sim]');
   WriteLn('  ralcli versao');
   WriteLn('  ralcli atualizar [--verificar]');
   Halt(2);
@@ -212,9 +220,11 @@ begin
   for vInt := 0 to Pred(GIDEs.Count) do
   begin
     vIDE := GIDEs[vInt];
-    WriteLn(Format('  #%-3d %-26s %s', [vInt + 1, vIDE.Nome, ExcludeTrailingPathDelimiter(vIDE.RootDir)]));
+    WriteLn(Format('  #%-3d %-26s %s',
+                   [vInt + 1, vIDE.Nome, ExcludeTrailingPathDelimiter(vIDE.RootDir)]));
     if vIDE.Tipo = tiLazarus then
-      WriteLn(Format('       FPC %s, configuração %s', [vIDE.VersaoCompilador, vIDE.ConfigDir]))
+      WriteLn(Format('       FPC %s, configuração %s',
+                     [vIDE.VersaoCompilador, vIDE.ConfigDir]))
     else if vIDE.RegKey = '' then
       WriteLn('       não registrada em HKCU: abra a IDE uma vez antes de instalar');
     if vIDE.Avisos.Count > 0 then
@@ -330,7 +340,8 @@ begin
       for vInt := 0 to Pred(vLista.Count) do
       begin
         vPacote := TPacote(vLista[vInt]);
-        WriteLn(Format('  %-24s %-14s %s', [vPacote.Nome, vPacote.Grupo, vPacote.Descricao]));
+        WriteLn(Format('  %-24s %-14s %s',
+                       [vPacote.Nome, vPacote.Grupo, vPacote.Descricao]));
       end;
     end;
   finally
@@ -350,7 +361,8 @@ begin
     WriteLn(vRodada.Plano);
     if not AExecutar then
       Exit;
-    if not Confirmar('As IDEs acima terão a configuração alterada; feche-as antes. Instalar?') then
+    if not Confirmar('As IDEs acima terão a configuração alterada; feche-as antes. ' +
+                     'Instalar?') then
     begin
       WriteLn('Nada foi feito.');
       Halt(1);
@@ -388,6 +400,58 @@ begin
   end;
 end;
 
+// o motor de cada tipo de IDE, sem catalogo: os nomes do RAL vem da arvore
+// que a IDE aponta e dos pacotes que toda versao tem
+function PlanoDesinstalarIDE(AIDE: TIDEInstance): string;
+begin
+  {$IFDEF MSWINDOWS}
+  if AIDE.Tipo = tiDelphi then
+    with TInstalacaoDelphi.Create(AIDE, nil) do
+    try
+      Result := PlanoDesinstalar;
+    finally
+      Free;
+    end
+  else
+  {$ENDIF}
+    with TInstalacaoLazarus.Create(AIDE, nil) do
+    try
+      ConstruirIDE := not Chave('sem-reconstruir');
+      Result := PlanoDesinstalar;
+    finally
+      Free;
+    end;
+end;
+
+function DesinstalarDaIDE(AIDE: TIDEInstance): boolean;
+var
+  vRelatorio: string;
+begin
+  {$IFDEF MSWINDOWS}
+  if AIDE.Tipo = tiDelphi then
+    with TInstalacaoDelphi.Create(AIDE, nil) do
+    try
+      Log := @GSaida.Linha;
+      Result := Desinstalar;
+      vRelatorio := Relatorio.Text;
+    finally
+      Free;
+    end
+  else
+  {$ENDIF}
+    with TInstalacaoLazarus.Create(AIDE, nil) do
+    try
+      Log := @GSaida.Linha;
+      ConstruirIDE := not Chave('sem-reconstruir');
+      Result := Desinstalar;
+      vRelatorio := Relatorio.Text;
+    finally
+      Free;
+    end;
+  if Trim(vRelatorio) <> '' then
+    WriteLn(TrimRight(vRelatorio));
+end;
+
 procedure Desinstalar;
 var
   vIDEs: TStringList;
@@ -395,15 +459,35 @@ var
   vIDE: TIDEInstance;
   vOk: boolean;
 begin
+  // desfazer uma desinstalacao: o registro que ela deixou
+  vValor := Opcao('desfazer');
+  if vValor <> '' then
+  begin
+    if not Confirmar('Devolver o que a desinstalação tirou (' + vValor + ')? ' +
+                     'Feche a IDE antes.') then
+    begin
+      WriteLn('Nada foi feito.');
+      Halt(1);
+    end;
+    Halt(Ord(not DesfazerDesinstalacao(vValor, @GSaida.Linha)));
+  end;
+
   vIDEs := TStringList.Create;
   try
     Opcoes('ide', vIDEs);
     if vIDEs.Count = 0 then
     begin
-      WriteLn('ERRO: diga de qual IDE: --ide=<raiz> (veja ralcli recibos)');
+      WriteLn('ERRO: diga de qual IDE: --ide=<raiz> (veja ralcli ides)');
       Halt(2);
     end;
-    if not Confirmar('Desfazer o que o instalador fez nestas IDEs? Feche-as antes.') then
+    for vValor in vIDEs do
+    begin
+      vIDE := ResolverIDE(vValor);
+      if vIDE <> nil then
+        WriteLn(PlanoDesinstalarIDE(vIDE));
+    end;
+    if not Confirmar('Tirar o RAL destas IDEs (o que o instalador fez e o que foi ' +
+                     'instalado à mão)? Feche-as antes.') then
     begin
       WriteLn('Nada foi feito.');
       Halt(1);
@@ -419,8 +503,7 @@ begin
         Continue;
       end;
       WriteLn('==== ', vIDE.Nome);
-      if not DesinstalarIDE(PastaDadosInstalador + 'recibos', vIDE.RootDir, @GSaida.Linha,
-                            not Chave('sem-reconstruir')) then
+      if not DesinstalarDaIDE(vIDE) then
         vOk := False;
     end;
     Halt(Ord(not vOk));
@@ -428,7 +511,6 @@ begin
     vIDEs.Free;
   end;
 end;
-
 procedure Atualizar;
 var
   vAtu: TAtualizacao;
@@ -502,8 +584,9 @@ begin
     end
     else if (GVerbo = 'plano') or (GVerbo = 'instalar') then
     begin
-      ConferirOpcoes(['ide', 'versao', 'local', 'pasta', 'pacotes', 'win64', 'somente-paths',
-                      'ignorar-existentes', 'sem-reconstruir', 'buscar-em', 'sim']);
+      ConferirOpcoes(['ide', 'versao', 'local', 'pasta', 'pacotes', 'win64',
+                      'somente-paths', 'ignorar-existentes', 'sem-reconstruir',
+                      'buscar-em', 'sim']);
       BuscarIDEs;
       Planejar(GVerbo = 'instalar');
     end
