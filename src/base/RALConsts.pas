@@ -17,7 +17,9 @@ uses
   Classes, SysUtils;
 
 type
-  TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth, ratOAuth2, ratDigest);
+  { OAuth 1.0a (ratOAuth) was removed in 1.3: OAuth2 is a different protocol,
+    not an extension of it }
+  TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth2, ratDigest);
 
 const
   // Versionamento
@@ -108,7 +110,7 @@ const
     ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to
     MinKeepAliveInterval and are not held to this one. }
   MINKEEPALIVEMS = 5000;
-  // Attempts to obtain a token, in SetTokenDigest/SetTokenJWT/SetTokenOAuth1.
+  // Attempts to obtain a token, in TRALAuthClient.Prepare of JWT and OAuth2.
   RALMAXTOKENTRIES = 4;
   HTTPLineBreak = #13#10;
   // HTTP Codes

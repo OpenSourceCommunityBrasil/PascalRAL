@@ -653,7 +653,6 @@ begin
       begin
         vRequest.Params.CompressType := vRequest.ContentCompress;
         vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-        vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
 
         vRequest.RequestText := RawUtf8(AContext.InContent);
         vRequest.Host := AContext.Host;

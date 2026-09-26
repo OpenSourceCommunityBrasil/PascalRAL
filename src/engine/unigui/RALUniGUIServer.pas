@@ -44,26 +44,10 @@ end;
 
 procedure TRALUniGUIServer.DecodeAuth(ARequest: TIdHTTPRequestInfo;
   AResult: TRALRequest);
-var
-  vStr, vAux: StringRAL;
-  vInt: IntegerRAL;
 begin
-  if Authentication = nil then
+  if not HasAuthentication then
     Exit;
-
-  AResult.Authorization.AuthType := ratNone;
-  AResult.Authorization.AuthString := '';
-
-  vStr := ARequest.RawHeaders.Values['Authorization'];
-  if vStr <> '' then begin
-    vInt := Pos(' ', vStr);
-    vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if RALSameName(vAux, 'Basic') then
-      AResult.Authorization.AuthType := ratBasic
-    else if RALSameName(vAux, 'Bearer') then
-      AResult.Authorization.AuthType := ratBearer;
-    AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
-  end;
+  DecodeAuthValue(AResult, ARequest.RawHeaders.Values['Authorization']);
 end;
 
 destructor TRALUniGUIServer.Destroy;
@@ -145,7 +129,6 @@ begin
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
-        Params.CriptoOptions.Key := CriptoOptions.Key;
         RequestStream := ARequestInfo.PostStream;
 
         Host := ARequestInfo.Host;

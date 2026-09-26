@@ -90,6 +90,10 @@ type
     FHttpVersion: StringRAL;
     FMethod: TRALMethod;
     FQuery: StringRAL;
+    FResolvedRoute: TObject;
+    FRouteOwner: TObject;
+    FRouteResolved: boolean;
+    FTrusted: boolean;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
   protected
@@ -124,10 +128,26 @@ type
     function GetRequestEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// Returns the request data in UTF8String format
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
+    /// Records the route the server resolved for this request, and who
+    /// answers it. Called by TRALServer.FindRoute, once per request
+    procedure SetResolvedRoute(ARoute, AOwner: TObject);
 
     property URL: StringRAL read GetURL;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
+    /// The TRALRoute that answers this request, or nil when none does. Only
+    /// meaningful once RouteResolved is True: the route is looked up the first
+    /// time someone asks (TRALServer.FindRoute) and kept for the rest of the
+    /// request, so plugins and modules share one lookup
+    property ResolvedRoute: TObject read FResolvedRoute;
+    /// Who answers ResolvedRoute: the module (TRALModuleRoutes) that owns it,
+    /// or the plugin that offered it
+    property RouteOwner: TObject read FRouteOwner;
+    /// Whether the route was already looked up
+    property RouteResolved: boolean read FRouteResolved;
+    /// Set by a white list plugin: the address is trusted, and the protections
+    /// that run after it (black list, brute force, flood) leave the request alone
+    property Trusted: boolean read FTrusted write FTrusted;
   published
     property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
     property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
@@ -218,6 +238,13 @@ begin
   end;
 
   FQuery := FixRoute(FQuery);
+end;
+
+procedure TRALRequest.SetResolvedRoute(ARoute, AOwner: TObject);
+begin
+  FResolvedRoute := ARoute;
+  FRouteOwner := AOwner;
+  FRouteResolved := True;
 end;
 
 procedure TRALRequest.Clone(ASource: TRALRequest);

@@ -14,7 +14,7 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   MsQuic,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALStream, RALQuicFrame;
+  RALParams, RALTools, RALCompress, RALStream, RALQuicFrame, RALContent;
 
 type
   { TRALMsQuicSSL }
@@ -616,6 +616,7 @@ var
   vSendCtx: PRALMsQuicSendCtx;
   vIndex: Cardinal;
   vLimit: Int64RAL;
+  vLimits: TObject;
 begin
   Result := QUIC_STATUS_SUCCESS;
   vCtx := TRALMsQuicStream(Context);
@@ -629,7 +630,10 @@ begin
             used to as well - a peer could hold as much memory as it cared to
             send. Past the limit the rest is drained and dropped, and the
             answer is the same 413 ValidateRequest gives. }
-          vLimit := vCtx.Server.MaxRequestSize;
+          vLimit := 0;
+          vLimits := vCtx.Server.FindPlugin(TRALLimitsPlugin);
+          if vLimits <> nil then
+            vLimit := TRALLimitsPlugin(vLimits).MaxRequestSize;
           if (not vCtx.Oversized) and (vLimit > 0) and
              (vCtx.Received.Position + Int64RAL(vRecv^.TotalBufferLength) > vLimit) then
           begin
@@ -1152,7 +1156,6 @@ begin
           begin
             vRequest.Params.CompressType := vRequest.ContentCompress;
             vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-            vRequest.Params.CriptoOptions.Key := CriptoOptions.Key;
 
             vRequest.RequestText := vBody;
           end;

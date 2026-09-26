@@ -93,7 +93,7 @@ Item_21=src\wizard\delphi\standalone
 Item_22=src\wizard\lazarus
 
 [Files]
-Count=100
+Count=107
 Item_0=src\base\plugins\RALAuthentication.pas
 Item_1=src\base\RALClient.pas
 Item_2=src\base\RALConsts.pas
@@ -194,6 +194,13 @@ Item_96=src\wizard\delphi\standalone\RALWizardFormStandAlone.pas
 Item_97=src\wizard\delphi\standalone\RALWizardProjStandAlone.pas
 Item_98=src\wizard\lazarus\ralwizard.pas
 Item_99=src\wizard\lazarus\ralwizardform.pas
+Item_100=src\base\RALPlugin.pas
+Item_101=src\base\plugins\RALSecurity.pas
+Item_102=src\base\plugins\RALCORS.pas
+Item_103=src\base\plugins\RALContent.pas
+Item_104=src\utils\RALJWS.pas
+Item_105=src\base\plugins\RALDigest.pas
+Item_106=src\base\plugins\RALOAuth2.pas
 [AdditionalFiles]
 Count=0
 

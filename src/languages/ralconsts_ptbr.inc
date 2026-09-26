@@ -87,6 +87,29 @@
   wmJWTNotYetValid = 'O token ainda não é válido';
   wmJWTRefused = 'O token foi recusado pelo servidor';
 
+  // jws messages (RS/ES tokens and JWK)
+  emJWSInvalidKey = 'A chave não pôde ser lida.';
+  emJWSNoPrivateKey = 'Assinar exige uma chave privada: SignKey está vazia ou é só pública.';
+  emJWSOpenSSL = 'Tokens RS e ES exigem o OpenSSL 1.1.1 ou mais novo, que não pôde ser carregado.';
+  emJWSUnsupportedKey = 'Só chaves RSA e chaves EC em P-256 ou P-384 são suportadas.';
+
+  // oauth2 messages (error_description and client errors)
+  emOAuth2Fetch = 'Não foi possível ler %s: %s';
+  emOAuth2LoopbackTimeout = 'Nenhuma resposta de autorização chegou a tempo.';
+  emOAuth2NoToken = 'O servidor de autorização respondeu sem access_token.';
+  emOAuth2StateMismatch = 'O state da resposta de autorização não é o que foi enviado.';
+  emOAuth2TokenFailed = 'O servidor de autorização recusou o pedido de token: %s';
+  wmOAuth2AccessDenied = 'A autorização foi negada';
+  wmOAuth2InvalidClient = 'A autenticação do cliente falhou';
+  wmOAuth2InvalidGrant = 'A concessão é inválida, vencida ou revogada';
+  wmOAuth2InvalidRequest = 'Um parâmetro falta ou está malformado';
+  wmOAuth2InvalidScope = 'O escopo pedido não é permitido';
+  wmOAuth2PKCE = 'O code_verifier não confere com o code_challenge';
+  wmOAuth2RedirectURI = 'O redirect_uri não é o da autorização';
+  wmOAuth2Revoked = 'O token foi revogado';
+  wmOAuth2Scope = 'O token não tem o escopo que esta rota exige';
+  wmOAuth2UnsupportedGrant = 'O tipo de concessão não é suportado';
+
   // sagui error messages
   emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';
   emSaguiServerCreateError = 'Erro ao tentar criar o servidor.';

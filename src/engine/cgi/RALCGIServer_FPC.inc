@@ -2,7 +2,7 @@ uses
   Classes, SysUtils,
   custcgi, custweb, fpweb, httpDefs,
   RALServer, RALRequest, RALResponse, RALTools, RALCompress, RALTypes,
-  RALParams;
+  RALParams, RALConsts;
 
 type
 
@@ -122,10 +122,6 @@ begin
     vRequest.ContentEncription := GetEnvironmentVariable('HTTP_CONTENT_ENCRIPTION');
     vRequest.ContentType := GetEnvironmentVariable('CONTENT_TYPE');
 
-    vRequest.Params.CompressType := vRequest.ContentCompress;
-    vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-    vRequest.Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
-
     for vInt := 1 to GetEnvironmentVariableCount do
     begin
       vAux1 := GetEnvironmentString(vInt);
@@ -146,7 +142,17 @@ begin
       vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
     end;
 
-    vRequest.RequestText := ARequest.Content;
+    vRequest.ContentSize := Length(ARequest.Content);
+
+    { the plugins that act before the body is read - size limit, address lists,
+      the key of an encrypted body - as every other engine runs them }
+    vServer.ValidateRequest(vRequest, vResponse);
+    if vResponse.StatusCode < HTTP_BadRequest then
+    begin
+      vRequest.Params.CompressType := vRequest.ContentCompress;
+      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
+      vRequest.RequestText := ARequest.Content;
+    end;
 
     vServer.ProcessCommands(vRequest, vResponse);
 

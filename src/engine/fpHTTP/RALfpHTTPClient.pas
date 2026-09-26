@@ -330,7 +330,7 @@ begin
       exists to remove.
 
       The retry lives here rather than in BeforeSendUrl because the token
-      routines (SetTokenJWT and friends) call SendUrl through their own loops
+      routines (the authenticators' Prepare) call SendUrl through their own loops
       and abort on any ErrorCode; only an engine-level reconnect covers them. }
     vAttempt := 0;
     repeat

@@ -170,6 +170,9 @@ type
 
   TRALClientHTTP = class(TPersistent)
   private
+    { what the authenticator uses to send requests of its own (a token
+      request) through this engine; created with the engine }
+    FAuthTransport: TRALAuthTransport;
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
     { host and port of the attempt in progress, filled in by BeforeSendUrl:
@@ -194,34 +197,12 @@ type
     /// that has not answered yet is still working on the request.
     function CanSwitchURL(AMethod: TRALMethod;
                           AError: TRALTransportError): boolean; virtual;
-    /// clears authentication token property.
-    procedure ResetToken;
     /// Fills a response that never got an HTTP answer. Engines call it from
     /// their exception handlers so that the retry decision reads the same
     /// information no matter which engine produced the failure.
     procedure SetTransportError(AResponse: TRALResponse;
                                 AError: TRALTransportError; ACode: IntegerRAL;
                                 const AMessage: StringRAL); virtual;
-    /// Configures the Request header with proper authentication info based on the assigned
-    /// authenticator. AResponse belongs to the caller: the three that fetch a token
-    /// over the network write a transport failure into it, so the caller can say
-    /// what went wrong instead of raising an exception with no message.
-    function SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
-                          AResponse: TRALResponse): IntegerRAL;
-    /// used by SetAuthToken to set authentication on the header: Basic.
-    function SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
-    /// used by SetAuthToken to set authentication on the header: DigestAuth.
-    function SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
-                            AResponse: TRALResponse): IntegerRAL;
-    /// used by SetAuthToken to set authentication on the header: JWT.
-    function SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
-                         AResponse: TRALResponse): IntegerRAL;
-    /// used by SetAuthToken to set authentication on the header: OAuth1.
-    function SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
-                            AResponse: TRALResponse): IntegerRAL;
-    /// placeholder
-    function SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
-
     /// Walks SSL.Pins once: whether any line applies to this connection, and
     /// whether the presented fingerprint is one of them
     procedure ResolvePin(const AFingerprint: StringRAL;
@@ -258,6 +239,7 @@ type
     property Parent: TRALClient read FParent write FParent;
   public
     constructor Create(AOwner: TRALClient); virtual;
+    destructor Destroy; override;
 
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); virtual; abstract;
@@ -736,6 +718,68 @@ type
                              out APort: IntegerRAL);
 
 implementation
+
+type
+  { TRALClientAuthTransport }
+
+  { the requests an authenticator sends on its own (TRALAuthClient.Prepare)
+    go through the engine of the request being authenticated }
+  TRALClientAuthTransport = class(TRALAuthTransport)
+  private
+    FClient: TRALClientHTTP;
+  public
+    constructor Create(AClient: TRALClientHTTP);
+    procedure Fail(AResponse: TRALResponse; const AMessage: StringRAL); override;
+    procedure FailWith(AResponse, ASource: TRALResponse); override;
+    function NewRequest: TRALRequest; override;
+    function NewResponse: TRALResponse; override;
+    function Send(const AURL: StringRAL; ARequest: TRALRequest;
+      AResponse: TRALResponse; AMethod: TRALMethod): IntegerRAL; override;
+    function URL(const ARoute: StringRAL): StringRAL; override;
+  end;
+
+constructor TRALClientAuthTransport.Create(AClient: TRALClientHTTP);
+begin
+  inherited Create;
+  FClient := AClient;
+end;
+
+procedure TRALClientAuthTransport.Fail(AResponse: TRALResponse;
+  const AMessage: StringRAL);
+begin
+  FClient.SetTransportError(AResponse, rteOther, 0, AMessage);
+end;
+
+procedure TRALClientAuthTransport.FailWith(AResponse, ASource: TRALResponse);
+begin
+  FClient.SetTransportError(AResponse, ASource.TransportError, ASource.ErrorCode,
+    ASource.ResponseText);
+end;
+
+function TRALClientAuthTransport.NewRequest: TRALRequest;
+begin
+  Result := TRALClientRequest.Create(FClient.Parent);
+end;
+
+function TRALClientAuthTransport.NewResponse: TRALResponse;
+begin
+  Result := TRALClientResponse.Create(FClient.Parent);
+end;
+
+function TRALClientAuthTransport.Send(const AURL: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod): IntegerRAL;
+begin
+  FClient.SendUrl(AURL, ARequest, AResponse, AMethod);
+  Result := AResponse.ErrorCode;
+end;
+
+function TRALClientAuthTransport.URL(const ARoute: StringRAL): StringRAL;
+begin
+  if SameText(Copy(ARoute, 1, 7), 'http://') or SameText(Copy(ARoute, 1, 8), 'https://') then
+    Result := ARoute
+  else
+    Result := FClient.GetURL(ARoute);
+end;
 
 var
   EnginesDefs : TStringList;
@@ -2186,12 +2230,12 @@ begin
       raise Exception.Create(emHTTP10NotRequestable);
     end;
 
-    // vParams is used in two places: SetAuthToken, which only runs while there
+    // vParams is used in two places: Prepare, which only runs while there
     // is no token yet, and SetAuthHeader, which always runs. It used to be
     // created and freed inside the first block, so SetAuthHeader received a
     // freed pointer - or, when the token already existed and the block did not
     // run at all, an uninitialised variable. Neither Basic nor JWT read this
-    // argument, but Digest and OAuth do.
+    // argument, but Digest does (the method and the url it signs).
     { The application's own say over THIS attempt. It runs here, with the URL
       and the TLS policy for it already settled, and BEFORE any network work -
       the token fetch below included, since that one is a request of its own:
@@ -2239,11 +2283,14 @@ begin
           against itself, so N clients finding no token fetched N tokens, each
           one a full round trip and a full handler on the server.
           Holding it across the fetch is the point: the others wait, then find
-          the token already there and skip the double-check below. }
+          the token already there and skip the double-check below.
+          What to fetch is the authenticator's business (Prepare): this used to
+          be a chain of "is" here, one branch per scheme. }
         FParent.Authentication.Lock;
         try
           if not FParent.Authentication.IsAuthenticated then
-            vErrorCode := SetAuthToken(vParams, ARequest, AResponse);
+            vErrorCode := FParent.Authentication.Prepare(FAuthTransport, vParams,
+              AResponse);
         finally
           FParent.Authentication.Unlock;
         end;
@@ -2293,15 +2340,20 @@ begin
     if (AResponse.TransportError <> rteNone) and (Parent.BaseURL.Count > 0) then
       FIndexUrl := (FIndexUrl + 1) mod Parent.BaseURL.Count;
 
-    // 401: drop the token and send once more, to the SAME url. This is what
-    // ResetToken always meant to do and never did.
+    // 401: the authenticator reads the challenge - drops its token, takes the
+    // Digest nonce - and says whether sending once more, to the SAME url, is
+    // worth it.
     if (vResp = HTTP_Unauthorized) and (not vTriedToken) and
        (FParent.Authentication <> nil) and
        (FParent.Authentication.AutoGetToken) then
     begin
       vTriedToken := True;
-      ResetToken;
-      vRepeat := True;
+      FParent.Authentication.Lock;
+      try
+        vRepeat := FParent.Authentication.HandleChallenge(AResponse);
+      finally
+        FParent.Authentication.Unlock;
+      end;
     end
     else if CanSwitchURL(AMethod, AResponse.TransportError) and
             (vConta < vMaxUrls) then
@@ -2343,12 +2395,6 @@ begin
 
   if Assigned(ARequest) and (ARequest.Params.Count(rpkQUERY) > 0) then
     Result := Result + '?' + ARequest.Params.AssignParamsUrl(rpkQUERY);
-end;
-
-procedure TRALClientHTTP.ResetToken;
-begin
-  if FParent.Authentication is TRALClientJWTAuth then
-    TRALClientJWTAuth(FParent.Authentication).Token := '';
 end;
 
 function TRALClientHTTP.CanSwitchURL(AMethod: TRALMethod;
@@ -2395,235 +2441,18 @@ begin
     AResponse.StatusCode := 0;
 end;
 
-function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
-  AResponse: TRALResponse): IntegerRAL;
-begin
-  { Only the three that go to the network take AResponse - Basic and OAuth2
-    build a header and cannot fail at transport level. }
-  if FParent.Authentication is TRALClientBasicAuth then
-    Result := SetTokenBasic(AVars, ARequest)
-  else if FParent.Authentication is TRALClientJWTAuth then
-    Result := SetTokenJWT(AVars, ARequest, AResponse)
-  else if FParent.Authentication is TRALClientOAuth then
-    Result := SetTokenOAuth1(AVars, ARequest, AResponse)
-  else if FParent.Authentication is TRALClientOAuth2 then
-    Result := SetTokenOAuth2(AVars, ARequest)
-  else if FParent.Authentication is TRALClientDigest then
-    Result := SetTokenDigest(AVars, ARequest, AResponse);
-end;
-
-function TRALClientHTTP.SetTokenBasic(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
-var
-  vObjAuth: TRALClientBasicAuth;
-begin
-  vObjAuth := TRALClientBasicAuth(FParent.Authentication);
-  vObjAuth.SetAuthHeader(AVars, ARequest.Params);
-  Result := 0; // no http error code
-end;
-
-function TRALClientHTTP.SetTokenDigest(AVars: TStringList; ARequest: TRALRequest;
-  AResponse: TRALResponse): IntegerRAL;
-var
-  vObjAuth: TRALClientDigest;
-  vConta, vStatus: IntegerRAL;
-  vResponse: TRALClientResponse;
-  vRequest: TRALClientRequest;
-  vURL, vAuth: StringRAL;
-  vDigest: TRALDigest;
-  vMethod: TRALMethod;
-begin
-  Result := 0; // no http error code
-
-  vObjAuth := TRALClientDigest(FParent.Authentication);
-  if not vObjAuth.IsAuthenticated then
-  begin
-    vResponse := TRALClientResponse.Create(FParent);
-    vRequest := TRALClientRequest.Create(FParent);
-    try
-      vURL := AVars.Values['url'];
-      vMethod := HTTPMethodToRALMethod(AVars.Values['method']);
-      vConta := 0;
-      repeat
-        vRequest.Clear;
-        vResponse.Clear;
-
-        SendUrl(vURL, vRequest, vResponse, vMethod);
-        Result := vResponse.ErrorCode;
-
-        vStatus := vResponse.StatusCode;
-        vConta := vConta + 1;
-      until (Result <> 0) or (vStatus = HTTP_Unauthorized) or (vConta >= RALMAXTOKENTRIES);
-
-      if vStatus = HTTP_Unauthorized then
-      begin
-        vAuth := vResponse.GetHeader('WWW-Authenticate');
-        vDigest := TRALDigest.Create;
-        try
-          vDigest.Load(vAuth);
-          vObjAuth.DigestParams.Assign(vDigest.Params);
-          vObjAuth.DigestParams.NC := 0;
-        finally
-          vDigest.Free;
-        end;
-      end;
-    finally
-      if Result <> 0 then
-        SetTransportError(AResponse, vResponse.TransportError,
-                          vResponse.ErrorCode, vResponse.ResponseText);
-
-      FreeAndNil(vRequest);
-      FreeAndNil(vResponse);
-    end;
-  end;
-end;
-
-function TRALClientHTTP.SetTokenJWT(AVars: TStringList; ARequest: TRALRequest;
-  AResponse: TRALResponse): IntegerRAL;
-var
-  vRequest: TRALRequest;
-  vResponse: TRALResponse;
-  vStatus, vConta: IntegerRAL;
-  vJson: TRALJSONObject;
-  vValue: TRALJSONValue;
-  vParam: TRALParam;
-  vObjAuth: TRALClientJWTAuth;
-begin
-  Result := 0; // no http error code
-
-  vObjAuth := TRALClientJWTAuth(FParent.Authentication);
-  if not vObjAuth.IsAuthenticated then
-  begin
-    vConta := 0;
-    repeat
-      vResponse := TRALClientResponse.Create(FParent);
-      vRequest := TRALClientRequest.Create(FParent);
-      try
-        if Assigned(vObjAuth.OnBeforeGetToken) then
-        begin
-          vObjAuth.OnBeforeGetToken(vRequest);
-        end
-        else
-        begin
-          // rpkBODY is not optional here: AddValue defaults the kind to
-          // rpkNONE, and EncodeBody only ever picks rpkBODY/rpkFIELD, so the
-          // payload was built and then dropped - the token request went out
-          // with Content-Length 0 and the server issued a token carrying no
-          // claims at all. Every other AddValue caller already says rpkBODY.
-          vParam := vRequest.Params.AddValue(vObjAuth.Payload.AsJSON, rpkBODY);
-          vParam.ContentType := rctAPPLICATIONJSON;
-        end;
-
-        SendUrl(GetURL(vObjAuth.Route), vRequest, vResponse, amPOST);
-        vStatus := vResponse.StatusCode;
-        Result := vResponse.ErrorCode;
-
-        if vStatus = HTTP_OK then
-        begin
-          if not vResponse.Body.IsNilOrEmpty then
-          begin
-            vJson := TRALJSONObject(TRALJSON.ParseJSON(vResponse.Body.AsString));
-            try
-              if vJson <> nil then
-              begin
-                vValue := vJson.Get(vObjAuth.JSONKey);
-                if vValue <> nil then
-                  vObjAuth.Token := vValue.AsString;
-              end;
-            finally
-              vJson.Free;
-            end;
-          end;
-        end;
-      finally
-        { The reason a token request failed used to die with its response: the
-          caller only got a number back and raised an exception with an EMPTY
-          message - which was all the application had to show the user. The
-          failure now travels to the response the caller owns, where both the
-          message and the transport error are read from. }
-        if Result <> 0 then
-          SetTransportError(AResponse, vResponse.TransportError,
-                            vResponse.ErrorCode, vResponse.ResponseText);
-
-        FreeAndNil(vRequest);
-        FreeAndNil(vResponse);
-      end;
-      vConta := vConta + 1;
-      { Result <> 0, not Result > 0: an engine that cannot number the failure
-        reports -1 (OkHttp does), and the loop then burned all four attempts on
-        a server already known to be unreachable - four connect timeouts before
-        the application heard about the first one. SetTokenDigest always read
-        it this way. }
-    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-          (Result <> 0);
-  end;
-end;
-
-function TRALClientHTTP.SetTokenOAuth1(AVars: TStringList; ARequest: TRALRequest;
-  AResponse: TRALResponse): IntegerRAL;
-var
-  vObjAuth: TRALClientOAuth;
-  vRequest: TRALRequest;
-  vResponse: TRALResponse;
-  vConta: Integer;
-  vTempAccess, vTempSecret: StringRAL;
-  vStatus: IntegerRAL;
-begin
-  Result := 0; // no http error code
-
-  vObjAuth := TRALClientOAuth(FParent.Authentication);
-  if not vObjAuth.IsAuthenticated then
-  begin
-    vConta := 0;
-    repeat
-      vResponse := TRALClientResponse.Create(FParent);
-      vRequest := TRALClientRequest.Create(FParent);
-      try
-        vObjAuth.SetAuthHeader(AVars, vResponse.Params);
-        SendUrl(GetURL(vObjAuth.RouteInitialize, ARequest), vRequest, vResponse, amPOST);
-        Result := vResponse.ErrorCode;
-        vStatus := vResponse.StatusCode;
-        if vStatus = HTTP_OK then
-        begin
-          vRequest.Clear;
-
-          vTempAccess := vResponse.GetField('oauth_token');
-          vTempSecret := vResponse.GetField('oauth_token_secret');
-
-          vResponse.Clear;
-
-          vRequest.Params.AddParam('oauth_token', vTempAccess, rpkQUERY);
-          SendUrl(GetURL(vObjAuth.RouteAuthorize, ARequest), vRequest, vResponse, amPOST);
-
-          Result := vResponse.ErrorCode;
-          vStatus := vResponse.StatusCode;
-        end;
-      finally
-        { Same as SetTokenJWT: the failure goes to the response the caller owns,
-          or the exception it raises carries no message at all. }
-        if Result <> 0 then
-          SetTransportError(AResponse, vResponse.TransportError,
-                            vResponse.ErrorCode, vResponse.ResponseText);
-
-        FreeAndNil(vRequest);
-        FreeAndNil(vResponse);
-      end;
-      vConta := vConta + 1;
-    until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or (vConta >= RALMAXTOKENTRIES) or
-      (Result <> 0);
-  end;
-end;
-
-function TRALClientHTTP.SetTokenOAuth2(AVars: TStringList; ARequest: TRALRequest): IntegerRAL;
-begin
-  // TODO;
-  Result := 0; // no http erros code
-end;
-
 constructor TRALClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited Create;
   FParent := AOwner;
   FIndexUrl := FParent.IndexUrl;
+  FAuthTransport := TRALClientAuthTransport.Create(Self);
+end;
+
+destructor TRALClientHTTP.Destroy;
+begin
+  FreeAndNil(FAuthTransport);
+  inherited Destroy;
 end;
 
 { TRALThreadClient }

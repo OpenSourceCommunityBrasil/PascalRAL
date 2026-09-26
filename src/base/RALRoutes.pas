@@ -511,32 +511,55 @@ end;
 
 function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
 var
-  vInt, vRouteWeight, vTempWeight: IntegerRAL;
-  vRoute: TRALRoute;
+  vInt, vRouteWeight, vTempWeight, vOtherWeight: IntegerRAL;
+  vRoute, vOther: TRALRoute;
   vQuery:  StringRAL;
-  vUriRoute, vTempUriRoute: TStringList;
+  vUriRoute, vTempUriRoute, vOtherUriRoute: TStringList;
   vParam: TRALParam;
 begin
   vUriRoute := TStringList.Create;
   vTempUriRoute := TStringList.Create;
+  vOtherUriRoute := TStringList.Create;
   try
     vTempWeight := 0;
     vRouteWeight := MaxInt;
+    vOtherWeight := MaxInt;
     Result := nil;
+    vOther := nil;
     vQuery := FixRoute(ARequest.Query);
+    { the route is found by its path; among the routes of the same path the one
+      that takes the method wins. When none of them takes it, the path's route
+      is still the answer: the module that owns it answers 405 - filtering by
+      method here made every wrong verb a 404, and the 405 of the core was
+      never reached }
     for vInt := 0 to Pred(Self.Count) do
     begin
       vRoute := TRALRoute(Items[vInt]);
 
-      if vRoute.IsMethodAllowed(ARequest.Method) and CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
+      if CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
       begin
-        if vTempWeight < vRouteWeight then
+        if vRoute.IsMethodAllowed(ARequest.Method) then
         begin
-          Result := vRoute;
-          vUriRoute.Assign(vTempUriRoute);
-          vRouteWeight := vTempWeight;
+          if vTempWeight < vRouteWeight then
+          begin
+            Result := vRoute;
+            vUriRoute.Assign(vTempUriRoute);
+            vRouteWeight := vTempWeight;
+          end;
+        end
+        else if vTempWeight < vOtherWeight then
+        begin
+          vOther := vRoute;
+          vOtherUriRoute.Assign(vTempUriRoute);
+          vOtherWeight := vTempWeight;
         end;
       end;
+    end;
+
+    if (Result = nil) and (vOther <> nil) then
+    begin
+      Result := vOther;
+      vUriRoute.Assign(vOtherUriRoute);
     end;
 
     if Result <> nil then
@@ -552,6 +575,7 @@ begin
   finally
     FreeAndNil(vUriRoute);
     FreeAndNil(vTempUriRoute);
+    FreeAndNil(vOtherUriRoute);
   end;
 end;
 

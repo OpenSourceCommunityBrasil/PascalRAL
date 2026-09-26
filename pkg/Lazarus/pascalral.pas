@@ -15,7 +15,7 @@ uses
   RALSHA1, RALCompressZLib, RALCompress, RALStorage, RALStorageBIN, 
   RALStorageCSV, RALStorageJSON, RALExternalsLibraries, RALPostmanExporter, 
   RALSwaggerExporter, RALSwaggerModule, RALWebModule, RALAuthentication, 
-  RALQuicFrame;
+  RALQuicFrame, RALPlugin, RALSecurity, RALCORS, RALContent, RALOpenSSL, RALJWS, RALDigest, RALOAuth2;
 
 implementation
 

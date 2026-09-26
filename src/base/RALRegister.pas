@@ -23,7 +23,7 @@ uses
   RALConsts, RALAuthentication, RALCompress, RALTypes, RALCustomObjects,
   // server
   RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
-  RALStorageCSV,
+  RALStorageCSV, RALSecurity, RALCORS, RALContent, RALDigest, RALOAuth2,
   // client
   RALClient;
 
@@ -158,9 +158,16 @@ begin
   {$ENDIF}
 
   // component registration process
-  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth]);
-  RegisterComponents('RAL - Client', [TRALClient, TRALClientBasicAuth, TRALClientJWTAuth]);
+  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth,
+    TRALServerDigest, TRALServerOAuth2]);
+  RegisterComponents('RAL - Client', [TRALClient, TRALClientBasicAuth, TRALClientJWTAuth,
+    TRALClientDigest, TRALClientOAuth2, TRALOAuth2Loopback]);
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
+  { a server carries no plugin: each feature is one of these, linked by its
+    Server property (authentication by Server.Authentication) }
+  RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
+    TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
+    TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
   { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,

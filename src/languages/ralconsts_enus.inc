@@ -87,6 +87,29 @@
   wmJWTNotYetValid = 'The token is not valid yet';
   wmJWTRefused = 'The token was refused by the server';
 
+  // jws messages (RS/ES tokens and JWK)
+  emJWSInvalidKey = 'The key could not be read.';
+  emJWSNoPrivateKey = 'Signing needs a private key: SignKey is missing or public only.';
+  emJWSOpenSSL = 'RS and ES tokens need OpenSSL 1.1.1 or later, which could not be loaded.';
+  emJWSUnsupportedKey = 'Only RSA keys and EC keys on P-256 or P-384 are supported.';
+
+  // oauth2 messages (error_description and client errors)
+  emOAuth2Fetch = 'Could not read %s: %s';
+  emOAuth2LoopbackTimeout = 'No authorization answer arrived in time.';
+  emOAuth2NoToken = 'The authorization server answered without an access_token.';
+  emOAuth2StateMismatch = 'The state of the authorization answer is not the one sent.';
+  emOAuth2TokenFailed = 'The authorization server refused the token request: %s';
+  wmOAuth2AccessDenied = 'The authorization was denied';
+  wmOAuth2InvalidClient = 'Client authentication failed';
+  wmOAuth2InvalidGrant = 'The grant is invalid, expired or revoked';
+  wmOAuth2InvalidRequest = 'A parameter is missing or malformed';
+  wmOAuth2InvalidScope = 'The requested scope is not allowed';
+  wmOAuth2PKCE = 'The code_verifier does not match the code_challenge';
+  wmOAuth2RedirectURI = 'The redirect_uri is not the one of the authorization';
+  wmOAuth2Revoked = 'The token was revoked';
+  wmOAuth2Scope = 'The token lacks the scope this route requires';
+  wmOAuth2UnsupportedGrant = 'The grant type is not supported';
+
   // sagui error messages
   emSaguiLibraryLoadError = 'Error while trying to load libsagui.';
   emSaguiServerCreateError = 'Error while attempting to create the server.';

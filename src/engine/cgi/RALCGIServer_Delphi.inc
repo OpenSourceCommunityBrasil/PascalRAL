@@ -4,7 +4,7 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
-  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALConsts;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -184,11 +184,15 @@ begin
       vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
     end;
 
-    vRequest.Params.CompressType := vRequest.ContentCompress;
-    vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-    vRequest.Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
-
-    vRequest.RequestText := ARequest.Content;
+    { the plugins that act before the body is read - size limit, address lists,
+      the key of an encrypted body - as every other engine runs them }
+    vServer.ValidateRequest(vRequest, vResponse);
+    if vResponse.StatusCode < HTTP_BadRequest then
+    begin
+      vRequest.Params.CompressType := vRequest.ContentCompress;
+      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
+      vRequest.RequestText := ARequest.Content;
+    end;
 
     vServer.ProcessCommands(vRequest, vResponse);
 

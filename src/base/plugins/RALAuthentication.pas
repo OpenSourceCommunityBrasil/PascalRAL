@@ -1,4 +1,5 @@
-﻿/// Base unit for all authenticators
+﻿/// Base unit for all authenticators: the client contract, the server plugin,
+/// and Basic and JWT. Digest is in RALDigest and OAuth2 in RALOAuth2
 unit RALAuthentication;
 
 interface
@@ -6,8 +7,7 @@ interface
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
-  RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder,
-  RALMIMETypes;
+  RALRequest, RALParams, RALResponse, RALCustomObjects, RALMIMETypes, RALPlugin;
 
 const
   RALTOKENName = 'raltoken';
@@ -35,8 +35,6 @@ type
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
-  TRALOnGetTokenSecret = procedure(ATokenAccess: StringRAL; var ATokenSecret: StringRAL)
-    of object;
 
   /// Base class of authenticators
   TRALAuthentication = class(TRALComponent)
@@ -47,6 +45,30 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     property AuthType: TRALAuthTypes read FAuthType;
+  end;
+
+  { TRALAuthTransport }
+
+  /// How a client authenticator reaches the network: the requests of its own
+  /// (a token request) go through the same engine, BaseURL and TLS policy as
+  /// the request being authenticated. TRALClient hands one to Prepare
+  TRALAuthTransport = class
+  public
+    /// Makes the authenticated request fail with AMessage: a provider's error,
+    /// a token that could not be read. The client raises it
+    procedure Fail(AResponse: TRALResponse; const AMessage: StringRAL); virtual; abstract;
+    /// Makes the authenticated request fail the way ASource failed - a
+    /// request of the authenticator's own that never got an answer
+    procedure FailWith(AResponse, ASource: TRALResponse); virtual; abstract;
+    function NewRequest: TRALRequest; virtual; abstract;
+    function NewResponse: TRALResponse; virtual; abstract;
+    /// Sends ARequest to AURL; returns the ErrorCode, zero when an HTTP answer
+    /// came (whatever its status)
+    function Send(const AURL: StringRAL; ARequest: TRALRequest;
+      AResponse: TRALResponse; AMethod: TRALMethod): IntegerRAL; virtual; abstract;
+    /// The URL of ARoute on the server being called; an absolute URL
+    /// (http:// or https://, a provider on another host) is returned as is
+    function URL(const ARoute: StringRAL): StringRAL; virtual; abstract;
   end;
 
   { TRALAuthClient }
@@ -65,7 +87,21 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    /// The server answered 401 (AResponse, with its WWW-Authenticate). The
+    /// authenticator drops or updates what it holds and says whether the
+    /// request is worth sending once more. Called under Lock, only with
+    /// AutoGetToken on
+    function HandleChallenge(AResponse: TRALResponse): boolean; virtual;
+    /// Whether the scheme has what it needs to authenticate a request - a
+    /// token, a nonce. When it has not and AutoGetToken is on, Prepare runs
     function IsAuthenticated: boolean; virtual;
+    /// Obtains what the scheme needs before a request (a token), through
+    /// ATransport. AVars holds the method and url of the request. Returns 0,
+    /// or the ErrorCode of a failure already written to AResponse. Called
+    /// under Lock
+    function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
+      AResponse: TRALResponse): IntegerRAL; virtual;
+    /// Writes the Authorization of the request (AParams) - every request
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
 
     /// Serialises everything that reads or writes the authenticator's own state.
@@ -86,17 +122,48 @@ type
 
   { TRALAuthServer }
 
-  TRALAuthServer = class(TRALAuthentication)
+  /// Authentication is a plugin of the server: in the plugin loop it answers the
+  /// route of its own (the JWT token route, offered in ppResolveRoute) and, for
+  /// every other route, authenticates the methods the route does not skip
+  /// (SkipAuthMethods) - with no authentication plugin, nothing is skipped
+  /// because nothing is asked. The verdict goes through Host.Authenticate, which
+  /// tells the ppAuthResult plugins (brute force) before any module runs.
+  /// TRALServer.Authentication adds it to the server's plugins, and so does its
+  /// own Server property - the way to link a second one (Basic and Digest
+  /// together); the scheme-specific work stays in Validate and BeforeValidate
+  TRALAuthServer = class(TRALPlugin)
+  private
+    FAuthType: TRALAuthTypes;
   protected
+    class function DefaultPriority: IntegerRAL; override;
+    function Phases: TRALPluginPhases; override;
     function GetAuthRoute: TRALBaseRoute; virtual;
     procedure SetAuthRoute(ARoute : TRALBaseRoute); virtual;
+    procedure SetAuthType(AType: TRALAuthTypes);
   public
+    constructor Create(AOwner: TComponent); override;
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
     /// Main method of authenticator, all validations must be done here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
+    /// Credentials that did not come in an Authorization header - the JWT
+    /// raltoken cookie. TRALServer.DecodeAuth calls it when the header is absent
+    procedure DecodeWithoutHeader(ARequest: TRALRequest); virtual;
+
+    { the plugin side of the same work }
+    /// ppAuthenticate: Validate, read as a verdict
+    function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
+      ARoute: TRALRoute): TRALAuthResult; override;
+    /// ppProcess: answers the plugin's own route, and 401/403 for a request
+    /// that does not pass. Only the first authenticator of the server asks for
+    /// the verdict: Host.Authenticate already hears all of them
+    procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
+      var AHandled: boolean); override;
+    /// ppResolveRoute: the plugin's own route, when it is the one requested
+    function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
 
     property AuthRoute: TRALBaseRoute read GetAuthRoute write SetAuthRoute;
+    property AuthType: TRALAuthTypes read FAuthType;
   end;
 
   /// BasicAuth for client components
@@ -148,7 +215,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    /// A 401: the token is dropped, and the request goes again with a new one
+    function HandleChallenge(AResponse: TRALResponse): boolean; override;
     function IsAuthenticated: boolean; override;
+    /// Posts to Route for a token (OnBeforeGetToken, or Payload as the body)
+    function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
+      AResponse: TRALResponse): IntegerRAL; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
 
     /// Reads one claim of the token currently held, under the lock.
@@ -202,6 +274,8 @@ type
     destructor Destroy; override;
 
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    /// The raltoken cookie, when no Authorization header came
+    procedure DecodeWithoutHeader(ARequest: TRALRequest); override;
     function GetToken(var AJSONParams: StringRAL): StringRAL;
     /// A new token with the claims of AToken and a new expiration; '' when
     /// AToken is not valid. Called directly it does not fire OnRenewToken
@@ -232,98 +306,13 @@ type
     property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
   end;
 
-  { TRALClientOAuth }
-
-  /// OAuth Authenticator for client components
-  TRALClientOAuth = class(TRALAuthClient)
-  private
-    FAlgorithm: TRALOAuthAlgorithm;
-    FCallBack: StringRAL;
-    FConsumerKey: StringRAL;
-    FConsumerSecret: StringRAL;
-    FNonce: StringRAL;
-    FRouteAuthorize: StringRAL;
-    FRouteInitialize: StringRAL;
-    FTokenAccess: StringRAL;
-    FTokenSecret: StringRAL;
-    FVerifier: StringRAL;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function IsAuthenticated: boolean; override;
-    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-  published
-    property Algorithm: TRALOAuthAlgorithm read FAlgorithm write FAlgorithm;
-    property CallBack: StringRAL read FCallBack write FCallBack;
-    property ConsumerKey: StringRAL read FConsumerKey write FConsumerKey;
-    property ConsumerSecret: StringRAL read FConsumerSecret write FConsumerSecret;
-    property Nonce: StringRAL read FNonce write FNonce;
-    property RouteAuthorize: StringRAL read FRouteAuthorize write FRouteAuthorize;
-    property RouteInitialize: StringRAL read FRouteInitialize write FRouteInitialize;
-    property TokenAccess: StringRAL read FTokenAccess write FTokenAccess;
-    property TokenSecret: StringRAL read FTokenSecret write FTokenSecret;
-    property Verifier: StringRAL read FVerifier write FVerifier;
-  end;
-
-  { TRALServerOAuth }
-
-  /// OAuth Authenticator for server components
-  TRALServerOAuth = class(TRALAuthServer)
-  private
-    FAlgorithm: TRALOAuthAlgorithm;
-    FConsumerKey: StringRAL;
-    FConsumerSecret: StringRAL;
-    FRouteAuthorize: StringRAL;
-    FRouteInitialize: StringRAL;
-    FOnGetTokenSecret: TRALOnGetTokenSecret;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    /// Validation process of the authentication is made here
-    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-  end;
-
-  /// OAuth Authenticator for client components
-  TRALClientOAuth2 = class(TRALAuthClient)
-  private
-
-  public
-
-  end;
-
-  /// OAuth2 Authenticator for server components
-  TRALServerOAuth2 = class(TRALAuthServer)
-  private
-
-  public
-
-  end;
-
-  { TRALClientDigest }
-
-  /// Digest Authenticator for Client components
-  TRALClientDigest = class(TRALAuthClient)
-  private
-    FDigestParams: TRALDigestParams;
-    FPassword: StringRAL;
-    FUserName: StringRAL;
-  protected
-    function GetEntityBody(AParams: TRALParams): StringRAL;
-  public
-    function IsAuthenticated: boolean; override;
-    property DigestParams: TRALDigestParams read FDigestParams write FDigestParams;
-    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-  published
-    property Password: StringRAL read FPassword write FPassword;
-    property UserName: StringRAL read FUserName write FUserName;
-  end;
-
-  /// Digest Authenticator for Server components
-  TRALServerDigest = class(TRALAuthServer)
-  private
-
-  public
-
-  end;
+/// Adds AChallenge to the WWW-Authenticate of AResponse: several authenticators
+/// refusing the same request each offer theirs (RFC 9110 11.6.1), in one field
+/// - the params of a response keep one value per name
+procedure RALAddChallenge(AResponse: TRALResponse; const AChallenge: StringRAL);
+/// AValue as printable ASCII for a challenge's error_description: accented
+/// Latin-1 letters lose the accent, anything else non-ASCII becomes '?'
+function RALChallengeText(const AValue: StringRAL): StringRAL;
 
 implementation
 
@@ -366,6 +355,17 @@ begin
   end;
 end;
 
+procedure RALAddChallenge(AResponse: TRALResponse; const AChallenge: StringRAL);
+var
+  vParam: TRALParam;
+begin
+  vParam := AResponse.Params.GetKind['WWW-Authenticate', rpkHEADER];
+  if (vParam <> nil) and (vParam.AsString <> '') then
+    vParam.AsString := vParam.AsString + ', ' + AChallenge
+  else
+    AResponse.AddHeader('WWW-Authenticate', AChallenge);
+end;
+
 { TRALAuthClient }
 
 constructor TRALAuthClient.Create(AOwner: TComponent);
@@ -391,214 +391,21 @@ begin
   FCritAuth.Release;
 end;
 
+function TRALAuthClient.HandleChallenge(AResponse: TRALResponse): boolean;
+begin
+  { what the client always did with a 401: send once more }
+  Result := True;
+end;
+
 function TRALAuthClient.IsAuthenticated: boolean;
 begin
   Result := False;
 end;
 
-{ TRALClientDigest }
-
-function TRALClientDigest.GetEntityBody(AParams: TRALParams): StringRAL;
-var
-  vStream: TStream;
-  vFreeContent: boolean;
-  vContentType, vContentDisposition: StringRAL;
+function TRALAuthClient.Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
+  AResponse: TRALResponse): IntegerRAL;
 begin
-  Result := '';
-  vFreeContent := False;
-  vStream := AParams.EncodeBody(vContentType, vContentDisposition);
-  if vStream <> nil then
-  begin
-    vStream.Position := 0;
-    if vStream is TStringStream then
-    begin
-      Result := TStringStream(vStream).DataString;
-    end
-    else
-    begin
-      SetLength(Result, vStream.Size);
-      vStream.Read(Result[PosIniStr], vStream.Size);
-    end;
-
-    if vFreeContent then
-      vStream.Free;
-  end;
-end;
-
-function TRALClientDigest.IsAuthenticated: boolean;
-begin
-  Result := (FDigestParams.Nonce <> '') and (FDigestParams.Opaque <> '')
-end;
-
-procedure TRALClientDigest.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
-var
-  vAuth: TRALDigest;
-  vParams: TStringList;
-  vHead: StringRAL;
-  vInt: IntegerRAL;
-begin
-  vAuth := TRALDigest.Create;
-  try
-    vAuth.Params.Assign(FDigestParams);
-    vAuth.UserName := FUserName;
-    vAuth.Password := FPassword;
-    vAuth.URL := AVars.Values['url'];
-    vAuth.Method := AVars.Values['method'];
-    vAuth.EntityBody := GetEntityBody(AParams);
-    vAuth.Params.NC := vAuth.Params.NC + 1;
-
-    vParams := vAuth.Header;
-    try
-      for vInt := 0 to Pred(vParams.Count) do
-      begin
-        if vInt = 0 then
-          vHead := vHead + Format(' %s="%s"',
-            [vParams.Names[vInt], TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
-        else
-          vHead := vHead + Format(', %s="%s"',
-            [vParams.Names[vInt], TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
-      end;
-
-      AParams.AddParam('Authorization', 'Digest ' + vHead, rpkHEADER);
-    finally
-      FreeAndNil(vParams);
-    end;
-  finally
-    FreeAndNil(vAuth);
-  end;
-end;
-
-{ TRALServerOAuth }
-
-constructor TRALServerOAuth.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  FAlgorithm := toaHSHA256;
-  FRouteInitialize := '/initialize/';
-  FRouteAuthorize := '/authorize/';
-end;
-
-procedure TRALServerOAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
-var
-  vAuth: TRALOAuth;
-  vResult, vGetToken: boolean;
-  vTokenSecret: StringRAL;
-begin
-  AResponse.StatusCode := HTTP_OK;
-  if (ARequest.Authorization.AuthType <> ratOAuth) then
-  begin
-    AResponse.Answer(HTTP_Unauthorized);
-    Exit;
-  end;
-
-  vResult := False;
-
-  vAuth := TRALOAuth.Create;
-  try
-    vAuth.Algorithm := FAlgorithm;
-    vAuth.ConsumerKey := FConsumerKey;
-
-    if vAuth.Load(ARequest.Authorization.AuthString) then
-    begin
-      if (vAuth.TokenAccess <> '') then
-      begin
-        vTokenSecret := '';
-        if Assigned(FOnGetTokenSecret) then
-          FOnGetTokenSecret(vAuth.TokenAccess, vTokenSecret);
-        vAuth.TokenSecret := vTokenSecret;
-        vGetToken := vTokenSecret <> '';
-      end
-      else
-      begin
-        vGetToken := True;
-      end;
-
-      if vGetToken then
-      begin
-        vAuth.ConsumerSecret := FConsumerSecret;
-        vAuth.URL := ARequest.URL;
-        vAuth.Method := RALMethodToHTTPMethod(ARequest.Method);
-
-        vResult := vAuth.Validate;
-      end;
-    end;
-  finally
-    FreeAndNil(vAuth);
-  end;
-
-  if not vResult then
-    AResponse.Answer(HTTP_Unauthorized);
-end;
-
-procedure TRALServerOAuth.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
-begin
-  if SameText(ARequest.Query, FRouteInitialize) then
-  begin
-
-  end
-  else if SameText(ARequest.Query, FRouteAuthorize) then
-  begin
-
-  end;
-end;
-
-{ TRALClientOAuth }
-
-constructor TRALClientOAuth.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  FAlgorithm := toaHSHA256;
-  FRouteInitialize := '/initialize/';
-  FRouteAuthorize := '/authorize/';
-end;
-
-function TRALClientOAuth.IsAuthenticated: boolean;
-begin
-  Result := (FTokenAccess <> '') and (FTokenSecret = '')
-end;
-
-procedure TRALClientOAuth.SetAuthHeader(AVars: TStringList; AParams: TRALParams);
-var
-  vParams: TStringList;
-  vInt: IntegerRAL;
-  vHead: StringRAL;
-  vAuth: TRALOAuth;
-begin
-  vAuth := TRALOAuth.Create;
-  try
-    vAuth.Algorithm := FAlgorithm;
-    vAuth.Nonce := FNonce;
-    if FTokenAccess = '' then
-      vAuth.CallBack := FCallBack;
-    vAuth.ConsumerKey := FConsumerKey;
-    vAuth.ConsumerSecret := FConsumerSecret;
-    vAuth.TokenAccess := FTokenAccess;
-    vAuth.TokenSecret := FTokenSecret;
-    vAuth.Verifier := FVerifier;
-    vAuth.Version := '1.0';
-    vAuth.URL := AVars.Values['url'];
-    vAuth.Method := AVars.Values['method'];
-
-    vParams := vAuth.Header;
-    try
-      vHead := 'realm="RALOAuth"';
-      for vInt := 0 to Pred(vParams.Count) do
-      begin
-        if vInt = 0 then
-          vHead := vHead + Format(' %s="%s"',
-            [vParams.Names[vInt], TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
-        else
-          vHead := vHead + Format(', %s="%s"',
-            [vParams.Names[vInt], TRALHTTPCoder.EncodeURL(vParams.ValueFromIndex[vInt])])
-      end;
-
-      AParams.AddParam('Authorization', 'OAuth ' + vHead, rpkHEADER);
-    finally
-      FreeAndNil(vParams);
-    end;
-  finally
-    FreeAndNil(vAuth);
-  end;
+  Result := 0; // nothing to obtain
 end;
 
 { TRALAuthentication }
@@ -804,7 +611,7 @@ begin
     vValue := vValue + ', error="' + AError + '"';
   if ADescription <> '' then
     vValue := vValue + ', error_description="' + RALChallengeText(ADescription) + '"';
-  AResponse.AddHeader('WWW-Authenticate', vValue);
+  RALAddChallenge(AResponse, vValue);
 end;
 
 procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -857,6 +664,51 @@ begin
   begin
     AResponse.Answer(HTTP_Unauthorized);
     AnswerChallenge(AResponse, 'invalid_token', vReason);
+  end;
+end;
+
+procedure TRALServerJWTAuth.DecodeWithoutHeader(ARequest: TRALRequest);
+var
+  vStr, vAux, vPart: StringRAL;
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+begin
+  { the Cookie header carries every cookie the browser has for the site,
+    in whatever order; only the one named raltoken is the bearer. This
+    used to take the first cookie, whatever its name, and any site cookie
+    ahead of the token made a logged-in browser fail with 401.
+    Every engine splits the cookies into rpkCOOKIE params, so the param
+    named raltoken is the first place to look; the raw header is the
+    fallback for an engine that kept it whole }
+  vAux := '';
+  vParam := ARequest.Params.GetKind[RALTOKENName, rpkCOOKIE];
+  if not vParam.IsNilOrEmpty then
+    vAux := Trim(vParam.AsString);
+  vStr := '';
+  if vAux = '' then
+    vStr := ARequest.ParamByName('Cookie').AsString;
+  { one "name=value" per "; " - the name has to be exactly raltoken, so a
+    cookie called "xraltoken" does not match either }
+  while (vStr <> '') and (vAux = '') do
+  begin
+    vInt := Pos(StringRAL(';'), vStr);
+    if vInt > 0 then
+    begin
+      vPart := Trim(Copy(vStr, 1, vInt - 1));
+      vStr := Copy(vStr, vInt + 1, Length(vStr));
+    end
+    else
+    begin
+      vPart := Trim(vStr);
+      vStr := '';
+    end;
+    if Pos(StringRAL(RALTOKENName + '='), vPart) = 1 then
+      vAux := Trim(Copy(vPart, Length(RALTOKENName) + 2, Length(vPart)));
+  end;
+  if vAux <> '' then
+  begin
+    ARequest.Authorization.AuthType := ratBearer;
+    ARequest.Authorization.AuthString := vAux;
   end;
 end;
 
@@ -924,7 +776,7 @@ var
     if AResponse.StatusCode < HTTP_BadRequest then
       AResponse.Answer(HTTP_Unauthorized);
     if FAuthDialog then
-      AResponse.AddHeader('WWW-Authenticate', 'Basic realm="RAL Basic"');
+      RALAddChallenge(AResponse, 'Basic realm="RAL Basic"');
   end;
 
 begin
@@ -999,6 +851,84 @@ destructor TRALClientJWTAuth.Destroy;
 begin
   FreeAndNil(FPayload);
   inherited;
+end;
+
+function TRALClientJWTAuth.HandleChallenge(AResponse: TRALResponse): boolean;
+begin
+  { the token was refused or expired: a new one is fetched before the request
+    goes again - what ResetToken always meant to do }
+  Token := '';
+  Result := True;
+end;
+
+function TRALClientJWTAuth.Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
+  AResponse: TRALResponse): IntegerRAL;
+var
+  vRequest: TRALRequest;
+  vResponse: TRALResponse;
+  vStatus, vConta: IntegerRAL;
+  vJson: TRALJSONObject;
+  vValue: TRALJSONValue;
+  vParam: TRALParam;
+begin
+  Result := 0; // no http error code
+  if IsAuthenticated then
+    Exit;
+
+  vConta := 0;
+  vStatus := 0;
+  repeat
+    vResponse := ATransport.NewResponse;
+    vRequest := ATransport.NewRequest;
+    try
+      if Assigned(OnBeforeGetToken) then
+      begin
+        OnBeforeGetToken(vRequest);
+      end
+      else
+      begin
+        // rpkBODY is not optional here: AddValue defaults the kind to
+        // rpkNONE, and EncodeBody only ever picks rpkBODY/rpkFIELD, so the
+        // payload was built and then dropped - the token request went out
+        // with Content-Length 0 and the server issued a token carrying no
+        // claims at all. Every other AddValue caller already says rpkBODY.
+        vParam := vRequest.Params.AddValue(FPayload.AsJSON, rpkBODY);
+        vParam.ContentType := rctAPPLICATIONJSON;
+      end;
+
+      Result := ATransport.Send(ATransport.URL(FRoute), vRequest, vResponse, amPOST);
+      vStatus := vResponse.StatusCode;
+
+      if (Result = 0) and (vStatus = HTTP_OK) and (not vResponse.Body.IsNilOrEmpty) then
+      begin
+        vJson := TRALJSONObject(TRALJSON.ParseJSON(vResponse.Body.AsString));
+        try
+          if vJson <> nil then
+          begin
+            vValue := vJson.Get(FJSONKey);
+            if vValue <> nil then
+              Token := vValue.AsString;
+          end;
+        finally
+          vJson.Free;
+        end;
+      end;
+    finally
+      { the reason a token request failed goes to the response the caller
+        owns: an exception with an empty message was all the application had
+        to show the user }
+      if Result <> 0 then
+        ATransport.FailWith(AResponse, vResponse);
+
+      FreeAndNil(vRequest);
+      FreeAndNil(vResponse);
+    end;
+    vConta := vConta + 1;
+    { Result <> 0, not Result > 0: an engine that cannot number the failure
+      reports -1 (OkHttp does), and the loop then burned every attempt on a
+      server already known to be unreachable }
+  until ((vStatus = HTTP_Unauthorized) and (vConta > 1)) or (vStatus = HTTP_OK) or
+        (vConta >= RALMAXTOKENTRIES) or (Result <> 0);
 end;
 
 function TRALClientJWTAuth.IsAuthenticated: boolean;
@@ -1115,6 +1045,27 @@ end;
 
 { TRALAuthServer }
 
+constructor TRALAuthServer.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FAuthType := ratNone;
+end;
+
+class function TRALAuthServer.DefaultPriority: IntegerRAL;
+begin
+  Result := RALPriorityAuthentication;
+end;
+
+function TRALAuthServer.Phases: TRALPluginPhases;
+begin
+  Result := [ppProcess, ppResolveRoute, ppAuthenticate];
+end;
+
+procedure TRALAuthServer.SetAuthType(AType: TRALAuthTypes);
+begin
+  FAuthType := AType;
+end;
+
 procedure TRALAuthServer.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(HTTP_NotFound);
@@ -1123,9 +1074,88 @@ end;
 function TRALAuthServer.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse)
   : TRALRoute;
 begin
+  { Basic has no route of its own: GetAuthRoute is nil there, and asking it for
+    its full route was an access violation on every request for a route that
+    does not exist - a 500 where the answer is 404 }
   Result := TRALRoute(GetAuthRoute);
-  if not RALSameName(Result.GetFullRoute, ARequest.Query) then
+  if (Result <> nil) and not RALSameName(Result.GetFullRoute, ARequest.Query) then
     Result := nil;
+end;
+
+procedure TRALAuthServer.DecodeWithoutHeader(ARequest: TRALRequest);
+begin
+  // only the schemes that also travel outside the header override this
+end;
+
+function TRALAuthServer.ResolveRoute(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALRoute;
+begin
+  Result := CanAnswerRoute(ARequest, AResponse);
+end;
+
+procedure TRALAuthServer.ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
+  var AHandled: boolean);
+var
+  vRoute: TRALRoute;
+begin
+  vRoute := Host.FindRoute(ARequest, AResponse);
+  if vRoute = nil then
+    Exit;
+
+  { the route this plugin offered is its own to answer: no module has it }
+  if ARequest.RouteOwner = Self then
+  begin
+    if ARequest.Method <> amOPTIONS then
+      BeforeValidate(ARequest, AResponse);
+    AHandled := True;
+    Exit;
+  end;
+
+  if Host.FindPlugin(TRALAuthServer) <> Self then
+    Exit;
+
+  { what the module answers without running the route - the preflight, 405 for
+    a method the route does not take - is not authenticated, and neither is a
+    method the route skips }
+  if (ARequest.Method = amOPTIONS) or (not vRoute.IsMethodAllowed(ARequest.Method)) or
+     vRoute.IsMethodSkipped(ARequest.Method) then
+    Exit;
+
+  case Host.Authenticate(ARequest, AResponse, vRoute) of
+    arAccepted:
+    begin
+      { one authenticator accepted: what the others that refused left - the
+        401 and their challenges - is not the answer }
+      if AResponse.StatusCode >= HTTP_BadRequest then
+        AResponse.StatusCode := HTTP_OK;
+      AResponse.Params.DelParam('WWW-Authenticate', rpkHEADER);
+    end;
+    arUnauthorized:
+    begin
+      AResponse.Answer(HTTP_Unauthorized);
+      AHandled := True;
+    end;
+    arForbidden:
+    begin
+      AResponse.Answer(HTTP_Forbidden);
+      AHandled := True;
+    end;
+  end;
+end;
+
+function TRALAuthServer.Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
+  ARoute: TRALRoute): TRALAuthResult;
+begin
+  { Validate answers by the status it leaves, which is what the server read
+    before this was a plugin: below 400 lets the route run, 401 asks for
+    credentials, anything else refuses them }
+  Validate(ARequest, AResponse);
+  if AResponse.StatusCode < HTTP_BadRequest then
+    Result := arAccepted
+  else if AResponse.StatusCode = HTTP_Unauthorized then
+    Result := arUnauthorized
+  else
+    Result := arForbidden;
 end;
 
 function TRALAuthServer.GetAuthRoute: TRALBaseRoute;

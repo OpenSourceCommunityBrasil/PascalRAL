@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1" Minor="1"/>
-    <Files Count="38">
+    <Files Count="46">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -178,6 +178,38 @@
         <Filename Value="..\..\src\utils\RALQuicFrame.pas"/>
         <UnitName Value="RALQuicFrame"/>
       </Item38>
+      <Item39>
+        <Filename Value="..\..\src\base\RALPlugin.pas"/>
+        <UnitName Value="RALPlugin"/>
+      </Item39>
+      <Item40>
+        <Filename Value="..\..\src\base\plugins\RALSecurity.pas"/>
+        <UnitName Value="RALSecurity"/>
+      </Item40>
+      <Item41>
+        <Filename Value="..\..\src\base\plugins\RALCORS.pas"/>
+        <UnitName Value="RALCORS"/>
+      </Item41>
+      <Item42>
+        <Filename Value="..\..\src\base\plugins\RALContent.pas"/>
+        <UnitName Value="RALContent"/>
+      </Item42>
+      <Item43>
+        <Filename Value="..\..\src\utils\RALOpenSSL.pas"/>
+        <UnitName Value="RALOpenSSL"/>
+      </Item43>
+      <Item44>
+        <Filename Value="..\..\src\utils\RALJWS.pas"/>
+        <UnitName Value="RALJWS"/>
+      </Item44>
+      <Item45>
+        <Filename Value="..\..\src\base\plugins\RALDigest.pas"/>
+        <UnitName Value="RALDigest"/>
+      </Item45>
+      <Item46>
+        <Filename Value="..\..\src\base\plugins\RALOAuth2.pas"/>
+        <UnitName Value="RALOAuth2"/>
+      </Item46>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

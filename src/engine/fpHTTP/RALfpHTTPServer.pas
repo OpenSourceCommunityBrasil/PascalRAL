@@ -333,26 +333,10 @@ begin
 end;
 
 procedure TRALfpHttpServerThread.DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
-var
-  vStr, vAux: StringRAL;
-  vInt: IntegerRAL;
 begin
-  if FParent.Authentication = nil then
+  if not FParent.HasAuthentication then
     Exit;
-
-  AResult.Authorization.AuthType := ratNone;
-  AResult.Authorization.AuthString := '';
-
-  vStr := ARequest.GetHeader(hhAuthorization);
-  if vStr <> '' then begin
-    vInt := Pos(' ', vStr);
-    vAux := Trim(Copy(vStr, 1, vInt - 1));
-    if RALSameName(vAux, 'Basic') then
-      AResult.Authorization.AuthType := ratBasic
-    else if RALSameName(vAux, 'Bearer') then
-      AResult.Authorization.AuthType := ratBearer;
-    AResult.Authorization.AuthString := Copy(vStr, vInt + 1, Length(vStr));
-  end;
+  FParent.DecodeAuthValue(AResult, ARequest.GetHeader(hhAuthorization));
 end;
 
 procedure TRALfpHttpServerThread.OnCommandProcess(Sender: TObject;
@@ -446,7 +430,6 @@ begin
 
           Params.CompressType := ContentCompress;
           Params.CriptoOptions.CriptType := ContentCripto;
-          Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
           RequestText := ARequest.Content;
 
           Host := ARequest.Host;

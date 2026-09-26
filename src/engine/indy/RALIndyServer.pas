@@ -225,7 +225,6 @@ begin
 
           Params.CompressType := ContentCompress;
           Params.CriptoOptions.CriptType := ContentCripto;
-          Params.CriptoOptions.Key := CriptoOptions.Key;
 
           RequestStream := ARequestInfo.PostStream;
 
@@ -330,26 +329,22 @@ procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;
   var VHandled: Boolean);
 var
   vAuth: TRALAuthorization;
+  vType: TRALAuthTypes;
 begin
+  { the scheme the client sent decides, not the one of Authentication: a
+    server may have several authenticators (Basic and Digest together), and
+    one linked as a plugin only has no Authentication at all. Handled either
+    way, so Indy never tries a decoding of its own }
   VHandled := True;
-  if Authentication <> nil then
-  begin
-    case Authentication.AuthType of
-      ratBasic:
-        VHandled := SameText(AAuthType, 'basic');
-      ratBearer:
-        VHandled := SameText(AAuthType, 'bearer');
-    end;
-
-    if VHandled then
-    begin
-      vAuth := TRALAuthorization.Create;
-      vAuth.AuthType := Authentication.AuthType;
-      vAuth.AuthString := AAuthData;
-
-      AContext.Data := vAuth;
-    end;
-  end;
+  if not HasAuthentication then
+    Exit;
+  vType := AuthTypeOf(AAuthType);
+  if vType = ratNone then
+    Exit;
+  vAuth := TRALAuthorization.Create;
+  vAuth.AuthType := vType;
+  vAuth.AuthString := AAuthData;
+  AContext.Data := vAuth;
 end;
 
 procedure TRALIndyServer.QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);

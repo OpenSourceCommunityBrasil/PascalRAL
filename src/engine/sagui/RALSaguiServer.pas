@@ -387,13 +387,10 @@ begin
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
-        { The key comes from the SERVER, like Indy, fpHTTP and Synopse all take
-          it. CriptoKey is the request's own, empty while the request is still
-          being built, so the params ended up with the cipher named and no key -
-          and DecodeBody only decrypts when it has both. Every encrypted request
-          reached the handler still as ciphertext: no params, no body, no
-          cookies, on a server answering 200. }
-        Params.CriptoOptions.Key := vServer.CriptoOptions.Key;
+        { no key here: the crypto plugin, when linked, hands it to the params
+          in ValidateRequest, before the payload is decoded below. Without a
+          key the params named the cipher and DecodeBody left the body as
+          ciphertext }
 
         { the server's own decoder, like the other engines: it also reads
           the raltoken cookie, which the copy this unit used to carry never
