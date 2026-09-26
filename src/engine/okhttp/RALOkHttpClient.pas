@@ -176,7 +176,7 @@ begin
     vCert.Issuer := StringRAL(JStringToString(issuer));
     vCert.Trusted := platformTrusted;
     if not platformTrusted then
-      vCert.Error := StringRAL('the platform did not validate the certificate');
+      vCert.Error := StringRAL(wmCertNotValidatedByPlatform);
 
     Result := FEngine.JudgeCertificate(vCert);
   except
@@ -439,7 +439,7 @@ begin
   AResponse.AddHeader('RALEngine', ENGINEOKHTTP);
 
   ARequest.Params.CompressType := Parent.CompressType;
-  ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
+  ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;

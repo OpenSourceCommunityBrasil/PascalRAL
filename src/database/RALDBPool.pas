@@ -527,8 +527,13 @@ begin
 
   // connecting is done outside the lock, the item is already reserved for us
   try
-    if FOptions.ValidateOnAcquire and Result.IsConnected and
-       (not Result.TestConnection) then
+    { not connected may mean dropped by the server rather than closed - Zeos
+      keeps the handle of a dead connection and will not reopen while it is
+      there - so it is released before connecting again. Disconnecting what
+      is already closed is harmless in every driver }
+    if not Result.IsConnected then
+      Result.Disconnect
+    else if FOptions.ValidateOnAcquire and (not Result.TestConnection) then
       Result.Disconnect;
 
     Result.Connect;

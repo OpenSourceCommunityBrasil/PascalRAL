@@ -351,7 +351,7 @@ begin
     except
       on e: Exception do
       begin
-        raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
+        raise Exception.CreateFmt(emDBFieldLoad, [vField.Name, e.Message]);
       end;
     end;
 

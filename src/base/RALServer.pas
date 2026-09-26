@@ -88,6 +88,7 @@ type
   // Internal CORS configuration of Server
   TRALCORSOptions = class(TPersistent)
   private
+    FAllowCredentials: boolean;
     FAllowOrigin: StringRAL;
     FAllowHeaders: TStringList;
     FMaxAge: IntegerRAL;
@@ -100,12 +101,26 @@ type
 
     procedure AddAllowHeader(AValue: StringRAL);
     function GetAllowHeaders: StringRAL;
+    /// The Access-Control-Allow-Origin to answer a request coming from
+    /// ARequestOrigin: '*', the configured origin, or the request's own origin
+    /// when it is one of a list. '' means "this origin is not allowed"
+    function OriginFor(const ARequestOrigin: StringRAL): StringRAL;
   published
+    /// Sends Access-Control-Allow-Credentials: true, which a browser needs to
+    /// let fetch(..., {credentials: 'include'}) through - cookies or an
+    /// Authorization header on a cross-origin call. Browsers refuse it next to
+    /// AllowOrigin = '*', and so does the server: with '*' the header is not
+    /// sent. Name the origins instead
+    property AllowCredentials: boolean read FAllowCredentials write FAllowCredentials
+      default False;
     // List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    // List of IPs allowed to comunicate with the server
+    /// Who may call the server from a browser: '*' (anyone, the default), one
+    /// origin ('https://app.example.com'), or several separated by spaces or
+    /// commas - then the request's Origin is answered back when it is one of
+    /// them, with Vary: Origin, and nothing is answered when it is not
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
-    // Time in miliseconds to allow an active CORS session
+    // Time in seconds a browser may keep the preflight answer
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
@@ -189,6 +204,7 @@ type
     FCriptoOptions: TRALCriptoOptions;
     FEngine: StringRAL;
     FIPConfig: TRALIPConfig;
+    FJSONBodyToParams: boolean;
     FListSubModules: TList;
     FMaxRequestSize: Int64RAL;
     FPort: IntegerRAL;
@@ -278,6 +294,15 @@ type
     property Engine: StringRAL read FEngine;
     // Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    /// A request body that is a JSON object also becomes params: each member of
+    /// the first level is an rpkFIELD param, the same as a form field, so
+    /// ParamByName('campo') reads a field posted as JSON too (a nested object or
+    /// array arrives as its JSON text). Off by default: without it JSON is only
+    /// in Body, and ParamByName sees the query string and form fields only. The
+    /// body stays in Body either way. A name also present in the query string
+    /// keeps the query's value first, as it does for a form
+    property JSONBodyToParams: boolean read FJSONBodyToParams write FJSONBodyToParams
+      default False;
     property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
     // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
@@ -350,6 +375,54 @@ type
 
 implementation
 
+uses
+  RALJson;
+
+{ The members of a JSON object body as rpkFIELD params (TRALServer.
+  JSONBodyToParams). A body that is not an object, or not JSON at all, is left
+  alone: the route still has it in Body, and answering 400 is its call }
+procedure PromoteJSONBody(ARequest: TRALRequest);
+var
+  vText, vName: StringRAL;
+  vValue, vMember: TRALJSONValue;
+  vObject: TRALJSONObject;
+  vInt: IntegerRAL;
+begin
+  if Pos(StringRAL('json'), LowerCase(ARequest.ContentType)) = 0 then
+    Exit;
+  vText := Trim(ARequest.Body.AsString);
+  if Copy(vText, 1, 1) <> '{' then
+    Exit;
+
+  vValue := nil;
+  try
+    try
+      vValue := TRALJSON.ParseJSON(vText);
+    except
+      Exit;
+    end;
+    if not (vValue is TRALJSONObject) then
+      Exit;
+    vObject := TRALJSONObject(vValue);
+    for vInt := 0 to Pred(vObject.Count) do
+    begin
+      vName := vObject.GetName(vInt);
+      vMember := vObject.Get(vInt);
+      if (vName = '') or vMember.IsNull then
+        Continue;
+      { a nested object or array goes as its JSON text. Not through AsString:
+        the FPC backend hands that to fpjson, which raises for an object - the
+        request died with 500 there, while Delphi's backend answered the JSON }
+      if vMember.JsonType in [rjtObject, rjtArray] then
+        ARequest.Params.AddParam(vName, vMember.ToJSON, rpkFIELD)
+      else
+        ARequest.Params.AddParam(vName, vMember.AsString, rpkFIELD);
+    end;
+  finally
+    FreeAndNil(vValue);
+  end;
+end;
+
 { TRALCORSOptions }
 
 procedure TRALCORSOptions.SetAllowHeaders(AValue: TStringList);
@@ -392,6 +465,39 @@ end;
 procedure TRALCORSOptions.AddAllowHeader(AValue: StringRAL);
 begin
   FAllowHeaders.Add(AValue);
+end;
+
+function TRALCORSOptions.OriginFor(const ARequestOrigin: StringRAL): StringRAL;
+var
+  vList, vItem: StringRAL;
+  vInt: IntegerRAL;
+begin
+  vList := Trim(FAllowOrigin);
+  if (vList = '*') or (vList = '') then
+    Exit(vList);
+
+  // a single origin is answered as configured, whoever asks - as before
+  if (Pos(StringRAL(' '), vList) = 0) and (Pos(StringRAL(','), vList) = 0) then
+    Exit(vList);
+
+  Result := '';
+  if ARequestOrigin = '' then
+    Exit;
+  vList := StringReplace(vList, ',', ' ', [rfReplaceAll]);
+  while vList <> '' do
+  begin
+    vInt := Pos(StringRAL(' '), vList);
+    if vInt = 0 then
+      vInt := Length(vList) + 1;
+    vItem := Trim(Copy(vList, 1, vInt - 1));
+    Delete(vList, 1, vInt);
+    // scheme and host are case-insensitive; a trailing slash is not part of
+    // an origin, but a configured one with it should still match
+    if Copy(vItem, Length(vItem), 1) = '/' then
+      vItem := Copy(vItem, 1, Length(vItem) - 1);
+    if (vItem <> '') and RALSameName(vItem, ARequestOrigin) then
+      Exit(ARequestOrigin);
+  end;
 end;
 
 function TRALCORSOptions.GetAllowHeaders: StringRAL;
@@ -573,10 +679,21 @@ end;
 
 procedure TRALServer.CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
   ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vOrigin: StringRAL;
 begin
   if AAllowOptions then
   begin
-    AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin, rpkHEADER);
+    vOrigin := FCORSOptions.OriginFor(
+      ARequest.Params.GetKind['Origin', rpkHEADER].AsString);
+    if vOrigin <> '' then
+      AResponse.Params.AddParam('Access-Control-Allow-Origin', vOrigin, rpkHEADER);
+    { the answer depends on who asked whenever it is not one fixed value, and a
+      cache in the middle must not hand one origin's answer to another }
+    if (vOrigin <> Trim(FCORSOptions.AllowOrigin)) or (vOrigin = '') then
+      AResponse.Params.AddParam('Vary', 'Origin', rpkHEADER);
+    if FCORSOptions.AllowCredentials and (vOrigin <> '') and (vOrigin <> '*') then
+      AResponse.Params.AddParam('Access-Control-Allow-Credentials', 'true', rpkHEADER);
     AResponse.Params.AddParam('Access-Control-Allow-Methods', AAllowMethods, rpkHEADER);
     AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders, rpkHEADER);
 
@@ -707,6 +824,9 @@ begin
       if vRoute <> nil then
         vRouteIsAuth := True;
     end;
+
+    if FJSONBodyToParams then
+      PromoteJSONBody(ARequest);
 
     if Assigned(FOnRequest) then
       FOnRequest(ARequest, AResponse);
@@ -898,7 +1018,9 @@ begin
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    AResponse.Answer(HTTP_UnsupportedMedia);
+    { 406, not 415: the problem is what the client ACCEPTS, not the body it
+      sent - and it only happens when it refuses identity on purpose }
+    AResponse.Answer(HTTP_NotAcceptable);
     AResponse.ContentEncoding := ARequest.AcceptEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;

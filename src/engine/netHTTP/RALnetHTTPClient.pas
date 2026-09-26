@@ -868,7 +868,7 @@ begin
     Android paths. It is the only place that verdict is available here. }
   vCert.Trusted := Accepted;
   if not Accepted then
-    vCert.Error := StringRAL('the engine did not validate the certificate');
+    vCert.Error := StringRAL(wmCertNotValidatedByEngine);
 
   { svNever with nothing else set: take it as it comes. With a pin or an event
     those decide, and Verify has nothing to say. }
@@ -1100,7 +1100,7 @@ begin
   // string when no compression unit is linked, and then the server answers
   // uncompressed.
 
-  ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
+  ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;

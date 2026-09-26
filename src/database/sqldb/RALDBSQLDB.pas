@@ -36,6 +36,7 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
+    function GetNativeConnection: TComponent; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
 
@@ -46,6 +47,8 @@ type
 
     class function DatabaseName: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+    /// The TSQLConnector this driver opens - see GetNativeConnection
+    property NativeConnection: TSQLConnector read FConnector;
   end;
 
 implementation
@@ -96,6 +99,8 @@ begin
     FConnector.CharSet := 'UTF8';
   FLibLocator.ConnectionType := FindProtocol;
   FLibLocator.LibraryName := LibLocation;
+
+  ApplyConnectionParams(FConnector.Params);
 
   FConnector.BeforeConnect := @OnConnBeforeConnect;
   FConnector.AfterConnect := @OnConnAfterConnect;
@@ -213,6 +218,11 @@ begin
       gOpenLock.Leave;
     end;
   end;
+end;
+
+function TRALDBSQLDB.GetNativeConnection: TComponent;
+begin
+  Result := FConnector;
 end;
 
 function TRALDBSQLDB.IsConnected : boolean;

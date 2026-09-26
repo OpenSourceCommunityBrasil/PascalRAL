@@ -1,4 +1,4 @@
-
+﻿
 { @abstract constant internal messages
   am = alert messages: middle severity messages, might raise exception
   em = error messages: high severity messages, raises exception
@@ -65,6 +65,28 @@
   emStorageLinkNotFound = 'Storage %s não está declarado em "uses".';
   emStorageNotFound = 'Nenhum TRALStorageLink encontrado.';
 
+  emEngineNotFound = 'Motor %s não encontrado: a unit que o registra não está nas uses.';
+  emDBFieldLoad = 'Não foi possível carregar o campo %s: %s';
+  emHTTPDateInvalidMonth = 'Mês inválido na data HTTP: %s.';
+  emISO8601Invalid = '"%s" não é uma data ISO 8601.';
+  emLibraryNotLoaded = 'A biblioteca não foi carregada.';
+  emOpenSSLCallFailed = 'O OpenSSL falhou em %s.';
+  emOpenSSLNotLoaded = 'O OpenSSL não está carregado.';
+  emRandomBytesFailed = 'O sistema não conseguiu gerar bytes aleatórios.';
+
+  // server certificate (TRALCertInfo.Error)
+  wmCertMsQuicStatus = 'O MsQuic não validou o certificado: %s (flags 0x%x).';
+  wmCertNotValidatedByEngine = 'O motor não validou o certificado.';
+  wmCertNotValidatedByPlatform = 'A plataforma não validou o certificado.';
+  wmCertOpenSSLVerify = 'O OpenSSL não validou o certificado (erro %d).';
+  wmCertUnavailable = 'O certificado não está disponível neste socket handler.';
+
+  // jwt messages (sent as error_description in WWW-Authenticate)
+  wmJWTExpired = 'O token expirou';
+  wmJWTInvalid = 'A assinatura ou o formato do token é inválido';
+  wmJWTNotYetValid = 'O token ainda não é válido';
+  wmJWTRefused = 'O token foi recusado pelo servidor';
+
   // sagui error messages
   emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';
   emSaguiServerCreateError = 'Erro ao tentar criar o servidor.';
@@ -86,6 +108,8 @@
   SError403Page = 'O servidor informa que não quer que você acesse';
   SError404 = 'Não encontrado';
   SError404Page = 'O servidor informa que a página que você está solicitando não existe nesta realidade';
+  SError406 = 'Não aceitável';
+  SError406Page = 'O servidor informa que não consegue responder em nenhuma codificação que você aceita';
   SError415 = 'Tipo de mídia não suportado';
   SError415Page = 'O servidor informa que desconhece o que você está perguntando';
   SError429 = 'Muitas requisições';
@@ -109,3 +133,7 @@
   cmDBBinary = 'Formato Binário.';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Nome da tabela.';
+
+  // wizard messages
+  emWizardDirEmpty = 'O diretório deve ser preenchido.';
+  emWizardDirNotFound = 'O diretório não existe.';

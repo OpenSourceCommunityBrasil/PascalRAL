@@ -19,6 +19,9 @@ type
     Domain: StringRAL;
     Path: StringRAL;
     Expires: TDateTime;
+    /// Seconds until the cookie expires, sent as Max-Age. 0 means not set - the
+    /// record starts zeroed - and anything below zero expires it at once
+    /// (Max-Age=0, the way to delete a cookie). Browsers let it win over Expires
     MaxAge: Int64;
     HttpOnly: Boolean;
     SessionOnly: Boolean;
@@ -99,6 +102,12 @@ type
     function AsDateTime: TDateTime; overload;
     function AsDateTime(ACustomFormat: TFormatSettings): TDateTime; overload;
     function AsCurrency: Currency;
+    /// The value as a number, and whether it was one: AsDouble answers 0 for
+    /// both "0" and "abc". Text is read with either separator, never with the
+    /// locale of the server (see RALTryStrToFloat)
+    function TryAsDouble(out AValue: DoubleRAL): Boolean;
+    /// AsDouble with the value to answer when the param is not a number
+    function AsDoubleDef(const ADefault: DoubleRAL): DoubleRAL;
 
     { Typed binary writers - see the rctRAL* constants in RALMIMETypes.
 
@@ -237,8 +246,17 @@ type
     /// transport was.
     procedure AddHeader(const AName, AValue: StringRAL);
     /// AddParam is used to include a TRALParam Object into the internal list.
+    /// It only replaces a param of the SAME name and kind: a query param 'loja'
+    /// and an AddParam('loja', ..., rpkHEADER) end up as two params, and
+    /// ParamByName answers the one added first - see ReplaceParam
     function AddParam(const AName: StringRAL; const AValue: StringRAL;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+    /// Removes every param named AName, whatever its kind, and adds this one -
+    /// even with an empty value. The way for a server to impose a value that
+    /// ParamByName must return: one derived from the token in OnValidate, say,
+    /// over whatever the client put in the query string under the same name
+    function ReplaceParam(const AName: StringRAL; const AValue: StringRAL;
+                          AKind: TRALParamKind = rpkNONE): TRALParam;
     /// AddParam is used to include a TRALParam Object into the internal list.
     function AddParam(const AName: StringRAL; AContent: TStream;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
@@ -400,6 +418,13 @@ begin
   if (not ACookie.SessionOnly) and (ACookie.Expires <> 0) then
     Result := Result + '; Expires=' + DateTimeToCookieExpireDate(ACookie.Expires);
 
+  { Max-Age was in the record and never written, so a cookie "deleted" with it
+    stayed as a session cookie. Written as it came, or as 0 to expire now }
+  if ACookie.MaxAge > 0 then
+    Result := Result + '; Max-Age=' + IntToStr(ACookie.MaxAge)
+  else if ACookie.MaxAge < 0 then
+    Result := Result + '; Max-Age=0';
+
   if ACookie.Secure then
     Result := Result + '; Secure';
 
@@ -480,7 +505,13 @@ begin
     else if RALSameName(Name, 'Expires') then
       Result.Expires := HTTPDateTimeToDateTime(Value)
     else if RALSameName(Name, 'Max-Age') then
-      Result.MaxAge := StrToInt64Def(Value, 0)
+    begin
+      // 0 in the record means "not set": an expiring Max-Age comes back as -1
+      if not TryStrToInt64(Value, Result.MaxAge) then
+        Result.MaxAge := 0
+      else if Result.MaxAge <= 0 then
+        Result.MaxAge := -1;
+    end
     else
     begin
       // Primeiro (e único) name=value que sobra é o cookie propriamente dito
@@ -754,7 +785,7 @@ begin
   if GetTypedVariant(vVar) then
     Result := vVar
   else
-    Result := StrToCurrDef(ContentText, 0);
+    RALTryStrToCurr(ContentText, Result);
 end;
 function TRALParam.IsNilOrEmpty: Boolean;
 begin
@@ -845,7 +876,31 @@ begin
   if GetTypedVariant(vVar) then
     Result := vVar
   else
-    Result := StrToFloatDef(ContentText, 0);
+    RALTryStrToFloat(ContentText, Result);
+end;
+
+function TRALParam.TryAsDouble(out AValue: DoubleRAL): Boolean;
+var
+  vVar: Variant;
+begin
+  AValue := 0;
+  Result := False;
+  if Self = nil then
+    Exit;
+
+  if GetTypedVariant(vVar) then
+  begin
+    AValue := vVar;
+    Result := True;
+  end
+  else
+    Result := RALTryStrToFloat(ContentText, AValue);
+end;
+
+function TRALParam.AsDoubleDef(const ADefault: DoubleRAL): DoubleRAL;
+begin
+  if not TryAsDouble(Result) then
+    Result := ADefault;
 end;
 
 function TRALParam.GetAsInteger: IntegerRAL;
@@ -1164,6 +1219,20 @@ begin
 end;
 
 { TRALParams }
+
+function TRALParams.ReplaceParam(const AName, AValue: StringRAL;
+  AKind: TRALParamKind): TRALParam;
+begin
+  Result := nil;
+  if AName = '' then
+    Exit;
+  DelParam(AName);
+  Result := NewParam;
+  Result.ParamName := AName;
+  Result.AsString := AValue;
+  Result.ContentType := rctTEXTPLAIN;
+  Result.Kind := AKind;
+end;
 
 function TRALParams.AddParam(const AName, AValue: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
@@ -1829,20 +1898,35 @@ var
   vItem: TRALParam;
   vString, vValor, vFile: StringRAL;
   vTemp: TStream;
+  vFormAsMultipart: boolean;
 begin
   Result := nil;
 
   vInt1 := Count(rpkBODY);
   vInt2 := Count(rpkFIELD);
 
+  { An encrypted form request goes out as multipart. A server that parses
+    application/x-www-form-urlencoded natively - Indy's TIdHTTPServer and
+    libmicrohttpd under Sagui both do, before any RAL layer runs - reads the
+    ciphertext as the form, finds no field and throws the body away: Indy frees
+    PostStream, Sagui hands over an empty payload. An encrypted multipart is
+    already declared as octet-stream (see the end of this function), so nobody
+    parses it natively, and DecodeBody finds the delimiter once it has
+    decrypted. RAL's cipher only ever talks to RAL, so nothing outside loses
+    the urlencoded form it would have expected. }
+  vFormAsMultipart := (not ACompressMultipart) and (vInt1 = 0) and (vInt2 > 0) and
+    (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '');
+
   AContentDisposition := '';
 
-  if vInt1 + vInt2 = 1 then
+  { the shortcut "the body IS this value" is for a lone rpkBODY only. It used to
+    take a lone rpkFIELD too, by counting params instead of looking at their
+    kind: AddField('m', json) went out as the raw JSON, with no "m=", and a
+    third-party server found no field at all (a RAL server did not notice, the
+    value just landed in Body). A form field is always name=value, one or many }
+  if (vInt1 = 1) and (vInt2 = 0) then
   begin
-    if vInt1 > 0 then
-      vItem := IndexKind[0, rpkBODY]
-    else
-      vItem := IndexKind[0, rpkFIELD];
+    vItem := IndexKind[0, rpkBODY];
 
     vItem.ContentDispositionInline := FContentDispositionInline;
 
@@ -1854,7 +1938,7 @@ begin
     AContentType := vItem.ContentType;
     AContentDisposition := vItem.ContentDisposition;
   end
-  else if (vInt2 > 0) and (vInt1 = 0) then
+  else if (vInt2 > 0) and (vInt1 = 0) and (not vFormAsMultipart) then
   begin
     vString := '';
     for vInt1 := 0 to Pred(Count) do
@@ -1880,7 +1964,7 @@ begin
 
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
-  else if vInt1 + vInt2 > 1 then
+  else if (vInt1 + vInt2 > 1) or vFormAsMultipart then
   begin
     vMultPart := TRALMultipartEncoder.Create;
     try
@@ -1908,9 +1992,10 @@ begin
             Measured, not assumed: a field mixed with a named body part still
             reaches a Sagui server - once the library is processing the
             multipart it hands the unnamed part over as a field. What it drops
-            is a multipart made ONLY of unnamed parts, and that never happens
-            here: a field on its own travels urlencoded, and a body part is
-            always named. }
+            is a multipart made ONLY of unnamed parts, and that never reaches
+            it: fields on their own travel urlencoded, a body part is always
+            named, and the one fields-only multipart - an encrypted form - is
+            declared octet-stream, which libmicrohttpd leaves alone. }
           vFile := Index[vInt1].FileName;
           if (vFile = '') and (vItem.Kind = rpkBODY) then
             vFile := Index[vInt1].ParamName;
@@ -1938,9 +2023,15 @@ begin
     Little is lost by not compressing it. What makes a multipart body here are
     typed params of a few bytes and files that usually arrive compressed
     already, while the response - where the volume actually is - still
-    compresses normally. }
+    compresses normally.
+
+    A urlencoded form request goes out uncompressed for the same reason: Indy
+    and libmicrohttpd parse it before anything decompresses, read gzip bytes
+    as the form and lose every field - a lone AddField included, which before
+    reached a RAL server's Body because it travelled as a raw body. }
   if (not ACompressMultipart) and (FCompressType <> ctNone) and
-     (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
+     ((Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) or
+      (Pos(StringRAL(rctAPPLICATIONXWWWFORMURLENCODED), LowerCase(AContentType)) > 0)) then
     { and the caller hears about it through CompressType: whoever fills
       Content-Encoding reads it back from here, and a header promising gzip over
       bytes that were never compressed makes the other side fail to inflate }

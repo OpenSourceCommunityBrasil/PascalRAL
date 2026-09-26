@@ -18,6 +18,7 @@ type
   TRALJSONFormatOptions = class(TPersistent)
   private
     FDateTimeFormat: TRALDateTimeFormat;
+    FDateTimeIsUTC: boolean;
     FCustomDateTimeFormat: StringRAL;
   protected
     procedure AssignTo(ADest: TPersistent); override;
@@ -29,6 +30,11 @@ type
   published
     property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
+    /// dtfISO8601 only: whether the TDateTime values are UTC. True (the default,
+    /// see RALJSONDateTimeIsUTC) writes them with 'Z', as always; False says they
+    /// are local time - a timestamp without time zone, say - and writes the real
+    /// offset ('2026-09-22T06:51:24.000-03:00'), so a browser does not shift them
+    property DateTimeIsUTC: boolean read FDateTimeIsUTC write FDateTimeIsUTC;
   end;
 
   { TRALStorageJSON }
@@ -128,6 +134,12 @@ type
   end;
   {$IFEND}
 
+var
+  { The DateTimeIsUTC every new TRALJSONFormatOptions starts with - and so the
+    one of TDataSet.ToJSON, which has no options of its own to set. True keeps
+    the 'Z' of every version before it; False for data stored as local time }
+  RALJSONDateTimeIsUTC: boolean = True;
+
 implementation
 
 { TRALJSONOptions }
@@ -137,6 +149,7 @@ begin
   if ADest is TRALJSONFormatOptions then
   begin
     TRALJSONFormatOptions(ADest).DateTimeFormat := FDateTimeFormat;
+    TRALJSONFormatOptions(ADest).DateTimeIsUTC := FDateTimeIsUTC;
     TRALJSONFormatOptions(ADest).CustomDateTimeFormat := FCustomDateTimeFormat;
   end;
 end;
@@ -144,6 +157,7 @@ end;
 constructor TRALJSONFormatOptions.Create;
 begin
   FDateTimeFormat := dtfISO8601;
+  FDateTimeIsUTC := RALJSONDateTimeIsUTC;
   FCustomDateTimeFormat := 'dd/mm/yyyy hh:nn:ss.zzz';
 end;
 
@@ -205,7 +219,7 @@ begin
     dtfUnix:
       Result := IntToStr(DateTimeToUnix(AValue));
     dtfISO8601:
-      Result := DateToISO8601(AValue);
+      Result := RALDateTimeToISO8601(AValue, FFormatOptions.DateTimeIsUTC);
     dtfCustom:
       Result := FormatDateTime(FFormatOptions.CustomDateTimeFormat, AValue);
   end;

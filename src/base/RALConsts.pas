@@ -5,6 +5,14 @@ interface
 
 {$I PascalRAL.inc}
 
+{ the language files are UTF-8 with a BOM. Delphi reads a file without one in
+  the system ANSI codepage, and every accented message came out double-encoded;
+  FPC refuses to include a file with a BOM into a module of another codepage,
+  hence the directive - on FPC only, Delphi has none and needs none }
+{$IFDEF FPC}
+  {$CODEPAGE UTF8}
+{$ENDIF}
+
 uses
   Classes, SysUtils;
 
@@ -114,6 +122,7 @@ const
   HTTP_Forbidden           = 403;
   HTTP_NotFound            = 404;
   HTTP_MethodNotAllowed    = 405;
+  HTTP_NotAcceptable       = 406;
   HTTP_RequestTimeout      = 408;
   HTTP_RequestEntityTooLarge = 413;
   HTTP_UnsupportedMedia    = 415;

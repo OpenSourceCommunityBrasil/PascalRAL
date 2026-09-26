@@ -70,6 +70,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    /// Sets a custom claim; one already there with the same key is replaced
     procedure AddClaim(const AKey: StringRAL; const AValue: StringRAL);
     procedure Clear;
     procedure createNewId;
@@ -626,6 +627,11 @@ end;
 
 procedure TRALJWTParams.AddClaim(const AKey, AValue: StringRAL);
 begin
+  { a claim set twice is replaced, not duplicated: the list is sorted by the
+    whole "key=value" line, so a second value for the same key went in next to
+    the first and the token carried the key twice - invalid JSON, read back as
+    whichever came first. Renewing a token (OnRenewToken) is exactly that }
+  DelClaim(AKey);
   FCustomClaims.Add(AKey + '=' + AValue);
 end;
 

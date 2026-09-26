@@ -26,6 +26,7 @@ type
   TRALDBBase = class(TPersistent)
   private
     FCharacterSet: StringRAL;
+    FConnectionParams: TStrings;
     FDatabase: StringRAL;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
@@ -40,11 +41,21 @@ type
     FOnAfterConnect: TRALDBOnConnect;
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
+    function GetConnectionParams: TStrings;
+    procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: StringRAL);
   protected
+    { Copies ConnectionParams into the driver's own list - Properties in Zeos,
+      Params in FireDAC and sqldb - replacing a value of the same name }
+    procedure ApplyConnectionParams(ADest: TStrings);
     procedure Conectar; virtual; abstract;
   public
     constructor Create; virtual; abstract;
+    destructor Destroy; override;
+    /// The connection object of the underlying library (TZConnection,
+    /// TFDConnection, TSQLConnector) - for code that already queries it
+    /// directly and wants the pool to manage it. nil when the driver has none
+    function GetNativeConnection: TComponent; virtual;
     function CanExportNative: boolean; virtual;
     /// Opens the connection. Does nothing when it is already open
     procedure Connect; virtual;
@@ -81,6 +92,10 @@ type
       server reject accented text with "Malformed string". Set it explicitly
       to talk to a legacy base in another charset. }
     property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
+    /// Name=Value settings that only the library understands, handed to it
+    /// before connecting: Zeos Properties (emulate_prepares, schema,
+    /// busytimeout), FireDAC or sqldb Params. They win over what RAL sets itself
+    property ConnectionParams: TStrings read GetConnectionParams write SetConnectionParams;
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
@@ -163,6 +178,44 @@ begin
 end;
 
 { TRALDBBase }
+
+destructor TRALDBBase.Destroy;
+begin
+  FreeAndNil(FConnectionParams);
+  inherited Destroy;
+end;
+
+function TRALDBBase.GetConnectionParams: TStrings;
+begin
+  // created on first use: the constructors are the drivers' own
+  if FConnectionParams = nil then
+    FConnectionParams := TStringList.Create;
+  Result := FConnectionParams;
+end;
+
+procedure TRALDBBase.SetConnectionParams(AValue: TStrings);
+begin
+  if AValue = nil then
+    FreeAndNil(FConnectionParams)
+  else
+    GetConnectionParams.Assign(AValue);
+end;
+
+procedure TRALDBBase.ApplyConnectionParams(ADest: TStrings);
+var
+  vInt: IntegerRAL;
+begin
+  if (FConnectionParams = nil) or (ADest = nil) then
+    Exit;
+  for vInt := 0 to Pred(FConnectionParams.Count) do
+    if FConnectionParams.Names[vInt] <> '' then
+      ADest.Values[FConnectionParams.Names[vInt]] := FConnectionParams.ValueFromIndex[vInt];
+end;
+
+function TRALDBBase.GetNativeConnection: TComponent;
+begin
+  Result := nil;
+end;
 
 procedure TRALDBBase.SetLibLocation(AValue: StringRAL);
 begin

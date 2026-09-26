@@ -83,7 +83,12 @@ type
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    /// Grabs the body of either the request or the response
+    /// The body of the request or the response, when it is ONE value - raw text,
+    /// JSON, a file (the param named 'ral_body'). A body the engine already split
+    /// into params is not here: form fields (x-www-form-urlencoded) and the parts
+    /// of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
+    /// and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
+    /// a body this answers nil - Body.AsString is still safe and gives ''
     function Body: TRALParam;
     procedure Clear; virtual;
     procedure Clone(ASource: TRALHTTPHeaderInfo);
@@ -95,7 +100,13 @@ type
     function GetQuery(const AName: StringRAL): StringRAL; virtual;
     function HasValidAcceptEncoding: boolean;
     function HasValidContentEncoding: boolean;
-    /// Grabs the param either on request or response by its name
+    /// The param with this name, of ANY kind - query string, header, cookie, form
+    /// field - and the first one added when there are several: the query string
+    /// and the headers come in before any authentication event runs, so a value
+    /// added later with AddParam does not override one the client sent under the
+    /// same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
+    /// one kind). A JSON body is not split into params unless the server has
+    /// JSONBodyToParams on; read it from Body otherwise
     function ParamByName(const AParamName: StringRAL): TRALParam;
     /// fills the body with the String AContent
     procedure SetBody(AContent: StringRAL); overload; virtual;
@@ -327,9 +338,35 @@ end;
 
 function TRALHTTPHeaderInfo.AddCookie(const ACookie: TRALCookie
   ): TRALHTTPHeaderInfo;
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+  vPrefix: StringRAL;
 begin
   Result := Self;
-  FParams.AddParam('Set-Cookie', GetCookieText(ACookie), rpkCOOKIE);
+  { each cookie is a Set-Cookie line of its own. AddParam finds a param by name
+    and kind, and all of these are named Set-Cookie, so the second cookie of a
+    response overwrote the first - the JWT raltoken and a cookie of the
+    application could not go out together. A cookie of the same name still
+    replaces the one already there }
+  vPrefix := ACookie.Name + '=';
+  vParam := nil;
+  for vInt := 0 to Pred(FParams.Count) do
+    if (FParams.Index[vInt].Kind = rpkCOOKIE) and
+       RALSameName(FParams.Index[vInt].ParamName, 'Set-Cookie') and
+       (Pos(vPrefix, FParams.Index[vInt].AsString) = 1) then
+    begin
+      vParam := FParams.Index[vInt];
+      Break;
+    end;
+  if vParam = nil then
+  begin
+    vParam := FParams.NewParam;
+    vParam.ParamName := 'Set-Cookie';
+    vParam.ContentType := rctTEXTPLAIN;
+    vParam.Kind := rpkCOOKIE;
+  end;
+  vParam.AsString := GetCookieText(ACookie);
 end;
 
 function TRALHTTPHeaderInfo.AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo;
@@ -487,7 +524,12 @@ begin
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
 
-    if TRALCompress.StringToCompress(vEnc) <> ctNone then
+    { identity is "not encoded" (RFC 9110 8.4.1), so a body declared with it
+      is one this server can read. A known coding whose compressor was not
+      linked in (br without RALCompressBrotli) is not: the body could not be
+      decoded, and it used to go on and vanish in the decoder - 415 says why }
+    if (TRALCompress.StringToCompress(vEnc) in GetSuportedCompress) or
+       (Pos(StringRAL('identity'), vEnc) = 1) then
     begin
       Result := True;
       Break;
@@ -497,32 +539,57 @@ begin
   end;
 end;
 
+{ RFC 9110 12.5.3: without the header, and with any list that does not refuse
+  it, identity - the body as it is - stays acceptable. So "identity", "gzip;q=1"
+  or a coding this build did not link are all fine: the answer simply goes out
+  uncompressed. The request is only unanswerable when identity is refused on
+  purpose ("identity;q=0", or "*;q=0" with no identity entry) and none of the
+  codings still accepted is one this server has. Everything else used to be
+  answered 415, which speaks of the request body and sent whoever was debugging
+  after the Content-Type. }
 function TRALHTTPHeaderInfo.HasValidAcceptEncoding: boolean;
 var
-  vStr, vEnc: StringRAL;
+  vStr, vEnc, vName: StringRAL;
   vInt: integer;
+  vQuality, vIdentity, vStar: Double;
+  vSupported: TRALCompressTypes;
+  vHasCoding, vRefused: boolean;
 begin
-  Result := (Trim(FAcceptEncoding) = '');
-
-  if Result then
+  Result := True;
+  if Trim(FAcceptEncoding) = '' then
     Exit;
 
-  vStr := LowerCase(Trim(FAcceptEncoding));
+  vIdentity := -1;
+  vStar := -1;
+  vHasCoding := False;
+  vSupported := GetSuportedCompress;
+  vStr := Trim(FAcceptEncoding);
   while vStr <> '' do
   begin
     vInt := Pos(',', vStr);
     if vInt <= 0 then
       vInt := Length(vStr) + 1;
     vEnc := Trim(Copy(vStr, 1, vInt - 1));
-
-    if TRALCompress.StringToCompress(vEnc) <> ctNone then
-    begin
-      Result := True;
-      Break;
-    end;
-
     Delete(vStr, 1, vInt);
+    if vEnc = '' then
+      Continue;
+
+    RALSplitCoding(vEnc, vName, vQuality);
+    if vName = 'identity' then
+      vIdentity := vQuality
+    else if vName = '*' then
+    begin
+      vStar := vQuality;
+      if (vQuality > 0) and (vSupported <> []) then
+        vHasCoding := True;
+    end
+    else if (vQuality > 0) and
+            (TRALCompress.StringToCompress(vName) in vSupported) then
+      vHasCoding := True;
   end;
+
+  vRefused := (vIdentity = 0) or ((vIdentity < 0) and (vStar = 0));
+  Result := (not vRefused) or vHasCoding;
 end;
 
 end.

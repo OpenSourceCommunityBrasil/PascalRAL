@@ -10,7 +10,7 @@ uses
     DynLibs,
   {$ENDIF}
   Classes, SysUtils, SyncObjs,
-  RALTypes;
+  RALTypes, RALConsts;
 
 type
   { TRALExternalsLibraries }
@@ -83,7 +83,7 @@ end;
 procedure TRALExternalsLibraries.LoadProc(var AProc : Pointer; AName: PAnsiChar);
 begin
   if FLibraryHandle = 0 then
-    raise Exception.Create('Livraria não foi aberta');
+    raise Exception.Create(emLibraryNotLoaded);
 
   AProc := GetProcAddress(FLibraryHandle, AName);
   FProcs.Add(@AProc);

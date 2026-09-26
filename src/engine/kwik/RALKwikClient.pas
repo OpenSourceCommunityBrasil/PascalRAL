@@ -230,7 +230,7 @@ begin
     vCert.Issuer := StringRAL(JStringToString(issuer));
     vCert.Trusted := platformTrusted;
     if not platformTrusted then
-      vCert.Error := StringRAL('the platform did not validate the certificate');
+      vCert.Error := StringRAL(wmCertNotValidatedByPlatform);
 
     Result := FEngine.JudgeCertificate(vCert);
   except
@@ -355,7 +355,7 @@ begin
 
   ResolveTarget(AURL);
   RALQuicPrepareRequest(ARequest, FTargetHost, FTargetPort, Parent.UserAgent,
-    Parent.CompressType, GetAcceptCompress, Parent.CriptoOptions.Key,
+    Parent.CompressType, AcceptEncodingFor(ARequest), Parent.CriptoOptions.Key,
     Parent.CriptoOptions.CriptType, SupportedEncriptKind);
 
   vRoute := RALQuicRouteFromUrl(AURL);

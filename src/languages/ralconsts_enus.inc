@@ -1,4 +1,4 @@
-
+﻿
 { @abstract constant internal messages
   am = alert messages: middle severity messages, might raise exception
   em = error messages: high severity messages, raises exception
@@ -65,6 +65,28 @@
   emStorageLinkNotFound = 'Storage %s not declared in uses';
   emStorageNotFound = 'No TRALStorageLink found.';
 
+  emEngineNotFound = 'Engine %s not found: the unit that registers it is not in the uses.';
+  emDBFieldLoad = 'Could not load the field %s: %s';
+  emHTTPDateInvalidMonth = 'Invalid month in the HTTP date: %s.';
+  emISO8601Invalid = '"%s" is not an ISO 8601 date.';
+  emLibraryNotLoaded = 'The library was not loaded.';
+  emOpenSSLCallFailed = 'OpenSSL failed in %s.';
+  emOpenSSLNotLoaded = 'OpenSSL is not loaded.';
+  emRandomBytesFailed = 'The system could not generate random bytes.';
+
+  // server certificate (TRALCertInfo.Error)
+  wmCertMsQuicStatus = 'MsQuic did not validate the certificate: %s (flags 0x%x).';
+  wmCertNotValidatedByEngine = 'The engine did not validate the certificate.';
+  wmCertNotValidatedByPlatform = 'The platform did not validate the certificate.';
+  wmCertOpenSSLVerify = 'OpenSSL did not validate the certificate (error %d).';
+  wmCertUnavailable = 'The certificate is not available on this socket handler.';
+
+  // jwt messages (sent as error_description in WWW-Authenticate)
+  wmJWTExpired = 'The token expired';
+  wmJWTInvalid = 'The token signature or format is invalid';
+  wmJWTNotYetValid = 'The token is not valid yet';
+  wmJWTRefused = 'The token was refused by the server';
+
   // sagui error messages
   emSaguiLibraryLoadError = 'Error while trying to load libsagui.';
   emSaguiServerCreateError = 'Error while attempting to create the server.';
@@ -86,6 +108,8 @@
   SError403Page = 'The server informs that it doesn''t want you to access';
   SError404 = 'Not Found';
   SError404Page = 'The server informs that the page you''re requesting doesn''t exist in this reality';
+  SError406 = 'Not Acceptable';
+  SError406Page = 'The server informs that it cannot answer in any encoding you accept';
   SError415 = 'Unsuported Media Type';
   SError415Page = 'The server informs that it doesn''t know what you''re asking';
   SError429 = 'Too Many Requests';
@@ -109,3 +133,7 @@
   cmDBParamSystemDescription = 'Include system tables';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Table name';
+
+  // wizard messages
+  emWizardDirEmpty = 'The directory must be filled in.';
+  emWizardDirNotFound = 'The directory does not exist.';

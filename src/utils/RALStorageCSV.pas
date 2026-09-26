@@ -185,7 +185,7 @@ begin
     dtfUnix:
       Result := IntToStr(DateTimeToUnix(AValue));
     dtfISO8601:
-      Result := DateToISO8601(AValue);
+      Result := RALDateTimeToISO8601(AValue, True);
     dtfCustom:
       begin
         if (Frac(AValue) <> 0) and (Trunc(AValue) <> 0) then
@@ -258,13 +258,8 @@ begin
       end;
     dtfISO8601:
       begin
-        // ISO8601ToDate raises on garbage; the caller treats False as "not a date"
-        try
-          ADate := ISO8601ToDate(vText);
-          Result := True;
-        except
-          Result := False;
-        end;
+        // the caller treats False as "not a date"
+        Result := RALTryISO8601ToDateTime(vText, ADate);
       end;
     dtfCustom:
       Result := TryStrToDateTime(vText, ADate, CSVFormatSettings) or

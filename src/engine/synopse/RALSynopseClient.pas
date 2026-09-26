@@ -321,7 +321,7 @@ begin
     // string when no compression unit is linked, and then the server answers
     // uncompressed.
 
-    ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
     ARequest.CriptoKey := Parent.CriptoOptions.Key;
     ARequest.ContentCripto := Parent.CriptoOptions.CriptType;

@@ -58,20 +58,20 @@ implementation
 {$R *.dfm}
 
 uses
-  RALWizardTools;
+  RALConsts, RALWizardTools;
 
 procedure TfRALWizardForm.bCriarAplicacaoClick(Sender: TObject);
 begin
   if Trim(eDirAplicacao.Text) = '' then
   begin
-    ShowMessage('Diretório deve ser preenchido');
+    ShowMessage(emWizardDirEmpty);
     eDirAplicacao.SetFocus;
     Exit;
   end;
 
   if not DirectoryExists(eDirAplicacao.Text) then
   begin
-    ShowMessage('Diretório não Existe');
+    ShowMessage(emWizardDirNotFound);
     eDirAplicacao.SetFocus;
     Exit;
   end;

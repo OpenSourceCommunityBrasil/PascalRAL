@@ -103,6 +103,9 @@ type
 
 implementation
 
+uses
+  RALTools;
+
 const
   cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
     'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink');
@@ -246,8 +249,12 @@ var
 begin
   if AField <> nil then
   begin
-    if not TryStrToDateTime(AValue, vDate) then
-      vDate := ISO8601ToDate(AValue);
+    { ISO 8601 first: 'Z' as written, an offset brought to local time (see
+      RALTryISO8601ToDateTime); anything else in the local format, and what
+      neither reads raises EConvertError }
+    if not RALTryISO8601ToDateTime(AValue, vDate) then
+      if not TryStrToDateTime(string(AValue), vDate) then
+        vDate := RALISO8601ToDateTime(AValue);
     AField.AsDateTime := vDate;
   end;
 end;

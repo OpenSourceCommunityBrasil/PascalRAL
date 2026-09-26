@@ -49,6 +49,10 @@ type
   procedure GetCompressList(AList : TStrings);
   function GetSuportedCompress : TRALCompressTypes;
   function GetAcceptCompress : StringRAL;
+  /// One entry of an Accept-Encoding / Content-Encoding list: 'gzip;q=0.5'
+  /// gives 'gzip' and 0.5. The name comes lowercase; with no q, the quality is 1
+  procedure RALSplitCoding(const AToken: StringRAL; out AName: StringRAL;
+    out AQuality: Double);
   /// Raises emDecompressLimit when ACurrent passes RALMaxDecompressedSize;
   /// every compressor calls it from its decompression loop
   procedure RALCheckDecompressedSize(ACurrent: Int64);
@@ -66,6 +70,32 @@ procedure RALCheckDecompressedSize(ACurrent: Int64);
 begin
   if (RALMaxDecompressedSize > 0) and (ACurrent > RALMaxDecompressedSize) then
     raise Exception.Create(emDecompressLimit);
+end;
+
+procedure RALSplitCoding(const AToken: StringRAL; out AName: StringRAL;
+  out AQuality: Double);
+var
+  vPos, vCode: integer;
+  vParam: StringRAL;
+  vValue: Double;
+begin
+  AQuality := 1;
+  vPos := Pos(StringRAL(';'), AToken);
+  if vPos = 0 then
+  begin
+    AName := LowerCase(Trim(AToken));
+    Exit;
+  end;
+  AName := LowerCase(Trim(Copy(AToken, 1, vPos - 1)));
+  vParam := LowerCase(StringReplace(Copy(AToken, vPos + 1, MaxInt), ' ', '',
+    [rfReplaceAll]));
+  // q always uses the dot (RFC 9110 12.4.2), so Val and not the locale
+  if Copy(vParam, 1, 2) = 'q=' then
+  begin
+    Val(string(Copy(vParam, 3, MaxInt)), vValue, vCode);
+    if vCode = 0 then
+      AQuality := vValue;
+  end;
 end;
 
 const
@@ -320,16 +350,22 @@ begin
 end;
 
 class function TRALCompress.StringToCompress(const AStr: StringRAL): TRALCompressType;
+var
+  vName: StringRAL;
+  vQuality: Double;
 begin
-  if SameText(AStr, 'gzip') then
+  { a header entry may carry parameters - 'gzip;q=1.0' is what many clients
+    send - and comparing the whole entry recognised none of them }
+  RALSplitCoding(AStr, vName, vQuality);
+  if (vName = 'gzip') or (vName = 'x-gzip') then
     Result := ctGZip
-  else if SameText(AStr, 'zlib') then
+  else if vName = 'zlib' then
     Result := ctZLib
-  else if SameText(AStr, 'deflate') then
+  else if vName = 'deflate' then
     Result := ctDeflate
-  else if SameText(AStr, 'zstd') then
+  else if vName = 'zstd' then
     Result := ctZStd
-  else if SameText(AStr, 'br') then
+  else if vName = 'br' then
     Result := ctBrotli
   else
     Result := ctNone;
@@ -338,6 +374,8 @@ end;
 class function TRALCompress.GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
 var
   vInt, vIni, vHigh: IntegerRAL;
+  vName: StringRAL;
+  vQuality: Double;
   vClass: TRALCompressClass;
   vTypes: TRALCompressTypes;
   vType, vRegType: TRALCompressType;
@@ -360,7 +398,12 @@ begin
     if (vInt > vHigh) or (AEncoding[vInt] = ',') then
     begin
       if vInt > vIni then
-        vTypes := vTypes + [StringToCompress(Trim(Copy(AEncoding, vIni, vInt - vIni)))];
+      begin
+        // q=0 means "not this one" (RFC 9110 12.5.3)
+        RALSplitCoding(Copy(AEncoding, vIni, vInt - vIni), vName, vQuality);
+        if vQuality > 0 then
+          vTypes := vTypes + [StringToCompress(vName)];
+      end;
       vIni := vInt + 1;
     end;
     Inc(vInt);

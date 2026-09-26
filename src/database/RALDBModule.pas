@@ -19,6 +19,7 @@ type
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FCharacterSet: StringRAL;
+    FConnectionParams: TStrings;
     FLibLocation: String;
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
@@ -30,6 +31,7 @@ type
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
     FOnValidateSQL: TRALDBOnValidateSQL;
+    procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: String);
     /// Asks OnValidateSQL about a statement from the wire; raises when refused
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
@@ -89,6 +91,9 @@ type
     property LibLocation: String read FLibLocation write SetLibLocation;
     { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
     property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
+    { Name=Value settings handed to the database library before it connects -
+      Zeos Properties, FireDAC or sqldb Params. See TRALDBBase.ConnectionParams }
+    property ConnectionParams: TStrings read FConnectionParams write SetConnectionParams;
 
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
@@ -297,6 +302,8 @@ begin
     Result.Port := FPort;
     Result.LibLocation := FLibLocation;
     Result.CharacterSet := FCharacterSet;
+    if FConnectionParams.Count > 0 then
+      Result.ConnectionParams := FConnectionParams;
     Result.Request := ARequest;
     Result.Response := AResponse;
 
@@ -997,6 +1004,7 @@ var
 begin
   inherited Create(AOwner);
 
+  FConnectionParams := TStringList.Create;
   FPool := TRALDBConnectionPool.Create;
   FPool.OnCreateConnection := {$IFDEF FPC}@{$ENDIF}CreatePoolConnection;
 
@@ -1067,9 +1075,15 @@ begin
   vParam.Required := False;
 end;
 
+procedure TRALDBModule.SetConnectionParams(AValue: TStrings);
+begin
+  FConnectionParams.Assign(AValue);
+end;
+
 destructor TRALDBModule.Destroy;
 begin
   FreeAndNil(FPool);
+  FreeAndNil(FConnectionParams);
   inherited Destroy;
 end;
 

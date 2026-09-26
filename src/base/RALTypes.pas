@@ -172,11 +172,6 @@ function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 function StringToBytes(const AString: StringRAL): TBytes;
 function BytesToString(const ABytes: TBytes): StringRAL;
 
-{$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
-function DateToISO8601(const AValue: TDateTime): StringRAL;
-function ISO8601ToDate(const AValue: StringRAL): TDateTime;
-{$IFEND}
-
 /// The version as it is written on the wire - '1.0', '1.1', '2.0', or '' when
 /// the transport could not tell. This is what TRALHTTPHeaderInfo.Protocol
 /// hands back, so every engine spells it the same way.
@@ -269,34 +264,6 @@ begin
     Result := UTF8Decode(vStr);
   {$ENDIF}
 end;
-
-{$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
-function DateToISO8601(const AValue: TDateTime): StringRAL;
-var
-  vFmt: TFormatSettings;
-begin
-  vFmt.DateSeparator := '-';
-  vFmt.ShortDateFormat := 'yyyy-mm-dd';
-  vFmt.TimeSeparator := ':';
-  vFmt.ShortTimeFormat := 'hh:nn:ss';
-  vFmt.LongTimeFormat := 'hh:nn:ss.zzz';
-
-  Result := StringReplace(DateToStr(AValue, vFmt), ' ', 'T', []);
-end;
-
-function ISO8601ToDate(const AValue: StringRAL): TDateTime;
-var
-  vFmt: TFormatSettings;
-begin
-  vFmt.DateSeparator := '-';
-  vFmt.ShortDateFormat := 'yyyy-mm-dd';
-  vFmt.TimeSeparator := ':';
-  vFmt.ShortTimeFormat := 'hh:nn:ss';
-  vFmt.LongTimeFormat := 'hh:nn:ss.zzz';
-
-  Result := StrToDate(StringReplace(AValue, 'T', ' ', []), vFmt);
-end;
-{$IFEND}
 
 function RALHTTPVersionToStr(AVersion: TRALHTTPVersion): StringRAL;
 begin

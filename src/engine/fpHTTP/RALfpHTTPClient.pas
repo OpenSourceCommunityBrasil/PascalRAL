@@ -139,14 +139,14 @@ begin
     vCert.Fingerprint := RALNormalizeFingerprint(StringRAL(vHex));
     vCert.Trusted := vSSL.VerifyResult = 0;
     if not vCert.Trusted then
-      vCert.Error := StringRAL(Format('OpenSSL verify result %d',
+      vCert.Error := StringRAL(Format(wmCertOpenSSLVerify,
                                       [vSSL.VerifyResult]));
   end
   else
   begin
     { another handler was plugged in: nothing can be said about the peer, and
       saying nothing is the honest answer - the pin then fails to match }
-    vCert.Error := StringRAL('certificate not available on this socket handler');
+    vCert.Error := StringRAL(wmCertUnavailable);
   end;
 
   if CertCheckWanted then
@@ -290,7 +290,7 @@ begin
   // string when no compression unit is linked, and then the server answers
   // uncompressed.
 
-  ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
+  ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;

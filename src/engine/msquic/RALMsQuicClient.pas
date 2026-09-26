@@ -691,7 +691,7 @@ begin
   end;
   vInfo.Trusted := QUIC_SUCCEEDED(AData^.DeferredStatus);
   if not vInfo.Trusted then
-    vInfo.Error := StringRAL(Format('MsQuic %s (flags 0x%x)',
+    vInfo.Error := StringRAL(Format(wmCertMsQuicStatus,
       [QuicStatusToStr(AData^.DeferredStatus), AData^.DeferredErrorFlags]));
 
   if FJudge.JudgeServerCert(vInfo) then
@@ -1012,7 +1012,7 @@ begin
 
   ResolveTarget(AURL);
   RALQuicPrepareRequest(ARequest, FTargetHost, FTargetPort, Parent.UserAgent,
-    Parent.CompressType, GetAcceptCompress, Parent.CriptoOptions.Key,
+    Parent.CompressType, AcceptEncodingFor(ARequest), Parent.CriptoOptions.Key,
     Parent.CriptoOptions.CriptType, SupportedEncriptKind);
 
   vRoute := RALQuicRouteFromUrl(AURL);

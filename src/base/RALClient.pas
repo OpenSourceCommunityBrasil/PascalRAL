@@ -178,6 +178,11 @@ type
     FHost: StringRAL;
     FPort: IntegerRAL;
   protected
+    /// The Accept-Encoding for this request: a header the caller put in
+    /// ARequest, else Parent.AcceptEncoding, else every compression linked in.
+    /// Every engine sends this - they used to write GetAcceptCompress over
+    /// whatever the caller had set
+    function AcceptEncodingFor(ARequest: TRALRequest): StringRAL;
     /// allows manipulation of params before executing request.
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
                             AResponse: TRALResponse; AMethod: TRALMethod);
@@ -452,6 +457,7 @@ type
 
   TRALClient = class(TRALComponent)
   private
+    FAcceptEncoding: StringRAL;
     FAuthentication: TRALAuthClient;
     FBaseURL: TStrings;
     FConnectTimeout: IntegerRAL;
@@ -599,6 +605,13 @@ type
       fill-then-call pattern is safe from either - see TRALThreadRequest. }
     property Request: TRALRequest read GetRequest;
   published
+    /// The Accept-Encoding sent with every request: what this client can read.
+    /// Empty (the default) offers every compression linked into the binary;
+    /// 'identity' asks for answers without compression - for a server that
+    /// compresses badly, say; any other list goes as written. An Accept-Encoding
+    /// header put in Request by hand wins over this, for that request only.
+    /// Unrelated to CompressType, which is about what the client SENDS
+    property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default DEFAULTCONNECTTIMEOUT;
@@ -1021,7 +1034,7 @@ begin
   if vClass <> nil then
     Result := vClass.Create(Self)
   else
-    raise Exception.CreateFmt('Class %s não encontrada', [EngineType]);
+    raise Exception.CreateFmt(emEngineNotFound, [EngineType]);
 end;
 
 { AN ENGINE PER REQUEST IN FLIGHT, BORROWED AND GIVEN BACK.
@@ -1409,6 +1422,7 @@ begin
   ADest.KeepAlive := Self.KeepAlive;
   ADest.MaxRedirects := Self.MaxRedirects;
   ADest.CompressType := Self.CompressType;
+  ADest.AcceptEncoding := Self.AcceptEncoding;
 
   ADest.CriptoOptions.CriptType := Self.CriptoOptions.CriptType;
   ADest.CriptoOptions.Key := Self.CriptoOptions.Key;
@@ -1661,6 +1675,7 @@ end;
 
 procedure TRALClient.Delete(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
+  AResponse := nil; // see Get
   AResponse := ExecuteSingle(ARoute, amDELETE);
 end;
 
@@ -1672,6 +1687,11 @@ end;
 
 procedure TRALClient.Get(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
+  { nil first: when the request fails the assignment below never runs, and a
+    caller freeing its variable in a finally freed whatever it held before -
+    an uninitialised local, typically - turning the real error into an
+    access violation }
+  AResponse := nil;
   AResponse := ExecuteSingle(ARoute, amGET);
 end;
 
@@ -1683,6 +1703,7 @@ end;
 
 procedure TRALClient.Patch(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
+  AResponse := nil; // see Get
   AResponse := ExecuteSingle(ARoute, amPATCH);
 end;
 
@@ -1694,6 +1715,7 @@ end;
 
 procedure TRALClient.Post(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
+  AResponse := nil; // see Get
   AResponse := ExecuteSingle(ARoute, amPOST);
 end;
 
@@ -1705,6 +1727,7 @@ end;
 
 procedure TRALClient.Put(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
+  AResponse := nil; // see Get
   AResponse := ExecuteSingle(ARoute, amPUT);
 end;
 
@@ -2071,6 +2094,23 @@ end;
 function TRALClientHTTP.CertCheckWanted: boolean;
 begin
   Result := HasPinForHost or Assigned(FParent.OnValidateServerCert);
+end;
+
+function TRALClientHTTP.AcceptEncodingFor(ARequest: TRALRequest): StringRAL;
+var
+  vParam: TRALParam;
+begin
+  Result := '';
+  if ARequest <> nil then
+  begin
+    vParam := ARequest.Params.GetKind['Accept-Encoding', rpkHEADER];
+    if vParam <> nil then
+      Result := Trim(vParam.AsString);
+  end;
+  if (Result = '') and (Parent <> nil) then
+    Result := Trim(Parent.AcceptEncoding);
+  if Result = '' then
+    Result := GetAcceptCompress;
 end;
 
 procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;

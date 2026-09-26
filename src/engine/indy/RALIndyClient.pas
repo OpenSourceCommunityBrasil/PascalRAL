@@ -73,7 +73,7 @@ begin
   if AOk then
     vCert.Error := ''
   else
-    vCert.Error := StringRAL(Format('OpenSSL verify error %d', [AError]));
+    vCert.Error := StringRAL(Format(wmCertOpenSSLVerify, [AError]));
 
   Result := AcceptServerCert(vCert);
   FCertRefused := not Result;
@@ -244,7 +244,7 @@ begin
   // string when no compression unit is linked, and then the server answers
   // uncompressed.
 
-  FHttp.Request.AcceptEncoding := GetAcceptCompress;
+  FHttp.Request.AcceptEncoding := AcceptEncodingFor(ARequest);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
   ARequest.ContentCripto := Parent.CriptoOptions.CriptType;

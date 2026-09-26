@@ -181,10 +181,19 @@ type
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnGetTokenGen: TRALOnTokenJWTGen;
+    FOnRenewToken: TRALOnTokenJWT;
+    FOnRenewTokenGen: TRALOnTokenJWTGen;
     FOnValidate: TRALOnTokenJWT;
     FOnValidateGen: TRALOnTokenJWTGen;
     FUseCookie: Boolean;
+    { the work of RenewToken; with a request, OnRenewToken is consulted }
+    function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
+      const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     procedure SetUseCookie(AValue: Boolean);
+    { RFC 6750 3: tells a client WHY it got the 401 - no credentials at all
+      (AError empty) or a token that was refused, and what was wrong with it }
+    procedure AnswerChallenge(AResponse: TRALResponse; const AError,
+      ADescription: StringRAL);
   protected
     function GetAuthRoute: TRALBaseRoute; override;
     procedure SetAuthRoute(ARoute: TRALBaseRoute); override;
@@ -194,10 +203,15 @@ type
 
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     function GetToken(var AJSONParams: StringRAL): StringRAL;
+    /// A new token with the claims of AToken and a new expiration; '' when
+    /// AToken is not valid. Called directly it does not fire OnRenewToken
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     property OnGetTokenGen: TRALOnTokenJWTGen read FOnGetTokenGen write FOnGetTokenGen;
+    /// OnRenewToken for a plain procedure
+    property OnRenewTokenGen: TRALOnTokenJWTGen read FOnRenewTokenGen
+      write FOnRenewTokenGen;
     property OnValidateGen: TRALOnTokenJWTGen read FOnValidateGen write FOnValidateGen;
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
@@ -208,6 +222,13 @@ type
     property UseCookie: Boolean read FUseCookie write SetUseCookie;
 
     property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
+    /// Fired when a valid token is posted to AuthRoute to be renewed, with its
+    /// claims in AParams - already checked, and with the new expiration set.
+    /// Change any claim there (permissions read again from the database, say),
+    /// or set AResult to False to refuse the renewal (the client gets 401 and
+    /// has to ask for a first token again). Unassigned, the claims are copied
+    /// as they were, which is what renewing always did
+    property OnRenewToken: TRALOnTokenJWT read FOnRenewToken write FOnRenewToken;
     property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
   end;
 
@@ -305,6 +326,45 @@ type
   end;
 
 implementation
+
+{ RFC 6750 only lets error_description carry printable ASCII other than '"' and
+  '\', and the text comes from the language files. Works on the UTF-8 bytes, so
+  it behaves the same on every compiler: an accented Latin-1 letter (lead byte
+  $C3) keeps its base letter, any other non-ASCII character becomes '?' }
+function RALChallengeText(const AValue: StringRAL): StringRAL;
+const
+  cLatin1 = 'AAAAAAACEEEEIIIIDNOOOOOxOUUUUYTsaaaaaaaceeeeiiiidnooooo/ouuuuyty';
+var
+  vInt, vLast, vCode: integer;
+  vChar: CharRAL;
+begin
+  Result := '';
+  vInt := POSINISTR;
+  vLast := RALHighStr(AValue);
+  while vInt <= vLast do
+  begin
+    vCode := Ord(AValue[vInt]);
+    Inc(vInt);
+    if vCode >= $80 then
+    begin
+      if (vCode = $C3) and (vInt <= vLast) and (Ord(AValue[vInt]) in [$80..$BF]) then
+        vChar := CharRAL(cLatin1[POSINISTR + Ord(AValue[vInt]) - $80])
+      else
+        vChar := '?';
+      while (vInt <= vLast) and ((Ord(AValue[vInt]) and $C0) = $80) do
+        Inc(vInt);
+    end
+    else if vCode = Ord('"') then
+      vChar := ''''
+    else if vCode = Ord('\') then
+      vChar := '/'
+    else if (vCode < $20) or (vCode = $7F) then
+      vChar := ' '
+    else
+      vChar := CharRAL(vCode);
+    Result := Result + vChar;
+  end;
+end;
 
 { TRALAuthClient }
 
@@ -578,7 +638,8 @@ begin
       { a valid token in hand renews itself: same claims, new expiration.
         The signature already proves who is asking, so OnGetToken is not
         consulted here - it decides who gets a FIRST token }
-      vToken := RenewToken(ARequest.Authorization.AuthString, vStrParams);
+      vToken := RenewTokenFor(ARequest, AResponse, ARequest.Authorization.AuthString,
+        vStrParams);
       vResult := vToken <> '';
     end
     else if Assigned(FOnGetToken) then
@@ -681,8 +742,16 @@ end;
 
 function TRALServerJWTAuth.RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL)
   : StringRAL;
+begin
+  Result := RenewTokenFor(nil, nil, AToken, AJSONParams);
+end;
+
+function TRALServerJWTAuth.RenewTokenFor(ARequest: TRALRequest;
+  AResponse: TRALResponse; const AToken: StringRAL;
+  var AJSONParams: StringRAL): StringRAL;
 var
   vJWT: TRALJWT;
+  vResult: boolean;
 begin
   Result := '';
   vJWT := TRALJWT.Create;
@@ -702,6 +771,20 @@ begin
       if FExpSecs > 0 then
         vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
 
+      { renewing only ever copied the claims, so anything the application
+        derives from its database at login (permissions, a store, a role)
+        stayed as it was for as long as the client kept renewing }
+      if ARequest <> nil then
+      begin
+        vResult := True;
+        if Assigned(FOnRenewToken) then
+          FOnRenewToken(ARequest, AResponse, vJWT.Payload, vResult)
+        else if Assigned(FOnRenewTokenGen) then
+          FOnRenewTokenGen(ARequest, AResponse, vJWT.Payload, vResult);
+        if not vResult then
+          Exit;
+      end;
+
       AJSONParams := vJWT.Payload.AsJSON;
 
       Result := vJWT.Token;
@@ -711,19 +794,38 @@ begin
   end;
 end;
 
+procedure TRALServerJWTAuth.AnswerChallenge(AResponse: TRALResponse;
+  const AError, ADescription: StringRAL);
+var
+  vValue: StringRAL;
+begin
+  vValue := 'Bearer realm="RAL"';
+  if AError <> '' then
+    vValue := vValue + ', error="' + AError + '"';
+  if ADescription <> '' then
+    vValue := vValue + ', error_description="' + RALChallengeText(ADescription) + '"';
+  AResponse.AddHeader('WWW-Authenticate', vValue);
+end;
+
 procedure TRALServerJWTAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult: boolean;
   vJWT: TRALJWT;
+  vReason: StringRAL;
 begin
   AResponse.StatusCode := HTTP_OK;
+  { the same 401 page answered "no token at all", "expired" and "forged", and a
+    client that lost its cookie on the way looked exactly like one holding a
+    bad token. The page stays; the WWW-Authenticate header says which }
   if (ARequest.Authorization.AuthType <> ratBearer) then
   begin
     AResponse.Answer(HTTP_Unauthorized);
+    AnswerChallenge(AResponse, '', '');
     Exit;
   end;
 
   vResult := False;
+  vReason := '';
 
   vJWT := TRALJWT.Create;
   try
@@ -736,14 +838,26 @@ begin
         FOnValidate(ARequest, AResponse, vJWT.Payload, vResult)
       else if Assigned(FOnValidateGen) then
         FOnValidateGen(ARequest, AResponse, vJWT.Payload, vResult);
-    end;
-
+      if not vResult then
+        vReason := wmJWTRefused;
+    end
+    { IsValidToken read the payload before deciding, so it still tells the
+      two cases a client can do something about }
+    else if (vJWT.Payload.Expiration > 0) and (vJWT.Payload.Expiration < Now) then
+      vReason := wmJWTExpired
+    else if (vJWT.Payload.NotBefore > 0) and (vJWT.Payload.NotBefore > Now) then
+      vReason := wmJWTNotYetValid
+    else
+      vReason := wmJWTInvalid;
   finally
     FreeAndNil(vJWT);
   end;
 
   if (not vResult) and (AResponse.StatusCode < HTTP_BadRequest) then
+  begin
     AResponse.Answer(HTTP_Unauthorized);
+    AnswerChallenge(AResponse, 'invalid_token', vReason);
+  end;
 end;
 
 procedure TRALServerJWTAuth.SetUseCookie(AValue: Boolean);

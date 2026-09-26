@@ -37,7 +37,7 @@ begin
   Result := inherited;
   if TRALOpenSSL.GetInstance.LibraryHandle = 0 then begin
     Result := False;
-    raise Exception.Create('OpenSSL not loaded');
+    raise Exception.Create(emOpenSSLNotLoaded);
   end;
 end;
 
@@ -76,7 +76,7 @@ begin
       vPIV := nil;
 
     if EVP_DecryptInit_ex(vCTX, vCipher, nil, @vKey[0], vPIV) <> 1 then
-      raise Exception.Create('DecryptInit falhou');
+      raise Exception.CreateFmt(emOpenSSLCallFailed, ['DecryptInit']);
 
     Result := TMemoryStream.Create;
     Result.Size := AValue.Size;
@@ -97,14 +97,14 @@ begin
       if EVP_DecryptUpdate(vCTX, @vOutBuf[0], @vBytesWrite, @vInBuf[0], vBytesRead) = 1 then
         Result.Write(vOutBuf[0], vBytesWrite)
       else
-        raise Exception.Create('DecryptUpdate falhou');
+        raise Exception.CreateFmt(emOpenSSLCallFailed, ['DecryptUpdate']);
     end;
 
     vBytesWrite := Length(vOutBuf);
     if EVP_DecryptFinal_ex(vCTX, @vOutBuf[0], @vBytesWrite) = 1 then
       Result.Write(vOutBuf[0], vBytesWrite)
     else
-      raise Exception.Create('DecryptFinal falhou');
+      raise Exception.CreateFmt(emOpenSSLCallFailed, ['DecryptFinal']);
 
     Result.Size := Result.Position;
     Result.Position := 0;
@@ -142,7 +142,7 @@ begin
       vPIV := nil;
 
     if EVP_EncryptInit_ex(vCTX, vCipher, nil, @vKey[0], vPIV) <> 1 then
-      raise Exception.Create('EncryptInit falhou');
+      raise Exception.CreateFmt(emOpenSSLCallFailed, ['EncryptInit']);
 
     Result := TMemoryStream.Create;
     Result.Size := AValue.Size + 16;
@@ -163,14 +163,14 @@ begin
       if EVP_EncryptUpdate(vCTX, @vOutBuf[0], @vBytesWrite, @vInBuf[0], vBytesRead) = 1 then
         Result.Write(vOutBuf[0], vBytesWrite)
       else
-        raise Exception.Create('EncryptUpdate falhou');
+        raise Exception.CreateFmt(emOpenSSLCallFailed, ['EncryptUpdate']);
     end;
 
     vBytesWrite := Length(vOutBuf);
     if EVP_EncryptFinal_ex(vCTX, @vOutBuf[0], @vBytesWrite) = 1 then
       Result.Write(vOutBuf[0], vBytesWrite)
     else
-      raise Exception.Create('EncryptFinal falhou');
+      raise Exception.CreateFmt(emOpenSSLCallFailed, ['EncryptFinal']);
 
     Result.Size := Result.Position;
     Result.Position := 0;

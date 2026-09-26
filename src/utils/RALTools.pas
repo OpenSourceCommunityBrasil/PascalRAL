@@ -28,6 +28,19 @@ function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 /// The inverse of RALDateTimeToGMT: a UTC value back to the local zone
 function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
+/// ISO 8601 with milliseconds, the same on every compiler. AInputIsUTC stamps
+/// 'Z' on the value as it is (what DateToISO8601 does by default); False says
+/// the value is local time and writes the real offset ('-03:00')
+function RALDateTimeToISO8601(const AValue: TDateTime; AInputIsUTC: Boolean): StringRAL;
+/// Reads what RALDateTimeToISO8601 writes, and ISO 8601 from elsewhere, in the
+/// extended (2026-09-22T06:51:24) or the basic format (20260922T065124): 'Z' is
+/// kept as written (RAL stamped it on local time for years), an explicit offset
+/// is brought to local time, no zone is taken as it is. Raises when the text is
+/// not a date; see RALTryISO8601ToDateTime. The ISO 8601 functions of RAL live
+/// here only - use these, not the RTL's DateToISO8601/ISO8601ToDate, which
+/// XE2..XE5 lack and which differ between Delphi and FPC
+function RALISO8601ToDateTime(const AValue: StringRAL): TDateTime;
+function RALTryISO8601ToDateTime(const AValue: StringRAL; out ADate: TDateTime): Boolean;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
@@ -39,6 +52,12 @@ function RALSameSecret(const A, B: StringRAL): Boolean;
 /// Case-insensitive name comparison without leaving StringRAL. Use it for param
 /// and header names; SameText is the general-purpose one and stays for text.
 function RALSameName(const A, B: StringRAL): Boolean;
+/// A number that came as text over HTTP, whatever the locale of this machine:
+/// '2.5' and '2,5' are both 2.5, and with both separators present the last one
+/// is the decimal ('1.234,5' and '1,234.5'). False when it is not a number
+function RALTryStrToFloat(const AValue: StringRAL; out AResult: Double): Boolean;
+/// Same rule as RALTryStrToFloat, for Currency
+function RALTryStrToCurr(const AValue: StringRAL; out AResult: Currency): Boolean;
 /// Drops trailing blanks without leaving StringRAL. Same rule as the RTL's
 /// TrimRight - everything up to and including a space goes - and the same
 /// result: a byte above 127 is always part of a multibyte character and never
@@ -109,6 +128,213 @@ begin
     Result := Copy(A, vFirst, vLast - vFirst + 1);
 end;
 
+function RALDateTimeToISO8601(const AValue: TDateTime; AInputIsUTC: Boolean): StringRAL;
+var
+  vOffset: Integer;
+  vSign: Char;
+begin
+  Result := StringRAL(FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"."zzz', AValue));
+  if AInputIsUTC then
+  begin
+    Result := Result + 'Z';
+    Exit;
+  end;
+  // minutes east of UTC at that date - summer time included
+  vOffset := Round((AValue - RALDateTimeToGMT(AValue)) * MinsPerDay);
+  if vOffset < 0 then
+    vSign := '-'
+  else
+    vSign := '+';
+  vOffset := Abs(vOffset);
+  Result := Result + StringRAL(Format('%s%.2d:%.2d', [vSign, vOffset div 60,
+    vOffset mod 60]));
+end;
+
+function RALTryISO8601ToDateTime(const AValue: StringRAL; out ADate: TDateTime): Boolean;
+var
+  vText: string;
+  vPos, vLen: Integer;
+  vYear, vMonth, vDay, vHour, vMin, vSec, vMSec, vZoneH, vZoneM, vDigits: Integer;
+  vTime: TDateTime;
+  vSign: Char;
+  vExtended: Boolean;
+
+  function Digits(ACount: Integer; out AResult: Integer): Boolean;
+  var
+    vInt: Integer;
+  begin
+    Result := vPos + ACount - 1 <= vLen;
+    AResult := 0;
+    if not Result then
+      Exit;
+    for vInt := vPos to vPos + ACount - 1 do
+    begin
+      if (vText[POSINISTR - 1 + vInt] < '0') or (vText[POSINISTR - 1 + vInt] > '9') then
+        Exit(False);
+      AResult := AResult * 10 + Ord(vText[POSINISTR - 1 + vInt]) - Ord('0');
+    end;
+    Inc(vPos, ACount);
+  end;
+
+  function Skip(AChar: Char): Boolean;
+  begin
+    Result := (vPos <= vLen) and (vText[POSINISTR - 1 + vPos] = AChar);
+    if Result then
+      Inc(vPos);
+  end;
+
+begin
+  Result := False;
+  ADate := 0;
+  vText := Trim(string(AValue));
+  vLen := Length(vText);
+  vPos := 1;
+  vHour := 0;
+  vMin := 0;
+  vSec := 0;
+  vMSec := 0;
+
+  { the extended format (2026-09-22T06:51:24) and the basic one (20260922T065124),
+    which the RTL's ISO8601ToDate also reads; the date decides which, and the
+    time follows it }
+  if not Digits(4, vYear) then
+    Exit;
+  vExtended := Skip('-');
+  if not (Digits(2, vMonth) and ((not vExtended) or Skip('-')) and Digits(2, vDay)) then
+    Exit;
+  if not TryEncodeDate(vYear, vMonth, vDay, ADate) then
+    Exit;
+
+  if Skip('T') or Skip(' ') then
+  begin
+    if not (Digits(2, vHour) and ((not vExtended) or Skip(':')) and Digits(2, vMin)) then
+      Exit;
+    if vExtended then
+    begin
+      if Skip(':') and not Digits(2, vSec) then
+        Exit;
+    end
+    else if (vPos <= vLen) and (vText[POSINISTR - 1 + vPos] >= '0') and
+            (vText[POSINISTR - 1 + vPos] <= '9') and not Digits(2, vSec) then
+      Exit;
+    // a fraction of any length; milliseconds is what TDateTime keeps
+    if Skip('.') or Skip(',') then
+    begin
+      vDigits := 0;
+      while (vPos <= vLen) and (vText[POSINISTR - 1 + vPos] >= '0') and (vText[POSINISTR - 1 + vPos] <= '9') do
+      begin
+        if vDigits < 3 then
+          vMSec := vMSec * 10 + Ord(vText[POSINISTR - 1 + vPos]) - Ord('0');
+        Inc(vDigits);
+        Inc(vPos);
+      end;
+      while vDigits < 3 do
+      begin
+        vMSec := vMSec * 10;
+        Inc(vDigits);
+      end;
+    end;
+    if not TryEncodeTime(vHour, vMin, vSec, vMSec, vTime) then
+      Exit;
+    ADate := ADate + vTime;
+  end;
+
+  if vPos > vLen then
+    Exit(True);                          // no zone: as it is
+
+  if Skip('Z') or Skip('z') then
+    Exit(vPos > vLen);                   // 'Z': as written
+
+  vSign := vText[POSINISTR - 1 + vPos];
+  if (vSign <> '+') and (vSign <> '-') then
+    Exit;
+  Inc(vPos);
+  if not Digits(2, vZoneH) then
+    Exit;
+  Skip(':');
+  vZoneM := 0;
+  if (vPos <= vLen) and not Digits(2, vZoneM) then
+    Exit;
+  if vPos <= vLen then
+    Exit;
+
+  // the offset says where the clock was: back to UTC, then to local time here
+  if vSign = '+' then
+    ADate := ADate - (vZoneH * 60 + vZoneM) / MinsPerDay
+  else
+    ADate := ADate + (vZoneH * 60 + vZoneM) / MinsPerDay;
+  ADate := RALGMTToDateTime(ADate);
+  Result := True;
+end;
+
+function RALISO8601ToDateTime(const AValue: StringRAL): TDateTime;
+begin
+  if not RALTryISO8601ToDateTime(AValue, Result) then
+    raise EConvertError.CreateFmt(emISO8601Invalid, [string(AValue)]);
+end;
+
+{ HTTP carries numbers as text with no locale attached. Parsing them with the
+  settings of the process made the same binary read "2.5" as 0 on a pt-BR server
+  (decimal comma) and as 2.5 on an en-US one - and a browser's number input
+  always sends the dot. Both separators are accepted; the thousands one, when
+  present, is whichever is not the last. }
+function RALNormalizeNumber(const AValue: StringRAL): string;
+var
+  vInt, vLastDot, vLastComma: IntegerRAL;
+  vDec: Char;
+  vChar: Char;
+begin
+  Result := Trim(string(AValue));
+  vLastDot := 0;
+  vLastComma := 0;
+  for vInt := 1 to Length(Result) do
+    if Result[POSINISTR - 1 + vInt] = '.' then
+      vLastDot := vInt
+    else if Result[POSINISTR - 1 + vInt] = ',' then
+      vLastComma := vInt;
+  if (vLastDot = 0) and (vLastComma = 0) then
+    Exit;
+  if vLastComma > vLastDot then
+    vDec := ','
+  else
+    vDec := '.';
+  vInt := 1;
+  while vInt <= Length(Result) do
+  begin
+    vChar := Result[POSINISTR - 1 + vInt];
+    if (vChar = '.') or (vChar = ',') then
+    begin
+      if vChar <> vDec then
+      begin
+        Delete(Result, vInt, 1);
+        Continue;
+      end;
+      Result[POSINISTR - 1 + vInt] := '.';
+    end;
+    Inc(vInt);
+  end;
+end;
+
+function RALInvariantFormat: TFormatSettings;
+begin
+  Result := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
+  Result.DecimalSeparator := '.';
+  Result.ThousandSeparator := ',';
+end;
+
+function RALTryStrToFloat(const AValue: StringRAL; out AResult: Double): Boolean;
+begin
+  Result := TryStrToFloat(RALNormalizeNumber(AValue), AResult, RALInvariantFormat);
+  if not Result then
+    AResult := 0;
+end;
+
+function RALTryStrToCurr(const AValue: StringRAL; out AResult: Currency): Boolean;
+begin
+  Result := TryStrToCurr(RALNormalizeNumber(AValue), AResult, RALInvariantFormat);
+  if not Result then
+    AResult := 0;
+end;
 function RALSameName(const A, B: StringRAL): Boolean;
 var
   vInt, vHighA, vHighB: IntegerRAL;
@@ -273,7 +499,7 @@ begin
     sources instead. }
   {$IFDEF RALWindows}
   if not SystemFunction036(@Result[0], numOfBytes) then
-    raise Exception.Create('RandomBytes: RtlGenRandom failed');
+    raise Exception.Create(emRandomBytesFailed);
   {$ELSE}
   vFile := TFileStream.Create('/dev/urandom', fmOpenRead or fmShareDenyNone);
   try
@@ -506,7 +732,7 @@ begin
     end;
 
   if Month = 0 then
-    raise EConvertError.Create('Mês inválido na data HTTP');
+    raise EConvertError.CreateFmt(emHTTPDateInvalidMonth, [string(AStr)]);
 
   Result := EncodeDateTime(Year, Month, Day, Hour, Min, Sec, 0);
 end;

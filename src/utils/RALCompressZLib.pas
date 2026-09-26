@@ -107,8 +107,31 @@ begin
   AOutStream.Position := 0;
 end;
 
+{ Whether the stream starts with a zlib header (RFC 1950): method 8 (deflate),
+  window of at most 32 KB, and the check bits that make the first two bytes a
+  multiple of 31. HTTP's "deflate" IS zlib (RFC 9110 8.4.1.2) - what most
+  servers send - while RAL, and a few old servers, send it raw; asking the
+  stream is what reads both. Leaves the position where it was }
+function StartsWithZlibHeader(AStream: TStream): boolean;
+var
+  vHead: array[0..1] of Byte;
+  vPos: Int64;
+begin
+  Result := False;
+  vPos := AStream.Position;
+  try
+    if AStream.Read(vHead[0], 2) <> 2 then
+      Exit;
+    Result := ((vHead[0] and $0F) = 8) and ((vHead[0] shr 4) <= 7) and
+              (((Word(vHead[0]) shl 8) or vHead[1]) mod 31 = 0);
+  finally
+    AStream.Position := vPos;
+  end;
+end;
+
 procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
+  vFormat: TRALCompressType;
   vBuf: TBytes;
   vZip: TDeCompressionStream;
   vCount: Integer;
@@ -144,16 +167,20 @@ begin
   else
     SetLength(vBuf, AInStream.Size);
 
+  vFormat := Format;
+  if (vFormat = ctDeflate) and StartsWithZlibHeader(AInStream) then
+    vFormat := ctZLib;
+
   {$IFDEF FPC}
-  if Format = ctZLib then
+  if vFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream)
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
   {$ELSE}
   // same windowBits mapping as Compress: ctDeflate is raw, not gzip
-  if Format = ctZLib then
+  if vFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
-  else if Format = ctDeflate then
+  else if vFormat = ctDeflate then
     vZip := TDeCompressionStream.Create(AInStream, -15)
   else
     vZip := TDeCompressionStream.Create(AInStream, 31);

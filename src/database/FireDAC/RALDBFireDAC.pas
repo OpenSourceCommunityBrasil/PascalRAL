@@ -54,6 +54,7 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
+    function GetNativeConnection: TComponent; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
@@ -62,6 +63,9 @@ type
 
     class function DatabaseName: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+    /// The FireDAC connection this driver opens - see GetNativeConnection
+    property NativeConnection: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF}
+      read FConnector;
   end;
 
 implementation
@@ -98,6 +102,8 @@ begin
     FConnector.Params.Add('OpenMode=CreateUTF8');
     FConnector.Params.Add('StringFormat=Unicode');
   end;
+
+  ApplyConnectionParams(FConnector.Params);
 
   FConnector.BeforeConnect := OnConnBeforeConnect;
   FConnector.AfterConnect := OnConnAfterConnect;
@@ -171,6 +177,11 @@ procedure TRALDBFireDAC.Disconnect;
 begin
   if FConnector.Connected then
     FConnector.Close;
+end;
+
+function TRALDBFireDAC.GetNativeConnection: TComponent;
+begin
+  Result := FConnector;
 end;
 
 function TRALDBFireDAC.IsConnected: boolean;

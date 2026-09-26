@@ -37,6 +37,7 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
+    function GetNativeConnection: TComponent; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -45,6 +46,8 @@ type
 
     class function DatabaseName : StringRAL; override;
     class function PackageDependency : StringRAL; override;
+    /// The TZConnection this driver opens - see GetNativeConnection
+    property NativeConnection: TZConnection read FConnector;
   end;
 
 implementation
@@ -55,6 +58,13 @@ procedure TRALDBZeos.Conectar;
 begin
   if FConnector.Connected then
     Exit;
+
+  { a connection the SERVER dropped is not closed for Zeos: the DBC object is
+    still there, Connected answers False, and TZAbstractConnection.Connect does
+    nothing while that object exists - no reconnection and no error, and every
+    query after it failed with "Connection is not opened yet" for good.
+    Disconnect is what frees it, and it is harmless on a closed connection }
+  FConnector.Disconnect;
 
   FConnector.Database               := Database;
   FConnector.HostName               := Hostname;
@@ -71,6 +81,8 @@ begin
     (pooler suite, 07/09/2026). FireDAC waits up to 10 s by default
     (BusyTimeout); ask Zeos for the same, so a pooled SQLite behaves alike
     under both drivers. Only when the application did not set it }
+  ApplyConnectionParams(FConnector.Properties);
+
   if (DatabaseType = dtSQLite) and
      (Trim(FConnector.Properties.Values['busytimeout']) = '') then
     FConnector.Properties.Values['busytimeout'] := '10000';
@@ -205,8 +217,14 @@ end;
 
 procedure TRALDBZeos.Disconnect;
 begin
-  if FConnector.Connected then
-    FConnector.Disconnect;
+  { no "if Connected": a dropped connection answers False there and still has
+    to be released (see Conectar). Zeos guards it by the right criterion }
+  FConnector.Disconnect;
+end;
+
+function TRALDBZeos.GetNativeConnection: TComponent;
+begin
+  Result := FConnector;
 end;
 
 function TRALDBZeos.IsConnected: boolean;
