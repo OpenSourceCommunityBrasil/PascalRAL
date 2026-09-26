@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **fix: padronização de código fix: padronização de units para UTF8 fix: correção de instalação XE2 e Seattle 10.0 fix: qualidade do gzip na compressão fix: padronização e correção de ISO8601 com timezone fix: correção de claim duplicado no AddClaim fix: correção de libbrotli static link feat: helper dbware para expor o objeto de conexão** (2026-09-25 – mobius1qwe)
+
 - **Add TRALClientInfo.ConnectionID to tell requests apart by connection** (2026-09-22 – tempraturbo)
   Every server engine now reports which connection carried each request,
   so a server can count requests against connections and see whether a
@@ -372,6 +374,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix: Correções de compatibilidade para XE2 e 10.0 Seattle** (2026-09-25 – mobius1qwe)
+
 - **Fix: Linux installation fix** (2026-09-24 – mobius1qwe)
 
 - **Fix HTTPVersion offering a choice the engine cannot make** (2026-09-21 – tempraturbo)
