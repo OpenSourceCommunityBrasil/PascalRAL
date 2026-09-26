@@ -522,7 +522,9 @@ begin
     Exit(False);
   FLock.Acquire;
   try
-    Result := FRevoked.IndexOfName(AJTI) >= 0;
+    { by the hash: a jti is base64, and its "=" padding broke the name=value
+      lines - IndexOfName never found a revoked token }
+    Result := FRevoked.IndexOfName(TokenKey(AJTI)) >= 0;
   finally
     FLock.Release;
   end;
@@ -576,8 +578,8 @@ begin
   FLock.Acquire;
   try
     Prune;
-    if FRevoked.IndexOfName(AJTI) < 0 then
-      FRevoked.Add(AJTI + '=' + FloatToStr(AExpires));
+    if FRevoked.IndexOfName(TokenKey(AJTI)) < 0 then
+      FRevoked.Add(TokenKey(AJTI) + '=' + FloatToStr(AExpires));
   finally
     FLock.Release;
   end;

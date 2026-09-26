@@ -567,6 +567,7 @@ class function TRALSaguiServer.GetSaguiIP(AReq: Psg_httpreq): StringRAL;
 var
   vIP: array[0..45] of cchar;
   vClient: Pcvoid;
+  vLen: IntegerRAL;
 begin
   Result := '';
 
@@ -575,10 +576,18 @@ begin
   if not Assigned(vClient) then
     Exit;
 
-  FillChar(vIP, Length(vIP), 0);
+  FillChar(vIP, SizeOf(vIP), 0);
   SgLib.CheckLastError(sg_ip(vClient, @vIP[0], Length(vIP)));
-  SetLength(Result, Length(vIP));
-  Move(vIP[0], Result[PosIniStr], Length(vIP));
+  { up to the first NUL, not the whole buffer: an IPv4-mapped address comes
+    back as "::ffff:127.0.0.1" rewritten in place to "127.0.0.1", NUL, and
+    the tail of the longer text after it - Trim does not cut at a NUL in the
+    middle, and the address the IP lists compared was "127.0.0.1"#0".0.1" }
+  vLen := 0;
+  while (vLen < Length(vIP)) and (vIP[vLen] <> 0) do
+    Inc(vLen);
+  SetLength(Result, vLen);
+  if vLen > 0 then
+    Move(vIP[0], Result[PosIniStr], vLen);
   Result := Trim(Result);
 end;
 

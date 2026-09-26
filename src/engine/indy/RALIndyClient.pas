@@ -26,6 +26,13 @@ type
 
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
+    { TIdHTTP answers every 401 itself (DoOnAuthorization, with or without
+      hoInProcessAuth), creates an authenticator of its own - its Digest only
+      knows MD5 - and keeps it on the reused TIdHTTP, where its Authorization
+      then replaces the one RAL writes. RAL's authenticator decides; Indy's is
+      refused here }
+    procedure SelectAuthorization(Sender: TObject;
+      var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -47,6 +54,12 @@ implementation
 class function TRALIndyClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
+end;
+
+procedure TRALIndyClientHTTP.SelectAuthorization(Sender: TObject;
+  var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
+begin
+  AuthenticationClass := nil;
 end;
 
 function TRALIndyClientHTTP.VerifyPeer(ACertificate: TIdX509; AOk: boolean;
@@ -98,6 +111,7 @@ begin
     PATCH. TIdTCPClientCustom.Connect copies this onto the socket, so it also
     survives the IOHandler being swapped for the SSL one. }
   FHttp.UseNagle := False;
+  FHttp.OnSelectAuthorization := {$IFDEF FPC}@{$ENDIF}SelectAuthorization;
 
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];

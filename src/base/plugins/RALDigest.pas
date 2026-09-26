@@ -240,8 +240,17 @@ end;
 function TRALServerDigest.NewNonce: StringRAL;
 var
   vStamp: StringRAL;
+  vRandom: TBytes;
+  vInt: IntegerRAL;
 begin
+  { the timestamp alone repeated within a second: two 401s in the same second
+    handed out the same nonce, the client started nc over at 1, and the replay
+    cache refused it. A random part makes every nonce new; the signature
+    covers both }
   vStamp := LowerCase(IntToHex(UnixNow, 12));
+  vRandom := RandomBytes(8);
+  for vInt := 0 to High(vRandom) do
+    vStamp := vStamp + LowerCase(IntToHex(vRandom[vInt], 2));
   Result := vStamp + '.' + NonceSignature(vStamp);
 end;
 
@@ -263,10 +272,11 @@ function TRALServerDigest.NonceTime(const ANonce: StringRAL): Int64RAL;
 var
   vInt: IntegerRAL;
 begin
+  { the first 12 hex digits are the timestamp; the random part follows }
   Result := 0;
   vInt := Pos(StringRAL('.'), ANonce);
-  if vInt > 1 then
-    Result := StrToInt64Def('$' + Copy(ANonce, 1, vInt - 1), 0);
+  if vInt > 12 then
+    Result := StrToInt64Def('$' + Copy(ANonce, 1, 12), 0);
 end;
 
 procedure TRALServerDigest.PruneUsed;
