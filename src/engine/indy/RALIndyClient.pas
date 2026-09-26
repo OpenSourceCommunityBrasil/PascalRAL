@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdSSLOpenSSLHeaders, IdHTTP, IdMultipartFormData,
-  IdAuthentication, IdGlobal,
+  IdAuthentication, IdGlobal, IdHeaderList,
   IdCookie, IdException, IdExceptionCore, IdStack,
   RALClient, RALParams, RALTypes, RALTools, RALConsts, RALCompress, RALRequest,
   RALResponse, RALStream;

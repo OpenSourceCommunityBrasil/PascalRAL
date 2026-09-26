@@ -509,6 +509,32 @@ above zero the server answered and the status was not allowed, so it belongs in
 4xx/5xx on that path into an exception, since `BeforeSendUrl` ends with
 `if vErrorCode <> 0 then raise`.
 
+**fphttpclient has a resend of its own, and it is broken; RAL replaces it**
+(`TRALfpHttpClientCore`, found by the FPC pooler suite on 26/09/2026: 8 threads
+on one keep-alive client against the fpHTTP server, one read in eight failing
+with `HTTP 0 Stream read error` in 11 of 15 runs). Two fphttpclient 3.2 defects
+together:
+
+- `HasConnectionClose` looks for `Connection: close` in the **request** headers
+  only, so a server announcing it closes the connection is never heard and the
+  socket is kept. The override also reads the answer's header.
+- On a kept-alive socket, when `ReadResponse` finds the connection closed before
+  a status line, `DoKeepConnectionRequest` reconnects and calls `SendRequest`
+  again - which copies the body with `CopyFrom(RequestBody, Size)` from where
+  the first send left it, the end: **every request with a body dies with
+  `EReadError` "Stream read error"** (and the cookies, already handed to the
+  wire, are gone). A GET survives, which is why it looked flaky. The override
+  raises `ERALfpConnectionClosed` instead, and `SendUrl` takes the case into the
+  reconnect-once loop above. Which of `EWriteError`, `SErrReadingSocket` or
+  this one a dead socket produces is a race between the peer's FIN and RST.
+
+`FSocketReused` now asks fphttpclient whether the socket is still open instead
+of assuming it from `KeepAlive`. The fpHTTP server serves **one request per
+connection** (fcl-web 3.2 has no keep-alive) and now says `Connection: close`
+on every answer; it used to by accident below 400 - its version parse read
+every request as HTTP/1.0, since fcl-web hands over `1.1` without the
+`HTTP/` - and from 400 up depending on an uninitialised variable.
+
 ### Base64 decoding assumes padded input
 
 
@@ -783,6 +809,18 @@ Indy, mORMot2 and fpHTTP are unaffected for the same reason Sagui was not: they 
 
 `TRALSaguiServer.DoRequestCallback` also initialises `vStrMap` to nil now. The block that first assigns it is skipped whenever `ValidateRequest` already answered 4xx, so a raise before the response headers were built handed `FreeAndNil` whatever the stack happened to hold — the same silent death, by a narrower path.
 
+### Sagui: a pool thread owns its connections, so one blocking route stalled the others (`ThreadPerConnection`)
+In thread-pool mode libmicrohttpd gives each connection to the pool thread that accepted it, **for the whole life of the connection**. Each pool thread runs its own event loop over its own connections, so while a route blocks on that thread (a query, a `Sleep`, a call to another server) every other kept-alive connection on it waits. Free threads in the pool do not help: a connection never moves to another thread. MHD expects non-blocking handlers in that mode, and a RAL handler always blocks.
+
+Found by the orchestrator pooler suite (26/09/2026): four client threads sharing one keep-alive `TRALClient`, a route holding ~700 ms, ran four at a time on Indy and mORMot2 and two at a time on Sagui. The suite switches keep-alive off for Sagui for this reason. A standalone repro (N `TIdHTTP` threads, the connections opened one at a time while the server was idle - which is what a client pool does - then fired together at a 700 ms route) measured it. **Peak concurrency always equalled the number of distinct server threads the connections had landed on**: 2 or 3 of 4 with `PoolCount = 32`, sometimes 1 of 4 with `PoolCount = 4` (2.8 s for four requests). Connections opened all at once, or no keep-alive (a new connection per request, accepted by whichever thread is not blocked), spread out and ran 4 of 4. That is why it hid.
+
+`sg_httpsrv_listen`'s last parameter, `threaded`, is libsagui's switch: True starts MHD with `MHD_USE_THREAD_PER_CONNECTION`, False (what RAL always passed) with `MHD_USE_AUTO_INTERNAL_THREAD` plus the pool. `TRALSaguiServer.ThreadPerConnection` (published, **default True**) passes it to both listen calls. With it on, the same repro ran 4 of 4, 16 of 16 and 64 of 64 with warmed keep-alive connections, every round. Two things go with it:
+
+- **The pool size must be 0 in that mode.** libsagui adds `MHD_OPTION_THREAD_POOL_SIZE` whenever the size is above 0, and MHD then refuses to start (`Both MHD_OPTION_THREAD_POOL_SIZE option and MHD_USE_THREAD_PER_CONNECTION flag are specified`, and `listen` returns False from 2 up; 1 only logs a warning). `SetActive` sets 0 when `ThreadPerConnection` is on and `PoolCount` only when it is off, so `PoolCount` is ignored in thread-per-connection mode.
+- **The thread count follows the connection count**, the same as the Indy server, so `MaxConnections` is also the ceiling on threads. Keep `ThreadPerConnection := False` only for routes that never block, where a fixed pool is cheaper.
+
+`ThreadPerConnection`, like `PoolCount`, takes effect on the next activation. The TLS path (`sg_httpsrv_tls_listen3`) gets the same flag but was not measured here (no certificate in the repro). The pooler suite keeps keep-alive on with every server, so against a RAL without this property (1.2/`dev`) its Sagui queue/429 cases fail - which is that engine's real behaviour there, not a flaw of the suite.
+
 ### The received body is no longer copied twice
 `TRALParams.DecodeBody` used to copy the engine's stream into a fresh `TMemoryStream`, decrypt into another, inflate into another, copy that into the body param and hand the last stage back to the caller, who kept it in `FStream` next to the param's copy: a 100 MB upload went through half a gigabyte. It now runs the stages on the caller's stream until a transform has to produce a new one, hands that one to the param without a copy (`TRALParam.AdoptStream`, the param owns it from then on), and **returns nil** - the body lives in the params and nowhere else. `TRALClientResponse.ResponseStream`/`ResponseText` and `TRALServerRequest.RequestStream`/`RequestText` are assembled from the params on demand, once, only when asked. `AsStream := X` still copies X; use `AdoptStream` only for a stream created for the param.
 
@@ -836,7 +874,7 @@ Auth is symmetric by design: every scheme ships a `TRALClient*`/`TRALServer*` pa
 
 **Server side.** Several authenticators can be linked at once (`Server.Authentication` plus any added as plugins); the first in running order asks `Host.Authenticate`, which hears all of them - accepted when any accepts, and then the 401 and the challenges of those that refused are removed. A refusal writes its challenge with `RALAddChallenge`, which appends to one `WWW-Authenticate` field (`Basic realm=..., Digest realm=...`, RFC 9110 11.6.1) because the params keep one value per name. `TRALServer.DecodeAuth` decodes whenever an authentication plugin exists (`HasAuthentication`), knows `Digest`, and every engine goes through `DecodeAuthValue`/`AuthTypeOf` - Indy's `OnParseAuthentication` included, which used to take the scheme of `Authentication` instead of the one the client sent.
 
-**Digest** (`TRALServerDigest`/`TRALClientDigest`, RFC 7616, answers 2617/2069): MD5, SHA-256, SHA-512-256, each with `-sess` (`SessionAlgorithms`); one challenge per algorithm in `Algorithms`, strongest first; `qop=auth` only. The nonce is stateless - hex timestamp + `.` + HMAC-SHA256 of it with a per-instance secret - so an old nonce with the right credentials answers `stale=true` and the client renews without a failure. `ReplayProtection` keeps the last `nc` per nonce (pruned as nonces expire). Credentials come from `UserName`/`Password` or `OnGetCredential` (password or H(A1), with `userhash`). The client learns the nonce from the 401 of its own request (the old extra empty request is gone), counts `nc` under the lock, and sends the request-target (path and query) as `uri`. `TRALDigest` (in `RALToken`) holds the computations, verified against the RFC 7616 3.9.1 vectors; `RALParseAuthParams`/`RALSplitChallenges`/`RALQuoteString` are the auth-param parser (quoted-string with escapes).
+**Digest** (`TRALServerDigest`/`TRALClientDigest`, RFC 7616, answers 2617/2069): MD5, SHA-256, SHA-512-256, each with `-sess` (`SessionAlgorithms`); one challenge per algorithm in `Algorithms`, strongest first; `qop=auth` only. The nonce is stateless - 12 hex digits of timestamp and 16 random ones, `.`, HMAC-SHA256 of both with a per-instance secret; the random part is not decoration: with the timestamp alone two 401s in the same second handed out the same nonce, the client started `nc` over at 1 and the replay cache refused it - so an old nonce with the right credentials answers `stale=true` and the client renews without a failure. `ReplayProtection` keeps the last `nc` per nonce (pruned as nonces expire). Credentials come from `UserName`/`Password` or `OnGetCredential` (password or H(A1), with `userhash`). The client learns the nonce from the 401 of its own request (the old extra empty request is gone), counts `nc` under the lock, and sends the request-target (path and query) as `uri`. `TRALDigest` (in `RALToken`) holds the computations, verified against the RFC 7616 3.9.1 vectors; `RALParseAuthParams`/`RALSplitChallenges`/`RALQuoteString` are the auth-param parser (quoted-string with escapes).
 
 **OAuth2** (`TRALServerOAuth2`, one plugin, two roles):
 - *authorization server* (`Issuing`): routes offered through `ppResolveRoute` - `TokenPath` (`client_credentials`, `refresh_token` with rotation, `authorization_code` with **mandatory PKCE S256**), `AuthorizePath` (the app logs in and consents in `OnAuthorize`; an unknown `redirect_uri` is answered 400, never redirected to), `IntrospectPath` (RFC 7662), `RevokePath` (RFC 7009, 200 whatever the token), `JWKSPath`, `MetadataPath` (RFC 8414). Client authentication is `client_secret_basic` (form-encoded before base64) or `client_secret_post`; clients and scopes are the app's (`OnValidateClient`, `OnValidateScope`). Codes, refresh tokens and revoked `jti` live in `Store` (`TRALOAuth2Store`, in memory, keyed by the SHA-256 of the token; descend it to persist). No `password` grant, implicit flow, DPoP or mTLS, on purpose.
@@ -846,6 +884,8 @@ Auth is symmetric by design: every scheme ships a `TRALClient*`/`TRALServer*` pa
 **JWT and JWS.** `TRALJWT` now verifies the signature over the token's own bytes (`FSigningInput`), not over the claims re-serialised - a token from another issuer never matched before; an `alg` it does not know (`none`) is refused; `Leeway` tolerates clock difference; `aud` may be an array (`HasAudience`). `tjaRS256/384/512` and `tjaES256/384` sign with `TRALJWT.SignKey`, a `TRALJWSKey` (`utils/RALJWS.pas`): PEM or JWK, thumbprint as kid (RFC 7638), `TRALJWKSet` for a jwks_uri. OpenSSL 1.1.1+ is loaded on first use only (`RALOpenSSL`, now in the runtime package; `{$MODE DELPHI}` on FPC because the bindings are parameterless procvars), and the ECDSA signature is converted between DER and JWS `r||s` there. A JWK becomes a key by writing its numbers into a SubjectPublicKeyInfo (`d2i_PUBKEY`), which 1.1 and 3 both export.
 
 **Routes: 405 is real now.** `TRALRoutes.CanAnswerRoute` used to filter by method, so a wrong verb was a 404 and the core's 405 was dead code. It now matches by path, prefers the route that takes the method, and falls back to the path's route so its module answers 405 (and OPTIONS on a route without it stays 404).
+
+**Two engine traps the battery found with these schemes.** Indy's `TIdHTTP` answers every 401 by itself (`DoOnAuthorization`, with or without `hoInProcessAuth`): it builds an authenticator of its own - whose Digest knows only MD5, the source of "supports only MD5" against a SHA-256 challenge - and keeps it on the reused `TIdHTTP`, where its `Authorization` then overwrites the one RAL wrote; that is how a later OAuth2 request went out with stale credentials and came back `invalid_client`. `TRALIndyClientHTTP.SelectAuthorization` (`OnSelectAuthorization`) refuses it: RAL's authenticator decides. And `GetSaguiIP` handed back the address followed by a NUL and garbage, so on Sagui no black list, brute force or flood entry ever matched a client; it cuts at the first NUL now. The OAuth2 revoked list is keyed by `TokenKey(jti)` for a reason too: a `jti` is base64 with `=` padding, and as a `name=value` line it made `IndexOfName` miss every revocation.
 
 ### One authenticator, many clients — and the lock that has to follow
 

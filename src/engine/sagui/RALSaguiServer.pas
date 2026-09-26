@@ -51,6 +51,7 @@ type
     FLibPath: TFileName;
     FPoolCount: IntegerRAL;
     FMaxConnections: IntegerRAL;
+    FThreadPerConnection: boolean;
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
@@ -115,8 +116,21 @@ type
     /// the name is now the same on all four.
     property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
     property LibPath: TFileName read FLibPath write SetLibPath;
+    /// Size of libmicrohttpd's thread pool. Used only when ThreadPerConnection
+    /// is False. Takes effect on the next activation.
     property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
+    /// True (default): libmicrohttpd gives each connection a thread of its
+    /// own, the same model the Indy server uses, and PoolCount is ignored.
+    /// False: a pool of PoolCount threads, where each connection stays on the
+    /// thread that accepted it for its whole life - so while one route blocks
+    /// (a database query, a Sleep, a call to another server) every other
+    /// kept-alive connection on that thread waits for it, even with free
+    /// threads in the pool. Use False only for routes that never block.
+    /// Takes effect on the next activation. MaxConnections is also the thread
+    /// limit when this is True.
+    property ThreadPerConnection: boolean read FThreadPerConnection
+      write FThreadPerConnection default True;
   end;
 
 implementation
@@ -229,6 +243,7 @@ begin
   {$ENDIF}
 
   PoolCount := DEFAULTPOOLCOUNT;
+  FThreadPerConnection := True;
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -653,7 +668,12 @@ begin
     if FHandle <> nil then
     begin
       SetMaxConnections(FMaxConnections);
-      SetPoolCount(PoolCount);
+      { libmicrohttpd refuses to start thread-per-connection with a pool
+        size, and sg_httpsrv_listen passes one whenever it is above 0 }
+      if FThreadPerConnection then
+        sg_httpsrv_set_thr_pool_size(FHandle, 0)
+      else
+        SetPoolCount(PoolCount);
     end;
     if not InitializeServer then
     begin
@@ -756,7 +776,7 @@ begin
   else
     FPoolCount := AValue;
   if FHandle <> nil then
-    sg_httpsrv_set_thr_pool_size(FHandle, AValue);
+    sg_httpsrv_set_thr_pool_size(FHandle, FPoolCount);
 end;
 
 procedure TRALSaguiServer.SetPort(const AValue: IntegerRAL);
@@ -792,11 +812,12 @@ begin
 
     Result := sg_httpsrv_tls_listen3(FHandle, pansichar(SSL.PrivateKey),
       pansichar(SSL.PrivatePassword), pansichar(SSL.Certificate),
-      pansichar(SSL.Trust), pansichar(SSL.DHParams), pansichar(SSL.Priorities), Port, False);
+      pansichar(SSL.Trust), pansichar(SSL.DHParams), pansichar(SSL.Priorities), Port,
+      FThreadPerConnection);
   end
   else
   begin
-    Result := sg_httpsrv_listen(FHandle, Port, False);
+    Result := sg_httpsrv_listen(FHandle, Port, FThreadPerConnection);
   end;
 end;
 

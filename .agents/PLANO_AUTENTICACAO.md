@@ -122,7 +122,7 @@ seção "Authentication since 1.3" do `CLAUDE.md`.
   depois do `SetAuthHeader`, e a fronteira multipart é aleatória; assinar o
   corpo como vai no fio exige mexer em todos os engines (fica com o D4).
 - **Etapa 2: D1-D3 feitos**, D4 (`auth-int`) não. Vetores MD5 e SHA-256 da RFC
-  7616 3.9.1 na suíte. Nonce sem estado (timestamp + HMAC), `stale`, cache de
+  7616 3.9.1 na suíte. Nonce sem estado (timestamp + parte aleatória + HMAC), `stale`, cache de
   `nc`, um desafio por algoritmo. Unidade própria: `plugins\RALDigest.pas`.
   Interoperabilidade (servidor RAL/Indy avulso, 26/09): `curl.exe --digest`
   (8.13, Windows) acerta MD5 e MD5-sess e recusa a senha errada; os dois curl
@@ -139,6 +139,21 @@ seção "Authentication since 1.3" do `CLAUDE.md`.
   ES256/384 via OpenSSL em `utils\RALJWS.pas`; validador por JWKS e por
   introspecção. Store em memória (`TRALOAuth2Store`) com métodos virtuais para
   persistir. Provedor externo (Keycloak etc.): não testado aqui.
+- **Bateria do orquestrador (26/09/2026, Delphi 13 + Lazarus 4.8, SQLite, sem
+  Zeos): tudo verde.** matriz 40074/40074, matrizfpc 40925/40925, cross
+  27804/27804, pooler 153/153, poolerfpc 188/188, tmfix 66/66, tmfixfpc 20/20. A primeira rodada tinha
+  deixado quatro defeitos, todos corrigidos: nonce do Digest repetido no mesmo
+  segundo (o cliente recomeçava o `nc` e o replay recusava - ganhou parte
+  aleatória); revogação OAuth2 que nunca achava o `jti` (o `=` do base64 quebrava
+  a lista `nome=valor` - chave agora é o hash); o `TIdHTTP` do cliente Indy
+  respondendo o 401 por conta própria com o Digest MD5 dele e deixando o
+  `Authorization` dele preso no engine reaproveitado (`OnSelectAuthorization`
+  devolve nil); e o IP do Sagui com um NUL e lixo no fim, que impedia black
+  list, força bruta e flood de casar. As falhas de fila/429 do pooler eram da
+  suíte (o `Open` síncrono desde 20/09 abria um de cada vez) e aconteciam igual
+  no `dev`. A leva paralela da suíte mostrou o Sagui atendendo em série duas
+  conexões mantidas vivas na mesma thread do pool do libmicrohttpd; resolvido
+  com `TRALSaguiServer.ThreadPerConnection` (padrão True).
 
 ## Etapa 1: contrato de autenticação e remoção do OAuth 1.0a
 

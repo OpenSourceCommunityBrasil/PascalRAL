@@ -14,6 +14,7 @@
   emCertPinInvalid = 'Toda linha de SSL.Pins deve terminar no SHA-256 do certificado: 64 dígitos hexadecimais, com ou sem separadores.';
   emCertPinUnsupported = 'SSL.Pins não é suportado pelo engine %s nesta plataforma: ele não consegue ler a impressão digital do certificado. Use o engine Indy ou decida no OnValidateServerCert.';
   emRequestCancelled = 'A requisição foi recusada pelo OnBeforeExecute: %s.';
+  emConnectionClosedNoResponse = 'O servidor fechou a conexão sem responder: %s.';
   emCertRejected = 'Certificado do servidor recusado.';
   emCertRequiresTLS = 'SSL.Required está definido, ou uma linha de SSL.Pins vale para este host, então http puro é recusado: %s.';
   emHTTP2Unsupported = 'HTTPVersion está em rhv2 e o engine %s não fala HTTP/2 nesta plataforma. Use o engine netHTTP, ou deixe HTTPVersion em rhvDefault.';

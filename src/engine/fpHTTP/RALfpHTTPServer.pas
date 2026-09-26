@@ -347,7 +347,6 @@ var
   vResponse: TRALResponse;
   vInt: integer;
   vStr1, vStr2: StringRAL;
-  vConnClose: boolean;
   vCookies: TStringList;
   vParam: TRALParam;
   vCookie: TCookie;
@@ -440,15 +439,15 @@ begin
             Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
           end
           else begin
+            { what fcl-web actually hands over: ParseStartLine deletes the
+              'HTTP/' and keeps '1.1'. Answering '1.0' here reported every
+              request on this engine as HTTP/1.0 }
             HttpVersion := 'HTTP';
-            Protocol := '1.0';
+            if ARequest.ProtocolVersion <> '' then
+              Protocol := ARequest.ProtocolVersion
+            else
+              Protocol := '1.0';
           end;
-
-          vConnClose := False;
-          if Protocol = '1.0' then
-            vConnClose := True;
-          if SameText(ARequest.GetHeader(hhConnection), 'close') then
-            vConnClose := True;
 
           ARequest.Content := '';
           ARequest.QueryFields.Clear;
@@ -480,8 +479,16 @@ begin
         end;
 
         AResponse.Server := 'RAL_fpHTTP';
-        if vConnClose then
-          AResponse.Connection := 'close';
+        { Always, whatever the client asked for: this server answers ONE
+          request per connection (TRALfpHttpConnectionThread.Execute calls
+          HandleRequest once, and fcl-web 3.2 has no keep-alive to offer
+          anyway) and closes the socket right after - and RFC 9112 9.6 says a
+          server that does not keep the connection MUST send "close". It was
+          meant to go only to HTTP/1.0 and to a client that asked for it; it
+          reached everyone below 400 by accident (the version parse above
+          read every request as 1.0), and from 400 up it depended on an
+          uninitialised variable. }
+        AResponse.Connection := 'close';
 
         vCookies := TStringList.Create;
         try
