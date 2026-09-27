@@ -375,7 +375,9 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    { the body where it is - the cache copies what it keeps. AsStream copied
+      a whole result set only to read it once }
+    vMem := AResponse.Body.Content;
     vSQLCache := nil;
     try
       FLoading := True;
@@ -405,7 +407,7 @@ begin
       end;
     finally
       FreeAndNil(vSQLCache);
-      FreeAndNil(vMem);
+      vMem := nil; // the response's own body: not ours to free
       FLoading := False;
     end;
   end
@@ -440,7 +442,9 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    { the body where it is - the cache copies what it keeps. AsStream copied
+      a whole result set only to read it once }
+    vMem := AResponse.Body.Content;
     try
       vSQLCache := TRALDBSQLCache.Create;
       try
@@ -453,7 +457,7 @@ begin
         FreeAndNil(vSQLCache);
       end;
     finally
-      FreeAndNil(vMem);
+      vMem := nil; // the response's own body: not ours to free
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
@@ -481,7 +485,9 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    { the body where it is - the cache copies what it keeps. AsStream copied
+      a whole result set only to read it once }
+    vMem := AResponse.Body.Content;
     try
       FSQLCache.ResponseFromStream(vMem);
       for vInt1 := 0 to Pred(FSQLCache.Count) do
@@ -523,7 +529,7 @@ begin
       end;
       FSQLCache.Clear;
     finally
-      FreeAndNil(vMem);
+      vMem := nil; // the response's own body: not ours to free
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then

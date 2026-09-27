@@ -171,8 +171,13 @@ type
   public
     constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
+    { The body that arrived, decoded - the one stream the body params read
+      from, owned by the request (RequestStream). AEncode means nothing here:
+      a server never re-encodes what it received }
     function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
+    /// The body that arrived, decoded, as text (RequestText)
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
+    procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); override;
   protected
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
@@ -184,9 +189,17 @@ type
   /// Derived class to handle ClientRequest
   TRALClientRequest = class(TRALRequest)
   public
+    { The body encoded for the wire, as a new stream the caller frees - what
+      the engines used before TakeWireStream, which does the same without
+      copying the body when there is nothing to transform }
     function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
   protected
+    { a form or multipart request goes out uncompressed (see
+      TRALParams.EffectiveCompress), and the params stay: a retry, on another
+      BaseURL or after a 401, sends them again }
+    function WireCompressMultipart: boolean; override;
+    function WireConsume: boolean; override;
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
   end;
@@ -406,7 +419,19 @@ var
   vCompress: TRALCompressType;
   vCripto: TRALCriptoType;
 begin
-  // caso acontece com a Sagui, pois a mesma ja vem params separados
+  { the body as it came, decoded once: no copy, and not a multipart put back
+    together with another boundary - the bytes that arrived }
+  Result := Params.Decoded;
+  if Result <> nil then
+  begin
+    Result.Position := 0;
+    Exit;
+  end;
+
+  { No body went through the decoder: the engine split it itself (Sagui hands
+    over the form fields) or somebody filled the params by hand. Assembled
+    from the params, once, and kept - a copy, so it survives whatever the
+    handler does to them afterwards }
   if FStream = nil then
   begin
     vCompress := Params.CompressType;
@@ -424,35 +449,32 @@ begin
 end;
 
 function TRALServerRequest.GetRequestEncText(const AEncode: boolean): StringRAL;
-var
-  vStream : TRALStringStream;
 begin
-  Result := '';
-  { through the getter: FStream is only built from the params on demand }
-  if GetRequestEncStream(AEncode) = nil then
-    Exit;
-  vStream := TRALStringStream.Create(FStream);
-  try
-    Result := StreamToString(vStream);
-  finally
-    FreeAndNil(vStream);
-  end;
+  { a body an engine delivered as a string comes back as that string; any
+    other is read once. It used to be copied into a TRALStringStream first and
+    then read out of it }
+  Result := RALStreamText(GetRequestEncStream(AEncode));
+end;
+
+procedure TRALServerRequest.SetWireBody(AStream: TStream;
+  AOwnership: TRALBodyOwnership);
+begin
+  FreeAndNil(FStream);
+  inherited;
 end;
 
 procedure TRALServerRequest.SetRequestStream(const AValue: TStream);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
-
-  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+  { the old engine entry: decoded with whatever Params says, and AValue is
+    copied (SetWireBody is the one that lends) }
+  FreeAndNil(FStream);
+  Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 procedure TRALServerRequest.SetRequestText(const AValue: StringRAL);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
-
-  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+  FreeAndNil(FStream);
+  Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 { TRALClientRequest }
@@ -484,6 +506,16 @@ begin
   ContentDisposition := vContentDisposition;
   { and the header says what was actually done, not what was asked for }
   ContentCompress := Params.CompressType;
+end;
+
+function TRALClientRequest.WireCompressMultipart: boolean;
+begin
+  Result := False;
+end;
+
+function TRALClientRequest.WireConsume: boolean;
+begin
+  Result := False;
 end;
 
 function TRALClientRequest.GetRequestEncText(const AEncode: boolean): StringRAL;

@@ -80,6 +80,15 @@ type
     function MacKey: TBytes;
     /// HMAC-SHA256 of a whole stream under MacKey
     function Mac(AData: TStream): TBytes;
+    { The MAC over AStream[AStart, AEnd) - IV and ciphertext - read in pieces,
+      compared in constant time with the 32 bytes at AEnd. Raises when they
+      differ; nothing is decrypted before this says yes }
+    procedure CheckMac(AStream: TStream; AStart, AEnd: Int64RAL);
+    { AStream[AStart, AEnd) holds IV and ciphertext: decrypts it, handing each
+      piece of plaintext to AOutput at AWriteAt (-1 = where AOutput is), and
+      answers the plaintext size. Shared by DecryptTo and DecryptInPlace }
+    function DecryptRange(AStream: TStream; AStart, AEnd: Int64RAL;
+      AOutput: TStream; AWriteAt: Int64RAL): Int64RAL;
 
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
@@ -105,6 +114,28 @@ type
     function DecryptAsStream(AValue: TStream): TStream; override;
     function EncryptAsStream(AValue: TStream): TStream; override;
     function KeysToList: TStringList;
+
+    { The four ways the body goes through the cipher (.agents/
+      PLANO_STREAM_UNICO.md, D6). All of them work with two buffers of
+      DEFAULTBUFFERSTREAMSIZE and sign with an incremental HMAC, so none of
+      them holds a second copy of the message; the wire format is the one
+      EncryptAsStream always wrote: IV (16), ciphertext with PKCS#7 padding,
+      HMAC-SHA256 (32) over IV and ciphertext. }
+
+    /// IV, ciphertext and MAC of the whole AInput, written to AOutput
+    procedure EncryptTo(AInput, AOutput: TStream);
+    { In place: AStream holds, from AStart, 16 bytes reserved for the IV and
+      then the plaintext; on return it holds IV, ciphertext and MAC there. The
+      padding and the MAC make it grow by up to 48 bytes }
+    procedure EncryptInPlace(AStream: TStream; AStart: Int64RAL = 0);
+    /// The plaintext of the whole AInput (IV, ciphertext, MAC), written to
+    /// AOutput. An empty AInput is an empty body, not an error
+    procedure DecryptTo(AInput, AOutput: TStream);
+    { In place: the plaintext overwrites the ciphertext of AStream, which holds
+      IV, ciphertext and MAC from AStart. Answers the plaintext size; the
+      plaintext is at AStart + 16 - read it through RALStreamSlice. For a stream
+      nobody else reads afterwards }
+    function DecryptInPlace(AStream: TStream; AStart: Int64RAL = 0): Int64RAL;
   published
     property AESType: TRALAESType read FAESType write SetAESType;
   end;
@@ -610,206 +641,323 @@ begin
   end;
 end;
 
-function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
+{ reads until ACount bytes or the end of the stream: TStream.Read may stop short }
+function ReadFull(AStream: TStream; ABuffer: PByte; ACount: IntegerRAL): IntegerRAL;
 var
-  vInBuf: array of byte;
-  vOutBuf: array of byte;
-  vBytesRead: IntegerRAL;
-  vPosition, vSize, vSizeBuf: Int64RAL;
-  vPadding: IntegerRAL;
-  vIV, vMac: TBytes;
-  vCipher: TRALCriptoAESCipher;
+  vRead: IntegerRAL;
 begin
-  if not CheckKey then
-    Exit;
-
-  vPadding := 0;
-  AValue.Position := 0;
-  vPosition := 0;
-  vSize := AValue.Size;
-
-  vSizeBuf := vSize;
-  if vSizeBuf > DEFAULTBUFFERSTREAMSIZE then
-    vSizeBuf := (DEFAULTBUFFERSTREAMSIZE div 16) * 16
-  else
-    vSizeBuf := ((vSizeBuf div 16) + 1) * 16;
-
-  if vSizeBuf < 32 then
-    vSizeBuf := 32;
-
-  SetLength(vInBuf, vSizeBuf);
-  SetLength(vOutBuf, vSizeBuf);
-
-  Result := TMemoryStream.Create;
-  Result.Size := AValue.Size + 48; // IV + padding block
-
-  { A fresh random IV per message, sent in clear ahead of the ciphertext.
-    Without it two equal messages under the same key cipher identically -
-    which is also what happened INSIDE a message, block by block, while this
-    was ECB. Anyone holding the key reads the IV off the wire; that is how
-    CBC works, the IV is not a secret. }
-  vIV := RandomBytes(16);
-  Result.Write(vIV[0], 16);
-
-  vCipher := CreateCipher(False);
-  try
-    vCipher.SetIV(vIV);
-
-    while vPosition < vSize do
-    begin
-      vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf) - 16);
-
-      // padding complemantar
-      vPadding := vBytesRead mod 16;
-      if vPadding <> 0 then
-      begin
-        if vBytesRead + (16 - vPadding) <= Length(vInBuf) then
-        begin
-          FillChar(vInBuf[vBytesRead], 16 - vPadding, 16 - vPadding);
-          vBytesRead := vBytesRead + (16 - vPadding);
-        end;
-      end;
-
-      vCipher.Input := @vInBuf[0];
-      vCipher.Output := @vOutBuf[0];
-      vCipher.InputLen := vBytesRead;
-      vCipher.EncryptAES;
-      Result.Write(vOutBuf[0], vCipher.OutputLen);
-
-      vPosition := vPosition + (vBytesRead - (vBytesRead mod 16));
-    end;
-
-    // nothing to complete: PKCS#7 pads a whole block
-    if vPadding = 0 then
-    begin
-      FillChar(vInBuf[0], 16, 16);
-      vCipher.Input := @vInBuf[0];
-      vCipher.Output := @vOutBuf[0];
-      vCipher.InputLen := 16;
-      vCipher.EncryptAES;
-      Result.Write(vOutBuf[0], vCipher.OutputLen);
-    end;
-  finally
-    vCipher.Free;
+  Result := 0;
+  while Result < ACount do
+  begin
+    vRead := AStream.Read((ABuffer + Result)^, ACount - Result);
+    if vRead <= 0 then
+      Break;
+    Inc(Result, vRead);
   end;
-
-  Result.Size := Result.Position;
-
-  { encrypt-then-MAC: HMAC-SHA256 over IV and ciphertext, appended. Without
-    it a byte flipped on the wire decrypted to different text with nobody the
-    wiser - the padding check only ever sees the last block }
-  vMac := Mac(Result);
-  Result.Position := Result.Size;
-  Result.Write(vMac[0], Length(vMac));
-
-  Result.Position := 0;
 end;
 
-function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
-var
-  vInBuf: array of byte;
-  vOutBuf: array of byte;
-  vBytesRead, vRead: IntegerRAL;
-  vPosition, vSize, vEnd, vSizeBuf: Int64RAL;
-  vPad1, vPad2: byte;
-  vIV, vMac, vTag: TBytes;
-  vCipher: TRALCriptoAESCipher;
-  vSigned: TStream;
+{ the size of the working buffers: whole blocks }
+function CipherBufferSize: IntegerRAL;
 begin
-  if not CheckKey then
-    Exit;
+  Result := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
+  if Result < 64 then
+    Result := 64;
+end;
 
-  AValue.Position := 0;
-  vSize := AValue.Size;
+procedure TRALCriptoAES.EncryptTo(AInput, AOutput: TStream);
+var
+  vIn, vOut, vIV, vMac: TBytes;
+  vRead, vPad, vBufSize: IntegerRAL;
+  vLast: boolean;
+  vCipher: TRALCriptoAESCipher;
+  vHash: TRALSHA2_32;
+begin
+  CheckKey;
+  vBufSize := CipherBufferSize;
+  { room for the padding block after a full buffer }
+  SetLength(vIn, vBufSize + 16);
+  SetLength(vOut, vBufSize + 16);
 
-  // an empty body is not ciphertext, it is an empty body: a GET without
-  // content still passes through here when the connection is encrypted
-  if vSize = 0 then
-  begin
-    Result := TMemoryStream.Create;
-    Exit;
-  end;
+  { a fresh random IV per message, sent in clear ahead of the ciphertext: two
+    equal messages under the same key must not cipher identically. Anyone
+    holding the key reads it off the wire; that is how CBC works }
+  vIV := RandomBytes(16);
+  AOutput.WriteBuffer(vIV[0], 16);
 
-  // IV, at least one block in whole blocks, and the MAC: anything else was
-  // never produced by this cipher, and decrypting it would only hand back
-  // garbage
-  if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
-    raise Exception.Create(emCryptInvalidLength);
-
-  { the MAC is checked before a single block is decrypted, and in constant
-    time: a body altered on the way, or one under another key, stops here }
-  vEnd := vSize - cMacSize;
-  vSigned := TMemoryStream.Create;
+  vHash := TRALSHA2_32.Create;
+  vCipher := CreateCipher(False);
   try
-    vSigned.CopyFrom(AValue, vEnd);
-    vMac := Mac(vSigned);
+    vHash.Version := rsv256;
+    vHash.HMACBegin(MacKey);
+    vHash.HMACUpdate(@vIV[0], 16);
+    vCipher.SetIV(vIV);
+
+    AInput.Position := 0;
+    repeat
+      vRead := ReadFull(AInput, @vIn[0], vBufSize);
+      vLast := vRead < vBufSize;
+      if vLast then
+      begin
+        { PKCS#7: 1 to 16 bytes of the value of their count - a whole block
+          when the plaintext already ends on a block }
+        vPad := 16 - (vRead mod 16);
+        FillChar(vIn[vRead], vPad, vPad);
+        Inc(vRead, vPad);
+      end;
+      vCipher.Input := @vIn[0];
+      vCipher.Output := @vOut[0];
+      vCipher.InputLen := vRead;
+      vCipher.EncryptAES;
+      AOutput.WriteBuffer(vOut[0], vRead);
+      vHash.HMACUpdate(@vOut[0], vRead);
+    until vLast;
+
+    { encrypt-then-MAC: without it a byte flipped on the wire decrypted to
+      different text with nobody the wiser }
+    vMac := vHash.HMACEnd;
+    AOutput.WriteBuffer(vMac[0], Length(vMac));
   finally
-    vSigned.Free;
+    vCipher.Free;
+    vHash.Free;
   end;
+end;
+
+procedure TRALCriptoAES.EncryptInPlace(AStream: TStream; AStart: Int64RAL);
+var
+  vIn, vOut, vIV, vMac: TBytes;
+  vRead, vPad, vBufSize: IntegerRAL;
+  vPos, vEnd: Int64RAL;
+  vLast: boolean;
+  vCipher: TRALCriptoAESCipher;
+  vHash: TRALSHA2_32;
+begin
+  CheckKey;
+  vBufSize := CipherBufferSize;
+  SetLength(vIn, vBufSize + 16);
+  SetLength(vOut, vBufSize + 16);
+
+  vIV := RandomBytes(16);
+  AStream.Position := AStart;
+  AStream.WriteBuffer(vIV[0], 16);
+
+  vHash := TRALSHA2_32.Create;
+  vCipher := CreateCipher(False);
+  try
+    vHash.Version := rsv256;
+    vHash.HMACBegin(MacKey);
+    vHash.HMACUpdate(@vIV[0], 16);
+    vCipher.SetIV(vIV);
+
+    { each piece is read, ciphered between the two buffers and written back
+      where it came from; the last one grows by its padding }
+    vPos := AStart + 16;
+    vEnd := AStream.Size;
+    repeat
+      vRead := vBufSize;
+      if vRead > vEnd - vPos then
+        vRead := vEnd - vPos;
+      AStream.Position := vPos;
+      vRead := ReadFull(AStream, @vIn[0], vRead);
+      vLast := vPos + vRead >= vEnd;
+      if vLast then
+      begin
+        vPad := 16 - (vRead mod 16);
+        FillChar(vIn[vRead], vPad, vPad);
+        Inc(vRead, vPad);
+      end;
+      vCipher.Input := @vIn[0];
+      vCipher.Output := @vOut[0];
+      vCipher.InputLen := vRead;
+      vCipher.EncryptAES;
+      AStream.Position := vPos;
+      AStream.WriteBuffer(vOut[0], vRead);
+      vHash.HMACUpdate(@vOut[0], vRead);
+      Inc(vPos, vRead);
+    until vLast;
+
+    vMac := vHash.HMACEnd;
+    AStream.Position := vPos;
+    AStream.WriteBuffer(vMac[0], Length(vMac));
+    if AStream.Size > AStream.Position then
+      AStream.Size := AStream.Position;
+  finally
+    vCipher.Free;
+    vHash.Free;
+  end;
+end;
+
+procedure TRALCriptoAES.CheckMac(AStream: TStream; AStart, AEnd: Int64RAL);
+var
+  vBuf, vMac, vTag: TBytes;
+  vRead, vBufSize: IntegerRAL;
+  vPos: Int64RAL;
+  vHash: TRALSHA2_32;
+begin
+  vBufSize := CipherBufferSize;
+  SetLength(vBuf, vBufSize);
+  vHash := TRALSHA2_32.Create;
+  try
+    vHash.Version := rsv256;
+    vHash.HMACBegin(MacKey);
+    vPos := AStart;
+    AStream.Position := vPos;
+    while vPos < AEnd do
+    begin
+      vRead := vBufSize;
+      if vRead > AEnd - vPos then
+        vRead := AEnd - vPos;
+      vRead := ReadFull(AStream, @vBuf[0], vRead);
+      if vRead <= 0 then
+        Break;
+      vHash.HMACUpdate(@vBuf[0], vRead);
+      Inc(vPos, vRead);
+    end;
+    vMac := vHash.HMACEnd;
+  finally
+    vHash.Free;
+  end;
+
   SetLength(vTag, cMacSize);
-  AValue.Position := vEnd;
-  AValue.ReadBuffer(vTag[0], cMacSize);
+  AStream.Position := AEnd;
+  if ReadFull(AStream, @vTag[0], cMacSize) <> cMacSize then
+    raise Exception.Create(emCryptInvalidLength);
+  { in constant time: a body altered on the way, or one under another key,
+    stops here }
   if not RALSameBytes(vMac, vTag) then
     raise Exception.Create(emCryptInvalidMAC);
+end;
 
-  AValue.Position := 0;
+function TRALCriptoAES.DecryptRange(AStream: TStream; AStart, AEnd: Int64RAL;
+  AOutput: TStream; AWriteAt: Int64RAL): Int64RAL;
+var
+  vIn, vOut, vIV: TBytes;
+  vRead, vKeep, vBufSize, vInt: IntegerRAL;
+  vPos: Int64RAL;
+  vPad: Byte;
+  vLast: boolean;
+  vCipher: TRALCriptoAESCipher;
+begin
+  Result := 0;
+  vBufSize := CipherBufferSize;
+  SetLength(vIn, vBufSize);
+  SetLength(vOut, vBufSize);
+
   SetLength(vIV, 16);
-  AValue.ReadBuffer(vIV[0], 16);
-  vPosition := 16;
-
-  vSizeBuf := vEnd - 16;
-  if vSizeBuf > DEFAULTBUFFERSTREAMSIZE then
-    vSizeBuf := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
-
-  SetLength(vInBuf, vSizeBuf);
-  SetLength(vOutBuf, vSizeBuf);
-
-  Result := TMemoryStream.Create;
-  Result.Size := vEnd - 16;
+  AStream.Position := AStart;
+  if ReadFull(AStream, @vIV[0], 16) <> 16 then
+    raise Exception.Create(emCryptInvalidLength);
 
   vCipher := CreateCipher(True);
   try
     vCipher.SetIV(vIV);
-
-    while vPosition < vEnd do
-    begin
-      // never past the ciphertext: the MAC sits right after it
-      vRead := Length(vInBuf);
-      if vRead > vEnd - vPosition then
-        vRead := vEnd - vPosition;
-      vBytesRead := AValue.Read(vInBuf[0], vRead);
-
-      vCipher.Input := @vInBuf[0];
-      vCipher.Output := @vOutBuf[0];
-      vCipher.InputLen := vBytesRead;
+    vPos := AStart + 16;
+    repeat
+      vRead := vBufSize;
+      if vRead > AEnd - vPos then
+        vRead := AEnd - vPos;
+      AStream.Position := vPos;
+      vRead := ReadFull(AStream, @vIn[0], vRead);
+      vLast := vPos + vRead >= AEnd;
+      vCipher.Input := @vIn[0];
+      vCipher.Output := @vOut[0];
+      vCipher.InputLen := vRead;
       vCipher.DecryptAES;
-      Result.Write(vOutBuf[0], vCipher.OutputLen);
 
-      vPosition := vPosition + vBytesRead;
-    end;
+      vKeep := vRead;
+      if vLast then
+      begin
+        { PKCS#7: the last byte says how many padding bytes there are, 1 to
+          16, and all of them carry that same value. Anything else is a wrong
+          key or an altered body, and the honest answer is an error }
+        vPad := vOut[vRead - 1];
+        if (vPad < 1) or (vPad > 16) or (vPad > vRead) then
+          raise Exception.Create(emCryptInvalidPadding);
+        for vInt := vRead - vPad to vRead - 1 do
+          if vOut[vInt] <> vPad then
+            raise Exception.Create(emCryptInvalidPadding);
+        vKeep := vRead - vPad;
+      end;
+
+      if vKeep > 0 then
+      begin
+        if AWriteAt >= 0 then
+          AOutput.Position := AWriteAt + Result;
+        AOutput.WriteBuffer(vOut[0], vKeep);
+      end;
+      Inc(Result, vKeep);
+      Inc(vPos, vRead);
+    until vLast;
   finally
     vCipher.Free;
   end;
+end;
 
-  { PKCS#7: the last byte says how many padding bytes there are, 1 to 16, and
-    all of them carry that same value. Anything else means a wrong key or a
-    body altered on the way, and the honest answer is an error rather than
-    text that happens to look right }
-  Result.Position := Result.Size - 1;
-  Result.Read(vPad1, 1);
-  if (vPad1 < 1) or (vPad1 > 16) or (vPad1 > Result.Size) then
-    raise Exception.Create(emCryptInvalidPadding);
+procedure TRALCriptoAES.DecryptTo(AInput, AOutput: TStream);
+var
+  vSize, vEnd: Int64RAL;
+begin
+  CheckKey;
+  vSize := AInput.Size;
+  // an empty body is not ciphertext, it is an empty body: a GET without
+  // content still passes through here when the connection is encrypted
+  if vSize = 0 then
+    Exit;
+  // IV, at least one block in whole blocks, and the MAC: anything else was
+  // never produced by this cipher
+  if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
+    raise Exception.Create(emCryptInvalidLength);
 
-  Result.Position := Result.Size - vPad1;
-  while Result.Position < Result.Size do
-  begin
-    Result.Read(vPad2, 1);
-    if vPad2 <> vPad1 then
-      raise Exception.Create(emCryptInvalidPadding);
+  vEnd := vSize - cMacSize;
+  CheckMac(AInput, 0, vEnd);
+  DecryptRange(AInput, 0, vEnd, AOutput, -1);
+end;
+
+function TRALCriptoAES.DecryptInPlace(AStream: TStream; AStart: Int64RAL): Int64RAL;
+var
+  vSize, vEnd: Int64RAL;
+begin
+  CheckKey;
+  Result := 0;
+  vSize := AStream.Size - AStart;
+  if vSize <= 0 then
+    Exit;
+  if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
+    raise Exception.Create(emCryptInvalidLength);
+
+  vEnd := AStream.Size - cMacSize;
+  CheckMac(AStream, AStart, vEnd);
+  { each plaintext piece lands on the ciphertext it came from, which the next
+    read no longer needs: the reading position is always ahead of the writing }
+  Result := DecryptRange(AStream, AStart, vEnd, AStream, AStart + 16);
+end;
+
+function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
+var
+  vBody: TRALBodyStream;
+begin
+  { through EncryptTo: the old body allocated two buffers the size of the input
+    (up to 50 MB), and signed by reading the whole result back - 3 to 4 times
+    the message in memory, measured on 27/09/2026 }
+  vBody := TRALBodyStream.Create(AValue.Size + 64);
+  try
+    EncryptTo(AValue, vBody);
+    Result := vBody.Detach;
+  finally
+    vBody.Free;
   end;
+end;
 
-  Result.Size := Result.Size - vPad1;
-  Result.Position := 0;
+function TRALCriptoAES.DecryptAsStream(AValue: TStream): TStream;
+var
+  vBody: TRALBodyStream;
+begin
+  vBody := TRALBodyStream.Create(AValue.Size);
+  try
+    DecryptTo(AValue, vBody);
+    Result := vBody.Detach;
+  finally
+    vBody.Free;
+  end;
 end;
 
 function TRALCriptoAES.AESKeys(AIndex: integer): TBytes;

@@ -207,14 +207,17 @@ var
 begin
   if FSQLCache = nil then
   begin
-    vMem := Core.Body.AsStream;
+    { the body where it is, not AsStream's copy of it: the cache only reads,
+      and a batch of statements with their params can be large }
+    vMem := Core.Body.Content;
+    if (vMem = nil) or (vMem.Size = 0) then
+      raise Exception.Create(emDBEmptyBody);
+    FSQLCache := TRALDBSQLCache.Create;
     try
-      if (vMem = nil) or (vMem.Size = 0) then
-        raise Exception.Create(emDBEmptyBody);
-      FSQLCache := TRALDBSQLCache.Create;
       FSQLCache.LoadFromStream(vMem);
-    finally
-      FreeAndNil(vMem);
+    except
+      FreeAndNil(FSQLCache);
+      raise;
     end;
   end;
   Result := FSQLCache;

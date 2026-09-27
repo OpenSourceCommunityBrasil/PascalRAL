@@ -651,10 +651,10 @@ begin
       ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < HTTP_BadRequest then
       begin
-        vRequest.Params.CompressType := vRequest.ContentCompress;
-        vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-
-        vRequest.RequestText := RawUtf8(AContext.InContent);
+        { a view that holds mORMot's own string: the reference is shared,
+          not the bytes copied - clearing InContent below only drops
+          mORMot's half of it }
+        vRequest.SetWireBody(AContext.InContent);
         vRequest.Host := AContext.Host;
         { Protocol is NOT set here: it is a face of ProtocolVersion, filled
           further up from what the connection actually negotiated. It used to
@@ -675,7 +675,10 @@ begin
 
       //with vResponse do
       begin
-        AContext.OutContent := vResponse.ResponseText;
+        { first: only after it do ContentType and ContentEncoding say what was
+          really done to the body. A text answer with nothing to transform is
+          the handler's own string, not a copy }
+        AContext.OutContent := vResponse.TakeWireString;
         AContext.OutContentType := vResponse.ContentType;
 
         //if (vResponse.ContentDisposition <> EmptyStr) then

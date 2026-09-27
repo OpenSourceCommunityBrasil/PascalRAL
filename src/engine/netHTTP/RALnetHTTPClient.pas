@@ -13,7 +13,7 @@ uses
   {$ENDIF}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
   RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
-  RALCompress, RALResponse;
+  RALCompress, RALResponse, RALStream;
 
 type
   { TRALnetHTTPClientHTTP }
@@ -973,6 +973,7 @@ procedure TRALnetHTTPClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
 var
   vInt, vIdx: IntegerRAL;
   vSource : TStream;
+  vResult: TRALBodyStream;
   vHeaders: TNetHeaders;
   vResponse: IHTTPResponse;
   vRespCookies: TCookies;
@@ -1088,9 +1089,9 @@ begin
 
   { What to compress is decided here; what was ACTUALLY compressed is only
     known after the body is encoded, so the Content-Encoding header is added
-    further down, after RequestStream. EncodeBody declines to compress a
-    multipart request, and adding the header here announced gzip over a body
-    that was never deflated. }
+    further down, after TakeWireStream. A multipart request is not compressed,
+    and adding the header here announced gzip over a body that was never
+    deflated. }
   ARequest.ContentCompress := Parent.CompressType;
 
   // Accept-Encoding states what the client is able to READ, which does not
@@ -1110,7 +1111,13 @@ begin
     ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  vSource := ARequest.RequestStream;
+  { built once for this attempt, with no copy of a body that has nothing to
+    transform; the params stay, a retry sends them again }
+  vSource := ARequest.TakeWireStream;
+  { OUR stream as the destination: the RTL made one of its own and the body
+    was copied out of it. Memory, blocks above RALChunkAbove, a file above
+    SpoolAbove - and the response adopts it }
+  vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
   try
     { Content-Type goes in this request's headers, and no longer into
       FHttp.ContentType. That property is not a property at all: the RTL keeps
@@ -1125,8 +1132,8 @@ begin
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
     if ARequest.ContentDisposition <> '' then
       ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-    { after RequestStream, on purpose: only now ContentEncoding says what
-      EncodeBody actually did to the body - see the note above }
+    { after TakeWireStream, on purpose: only now ContentEncoding says what
+      was actually done to the body - see the note above }
     if ARequest.ContentCompress <> ctNone then
       ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
@@ -1160,21 +1167,21 @@ begin
     try
       case AMethod of
         amGET:
-          vResponse := vHttp.Get(AURL, nil, vHeaders);
+          vResponse := vHttp.Get(AURL, vResult, vHeaders);
         amPOST:
-          vResponse := vHttp.Post(AURL, vSource, nil, vHeaders);
+          vResponse := vHttp.Post(AURL, vSource, vResult, vHeaders);
         amPUT:
-          vResponse := vHttp.Put(AURL, vSource, nil, vHeaders);
+          vResponse := vHttp.Put(AURL, vSource, vResult, vHeaders);
         amPATCH:
-          vResponse := vHttp.Patch(AURL, vSource, nil, vHeaders);
+          vResponse := vHttp.Patch(AURL, vSource, vResult, vHeaders);
         amDELETE:
-          vResponse := vHttp.Delete(AURL, nil, vHeaders);
+          vResponse := vHttp.Delete(AURL, vResult, vHeaders);
         amTRACE:
-          vResponse := vHttp.Trace(AURL, nil, vHeaders);
+          vResponse := vHttp.Trace(AURL, vResult, vHeaders);
         amHEAD:
           vResponse := vHttp.Head(AURL, vHeaders);
         amOPTIONS:
-          vResponse := vHttp.Options(AURL, nil, vHeaders);
+          vResponse := vHttp.Options(AURL, vResult, vHeaders);
       end;
 	  
       if vResponse <> nil then // Antonio c Gomes AV
@@ -1211,8 +1218,8 @@ begin
         { Order matters, and it used to be wrong: CompressType and the crypto
           options were assigned BEFORE the response headers were appended, so
           ContentCompress and ContentEncription were still empty and both came
-          out as "none". Assigning ResponseStream right after runs DecodeBody
-          with that, and the caller got the body still gzipped - and still
+          out as "none". Handing the body over right after decoded it with
+          that, and the caller got the body still gzipped - and still
           encrypted when AES was on. Every response of this engine was affected;
           it only stayed invisible while tests looked at StatusCode alone. }
         for vInt := 0 to Pred(Length(vResponse.Headers)) do
@@ -1237,7 +1244,7 @@ begin
         AResponse.ContentType := vResponse.MimeType;
         AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
         AResponse.StatusCode := vResponse.GetStatusCode;
-        AResponse.ResponseStream := vResponse.ContentStream;
+        AResponse.SetWireBody(vResult.Detach, boOwned);
       end;
     except
       { the certificate is the one failure the RTL gives a class of its own, so
@@ -1251,6 +1258,9 @@ begin
         HandleException(e.Message);
     end;
   finally
+    { the RTL's response points at vResult: let it go first }
+    vResponse := nil;
+    FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;
 end;

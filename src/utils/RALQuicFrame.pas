@@ -68,6 +68,11 @@ function RALQuicPutBlockStr(ADest: PByte; const AText: StringRAL): PByte;
 /// hold what the prefix announces.
 function RALQuicReadBlockStr(ABuf: PByte; ASize: IntegerRAL;
                              var APos: IntegerRAL; out AText: StringRAL): boolean;
+/// The same block, where it is: APtr points into ABuf and nothing is copied.
+/// What the server hands SetWireBody, as a view over its own frame
+function RALQuicReadBlockPtr(ABuf: PByte; ASize: IntegerRAL;
+                             var APos: IntegerRAL; out APtr: PByte;
+                             out ALen: IntegerRAL): boolean;
 /// Reads the header block into AParams as rpkHEADER params.
 function RALQuicReadHeaders(ABuf: PByte; ASize: IntegerRAL;
                             var APos: IntegerRAL; AParams: TRALParams): boolean;
@@ -154,6 +159,26 @@ begin
     Move(PByte(ABuf + APos)^, AText[POSINISTR], vLen);
   end;
   Inc(APos, IntegerRAL(vLen));
+  Result := True;
+end;
+
+function RALQuicReadBlockPtr(ABuf: PByte; ASize: IntegerRAL; var APos: IntegerRAL;
+  out APtr: PByte; out ALen: IntegerRAL): boolean;
+var
+  vLen: Cardinal;
+begin
+  Result := False;
+  APtr := nil;
+  ALen := 0;
+  if APos + 4 > ASize then
+    Exit;
+  Move(PByte(ABuf + APos)^, vLen, 4);
+  Inc(APos, 4);
+  if (vLen > RALQUIC_MAX_FIELD) or (APos + IntegerRAL(vLen) > ASize) then
+    Exit;
+  APtr := PByte(ABuf + APos);
+  ALen := IntegerRAL(vLen);
+  Inc(APos, ALen);
   Result := True;
 end;
 
@@ -310,12 +335,13 @@ var
   vBodyLen: IntegerRAL;
 begin
   { THE BODY IS ENCODED FIRST, and the headers are built afterwards. Not a
-    style choice: RequestStream runs EncodeBody, which decides between a raw
-    body and multipart and WRITES BACK ContentType - with the boundary - and
-    ContentEncoding, with what it actually compressed. Reading either before
-    sends a multipart request with no boundary and a gzipped body with no
-    Content-Encoding. }
-  vSource := ARequest.RequestStream;
+    style choice: TakeWireStream decides between a raw body and multipart and
+    WRITES BACK ContentType - with the boundary - and ContentEncoding, with
+    what it actually compressed. Reading either before sends a multipart
+    request with no boundary and a gzipped body with no Content-Encoding.
+    With nothing to transform it is the body itself: the frame below is the
+    only copy }
+  vSource := ARequest.TakeWireStream;
   try
     vBodyLen := 0;
     if vSource <> nil then
@@ -379,8 +405,10 @@ begin
   AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
   AResponse.StatusCode := vStatus;
   { ProtocolVersion stays rhvDefault: it is a version of HTTP, and QUIC is not
-    one - the transport could not tell, which is what rhvDefault means }
-  AResponse.ResponseText := vBody;
+    one - the transport could not tell, which is what rhvDefault means.
+    vBody is the one copy out of a frame that dies with the call; the
+    response keeps that string, uncopied }
+  AResponse.SetWireBody(vBody);
   Result := True;
 end;
 

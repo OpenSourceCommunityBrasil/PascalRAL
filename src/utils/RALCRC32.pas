@@ -74,15 +74,12 @@ const
 { TRALCRC32 }
 
 procedure TRALCRC32.Compress;
-var
-  vIdx: integer;
-
 begin
-  vIdx := GetIndex;
-  if vIdx = 0 then
-    vIdx := GetBufLength;
-
-  HashCRC32(vIdx);
+  { HashBytes only calls this with the block FULL, while the index still says
+    where the last piece started: taking the index as the count hashed only
+    part of a block that had been filled in more than one piece. Whole blocks
+    and single pieces (the only way this was ever fed) never showed it }
+  HashCRC32(GetBufLength);
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited;

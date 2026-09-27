@@ -18,10 +18,11 @@ type
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
     FTransportError: TRALTransportError;
+    FBodyStream: TStream;
   protected
-    /// Returns the response in TStream format
+    /// The body, decoded (see ResponseStream)
     function GetResponseStream: TStream;
-    /// Returns the response in UTF8String format
+    /// The body, decoded, as text (see ResponseText)
     function GetResponseText: StringRAL;
     /// Assign a Stream into the Response
     procedure SetResponseStream(const AValue: TStream); virtual; abstract;
@@ -47,9 +48,24 @@ type
     /// Sets the response with the given status code, UTF8 String and Content-Type
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
-    /// Sets the response with the given status code, Data Stream and Content-Type
+    /// Sets the response with the given status code, Data Stream and Content-Type.
+    /// AStream is copied: the caller still owns it
     procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    { The same, and with AOwnsStream the response TAKES AStream instead of
+      copying it: it is sent as it is and freed with the response, so the
+      caller must not touch it again. A stream built only to answer - a
+      file, a query saved to memory - costs its size once, not twice.
+      False copies, like the overload above }
+    procedure Answer(AStatusCode: IntegerRAL; AStream: TStream;
+                     const AContentType: StringRAL; AOwnsStream: boolean); overload;
+    { A stream to WRITE the body into, owned by the response and sent as it
+      is - Storage.SaveToStream(Query, AResponse.BodyStream) answers a query
+      with no intermediate copy. It is the body until something else replaces
+      it (Answer, ResponseText :=); asking again returns the same stream, so
+      several writes append. The body goes out with the response's
+      ContentType, whenever that is set }
+    function BodyStream: TStream;
     /// Sets the response with the given status code
     procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Loads and set a file to the response with the given AFileName and sets the disposition
@@ -61,11 +77,21 @@ type
     procedure GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
     /// Returns an UTF8 String with RALParams Cookies' Headers
     function GetParamsCookiesText(ADateTime: TDateTime; AHeader: StringRAL = 'Set-Cookie: ') : StringRAL;
-    /// Returns the response in TStream format
+    { The body, encoded for the wire when AEncode (a new stream the caller
+      frees): what the server engines used before TakeWireStream, which does
+      the same without copying a body that has nothing to transform. Without
+      AEncode, the body as it is }
     function GetResponseEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
-    /// Returns the response in UTF8String format
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
+    function TakeWireStream: TStream; override;
+    function TakeWireString: RawByteString; override;
 
+    { The body, DECODED - never compressed or encrypted, whatever the headers
+      say. On a server it is what the handler answered, as a new stream the
+      caller frees (up to 1.2 it was the encoded body - an engine that read it
+      for the wire must use TakeWireStream). On a client it is the body that
+      arrived, owned by the response, and a multipart comes back as the bytes
+      received, not put back together with another boundary }
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
   published
@@ -100,8 +126,12 @@ type
     constructor Create(AOwner : TObject); override;
     destructor Destroy; override;
 
+    procedure Clear; override;
+    { The body that arrived, decoded - the one stream the body params read
+      from, owned by the response. AEncode means nothing here }
     function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
+    procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); override;
   protected
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
@@ -135,6 +165,80 @@ begin
   StatusCode := AStatusCode;
   ContentType := AContentType;
   ResponseStream := AStream;
+end;
+
+procedure TRALResponse.Answer(AStatusCode: IntegerRAL; AStream: TStream;
+  const AContentType: StringRAL; AOwnsStream: boolean);
+var
+  vParam: TRALParam;
+begin
+  if not AOwnsStream then
+  begin
+    Answer(AStatusCode, AStream, AContentType);
+    Exit;
+  end;
+
+  StatusCode := AStatusCode;
+  ContentType := AContentType;
+  Params.ClearParams(rpkBODY);
+  if (AStream = nil) or (AStream.Size = 0) then
+  begin
+    AStream.Free;
+    Exit;
+  end;
+  vParam := Params.NewParam;
+  vParam.ParamName := 'ral_body';
+  vParam.AdoptStream(AStream);
+  vParam.ContentType := ContentType;
+  vParam.Kind := rpkBODY;
+end;
+
+function TRALResponse.BodyStream: TStream;
+var
+  vParam: TRALParam;
+begin
+  { the same stream while it is still the body: several writes append }
+  vParam := Body;
+  if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
+     (vParam.Content = FBodyStream) and (Params.Count(rpkBODY) = 1) then
+  begin
+    Result := FBodyStream;
+    Exit;
+  end;
+
+  Params.ClearParams(rpkBODY);
+  vParam := Params.NewParam;
+  vParam.ParamName := 'ral_body';
+  vParam.AdoptStream(TMemoryStream.Create);
+  vParam.ContentType := ContentType;
+  vParam.Kind := rpkBODY;
+  FBodyStream := vParam.Content;
+  Result := FBodyStream;
+end;
+
+function TRALResponse.TakeWireStream: TStream;
+var
+  vParam: TRALParam;
+begin
+  { BodyStream may have been asked before the handler set the content type }
+  vParam := Body;
+  if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
+     (vParam.Content = FBodyStream) then
+    vParam.ContentType := ContentType;
+  FBodyStream := nil;
+  Result := inherited TakeWireStream;
+end;
+
+function TRALResponse.TakeWireString: RawByteString;
+var
+  vParam: TRALParam;
+begin
+  vParam := Body;
+  if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
+     (vParam.Content = FBodyStream) then
+    vParam.ContentType := ContentType;
+  FBodyStream := nil;
+  Result := inherited TakeWireString;
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
@@ -202,6 +306,7 @@ end;
 procedure TRALResponse.Clear;
 begin
   inherited Clear;
+  FBodyStream := nil;
   FStatusCode := -1;
   FErrorCode := 0;
   FTransportError := rteNone;
@@ -280,12 +385,14 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  Result := GetResponseEncStream;
+  { decoded on both sides: on a server, what the handler answered - an
+    OnResponse reading it gets the text, not gzip }
+  Result := GetResponseEncStream(False);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
-  Result := GetResponseEncText;
+  Result := GetResponseEncText(False);
 end;
 
 { TRALServerResponse }
@@ -293,32 +400,85 @@ end;
 function TRALServerResponse.GetResponseEncStream(const AEncode: boolean): TStream;
 var
   vContentType, vContentDisposition: StringRAL;
+  vSource: TStream;
+  vBody: TRALBodyStream;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
+  vKey: StringRAL;
 begin
+  Result := nil;
+  vContentType := '';
+  vContentDisposition := '';
   if not AEncode then
   begin
-    Params.CriptoOptions.CriptType := crNone;
-    Params.CriptoOptions.Key := '';
-    Params.CompressType := ctNone;
-  end
-  else
-  begin
+    { what the handler answered, as the caller's own copy - the contract
+      ResponseStream always had. Nothing here is changed }
+    vSource := Params.PlainBody(vContentType, vContentDisposition);
+    if vSource = nil then
+      Exit;
+    try
+      vBody := TRALBodyStream.Create(vSource.Size);
+      try
+        vSource.Position := 0;
+        RALCopyStream(vSource, vBody, vSource.Size);
+        Result := vBody.Detach;
+      finally
+        vBody.Free;
+      end;
+    finally
+      vSource.Free;
+    end;
+    Result.Position := 0;
+    Exit;
+  end;
+
+  { encoded, for an engine written before TakeWireStream. The params are left
+    as they were: this used to set the response's key and compression on them
+    and leave them there, so a later read of the body saw them too }
+  vCompress := Params.CompressType;
+  vCripto := Params.CriptoOptions.CriptType;
+  vKey := Params.CriptoOptions.Key;
+  try
     Params.CriptoOptions.CriptType := ContentCripto;
     Params.CriptoOptions.Key := CriptoKey;
     Params.CompressType := ContentCompress;
+    Params.ContentDispositionInline := ContentDispositionInline;
+
+    Result := Params.EncodeBody(vContentType, vContentDisposition);
+    ContentType := vContentType;
+    ContentDisposition := vContentDisposition;
+    { what was done, not what was asked }
+    if Result = nil then
+      ContentCompress := ctNone
+    else
+      ContentCompress := Params.CompressType;
+  finally
+    Params.CompressType := vCompress;
+    Params.CriptoOptions.CriptType := vCripto;
+    Params.CriptoOptions.Key := vKey;
   end;
-
-  Params.ContentDispositionInline := ContentDispositionInline;
-
-  Result := Params.EncodeBody(vContentType, vContentDisposition);
-  ContentType := vContentType;
-  ContentDisposition := vContentDisposition;
 end;
 
 function TRALServerResponse.GetResponseEncText(
   const AEncode: boolean): StringRAL;
 var
   vStream: TStream;
+  vContentType, vContentDisposition: StringRAL;
 begin
+  if not AEncode then
+  begin
+    { a text answer is the handler's own string, not a copy of it }
+    vContentType := '';
+    vContentDisposition := '';
+    vStream := Params.PlainBody(vContentType, vContentDisposition);
+    try
+      Result := RALStreamText(vStream);
+    finally
+      vStream.Free;
+    end;
+    Exit;
+  end;
+
   vStream := GetResponseEncStream(AEncode);
   try
     Result := StreamToString(vStream);
@@ -367,6 +527,21 @@ begin
   inherited;
 end;
 
+procedure TRALClientResponse.Clear;
+begin
+  { a response is reused across the attempts of one call: the body assembled
+    for the previous one must not answer for this one }
+  FreeAndNil(FStream);
+  inherited;
+end;
+
+procedure TRALClientResponse.SetWireBody(AStream: TStream;
+  AOwnership: TRALBodyOwnership);
+begin
+  FreeAndNil(FStream);
+  inherited;
+end;
+
 function TRALClientResponse.GetResponseEncStream(
   const AEncode: boolean): TStream;
 var
@@ -374,9 +549,16 @@ var
   vCompress: TRALCompressType;
   vCripto: TRALCriptoType;
 begin
-  { built from the params on demand, like TRALServerRequest does: DecodeBody
-    no longer hands back a second copy of the decoded body, so the stream an
-    application asks for is assembled here, once, and only when asked }
+  { the body as it arrived, decoded once - no copy }
+  Result := Params.Decoded;
+  if Result <> nil then
+  begin
+    Result.Position := 0;
+    Exit;
+  end;
+
+  { no body went through the decoder (params filled by hand): assembled from
+    the params, once, and only when asked }
   if FStream = nil then
   begin
     vCompress := Params.CompressType;
@@ -397,46 +579,26 @@ end;
 
 function TRALClientResponse.GetResponseEncText(
   const AEncode: boolean): StringRAL;
-var
-  vStream : TStream;
 begin
-  Result := '';
-  if GetResponseEncStream(AEncode) = nil then
-    Exit;
-
-  vStream := TRALStringStream.Create(FStream);
-  try
-    Result := StreamToString(vStream);
-  finally
-    FreeAndNil(vStream);
-  end;
-//  {$ELSE}
-//    vStream := TStringStream.Create(EmptyStr);
-//    FStream.Position := 0;
-//    vStream.CopyFrom(FStream, FStream.Size);
-//    try
-//      Result := StreamToString(vStream);
-//    finally
-//      FreeAndNil(vStream);
-//    end;
-//  {$ENDIF}
+  { a body an engine delivered as a string comes back as that string; any
+    other is read once. It was copied into a TRALStringStream first, then
+    read out of it: two copies to read a body as text }
+  Result := RALStreamText(GetResponseEncStream(AEncode));
 end;
 
 procedure TRALClientResponse.SetResponseStream(const AValue: TStream);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
-
+  { the old engine entry: decoded with whatever Params says, and AValue is
+    copied (SetWireBody is the one that adopts) }
+  FreeAndNil(FStream);
   if Assigned(AValue) and (AValue.size > 0) then
-    FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition);
+    Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 procedure TRALClientResponse.SetResponseText(const AValue: StringRAL);
 begin
-  if FStream <> nil then
-    FreeAndNil(FStream);
-
-  FStream := Params.DecodeBody(AValue, ContentType, ContentDisposition)
+  FreeAndNil(FStream);
+  Params.DecodeBody(AValue, ContentType, ContentDisposition);
 end;
 
 end.

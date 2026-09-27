@@ -118,6 +118,9 @@ begin
     vAux1 := GetEnvironmentVariable('REQUEST_METHOD');
     vRequest.Method := HTTPMethodToRALMethod(vAux1);
     vRequest.AcceptEncoding := GetEnvironmentVariable('HTTP_ACCEPT_ENCODING');
+    { never read before, so a compressed body reached the handler still
+      compressed; the Delphi twin had it from TWebRequest all along }
+    vRequest.ContentEncoding := GetEnvironmentVariable('HTTP_CONTENT_ENCODING');
     vRequest.AcceptEncription := GetEnvironmentVariable('HTTP_ACCEPT_ENCRIPTION');
     vRequest.ContentEncription := GetEnvironmentVariable('HTTP_CONTENT_ENCRIPTION');
     vRequest.ContentType := GetEnvironmentVariable('CONTENT_TYPE');
@@ -147,17 +150,15 @@ begin
     { the plugins that act before the body is read - size limit, address lists,
       the key of an encrypted body - as every other engine runs them }
     vServer.ValidateRequest(vRequest, vResponse);
+    { a view that holds fcl-web's own string: nothing copied }
     if vResponse.StatusCode < HTTP_BadRequest then
-    begin
-      vRequest.Params.CompressType := vRequest.ContentCompress;
-      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-      vRequest.RequestText := ARequest.Content;
-    end;
+      vRequest.SetWireBody(ARequest.Content);
 
     vServer.ProcessCommands(vRequest, vResponse);
 
-//    vResponse.ContentCompress := ctNone; // para debug
-    AResponse.ContentStream := vResponse.ResponseStream;
+    { first: only after it do ContentType and ContentEncoding say what was
+      really done to the body }
+    AResponse.ContentStream := vResponse.TakeWireStream;
 
     if vResponse.AcceptEncoding <> '' then
       vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);

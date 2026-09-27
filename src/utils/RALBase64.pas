@@ -130,8 +130,10 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
+  { whole groups of 4 characters per piece: a group split between two pieces
+    decoded as two broken ones }
   if vSize > DEFAULTBUFFERSTREAMSIZE then
-    vBytesRead := DEFAULTBUFFERSTREAMSIZE
+    vBytesRead := (DEFAULTBUFFERSTREAMSIZE div 4) * 4
   else
     vBytesRead := AValue.Size;
 
@@ -426,8 +428,12 @@ begin
   vPosition := 0;
   vSize := AValue.Size;
 
+  { whole groups of 3 bytes per piece: each piece is encoded on its own, and a
+    piece that is not a multiple of 3 ends in padding - a "=" in the MIDDLE of
+    the output. It happened above 50 MB (52428800 mod 3 = 2): RAL's decoder
+    took it, a strict one elsewhere did not }
   if vSize > DEFAULTBUFFERSTREAMSIZE then
-    vBytesRead := DEFAULTBUFFERSTREAMSIZE
+    vBytesRead := (DEFAULTBUFFERSTREAMSIZE div 3) * 3
   else
     vBytesRead := AValue.Size;
 

@@ -309,9 +309,9 @@ begin
 
     { What to compress is decided here; what was ACTUALLY compressed is only
       known after the body is encoded, so the Content-Encoding header is added
-      further down, after RequestStream. EncodeBody declines to compress a
-      multipart request, and adding the header here announced gzip over a body
-      that was never deflated. }
+      further down, after TakeWireStream. A multipart request is not
+      compressed, and adding the header here announced gzip over a body that
+      was never deflated. }
     ARequest.ContentCompress := Parent.CompressType;
 
     // Accept-Encoding states what the client is able to READ, which does not
@@ -331,14 +331,16 @@ begin
       ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
     end;
 
-    vSource := ARequest.RequestStream;
+    { built once for this attempt, with no copy of a body that has nothing to
+      transform; the params stay, a retry sends them again }
+    vSource := ARequest.TakeWireStream;
     try
       if ARequest.ContentType <> '' then
         ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
       if ARequest.ContentDisposition <> '' then
         ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-      { after RequestStream, on purpose: only now ContentEncoding says what
-        EncodeBody actually did to the body - see the note above }
+      { after TakeWireStream, on purpose: only now ContentEncoding says what
+        was actually done to the body - see the note above }
       if ARequest.ContentCompress <> ctNone then
         ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
@@ -416,7 +418,9 @@ begin
             ProtocolVersion, so an application never has to know which one is
             running in order to ask. }
           AResponse.Protocol := StringRAL(vHttp.Http.CommandResp);
-          AResponse.ResponseText := vHttp.Content;
+          { a view that holds mORMot's string: the next request replaces
+            Content, and this reference keeps the answer alive, uncopied }
+          AResponse.SetWireBody(vHttp.Content);
         end;
       except
         on e: ENetSock do

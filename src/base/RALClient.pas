@@ -6,7 +6,7 @@ uses
   Classes, SysUtils, SyncObjs, DateUtils,
   RALCustomObjects, RALTypes, RALAuthentication, RALRequest, RALResponse,
   RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJSON, RALParams,
-  RALMimeTypes;
+  RALMimeTypes, RALStream;
 
 type
   TRALThreadClientResponse = procedure(ASender: TObject; AResponse: TRALResponse;
@@ -472,6 +472,9 @@ type
     FRequestThread: TThreadID;
     { TRALThreadRequest, one per OTHER thread that has used Request }
     FRequests: TList;
+    FSkipCompressedTypes: boolean;
+    FSkipCompressTypes: TStrings;
+    FSpoolAbove: Int64RAL;
     FSSL: TRALClientSSL;
     FThreads: TThreadList;
     FUserAgent: StringRAL;
@@ -528,6 +531,8 @@ type
     procedure SetKeepAlive(AValue: boolean); virtual;
     procedure SetKeepAliveInterval(AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
+    procedure SetSkipCompressTypes(AValue: TStrings);
+    procedure SetSpoolAbove(AValue: Int64RAL);
     procedure SetSSL(AValue: TRALClientSSL);
     procedure SetUserAgent(AValue: StringRAL); virtual;
 
@@ -678,6 +683,24 @@ type
     property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
                                            write SetKeepAliveInterval default 0;
     /// TLS options - see TRALClientSSL
+    { A body whose type is already compressed - images (not SVG), audio,
+      video, zip, gzip, 7z, rar, pdf, fonts - goes out as it is, whatever
+      CompressType says: compressing it again costs CPU and a buffer the size
+      of the body, and gains nothing (RALIsCompressedType). Content-Encoding
+      follows what was done, so any server reads it. False compresses
+      everything, as up to 1.2 }
+    property SkipCompressedTypes: boolean read FSkipCompressedTypes
+      write FSkipCompressedTypes default True;
+    /// More media types this client sends uncompressed: 'application/x-foo',
+    /// or a prefix ending in '/' ('model/'). Counted with or without
+    /// SkipCompressedTypes
+    property SkipCompressTypes: TStrings read FSkipCompressTypes write SetSkipCompressTypes;
+    { A response larger than this, in bytes, is received into a temporary
+      file instead of memory (RALSpoolFolder, the system's temporary folder by
+      default), deleted with the response. 0, the default, never: a body lives
+      in memory, in blocks of RALChunkSize above RALChunkAbove. On Win32 a body
+      of a few hundred MB only fits this way }
+    property SpoolAbove: Int64RAL read FSpoolAbove write SetSpoolAbove default 0;
     property SSL: TRALClientSSL read FSSL write SetSSL;
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
     /// Runs before each attempt leaves, and may refuse it - see TRALOnBeforeExecute
@@ -1467,6 +1490,9 @@ begin
   ADest.MaxRedirects := Self.MaxRedirects;
   ADest.CompressType := Self.CompressType;
   ADest.AcceptEncoding := Self.AcceptEncoding;
+  ADest.SkipCompressedTypes := Self.SkipCompressedTypes;
+  ADest.SkipCompressTypes := Self.SkipCompressTypes;
+  ADest.SpoolAbove := Self.SpoolAbove;
 
   ADest.CriptoOptions.CriptType := Self.CriptoOptions.CriptType;
   ADest.CriptoOptions.Key := Self.CriptoOptions.Key;
@@ -1488,6 +1514,26 @@ begin
   ADest.ShareConnection := Self.ShareConnection;
   ADest.HTTPVersion := Self.HTTPVersion;
   ADest.KeepAliveInterval := Self.KeepAliveInterval;
+end;
+
+procedure TRALClient.SetSkipCompressTypes(AValue: TStrings);
+begin
+  if AValue = nil then
+    FSkipCompressTypes.Clear
+  else
+    FSkipCompressTypes.Assign(AValue);
+end;
+
+procedure TRALClient.SetSpoolAbove(AValue: Int64RAL);
+begin
+  if AValue < 0 then
+    AValue := 0;
+  { a process killed in the middle of a request leaves its file behind: the
+    first client that spools sweeps what is older than a day }
+  if (AValue > 0) and (FSpoolAbove = 0) and
+     not (csDesigning in ComponentState) then
+    RALCleanSpoolFolder;
+  FSpoolAbove := AValue;
 end;
 
 procedure TRALClient.SetAuthentication(AValue: TRALAuthClient);
@@ -1597,6 +1643,9 @@ begin
   FRequestTimeout := DEFAULTREQUESTTIMEOUT;
   FMaxRedirects := DEFAULTMAXREDIRECTS;
   FCompressType := ctGZip;
+  FSkipCompressedTypes := True;
+  FSkipCompressTypes := TStringList.Create;
+  FSpoolAbove := 0;
   FEnginePool := TList.Create;
   FPoolConnection := TRALPoolConnection.Create(Self);
 end;
@@ -1625,6 +1674,7 @@ begin
   end;
   FreeAndNil(FRequest);
   FreeAndNil(FBaseURL);
+  FreeAndNil(FSkipCompressTypes);
   { last, so everything above could still take it }
   FreeAndNil(FCritSession);
   inherited Destroy;
@@ -2305,6 +2355,15 @@ begin
         ARequest.Params.CompressType := FParent.CompressType;
         ARequest.Params.CriptoOptions.CriptType := FParent.CriptoOptions.CriptType;
         ARequest.Params.CriptoOptions.Key := FParent.CriptoOptions.Key;
+        { what is not worth compressing, and where a big body goes: the
+          request's when it is encoded, the response's when it is decoded }
+        ARequest.Params.SkipCompressedTypes := FParent.SkipCompressedTypes;
+        if FParent.SkipCompressTypes.Count > 0 then
+          ARequest.Params.SkipCompressTypes := FParent.SkipCompressTypes
+        else
+          ARequest.Params.SkipCompressTypes := nil;
+        ARequest.Params.SpoolAbove := FParent.SpoolAbove;
+        AResponse.Params.SpoolAbove := FParent.SpoolAbove;
 
         SendUrl(vURL, ARequest, AResponse, AMethod);
         vResp := AResponse.StatusCode;

@@ -49,6 +49,8 @@
   emDBInvalidTableName = 'Nome de tabela inválido: só letras, dígitos, _, $ e . são aceitos.';
   emDBSQLRejected = 'SQL recusado pelo OnValidateSQL.';
   emStreamSizeBeyondEnd = 'O stream binário anuncia mais bytes do que contém.';
+  emStreamReadOnly = 'Este stream é somente leitura: é uma vista sobre memória que pertence a outro.';
+  emStreamReleased = 'Esta parte do stream já foi liberada: ele é lido uma vez, do início ao fim.';
   emDecompressLimit = 'Os dados descomprimidos excedem RALMaxDecompressedSize.';
   emParamFileNameEmpty = 'Não sobrou nome de arquivo para gravar o parâmetro.';
   emDBDriverMissing = 'Driver de conexão não encontrado.';

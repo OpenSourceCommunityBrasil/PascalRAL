@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, DateUtils,
   UniGUIServer, uIdCustomHTTPServer, uIdContext, uIdCookie,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  RALParams, RALTools, RALStream;
 
 type
   { TRALUniGUIServer }
@@ -127,9 +127,10 @@ begin
           Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
         end;
 
-        Params.CompressType := ContentCompress;
-        Params.CriptoOptions.CriptType := ContentCripto;
-        RequestStream := ARequestInfo.PostStream;
+        { lent, not copied: the Indy under UniGUI frees PostStream after this
+          callback returns, and nobody reads it again - so the cipher may work
+          on it in place }
+        SetWireBody(ARequestInfo.PostStream, boBorrowedWritable);
 
         Host := ARequestInfo.Host;
         vInt := Pos('/', ARequestInfo.Version);
@@ -143,10 +144,8 @@ begin
           Protocol := '1.0';
         end;
 
-        // limpando para economia de memoria
-        if (ARequestInfo.PostStream <> nil) then
-          ARequestInfo.PostStream.Size := 0;
-
+        { PostStream is NOT emptied here any more: it is the body now, and
+          the params read from it until the request is freed }
         ARequestInfo.RawHeaders.Clear;
         ARequestInfo.CustomHeaders.Clear;
         ARequestInfo.Cookies.Clear;
@@ -158,6 +157,13 @@ begin
 
     with vResponse do
     begin
+      { the body first, handed over at once so nothing can leak it: only
+        after TakeWireStream do ContentEncoding and ContentType say what was
+        really done }
+      AResponseInfo.ContentText := '';
+      AResponseInfo.ContentStream := TakeWireStream;
+      AResponseInfo.FreeContentStream := AResponseInfo.ContentStream <> nil;
+
       AResponseInfo.ResponseNo := StatusCode;
 
       AResponseInfo.Server := 'RAL_UniGUI';
@@ -194,8 +200,6 @@ begin
         FreeAndNil(vCookies);
       end;
 
-      AResponseInfo.ContentText := '';
-      AResponseInfo.ContentStream := ResponseStream;
       AResponseInfo.ContentType := ContentType;
       AResponseInfo.ContentDisposition := ContentDisposition;
 

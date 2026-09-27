@@ -597,9 +597,10 @@ Two related invariants, both of which used to be broken:
 ### Compress/Decompress rewind the stream themselves
 
 `TRALCompress.Compress`/`Decompress` set `AStream.Position := 0` before handing
-the stream to `InitCompress`/`InitDeCompress`. Callers do not rewind: `DecodeBody`
-fills its buffer with `Result.CopyFrom(ASource, ASource.Size)`, which leaves the
-position at the *end*, and then decompresses straight away.
+the stream to `InitCompress`/`InitDeCompress`, and so do `CompressTo`/`DecompressTo`,
+the 1.3 pair that writes into a destination the caller gives (an empty input
+writes nothing). Callers do not rewind: a body usually arrives with its position
+at the *end*, where the engine or a copy left it.
 
 This used to work for exactly one combination - gzip under FPC - because that
 branch repositions the stream on its own while reading the gzip header and the
@@ -623,21 +624,11 @@ the same format, so gzip interoperated and deflate did not. When touching this
 unit, check both branches produce identical bytes for the same input - a small
 Delphi writer plus an FPC reader is enough to prove it.
 
-### Known bug: a missing compressor silently discards the whole body
+### Fixed: a missing compressor silently discarded the whole body
 
+`TRALParams.Create` sets `FCompressType := ctGZip`, and `EncodeBody` used to hand the body to `Compress`, which returns **nil** when the compressor class is not registered - the unit (`RALCompressZLib`, ...) not linked into the binary. The whole body vanished with no exception; the caller only saw an empty request. Found 2026-09-01 with a console program that used `TRALParams` directly.
 
-`TRALParams.Create` sets `FCompressType := ctGZip`, and `EncodeBody` ends with:
-
-```pascal
-if (FCompressType <> ctNone) and (Result <> nil) then
-begin
-  vTemp := Compress(Result);   // nil when GetCompressClass finds nothing
-  FreeAndNil(Result);
-  Result := vTemp;
-end;
-```
-
-`TRALParams.Compress` returns **nil** when the compressor class is not registered — that is, when the unit (`RALCompressZLib`, …) was not linked into the binary. So `EncodeBody` hands back nil and the entire body is lost, with no exception and no warning; the caller only sees an empty request. This is the runtime-class-registry trap above, except here it destroys the payload instead of degrading. Found 2026-09-01 while testing typed params: a console program that used `TRALParams` directly, without linking a compressor, produced nil bodies for every request. Server code hides it because `TRALServerResponse.GetResponseEncStream` assigns `Params.CompressType` explicitly. A fix would be to fall back to the uncompressed stream (or raise) instead of returning nil.
+Since 1.3 the compression a body really gets is decided in one place, `TRALParams.EffectiveCompress`: `CompressType`, except none for a form or multipart on the request path, for a type already compressed (see "One body per request"), and **for a compressor that is not linked**. It writes the answer back to `CompressType`, and that is where `TakeWireStream` reads what to put in `Content-Encoding` - so a missing compressor sends the body uncompressed and says so.
 
 ### Fixed: Indy parsed every request header with the wrong separator
 `TRALParams.AppendParams(ASource: TStrings; AKind)` chose the separator with `if ASource.NameValueSeparator <> ''`. `TStrings.NameValueSeparator` is a **Char** that defaults to `'='` and can never be empty, so the `FindHeaderNameSeparator` fallback underneath was unreachable and headers were always split on `'='`. Indy hands over a `TIdHeaderList` whose lines are `Name: Value` — it *does* declare `': '`, but on a property of its own that is invisible through the `TStrings` reference. Result on the Indy engine: `Content-Type: multipart/form-data; boundary=ral01` arrived named `Content-Type: multipart/form-data; boundary`, and any header with no `'='` at all was dropped entirely.
@@ -750,7 +741,7 @@ Three separate ceilings, two of them opt-in. **Defaults reproduce the old behavi
 The name comes from the wire when it is the multipart `filename` or a value the caller took from a param. `..\..\x` and `C:\x` were concatenated to the folder as they came. Only the last path component is kept now, on either separator; an empty result raises `emParamFileNameEmpty`.
 
 ### Trap: on FPC, decompressing gzip used to shorten the caller's stream
-`TRALCompressZLib.InitDeCompress` cuts the 8-byte gzip trailer off the *input* stream so FPC's `TDecompressionStream` does not choke on it, then checks the CRC by hand. It never put the trailer back, so a second `Decompress` of the same stream failed. The trailer is restored in a `finally` now; Delphi's zlib reads the trailer itself and never had the problem.
+`TRALCompressZLib.InitDeCompress` cut the 8-byte gzip trailer off the *input* stream so FPC's `TDecompressionStream` does not choke on it, then checked the CRC by hand, and for a while never put the trailer back, so a second `Decompress` of the same stream failed. Since 1.3 the input is not touched at all: the trailer is read where it is, the compressed data is handed to the decompressor as a window (`RALStreamSlice`) that stops before it, and the CRC is computed incrementally as the output is written. The input may now be a read-only view over an engine's buffer, which is the point. Delphi's zlib reads the trailer itself and never had the problem.
 
 ### Fixed: brute-force protection blocked at the first wrong password, and the flood list never shrank
 `TRALSecurity` keeps every IP that failed once in `FBlockedList` (that is what counts the tries), and `CheckBlockClientIP` tested membership, so with `rsoBruteForceProtection` one 401 locked the client out until `ExpirationTime`, whatever `MaxTry` said. It now blocks from `MaxTry` failed tries on (`MaxTry < 1` behaves as 1); a successful login still clears the counter, and `BlockClient` refreshes `LastAccess` on every failure so the expiration counts from the last attempt. `ClearExpiredIPs`, which `ValidateRequest` calls on every request, also trims `FFloodList` now: with `rsoFloodProtection` it gained one entry per distinct source address forever. Entries idle for a minute (or ten times `FloodTimeInterval`, whichever is larger) go. `BlockedCount` and `FloodCount` expose both sizes.
@@ -821,8 +812,131 @@ Found by the orchestrator pooler suite (26/09/2026): four client threads sharing
 
 `ThreadPerConnection`, like `PoolCount`, takes effect on the next activation. The TLS path (`sg_httpsrv_tls_listen3`) gets the same flag but was not measured here (no certificate in the repro). The pooler suite keeps keep-alive on with every server, so against a RAL without this property (1.2/`dev`) its Sagui queue/429 cases fail - which is that engine's real behaviour there, not a flaw of the suite.
 
-### The received body is no longer copied twice
-`TRALParams.DecodeBody` used to copy the engine's stream into a fresh `TMemoryStream`, decrypt into another, inflate into another, copy that into the body param and hand the last stage back to the caller, who kept it in `FStream` next to the param's copy: a 100 MB upload went through half a gigabyte. It now runs the stages on the caller's stream until a transform has to produce a new one, hands that one to the param without a copy (`TRALParam.AdoptStream`, the param owns it from then on), and **returns nil** - the body lives in the params and nowhere else. `TRALClientResponse.ResponseStream`/`ResponseText` and `TRALServerRequest.RequestStream`/`RequestText` are assembled from the params on demand, once, only when asked. `AsStream := X` still copies X; use `AdoptStream` only for a stream created for the param.
+### Fixed: Sagui dropped any request body above 4 MB
+
+libsagui caps the request body (`sg_httpsrv_set_payld_limit`) at 4 MB and the
+uploads of a multipart (`sg_httpsrv_set_uplds_limit`) at 64 MB by default, and
+past either it **resets the connection while the client is still sending** - no
+413, no log line, a "connection reset" / "closed gracefully" / WinHTTP 12152 on
+whichever client. RAL never set either, so a larger body could not reach a Sagui
+server at all; nothing had ever sent one until the orchestrator's 9 MB echo
+(27/09/2026). `TRALSaguiServer.SetActive` now opens both before listening (half
+the range, so no sum inside the library can wrap), and the limit is RAL's own,
+`TRALLimitsPlugin.MaxRequestSize`, answered with 413 like on every other engine -
+off unless set. The body still lives in libsagui's memory while the request runs:
+that engine hands over a buffer it already holds, so `SpoolAbove` only moves to
+disk what RAL builds from it.
+
+### One body per request, one per response (since 1.3)
+
+Plan, decisions and what each stage delivered: `.agents/PLANO_STREAM_UNICO.md`. The
+body used to be copied 2 to 5 times between the engine and the handler (measured on
+26/09/2026: an 8 MB body cost 3x/4x beyond itself on the server, 4x on client
+receive). Now there is ONE decoded body per request (server) and per response
+(client), the params read it without copying, and transforms happen only at the
+edge, writing straight into the stream that goes on the wire.
+
+**Ownership is explicit** (`TRALBodyOwnership`, `RALStream`). Whoever hands a body
+to the params says whose it is:
+- `boBorrowed`: the engine keeps it and it outlives the request - every server
+  engine, since the request is created and freed inside the engine's callback.
+  Not written to, not freed. A received body param is then a **read-only view**:
+  writing to `Body.Content` raises (`emStreamReadOnly`). `AsStream` is a copy.
+- `boBorrowedWritable`: the same, and the stream may be overwritten - Indy's and
+  UniGUI's `PostStream`, which nobody reads again. The AES decrypts in place there.
+- `boOwned`: the params take it and free it - the receive buffers the client
+  engines create (Indy, fpHTTP, netHTTP, okhttp), string views, frame views.
+- `boCopy`: copied once; what the old setters (`RequestStream :=`,
+  `ResponseStream :=`) still do.
+
+A param knows the same: `TRALParam.BorrowStream` (lent, `OwnsContent` False) next
+to `AdoptStream` (owned). **A new engine must keep the rule that makes borrowing
+safe: create and free the request inside the callback that holds the buffer.**
+
+**The engine API** (`TRALHTTPHeaderInfo`, so request and response alike):
+- in: `SetWireBody(AStream, AOwnership)`, `SetWireBody(RawByteString)` (a
+  `TRALStringView` holding the engine's string: mORMot2, fpHTTP, CGI) and
+  `SetWireBody(Pointer, Size)` (a `TRALMemoryView`: Sagui's payload, the QUIC
+  frame). Compression and cipher come from `ContentEncoding`/`ContentEncription`,
+  which must be filled first; the key is whatever is in `Params.CriptoOptions`.
+- out: `TakeWireStream` (a stream the engine frees) and `TakeWireString`
+  (mORMot2). **Read `ContentType`, `ContentDisposition` and `ContentEncoding`
+  AFTER the call**: they are set to what was really done, and a JPEG goes out
+  uncompressed whatever was asked. On a server response the params give their
+  streams away (Sagui sends after the response is freed); on a client request
+  they do not (`WireConsume` False - a retry sends them again) and a form or a
+  multipart is never compressed (`WireCompressMultipart` False).
+- With nothing to transform, the body that goes out IS the body: the handler's
+  string (a view), its stream (moved out), a multipart as a `TRALConcatStream` of
+  part headers and the parts' own streams. With gzip/AES, `EncodeInto` writes
+  the compressor's output straight into the destination and the AES ciphers it
+  there, the IV reserved in front (`TRALCriptoAES.EncryptInPlace`).
+
+**What the user properties mean now** (a behaviour change, documented for the
+engine authors who read them): `RequestStream`/`RequestText` on a server and
+`ResponseStream`/`ResponseText` on a client are the body that ARRIVED, decoded -
+`Params.Decoded`, no copy; a multipart comes back as the bytes received, not put
+together again with another boundary. `ResponseText`/`ResponseStream` on a SERVER
+are what the handler answered, decoded - up to 1.2 they were the encoded body,
+which is what engines sent. `GetResponseEncStream(True)`/`GetRequestEncStream`
+still exist for engines written before, and no longer leave the key and the
+compression set on the params.
+
+**Answering without copies:** `Answer(status, stream, type, AOwnsStream = True)`
+adopts the stream; `AResponse.BodyStream` is a stream to write the body into
+(`TRALSwaggerModule` writes its pages there; repeated calls return the same
+stream). `Answer(status, stream)` without the flag still copies - the caller
+frees what it passed.
+
+**Size tiers** (`RALStream`): a body stays one contiguous block up to
+`RALChunkAbove` (`DEFAULTCHUNKABOVE`, 8 MB), goes to a `TRALChunkedStream` of
+`RALChunkSize` blocks (`DEFAULTCHUNKSIZE`, 1023 KB - not 1 MB: a power of two
+pays the memory manager's header in a whole extra page, measured) above it, and
+to a `TRALTempFileStream` (deleted on free) above `SpoolAbove` - off by default,
+on `TRALLimitsPlugin` and `TRALClient`. `TRALBodyStream` picks the storage from
+the expected size and promotes it while written; `Detach` hands the storage over.
+**`Content` is not always a `TMemoryStream` any more**: code doing
+`TMemoryStream(Param.Content).Memory` breaks above 8 MB (and on a view it is a
+`TCustomMemoryStream`). The Indy server receives a large body into the right
+tier from the first byte (`OnCreatePostStream`); the client engines with a
+destination of their own (Indy, fpHTTP, netHTTP) do the same.
+
+**Already compressed types are not compressed again**: images (not SVG), audio,
+video, zip, gzip, 7z, rar, bzip2, xz, zstd, brotli, pdf, woff/woff2
+(`RALIsCompressedType`). `TRALCompressPlugin.SkipCompressedTypes` and
+`TRALClient.SkipCompressedTypes`, both default True, and a list of extra types
+(`SkipContentTypes`/`SkipCompressTypes`). Nothing changes on the wire except the
+missing `Content-Encoding` on those types; every client reads both.
+
+Measured by the orchestrator suites `memoria`/`memoriafpc` (27/09/2026, Delphi 13
+Win32 and FPC 3.2 Win64, peak beyond the body, 8 MB): server receive 0.00x plain,
+0.02x AES, 1.02x gzip (the inflated body is the one new allocation); the old echo
+handler (`Body.AsString` back as the answer) 1.00x, from 3.00x; server answer
+0.00x plain, 0.05x gzip, 0.05x gzip+AES; client receive + `ResponseText` 1.00x
+(0.00x from mORMot2's string); client send 0.00x plain; a 256 MB incompressible
+body with gzip+AES 1.00x; with `SpoolAbove` 1 MB of memory for 256 MB.
+
+Traps that came up on the way, each worth knowing on its own:
+- `AStream.WriteBuffer(S[POSINISTR], ...)` on a shared string makes Delphi copy
+  the whole string first (`UniqueString`); `Pointer(S)^` does not.
+- The work buffer of every transform is `DEFAULTBUFFERSTREAMSIZE`, 64 KB (it was
+  50 MB, and `RALCompressZLib` allocated the size of the whole input). Lowering it
+  exposed three bugs that only showed with more than one piece:
+  `TRALBase64.EncodeAsStream` padded each piece (a `=` in the middle - now pieces
+  are multiples of 3, and of 4 to decode), `TRALHashBase.HashBytes` overwrote the
+  index instead of adding to it (a block filled in two pieces hashed wrong - the
+  AES MAC of bodies of 17 to 31 bytes), and `TRALCRC32.Compress` hashed only part
+  of the block (FPC gzip "Content check error").
+- FPC's `TMemoryStream` grows by at least a quarter on every reallocation (Delphi
+  by 8 KB), so a body of unknown size could hold 1.25x. The gzip trailer carries
+  the inflated size, and `RALInflatedSizeHint` sizes the destination once from it
+  (refused past deflate's 1032:1 and `RALMaxDecompressedSize`, so a lying body
+  cannot make it reserve memory).
+- `TWebRequest.Content` in Delphi's CGI is a string decoded by the charset, which a
+  gzip or AES body does not survive; the engine reads `RawContent` (an
+  `AnsiString` in XE2, `TBytes` from XE5 on - an overload picks).
+- Sagui frees its upload streams itself after the callback: they are lent to the
+  params, never adopted.
 
 ### Fixed: the server DAO owned its per-request queries on a shared component
 `TRALFDConnection.OnReplyQuery` (`src/database/FireDAC/RALDBFiredacDAO.pas`) runs on the engine's thread pool, and the one or two `TFDQuery` it builds per request were owned by `Self` — the single `TRALFDConnection` sitting on the application's datamodule or form. `TComponent.InsertComponent`/`RemoveComponent` are not guarded, so every concurrent request was mutating the same owner's component list at once; both queries are released in the `finally`, so nothing depended on that owner. They take `nil` now. The `TFDMemTable` in `TRALFDQuery.ApplyUpdatesRemote` had the same shape on the client side — per call, released in its own `finally` — and changed with them. `TRALFDQuery.OpenRemoteResponse` keeps its owner on purpose: the `TFDConnection` it builds when the query has none is never released explicitly and relies on the query to take it down. The connection clone was never part of this — FireDAC's own `TFDCustomConnection.CloneConnection` already builds with `nil`.
@@ -861,7 +975,7 @@ Two behaviours that changed with this, both deliberate: a verb outside `AllowedM
 Still there on purpose: `TRALClientList.Create` stamps `LastAccess` with `Now`, so a brand new address measures an interval of zero and the **first** request of every client counts as a flood. Changing that decides what the protection means and is not a refactor. `TRALWebSession.FObjects` is a different problem — a plain `TStringList`, `Sorted`, with no lock at all, so two concurrent requests on one session corrupt it rather than merely leak.
 
 ### Params / body pipeline
-`TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
+`TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode: `DecodeBody` with an ownership (the decoded body is `Params.Decoded`, and the streams it depends on live in the params until `ClearParams`), and on the way out `PrepareBody` (the plain body, nothing copied), `EffectiveCompress`, `WriteTransformed`/`EncodeInto`, `TakeWireStream`/`TakeWireString`. Multipart lives in `src/utils/RALMultipartCoder.pas` (its decoder hands each part over as a window, `SliceParts`; its encoder builds a `TRALConcatStream`); byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once. See "One body per request, one per response".
 
 ### Modules extend the server
 

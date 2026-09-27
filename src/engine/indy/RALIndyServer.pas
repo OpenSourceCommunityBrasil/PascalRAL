@@ -6,9 +6,9 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdGlobal, IdCookie,
+  IdGlobalProtocols, IdGlobal, IdCookie, IdHeaderList,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools;
+  RALParams, RALTools, RALStream, RALPlugin, RALContent;
 
 type
   TIdSSLOptionsRAL = class(TIdSSLOptions)
@@ -52,6 +52,12 @@ type
 
     procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
+    { Where Indy writes the body it receives. Left to Indy (a TMemoryStream)
+      for an ordinary body; a large one, or one of unknown size, goes into a
+      TRALBodyStream - blocks above RALChunkAbove, a temporary file above the
+      limits plugin's SpoolAbove - so it is never one contiguous buffer }
+    procedure OnCreatePostStream(AContext: TIdContext; AHeaders: TIdHeaderList;
+      var VPostStream: TStream);
     procedure OnParseAuthentication(AContext: TIdContext;
       const AAuthType, AAuthData: String; var VUsername, VPassword: String;
       var VHandled: Boolean);
@@ -101,12 +107,14 @@ begin
 {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
   FHttp.OnCommandOther := @OnCommandProcess;
+  FHttp.OnCreatePostStream := @OnCreatePostStream;
   FHttp.OnParseAuthentication := @OnParseAuthentication;
   FHandlerSSL.OnGetPassword := @Self.SSL.FSSLOptions.GetPassword;
   FHttp.OnQuerySSLPort := @QuerySSLPort;
 {$ELSE}
   FHttp.OnCommandGet := OnCommandProcess;
   FHttp.OnCommandOther := OnCommandProcess;
+  FHttp.OnCreatePostStream := OnCreatePostStream;
   FHttp.OnParseAuthentication := OnParseAuthentication;
   FHttp.OnQuerySSLPort := QuerySSLPort;
   FHandlerSSL.OnGetPassword := Self.SSL.FSSLOptions.GetPassword;
@@ -223,10 +231,11 @@ begin
           if Authorization.AuthType = ratNone then
             DecodeAuth(vRequest);
 
-          Params.CompressType := ContentCompress;
-          Params.CriptoOptions.CriptType := ContentCripto;
-
-          RequestStream := ARequestInfo.PostStream;
+          { lent, not copied: Indy frees PostStream only after this callback
+            returns, and it is a stream of Indy's own making (or ours, from
+            OnCreatePostStream) that nobody reads again - so the cipher may
+            work on it in place }
+          SetWireBody(ARequestInfo.PostStream, boBorrowedWritable);
 
           Host := ARequestInfo.Host;
           vInt := Pos('/', ARequestInfo.Version);
@@ -241,10 +250,8 @@ begin
             Protocol := '1.0';
           end;
 
-          // limpando para economia de memoria
-          if (ARequestInfo.PostStream <> nil) then
-            ARequestInfo.PostStream.Size := 0;
-
+          { PostStream is NOT emptied here any more: it is the body now, and
+            the params read from it until the request is freed }
           ARequestInfo.RawHeaders.Clear;
           ARequestInfo.CustomHeaders.Clear;
           ARequestInfo.Cookies.Clear;
@@ -256,6 +263,14 @@ begin
 
       with vResponse do
       begin
+        { the body first, handed to Indy at once so nothing can leak it: only
+          after TakeWireStream do ContentEncoding and ContentType say what
+          was really done (a JPEG goes out uncompressed) }
+        AResponseInfo.ContentStream := TakeWireStream;
+        if AResponseInfo.ContentStream = nil then
+          AResponseInfo.ContentStream := TMemoryStream.Create;
+        AResponseInfo.FreeContentStream := True;
+
         AResponseInfo.ResponseNo := StatusCode;
 
         AResponseInfo.Server := 'RAL_Indy';
@@ -299,15 +314,9 @@ begin
           FreeAndNil(vCookies);
         end;
 
-        AResponseInfo.ContentStream := ResponseStream;
         AResponseInfo.ContentType := ContentType;
         AResponseInfo.ContentDisposition := ContentDisposition;
         AResponseInfo.CloseConnection := not vKeepAlive;
-
-        if AResponseInfo.ContentStream = nil then
-          AResponseInfo.ContentStream := TMemoryStream.Create;
-
-        AResponseInfo.FreeContentStream := True;
 
         AResponseInfo.WriteContent;
       end;
@@ -322,6 +331,22 @@ begin
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
+end;
+
+procedure TRALIndyServer.OnCreatePostStream(AContext: TIdContext;
+  AHeaders: TIdHeaderList; var VPostStream: TStream);
+var
+  vSize, vSpool: Int64RAL;
+  vLimits: TRALServerPlugin;
+begin
+  vSize := StrToInt64Def(Trim(AHeaders.Values['Content-Length']), -1);
+  vSpool := 0;
+  vLimits := FindPlugin(TRALLimitsPlugin);
+  if vLimits <> nil then
+    vSpool := TRALLimitsPlugin(vLimits).SpoolAbove;
+
+  if (vSize < 0) or (vSize > RALChunkAbove) or ((vSpool > 0) and (vSize > vSpool)) then
+    VPostStream := TRALBodyStream.Create(vSize, vSpool);
 end;
 
 procedure TRALIndyServer.OnParseAuthentication(AContext: TIdContext;

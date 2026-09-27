@@ -189,7 +189,6 @@ end;
 procedure TRALSwaggerModule.SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vHTML: TStringList;
-  vStream: TMemoryStream;
   vURL: StringRAL;
 begin
   AResponse.ContentType := rctTEXTHTML;
@@ -222,14 +221,9 @@ begin
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
-    vStream := TMemoryStream.Create;
-    try
-      vHTML.SaveToStream(vStream);
-      vStream.Position := 0;
-      AResponse.ResponseStream := vStream;
-    finally
-      FreeAndNil(vStream);
-    end;
+    { straight into the body the response sends: it went through a
+      TMemoryStream that ResponseStream := then copied }
+    vHTML.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vHTML);
   end;
@@ -278,7 +272,6 @@ end;
 
 procedure TRALSwaggerModule.SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vStream: TMemoryStream;
   vCSS: TStringList;
 begin
   AResponse.ContentType := rctTEXTCSS;
@@ -302,14 +295,9 @@ begin
     vCSS.Add('    background: #fafafa;');
     vCSS.Add('}');
 
-    vStream := TMemoryStream.Create;
-    try
-      vCSS.SaveToStream(vStream);
-      vStream.Position := 0;
-      AResponse.ResponseStream := vStream;
-    finally
-      FreeAndNil(vStream);
-    end;
+    { straight into the body the response sends: it went through a
+      TMemoryStream that ResponseStream := then copied }
+    vCSS.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vCSS);
   end;
@@ -317,7 +305,6 @@ end;
 
 procedure TRALSwaggerModule.SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vStream: TMemoryStream;
   vScript: TStringList;
 begin
   AResponse.ContentType := rctTEXTJAVASCRIPT;
@@ -347,14 +334,9 @@ begin
     vScript.Add('  })');
     vScript.Add('};');
 
-    vStream := TMemoryStream.Create;
-    try
-      vScript.SaveToStream(vStream);
-      vStream.Position := 0;
-      AResponse.ResponseStream := vStream;
-    finally
-      FreeAndNil(vStream);
-    end;
+    { straight into the body the response sends: it went through a
+      TMemoryStream that ResponseStream := then copied }
+    vScript.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vScript);
   end;
@@ -362,7 +344,6 @@ end;
 
 procedure TRALSwaggerModule.SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
 var
-  vMem: TStream;
   vSwagger: TRALSwaggerExporter;
 begin
   if FileExists(FSwaggerFile) then
@@ -375,15 +356,11 @@ begin
     vSwagger := TRALSwaggerExporter.Create;
     try
       vSwagger.SwaggerModule := Self;
-      vMem := vSwagger.ExportToStream(Server);
-      try
-        { it was ContentEncoding: "Content-Encoding: application/json" is
-          not a compression a client knows, and the JSON went out untyped }
-        AResponse.ContentType := rctAPPLICATIONJSON;
-        AResponse.ResponseStream := vMem;
-      finally
-        FreeAndNil(vMem);
-      end;
+      { it was ContentEncoding: "Content-Encoding: application/json" is
+        not a compression a client knows, and the JSON went out untyped }
+      AResponse.ContentType := rctAPPLICATIONJSON;
+      { straight into the body the response sends, no copy }
+      vSwagger.ExportToStream(Server, AResponse.BodyStream);
     finally
       FreeAndNil(vSwagger);
     end;

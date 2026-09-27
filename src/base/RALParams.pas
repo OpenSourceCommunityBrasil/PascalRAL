@@ -48,6 +48,10 @@ type
       things slower instead of faster because the threads queue on the memory
       manager. A stream is now built only when somebody actually asks for one. }
     FContent: TStream;
+    { False when FContent was lent (BorrowStream): a view over the engine's
+      buffer or over the request's decoded body, which this param must not
+      free - and which is read-only }
+    FOwnsContent: Boolean;
     FText: StringRAL;
     FIsText: Boolean;
     FContentType: StringRAL;
@@ -70,6 +74,8 @@ type
     function ContentText: StringRAL;
     /// Moves a text value into a stream, for the few callers that need one.
     procedure NeedStream;
+    /// Drops the content: frees it when it is this param's own
+    procedure FreeContent;
     procedure SetAsBoolean(const AValue: Boolean);
     procedure SetAsDouble(const AValue: DoubleRAL);
     procedure SetAsInteger(const AValue: IntegerRAL);
@@ -153,6 +159,17 @@ type
       was created for the param anyway (DecodeBody's decrypted or inflated
       body), where the copy only cost memory and time }
     procedure AdoptStream(AStream: TStream);
+    { Takes AStream as the content WITHOUT owning it: the lender keeps it alive
+      for as long as this param lives, and nobody writes to it. How a received
+      body reaches the params without a copy (TRALParams.DecodeBody) }
+    procedure BorrowStream(AStream: TStream);
+    { The content as a stream the CALLER owns, for the body that goes on the
+      wire (TRALParams.TakeWireStream): a text value comes as a view that holds
+      the string, nothing copied. With AConsume the param's own stream moves
+      out (the param is left empty) and a lent one is copied, so the result
+      stands on its own; without, it is a view that is valid while this param
+      lives }
+    function TakeContent(AConsume: Boolean): TStream;
     function SaveToStream: TStream; overload;
     procedure SaveToStream(AStream: TStream); overload;
     function Size: Int64;
@@ -172,7 +189,11 @@ type
     property ContentSize: Int64RAL read GetContentSize;
     property ContentType: StringRAL read FContentType write FContentType;
     property FileName: StringRAL read FFileName write FFileName;
+    /// True while the value is kept as text (AsString), False when it is a stream
+    property IsText: Boolean read FIsText;
     property Kind: TRALParamKind read FKind write FKind;
+    /// False for a lent content (BorrowStream): read-only, freed by its lender
+    property OwnsContent: Boolean read FOwnsContent;
     property ParamName: StringRAL read FParamName write FParamName;
   end;
 
@@ -198,6 +219,39 @@ type
     FCriptoOptions: TRALCriptoOptions;
     FNextParam: IntegerRAL;
     FParams: TList;
+    { the streams the body params are windows of, freed after them: the
+      received body, or the buffer it was decrypted in }
+    FBuffers: TList;
+    FDecoded: TStream;
+    { FDecoded is the content of the lone body param: whoever writes that param
+      again frees it, so it is looked up before being handed out }
+    FDecodedIsParam: Boolean;
+    FSpoolAbove: Int64RAL;
+    FSkipCompressedTypes: Boolean;
+    FSkipCompressTypes: TStrings;
+    /// frees FBuffers and forgets FDecoded
+    procedure ClearBuffers;
+    function GetDecoded: TStream;
+    { a cipher on CriptoOptions, nil when there is none. Encoding ignores a key
+      of blanks, as it always did; decoding only an empty one }
+    function NewCipher(AEncoding: boolean): TRALCriptoAES;
+    { The plain body as a stream the CALLER owns, or nil when there is none:
+      the lone body param itself, the form as text, or the multipart as a
+      TRALConcatStream. Nothing is copied - see TRALParam.TakeContent for
+      AConsume. Sets AContentType/AContentDisposition as EncodeBody always did }
+    function PrepareBody(var AContentType, AContentDisposition: StringRAL;
+      ACompressMultipart, AConsume: boolean): TStream;
+    { The compression the body will really get: CompressType, except none for
+      a form or multipart on the request path (see EncodeBody), for a type
+      already compressed (SkipCompressedTypes/SkipCompressTypes) and when the
+      compressor is not linked. Writes it back to CompressType, which is where
+      the caller learns what to put in Content-Encoding }
+    function EffectiveCompress(const AContentType: StringRAL;
+      ACompressMultipart: boolean): TRALCompressType;
+    { ASource, plain, compressed and/or encrypted into ADest - straight into
+      it, with the AES working in place after the compressor }
+    procedure WriteTransformed(ASource, ADest: TStream; ACompress: TRALCompressType;
+      var AContentType: StringRAL; ACompressMultipart: boolean);
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
@@ -317,9 +371,17 @@ type
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
     /// Returns total ammount of RALParams matching multiple kinds.
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
-    /// Returns a TStream with the filtered Stream body contents.
+    /// Returns a TStream with the filtered Stream body contents. ASource is
+    /// copied once (boCopy): the caller keeps it and may free it right after
     function DecodeBody(ASource: TStream; const AContentType: StringRAL;
                         const AContentDisposition: StringRAL = ''): TStream; overload;
+    { The body the engine received, decrypted and decompressed into ONE stream
+      that the body params read from - a window for each multipart part, the
+      stream itself for a lone body - with no copy of ASource unless
+      AOwnership is boCopy (see TRALBodyOwnership). Decrypts in place when the
+      stream may be written. Returns nil; Decoded is the decoded body }
+    function DecodeBody(ASource: TStream; const AContentType, AContentDisposition: StringRAL;
+                        AOwnership: TRALBodyOwnership): TStream; overload;
     /// Returns a TStream with the filtered String body contents.
     function DecodeBody(const ASource, AContentType: StringRAL;
                         const AContentDisposition: StringRAL = ''): TStream; overload;
@@ -335,6 +397,27 @@ type
       flag is read. Everything else keeps compressing as it always did. }
     function EncodeBody(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart: boolean = True): TStream;
+    { The body, compressed and/or encrypted, written into ADest where it is.
+      The params are left as they are }
+    procedure EncodeInto(ADest: TStream; var AContentType, AContentDisposition: StringRAL;
+      ACompressMultipart: boolean = True);
+    { The body as it is, neither compressed nor encrypted, as a stream the
+      CALLER frees - a view: valid while the params live, and nothing copied.
+      nil when there is no body. What reads back what a handler answered }
+    function PlainBody(var AContentType, AContentDisposition: StringRAL): TStream;
+    { The body for the wire, as a stream the CALLER owns, built once: with no
+      compression and no cipher it is the body itself - the lone param's
+      stream moved out, a view on its text, the multipart as a
+      TRALConcatStream - and nothing is copied. With AConsume the params give
+      their streams away and the result stands on its own (a server response,
+      which an engine may send after the response is freed); without, it is
+      valid while the params live (a client request, resent on a retry) }
+    function TakeWireStream(var AContentType, AContentDisposition: StringRAL;
+      ACompressMultipart, AConsume: boolean): TStream;
+    /// TakeWireStream as a RawByteString, for the engines that send one:
+    /// a lone text body with no transform is the param's string itself
+    function TakeWireString(var AContentType, AContentDisposition: StringRAL;
+      ACompressMultipart, AConsume: boolean): RawByteString;
     /// Retuns the internal Enumerator type to allow for..in loops
     function GetEnumerator: TEnumerator; inline;
     /// creates and returns an empty param for a more flexible way of coding.
@@ -356,6 +439,15 @@ type
     property Get[AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
     property GetKind[AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
+    { The body received, decoded (DecodeBody): what RequestStream on the
+      server and ResponseStream on the client read. Owned by the params }
+    property Decoded: TStream read GetDecoded;
+    /// Bodies above this size are spooled to a temporary file (0: never)
+    property SpoolAbove: Int64RAL read FSpoolAbove write FSpoolAbove;
+    /// Encoding skips the built-in list of already compressed types
+    property SkipCompressedTypes: Boolean read FSkipCompressedTypes write FSkipCompressedTypes;
+    /// More types encoding does not compress; referenced, not owned
+    property SkipCompressTypes: TStrings read FSkipCompressTypes write FSkipCompressTypes;
   published
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
@@ -552,6 +644,7 @@ constructor TRALParam.Create;
 begin
   inherited;
   FContent := nil;
+  FOwnsContent := True;
   FText := '';
   FIsText := False;
   FContentType := rctTEXTPLAIN;
@@ -560,8 +653,62 @@ end;
 
 destructor TRALParam.Destroy;
 begin
-  FreeAndNil(FContent);
+  FreeContent;
   inherited;
+end;
+
+procedure TRALParam.FreeContent;
+begin
+  if FOwnsContent then
+    FreeAndNil(FContent)
+  else
+    FContent := nil;
+  FOwnsContent := True;
+end;
+
+procedure TRALParam.BorrowStream(AStream: TStream);
+begin
+  FreeContent;
+  FText := '';
+  FIsText := False;
+  FContent := AStream;
+  FOwnsContent := False;
+  if FContent <> nil then
+    FContent.Position := 0;
+
+  // same rule as SetAsStream: new content, no stale typed marker
+  if IsTyped then
+    FContentType := rctAPPLICATIONOCTETSTREAM;
+end;
+
+function TRALParam.TakeContent(AConsume: Boolean): TStream;
+var
+  vBody: TRALBodyStream;
+begin
+  if FIsText then
+    Result := TRALStringView.Create(FText)
+  else if FContent = nil then
+    Result := TMemoryStream.Create
+  else if AConsume and FOwnsContent then
+  begin
+    Result := FContent;
+    FContent := nil;
+  end
+  else if AConsume then
+  begin
+    { lent by somebody who may not outlive the caller: the one copy left }
+    vBody := TRALBodyStream.Create(FContent.Size);
+    try
+      FContent.Position := 0;
+      RALCopyStream(FContent, vBody, FContent.Size);
+      Result := vBody.Detach;
+    finally
+      vBody.Free;
+    end;
+  end
+  else
+    Result := RALStreamSlice(FContent, 0, FContent.Size);
+  Result.Position := 0;
 end;
 
 function TRALParam.AsDateTime: TDateTime;
@@ -804,8 +951,7 @@ end;
 
 procedure TRALParam.OpenFile(const AFileName: StringRAL);
 begin
-  if FContent <> nil then
-    FreeAndNil(FContent);
+  FreeContent;
 
   FText := '';
   FIsText := False;
@@ -967,10 +1113,11 @@ end;
 
 function TRALParam.ContentText: StringRAL;
 begin
+  { a body the engine delivered as a string is read back as that string }
   if FIsText then
     Result := FText
   else
-    Result := StreamToString(FContent);
+    Result := RALStreamText(FContent);
 end;
 
 procedure TRALParam.NeedStream;
@@ -979,6 +1126,7 @@ begin
     Exit;
   FIsText := False;
   FContent := StringToStreamUTF8(FText);
+  FOwnsContent := True;
   FText := '';
 end;
 
@@ -1023,8 +1171,12 @@ begin
     first would be the allocation this class now exists to avoid }
   if FIsText then
   begin
+    { Pointer(FText)^, not FText[1]: indexing the string for an untyped
+      argument makes Delphi copy the whole string first when it is shared -
+      and a text body always is, with the application's own variable.
+      Measured: 8 MB more for an 8 MB body }
     if FText <> '' then
-      AStream.WriteBuffer(FText[POSINISTR], Length(FText));
+      AStream.WriteBuffer(Pointer(FText)^, Length(FText));
     Exit;
   end;
 
@@ -1109,8 +1261,15 @@ end;
 
 procedure TRALParam.SetAsStream(const AValue: TStream);
 begin
-  if FContent <> nil then
-    FreeAndNil(FContent);
+  { AValue may be this param's own lent content (Content): copy it before
+    letting go of it }
+  if (AValue <> nil) and (AValue = FContent) then
+  begin
+    AValue.Position := 0;
+    AdoptStream(TRALStringStream.Create(AValue));
+    Exit;
+  end;
+  FreeContent;
 
   FText := '';
   FIsText := False;
@@ -1130,8 +1289,9 @@ end;
 
 procedure TRALParam.AdoptStream(AStream: TStream);
 begin
-  if FContent <> nil then
-    FreeAndNil(FContent);
+  if AStream <> FContent then
+    FreeContent;
+  FOwnsContent := True;
 
   FText := '';
   FIsText := False;
@@ -1146,8 +1306,7 @@ end;
 
 procedure TRALParam.SetAsString(const AValue: StringRAL);
 begin
-  if FContent <> nil then
-    FreeAndNil(FContent);
+  FreeContent;
 
   FText := AValue;
   FIsText := True;
@@ -1375,6 +1534,38 @@ begin
     TObject(FParams.Items[FParams.Count - 1]).Free;
     FParams.Delete(FParams.Count - 1);
   end;
+  { after the params: they may be windows over these }
+  ClearBuffers;
+end;
+
+function TRALParams.GetDecoded: TStream;
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+begin
+  Result := FDecoded;
+  if (Result = nil) or not FDecodedIsParam then
+    Exit;
+  for vInt := 0 to Pred(FParams.Count) do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if (not vParam.FIsText) and (vParam.FContent = Result) then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+procedure TRALParams.ClearBuffers;
+begin
+  FDecoded := nil;
+  FDecodedIsParam := False;
+  if FBuffers = nil then
+    Exit;
+  while FBuffers.Count > 0 do
+  begin
+    TObject(FBuffers.Items[FBuffers.Count - 1]).Free;
+    FBuffers.Delete(FBuffers.Count - 1);
+  end;
 end;
 
 procedure TRALParams.ClearParams(AKind: TRALParamKind);
@@ -1393,6 +1584,9 @@ begin
     end;
     vInt := vInt - 1;
   end;
+  { the body params were the only readers of the decoded body }
+  if AKind = rpkBODY then
+    ClearBuffers;
 end;
 
 procedure TRALParams.AppendParams(ASource: TStringList; AKind: TRALParamKind);
@@ -1747,127 +1941,247 @@ begin
   end;
 end;
 
+function TRALParams.NewCipher(AEncoding: boolean): TRALCriptoAES;
+begin
+  Result := nil;
+  if (FCriptoOptions.CriptType = crNone) or (FCriptoOptions.Key = '') or
+     (AEncoding and (Trim(FCriptoOptions.Key) = '')) then
+    Exit;
+  Result := TRALCriptoAES.Create;
+  case FCriptoOptions.CriptType of
+    crAES128: Result.AESType := tAES128;
+    crAES192: Result.AESType := tAES192;
+    crAES256: Result.AESType := tAES256;
+  end;
+  Result.Key := FCriptoOptions.Key;
+end;
+
+{ a stream the body decoder may overwrite: not a view of someone else's memory }
+function CanWriteBody(AStream: TStream): boolean;
+begin
+  Result := not ((AStream is TRALMemoryView) or (AStream is TRALStreamSlice) or
+    (AStream is TRALConcatStream));
+end;
+
 function TRALParams.DecodeBody(ASource: TStream;
   const AContentType, AContentDisposition: StringRAL): TStream;
+begin
+  Result := DecodeBody(ASource, AContentType, AContentDisposition, boCopy);
+end;
+
+function TRALParams.DecodeBody(ASource: TStream;
+  const AContentType, AContentDisposition: StringRAL;
+  AOwnership: TRALBodyOwnership): TStream;
 var
   vParam: TRALParam;
   vDecoder: TRALMultipartDecoder;
-  vTemp, vCur: TStream;
+  vCur, vNew: TStream;
+  vBody: TRALBodyStream;
+  vChain: TList;
+  vCurOwned, vWritable, vHanded: Boolean;
   vCTMultipart: StringRAL;
-  vOwned: Boolean;
+  vCipher: TRALCriptoAES;
+  vClass: TRALCompressClass;
+  vComp: TRALCompress;
+  vLen: Int64RAL;
+
+  { the streams vCur depends on (the buffer a window was decrypted in) }
+  procedure DropChain;
+  begin
+    while vChain.Count > 0 do
+    begin
+      TObject(vChain.Items[vChain.Count - 1]).Free;
+      vChain.Delete(vChain.Count - 1);
+    end;
+  end;
+
+  procedure KeepChain;
+  begin
+    while vChain.Count > 0 do
+    begin
+      FBuffers.Add(vChain.Items[0]);
+      vChain.Delete(0);
+    end;
+  end;
+
+  { vCur is replaced by a stream that depends on nothing before it }
+  procedure Replace(ANew: TStream);
+  begin
+    if vCurOwned then
+      vChain.Add(vCur);
+    DropChain;
+    vCur := ANew;
+    vCurOwned := True;
+    vWritable := True;
+  end;
+
 begin
-  { Returns nil: the body ends up in the params, nothing else. It used to
-    copy ASource into a fresh TMemoryStream, decrypt into another, inflate
-    into another, copy THAT into the body param and hand the last stage back
-    to the caller, who kept it alive next to the param's copy - a 100 MB
-    upload went through half a gigabyte. Now the stages run on the caller's
-    stream until a transform has to produce a new one; that one is owned
-    here and handed to the param without a copy (AdoptStream). The request
-    and client response rebuild their RequestStream/ResponseStream from the
-    params on demand, which is what they already did for Sagui. }
+  { Returns nil: the body ends up in the params, nothing else. It used to be
+    copied into a fresh stream, decrypted into another, inflated into
+    another and copied into the body param; since 1.3 the engine's buffer is
+    read where it is (boBorrowed), the cipher works on it in place when it may
+    be written, and the one decoded body is shared by the params as windows
+    (.agents/PLANO_STREAM_UNICO.md) }
   Result := nil;
+  vParam := nil;
   if ASource = nil then
     Exit;
 
-  ASource.Position := 0;
-  vCur := ASource;
-  vOwned := False;
-
-  if (FCriptoOptions.CriptType <> crNone) and (FCriptoOptions.Key <> '') then
+  if AOwnership = boCopy then
   begin
-    { the finally is what keeps a failing transform from leaking its input: a
-      raise inside Decrypt/Decompress/Compress/Encrypt used to leave the
-      intermediate behind (heaptrc caught it when libzstd was missing) }
+    vBody := TRALBodyStream.Create(ASource.Size, FSpoolAbove);
     try
-      vTemp := Decrypt(vCur);
+      ASource.Position := 0;
+      RALCopyStream(ASource, vBody, ASource.Size);
+      vCur := vBody.Detach;
     finally
-      if vOwned then
-        FreeAndNil(vCur);
+      vBody.Free;
     end;
-    vCur := vTemp;
-    vOwned := True;
-  end;
-
-  { A body that is ALREADY multipart is not decompressed, whatever the settings
-    say. EncodeBody stopped compressing multipart (the reason is written there),
-    and this side has no header to learn that from when both ends are two plain
-    TRALParams in the same process - they are born with CompressType = gzip, so
-    it would try to inflate a body that was never deflated.
-
-    Sniffing the bytes rather than trusting the flag also keeps senders from
-    before that change working: their multipart really is compressed, a deflate
-    stream starts with 0x1F 0x8B, and only a plain one starts with the two
-    dashes of a delimiter. }
-  { The bytes decide, not the header: a body that opens with a delimiter was
-    never compressed, whatever Content-Encoding claims. This must not depend on
-    the header saying multipart either - an encrypted multipart travels as
-    octet-stream, and the only thing that tells it apart from a deflate stream
-    is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
-  if (FCompressType <> ctNone) and not StartsWithDelim(vCur) then
+    vCurOwned := True;
+  end
+  else
   begin
-    try
-      vTemp := Decompress(vCur);
-    finally
-      if vOwned then
-        FreeAndNil(vCur);
-    end;
-    vCur := vTemp;
-    vOwned := True;
+    vCur := ASource;
+    vCurOwned := AOwnership = boOwned;
   end;
+  vWritable := (AOwnership <> boBorrowed) and CanWriteBody(vCur);
+  vHanded := False;
 
-  { Multipart is recognised by the header OR, when it was encrypted, by the
-    bytes: such a body travels declared as octet-stream, because announcing
-    multipart over ciphertext makes a server that parses natively read the
-    ciphertext as parts and drop everything. The header is gone, the boundary is
-    not - the first line of the plaintext is the delimiter. }
-  vCTMultipart := '';
-  if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
-    vCTMultipart := AContentType
-  else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(vCur) then
-    vCTMultipart := BodyContentType(vCur);
-
+  vChain := TList.Create;
   try
-    if vCTMultipart <> '' then
-    begin
-      vDecoder := TRALMultipartDecoder.Create;
-      try
-        vDecoder.ContentType := vCTMultipart;
-        vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
-        vDecoder.ProcessMultiPart(vCur);
-      finally
-        FreeAndNil(vDecoder);
-      end;
-    end
-    else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
-    begin
-      DecodeFields(StreamToString(vCur));
-    end
-    else
-    begin
-      vParam := NewParam;
-      vParam.ParamName := 'ral_body';
-      vParam.FileName := '';
-      vParam.ContentDisposition := AContentDisposition;
+    try
+      vCur.Position := 0;
 
-      { Content first, ContentType after - the order is load-bearing. A single
-        body param travels with its own content type as the HTTP header, so this
-        is what restores a typed marker on the way in; assigning the type before
-        the stream would clear it again (SetAsStream drops it). Same ordering as
-        TRALParam.Clone. A stream born here (decrypted or inflated) is handed
-        over; the caller's own stream has to be copied, it stays theirs }
-      if vOwned then
+      vCipher := NewCipher(False);
+      if vCipher <> nil then
+        try
+          if vWritable then
+          begin
+            { in place: the plaintext lands on the ciphertext, and the body is
+              a window over it from after the IV }
+            vLen := vCipher.DecryptInPlace(vCur);
+            if vCurOwned then
+              vChain.Add(vCur);
+            vCur := RALStreamSlice(vCur, 16, vLen);
+            vCurOwned := True;
+            vWritable := False;
+          end
+          else
+          begin
+            vBody := TRALBodyStream.Create(vCur.Size, FSpoolAbove);
+            try
+              vCipher.DecryptTo(vCur, vBody);
+              vNew := vBody.Detach;
+            finally
+              vBody.Free;
+            end;
+            Replace(vNew);
+          end;
+        finally
+          vCipher.Free;
+        end;
+
+      { A body that is ALREADY multipart is not decompressed, whatever the
+        settings say. EncodeBody stopped compressing multipart (the reason is
+        written there), and this side has no header to learn that from when
+        both ends are two plain TRALParams in the same process - they are born
+        with CompressType = gzip, so it would try to inflate a body that was
+        never deflated. The bytes decide, not the header: a body that opens
+        with a delimiter was never compressed, whatever Content-Encoding
+        claims - an encrypted multipart travels as octet-stream, and only a
+        plain one starts with the two dashes of a delimiter }
+      if (FCompressType <> ctNone) and not StartsWithDelim(vCur) then
       begin
-        vParam.AdoptStream(vCur);
-        vOwned := False;
+        vClass := GetCompressClass(FCompressType);
+        if vClass <> nil then
+        begin
+          vComp := vClass.Create;
+          try
+            vComp.Format := FCompressType;
+            { sized once when gzip says how big it inflates to }
+            vBody := TRALBodyStream.Create(RALInflatedSizeHint(vCur, FCompressType),
+              FSpoolAbove);
+            try
+              vComp.DecompressTo(vCur, vBody);
+              vNew := vBody.Detach;
+            finally
+              vBody.Free;
+            end;
+          finally
+            vComp.Free;
+          end;
+          Replace(vNew);
+        end;
+      end;
+
+      { Multipart is recognised by the header OR, when it was encrypted, by
+        the bytes: such a body travels declared as octet-stream, because
+        announcing multipart over ciphertext makes a server that parses
+        natively read the ciphertext as parts and drop everything. The header
+        is gone, the boundary is not - the first line of the plaintext is the
+        delimiter. }
+      vCTMultipart := '';
+      if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
+        vCTMultipart := AContentType
+      else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(vCur) then
+        vCTMultipart := BodyContentType(vCur);
+
+      if vCTMultipart <> '' then
+      begin
+        { each part is a window over the decoded body, which stays alive with
+          the params }
+        vDecoder := TRALMultipartDecoder.Create;
+        try
+          vDecoder.ContentType := vCTMultipart;
+          vDecoder.SliceParts := True;
+          vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
+          vDecoder.ProcessMultiPart(vCur);
+        finally
+          FreeAndNil(vDecoder);
+        end;
+        if vCurOwned then
+          vChain.Add(vCur);
+      end
+      else if Pos(rctAPPLICATIONXWWWFORMURLENCODED, LowerCase(AContentType)) > 0 then
+      begin
+        DecodeFields(StreamToString(vCur));
+        if vCurOwned then
+          vChain.Add(vCur);
       end
       else
-        vParam.AsStream := vCur;
-      vParam.ContentType := AContentType;
-      vParam.Kind := rpkBODY;
+      begin
+        vParam := NewParam;
+        vParam.ParamName := 'ral_body';
+        vParam.FileName := '';
+        vParam.ContentDisposition := AContentDisposition;
+
+        { Content first, ContentType after - the order is load-bearing. A single
+          body param travels with its own content type as the HTTP header, so
+          this is what restores a typed marker on the way in; assigning the
+          type before the stream would clear it again (SetAsStream drops it).
+          Same ordering as TRALParam.Clone }
+        if vCurOwned then
+          vParam.AdoptStream(vCur)
+        else
+          vParam.BorrowStream(vCur);
+        vParam.ContentType := AContentType;
+        vParam.Kind := rpkBODY;
+      end;
+      vHanded := True;
+      KeepChain;
+      FDecoded := vCur;
+      FDecodedIsParam := vParam <> nil;
+    except
+      { what was built stays with the params until they go, never freed here:
+        a multipart that failed half way has already handed windows over it
+        to the parts it read }
+      if vCurOwned and not vHanded then
+        vChain.Add(vCur);
+      KeepChain;
+      raise;
     end;
   finally
-    if vOwned then
-      FreeAndNil(vCur);
+    vChain.Free;
   end;
 end;
 
@@ -1880,24 +2194,20 @@ begin
   if ASource = '' then
     Exit;
 
-  // deve manter TStringStream pois nesse ponto o ASource ainda pode estar
-  // compress e criptografado
-  vStream := TStringStream.Create(ASource);
-  try
-    Result := DecodeBody(vStream, AContentType, AContentDisposition);
-  finally
-    FreeAndNil(vStream);
-  end;
+  { a view that holds the string: nothing copied and no code page on the way
+    (a TStringStream converted on the compilers without its RawByteString
+    overload, and copied on all). The params own the view }
+  vStream := TRALStringView.Create(ASource);
+  Result := DecodeBody(vStream, AContentType, AContentDisposition, boOwned);
 end;
 
-function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL;
-  ACompressMultipart: boolean): TStream;
+function TRALParams.PrepareBody(var AContentType, AContentDisposition: StringRAL;
+  ACompressMultipart, AConsume: boolean): TStream;
 var
   vMultPart: TRALMultipartEncoder;
   vInt1, vInt2: integer;
   vItem: TRALParam;
   vString, vValor, vFile: StringRAL;
-  vTemp: TStream;
   vFormAsMultipart: boolean;
 begin
   Result := nil;
@@ -1910,10 +2220,10 @@ begin
     libmicrohttpd under Sagui both do, before any RAL layer runs - reads the
     ciphertext as the form, finds no field and throws the body away: Indy frees
     PostStream, Sagui hands over an empty payload. An encrypted multipart is
-    already declared as octet-stream (see the end of this function), so nobody
-    parses it natively, and DecodeBody finds the delimiter once it has
-    decrypted. RAL's cipher only ever talks to RAL, so nothing outside loses
-    the urlencoded form it would have expected. }
+    already declared as octet-stream (see WriteTransformed), so nobody parses it
+    natively, and DecodeBody finds the delimiter once it has decrypted. RAL's
+    cipher only ever talks to RAL, so nothing outside loses the urlencoded
+    form it would have expected. }
   vFormAsMultipart := (not ACompressMultipart) and (vInt1 = 0) and (vInt2 > 0) and
     (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '');
 
@@ -1933,7 +2243,7 @@ begin
     if Pos(StringRAL('ral_param'), vItem.ParamName) > 0 then
       vItem.ParamName := 'ral_body';
 
-    Result := vItem.SaveToStream;
+    Result := vItem.TakeContent(AConsume);
 
     AContentType := vItem.ContentType;
     AContentDisposition := vItem.ContentDisposition;
@@ -1959,8 +2269,7 @@ begin
         vString := vString + vValor;
       end;
     end;
-    Result := TStringStream.Create(vString);
-    Result.Position := 0;
+    Result := TRALStringView.Create(vString);
 
     AContentType := rctAPPLICATIONXWWWFORMURLENCODED;
   end
@@ -1996,19 +2305,32 @@ begin
             it: fields on their own travel urlencoded, a body part is always
             named, and the one fields-only multipart - an encrypted form - is
             declared octet-stream, which libmicrohttpd leaves alone. }
-          vFile := Index[vInt1].FileName;
+          vFile := vItem.FileName;
           if (vFile = '') and (vItem.Kind = rpkBODY) then
-            vFile := Index[vInt1].ParamName;
-          vMultPart.AddStream(Index[vInt1].ParamName, Index[vInt1].Content,
-            vFile, Index[vInt1].ContentType);
+            vFile := vItem.ParamName;
+          { every part is a stream of its own - a view, or the param's stream
+            moved out - owned by the multipart it goes into }
+          vMultPart.AddStream(vItem.ParamName, vItem.TakeContent(AConsume),
+            vFile, vItem.ContentType, True);
         end;
       end;
-      Result := vMultPart.AsStream;
+      Result := vMultPart.AsConcatStream;
       AContentType := vMultPart.ContentType;
     finally
       FreeAndNil(vMultPart);
     end;
   end;
+end;
+
+function TRALParams.PlainBody(var AContentType, AContentDisposition: StringRAL): TStream;
+begin
+  Result := PrepareBody(AContentType, AContentDisposition, True, False);
+end;
+
+function TRALParams.EffectiveCompress(const AContentType: StringRAL;
+  ACompressMultipart: boolean): TRALCompressType;
+begin
+  Result := FCompressType;
 
   { A multipart body goes out uncompressed, on purpose.
 
@@ -2029,35 +2351,67 @@ begin
     and libmicrohttpd parse it before anything decompresses, read gzip bytes
     as the form and lose every field - a lone AddField included, which before
     reached a RAL server's Body because it travelled as a raw body. }
-  if (not ACompressMultipart) and (FCompressType <> ctNone) and
+  if (not ACompressMultipart) and (Result <> ctNone) and
      ((Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) or
       (Pos(StringRAL(rctAPPLICATIONXWWWFORMURLENCODED), LowerCase(AContentType)) > 0)) then
-    { and the caller hears about it through CompressType: whoever fills
-      Content-Encoding reads it back from here, and a header promising gzip over
-      bytes that were never compressed makes the other side fail to inflate }
-    FCompressType := ctNone;
+    Result := ctNone;
 
-  if (FCompressType <> ctNone) and (Result <> nil) then
-  begin
-    { see DecodeBody: the finally is what stops a failing transform from
-      leaking the input stream }
-    try
-      vTemp := Compress(Result);
-    finally
-      FreeAndNil(Result);
-    end;
-    Result := vTemp;
-  end;
+  { already compressed (a JPEG, a zip): compressing again gains nothing but CPU
+    and a second buffer - see RALIsCompressedType }
+  if (Result <> ctNone) and (FSkipCompressedTypes or (FSkipCompressTypes <> nil)) and
+     RALIsCompressedType(AContentType, FSkipCompressedTypes, FSkipCompressTypes) then
+    Result := ctNone;
 
-  if (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '') and
-    (Result <> nil) then
-  begin
-    try
-      vTemp := Encrypt(Result);
-    finally
-      FreeAndNil(Result);
+  { a compressor that is not linked used to make the whole body vanish (nil
+    out of Compress, and EncodeBody handed nil on): it goes uncompressed, and
+    the header says so }
+  if (Result <> ctNone) and (GetCompressClass(Result) = nil) then
+    Result := ctNone;
+
+  { and the caller hears about it through CompressType: whoever fills
+    Content-Encoding reads it back from here, and a header promising gzip over
+    bytes that were never compressed makes the other side fail to inflate }
+  FCompressType := Result;
+end;
+
+procedure TRALParams.WriteTransformed(ASource, ADest: TStream;
+  ACompress: TRALCompressType; var AContentType: StringRAL; ACompressMultipart: boolean);
+var
+  vCipher: TRALCriptoAES;
+  vComp: TRALCompress;
+  vStart: Int64RAL;
+  vIV: array[0..15] of Byte;
+begin
+  vCipher := NewCipher(True);
+  try
+    if ACompress <> ctNone then
+    begin
+      vComp := GetCompressClass(ACompress).Create;
+      try
+        vComp.Format := ACompress;
+        if vCipher <> nil then
+        begin
+          { room for the IV first: the compressor writes after it and the AES
+            then ciphers that same stream in place - no buffer in between }
+          vStart := ADest.Position;
+          FillChar(vIV, SizeOf(vIV), 0);
+          ADest.WriteBuffer(vIV, SizeOf(vIV));
+          vComp.CompressTo(ASource, ADest);
+          vCipher.EncryptInPlace(ADest, vStart);
+        end
+        else
+          vComp.CompressTo(ASource, ADest);
+      finally
+        vComp.Free;
+      end;
+    end
+    else if vCipher <> nil then
+      vCipher.EncryptTo(ASource, ADest)
+    else
+    begin
+      ASource.Position := 0;
+      RALCopyStream(ASource, ADest, ASource.Size);
     end;
-    Result := vTemp;
 
     { Ciphertext is not multipart in any sense a parser can use, so it stops
       saying it is. Announcing multipart over ciphertext made libmicrohttpd,
@@ -2067,9 +2421,132 @@ begin
       back from the first line of the plaintext, which IS the delimiter.
 
       Only on the request path, where the far end may parse on its own. }
-    if (not ACompressMultipart) and
+    if (vCipher <> nil) and (not ACompressMultipart) and
        (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
       AContentType := rctAPPLICATIONOCTETSTREAM;
+  finally
+    vCipher.Free;
+  end;
+end;
+
+procedure TRALParams.EncodeInto(ADest: TStream; var AContentType,
+  AContentDisposition: StringRAL; ACompressMultipart: boolean);
+var
+  vSource: TStream;
+begin
+  vSource := PrepareBody(AContentType, AContentDisposition, ACompressMultipart, False);
+  if vSource = nil then
+    Exit;
+  try
+    WriteTransformed(vSource, ADest,
+      EffectiveCompress(AContentType, ACompressMultipart), AContentType,
+      ACompressMultipart);
+  finally
+    vSource.Free;
+  end;
+end;
+
+function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL;
+  ACompressMultipart: boolean): TStream;
+var
+  vBody: TRALBodyStream;
+begin
+  { a new stream the caller owns, as it always was; the params are left as they
+    are. Nothing is copied on the way but the body into the result }
+  Result := nil;
+  if Count([rpkBODY, rpkFIELD]) = 0 then
+  begin
+    AContentDisposition := '';
+    Exit;
+  end;
+  vBody := TRALBodyStream.Create(-1, FSpoolAbove);
+  try
+    EncodeInto(vBody, AContentType, AContentDisposition, ACompressMultipart);
+    Result := vBody.Detach;
+  finally
+    vBody.Free;
+  end;
+end;
+
+function TRALParams.TakeWireStream(var AContentType, AContentDisposition: StringRAL;
+  ACompressMultipart, AConsume: boolean): TStream;
+var
+  vSource: TStream;
+  vCompress: TRALCompressType;
+  vExpected: Int64RAL;
+  vBody: TRALBodyStream;
+begin
+  Result := nil;
+  vSource := PrepareBody(AContentType, AContentDisposition, ACompressMultipart, AConsume);
+  if vSource = nil then
+  begin
+    { no body, so nothing was compressed: a Content-Encoding over zero bytes
+      is a lie some clients choke on }
+    FCompressType := ctNone;
+    Exit;
+  end;
+
+  vCompress := EffectiveCompress(AContentType, ACompressMultipart);
+  if (vCompress = ctNone) and
+     ((FCriptoOptions.CriptType = crNone) or (Trim(FCriptoOptions.Key) = '')) then
+  begin
+    { nothing to transform: the body itself goes out }
+    Result := vSource;
+    Result.Position := 0;
+    Exit;
+  end;
+
+  try
+    { the cipher knows its size in advance (IV, padding, MAC); a compressor
+      does not }
+    vExpected := -1;
+    if vCompress = ctNone then
+      vExpected := vSource.Size + 64;
+    vBody := TRALBodyStream.Create(vExpected, FSpoolAbove);
+    try
+      WriteTransformed(vSource, vBody, vCompress, AContentType, ACompressMultipart);
+      Result := vBody.Detach;
+    finally
+      vBody.Free;
+    end;
+  finally
+    vSource.Free;
+  end;
+end;
+
+function TRALParams.TakeWireString(var AContentType, AContentDisposition: StringRAL;
+  ACompressMultipart, AConsume: boolean): RawByteString;
+var
+  vStream: TStream;
+  vSize, vDone: Int64RAL;
+  vRead: IntegerRAL;
+begin
+  Result := '';
+  vStream := TakeWireStream(AContentType, AContentDisposition, ACompressMultipart, AConsume);
+  if vStream = nil then
+    Exit;
+  try
+    { a lone text body with no transform: the string itself, not a copy }
+    if vStream is TRALStringView then
+    begin
+      Result := TRALStringView(vStream).Text;
+      Exit;
+    end;
+    vSize := vStream.Size;
+    SetLength(Result, vSize);
+    vStream.Position := 0;
+    vDone := 0;
+    while vDone < vSize do
+    begin
+      vRead := vStream.Read((PAnsiChar(Pointer(Result)) + vDone)^, vSize - vDone);
+      if vRead <= 0 then
+        Break;
+      Inc(vDone, vRead);
+    end;
+    if vDone < vSize then
+      SetLength(Result, vDone);
+  finally
+    vStream.Free;
   end;
 end;
 
@@ -2133,6 +2610,12 @@ constructor TRALParams.Create;
 begin
   inherited;
   FParams := TList.Create;
+  FBuffers := TList.Create;
+  FDecoded := nil;
+  FDecodedIsParam := False;
+  FSpoolAbove := 0;
+  FSkipCompressedTypes := False;
+  FSkipCompressTypes := nil;
   FCriptoOptions := TRALCriptoOptions.Create;
 
   FCompressType := ctGZip;
@@ -2143,6 +2626,7 @@ destructor TRALParams.Destroy;
 begin
   ClearParams;
   FreeAndNil(FParams);
+  FreeAndNil(FBuffers);
   FreeAndNil(FCriptoOptions);
   inherited;
 end;
@@ -2390,7 +2874,10 @@ begin
   else
     vParam.ParamName := AFormData.Name;
 
-  vParam.AsStream := AFormData.AsStream;
+  { the part's content moves into the param: a window over the body when the
+    decoder was told to slice, the part's own buffer otherwise. It used to be
+    copied here, after the decoder had already copied it once }
+  vParam.AdoptStream(AFormData.ReleaseBuffer);
   vParam.FileName := AFormData.FileName;
 
   if AFormData.ContentType <> '' then

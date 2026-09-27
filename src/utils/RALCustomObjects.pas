@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALParams, RALTypes, RALConsts, RALMIMETypes, RALTools, RALCompress;
+  RALParams, RALTypes, RALConsts, RALMIMETypes, RALTools, RALCompress, RALStream;
 
 type
 
@@ -67,9 +67,43 @@ type
     procedure SetContentCripto(AValue: TRALCriptoType);
     procedure SetContentType(const AValue: StringRAL);
     procedure SetProtocol(const AValue: StringRAL);
+    { How TakeWireStream builds the body. The request side of a client keeps
+      a form or a multipart uncompressed (see TRALParams.EffectiveCompress) and
+      leaves the params as they are, since a retry sends them again; the
+      response of a server may compress anything and gives its streams away,
+      because the engine may send after the response is gone (Sagui does) }
+    function WireCompressMultipart: boolean; virtual;
+    function WireConsume: boolean; virtual;
   public
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
+
+    { ENGINE API, receiving: the body as it came off the wire, compressed and/or
+      encrypted as ContentEncoding/ContentEncription say - so those must be
+      filled first; the key is the one already in Params.CriptoOptions (the
+      crypto plugin's on a server, the client's own on a client). It is decoded
+      ONCE, into Params, and with AOwnership other than boCopy the engine's
+      buffer is not copied at all: see TRALBodyOwnership for which to pass. An
+      empty body adds nothing (an owned one is freed).
+      This is what RequestStream := (server) and ResponseStream := (client)
+      used to be for; those still work, and copy }
+    procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); overload; virtual;
+    /// The body as a string the engine holds: a view that keeps the reference, nothing copied
+    procedure SetWireBody(const ABody: RawByteString); overload;
+    { The body in memory the engine keeps for as long as this object lives
+      (Sagui's payload, a QUIC frame): a read-only view, nothing copied }
+    procedure SetWireBody(ABuffer: Pointer; ASize: Int64RAL); overload;
+    { ENGINE API, sending: the body for the wire, compressed and/or encrypted
+      as ContentCompress/ContentCripto/CriptoKey ask, as ONE stream the engine
+      frees; nil when there is no body. With no transform it is the body
+      itself, nothing copied. ContentType, ContentDisposition and
+      ContentCompress are set to what was really done - read ContentEncoding
+      AFTER this call: a type already compressed goes out as it is.
+      On a server response the params give their streams away; call it once }
+    function TakeWireStream: TStream; virtual;
+    { TakeWireStream as a string, for the engines that send one (mORMot2): a
+      lone text body with no transform is the handler's own string }
+    function TakeWireString: RawByteString; virtual;
 
     /// True for the media types a charset parameter applies to (text/*, JSON, XML, JavaScript, forms)
     class function IsTextualType(const AContentType: StringRAL): boolean;
@@ -250,6 +284,87 @@ end;
 procedure TRALHTTPHeaderInfo.SetProtocol(const AValue: StringRAL);
 begin
   FProtocolVersion := StrToRALHTTPVersion(AValue);
+end;
+
+function TRALHTTPHeaderInfo.WireCompressMultipart: boolean;
+begin
+  Result := True;
+end;
+
+function TRALHTTPHeaderInfo.WireConsume: boolean;
+begin
+  Result := True;
+end;
+
+procedure TRALHTTPHeaderInfo.SetWireBody(AStream: TStream;
+  AOwnership: TRALBodyOwnership);
+begin
+  if (AStream = nil) or (AStream.Size = 0) then
+  begin
+    if AOwnership = boOwned then
+      AStream.Free;
+    Exit;
+  end;
+  { from the headers, every time: TRALParams is born with gzip, and decoding
+    by that default instead of by what the other side said is how a plain body
+    gets inflated }
+  FParams.CompressType := ContentCompress;
+  FParams.CriptoOptions.CriptType := ContentCripto;
+  FParams.DecodeBody(AStream, FContentType, FContentDisposition, AOwnership);
+end;
+
+procedure TRALHTTPHeaderInfo.SetWireBody(const ABody: RawByteString);
+begin
+  if ABody = '' then
+    Exit;
+  SetWireBody(TRALStringView.Create(ABody), boOwned);
+end;
+
+procedure TRALHTTPHeaderInfo.SetWireBody(ABuffer: Pointer; ASize: Int64RAL);
+begin
+  if (ABuffer = nil) or (ASize <= 0) then
+    Exit;
+  { the view is ours, the memory under it is not: owned view, lent memory -
+    and a view is never written to, so the cipher works on a copy }
+  SetWireBody(TRALMemoryView.Create(ABuffer, ASize), boOwned);
+end;
+
+function TRALHTTPHeaderInfo.TakeWireStream: TStream;
+var
+  vContentType, vContentDisposition: StringRAL;
+begin
+  FParams.CompressType := ContentCompress;
+  FParams.CriptoOptions.CriptType := ContentCripto;
+  FParams.CriptoOptions.Key := FCriptoKey;
+  FParams.ContentDispositionInline := FContentDispositionInline;
+
+  vContentType := '';
+  vContentDisposition := '';
+  Result := FParams.TakeWireStream(vContentType, vContentDisposition,
+    WireCompressMultipart, WireConsume);
+  ContentType := vContentType;
+  FContentDisposition := vContentDisposition;
+  { what was done, not what was asked: a JPEG goes out uncompressed, and so
+    does a body whose compressor is not linked }
+  ContentCompress := FParams.CompressType;
+end;
+
+function TRALHTTPHeaderInfo.TakeWireString: RawByteString;
+var
+  vContentType, vContentDisposition: StringRAL;
+begin
+  FParams.CompressType := ContentCompress;
+  FParams.CriptoOptions.CriptType := ContentCripto;
+  FParams.CriptoOptions.Key := FCriptoKey;
+  FParams.ContentDispositionInline := FContentDispositionInline;
+
+  vContentType := '';
+  vContentDisposition := '';
+  Result := FParams.TakeWireString(vContentType, vContentDisposition,
+    WireCompressMultipart, WireConsume);
+  ContentType := vContentType;
+  FContentDisposition := vContentDisposition;
+  ContentCompress := FParams.CompressType;
 end;
 
 procedure TRALHTTPHeaderInfo.Clear;

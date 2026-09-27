@@ -10,7 +10,7 @@ uses
     ZStream,
   {$ENDIF}
   Classes, SysUtils, ZLib,
-  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase;
+  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase, RALStream;
 
 type
   { TRALCompressZLib }
@@ -34,27 +34,45 @@ const
 
 { TRALCompressZLib }
 
+{ the working buffer: DEFAULTBUFFERSTREAMSIZE at most, the input when smaller }
+function WorkBuffer(ASize: Int64RAL): TBytes;
+begin
+  if ASize > DEFAULTBUFFERSTREAMSIZE then
+    ASize := DEFAULTBUFFERSTREAMSIZE;
+  if ASize < 1 then
+    ASize := 1;
+  SetLength(Result, ASize);
+end;
+
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
   vBuf: TBytes;
   vZip: TStream;
   vCount: Integer;
   vSize: LongWord;
+  {$IFDEF FPC}
   vCRC32: TRALCRC32;
-  vStreamCRC32: TStream;
+  vDigest: TBytes;
+  {$ENDIF}
 begin
   vSize := AInStream.Size;
   if vSize = 0 then
     Exit;
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  vBuf := WorkBuffer(AInStream.Size);
 
   {$IFDEF FPC}
+  { the CRC of the gzip trailer is taken from the same pieces that go to the
+    compressor: reading the input again afterwards cost a second pass over
+    the whole body, and cannot work on an input that frees what was read }
+  vCRC32 := nil;
   if Format = ctGZip then
+  begin
     AOutStream.Write(GZipHeader[0], Length(GZipHeader));
+    vCRC32 := TRALCRC32.Create;
+    vCRC32.OutputType := rhotNone;
+    vCRC32.HashBegin;
+  end;
 
   if Format = ctZLib then
     vZip := TCompressionStream.Create(clfastest, AOutStream)
@@ -72,36 +90,36 @@ begin
   else
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 31);
   {$ENDIF}
+  {$IFDEF FPC}
   try
-    repeat
-      vCount := AInStream.Read(vBuf[0], Length(vBuf));
-      vZip.Write(vBuf[0], vCount);
-    until (vCount = 0);
-  finally
-    FreeAndNil(vZip);
-  end;
+  {$ENDIF}
+    try
+      repeat
+        vCount := AInStream.Read(vBuf[0], Length(vBuf));
+        if vCount > 0 then
+        begin
+          {$IFDEF FPC}
+          if vCRC32 <> nil then
+            vCRC32.HashUpdate(@vBuf[0], vCount);
+          {$ENDIF}
+          vZip.Write(vBuf[0], vCount);
+        end;
+      until (vCount <= 0);
+    finally
+      FreeAndNil(vZip);
+    end;
 
   {$IFDEF FPC}
-    if Format = ctGZip then
+    if vCRC32 <> nil then
     begin
-      vCRC32 := TRALCRC32.Create;
-      vCRC32.OutputType := rhotNone;
-      try
-        AInStream.Position := 0;
-        vStreamCRC32 := vCRC32.HashAsStream(AInStream);
-        try
-          vStreamCRC32.Position := 0;
-          AOutStream.Position := AOutStream.Size;
-          AOutStream.CopyFrom(vStreamCRC32, vStreamCRC32.Size);
-        finally
-          FreeAndNil(vStreamCRC32);
-        end;
-      finally
-        FreeAndNil(vCRC32);
-      end;
+      vDigest := vCRC32.HashEnd;
       AOutStream.Position := AOutStream.Size;
+      AOutStream.Write(vDigest[0], Length(vDigest));
       AOutStream.Write(vSize, SizeOf(vSize));
     end;
+  finally
+    vCRC32.Free;
+  end;
   {$ENDIF}
 
   AOutStream.Position := 0;
@@ -134,105 +152,93 @@ var
   vFormat: TRALCompressType;
   vBuf: TBytes;
   vZip: TDeCompressionStream;
+  vSource: TStream;
   vCount: Integer;
-  vCRCFile, vCRCFinal, vFileSize: LongWord;
-  vCRC32: TRALCRC32;
-  vStreamCRC32: TStream;
+  vWritten: Int64RAL;
   {$IFDEF FPC}
-  vOrigSize: Int64;
+  vCRCFile, vFileSize, vCRCFinal: LongWord;
+  vCRC32: TRALCRC32;
+  vDigest: TBytes;
   {$ENDIF}
 begin
-  {$IFDEF FPC}
-    vOrigSize := AInStream.Size;
-    if Format = ctGZip then
-    begin
-      AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
-      AInStream.Read(vCRCFile, SizeOf(vCRCFile));
-      AInStream.Read(vFileSize, SizeOf(vFileSize));
-
-      { FPC's TDecompressionStream wants the gzip trailer out of the way, so
-        it is cut off the CALLER's stream here and put back in the finally
-        below: without that a second Decompress of the same stream (a retry
-        after an error, a cached body) found it 8 bytes short and failed }
-      AInStream.Size := AInStream.Size - (2 * SizeOf(LongWord));
-      AInStream.Position := Length(GZipHeader);
-    end;
-  try
-  {$ELSE}
-    AInStream.Position := 0;
-  {$ENDIF}
-
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
-
   vFormat := Format;
+  AInStream.Position := 0;
   if (vFormat = ctDeflate) and StartsWithZlibHeader(AInStream) then
     vFormat := ctZLib;
 
+  vBuf := WorkBuffer(AInStream.Size);
+  vSource := AInStream;
   {$IFDEF FPC}
-  if vFormat = ctZLib then
-    vZip := TDeCompressionStream.Create(AInStream)
-  else
-    vZip := TDeCompressionStream.Create(AInStream, True);
+  vCRC32 := nil;
+  vCRCFile := 0;
+  vFileSize := 0;
+  if vFormat = ctGZip then
+  begin
+    if AInStream.Size < Length(GZipHeader) + 2 * SizeOf(LongWord) then
+      raise Exception.Create(emContentCheckError);
+    AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
+    AInStream.ReadBuffer(vCRCFile, SizeOf(vCRCFile));
+    AInStream.ReadBuffer(vFileSize, SizeOf(vFileSize));
+    { FPC's TDecompressionStream reads raw deflate: it gets a window over the
+      data between the gzip header and the trailer. It used to cut the trailer
+      off the CALLER's stream and write it back afterwards - which a read-only
+      view of an engine's buffer cannot take }
+    vSource := RALStreamSlice(AInStream, Length(GZipHeader),
+      AInStream.Size - Length(GZipHeader) - 2 * SizeOf(LongWord));
+    vCRC32 := TRALCRC32.Create;
+    vCRC32.OutputType := rhotNone;
+    vCRC32.HashBegin;
+  end;
+  try
+    if vFormat = ctZLib then
+      vZip := TDeCompressionStream.Create(vSource)
+    else
+      vZip := TDeCompressionStream.Create(vSource, True);
   {$ELSE}
   // same windowBits mapping as Compress: ctDeflate is raw, not gzip
   if vFormat = ctZLib then
-    vZip := TDeCompressionStream.Create(AInStream, 15)
+    vZip := TDeCompressionStream.Create(vSource, 15)
   else if vFormat = ctDeflate then
-    vZip := TDeCompressionStream.Create(AInStream, -15)
+    vZip := TDeCompressionStream.Create(vSource, -15)
   else
-    vZip := TDeCompressionStream.Create(AInStream, 31);
+    vZip := TDeCompressionStream.Create(vSource, 31);
   {$ENDIF}
-  try
-    repeat
-      vCount := vZip.Read(vBuf[0], Length(vBuf));
-      AOutStream.Write(vBuf[0], vCount);
-      RALCheckDecompressedSize(AOutStream.Size);
-    until (vCount = 0);
-  finally
-    FreeAndNil(vZip);
-  end;
-
-  AOutStream.Position := 0;
+    vWritten := 0;
+    try
+      repeat
+        vCount := vZip.Read(vBuf[0], Length(vBuf));
+        if vCount > 0 then
+        begin
+          {$IFDEF FPC}
+          if vCRC32 <> nil then
+            vCRC32.HashUpdate(@vBuf[0], vCount);
+          {$ENDIF}
+          AOutStream.WriteBuffer(vBuf[0], vCount);
+          Inc(vWritten, vCount);
+          RALCheckDecompressedSize(vWritten);
+        end;
+      until (vCount <= 0);
+    finally
+      FreeAndNil(vZip);
+    end;
 
   {$IFDEF FPC}
-    if Format = ctGZip then
+    if vCRC32 <> nil then
     begin
-      vCRC32 := TRALCRC32.Create;
-      vCRC32.OutputType := rhotNone;
-      try
-        AOutStream.Position := 0;
-        vStreamCRC32 := vCRC32.HashAsStream(AOutStream);
-        try
-          vStreamCRC32.Position := 0;
-          vStreamCRC32.Read(vCRCFinal, vStreamCRC32.Size);
-        finally
-          FreeAndNil(vStreamCRC32);
-        end;
-      finally
-        AOutStream.Position := 0;
-        FreeAndNil(vCRC32);
-      end;
-    end;
-
-    if (Format = ctGZip) and ((vCRCFinal <> vCRCFile) or (vFileSize <> AOutStream.Size)) then
-    begin
-      AOutStream.Size := 0;
-      raise Exception.Create(emContentCheckError);
+      vDigest := vCRC32.HashEnd;
+      vCRCFinal := 0;
+      Move(vDigest[0], vCRCFinal, SizeOf(vCRCFinal));
+      if (vCRCFinal <> vCRCFile) or (vFileSize <> LongWord(vWritten)) then
+        raise Exception.Create(emContentCheckError);
     end;
   finally
-    if Format = ctGZip then
-    begin
-      AInStream.Size := vOrigSize;
-      AInStream.Position := vOrigSize - (2 * SizeOf(LongWord));
-      AInStream.Write(vCRCFile, SizeOf(vCRCFile));
-      AInStream.Write(vFileSize, SizeOf(vFileSize));
-      AInStream.Position := 0;
-    end;
+    vCRC32.Free;
+    if vSource <> AInStream then
+      vSource.Free;
   end;
   {$ENDIF}
+
+  AOutStream.Position := 0;
 end;
 
 procedure TRALCompressZLib.SetFormat(AValue: TRALCompressType);

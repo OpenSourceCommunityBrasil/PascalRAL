@@ -4,7 +4,8 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
-  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALConsts;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALConsts,
+  RALStream;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -27,6 +28,23 @@ implementation
 
 var
   FCGIApp : TCGIApplication;
+
+{ The body as it arrived, bytes and all. TWebRequest.Content is a string
+  decoded by the charset of the request, which a gzip or AES body does not
+  survive; RawContent is the bytes - an AnsiString up to XE3 or so, TBytes
+  since (XE5 checked), so the compiler picks the overload by what it is. Both
+  keep the engine's own buffer, nothing is copied: a TBytesStream holds a
+  reference to the array, a string view to the string }
+procedure SetRawBody(ARequest: TRALRequest; const ARaw: TBytes); overload;
+begin
+  if Length(ARaw) > 0 then
+    ARequest.SetWireBody(TBytesStream.Create(ARaw), boOwned);
+end;
+
+procedure SetRawBody(ARequest: TRALRequest; const ARaw: AnsiString); overload;
+begin
+  ARequest.SetWireBody(RawByteString(ARaw));
+end;
 
 { TRALCGIServer }
 
@@ -188,15 +206,13 @@ begin
       the key of an encrypted body - as every other engine runs them }
     vServer.ValidateRequest(vRequest, vResponse);
     if vResponse.StatusCode < HTTP_BadRequest then
-    begin
-      vRequest.Params.CompressType := vRequest.ContentCompress;
-      vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-      vRequest.RequestText := ARequest.Content;
-    end;
+      SetRawBody(vRequest, ARequest.RawContent);
 
     vServer.ProcessCommands(vRequest, vResponse);
 
-    AResponse.ContentStream := vResponse.ResponseStream;
+    { first: only after it do ContentType and ContentEncoding say what was
+      really done to the body }
+    AResponse.ContentStream := vResponse.TakeWireStream;
 
     if vResponse.AcceptEncoding <> '' then
       vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);

@@ -63,8 +63,38 @@ const
 
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
   MultipartLineLength = 500;
-  DEFAULTBUFFERSTREAMSIZE = 52428800;
+  { Ceiling of the work buffer the transforms allocate (zlib, zstd, brotli,
+    AES, hashes, base64, hex, the multipart decoder): Min(size, this). It was
+    50 MB, so up to that size the buffer was as large as the whole body - one
+    more full copy of it in every transform. Measured on 27/09/2026 (Delphi 13
+    Win64): gzip runs at the same speed with a 16 KB and a 4 MB buffer.
+    Lowering it meant that every path in pieces now runs for any body above
+    64 KB instead of above 50 MB, and two of them were wrong: base64 encoded
+    each piece on its own (a "=" in the middle when a piece is not a multiple
+    of 3 bytes) and the hashes overwrote a partial block with the next piece
+    (TRALHashBase.HashBytes). Both are fixed; keep the value a multiple of 64
+    (a hash block) and of 3 and 4 is taken care of by base64 itself. }
+  DEFAULTBUFFERSTREAMSIZE = 65536;
   DEFAULTDECODERBUFFERSIZE = 65536;
+  { A body is kept in ONE contiguous block up to this size and as a list of
+    DEFAULTCHUNKSIZE blocks above it (.agents/PLANO_STREAM_UNICO.md, D8).
+    Measured on 27/09/2026 (Delphi 13 Win64, FastMM, one process per case):
+    a TMemoryStream filled in 64 KB writes commits 2 MB beyond a 4 MB body,
+    7 MB beyond 8 MB and 18 MB beyond 16 MB (366 MB beyond 512 MB), and fills
+    2-3x slower than the block list, which stays below 1% at every size. At
+    8 MB the growth already costs about what joining the blocks costs the
+    engines that need contiguous memory (mORMot2 and QUIC), so from there on
+    the blocks win even for them. A body whose size is known in advance and
+    preallocated does not grow, and costs nothing extra either way. }
+  DEFAULTCHUNKABOVE = 8388608;
+  { Usable size of each block of a chunked body: 1 MB minus 1 KB, on purpose.
+    The memory manager's header pushes an exact power of two into the next
+    64 KB granule: 1 MB blocks committed 6.4% more than the body and 256 KB
+    blocks 25%, while 1023 KB and 255 KB blocks cost 0.4%. The block size did
+    not change the speed of gzip anywhere between 64 KB and 64 MB; a transform
+    that frees each block as it reads holds at most one block beyond its
+    output. }
+  DEFAULTCHUNKSIZE = 1047552;
 
   // Client defaults and limits.
   // The two timeouts must be written both in the constructor and in the

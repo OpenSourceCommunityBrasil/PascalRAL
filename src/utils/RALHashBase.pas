@@ -19,6 +19,9 @@ type
     FInitialized: boolean;
     FLenBit: UInt64RAL;
     FOutputType: TRALHashOutputType;
+    FHMACOuter: TBytes;
+    /// the key padded to the block, for HMACBegin
+    function HMACKey(const AKey: TBytes): TBytes;
   protected
     /// Used to compress the content, generating the hash
     procedure Compress; virtual;
@@ -72,6 +75,21 @@ type
     function HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;
     /// Returns a string of a HMAC generated given an Array of bytes
     function HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;
+
+    { Incremental hash, for data that arrives in pieces and is never held whole:
+      HashBegin, HashUpdate as many times as needed, HashEnd. The same digest
+      as HashAsStream of all the pieces together }
+    procedure HashBegin;
+    procedure HashUpdate(AData: Pointer; ALength: IntegerRAL);
+    function HashEnd: TBytes;
+
+    { Incremental HMAC: HMACBegin with the key, HMACUpdate per piece, HMACEnd.
+      The same digest as HMACAsDigest of all the pieces together. The AES
+      signs its ciphertext this way, while writing it, instead of reading the
+      whole message back }
+    procedure HMACBegin(const AKey: TBytes);
+    procedure HMACUpdate(AData: Pointer; ALength: IntegerRAL);
+    function HMACEnd: TBytes;
   published
     /// Identifies the formatting of the hash
     property OutputType: TRALHashOutputType read FOutputType write FOutputType;
@@ -203,13 +221,76 @@ begin
     Move(AData^, vBuffer^, vBufSize);
     Inc(AData, vBufSize);
 
+    { adds to what the block already holds: it used to REPLACE the index, so a
+      piece that did not fill the block was overwritten by the next one - 16 +
+      16 bytes hashed differently from 32 at once. Every caller fed whole
+      blocks or one single piece until the incremental HashUpdate/HMACUpdate,
+      and for those the two are the same }
     if vBufSize + FIndex = vBufLength then
       Compress
     else
-      FIndex := vBufSize;
+      Inc(FIndex, vBufSize);
 
     Dec(ALength, vBufSize);
   end;
+end;
+
+function TRALHashBase.HMACKey(const AKey: TBytes): TBytes;
+begin
+  if Length(AKey) > GetBufLength then
+    Result := GetDigest(AKey)
+  else
+    Result := Copy(AKey, 0, Length(AKey));
+  SetLength(Result, GetBufLength);
+end;
+
+procedure TRALHashBase.HashBegin;
+begin
+  Initialize;
+end;
+
+procedure TRALHashBase.HashUpdate(AData: Pointer; ALength: IntegerRAL);
+begin
+  if (ALength > 0) and FInitialized and not FFinalized then
+    HashBytes(AData, ALength);
+end;
+
+function TRALHashBase.HashEnd: TBytes;
+begin
+  Result := Finalize;
+end;
+
+procedure TRALHashBase.HMACBegin(const AKey: TBytes);
+var
+  vKey, vPad: TBytes;
+  vInt: IntegerRAL;
+begin
+  vKey := HMACKey(AKey);
+  SetLength(vPad, Length(vKey));
+  for vInt := 0 to High(vKey) do
+    vPad[vInt] := vKey[vInt] xor $36;
+  SetLength(FHMACOuter, Length(vKey));
+  for vInt := 0 to High(vKey) do
+    FHMACOuter[vInt] := vKey[vInt] xor $5C;
+
+  Initialize;
+  HashBytes(@vPad[0], Length(vPad));
+end;
+
+procedure TRALHashBase.HMACUpdate(AData: Pointer; ALength: IntegerRAL);
+begin
+  HashUpdate(AData, ALength);
+end;
+
+function TRALHashBase.HMACEnd: TBytes;
+var
+  vInner: TBytes;
+begin
+  vInner := Finalize;
+  Initialize;
+  HashBytes(@FHMACOuter[0], Length(FHMACOuter));
+  HashBytes(@vInner[0], Length(vInner));
+  Result := Finalize;
 end;
 
 function TRALHashBase.HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes;
@@ -334,9 +415,11 @@ end;
 
 procedure TRALHashBase.UpdateBuffer(const AValue: StringRAL);
 var
-  vStream: TStringStream;
+  vStream: TStream;
 begin
-  vStream := TStringStream.Create(AValue);
+  { the bytes of the string as they are: a TStringStream converted them on the
+    compilers without its RawByteString overload, and copied them on all }
+  vStream := TRALStringView.Create(AValue);
   try
     UpdateBuffer(vStream);
   finally

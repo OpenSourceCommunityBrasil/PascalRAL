@@ -6,7 +6,7 @@ uses
   Classes, SysUtils,
   fphttpclient, fphttp, ssockets, sslsockets, opensslsockets, fpopenssl,
   RALClient, RALTypes, RALConsts, RALAuthentication, RALParams,
-  RALRequest, RALCompress, RALResponse, RALMIMETypes;
+  RALRequest, RALCompress, RALResponse, RALMIMETypes, RALStream;
 
 type
   { TRALfpHttpClientCore }
@@ -267,7 +267,8 @@ end;
 procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vSource, vResult: TStream;
+  vSource: TStream;
+  vResult: TRALBodyStream;
   vAttempt: IntegerRAL;
   vRetry, vReusing: boolean;
   vStart: QWord;
@@ -340,9 +341,9 @@ begin
 
   { What to compress is decided here; what was ACTUALLY compressed is only
     known after the body is encoded, so the Content-Encoding header is added
-    further down, after RequestStream. EncodeBody declines to compress a
-    multipart request, and adding the header here announced gzip over a body
-    that was never deflated. }
+    further down, after TakeWireStream. A multipart request is not compressed,
+    and adding the header here announced gzip over a body that was never
+    deflated. }
   ARequest.ContentCompress := Parent.CompressType;
 
   // Accept-Encoding states what the client is able to READ, which does not
@@ -364,15 +365,19 @@ begin
 
   ARequest.Params.AddParam('User-Agent', Parent.UserAgent, rpkHEADER);
 
-  vSource := ARequest.RequestStream;
-  vResult := TStringStream.Create;
+  { built once for all the attempts below, with no copy of a body that has
+    nothing to transform }
+  vSource := ARequest.TakeWireStream;
+  { where fphttpclient writes the answer: memory, blocks above RALChunkAbove,
+    a file above SpoolAbove - and the response adopts it, no copy }
+  vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
   try
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
     if ARequest.ContentDisposition <> '' then
       ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-    { after RequestStream, on purpose: only now ContentEncoding says what
-      EncodeBody actually did to the body - see the note above }
+    { after TakeWireStream, on purpose: only now ContentEncoding says what
+      was actually done to the body - see the note above }
     if ARequest.ContentCompress <> ctNone then
       ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
@@ -444,7 +449,7 @@ begin
         the point: every engine fills ProtocolVersion, so an application never
         has to know which one is running in order to ask. }
       AResponse.Protocol := StringRAL(FHttp.ServerHTTPVersion);
-      AResponse.ResponseStream := vResult;
+      AResponse.SetWireBody(vResult.Detach, boOwned);
       // the request went through; if the socket is still open, the NEXT
       // request will be reusing it. Asked of fphttpclient, not assumed from
       // KeepAlive: an answer carrying "Connection: close" makes it disconnect,

@@ -31,7 +31,7 @@ uses
   Androidapi.Jni, Androidapi.JNIBridge, Androidapi.JNI.JavaTypes, Androidapi.Helpers,
   {$ENDIF}
   RALClient, RALTypes, RALConsts, RALRequest, RALResponse, RALParams,
-  RALCompress, RALTools;
+  RALCompress, RALTools, RALStream;
 
 type
   {$IFDEF ANDROID}
@@ -290,7 +290,9 @@ var
   vSize: Int64RAL;
 begin
   Result := nil;
-  vStream := ARequest.RequestStream;
+  { with nothing to transform this is the body itself, not a copy: the JNI
+    array below is the one copy the bridge cannot avoid }
+  vStream := ARequest.TakeWireStream;
   try
     if (vStream = nil) or (vStream.Size <= 0) then
       Exit;
@@ -355,7 +357,7 @@ begin
 
   { Same order netHTTP had to be corrected into: the compression and crypto
     options have to be read from the headers BEFORE the body is handed over,
-    because assigning ResponseStream is what runs DecodeBody. }
+    because SetWireBody decodes it with what the headers say. }
   AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
   AResponse.Params.CompressType := AResponse.ContentCompress;
 
@@ -386,8 +388,9 @@ begin
       vStream.Size := vBytes.Length;
       Move(vBytes.Data^, vStream.Memory^, vBytes.Length);
       vStream.Position := 0;
-      { The setter decodes into a stream of its own and does not take this one }
-      AResponse.ResponseStream := vStream;
+      { the one copy the bridge cannot avoid, and the response adopts it }
+      AResponse.SetWireBody(vStream, boOwned);
+      vStream := nil;
     end;
   finally
     vStream.Free;
@@ -449,8 +452,8 @@ begin
     ARequest.Params.AddParam('Accept-Encription', SupportedEncriptKind, rpkHEADER);
   end;
 
-  { The body first: only after RequestStream has run does ContentEncoding say
-    what was actually done to it, and the header has to carry that value. }
+  { The body first: only after TakeWireStream has run does ContentEncoding
+    say what was actually done to it, and the header has to carry that value. }
   vBody := BodyAsBytes(ARequest);
   try
     vContentType := ARequest.ContentType;

@@ -68,17 +68,27 @@ Playbooks curtos para tarefas comuns. Cada playbook aponta exatamente **onde ler
 
 ## Playbook E — “Compressão e Criptografia (pipeline de bytes)”
 
+0) Desde o 1.3 o corpo é único e não se copia: leia antes a seção "One body per
+request, one per response" do `CLAUDE.md` e o bloco "Estado" de
+`.agents/PLANO_STREAM_UNICO.md` (posse, faixas de tamanho, API de engine).
+
 1) Leia:
-- `src/utils/RALStream.pas` (bytes/stream helpers)
-- `src/utils/RALCompress*.pas`
-- `src/utils/RALCripto*.pas`
+- `src/utils/RALStream.pas` (vistas, janelas, blocos, disco, `TRALBodyStream`)
+- `src/utils/RALCompress*.pas` (`CompressTo`/`DecompressTo`, `RALIsCompressedType`)
+- `src/utils/RALCripto*.pas` (`EncryptTo`/`EncryptInPlace`/`DecryptInPlace`)
 
 2) Leia as dependências no pipeline:
+- `src/utils/RALCustomObjects.pas` (`SetWireBody`, `TakeWireStream`/`TakeWireString`)
 - `src/base/RALRequest.pas` / `src/base/RALResponse.pas`
-- `src/base/RALParams.pas` (EncodeBody/DecodeBody)
+- `src/base/RALParams.pas` (`DecodeBody` com posse, `PrepareBody`,
+  `EffectiveCompress`, `WriteTransformed`, `TakeWireStream`)
 
 3) Só então ajuste engine:
+- a entrada vai por `SetWireBody` (com a posse certa) e a saída por
+  `TakeWire*`; `ContentType`/`ContentEncoding` se leem DEPOIS do `TakeWire*`.
 - procure onde `Content-Encoding`, `Accept-Encoding`, flags de compress/cripto são checados.
+
+4) Prove: os casos `str:` da matriz e a suíte `memoria` do orquestrador.
 
 ---
 

@@ -361,9 +361,6 @@ var
   vRespStream: TStream;
   vCookies: TStringList;
   vPayloadLen: integer;
-  vPPayload: Pcchar;
-  vPayloadStream: TMemoryStream;
-  vPay: ansistring;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -400,10 +397,9 @@ begin
         AcceptEncription := ParamByName('Accept-Encription').AsString;
         Host := ParamByName('Host').AsString;
 
-        Params.CompressType := ContentCompress;
-        Params.CriptoOptions.CriptType := ContentCripto;
         { no key here: the crypto plugin, when linked, hands it to the params
-          in ValidateRequest, before the payload is decoded below. Without a
+          in ValidateRequest, before the payload is decoded below (SetWireBody
+          takes the compression and the cipher from the headers). Without a
           key the params named the cipher and DecodeBody left the body as
           ciphertext }
 
@@ -467,21 +463,11 @@ begin
             FreeAndNil(vFileMap);
           end;
 
+          { a read-only view over the library's own buffer, which lives until
+            this callback returns - longer than the request. It used to be
+            copied into a string, then into a stream, then into the params }
           if vPayloadLen > 0 then
-          begin
-            vPPayload := sg_str_content(vPayLoad);
-            SetLength(vPay, vPayloadLen);
-            Move(vPPayload^, vPay[1], vPayloadLen);
-            vPayloadStream := TMemoryStream.Create;
-            try
-              vPayloadStream.Write(vPay[1], Length(vPay));
-              vPayloadStream.Position := 0;
-
-              RequestStream := vPayloadStream;
-            finally
-               FreeAndNil(vPayloadStream);
-            end;
-          end;
+            SetWireBody(sg_str_content(vPayLoad), vPayloadLen);
 
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
@@ -503,7 +489,10 @@ begin
       vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
       vStrMap.FreeOnDestroy := False;
 
-      vRespStream := vResponse.ResponseStream;
+      { before the headers: only after it do ContentType and ContentEncoding
+        say what was really done. The params give their streams away - the
+        body is sent after this callback returns, when the response is gone }
+      vRespStream := vResponse.TakeWireStream;
 
       vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
 
@@ -674,6 +663,17 @@ begin
         sg_httpsrv_set_thr_pool_size(FHandle, 0)
       else
         SetPoolCount(PoolCount);
+      { libsagui caps a request body (the payload) at 4 MB and the uploads of
+        a multipart at 64 MB by default, and past either it drops the
+        connection while the client is still sending - no 413, a reset, on
+        every client. RAL's limit is TRALLimitsPlugin.MaxRequestSize, which
+        answers 413 and is off unless set, like on every other engine: the
+        library's own limits are opened so the body reaches it. Found by the
+        orchestrator's 9 MB echo (27/09/2026); nothing bigger than 4 MB had
+        ever been sent to this engine. Half the range, not all of it, so no
+        sum inside the library can wrap }
+      sg_httpsrv_set_payld_limit(FHandle, High(csize_t) div 2);
+      sg_httpsrv_set_uplds_limit(FHandle, High(cuint64_t) div 2);
     end;
     if not InitializeServer then
     begin
@@ -938,7 +938,9 @@ begin
       vParam := AParams.NewParam;
       vParam.ParamName := vFile.Field;
       vParam.FileName := vFile.Name;
-      vParam.AsStream := TStream(vFile.StreamHandle);
+      { lent, not copied: the library frees the part (DoUploadFree) when it
+        cleans the request up, after the callback that owns these params }
+      vParam.BorrowStream(TStream(vFile.StreamHandle));
       vParam.ContentType := vFile.Mime;
       vParam.Kind := rpkBODY;
     end;

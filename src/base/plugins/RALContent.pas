@@ -13,7 +13,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALCompress, RALCripto, RALPlugin, RALRequest, RALResponse;
+  RALTypes, RALConsts, RALCompress, RALCripto, RALPlugin, RALRequest, RALResponse,
+  RALStream;
 
 type
   { TRALLimitsPlugin }
@@ -23,7 +24,9 @@ type
   TRALLimitsPlugin = class(TRALPlugin)
   private
     FMaxRequestSize: Int64RAL;
+    FSpoolAbove: Int64RAL;
     procedure SetMaxRequestSize(const AValue: Int64RAL);
+    procedure SetSpoolAbove(const AValue: Int64RAL);
   protected
     class function DefaultPriority: IntegerRAL; override;
     function Phases: TRALPluginPhases; override;
@@ -36,6 +39,15 @@ type
     /// also refuses while receiving
     property MaxRequestSize: Int64RAL read FMaxRequestSize write SetMaxRequestSize
       default 0;
+    { A request body larger than this, in bytes, is kept in a temporary file
+      instead of memory (RALSpoolFolder, the system's temporary folder by
+      default), deleted with the request. 0, the default, never: a body lives
+      in memory, in blocks of RALChunkSize above RALChunkAbove.
+      Where the engine hands over a body it already holds in memory (mORMot2,
+      fpHTTP, Sagui, CGI, QUIC) only what RAL builds from it - the decrypted or
+      inflated body - goes to disk; the Indy engine receives into the file from
+      the first byte. On Win32 a body of a few hundred MB only fits this way }
+    property SpoolAbove: Int64RAL read FSpoolAbove write SetSpoolAbove default 0;
   end;
 
   { TRALCompressPlugin }
@@ -45,10 +57,15 @@ type
   TRALCompressPlugin = class(TRALPlugin)
   private
     FCompressType: TRALCompressType;
+    FSkipCompressedTypes: boolean;
+    FSkipContentTypes: TStrings;
+    procedure SetSkipContentTypes(const AValue: TStrings);
   protected
     class function DefaultPriority: IntegerRAL; override;
     function Phases: TRALPluginPhases; override;
   public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     /// ppProcess: how the response will be compressed
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); override;
@@ -61,6 +78,17 @@ type
     /// to what is registered
     property CompressType: TRALCompressType read FCompressType write FCompressType
       default ctNone;
+    { A response whose type is already compressed - images (not SVG), audio,
+      video, zip, gzip, 7z, rar, pdf, fonts - goes out as it is, with no
+      Content-Encoding: compressing it again costs CPU and a buffer the size
+      of the body, and gains nothing (RALIsCompressedType). Every client reads
+      it either way. False compresses everything, as up to 1.2 }
+    property SkipCompressedTypes: boolean read FSkipCompressedTypes
+      write FSkipCompressedTypes default True;
+    /// More media types answered uncompressed: 'application/x-foo', or a
+    /// prefix ending in '/' ('model/'). Counted with or without
+    /// SkipCompressedTypes. Set it before the server runs: requests read it
+    property SkipContentTypes: TStrings read FSkipContentTypes write SetSkipContentTypes;
   end;
 
   { TRALCriptoPlugin }
@@ -127,15 +155,51 @@ begin
     FMaxRequestSize := AValue;
 end;
 
+procedure TRALLimitsPlugin.SetSpoolAbove(const AValue: Int64RAL);
+begin
+  { a process killed in the middle of a request leaves its file behind: the
+    first plugin that spools sweeps what is older than a day }
+  if (AValue > 0) and (FSpoolAbove = 0) and
+     not (csDesigning in ComponentState) then
+    RALCleanSpoolFolder;
+  if AValue < 0 then
+    FSpoolAbove := 0
+  else
+    FSpoolAbove := AValue;
+end;
+
 procedure TRALLimitsPlugin.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   { on the raw size: the engines only decode the body (decompress, decrypt,
     split the multipart) when this leaves the status below 400 }
   if (FMaxRequestSize > 0) and (ARequest.ContentSize > FMaxRequestSize) then
     AResponse.Answer(HTTP_RequestEntityTooLarge);
+  { before the engine decodes: where what RAL builds from the body goes }
+  ARequest.Params.SpoolAbove := FSpoolAbove;
 end;
 
 { TRALCompressPlugin }
+
+constructor TRALCompressPlugin.Create(AOwner: TComponent);
+begin
+  inherited;
+  FSkipCompressedTypes := True;
+  FSkipContentTypes := TStringList.Create;
+end;
+
+destructor TRALCompressPlugin.Destroy;
+begin
+  FreeAndNil(FSkipContentTypes);
+  inherited;
+end;
+
+procedure TRALCompressPlugin.SetSkipContentTypes(const AValue: TStrings);
+begin
+  if AValue = nil then
+    FSkipContentTypes.Clear
+  else
+    FSkipContentTypes.Assign(AValue);
+end;
 
 class function TRALCompressPlugin.DefaultPriority: IntegerRAL;
 begin
@@ -158,6 +222,14 @@ begin
     AResponse.ContentCompress := FCompressType
   else
     AResponse.ContentCompress := ARequest.AcceptCompress;
+
+  { applied when the body is built for the wire, after the handler: only then
+    is its type known }
+  AResponse.Params.SkipCompressedTypes := FSkipCompressedTypes;
+  if FSkipContentTypes.Count > 0 then
+    AResponse.Params.SkipCompressTypes := FSkipContentTypes
+  else
+    AResponse.Params.SkipCompressTypes := nil;
 end;
 
 procedure TRALCompressPlugin.ValidateRequest(ARequest: TRALRequest;

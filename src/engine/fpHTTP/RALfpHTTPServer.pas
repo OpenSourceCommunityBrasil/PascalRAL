@@ -427,9 +427,10 @@ begin
           if Authorization.AuthType = ratNone then
             FParent.DecodeAuth(vRequest);
 
-          Params.CompressType := ContentCompress;
-          Params.CriptoOptions.CriptType := ContentCripto;
-          RequestText := ARequest.Content;
+          { a view that holds fcl-web's own string: the reference is shared,
+            not the bytes copied - clearing Content below only drops fcl-web's
+            half of it }
+          SetWireBody(ARequest.Content);
 
           Host := ARequest.Host;
           vInt := Pos('/', ARequest.ProtocolVersion);
@@ -460,6 +461,12 @@ begin
       FParent.ProcessCommands(vRequest, vResponse);
       with vResponse do
       begin
+        { the body first, handed to fcl-web at once so nothing can leak it:
+          only after TakeWireStream do ContentEncoding and ContentType say
+          what was really done (a JPEG goes out uncompressed) }
+        AResponse.ContentStream := TakeWireStream;
+        AResponse.FreeContentStream := True;
+
         AResponse.Code := StatusCode;
 
         if ContentEncoding <> '' then
@@ -513,9 +520,6 @@ begin
           FreeAndNil(vCookies);
         end;
 
-        AResponse.ContentStream := ResponseStream;
-
-        AResponse.FreeContentStream := True;
         AResponse.ContentType := ContentType;
 
         if ContentDisposition <> '' then

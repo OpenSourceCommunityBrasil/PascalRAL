@@ -1076,7 +1076,9 @@ var
   vResponse: TRALResponse;
   vPos: IntegerRAL;
   vMethod: Byte;
-  vUrl, vBody: StringRAL;
+  vUrl: StringRAL;
+  vBody: PByte;
+  vBodySize: IntegerRAL;
   vCType: StringRAL;
   vHeaders: TRALQuicHeaders;
   vHdrCount, vHdrSize: IntegerRAL;
@@ -1110,7 +1112,7 @@ begin
         vPos := 1;
         if (not RALQuicReadBlockStr(ARequest, ASize, vPos, vUrl)) or
            (not RALQuicReadHeaders(ARequest, ASize, vPos, vRequest.Params)) or
-           (not RALQuicReadBlockStr(ARequest, ASize, vPos, vBody)) then
+           (not RALQuicReadBlockPtr(ARequest, ASize, vPos, vBody, vBodySize)) then
         begin
           vResponse.Answer(HTTP_BadRequest, emQuicFrameMalformed, rctTEXTPLAIN);
         end
@@ -1138,7 +1140,7 @@ begin
           DecodeAuth(vRequest);
 
           vRequest.ContentType := vRequest.Params.Get['Content-Type'].AsString;
-          vRequest.ContentSize := Length(vBody);
+          vRequest.ContentSize := vBodySize;
           vRequest.ContentDisposition := vRequest.Params.Get['Content-Disposition'].AsString;
           vRequest.ContentEncoding := vRequest.Params.Get['Content-Encoding'].AsString;
           vRequest.AcceptEncoding := vRequest.Params.Get['Accept-Encoding'].AsString;
@@ -1152,13 +1154,11 @@ begin
           {$IFDEF RALMSQUIC_PROFILE}SrvMark(spDecode, vMark);{$ENDIF}
           ValidateRequest(vRequest, vResponse);
           {$IFDEF RALMSQUIC_PROFILE}SrvMark(spValidate, vMark);{$ENDIF}
+          { a read-only view over the frame, which lives until this function
+            returns - longer than the request. It used to be copied into a
+            string, and the string into the params }
           if vResponse.StatusCode < HTTP_BadRequest then
-          begin
-            vRequest.Params.CompressType := vRequest.ContentCompress;
-            vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
-
-            vRequest.RequestText := vBody;
-          end;
+            vRequest.SetWireBody(vBody, vBodySize);
 
           ProcessCommands(vRequest, vResponse);
           {$IFDEF RALMSQUIC_PROFILE}SrvMark(spProcess, vMark);{$ENDIF}
@@ -1174,18 +1174,17 @@ begin
           vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
     end;
 
-    { THE BODY COMES FIRST, and the order is not cosmetic: the getter runs
-      EncodeBody, which decides between a raw body and multipart and WRITES
-      BACK ContentType and ContentDisposition. Reading either before asking for
+    { THE BODY COMES FIRST, and the order is not cosmetic: TakeWireStream
+      decides between a raw body and multipart and WRITES BACK ContentType,
+      ContentDisposition and ContentEncoding. Reading them before asking for
       the body hands the client the type the response had before it was
       encoded - a multipart answer would go out labelled as whatever the route
       had set. TRALSynopseServer does it in this order for the same reason.
 
-      The stream is used directly instead of ResponseText: that getter copies
-      the whole stream into a string, which this would then copy again into the
-      frame. }
+      A stream and not a string: with nothing to transform it is the body
+      itself, and the frame below is then the only copy. }
     {$IFDEF RALMSQUIC_PROFILE}SrvMark(spAddParams, vMark);{$ENDIF}
-    vStream := vResponse.ResponseStream;
+    vStream := vResponse.TakeWireStream;
     try
       {$IFDEF RALMSQUIC_PROFILE}SrvMark(spBodyText, vMark);{$ENDIF}
       vCType := vResponse.ContentType;

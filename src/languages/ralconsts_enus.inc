@@ -48,6 +48,8 @@
   emDBInvalidTableName = 'Invalid table name: only letters, digits, _, $ and . are accepted.';
   emDBSQLRejected = 'SQL rejected by OnValidateSQL.';
   emStreamSizeBeyondEnd = 'Binary stream announces more bytes than it holds.';
+  emStreamReadOnly = 'This stream is read-only: it is a view over memory that belongs to someone else.';
+  emStreamReleased = 'This part of the stream was already released: it is read once, front to back.';
   emDecompressLimit = 'Decompressed data exceeds RALMaxDecompressedSize.';
   emParamFileNameEmpty = 'No file name left to save the param to.';
   emDBDriverMissing = 'Connection driver not found.';

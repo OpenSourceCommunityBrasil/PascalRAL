@@ -127,7 +127,8 @@ end;
 procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
-  vSource, vResult: TStream;
+  vSource: TStream;
+  vResult: TRALBodyStream;
   vCookieText: StringRAL;
   vCookies: TStringList;
   vInt: IntegerRAL;
@@ -270,8 +271,12 @@ begin
 
   ARequest.Params.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
 
-  vSource := ARequest.RequestStream;
-  vResult := TMemoryStream.Create;
+  { built once for this attempt, with no copy of a body that has nothing to
+    transform; the params stay, a retry sends them again }
+  vSource := ARequest.TakeWireStream;
+  { where Indy writes the answer: memory, blocks above RALChunkAbove, a file
+    above SpoolAbove - and the response adopts it, no copy }
+  vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
   try
     { These three are state of the TIdHTTP OBJECT, not of this call, and they
       survive until the next one overwrites them. Harmless while each engine
@@ -282,8 +287,8 @@ begin
       headers first. }
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
-    { after RequestStream, on purpose: only now ContentEncoding says what
-      EncodeBody actually did to the body - see the note above }
+    { after TakeWireStream, on purpose: only now ContentEncoding says what
+      was actually done to the body - see the note above }
     if ARequest.ContentCompress <> ctNone then
       FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
 
@@ -329,7 +334,7 @@ begin
         pv1_1: AResponse.ProtocolVersion := rhv11;
       end;
 
-      AResponse.ResponseStream := vResult;
+      AResponse.SetWireBody(vResult.Detach, boOwned);
     except
       // the timeouts come first on purpose: they are the two that must not be
       // told apart by a numeric code, since Indy reports both as 10060 and
