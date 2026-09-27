@@ -864,6 +864,37 @@ Still there on purpose: `TRALClientList.Create` stamps `LastAccess` with `Now`, 
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode. Multipart lives in `src/utils/RALMultipartCoder.pas`; byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once.
 
 ### Modules extend the server
+
+**Writing a module (since 1.3; plan and status in `.agents/PLANO_MODULOS.md`, user guide in the wiki page `criar-modulo`).** `TRALModuleRoutes` is the base of every module, the RAL's and a third party's alike, and offers, from the lightest to the deepest:
+- `CreateRoute` with the core handler;
+- `BeforeExecute`/`AfterExecute` around every route of the module;
+- `RouteClass` - the collection item class, so a route carries data or a handler of its own. `CreateRoute` and `NewRoute` both go through `Routes.Add`: `TRALRoute.Create(Routes)` used to force a plain `TRALRoute`;
+- `RequestClass`/`ResponseClass` + `ExecuteContext` - the module's own request and response;
+- `HandleException` - True means the module answered; False (default) lets the server answer 500 and fire `OnServerError`;
+- `ServerActivating`/`ServerDeactivating`.
+
+**The module's request and response are wrappers, not subclasses of `TRALRequest`/`TRALResponse`.** The engine creates the core objects before the route is known, and plugins (CORS, compression, 401) write to them first, so there is nothing to subclass at that point. `TRALModuleRequest`/`TRALModuleResponse` hold the core object (`Core`), forward the common API and write to that same object, so the body is never copied because of them. `ExecuteRoute` builds them only for a route **with no core handler** (`HasCoreHandler` False); a route with `OnReply` costs what it always cost, which is how one module mixes both kinds of route. An `Answer` declared with `overload` in the descendant keeps the inherited overloads visible on Delphi and FPC - `TRALDBResponse` calls `Answer(HTTP_OK, text, type)` next to its own `Answer(ASQLCache)`.
+
+**Lifecycle.** `TRALServer.SetActive` calls `NotifyModules`, and a module linked to or unlinked from a running server hears it at once.
+- The engines call `inherited SetActive` **before** they open the port, so "activating" means requested, not listening.
+- An exception in `ServerActivating` resets `Active` to False, tells the modules that had already started, and goes up: the server stays stopped. A module that refuses while being linked to a running server is left unlinked.
+- `ServerDeactivating` runs while requests may still be running, and its exceptions go to `OnServerError` - a stop must always complete.
+- A server freed while active never passes through `SetActive(False)`; the module hears it in `Notification`.
+- Nothing fires at design time, while loading or while destroying (`CanNotify`). A module streamed with an active server hears it in `Loaded`, after its own properties are read: during loading the server activates as soon as its `Active` is read, before the modules are linked.
+- CGI has no `SetActive`, so there the hooks never fire.
+
+**Do not publish `Routes` on a module that creates its routes in the constructor.** The form file would then store them, and reloading clears the collection and recreates the routes with no handlers (the handlers are methods of the module, not of the form). `TRALWebModule` publishes `Routes` because its routes are the user's.
+
+**`TRALDBModule` is the first client.**
+- The six DBWare routes are `TRALDBRoute`s with `OnDBReply(TRALDBRequest, TRALDBResponse)`, added with `CreateDBRoute`, which is public so an application adds typed routes of its own.
+- `TRALDBRequest.Database` takes the pooled connection on first use and `SQLCache` reads the body on first use; the destructor gives both back. Call `Database` first: an exhausted pool must answer 429 before an empty body answers 500.
+- `TRALDBResponse.Answer(ASQLCache)` writes the `Stream` param with `AdoptStream` - `AddParam` copied a whole result set once more.
+- The route handlers are `virtual`.
+- `HandleException` answers only for `TRALDBRoute`s with `OnDBReply`, so a route the application added with `CreateRoute` keeps the server's 500. The wire format is unchanged, because the datasets read the `Stream` and `Exception` params.
+- `PoolOptions.PrepareOnActivate` (default False) opens `MinSize` connections in `ServerActivating`; a connection that fails keeps the server stopped.
+
+The orchestrator's `suite\CasosModulos.pas` (define `TEM_MODULOS`, found by `TRALModuleResponse` in `RALServer.pas`) is a third-party module written only with this surface. It runs once without an engine, and per pair of engines over the wire.
+
 `TRALModuleRoutes` (in `RALServer.pas`) is the extension point: a component attaches to a `TRALServer` and injects its own routes. `TRALDBModule`, `TRALWebModule`, and `TRALSwaggerModule` are all `TRALModuleRoutes` descendants. `TRALDBModule` (`src/database/RALDBModule.pas`) registers the DBWare endpoints — `opensql`, `execsql`, `applyupdates`, `gettables`, `getfields`, `getsqlfields` — and delegates to a `TRALDBBase` driver (`src/database/{FireDAC,sqldb,Zeos}`), an abstract class with `OpenNative`, `OpenCompatible`, `ExecSQL`, `DatabaseName`, `PackageDependency`. Datasets are serialized through `RALStorage*` (BIN/JSON/BSON/CSV).
 
 Auth is symmetric by design: every scheme ships a `TRALClient*`/`TRALServer*` pair descending from `TRALAuthClient`/`TRALAuthServer` - Basic and JWT in `plugins/RALAuthentication.pas`, Digest in `plugins/RALDigest.pas`, OAuth2 in `plugins/RALOAuth2.pas`. **OAuth 1.0a was removed in 1.3** (`TRALClientOAuth`, `TRALServerOAuth`, `TRALOAuth`, `TRALOAuthAlgorithm`, `ratOAuth`): OAuth2 is a different protocol, not its successor, and the 1.0a code never worked (empty signature, inverted `IsAuthenticated`).

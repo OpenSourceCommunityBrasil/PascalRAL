@@ -35,6 +35,7 @@ type
     FMaxUses: IntegerRAL;
     FMinSize: IntegerRAL;
     FOnExhausted: TRALDBPoolExhausted;
+    FPrepareOnActivate: boolean;
     FQueueSize: IntegerRAL;
     FValidateOnAcquire: boolean;
     FWaitTimeout: IntegerRAL;
@@ -66,6 +67,11 @@ type
     // What to do when the pool is exhausted and WaitTimeout expires
     property OnExhausted: TRALDBPoolExhausted read FOnExhausted write FOnExhausted
                           default peRaiseError;
+    { Opens MinSize connections (Prepare) when the server the module is linked
+      to starts, instead of on the first requests. A connection that fails to
+      open keeps the server stopped, with the database's message }
+    property PrepareOnActivate: boolean read FPrepareOnActivate
+                                write FPrepareOnActivate default False;
     { Maximum number of requests allowed to wait for a connection. Further requests
       fail immediately instead of waiting. Zero means no limit }
     property QueueSize: IntegerRAL read FQueueSize write FQueueSize default 0;
@@ -207,6 +213,7 @@ begin
   FMaxUses := 0;
   FMinSize := 0;
   FOnExhausted := peRaiseError;
+  FPrepareOnActivate := False;
   FQueueSize := 0;
   FValidateOnAcquire := False;
   FWaitTimeout := 5000;
@@ -224,6 +231,7 @@ begin
     TRALDBPoolOptions(Dest).FMaxUses := FMaxUses;
     TRALDBPoolOptions(Dest).FMinSize := FMinSize;
     TRALDBPoolOptions(Dest).FOnExhausted := FOnExhausted;
+    TRALDBPoolOptions(Dest).FPrepareOnActivate := FPrepareOnActivate;
     TRALDBPoolOptions(Dest).FQueueSize := FQueueSize;
     TRALDBPoolOptions(Dest).FValidateOnAcquire := FValidateOnAcquire;
     TRALDBPoolOptions(Dest).FWaitTimeout := FWaitTimeout;

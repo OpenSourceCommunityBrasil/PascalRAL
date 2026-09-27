@@ -85,6 +85,8 @@ type
     function FirstModule: IntegerRAL;
     /// -1 is the internal module; from 0 on, the linked ones
     function GetModule(AIndex: IntegerRAL): TRALModuleRoutes;
+    /// ServerActivating/ServerDeactivating on the linked modules
+    procedure NotifyModules(AActive: boolean);
   protected
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
@@ -191,17 +193,139 @@ type
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
   end;
 
+  { TRALModuleRequest }
+
+  { The request as the handlers of a module see it (see
+    TRALModuleRoutes.ExecuteContext). It is not a copy: it holds the
+    TRALRequest the engine created (Core), whose params hold the body, and
+    every call reaches that same object. A module descends it to add what
+    only its own routes need - the rest of the project never sees it. Built
+    and freed by the module for one request }
+  TRALModuleRequest = class
+  private
+    FCore: TRALRequest;
+    FModule: TRALModuleRoutes;
+    FRoute: TRALRoute;
+    function GetMethod: TRALMethod;
+    function GetParams: TRALParams;
+    function GetQuery: StringRAL;
+  public
+    constructor Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
+      ACore: TRALRequest); virtual;
+    /// The body when it is a single value (TRALHTTPHeaderInfo.Body)
+    function Body: TRALParam;
+    function ParamByName(const AName: StringRAL): TRALParam;
+
+    /// The request of the core, for everything this class does not repeat
+    property Core: TRALRequest read FCore;
+    property Method: TRALMethod read GetMethod;
+    property Module: TRALModuleRoutes read FModule;
+    property Params: TRALParams read GetParams;
+    property Query: StringRAL read GetQuery;
+    property Route: TRALRoute read FRoute;
+  end;
+
+  { TRALModuleResponse }
+
+  { The response as the handlers of a module see it. Same idea as
+    TRALModuleRequest: it writes to the TRALResponse the engine created (Core)
+    and sends. A module descends it to answer in its own terms - an Answer
+    overload the core does not have, for one. In Delphi and FPC alike a
+    method declared with overload in the descendant adds to the inherited
+    Answer overloads; without the directive it would hide them }
+  TRALModuleResponse = class
+  private
+    FCore: TRALResponse;
+    FModule: TRALModuleRoutes;
+    FRoute: TRALRoute;
+    function GetContentType: StringRAL;
+    function GetParams: TRALParams;
+    function GetStatusCode: IntegerRAL;
+    procedure SetContentType(const AValue: StringRAL);
+    procedure SetStatusCode(const AValue: IntegerRAL);
+  public
+    constructor Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
+      ACore: TRALResponse); virtual;
+    procedure AddHeader(const AName: StringRAL; const AValue: StringRAL);
+    procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
+                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    procedure Answer(AStatusCode: IntegerRAL); overload;
+    procedure Answer(const AFileName: StringRAL;
+                     const ADispositionInline: boolean = True); overload;
+
+    /// The response of the core, for everything this class does not repeat
+    property Core: TRALResponse read FCore;
+    property ContentType: StringRAL read GetContentType write SetContentType;
+    property Module: TRALModuleRoutes read FModule;
+    property Params: TRALParams read GetParams;
+    property Route: TRALRoute read FRoute;
+    property StatusCode: IntegerRAL read GetStatusCode write SetStatusCode;
+  end;
+
+  TRALModuleRequestClass = class of TRALModuleRequest;
+  TRALModuleResponseClass = class of TRALModuleResponse;
+
   { TRALModuleRoutes }
 
-  // Attachment module to allow adding custom route modules for 3rd party components
+  { Attachment module to allow adding custom route modules for 3rd party
+    components. What a descendant can change, from the lightest to the
+    deepest:
+    - routes created in the constructor (CreateRoute), answered with the
+      core's TRALRequest/TRALResponse, as any route;
+    - BeforeExecute/AfterExecute around every route of the module;
+    - its own route class (RouteClass), holding data or a typed handler;
+    - its own request/response (RequestClass/ResponseClass), handed to
+      ExecuteContext for every route that has no core handler;
+    - its own error answer (HandleException) and its own reaction to the
+      server starting and stopping (ServerActivating/ServerDeactivating) }
   TRALModuleRoutes = class(TRALComponent)
   private
     FDomain: StringRAL;
     FRoutes: TRALRoutes;
     FServer: TRALServer;
     FOnBeforeAnswer: TRALOnReply;
+    /// False while the module is loading, designed or destroyed: the moments
+    /// the lifecycle hooks must not run
+    function CanNotify: boolean;
   protected
+    /// Runs a route that has no core handler (OnReply/OnReplyGen), with the
+    /// request and response of this module - RequestClass and ResponseClass,
+    /// built for this request and freed after it. The default runs
+    /// ARoute.Execute with the core objects, which answers 404 for a route
+    /// with no handler; a module with typed routes calls their handler here
+    procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
+      AResponse: TRALModuleResponse); virtual;
+    /// Runs one route of this module, between BeforeExecute and AfterExecute:
+    /// the core handler when the route has one, the context otherwise
+    procedure ExecuteRoute(ARoute: TRALRoute; ARequest: TRALRequest;
+      AResponse: TRALResponse); virtual;
+    /// An exception raised by BeforeExecute, a route or AfterExecute of this
+    /// module. True when the module answered it; False (the default) lets it
+    /// reach the server, which answers 500 and fires OnServerError
+    function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
+      AException: Exception): boolean; virtual;
+    procedure Loaded; override;
+    /// A new route of RouteClass with the path and the description set; the
+    /// caller assigns the handler
+    function NewRoute(const ARoute: StringRAL;
+      const ADescription: StringRAL = ''): TRALRoute;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// The class of the request handed to ExecuteContext
+    class function RequestClass: TRALModuleRequestClass; virtual;
+    /// The class of the response handed to ExecuteContext
+    class function ResponseClass: TRALModuleResponseClass; virtual;
+    /// The class of the routes of this module (TRALRoute by default)
+    class function RouteClass: TRALRouteClass; virtual;
+    /// The server this module is linked to was asked to start, or the module
+    /// was linked to a server already running. Engines call it before they
+    /// open the port; raising here keeps the server stopped
+    procedure ServerActivating; virtual;
+    /// The server was asked to stop, or the module leaves a running server.
+    /// Requests may still be running: do not free what a route may be using.
+    /// An exception here goes to OnServerError and never stops the shutdown
+    procedure ServerDeactivating; virtual;
     // Defines the Domain prefix of all the routes of the instance of this class
     procedure SetDomain(const AValue: StringRAL); virtual;
     // Defines the handle of the RALServer in which will be registered the routes
@@ -617,12 +741,69 @@ begin
   end;
 end;
 
+procedure TRALServer.NotifyModules(AActive: boolean);
+var
+  vInt, vDone: IntegerRAL;
+  vModule: TRALModuleRoutes;
+begin
+  if csDesigning in ComponentState then
+    Exit;
+
+  if AActive then
+  begin
+    { a module that refuses to start keeps the server stopped - the engines
+      call this before they open the port - and the modules that had already
+      heard about the start hear about the stop }
+    vDone := 0;
+    try
+      while vDone < FListSubModules.Count do
+      begin
+        vModule := TRALModuleRoutes(FListSubModules.Items[vDone]);
+        if vModule.CanNotify then
+          vModule.ServerActivating;
+        Inc(vDone);
+      end;
+    except
+      FActive := False;
+      for vInt := 0 to vDone - 1 do
+      begin
+        vModule := TRALModuleRoutes(FListSubModules.Items[vInt]);
+        if vModule.CanNotify then
+          try
+            vModule.ServerDeactivating;
+          except
+            // the first failure is the one that goes up
+          end;
+      end;
+      raise;
+    end;
+  end
+  else
+  begin
+    { a failure on the way down must never keep a server running: it is
+      reported and the others are told anyway }
+    for vInt := 0 to FListSubModules.Count - 1 do
+    begin
+      vModule := TRALModuleRoutes(FListSubModules.Items[vInt]);
+      if vModule.CanNotify then
+        try
+          vModule.ServerDeactivating;
+        except
+          on e: Exception do
+            if Assigned(FOnServerError) then
+              FOnServerError(e);
+        end;
+    end;
+  end;
+end;
+
 procedure TRALServer.SetActive(const AValue: boolean);
 begin
   if FActive = AValue then
     Exit;
 
   FActive := AValue;
+  NotifyModules(AValue);
 end;
 
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
@@ -681,14 +862,200 @@ begin
   RunValidate(ARequest, AResponse);
 end;
 
+{ TRALModuleRequest }
+
+constructor TRALModuleRequest.Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
+  ACore: TRALRequest);
+begin
+  inherited Create;
+  FModule := AModule;
+  FRoute := ARoute;
+  FCore := ACore;
+end;
+
+function TRALModuleRequest.Body: TRALParam;
+begin
+  Result := FCore.Body;
+end;
+
+function TRALModuleRequest.GetMethod: TRALMethod;
+begin
+  Result := FCore.Method;
+end;
+
+function TRALModuleRequest.GetParams: TRALParams;
+begin
+  Result := FCore.Params;
+end;
+
+function TRALModuleRequest.GetQuery: StringRAL;
+begin
+  Result := FCore.Query;
+end;
+
+function TRALModuleRequest.ParamByName(const AName: StringRAL): TRALParam;
+begin
+  Result := FCore.ParamByName(AName);
+end;
+
+{ TRALModuleResponse }
+
+constructor TRALModuleResponse.Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
+  ACore: TRALResponse);
+begin
+  inherited Create;
+  FModule := AModule;
+  FRoute := ARoute;
+  FCore := ACore;
+end;
+
+procedure TRALModuleResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL);
+begin
+  FCore.AddHeader(AName, AValue);
+end;
+
+procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
+  const AContentType: StringRAL);
+begin
+  FCore.Answer(AStatusCode, AMessage, AContentType);
+end;
+
+procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
+  const AContentType: StringRAL);
+begin
+  FCore.Answer(AStatusCode, AStream, AContentType);
+end;
+
+procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL);
+begin
+  FCore.Answer(AStatusCode);
+end;
+
+procedure TRALModuleResponse.Answer(const AFileName: StringRAL;
+  const ADispositionInline: boolean);
+begin
+  FCore.Answer(AFileName, ADispositionInline);
+end;
+
+function TRALModuleResponse.GetContentType: StringRAL;
+begin
+  Result := FCore.ContentType;
+end;
+
+function TRALModuleResponse.GetParams: TRALParams;
+begin
+  Result := FCore.Params;
+end;
+
+function TRALModuleResponse.GetStatusCode: IntegerRAL;
+begin
+  Result := FCore.StatusCode;
+end;
+
+procedure TRALModuleResponse.SetContentType(const AValue: StringRAL);
+begin
+  FCore.ContentType := AValue;
+end;
+
+procedure TRALModuleResponse.SetStatusCode(const AValue: IntegerRAL);
+begin
+  FCore.StatusCode := AValue;
+end;
+
 { TRALModuleRoutes }
 
 constructor TRALModuleRoutes.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FRoutes := TRALRoutes.Create(Self);
+  FRoutes := TRALRoutes.Create(Self, RouteClass);
   FDomain := '/';
   FServer := nil;
+end;
+
+function TRALModuleRoutes.CanNotify: boolean;
+begin
+  Result := ComponentState * [csLoading, csDesigning, csDestroying] = [];
+end;
+
+procedure TRALModuleRoutes.ExecuteContext(ARoute: TRALRoute;
+  ARequest: TRALModuleRequest; AResponse: TRALModuleResponse);
+begin
+  ARoute.Execute(ARequest.Core, AResponse.Core);
+end;
+
+procedure TRALModuleRoutes.ExecuteRoute(ARoute: TRALRoute; ARequest: TRALRequest;
+  AResponse: TRALResponse);
+var
+  vRequest: TRALModuleRequest;
+  vResponse: TRALModuleResponse;
+begin
+  { a route with a core handler costs what it always cost: the context is only
+    built for the routes a module answers in its own terms }
+  if ARoute.HasCoreHandler then
+  begin
+    ARoute.Execute(ARequest, AResponse);
+    Exit;
+  end;
+
+  vRequest := RequestClass.Create(Self, ARoute, ARequest);
+  try
+    vResponse := ResponseClass.Create(Self, ARoute, AResponse);
+    try
+      ExecuteContext(ARoute, vRequest, vResponse);
+    finally
+      FreeAndNil(vResponse);
+    end;
+  finally
+    FreeAndNil(vRequest);
+  end;
+end;
+
+function TRALModuleRoutes.HandleException(ARequest: TRALRequest;
+  AResponse: TRALResponse; AException: Exception): boolean;
+begin
+  Result := False;
+end;
+
+procedure TRALModuleRoutes.Loaded;
+begin
+  inherited;
+  { linked while loading, the module could not hear about a server that was
+    already running: the properties it needs were not read yet }
+  if (FServer <> nil) and FServer.Active and CanNotify then
+    ServerActivating;
+end;
+
+function TRALModuleRoutes.NewRoute(const ARoute: StringRAL;
+  const ADescription: StringRAL): TRALRoute;
+begin
+  Result := TRALRoute(FRoutes.Add);
+  Result.Route := ARoute;
+  Result.Description.Text := ADescription;
+end;
+
+class function TRALModuleRoutes.RequestClass: TRALModuleRequestClass;
+begin
+  Result := TRALModuleRequest;
+end;
+
+class function TRALModuleRoutes.ResponseClass: TRALModuleResponseClass;
+begin
+  Result := TRALModuleResponse;
+end;
+
+class function TRALModuleRoutes.RouteClass: TRALRouteClass;
+begin
+  Result := TRALRoute;
+end;
+
+procedure TRALModuleRoutes.ServerActivating;
+begin
+  // a module that needs it overrides this
+end;
+
+procedure TRALModuleRoutes.ServerDeactivating;
+begin
+  // a module that needs it overrides this
 end;
 
 destructor TRALModuleRoutes.Destroy;
@@ -720,19 +1087,17 @@ end;
 function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
   const ADescription: StringRAL): TRALRoute;
 begin
-  Result := TRALRoute.Create(Self.Routes);
-  Result.Route := ARoute;
+  { through the collection, so the route is of RouteClass: TRALRoute.Create
+    here made every route a plain TRALRoute whatever the module asked for }
+  Result := NewRoute(ARoute, ADescription);
   Result.OnReply := AReplyProc;
-  Result.Description.Text := ADescription;
 end;
 
 function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL;
   AReplyProc: TRALOnReplyGen; const ADescription: StringRAL): TRALRoute;
 begin
-  Result := TRALRoute(FRoutes.Add);
-  Result.Route := ARoute;
+  Result := NewRoute(ARoute, ADescription);
   Result.OnReplyGen := AReplyProc;
-  Result.Description.Text := ADescription;
 end;
 
 function TRALModuleRoutes.GetListRoutes: TList;
@@ -748,7 +1113,16 @@ end;
 procedure TRALModuleRoutes.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FServer) then
+  begin
+    { a server freed while running never goes through SetActive(False), and
+      its engine already stopped by now. Nothing may raise out of a free }
+    if FServer.Active and CanNotify then
+      try
+        ServerDeactivating;
+      except
+      end;
     FServer := nil;
+  end;
 
   inherited;
 end;
@@ -782,9 +1156,15 @@ begin
   end
   else if vRoute.IsMethodAllowed(ARequest.Method) then
   begin
-    BeforeExecute(ARequest, AResponse);
-    vRoute.Execute(ARequest, AResponse);
-    AfterExecute(ARequest, AResponse);
+    try
+      BeforeExecute(ARequest, AResponse);
+      ExecuteRoute(vRoute, ARequest, AResponse);
+      AfterExecute(ARequest, AResponse);
+    except
+      on e: Exception do
+        if not HandleException(ARequest, AResponse, e) then
+          raise;
+    end;
   end
   else
   begin
@@ -803,11 +1183,16 @@ begin
 end;
 
 procedure TRALModuleRoutes.SetServer(AValue: TRALServer);
+var
+  vChanged: boolean;
 begin
-  if AValue <> FServer then
+  vChanged := AValue <> FServer;
+  if vChanged then
   begin
     if FServer <> nil then
     begin
+      if FServer.Active and CanNotify then
+        ServerDeactivating;
       FServer.DelSubRoute(Self);
       FServer.RemoveFreeNotification(Self);
     end;
@@ -819,6 +1204,17 @@ begin
   begin
     FServer.FreeNotification(Self);
     FServer.AddSubRoute(Self);
+    { while loading, Loaded does it: the other properties are not read yet.
+      A module that cannot start does not stay linked to a running server }
+    if vChanged and FServer.Active and CanNotify then
+      try
+        ServerActivating;
+      except
+        FServer.DelSubRoute(Self);
+        FServer.RemoveFreeNotification(Self);
+        FServer := nil;
+        raise;
+      end;
   end;
 end;
 

@@ -77,8 +77,12 @@ type
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
-    /// Runs the OnReply event
-    procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Runs the OnReply event. Virtual so a route class of a module can call
+    /// a handler of its own instead
+    procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    /// True when OnReply or OnReplyGen is assigned: the route answers through
+    /// the core handler, and a module's context is not built for it
+    function HasCoreHandler: boolean;
     /// Returns methods that this route will answer
     function GetAllowMethods: StringRAL;
     function GetFullRoute: StringRAL;
@@ -121,6 +125,9 @@ type
     property OnReplyGen;
   end;
 
+  /// The route class a module creates its routes with (TRALModuleRoutes.RouteClass)
+  TRALRouteClass = class of TRALRoute;
+
   { TRALRoutes }
 
   /// Collection class to store all route definitions
@@ -142,7 +149,10 @@ type
                            var AWeight: IntegerRAL; AURI: TStringList): boolean;
     function GetRoute(const ARoute: StringRAL): TRALRoute;
   public
-    constructor Create(AOwner: TPersistent);
+    constructor Create(AOwner: TPersistent); overload;
+    /// A collection of AItemClass routes: a module keeps data or a handler of
+    /// its own on each route by descending TRALRoute
+    constructor Create(AOwner: TPersistent; AItemClass: TRALRouteClass); overload;
     /// Returns a list of routes separated by sLineBreak
     function AsString: StringRAL;
     /// Method that will check if the request finds a matching route
@@ -194,6 +204,11 @@ begin
     OnReplyGen(ARequest, AResponse)
   else
     AResponse.Answer(HTTP_NotFound);
+end;
+
+function TRALBaseRoute.HasCoreHandler: boolean;
+begin
+  Result := (Self <> nil) and (Assigned(FOnReply) or Assigned(FOnReplyGen));
 end;
 
 function TRALBaseRoute.GetAllowMethods: StringRAL;
@@ -495,6 +510,13 @@ end;
 constructor TRALRoutes.Create(AOwner: TPersistent);
 begin
   inherited Create(AOwner, TRALRoute);
+end;
+
+constructor TRALRoutes.Create(AOwner: TPersistent; AItemClass: TRALRouteClass);
+begin
+  if AItemClass = nil then
+    AItemClass := TRALRoute;
+  inherited Create(AOwner, AItemClass);
 end;
 
 function TRALRoutes.AsString: StringRAL;

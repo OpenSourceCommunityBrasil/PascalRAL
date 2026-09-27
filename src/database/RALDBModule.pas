@@ -10,6 +10,58 @@ uses
   RALDBSQLCache, RALStream, RALDBPool;
 
 type
+  TRALDBModule = class;
+
+  { TRALDBRequest }
+
+  { The request of a DBWare route (see TRALModuleRequest): the core request plus
+    what every one of those routes needs - the connection, taken from the pool
+    on first use, and the statements the client sent, read from the body on
+    first use. Both are given back when the request ends, whatever happened,
+    so a route never writes the try/finally that returns the connection }
+  TRALDBRequest = class(TRALModuleRequest)
+  private
+    FCoreResponse: TRALResponse;
+    FDatabase: TRALDBBase;
+    FSQLCache: TRALDBSQLCache;
+  public
+    destructor Destroy; override;
+    /// The pooled connection bound to this request; raises emDBDriverMissing
+    /// when there is no driver
+    function Database: TRALDBBase;
+    /// The statements of the body (opensql, execsql, applyupdates); raises
+    /// emDBEmptyBody when there is no body
+    function SQLCache: TRALDBSQLCache;
+  end;
+
+  { TRALDBResponse }
+
+  { The response of a DBWare route: the core response plus the answers of the
+    DBWare protocol, which the RAL datasets on the client read. Only the routes
+    of TRALDBModule see these Answer overloads }
+  TRALDBResponse = class(TRALModuleResponse)
+  public
+    /// The results of the statements of ASQLCache, as the 'Stream' body param
+    procedure Answer(ASQLCache: TRALDBSQLCache); overload;
+    /// The error as the datasets read it: the lone 'Exception' body param,
+    /// 429 when the pool timed out, 500 otherwise
+    procedure AnswerException(AException: Exception);
+  end;
+
+  /// Handler of a DBWare route (TRALDBModule.CreateDBRoute)
+  TRALDBOnReply = procedure(ARequest: TRALDBRequest; AResponse: TRALDBResponse) of object;
+
+  { TRALDBRoute }
+
+  /// A route of TRALDBModule: answered by OnDBReply, with the module's request
+  /// and response, unless a core handler (OnReply) was assigned
+  TRALDBRoute = class(TRALRoute)
+  private
+    FOnDBReply: TRALDBOnReply;
+  public
+    property OnDBReply: TRALDBOnReply read FOnDBReply write FOnDBReply;
+  end;
+
   { TRALDBModule }
 
   TRALDBModule = class(TRALModuleRoutes)
@@ -37,19 +89,33 @@ type
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
   protected
     /// Fills AResponse with the error, answering 429 when the pool timed out
-    procedure AnswerException(AResponse: TRALResponse; AException: Exception);
+    procedure AnswerException(AResponse: TRALResponse; AException: Exception); virtual;
     /// Factory handed to the pool, so it can open connections on its own
     function CreatePoolConnection(ASender: TObject): TRALDBBase;
+    /// Runs the OnDBReply of a TRALDBRoute with the module's request/response
+    procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
+      AResponse: TRALModuleResponse); override;
     function GetPoolOptions: TRALDBPoolOptions;
+    /// The errors of the DBWare routes, answered as the datasets read them; a
+    /// route the application added with CreateRoute keeps the server's answer
+    function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
+      AException: Exception): boolean; override;
+    class function RequestClass: TRALModuleRequestClass; override;
+    class function ResponseClass: TRALModuleResponseClass; override;
+    class function RouteClass: TRALRouteClass; override;
+    /// Opens the pool (PoolOptions.PrepareOnActivate)
+    procedure ServerActivating; override;
     procedure SetPoolOptions(AValue: TRALDBPoolOptions);
 
-    procedure ApplyUpdates(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
+    { The DBWare routes. Virtual, so a descendant extends one - audits
+      opensql, say - by overriding it and calling inherited }
+    procedure ApplyUpdates(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure ExecSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
     function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
-    procedure GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure GetSQLFields(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure GetFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure GetSQLFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure GetTables(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure OpenSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
 
     procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
     procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
@@ -60,8 +126,12 @@ type
     destructor Destroy; override;
 
     { Takes a connection from the pool, already bound to this request. Also usable
-      from custom routes that need to reach the same database }
+      from custom routes that need to reach the same database - a route made
+      with CreateDBRoute gets it from ARequest.Database, returned by itself }
     function AcquireDatabase(ARequest: TRALRequest; AResponse: TRALResponse): TRALDBBase;
+    /// A route answered by AReplyProc with the module's request and response
+    function CreateDBRoute(const ARoute: StringRAL; AReplyProc: TRALDBOnReply;
+      const ADescription: StringRAL = ''): TRALDBRoute;
     /// Gives a connection taken by AcquireDatabase back to the pool
     procedure ReleaseDatabase(ADatabase: TRALDBBase);
 
@@ -110,6 +180,69 @@ type
 
 implementation
 
+{ TRALDBRequest }
+
+destructor TRALDBRequest.Destroy;
+begin
+  FreeAndNil(FSQLCache);
+  if FDatabase <> nil then
+    TRALDBModule(Module).ReleaseDatabase(FDatabase);
+  inherited Destroy;
+end;
+
+function TRALDBRequest.Database: TRALDBBase;
+begin
+  if FDatabase = nil then
+  begin
+    FDatabase := TRALDBModule(Module).AcquireDatabase(Core, FCoreResponse);
+    if FDatabase = nil then
+      raise Exception.Create(emDBDriverMissing);
+  end;
+  Result := FDatabase;
+end;
+
+function TRALDBRequest.SQLCache: TRALDBSQLCache;
+var
+  vMem: TStream;
+begin
+  if FSQLCache = nil then
+  begin
+    vMem := Core.Body.AsStream;
+    try
+      if (vMem = nil) or (vMem.Size = 0) then
+        raise Exception.Create(emDBEmptyBody);
+      FSQLCache := TRALDBSQLCache.Create;
+      FSQLCache.LoadFromStream(vMem);
+    finally
+      FreeAndNil(vMem);
+    end;
+  end;
+  Result := FSQLCache;
+end;
+
+{ TRALDBResponse }
+
+procedure TRALDBResponse.Answer(ASQLCache: TRALDBSQLCache);
+var
+  vParam: TRALParam;
+begin
+  Core.ContentType := rctAPPLICATIONOCTETSTREAM;
+  { the param takes the stream the cache built as it is - AddParam copied it
+    once more, for a body that can be a whole result set }
+  vParam := Core.Params.GetKind['Stream', rpkBODY];
+  if vParam = nil then
+    vParam := Core.Params.NewParam;
+  vParam.ParamName := 'Stream';
+  vParam.Kind := rpkBODY;
+  vParam.AdoptStream(ASQLCache.ResponseToStream);
+  vParam.ContentType := rctAPPLICATIONOCTETSTREAM;
+end;
+
+procedure TRALDBResponse.AnswerException(AException: Exception);
+begin
+  TRALDBModule(Module).AnswerException(Core, AException);
+end;
+
 { TRALDBModule }
 
 procedure TRALDBModule.SetLibLocation(AValue: String);
@@ -132,6 +265,59 @@ begin
 
   AResponse.ContentType := rctTEXTPLAIN;
   AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+end;
+
+function TRALDBModule.CreateDBRoute(const ARoute: StringRAL;
+  AReplyProc: TRALDBOnReply; const ADescription: StringRAL): TRALDBRoute;
+begin
+  Result := TRALDBRoute(NewRoute(ARoute, ADescription));
+  Result.OnDBReply := AReplyProc;
+end;
+
+procedure TRALDBModule.ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
+  AResponse: TRALModuleResponse);
+begin
+  if (ARoute is TRALDBRoute) and Assigned(TRALDBRoute(ARoute).OnDBReply) then
+  begin
+    { the pool binds the connection to both sides of the request }
+    TRALDBRequest(ARequest).FCoreResponse := AResponse.Core;
+    TRALDBRoute(ARoute).OnDBReply(TRALDBRequest(ARequest), TRALDBResponse(AResponse));
+  end
+  else
+  begin
+    inherited;
+  end;
+end;
+
+function TRALDBModule.HandleException(ARequest: TRALRequest;
+  AResponse: TRALResponse; AException: Exception): boolean;
+begin
+  Result := (ARequest.ResolvedRoute is TRALDBRoute) and
+    Assigned(TRALDBRoute(ARequest.ResolvedRoute).OnDBReply);
+  if Result then
+    AnswerException(AResponse, AException);
+end;
+
+class function TRALDBModule.RequestClass: TRALModuleRequestClass;
+begin
+  Result := TRALDBRequest;
+end;
+
+class function TRALDBModule.ResponseClass: TRALModuleResponseClass;
+begin
+  Result := TRALDBResponse;
+end;
+
+class function TRALDBModule.RouteClass: TRALRouteClass;
+begin
+  Result := TRALDBRoute;
+end;
+
+procedure TRALDBModule.ServerActivating;
+begin
+  inherited;
+  if FPool.Options.PrepareOnActivate then
+    FPool.Prepare;
 end;
 
 function TRALDBModule.CreatePoolConnection(ASender: TObject): TRALDBBase;
@@ -318,191 +504,62 @@ begin
   end;
 end;
 
-procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALDBModule.OpenSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
-  vDBSQL: TRALDBSQL;
 begin
-  vDB := nil;
-  try
-    try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              vDBSQL := vSQLCache.SQLList[0];
-
-              OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
-
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
-          end;
-        finally
-          FreeAndNil(vMem);
-        end;
-      end
-      else
-      begin
-        raise Exception.Create(emDBDriverMissing);
-      end;
-    except
-      on e: Exception do
-        AnswerException(AResponse, e);
-    end;
-  finally
-    ReleaseDatabase(vDB);
-  end;
+  { the connection first: an exhausted pool answers 429 before the body is read }
+  vDB := ARequest.Database;
+  vSQLCache := ARequest.SQLCache;
+  OpenSQLResponse(vDB, vSQLCache.SQLList[0], vSQLCache.Storage);
+  AResponse.Answer(vSQLCache);
 end;
 
-procedure TRALDBModule.ApplyUpdates(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALDBModule.ApplyUpdates(ARequest: TRALDBRequest;
+  AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
   vInt: IntegerRAL;
 begin
-  vDB := nil;
-  try
+  vDB := ARequest.Database;
+  vSQLCache := ARequest.SQLCache;
+  for vInt := 0 to Pred(vSQLCache.Count) do
+  begin
+    vDBSQL := vSQLCache.SQLList[vInt];
+    vDBSQL.Response.Clear;
+
+    { each statement answers for itself: one failing does not lose the others }
     try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              for vInt := 0 to Pred(vSQLCache.Count) do
-              begin
-                vDBSQL := vSQLCache.SQLList[vInt];
-                vDBSQL.Response.Clear;
-
-                try
-                  if vDBSQL.ExecType = etExecute then
-                    ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
-                  else
-                    OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
-                except
-                  on e: Exception do
-                    vDBSQL.Response.StrError := e.Message;
-                end;
-              end;
-
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
-          end;
-        finally
-          FreeAndNil(vMem);
-        end;
-      end
+      if vDBSQL.ExecType = etExecute then
+        ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
       else
-      begin
-        raise Exception.Create(emDBDriverMissing);
-      end;
+        OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
     except
       on e: Exception do
-        AnswerException(AResponse, e);
+        vDBSQL.Response.StrError := e.Message;
     end;
-  finally
-    ReleaseDatabase(vDB);
   end;
+  AResponse.Answer(vSQLCache);
 end;
 
-procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALDBModule.ExecSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
-  vDB := nil;
-  try
-    try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-
-              vDBSQL := vSQLCache.SQLList[0];
-              vDBSQL.Response.Clear;
-
-              ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
-
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
-          end;
-        finally
-          FreeAndNil(vMem);
-        end;
-      end
-      else
-      begin
-        raise Exception.Create(emDBDriverMissing);
-      end;
-    except
-      on e: Exception do
-        AnswerException(AResponse, e);
-    end;
-  finally
-    ReleaseDatabase(vDB);
-  end;
+  vDB := ARequest.Database;
+  vSQLCache := ARequest.SQLCache;
+  vDBSQL := vSQLCache.SQLList[0];
+  vDBSQL.Response.Clear;
+  ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+  AResponse.Answer(vSQLCache);
 end;
 
-procedure TRALDBModule.GetTables(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALDBModule.GetTables(ARequest: TRALDBRequest; AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
   vSQL: TStringList;
@@ -512,102 +569,88 @@ var
   vJSON: TRALJSONArray;
   vjObj: TRALJSONObject;
 begin
-  vDB := nil;
+  vDB := ARequest.Database;
+  vSchema := ARequest.ParamByName('schema').AsString;
+  vSystem := ARequest.ParamByName('system').AsBoolean;
+  vQuery := nil;
+  vJSON := nil;
+
+  vSQL := TStringList.Create;
   try
-    try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vSchema := ARequest.ParamByName('schema').AsString;
-        vSystem := ARequest.ParamByName('system').AsBoolean;
-        vQuery := nil;
-        vJSON := nil;
-
-        vSQL := TStringList.Create;
-        try
-          case FDatabaseType of
-            dtFirebird : begin
-              vSQL.Add('select rdb$relation_name, rdb$system_flag from rdb$relations');
-              if not vSystem then
-                vSQL.Add('where rdb$system_flag = 0');
-              vSQL.Add('order by rdb$relation_name');
-            end;
-            dtSQLite: begin
-              vSQL.Add('select name from sqlite_master');
-              vSQL.Add('where type = ''table''');
-            end;
-            dtMySQL: begin
-              vSQL.Add('show tables');
-            end;
-            dtPostgreSQL : begin
-              vSQL.Add('select c.relname,');
-              vSQL.Add('       case');
-              vSQL.Add('         when (n.nspname = ''information_schema'') or');
-              vSQL.Add('              (n.nspname = ''pg_catalog'') or (n.nspname = ''dbo'') or');
-              vSQL.Add('              (n.nspname = ''sys'') or');
-              vSQL.Add('              (substr(c.relname, 1, 3) = ''pg_'') then 1');
-              vSQL.Add('         else 0');
-              vSQL.Add('       end as systable, n.nspname');
-              vSQL.Add('from pg_catalog.pg_class c');
-              vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
-              vSQL.Add('where c.relkind = ''r''');
-              if not vSystem then begin
-                vSQL.Add('  and n.nspname <> ''information_schema'' and ');
-                vSQL.Add('      n.nspname <> ''pg_catalog'' and n.nspname <> ''dbo'' and');
-                vSQL.Add('      n.nspname <> ''sys'' and substr(c.relname, 1, 3) <> ''pg_''');
-              end;
-              if vSchema <> '' then
-                vSQL.Add('  and lower(n.nspname) = '+QuotedStr(LowerCase(vSchema)));
-            end;
-          end;
-
-          vQuery := vDB.OpenNative(vSQL.Text, nil);
-          try
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            vJSON := TRALJSONArray.Create;
-            try
-              if not vQuery.IsUniDirectional then
-                vQuery.First;
-
-              while not vQuery.Eof do begin
-                vjObj := TRALJSONObject.Create;
-                vjObj.Add('table_name', vQuery.Fields[0].AsString);
-                if vQuery.FieldCount > 1 then
-                  vjObj.Add('system_table', vQuery.Fields[1].AsInteger = 1)
-                else
-                  vjObj.Add('system_table', False);
-
-                if vQuery.FieldCount > 2 then
-                  vjObj.Add('schema_name', vQuery.Fields[2].AsString)
-                else
-                  vjObj.Add('schema_name', EmptyStr);
-
-                vJSON.Add(vjObj);
-
-                vQuery.Next;
-              end;
-
-              AResponse.ResponseText := vJSON.ToJson;
-            finally
-              FreeAndNil(vJSON);
-            end;
-          finally
-            FreeAndNil(vQuery);
-          end;
-        finally
-          FreeAndNil(vSQL);
-        end;
+    case FDatabaseType of
+      dtFirebird : begin
+        vSQL.Add('select rdb$relation_name, rdb$system_flag from rdb$relations');
+        if not vSystem then
+          vSQL.Add('where rdb$system_flag = 0');
+        vSQL.Add('order by rdb$relation_name');
       end;
-    except
-      on e: Exception do
-        AnswerException(AResponse, e);
+      dtSQLite: begin
+        vSQL.Add('select name from sqlite_master');
+        vSQL.Add('where type = ''table''');
+      end;
+      dtMySQL: begin
+        vSQL.Add('show tables');
+      end;
+      dtPostgreSQL : begin
+        vSQL.Add('select c.relname,');
+        vSQL.Add('       case');
+        vSQL.Add('         when (n.nspname = ''information_schema'') or');
+        vSQL.Add('              (n.nspname = ''pg_catalog'') or (n.nspname = ''dbo'') or');
+        vSQL.Add('              (n.nspname = ''sys'') or');
+        vSQL.Add('              (substr(c.relname, 1, 3) = ''pg_'') then 1');
+        vSQL.Add('         else 0');
+        vSQL.Add('       end as systable, n.nspname');
+        vSQL.Add('from pg_catalog.pg_class c');
+        vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
+        vSQL.Add('where c.relkind = ''r''');
+        if not vSystem then begin
+          vSQL.Add('  and n.nspname <> ''information_schema'' and ');
+          vSQL.Add('      n.nspname <> ''pg_catalog'' and n.nspname <> ''dbo'' and');
+          vSQL.Add('      n.nspname <> ''sys'' and substr(c.relname, 1, 3) <> ''pg_''');
+        end;
+        if vSchema <> '' then
+          vSQL.Add('  and lower(n.nspname) = '+QuotedStr(LowerCase(vSchema)));
+      end;
+    end;
+
+    vQuery := vDB.OpenNative(vSQL.Text, nil);
+    try
+      vJSON := TRALJSONArray.Create;
+      try
+        if not vQuery.IsUniDirectional then
+          vQuery.First;
+
+        while not vQuery.Eof do begin
+          vjObj := TRALJSONObject.Create;
+          vjObj.Add('table_name', vQuery.Fields[0].AsString);
+          if vQuery.FieldCount > 1 then
+            vjObj.Add('system_table', vQuery.Fields[1].AsInteger = 1)
+          else
+            vjObj.Add('system_table', False);
+
+          if vQuery.FieldCount > 2 then
+            vjObj.Add('schema_name', vQuery.Fields[2].AsString)
+          else
+            vjObj.Add('schema_name', EmptyStr);
+
+          vJSON.Add(vjObj);
+
+          vQuery.Next;
+        end;
+
+        AResponse.Answer(HTTP_OK, vJSON.ToJson, rctAPPLICATIONJSON);
+      finally
+        FreeAndNil(vJSON);
+      end;
+    finally
+      FreeAndNil(vQuery);
     end;
   finally
-    ReleaseDatabase(vDB);
+    FreeAndNil(vSQL);
   end;
 end;
 
-procedure TRALDBModule.GetFields(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALDBModule.GetFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
   vSQL: TStringList;
@@ -829,171 +872,143 @@ var
   end;
 
 begin
-  vDB := nil;
+  vDB := ARequest.Database;
+  vSchema := ARequest.ParamByName('schema').AsString;
+  vTable := ARequest.ParamByName('table').AsString;
+  vQuery := nil;
+
+  { the name goes into the SQL text on SQLite and MySQL, so only an
+    identifier is accepted - anything else was a SQL injection }
+  for vInt := POSINISTR to RALHighStr(vTable) do
+    if not (vTable[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
+      raise Exception.Create(emDBInvalidTableName);
+
+  vSQL := TStringList.Create;
   try
+    case FDatabaseType of
+      dtFirebird: begin
+        vTable := UpperCase(vTable);
+
+        vSQL.Add('select f.rdb$field_type, f.rdb$field_sub_type, f.rdb$field_length,');
+        vSQL.Add('       f.rdb$character_length, f.rdb$field_precision,');
+        vSQL.Add('       f.rdb$field_scale, rf.rdb$field_name, rf.rdb$null_flag,');
+        vSQL.Add('       rf.rdb$default_source, cs.rdb$character_set_name,');
+        vSQL.Add('       cl.rdb$collation_name, fd.rdb$lower_bound, fd.rdb$upper_bound,');
+        vSQL.Add('      (select count(*) as conta');
+        vSQL.Add('       from rdb$relation_constraints c');
+        vSQL.Add('       inner join rdb$index_segments s on s.rdb$index_name = c.rdb$index_name');
+        vSQL.Add('       where c.rdb$relation_name = rf.rdb$relation_name and');
+        vSQL.Add('             s.rdb$field_name = rf.rdb$field_name and');
+        vSQL.Add('             c.rdb$constraint_type = ''PRIMARY KEY'') as pk');
+        vSQL.Add('from rdb$fields f');
+        vSQL.Add('left join rdb$relation_fields rf on rf.rdb$field_source = f.rdb$field_name');
+        vSQL.Add('left join rdb$character_sets cs on cs.rdb$character_set_id = f.rdb$character_set_id');
+        vSQL.Add('left join rdb$collations cl on cl.rdb$character_set_id = f.rdb$character_set_id and');
+        vSQL.Add('     cl.rdb$collation_id = coalesce(f.rdb$collation_id,rf.rdb$collation_id)');
+        vSQL.Add('left join rdb$field_dimensions fd on fd.rdb$field_name = f.rdb$field_name');
+        vSQL.Add('where rf.rdb$relation_name = ' + QuotedStr(vTable));
+        vSQL.Add('order by rf.rdb$field_position');
+      end;
+      dtSQLite: begin
+        vSQL.Add('pragma table_info(' + vTable + ')');
+      end;
+      dtMySQL: begin
+        vSQL.Add('show columns from ' + vTable);
+      end;
+      dtPostgreSQL: begin
+        vSQL.Add('select t.typbasetype, t.typtypmod, a.atttypid, a.atttypmod,');
+        vSQL.Add('       a.attname, a.attnotnull, n.nspname,');
+        vSQL.Add('       pg_get_expr(d.adbin, d.adrelid) as pg_default,');
+        vSQL.Add('	    (select count(*) from pg_catalog.pg_index i  ');
+        vSQL.Add('       inner join pg_catalog.pg_attribute aa on aa.attrelid = i.indrelid and');
+        vSQL.Add('		         aa.attnum = any(i.indkey) and aa.attname = a.attname');
+        vSQL.Add('		   where i.indrelid = c.oid and i.indisprimary) as pk');
+        vSQL.Add('from pg_catalog.pg_class c');
+        vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
+        vSQL.Add('inner join pg_catalog.pg_attribute a on a.attrelid = c.oid');
+        vSQL.Add('inner join pg_catalog.pg_type t on a.atttypid = t.oid');
+        vSQL.Add('left join pg_catalog.pg_attrdef d on d.adnum = a.attnum and d.adrelid = c.oid');
+        vSQL.Add('where a.attnum > 0 and not a.attisdropped and');
+        vSQL.Add('      lower(c.relname) = ' + QuotedStr(LowerCase(vTable)));
+        if vSchema <> EmptyStr then
+          vSQL.Add('  and lower(n.nspname) = ' + QuotedStr(LowerCase(vSchema)));
+      end;
+    end;
+
+    vQuery := vDB.OpenNative(vSQL.Text, nil);
     try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vSchema := ARequest.ParamByName('schema').AsString;
-        vTable := ARequest.ParamByName('table').AsString;
-        vQuery := nil;
+      vFields := TRALDBInfoFields.Create;
+      try
+        if not vQuery.IsUniDirectional then
+          vQuery.First;
 
-        { the name goes into the SQL text on SQLite and MySQL, so only an
-          identifier is accepted - anything else was a SQL injection }
-        for vInt := POSINISTR to RALHighStr(vTable) do
-          if not (vTable[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
-            raise Exception.Create(emDBInvalidTableName);
+        while not vQuery.Eof do begin
+          vField := vFields.NewField;
 
-        vSQL := TStringList.Create;
-        try
           case FDatabaseType of
             dtFirebird: begin
-              vTable := UpperCase(vTable);
-
-              vSQL.Add('select f.rdb$field_type, f.rdb$field_sub_type, f.rdb$field_length,');
-              vSQL.Add('       f.rdb$character_length, f.rdb$field_precision,');
-              vSQL.Add('       f.rdb$field_scale, rf.rdb$field_name, rf.rdb$null_flag,');
-              vSQL.Add('       rf.rdb$default_source, cs.rdb$character_set_name,');
-              vSQL.Add('       cl.rdb$collation_name, fd.rdb$lower_bound, fd.rdb$upper_bound,');
-              vSQL.Add('      (select count(*) as conta');
-              vSQL.Add('       from rdb$relation_constraints c');
-              vSQL.Add('       inner join rdb$index_segments s on s.rdb$index_name = c.rdb$index_name');
-              vSQL.Add('       where c.rdb$relation_name = rf.rdb$relation_name and');
-              vSQL.Add('             s.rdb$field_name = rf.rdb$field_name and');
-              vSQL.Add('             c.rdb$constraint_type = ''PRIMARY KEY'') as pk');
-              vSQL.Add('from rdb$fields f');
-              vSQL.Add('left join rdb$relation_fields rf on rf.rdb$field_source = f.rdb$field_name');
-              vSQL.Add('left join rdb$character_sets cs on cs.rdb$character_set_id = f.rdb$character_set_id');
-              vSQL.Add('left join rdb$collations cl on cl.rdb$character_set_id = f.rdb$character_set_id and');
-              vSQL.Add('     cl.rdb$collation_id = coalesce(f.rdb$collation_id,rf.rdb$collation_id)');
-              vSQL.Add('left join rdb$field_dimensions fd on fd.rdb$field_name = f.rdb$field_name');
-              vSQL.Add('where rf.rdb$relation_name = ' + QuotedStr(vTable));
-              vSQL.Add('order by rf.rdb$field_position');
+              vField.FieldName := vQuery.FieldByName('rdb$field_name').AsString;
+              AssignFirebirdDateTypeField;
             end;
             dtSQLite: begin
-              vSQL.Add('pragma table_info(' + vTable + ')');
+              vField.FieldName := vQuery.Fields[1].AsString;
+              AssignOthersDateTypeField(vQuery.Fields[2].AsString);
+              if vQuery.Fields[3].AsInteger = 1 then
+                AddFieldAttribute('not_null');
+              if vQuery.Fields[5].AsInteger = 1 then
+                AddFieldAttribute('pk');
             end;
             dtMySQL: begin
-              vSQL.Add('show columns from ' + vTable);
+              vField.FieldName := vQuery.Fields[0].AsString;
+              AssignOthersDateTypeField(vQuery.Fields[1].AsString);
+              if vQuery.Fields[2].AsString = 'NO' then
+                AddFieldAttribute('not_null');
+              if vQuery.Fields[3].AsString = 'PRI' then
+                AddFieldAttribute('pk');
             end;
-            dtPostgreSQL: begin
-              vSQL.Add('select t.typbasetype, t.typtypmod, a.atttypid, a.atttypmod,');
-              vSQL.Add('       a.attname, a.attnotnull, n.nspname,');
-              vSQL.Add('       pg_get_expr(d.adbin, d.adrelid) as pg_default,');
-              vSQL.Add('	    (select count(*) from pg_catalog.pg_index i  ');
-              vSQL.Add('       inner join pg_catalog.pg_attribute aa on aa.attrelid = i.indrelid and');
-              vSQL.Add('		         aa.attnum = any(i.indkey) and aa.attname = a.attname');
-              vSQL.Add('		   where i.indrelid = c.oid and i.indisprimary) as pk');
-              vSQL.Add('from pg_catalog.pg_class c');
-              vSQL.Add('inner join pg_catalog.pg_namespace n on n.oid = c.relnamespace');
-              vSQL.Add('inner join pg_catalog.pg_attribute a on a.attrelid = c.oid');
-              vSQL.Add('inner join pg_catalog.pg_type t on a.atttypid = t.oid');
-              vSQL.Add('left join pg_catalog.pg_attrdef d on d.adnum = a.attnum and d.adrelid = c.oid');
-              vSQL.Add('where a.attnum > 0 and not a.attisdropped and');
-              vSQL.Add('      lower(c.relname) = ' + QuotedStr(LowerCase(vTable)));
-              if vSchema <> EmptyStr then
-                vSQL.Add('  and lower(n.nspname) = ' + QuotedStr(LowerCase(vSchema)));
+            dtPostgreSQL : begin
+              vField.FieldName := vQuery.FieldByName('attname').AsString;
+              vField.Schema := vQuery.FieldByName('nspname').AsString;
+              AssignPostgresDateTypeField;
             end;
           end;
 
-          vQuery := vDB.OpenNative(vSQL.Text, nil);
-          try
-            vFields := TRALDBInfoFields.Create;
-            try
-              if not vQuery.IsUniDirectional then
-                vQuery.First;
-
-              while not vQuery.Eof do begin
-                vField := vFields.NewField;
-
-                case FDatabaseType of
-                  dtFirebird: begin
-                    vField.FieldName := vQuery.FieldByName('rdb$field_name').AsString;
-                    AssignFirebirdDateTypeField;
-                  end;
-                  dtSQLite: begin
-                    vField.FieldName := vQuery.Fields[1].AsString;
-                    AssignOthersDateTypeField(vQuery.Fields[2].AsString);
-                    if vQuery.Fields[3].AsInteger = 1 then
-                      AddFieldAttribute('not_null');
-                    if vQuery.Fields[5].AsInteger = 1 then
-                      AddFieldAttribute('pk');
-                  end;
-                  dtMySQL: begin
-                    vField.FieldName := vQuery.Fields[0].AsString;
-                    AssignOthersDateTypeField(vQuery.Fields[1].AsString);
-                    if vQuery.Fields[2].AsString = 'NO' then
-                      AddFieldAttribute('not_null');
-                    if vQuery.Fields[3].AsString = 'PRI' then
-                      AddFieldAttribute('pk');
-                  end;
-                  dtPostgreSQL : begin
-                    vField.FieldName := vQuery.FieldByName('attname').AsString;
-                    vField.Schema := vQuery.FieldByName('nspname').AsString;
-                    AssignPostgresDateTypeField;
-                  end;
-                end;
-
-                vQuery.Next;
-              end;
-
-              AResponse.ContentType := rctAPPLICATIONJSON;
-              AResponse.ResponseText := vFields.AsJSON;
-            finally
-              FreeAndNil(vFields);
-            end;
-          finally
-            FreeAndNil(vQuery);
-          end;
-        finally
-          FreeAndNil(vSQL);
+          vQuery.Next;
         end;
+
+        AResponse.Answer(HTTP_OK, vFields.AsJSON, rctAPPLICATIONJSON);
+      finally
+        FreeAndNil(vFields);
       end;
-    except
-      on e: Exception do
-        AnswerException(AResponse, e);
+    finally
+      FreeAndNil(vQuery);
     end;
   finally
-    ReleaseDatabase(vDB);
+    FreeAndNil(vSQL);
   end;
 end;
 
-procedure TRALDBModule.GetSQLFields(ARequest: TRALRequest;
-  AResponse: TRALResponse);
+procedure TRALDBModule.GetSQLFields(ARequest: TRALDBRequest;
+  AResponse: TRALDBResponse);
 var
   vDB: TRALDBBase;
   vSQL: StringRAL;
   vQuery: TDataSet;
   vResult: TStream;
 begin
-  vDB := nil;
+  vDB := ARequest.Database;
+  vSQL := ARequest.ParamByName('ral_body').AsString;
+  CheckSQL(ARequest.Core, vSQL);
+  vQuery := vDB.OpenNative(vSQL, nil);
   try
+    vResult := GetInfoFieldsStream(vDB, vQuery, False);
     try
-      vDB := AcquireDatabase(ARequest, AResponse);
-      if vDB <> nil then
-      begin
-        vSQL := ARequest.ParamByName('ral_body').AsString;
-        CheckSQL(ARequest, vSQL);
-        vQuery := vDB.OpenNative(vSQL, nil);
-        try
-          vResult := GetInfoFieldsStream(vDB, vQuery, False);
-          try
-            AResponse.ContentType := rctAPPLICATIONJSON;
-            AResponse.ResponseStream := vResult;
-          finally
-            FreeAndNil(vResult);
-          end;
-        finally
-          FreeAndNil(vQuery);
-        end;
-      end;
-    except
-      on e: Exception do
-        AnswerException(AResponse, e);
+      AResponse.Answer(HTTP_OK, vResult, rctAPPLICATIONJSON);
+    finally
+      FreeAndNil(vResult);
     end;
   finally
-    ReleaseDatabase(vDB);
+    FreeAndNil(vQuery);
   end;
 end;
 
@@ -1008,22 +1023,22 @@ begin
   FPool := TRALDBConnectionPool.Create;
   FPool.OnCreateConnection := {$IFDEF FPC}@{$ENDIF}CreatePoolConnection;
 
-  vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
+  vRoute := CreateDBRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
   vRoute.Name := 'opensql';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
   vRoute.Description.Add(cmDBOpenSQLDescription);
 
-  vRoute := CreateRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
+  vRoute := CreateDBRoute('execsql', {$IFDEF FPC}@{$ENDIF}ExecSQL);
   vRoute.Name := 'execsql';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
   vRoute.Description.Add(cmDBExecSQLDescription);
 
-  vRoute := CreateRoute('applyupdates', {$IFDEF FPC}@{$ENDIF}ApplyUpdates);
+  vRoute := CreateDBRoute('applyupdates', {$IFDEF FPC}@{$ENDIF}ApplyUpdates);
   vRoute.Name := 'applyupdates';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
   vRoute.Description.Add(cmDBApplyUpdDescription);
 
-  vRoute := CreateRoute('gettables', {$IFDEF FPC}@{$ENDIF}GetTables);
+  vRoute := CreateDBRoute('gettables', {$IFDEF FPC}@{$ENDIF}GetTables);
   vRoute.Name := 'gettables';
   vRoute.AllowedMethods := [amGET, amOPTIONS];
   vRoute.Description.Add(cmDBGetTablesDescription);
@@ -1040,7 +1055,7 @@ begin
   vParam.ParamType := prtBoolean;
   vParam.Required := False;
 
-  vRoute := CreateRoute('getfields', {$IFDEF FPC}@{$ENDIF}GetFields);
+  vRoute := CreateDBRoute('getfields', {$IFDEF FPC}@{$ENDIF}GetFields);
   vRoute.Name := 'getfields';
   vRoute.AllowedMethods := [amGET, amOPTIONS];
   vRoute.Description.Add(cmDBGetFieldsDescription);
@@ -1057,7 +1072,7 @@ begin
   vParam.ParamType := prtString;
   vParam.Required := True;
 
-  vRoute := CreateRoute('getsqlfields', {$IFDEF FPC}@{$ENDIF}GetSQLFields);
+  vRoute := CreateDBRoute('getsqlfields', {$IFDEF FPC}@{$ENDIF}GetSQLFields);
   vRoute.Name := 'getsqlfields';
   vRoute.AllowedMethods := [amPOST, amOPTIONS];
   vRoute.Description.Add(cmDBGetSQLFieldsDescription);
