@@ -82,6 +82,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="MsQuicRAL"/>
+      </Item>
+      <Item>
         <PackageName Value="saguiral"/>
       </Item>
       <Item>
