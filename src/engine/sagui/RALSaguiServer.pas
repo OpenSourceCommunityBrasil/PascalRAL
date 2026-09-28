@@ -94,9 +94,20 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALSaguiSSL);
     procedure ShutdownServerHandle;
+    /// Creates the libsagui server and listens - the part of SetActive(True)
+    /// that a new certificate has to repeat. Raises when it does not listen
+    procedure OpenListener;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    { libsagui takes the certificate only when it starts listening
+      (sg_httpsrv_tls_listen3) and has no call to replace it, so on a running
+      server this is the one engine that closes and reopens its listener: the
+      connections open at that moment are dropped, the next ones use the new
+      certificate. Every other engine swaps it without closing anything }
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     { Reads a ConnectionLimit written by a .dfm/.lfm from before the rename, so
       no existing project stops loading. It never WRITES it - nil writer and
       HasData False - so the old name dies out with the next save. }
@@ -633,53 +644,7 @@ begin
   if AValue then
   begin
     try
-    { Every worker thread of this engine is created inside libmicrohttpd, so
-      BeginThread never runs and IsMultiThread stays False - and that flag is
-      what the memory manager reads to decide whether to lock at all:
-      LockAllSmallBlockTypes and LockMediumBlocks (getmem.inc) both open with
-      "if IsMultiThread then", and so does the assembler path of FastGetMem.
-      A hundred foreign threads then allocate and free on unlocked free lists,
-      the heap corrupts, and the process dies with no exception and no dialog.
-      One connection at a time never overlaps, which is why it only appears
-      under load. Every other engine gets this for free - Indy, mORMot2 and
-      fpHTTP all start their workers through TThread. Never set back to False:
-      threads already handed out keep running after a deactivation. }
-    IsMultiThread := True;
-
-    SetEngine('Sagui ' + sg_version_str);
-    CreateServerHandle;
-    { BEFORE listening: libmicrohttpd only takes the thread pool size while
-      the server is being set up, and applied after sg_httpsrv_listen the
-      value was silently ignored - every request was served one at a time,
-      whatever PoolCount said (found by the pooler suite, 07/09/2026: with
-      Sagui no two requests ever competed for the connection pool). The
-      connection limit goes first for the same reason. }
-    if FHandle <> nil then
-    begin
-      SetMaxConnections(FMaxConnections);
-      { libmicrohttpd refuses to start thread-per-connection with a pool
-        size, and sg_httpsrv_listen passes one whenever it is above 0 }
-      if FThreadPerConnection then
-        sg_httpsrv_set_thr_pool_size(FHandle, 0)
-      else
-        SetPoolCount(PoolCount);
-      { libsagui caps a request body (the payload) at 4 MB and the uploads of
-        a multipart at 64 MB by default, and past either it drops the
-        connection while the client is still sending - no 413, a reset, on
-        every client. RAL's limit is TRALLimitsPlugin.MaxRequestSize, which
-        answers 413 and is off unless set, like on every other engine: the
-        library's own limits are opened so the body reaches it. Found by the
-        orchestrator's 9 MB echo (27/09/2026); nothing bigger than 4 MB had
-        ever been sent to this engine. Half the range, not all of it, so no
-        sum inside the library can wrap }
-      sg_httpsrv_set_payld_limit(FHandle, High(csize_t) div 2);
-      sg_httpsrv_set_uplds_limit(FHandle, High(cuint64_t) div 2);
-    end;
-    if not InitializeServer then
-    begin
-      FreeServerHandle;
-      raise Exception.CreateFmt(emServerListenFailed, ['Sagui', Port]);
-    end;
+      OpenListener;
     except
       { the base already wrote Active := True; a server that says it is
         active while nothing listens cannot even be started again, since
@@ -692,6 +657,57 @@ begin
   begin
     ShutdownServerHandle;
     FreeServerHandle;
+  end;
+end;
+
+procedure TRALSaguiServer.OpenListener;
+begin
+  { Every worker thread of this engine is created inside libmicrohttpd, so
+    BeginThread never runs and IsMultiThread stays False - and that flag is
+    what the memory manager reads to decide whether to lock at all:
+    LockAllSmallBlockTypes and LockMediumBlocks (getmem.inc) both open with
+    "if IsMultiThread then", and so does the assembler path of FastGetMem.
+    A hundred foreign threads then allocate and free on unlocked free lists,
+    the heap corrupts, and the process dies with no exception and no dialog.
+    One connection at a time never overlaps, which is why it only appears
+    under load. Every other engine gets this for free - Indy, mORMot2 and
+    fpHTTP all start their workers through TThread. Never set back to False:
+    threads already handed out keep running after a deactivation. }
+  IsMultiThread := True;
+
+  SetEngine('Sagui ' + sg_version_str);
+  CreateServerHandle;
+  { BEFORE listening: libmicrohttpd only takes the thread pool size while
+    the server is being set up, and applied after sg_httpsrv_listen the
+    value was silently ignored - every request was served one at a time,
+    whatever PoolCount said (found by the pooler suite, 07/09/2026: with
+    Sagui no two requests ever competed for the connection pool). The
+    connection limit goes first for the same reason. }
+  if FHandle <> nil then
+  begin
+    SetMaxConnections(FMaxConnections);
+    { libmicrohttpd refuses to start thread-per-connection with a pool
+      size, and sg_httpsrv_listen passes one whenever it is above 0 }
+    if FThreadPerConnection then
+      sg_httpsrv_set_thr_pool_size(FHandle, 0)
+    else
+      SetPoolCount(PoolCount);
+    { libsagui caps a request body (the payload) at 4 MB and the uploads of
+      a multipart at 64 MB by default, and past either it drops the
+      connection while the client is still sending - no 413, a reset, on
+      every client. RAL's limit is TRALLimitsPlugin.MaxRequestSize, which
+      answers 413 and is off unless set, like on every other engine: the
+      library's own limits are opened so the body reaches it. Found by the
+      orchestrator's 9 MB echo (27/09/2026); nothing bigger than 4 MB had
+      ever been sent to this engine. Half the range, not all of it, so no
+      sum inside the library can wrap }
+    sg_httpsrv_set_payld_limit(FHandle, High(csize_t) div 2);
+    sg_httpsrv_set_uplds_limit(FHandle, High(cuint64_t) div 2);
+  end;
+  if not InitializeServer then
+  begin
+    FreeServerHandle;
+    raise Exception.CreateFmt(emServerListenFailed, ['Sagui', Port]);
   end;
 end;
 
@@ -751,6 +767,42 @@ end;
 procedure TRALSaguiServer.SetSSL(const AValue: TRALSaguiSSL);
 begin
   TRALSaguiSSL(GetDefaultSSL).Assign(AValue);
+end;
+
+function TRALSaguiServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  Result := tpPEMText;
+end;
+
+function TRALSaguiServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  ACertificate.CertificatePEM := SSL.Certificate;
+  ACertificate.PrivateKeyPEM := SSL.PrivateKey;
+  ACertificate.PrivateKeyPassword := SSL.PrivatePassword;
+  Result := ACertificate.CertificatePEM <> '';
+end;
+
+function TRALSaguiServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+begin
+  SSL.Certificate := ACertificate.CertificatePEM;
+  SSL.PrivateKey := ACertificate.PrivateKeyPEM;
+  SSL.PrivatePassword := ACertificate.PrivateKeyPassword;
+  SSL.Enabled := True;
+  Result := tarApplied;
+
+  if FHandle = nil then
+    Exit;
+  ShutdownServerHandle;
+  FreeServerHandle;
+  try
+    OpenListener;
+  except
+    { nothing listens any more: the server says so }
+    inherited SetActive(False);
+    raise;
+  end;
 end;
 
 procedure TRALSaguiServer.ShutdownServerHandle;

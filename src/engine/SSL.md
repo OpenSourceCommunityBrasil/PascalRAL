@@ -20,6 +20,7 @@ by a RAL client, with the pin accepting it and a wrong pin refusing it.
 - [The short version](#the-short-version)
 - [Three things TLS needs](#three-things-tls-needs)
 - [Making a self-signed certificate](#making-a-self-signed-certificate)
+- [RALSelfSigned: RAL makes it, attaches it and renews it](#ralselfsigned-ral-makes-it-attaches-it-and-renews-it)
 - [Which file does my engine want?](#which-file-does-my-engine-want)
 - [Server: Indy](#server-indy) *(and the SSLVersions trap)*
 - [Server: fpHTTP](#server-fphttp)
@@ -97,6 +98,12 @@ openssl x509 -in cert.pem -noout -fingerprint -sha256
 
 Nothing has to be installed on the user's machine, no certificate store is touched, and
 a server with a *real* certificate keeps working with no entry at all.
+
+**Or let RAL do the first two steps.** Drop a `TRALSelfSigned` on the form and point
+its `Server` at the server: it makes the certificate, hands it to the engine in the form
+that engine wants, turns `SSL` on, and renews it before it expires - see
+[RALSelfSigned](#ralselfsigned-ral-makes-it-attaches-it-and-renews-it). The client side
+stays the same: pin `Fingerprint`.
 
 ---
 
@@ -259,6 +266,157 @@ Inspector. Assign it in code, from wherever your application keeps its secrets.
 
 ---
 
+## RALSelfSigned: RAL makes it, attaches it and renews it
+
+`TRALSelfSigned` (`src/base/plugins/RALSelfSigned.pas`, palette **RAL - Plugins**) does
+everything the section above does with `openssl`, in Pascal, for whichever engine the
+server is:
+
+```pascal
+RALSelfSigned1.Server := RALServer1;     // or RALServer1.AddPlugin(RALSelfSigned1)
+RALServer1.Active := True;               // https, with a certificate made on the spot
+ShowMessage(RALSelfSigned1.Fingerprint); // what the clients pin
+```
+
+Nothing else is needed: no `openssl`, no files to prepare, no `SSL` property to fill in.
+The key and the certificate are RSA 2048 / SHA-256, a leaf with the names in
+`subjectAltName` - the same recipe as the command above, which
+`openssl verify`, `openssl x509 -text`, `openssl pkcs12 -info` and Windows' `certutil`
+all accept (checked on every build that went into these notes).
+
+### What it does when the server starts
+
+It looks at what the engine was given first, and only then decides:
+
+| The engine has | The plugin |
+|---|---|
+| a certificate issued by a CA (public or your own) | **does nothing** - not even watch the date |
+| a self-signed certificate, valid | uses it as it is, and watches the date |
+| a self-signed certificate, but `SSL.Enabled` is off | treats it as not served: uses its own files and turns SSL on; the application's files are not touched |
+| a self-signed certificate, expired or due (`RenewBeforeDays`) | **renews it** - new key, new certificate with the same CN and names, written over the same files |
+| no certificate (or file names that do not exist) | uses its own files in `Folder` when they are good, makes them otherwise, and points the engine at them |
+| no TLS of its own (CGI, UniGUI) | does nothing - `State = sssUnsupported` |
+
+Without the plugin nothing changes at all. A certificate the plugin cannot read (a
+`.pfx` off Windows, a key protected by a password) counts as the application's and is
+left alone. The plugin's own certificate, still configured from an earlier run (http.sys
+keeps the binding of a port after the process ends), is recognized by the plugin's files
+and handled as its own.
+
+### Renewing with the server running
+
+While the server runs a thread checks every `CheckInterval` seconds (default an hour)
+and renews ahead of the expiry. The new certificate reaches the engine without stopping
+it: connections already open keep the certificate they started with, the next handshakes
+get the new one. What each engine does underneath:
+
+| Engine | How the new certificate is taken |
+|---|---|
+| Indy | a new OpenSSL context, published where every accepted connection reads it |
+| fpHTTP | the certificate data every connection copies, replaced under a lock (and handed over in memory, so no handshake ever reads a file half written) |
+| mORMot2 `smThreads`/`smAsync` | a new TLS context (SChannel or OpenSSL), published where each accepted connection reads its certificate |
+| mORMot2 `smHttpSys` | the `.pfx` imported into `LocalMachine\My` and the port bound again, which is what `netsh http add sslcert` does |
+| MsQuic | a new configuration, handed to every connection accepted from then on |
+| Sagui | **the listener is reopened** - libsagui only takes a certificate when it starts listening, so the connections open at that moment are dropped. The one exception |
+
+Measured on loopback: a client opening a new connection in a loop while the certificate
+changed three times - 492 requests on Indy, 172 on mORMot2, 606 on MsQuic, 73 on fpHTTP -
+and none failed.
+
+`Renew` does the same on demand; `Generate` makes a new one whatever the date.
+
+### A renewed certificate has a new fingerprint
+
+That is the part to plan for. A client that pins the old fingerprint refuses the new
+certificate on its next new connection. `OnCertificateRenewed` hands over both
+fingerprints (old and new) for whoever distributes the pins, and `SSL.Pins` takes
+several lines for the same host - keep the old and the new together while the clients
+catch up, exactly as in [Rotating a certificate](#rotating-a-certificate).
+
+`RenewBeforeDays` (30 by default) is that window: the new certificate exists a month
+before the old one stops being valid.
+
+One client-side detail measured with **netHTTP**: in a process that already talked to
+the server, the first new connection after a renewal may still report the previous
+certificate (WinHTTP/SChannel state kept in the client process; a new process sees the
+new one at once, and the server was checked with `openssl s_client` to resume nothing).
+With both fingerprints pinned, that connection is accepted like any other.
+
+### Exporting the fingerprint
+
+```pascal
+RALSelfSigned1.ExportFingerprint('C:\shared\server.fingerprint');
+```
+
+writes one `Name=Value` per line - `SHA256` (with colons), `SHA1` (the Windows
+thumbprint), `Pin` (the value to paste into `SSL.Pins`), `Subject`, `NotBefore` and
+`NotAfter` (UTC). The same values are the properties `Fingerprint`, `FingerprintSHA1`,
+`FingerprintText(':')`, `NotBefore` and `NotAfter`.
+
+### Without a server
+
+It is also a generator:
+
+```pascal
+Gen := TRALSelfSigned.Create(nil);
+Gen.Folder := 'C:\certs';
+Gen.FileName := 'api';
+Gen.HostNames.Text := 'api.local'#13'192.168.1.10'#13'localhost';
+Gen.ValidDays := 825;
+Gen.Generate;          // api.crt, api.key, api.pfx
+Gen.ExportFingerprint; // api.fingerprint
+```
+
+`LoadOrGenerate` keeps what is there when it is still good (same names, key matching,
+not due).
+
+### Properties
+
+| Property | Default | |
+|---|---|---|
+| `HostNames` | localhost, 127.0.0.1, ::1 and this computer's name | DNS names (`*.example.com` too) and IP addresses, one per line; `DNS:` / `IP:` force the kind |
+| `CommonName` | the first DNS name | |
+| `ValidDays` | 365 | |
+| `RenewBeforeDays` | 30 | keep it well below `ValidDays` |
+| `AutoRenew` / `CheckInterval` | True / 3600 s | |
+| `Folder` | `%LOCALAPPDATA%\PascalRAL\certs` (`~/.config/pascalral/certs`) | **not** next to the executable, where a web module serving files would publish the key |
+| `FileName` | `ralselfsigned-<port>` | `.crt` and `.key` (PEM) and `.pfx` |
+| `PfxPassword` | random for each run | the PEM files are what lasts; the `.pfx` is made again at every start |
+| `KeyBits` | 2048 | |
+
+The key file is not encrypted - the same as `-nodes` above - so the folder is what
+protects it; on POSIX the file is made readable by its owner only.
+
+### What each engine needs
+
+The plugin needs nothing: the certificate is made in Pascal. The engine still needs what
+it always needs to *serve* TLS - the OpenSSL DLLs for Indy and fpHTTP, `msquic.dll` for
+MsQuic, a libsagui built with TLS for Sagui. Two engines have a condition of their own:
+
+- **mORMot2 on Windows (SChannel)** reads the `.pfx` the plugin writes, which uses AES-256
+  and SHA-256 like OpenSSL 3: Windows 10 1709 / Server 2019 or later.
+- **mORMot2 `smHttpSys`** writes to `LocalMachine\My` and to the http.sys configuration,
+  which needs **administrator rights**, exactly like `netsh`. Without them the server does
+  not start, and the message says so. Renewing removes the certificate it replaced from
+  the store, with the key the import left in the machine key set - only one this plugin
+  put there (its friendly name starts with `PascalRAL self-signed`). Binding again a
+  certificate that is already in the store (the next run of the application) imports
+  nothing. The binding stays on the port after the server stops, like one made by
+  `netsh`; the next run finds it and turns SSL on with it.
+
+### Events and state
+
+`OnCertificateCreated(Fingerprint)`, `OnCertificateRenewed(Old, New)` and
+`OnError(Exception)` fire on the thread that did the work: the one starting the server,
+or the renewal thread. A failure while starting also goes up and keeps the server
+stopped; in the renewal thread only `OnError` hears it, and the next check tries again.
+`State` is one of `sssActive`, `sssExternal` (left alone), `sssUnsupported`,
+`sssFailed`; `LastError` keeps the message.
+
+A plugin added to a server that is already listening on plain http restarts it on https.
+
+---
+
 ## Which file does my engine want?
 
 The single table to keep at hand. Every server engine also needs `SSL.Enabled := True`,
@@ -340,6 +498,10 @@ RALServer.SSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
 Leaving 1.0 and 1.1 in the set is harmless - they are offered and never chosen. What
 matters is that **1.2 is in there**. Measured: with the default set every call failed
 with 12175; with 1.2 added, every one behaved exactly as this document says.
+
+`TRALSelfSigned` does this for you when it hands Indy a certificate: a set still at
+Indy's default `[sslvTLSv1]` becomes `[sslvTLSv1_1, sslvTLSv1_2]`. A set the application
+chose is left as it is.
 
 **What has to be on the machine.** Indy in Delphi 12 loads **OpenSSL 1.0.2** by its old
 names: `ssleay32.dll` and `libeay32.dll` (the 64-bit builds keep the same names). Put
@@ -546,6 +708,10 @@ netsh http show sslcert ipport=0.0.0.0:9988
 netsh http delete sslcert ipport=0.0.0.0:9988
 netsh http delete urlacl url=https://+:9988/
 ```
+
+Steps 1 to 3 are what `TRALSelfSigned` does by itself in this mode, from its own `.pfx`
+(or keeps, when the port already has a certificate from a CA bound) - it needs the same
+administrator rights `netsh` does. Step 4 is still yours.
 
 If `Active := True` raises `emHttpSysAddUrl` with code **5**, that is access denied: the
 URL is not reserved, so run step 4. The full checklist, including what makes http.sys

@@ -187,6 +187,11 @@
         <DCCReference Include="..\..\src\utils\RALJWS.pas"/>
         <DCCReference Include="..\..\src\base\plugins\RALDigest.pas"/>
         <DCCReference Include="..\..\src\base\plugins\RALOAuth2.pas"/>
+        <DCCReference Include="..\..\src\utils\RALBigInt.pas"/>
+        <DCCReference Include="..\..\src\utils\RALASN1.pas"/>
+        <DCCReference Include="..\..\src\utils\RALRSA.pas"/>
+        <DCCReference Include="..\..\src\utils\RALX509.pas"/>
+        <DCCReference Include="..\..\src\base\plugins\RALSelfSigned.pas"/>
         <DCCReference Include="..\..\src\base\RALServer.pas"/>
         <DCCReference Include="..\..\src\base\RALTypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALBase64.pas"/>

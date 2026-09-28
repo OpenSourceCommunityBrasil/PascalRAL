@@ -186,6 +186,7 @@
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseRegister.pas"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
+        <DCCReference Include="..\..\..\src\engine\synopse\RALHttpSysCert.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

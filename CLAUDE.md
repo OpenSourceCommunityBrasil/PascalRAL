@@ -140,6 +140,7 @@ Submodules must be checked out for the compression/BSON packages:
 - **The status page is a route of the base module** (`/`, GET and OPTIONS, `SkipAuthMethods = [amALL]`): with `ShowServerStatus` on it answers `/` when no server route does. The base module takes part in the loop when the server has a route or shows the status page; it is never in `SubModule[]`.
 - **A phase nobody uses costs nothing.** The host keeps one list per phase in a `TRALPluginSnapshot` that requests read with no lock; any change (add, remove, `Priority`, `Enabled`) builds a new snapshot under the lock and keeps the old one alive until the host is destroyed, because a request may still be walking it.
 - **Writing a plugin:** inherit `TRALPlugin` (it publishes `Server`, like a module) and override `Phases` plus the hooks. A module prepares and finishes its own routes with the virtual `BeforeExecute`/`AfterExecute`.
+- **Lifecycle (since 28/09/2026):** `TRALServerPlugin.ServerActivating`/`ServerDeactivating`, with the modules' contract. `TRALServer.SetActive` notifies the **plugins first**, then the modules (stopping: modules, then plugins in reverse), and the engines call it before they open the port - so a plugin can still change how they open it, which is what `RALSelfSigned` does with the certificate. An exception while activating keeps the server stopped and the plugins that had started hear the stop; an exception while stopping goes to `OnServerError` (`PluginError`). `AddPlugin` on a running host activates the plugin at once and removes it again if it refuses; `RemovePlugin` deactivates it. `CanNotify` skips design time, loading and destroying (a plugin streamed with a running server hears it in its own `Loaded`), and a disabled plugin is never notified. **A server freed while running never passes through `SetActive(False)`**, so `TRALServer.BeforeDestruction` stops the plugins before the engine's destructor tears the listener down under a plugin thread.
 - **Tests:** the orchestrator suites reach the moved configuration through `suite\CompatServidor.pas` (properties on 1.2, plugins with `TEM_PLUGINS`), and its `PreparaServidor` links compression and CORS, which a 1.2 server did on its own. What is new is in `suite\CasosPlugins.pas`: order and lifecycle, the two loops on a bare `TRALServer` with no engine, the route looked up once, skip and 405 with Basic on. With Basic on, a request for a route that does not exist used to answer **500** (Basic's nil auth route) and answers 404.
 
 Handler signature (do not invent variants):
@@ -384,6 +385,129 @@ What each engine can honour, and how it had to be wired:
 Classifying a refusal as `rteCertificate` is where each engine hides something. Indy raises `EIdOSSLUnderlyingCryptoError` when OpenSSL refuses (`SSL_ERROR_SSL`, not the `EIdOSSLConnectError` the message text suggests) and something indistinguishable when our own callback refuses, hence a flag. fpHTTP reports every refusal as a failed connect, hence the same flag. mORMot2 folds every TLS cause into one formatted message, and the only usable signal is `ENetSock.LastError = nrUnknownError` — which is what `ENetSock.Create` stores when the raise carried no `TNetResult`, as `DoTlsAfter`'s does, while a real transport failure carries `nrRefused`/`nrTimeout`. In that engine RAL also exits through `SetTransportError` instead of raising, because a raise inside `SendUrl` is caught by `SendUrl`'s own handler and reclassified.
 
 Where an engine cannot produce a fingerprint it refuses the request and says which engine and why — a security option that quietly degrades is worse than one that refuses. mORMot2 on SChannel (no OpenSSL loaded) never calls the TLS callbacks, and that is caught after the handshake by a flag, not guessed.
+
+### A certificate the server makes for itself (`RALSelfSigned`, since 1.3)
+
+Plan, decisions and status: `.agents/PLANO_SELFSIGNED.md`; the user guide is the
+RALSelfSigned section of [`src/engine/SSL.md`](src/engine/SSL.md). `TRALSelfSigned`
+(`plugins/RALSelfSigned.pas`) is a plugin with no request phase at all: it acts in
+`ServerActivating`, and a watcher thread renews ahead of the expiry. Without a server it
+is a generator (`Generate`, `LoadOrGenerate`, `Renew`, `ExportFingerprint`).
+
+**The crypto is Pascal, with no library** - the certificate must exist before any
+engine loads OpenSSL, and SChannel/http.sys never load it:
+- `utils/RALBigInt.pas` - unsigned integers on 32-bit limbs, Knuth D division,
+  Montgomery exponentiation with a 4-bit window, Miller-Rabin after trial division by
+  2048 primes (FIPS 186-4 round counts), incremental prime search. Functional style:
+  every function returns a new array, because dynamic arrays are shared on
+  assignment. Checked against 25 470 vectors from Python on FPC x64, Delphi Win32 and
+  Win64; a 2048-bit key takes 0.2 s (FPC/Delphi x64) to 0.8 s (Delphi Win32, where
+  `UInt64` products are calls).
+- `utils/RALASN1.pas` - DER writer and reader, PEM.
+- `utils/RALRSA.pas` - keys (FIPS 186-4 B.3.3 shape, `d` mod lcm), PKCS#1 v1.5 sign and
+  verify for SHA-1/256/384/512 (`VerifyDigestInfo`), PKCS#1/PKCS#8/SPKI in and out. A
+  signature is verified before it is returned (a CRT fault would leak a factor). An
+  encrypted key raises `emRSAEncryptedKey`: nothing here decrypts keys.
+- `utils/RALX509.pas` - the certificate (CA:FALSE, digitalSignature+keyEncipherment,
+  serverAuth, SAN DNS/IP, SKI/AKI - the ASP.NET Core dev certificate recipe; cA TRUE is
+  refused by Firefox as a server certificate), the reader (`IsSelfSigned` checks the
+  signature with its own key for RSA, the key identifiers otherwise), fingerprints, and
+  a PKCS#12 writer in OpenSSL 3's default shape (PBES2 PBKDF2-HMAC-SHA256 +
+  AES-256-CBC, SHA-256 MAC by the PKCS#12 KDF) with its own AES-256 encryptor.
+  `openssl verify/x509/pkcs12/rsa -check` and Windows' `certutil`/.NET accept all of it;
+  150 roots of a CA bundle parse with fingerprints identical to openssl's.
+
+**The engines speak one API** (`RALServer.pas`): `TLSProvisioning` (`tpPEMFiles`
+Indy/fpHTTP/MsQuic, `tpPFXFile` mORMot2 sockets, `tpPEMText` Sagui, `tpWindowsStore`
+http.sys, `tpNone` CGI/UniGUI), `GetTLSCertificate` (what the engine was configured
+with - for http.sys the certificate bound to the port, for a mORMot `.pfx` on Windows
+the DER read by `PFXImportCertStore` with `PKCS12_NO_PERSIST_KEY`) and
+`SetTLSCertificate(TRALTLSCertificate)`, which configures and, with the server
+listening, **swaps the certificate under the listener**. Each swap keeps whatever it
+replaced alive until the server stops, because a connection accepted a moment before
+may not have run its handshake yet:
+- Indy - `TRALIdServerIOHandlerSSL` clones the handler's `TIdSSLContext`, `InitContext`
+  (protected: a cracker class), publishes it in `fSSLContext` (read once per `Accept`).
+- fpHTTP - fcl-web copies `CertificateData` into a new socket handler per connection,
+  so `GetSocketHandler` and `ReplaceCertificateData` share a lock; the plugin hands the
+  DER in `Value`, so no handshake reads a file half rewritten.
+- mORMot2 sockets - `NewNetTls()` + `AfterBind` on a context kept on the heap (OpenSSL
+  may keep its address for SNI), then `Sock.TLS.AcceptCert` - which
+  `THttpServerSocket.Create` and the async `OnFirstReadDoTls` read per connection, on
+  SChannel and OpenSSL alike. In ObjFPC `NewNetTls` needs the `()`.
+- http.sys - `RALHttpSysCert.pas` (Windows only, in SynopseRAL): opens `LocalMachine\My`
+  for writing **first** (without administrator rights nothing is imported, so no key
+  is left behind in the machine key set), imports with `CRYPT_MACHINE_KEYSET` - unless
+  that thumbprint is already there with its key: re-importing would orphan the previous
+  key container - binds `0.0.0.0:port` and `[::]:port` (IPv6 best effort) with a RAL
+  appid, and removes the replaced certificate only when its friendly name starts with
+  `RALSelfSignedFriendlyName`. **Deleting a certificate from a store leaves its key on
+  disk** (one file in `MachineKeys` per certificate ever bound): every removal, and an
+  import whose bind fails, deletes the key first (`DeleteCertificateKey`: CSP by
+  `CRYPT_DELETEKEYSET`, CNG by `NCryptDeleteKey`; both paths checked in the user key set,
+  Delphi Win32/Win64 and FPC). The binding outlives the process, like netsh's.
+- MsQuic - `NewConfiguration` builds a configuration and the listener callback reads
+  `FConfiguration` per connection.
+- Sagui - `OpenListener` (the body of `SetActive(True)`, extracted) runs again:
+  libsagui only takes a certificate at `listen`. The one engine that drops open
+  connections on a renewal.
+A listener opened on plain http answers `tarRestartNeeded`, and the plugin restarts the
+server under a guard that makes its own stop/start hooks no-ops.
+
+Two decisions of `Provision` that are not obvious: a certificate identical to the one in
+the plugin's own `.crt` is the plugin's, whatever the engine says (`IsOwnCertificate` -
+without it the http.sys binding left by the previous run looked like "the application's
+valid self-signed", was left alone, and the server came up on plain http); and a
+self-signed certificate configured with `SSL.Enabled` off is not what the server serves,
+so the plugin serves its own and leaves the application's files alone.
+
+**Verified** (28/09/2026) by a harness of 47 cases per engine - standalone, generate and
+serve, wrong pin, hot renew, a client opening a new connection in a loop across three
+renewals (zero failures on every engine), the watcher renewing on its own, restart and
+a new instance reusing the files, an expired self-signed renewed in the application's
+own files, a valid one left untouched, a CA-issued one (even expired) left alone, no
+plugin, late join on a plain server, server freed while running: Indy, mORMot2
+threads/async and MsQuic on Delphi 13 Win32 and Win64 (also built with `$R+ $Q+`), Indy,
+fpHTTP, mORMot2 threads/async and MsQuic on FPC 3.2 Win64, netHTTP as a second client.
+The orchestrator suites `certificado`/`certificadofpc` (`RALOrquestrador/suite/CasosCertificado.pas`)
+run the same script plus a certificate configured with SSL off: Delphi 64 163/163,
+Delphi 32 161/161, FPC 64 200/200, twice in a row in the same folder.
+Not verified here: Sagui with TLS (the libsagui at hand has no GnuTLS - only that the
+plugin hands the PEM text before the listener opens) and http.sys binding (needs an
+elevated process; without one the start fails with `emHttpSysStoreFailed`). Elevated,
+the suite runs the whole script on http.sys too, plus a "second run" case, and cleans
+the port and the machine store after itself.
+
+Traps found on the way:
+- **netHTTP** reports, on the first new connection after a renewal and only inside a
+  client process that already talked to the server, the previous certificate - a new
+  process sees the new one, and `openssl s_client -sess_in` showed the server resumes
+  nothing. Pin both fingerprints during a rotation.
+- **MsQuic's client shares its QUIC connection between `TRALClient` instances**
+  (`ShareConnection`, on by default): a "new client" does no handshake. Tests that mean
+  a new handshake must turn it off.
+- A test that renews at every check needs `RenewBeforeDays > ValidDays`; with
+  `ValidDays <= RenewBeforeDays` every load makes a new certificate, by design.
+
+### Fixed: SHA-1 raised EIntOverflow with overflow checks on
+
+`RALSHA1.pas` never turned the check off, while the SHA-2 units do around their sums:
+every application built with `$Q+` (many Debug builds, and an implicit build of
+`PascalRAL.dpk`, whose header turns it on) got `EIntOverflow` from the first SHA-1 block.
+Found when the certificate code started using SHA-1 (thumbprint, key identifiers,
+`localKeyId`); the unit has `{$Q-}` in its implementation now. When adding a hash or a
+cipher, build the test once with `-$R+ -$Q+`.
+
+### Fixed: an fpHTTP server freed right after `Active := True` hung forever
+
+`TRALfpHttpServerThread.Destroy` asked `FHttp.Active` to decide whether to wake
+`accept()`, but the thread reads `FParent.Active` and only then opens the listener: freed
+in that window, nothing was listening yet, nobody was woken, and the thread went on into
+`accept()` while `WaitFor` waited for it. The destructor now loops until the thread has
+really finished, closing and waking whatever it opens, and `Execute` does not start
+listening once `Terminated` is set. Found by the RALSelfSigned harness
+(`CaseFreedWhileActive`) - gdb showed the main thread in `WaitFor` and the server thread
+in `accept`.
 
 ### When a client resends, and why `StatusCode` cannot decide it
 
@@ -1105,7 +1229,7 @@ FPC needs `@` on method-pointer arguments; the codebase writes this inline:
 vRoute := CreateRoute('opensql', {$IFDEF FPC}@{$ENDIF}OpenSQL);
 ```
 
-Design-time registration lives in `RAL*Register.pas` units, each guarded with `{$IFDEF FPC} initialization {$I <Pkg>.lrs} {$ENDIF}` so Lazarus loads the component glyph. Palettes in use: `RAL - Server`, `RAL - Client`, `RAL - Modules`, `RAL - Storage`, `RAL - DAO`.
+Design-time registration lives in `RAL*Register.pas` units, each guarded with `{$IFDEF FPC} initialization {$I <Pkg>.lrs} {$ENDIF}` so Lazarus loads the component glyph. Palettes in use: `RAL - Server`, `RAL - Client`, `RAL - Modules`, `RAL - Plugins`, `RAL - Storage`, `RAL - DAO`.
 
 ## Repo workflow
 

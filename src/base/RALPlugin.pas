@@ -25,7 +25,14 @@ unit RALPlugin;
   The route of a request is looked up once, the first time someone asks
   (FindRoute), and kept in the request: an authentication plugin needs it to
   know whether the method skips authentication, CORS needs its methods, and the
-  modules then answer it without looking again. }
+  modules then answer it without looking again.
+
+  A plugin hears the server start and stop (ServerActivating and
+  ServerDeactivating), with the contract the modules have: activating is
+  requested, not listening - the engines call it before they open the port, so
+  a plugin can still change how they open it (RALSelfSigned hands them a
+  certificate there) - and an exception keeps the server stopped. A plugin
+  added to a running server hears ServerActivating at once. }
 
 interface
 
@@ -133,6 +140,16 @@ type
       virtual;
     /// ppValidate. Answer 400 or above to refuse
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    /// The server is starting: called before the engine opens its port, or at
+    /// once when the plugin is added to a server that is already running. An
+    /// exception keeps the server stopped (or the plugin out of it)
+    procedure ServerActivating; virtual;
+    /// The server is stopping, or the plugin left a running server. Requests
+    /// may still be running; exceptions go to the server's OnServerError
+    procedure ServerDeactivating; virtual;
+    /// Whether the lifecycle hooks may be called: not while designing,
+    /// loading or destroying
+    function CanNotify: boolean;
 
     /// The server this plugin is in, or nil
     property Host: TRALPluginHost read FHost;
@@ -181,10 +198,21 @@ type
     FSnapshot: TRALPluginSnapshot;
     procedure Rebuild;
   protected
+    /// Whether the host is running: a plugin added now hears ServerActivating.
+    /// TRALServer answers its Active
+    function IsHostActive: boolean; virtual;
     /// Looks the route of ARequest up, without the cache of FindRoute: here,
     /// the routes plugins offer. TRALServer asks its modules first
     function LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
       out AOwner: TObject): TRALRoute; virtual;
+    /// ServerActivating (AActive) or ServerDeactivating on every plugin, in
+    /// running order. Starting, the first exception stops the walk, the
+    /// plugins that had started hear the stop, and it goes up; stopping always
+    /// reaches all of them, their exceptions through PluginError
+    procedure NotifyPlugins(AActive: boolean);
+    /// An exception of a plugin that is stopping. TRALServer hands it to
+    /// OnServerError
+    procedure PluginError(AError: Exception); virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// A plugin left the host - removed, or freed. A descendant that keeps a
     /// reference of its own to a plugin clears it here: the plugin removes
@@ -316,6 +344,23 @@ begin
   // nothing to refuse
 end;
 
+procedure TRALServerPlugin.ServerActivating;
+begin
+  // nothing to prepare
+end;
+
+procedure TRALServerPlugin.ServerDeactivating;
+begin
+  // nothing to release
+end;
+
+function TRALServerPlugin.CanNotify: boolean;
+begin
+  Result := ComponentState * [csLoading, csDesigning, csDestroying] = [];
+  if Result and (FHost <> nil) then
+    Result := FHost.ComponentState * [csDesigning, csDestroying] = [];
+end;
+
 { TRALPlugin }
 
 function TRALPlugin.GetServer: TRALPluginHost;
@@ -387,6 +432,18 @@ begin
   finally
     FLock.Release;
   end;
+
+  { outside the lock: starting may take a while (a key to generate) and may
+    ask the host things. A plugin that cannot start does not stay in a running
+    server; while loading, the plugin's own Loaded does it, once its
+    properties are read }
+  if IsHostActive and APlugin.Enabled and APlugin.CanNotify then
+    try
+      APlugin.ServerActivating;
+    except
+      RemovePlugin(APlugin);
+      raise;
+    end;
 end;
 
 function TRALPluginHost.Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
@@ -458,6 +515,60 @@ begin
   vSnap := FSnapshot;
   if (AIndex >= 0) and (AIndex < Length(vSnap.Sorted)) then
     Result := vSnap.Sorted[AIndex];
+end;
+
+function TRALPluginHost.IsHostActive: boolean;
+begin
+  Result := False;
+end;
+
+procedure TRALPluginHost.NotifyPlugins(AActive: boolean);
+var
+  vSnap: TRALPluginSnapshot;
+  vInt, vDone: IntegerRAL;
+begin
+  if csDesigning in ComponentState then
+    Exit;
+
+  vSnap := FSnapshot;
+  if AActive then
+  begin
+    vDone := 0;
+    try
+      while vDone < Length(vSnap.Sorted) do
+      begin
+        if vSnap.Sorted[vDone].CanNotify then
+          vSnap.Sorted[vDone].ServerActivating;
+        Inc(vDone);
+      end;
+    except
+      for vInt := vDone - 1 downto 0 do
+        if vSnap.Sorted[vInt].CanNotify then
+          try
+            vSnap.Sorted[vInt].ServerDeactivating;
+          except
+            // the first failure is the one that goes up
+          end;
+      raise;
+    end;
+  end
+  else
+  begin
+    { in reverse: what started last stops first }
+    for vInt := High(vSnap.Sorted) downto 0 do
+      if vSnap.Sorted[vInt].CanNotify then
+        try
+          vSnap.Sorted[vInt].ServerDeactivating;
+        except
+          on e: Exception do
+            PluginError(e);
+        end;
+  end;
+end;
+
+procedure TRALPluginHost.PluginError(AError: Exception);
+begin
+  // TRALServer reports it through OnServerError
 end;
 
 function TRALPluginHost.LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
@@ -562,6 +673,17 @@ procedure TRALPluginHost.RemovePlugin(APlugin: TRALServerPlugin);
 var
   vInt: IntegerRAL;
 begin
+  { a plugin leaving a running server stops first; one being destroyed is
+    half gone by now (its own destructor already ran) and stopped itself }
+  if (FPlugins <> nil) and (FPlugins.IndexOf(APlugin) >= 0) and IsHostActive and
+    APlugin.Enabled and APlugin.CanNotify then
+    try
+      APlugin.ServerDeactivating;
+    except
+      on e: Exception do
+        PluginError(e);
+    end;
+
   FLock.Acquire;
   try
     vInt := FPlugins.IndexOf(APlugin);

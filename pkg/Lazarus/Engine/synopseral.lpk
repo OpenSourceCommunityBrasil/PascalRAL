@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="Package for installing mORMot2 data engine components for PascalRAL."/>
     <Version Major="1" Minor="1"/>
-    <Files Count="4">
+    <Files Count="5">
       <Item1>
         <Filename Value="SynopseRAL.lrs"/>
         <Type Value="LRS"/>
@@ -44,6 +44,10 @@
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
         <UnitName Value="RALSynopseServer"/>
       </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\engine\synopse\RALHttpSysCert.pas"/>
+        <UnitName Value="RALHttpSysCert"/>
+      </Item5>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">

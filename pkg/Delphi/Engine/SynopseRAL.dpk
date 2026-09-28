@@ -35,6 +35,7 @@ requires
 contains
   RALSynopseClient in '..\..\..\src\engine\synopse\RALSynopseClient.pas',
   RALSynopseRegister in '..\..\..\src\engine\synopse\RALSynopseRegister.pas',
-  RALSynopseServer in '..\..\..\src\engine\synopse\RALSynopseServer.pas';
+  RALSynopseServer in '..\..\..\src\engine\synopse\RALSynopseServer.pas',
+  RALHttpSysCert in '..\..\..\src\engine\synopse\RALHttpSysCert.pas';
 
 end.

@@ -9,6 +9,12 @@ uses
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
   RALResponsePages, RALCompressZLib, RALPlugin;
 
+const
+  /// The start of the friendly name of the certificates RALSelfSigned makes:
+  /// what tells them apart in the Windows store, so that renewing removes the
+  /// old one and never a certificate somebody else put there
+  RALSelfSignedFriendlyName = 'PascalRAL self-signed';
+
 type
   TRALServer = class;
   TRALModuleRoutes = class;
@@ -22,6 +28,56 @@ type
   published
     property Enabled: boolean read FEnabled write FEnabled;
   end;
+
+  /// How an engine takes its server certificate (TRALServer.TLSProvisioning):
+  /// whoever provides one - RALSelfSigned - writes what the engine reads
+  TRALTLSProvisioning = (
+    /// TLS is not the engine's (CGI, UniGUI): the server in front of it does it
+    tpNone,
+    /// a certificate file and a key file in PEM (Indy, fpHTTP, MsQuic)
+    tpPEMFiles,
+    /// one PKCS#12 file with its password (mORMot2 sockets: SChannel and OpenSSL)
+    tpPFXFile,
+    /// the certificate and the key as PEM text (Sagui)
+    tpPEMText,
+    /// the Windows machine store and a binding of the port (mORMot2 http.sys)
+    tpWindowsStore);
+
+  /// A server certificate in every form the engines take. A provider fills all
+  /// of them and each engine reads the ones its TLSProvisioning names; an
+  /// engine describing its own certificate (GetTLSCertificate) fills what it
+  /// has
+  TRALTLSCertificate = record
+    /// certificate in PEM (the chain may follow the certificate)
+    CertificateFile: StringRAL;
+    /// private key in PEM
+    PrivateKeyFile: StringRAL;
+    /// password of PrivateKeyFile; empty for a plain key
+    PrivateKeyPassword: StringRAL;
+    /// the certificate and its key in PKCS#12
+    PfxFile: StringRAL;
+    PfxPassword: StringRAL;
+    /// the certificate and the key as PEM text
+    CertificatePEM: StringRAL;
+    PrivateKeyPEM: StringRAL;
+    /// the DER of the certificate: what the engine holds when it has no file
+    /// (the Windows store), and what a provider hands over so an engine that
+    /// loads the certificate per connection never reads a file half written
+    CertificateDER: TBytes;
+    /// the DER of the private key, RSAPrivateKey (PKCS#1)
+    PrivateKeyDER: TBytes;
+  end;
+
+  /// What TRALServer.SetTLSCertificate did
+  TRALTLSApplyResult = (
+    /// the engine has no TLS of its own: nothing was done
+    tarUnsupported,
+    /// set up; on a running server the connections that arrive from now on
+    /// use it, the open ones keep theirs
+    tarApplied,
+    /// set up, but the running listener opened without TLS and cannot turn it
+    /// on: the caller restarts the server
+    tarRestartNeeded);
 
   { TRALIPConfig }
 
@@ -99,12 +155,16 @@ type
     function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
     /// Checks if the current server component allows IPv6
     function IPv6IsImplemented: boolean; virtual;
+    /// Active, for the plugins: one added to a running server starts at once
+    function IsHostActive: boolean; override;
     /// The modules, in the order of the modules loop, then the routes plugins
     /// offer
     function LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
       out AOwner: TObject): TRALRoute; override;
     /// Internal function to properly dispose the component attached to the server
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// A plugin failed while the server stopped: OnServerError
+    procedure PluginError(AError: Exception); override;
     /// The authenticator left the plugins (freed, or removed): the property
     /// must not keep pointing at it
     procedure PluginRemoved(APlugin: TRALServerPlugin); override;
@@ -117,6 +177,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    /// A server freed while running never goes through SetActive(False): its
+    /// plugins stop here, before the engine is torn down under them
+    procedure BeforeDestruction; override;
     /// The TRALAuthTypes of an auth scheme: 'Basic', 'Bearer', 'Digest';
     /// ratNone for any other
     class function AuthTypeOf(const AScheme: StringRAL): TRALAuthTypes;
@@ -148,6 +211,17 @@ type
       loop, then the modules loop }
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     function SSLEnabled: boolean;
+    /// How this engine takes a certificate; tpNone when TLS is not its own
+    function TLSProvisioning: TRALTLSProvisioning; virtual;
+    /// The certificate the engine is set up with - what SSL points at, or for
+    /// http.sys what is bound to the port. False when there is none; a file
+    /// named but missing still counts as named, and the caller checks it
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; virtual;
+    /// Sets the engine up with ACertificate (the fields its TLSProvisioning
+    /// reads) and turns SSL on. Called while the server starts, before the
+    /// engine opens its port, or on a running server - then the certificate
+    /// is swapped under the listener, without stopping it
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; virtual;
     // Shortcut to start the server
     procedure Start;
     // Shortcut to stop the server
@@ -367,7 +441,23 @@ type
     property OnBeforeAnswer: TRALOnReply read FOnBeforeAnswer write FOnBeforeAnswer;
   end;
 
+/// Every field of ACertificate empty
+procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
+
 implementation
+
+procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
+begin
+  ACertificate.CertificateFile := '';
+  ACertificate.PrivateKeyFile := '';
+  ACertificate.PrivateKeyPassword := '';
+  ACertificate.PfxFile := '';
+  ACertificate.PfxPassword := '';
+  ACertificate.CertificatePEM := '';
+  ACertificate.PrivateKeyPEM := '';
+  ACertificate.CertificateDER := nil;
+  ACertificate.PrivateKeyDER := nil;
+end;
 
 type
   { TRALBaseModule }
@@ -803,7 +893,28 @@ begin
     Exit;
 
   FActive := AValue;
-  NotifyModules(AValue);
+  if AValue then
+  begin
+    { plugins first: they set up what the engine opens with - the certificate,
+      for one. A refusal keeps the server stopped }
+    try
+      NotifyPlugins(True);
+    except
+      FActive := False;
+      raise;
+    end;
+    try
+      NotifyModules(True);
+    except
+      NotifyPlugins(False);
+      raise;
+    end;
+  end
+  else
+  begin
+    NotifyModules(False);
+    NotifyPlugins(False);
+  end;
 end;
 
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
@@ -845,6 +956,43 @@ begin
   Result := False;
   if FSSL <> nil then
     Result := FSSL.Enabled;
+end;
+
+function TRALServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  Result := tpNone;
+end;
+
+function TRALServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  Result := False;
+end;
+
+function TRALServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+begin
+  Result := tarUnsupported;
+end;
+
+function TRALServer.IsHostActive: boolean;
+begin
+  Result := FActive;
+end;
+
+procedure TRALServer.PluginError(AError: Exception);
+begin
+  if Assigned(FOnServerError) then
+    FOnServerError(AError);
+end;
+
+procedure TRALServer.BeforeDestruction;
+begin
+  { before inherited: TComponent.BeforeDestruction marks the server as
+    destroying, and a destroying host notifies nobody }
+  if FActive and not (csDesigning in ComponentState) then
+    NotifyPlugins(False);
+  inherited;
 end;
 
 procedure TRALServer.Start;

@@ -5,7 +5,7 @@ unit RALfpHTTPServer;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, SyncObjs,
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
   ssockets, HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
@@ -65,7 +65,12 @@ type
   TRALfpHttpServerCore = class(TFPHttpServer)
   private
     FHandlers: TThreadList;
+    FCertLock: TCriticalSection;
   protected
+    { every TLS connection copies CertificateData into a socket handler of its
+      own (CreateSSLSocketHandler): under the lock, so a certificate replaced
+      meanwhile is copied whole, never half }
+    function GetSocketHandler(const AUseSSL: Boolean): TSocketHandler; override;
     { turns Nagle off on the accepted socket - see the implementation }
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
     function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
@@ -76,6 +81,10 @@ type
       closes the sockets still open (a client that connected and never sent
       a request would otherwise hold a thread forever) and waits again }
     procedure WaitHandlers(ATimeoutMs: Integer);
+    { the certificate of the connections accepted from now on: fcl-web builds
+      an OpenSSL context per connection from CertificateData, so replacing it
+      is the whole swap, with the server running }
+    procedure ReplaceCertificateData(ASource: TCertificateData);
   end;
 
   { TRALfpHttpServerThread }
@@ -143,6 +152,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
   published
     /// Ceiling on how many connections may be open AT THE SAME TIME, the same
     /// knob TRALIndyServer, TRALSaguiServer and TRALSynopseServer publish under
@@ -227,12 +239,40 @@ constructor TRALfpHttpServerCore.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHandlers := TThreadList.Create;
+  FCertLock := TCriticalSection.Create;
 end;
 
 destructor TRALfpHttpServerCore.Destroy;
 begin
   inherited Destroy;
   FreeAndNil(FHandlers);
+  FreeAndNil(FCertLock);
+end;
+
+function TRALfpHttpServerCore.GetSocketHandler(const AUseSSL: Boolean): TSocketHandler;
+begin
+  if not AUseSSL then
+  begin
+    Result := inherited GetSocketHandler(AUseSSL);
+    Exit;
+  end;
+
+  FCertLock.Acquire;
+  try
+    Result := inherited GetSocketHandler(AUseSSL);
+  finally
+    FCertLock.Release;
+  end;
+end;
+
+procedure TRALfpHttpServerCore.ReplaceCertificateData(ASource: TCertificateData);
+begin
+  FCertLock.Acquire;
+  try
+    CertificateData.Assign(ASource);
+  finally
+    FCertLock.Release;
+  end;
 end;
 
 function TRALfpHttpServerCore.CreateConnection(Data: TSocketStream): TFPHTTPConnection;
@@ -623,7 +663,7 @@ begin
       the loop is idle-only: without the Sleep it spun at 100% of a core
       the whole time the server was inactive and the thread alive (a server
       created and not yet started, or stopped and not freed) }
-    if (FParent.Active) then
+    if FParent.Active and not Terminated then
       FHttp.Active := FParent.Active
     else
       Sleep(50);
@@ -692,6 +732,20 @@ begin
       Execute is skipped once Terminated is set }
     if Suspended then
       Start;
+    { a server freed right after it was activated: the thread read Active a
+      moment before Terminate and is on its way into accept(), so TerminatedSet
+      found nothing listening yet and woke nobody - the WaitFor below then
+      waited forever (found by the RALSelfSigned tests, 28/09/2026). Whatever
+      it opens is closed again, and woken, until it has really ended }
+    while not Finished do
+    begin
+      if FHttp.Active then
+      begin
+        FHttp.Active := False;
+        WakeUpAccept;
+      end;
+      Sleep(20);
+    end;
     WaitFor;
   end;
   if FHttp.Active then
@@ -741,6 +795,55 @@ begin
     FMaxConnections := 0
   else
     FMaxConnections := AValue;
+end;
+
+function TRALfpHttpServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  Result := tpPEMFiles;
+end;
+
+function TRALfpHttpServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  ACertificate.CertificateFile := StringRAL(SSL.SSLOptions.CertificateFile);
+  ACertificate.PrivateKeyFile := StringRAL(SSL.SSLOptions.PrivateKeyFile);
+  ACertificate.PrivateKeyPassword := StringRAL(SSL.SSLOptions.KeyPassword);
+  ACertificate.PfxFile := StringRAL(SSL.SSLOptions.PFXFile);
+  if ACertificate.PfxFile <> '' then
+    ACertificate.PfxPassword := ACertificate.PrivateKeyPassword;
+  Result := (ACertificate.CertificateFile <> '') or (ACertificate.PfxFile <> '');
+end;
+
+function TRALfpHttpServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+var
+  vWasTLS: boolean;
+  vCore: TRALfpHttpServerCore;
+begin
+  vWasTLS := SSL.Enabled;
+  SSL.SSLOptions.CertificateFile := string(ACertificate.CertificateFile);
+  SSL.SSLOptions.PrivateKeyFile := string(ACertificate.PrivateKeyFile);
+  SSL.SSLOptions.KeyPassword := string(ACertificate.PrivateKeyPassword);
+  { a PFX would be loaded on top of the files. Bytes in Value win over a file
+    name: fcl-web loads the certificate for EVERY connection, so the DER in
+    memory, when the provider gives it, spares each handshake a file read -
+    and a renewal rewriting the files can never hand a connection a new
+    certificate with the old key }
+  SSL.SSLOptions.PFXFile := '';
+  SSL.SSLOptions.Certificate.Value := ACertificate.CertificateDER;
+  SSL.SSLOptions.PrivateKey.Value := ACertificate.PrivateKeyDER;
+  SSL.Enabled := True;
+  Result := tarApplied;
+
+  vCore := FHttpThread.FHttp;
+  if (vCore = nil) or not vCore.Active then
+    Exit;
+  if (not vWasTLS) or (not vCore.UseSSL) then
+  begin
+    Result := tarRestartNeeded;
+    Exit;
+  end;
+  vCore.ReplaceCertificateData(SSL.SSLOptions);
 end;
 
 function TRALfpHttpServer.CreateRALSSL: TRALSSL;

@@ -96,6 +96,47 @@
   emJWSOpenSSL = 'Los tokens RS y ES exigen OpenSSL 1.1.1 o posterior, que no se pudo cargar.';
   emJWSUnsupportedKey = 'Solo se admiten claves RSA y claves EC en P-256 o P-384.';
 
+  // certificate messages (RALBigInt, RALRSA, RALX509, RALSelfSigned)
+  emBigNumInvalidHex = 'Número hexadecimal no válido: %s.';
+  emBigNumNegative = 'El resultado sería negativo, y el número no tiene signo.';
+  emBigNumDivByZero = 'División por cero.';
+  emBigNumNoInverse = 'El número no tiene inverso modular.';
+  emBigNumPrimeSize = 'Un primo de %d bits es demasiado pequeño.';
+  emASN1Negative = 'No se esperaba un INTEGER negativo aquí.';
+  emASN1InvalidOID = 'Identificador de objeto no válido: %s.';
+  emASN1Truncated = 'Los datos DER terminan antes que el elemento.';
+  emASN1Unsupported = 'Forma DER no admitida: etiqueta mayor que 30 o longitud mayor que 2 GB.';
+  emASN1UnexpectedTag = 'Se esperaba la etiqueta DER %d, se encontró %d en la posición %d.';
+  emASN1InvalidTime = 'Fecha DER no válida: %s.';
+  emASN1Trailing = 'Hay bytes después del final del elemento DER.';
+  emRSAInvalidKey = 'Clave RSA no válida.';
+  emRSANoPrimes = 'La clave privada RSA no trae sus primos.';
+  emRSAKeySize = 'Clave RSA de %d bits no admitida: 1024 o más, par.';
+  emRSAExponent = 'Exponente público RSA no válido: %d.';
+  emRSANotRSA = 'La clave no es RSA.';
+  emRSAEncryptedKey = 'La clave privada está protegida por contraseña, y RAL no descifra claves: guárdela sin contraseña.';
+  emRSANoKeyInPEM = 'No se encontró ninguna clave RSA en el texto PEM.';
+  emRSANotPrivate = 'Firmar exige la clave privada.';
+  emRSADigestSize = 'El resumen a firmar debe ser un SHA-256 (32 bytes).';
+  emRSASignFault = 'La firma RSA no se verificó: el cálculo falló.';
+  emX509NoCertificate = 'No se encontró ningún certificado en el texto PEM.';
+  emX509Invalid = 'Certificado X.509 no válido.';
+  emX509InvalidDetail = 'Certificado X.509 no válido: %s';
+  emX509InvalidAddress = 'Dirección IP no válida para el certificado: %s.';
+  emX509NoKey = 'El certificado necesita una clave privada para ser firmado.';
+  emX509IssuerKeyMismatch = 'La clave del emisor no pertenece al certificado del emisor.';
+  emX509InvalidValidity = 'El certificado debe terminar después de empezar.';
+  emX509AESKey = 'AES-256 exige una clave de 32 bytes y un IV de 16.';
+  emX509KeyMismatch = 'La clave privada no pertenece al certificado.';
+  emHttpSysCallFailed = 'http.sys: %s falló (%d): %s';
+  emHttpSysNoCertificate = 'http.sys: no hay certificado para vincular al puerto.';
+  emHttpSysImportFailed = 'http.sys: no se pudo importar el PFX en el conjunto de claves de la máquina: %s. Se necesitan derechos de administrador, como para netsh.';
+  emHttpSysNoKey = 'http.sys: el PFX no tiene un certificado con clave privada.';
+  emHttpSysStoreFailed = 'http.sys: no se pudo escribir el certificado en LocalMachine\My: %s. Se necesitan derechos de administrador, como para netsh.';
+  emSynopseNoTls = 'mORMot2 no tiene capa TLS en este build: en POSIX, agregue mormot.lib.openssl11 al proyecto.';
+  emSelfSignedWriteFailed = 'No se pudo guardar el certificado en %s: %s';
+  emSelfSignedNoCertificate = 'Todavía no hay certificado: llame a Generate o LoadOrGenerate, o inicie el servidor.';
+
   // oauth2 messages (error_description and client errors)
   emOAuth2Fetch = 'No se pudo leer %s: %s';
   emOAuth2LoopbackTimeout = 'Ninguna respuesta de autorización llegó a tiempo.';

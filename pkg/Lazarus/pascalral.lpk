@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1" Minor="1"/>
-    <Files Count="46">
+    <Files Count="51">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -210,6 +210,26 @@
         <Filename Value="..\..\src\base\plugins\RALOAuth2.pas"/>
         <UnitName Value="RALOAuth2"/>
       </Item46>
+      <Item47>
+        <Filename Value="..\..\src\utils\RALBigInt.pas"/>
+        <UnitName Value="RALBigInt"/>
+      </Item47>
+      <Item48>
+        <Filename Value="..\..\src\utils\RALASN1.pas"/>
+        <UnitName Value="RALASN1"/>
+      </Item48>
+      <Item49>
+        <Filename Value="..\..\src\utils\RALRSA.pas"/>
+        <UnitName Value="RALRSA"/>
+      </Item49>
+      <Item50>
+        <Filename Value="..\..\src\utils\RALX509.pas"/>
+        <UnitName Value="RALX509"/>
+      </Item50>
+      <Item51>
+        <Filename Value="..\..\src\base\plugins\RALSelfSigned.pas"/>
+        <UnitName Value="RALSelfSigned"/>
+      </Item51>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

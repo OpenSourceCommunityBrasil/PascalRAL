@@ -30,12 +30,32 @@ type
     property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write FSSLOptions;
   end;
 
+  { TRALIdServerIOHandlerSSL }
+
+  /// Indy's server TLS handler, able to take a new certificate while the
+  /// server runs. Every accepted connection is handed the OpenSSL context the
+  /// handler holds at that moment (Accept), so publishing a new context is the
+  /// whole swap. The contexts it replaced stay alive until the server stops:
+  /// a connection accepted a moment before may not have run its handshake on
+  /// the old one yet
+  TRALIdServerIOHandlerSSL = class(TIdServerIOHandlerSSLOpenSSL)
+  private
+    FRetired: TList;
+    procedure FreeRetired;
+  public
+    destructor Destroy; override;
+    /// A new context with these files, then published. Raises, and keeps the
+    /// current one, when OpenSSL refuses them
+    procedure ReplaceCertificate(const ACertFile, AKeyFile: string);
+    procedure Shutdown; override;
+  end;
+
   { TRALIndyServer }
 
   TRALIndyServer = class(TRALServer)
   private
     FHttp: TIdHTTPServer;
-    FHandlerSSL: TIdServerIOHandlerSSLOpenSSL;
+    FHandlerSSL: TRALIdServerIOHandlerSSL;
   protected
     function CreateRALSSL: TRALSSL; override;
     function IPv6IsImplemented: Boolean; override;
@@ -64,6 +84,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
   published
     property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
     /// Ceiling on how many connections may be open AT THE SAME TIME, the same
@@ -102,7 +125,7 @@ begin
     what the other three RAL servers publish under this name }
   MaxConnections := 0;
   ListenQueue := -1;
-  FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
+  FHandlerSSL := TRALIdServerIOHandlerSSL.Create(nil);
 
 {$IFDEF FPC}
   FHttp.OnCommandGet := @OnCommandProcess;
@@ -372,6 +395,51 @@ begin
   AContext.Data := vAuth;
 end;
 
+function TRALIndyServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  Result := tpPEMFiles;
+end;
+
+function TRALIndyServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  ACertificate.CertificateFile := StringRAL(SSL.SSLOptions.CertFile);
+  ACertificate.PrivateKeyFile := StringRAL(SSL.SSLOptions.KeyFile);
+  ACertificate.PrivateKeyPassword := SSL.SSLOptions.Key;
+  Result := ACertificate.CertificateFile <> '';
+end;
+
+function TRALIndyServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+var
+  vWasTLS: boolean;
+begin
+  vWasTLS := SSL.Enabled;
+  SSL.SSLOptions.CertFile := string(ACertificate.CertificateFile);
+  SSL.SSLOptions.KeyFile := string(ACertificate.PrivateKeyFile);
+  SSL.SSLOptions.Key := ACertificate.PrivateKeyPassword;
+  { Indy's own default is TLS 1.0 alone, which nothing current accepts - and
+    OpenSSL 3 refuses to negotiate at its default security level. Left at
+    that default the certificate would be served to nobody, so the versions
+    that still count take its place; a choice of the application stays }
+  if SSL.SSLOptions.SSLVersions = [sslvTLSv1] then
+    SSL.SSLOptions.SSLVersions := [sslvTLSv1_1, sslvTLSv1_2];
+  SSL.Enabled := True;
+  Result := tarApplied;
+
+  if not FHttp.Active then
+    Exit;
+  { a listener opened on plain http cannot turn TLS on }
+  if (not vWasTLS) or (FHttp.IOHandler <> FHandlerSSL) then
+  begin
+    Result := tarRestartNeeded;
+    Exit;
+  end;
+  SSL.SSLOptions.AssignTo(FHandlerSSL.SSLOptions);
+  FHandlerSSL.ReplaceCertificate(string(ACertificate.CertificateFile),
+    string(ACertificate.PrivateKeyFile));
+end;
+
 procedure TRALIndyServer.QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
 begin
   if APort = Self.Port then
@@ -487,6 +555,67 @@ end;
 destructor TRALIndySSL.Destroy;
 begin
   FreeAndNil(FSSLOptions);
+  inherited;
+end;
+
+{ TRALIdServerIOHandlerSSL }
+
+type
+  { InitContext is protected in TIdSSLContext }
+  TIdSSLContextAccess = class(TIdSSLContext);
+
+destructor TRALIdServerIOHandlerSSL.Destroy;
+begin
+  FreeRetired;
+  FreeAndNil(FRetired);
+  inherited;
+end;
+
+procedure TRALIdServerIOHandlerSSL.FreeRetired;
+var
+  vInt: IntegerRAL;
+begin
+  if FRetired = nil then
+    Exit;
+  for vInt := 0 to FRetired.Count - 1 do
+    TObject(FRetired.Items[vInt]).Free;
+  FRetired.Clear;
+end;
+
+procedure TRALIdServerIOHandlerSSL.ReplaceCertificate(const ACertFile, AKeyFile: string);
+var
+  vOld, vNew: TIdSSLContext;
+begin
+  vOld := fSSLContext;
+  { not started yet: Init builds the context from SSLOptions }
+  if vOld = nil then
+    Exit;
+
+  vNew := vOld.Clone;
+  try
+    vNew.Parent := Self;
+    vNew.CertFile := ACertFile;
+    vNew.KeyFile := AKeyFile;
+    vNew.DHParamsFile := vOld.DHParamsFile;
+    vNew.CipherList := vOld.CipherList;
+    vNew.VerifyDirs := vOld.VerifyDirs;
+    TIdSSLContextAccess(vNew).InitContext(sslCtxServer);
+  except
+    vNew.Free;
+    raise;
+  end;
+
+  if FRetired = nil then
+    FRetired := TList.Create;
+  FRetired.Add(vOld);
+  { a pointer write: Accept reads the field once per connection }
+  fSSLContext := vNew;
+end;
+
+procedure TRALIdServerIOHandlerSSL.Shutdown;
+begin
+  { the server closed its connections before shutting its handler down }
+  FreeRetired;
   inherited;
 end;
 

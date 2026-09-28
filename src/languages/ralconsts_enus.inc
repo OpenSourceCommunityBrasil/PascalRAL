@@ -96,6 +96,47 @@
   emJWSOpenSSL = 'RS and ES tokens need OpenSSL 1.1.1 or later, which could not be loaded.';
   emJWSUnsupportedKey = 'Only RSA keys and EC keys on P-256 or P-384 are supported.';
 
+  // certificate messages (RALBigInt, RALRSA, RALX509, RALSelfSigned)
+  emBigNumInvalidHex = 'Invalid hexadecimal number: %s.';
+  emBigNumNegative = 'The result would be negative, and the number is unsigned.';
+  emBigNumDivByZero = 'Division by zero.';
+  emBigNumNoInverse = 'The number has no modular inverse.';
+  emBigNumPrimeSize = 'A prime of %d bits is too small.';
+  emASN1Negative = 'A negative INTEGER is not expected here.';
+  emASN1InvalidOID = 'Invalid object identifier: %s.';
+  emASN1Truncated = 'The DER data ends before the element does.';
+  emASN1Unsupported = 'DER form not supported: a tag above 30 or a length above 2 GB.';
+  emASN1UnexpectedTag = 'DER tag %d expected, %d found at offset %d.';
+  emASN1InvalidTime = 'Invalid DER time: %s.';
+  emASN1Trailing = 'There are bytes after the end of the DER element.';
+  emRSAInvalidKey = 'Invalid RSA key.';
+  emRSANoPrimes = 'The RSA private key does not carry its primes.';
+  emRSAKeySize = 'An RSA key of %d bits is not supported: 1024 or more, even.';
+  emRSAExponent = 'Invalid RSA public exponent: %d.';
+  emRSANotRSA = 'The key is not RSA.';
+  emRSAEncryptedKey = 'The private key is protected by a password, and RAL does not decrypt keys: save it without a password.';
+  emRSANoKeyInPEM = 'No RSA key was found in the PEM text.';
+  emRSANotPrivate = 'Signing needs the private key.';
+  emRSADigestSize = 'The digest to sign must be a SHA-256 (32 bytes).';
+  emRSASignFault = 'The RSA signature did not verify: the calculation failed.';
+  emX509NoCertificate = 'No certificate was found in the PEM text.';
+  emX509Invalid = 'Invalid X.509 certificate.';
+  emX509InvalidDetail = 'Invalid X.509 certificate: %s';
+  emX509InvalidAddress = 'Invalid IP address for the certificate: %s.';
+  emX509NoKey = 'The certificate needs a private key to be signed.';
+  emX509IssuerKeyMismatch = 'The issuer key does not belong to the issuer certificate.';
+  emX509InvalidValidity = 'The certificate must end after it starts.';
+  emX509AESKey = 'AES-256 needs a key of 32 bytes and an IV of 16.';
+  emX509KeyMismatch = 'The private key does not belong to the certificate.';
+  emHttpSysCallFailed = 'http.sys: %s failed (%d): %s';
+  emHttpSysNoCertificate = 'http.sys: there is no certificate to bind to the port.';
+  emHttpSysImportFailed = 'http.sys: the PFX could not be imported into the machine key set: %s. Administrator rights are needed, as for netsh.';
+  emHttpSysNoKey = 'http.sys: the PFX has no certificate with a private key.';
+  emHttpSysStoreFailed = 'http.sys: the certificate could not be written to LocalMachine\My: %s. Administrator rights are needed, as for netsh.';
+  emSynopseNoTls = 'mORMot2 has no TLS layer in this build: on POSIX, add mormot.lib.openssl11 to the project.';
+  emSelfSignedWriteFailed = 'The certificate could not be saved in %s: %s';
+  emSelfSignedNoCertificate = 'There is no certificate yet: call Generate or LoadOrGenerate, or start the server.';
+
   // oauth2 messages (error_description and client errors)
   emOAuth2Fetch = 'Could not read %s: %s';
   emOAuth2LoopbackTimeout = 'No authorization answer arrived in time.';

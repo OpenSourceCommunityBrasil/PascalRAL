@@ -167,6 +167,10 @@ type
   private
     FRegistration: HQUIC;
     FConfiguration: HQUIC;
+    { configurations a certificate swap replaced: the listener callback may
+      have read one of them a moment before, so they are closed with the
+      registration, never while it runs }
+    FRetiredConfigurations: array of HQUIC;
     FListener: HQUIC;
     FAlpn: AnsiString;
     FAlpnBuffer: QUIC_BUFFER;
@@ -205,6 +209,9 @@ type
     procedure RunWork(const AWork: TRALMsQuicWork);
     procedure CloseServerHandles;
     procedure OpenConfiguration;
+    /// A configuration with the settings of this server and the certificate
+    /// SSL points at; closed again when the credential does not load
+    function NewConfiguration: HQUIC;
     function GetSSL: TRALMsQuicSSL;
     procedure SetAlpn(const AValue: StringRAL);
     function GetAlpn: StringRAL;
@@ -224,6 +231,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    { on a running server the certificate goes into a configuration of its own,
+      which the listener hands to every connection accepted from then on; the
+      connections already open keep the one they got }
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     /// How many connections this listener has accepted since it was last
     /// activated, and how many requests came in on them. The RATIO is the
     /// only direct proof that a client is multiplexing: many requests over
@@ -1240,6 +1253,51 @@ begin
 end;
 
 procedure TRALMsQuicServer.OpenConfiguration;
+begin
+  FConfiguration := NewConfiguration;
+end;
+
+function TRALMsQuicServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  Result := tpPEMFiles;
+end;
+
+function TRALMsQuicServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  ACertificate.CertificateFile := StringRAL(SSL.CertificateFile);
+  ACertificate.PrivateKeyFile := StringRAL(SSL.PrivateKeyFile);
+  ACertificate.PrivateKeyPassword := SSL.PrivateKeyPassword;
+  Result := ACertificate.CertificateFile <> '';
+end;
+
+function TRALMsQuicServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+var
+  vNew, vOld: HQUIC;
+begin
+  SSL.CertificateFile := TFileName(ACertificate.CertificateFile);
+  SSL.PrivateKeyFile := TFileName(ACertificate.PrivateKeyFile);
+  SSL.PrivateKeyPassword := ACertificate.PrivateKeyPassword;
+  SSL.Enabled := True;
+  Result := tarApplied;
+
+  if (FListener = nil) or (FRegistration = nil) then
+    Exit;
+
+  vNew := NewConfiguration;
+  vOld := FConfiguration;
+  { one pointer write: the listener callback reads the field once per
+    connection it accepts }
+  FConfiguration := vNew;
+  if vOld <> nil then
+  begin
+    SetLength(FRetiredConfigurations, Length(FRetiredConfigurations) + 1);
+    FRetiredConfigurations[High(FRetiredConfigurations)] := vOld;
+  end;
+end;
+
+function TRALMsQuicServer.NewConfiguration: HQUIC;
 var
   vSettings: QUIC_SETTINGS;
   vCred: QUIC_CREDENTIAL_CONFIG;
@@ -1283,8 +1341,9 @@ begin
     QUIC_SETTING_PeerBidiStreamCount or QUIC_SETTING_MaxAckDelayMs or
     QUIC_SETTING_PacingEnabled;
 
+  Result := nil;
   vStatus := MsQuicApi^.ConfigurationOpen(FRegistration, @FAlpnBuffer, 1,
-    @vSettings, SizeOf(vSettings), nil, FConfiguration);
+    @vSettings, SizeOf(vSettings), nil, Result);
   if QUIC_FAILED(vStatus) then
     raise Exception.CreateFmt(emQuicApiFailed,
       ['ConfigurationOpen', QuicStatusToStr(vStatus)]);
@@ -1313,13 +1372,19 @@ begin
     vCred.CertificateRef := @vCertFile;
   end;
 
-  vStatus := MsQuicApi^.ConfigurationLoadCredential(FConfiguration, @vCred);
+  vStatus := MsQuicApi^.ConfigurationLoadCredential(Result, @vCred);
   if QUIC_FAILED(vStatus) then
+  begin
+    MsQuicApi^.ConfigurationClose(Result);
+    Result := nil;
     raise Exception.CreateFmt(emQuicApiFailed,
       ['ConfigurationLoadCredential', QuicStatusToStr(vStatus)]);
+  end;
 end;
 
 procedure TRALMsQuicServer.CloseServerHandles;
+var
+  vInt: IntegerRAL;
 begin
   if FListener <> nil then
   begin
@@ -1342,6 +1407,9 @@ begin
     MsQuicApi^.ConfigurationClose(FConfiguration);
     FConfiguration := nil;
   end;
+  for vInt := 0 to High(FRetiredConfigurations) do
+    MsQuicApi^.ConfigurationClose(FRetiredConfigurations[vInt]);
+  FRetiredConfigurations := nil;
   if FRegistration <> nil then
   begin
     // Waits for every connection of this registration to finish closing, so no

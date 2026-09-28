@@ -32,6 +32,12 @@ type
 
 implementation
 
+{ SHA-1 adds modulo 2^32 on purpose: with overflow checks on - the default of
+  many Debug builds, and of an implicit build of this package - every block
+  raised EIntOverflow. The SHA-2 units turn the check off around their sums;
+  here every sum is one, so the whole unit goes without it }
+{$Q-}
+
 { TRALSHA1 }
 
 function TRALSHA1.Swap(AValue: cardinal): cardinal;

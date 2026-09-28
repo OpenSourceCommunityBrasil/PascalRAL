@@ -15,8 +15,11 @@ uses
   {$ENDIF}
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
+  {$IFDEF RALWindows}
+  RALHttpSysCert,
+  {$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALBase64;
+  RALParams, RALTools, RALBase64, RALRSA, RALX509;
 
 type
 
@@ -101,6 +104,16 @@ type
     FMode: TRALSynopseMode;
     FPoolCount: IntegerRAL;
     FQueueSize: IntegerRAL;
+    { the TLS contexts a certificate swap put in place of the one the server
+      bound: an accepted connection reads the certificate pointer they hold,
+      so they live until the server object is gone }
+    FRetiredTls: array of INetTls;
+    FRetiredTlsContexts: array of PNetTlsContext;
+    procedure ReleaseRetiredTls;
+    { a new context loaded from SSL, then published where every connection
+      accepted from now on reads its certificate (Sock.TLS.AcceptCert) - the
+      threads and the async modes alike, SChannel and OpenSSL alike }
+    procedure ReplaceSocketCertificate;
   protected
     function CreateRALSSL: TRALSSL; override;
     function GetSSL: TRALSynopseSSL;
@@ -123,6 +136,14 @@ type
     destructor Destroy; override;
     /// Three of the properties below belong to one mode each - see the base
     function IsPropertyRelevant(const AName: StringRAL): boolean; override;
+    /// tpPFXFile in the socket modes (one file that SChannel and OpenSSL both
+    /// read), tpWindowsStore in smHttpSys
+    function TLSProvisioning: TRALTLSProvisioning; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    { smHttpSys: imports the PFX into LocalMachine\My and binds it to the port,
+      which needs administrator rights like netsh does - and like netsh, it
+      takes effect on the next handshake with the server running }
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
   published
     /// smHttpSys only: which host part of the URL to listen on, and it has to
     /// be the SAME text the reservation used. http.sys matches prefixes
@@ -326,6 +347,7 @@ begin
       if not (FHttp is THttpServerSocketGeneric) then
       begin
         FreeAndNil(FHttp);
+        ReleaseRetiredTls;
         Exit;
       end;
       {$IFDEF FPC}
@@ -348,6 +370,7 @@ begin
       {$ENDIF}
       FHttp.WaitFor;
       FreeAndNil(FHttp);
+      ReleaseRetiredTls;
     end;
   end;
 end;
@@ -756,7 +779,145 @@ end;
 destructor TRALSynopseServer.Destroy;
 begin
   Active := False;
+  ReleaseRetiredTls;
   inherited;
+end;
+
+procedure TRALSynopseServer.ReleaseRetiredTls;
+var
+  vInt: IntegerRAL;
+begin
+  { the interfaces first: an OpenSSL context may point at its record }
+  for vInt := 0 to High(FRetiredTls) do
+    FRetiredTls[vInt] := nil;
+  FRetiredTls := nil;
+  for vInt := 0 to High(FRetiredTlsContexts) do
+    Dispose(FRetiredTlsContexts[vInt]);
+  FRetiredTlsContexts := nil;
+end;
+
+procedure TRALSynopseServer.ReplaceSocketCertificate;
+var
+  vSock: TCrtSocket;
+  vCtx: PNetTlsContext;
+  vTls: INetTls;
+begin
+  if not (FHttp is THttpServerSocketGeneric) then
+    Exit;
+  vSock := THttpServerSocketGeneric(FHttp).Sock;
+  if (vSock = nil) or not Assigned(NewNetTls) then
+    Exit;
+
+  { on the heap: OpenSSL may keep the address of the record (the SNI
+    callback), so it has to outlive this call }
+  New(vCtx);
+  try
+    InitNetTlsContext(vCtx^, True, SSL.CertificateFile, SSL.PrivateKeyFile,
+      RawUtf8(SSL.PrivateKeyPassword), SSL.CACertificatesFile);
+    { the parentheses call the factory; without them ObjFPC reads the
+      procedural variable itself }
+    vTls := NewNetTls();
+    if vTls = nil then
+      raise Exception.Create(emSynopseNoTls);
+    vTls.AfterBind(vSock.Sock, vCtx^, '');
+  except
+    Dispose(vCtx);
+    raise;
+  end;
+
+  SetLength(FRetiredTls, Length(FRetiredTls) + 1);
+  FRetiredTls[High(FRetiredTls)] := vTls;
+  SetLength(FRetiredTlsContexts, Length(FRetiredTlsContexts) + 1);
+  FRetiredTlsContexts[High(FRetiredTlsContexts)] := vCtx;
+  { one pointer write: THttpServerSocket.Create and the async OnFirstReadDoTls
+    read it once per accepted connection }
+  vSock.TLS.AcceptCert := vCtx^.AcceptCert;
+end;
+
+function TRALSynopseServer.TLSProvisioning: TRALTLSProvisioning;
+begin
+  if FMode = smHttpSys then
+    Result := tpWindowsStore
+  else
+    Result := tpPFXFile;
+end;
+
+function TRALSynopseServer.GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean;
+begin
+  RALClearTLSCertificate(ACertificate);
+  {$IFDEF RALWindows}
+  if FMode = smHttpSys then
+  begin
+    ACertificate.CertificateDER := HttpSysBoundCertificate(Word(Port));
+    Result := Length(ACertificate.CertificateDER) > 0;
+    Exit;
+  end;
+  {$ENDIF}
+  { a key file means PEM (OpenSSL); without one CertificateFile is a PFX, or a
+    PEM holding the key too - the caller looks at the content }
+  if SSL.PrivateKeyFile <> '' then
+  begin
+    ACertificate.CertificateFile := StringRAL(SSL.CertificateFile);
+    ACertificate.PrivateKeyFile := StringRAL(SSL.PrivateKeyFile);
+    ACertificate.PrivateKeyPassword := SSL.PrivateKeyPassword;
+  end
+  else
+  begin
+    ACertificate.PfxFile := StringRAL(SSL.CertificateFile);
+    ACertificate.PfxPassword := SSL.PrivateKeyPassword;
+    {$IFDEF RALWindows}
+    { a PKCS#12 is Windows' to read: the certificate goes out as DER. A PEM
+      file here comes back empty and is read by the caller }
+    if FileExists(SSL.CertificateFile) then
+      ACertificate.CertificateDER := WinPfxCertificate(
+        RALReadFileBytes(SSL.CertificateFile), SSL.PrivateKeyPassword);
+    {$ENDIF}
+  end;
+  Result := SSL.CertificateFile <> '';
+end;
+
+function TRALSynopseServer.SetTLSCertificate(
+  const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
+var
+  vWasTLS: boolean;
+  {$IFDEF RALWindows}
+  vThumb, vOld: TBytes;
+  {$ENDIF}
+begin
+  vWasTLS := SSL.Enabled;
+  Result := tarApplied;
+
+  {$IFDEF RALWindows}
+  if FMode = smHttpSys then
+  begin
+    vThumb := RALSHA1Bytes(ACertificate.CertificateDER);
+    vOld := HttpSysBoundThumbprint(Word(Port));
+    HttpSysBindCertificate(Word(Port), RALReadFileBytes(string(ACertificate.PfxFile)),
+      ACertificate.PfxPassword, vThumb);
+    { the certificate it replaced leaves the store when RAL put it there }
+    if (Length(vOld) > 0) and not RALSameBytes(vOld, vThumb) then
+      HttpSysRemoveCertificate(vOld, RALSelfSignedFriendlyName);
+    SSL.Enabled := True;
+    { the URL was registered as http:// }
+    if (FHttp <> nil) and not vWasTLS then
+      Result := tarRestartNeeded;
+    Exit;
+  end;
+  {$ENDIF}
+
+  SSL.CertificateFile := TFileName(ACertificate.PfxFile);
+  SSL.PrivateKeyFile := '';
+  SSL.PrivateKeyPassword := ACertificate.PfxPassword;
+  SSL.Enabled := True;
+
+  if FHttp = nil then
+    Exit;
+  if not vWasTLS then
+  begin
+    Result := tarRestartNeeded;
+    Exit;
+  end;
+  ReplaceSocketCertificate;
 end;
 
 function TRALSynopseServer.GetSSL: TRALSynopseSSL;

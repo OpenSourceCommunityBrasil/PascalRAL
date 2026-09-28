@@ -23,7 +23,7 @@ uses
   RALConsts, RALAuthentication, RALCompress, RALTypes, RALCustomObjects,
   // server
   RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
-  RALStorageCSV, RALSecurity, RALCORS, RALContent, RALDigest, RALOAuth2,
+  RALStorageCSV, RALSecurity, RALCORS, RALContent, RALDigest, RALOAuth2, RALSelfSigned,
   // client
   RALClient;
 
@@ -167,7 +167,8 @@ begin
     Server property (authentication by Server.Authentication) }
   RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
-    TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin]);
+    TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
+    TRALSelfSigned]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
   { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,
