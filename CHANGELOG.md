@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **feat: ajuste de ícone MsQuicServer para Delphi e Lazarus fix: correção de instalação de brotlicompress no Delphi** (2026-09-28 – mobius1qwe)
+
 - **fix: padronização de código fix: padronização de units para UTF8 fix: correção de instalação XE2 e Seattle 10.0 fix: qualidade do gzip na compressão fix: padronização e correção de ISO8601 com timezone fix: correção de claim duplicado no AddClaim fix: correção de libbrotli static link feat: helper dbware para expor o objeto de conexão** (2026-09-25 – mobius1qwe)
 
 - **Add TRALClientInfo.ConnectionID to tell requests apart by connection** (2026-09-22 – tempraturbo)
