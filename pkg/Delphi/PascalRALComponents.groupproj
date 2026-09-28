@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{39844859-EE38-48FB-93E1-AD54794BBE71}</ProjectGuid>
     </PropertyGroup>
@@ -24,11 +24,11 @@
         <Projects Include="Engine\SaguiRAL.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
-        <Projects Include="Engine\UniGUIRAL.dproj">
-            <Dependencies/>
-        </Projects>
         <Projects Include="Engine\MsQuicRAL.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Engine\UniGUIRAL.dproj">
+            <Dependencies/>
         </Projects>
         <Projects Include="RALWizard.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
@@ -92,17 +92,17 @@
     <Target Name="NetHttpRAL" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Engine\NetHttpRAL.dproj"/>
     </Target>
-    <Target Name="OkHttpRAL" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Engine\OkHttpRAL.dproj"/>
-    </Target>
     <Target Name="NetHttpRAL:Clean" DependsOnTargets="PascalRAL:Clean">
         <MSBuild Projects="Engine\NetHttpRAL.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="OkHttpRAL:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Engine\OkHttpRAL.dproj" Targets="Clean"/>
-    </Target>
     <Target Name="NetHttpRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Engine\NetHttpRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="OkHttpRAL" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Engine\OkHttpRAL.dproj"/>
+    </Target>
+    <Target Name="OkHttpRAL:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Engine\OkHttpRAL.dproj" Targets="Clean"/>
     </Target>
     <Target Name="OkHttpRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Engine\OkHttpRAL.dproj" Targets="Make"/>
@@ -125,15 +125,6 @@
     <Target Name="SaguiRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Engine\SaguiRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="UniGUIRAL">
-        <MSBuild Projects="Engine\UniGUIRAL.dproj"/>
-    </Target>
-    <Target Name="UniGUIRAL:Clean">
-        <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="UniGUIRAL:Make">
-        <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Make"/>
-    </Target>
     <Target Name="MsQuicRAL" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Engine\MsQuicRAL.dproj"/>
     </Target>
@@ -142,6 +133,15 @@
     </Target>
     <Target Name="MsQuicRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Engine\MsQuicRAL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="UniGUIRAL">
+        <MSBuild Projects="Engine\UniGUIRAL.dproj"/>
+    </Target>
+    <Target Name="UniGUIRAL:Clean">
+        <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="UniGUIRAL:Make">
+        <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALWizard" DependsOnTargets="PascalRAL">
         <MSBuild Projects="RALWizard.dproj"/>
@@ -216,13 +216,13 @@
         <MSBuild Projects="Database\RALBSONStorage.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;OkHttpRAL;SynopseRAL;SaguiRAL;UniGUIRAL;MsQuicRAL;RALWizard;RALDBPackage;RALDBFireDACLink;RALDBFireDACObjects;RALDBZeosLink;RALBrotliCompress;RALZStdCompress;RALBSONStorage"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;NetHttpRAL;OkHttpRAL;SynopseRAL;SaguiRAL;MsQuicRAL;UniGUIRAL;RALWizard;RALDBPackage;RALDBFireDACLink;RALDBFireDACObjects;RALDBZeosLink;RALBrotliCompress;RALZStdCompress;RALBSONStorage"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;UniGUIRAL:Clean;MsQuicRAL:Clean;RALWizard:Clean;RALDBPackage:Clean;RALDBFireDACLink:Clean;RALDBFireDACObjects:Clean;RALDBZeosLink:Clean;RALBrotliCompress:Clean;RALZStdCompress:Clean;RALBSONStorage:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;MsQuicRAL:Clean;UniGUIRAL:Clean;RALWizard:Clean;RALDBPackage:Clean;RALDBFireDACLink:Clean;RALDBFireDACObjects:Clean;RALDBZeosLink:Clean;RALBrotliCompress:Clean;RALZStdCompress:Clean;RALBSONStorage:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;SynopseRAL:Make;SaguiRAL:Make;UniGUIRAL:Make;MsQuicRAL:Make;RALWizard:Make;RALDBPackage:Make;RALDBFireDACLink:Make;RALDBFireDACObjects:Make;RALDBZeosLink:Make;RALBrotliCompress:Make;RALZStdCompress:Make;RALBSONStorage:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;SynopseRAL:Make;SaguiRAL:Make;MsQuicRAL:Make;UniGUIRAL:Make;RALWizard:Make;RALDBPackage:Make;RALDBFireDACLink:Make;RALDBFireDACObjects:Make;RALDBZeosLink:Make;RALBrotliCompress:Make;RALZStdCompress:Make;RALBSONStorage:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
