@@ -13,7 +13,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALInst.Catalogo, RALInst.Instalar.Delphi, RALInst.Receitas, RALInst.Tela.Instalacao;
+  RALInst.Catalogo, RALInst.Instalar.Delphi, RALInst.Receitas, RALInst.Situacao,
+  RALInst.Tela.Instalacao;
 
 type
   /// Shell of a Delphi installation.
@@ -49,6 +50,10 @@ begin
   Result.SomenteLibraryPath := AEscolha.SomenteLibraryPath;
   if AEscolha.Win64 and (Instancia.Plataformas.IndexOf('win64') >= 0) then
     Result.Plataformas.Add('win64');
+  // a versao escolhida: antes de baixar, a pasta ainda nao a tem
+  Result.VersaoNova := AEscolha.VersaoRAL;
+  Result.CommitNovo := AEscolha.CommitRAL;
+  Result.Reinstalar := AEscolha.Reinstalar;
   Result.Log := @LogarLinha;
 end;
 
@@ -109,6 +114,7 @@ begin
       Exit(True);
     end;
     Result := vInst.Executar;
+    AnotarMudanca(vInst.Mudanca, vInst.TextoMudanca);
     if vInst.Relatorio.Count > 0 then
     begin
       LogarLinha('');
@@ -124,6 +130,7 @@ function TIDETelaDelphi.Plano(AEscolha: TEscolhaInstalacao): string;
 var
   vInst: TInstalacaoDelphi;
 begin
+  AnotarMudanca(mrNada, '');
   vInst := Criar(AEscolha);
   try
     vInst.Log := nil;
@@ -132,6 +139,7 @@ begin
     if vInst.Pacotes.Count = 0 then
       Exit(Format(cmNenhumRecursoExistePlano, [Name, 'Delphi']) + LineEnding);
     Result := vInst.Plano;
+    AnotarMudanca(vInst.Mudanca, vInst.TextoMudanca);
   finally
     vInst.Free;
   end;

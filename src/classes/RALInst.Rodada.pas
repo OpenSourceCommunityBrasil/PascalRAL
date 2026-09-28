@@ -17,7 +17,7 @@ interface
 uses
   Classes, SysUtils,
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.GitHub, RALInst.IDE,
-  RALInst.Processo, RALInst.Receitas;
+  RALInst.Processo, RALInst.Receitas, RALInst.Situacao;
 
 type
   /// One installation run over several IDEs.
@@ -35,11 +35,17 @@ type
     FIgnorarExistentes: boolean;
     FLog: TLogLinha;
     FManifesto: TManifesto;
+    FManterInstalados: boolean;
+    /// IDE root=what the plan found in it (TMudancaRAL), for IDEs with an
+    /// engine
+    FMudancas: TStringList;
     FPacotes: TStringList;
     FPastaBase: string;
     FPastaLocal: string;
     FPastaRecibos: string;
+    FPlanejado: boolean;
     FReceitas: TReceitas;
+    FReinstalar: boolean;
     FRelatorio: TStringList;
     FRepo: TRepoGitHub;
     FSomenteLibraryPath: boolean;
@@ -48,6 +54,8 @@ type
     FWin64: boolean;
     /// The catalog of the downloaded folder when there is one, else the zip's
     function CatalogoDaExecucao: TCatalogo;
+    /// Commit of the chosen GitHub version (the zip's); '' for a local folder
+    function CommitEscolhido: string;
     /// The compatibility check, created on first use
     function Compat: TCompatibilidade;
     /// Where a dependency already is in the IDE (cached)
@@ -76,10 +84,12 @@ type
     /// '' or 'estavel' = the newest stable one; else a tag, release or branch
     function EscolherVersao(const ARef: string): boolean;
     /// Download and install; False when something failed (the report says
-    /// what)
+    /// what). With nothing to do in any IDE, nothing is downloaded
     function Executar: boolean;
     /// RAL versions on GitHub (releases, tags, branches)
     function ListarVersoes: boolean;
+    /// After Plano: every IDE already has these sources and packages
+    function NadaAFazer: boolean;
     /// The asked names that exist in no kind of this version
     procedure PacotesDesconhecidos(ALista: TStrings);
     /// The asked names that exist in the IDE kind; with none asked, RAL's core
@@ -103,6 +113,9 @@ type
     property IgnorarExistentes: boolean read FIgnorarExistentes write FIgnorarExistentes;
     property Log: TLogLinha read FLog write FLog;
     property Manifesto: TManifesto read FManifesto;
+    /// The RAL packages an IDE already has stay, besides the asked ones
+    /// (default); False = what was not asked leaves the IDE
+    property ManterInstalados: boolean read FManterInstalados write FManterInstalados;
     /// Asked names, case-insensitive
     property Pacotes: TStringList read FPacotes;
     property PastaBase: string read FPastaBase write FPastaBase;
@@ -110,6 +123,8 @@ type
     /// Where the receipts live (default: the installer's data folder)
     property PastaRecibos: string read FPastaRecibos write FPastaRecibos;
     property Receitas: TReceitas read FReceitas;
+    /// Compiles and registers everything even where nothing changed
+    property Reinstalar: boolean read FReinstalar write FReinstalar;
     /// One line per IDE: what entered and what stayed out, and why
     property Relatorio: TStringList read FRelatorio;
     property Repo: TRepoGitHub read FRepo;
@@ -146,6 +161,9 @@ begin
   FDependencias.CaseSensitive := False;
   FDeteccoes := TStringList.Create;
   FRelatorio := TStringList.Create;
+  FMudancas := TStringList.Create;
+  FMudancas.CaseSensitive := False;
+  FManterInstalados := True;
   FConstruirIDE := True;
   FPastaRecibos := PastaDadosInstalador + 'recibos';
   FExigirIDEFechada := True;
@@ -155,6 +173,7 @@ end;
 destructor TRodada.Destroy;
 begin
   FCompat.Free;
+  FMudancas.Free;
   FRelatorio.Free;
   FDeteccoes.Free;
   FDependencias.Free;
@@ -289,6 +308,8 @@ begin
   FreeAndNil(FCompat);
   FreeAndNil(FCatalogoInstalar);
   FDeteccoes.Clear;
+  FMudancas.Clear;
+  FPlanejado := False;
   FCatalogo.Limpar;
   FManifesto.Limpar;
   if FPastaLocal <> '' then
@@ -398,6 +419,25 @@ begin
     Result := FCatalogo;
 end;
 
+function TRodada.CommitEscolhido: string;
+begin
+  Result := '';
+  if (FPastaLocal = '') and (FCatalogo.Origem is TOrigemZip) then
+    Result := TOrigemZip(FCatalogo.Origem).Commit;
+end;
+
+function TRodada.NadaAFazer: boolean;
+var
+  vInt: integer;
+begin
+  Result := FPlanejado;
+  for vInt := 0 to Pred(FMudancas.Count) do
+    if StrToIntDef(Copy(FMudancas.ValueFromIndex[vInt], 1,
+                        Pos('|', FMudancas.ValueFromIndex[vInt]) - 1), -1) <>
+       Ord(mrNada) then
+      Exit(False);
+end;
+
 procedure TRodada.SubmodulosDaEscolha(ALista: TStrings);
 var
   vFechamento: TList;
@@ -450,7 +490,15 @@ begin
         vLaz.PastasDependencias.Assign(FDependencias);
         vLaz.IgnorarExistentes := FIgnorarExistentes;
         vLaz.ConstruirIDE := FConstruirIDE;
+        vLaz.PastaRecibos := FPastaRecibos;
+        vLaz.ManterInstalados := FManterInstalados;
+        vLaz.Reinstalar := FReinstalar;
+        if FVersao <> nil then
+          vLaz.VersaoNova := FVersao.Ref;
+        vLaz.CommitNovo := CommitEscolhido;
         Result := vLaz.Plano;
+        FMudancas.Values[AIDE.RootDir] := IntToStr(Ord(vLaz.Mudanca)) + '|' +
+                                          vLaz.TextoMudanca;
       finally
         vLaz.Free;
       end;
@@ -469,7 +517,15 @@ begin
         vDelphi.SomenteLibraryPath := FSomenteLibraryPath;
         if FWin64 and (AIDE.Plataformas.IndexOf('win64') >= 0) then
           vDelphi.Plataformas.Add('win64');
+        vDelphi.PastaRecibos := FPastaRecibos;
+        vDelphi.ManterInstalados := FManterInstalados;
+        vDelphi.Reinstalar := FReinstalar;
+        if FVersao <> nil then
+          vDelphi.VersaoNova := FVersao.Ref;
+        vDelphi.CommitNovo := CommitEscolhido;
         Result := vDelphi.Plano;
+        FMudancas.Values[AIDE.RootDir] := IntToStr(Ord(vDelphi.Mudanca)) + '|' +
+                                          vDelphi.TextoMudanca;
       finally
         vDelphi.Free;
       end;
@@ -493,6 +549,8 @@ var
 begin
   Result := '';
   FDependencias.Clear;
+  FMudancas.Clear;
+  FPlanejado := True;
   vSubs := TStringList.Create;
   vDesconhecidos := TStringList.Create;
   vNomes := TStringList.Create;
@@ -602,19 +660,25 @@ var
   vDelphi: TInstalacaoDelphi;
   {$ENDIF}
 
-  procedure Relatar(ARelatorio, AAvisos: TStrings; AOk: boolean);
+  procedure Relatar(ARelatorio, AAvisos: TStrings; AOk: boolean;
+    AMudanca: TMudancaRAL; const ATexto: string);
   var
     vI: integer;
+    vEstado: string;
   begin
     Logar('');
     for vI := 0 to Pred(ARelatorio.Count) do
       Logar(ARelatorio[vI]);
-    if AAvisos.Count = 0 then
-      FRelatorio.Add(Format('%s: %s',
-                            [AIDE.Nome, IfThen(AOk, cmEstadoOk, cmTerminouComErro)]))
+    // o que a rodada fez nesta IDE: instalar, atualizar, nada...
+    vEstado := IfThen(AOk, cmEstadoOk, cmTerminouComErro);
+    if AMudanca = mrNada then
+      vEstado := ATexto
     else
-      FRelatorio.Add(Format(cmRelatorioAvisos, [AIDE.Nome,
-        IfThen(AOk, cmEstadoOk, cmTerminouComErro), AAvisos.Count,
+      vEstado := ATexto + ' — ' + vEstado;
+    if AAvisos.Count = 0 then
+      FRelatorio.Add(Format('%s: %s', [AIDE.Nome, vEstado]))
+    else
+      FRelatorio.Add(Format(cmRelatorioAvisos, [AIDE.Nome, vEstado, AAvisos.Count,
         StringReplace(Trim(AAvisos.Text), LineEnding, ' | ', [rfReplaceAll])]));
   end;
 
@@ -643,9 +707,14 @@ begin
         vLaz.ConstruirIDE := FConstruirIDE;
         vLaz.PastaRecibos := FPastaRecibos;
         vLaz.ExigirIDEFechada := FExigirIDEFechada;
+        vLaz.ManterInstalados := FManterInstalados;
+        vLaz.Reinstalar := FReinstalar;
+        if FVersao <> nil then
+          vLaz.VersaoNova := FVersao.Ref;
+        vLaz.CommitNovo := CommitEscolhido;
         vLaz.Log := FLog;
         Result := vLaz.Executar;
-        Relatar(vLaz.Relatorio, vLaz.Avisos, Result);
+        Relatar(vLaz.Relatorio, vLaz.Avisos, Result, vLaz.Mudanca, vLaz.TextoMudanca);
       finally
         vLaz.Free;
       end;
@@ -666,9 +735,15 @@ begin
           vDelphi.Plataformas.Add('win64');
         vDelphi.PastaRecibos := FPastaRecibos;
         vDelphi.ExigirIDEFechada := FExigirIDEFechada;
+        vDelphi.ManterInstalados := FManterInstalados;
+        vDelphi.Reinstalar := FReinstalar;
+        if FVersao <> nil then
+          vDelphi.VersaoNova := FVersao.Ref;
+        vDelphi.CommitNovo := CommitEscolhido;
         vDelphi.Log := FLog;
         Result := vDelphi.Executar;
-        Relatar(vDelphi.Relatorio, vDelphi.Avisos, Result);
+        Relatar(vDelphi.Relatorio, vDelphi.Avisos, Result, vDelphi.Mudanca,
+                vDelphi.TextoMudanca);
       finally
         vDelphi.Free;
       end;
@@ -704,8 +779,21 @@ begin
   end;
 
   // o plano decide o que baixar: sem ele, as dependencias ficam sem pasta
-  if FDependencias.Count = 0 then
+  if not FPlanejado then
     Plano;
+  // todas as IDEs ja tem estes fontes e pacotes: nada a baixar nem instalar
+  if NadaAFazer then
+  begin
+    for vInt := 0 to Pred(FIDEs.Count) do
+    begin
+      vChave := FMudancas.Values[TIDEInstance(FIDEs[vInt]).RootDir];
+      if vChave <> '' then
+        FRelatorio.Add(TIDEInstance(FIDEs[vInt]).Nome + ': ' +
+                       Copy(vChave, Pos('|', vChave) + 1, MaxInt));
+    end;
+    Logar(cmNadaAFazerRodada);
+    Exit(True);
+  end;
 
   // etapa 1: os fontes na pasta final; se falhar, nenhuma IDE e tocada
   if (FPastaLocal = '') and (FVersao <> nil) then

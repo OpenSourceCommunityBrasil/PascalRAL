@@ -27,6 +27,7 @@ resourcestring
   cmDicaRAL = 'RAL instalado: %s';
   cmDicaRegistro = 'Registro: HKCU%s';
   cmRALNaIDE = '  — RAL instalado';
+  cmRALVersaoNaIDE = '  — RAL %s instalado';
 
   // RALInst.Tela.Instalacao, RALInst.Tela.Delphi e RALInst.Tela.Lazarus
   cmIDEComErro = '==== %s: terminou com erro (detalhes acima)';
@@ -42,6 +43,10 @@ resourcestring
   cmResumoDesinstalarErro = '%s: a desinstalação terminou com erro (veja o log ' +
     'acima)';
   cmResumoInstalado = '%s: instalado';
+  cmResumoMudanca = '%s: %s';
+  cmResumoMudancaErro = '%s: %s — terminou com erro (veja o log acima)';
+  cmResumoMudancaOk = '%s: %s — concluído';
+  cmResumoRALVersao = 'RAL %s: %s';
   cmResumoSemRAL = '%s: sem RAL, nada a desinstalar';
 
   // RALInst.Tela.VersoesIDE
@@ -100,13 +105,17 @@ resourcestring
   cmRecursosOcultos = '; %d oculto(s)';
   cmSemVersoes = 'Não foi possível consultar as versões do PascalRAL: %s' + LineEnding +
     LineEnding + 'Só dá para instalar a partir de uma pasta local.';
+  cmSituacaoMais = ' (e mais %d; veja a dica)';
+  cmSituacaoMesma = 'Já instalada: %s';
   cmSoDoTipo = '  (só %s)';
 
   // RALInst.Tela.Instalar
+  cmAtualizarTitulo = 'Atualizar o PascalRAL';
+  cmBotaoAtualizar = 'Atualizar';
   cmBotaoDesinstalar = 'Desinstalar';
   cmBotaoInstalar = 'Instalar';
   cmCliqueDesinstalar = 'Clique em Desinstalar para executar.';
-  cmCliqueInstalar = 'Clique em Instalar para executar.';
+  cmCliqueInstalar = 'Clique em %s para executar.';
   cmDesinstalacaoComErros = 'Desinstalação terminou com erros — veja as linhas ERRO ' +
     'acima.';
   cmDesinstalacaoConcluida = 'Desinstalação concluída.';
@@ -120,15 +129,21 @@ resourcestring
   cmDesinstalarTitulo = 'Desinstalar o PascalRAL';
   cmInstalacaoComErros = 'Instalação terminou com erros — veja as linhas ERRO acima.';
   cmInstalacaoConcluida = 'Instalação concluída.';
-  cmInstalarPergunta = 'As IDEs marcadas terão a configuração alterada (pacotes, ' +
-    'library path e, no Delphi, o registro). Feche-as antes de continuar.' +
-    LineEnding + LineEnding + 'Instalar agora?';
+  cmInstalarPergunta = 'O que muda em cada IDE:' + LineEnding + LineEnding + '%s' +
+    LineEnding + 'A configuração delas será alterada (pacotes, library path e, no ' +
+    'Delphi, o registro). Feche-as antes de continuar.' + LineEnding + LineEnding +
+    'Continuar?';
   cmInstalarTitulo = 'Instalar o PascalRAL';
-  cmJaInstalado = 'O RAL já está nestas IDEs (instalar de novo passa por cima; ' +
-    '"Desinstalar" remove):';
   cmLog = 'Log: %s';
+  cmNadaAFazerTodas = 'Nada a fazer: as IDEs marcadas já têm esta versão do RAL com ' +
+    'estes recursos. Para compilar e registrar tudo de novo, use "Reinstalar mesmo ' +
+    'assim".';
   cmOQueSeraFeito = 'O que será feito:';
   cmPlanoTitulo = 'Plano:';
+  cmReinstalarPergunta = 'Compilar e registrar de novo todos os recursos marcados, ' +
+    'mesmo nas IDEs que já os têm desta versão?' + LineEnding + LineEnding +
+    'Feche as IDEs antes. Reinstalar agora?';
+  cmReinstalarTitulo = 'Reinstalar o PascalRAL';
 
   // RALInst.Tela.Principal
   cmAbraDeNovo = 'Atualizado para a versão %s; abra o instalador de novo. (%s)';

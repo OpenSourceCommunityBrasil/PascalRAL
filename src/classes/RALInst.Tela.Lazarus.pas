@@ -9,7 +9,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALInst.Catalogo, RALInst.Instalar.Lazarus, RALInst.Receitas, RALInst.Tela.Instalacao;
+  RALInst.Catalogo, RALInst.Instalar.Lazarus, RALInst.Receitas, RALInst.Situacao,
+  RALInst.Tela.Instalacao;
 
 type
   /// Shell of a Lazarus installation.
@@ -44,6 +45,10 @@ begin
   Result.Receitas := AEscolha.Receitas;
   Result.PastasDependencias.Assign(AEscolha.PastasDependencias);
   Result.Manifesto := AEscolha.Manifesto;
+  // a versao escolhida: antes de baixar, a pasta ainda nao a tem
+  Result.VersaoNova := AEscolha.VersaoRAL;
+  Result.CommitNovo := AEscolha.CommitRAL;
+  Result.Reinstalar := AEscolha.Reinstalar;
   Result.Log := @LogarLinha;
 end;
 
@@ -104,6 +109,7 @@ begin
       Exit(True);
     end;
     Result := vInst.Executar;
+    AnotarMudanca(vInst.Mudanca, vInst.TextoMudanca);
     if vInst.Relatorio.Count > 0 then
     begin
       LogarLinha('');
@@ -133,6 +139,7 @@ function TIDETelaLazarus.Plano(AEscolha: TEscolhaInstalacao): string;
 var
   vInst: TInstalacaoLazarus;
 begin
+  AnotarMudanca(mrNada, '');
   vInst := Criar(AEscolha);
   try
     vInst.Log := nil;
@@ -141,6 +148,7 @@ begin
     if vInst.Pacotes.Count = 0 then
       Exit(Format(cmNenhumRecursoExistePlano, [Name, 'Lazarus']) + LineEnding);
     Result := vInst.Plano;
+    AnotarMudanca(vInst.Mudanca, vInst.TextoMudanca);
   finally
     vInst.Free;
   end;

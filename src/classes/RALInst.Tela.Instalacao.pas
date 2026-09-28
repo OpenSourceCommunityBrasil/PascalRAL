@@ -10,7 +10,7 @@ interface
 uses
   Classes, SysUtils, Graphics, StdCtrls, Forms,
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.Existente, RALInst.IDE,
-  RALInst.Receitas;
+  RALInst.Receitas, RALInst.Situacao;
 
 type
   /// What the user chose on the features page; it holds for every checked IDE
@@ -18,13 +18,16 @@ type
   TEscolhaInstalacao = class
   private
     FCatalogo: TCatalogo;
+    FCommitRAL: string;
     FDesinstalar: boolean;
     FManifesto: TManifesto;
     FPacotes: TStringList;
     FPastaFontes: string;
     FPastasDependencias: TStringList;
     FReceitas: TReceitas;
+    FReinstalar: boolean;
     FSomenteLibraryPath: boolean;
+    FVersaoRAL: string;
     FWin64: boolean;
   public
     constructor Create;
@@ -36,6 +39,8 @@ type
 
     /// Owned by the features page
     property Catalogo: TCatalogo read FCatalogo write FCatalogo;
+    /// Commit of the chosen GitHub version; '' for a local folder
+    property CommitRAL: string read FCommitRAL write FCommitRAL;
     /// No feature chosen: the run removes RAL from the IDEs that have it
     property Desinstalar: boolean read FDesinstalar write FDesinstalar;
     /// The chosen version manifest (owned by the features page)
@@ -47,9 +52,13 @@ type
     property PastasDependencias: TStringList read FPastasDependencias;
     /// The recipes (owned by the features page)
     property Receitas: TReceitas read FReceitas write FReceitas;
+    /// Compiles and registers everything even where nothing changed
+    property Reinstalar: boolean read FReinstalar write FReinstalar;
     /// Delphi: only the library path, compiling and installing nothing
     property SomenteLibraryPath: boolean read FSomenteLibraryPath
       write FSomenteLibraryPath;
+    /// The chosen GitHub version ('1.1', 'dev'); '' for a local folder
+    property VersaoRAL: string read FVersaoRAL write FVersaoRAL;
     /// Delphi: also compiles the runtime and sets the Win64 library path
     property Win64: boolean read FWin64 write FWin64;
   end;
@@ -60,23 +69,28 @@ type
   TIDETela = class
   private
     FExistente: TInstalacaoExistente;
+    FFontes: TFontesRAL;
     FIcon: TGraphic;
     FInstancia: TIDEInstance;
+    FMudanca: TMudancaRAL;
     FRecibos: integer;
     FLog: TMemo;
     FResumo: string;
+    FTextoMudanca: string;
     function GetBuildFile: string;
     function GetExeFile: string;
     function GetName: string;
     function GetVersion: string;
   protected
+    /// What the engine found in the IDE (after its Plano or Executar)
+    procedure AnotarMudanca(AMudanca: TMudancaRAL; const ATexto: string);
     /// Removes RAL from this IDE (receipts and what was installed by hand)
     function Desinstalar(AEscolha: TEscolhaInstalacao): boolean; virtual;
     /// Runs the installation in this IDE
     function Install(AEscolha: TEscolhaInstalacao): boolean; virtual;
     /// Destination of the core lines (TLogLinha)
     procedure LogarLinha(const ALinha: string);
-    /// The line of the final report: what entered, what stayed out and why
+    /// The line of the final report: what the run did, the warnings
     procedure Resumir(AOk: boolean; AAvisos: TStrings);
   public
     constructor Create(AInstancia: TIDEInstance); virtual;
@@ -104,11 +118,17 @@ type
     /// What RAL the IDE has, as of the last DetectarExistente
     property Existente: TInstalacaoExistente read FExistente;
     property ExeFile: string read GetExeFile;
+    /// The RAL sources the IDE uses, as of the last DetectarExistente
+    property Fontes: TFontesRAL read FFontes;
     property Icon: TGraphic read FIcon;
     property Instancia: TIDEInstance read FInstancia;
+    /// What the last plan found in the IDE: install, update, nothing...
+    property Mudanca: TMudancaRAL read FMudanca;
     property Name: string read GetName;
     /// The summary of the last installation in this IDE (one or more lines)
     property Resumo: string read FResumo write FResumo;
+    /// One line on Mudanca: 'Atualizar o RAL 1.1 -> dev' ('' before a plan)
+    property TextoMudanca: string read FTextoMudanca;
     property Version: string read GetVersion;
   end;
 
@@ -224,11 +244,20 @@ begin
     vRecibos.Carregar(PastaDadosInstalador + 'recibos');
     vRecibos.DaIDE(FInstancia.RootDir, vLista);
     FRecibos := vLista.Count;
+    // de onde vem o RAL da IDE: o recibo que ainda vale, ou a pasta apontada
+    FFontes := FontesDaIDE(FInstancia.RootDir, FExistente,
+                           PastaDadosInstalador + 'recibos');
   finally
     vRecibos.Free;
     vLista.Free;
     vNomes.Free;
   end;
+end;
+
+procedure TIDETela.AnotarMudanca(AMudanca: TMudancaRAL; const ATexto: string);
+begin
+  FMudanca := AMudanca;
+  FTextoMudanca := ATexto;
 end;
 function TIDETela.GetBuildFile: string;
 begin
@@ -304,7 +333,12 @@ function TIDETela.ResumoRAL: string;
 begin
   Result := '';
   if (FExistente <> nil) and FExistente.Existe then
-    Result := FExistente.Resumo
+  begin
+    Result := FExistente.Resumo;
+    // a versao, quando se sabe: 'RAL 1.1 (abc1234): PascalRAL, IndyRAL (...)'
+    if FFontes.Versao <> '' then
+      Result := Format(cmResumoRALVersao, [DescreverFontes(FFontes), Result]);
+  end
   else if FRecibos > 0 then
     Result := Format(cmRALPorRecibos, [FRecibos]);
 end;
@@ -317,7 +351,14 @@ procedure TIDETela.Resumir(AOk: boolean; AAvisos: TStrings);
 var
   vInt: integer;
 begin
-  if AOk then
+  // o que a rodada fez nesta IDE: instalar, atualizar, so os recursos...
+  if FMudanca = mrNada then
+    FResumo := Format(cmResumoMudanca, [Name, FTextoMudanca])
+  else if (FTextoMudanca <> '') and AOk then
+    FResumo := Format(cmResumoMudancaOk, [Name, FTextoMudanca])
+  else if FTextoMudanca <> '' then
+    FResumo := Format(cmResumoMudancaErro, [Name, FTextoMudanca])
+  else if AOk then
     FResumo := Format(cmResumoInstalado, [Name])
   else
     FResumo := Format(cmResumoComErro, [Name]);

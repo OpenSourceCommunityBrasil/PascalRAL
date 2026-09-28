@@ -17,13 +17,17 @@ program instalar_lazarus;
 //                    implica --sem-build
 //   --plano          so mostra o plano
 //   --simular        mostra os comandos, sem executar
+//   --reinstalar     registra, instala e reconstroi tudo, mesmo o que ja esta la
+//   --manter         os pacotes do RAL que a IDE ja tem ficam (sem isso, o que
+//                    nao foi pedido sai da IDE)
 //
 // Sem pacotes, instala pascalraldsgn (e o que ele exige).
 
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, RALInst.IDE, RALInst.IDE.Lazarus, RALInst.Catalogo,
-  RALInst.Instalar.Lazarus, RALInst.Receitas, RALInst.Dependencias, RALInst.Compatibilidade
+  RALInst.Instalar.Lazarus, RALInst.Receitas, RALInst.Dependencias, RALInst.Compatibilidade,
+  RALInst.Situacao
   {$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 type
@@ -112,7 +116,7 @@ var
   GManifesto: TManifesto;
   GArqManifesto, GVersaoDep, GMotivoDep: string;
   GPastaReceitas, GPastaDeps: string;
-  GIgnorar: boolean;
+  GIgnorar, GReinstalar, GManter: boolean;
   vInt: integer;
 
 begin
@@ -142,6 +146,10 @@ begin
       GPlano := True
     else if GParam = '--simular' then
       GSimular := True
+    else if GParam = '--reinstalar' then
+      GReinstalar := True
+    else if GParam = '--manter' then
+      GManter := True
     else if Copy(GParam, 1, 11) = '--receitas=' then
       GPastaReceitas := Copy(GParam, 12, MaxInt)
     else if Copy(GParam, 1, 12) = '--manifesto=' then
@@ -218,6 +226,8 @@ begin
       if (GConfig <> '') or GConfigTeste then
         GInst.ExigirIDEFechada := False;
       GInst.Simular := GSimular;
+      GInst.Reinstalar := GReinstalar;
+      GInst.ManterInstalados := GManter;
       GInst.Log := @GSaida.Linha;
 
       // F7: receitas e, com --deps=, o download do que a IDE nao tem
@@ -288,12 +298,15 @@ begin
       end;
 
       WriteLn(GInst.Plano);
+      WriteLn('mudança (plano): ', GInst.TextoMudanca);
       if GPlano then
         Halt(0);
 
       GOk := GInst.Executar;
       WriteLn;
       WriteLn(GInst.Relatorio.Text);
+      WriteLn('mudança: ', Ord(GInst.Mudanca), ' ', GInst.TextoMudanca);
+      WriteLn('recibo: ', GInst.Recibo);
       if not GOk then
         Halt(1);
     finally

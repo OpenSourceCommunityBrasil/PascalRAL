@@ -210,6 +210,14 @@ msgstr ""
 msgid "dcc terminou com código %d"
 msgstr ""
 
+#: ralinst.mensagens.cmbuilddependeausente
+msgid "depende de %s, que não existe em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmbuildsemdesignide
+msgid "exige o designide, que o Delphi não tem em %s (não há IDE de 64 bits)"
+msgstr ""
+
 #: ralinst.mensagens.cmbuilddependefalhou
 msgid "depende de %s, que falhou"
 msgstr ""
@@ -1286,6 +1294,94 @@ msgstr ""
 msgid "entrada suspeita no zip, ignorada: %s"
 msgstr ""
 
+#: ralinst.mensagens.cmfontesamao
+msgid "instalado à mão"
+msgstr ""
+
+#: ralinst.mensagens.cmfontesdapasta
+msgid "da pasta %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancaatualizar
+msgid "Atualizar o RAL %s → %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancainstalar
+msgid "Instalar o RAL %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancamodificar
+msgid "Só mudar os recursos (continua o RAL %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancanada
+msgid "Nada a fazer: já tem o RAL %s com estes recursos"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancarecompilar
+msgid "Recompilar o RAL %s: os fontes mudaram desde a instalação"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancareinstalar
+msgid "Reinstalar o RAL %s (a pedido)"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancatrocar
+msgid "Trocar o RAL %s pelo %s"
+msgstr ""
+
+#: ralinst.mensagens.cmmudancavoltar
+msgid "Voltar o RAL %s → %s (versão anterior)"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusjainstalado
+msgid "já instalado"
+msgstr ""
+
+#: ralinst.mensagens.cmplanojainstalado
+msgid "    %s  (já instalado, fica como está)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanopacotesparcial
+msgid "  pacotes (só o que falta é compilado):"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosaidaide
+msgid "    sai da IDE: %s — %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosoregistrarnaide
+msgid "    %s  (já compilado desta versão: só entra na IDE)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanotirarlink
+msgid "    tirar o link: %s — %s"
+msgstr ""
+
+#: ralinst.mensagens.cmsaidaide
+msgid "  %s -= %s  (sai da IDE)"
+msgstr ""
+
+#: ralinst.mensagens.cmsainaoexiste
+msgid "não existe no RAL %s"
+msgstr ""
+
+#: ralinst.mensagens.cmsainaomarcado
+msgid "não foi marcado"
+msgstr ""
+
+#: ralinst.mensagens.cmsaioutrapasta
+msgid "aponta para outra pasta"
+msgstr ""
+
+#: ralinst.mensagens.cmsituacao
+msgid "== %s"
+msgstr ""
+
+#: ralinst.mensagens.cmnadaafazerrodada
+msgid "Nada a fazer: as IDEs já têm esta versão do RAL com estes recursos."
+msgstr ""
+
 #: ralinst.tela.mensagens.cmtemaclaro
 msgid "Claro"
 msgstr ""
@@ -1582,10 +1678,6 @@ msgstr ""
 msgid "Clique em Desinstalar para executar."
 msgstr ""
 
-#: ralinst.tela.mensagens.cmcliqueinstalar
-msgid "Clique em Instalar para executar."
-msgstr ""
-
 #: ralinst.tela.mensagens.cmdesinstalacaocomerros
 msgid "Desinstalação terminou com erros — veja as linhas ERRO acima."
 msgstr ""
@@ -1610,16 +1702,8 @@ msgstr ""
 msgid "Instalação concluída."
 msgstr ""
 
-#: ralinst.tela.mensagens.cminstalarpergunta
-msgid "As IDEs marcadas terão a configuração alterada (pacotes, library path e, no Delphi, o registro). Feche-as antes de continuar.\n\nInstalar agora?"
-msgstr ""
-
 #: ralinst.tela.mensagens.cminstalartitulo
 msgid "Instalar o PascalRAL"
-msgstr ""
-
-#: ralinst.tela.mensagens.cmjainstalado
-msgid "O RAL já está nestas IDEs (instalar de novo passa por cima; \"Desinstalar\" remove):"
 msgstr ""
 
 #: ralinst.tela.mensagens.cmlog
@@ -1668,6 +1752,62 @@ msgstr ""
 
 #: ralinst.tela.mensagens.cmversaonovatitulo
 msgid "Versão nova do RAL Installer"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmcliqueinstalar
+msgid "Clique em %s para executar."
+msgstr ""
+
+#: ralinst.tela.mensagens.cminstalarpergunta
+msgid "O que muda em cada IDE:\n\n%s\nA configuração delas será alterada (pacotes, library path e, no Delphi, o registro). Feche-as antes de continuar.\n\nContinuar?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmralversaonaide
+msgid "  — RAL %s instalado"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumomudanca
+msgid "%s: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumomudancaerro
+msgid "%s: %s — terminou com erro (veja o log acima)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumomudancaok
+msgid "%s: %s — concluído"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmresumoralversao
+msgid "RAL %s: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmsituacaomais
+msgid " (e mais %d; veja a dica)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmsituacaomesma
+msgid "Já instalada: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmatualizartitulo
+msgid "Atualizar o PascalRAL"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmbotaoatualizar
+msgid "Atualizar"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnadaafazertodas
+msgid "Nada a fazer: as IDEs marcadas já têm esta versão do RAL com estes recursos. Para compilar e registrar tudo de novo, use \"Reinstalar mesmo assim\"."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmreinstalarpergunta
+msgid "Compilar e registrar de novo todos os recursos marcados, mesmo nas IDEs que já os têm desta versão?\n\nFeche as IDEs antes. Reinstalar agora?"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmreinstalartitulo
+msgid "Reinstalar o PascalRAL"
 msgstr ""
 
 #: TTelaIDE.lbNext.Caption
@@ -1738,6 +1878,11 @@ msgstr ""
 #: TTelaInstalar.lbDesinstalar.Caption
 msgctxt "TTelaInstalar.lbDesinstalar.Caption"
 msgid "Desinstalar o RAL destas IDEs"
+msgstr ""
+
+#: TTelaInstalar.lbReinstalar.Caption
+msgctxt "TTelaInstalar.lbReinstalar.Caption"
+msgid "Reinstalar mesmo assim"
 msgstr ""
 
 #: TItemIDE.lbIDEName.Caption

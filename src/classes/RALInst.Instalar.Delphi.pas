@@ -17,10 +17,14 @@ uses
   Classes, SysUtils,
   RALInst.Build.Delphi, RALInst.Catalogo, RALInst.Compatibilidade, RALInst.Existente,
   RALInst.IDE,
-  RALInst.Processo, RALInst.Receitas, RALInst.Registro.Delphi;
+  RALInst.Processo, RALInst.Receitas, RALInst.Registro.Delphi, RALInst.Situacao;
 
 type
   /// Installs the chosen RAL packages (and their dependencies) in one Delphi.
+  /// It first compares the IDE with the run (RALInst.Situacao): with the same
+  /// sources it compiles and registers only what is missing, and the same
+  /// packages are nothing to do; with other sources everything is compiled
+  /// again. RAL packages the run does not keep leave the IDE.
   TInstalacaoDelphi = class
   private
     /// What the receipt keeps besides the registry: written files
@@ -30,16 +34,23 @@ type
     FCaminhosExtras: TStringList;
     FCatalogo: TCatalogo;
     FChaveRegistro: string;
+    FCommitNovo: string;
     FCompat: TCompatibilidade;
+    /// Run with the same sources: 'win32 IndyRAL' of what is compiled
+    FCompilar: TStringList;
     /// Dependencies for the receipt (name=instalada|... or name=encontrada|...)
     FDepsRecibo: TStringList;
     FExigirIDEFechada: boolean;
+    FFontesAtuais: TFontesRAL;
+    FFontesNovas: TFontesRAL;
     FIDE: TIDEInstance;
     /// The 64-bit IDE gets the design packages in this run
     FIDE64: boolean;
     FIgnorarExistentes: boolean;
     FLog: TLogLinha;
     FManifesto: TManifesto;
+    FManterInstalados: boolean;
+    FMudanca: TMudancaRAL;
     FNomeVariavel: string;
     FPacotes: TStringList;
     /// Dependency .dcp files for -LU (the recipes' pacotes-ligados)
@@ -52,18 +63,36 @@ type
     FRaizFontes: string;
     FReceitas: TReceitas;
     FRecibo: string;
+    /// Run with the same sources: names already compiled that are not (or
+    /// not rightly) in the IDE list
+    FRegistrar: TStringList;
     FRegistro: TRegistroDelphi;
+    FReinstalar: boolean;
     FRelatorio: TStringList;
+    /// What the installer compiled here from these sources ('win32 X=ok')
+    FResultadosAntes: TStringList;
+    /// RAL registrations that leave the IDE: 'Known Packages|<bpl>'
+    FSaem: TStringList;
+    /// The names of FSaem, with the reason (name=reason)
+    FSaemNomes: TStringList;
     FSimular: boolean;
     FSomenteLibraryPath: boolean;
     FUsarIDE64: boolean;
     /// Variables the recipes defined in this run: they expand the paths even
     /// when simulating (when the registry was not written)
     FVariaveisDeps: TStringList;
+    FVersaoNova: string;
+    /// Is the package compiled on some platform in this run?
+    function AlgumaCompilacao(APacote: TPacote): boolean;
+    /// Compares the IDE with the run (ALista: what the run keeps, AFora: what
+    /// does not fit, name=reason): FMudanca, FCompilar, FSaem
+    procedure Analisar(ALista: TList; AFora: TStrings);
     /// Notes the .bpl/.dcp of a result for the receipt
     procedure AnotarArquivos(const AResultado: TResultadoPacote);
     /// Runs the recipe actions for this IDE
     function AplicarDependencia(AReceita: TReceita; const ARaiz: string): boolean;
+    /// The .bpl the build writes for the package on the platform
+    function BplEsperado(APacote: TPacote; const APlataforma: string): string;
     /// Library path folders of a recipe that exist
     procedure CaminhosDaReceita(AReceita: TReceita; const ARaiz: string;
       ALista: TStrings);
@@ -76,6 +105,8 @@ type
       const ARaiz: string): boolean;
     /// Everything that can be checked before touching anything
     function Conferir(APacotes: TList): boolean;
+    /// The .dcp the build writes for the package on the platform
+    function DcpEsperado(APacote: TPacote; const APlataforma: string): string;
     /// TDetectarDependencia for the compatibility check
     function DetectarNaIDE(AIDE: TIDEInstance; AReceita: TReceita): string;
     /// {raiz}, this run's variables and the IDE's
@@ -84,6 +115,8 @@ type
     procedure FiltrarCompativeis(ALista: TList; AFora: TStrings);
     /// Creates FRegistro when needed
     procedure GarantirRegistro;
+    /// ManterInstalados: the RAL packages the IDE has join the asked ones
+    procedure IncluirInstalados;
     /// Passes the line to Log when assigned
     procedure Logar(const ALinha: string);
     /// Library path entries and one unit per folder (to spot another RAL copy)
@@ -92,6 +125,10 @@ type
     function NomesDoCatalogo: TStringList;
     /// Names of the packages of a list
     function NomesDaLista(ALista: TList): TStringList;
+    /// Where the build writes the .bpl of the platform
+    function PastaBplDe(const APlataforma: string): string;
+    /// Where the build writes the .dcp of the platform
+    function PastaDcpDe(const APlataforma: string): string;
     /// Output folder the IDE asks (Tools > Options > Library), else APadrao
     function PastaSaida(const APlataforma, AValor, APadrao: string): string;
     /// Win32 library path folders holding the file; expanded
@@ -100,6 +137,12 @@ type
     procedure PrepararDependencias(ALista: TList; AResultados: TStrings);
     /// Decides whether the 64-bit IDE is served (and Win64 enters the run)
     procedure PrepararIDE64;
+    /// Compiled from these sources and still the same files (or skipped by
+    /// the build on that platform, which skips it again)
+    function Presente(APacote: TPacote; const APlataforma: string;
+      AArquivos: TStrings): boolean;
+    /// The .bpl is in the IDE list once, from that folder, and not disabled
+    function Registrado(const ABpl: string; AX64: boolean): boolean;
     /// The .dcp files matching a recipe's pacotes-ligados
     procedure ResolverLigados(AReceita: TReceita);
     /// Writes the undo record of an uninstall (the registry values before)
@@ -107,6 +150,9 @@ type
     /// Writes the receipt of the run; returns its file
     function SalvarRecibo(APacotes: TList; AResultados: TStrings): string;
     procedure SetRaizFontes(const AValor: string);
+    /// Takes out of the library path the entries written in full inside
+    /// another RAL tree: they would come before the new sources
+    procedure TirarCaminhosDe(const APasta: string);
   public
     constructor Create(AIDE: TIDEInstance; ACatalogo: TCatalogo);
     destructor Destroy; override;
@@ -128,6 +174,9 @@ type
     function Plano: string;
     /// What Desinstalar will do, without doing anything
     function PlanoDesinstalar: string;
+    /// One line on what the last Plano or Executar found: 'Atualizar o RAL
+    /// 1.1 -> dev', 'Nada a fazer...'
+    function TextoMudanca: string;
     /// The dependency version this IDE asks (manifest, recipe range or the
     /// default); '' and AMotivo when none works
     function VersaoDependencia(AReceita: TReceita; out AMotivo: string): string;
@@ -136,14 +185,27 @@ type
     property CaminhosExtras: TStringList read FCaminhosExtras;
     /// Relative to HKCU; empty = the IDE's. The tests point it to a copy
     property ChaveRegistro: string read FChaveRegistro write FChaveRegistro;
+    /// Commit of the sources the run installs, when the folder does not have
+    /// them yet (the plan comes before the download); '' = the folder's mark
+    property CommitNovo: string read FCommitNovo write FCommitNovo;
     /// Refuses to write with the IDE open (it rewrites everything on close)
     property ExigirIDEFechada: boolean read FExigirIDEFechada write FExigirIDEFechada;
+    /// The RAL sources the IDE uses (after Plano or Executar)
+    property FontesAtuais: TFontesRAL read FFontesAtuais;
+    /// The RAL sources the run installs (after Plano or Executar)
+    property FontesNovas: TFontesRAL read FFontesNovas;
     property IDE: TIDEInstance read FIDE;
     /// Installs the downloaded dependency even if the IDE already has one
     property IgnorarExistentes: boolean read FIgnorarExistentes write FIgnorarExistentes;
     property Log: TLogLinha read FLog write FLog;
     /// The RAL version manifest (not owned; nil = only what the disk tells)
     property Manifesto: TManifesto read FManifesto write FManifesto;
+    /// The RAL packages the IDE already has stay, besides the asked ones (the
+    /// command line); False = what was not asked leaves the IDE (the screens,
+    /// where the installed ones come checked)
+    property ManterInstalados: boolean read FManterInstalados write FManterInstalados;
+    /// What the last Plano or Executar found
+    property Mudanca: TMudancaRAL read FMudanca;
     /// The IDE variable pointing to <root>\src ('PascalRAL', as in the wiki)
     property NomeVariavel: string read FNomeVariavel write FNomeVariavel;
     /// Names the user asked; internal dependencies enter by themselves
@@ -164,6 +226,9 @@ type
     property Receitas: TReceitas read FReceitas write FReceitas;
     /// Receipt file of this run ('' when none was written)
     property Recibo: string read FRecibo;
+    /// Compiles and registers everything even with the same sources and
+    /// packages
+    property Reinstalar: boolean read FReinstalar write FReinstalar;
     property Relatorio: TStringList read FRelatorio;
     property Simular: boolean read FSimular write FSimular;
     /// Only points the sources in the library path, compiling nothing
@@ -171,6 +236,9 @@ type
       write FSomenteLibraryPath;
     /// Also serves the 64-bit IDE when there is one (default)
     property UsarIDE64: boolean read FUsarIDE64 write FUsarIDE64;
+    /// Version of the sources the run installs ('1.1', 'dev'), when the
+    /// folder does not have them yet; '' = the folder's mark
+    property VersaoNova: string read FVersaoNova write FVersaoNova;
   end;
 
 implementation
@@ -241,6 +309,15 @@ begin
   FPacotesLigados.CaseSensitive := False;
   FArquivosRecibo := TStringList.Create;
   FDepsRecibo := TStringList.Create;
+  FCompilar := TStringList.Create;
+  FCompilar.CaseSensitive := False;
+  FResultadosAntes := TStringList.Create;
+  FResultadosAntes.CaseSensitive := False;
+  FSaem := TStringList.Create;
+  FSaemNomes := TStringList.Create;
+  FSaemNomes.CaseSensitive := False;
+  FRegistrar := TStringList.Create;
+  FRegistrar.CaseSensitive := False;
 end;
 
 function TInstalacaoDelphi.Compat: TCompatibilidade;
@@ -758,6 +835,11 @@ end;
 
 destructor TInstalacaoDelphi.Destroy;
 begin
+  FRegistrar.Free;
+  FSaemNomes.Free;
+  FSaem.Free;
+  FResultadosAntes.Free;
+  FCompilar.Free;
   FCompat.Free;
   FDepsRecibo.Free;
   FArquivosRecibo.Free;
@@ -789,6 +871,336 @@ begin
     Result := FRegistro.Expandir(Result, APlataforma);
   if (Result = '') or (Pos('$(', Result) > 0) then
     Result := APadrao;
+end;
+
+function TInstalacaoDelphi.PastaBplDe(const APlataforma: string): string;
+begin
+  // o mesmo que Executar entrega ao motor de build, e o padrao dele
+  if FPastaBpl <> '' then
+    Result := FPastaBpl + IfThen(SameText(APlataforma, 'win32'), '', '\' + APlataforma)
+  else
+    Result := PastaSaida(APlataforma, 'Package DPL Output', '');
+  if (Result = '') and (FIDE.CommonDir <> '') then
+  begin
+    Result := FIDE.CommonDir + 'Bpl';
+    if not SameText(APlataforma, 'win32') then
+      Result := Result + PathDelim + APlataforma;
+  end;
+end;
+
+function TInstalacaoDelphi.PastaDcpDe(const APlataforma: string): string;
+begin
+  if FPastaDcp <> '' then
+    Result := FPastaDcp + IfThen(SameText(APlataforma, 'win32'), '', '\' + APlataforma)
+  else
+    Result := PastaSaida(APlataforma, 'Package DCP Output', '');
+  if (Result = '') and (FIDE.CommonDir <> '') then
+  begin
+    Result := FIDE.CommonDir + 'Dcp';
+    if not SameText(APlataforma, 'win32') and
+       DirectoryExists(Result + PathDelim + APlataforma) then
+      Result := Result + PathDelim + APlataforma;
+  end;
+end;
+
+function TInstalacaoDelphi.BplEsperado(APacote: TPacote;
+  const APlataforma: string): string;
+var
+  vSufixo: string;
+begin
+  // {$LIBSUFFIX AUTO} (o Zeos) poe o sufixo da IDE no nome do .bpl
+  vSufixo := APacote.LibSuffix;
+  if SameText(vSufixo, 'AUTO') then
+    vSufixo := FIDE.SufixoPacote;
+  Result := IncludeTrailingPathDelimiter(PastaBplDe(APlataforma)) +
+            ChangeFileExt(ExtractFileName(APacote.Arquivo), '') + vSufixo + '.bpl';
+end;
+
+function TInstalacaoDelphi.DcpEsperado(APacote: TPacote;
+  const APlataforma: string): string;
+begin
+  Result := IncludeTrailingPathDelimiter(PastaDcpDe(APlataforma)) +
+            ChangeFileExt(ExtractFileName(APacote.Arquivo), '.dcp');
+end;
+
+function TInstalacaoDelphi.Presente(APacote: TPacote; const APlataforma: string;
+  AArquivos: TStrings): boolean;
+var
+  vEstado: string;
+begin
+  vEstado := FResultadosAntes.Values[APlataforma + ' ' + APacote.Nome];
+  // a compilacao pula o que a plataforma nao aceita (o .dproj, so de design):
+  // pularia de novo
+  if vEstado = 'pulado' then
+    Exit(True);
+  Result := (vEstado = 'ok') and
+            IgualAoCompilado(BplEsperado(APacote, APlataforma), AArquivos) and
+            IgualAoCompilado(DcpEsperado(APacote, APlataforma), AArquivos);
+end;
+
+function TInstalacaoDelphi.Registrado(const ABpl: string; AX64: boolean): boolean;
+var
+  vValores: TStringList;
+  vValor, vSufixo: string;
+  vAchou: boolean;
+begin
+  Result := False;
+  vSufixo := IfThen(AX64, ' x64', '');
+  vValores := TStringList.Create;
+  try
+    FRegistro.ListarValores('Known Packages' + vSufixo, vValores);
+    vAchou := False;
+    for vValor in vValores do
+      if SameText(ExtractFileName(FRegistro.Expandir(vValor)), ExtractFileName(ABpl)) then
+      begin
+        // o mesmo .bpl de outra pasta: registrar tira o de la
+        if not SameFileName(ExpandFileName(FRegistro.Expandir(vValor)),
+                            ExpandFileName(ABpl)) then
+          Exit;
+        vAchou := True;
+      end;
+    if not vAchou then
+      Exit;
+    // desabilitado numa vez que falhou: registrar o habilita de novo
+    FRegistro.ListarValores('Disabled Packages' + vSufixo, vValores);
+    for vValor in vValores do
+      if SameText(ExtractFileName(FRegistro.Expandir(vValor)), ExtractFileName(ABpl)) then
+        Exit;
+    Result := True;
+  finally
+    vValores.Free;
+  end;
+end;
+
+function TInstalacaoDelphi.AlgumaCompilacao(APacote: TPacote): boolean;
+var
+  vPlat: string;
+begin
+  Result := False;
+  for vPlat in FPlataformas do
+    if FCompilar.IndexOf(vPlat + ' ' + APacote.Nome) >= 0 then
+      Exit(True);
+end;
+
+procedure TInstalacaoDelphi.IncluirInstalados;
+var
+  vExistente: TInstalacaoExistente;
+  vNomes: TStringList;
+  vNome: string;
+  vPacote: TPacote;
+begin
+  if not FManterInstalados or (FCatalogo = nil) then
+    Exit;
+  vNomes := TStringList.Create;
+  vExistente := Existente;
+  try
+    vExistente.ListarNomes(vNomes);
+    for vNome in vNomes do
+    begin
+      vPacote := FCatalogo.Buscar(tpDelphi, vNome);
+      if (vPacote <> nil) and (FPacotes.IndexOf(vPacote.Nome) < 0) then
+        FPacotes.Add(vPacote.Nome);
+    end;
+  finally
+    vExistente.Free;
+    vNomes.Free;
+  end;
+end;
+
+procedure TInstalacaoDelphi.Analisar(ALista: TList; AFora: TStrings);
+var
+  vExistente: TInstalacaoExistente;
+  vArquivos, vNomes, vCaminhos, vUnidades: TStringList;
+  vSimulado: TRegistroDelphi;
+  vPlat: string;
+  vInt, vDep: integer;
+  vPacote: TPacote;
+  vPrecisa, vMudaRegistro: boolean;
+
+  procedure Sai(const AListaRegistro: string; AItens: TStrings);
+  var
+    vItem: integer;
+    vNome, vMotivo: string;
+  begin
+    for vItem := 0 to Pred(AItens.Count) do
+    begin
+      vNome := AItens.Names[vItem];
+      if vNomes.IndexOf(vNome) >= 0 then
+        Continue;
+      FSaem.Add(AListaRegistro + '|' + AItens.ValueFromIndex[vItem]);
+      if FSaemNomes.IndexOfName(vNome) >= 0 then
+        Continue;
+      vMotivo := AFora.Values[vNome];
+      if (vMotivo = '') and (FCatalogo.Buscar(tpDelphi, vNome) = nil) then
+        vMotivo := Format(cmSaiNaoExiste, [DescreverFontes(FFontesNovas)]);
+      if vMotivo = '' then
+        vMotivo := cmSaiNaoMarcado;
+      FSaemNomes.Values[vNome] := vMotivo;
+    end;
+  end;
+
+begin
+  FCompilar.Clear;
+  FRegistrar.Clear;
+  FResultadosAntes.Clear;
+  FSaem.Clear;
+  FSaemNomes.Clear;
+  GarantirRegistro;
+  vExistente := Existente;
+  vNomes := NomesDaLista(ALista);
+  vArquivos := TStringList.Create;
+  vArquivos.CaseSensitive := False;
+  vCaminhos := TStringList.Create;
+  vUnidades := TStringList.Create;
+  vSimulado := nil;
+  try
+    FFontesAtuais := FontesDaIDE(FIDE.RootDir, vExistente, FPastaRecibos);
+    FFontesNovas := FontesDaPasta(FRaizFontes, FVersaoNova, FCommitNovo);
+    FMudanca := MudancaDeFontes(FFontesAtuais, FFontesNovas);
+    if FReinstalar and (FMudanca <> mrInstalar) then
+      FMudanca := mrReinstalar;
+
+    // o RAL registrado que a rodada nao mantem sai: o nucleo que ele exige
+    // e recompilado (ou trocado) e a IDE nao o carregaria mais. So o library
+    // path nao compila nada, e os pacotes ficam como estao
+    if not FSomenteLibraryPath then
+    begin
+      Sai('Known Packages', vExistente.Pacotes);
+      Sai('Known Packages x64', vExistente.Pacotes64);
+    end;
+    if FMudanca <> mrNada then
+      Exit;
+
+    // os mesmos fontes: o que ja foi compilado deles fica; quem depende de
+    // algo que vai ser compilado compila junto
+    if not FSomenteLibraryPath then
+    begin
+      CompiladoDasFontes(FPastaRecibos, FIDE.RootDir, FFontesNovas, FResultadosAntes,
+                         vArquivos);
+      for vPlat in FPlataformas do
+      begin
+        if FIDE.Plataformas.IndexOf(LowerCase(vPlat)) < 0 then
+          Continue;
+        for vInt := 0 to Pred(ALista.Count) do
+        begin
+          vPacote := TPacote(ALista[vInt]);
+          vPrecisa := not Presente(vPacote, vPlat, vArquivos);
+          for vDep := 0 to Pred(vPacote.Internos.Count) do
+            if FCompilar.IndexOf(vPlat + ' ' + vPacote.Internos[vDep]) >= 0 then
+              vPrecisa := True;
+          if vPrecisa then
+            FCompilar.Add(vPlat + ' ' + vPacote.Nome);
+        end;
+      end;
+    end;
+
+    // o registro: pacote de design compilado e fora da lista da IDE (ou nela
+    // duas vezes, ou desabilitado); library path e variavel, pelo que uma
+    // escrita simulada mudaria
+    vMudaRegistro := False;
+    if not FSomenteLibraryPath then
+      for vInt := 0 to Pred(ALista.Count) do
+      begin
+        vPacote := TPacote(ALista[vInt]);
+        if not vPacote.Instalavel then
+          Continue;
+        if ((FCompilar.IndexOf('win32 ' + vPacote.Nome) < 0) and
+            (FResultadosAntes.Values['win32 ' + vPacote.Nome] = 'ok') and
+            not Registrado(BplEsperado(vPacote, 'win32'), False)) or
+           (FIDE64 and (FCompilar.IndexOf('win64 ' + vPacote.Nome) < 0) and
+            (FResultadosAntes.Values['win64 ' + vPacote.Nome] = 'ok') and
+            not Registrado(BplEsperado(vPacote, 'win64'), True)) then
+        begin
+          FRegistrar.Add(vPacote.Nome);
+          vMudaRegistro := True;
+        end;
+      end;
+    vSimulado := TRegistroDelphi.Create(FIDE);
+    vSimulado.Chave := FRegistro.Chave;
+    vSimulado.Simular := True;
+    if vSimulado.AceitaVariaveis then
+      vSimulado.DefinirVariavel(FNomeVariavel, FRaizFontes + 'src');
+    MontarCaminhos(ALista, vCaminhos, vUnidades);
+    for vPlat in FPlataformas do
+      vSimulado.AdicionarCaminhos(vPlat, 'Search Path', vCaminhos);
+    if vSimulado.TotalAlteracoes > 0 then
+      vMudaRegistro := True;
+
+    if (FCompilar.Count > 0) or (FSaem.Count > 0) or vMudaRegistro then
+      FMudanca := mrModificar;
+  finally
+    vSimulado.Free;
+    vUnidades.Free;
+    vCaminhos.Free;
+    vArquivos.Free;
+    vNomes.Free;
+    vExistente.Free;
+  end;
+end;
+
+procedure TInstalacaoDelphi.TirarCaminhosDe(const APasta: string);
+var
+  vSubchaves, vItens: TStringList;
+  vSub, vEntrada, vNovo, vExpandido, vAntiga, vNova: string;
+  vInt: integer;
+  vTirou: boolean;
+
+  function Dentro(const ACaminho, ARaiz: string): boolean;
+  begin
+    Result := (ARaiz <> '') and SameText(Copy(ACaminho, 1, Length(ARaiz)), ARaiz);
+  end;
+
+begin
+  vAntiga := IncludeTrailingPathDelimiter(ExpandFileName(APasta));
+  vNova := IncludeTrailingPathDelimiter(ExpandFileName(FRaizFontes));
+  vSubchaves := TStringList.Create;
+  vItens := TStringList.Create;
+  try
+    if FRegistro.ChaveLibrary('win64') = 'Library' then
+      vSubchaves.Add('Library')
+    else
+    begin
+      FRegistro.ListarSubchaves('Library', vSubchaves);
+      for vInt := 0 to Pred(vSubchaves.Count) do
+        vSubchaves[vInt] := 'Library\' + vSubchaves[vInt];
+    end;
+    for vSub in vSubchaves do
+    begin
+      vItens.StrictDelimiter := True;
+      vItens.Delimiter := ';';
+      vItens.DelimitedText := FRegistro.LerValor(vSub, 'Search Path');
+      vNovo := '';
+      vTirou := False;
+      for vInt := 0 to Pred(vItens.Count) do
+      begin
+        vEntrada := vItens[vInt];
+        // com $(PascalRAL) a entrada ja segue a variavel para a pasta nova
+        if (Trim(vEntrada) <> '') and (Pos('$(', vEntrada) = 0) then
+        begin
+          vExpandido := IncludeTrailingPathDelimiter(ExpandFileName(Trim(vEntrada)));
+          if Dentro(vExpandido, vAntiga) and not Dentro(vExpandido, vNova) then
+          begin
+            Logar(Format(cmCaminhoRemovido, [vSub, Trim(vEntrada)]));
+            vTirou := True;
+            Continue;
+          end;
+        end;
+        if vNovo <> '' then
+          vNovo := vNovo + ';';
+        vNovo := vNovo + vEntrada;
+      end;
+      if vTirou then
+        FRegistro.Escrever(vSub, 'Search Path', vNovo);
+    end;
+  finally
+    vItens.Free;
+    vSubchaves.Free;
+  end;
+end;
+
+function TInstalacaoDelphi.TextoMudanca: string;
+begin
+  Result := DescreverMudanca(FMudanca, FFontesAtuais, FFontesNovas);
 end;
 
 function TInstalacaoDelphi.CaminhoParaRegistro(const ARelativo: string): string;
@@ -899,12 +1311,8 @@ begin
     Exit;
   end;
 
-  if FExigirIDEFechada and FRegistro.IDEEmExecucao then
-  begin
-    Logar(Format(emDelphiAberto, [FIDE.Nome]));
-    Exit;
-  end;
-
+  // a IDE aberta so atrapalha quem vai escrever: Executar confere depois de
+  // saber se ha o que fazer
   Result := True;
 end;
 
@@ -929,12 +1337,18 @@ begin
   try
     if FChaveRegistro <> '' then
       FRegistro.Chave := FChaveRegistro;
+    IncluirInstalados;
     FCatalogo.Fechamento(tpDelphi, FPacotes, vLista);
     // F6: o que nao cabe nesta IDE sai antes de tudo, com o motivo
     FiltrarCompativeis(vLista, vFora);
     vNomes := NomesDaLista(vLista);
+    // o que a IDE ja tem decide o que a rodada faz
+    Analisar(vLista, vFora);
 
     vPlano.Add(FIDE.Nome + '  (' + ExcludeTrailingPathDelimiter(FIDE.RootDir) + ')');
+    vPlano.Add('  ' + TextoMudanca);
+    if FMudanca = mrNada then
+      Exit(vPlano.Text);
     if not FRegistro.ChaveExiste then
       vPlano.Add(cmPlanoNuncaAberta)
     else if FExigirIDEFechada and FRegistro.IDEEmExecucao then
@@ -943,22 +1357,33 @@ begin
       vPlano.Add(cmPlanoSomenteLibraryPath)
     else
     begin
-      vPlano.Add(cmPlanoCompilar);
+      if FMudanca = mrModificar then
+        vPlano.Add(cmPlanoPacotesParcial)
+      else
+        vPlano.Add(cmPlanoCompilar);
       for vInt := 0 to Pred(vLista.Count) do
         with TPacote(vLista[vInt]) do
-          if Instalavel then
+          if (FMudanca = mrModificar) and not AlgumaCompilacao(TPacote(vLista[vInt])) and
+             (FRegistrar.IndexOf(Nome) >= 0) then
+            vPlano.Add(Format(cmPlanoSoRegistrarNaIDE, [Nome]))
+          else if (FMudanca = mrModificar) and
+                  not AlgumaCompilacao(TPacote(vLista[vInt])) then
+            vPlano.Add(Format(cmPlanoJaInstalado, [Nome]))
+          else if Instalavel then
             vPlano.Add(Format(cmPlanoInstalarNaIDE, [Nome]))
           else
             vPlano.Add(Format(cmPlanoRuntime, [Nome]));
       for vInt := 0 to Pred(vFora.Count) do
-        vPlano.Add(Format(cmPlanoFicaDeFora,
-                          [vFora.Names[vInt], vFora.ValueFromIndex[vInt]]));
+        if FSaemNomes.IndexOfName(vFora.Names[vInt]) < 0 then
+          vPlano.Add(Format(cmPlanoFicaDeFora,
+                            [vFora.Names[vInt], vFora.ValueFromIndex[vInt]]));
+      for vInt := 0 to Pred(FSaemNomes.Count) do
+        vPlano.Add(Format(cmPlanoSaiDaIDE,
+                          [FSaemNomes.Names[vInt], FSaemNomes.ValueFromIndex[vInt]]));
       if FIDE64 then
         vPlano.Add(cmPlanoIDE64);
       for vPlat in FPlataformas do
-        vPlano.Add(Format(cmPlanoBplEm, [vPlat,
-          PastaSaida(vPlat, 'Package DPL Output', FIDE.CommonDir + 'Bpl' +
-                     IfThen(SameText(vPlat, 'win32'), '', '\' + vPlat))]));
+        vPlano.Add(Format(cmPlanoBplEm, [vPlat, PastaBplDe(vPlat)]));
     end;
 
     // dependencias de terceiros: o que ja esta, o que vai ser instalado e o
@@ -1089,9 +1514,8 @@ begin
     vRaiz.Add('registro', FRegistro.AlteracoesJSON);
 
     ForceDirectories(FPastaRecibos);
-    Result := IncludeTrailingPathDelimiter(FPastaRecibos) +
-              Format('delphi-%s-%s.json',
-                     [FIDE.BDSVersao, FormatDateTime('yyyymmdd-hhnnss', Now)]);
+    Result := ArquivoReciboLivre(FPastaRecibos, Format('delphi-%s-%s',
+      [FIDE.BDSVersao, FormatDateTime('yyyymmdd-hhnnss', Now)]));
     vArquivo := TStringList.Create;
     try
       vArquivo.Text := vRaiz.FormatJSON;
@@ -1106,13 +1530,15 @@ end;
 
 function TInstalacaoDelphi.Executar: boolean;
 var
-  vLista, vRegistrar: TList;
+  vLista, vRegistrar, vCompilar, vAntes, vDaPlataforma: TList;
   vBuild: TBuildDelphi;
-  vPlat: string;
+  vPlat, vSub, vValor: string;
   vInt, vRes, vAdicionados: integer;
-  vOkWin32, vOkWin64, vResultados, vCaminhos, vUnidades, vConflitos: TStringList;
+  vOkWin32, vOkWin64, vResultados, vCaminhos, vUnidades, vConflitos,
+    vFora: TStringList;
   vResultado: TResultadoPacote;
   vPacote: TPacote;
+  vParcial: boolean;
 begin
   Result := False;
   PrepararIDE64;
@@ -1125,9 +1551,13 @@ begin
   FRegistro.Simular := FSimular;
   if FChaveRegistro <> '' then
     FRegistro.Chave := FChaveRegistro;
+  IncluirInstalados;
 
   vLista := TList.Create;
   vRegistrar := TList.Create;
+  vCompilar := TList.Create;
+  vAntes := TList.Create;
+  vDaPlataforma := TList.Create;
   vOkWin32 := TStringList.Create;
   vOkWin32.CaseSensitive := False;
   vOkWin64 := TStringList.Create;
@@ -1136,6 +1566,7 @@ begin
   vCaminhos := TStringList.Create;
   vUnidades := TStringList.Create;
   vConflitos := TStringList.Create;
+  vFora := TStringList.Create;
   try
     if not Conferir(vLista) then
       Exit;
@@ -1154,6 +1585,7 @@ begin
       vResultados.Add(vConflitos.Names[vInt] + ': pulado — ' +
                       vConflitos.ValueFromIndex[vInt]);
     end;
+    vFora.Assign(vConflitos);
     vConflitos.Clear;
     if vLista.Count = 0 then
     begin
@@ -1161,14 +1593,41 @@ begin
       Exit(False);
     end;
 
+    // o que a IDE ja tem: com os mesmos fontes e pacotes nao ha o que fazer,
+    // e com os mesmos fontes so o que falta e compilado
+    Analisar(vLista, vFora);
+    Logar(Format(cmSituacao, [TextoMudanca]));
+    if FMudanca = mrNada then
+    begin
+      FRelatorio.Add(TextoMudanca);
+      Exit(True);
+    end;
+    // daqui em diante o registro muda: com a IDE aberta, ela regravaria tudo
+    // ao fechar
+    if FExigirIDEFechada and FRegistro.IDEEmExecucao then
+    begin
+      Logar(Format(emDelphiAberto, [FIDE.Nome]));
+      Exit(False);
+    end;
+    vParcial := FMudanca = mrModificar;
+
     // 0. dependencias de terceiros (F7): antes de compilar, porque o RAL
-    // compila contra elas; o que depende do que faltou sai da lista
+    // compila contra elas; o que depende do que faltou sai da lista. Com os
+    // mesmos fontes, so as do que vai ser compilado
     FVariaveisDeps.Clear;
     FPacotesLigados.Clear;
     FArquivosRecibo.Clear;
     FDepsRecibo.Clear;
-    PrepararDependencias(vLista, vResultados);
-    if vLista.Count = 0 then
+    for vInt := 0 to Pred(vLista.Count) do
+      if not vParcial or FSomenteLibraryPath or
+         AlgumaCompilacao(TPacote(vLista[vInt])) then
+        vCompilar.Add(vLista[vInt]);
+    vAntes.Assign(vCompilar);
+    PrepararDependencias(vCompilar, vResultados);
+    for vInt := 0 to Pred(vAntes.Count) do
+      if vCompilar.IndexOf(vAntes[vInt]) < 0 then
+        vLista.Remove(vAntes[vInt]);
+    if (vLista.Count = 0) or (not vParcial and (vCompilar.Count = 0)) then
     begin
       Logar(cmNenhumSobrou);
       Exit(False);
@@ -1192,6 +1651,13 @@ begin
           FAvisos.Add(Format(cmPlataformaIgnorada, [FIDE.Nome, vPlat]));
           Continue;
         end;
+        vDaPlataforma.Clear;
+        for vInt := 0 to Pred(vCompilar.Count) do
+          if not vParcial or
+             (FCompilar.IndexOf(vPlat + ' ' + TPacote(vCompilar[vInt]).Nome) >= 0) then
+            vDaPlataforma.Add(vCompilar[vInt]);
+        if vDaPlataforma.Count = 0 then
+          Continue;
 
         vBuild := TBuildDelphi.Create(FIDE, FCatalogo);
         try
@@ -1202,20 +1668,10 @@ begin
           vBuild.Design64 := FIDE64 and SameText(vPlat, 'win64');
           vBuild.CaminhosExtras.AddStrings(FCaminhosExtras);
           vBuild.PacotesExtras.AddStrings(FPacotesLigados);
-          if FPastaBpl <> '' then
-            vBuild.PastaBpl := FPastaBpl +
-                               IfThen(SameText(vPlat, 'win32'), '', '\' + vPlat)
-          else
-            vBuild.PastaBpl := PastaSaida(vPlat, 'Package DPL Output', '');
-          if FPastaDcp <> '' then
-            vBuild.PastaDcp := FPastaDcp +
-                               IfThen(SameText(vPlat, 'win32'), '', '\' + vPlat)
-          else
-            vBuild.PastaDcp := PastaSaida(vPlat, 'Package DCP Output', '');
-          // Win64 e as outras: o Package DPL Output de cada plataforma ja vem
-          // com a subpasta; vazio cai no padrao do motor de build
+          vBuild.PastaBpl := PastaBplDe(vPlat);
+          vBuild.PastaDcp := PastaDcpDe(vPlat);
 
-          if not vBuild.Compilar(vLista) then
+          if not vBuild.Compilar(vDaPlataforma) then
             Result := False;
 
           FRelatorio.Add('== ' + PlataformaRegistro(vPlat) + ' ==');
@@ -1237,6 +1693,25 @@ begin
         end;
       end;
 
+      // com os mesmos fontes, o que ja estava compilado continua valendo (e o
+      // recibo diz que ficou)
+      if vParcial then
+        for vInt := 0 to Pred(vLista.Count) do
+        begin
+          vPacote := TPacote(vLista[vInt]);
+          for vPlat in FPlataformas do
+            if (FCompilar.IndexOf(vPlat + ' ' + vPacote.Nome) < 0) and
+               (FResultadosAntes.Values[vPlat + ' ' + vPacote.Nome] = 'ok') then
+            begin
+              if SameText(vPlat, 'win32') then
+                vOkWin32.Values[vPacote.Nome] := BplEsperado(vPacote, vPlat)
+              else if SameText(vPlat, 'win64') then
+                vOkWin64.Values[vPacote.Nome] := BplEsperado(vPacote, vPlat);
+              vResultados.Add(Format('%s %s: ok — %s',
+                                     [vPlat, vPacote.Nome, cmLazarusJaInstalado]));
+            end;
+        end;
+
       for vInt := 0 to Pred(vLista.Count) do
         if vOkWin32.IndexOfName(TPacote(vLista[vInt]).Nome) >= 0 then
           vRegistrar.Add(vLista[vInt]);
@@ -1248,8 +1723,22 @@ begin
       Exit(False);
     end;
 
-    // 2. library path e variavel, so do que vai ficar utilizavel
+    // 2. o RAL que a rodada nao mantem sai da IDE; vindo de outra arvore do
+    // RAL, as entradas dela escritas por extenso saem do library path
     Logar(Format(cmRegistro, [FRegistro.Chave]));
+    for vInt := 0 to Pred(FSaem.Count) do
+    begin
+      vSub := Copy(FSaem[vInt], 1, Pos('|', FSaem[vInt]) - 1);
+      vValor := Copy(FSaem[vInt], Pos('|', FSaem[vInt]) + 1, MaxInt);
+      Logar(Format(cmSaiDaIDE, [vSub, vValor]));
+      if not FRegistro.Remover(vSub, vValor) then
+        Result := False;
+    end;
+    if MudancaCompleta(FMudanca) and (FFontesAtuais.Pasta <> '') and
+       not MesmaPasta(FFontesAtuais.Pasta, FRaizFontes) then
+      TirarCaminhosDe(FFontesAtuais.Pasta);
+
+    // 3. library path e variavel, so do que vai ficar utilizavel
     MontarCaminhos(vRegistrar, vCaminhos, vUnidades);
     if FRegistro.AceitaVariaveis then
       if not FRegistro.DefinirVariavel(FNomeVariavel, FRaizFontes + 'src') then
@@ -1269,7 +1758,7 @@ begin
         Logar(Format(cmJaTinhaCaminhos, [PlataformaRegistro(vPlat)]));
     end;
 
-    // 3. pacotes na IDE: so design-time (ou runtime+design) que compilou
+    // 4. pacotes na IDE: so design-time (ou runtime+design) que compilou
     if not FSomenteLibraryPath then
       for vInt := 0 to Pred(vRegistrar.Count) do
       begin
@@ -1291,7 +1780,7 @@ begin
       if vRegistrar.IndexOf(vLista[vInt]) < 0 then
         FAvisos.Add(Format(cmNaoCompilouNaoRegistrado, [TPacote(vLista[vInt]).Nome]));
 
-    // 4. recibo: o que mudou, com o valor de antes
+    // 5. recibo: o que mudou, com o valor de antes
     if not FSimular then
     begin
       try
@@ -1308,12 +1797,16 @@ begin
     for vInt := 0 to Pred(FAvisos.Count) do
       FRelatorio.Add(cmPrefixoAvisoRelatorio + FAvisos[vInt]);
   finally
+    vFora.Free;
     vConflitos.Free;
     vUnidades.Free;
     vCaminhos.Free;
     vResultados.Free;
     vOkWin64.Free;
     vOkWin32.Free;
+    vDaPlataforma.Free;
+    vAntes.Free;
+    vCompilar.Free;
     vRegistrar.Free;
     vLista.Free;
   end;
@@ -1459,9 +1952,8 @@ begin
     // fora da pasta dos recibos: nao e uma instalacao
     vPasta := IncludeTrailingPathDelimiter(FPastaRecibos) + 'desinstalacoes';
     ForceDirectories(vPasta);
-    Result := IncludeTrailingPathDelimiter(vPasta) +
-              Format('delphi-%s-%s.json',
-                     [FIDE.BDSVersao, FormatDateTime('yyyymmdd-hhnnss', Now)]);
+    Result := ArquivoReciboLivre(vPasta, Format('delphi-%s-%s',
+      [FIDE.BDSVersao, FormatDateTime('yyyymmdd-hhnnss', Now)]));
     vArquivo := TStringList.Create;
     try
       vArquivo.Text := vRaiz.FormatJSON;

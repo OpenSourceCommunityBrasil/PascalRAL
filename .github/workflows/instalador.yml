@@ -94,10 +94,12 @@ jobs:
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/compatibilidade" tests/compatibilidade/compatibilidade.lpr
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/recibos" tests/recibos/recibos.lpr
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/traducao" tests/traducao/traducao.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/situacao" tests/situacao/situacao.lpr
           ./lib/testes/catalogo
           ./lib/testes/compatibilidade --testes --receitas=receitas
           ./lib/testes/recibos
           ./lib/testes/traducao .
+          ./lib/testes/situacao --testes
 
       - uses: actions/upload-artifact@v4
         with:

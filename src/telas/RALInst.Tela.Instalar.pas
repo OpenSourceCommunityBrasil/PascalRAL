@@ -1,6 +1,9 @@
 /// Last page: shows the plan (what will be done in each checked IDE) before
-/// touching anything, asks for confirmation and runs. The run log also goes to
-/// a file, which is what is sent when something goes wrong.
+/// touching anything, asks for confirmation and runs. The plan compares each
+/// IDE with the choice: the button says Atualizar when every IDE that changes
+/// gets another version, and with nothing to do anywhere the run does not
+/// start ("Reinstalar mesmo assim" does it anyway). The run log also goes to a
+/// file, which is what is sent when something goes wrong.
 unit RALInst.Tela.Instalar;
 
 {$mode ObjFPC}{$H+}
@@ -15,16 +18,26 @@ type
   /// Plan, installation and uninstallation page.
   TTelaInstalar = class(TTelaModelo)
     lbDesinstalar: TLabel;
+    lbReinstalar: TLabel;
     lbSubTitle: TLabel;
     mLogInstall: TMemo;
     procedure lbDesinstalarClick(Sender: TObject);
     procedure lbNextClick(Sender: TObject);
+    procedure lbReinstalarClick(Sender: TObject);
   private
     /// No feature chosen: the page uninstalls
     FDesinstalar: boolean;
     FExistentes: string;
     FInstalling: boolean;
+    /// Every checked IDE already has the chosen version and features
+    FNadaAFazer: boolean;
     FPlano: string;
+    /// A run happened since the plan was shown: the plan is old
+    FPlanoVelho: boolean;
+    /// Runs the plan (already shown and confirmed)
+    procedure Executar;
+    /// Computes and shows the plan; the button and the links follow it
+    procedure MostrarPlano;
     /// Saves the memo into <data>\logs\<prefix>-<date>.log; '' on failure
     function SalvarLog(const APrefixo: string): string;
   protected
@@ -42,7 +55,7 @@ implementation
 {$R *.lfm}
 
 uses
-  RALInst.Processo, RALInst.Tela.Mensagens, RALInst.Tela.Principal;
+  RALInst.Processo, RALInst.Situacao, RALInst.Tela.Mensagens, RALInst.Tela.Principal;
 
 procedure ProcessarMensagens;
 begin
@@ -97,6 +110,8 @@ begin
     end;
     FExistentes := TelaPrincipal.InstalacoesExistentes;
     lbDesinstalar.Visible := (FExistentes <> '') and not FDesinstalar;
+    lbReinstalar.Visible := False;
+    FPlanoVelho := True;
   finally
     Screen.Cursor := crDefault;
     AoEsperarProcesso := nil;
@@ -106,20 +121,70 @@ end;
 
 procedure TTelaInstalar.lbNextClick(Sender: TObject);
 var
-  vOk: boolean;
-  vLog: string;
+  vTitulo: string;
 begin
   if FInstalling then
     Exit;
+  // depois de uma rodada, o plano mostrado ja nao vale: primeiro o novo
+  if FPlanoVelho then
+  begin
+    MostrarPlano;
+    Exit;
+  end;
   if FDesinstalar then
   begin
     lbDesinstalarClick(Sender);
     Exit;
   end;
-  if MessageDlg(cmInstalarTitulo, cmInstalarPergunta, mtConfirmation,
+  if FNadaAFazer then
+  begin
+    ShowMessage(cmNadaAFazerTodas);
+    Exit;
+  end;
+  if lbNext.Caption = cmBotaoAtualizar then
+    vTitulo := cmAtualizarTitulo
+  else
+    vTitulo := cmInstalarTitulo;
+  if MessageDlg(vTitulo, Format(cmInstalarPergunta, [TelaPrincipal.Mudancas]),
+       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  Executar;
+end;
+
+procedure TTelaInstalar.lbReinstalarClick(Sender: TObject);
+begin
+  if FInstalling or FDesinstalar then
+    Exit;
+  if MessageDlg(cmReinstalarTitulo, cmReinstalarPergunta, mtConfirmation,
        [mbYes, mbNo], 0) <> mrYes then
     Exit;
+  // o plano de novo, agora pedindo tudo: e ele que vai para o log
+  TelaPrincipal.Reinstalar(True);
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      FPlano := TelaPrincipal.PlanoInstalacao;
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    Executar;
+  finally
+    TelaPrincipal.Reinstalar(False);
+  end;
+end;
 
+procedure TTelaInstalar.AoMostrar;
+begin
+  if FInstalling then
+    Exit;
+  MostrarPlano;
+end;
+
+procedure TTelaInstalar.Executar;
+var
+  vOk: boolean;
+  vLog: string;
+begin
   FInstalling := True;
   AoEsperarProcesso := @ProcessarMensagens;
   Screen.Cursor := crHourGlass;
@@ -137,6 +202,8 @@ begin
     // o que acabou de ser instalado passa a poder ser desfeito daqui
     FExistentes := TelaPrincipal.InstalacoesExistentes;
     lbDesinstalar.Visible := (FExistentes <> '') and not FDesinstalar;
+    lbReinstalar.Visible := False;
+    FPlanoVelho := True;
     if vOk then
       mLogInstall.Lines.Add(cmInstalacaoConcluida)
     else
@@ -153,10 +220,11 @@ begin
   end;
 end;
 
-procedure TTelaInstalar.AoMostrar;
+procedure TTelaInstalar.MostrarPlano;
+var
+  vComMudanca, vAtualizacoes: integer;
 begin
-  if FInstalling then
-    Exit;
+  FPlanoVelho := False;
   Screen.Cursor := crHourGlass;
   try
     FDesinstalar := TelaPrincipal.ModoDesinstalar;
@@ -164,6 +232,7 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+  FNadaAFazer := False;
   if FDesinstalar then
   begin
     lbNext.Caption := cmBotaoDesinstalar;
@@ -172,18 +241,31 @@ begin
   end
   else
   begin
-    lbNext.Caption := cmBotaoInstalar;
-    mLogInstall.Lines.Text := cmOQueSeraFeito + LineEnding + LineEnding + FPlano +
-                              LineEnding + cmCliqueInstalar;
+    // o que o plano achou em cada IDE decide o botao: so atualizacoes e
+    // "Atualizar"; nada em lugar nenhum nao roda
+    vComMudanca := TelaPrincipal.ContarMudancas([Low(TMudancaRAL)..High(TMudancaRAL)] -
+                                                [mrNada]);
+    vAtualizacoes := TelaPrincipal.ContarMudancas([mrAtualizar, mrVoltar, mrTrocar,
+                                                   mrRecompilar]);
+    FNadaAFazer := vComMudanca = 0;
+    if (vComMudanca > 0) and (vAtualizacoes = vComMudanca) then
+      lbNext.Caption := cmBotaoAtualizar
+    else
+      lbNext.Caption := cmBotaoInstalar;
+    if FNadaAFazer then
+      mLogInstall.Lines.Text := cmOQueSeraFeito + LineEnding + LineEnding + FPlano +
+                                LineEnding + cmNadaAFazerTodas
+    else
+      mLogInstall.Lines.Text := cmOQueSeraFeito + LineEnding + LineEnding + FPlano +
+                                LineEnding + Format(cmCliqueInstalar, [lbNext.Caption]);
   end;
-  // o que o instalador ja pos nestas IDEs; instalar de novo passa por cima,
-  // desinstalar desfaz
+  // desinstalar: o que o instalador ja pos nestas IDEs
   FExistentes := TelaPrincipal.InstalacoesExistentes;
-  // no modo desinstalar o plano ja diz o que sai de cada IDE
-  if (FExistentes <> '') and not FDesinstalar then
-    mLogInstall.Lines.Add(LineEnding + cmJaInstalado + LineEnding + FExistentes);
   // no modo desinstalar o botao principal ja faz isso
   lbDesinstalar.Visible := (FExistentes <> '') and not FDesinstalar;
+  // reinstalar so muda algo onde a versao e a mesma
+  lbReinstalar.Visible := not FDesinstalar and
+                          (TelaPrincipal.ContarMudancas([mrNada, mrModificar]) > 0);
   mLogInstall.SelStart := 0;
 end;
 

@@ -59,4 +59,26 @@ inherited TelaInstalar: TTelaInstalar
     Visible = False
     OnClick = lbDesinstalarClick
   end
+  object lbReinstalar: TLabel[12]
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Cursor = crHandPoint
+    Left = 250
+    Height = 20
+    Top = 540
+    Width = 200
+    Alignment = taCenter
+    Anchors = [akLeft, akBottom]
+    AutoSize = False
+    BorderSpacing.Bottom = 40
+    Caption = 'Reinstalar mesmo assim'
+    Font.Height = -13
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    OnClick = lbReinstalarClick
+  end
 end

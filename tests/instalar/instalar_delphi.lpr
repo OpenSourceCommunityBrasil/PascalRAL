@@ -19,6 +19,10 @@ program instalar_delphi;
 //   --reusar-chave    como --chave-teste, mas usa a copia que ja esta la
 //   --plano           so mostra o plano
 //   --simular         monta tudo e diz o que escreveria, sem escrever
+//   --reinstalar      compila e registra tudo, mesmo o que ja esta la
+//   --manter          os pacotes do RAL que a IDE ja tem ficam (sem isso, o
+//                     que nao foi pedido sai da IDE)
+//   --recibos=<pasta> onde ficam os recibos (a comparacao com a IDE usa eles)
 //   --desfazer=<recibo> volta o registro ao que era antes da rodada daquele
 //                     recibo (os .bpl gravados ficam); dispensa a raiz
 //
@@ -35,7 +39,7 @@ uses
   Classes, SysUtils, StrUtils, Registry, Windows,
   RALInst.IDE, RALInst.IDE.Delphi, RALInst.Catalogo, RALInst.Registro.Delphi,
   RALInst.Instalar.Delphi, RALInst.GitHub, RALInst.Zip, RALInst.Fontes,
-  RALInst.Receitas, RALInst.Dependencias, RALInst.Compatibilidade;
+  RALInst.Receitas, RALInst.Dependencias, RALInst.Compatibilidade, RALInst.Situacao;
 
 type
   TSaida = class
@@ -158,7 +162,7 @@ var
   GManifesto: TManifesto;
   GArqManifesto, GVersaoDep, GMotivoDep, GRecibos: string;
   GPastaReceitas, GPastaDeps: string;
-  GIgnorar: boolean;
+  GIgnorar, GReinstalar, GManter: boolean;
   vInt: integer;
 
 begin
@@ -230,6 +234,10 @@ begin
       GIgnorar := True
     else if GParam = '--simular' then
       GSimular := True
+    else if GParam = '--reinstalar' then
+      GReinstalar := True
+    else if GParam = '--manter' then
+      GManter := True
     else if Copy(GParam, 1, 2) = '--' then
     begin
       WriteLn('opção desconhecida: ', GParam);
@@ -285,6 +293,8 @@ begin
       GInst.PastaBpl := GBpl;
       GInst.PastaDcp := GDcp;
       GInst.Simular := GSimular;
+      GInst.Reinstalar := GReinstalar;
+      GInst.ManterInstalados := GManter;
       GInst.Log := @GSaida.Linha;
 
       // F7: receitas e, com --deps=, o download do que a IDE nao tem
@@ -371,12 +381,15 @@ begin
       end;
 
       WriteLn(GInst.Plano);
+      WriteLn('mudança (plano): ', GInst.TextoMudanca);
       if GPlano then
         Halt(0);
 
       GOk := GInst.Executar;
       WriteLn;
       WriteLn(GInst.Relatorio.Text);
+      WriteLn('mudança: ', Ord(GInst.Mudanca), ' ', GInst.TextoMudanca);
+      WriteLn('recibo: ', GInst.Recibo);
       if not GOk then
         Halt(1);
     finally

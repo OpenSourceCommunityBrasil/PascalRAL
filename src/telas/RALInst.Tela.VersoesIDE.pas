@@ -9,8 +9,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Buttons,
-  RALInst.IDE, RALInst.Tela.Instalacao, RALInst.Tela.ItemIDE, RALInst.Tela.Modelo,
-  RALInst.Tela.Tarefa;
+  RALInst.IDE, RALInst.Situacao, RALInst.Tela.Instalacao, RALInst.Tela.ItemIDE,
+  RALInst.Tela.Modelo, RALInst.Tela.Tarefa;
 
 type
   /// How far a search goes.
@@ -78,12 +78,17 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AtualizarTextos; override;
+    /// Checked IDEs whose last plan found one of these changes
+    function ContarMudancas(AMudancas: TMudancasRAL): integer;
     /// False when some checked IDE failed
     function InstallRAL(ALog: TMemo; AEscolha: TEscolhaInstalacao): boolean;
     /// The checked IDEs (TIDETela, owned by this page)
     procedure ListarMarcadas(ALista: TList);
     /// How many IDEs are checked
     function Marcadas: integer;
+    /// One line per checked IDE with what its last plan found: 'Delphi 13
+    /// Florence: Atualizar o RAL 1.1 -> dev'
+    function Mudancas: string;
     /// The plan of every checked IDE, before running
     function Plano(AEscolha: TEscolhaInstalacao): string;
     /// The final report, one entry per checked IDE
@@ -473,6 +478,43 @@ end;
 function TTelaVersoesIDE.Procurando: boolean;
 begin
   Result := (FTarefa <> nil) and not FTarefa.Finished;
+end;
+
+function TTelaVersoesIDE.ContarMudancas(AMudancas: TMudancasRAL): integer;
+var
+  vLista: TList;
+  vInt: integer;
+begin
+  Result := 0;
+  vLista := TList.Create;
+  try
+    ListarMarcadas(vLista);
+    // IDE sem plano (nenhum recurso do tipo dela) nao muda nada
+    for vInt := 0 to Pred(vLista.Count) do
+      if (TIDETela(vLista[vInt]).TextoMudanca <> '') and
+         (TIDETela(vLista[vInt]).Mudanca in AMudancas) then
+        Inc(Result);
+  finally
+    vLista.Free;
+  end;
+end;
+
+function TTelaVersoesIDE.Mudancas: string;
+var
+  vLista: TList;
+  vInt: integer;
+begin
+  Result := '';
+  vLista := TList.Create;
+  try
+    ListarMarcadas(vLista);
+    for vInt := 0 to Pred(vLista.Count) do
+      if TIDETela(vLista[vInt]).TextoMudanca <> '' then
+        Result := Result + '  ' + TIDETela(vLista[vInt]).Name + ': ' +
+                  TIDETela(vLista[vInt]).TextoMudanca + LineEnding;
+  finally
+    vLista.Free;
+  end;
 end;
 
 function TTelaVersoesIDE.Resumos: string;

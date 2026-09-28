@@ -932,8 +932,9 @@ library path incluídos.
   `--desfazer=<recibo>`, `--ide=<raiz>`); `tests/recibos/recibos.lpr` (a
   semântica do desfazer e a ida e volta dos dois XML); `--recibos=` nos dois
   `instalar_*`.
-- Falta: "reinstalar" como ação própria (hoje é instalar de novo, que passa por
-  cima e grava outro recibo).
+- ~~Falta: "reinstalar" como ação própria~~ — feito na revisão 3 (2026-09-28):
+  instalar de novo compara com o que a IDE tem, e "Reinstalar mesmo assim"
+  (`--reinstalar` na CLI) refaz tudo.
 
 ### F11 — Entrega
 CLI com os mesmos verbos da GUI (serve em sessão remota e em servidor de build),
@@ -1148,6 +1149,93 @@ nos dois temas.
 - Falta: o `ZComponentDesign` do Zeos não vai para a IDE de 64 bits (o `.dproj`
   dele não habilita Win64); a 1.1 publicada não compila o Brotli em Win64 nem o
   resto que foi corrigido no dev.
+
+### Revisão 3 de 2026-09-28 — instalar sobre o que a IDE já tem
+
+O dono apontou: trocar a versão numa IDE que já tem o RAL não dizia que era uma
+atualização, e rodar de novo a mesma versão desinstalava e instalava por cima
+(recompilava tudo, reconstruía o Lazarus e gravava outro recibo — os recibos
+dele tinham quatro instalações idênticas no mesmo dia). Agora cada rodada
+**compara a IDE com a escolha antes de mexer em nada** (`RALInst.Situacao`,
+sem LCL) e só faz a diferença.
+- **De onde vem o RAL da IDE:** o recibo mais novo daquela IDE, enquanto ele
+  bate com o que a IDE aponta (`$(PascalRAL)` no Delphi, o link do
+  `pascalral.lpk` no Lazarus); sem recibo que bata, a pasta apontada e a marca
+  dela (instalação à mão). O recibo passou a ser lido inteiro: commit, resultado
+  por plataforma (`win32 IndyRAL: ok`) e os `.bpl`/`.dcp` com tamanho e data.
+- **Os mesmos fontes** são a mesma pasta com o mesmo commit (versão do GitHub)
+  ou, numa pasta local, nenhum fonte (`.pas`, `.inc`, `.lpk`, `.dpk`, `.dproj`,
+  `.lfm`...) mais novo que o recibo — `lib`, `compiled` e `backup` não contam.
+  O commit da versão escolhida vem do zip no cache: o plano sai **antes** do
+  download, quando a pasta ainda tem a versão anterior (`VersaoNova`/
+  `CommitNovo` nos dois motores, `VersaoRAL`/`CommitRAL` na escolha da tela).
+- **O que cada IDE recebe** (`TMudancaRAL`, uma linha no plano, na pergunta e no
+  resumo):
+
+  | situação | o que a rodada faz |
+  | --- | --- |
+  | sem RAL | instala, como antes |
+  | mesmos fontes, mesmos pacotes | **nada**: não compila, não mexe no registro nem na configuração, não reconstrói, não grava recibo |
+  | mesmos fontes, outros pacotes | compila só o que falta (e quem depende do que vai ser compilado); o que já foi compilado destes fontes e ainda é o mesmo arquivo fica; o desmarcado sai da IDE; o Lazarus só reconstrói se a lista de pacotes dele mudou |
+  | outra versão | "Atualizar 1.1 → 1.2" ou "Voltar 1.2 → 1.1" pelo número (`CompararTags`); ramo, pasta local, outra pasta ou instalação à mão são "Trocar"; o mesmo ramo com outro commit é "Atualizar". Compila tudo |
+  | pasta local mudada | "Recompilar": compila tudo |
+  | "Reinstalar mesmo assim" | compila e registra tudo, a pedido |
+
+- **Pacote que a rodada não mantém sai da IDE:** foi compilado contra o núcleo
+  que a rodada troca e a IDE não o carregaria (no Delphi, `Known Packages` e
+  `x64`; no Lazarus, a lista da IDE e o link). O link do Lazarus para outra pasta
+  sai antes do `lazbuild` (senão ele podia escolher o `.lpk` antigo pela versão).
+  No Delphi, as entradas do library path escritas por extenso dentro da árvore
+  antiga saem (o Delphi 7 não tem `$(PascalRAL)` e compilaria contra os fontes
+  velhos). Somente library path não tira pacote nenhum.
+- **Tela e CLI decidem o que "não mantido" quer dizer:** na tela os pacotes
+  instalados já vêm marcados, então desmarcar é tirar (`ManterInstalados =
+  False`); na CLI, `instalar` sem `--pacotes` não pode arrancar o que já está lá,
+  então o padrão é manter (e recompilar numa troca de versão), e
+  `--remover-outros` faz como a tela. `--reinstalar` é o "Reinstalar mesmo
+  assim". Com nada a fazer em nenhuma IDE, a CLI diz isso e não pergunta nada.
+- **Tela:** ao lado da versão, o que ela faz com o RAL das IDEs marcadas ("Já
+  instalada: 1.1 (6756f10)", "Atualizar o RAL 1.1 → 1.2", a lista por IDE na
+  dica); na lista de IDEs, "— RAL 1.1 instalado". Na última página, o plano de
+  cada IDE começa pela linha da situação; o botão vira **Atualizar** quando toda
+  IDE que muda é troca de versão; a confirmação lista o que muda em cada IDE;
+  com nada a fazer em todas, o botão diz isso e o link **Reinstalar mesmo
+  assim** refaz; depois de uma rodada, clicar de novo recalcula o plano antes.
+- **Recibo com nome livre:** duas rodadas no mesmo segundo gravavam o mesmo
+  arquivo (o segundo apagava o primeiro, e desinstalar perdia o que ele fez). O
+  teste achou isso — rodada que não compila leva menos de um segundo.
+  `ArquivoReciboLivre` acrescenta `_2`, `_3`, que ficam depois do original na
+  ordem dos recibos. O recibo de rodada parcial anota os pacotes que ficaram
+  como `ok — já instalado` (senão a lista dizia "0 pacotes").
+- **Conferido** (registro numa cópia, `.bpl`/`.dcp`/recibos em pasta temporária;
+  configuração do Lazarus numa cópia, sem `--build-ide`):
+  - Delphi 13, RAL 1.1 do GitHub: instalar (trocou a instalação à mão do
+    `PascalRAL-dev` da cópia, tirou os 13 pacotes que não foram pedidos) → de novo
+    (nada) → + IndyRAL (compila só ele, Win32 e Win64, 2 alterações) → de novo
+    (nada) → − IndyRAL (sai das duas listas, nada compila) → + IndyRAL (os
+    arquivos ainda são os do recibo: só registra) → `dev` (trocar, compila tudo)
+    → `dev` de novo (nada) → `--reinstalar` → 1.1 com `--manter` (IndyRAL fica e
+    é recompilado) → v1.0 (voltar) → plano da 1.1 (atualizar). Desfazer os
+    recibos, inclusive os parciais, devolveu a cópia **idêntica** à chave
+    verdadeira, e apagou os `.bpl` do teste.
+  - Delphi 13, pasta local (cópia do `PascalRAL-dev`): instalar → de novo
+    (nada) → um `.pas` tocado (recompilar) → de novo (nada).
+  - Lazarus 4.9 (pasta 4.8): a mesma sequência, seis rodadas no mesmo segundo
+    com recibos `_2`..`_4`; desfazer devolveu as duas listas idênticas às da
+    configuração verdadeira (19 links, 40 pacotes).
+  - `ralcli plano` contra as IDEs de verdade (só leitura), pasta
+    `PascalRAL-dev`: as duas dizem "Recompilar ... os fontes mudaram desde a
+    instalação" e mantêm os 15 (Delphi) e 13 (Lazarus) pacotes que já têm.
+  - `tests/situacao --testes` (novo, sem IDE, no workflow): 40 de 40 —
+    comparação de fontes, data dos fontes, leitura e acúmulo de recibos, fontes
+    da IDE. `catalogo`, `compatibilidade`, `recibos`, `traducao` e `existente`
+    continuam passando; todas as ferramentas de `tests/` compilam; o núcleo
+    compila para linux64.
+- Traduções: os textos novos nos três `.po` (e as duas entradas que já faltavam:
+  `cmBuildDependeAusente`, `cmBuildSemDesignide`).
+- Falta: conferir as telas com os olhos (o instalador abre e a janela principal
+  sobe, mas o caminho das páginas não foi clicado); a IDE aberta de verdade
+  depois de uma atualização.
 ---
 
 ## 6. Dados de referência

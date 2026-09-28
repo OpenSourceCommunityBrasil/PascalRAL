@@ -1,11 +1,16 @@
 /// Installation in a Lazarus IDE: lazbuild with that installation's
 /// configuration, in the catalog graph order, and a single --build-ide at the
 /// end:
-///   1. --add-package-link with every .lpk of the run: Lazarus learns each
+///   0. the RAL the run does not keep (a package not chosen, a link to another
+///      RAL folder) leaves the configuration;
+///   1. --add-package-link with the .lpk of the run: Lazarus learns each
 ///      package, including those that only exist as a dependency;
 ///   2. --add-package with the design ones (or runtime+design): they enter the
 ///      IDE's installed package list;
 ///   3. --build-ide=, once: compiles everything the IDE now requires.
+/// It first compares the IDE with the run (RALInst.Situacao): with the same
+/// sources only what is missing is linked or installed, and the IDE is rebuilt
+/// only when its package list changes; the same packages are nothing to do.
 unit RALInst.Instalar.Lazarus;
 
 {$mode ObjFPC}{$H+}
@@ -15,7 +20,7 @@ interface
 uses
   Classes, SysUtils,
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.Existente, RALInst.IDE,
-  RALInst.Processo, RALInst.Receitas;
+  RALInst.Processo, RALInst.Receitas, RALInst.Situacao;
 
 type
   /// Installs the chosen RAL packages (and their dependencies) in one Lazarus.
@@ -23,35 +28,60 @@ type
   private
     FAvisos: TStringList;
     FCatalogo: TCatalogo;
+    FCommitNovo: string;
     FCompat: TCompatibilidade;
     FConstruirIDE: boolean;
     /// name=encontrada|where or name=instalada|folder (version)
     FDepsRecibo: TStringList;
     FExigirIDEFechada: boolean;
+    /// Names of the run's packages that enter the IDE list
+    FFaltamIDE: TStringList;
+    /// Names of the run's packages whose link is written
+    FFaltamLinks: TStringList;
+    FFontesAtuais: TFontesRAL;
+    FFontesNovas: TFontesRAL;
     FIDE: TIDEInstance;
     FIgnorarExistentes: boolean;
     FInstaladosAntes: TStringList;
     FLinksAntes: TStringList;
     FLog: TLogLinha;
     FManifesto: TManifesto;
+    FManterInstalados: boolean;
+    FMudanca: TMudancaRAL;
     FPacotes: TStringList;
     FPastaRecibos: string;
     FPastasDependencias: TStringList;
     FRaizFontes: string;
     FReceitas: TReceitas;
     FRecibo: string;
+    /// The IDE changes: it has to be rebuilt
+    FReconstruir: boolean;
+    FReinstalar: boolean;
     FRelatorio: TStringList;
+    /// RAL names that leave the IDE list (name=reason)
+    FSaemIDE: TStringList;
+    /// RAL names whose link leaves the configuration (name=reason)
+    FSaemLinks: TStringList;
     FSimular: boolean;
+    FVersaoNova: string;
+    /// Compares the IDE with the run (AInstalar: what the run keeps, AFora:
+    /// what does not fit, 'name: reason'): FMudanca, what is missing, what
+    /// leaves
+    procedure Analisar(AInstalar: TList; AFora: TStrings);
     /// The .lpk file of a package in the sources folder
     function Arquivo(APacote: TPacote): string;
     /// The compatibility check, created on first use
     function Compat: TCompatibilidade;
     /// TDetectarDependencia for the compatibility check
     function DetectarNaIDE(AIDE: TIDEInstance; AReceita: TReceita): string;
+    /// A link file as a path ($(LazarusDir) expanded)
+    function ExpandirLink(const AArquivo: string): string;
     /// Packages from outside RAL the IDE does not know and no dependency of
     /// this run provides (AFornecidos)
     procedure ExternosAusentes(AInstalar: TList; AAusentes: TStrings;
       AFornecidos: TStrings = nil);
+    /// ManterInstalados: the RAL packages the IDE has join the asked ones
+    procedure IncluirInstalados;
     /// Runs lazbuild; False when it failed
     function Lazbuild(AParams: TStrings): boolean;
     /// Passes the line to Log when assigned
@@ -78,6 +108,9 @@ type
     /// submodule, or dependency of something left out)
     procedure Separar(ALista, AInstalar: TList; AFora: TStrings);
     procedure SetRaizFontes(const AValor: string);
+    /// Takes FSaemLinks and FSaemIDE out of the configuration (before
+    /// lazbuild reads it); False when it could not write
+    function TirarDaConfiguracao: boolean;
   public
     constructor Create(AIDE: TIDEInstance; ACatalogo: TCatalogo);
     destructor Destroy; override;
@@ -100,22 +133,38 @@ type
     function Plano: string;
     /// What Desinstalar will do, without doing anything
     function PlanoDesinstalar: string;
+    /// One line on what the last Plano or Executar found: 'Atualizar o RAL
+    /// 1.1 -> dev', 'Nada a fazer...'
+    function TextoMudanca: string;
     /// The dependency version this IDE asks; '' and AMotivo when none works
     /// (Zeos on FPC 3.2.3)
     function VersaoDependencia(AReceita: TReceita; out AMotivo: string): string;
 
     property Avisos: TStringList read FAvisos;
+    /// Commit of the sources the run installs, when the folder does not have
+    /// them yet (the plan comes before the download); '' = the folder's mark
+    property CommitNovo: string read FCommitNovo write FCommitNovo;
     /// False registers the packages without rebuilding the IDE (it asks when
     /// it opens)
     property ConstruirIDE: boolean read FConstruirIDE write FConstruirIDE;
     /// Refuses to touch the configuration with Lazarus open (it rewrites it on
     /// close)
     property ExigirIDEFechada: boolean read FExigirIDEFechada write FExigirIDEFechada;
+    /// The RAL sources the IDE uses (after Plano or Executar)
+    property FontesAtuais: TFontesRAL read FFontesAtuais;
+    /// The RAL sources the run installs (after Plano or Executar)
+    property FontesNovas: TFontesRAL read FFontesNovas;
     property IDE: TIDEInstance read FIDE;
     property IgnorarExistentes: boolean read FIgnorarExistentes write FIgnorarExistentes;
     property Log: TLogLinha read FLog write FLog;
     /// The RAL version manifest (not owned)
     property Manifesto: TManifesto read FManifesto write FManifesto;
+    /// The RAL packages the IDE already has stay, besides the asked ones (the
+    /// command line); False = what was not asked leaves the IDE (the screens,
+    /// where the installed ones come checked)
+    property ManterInstalados: boolean read FManterInstalados write FManterInstalados;
+    /// What the last Plano or Executar found
+    property Mudanca: TMudancaRAL read FMudanca;
     property Pacotes: TStringList read FPacotes;
     /// Where to write the receipt (what changed in the configuration)
     property PastaRecibos: string read FPastaRecibos write FPastaRecibos;
@@ -127,8 +176,14 @@ type
     property Receitas: TReceitas read FReceitas write FReceitas;
     /// Receipt file of this run ('' when none was written)
     property Recibo: string read FRecibo;
+    /// Links, installs and rebuilds everything even with the same sources and
+    /// packages
+    property Reinstalar: boolean read FReinstalar write FReinstalar;
     property Relatorio: TStringList read FRelatorio;
     property Simular: boolean read FSimular write FSimular;
+    /// Version of the sources the run installs ('1.1', 'dev'), when the
+    /// folder does not have them yet; '' = the folder's mark
+    property VersaoNova: string read FVersaoNova write FVersaoNova;
   end;
 
 const
@@ -197,10 +252,22 @@ begin
   FInstaladosAntes := TStringList.Create;
   FInstaladosAntes.CaseSensitive := False;
   FDepsRecibo := TStringList.Create;
+  FFaltamIDE := TStringList.Create;
+  FFaltamIDE.CaseSensitive := False;
+  FFaltamLinks := TStringList.Create;
+  FFaltamLinks.CaseSensitive := False;
+  FSaemIDE := TStringList.Create;
+  FSaemIDE.CaseSensitive := False;
+  FSaemLinks := TStringList.Create;
+  FSaemLinks.CaseSensitive := False;
 end;
 
 destructor TInstalacaoLazarus.Destroy;
 begin
+  FSaemLinks.Free;
+  FSaemIDE.Free;
+  FFaltamLinks.Free;
+  FFaltamIDE.Free;
   FDepsRecibo.Free;
   FInstaladosAntes.Free;
   FLinksAntes.Free;
@@ -329,6 +396,204 @@ function TInstalacaoLazarus.Arquivo(APacote: TPacote): string;
 begin
   Result := FRaizFontes + StringReplace(APacote.ArquivoRelativo, '/', PathDelim,
                                         [rfReplaceAll]);
+end;
+
+function TInstalacaoLazarus.ExpandirLink(const AArquivo: string): string;
+begin
+  Result := SetDirSeparators(StringReplace(AArquivo, '$(LazarusDir)',
+    ExcludeTrailingPathDelimiter(FIDE.RootDir), [rfReplaceAll, rfIgnoreCase]));
+end;
+
+procedure TInstalacaoLazarus.IncluirInstalados;
+var
+  vExistente: TInstalacaoExistente;
+  vInt: integer;
+  vPacote: TPacote;
+
+  procedure Incluir(const ANome: string);
+  begin
+    vPacote := FCatalogo.Buscar(tpLazarus, ANome);
+    if (vPacote <> nil) and (FPacotes.IndexOf(vPacote.Nome) < 0) then
+      FPacotes.Add(vPacote.Nome);
+  end;
+
+begin
+  if not FManterInstalados or (FCatalogo = nil) then
+    Exit;
+  vExistente := Existente;
+  try
+    for vInt := 0 to Pred(vExistente.Links.Count) do
+      Incluir(vExistente.Links.Names[vInt]);
+    for vInt := 0 to Pred(vExistente.Pacotes.Count) do
+      Incluir(vExistente.Pacotes.Names[vInt]);
+  finally
+    vExistente.Free;
+  end;
+end;
+
+procedure TInstalacaoLazarus.Analisar(AInstalar: TList; AFora: TStrings);
+var
+  vExistente: TInstalacaoExistente;
+  vLinks, vInstalados, vNomes, vDesign: TStringList;
+  vInt, vIdx: integer;
+  vPacote: TPacote;
+  vNome: string;
+  vCompleta, vRepontou: boolean;
+
+  function Motivo(const ANome: string): string;
+  var
+    vLinha: integer;
+  begin
+    // o que ficou de fora diz por que ('nome: motivo')
+    for vLinha := 0 to Pred(AFora.Count) do
+      if SameText(Copy(AFora[vLinha], 1, Length(ANome) + 2), ANome + ': ') then
+        Exit(Copy(AFora[vLinha], Length(ANome) + 3, MaxInt));
+    if FCatalogo.Buscar(tpLazarus, ANome) = nil then
+      Result := Format(cmSaiNaoExiste, [DescreverFontes(FFontesNovas)])
+    else
+      Result := cmSaiNaoMarcado;
+  end;
+
+begin
+  FFaltamIDE.Clear;
+  FFaltamLinks.Clear;
+  FSaemIDE.Clear;
+  FSaemLinks.Clear;
+  vExistente := Existente;
+  vLinks := TStringList.Create;
+  vLinks.CaseSensitive := False;
+  vInstalados := TStringList.Create;
+  vInstalados.CaseSensitive := False;
+  vNomes := TStringList.Create;
+  vNomes.CaseSensitive := False;
+  vDesign := TStringList.Create;
+  vDesign.CaseSensitive := False;
+  try
+    FFontesAtuais := FontesDaIDE(FIDE.RootDir, vExistente, FPastaRecibos);
+    FFontesNovas := FontesDaPasta(FRaizFontes, FVersaoNova, FCommitNovo);
+    FMudanca := MudancaDeFontes(FFontesAtuais, FFontesNovas);
+    if FReinstalar and (FMudanca <> mrInstalar) then
+      FMudanca := mrReinstalar;
+    vCompleta := MudancaCompleta(FMudanca);
+
+    if FIDE.ConfigDir <> '' then
+    begin
+      LerLinks(FIDE.ConfigDir, vLinks);
+      LerInstalados(FIDE.ConfigDir, vInstalados);
+    end;
+    for vInt := 0 to Pred(AInstalar.Count) do
+    begin
+      vPacote := TPacote(AInstalar[vInt]);
+      vNomes.AddObject(vPacote.Nome, vPacote);
+      if vPacote.Instalavel and not vPacote.LazRuntimeOnly then
+        vDesign.Add(vPacote.Nome);
+    end;
+
+    // links do RAL que nao ficam: de pacote que a rodada nao mantem, ou para
+    // outra pasta (a versao anterior) — o Lazarus poderia escolher o antigo
+    vRepontou := False;
+    for vInt := 0 to Pred(vExistente.Links.Count) do
+    begin
+      vNome := vExistente.Links.Names[vInt];
+      vIdx := vNomes.IndexOf(vNome);
+      if vIdx < 0 then
+        FSaemLinks.Values[vNome] := Motivo(vNome)
+      else if not SameFileName(ExpandirLink(vExistente.Links.ValueFromIndex[vInt]),
+                               Arquivo(TPacote(vNomes.Objects[vIdx]))) then
+      begin
+        FSaemLinks.Values[vNome] := cmSaiOutraPasta;
+        vRepontou := True;
+      end;
+    end;
+    // pacotes do RAL na IDE que a rodada nao mantem
+    for vInt := 0 to Pred(vExistente.Pacotes.Count) do
+    begin
+      vNome := vExistente.Pacotes.Names[vInt];
+      if vDesign.IndexOf(vNome) < 0 then
+        FSaemIDE.Values[vNome] := Motivo(vNome);
+    end;
+    // o que falta: o link para estes fontes e, os de design, na lista da IDE.
+    // Outros fontes registram e instalam tudo de novo
+    for vInt := 0 to Pred(AInstalar.Count) do
+    begin
+      vPacote := TPacote(AInstalar[vInt]);
+      if vCompleta or (FSaemLinks.IndexOfName(vPacote.Nome) >= 0) or
+         not SameFileName(ExpandirLink(vLinks.Values[vPacote.Nome]),
+                          Arquivo(vPacote)) then
+        FFaltamLinks.Add(vPacote.Nome);
+      if (vDesign.IndexOf(vPacote.Nome) >= 0) and
+         (vCompleta or (vInstalados.IndexOf(vPacote.Nome) < 0)) then
+        FFaltamIDE.Add(vPacote.Nome);
+    end;
+
+    if (FMudanca = mrNada) and
+       ((FFaltamLinks.Count > 0) or (FFaltamIDE.Count > 0) or
+        (FSaemLinks.Count > 0) or (FSaemIDE.Count > 0)) then
+      FMudanca := mrModificar;
+    // a IDE so muda reconstruindo: pacote que entra ou sai da lista dela, ou
+    // fontes novos para o que ela carrega
+    FReconstruir := (FFaltamIDE.Count > 0) or (FSaemIDE.Count > 0) or
+                    ((vDesign.Count > 0) and (vCompleta or vRepontou));
+  finally
+    vDesign.Free;
+    vNomes.Free;
+    vInstalados.Free;
+    vLinks.Free;
+    vExistente.Free;
+  end;
+end;
+
+function TInstalacaoLazarus.TirarDaConfiguracao: boolean;
+var
+  vLinks, vInstalados: TStringList;
+  vInt, vPos: integer;
+  vErro: string;
+begin
+  Result := True;
+  vLinks := TStringList.Create;
+  vLinks.CaseSensitive := False;
+  vInstalados := TStringList.Create;
+  vInstalados.CaseSensitive := False;
+  try
+    vLinks.Assign(FLinksAntes);
+    vInstalados.Assign(FInstaladosAntes);
+    for vInt := 0 to Pred(FSaemLinks.Count) do
+    begin
+      // o packagefiles.xml pode ter o mesmo nome duas vezes
+      vPos := vLinks.IndexOfName(FSaemLinks.Names[vInt]);
+      while vPos >= 0 do
+      begin
+        Logar(Format(cmLinkRemovido, [vLinks[vPos]]));
+        vLinks.Delete(vPos);
+        vPos := vLinks.IndexOfName(FSaemLinks.Names[vInt]);
+      end;
+    end;
+    for vInt := 0 to Pred(FSaemIDE.Count) do
+    begin
+      vPos := vInstalados.IndexOf(FSaemIDE.Names[vInt]);
+      if vPos >= 0 then
+      begin
+        Logar(Format(cmPacoteRemovidoLazarus, [vInstalados[vPos]]));
+        vInstalados.Delete(vPos);
+      end;
+    end;
+    if FSimular then
+      Exit;
+    if not (GravarLinks(FIDE.ConfigDir, vLinks, vErro) and
+            GravarInstalados(FIDE.ConfigDir, vInstalados, vErro)) then
+    begin
+      Logar(Format(emDevolverConfiguracao, [vErro]));
+      Result := False;
+    end;
+  finally
+    vInstalados.Free;
+    vLinks.Free;
+  end;
+end;
+
+function TInstalacaoLazarus.TextoMudanca: string;
+begin
+  Result := DescreverMudanca(FMudanca, FFontesAtuais, FFontesNovas);
 end;
 
 procedure TInstalacaoLazarus.Separar(ALista, AInstalar: TList; AFora: TStrings);
@@ -593,7 +858,8 @@ function TInstalacaoLazarus.Plano: string;
 var
   vLista, vInstalar: TList;
   vFora, vPlano, vExternos, vExigidas, vFornecidos: TStringList;
-  vInt: integer;
+  vInt, vAcao: integer;
+  vDepNaIDE: boolean;
   vPacote: TPacote;
   vReceita: TReceita;
   vRaiz, vOnde, vVersao, vMotivo: string;
@@ -606,24 +872,40 @@ begin
   vExternos := TStringList.Create;
   vExigidas := TStringList.Create;
   vFornecidos := TStringList.Create;
+  vDepNaIDE := False;
   try
+    IncluirInstalados;
     FCatalogo.Fechamento(tpLazarus, FPacotes, vLista);
     Separar(vLista, vInstalar, vFora);
+    // o que a IDE ja tem decide o que a rodada faz
+    Analisar(vInstalar, vFora);
 
     vPlano.Add(FIDE.Nome + '  (' + ExcludeTrailingPathDelimiter(FIDE.RootDir) + ')');
     if FIDE.ConfigDir <> '' then
       vPlano.Add(Format(cmPlanoConfiguracao, [FIDE.ConfigDir]));
+    vPlano.Add('  ' + TextoMudanca);
+    if FMudanca = mrNada then
+      Exit(vPlano.Text);
     vPlano.Add(cmPlanoPacotes);
     for vInt := 0 to Pred(vInstalar.Count) do
     begin
       vPacote := TPacote(vInstalar[vInt]);
-      if vPacote.Instalavel and not vPacote.LazRuntimeOnly then
+      if FFaltamIDE.IndexOf(vPacote.Nome) >= 0 then
         vPlano.Add(Format(cmPlanoInstalarNaIDE, [vPacote.Nome]))
+      else if FFaltamLinks.IndexOf(vPacote.Nome) >= 0 then
+        vPlano.Add(Format(cmPlanoSoRegistrar, [vPacote.Nome]))
       else
-        vPlano.Add(Format(cmPlanoSoRegistrar, [vPacote.Nome]));
+        vPlano.Add(Format(cmPlanoJaInstalado, [vPacote.Nome]));
     end;
     for vInt := 0 to Pred(vFora.Count) do
       vPlano.Add(Format(cmPlanoFicaDeForaLinha, [vFora[vInt]]));
+    for vInt := 0 to Pred(FSaemIDE.Count) do
+      vPlano.Add(Format(cmPlanoSaiDaIDE,
+                        [FSaemIDE.Names[vInt], FSaemIDE.ValueFromIndex[vInt]]));
+    for vInt := 0 to Pred(FSaemLinks.Count) do
+      if FSaemIDE.IndexOfName(FSaemLinks.Names[vInt]) < 0 then
+        vPlano.Add(Format(cmPlanoTirarLink,
+                          [FSaemLinks.Names[vInt], FSaemLinks.ValueFromIndex[vInt]]));
 
     // dependencias de terceiros: o que ja esta, o que entra e o que falta
     vFornecidos.Clear;
@@ -656,6 +938,10 @@ begin
           vPlano.Add(Format(cmPlanoDepInstalar,
                             [vReceita.Nome, vVersao, vExigidas[vInt], vRaiz]));
           vFornecidos.AddStrings(vReceita.Lazarus.FornecePacotes);
+          for vAcao := 0 to Pred(vReceita.Lazarus.Acoes.Count) do
+            if (vReceita.Lazarus.Acao(vAcao).Tipo = taLpk) and
+               vReceita.Lazarus.Acao(vAcao).Instalar then
+              vDepNaIDE := True;
         end
         else
           vPlano.Add(Format(cmPlanoDepFalta,
@@ -666,7 +952,7 @@ begin
     ExternosAusentes(vInstalar, vExternos, vFornecidos);
     if vExternos.Count > 0 then
       vPlano.Add(Format(cmPlanoExternosAusentes, [vExternos.CommaText]));
-    if FConstruirIDE then
+    if FConstruirIDE and (FReconstruir or vDepNaIDE) then
       vPlano.Add(cmPlanoReconstroi);
     Result := vPlano.Text;
   finally
@@ -776,9 +1062,8 @@ begin
     vRaiz.Add('lazarus', vLaz);
 
     ForceDirectories(FPastaRecibos);
-    Result := IncludeTrailingPathDelimiter(FPastaRecibos) +
-              Format('lazarus-%s-%s.json', [ReplaceStr(FIDE.Versao, '.', '_'),
-                                           FormatDateTime('yyyymmdd-hhnnss', Now)]);
+    Result := ArquivoReciboLivre(FPastaRecibos, Format('lazarus-%s-%s',
+      [ReplaceStr(FIDE.Versao, '.', '_'), FormatDateTime('yyyymmdd-hhnnss', Now)]));
     vArquivo := TStringList.Create;
     try
       vArquivo.Text := vRaiz.FormatJSON;
@@ -798,6 +1083,8 @@ var
   vFora, vLinks, vAdd, vDesconhecidos, vFornecidos: TStringList;
   vInt: integer;
   vPacote: TPacote;
+  vEstado: string;
+  vReconstruir: boolean;
 begin
   Result := False;
   FRelatorio.Clear;
@@ -813,14 +1100,6 @@ begin
     Logar(Format(emLazbuildAusente, [FIDE.BuildFile]));
     Exit;
   end;
-  // F10: com a IDE aberta, ela regrava a configuracao ao fechar e a
-  // instalacao se perde
-  if FExigirIDEFechada and not FSimular and
-     ProgramaEmExecucao(ExecutaveisLazarus, FIDE.RootDir) then
-  begin
-    Logar(Format(emLazarusAberto, [FIDE.Nome]));
-    Exit;
-  end;
   FRecibo := '';
   FDepsRecibo.Clear;
 
@@ -832,6 +1111,7 @@ begin
   vDesconhecidos := TStringList.Create;
   vFornecidos := TStringList.Create;
   try
+    IncluirInstalados;
     FCatalogo.Fechamento(tpLazarus, FPacotes, vLista, vDesconhecidos);
     if vDesconhecidos.Count > 0 then
     begin
@@ -840,6 +1120,24 @@ begin
     end;
 
     Separar(vLista, vInstalar, vFora);
+
+    // o que a IDE ja tem: com os mesmos fontes e pacotes nao ha o que fazer,
+    // nem reconstruir a IDE
+    Analisar(vInstalar, vFora);
+    Logar(Format(cmSituacao, [TextoMudanca]));
+    if FMudanca = mrNada then
+    begin
+      FRelatorio.Add(TextoMudanca);
+      Exit(True);
+    end;
+    // F10: daqui em diante a configuracao muda; com a IDE aberta, ela a
+    // regrava ao fechar e a instalacao se perde
+    if FExigirIDEFechada and not FSimular and
+       ProgramaEmExecucao(ExecutaveisLazarus, FIDE.RootDir) then
+    begin
+      Logar(Format(emLazarusAberto, [FIDE.Nome]));
+      Exit;
+    end;
 
     // F7: os .lpk das dependencias vem antes dos do RAL, na mesma chamada do
     // lazbuild — continua havendo um --build-ide so
@@ -859,11 +1157,13 @@ begin
       Exit;
     end;
 
+    // do RAL, so o que falta: com outros fontes, tudo
     for vInt := 0 to Pred(vInstalar.Count) do
     begin
       vPacote := TPacote(vInstalar[vInt]);
-      vLinks.Add(Arquivo(vPacote));
-      if vPacote.Instalavel and not vPacote.LazRuntimeOnly then
+      if FFaltamLinks.IndexOf(vPacote.Nome) >= 0 then
+        vLinks.Add(Arquivo(vPacote));
+      if FFaltamIDE.IndexOf(vPacote.Nome) >= 0 then
         vAdd.Add(Arquivo(vPacote));
     end;
 
@@ -874,16 +1174,28 @@ begin
     LerLinks(FIDE.ConfigDir, FLinksAntes);
     LerInstalados(FIDE.ConfigDir, FInstaladosAntes);
 
+    // 0. o RAL que a rodada nao mantem (e o link para a versao anterior) sai
+    // da configuracao antes que o lazbuild a leia
+    if (FSaemLinks.Count > 0) or (FSaemIDE.Count > 0) then
+      if not TirarDaConfiguracao then
+      begin
+        Reverter;
+        Exit(False);
+      end;
+
     // 1. todos conhecidos pela IDE
-    vDesconhecidos.Clear;
-    ParametrosBase(vDesconhecidos);
-    vDesconhecidos.Add('--add-package-link');
-    vDesconhecidos.AddStrings(vLinks);
-    if not Lazbuild(vDesconhecidos) then
+    if vLinks.Count > 0 then
     begin
-      Logar(emLazbuildRegistrar);
-      Reverter;
-      Exit(False);
+      vDesconhecidos.Clear;
+      ParametrosBase(vDesconhecidos);
+      vDesconhecidos.Add('--add-package-link');
+      vDesconhecidos.AddStrings(vLinks);
+      if not Lazbuild(vDesconhecidos) then
+      begin
+        Logar(emLazbuildRegistrar);
+        Reverter;
+        Exit(False);
+      end;
     end;
 
     // 2. os de design na lista de instalados
@@ -901,10 +1213,12 @@ begin
       end;
     end;
 
-    // 3. uma reconstrucao so. Falhou: o executavel da IDE continua o de
-    // antes, e a configuracao volta ao que era — sem isso a IDE abriria
-    // pedindo para reconstruir com os pacotes que nao compilam
-    if FConstruirIDE and (vAdd.Count > 0) then
+    // 3. uma reconstrucao so, e so quando a IDE muda. Falhou: o executavel
+    // da IDE continua o de antes, e a configuracao volta ao que era — sem
+    // isso a IDE abriria pedindo para reconstruir com os pacotes que nao
+    // compilam
+    vReconstruir := FReconstruir or (vAdd.Count > 0);
+    if FConstruirIDE and vReconstruir then
     begin
       vDesconhecidos.Clear;
       ParametrosBase(vDesconhecidos);
@@ -920,7 +1234,7 @@ begin
     // 4. recibo: so do que ficou na configuracao
     if Result and not FSimular then
       try
-        FRecibo := SalvarRecibo(vInstalar, FConstruirIDE and (vAdd.Count > 0));
+        FRecibo := SalvarRecibo(vInstalar, FConstruirIDE and vReconstruir);
         Logar(Format(cmRecibo, [FRecibo]));
       except
         on E: Exception do
@@ -928,18 +1242,24 @@ begin
       end;
 
     for vInt := 0 to Pred(vInstalar.Count) do
+    begin
+      vPacote := TPacote(vInstalar[vInt]);
       if not Result and (FRecibo = '') then
-        FRelatorio.Add(Format('%-24s %s', [TPacote(vInstalar[vInt]).Nome,
-          cmLazarusNaoInstalado]))
+        vEstado := cmLazarusNaoInstalado
+      else if vAdd.IndexOf(Arquivo(vPacote)) >= 0 then
+        vEstado := IfThen(Result and FConstruirIDE, cmLazarusInstalado, cmLazarusMarcado)
+      else if vLinks.IndexOf(Arquivo(vPacote)) >= 0 then
+        vEstado := cmLazarusRegistrado
       else
-        FRelatorio.Add(Format('%-24s %s', [TPacote(vInstalar[vInt]).Nome,
-          IfThen(vAdd.IndexOf(Arquivo(TPacote(vInstalar[vInt]))) >= 0,
-                 IfThen(Result and FConstruirIDE, cmLazarusInstalado,
-                        cmLazarusMarcado),
-                 cmLazarusRegistrado)]));
+        vEstado := cmLazarusJaInstalado;
+      FRelatorio.Add(Format('%-24s %s', [vPacote.Nome, vEstado]));
+    end;
+    for vInt := 0 to Pred(FSaemIDE.Count) do
+      FRelatorio.Add(Format(cmPlanoSaiDaIDE,
+                            [FSaemIDE.Names[vInt], FSaemIDE.ValueFromIndex[vInt]]));
     for vInt := 0 to Pred(vFora.Count) do
       FRelatorio.Add(Format(cmForaLinha, [vFora[vInt]]));
-    if not FConstruirIDE and (vAdd.Count > 0) then
+    if not FConstruirIDE and vReconstruir then
       FAvisos.Add(wmIDENaoReconstruida);
     for vInt := 0 to Pred(FAvisos.Count) do
       FRelatorio.Add(cmPrefixoAvisoRelatorio + FAvisos[vInt]);
@@ -1061,9 +1381,8 @@ begin
     // fora da pasta dos recibos: nao e uma instalacao
     vPasta := IncludeTrailingPathDelimiter(FPastaRecibos) + 'desinstalacoes';
     ForceDirectories(vPasta);
-    Result := IncludeTrailingPathDelimiter(vPasta) +
-              Format('lazarus-%s-%s.json', [ReplaceStr(FIDE.Versao, '.', '_'),
-                                           FormatDateTime('yyyymmdd-hhnnss', Now)]);
+    Result := ArquivoReciboLivre(vPasta, Format('lazarus-%s-%s',
+      [ReplaceStr(FIDE.Versao, '.', '_'), FormatDateTime('yyyymmdd-hhnnss', Now)]));
     vArquivo := TStringList.Create;
     try
       vArquivo.Text := vRaiz.FormatJSON;

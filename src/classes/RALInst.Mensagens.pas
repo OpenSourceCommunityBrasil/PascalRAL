@@ -369,6 +369,8 @@ resourcestring
   cmDesinstalacaoComErro = '%s: a desinstalação terminou com erro';
   cmDesinstalado = '%s: desinstalado';
   cmNadaAInstalar = '%s: nada a instalar';
+  cmNadaAFazerRodada = 'Nada a fazer: as IDEs já têm esta versão do RAL com estes ' +
+    'recursos.';
   cmNenhumaIDEAlterada = 'Nenhuma IDE foi alterada.';
   cmNenhumPedidoExiste = '%s: nenhum dos pacotes pedidos existe no %s';
   cmPlanoBaixarDep = 'Baixar %s %s%s para %s (para %s)';
@@ -392,6 +394,31 @@ resourcestring
 
   // RALInst.Existente
   cmExistenteSoPaths = 'só o library path';
+
+  // RALInst.Situacao
+  cmFontesAMao = 'instalado à mão';
+  cmFontesDaPasta = 'da pasta %s';
+  cmMudancaAtualizar = 'Atualizar o RAL %s → %s';
+  cmMudancaInstalar = 'Instalar o RAL %s';
+  cmMudancaModificar = 'Só mudar os recursos (continua o RAL %s)';
+  cmMudancaNada = 'Nada a fazer: já tem o RAL %s com estes recursos';
+  cmMudancaRecompilar = 'Recompilar o RAL %s: os fontes mudaram desde a instalação';
+  cmMudancaReinstalar = 'Reinstalar o RAL %s (a pedido)';
+  cmMudancaTrocar = 'Trocar o RAL %s pelo %s';
+  cmMudancaVoltar = 'Voltar o RAL %s → %s (versão anterior)';
+
+  // RALInst.Instalar.Delphi / Lazarus: o que a IDE ja tem
+  cmLazarusJaInstalado = 'já instalado';
+  cmPlanoJaInstalado = '    %s  (já instalado, fica como está)';
+  cmPlanoPacotesParcial = '  pacotes (só o que falta é compilado):';
+  cmPlanoSaiDaIDE = '    sai da IDE: %s — %s';
+  cmPlanoSoRegistrarNaIDE = '    %s  (já compilado desta versão: só entra na IDE)';
+  cmPlanoTirarLink = '    tirar o link: %s — %s';
+  cmSaiDaIDE = '  %s -= %s  (sai da IDE)';
+  cmSaiNaoExiste = 'não existe no RAL %s';
+  cmSaiNaoMarcado = 'não foi marcado';
+  cmSaiOutraPasta = 'aponta para outra pasta';
+  cmSituacao = '== %s';
 
   // RALInst.Instalar.Delphi / Lazarus: desinstalar
   cmApagarVariavel = '  apagar a variável $(PascalRAL) (%s)';

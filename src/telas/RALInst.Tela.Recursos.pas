@@ -18,8 +18,8 @@ uses
   Classes, SysUtils, Forms, Controls, Dialogs, StdCtrls, ComCtrls, Buttons, LCLType,
   ExtCtrls,
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.GitHub, RALInst.IDE,
-  RALInst.Processo, RALInst.Receitas, RALInst.Tela.Instalacao, RALInst.Tela.Modelo,
-  RALInst.Tela.Tarefa;
+  RALInst.Processo, RALInst.Receitas, RALInst.Situacao, RALInst.Tela.Instalacao,
+  RALInst.Tela.Modelo, RALInst.Tela.Tarefa;
 
 type
   /// The IDE page tells which IDEs are checked (TIDETela).
@@ -47,6 +47,7 @@ type
     lbedDownloadPath: TLabeledEdit;
     lbDesmarcarTodos: TLabel;
     lbInfo: TLabel;
+    lbInstalada: TLabel;
     lbMarcarTodos: TLabel;
     lbSomentePaths: TLabel;
     lbSubTitle: TLabel;
@@ -100,6 +101,7 @@ type
     FRamoCarga: boolean;
     FReceitas: TReceitas;
     FRefCarga: string;
+    FReinstalar: boolean;
     FRepo: TRepoGitHub;
     FSecao: TRTLCriticalSection;
     FTarefa: TTarefa;
@@ -115,6 +117,9 @@ type
     procedure AtualizarDestino;
     /// Delphi options only for Delphi runs
     procedure AtualizarOpcoes;
+    /// The line beside the version: the RAL the checked IDEs have and what
+    /// the chosen version does to it (update, downgrade, the same)
+    procedure AtualizarSituacao;
     /// Waits for a running load to end
     procedure CancelarEsperar;
     /// Main thread: the background load finished
@@ -135,6 +140,9 @@ type
     procedure DetectarRAL;
     /// Checks what the IDEs already have, else RAL's core
     procedure EscolherPadrao;
+    /// The sources the run installs: the chosen version (with the zip's
+    /// commit) in its folder, or the local folder
+    function FontesEscolhidas: TFontesRAL;
     /// Is some checked IDE carrying RAL? (the names go in ANomes)
     function IDEsComRAL(ANomes: TStrings): boolean;
     /// '' when it fits every checked IDE; else 'Delphi XE2: reason' per IDE
@@ -198,6 +206,9 @@ type
     function PrepararFontes(ALog: TLogLinha): boolean;
 
     property OnListarIDEs: TListarIDEs read FOnListarIDEs write FOnListarIDEs;
+    /// The next run compiles and registers everything even where nothing
+    /// changed
+    property Reinstalar: boolean read FReinstalar write FReinstalar;
   published
     property Catalogo: TCatalogo read FCatalogo;
   end;
@@ -362,6 +373,8 @@ begin
     FreeAndNil(FCatalogoInstalar);
   end;
   AtualizarDestino;
+  // outra pasta de instalacao e outra instalacao: muda o que se compara
+  AtualizarSituacao;
 end;
 
 procedure TTelaRecursos.lbMarcarTodosClick(Sender: TObject);
@@ -498,6 +511,8 @@ begin
     if FCatalogo.Count > 0 then
       MontarArvore;
   end;
+  // a instalacao anterior pode ter mudado o que as IDEs tem
+  AtualizarSituacao;
 end;
 
 function TTelaRecursos.AssinaturaIDEs: string;
@@ -527,6 +542,70 @@ begin
     lbDestino.Caption := cmDestinoEscolha;
   lbDestino.Hint := lbDestino.Caption;
   lbDestino.ShowHint := True;
+end;
+
+function TTelaRecursos.FontesEscolhidas: TFontesRAL;
+var
+  vVersao: TVersaoRAL;
+  vCommit: string;
+begin
+  vVersao := Versao;
+  if FModoLocal or (vVersao = nil) then
+    Exit(FontesDaPasta(PastaFontes, '', ''));
+  vCommit := '';
+  if FCatalogo.Origem is TOrigemZip then
+    vCommit := TOrigemZip(FCatalogo.Origem).Commit;
+  Result := FontesDaPasta(PastaFontes, vVersao.Ref, vCommit);
+end;
+
+procedure TTelaRecursos.AtualizarSituacao;
+var
+  vIDEs: TList;
+  vLinhas, vTextos: TStringList;
+  vNova: TFontesRAL;
+  vTela: TIDETela;
+  vMudanca: TMudancaRAL;
+  vInt: integer;
+  vTexto: string;
+begin
+  lbInstalada.Caption := '';
+  lbInstalada.Hint := '';
+  if (FCatalogo.Count = 0) or Carregando then
+    Exit;
+  vIDEs := TList.Create;
+  vLinhas := TStringList.Create;
+  vTextos := TStringList.Create;
+  try
+    vNova := FontesEscolhidas;
+    IDEsMarcadas(vIDEs);
+    for vInt := 0 to Pred(vIDEs.Count) do
+    begin
+      vTela := TIDETela(vIDEs[vInt]);
+      if not vTela.Fontes.Existe then
+        Continue;
+      // so os fontes: os recursos, a tela de instalacao compara
+      vMudanca := MudancaDeFontes(vTela.Fontes, vNova);
+      if vMudanca = mrNada then
+        vTexto := Format(cmSituacaoMesma, [DescreverFontes(vNova)])
+      else
+        vTexto := DescreverMudanca(vMudanca, vTela.Fontes, vNova);
+      vLinhas.Add(vTela.Name + ': ' + vTexto);
+      if vTextos.IndexOf(vTexto) < 0 then
+        vTextos.Add(vTexto);
+    end;
+    if vLinhas.Count = 0 then
+      Exit;
+    // a linha diz o que muda; quais IDEs, a dica
+    lbInstalada.Caption := vTextos[0];
+    if vTextos.Count > 1 then
+      lbInstalada.Caption := lbInstalada.Caption +
+                             Format(cmSituacaoMais, [vTextos.Count - 1]);
+    lbInstalada.Hint := Trim(vLinhas.Text);
+  finally
+    vTextos.Free;
+    vLinhas.Free;
+    vIDEs.Free;
+  end;
 end;
 
 procedure TTelaRecursos.AtualizarOpcoes;
@@ -569,6 +648,7 @@ begin
     MontarArvore
   else
     lbInfo.Caption := FErroCatalogo;
+  AtualizarSituacao;
 end;
 
 function TTelaRecursos.BaixarDependencias(ALog: TLogLinha): boolean;
@@ -668,6 +748,7 @@ begin
   FManifesto.Limpar;
   FCatalogo.Limpar;
   tvRecursos.Items.Clear;
+  lbInstalada.Caption := '';
 
   if FModoLocal then
   begin
@@ -690,6 +771,7 @@ begin
     if FEscolhidos.Count = 0 then
       EscolherPadrao;
     MontarArvore;
+    AtualizarSituacao;
     Exit;
   end;
   if vVersao = nil then
@@ -776,6 +858,7 @@ begin
   if FEscolhidos.Count = 0 then
     EscolherPadrao;
   MontarArvore;
+  AtualizarSituacao;
 end;
 
 procedure TTelaRecursos.CarregarVersoes;
@@ -827,6 +910,8 @@ begin
 end;
 
 function TTelaRecursos.Escolha: TEscolhaInstalacao;
+var
+  vFontes: TFontesRAL;
 begin
   if FCatalogoInstalar <> nil then
     FEscolha.Catalogo := FCatalogoInstalar
@@ -840,6 +925,12 @@ begin
   FEscolha.Desinstalar := FEscolhidos.Count = 0;
   FEscolha.SomenteLibraryPath := ckSomentePaths.Visible and ckSomentePaths.Checked;
   FEscolha.Win64 := ckWin64.Visible and ckWin64.Checked;
+  // a versao escolhida: o plano vem antes do download, e a pasta ainda nao a
+  // tem (ou tem a anterior)
+  vFontes := FontesEscolhidas;
+  FEscolha.VersaoRAL := vFontes.Versao;
+  FEscolha.CommitRAL := vFontes.Commit;
+  FEscolha.Reinstalar := FReinstalar;
   Result := FEscolha;
 end;
 

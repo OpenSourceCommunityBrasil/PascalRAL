@@ -179,4 +179,16 @@ inherited TelaRecursos: TTelaRecursos
     ParentFont = False
     OnClick = lbDesmarcarTodosClick
   end
+  object lbInstalada: TLabel[22]
+    Left = 250
+    Height = 15
+    Top = 146
+    Width = 399
+    Alignment = taRightJustify
+    AutoSize = False
+    Caption = ''
+    ParentColor = False
+    ParentShowHint = False
+    ShowHint = True
+  end
 end

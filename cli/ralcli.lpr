@@ -27,7 +27,14 @@ program ralcli;
 //   --win64               Delphi: tambem compila o runtime de Win64
 //   --somente-paths       Delphi: so library path, sem compilar
 //   --ignorar-existentes  baixa as dependencias mesmo que a IDE ja tenha
+//   --reinstalar          compila e registra tudo, mesmo o que ja esta la
+//   --remover-outros      tira da IDE os pacotes do RAL que nao foram pedidos
+//                         (sem isso, os que ja estao ficam, e numa troca de
+//                         versao sao recompilados junto)
 //   --sem-reconstruir     Lazarus: nao reconstroi a IDE (ela pede ao abrir)
+//
+// A mesma versao com os mesmos pacotes nao faz nada; a mesma versao com
+// pacotes a mais so instala esses; outra versao atualiza (o plano diz qual).
 //   --buscar-em=<pasta>   onde mais procurar IDEs
 //   --sim                 nao pergunta antes de mexer nas IDEs
 //
@@ -74,7 +81,7 @@ begin
   WriteLn('  ralcli pacotes [--versao=<ref>|--local=<pasta>]');
   WriteLn('  ralcli plano --ide=<raiz|#n> [--versao=<ref>|--local=<pasta>]');
   WriteLn('               [--pasta=<pasta>] [--pacotes=a,b] [--win64] [--somente-paths]');
-  WriteLn('               [--ignorar-existentes]');
+  WriteLn('               [--ignorar-existentes] [--reinstalar] [--remover-outros]');
   WriteLn('               [--sem-reconstruir]');
   WriteLn('  ralcli instalar (as mesmas opções do plano) [--sim]');
   WriteLn('  ralcli recibos [--todos]');
@@ -276,6 +283,8 @@ begin
   Result.Win64 := Chave('win64');
   Result.SomenteLibraryPath := Chave('somente-paths');
   Result.IgnorarExistentes := Chave('ignorar-existentes');
+  Result.Reinstalar := Chave('reinstalar');
+  Result.ManterInstalados := not Chave('remover-outros');
   Result.ConstruirIDE := not Chave('sem-reconstruir');
   if not AComIDE then
     Exit;
@@ -361,6 +370,13 @@ begin
     WriteLn(vRodada.Plano);
     if not AExecutar then
       Exit;
+    // a mesma versao com os mesmos pacotes em todas: nada a perguntar
+    if vRodada.NadaAFazer then
+    begin
+      WriteLn('Nada a fazer: as IDEs já têm esta versão com estes pacotes ' +
+              '(--reinstalar refaz tudo).');
+      Halt(0);
+    end;
     if not Confirmar('As IDEs acima terão a configuração alterada; feche-as antes. ' +
                      'Instalar?') then
     begin
@@ -585,8 +601,8 @@ begin
     else if (GVerbo = 'plano') or (GVerbo = 'instalar') then
     begin
       ConferirOpcoes(['ide', 'versao', 'local', 'pasta', 'pacotes', 'win64',
-                      'somente-paths', 'ignorar-existentes', 'sem-reconstruir',
-                      'buscar-em', 'sim']);
+                      'somente-paths', 'ignorar-existentes', 'reinstalar',
+                      'remover-outros', 'sem-reconstruir', 'buscar-em', 'sim']);
       BuscarIDEs;
       Planejar(GVerbo = 'instalar');
     end

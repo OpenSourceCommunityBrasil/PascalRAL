@@ -26,15 +26,21 @@ type
   /// One installation receipt.
   TRecibo = class
   private
+    FArquivos: TStringList;
     FDados: TJSONObject;
     FPacotes: TStringList;
+    FResultados: TStringList;
   public
     Arquivo: string;
+    CommitRAL: string;
     Data: string;
     Desfeito: boolean;
     Fontes: string;
     IDENome: string;
     IDERaiz: string;
+    /// Lazarus: the run rebuilt the IDE
+    ReconstruiuIDE: boolean;
+    SomenteLibraryPath: boolean;
     /// 'delphi' or 'lazarus'
     Tipo: string;
     VersaoRAL: string;
@@ -46,8 +52,14 @@ type
     /// packages)'
     function Descricao: string;
 
+    /// Delphi: the .bpl/.dcp written, file=size|date (the file in lower case,
+    /// expanded)
+    property Arquivos: TStringList read FArquivos;
     property Dados: TJSONObject read FDados;
     property Pacotes: TStringList read FPacotes;
+    /// Delphi: the result of each package per platform: 'win32 IndyRAL=ok',
+    /// 'win64 XSocketRAL=pulado', 'win32 SaguiRAL=falhou'
+    property Resultados: TStringList read FResultados;
   end;
 
   /// Receipts of a folder, newest first.
@@ -63,6 +75,17 @@ type
     property Items[AIndex: integer]: TRecibo read GetItem; default;
   end;
 
+/// Is the file still the one the receipt noted (same size and date)?
+function ArquivoComoNoRecibo(const AArquivo: string; ATamanho: int64;
+  const AData: string): boolean;
+/// <folder>/<base>.json, or <base>_2.json, _3... when a run in the same second
+/// already wrote that name (a run that changes nothing takes less than one);
+/// the suffix keeps the newest first in TRecibos
+function ArquivoReciboLivre(const APasta, ABase: string): string;
+/// The key of a file in TRecibo.Arquivos: expanded, lower case
+function ChaveArquivo(const AArquivo: string): string;
+/// '2026-09-25T20:48:53' -> TDateTime; 0 when it is not a receipt date
+function DataDoRecibo(const AData: string): TDateTime;
 /// Undoes a receipt. Refuses when a newer receipt of the same IDE still holds
 /// (ARecibos: those of the same folder), and when the IDE is open.
 /// AReconstruirIDE: in Lazarus, rebuild the IDE without the packages (which is
@@ -93,17 +116,81 @@ begin
                          IncludeTrailingPathDelimiter(ExpandFileName(B)));
 end;
 
+function ChaveArquivo(const AArquivo: string): string;
+begin
+  Result := LowerCase(ExpandFileName(AArquivo));
+end;
+
+function DataDoRecibo(const AData: string): TDateTime;
+var
+  vAno, vMes, vDia, vHora, vMin, vSeg: word;
+begin
+  Result := 0;
+  // yyyy-mm-ddThh:nn:ss, o formato que as rodadas gravam
+  if (Length(AData) < 19) or (AData[5] <> '-') or (AData[11] <> 'T') then
+    Exit;
+  vAno := StrToIntDef(Copy(AData, 1, 4), 0);
+  vMes := StrToIntDef(Copy(AData, 6, 2), 0);
+  vDia := StrToIntDef(Copy(AData, 9, 2), 0);
+  vHora := StrToIntDef(Copy(AData, 12, 2), 99);
+  vMin := StrToIntDef(Copy(AData, 15, 2), 99);
+  vSeg := StrToIntDef(Copy(AData, 18, 2), 99);
+  if not TryEncodeDate(vAno, vMes, vDia, Result) then
+    Exit(0);
+  if (vHora > 23) or (vMin > 59) or (vSeg > 59) then
+    Exit(0);
+  Result := Result + EncodeTime(vHora, vMin, vSeg, 0);
+end;
+
+function ArquivoComoNoRecibo(const AArquivo: string; ATamanho: int64;
+  const AData: string): boolean;
+var
+  vBusca: TSearchRec;
+begin
+  Result := False;
+  if (AArquivo = '') or (FindFirst(AArquivo, faAnyFile, vBusca) <> 0) then
+    Exit;
+  try
+    Result := (vBusca.Size = ATamanho) and
+              (FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss', vBusca.TimeStamp) = AData);
+  finally
+    SysUtils.FindClose(vBusca);
+  end;
+end;
+
+function ArquivoReciboLivre(const APasta, ABase: string): string;
+var
+  vNum: integer;
+begin
+  Result := IncludeTrailingPathDelimiter(APasta) + ABase + '.json';
+  vNum := 1;
+  // '_' vem depois de '.': com a mesma data, o de sufixo e o mais novo
+  while FileExists(Result) or
+        FileExists(ChangeFileExt(Result, '') + '.desfeito.json') do
+  begin
+    Inc(vNum);
+    Result := IncludeTrailingPathDelimiter(APasta) + ABase + '_' + IntToStr(vNum) +
+              '.json';
+  end;
+end;
+
 { TRecibo }
 
 constructor TRecibo.Create;
 begin
   inherited Create;
   FPacotes := TStringList.Create;
+  FArquivos := TStringList.Create;
+  FArquivos.CaseSensitive := False;
+  FResultados := TStringList.Create;
+  FResultados.CaseSensitive := False;
 end;
 
 destructor TRecibo.Destroy;
 begin
   FDados.Free;
+  FResultados.Free;
+  FArquivos.Free;
   FPacotes.Free;
   inherited Destroy;
 end;
@@ -112,10 +199,10 @@ function TRecibo.Carregar(const AArquivo: string): boolean;
 var
   vTexto: TStringList;
   vJSON: TJSONData;
-  vIDE, vRAL: TJSONObject;
+  vIDE, vRAL, vItem: TJSONObject;
   vLista: TJSONArray;
   vInt: integer;
-  vPacote: string;
+  vPacote, vChave, vEstado: string;
 begin
   Result := False;
   Arquivo := AArquivo;
@@ -150,24 +237,47 @@ begin
   end;
   vRAL := FDados.Get('ral', TJSONObject(nil));
   if vRAL <> nil then
+  begin
     VersaoRAL := vRAL.Get('versao', '');
+    CommitRAL := vRAL.Get('commit', '');
+  end;
+  SomenteLibraryPath := FDados.Get('somente-library-path', False);
+  ReconstruiuIDE := FDados.Get('reconstruiu-ide', False);
   FPacotes.Clear;
+  FResultados.Clear;
   vLista := FDados.Get('pacotes', TJSONArray(nil));
   if vLista <> nil then
     for vInt := 0 to Pred(vLista.Count) do
     begin
-      // Delphi: 'win32 IndyRAL: ok'; Lazarus: 'indyral'
+      // Delphi: 'win32 IndyRAL: ok', 'IndyRAL: pulado — motivo'; Lazarus: 'indyral'
       vPacote := vLista.Items[vInt].AsString;
       if Pos(':', vPacote) > 0 then
       begin
-        if Pos(': ok', vPacote) = 0 then
+        vChave := Copy(vPacote, 1, Pos(':', vPacote) - 1);
+        vEstado := Trim(Copy(vPacote, Pos(':', vPacote) + 1, MaxInt));
+        if Pos(' ', vEstado) > 0 then
+          vEstado := Copy(vEstado, 1, Pos(' ', vEstado) - 1);
+        // so o resultado da compilacao diz a plataforma
+        if Pos(' ', vChave) > 0 then
+          FResultados.Values[vChave] := vEstado;
+        if vEstado <> 'ok' then
           Continue;
-        vPacote := Copy(vPacote, 1, Pos(':', vPacote) - 1);
-        vPacote := Copy(vPacote, Pos(' ', vPacote) + 1, MaxInt);
+        vPacote := Copy(vChave, Pos(' ', vChave) + 1, MaxInt);
       end;
       if FPacotes.IndexOf(vPacote) < 0 then
         FPacotes.Add(vPacote);
     end;
+  FArquivos.Clear;
+  vLista := FDados.Get('arquivos', TJSONArray(nil));
+  if vLista <> nil then
+    for vInt := 0 to Pred(vLista.Count) do
+      if vLista.Items[vInt] is TJSONObject then
+      begin
+        vItem := vLista.Objects[vInt];
+        if vItem.Get('arquivo', '') <> '' then
+          FArquivos.Values[ChaveArquivo(vItem.Get('arquivo', ''))] :=
+            IntToStr(vItem.Get('tamanho', int64(-1))) + '|' + vItem.Get('data', '');
+      end;
   Result := (Tipo <> '') and (IDERaiz <> '');
 end;
 
@@ -243,8 +353,7 @@ var
   vLista: TJSONArray;
   vItem: TJSONObject;
   vInt: integer;
-  vArquivo, vData: string;
-  vBusca: TSearchRec;
+  vArquivo: string;
 begin
   Result := True;
   vLista := ADados.Get('arquivos', TJSONArray(nil));
@@ -254,13 +363,10 @@ begin
   begin
     vItem := vLista.Objects[vInt];
     vArquivo := vItem.Get('arquivo', '');
-    if (vArquivo = '') or (FindFirst(vArquivo, faAnyFile, vBusca) <> 0) then
+    if (vArquivo = '') or not FileExists(vArquivo) then
       Continue;
-    vData := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss',
-                            vBusca.TimeStamp);
-    SysUtils.FindClose(vBusca);
-    if (vBusca.Size <> vItem.Get('tamanho', int64(-1))) or
-       (vData <> vItem.Get('data', '')) then
+    if not ArquivoComoNoRecibo(vArquivo, vItem.Get('tamanho', int64(-1)),
+                               vItem.Get('data', '')) then
     begin
       Logar(ALog, Format(cmMantidoMudou, [vArquivo]));
       Continue;

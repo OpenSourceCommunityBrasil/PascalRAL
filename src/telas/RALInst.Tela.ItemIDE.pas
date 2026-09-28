@@ -70,8 +70,12 @@ begin
   lbPath.Caption := ExcludeTrailingPathDelimiter(vIDE.RootDir);
   if vIDE.Avisos.Count > 0 then
     lbPath.Caption := lbPath.Caption + Format(cmAvisosIDE, [vIDE.Avisos.Count]);
-  // o RAL que a IDE ja tem, instalado pelo instalador ou a mao
-  if FObjectData.TemRAL then
+  // o RAL que a IDE ja tem, instalado pelo instalador ou a mao, com a versao
+  // quando se sabe
+  if FObjectData.TemRAL and (FObjectData.Fontes.Versao <> '') then
+    lbPath.Caption := lbPath.Caption + Format(cmRALVersaoNaIDE,
+                                              [FObjectData.Fontes.Versao])
+  else if FObjectData.TemRAL then
     lbPath.Caption := lbPath.Caption + cmRALNaIDE;
 
   // o detalhe fica na dica: plataformas, configuracao e o porque de cada aviso

@@ -10,8 +10,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   RALInst.Tela.IDE, RALInst.Tela.Idioma, RALInst.Tela.Instalar, RALInst.Tela.Modelo,
-  RALInst.AutoAtualizacao, RALInst.Tela.Recursos, RALInst.Tela.Tarefa, RALInst.Tela.Temas,
-  RALInst.Tela.VersoesIDE;
+  RALInst.AutoAtualizacao, RALInst.Situacao, RALInst.Tela.Recursos, RALInst.Tela.Tarefa,
+  RALInst.Tela.Temas, RALInst.Tela.VersoesIDE;
 
 type
   /// The installer window.
@@ -59,14 +59,21 @@ type
     /// The RAL the checked IDEs already have (receipts or by hand), one line per
     /// IDE; empty when none has it
     function InstalacoesExistentes: string;
+    /// Checked IDEs whose last plan found one of these changes
+    function ContarMudancas(AMudancas: TMudancasRAL): integer;
     /// Downloads and installs in every checked IDE
     function InstallRAL(ALog: TMemo): boolean;
     /// No feature chosen: the run uninstalls
     function ModoDesinstalar: boolean;
+    /// One line per checked IDE with what the last plan found in it
+    function Mudancas: string;
     procedure NextPage;
     /// The plan of every checked IDE with the chosen features
     function PlanoInstalacao: string;
     procedure PriorPage;
+    /// The next run compiles and registers everything even where nothing
+    /// changed
+    procedure Reinstalar(AValor: boolean);
 
   published
     /// 0 - Delphi, 1 - Lazarus, 2 - both
@@ -316,6 +323,21 @@ end;
 function TTelaPrincipal.ModoDesinstalar: boolean;
 begin
   Result := FPgRecursos.Escolha.Desinstalar;
+end;
+
+function TTelaPrincipal.ContarMudancas(AMudancas: TMudancasRAL): integer;
+begin
+  Result := FPgIDEVersions.ContarMudancas(AMudancas);
+end;
+
+function TTelaPrincipal.Mudancas: string;
+begin
+  Result := FPgIDEVersions.Mudancas;
+end;
+
+procedure TTelaPrincipal.Reinstalar(AValor: boolean);
+begin
+  FPgRecursos.Reinstalar := AValor;
 end;
 
 function TTelaPrincipal.PlanoInstalacao: string;
