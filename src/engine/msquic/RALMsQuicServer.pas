@@ -231,6 +231,11 @@ type
     /// counting is the way to know instead of assuming.
     property ConnectionCount: IntegerRAL read FConnections;
     property RequestCount: IntegerRAL read FRequests;
+    /// MsQuic reads nothing of IPConfig: its listener serves both families on
+    /// every interface, so this is the machine's address in either family,
+    /// whatever the bind and IPv6Enabled say. A running listener is asked what
+    /// it really bound - see the base
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   published
     /// ALPN both ends must agree on. A server and a client with different
     /// values never complete a handshake, which is the point: it keeps two
@@ -302,6 +307,9 @@ function RALMsQuicSrvProfileReport: StringRAL;
 {$ENDIF}
 
 implementation
+
+uses
+  RALNetwork;
 
 {$IFDEF RALMSQUIC_PROFILE}
 type
@@ -1062,6 +1070,40 @@ end;
 function TRALMsQuicServer.IPv6IsImplemented: boolean;
 begin
   Result := True;
+end;
+
+function TRALMsQuicServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+var
+  vAddr: QUIC_ADDR;
+  vLen: Cardinal;
+  vPort: Word;
+  vText: StringRAL;
+begin
+  { SetActive opens the one listener with the unspecified family, which MsQuic
+    binds dual-stack on every interface: both families are served whatever
+    IPv4Bind, IPv6Bind and IPv6Enabled say. The base reads them, so it would
+    answer IPv6 with '' and a fixed bind with an address the listener never
+    took. A running listener is asked what it actually bound - an address of
+    one family serves that family only, the unspecified one serves both }
+  if FListener <> nil then
+  begin
+    FillChar(vAddr, SizeOf(vAddr), 0);
+    vLen := SizeOf(vAddr);
+    if QUIC_SUCCEEDED(MsQuicApi^.GetParam(FListener,
+         QUIC_PARAM_LISTENER_LOCAL_ADDRESS, @vLen, @vAddr)) then
+    begin
+      vText := StringRAL(QuicAddrToStr(vAddr, vPort));
+      if not RALIsAnyAddress(vText) then
+      begin
+        if RALIsIPAddress(vText, AMode) then
+          Result := vText
+        else
+          Result := '';
+        Exit;
+      end;
+    end;
+  end;
+  Result := RALGetLocalAddress(AMode);
 end;
 
 function TRALMsQuicServer.HandleFrame(ARequest: PByte; ASize: IntegerRAL;

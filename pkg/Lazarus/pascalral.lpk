@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1" Minor="2"/>
-    <Files Count="38">
+    <Files Count="39">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -178,6 +178,10 @@
         <Filename Value="..\..\src\utils\RALQuicFrame.pas"/>
         <UnitName Value="RALQuicFrame"/>
       </Item38>
+      <Item39>
+        <Filename Value="..\..\src\utils\RALNetwork.pas"/>
+        <UnitName Value="RALNetwork"/>
+      </Item39>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

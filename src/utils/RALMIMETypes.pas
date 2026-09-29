@@ -278,6 +278,43 @@ begin
   {$IFEND};
 end;
 
+{$IFDEF RALApple}
+{ Delphi's RTL does not import the UTType functions (Macapi.CoreServices leaves
+  LaunchServices out), so they are declared here. They live in CoreServices on
+  macOS and in MobileCoreServices on iOS }
+const
+  {$IFDEF IOS}
+  cUTTypeLib = '/System/Library/Frameworks/MobileCoreServices.framework/MobileCoreServices';
+  {$ELSE}
+  cUTTypeLib = '/System/Library/Frameworks/CoreServices.framework/CoreServices';
+  {$ENDIF}
+  {$IF NOT DECLARED(_PU)}
+    {$IFDEF UNDERSCOREIMPORTNAME}
+    _PU = '_';
+    {$ELSE}
+    _PU = '';
+    {$ENDIF}
+  {$IFEND}
+
+function UTTypeCreatePreferredIdentifierForTag(AInTagClass, AInTag,
+  AInConformingToUTI: CFStringRef): CFStringRef; cdecl;
+  external cUTTypeLib name _PU + 'UTTypeCreatePreferredIdentifierForTag';
+function UTTypeCopyPreferredTagWithClass(AInUTI, AInTagClass: CFStringRef): CFStringRef; cdecl;
+  external cUTTypeLib name _PU + 'UTTypeCopyPreferredTagWithClass';
+
+{ kUTTagClassFilenameExtension and kUTTagClassMIMEType are exported data the RTL
+  does not import either; their values are fixed UTI tag class names }
+function kUTTagClassFilenameExtension: CFStringRef;
+begin
+  Result := CFSTR('public.filename-extension');
+end;
+
+function kUTTagClassMIMEType: CFStringRef;
+begin
+  Result := CFSTR('public.mime-type');
+end;
+{$ENDIF}
+
 {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
 function TRALMIMEType.GetMimeTypeMACOs(AExtension: string): string;
 var
@@ -293,7 +330,7 @@ begin
 
   {$IFDEF RALApple}
     ExtCF := CFStringCreateWithCString(nil,
-                                       MarshaledAString(AnsiString(AExtension))),
+                                       MarshaledAString(UTF8String(AExtension)),
                                        kCFStringEncodingUTF8);
   {$ELSE}
     ExtCF := CFStringCreateWithCString(nil, PChar(AExtension), kCFStringEncodingUTF8);

@@ -273,6 +273,17 @@ type
     // Create handle response of server
     function CreateResponse: TRALResponse;
     function SSLEnabled: boolean;
+    /// The IP address clients reach this server at, in the given family.
+    /// A server bound to one address (IPConfig.IPv4Bind / IPv6Bind) answers
+    /// that address. The default bind, every interface, answers the address
+    /// this machine uses on the network - the source of its default route,
+    /// see RALGetLocalAddress - or the loopback when there is no network.
+    /// rimIPv6 answers '' while IPConfig.IPv6Enabled is off, since the server
+    /// does not listen on IPv6 then. The same on every engine, and the server
+    /// does not have to be active: it reads the configuration and asks the
+    /// operating system, not the engine. Engines whose address comes from
+    /// elsewhere (CGI, http.sys) or that ignore IPConfig (MsQuic) override it
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
     // Shortcut to start the server
     procedure Start;
     // Shortcut to stop the server
@@ -376,7 +387,7 @@ type
 implementation
 
 uses
-  RALJson;
+  RALJson, RALNetwork;
 
 { The members of a JSON object body as rpkFIELD params (TRALServer.
   JSONBodyToParams). A body that is not an object, or not JSON at all, is left
@@ -734,6 +745,30 @@ end;
 function TRALServer.GetDefaultSSL: TRALSSL;
 begin
   Result := FSSL;
+end;
+
+function TRALServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+var
+  vBind: StringRAL;
+begin
+  Result := '';
+  if AMode = rimIPv6 then
+  begin
+    if not FIPConfig.IPv6Enabled then
+      Exit;
+    vBind := FIPConfig.IPv6Bind;
+  end
+  else
+  begin
+    vBind := FIPConfig.IPv4Bind;
+  end;
+
+  { a server bound to one address is reached there and nowhere else; the
+    default bind, every interface, is reached at the machine's own address }
+  if RALIsAnyAddress(vBind) then
+    Result := RALGetLocalAddress(AMode)
+  else
+    Result := StringRAL(Trim(string(vBind)));
 end;
 
 function TRALServer.GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;

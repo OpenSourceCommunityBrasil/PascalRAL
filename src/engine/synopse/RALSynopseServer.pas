@@ -16,7 +16,7 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALBase64;
+  RALParams, RALTools, RALBase64, RALNetwork;
 
 type
 
@@ -123,6 +123,9 @@ type
     destructor Destroy; override;
     /// Three of the properties below belong to one mode each - see the base
     function IsPropertyRelevant(const AName: StringRAL): boolean; override;
+    /// smHttpSys reads HttpSysDomain too: 'localhost' is the loopback, an
+    /// address literal is that address - see the base
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   published
     /// smHttpSys only: which host part of the URL to listen on, and it has to
     /// be the SAME text the reservation used. http.sys matches prefixes
@@ -488,6 +491,29 @@ end;
 function TRALSynopseServer.IPv6IsImplemented: boolean;
 begin
   Result := True;
+end;
+
+function TRALSynopseServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+var
+  vDomain: StringRAL;
+begin
+  Result := inherited GetServerAddress(AMode);
+  if (FMode <> smHttpSys) or (Result = '') then
+    Exit;
+
+  { http.sys listens on every interface but only answers the host the URL
+    was registered with: under 'localhost' a request that came by the network
+    address is turned away with 400, so the loopback is the only address that
+    works (and the client still has to call it "localhost") }
+  vDomain := FHttpSysDomain;
+  if RALSameName(vDomain, 'localhost') then
+    Result := RALLoopbackAddress(AMode)
+  else if RALIsIPAddress(vDomain, AMode) then
+  begin
+    if (vDomain <> '') and (vDomain[1] = '[') then
+      vDomain := Copy(vDomain, 2, Length(vDomain) - 2);
+    Result := vDomain;
+  end;
 end;
 
 function TRALSynopseServer.CreateRALSSL: TRALSSL;

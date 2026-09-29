@@ -193,6 +193,7 @@
         <DCCReference Include="..\..\src\utils\RALMD5.pas"/>
         <DCCReference Include="..\..\src\utils\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\utils\RALMultipartCoder.pas"/>
+        <DCCReference Include="..\..\src\utils\RALNetwork.pas"/>
         <DCCReference Include="..\..\src\utils\RALQuicFrame.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA1.pas"/>
         <DCCReference Include="..\..\src\utils\RALSHA2_32.pas"/>

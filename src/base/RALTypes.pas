@@ -76,6 +76,8 @@ type
   TRALSecurityOptions = set of TRALSecurityOption;
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
+  /// IP family of an address - see TRALServer.GetServerAddress
+  TRALIpMode = (rimIPv4, rimIPv6);
 
   { How a send attempt ended, from the transport's point of view.
 
