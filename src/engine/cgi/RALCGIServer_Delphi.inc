@@ -5,7 +5,7 @@ uses
   Classes, SysUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
   RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALConsts,
-  RALStream;
+  RALStream, RALNetwork;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -22,6 +22,9 @@ type
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+    /// The address of the web server that started the program, as it tells
+    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   end;
 
 implementation
@@ -112,6 +115,17 @@ destructor TRALCGIServer.Destroy;
 begin
   FCGIApp.Free;
   inherited;
+end;
+
+function TRALCGIServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+begin
+  { a CGI program listens on nothing: the web server that started it does,
+    and it says which of its addresses took the request }
+  Result := StringRAL(GetEnvironmentVariable('SERVER_ADDR'));
+  if Result = '' then
+    Result := StringRAL(GetEnvironmentVariable('LOCAL_ADDR'));
+  if not RALIsIPAddress(Result, AMode) then
+    Result := inherited GetServerAddress(AMode);
 end;
 
 procedure TRALCGIServer.SetActive(const AValue: boolean);

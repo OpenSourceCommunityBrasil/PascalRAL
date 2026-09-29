@@ -1098,6 +1098,19 @@ Two behaviours that changed with this, both deliberate: a verb outside `AllowedM
 
 Still there on purpose: `TRALClientList.Create` stamps `LastAccess` with `Now`, so a brand new address measures an interval of zero and the **first** request of every client counts as a flood. Changing that decides what the protection means and is not a refactor. `TRALWebSession.FObjects` is a different problem — a plain `TStringList`, `Sorted`, with no lock at all, so two concurrent requests on one session corrupt it rather than merely leak.
 
+### The server's own address comes from the system, not from the engine
+`TRALServer.GetServerAddress(rimIPv4 | rimIPv6)` answers the IP clients reach the server at. It reads `IPConfig` and asks the operating system through `src/utils/RALNetwork.pas`, never the engine, so it is the same on every engine and works with the server stopped.
+- **A fixed bind answers itself.** `IPv4Bind`/`IPv6Bind` set to one address comes back as is. Only Indy honours `IPv4Bind`: mORMot2 reads `IPv6Bind` only with IPv6 on, and fpHTTP and Sagui always listen on every interface. On those engines the configured address is reported, not enforced. MsQuic is the exception, because it overrides the method (below).
+- **The default bind answers the machine's address.** For `0.0.0.0`, `::` or empty, `RALGetLocalAddress` connects a UDP socket to a documentation address (RFC 5737/3849) and reads `getsockname`. That is the source address of the default route, and nothing is sent. With no route it takes the first address of an interface that is up, link-local last: `getaddrinfo` on the host name on Windows, `getifaddrs` on Linux and Apple. Failing that, the loopback.
+- **Android has only the probe.** `getifaddrs` exists from API 24 on, and an import the device lacks stops the whole app from loading.
+- **`rimIPv6` is `''` while `IPConfig.IPv6Enabled` is off.**
+- **Three engines override it.**
+  - `TRALCGIServer` returns the front-end server's `SERVER_ADDR` (`LOCAL_ADDR` on IIS).
+  - `TRALSynopseServer` in `smHttpSys` reads `HttpSysDomain`: `localhost` is the loopback (http.sys turns away any other host with 400), and an address literal is itself.
+  - `TRALMsQuicServer` reads nothing of `IPConfig`. Its one listener is opened with the unspecified family, which MsQuic binds dual-stack on every interface, so it serves IPv6 with `IPv6Enabled` off (the base would answer `''`) and a fixed bind is never taken (the base would report it). The override answers the machine's address in either family. A running listener is asked `QUIC_PARAM_LISTENER_LOCAL_ADDRESS`, which comes back as family 0 (unspecified) with the port; a specific address there would serve its own family only.
+
+The Winsock imports are declared in the unit, because Delphi and FPC ship different Winsock units and older ones lack `getaddrinfo`. The unit depends on `RALTypes` only, so it can be carried to an older RAL: the unit, the `TRALIpMode` enum, the method and the CGI override. The orchestrator cases are `CasosEndereco.pas`, compiled when `RALNetwork.pas` exists.
+
 ### Params / body pipeline
 `TRALParams` (`src/base/RALParams.pas`) is the shared container for query, header, body, cookie, and file params, and owns body encode/decode: `DecodeBody` with an ownership (the decoded body is `Params.Decoded`, and the streams it depends on live in the params until `ClearParams`), and on the way out `PrepareBody` (the plain body, nothing copied), `EffectiveCompress`, `WriteTransformed`/`EncodeInto`, `TakeWireStream`/`TakeWireString`. Multipart lives in `src/utils/RALMultipartCoder.pas` (its decoder hands each part over as a window, `SliceParts`; its encoder builds a `TRALConcatStream`); byte plumbing in `src/utils/RALStream.pas`; compression and crypto (`RALCompress*`, `RALCripto*`) hook into the same encode/decode path on both client and server, which is why a change there affects every engine at once. See "One body per request, one per response".
 

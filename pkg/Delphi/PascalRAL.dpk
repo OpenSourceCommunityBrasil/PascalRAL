@@ -67,6 +67,7 @@ contains
   RALMD5 in '..\..\src\utils\RALMD5.pas',
   RALMIMETypes in '..\..\src\utils\RALMIMETypes.pas',
   RALMultipartCoder in '..\..\src\utils\RALMultipartCoder.pas',
+  RALNetwork in '..\..\src\utils\RALNetwork.pas',
   RALQuicFrame in '..\..\src\utils\RALQuicFrame.pas',
   RALSHA1 in '..\..\src\utils\RALSHA1.pas',
   RALSHA2_32 in '..\..\src\utils\RALSHA2_32.pas',

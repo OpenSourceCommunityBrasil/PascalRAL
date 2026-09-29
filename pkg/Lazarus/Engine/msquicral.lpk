@@ -25,7 +25,7 @@
       </Other>
     </CompilerOptions>
     <Description Value="Package for installing MsQuic (QUIC, RFC 9000) engine components for PascalRAL."/>
-    <Version Major="1" Minor="1"/>
+    <Version Major="1" Minor="2"/>
     <Files Count="5">
       <Item1>
         <Filename Value="MsQuicRAL.lrs"/>

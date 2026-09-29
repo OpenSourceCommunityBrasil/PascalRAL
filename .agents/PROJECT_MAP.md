@@ -191,6 +191,7 @@ Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades
 - `RALSHA2_64.pas`
 - `RALMIMETypes.pas`
 - `RALMultipartCoder.pas`
+- `RALNetwork.pas` (IPs da propria maquina, pedidos ao sistema; base de `TRALServer.GetServerAddress`)
 - `RALOpenSSL.pas`
 - `RALResponsePages.pas`
 - `RALStorage.pas`
