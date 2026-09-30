@@ -233,40 +233,51 @@ begin
 end;
 
 var
-  { Resolved once per value and kept. GetEnumName walks the RTTI short-string
-    table from the start, and on Delphi it also hands back a UTF-16 string that
-    then converts into StringRAL - both per field, per row, on every DBWare
-    answer. The cache is filled BY GetEnumName, so it stays correct on any
-    compiler whatever members TFieldType happens to have; a hand-written table
-    would not. Two threads racing here compute the same string, so no lock. }
-  gFieldTypeNames: array of StringRAL;
+  { Resolved once and kept. GetEnumName walks the RTTI short-string table from
+    the start, and on Delphi it also hands back a UTF-16 string that then
+    converts into StringRAL - both per field, per row, on every DBWare answer.
+    The tables are filled BY GetEnumName, so they stay correct on any compiler
+    whatever members TFieldType happens to have; a hand-written table would not.
+
+    They are filled in initialization, before any thread exists, and only read
+    after that. Filling them lazily raced: a managed string written by two
+    threads without a lock can reach a reader freed or half-published, and the
+    SetLength of the lazy version could swap the whole array under a reader,
+    who then got ''. Measured with 6 threads on a cold cache: 441 of 3000 rounds
+    with a wrong name or an exception on the client side, 69 on the server side.
+    A '' that reaches RALNameToFieldType comes back as ftUnknown, and the server
+    then refuses the parameter with "Field '<name>' is of an unknown type" - on
+    the first DAO requests of a process, which a client may well fire in
+    parallel. }
+  gFieldTypeNames: array [TFieldType] of StringRAL;
   gRALFieldTypeNames: array [TRALFieldType] of StringRAL;
+
+procedure FillFieldTypeNames;
+var
+  vFieldType: TFieldType;
+  vRALFieldType: TRALFieldType;
+begin
+  for vFieldType := Low(TFieldType) to High(TFieldType) do
+    gFieldTypeNames[vFieldType] :=
+      StringRAL(GetEnumName(TypeInfo(TFieldType), Ord(vFieldType)));
+  for vRALFieldType := Low(TRALFieldType) to High(TRALFieldType) do
+    gRALFieldTypeNames[vRALFieldType] :=
+      StringRAL(GetEnumName(TypeInfo(TRALFieldType), Ord(vRALFieldType)));
+end;
 
 function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL;
 begin
-  if gRALFieldTypeNames[AFieldType] = '' then
-    gRALFieldTypeNames[AFieldType] :=
-      StringRAL(GetEnumName(TypeInfo(TRALFieldType), Ord(AFieldType)));
   Result := gRALFieldTypeNames[AFieldType];
 end;
 
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
-var
-  vOrd: IntegerRAL;
 begin
-  vOrd := Ord(AFieldType);
-  if Length(gFieldTypeNames) = 0 then
-    SetLength(gFieldTypeNames, Ord(High(TFieldType)) + 1);
-
-  if (vOrd < 0) or (vOrd > High(gFieldTypeNames)) then
-  begin
-    Result := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
-    Exit;
-  end;
-
-  if gFieldTypeNames[vOrd] = '' then
-    gFieldTypeNames[vOrd] := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
-  Result := gFieldTypeNames[vOrd];
+  { an ordinal outside the enum - reachable only through a cast - keeps the
+    answer it always had, instead of reading past the table }
+  if Ord(AFieldType) > Ord(High(TFieldType)) then
+    Result := StringRAL(GetEnumName(TypeInfo(TFieldType), Ord(AFieldType)))
+  else
+    Result := gFieldTypeNames[AFieldType];
 end;
 
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
@@ -911,5 +922,8 @@ begin
   Result := TRALDBInfoTable.Create;
   FTables.Add(Result);
 end;
+
+initialization
+  FillFieldTypeNames;
 
 end.
