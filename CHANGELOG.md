@@ -378,6 +378,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix a race in the field type name cache of RALDBTypes** (2026-09-30 – tempraturbo)
+  RALFieldTypeName filled its cache on first use, without a lock. Two
+  threads filling it at once could read an empty name or a string already
+  freed, and an empty name comes back from RALNameToFieldType as
+  ftUnknown: the server then refuses the parameter with "Field '<name>'
+  is of an unknown type". It bites on the first DAO requests of a
+  process, which a client may well fire in parallel.
+  The two tables are now filled at initialization, before any thread
+  exists, and only read after that.
+
 - **Fix: Correções de compatibilidade para XE2 e 10.0 Seattle** (2026-09-25 – mobius1qwe)
 
 - **Fix: Linux installation fix** (2026-09-24 – mobius1qwe)
