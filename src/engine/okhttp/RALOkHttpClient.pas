@@ -439,7 +439,10 @@ begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEOKHTTP);
 
-  ARequest.Params.CompressType := Parent.CompressType;
+  { ContentCompress, as every other engine sets it: RequestStream takes the
+    compression from there and overwrites Params.CompressType, which is what
+    this used to set - so no request body was ever compressed on this engine }
+  ARequest.ContentCompress := Parent.CompressType;
   ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;

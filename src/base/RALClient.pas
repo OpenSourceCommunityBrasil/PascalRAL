@@ -172,6 +172,8 @@ type
   private
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
+    { TRALClient's FEngineGeneration when this engine was built }
+    FGeneration: IntegerRAL;
     { host and port of the attempt in progress, filled in by BeforeSendUrl:
       which pin applies is a question about WHERE the client is going, and so
       is TRALCertInfo.Host }
@@ -194,8 +196,9 @@ type
     /// that has not answered yet is still working on the request.
     function CanSwitchURL(AMethod: TRALMethod;
                           AError: TRALTransportError): boolean; virtual;
-    /// clears authentication token property.
-    procedure ResetToken;
+    /// Clears the authentication token - only when it is still the one
+    /// ARequest was refused with
+    procedure ResetToken(ARequest: TRALRequest);
     /// Fills a response that never got an HTTP answer. Engines call it from
     /// their exception handlers so that the retry decision reads the same
     /// information no matter which engine produced the failure.
@@ -473,6 +476,12 @@ type
       first asked for it, which is what the client did before the pool }
     FEngineHTTP: TRALClientHTTP;
     FEngineThread: TThreadID;
+    { FEngineHTTP is out with a request right now - DropEngine must not free it }
+    FEngineBusy: boolean;
+    { bumped by DropEngine: an engine built before it belongs to the previous
+      EngineType or pooling rule, and is closed when given back instead of
+      going into the pool }
+    FEngineGeneration: IntegerRAL;
     FHTTPVersion: TRALHTTPVersion;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
@@ -1018,8 +1027,13 @@ end;
 procedure TRALClient.OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
   AException: StringRAL);
 begin
-  AdvanceIndexUrl(TRALThreadClient(Sender).IndexUrlStart,
-                  TRALThreadClient(Sender).IndexUrl);
+  { Sender is the thread on the threaded path and this client itself on the
+    synchronous one, so it is never cast. The failover index is advanced by
+    whoever ran the request: ExecuteThread's own finally, and
+    TRALThreadClient.OnTerminateThread. It used to be done here, reading the
+    thread's fields out of whatever Sender was - on the synchronous path two
+    integers from the middle of this component, one of which could land in
+    FIndexUrl - while a caller's own callback never got here at all }
   if Assigned(FOnResponse) then
     FOnResponse(Self, AResponse, AException);
 end;
@@ -1027,14 +1041,17 @@ end;
 function TRALClient.CreateClient: TRALClientHTTP;
 var
   vClass: TRALClientHTTPClass;
+  vGeneration: IntegerRAL;
 begin
-  Result := nil;
-
+  { the generation is read BEFORE the class: a DropEngine landing in between
+    then leaves the engine marked old, and it is closed when given back -
+    never the other way round, an old class marked current }
+  vGeneration := FEngineGeneration;
   vClass := GetEngineClass(EngineType);
-  if vClass <> nil then
-    Result := vClass.Create(Self)
-  else
+  if vClass = nil then
     raise Exception.CreateFmt(emEngineNotFound, [EngineType]);
+  Result := vClass.Create(Self);
+  Result.FGeneration := vGeneration;
 end;
 
 { AN ENGINE PER REQUEST IN FLIGHT, BORROWED AND GIVEN BACK.
@@ -1226,8 +1243,14 @@ begin
         FEngineHTTP := CreateClient;
         FEngineThread := vThread;
       end;
-      if FEngineThread = vThread then
+      { busy means its own thread is already using it - a request issued from
+        the callback of another - and that one gets a throwaway: the kept
+        engine has one holder at a time, so nobody frees it from under another }
+      if (FEngineThread = vThread) and (not FEngineBusy) then
+      begin
         Result := FEngineHTTP;
+        FEngineBusy := True;
+      end;
     finally
       UnLockSession;
     end;
@@ -1311,10 +1334,16 @@ begin
   LockSession;
   try
     { with pooling off the kept engine belongs to its thread and stays put;
-      anything else was a throwaway and is closed, as it always was }
-    if not FPoolConnection.Enabled then
-      vKept := AEngine = FEngineHTTP
-    else if (FEnginePool <> nil) and
+      anything else was a throwaway and is closed, as it always was. An
+      engine built before the last DropEngine is of the previous EngineType
+      or pooling rule: it closes too, instead of serving the next request }
+    if AEngine = FEngineHTTP then
+    begin
+      vKept := True;
+      FEngineBusy := False;
+    end
+    else if FPoolConnection.Enabled and (FEnginePool <> nil) and
+            (AEngine.FGeneration = FEngineGeneration) and
             (FEnginePool.Count < FPoolConnection.MaxIdle) then
     begin
       vSlot := TRALPooledEngine.Create;
@@ -1389,7 +1418,15 @@ begin
   SetLength(vIdle, 0);
   LockSession;
   try
-    FreeAndNil(FEngineHTTP);
+    Inc(FEngineGeneration);
+    { the kept engine out with a request - changing EngineType from inside a
+      callback is enough - is only let go of: no longer FEngineHTTP, its holder
+      closes it on ReleaseEngine. Freeing it here was a double free there }
+    if FEngineBusy then
+      FEngineHTTP := nil
+    else
+      FreeAndNil(FEngineHTTP);
+    FEngineBusy := False;
     if FEnginePool <> nil then
     begin
       SetLength(vIdle, FEnginePool.Count);
@@ -2119,7 +2156,7 @@ var
   vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL, vCancelReason: StringRAL;
-  vRepeat, vTriedToken, vCancel: boolean;
+  vRepeat, vTriedToken, vCancel, vDone: boolean;
   vInfo: TRALExecInfo;
   vStart: TDateTime;
 begin
@@ -2212,6 +2249,7 @@ begin
     if Assigned(FParent.OnBeforeExecute) then
       FParent.OnBeforeExecute(FParent, ARequest, vInfo, vCancel, vCancelReason);
 
+    vDone := False;
     vParams := TStringList.Create;
     try
       { the refusal lives INSIDE this try so that the OnAfterExecute in the
@@ -2263,6 +2301,7 @@ begin
         vResp := AResponse.StatusCode;
         vErrorCode := AResponse.ErrorCode;
       end;
+      vDone := True;
     finally
       FreeAndNil(vParams);
 
@@ -2270,13 +2309,17 @@ begin
         and including when the application refused it. ExceptObject is whatever
         is unwinding right now, and it is the only way to name the failure here
         without wrapping the whole attempt in one more try just to catch it and
-        re-raise. }
+        re-raise. Only when something IS unwinding, though: on a normal exit
+        ExceptObject is the exception an outer handler is still handling - a
+        request made from inside an except block, an Application.OnException
+        that logs to the server - and a successful attempt arrived carrying
+        that message. }
       if Assigned(FParent.OnAfterExecute) then
       begin
         vInfo.Elapsed := MilliSecondsBetween(Now, vStart);
         vInfo.StatusCode := AResponse.StatusCode;
         vInfo.TransportError := AResponse.TransportError;
-        if ExceptObject is Exception then
+        if (not vDone) and (ExceptObject is Exception) then
           vInfo.ErrorMessage := StringRAL(Exception(ExceptObject).Message);
 
         FParent.OnAfterExecute(FParent, ARequest, AResponse, vInfo);
@@ -2300,7 +2343,7 @@ begin
        (FParent.Authentication.AutoGetToken) then
     begin
       vTriedToken := True;
-      ResetToken;
+      ResetToken(ARequest);
       vRepeat := True;
     end
     else if CanSwitchURL(AMethod, AResponse.TransportError) and
@@ -2345,10 +2388,29 @@ begin
     Result := Result + '?' + ARequest.Params.AssignParamsUrl(rpkQUERY);
 end;
 
-procedure TRALClientHTTP.ResetToken;
+procedure TRALClientHTTP.ResetToken(ARequest: TRALRequest);
+var
+  vAuth: TRALClientJWTAuth;
+  vSent: TRALParam;
 begin
-  if FParent.Authentication is TRALClientJWTAuth then
-    TRALClientJWTAuth(FParent.Authentication).Token := '';
+  if not (FParent.Authentication is TRALClientJWTAuth) then
+    Exit;
+
+  { Compare and clear, under the authenticator's lock: one authenticator serves
+    many clients, and when a token expires the 401s of the requests already in
+    flight arrive AFTER one of them has fetched the next token. Clearing
+    unconditionally threw that fresh token away, so every client in turn went
+    back to /gettoken - one after the other, since the fetch holds the lock.
+    The header is what was really sent, written by SetAuthHeader. }
+  vAuth := TRALClientJWTAuth(FParent.Authentication);
+  vSent := ARequest.Params.GetKind['Authorization', rpkHEADER];
+  vAuth.Lock;
+  try
+    if (vSent = nil) or (vSent.AsString = 'Bearer ' + vAuth.Token) then
+      vAuth.Token := '';
+  finally
+    vAuth.Unlock;
+  end;
 end;
 
 function TRALClientHTTP.CanSwitchURL(AMethod: TRALMethod;
@@ -2399,7 +2461,10 @@ function TRALClientHTTP.SetAuthToken(AVars: TStringList; ARequest: TRALRequest;
   AResponse: TRALResponse): IntegerRAL;
 begin
   { Only the three that go to the network take AResponse - Basic and OAuth2
-    build a header and cannot fail at transport level. }
+    build a header and cannot fail at transport level. Zero for an
+    authenticator of any other class: what the stack held was read as an
+    error code and could abort the request. }
+  Result := 0;
   if FParent.Authentication is TRALClientBasicAuth then
     Result := SetTokenBasic(AVars, ARequest)
   else if FParent.Authentication is TRALClientJWTAuth then
@@ -2677,6 +2742,10 @@ begin
   vParent := FParent;
   if vParent <> nil then
   begin
+    { the failover index first, and whatever the callback is: a request that
+      found its server dead must leave the next one pointing past it, and the
+      callback is often what issues that next one }
+    vParent.AdvanceIndexUrl(FIndexUrlStart, FIndexUrl);
     vParent.FThreads.LockList;
     try
       vAnswer := FOnResponse;

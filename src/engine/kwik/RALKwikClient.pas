@@ -281,9 +281,14 @@ begin
     handshake at all - so a client sharing a connection inherits a verdict it
     never gave. With the certificate policy in the key, only clients that judge
     alike ever share, which is the rule every engine here follows. The
-    destination goes in because one QUIC connection serves one peer. }
+    destination goes in because one QUIC connection serves one peer, and the
+    keep-alive because only whoever OPENS the connection sets it (RalKwik.acquire):
+    a client asking for one used to land on a connection opened without it and
+    go on waiting out RequestTimeout on a dead network - the MsQuic engine
+    keys it the same way. }
   if Parent.ShareConnection then
-    Result := CertPolicyKey + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort))
+    Result := CertPolicyKey + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)) +
+              '|' + StringRAL(IntToStr(Parent.KeepAliveInterval))
   else
     Result := FOwnShareKey;
 end;

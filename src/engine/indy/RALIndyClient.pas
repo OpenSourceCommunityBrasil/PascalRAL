@@ -350,6 +350,21 @@ begin
         else
           SetTransportError(AResponse, rteOther, -1, e.Message);
     end;
+
+    { A failed exchange leaves the socket in a state nobody knows, and TIdHTTP
+      keeps it: after a read timeout Response.KeepAlive is still True for any
+      1.1 connection the server has not closed, so the answer that arrived
+      late was read as the answer to the NEXT request on this engine - one
+      dataset delivered to another query, and every reply after it shifted by
+      one. The engine outlives the call (the pool, the kept engine), so it has
+      to be dropped here; the next request reconnects. The except is because
+      closing a broken TLS socket can raise, and the error being reported is
+      the one above. }
+    if AResponse.TransportError <> rteNone then
+      try
+        FHttp.Disconnect;
+      except
+      end;
   finally
     FreeAndNil(vResult);
     FreeAndNil(vSource);
