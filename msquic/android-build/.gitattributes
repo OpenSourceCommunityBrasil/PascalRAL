@@ -1,0 +1,6 @@
+# cmd.exe looks a goto label up by BYTE OFFSET, and with LF endings it misses:
+# adding a label at the end makes a goto to a different one stop finding it.
+*.cmd text eol=crlf
+# the opposite here: this runs in Git's bash, which stops at the first CR.
+*.sh text eol=lf
+*.pm text eol=lf
