@@ -203,6 +203,8 @@ type
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
+    { Active as read from the form, applied by Loaded - see WriteActive }
+    FStreamedActive: boolean;
     FAuthentication: TRALAuthServer;
     FCompressType: TRALCompressType;
     FCookieLife: IntegerRAL;
@@ -225,9 +227,11 @@ type
 
     FOnClientBlock: TRALOnClientBlock;
     FOnRequest: TRALOnReply;
-    FOnResponse: TRALOnReply;    
+    FOnResponse: TRALOnReply;
     FOnServerError: TRALOnServerError;
+    procedure WriteActive(const AValue: boolean);
   protected
+    procedure Loaded; override;
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
@@ -297,7 +301,7 @@ type
     // Returns a submodule based on the provided AIndex
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
-    property Active: boolean read FActive write SetActive;
+    property Active: boolean read FActive write WriteActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     // Compression algorithm that will be used on responses to the client
     property CompressType: TRALCompressType read FCompressType write FCompressType;
@@ -866,7 +870,10 @@ begin
         vRouteIsAuth := True;
     end;
 
-    if FJSONBodyToParams then
+    { only when a route will answer: a request for nothing had its whole body
+      parsed into params anyway, one AddParam per member - and anyone,
+      without a token, can send megabytes of JSON to any URL }
+    if FJSONBodyToParams and (vRoute <> nil) then
       PromoteJSONBody(ARequest);
 
     if Assigned(FOnRequest) then
@@ -993,8 +1000,10 @@ begin
         three requests with the wrong verb - a preflight, a client pointed at
         the wrong route - locked the address out for the whole ExpirationTime.
         And the answer for a route that exists but does not take that method is
-        405, not 403. }
+        405, not 403. RFC 9110 15.5.6: a 405 MUST say which methods the
+        resource does take, in Allow. }
       AResponse.Answer(HTTP_MethodNotAllowed);
+      AResponse.AddHeader('Allow', vRoute.GetAllowMethods);
       goto aFIM;
     end;
 
@@ -1052,17 +1061,21 @@ begin
   end
   else if not ARequest.HasValidContentEncoding then
   begin
+    { the error page goes out as it is, so no Content-Encoding on it: this
+      used to echo the client's coding, and a client that sent br to a server
+      without brotli got a plain page labelled br - its decoder failed instead
+      of showing the 415. Accept-Encoding says what this server can read }
     AResponse.Answer(HTTP_UnsupportedMedia);
-    AResponse.ContentEncoding := ARequest.ContentEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     { 406, not 415: the problem is what the client ACCEPTS, not the body it
-      sent - and it only happens when it refuses identity on purpose }
+      sent - and it only happens when it refuses identity on purpose. Same as
+      above, the page is not encoded: the whole Accept-Encoding used to be
+      copied into its Content-Encoding }
     AResponse.Answer(HTTP_NotAcceptable);
-    AResponse.ContentEncoding := ARequest.AcceptEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
@@ -1122,6 +1135,33 @@ begin
     Exit;
 
   FActive := AValue;
+end;
+
+{ A form saved with Active = True reads it FIRST - it is the first published
+  property - so the engine used to start right there, before Port, IPConfig
+  and SSL had been read: a server saved with SSL enabled listened in plain
+  HTTP, one bound to 127.0.0.1 listened on every interface. While loading the
+  value is only kept, and Loaded applies it once everything else is in. }
+procedure TRALServer.WriteActive(const AValue: boolean);
+begin
+  if not (csLoading in ComponentState) then
+    SetActive(AValue)
+  { only a True is kept: the reader never writes the default False, while the
+    setters that restart a live server - SetPort, PoolCount, Mode - write
+    Active := False and back as their own properties are read, and that must
+    not undo it }
+  else if AValue then
+    FStreamedActive := True;
+end;
+
+procedure TRALServer.Loaded;
+begin
+  inherited Loaded;
+  if FStreamedActive then
+  begin
+    FStreamedActive := False;
+    SetActive(True);
+  end;
 end;
 
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);

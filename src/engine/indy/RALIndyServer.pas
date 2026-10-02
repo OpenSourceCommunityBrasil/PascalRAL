@@ -230,17 +230,17 @@ begin
           RequestStream := ARequestInfo.PostStream;
 
           Host := ARequestInfo.Host;
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          if Self.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
           vInt := Pos('/', ARequestInfo.Version);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(ARequestInfo.Version, 1, vInt - 1);
-            Protocol := Copy(ARequestInfo.Version, vInt + 1, 3);
-          end
+            Protocol := Copy(ARequestInfo.Version, vInt + 1, 3)
           else
-          begin
-            HttpVersion := 'HTTP';
             Protocol := '1.0';
-          end;
 
           // limpando para economia de memoria
           if (ARequestInfo.PostStream <> nil) then

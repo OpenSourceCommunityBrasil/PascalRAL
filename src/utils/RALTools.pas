@@ -358,15 +358,10 @@ begin
     vA := Ord(A[vInt]);
     vB := Ord(B[vInt]);
 
-    { outside ASCII, case equivalence belongs to the RTL and not to us: a
-      dotless 'i' and 'I' have different UTF-8 lengths and may still match.
-      Hand the decision back instead of risking a different answer }
-    if (vA > 127) or (vB > 127) then
-    begin
-      Result := SameText(A, B);
-      Exit;
-    end;
-
+    { above 127 the bytes are compared as they are, and that is SameText's own
+      answer: CompareText folds case for 'a'..'z' only, on both compilers, so
+      two valid UTF-8 names it calls equal are equal byte for byte. Handing
+      those to SameText cost two UTF-8/UTF-16 conversions to learn nothing }
     if vA <> vB then
     begin
       if (vA >= Ord('a')) and (vA <= Ord('z')) then
@@ -382,8 +377,8 @@ begin
     Inc(vInt);
   end;
 
-  { only reached when everything compared was ASCII and equal - then the
-    length decides, and in ASCII a byte and a character are the same thing }
+  { only reached when every byte compared was equal, ASCII letters folded -
+    then the length decides }
   Result := Length(A) = Length(B);
 end;
 

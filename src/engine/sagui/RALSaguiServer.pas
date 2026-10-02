@@ -471,18 +471,18 @@ begin
             end;
           end;
 
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          if vServer.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(vStr, 1, vInt - 1);
-            Protocol := Copy(vStr, vInt + 1, 3);
-          end
+            Protocol := Copy(vStr, vInt + 1, 3)
           else
-          begin
-            HttpVersion := 'HTTP';
             Protocol := '1.0';
-          end;
         end;
       end;
 
@@ -749,8 +749,10 @@ begin
     FPoolCount := DEFAULTPOOLCOUNT
   else
     FPoolCount := AValue;
+  { the sanitised value: a zero or negative AValue reached the library as it
+    came, while the property already read DEFAULTPOOLCOUNT }
   if FHandle <> nil then
-    sg_httpsrv_set_thr_pool_size(FHandle, AValue);
+    sg_httpsrv_set_thr_pool_size(FHandle, FPoolCount);
 end;
 
 procedure TRALSaguiServer.SetPort(const AValue: IntegerRAL);

@@ -1301,52 +1301,42 @@ begin
 end;
 
 function TRALParams.AddFile(const AParamName, AFileName: StringRAL): TRALParam;
-var
-  vMime: TRALMIMEType;
 begin
-  if (AParamName <> '') and (AFileName <> '') then
-  begin
-    Result := GetKind[AParamName, rpkBODY];
-    if Result = nil then
-      Result := NewParam;
+  // nil, not whatever the stack held, when there is nothing to add
+  Result := nil;
+  if (AParamName = '') or (AFileName = '') then
+    Exit;
 
-    Result.ParamName := AParamName;
-    Result.FileName := ExtractFileName(AFileName);
-    Result.OpenFile(AFileName);
-    Result.Kind := rpkBODY;
+  Result := GetKind[AParamName, rpkBODY];
+  if Result = nil then
+    Result := NewParam;
 
-    vMime := TRALMIMEType.GetInstance;
-    try
-      Result.ContentType := vMime.GetMIMEType(AFileName);
-      if Result.ContentType = '' then
-        Result.ContentType := rctAPPLICATIONOCTETSTREAM;
-    finally
-//      FreeAndNil(vMime);
-    end;
-  end;
+  Result.ParamName := AParamName;
+  Result.FileName := ExtractFileName(AFileName);
+  Result.OpenFile(AFileName);
+  Result.Kind := rpkBODY;
+
+  // the MIME table is a singleton, never freed here
+  Result.ContentType := TRALMIMEType.GetInstance.GetMIMEType(AFileName);
+  if Result.ContentType = '' then
+    Result.ContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
 function TRALParams.AddFile(const AFileName: StringRAL): TRALParam;
-var
-  vMime: TRALMIMEType;
 begin
-  if AFileName <> '' then
-  begin
-    Result := NewParam;
-    Result.ParamName := NextParamStr;
-    Result.FileName := ExtractFileName(AFileName);
-    Result.OpenFile(AFileName);
-    Result.Kind := rpkBODY;
+  Result := nil;
+  if AFileName = '' then
+    Exit;
 
-    vMime := TRALMIMEType.GetInstance;
-    try
-      Result.ContentType := vMime.GetMIMEType(AFileName);
-      if Result.ContentType = '' then
-        Result.ContentType := rctAPPLICATIONOCTETSTREAM;
-    finally
-//      FreeAndNil(vMime);
-    end;
-  end;
+  Result := NewParam;
+  Result.ParamName := NextParamStr;
+  Result.FileName := ExtractFileName(AFileName);
+  Result.OpenFile(AFileName);
+  Result.Kind := rpkBODY;
+
+  Result.ContentType := TRALMIMEType.GetInstance.GetMIMEType(AFileName);
+  if Result.ContentType = '' then
+    Result.ContentType := rctAPPLICATIONOCTETSTREAM;
 end;
 
 function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE)

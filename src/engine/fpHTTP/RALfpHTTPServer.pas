@@ -450,16 +450,23 @@ begin
           RequestText := ARequest.Content;
 
           Host := ARequest.Host;
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too }
+          if FParent.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
+          { fcl-web hands the version over WITHOUT its 'HTTP/' (fphttpserver,
+            Delete(S, 1, 5)), so the '/' looked for here was never there and
+            every request was taken for HTTP/1.0 - ProtocolVersion rhv10 and
+            Connection: close on all of them }
           vInt := Pos('/', ARequest.ProtocolVersion);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
-            Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
-          end
-          else begin
-            HttpVersion := 'HTTP';
+            Protocol := Copy(ARequest.ProtocolVersion, vInt + 1, 3)
+          else if ARequest.ProtocolVersion <> '' then
+            Protocol := ARequest.ProtocolVersion
+          else
             Protocol := '1.0';
-          end;
 
           vConnClose := False;
           if Protocol = '1.0' then
