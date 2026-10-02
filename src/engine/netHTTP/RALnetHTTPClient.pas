@@ -402,53 +402,11 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF RALWindows}
-type
-  { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
-    Delphi 10.1 on, so the engine carries its own. }
-  TRALCertContext = record
-    dwCertEncodingType: DWORD;
-    pbCertEncoded: PByte;
-    cbCertEncoded: DWORD;
-    pCertInfo: Pointer;
-    hCertStore: Pointer;
-  end;
-  PRALCertContext = ^TRALCertContext;
+{ The three below are declared for every platform and only DO something on
+  Windows, so they live outside the Windows block - inside it they left the
+  declarations without a body everywhere else, and the unit stopped compiling
+  for Android, Linux and macOS. }
 
-{ Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
-  commented out in Winapi.Windows. One line settles it. }
-function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
-  external 'crypt32.dll' name 'CertFreeCertificateContext';
-
-{ THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
-  what this engine did not have.
-
-  The TCertificate the RTL hands to the validation event carries Subject,
-  Issuer, serial number and dates: all of it copyable, none of it identifying
-  the certificate itself. Comparing those fields WOULD LOOK like pinning and
-  would not be.
-
-  But the certificate is right there, one level down: the event's ARequest is
-  the platform's THTTPRequest, and on Windows it holds the WinHTTP handle, from
-  which WINHTTP_OPTION_SERVER_CERT_CONTEXT returns the CERT_CONTEXT with the
-  raw bytes (pbCertEncoded). SHA-256 over them is the fingerprint - the same
-  one openssl prints with "x509 -fingerprint -sha256".
-
-  Through RTTI for the same reason as LimitToOneConnection: the field is
-  private. Should any step fail it returns '', and RAL then treats it as an
-  engine that cannot read a fingerprint, exactly as before. }
-{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
-
-  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
-  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
-  comes back reported as 1.1, and it is not a rounding error: it was measured
-  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
-
-  WinHTTP does know, and it answers on the REQUEST handle, under
-  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
-  private FWRequest of its own, which is the same door ServerCertFingerprint
-  already opens one level up - and the same RTTI caveat applies: any step that
-  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
 { ONE CONNECTION FOR THIS TRANSPORT - see the long note on LimitToOneConnection.
   Remembers what WinHTTP had, so taking it off puts back the real value and not
   a guess at the default. Called from PoolAcquire, under the pool lock. }
@@ -509,6 +467,36 @@ begin
   end;
 end;
 
+{$IFDEF RALWindows}
+type
+  { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
+    Delphi 10.1 on, so the engine carries its own. }
+  TRALCertContext = record
+    dwCertEncodingType: DWORD;
+    pbCertEncoded: PByte;
+    cbCertEncoded: DWORD;
+    pCertInfo: Pointer;
+    hCertStore: Pointer;
+  end;
+  PRALCertContext = ^TRALCertContext;
+
+{ Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
+  commented out in Winapi.Windows. One line settles it. }
+function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
+  external 'crypt32.dll' name 'CertFreeCertificateContext';
+
+{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
+
+  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
+  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
+  comes back reported as 1.1, and it is not a rounding error: it was measured
+  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
+
+  WinHTTP does know, and it answers on the REQUEST handle, under
+  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
+  private FWRequest of its own, which is the same door ServerCertFingerprint
+  already opens one level up - and the same RTTI caveat applies: any step that
+  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
 function NegotiatedProtocol(const AResponse: IHTTPResponse): TRALHTTPVersion;
 var
   vCtx: TRttiContext;
@@ -556,6 +544,23 @@ begin
   vCtx.Free;
 end;
 
+{ THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
+  what this engine did not have.
+
+  The TCertificate the RTL hands to the validation event carries Subject,
+  Issuer, serial number and dates: all of it copyable, none of it identifying
+  the certificate itself. Comparing those fields WOULD LOOK like pinning and
+  would not be.
+
+  But the certificate is right there, one level down: the event's ARequest is
+  the platform's THTTPRequest, and on Windows it holds the WinHTTP handle, from
+  which WINHTTP_OPTION_SERVER_CERT_CONTEXT returns the CERT_CONTEXT with the
+  raw bytes (pbCertEncoded). SHA-256 over them is the fingerprint - the same
+  one openssl prints with "x509 -fingerprint -sha256".
+
+  Through RTTI for the same reason as LimitToOneConnection: the field is
+  private. Should any step fail it returns '', and RAL then treats it as an
+  engine that cannot read a fingerprint, exactly as before. }
 function ServerCertFingerprint(const ARequest: TURLRequest): StringRAL;
 var
   vCtx: TRttiContext;

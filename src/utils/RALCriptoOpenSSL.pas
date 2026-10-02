@@ -1,5 +1,12 @@
 unit RALCriptoOpenSSL;
 
+{ Delphi mode on FPC, for the reason RALOpenSSL gives: the OpenSSL entry points
+  are procedural variables, and in ObjFPC "vCTX := EVP_CIPHER_CTX_new" assigns
+  the variable instead of calling it }
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 {$I ..\base\PascalRAL.inc}
 
 interface
