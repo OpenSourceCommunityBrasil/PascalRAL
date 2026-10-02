@@ -248,7 +248,8 @@ type
     property IdleTimeout: IntegerRAL read FIdleTimeoutMs write FIdleTimeoutMs
       default RALQUICIDLETIMEOUT;
     /// Where to load msquic from. Empty means the platform default name, found
-    /// through the usual search path.
+    /// through the usual search path - on Android, the library deployed to
+    /// library\lib\<abi>\, which is the application's own folder.
     property LibPath: TFileName read FLibPath write FLibPath;
     /// How many requests one client may have in flight on a single connection.
     /// This is the ceiling on multiplexing, and it is what the peer is told

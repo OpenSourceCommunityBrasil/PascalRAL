@@ -149,36 +149,93 @@ connection) and a 1-RTT handshake against TCP+TLS 1.2's 3.
 `MsQuic.pas` is a standalone binding - `SysUtils` plus the loader, no RAL unit -
 and is shared with a project outside this repo, so keep it free of RAL
 dependencies. Two things about it that do not announce themselves: `QUIC_SETTINGS`
-must stay 144 bytes in the MSVC layout, because the library reads the fields at
-fixed offsets and configures something else in silence when they move (the loader
-checks the size and refuses to load); and the library is only loaded by
-`SetActive(True)`, never from a constructor or an `initialization`, so the
-component drops onto a form on a machine with no `msquic.dll`.
+must stay 144 bytes in the layout `msquic.h` gives it - the same on every ABI the
+library ships for, MSVC on Windows and AAPCS on ARM - because the library reads
+the fields at fixed offsets and configures something else in silence when they
+move (the loader checks the size and refuses to load); and the library is only
+loaded by `SetActive(True)`, never from a constructor or an `initialization`, so
+the component drops onto a form on a machine with no `msquic.dll`.
 
-It needs `msquic.dll` / `libmsquic.so.2` from the **OpenSSL** build at runtime -
-the SChannel build has no TLS 1.3 on Windows 10 - or a path in `LibPath`.
+It needs `msquic.dll` / `libmsquic.so.2` / `libmsquic.so` from the **OpenSSL**
+build at runtime - the SChannel build has no TLS 1.3 on Windows 10 - or a path in
+`LibPath`. RAL publishes the four it was verified with in the **`external`
+branch**, under `msquic/`, the way it ships every other native dependency:
+Windows x64 and x86 from Microsoft's `Microsoft.Native.Quic.MsQuic.OpenSSL` 2.6.1
+NuGet package, Android `arm64-v8a` and `armeabi-v7a` built from the v2.6.1 source
+with the recipe that sits next to them. `src/engine/msquic/README.md` is the
+user-facing guide: where each file goes and what each platform costs.
 
-**On Android the client is the same engine, not a port.** Nothing in
-`RALMsQuicClient.pas` is platform specific - it registers unconditionally, so
-`EngineType := 'MsQuic'` is offered there like `netHttp` or `Indy`, and
-`IsMultiThread` is already set for the worker threads msquic creates inside the
-C library. What Android changes is the **name of the library**: the packager
-only carries `lib/<abi>/*.so` into the APK, so a file called `libmsquic.so.2`
-never reaches the device and `MSQUIC_LIBRARY` is `libmsquic.so` there. Deploy it
-to the remote path `library\lib\arm64-v8a\` (plus `armeabi-v7a` if the arm32
-slice ships) and leave `DefaultLibPath` empty - that folder is the application's
-own, which is where `dlopen` resolves a plain name. As with every engine, the
-app has to `uses RALMsQuicClient` or the registration never runs. Verified by
-compiling for Android ARM64 and ARM32: both agree `QUIC_SETTINGS` is 144 bytes,
-which is what the loader's guard checks, and the POSIX status table is errno,
-which bionic numbers like Linux. What is **not** verified here is a running
-device - that needs a `libmsquic.so` built with the NDK, which this repo does
-not ship.
+**On Android it is the same engine, server AND client, not a port** - verified
+on a handset (Android 16) in both ABIs on 02/10/2026: the functional program
+with both ends on the device, a Windows client against the device's server over
+Wi-Fi, and a public CA chain validated through the Android store. Nothing in
+either unit is platform specific, `IsMultiThread` is already set for the worker
+threads msquic creates inside the C library, and as with every engine the app
+has to `uses` the unit or the registration never runs. What Android changes:
+
+- **The name of the library.** The packager only carries `lib/<abi>/*.so` into
+  the APK, so a file called `libmsquic.so.2` never reaches the device and
+  `MSQUIC_LIBRARY` is `libmsquic.so` there. Deploy it to the remote path
+  `library\lib\arm64-v8a\` (Android64) and `library\lib\armeabi-v7a\` (Android,
+  and Android64 too when the arm32 slice ships) and leave `LibPath` /
+  `DefaultLibPath` empty - that folder is the application's own, which is where
+  `dlopen` resolves a plain name.
+- **Android 9 / API 28 is the floor.** msquic's `selfsign_openssl.c` calls
+  `glob()`, which the NDK only declares from API 28, so the library is built
+  against it - and that build records symbol versions (`getentropy@LIBC_P`)
+  that make the dynamic linker refuse the `.so` below Android 9, before a line
+  of it runs. `MsQuicLoad` reports exactly that. Kwik stays for Android 8.
+- **The server's certificate and key are files the application deploys**:
+  `assets\internal\` lands in `TPath.GetDocumentsPath`, which is where
+  `SSL.CertificateFile` / `SSL.PrivateKeyFile` then point.
+- **Certificate validation goes through OpenSSL**, and the system store has to
+  be handed to it - see "What changed on 02/10/2026" below.
 
 `MsQuicLoad` reports **why** the load failed, from `dlerror` (`GetLoadErrorStr`
 on FPC, `SysErrorMessage` on Windows). Worth the few lines because the failures
 are indistinguishable otherwise and each has its own fix: on Android the library
 was never deployed, or it is the wrong ABI, or it wants a newer API level.
+
+What changed on 02/10/2026, bringing the engine to Android and to Win32 - verified
+on Delphi Win32 (the first run with the x86 DLL), Win64 and FPC x64 by the
+functional program, now 33 cases, and on the handset in both ABIs:
+
+- **The two records the library reads from us are no longer packed.**
+  `QUIC_SETTINGS` and `QUIC_ADDR` keep their explicit padding, so every field
+  stays at the header's offset, but now carry the natural alignment C assumes:
+  ARM32 reads an 8-byte field with instructions that fault on an address that
+  is not aligned (`LDRD`, NEON with an alignment hint), and a packed record on
+  the stack lands wherever the compiler likes. The unit pins `{$ALIGN 8}` /
+  `{$PACKRECORDS C}` itself. Checked by 116 `_Static_assert` lines - sizeof,
+  alignof and offsetof of every record, every event field read and the API
+  table - printed by a Pascal program and compiled against the 2.6.1 header
+  with the NDK clang for ARM32 and ARM64; FPC x64 prints the same layout as
+  Delphi Win64, and the bitfields of `QUIC_SETTINGS` were read back off clang's
+  output for both ARM targets.
+- **Outside Windows msquic does not validate certificates by itself.** Its
+  platform check (`CxPlatCertVerifyRawCertificate`, `certificates_posix.c`) is a
+  stub returning False without a reason: with no pin or event every
+  certificate was refused, a valid one included, and under DEFER the deferred
+  verdict arrived as SUCCESS - `TRALCertInfo.Trusted` read True for anything,
+  so an `OnValidateServerCert` relying on it accepted anything. That was
+  already true on Linux64. The client now asks for
+  `USE_TLS_BUILTIN_CERTIFICATE_VALIDATION` there, and OpenSSL checks the chain
+  and the host name or IP (msquic sets them on the verify parameters).
+- **Android's store has to be gathered.** OpenSSL's compiled-in paths do not
+  exist on a handset, and `/system/etc/security/cacerts` names its files by the
+  old MD5 subject hash, which OpenSSL 3 cannot look up. The client concatenates
+  the store - the Conscrypt module's copy from Android 14, else the system one -
+  into one PEM in the cache folder, once per process, and hands it over as the
+  CA file: 143 certificates on Android 16. Nothing gathered means validation
+  fails closed; a pin still decides for its own host.
+- **`TRALMsQuicClientHTTP.DefaultCaFile`**, a class var like `DefaultAlpn`: a PEM
+  bundle that replaces the platform's store, on Windows too (where it switches
+  the client to OpenSSL's validation) - the way to trust a private CA without
+  installing it. It is part of both the configuration key and the connection
+  key, since a connection validated against one store says nothing about
+  another.
+- `MsQuicRAL.dproj` lists Android and Android64 again - they were taken out on
+  21/09 because no binary existed.
 
 Two traps it hit that any unit here can hit:
 
@@ -246,7 +303,7 @@ FPC x64 - gzip, AES-256, both, multipart, cookies, address, pin, event, 413,
 
 ### The same QUIC on Android, through Kwik
 
-`TRALKwikClientHTTP` (`src/engine/kwik`) is the SAME wire as the MsQuic client — both build the frame with `RALQuicFrame`, so one `TRALMsQuicServer` serves a desktop and a handset without knowing which is which. It exists because MsQuic on Android would mean a `libmsquic.so` built with the NDK, a platform that project does not claim and for which nobody publishes a binary; and because **no official Android stack can replace it**: OkHttp declares `Protocol.HTTP_3` and implements nothing behind it, Cronet and `android.net.http.HttpEngine` expose HTTP/3 only, and this frame wants a raw bidirectional stream. Kwik is QUIC in pure Java — four jars, 646 KB, one set of files whatever the ABI.
+`TRALKwikClientHTTP` (`src/engine/kwik`) is the SAME wire as the MsQuic client — both build the frame with `RALQuicFrame`, so one `TRALMsQuicServer` serves a desktop and a handset without knowing which is which. It was written when MsQuic had no Android binary anywhere; since 02/10/2026 RAL publishes one (see the MsQuic section) and the MsQuic engine itself runs on Android 9 and later, server included. Kwik stays for what that cannot cover: **Android 8** (API 26-27, below msquic's floor) and an application that wants **no native library** at all - four jars, 646 KB, one set of files whatever the ABI. No official Android stack could have done either job: OkHttp declares `Protocol.HTTP_3` and implements nothing behind it, Cronet and `android.net.http.HttpEngine` expose HTTP/3 only, and this frame wants a raw bidirectional stream.
 
 It follows the okhttp shape: Delphi-only, client-only, no `.dcr`, declared and registered everywhere and refusing at `SendUrl` off Android. `RalKwik.java` is the bridge, flat static methods with the frame crossing JNI as one byte array.
 
@@ -364,6 +421,7 @@ What each engine can honour, and how it had to be wired:
 - **fpHTTP** — `TSSLSocketHandler.OnVerifyCertificate`, and deliberately **not** `VerifyPeerCert`, not even for `svAlways`: that one is `SSL_VERIFY_PEER` with a nil callback, so OpenSSL aborts the handshake on an unknown CA before FPC ever calls `DoVerifyCert` — and the failure then arrives as a plain "Connect failed", with nothing left to say it was the certificate. Going through the callback keeps `SSL.VerifyResult` as the verdict *and* keeps the refusal classifiable. `TSSL.PeerFingerprint` returns **raw digest bytes**, not hex, and they must not be assigned to a `StringRAL` — the code page conversion would rewrite them.
 - **mORMot2** — the context also sets `CASystemStores := [scsCA, scsRoot]` **on Windows**, without which nothing verifies once OpenSSL is loaded: OpenSSL has no certificate store there, mORMot's fallback `SSL_CTX_set_default_verify_paths` finds nothing, and every public CA fails (SChannel is unaffected — it ignores the field and uses the OS store anyway; POSIX is left alone, its default paths do find `/etc/ssl/certs`). Then `TNetTlsContext.OnEachPeerVerify`, on a context reset with `InitNetTlsContext` before **every** connection (`TCrtSocket.Open` copies the context back into the caller's record once connected, so a kept field would hand the next connection the previous one's `Enabled`, `CipherName` and `LastError`). `IgnoreCertificateErrors` must stay False: it maps to `SSL_VERIFY_NONE` and mORMot then does not install the callback at all, so the client would accept everything and the event would never fire. The callback only records; the verdict is taken in `SendUrl` after the handshake and before the first byte goes out — one decision, about the server's own certificate, on a Pascal stack instead of inside an OpenSSL frame.
 - **netHTTP** — `OnValidateServerCertificate`, and `SupportsCertPin` is **False**: the RTL's `TCertificate` has no fingerprint on any platform (on Android not even the public key). A pin that applies to the host being called raises on the first request instead of comparing something weaker — one that applies to a *different* host is none of this engine's business and leaves it alone. The handler is assigned **per request and only when the client asked for certificate control**, which is not a detail: on Windows the RTL calls it from `WINHTTP_CALLBACK_STATUS_SENDING_REQUEST` exactly when its own validation **passed** (`System.Net.HttpClient.Win.pas`), handing `Accepted := True` so the application may veto a good certificate — assigning it unconditionally, and answering with anything but that incoming verdict, refuses every valid certificate. `Accepted` on entry is the engine's verdict on both the Windows and the Android paths, and it is what fills `TRALCertInfo.Trusted`.
+- **MsQuic** — `INDICATE_CERTIFICATE_RECEIVED + DEFER_CERTIFICATE_VALIDATION + USE_PORTABLE_CERTIFICATES` when a pin or the event is set, and the DER arrives in `PEER_CERTIFICATE_RECEIVED`. Who produces the verdict that fills `Trusted` depends on the platform, and getting it wrong is silent: on Windows msquic asks the system (chain, host name, machine store); everywhere else that platform check is a stub that refuses everything and reports SUCCESS under DEFER, so the client asks for `USE_TLS_BUILTIN_CERTIFICATE_VALIDATION` and OpenSSL decides, against `TRALMsQuicClientHTTP.DefaultCaFile` - on Android the system store gathered into one PEM - plus OpenSSL's default paths. A `DefaultCaFile` set on Windows takes the same OpenSSL route.
 
 Classifying a refusal as `rteCertificate` is where each engine hides something. Indy raises `EIdOSSLUnderlyingCryptoError` when OpenSSL refuses (`SSL_ERROR_SSL`, not the `EIdOSSLConnectError` the message text suggests) and something indistinguishable when our own callback refuses, hence a flag. fpHTTP reports every refusal as a failed connect, hence the same flag. mORMot2 folds every TLS cause into one formatted message, and the only usable signal is `ENetSock.LastError = nrUnknownError` — which is what `ENetSock.Create` stores when the raise carried no `TNetResult`, as `DoTlsAfter`'s does, while a real transport failure carries `nrRefused`/`nrTimeout`. In that engine RAL also exits through `SetTransportError` instead of raising, because a raise inside `SendUrl` is caught by `SendUrl`'s own handler and reclassified.
 
