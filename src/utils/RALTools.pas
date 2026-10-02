@@ -280,7 +280,7 @@ end;
   present, is whichever is not the last. }
 function RALNormalizeNumber(const AValue: StringRAL): string;
 var
-  vInt, vLastDot, vLastComma: IntegerRAL;
+  vInt, vOut, vLastDot, vLastComma: IntegerRAL;
   vDec: Char;
   vChar: Char;
 begin
@@ -298,21 +298,25 @@ begin
     vDec := ','
   else
     vDec := '.';
-  vInt := 1;
-  while vInt <= Length(Result) do
+  { one pass, compacting in place: the write index never passes the read one.
+    A Delete per thousands separator shifted the rest of the string every
+    time, so a value of a million separators - one form field, no size limit
+    by default - cost about 10^12 character moves, minutes of a core per
+    request }
+  vOut := 0;
+  for vInt := 1 to Length(Result) do
   begin
     vChar := Result[POSINISTR - 1 + vInt];
     if (vChar = '.') or (vChar = ',') then
     begin
       if vChar <> vDec then
-      begin
-        Delete(Result, vInt, 1);
         Continue;
-      end;
-      Result[POSINISTR - 1 + vInt] := '.';
+      vChar := '.';
     end;
-    Inc(vInt);
+    Inc(vOut);
+    Result[POSINISTR - 1 + vOut] := vChar;
   end;
+  SetLength(Result, vOut);
 end;
 
 function RALInvariantFormat: TFormatSettings;

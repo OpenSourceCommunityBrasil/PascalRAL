@@ -16,6 +16,7 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509ExtendedTrustManager;
@@ -30,6 +31,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okhttp3.internal.tls.OkHostnameVerifier;
 
 /**
  * Bridge between PascalRAL and OkHttp, so that an Android client can speak
@@ -119,33 +121,53 @@ public final class RalOkHttp {
 
     public void checkClientTrusted(X509Certificate[] c, String t, SSLEngine e) { }
 
+    // Conscrypt calls one of the two overloads that carry the connection - the
+    // socket or the engine - on an X509ExtendedTrustManager; the plain one only
+    // exists to satisfy the interface, and it has no host to compare.
     public void checkServerTrusted(X509Certificate[] chain, String authType)
         throws CertificateException {
-      judge(chain, authType);
+      judge(chain, authType, null);
     }
 
     public void checkServerTrusted(X509Certificate[] chain, String authType, Socket s)
         throws CertificateException {
-      judge(chain, authType);
+      String host = null;
+      if (s instanceof SSLSocket) {
+        SSLSession hs = ((SSLSocket) s).getHandshakeSession();
+        if (hs != null) {
+          host = hs.getPeerHost();
+        }
+      }
+      judge(chain, authType, host);
     }
 
     public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine e)
         throws CertificateException {
-      judge(chain, authType);
+      judge(chain, authType, e == null ? null : e.getPeerHost());
     }
 
-    private void judge(X509Certificate[] chain, String authType) throws CertificateException {
+    private void judge(X509Certificate[] chain, String authType, String host)
+        throws CertificateException {
       Result r = RESULT.get();
 
-      boolean trusted = false;
+      boolean chainOk = false;
       if (PLATFORM != null) {
         try {
           PLATFORM.checkServerTrusted(chain, authType);
-          trusted = true;
+          chainOk = true;
         } catch (Exception ex) {
-          trusted = false;
+          chainOk = false;
         }
       }
+
+      // What the judge gets as "trusted" is what every other engine's platform
+      // means by it: the chain AND the name. Android's trust manager checks the
+      // chain only - the name is the HostnameVerifier's business - so a valid
+      // certificate issued for ANOTHER host came out trusted, and an
+      // OnValidateServerCert answering ACert.Trusted let it through. Without a
+      // host to compare nothing is vouched for.
+      boolean trusted = chainOk && host != null && chain != null && chain.length > 0
+          && OkHostnameVerifier.INSTANCE.verify(host, chain[0]);
 
       if (chain != null && chain.length > 0) {
         try {
@@ -157,9 +179,11 @@ public final class RalOkHttp {
         r.certIssuer = chain[0].getIssuerDN().getName();
       }
 
+      // With no judge this is plain OkHttp: the chain is decided here and the
+      // name by the HostnameVerifier, which is strict whenever no judge runs.
       RalCertJudge judge = JUDGE.get();
       boolean ok = (judge == null)
-          ? trusted
+          ? chainOk
           : judge.ok(r.certSha256, r.certSubject, r.certIssuer, trusted);
 
       if (!ok) {
@@ -229,6 +253,9 @@ public final class RalOkHttp {
       // certificate is the certificate, whatever name the URL used, and that
       // is the same latitude the other engines give their handler. With no
       // judge installed the platform verdict rules, and this stays strict.
+      // Pascal installs one ONLY when the application decides - a pin for that
+      // host, OnValidateServerCert, or svNever. It used to install one on every
+      // call, and then the name was never checked by anybody.
       //
       // What decides is ONLY whether a judge is installed - never whether it
       // has already run on this thread. On a RESUMED TLS session the trust
@@ -245,7 +272,7 @@ public final class RalOkHttp {
           if (JUDGE.get() != null) {
             return true;
           }
-          return okhttp3.internal.tls.OkHostnameVerifier.INSTANCE.verify(hostname, session);
+          return OkHostnameVerifier.INSTANCE.verify(hostname, session);
         }
       });
     } catch (Exception e) {

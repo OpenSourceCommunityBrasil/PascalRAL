@@ -267,15 +267,22 @@ end;
 
 function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL;
 begin
-  Result := gRALFieldTypeNames[AFieldType];
+  { these values come off the wire as a byte cast to the enum, and the table
+    read past its end handed a stray pointer to a string assignment. Not
+    GetEnumName either: Delphi's walks its name list for as many steps as the
+    ordinal says, past the last name and into whatever RTTI follows }
+  if Ord(AFieldType) > Ord(High(TRALFieldType)) then
+    Result := ''
+  else
+    Result := gRALFieldTypeNames[AFieldType];
 end;
 
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
 begin
-  { an ordinal outside the enum - reachable only through a cast - keeps the
-    answer it always had, instead of reading past the table }
+  { an ordinal outside the enum - reachable only through a cast - has no name;
+    see the overload above. RALNameToFieldType reads '' back as ftUnknown }
   if Ord(AFieldType) > Ord(High(TFieldType)) then
-    Result := StringRAL(GetEnumName(TypeInfo(TFieldType), Ord(AFieldType)))
+    Result := ''
   else
     Result := gFieldTypeNames[AFieldType];
 end;
@@ -299,6 +306,11 @@ end;
 
 class function TRALDB.FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
 begin
+  { a type with no RAL counterpart travels as text - ftUnknown included, which
+    is what a column of a type no driver recognised arrives as. There was no
+    default at all: the result was whatever the register held, and it went on
+    to index the type name table }
+  Result := sftString;
   case AFieldType of
     ftFixedWideChar,
     ftGuid,
@@ -374,6 +386,9 @@ end;
 
 class function TRALDB.RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
 begin
+  { every member is mapped below; this answers an ordinal that came off the
+    wire past the last one }
+  Result := ftUnknown;
   case AFieldType of
     {$IFNDEF FPC}
     sftShortInt: Result := ftShortint;

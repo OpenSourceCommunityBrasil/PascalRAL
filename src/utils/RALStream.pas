@@ -18,6 +18,8 @@ type
     FStream: TStream;
     /// Refuses a size prefix that announces more than the stream still holds
     procedure CheckSize(ASize: UInt64RAL);
+    /// Reads exactly ACount bytes or raises - see there
+    procedure ReadExact(var ABuffer; ACount: IntegerRAL);
   protected
     // read and write UTF-7
     function ReadSize: UInt64RAL;
@@ -187,10 +189,11 @@ begin
   Result := 0;
   vMult := 0;
 
+  { a stream that ends before the size does is malformed, and ReadByte now
+    says so: this used to answer whatever it had read so far - 0 at the very
+    end - so a count read off the network could drive a caller's loop through
+    billions of empty strings past the end of a twenty-byte body }
   repeat
-    if FStream.Position = FStream.Size then
-      Exit;
-
     vByte := ReadByte;
     { widened before the shift: "(vByte and 127) shl 28" is 32-bit arithmetic
       on both compilers, so every size from 2 GB up wrapped to garbage }
@@ -314,57 +317,67 @@ end;
 
 function TRALBinaryWriter.ReadShortint: Shortint;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadByte: Byte;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadSmallint: Smallint;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadWord: Word;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadInteger: IntegerRAL;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadLongWord: LongWord;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadInt64: Int64RAL;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadQWord: UInt64;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadBoolean: Boolean;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadFloat: Double;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 function TRALBinaryWriter.ReadDateTime: TDateTime;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
+end;
+
+{ Every fixed-size read goes through here. Stream.Read returns how much it
+  actually read, and nothing looked: at the end of the stream the value came
+  back as whatever the stack held - and these values come off the network,
+  where one of them was cast straight to an enum that indexes a table. }
+procedure TRALBinaryWriter.ReadExact(var ABuffer; ACount: IntegerRAL);
+begin
+  if FStream.Read(ABuffer, ACount) <> ACount then
+    raise Exception.Create(emStreamSizeBeyondEnd);
 end;
 
 { the size prefix is a varint: nine bytes can announce 2^63 bytes. Allocating
@@ -416,12 +429,13 @@ end;
 function TRALBinaryWriter.ReadBytesDirect(ALength: integer): TBytes;
 begin
   SetLength(Result, ALength);
-  FStream.Read(Result[0], ALength);
+  if ALength > 0 then
+    ReadExact(Result[0], ALength);
 end;
 
 function TRALBinaryWriter.ReadChar: CharRAL;
 begin
-  FStream.Read(Result, SizeOf(Result));
+  ReadExact(Result, SizeOf(Result));
 end;
 
 { TRALStringStream }

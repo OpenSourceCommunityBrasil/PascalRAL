@@ -69,8 +69,14 @@ begin
   vCert.SerialNumber := StringRAL(ACertificate.SerialNumber);
   vCert.NotBefore := ACertificate.notBefore;
   vCert.NotAfter := ACertificate.notAfter;
-  vCert.Trusted := AOk;
-  if AOk then
+  { AOk alone describes this link only. An error higher up the chain - a root
+    nobody trusts, an intermediate sent by whoever sits in the middle - is let
+    through above, and OpenSSL then reaches the leaf with ok set and that
+    error still in AError ("the last error (if any) is still in the error
+    value", its own source). Trusted is the chain's verdict, so both count.
+    The host name is not part of it on this engine: Indy never checks it. }
+  vCert.Trusted := AOk and (AError = 0);
+  if vCert.Trusted then
     vCert.Error := ''
   else
     vCert.Error := StringRAL(Format(wmCertOpenSSLVerify, [AError]));

@@ -122,6 +122,14 @@ var
 
 function StorageLinkClassOf(AFormat: TRALStorageFormat): TRALStorageLinkClass;
 begin
+  { a format read off the wire is a byte cast to the enum, and both tables are
+    indexed by it: past the last member this read a "class" from beyond the
+    array and called its constructor. The case statement this replaced simply
+    answered nil there }
+  Result := nil;
+  if Ord(AFormat) > Ord(High(TRALStorageFormat)) then
+    Exit;
+
   Result := gStorageLinkClasses[AFormat];
   if Result = nil then
   begin

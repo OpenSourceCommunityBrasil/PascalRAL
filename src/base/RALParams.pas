@@ -1481,21 +1481,44 @@ end;
 procedure TRALParams.AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
   const ANameSeparator: StringRAL; const ALineSeparator: StringRAL);
 var
-  vLine: StringRAL;
-  vIndex: IntegerRAL;
+  vLen, vSepLen, vStart, vInt: IntegerRAL;
+  vSep: CharRAL;
+
+  procedure AppendUpTo(AEnd: IntegerRAL);
+  begin
+    if AEnd > vStart then
+      AppendParamLine(Copy(AText, vStart, AEnd - vStart), ANameSeparator, AKind);
+  end;
+
 begin
-  repeat
-    vIndex := Pos(ALineSeparator, AText);
-    if vIndex > 0 then
-      vLine := Copy(AText, POSINISTR, vIndex - 1)
-    else
-      vLine := AText;
-    if vLine <> '' then
-    begin
-      AppendParamLine(vLine, ANameSeparator, AKind);
-      Delete(AText, POSINISTR, vIndex);
-    end
-  until vIndex = 0;
+  { ONE scan and one Copy per segment; positions are 1-based, the way Copy
+    counts, and characters are read through POSINISTR.
+
+    It used to Delete each segment off the front of the text - shifting the
+    rest every time, quadratic in the number of segments of a query string or
+    form body that comes straight from the network - and kept that Delete
+    inside "if vLine <> ''": an empty segment ("?&a=1", "a=1&&b=2") consumed
+    nothing and the loop spun at 100% CPU forever (SEC-01 of the 10/09/2026
+    audit). Empty segments are still skipped. }
+  vLen := Length(AText);
+  vSepLen := Length(ALineSeparator);
+  vStart := 1;
+  if vSepLen > 0 then
+  begin
+    vSep := ALineSeparator[POSINISTR];
+    vInt := 1;
+    while vInt <= vLen - vSepLen + 1 do
+      if (AText[POSINISTR - 1 + vInt] = vSep) and
+         ((vSepLen = 1) or (Copy(AText, vInt, vSepLen) = ALineSeparator)) then
+      begin
+        AppendUpTo(vInt);
+        Inc(vInt, vSepLen);
+        vStart := vInt;
+      end
+      else
+        Inc(vInt);
+  end;
+  AppendUpTo(vLen + 1);
 end;
 
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);

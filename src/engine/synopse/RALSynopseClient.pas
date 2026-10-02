@@ -52,6 +52,8 @@ type
       implemented on SChannel"), which FCertSeen is what tells apart }
     FCert: TRALCertInfo;
     FCertSeen: boolean;
+    { whether EVERY call of this handshake said ok - see EachPeerVerify }
+    FChainOk: boolean;
 
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
@@ -130,7 +132,14 @@ begin
 
   if AContext <> nil then
     FCert.Error := StringRAL(AContext^.LastError);
-  FCert.Trusted := AWasOk;
+  { the verdict of the whole chain, not of this call: OpenSSL reports an error
+    on the link where it happens and then calls again, with ok, for every link
+    down to the leaf - "the last error (if any) is still in the error value",
+    says its own source, but this callback only gets the flag. Taking the last
+    call's flag made the leaf of ANY chain come out trusted, a self-signed one
+    included, and an OnValidateServerCert answering ACert.Trusted accepted it }
+  FChainOk := FChainOk and AWasOk;
+  FCert.Trusted := FChainOk;
   FCertSeen := True;
 
   { True keeps the handshake going even for a certificate OpenSSL rejected -
@@ -151,7 +160,8 @@ var
   vCookies: TStringList;
   vInt: IntegerRAL;
   vUri: TUri;
-  vServer: StringRAL;
+  vServer, vHostName: StringRAL;
+  vHostPort: IntegerRAL;
   vFailed: boolean;
 
   { The two except blocks below are already split by phase, which is exactly the
@@ -218,7 +228,23 @@ begin
         certificate is still refused unless a pin or the event says otherwise. }
       FTLS.CASystemStores := [scsCA, scsRoot];
       {$ENDIF}
+
+      { THE NAME, which mORMot's OpenSSL layer checks only when told: it calls
+        SSL_set1_host for HostNamesCsv and for nothing else, and nobody filled
+        it - so under OpenSSL (always on POSIX, on Windows once it is loaded) a
+        certificate valid for ANY host was accepted for this one. SChannel
+        checks the name by itself and ignores the field. Brackets off an IPv6:
+        OpenSSL 3 takes an address literal as an IP check, and 1.1.1 compares
+        it as a name, against the subject CN when there are no DNS names. With
+        a pin or the event a mismatch only clears Trusted - they decide. }
+      if vUri.Https then
+      begin
+        RALSplitHostPort(StringRAL(vUri.Server), vHostName, vHostPort);
+        FTLS.HostNamesCsv := RawUtf8(vHostName);
+      end;
+
       FCertSeen := False;
+      FChainOk := True;
       if CertCheckWanted then
         FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify
       else

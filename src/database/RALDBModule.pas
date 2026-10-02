@@ -658,7 +658,8 @@ var
       vField.RALFieldType := sftDateTime;
     end
     else if (Pos(StringRAL('double'), AType) > 0) or (Pos(StringRAL('numeric'), AType) > 0) or
-            (Pos(StringRAL('decimal'), AType) > 0) then
+            (Pos(StringRAL('decimal'), AType) > 0) or (Pos(StringRAL('real'), AType) > 0) or
+            (Pos(StringRAL('float'), AType) > 0) then
     begin
       vField.RALFieldType := sftDouble;
 
@@ -714,6 +715,10 @@ var
   var
     vfbType: TRALFieldType;
   begin
+    { a type not listed below - INT128 and DECFLOAT among them - travels as
+      text; vfbType had no value at all for them, and indexed the type name
+      table with whatever it held }
+    vfbType := sftString;
     case vQuery.FieldByName('rdb$field_type').AsInteger of
       007: begin
             vfbType := sftSmallInt;
@@ -735,6 +740,9 @@ var
       014,
       037,
       040: vfbType := sftString;
+      023: vfbType := sftBoolean;  // BOOLEAN, Firebird 3
+      028,
+      029: vfbType := sftDateTime; // TIME and TIMESTAMP WITH TIME ZONE, Firebird 4
       016: begin
             vfbType := sftInt64;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
@@ -798,6 +806,9 @@ var
       vTypMod := vQuery.FieldByName('atttypmod').AsInteger;
     end;
 
+    { an OID not listed below - uuid, json, jsonb among them - travels as text;
+      vpgType had no value at all for them, same as Firebird above }
+    vpgType := sftString;
     case vType of
       16   : vpgType := sftBoolean;
       17   : vpgType := sftBlob;
@@ -806,8 +817,10 @@ var
       25   : vpgType := sftMemo;
       20,
       26   : vpgType := sftInt64;
+      700,
       701,
       1700 : vpgType := sftDouble;
+      1083 : vpgType := sftDateTime; // time
       1042,
       1043: vpgType := sftString;
       1082,

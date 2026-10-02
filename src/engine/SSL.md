@@ -836,6 +836,13 @@ Fields an engine cannot produce come back **empty, never invented**. Returning `
 closes the connection before one byte of the request - the token included - has been
 sent.
 
+**`Trusted` covers the host name everywhere except Indy and fpHTTP**, which never check
+one: there it is the chain and the dates only, so a handler answering `ACert.Trusted` on
+those two accepts a valid certificate issued for another name - pin those hosts instead.
+On OkHttp, mORMot2 with OpenSSL and the Indy chain this was not true before 02/10/2026:
+OkHttp's `Trusted` was the chain alone, mORMot2's came out True for any chain, and Indy's
+ignored an error OpenSSL had found higher up the chain.
+
 ---
 
 ## Client: SSL.Required

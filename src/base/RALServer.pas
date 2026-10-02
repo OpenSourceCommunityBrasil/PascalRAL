@@ -134,6 +134,8 @@ type
     FBruteForce: TRALBruteForceProtection;
     FFloodTimeInterval: IntegerRAL;
     FFloodList: TRALStringListSafe;
+    { the second ClearExpiredIPsOnRequest last pruned in - see there }
+    FLastPrune: Cardinal;
     FOptions: TRALSecurityOptions;
     FWhiteIPList: TRALStringListSafe;
     // Creates and returns the internal Blacklisted IPs
@@ -158,13 +160,17 @@ type
     function CheckBlockClientIP(const AClientIP: StringRAL): boolean;
     // Removes the IPs that are stored longer than the preconfigured duration
     procedure ClearExpiredIPs;
+    /// ClearExpiredIPs at most once a second - what every request calls
+    procedure ClearExpiredIPsOnRequest;
     // Verifies if the incomming IP is known for request flooding
     function CheckFlood(const AClientIP: StringRAL): boolean;
     // Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
-    // Gets a client block object from the list of blocked IPs
+    // Gets a client block object from the list of blocked IPs. While requests
+    // are being served, another one can prune or unblock that address - and
+    // free the object - at any moment: GetBlockClientTry is the safe read
     function GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
-    // Gets a client object from the list of blocked IPs
+    // Gets a client object from the flood list - same caution as GetBlockClient
     function GetClientList(const AClientIP: StringRAL): TRALClientList;
     // Gets the number of tries to block client, in case client is not blocked
     // return zero
@@ -1035,7 +1041,7 @@ begin
     read a list with the expired entries already gone, instead of one turn
     behind. It costs nothing when there is nothing to prune - both lists answer
     IsEmpty without taking a lock. }
-  Security.ClearExpiredIPs;
+  Security.ClearExpiredIPsOnRequest;
 
   { first, and on the raw size: the engines only decode the body (decompress,
     decrypt, split the multipart) when this leaves the status below 400 }
@@ -1369,11 +1375,52 @@ begin
     Result := True;
 end;
 
+{ Drops every entry idle for AIdle ms or more, under ONE acquisition of the
+  list's lock - the objects included, as Remove(..., True) frees them }
+procedure PruneIdle(AList: TRALStringListSafe; AIdle: Int64RAL; ANow: TDateTime);
+var
+  vList: TStringList;
+  vInt: IntegerRAL;
+begin
+  vList := AList.Lock;
+  try
+    for vInt := vList.Count - 1 downto 0 do
+      if MilliSecondsBetween(ANow,
+           TRALClientList(vList.Objects[vInt]).LastAccess) >= AIdle then
+      begin
+        vList.Objects[vInt].Free;
+        vList.Delete(vInt);
+      end;
+  finally
+    AList.Unlock;
+  end;
+end;
+
+{ What ValidateRequest calls, at the top of every request on every request
+  thread: ClearExpiredIPs at most once a second. Both lists empty - the
+  default and the common case - costs two reads and no lock. The stamp is 32
+  bits so it is read and written whole on every CPU; two threads that both see
+  a new second both prune, each under the list's lock, which is harmless. An
+  expiration is minutes long; a second of slack costs nothing. }
+procedure TRALSecurity.ClearExpiredIPsOnRequest;
+var
+  vSecond: Cardinal;
+begin
+  if FBlockedList.IsEmpty and FFloodList.IsEmpty then
+    Exit;
+
+  vSecond := Cardinal(Trunc(Now * SecsPerDay));
+  if vSecond = FLastPrune then
+    Exit;
+  FLastPrune := vSecond;
+  ClearExpiredIPs;
+end;
+
 procedure TRALSecurity.ClearExpiredIPs;
 var
-  vInt: integer;
-  vBlock: TRALClientBlockList;
   vIdle: Int64RAL;
+  vNow: TDateTime;
+  vPruneBlocked: boolean;
 begin
   { No longer gated on rsoBruteForceProtection. BlockClient is reached from the
     401 and 403 paths and from an application calling it directly, so entries
@@ -1381,15 +1428,21 @@ begin
     every distinct address that ever failed stayed in the list for the life of
     the process. Expiration is what decides here, not the option: zero still
     means never expire, and with it set the list is bounded again. }
-  if (BruteForce.ExpirationTime > 0) and (not FBlockedList.IsEmpty) then
-  begin
-    for vInt := Pred(FBlockedList.Count) downto 0 do
-    begin
-      vBlock := TRALClientBlockList(FBlockedList.GetObject(vInt));
-      if MilliSecondsBetween(Now, vBlock.LastAccess) >= BruteForce.ExpirationTime then
-        FBlockedList.Remove(vInt, True);
-    end;
-  end;
+  vPruneBlocked := (BruteForce.ExpirationTime > 0) and (not FBlockedList.IsEmpty);
+  if (not vPruneBlocked) and FFloodList.IsEmpty then
+    Exit;
+
+  { ONE LOCK PER LIST FOR THE WHOLE WALK - see PruneIdle. It used to walk each
+    list taking the lock once per element - a critical section per entry, on
+    every request, the very convoy the IsEmpty checks above exist to avoid -
+    and to race while doing it: one thread asked for an index another had
+    just removed (EStringListError out of ValidateRequest), or removed the
+    live entry that had slid into it. How often is ClearExpiredIPsOnRequest's
+    business; called directly, this prunes at once. }
+  vNow := Now;
+
+  if vPruneBlocked then
+    PruneIdle(FBlockedList, BruteForce.ExpirationTime, vNow);
 
   { the flood list grew one entry per distinct client address forever: a
     scan from random sources was a memory leak. An entry only matters for
@@ -1400,10 +1453,7 @@ begin
     vIdle := 60000;
     if Int64RAL(FFloodTimeInterval) * 10 > vIdle then
       vIdle := Int64RAL(FFloodTimeInterval) * 10;
-    for vInt := Pred(FFloodList.Count) downto 0 do
-      if MilliSecondsBetween(Now,
-           TRALClientList(FFloodList.GetObject(vInt)).LastAccess) >= vIdle then
-        FFloodList.Remove(vInt, True);
+    PruneIdle(FFloodList, vIdle, vNow);
   end;
 end;
 
@@ -1462,12 +1512,23 @@ end;
 
 function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): integer;
 var
-  vBlock: TRALClientBlockList;
+  vList: TStringList;
+  vIndex: IntegerRAL;
 begin
   Result := 0;
-  vBlock := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
-  if vBlock <> nil then
-    Result := vBlock.NumTry;
+  if FBlockedList.IsEmpty then
+    Exit;
+
+  { NumTry read under the lock: the moment it is let go, the entry can be
+    pruned or unblocked by another request - and its object freed }
+  vList := FBlockedList.Lock;
+  try
+    vIndex := vList.IndexOf(AClientIP);
+    if vIndex >= 0 then
+      Result := TRALClientBlockList(vList.Objects[vIndex]).NumTry;
+  finally
+    FBlockedList.Unlock;
+  end;
 end;
 
 function TRALSecurity.GetClientList(const AClientIP: StringRAL): TRALClientList;

@@ -433,6 +433,7 @@ var
   vBody: TJavaArray<Byte>;
   vContentType, vHeaders: StringRAL;
   vRC, vPing: Integer;
+  vJudge: JRalCertJudge;
 begin
   inherited;
   AResponse.Clear;
@@ -470,6 +471,19 @@ begin
     else
       vPing := 0;
 
+    { THE JUDGE ONLY GOES ALONG WHEN THE APPLICATION DECIDES - a pin for this
+      host, OnValidateServerCert, or svNever - because its presence is what
+      tells the bridge's hostname check that the name no longer matters. It
+      used to go along always, so the name was never checked at all: with no
+      pin and no event, a certificate valid for ANY host was accepted for this
+      one, and whoever held one could sit in the middle. With no judge the
+      bridge is plain OkHttp: the platform judges the chain and
+      OkHostnameVerifier the name. }
+    if CertCheckWanted or (Parent.SSL.Verify = svNever) then
+      vJudge := FJudge
+    else
+      vJudge := nil;
+
     vRC := TJRalOkHttp.JavaClass.execute(
       StringToJString(string(RALMethodToHTTPMethod(AMethod))),
       StringToJString(string(AURL)),
@@ -485,7 +499,7 @@ begin
         be: zero means do not follow at all, anything else means follow. }
       Parent.MaxRedirects > 0,
       StringToJString(string(ShareKey)),
-      FJudge);
+      vJudge);
 
     if vRC = 0 then
       ReadResponse(AResponse)
