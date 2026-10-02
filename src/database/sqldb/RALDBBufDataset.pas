@@ -655,7 +655,15 @@ begin
       FOpening := True;
       FLoading := False;
       FOpened := False;
-      FRALConnection.OpenRemote(Self, FStorage, @OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches, and then every later
+        Open died with "Missing (compatible) underlying dataset" }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, @OnQueryResponse);
+      except
+        FOpening := False;
+        raise;
+      end;
     end;
     Exit;
   end

@@ -37,6 +37,8 @@ type
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
     function GetNativeConnection: TComponent; override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: TSQLConnector;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
 
@@ -48,7 +50,7 @@ type
     class function DatabaseName: StringRAL; override;
     class function PackageDependency: StringRAL; override;
     /// The TSQLConnector this driver opens - see GetNativeConnection
-    property NativeConnection: TSQLConnector read FConnector;
+    property NativeConnection: TSQLConnector read GetConnector;
   end;
 
 implementation
@@ -220,8 +222,19 @@ begin
   end;
 end;
 
+{ Connected - and with it configured - on the way out: Database, credentials
+  and the driver settings are only applied by Conectar, and with the pool off
+  (the default) nothing had called it yet, so a route that took this
+  connection got one that knew no database. Conectar returns at once when
+  the connection is already open. }
 function TRALDBSQLDB.GetNativeConnection: TComponent;
 begin
+  Result := GetConnector;
+end;
+
+function TRALDBSQLDB.GetConnector: TSQLConnector;
+begin
+  Conectar;
   Result := FConnector;
 end;
 
@@ -273,6 +286,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -332,6 +348,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;

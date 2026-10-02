@@ -124,6 +124,8 @@ type
       by one waiting Acquire. The signal is kept until someone waits, so a
       Release that lands between a waiter's check and its wait is not lost }
     FFreeEvent: TEvent;
+    { items out of the pool and not yet closed - see RemoveItemLocked }
+    FDead: TList;
 
     FOnCreateConnection: TRALDBOnPoolCreate;
     FOnError: TRALDBOnError;
@@ -137,6 +139,8 @@ type
     function GetFreeItemLocked: TRALDBPoolItem;
     function IsExpiredLocked(AItem: TRALDBPoolItem): boolean;
     procedure RemoveItemLocked(AItem: TRALDBPoolItem);
+    { closes what RemoveItemLocked set aside - called WITHOUT the lock }
+    procedure FreeDead;
 
     function GetAvailableCount: IntegerRAL;
     function GetInUseCount: IntegerRAL;
@@ -294,6 +298,7 @@ begin
   FTotalTimeouts := 0;
   FWaiting := 0;
   FFreeEvent := TEvent.Create(nil, False, False, '');
+  FDead := TList.Create;
 end;
 
 destructor TRALDBConnectionPool.Destroy;
@@ -308,8 +313,10 @@ begin
   finally
     Unlock;
   end;
+  FreeDead;
 
   FreeAndNil(FItems);
+  FreeAndNil(FDead);
   FreeAndNil(FOptions);
   FreeAndNil(FFreeEvent);
   inherited Destroy;
@@ -429,7 +436,41 @@ begin
   if vPos >= 0 then
     FItems.Delete(vPos);
 
-  AItem.Free;
+  { set aside, not freed: freeing disconnects, which is network I/O - a
+    database that went away makes it wait out a TCP timeout - and it ran
+    right here, with every Acquire and Release of every request queued
+    behind the lock. Connecting was already kept outside it, for the same
+    reason. Whoever let the lock go calls FreeDead. }
+  FDead.Add(AItem);
+end;
+
+procedure TRALDBConnectionPool.FreeDead;
+var
+  vDead: TList;
+  vInt: IntegerRAL;
+begin
+  { the count read without the lock is a hint, nothing more: an item set
+    aside after this look is closed by the next caller }
+  if FDead.Count = 0 then
+    Exit;
+
+  { copied out, not swapped: FDead stays the same object for the life of the
+    pool, so the unlocked look above never reads a list someone freed }
+  vDead := TList.Create;
+  try
+    Lock;
+    try
+      vDead.Assign(FDead);
+      FDead.Clear;
+    finally
+      Unlock;
+    end;
+
+    for vInt := 0 to Pred(vDead.Count) do
+      TRALDBPoolItem(vDead.Items[vInt]).Free;
+  finally
+    vDead.Free;
+  end;
 end;
 
 function TRALDBConnectionPool.GetAvailableCount: IntegerRAL;
@@ -546,6 +587,7 @@ begin
       finally
         Unlock;
       end;
+      FreeDead;
       SignalFree; // the slot is open again: a waiter may create there
 
       if Assigned(FOnError) then
@@ -611,6 +653,7 @@ begin
       finally
         Unlock;
       end;
+      FreeDead; // what DropExpiredLocked and GetFreeItemLocked set aside
 
       if (vItem <> nil) or vFull then
         Break;
@@ -683,6 +726,7 @@ begin
   finally
     Unlock;
   end;
+  FreeDead;
 
   // connections created with pooling off are not tracked, so they die here
   if vItem = nil then
@@ -707,6 +751,7 @@ begin
   finally
     Unlock;
   end;
+  FreeDead;
 end;
 
 procedure TRALDBConnectionPool.Prepare;
@@ -757,6 +802,7 @@ begin
           finally
             Unlock;
           end;
+          FreeDead;
         end;
       end;
       vList.Delete(vInt);

@@ -176,7 +176,16 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches: the next Open then
+        opened the dataset locally and empty, and every Post was taken for a
+        load and never sent }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      except
+        FLoading := False;
+        raise;
+      end;
     end;
     Exit;
   end
@@ -553,7 +562,11 @@ begin
     ADataset.LoadFromStream(AStream);
   {$ENDIF}
   {$ELSE}
-  vMethod.Data := Pointer(Self);
+  { the dataset, not Self: this is a class procedure, so Self is the class, and
+    the method ran on the VMT - an access violation on every native answer
+    when Zeos publishes LoadFromStream (ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT).
+    RALDBZeos does the same thing right }
+  vMethod.Data := Pointer(ADataset);
   vMethod.Code := ADataset.MethodAddress('LoadFromStream');
   if vMethod.Code <> nil then
   begin

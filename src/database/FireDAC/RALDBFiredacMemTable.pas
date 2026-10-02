@@ -632,7 +632,16 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, FStorage, OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches: the next Open then
+        opened the dataset locally and empty, and every Post was taken for a
+        load and never sent }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, OnQueryResponse);
+      except
+        FLoading := False;
+        raise;
+      end;
     end;
   end
   else if (not AValue) and (not FLoading) then
