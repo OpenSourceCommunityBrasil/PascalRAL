@@ -231,6 +231,10 @@ type
                          out AApplies, AMatches: boolean);
     /// Whether SSL.Pins has anything to say about the host being called
     function HasPinForHost: boolean;
+    /// SSL.Required or a pin for the host being called: no plain http, neither
+    /// as the URL - BeforeSendUrl refuses it up front - nor as the target of a
+    /// redirect the engine would follow on its own
+    function TLSRequired: boolean;
     /// The single place a server certificate is judged, for every engine:
     /// the event decides, else the pin, else what the engine itself concluded.
     /// Engines only translate their native callback into TRALCertInfo and ask
@@ -268,6 +272,15 @@ type
     class function EngineName : StringRAL; virtual; abstract;
     class function EngineVersion : StringRAL; virtual; abstract;
     class function PackageDependency : StringRAL; virtual; abstract;
+
+    /// Whether a redirect to ALocation takes a call off TLS: the hop it comes
+    /// from is https and the target an absolute http:// URL. A relative target,
+    /// or one starting with //, keeps the scheme it came from. Engines that
+    /// follow redirects ask this with TLSRequired and hand the 3xx back as it
+    /// came instead of following it
+    class function LeavesTLS(ACurrentIsTLS: boolean; const ALocation: StringRAL): boolean;
+    /// AURL is https
+    class function IsTLSURL(const AURL: StringRAL): boolean;
 
     { The two below answer what this engine CAN do, on this platform and this
       compiler. They are class functions on purpose: the IDE has to be able to
@@ -611,7 +624,12 @@ type
                   AExecBehavior: TRALExecBehavior = ebSingleThread); overload;
 
     { The calling thread's request. Two threads never share one, so the
-      fill-then-call pattern is safe from either - see TRALThreadRequest. }
+      fill-then-call pattern is safe from either - see TRALThreadRequest.
+      One gap is left on purpose: another thread's FIRST read copies the
+      creator thread's request, and the creator does not lock while filling
+      it - so finish filling before starting the thread that reads it (a
+      TTask started mid-fill can copy it half-written). Closing it would put a
+      lock on every read of Request. }
     property Request: TRALRequest read GetRequest;
   published
     /// The Accept-Encoding sent with every request: what this client can read.
@@ -2052,6 +2070,26 @@ begin
   ResolvePin('', Result, vMatches);
 end;
 
+function TRALClientHTTP.TLSRequired: boolean;
+begin
+  Result := FParent.SSL.Required or HasPinForHost;
+end;
+
+class function TRALClientHTTP.IsTLSURL(const AURL: StringRAL): boolean;
+begin
+  Result := RALSameName(Copy(RALTrim(AURL), 1, 8), 'https://');
+end;
+
+class function TRALClientHTTP.LeavesTLS(ACurrentIsTLS: boolean;
+  const ALocation: StringRAL): boolean;
+begin
+  { every engine that follows redirects did it on its own, so a server - or
+    whoever sat between - answering 301 to http:// took the call off TLS
+    behind every check that refused an http URL up front: SSL.Required, the
+    pin. Only an absolute http:// target leaves TLS }
+  Result := ACurrentIsTLS and RALSameName(Copy(RALTrim(ALocation), 1, 7), 'http://');
+end;
+
 function TRALClientHTTP.AcceptServerCert(const ACert: TRALCertInfo): boolean;
 var
   vCert: TRALCertInfo;
@@ -2185,8 +2223,7 @@ begin
     { Both refusals happen HERE, before a socket is opened, and not inside the
       TLS callback: that one runs on the stack of a C library (OpenSSL), where
       an exception would unwind through frames that cannot handle it. }
-    if (FParent.SSL.Required or HasPinForHost) and
-       (not SameText(Copy(vURL, 1, 6), 'https:')) then
+    if TLSRequired and not IsTLSURL(vURL) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertRequiresTLS, [vURL])));
@@ -2424,7 +2461,7 @@ begin
     // does not change the end state may go elsewhere (RFC 7231 4.2.2). This is
     // what stops a timed-out POST from being written twice.
     rteTimeout:
-      Result := AMethod in [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+      Result := AMethod in RALIdempotentMethods;
   else
     Result := False;
   end;

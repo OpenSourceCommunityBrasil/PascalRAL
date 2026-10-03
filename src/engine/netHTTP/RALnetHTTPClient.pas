@@ -15,6 +15,12 @@ uses
   RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
   RALCompress, RALResponse;
 
+{ whether the RTL lets the engine veto a redirect before it is followed - see
+  KeepOnTLS; tested by declaration, like RALNETHTTP_VERSIONED below }
+{$IF Declared(THTTPRedirectEvent)}
+  {$DEFINE RALNETHTTP_REDIRECTEVENT}
+{$IFEND}
+
 type
   { TRALnetHTTPClientHTTP }
 
@@ -34,11 +40,18 @@ type
     /// pin, no event and Verify left alone, the RTL keeps the behaviour it
     /// always had and does not even go fetch the certificate to show it.
     function WantsCertHandler: boolean;
-    /// Whether this call may run over a transport shared with other clients.
-    /// The certificate policy is no longer in the way: it is part of the pool
-    /// KEY, so everyone on a shared transport judges certificates by the same
-    /// rules - see CertPolicyKey and TRALnetHTTPHolder.Owner.
+    /// Whether this call may run over a transport shared with other clients:
+    /// ShareConnection, and no say over the certificate - see the body for
+    /// why the RTL rules that out.
     function CanShare: boolean;
+    {$IFDEF RALNETHTTP_REDIRECTEVENT}
+    /// Refuses a redirect that would take a TLS call to plain http. Installed
+    /// only where TLS is required (SSL.Required or a pin), and stateless, so
+    /// a shared transport can carry it.
+    class procedure KeepOnTLS(const Sender: TObject; const ARequest: IHTTPRequest;
+                              const AResponse: IHTTPResponse; ARedirections: Integer;
+                              var AAllow: Boolean);
+    {$ENDIF}
   protected
     /// Picks the transport for this call, borrowing or giving back as the
     /// settings require, and returns it already configured.
@@ -123,23 +136,17 @@ type
       different intervals would share a transport and one would decide for the
       other. }
     KeepAlive: IntegerRAL;
-    { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER.
-
-      The validation handler is installed ON THE TRANSPORT, and the one who
-      installs it is the first client to ask for it. If two clients with
-      different policies shared a transport, one's decision would stand for the
-      other - which is a security hole, not a performance one.
-
-      Putting the policy in the key, only those with an IDENTICAL policy share:
-      same pins, same verification mode and literally the same method (code and
-      instance). There is then nothing left to disagree about.
-
-      One difference is worth noting honestly: the Sender reaching the event is
-      the transport's OWNER at that moment (see TRALnetHTTPHolder.Owner), not
-      necessarily the client that made the request. Since the policy is the
-      same the decision is the same, but anyone using Sender for anything else
-      has to know this. }
+    { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER. Only the
+      clients that leave the certificate to the engine share at all (see
+      CanShare), and for them it is little more than the Verify mode - but with
+      it in the key no rule can ever put two policies on one transport by
+      accident: a TLS connection is judged once, at its handshake, and whoever
+      reuses it inherits the verdict of whoever opened it. }
     CertPolicy: StringRAL;
+    { whether a redirect may leave TLS - see KeepOnTLS. On a shared transport
+      it is SSL.Required alone (a pin keeps its client off the pool), and it
+      is a handler on the object, so it is part of the key too }
+    NoDowngrade: boolean;
     function Key: StringRAL;
   end;
 
@@ -150,23 +157,6 @@ type
       is the sign that the holder may die - and it is a list rather than a
       counter for exactly what comes next. }
     Sharers: TList;
-    { THE CLIENT THAT ANSWERS FOR THE CERTIFICATE POLICY RIGHT NOW.
-
-      The transport is shared; the validation handler cannot be: it is a METHOD
-      of one TRALnetHTTPClientHTTP, and that object may be destroyed while
-      another sharing the same transport carries on using it. Installing one
-      client's method on everyone's transport would leave a dangling pointer
-      waiting for the next TLS negotiation.
-
-      So what goes to the RTL is the HOLDER's handler, assigned ONCE at
-      creation - the RTL never sees the pointer change, so there is no torn
-      write with several threads - and it forwards to Owner. Each client
-      leaving hands Owner over to another that is still alive.
-
-      Forwarding to any of them gives the same answer: Verify, Pins, the user's
-      handler and the host all go into the pool key, so whoever shares a
-      transport has an IDENTICAL policy - see CertPolicy. }
-    Owner: TRALnetHTTPClientHTTP;
     {$IFDEF RALWindows}
     { Whether this transport is currently capped at one connection, and what
       WinHTTP had there before - so putting it back means putting back the
@@ -177,8 +167,6 @@ type
     {$ENDIF}
     constructor Create;
     destructor Destroy; override;
-    procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
-                           const Certificate: TCertificate; var Accepted: boolean);
     { Caps this transport at one connection, which is what turns h2 into
       multiplexing. Called before the first request, from PoolAcquire. }
     procedure CapConnections;
@@ -198,6 +186,8 @@ begin
             IntToStr(ConnectTimeout) + '|' + IntToStr(RequestTimeout) + '|' +
             IntToStr(MaxRedirects) + '|' + IntToStr(Ord(Version)) + '|' +
             IntToStr(KeepAlive) + '|' + CertPolicy;
+  if NoDowngrade then
+    Result := Result + '|tls';
 end;
 
 constructor TRALnetHTTPHolder.Create;
@@ -213,28 +203,6 @@ begin
   inherited;
 end;
 
-
-procedure TRALnetHTTPHolder.ValidateCert(const Sender: TObject;
-  const ARequest: TURLRequest; const Certificate: TCertificate;
-  var Accepted: boolean);
-begin
-  { Under the pool lock on purpose: it is what guarantees the Owner read here
-    is still alive by the time it is called, since a client leaving only swaps
-    Owner inside this very lock. It costs nothing - validating happens once per
-    handshake, not per request - and it does not deadlock on re-entry, because
-    TCriticalSection is recursive. }
-  vPoolLock.Enter;
-  try
-    if Owner <> nil then
-      Owner.ValidateCert(Sender, ARequest, Certificate, Accepted)
-    else
-      { with nobody left to answer for the policy, refusing is the only safe
-        answer: accepting would pass a certificate no one ever checked }
-      Accepted := False;
-  finally
-    vPoolLock.Leave;
-  end;
-end;
 
 {$IFDEF RALWindows}
 { ONE CONNECTION FOR EVERY REQUEST, which is what HTTP/2 promises and WinHTTP
@@ -629,14 +597,11 @@ begin
     begin
       vHolder := TRALnetHTTPHolder(vPool.Objects[vIdx]);
       vHolder.Sharers.Add(AClient);
-      if vHolder.Owner = nil then
-        vHolder.Owner := AClient;
     end
     else
     begin
       vHolder := TRALnetHTTPHolder.Create;
       vHolder.Sharers.Add(AClient);
-      vHolder.Owner := AClient;
       vHolder.Http := TNetHTTPClient.Create(nil);
       {$IFDEF DELPHI10_1UP}
       vHolder.Http.Asynchronous := False;
@@ -645,22 +610,18 @@ begin
       vHolder.Http.MaxRedirects := ASetup.MaxRedirects;
       {$ENDIF}
       vHolder.Http.UserAgent := ASetup.UserAgent;
-
-      { THE CERTIFICATE POLICY GOES ALONG, and it has to be here.
-
-        On its own transport the handler is installed by the request itself,
-        further down. On a borrowed transport that stretch does not run - it
-        only covers the own transport - and without this, sharing handed back a
-        connection with NO policy at all: the client's pin and
-        OnValidateServerCert were dropped in silence, which is the worst way to
-        lose them.
-
-        Installed exactly once, at creation, and pointing at the HOLDER's
-        handler - see TRALnetHTTPHolder.Owner for why it is not the client's.
-        The sharers have an identical policy by construction of the key, so
-        asking the first one is enough. }
-      if AClient.WantsCertHandler then
-        vHolder.Http.OnValidateServerCertificate := vHolder.ValidateCert;
+      { no certificate handler, ever: a client that needs one never shares -
+        see CanShare }
+      {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
+      if ASetup.NoDowngrade then
+        vHolder.Http.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS;
+      { nothing of the application's ever runs here, so nothing needs the main
+        thread - see KeepOnTLS }
+      vHolder.Http.SynchronizeEvents := False;
+      {$ELSEIF Defined(DELPHI10_1UP)}
+      { an RTL with no say over a redirect: TLS required means none followed }
+      vHolder.Http.HandleRedirects := not ASetup.NoDowngrade;
+      {$IFEND}
       {$IFDEF RALNETHTTP_VERSIONED}
       case ASetup.Version of
         rhv11: vHolder.Http.ProtocolVersion := THTTPProtocolVersion.HTTP_1_1;
@@ -712,17 +673,6 @@ begin
       Exit;
     vHolder := TRALnetHTTPHolder(vPool.Objects[vIdx]);
     vHolder.Sharers.Remove(AClient);
-
-    { the one leaving may not go on answering for everyone else's certificate:
-      Owner is handed to someone who stays. If nobody stays, the list is empty
-      and the holder dies just below. }
-    if vHolder.Owner = AClient then
-    begin
-      if vHolder.Sharers.Count > 0 then
-        vHolder.Owner := TRALnetHTTPClientHTTP(vHolder.Sharers[0])
-      else
-        vHolder.Owner := nil;
-    end;
 
     if vHolder.Sharers.Count <= 0 then
     begin
@@ -915,14 +865,41 @@ end;
 
 function TRALnetHTTPClientHTTP.CanShare: boolean;
 begin
-  { The certificate policy no longer stands in the way of sharing - it goes
-    into the KEY, so the sharers have an identical policy. This used to return
-    False whenever the client wanted a say over the certificate, and the effect
-    was the opposite of the intent: an application using a pin or
-    OnValidateServerCert - that is, any application taking TLS seriously -
-    never shared anything. }
-  Result := Parent.ShareConnection;
+  { A client with a say over the certificate - a pin, OnValidateServerCert,
+    svNever - keeps a transport of its own, and what decides that is the RTL,
+    not a preference. THTTPClient keeps the verdict on the OBJECT, not on the
+    request (FSecureFailureReasons: a TLS failure of one request writes it,
+    every Execute clears it), and fires the event on every HTTPS request
+    rather than once per handshake. On a shared transport one request could
+    read another's verdict - a bad certificate seen as good by a handler
+    deciding on Trusted, or the event and the pin skipped on a good
+    connection - and every judgement ran under the pool's global lock, with
+    the host of whichever client happened to own the transport.
+    Clients that leave the certificate to the engine share as before: nothing
+    of theirs is decided per request. }
+  Result := Parent.ShareConnection and not WantsCertHandler;
 end;
+
+{$IFDEF RALNETHTTP_REDIRECTEVENT}
+{ The RTL follows a redirect on its own, after every check that refuses an
+  http URL up front has passed, and sends the request again - headers, token,
+  body - to wherever Location points. To http:// that is in the clear. Refused
+  here, its loop stops and the 3xx itself is the answer, as on Indy and fpHTTP.
+  TNetHTTPClient hands its events to the main thread through Synchronize when
+  SynchronizeEvents is on (the default) and a VCL or FMX application is linked
+  - which waits for ever in a service, or with the main thread blocked on the
+  caller. This touches no UI, so it runs on the calling thread: SynchronizeEvents
+  is off on a shared transport, and on an own one unless the application's
+  certificate handler is installed, which keeps running where it always did. }
+class procedure TRALnetHTTPClientHTTP.KeepOnTLS(const Sender: TObject;
+  const ARequest: IHTTPRequest; const AResponse: IHTTPResponse;
+  ARedirections: Integer; var AAllow: Boolean);
+begin
+  if LeavesTLS(SameText(ARequest.URL.Scheme, 'https'),
+               StringRAL(AResponse.HeaderValue['Location'])) then
+    AAllow := False;
+end;
+{$ENDIF}
 
 function TRALnetHTTPClientHTTP.PickTransport(const AURL: StringRAL): TNetHTTPClient;
 var
@@ -947,6 +924,7 @@ begin
   vSetup.Version := Parent.HTTPVersion;
   vSetup.KeepAlive := Parent.KeepAliveInterval;
   vSetup.CertPolicy := CertPolicyKey;
+  vSetup.NoDowngrade := TLSRequired;
 
   vKey := vSetup.Key;
   if vKey <> FSharedKey then
@@ -1061,6 +1039,20 @@ begin
     vHttp.MaxRedirects := Parent.MaxRedirects;
     {$ENDIF}
     vHttp.UserAgent := Parent.UserAgent;
+
+    { per request: a pin is per host, so TLSRequired is too }
+    {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
+    if TLSRequired then
+      vHttp.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS
+    else
+      vHttp.OnRedirect := nil;
+    { the application's certificate handler keeps running where it always
+      did; RAL's own redirect check does not need the main thread - see
+      KeepOnTLS }
+    vHttp.SynchronizeEvents := WantsCertHandler;
+    {$ELSEIF Defined(DELPHI10_1UP)}
+    vHttp.HandleRedirects := not TLSRequired;
+    {$IFEND}
 
     {$IFDEF RALNETHTTP_VERSIONED}
     case Parent.HTTPVersion of

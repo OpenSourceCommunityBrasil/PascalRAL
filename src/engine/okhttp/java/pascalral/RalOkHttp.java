@@ -1,5 +1,6 @@
 package pascalral;
 
+import java.io.IOException;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.cert.Certificate;
@@ -32,6 +33,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.tls.OkHostnameVerifier;
+import okio.BufferedSink;
 
 /**
  * Bridge between PascalRAL and OkHttp, so that an Android client can speak
@@ -204,9 +206,11 @@ public final class RalOkHttp {
                                                   int pingMs,
                                                   boolean allowHttp2,
                                                   boolean followRedirects,
+                                                  boolean followSslRedirects,
                                                   String shareKey) {
     String key = (shareKey == null ? "" : shareKey) + "|" + connectMs + "|" + readMs
-               + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects;
+               + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects
+               + "|" + followSslRedirects;
     OkHttpClient cached = CLIENTS.get(key);
     if (cached != null) {
       return cached;
@@ -217,7 +221,9 @@ public final class RalOkHttp {
         .readTimeout(readMs, TimeUnit.MILLISECONDS)
         .writeTimeout(readMs, TimeUnit.MILLISECONDS)
         .followRedirects(followRedirects)
-        .followSslRedirects(followRedirects)
+        // false where the caller requires TLS: a redirect from https to plain
+        // http would resend the request - token included - in the clear
+        .followSslRedirects(followSslRedirects)
         .retryOnConnectionFailure(true);
 
     // WHY THIS EXISTS: an HTTP/2 connection is long lived and shared, so a peer
@@ -326,6 +332,7 @@ public final class RalOkHttp {
                             byte[] body, String contentType,
                             int connectMs, int readMs, int pingMs,
                             boolean allowHttp2, boolean followRedirects,
+                            boolean followSslRedirects,
                             String shareKey, RalCertJudge judge) {
     Result r = new Result();
     RESULT.set(r);
@@ -341,6 +348,15 @@ public final class RalOkHttp {
         // POST/PUT/PATCH with nothing to send still need an empty body, or
         // OkHttp refuses to build the request.
         rb = RequestBody.create(new byte[0], null);
+      }
+      // retryOnConnectionFailure replays a call whose body it can send twice,
+      // even after the request went out - a byte[] body always can. For a POST
+      // that is the write the server may already have applied: a Wi-Fi to 4G
+      // switch in the middle of one wrote it twice. A one-shot body is never
+      // sent again once sending started, while a route or connect failure,
+      // where nothing reached the server, is still retried.
+      if (rb != null && !idempotent(method)) {
+        rb = oneShot(rb);
       }
 
       Request.Builder q = new Request.Builder().url(url).method(method, rb);
@@ -366,7 +382,8 @@ public final class RalOkHttp {
         }
       }
 
-      resp = client(connectMs, readMs, pingMs, allowHttp2, followRedirects, shareKey)
+      resp = client(connectMs, readMs, pingMs, allowHttp2, followRedirects,
+                    followSslRedirects, shareKey)
                .newCall(q.build()).execute();
       r.status = resp.code();
       r.protocol = resp.protocol().toString();
@@ -406,7 +423,7 @@ public final class RalOkHttp {
   /** Which protocol a plain GET settles on - used to prove h2 on a device. */
   public static String probe(String url, int connectMs, int readMs) {
     int rc = execute("GET", url, "", null, "", connectMs, readMs,
-                     0, true, true, "", ACCEPT_ALL);
+                     0, true, true, true, "", ACCEPT_ALL);
     return (rc == 0) ? (protocol() + " status=" + status()) : ("error: " + error());
   }
 
@@ -425,6 +442,33 @@ public final class RalOkHttp {
   /** Methods OkHttp refuses to attach a body to. */
   private static boolean permitsBody(String method) {
     return !"GET".equals(method) && !"HEAD".equals(method);
+  }
+
+  /** RFC 9110 9.2.2 - the same list RAL's own resend rule uses. */
+  private static boolean idempotent(String method) {
+    return "GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)
+        || "TRACE".equals(method) || "PUT".equals(method) || "DELETE".equals(method);
+  }
+
+  /** The same body, marked one-shot - see execute(). */
+  private static RequestBody oneShot(final RequestBody body) {
+    return new RequestBody() {
+      @Override public MediaType contentType() {
+        return body.contentType();
+      }
+
+      @Override public long contentLength() throws IOException {
+        return body.contentLength();
+      }
+
+      @Override public void writeTo(BufferedSink sink) throws IOException {
+        body.writeTo(sink);
+      }
+
+      @Override public boolean isOneShot() {
+        return true;
+      }
+    };
   }
 
   private static String sha256Hex(byte[] der) {

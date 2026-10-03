@@ -63,6 +63,7 @@ type
                      body: TJavaArray<Byte>; contentType: JString;
                      connectMs: Integer; readMs: Integer; pingMs: Integer;
                      allowHttp2: Boolean; followRedirects: Boolean;
+                     followSslRedirects: Boolean;
                      shareKey: JString; judge: JRalCertJudge): Integer; cdecl;
     procedure release(shareKey: JString); cdecl;
     function status: Integer; cdecl;
@@ -501,6 +502,9 @@ begin
         does not expose the number. So MaxRedirects is honoured where it can
         be: zero means do not follow at all, anything else means follow. }
       Parent.MaxRedirects > 0,
+      { never from https to plain http where TLS is required - see
+        TRALClientHTTP.LeavesTLS }
+      (Parent.MaxRedirects > 0) and not TLSRequired,
       StringToJString(string(ShareKey)),
       vJudge);
 

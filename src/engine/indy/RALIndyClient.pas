@@ -26,6 +26,8 @@ type
 
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
+    procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
+                         var Handled: boolean; var VMethod: TIdHTTPMethod);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -47,6 +49,17 @@ implementation
 class function TRALIndyClientHTTP.SupportsCertPin: boolean;
 begin
   Result := True;
+end;
+
+{ Not followed off TLS - see TRALClientHTTP.LeavesTLS. Declined, Indy hands the
+  3xx back as it came, Location included. URL is the hop being redirected, set
+  for each request of the chain }
+procedure TRALIndyClientHTTP.DoRedirect(Sender: TObject; var dest: string;
+  var NumRedirect: Integer; var Handled: boolean; var VMethod: TIdHTTPMethod);
+begin
+  if Handled and TLSRequired and
+     LeavesTLS(SameText(FHttp.URL.Protocol, 'https'), StringRAL(dest)) then
+    Handled := False;
 end;
 
 function TRALIndyClientHTTP.VerifyPeer(ACertificate: TIdX509; AOk: boolean;
@@ -104,6 +117,7 @@ begin
     PATCH. TIdTCPClientCustom.Connect copies this onto the socket, so it also
     survives the IOHandler being swapped for the SSL one. }
   FHttp.UseNagle := False;
+  FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];

@@ -58,6 +58,8 @@ type
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
+    function DoRedirect(Sender: THttpClientSocket;
+                        var Context: THttpClientRequest): boolean;
   public
     destructor Destroy; override;
 
@@ -72,6 +74,11 @@ type
   end;
 
 implementation
+
+uses
+  { IsHttp and hfConnectionClose, for the same test mORMot makes before it
+    reopens on a redirect - see DoRedirect }
+  mormot.core.text, mormot.net.http;
 
 const
   { mORMot2 returns this from THttpClientSocket.Request when the request failed
@@ -148,6 +155,38 @@ begin
   Result := True;
 end;
 
+{ mORMot follows a redirect inside Request, and when the target is another
+  server, port or scheme - or the answer closed the connection - it opens the
+  new connection by itself, in a handshake SendUrl never sees. So:
+  - SSL.Required or a pin: never off TLS;
+  - a pin or OnValidateServerCert: never onto a TLS connection nobody judges.
+    EachPeerVerify keeps every handshake going and only SendUrl, after
+    OpenUri, decides - so that one would take any certificate;
+  - otherwise OpenSSL checks the name, and it has to be the new host's:
+    HostNamesCsv still names the first one, and every redirect to another
+    https host failed on it.
+  Refused, the 3xx itself is the answer, as on the other engines. }
+function TRALSynopseClientHTTP.DoRedirect(Sender: THttpClientSocket;
+  var Context: THttpClientRequest): boolean;
+var
+  vUri: TUri;
+  vHost: StringRAL;
+  vPort: IntegerRAL;
+begin
+  Result := not (TLSRequired and LeavesTLS(Sender.ServerTls, StringRAL(Context.Url)));
+  if Result and IsHttp(Context.Url) and vUri.From(Context.Url) and vUri.Https and
+     ((hfConnectionClose in Sender.Http.HeaderFlags) or (vUri.Server <> Sender.Server) or
+      (vUri.Port <> Sender.Port) or not Sender.ServerTls) then
+  begin
+    Result := not CertCheckWanted;
+    if Result then
+    begin
+      RALSplitHostPort(StringRAL(vUri.Server), vHost, vPort);
+      Sender.TLS.HostNamesCsv := RawUtf8(vHost);
+    end;
+  end;
+end;
+
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
@@ -177,9 +216,8 @@ begin
   vKeepAlive := 0;
 
   try
-    { same scheme://host:port as the socket we already hold: reuse it. mORMot
-      reopens the connection by itself (DoRetry) when the server dropped an
-      idle one, so a stale socket costs one retry, never a failed request }
+    { same scheme://host:port as the socket we already hold: reuse it, once the
+      probe below says the server has not closed it }
     vServer := '';
     if vUri.From(UTF8String(AURL)) then
       vServer := StringRAL(vUri.Scheme) + '://' + StringRAL(vUri.Server) + ':' +
@@ -278,6 +316,7 @@ begin
         end;
       end;
       FServer := vServer;
+      FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
       { The verdict, taken once and on our own stack. Refusing costs a closed
         connection and nothing else: not one byte of the request - the token
@@ -480,8 +519,12 @@ begin
     end;
   end;
 
-  // a socket that failed, or one the server was told to close, is not kept
-  if vFailed or (vKeepAlive = 0) then
+  { a socket that failed, or one the server was told to close, is not kept -
+    nor one a redirect left connected to another server: kept, the next call
+    to FServer would go there, token and all }
+  if vFailed or (vKeepAlive = 0) or
+     ((FHttp <> nil) and ((FHttp.Server <> vUri.Server) or (FHttp.Port <> vUri.Port) or
+                          (FHttp.ServerTls <> vUri.Https))) then
     DropSocket;
 end;
 

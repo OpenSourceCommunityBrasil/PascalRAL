@@ -168,6 +168,11 @@ const
   {$IFEND}
   EmptyStr: StringRAL = StringRAL('');
 
+  { methods whose repetition leaves the server where one call would
+    (RFC 7231 4.2.2): the only ones a client may send again once the request
+    may have been delivered }
+  RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+
 // Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
 

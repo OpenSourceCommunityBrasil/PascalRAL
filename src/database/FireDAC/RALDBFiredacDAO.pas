@@ -75,12 +75,14 @@ type
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
     vOnValidateSQL: TRALDBOnValidateSQL;
+    vOnValidateApplyUpdates: TRALDBOnValidateSQL;
     procedure SetDriverName(const value: StringRAL);
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetRALServer(const value: TRALServer);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
+    procedure CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -93,14 +95,26 @@ type
     { Fired before a statement that came over the wire reaches the database.
       The DAO route carries whatever SQL the client sends, so without this the
       caller can run anything the connection user is allowed to run. Set AAllow
-      to False and the request gets an error, nothing is executed }
+      to False and the request gets an error, nothing is executed.
+      ApplyUpdates passes its SELECT here too, but what it runs are the
+      INSERT/UPDATE/DELETE FireDAC builds on the server from the client's
+      delta - see OnValidateApplyUpdates }
     property OnValidateSQL: TRALDBOnValidateSQL read vOnValidateSQL
       write vOnValidateSQL;
+    { Fired for an ApplyUpdates, after OnValidateSQL accepted its SELECT: ASQL
+      is that SELECT, and saying yes lets the client insert, change and delete
+      rows of the tables behind it. With OnValidateSQL assigned and this one
+      not, ApplyUpdates is refused - a validator that only ever saw a SELECT
+      cannot have meant to allow writes }
+    property OnValidateApplyUpdates: TRALDBOnValidateSQL read vOnValidateApplyUpdates
+      write vOnValidateApplyUpdates;
   end;
 
 resourcestring
   emTypeNotImplemented = 'Type not Implemented.';
   emInvalidServer = 'RALServer not configured.';
+  emApplyUpdatesNotValidated = 'ApplyUpdates refused: OnValidateSQL is assigned and ' +
+    'OnValidateApplyUpdates is not.';
 
 procedure Register;
 
@@ -108,7 +122,7 @@ implementation
 
 { Reads the AffectedRows the server sent back, by name and then anonymously.
 
-  OnReplyQuery answers Type='1' (ExecSQL) and Type='2' (ApplyUpdates) with a
+  OnReplyQuery answers Type='1' (ApplyUpdates) and Type='2' (ExecSQL) with a
   single body param. EncodeBody skips multipart for a lone body param and sends
   the raw value, so the param name never reaches the wire and DecodeBody names
   whatever arrives 'ral_body' - ParamByName('AffectedRows') came back nil and
@@ -656,6 +670,21 @@ begin
     raise Exception.Create(emDBSQLRejected);
 end;
 
+procedure TRALFDConnection.CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
+var
+  vAllow: Boolean;
+begin
+  if Assigned(vOnValidateApplyUpdates) then
+  begin
+    vAllow := True;
+    vOnValidateApplyUpdates(Self, ARequest, ASQL, vAllow);
+    if not vAllow then
+      raise Exception.Create(emDBSQLRejected);
+  end
+  else if Assigned(vOnValidateSQL) then
+    raise Exception.Create(emApplyUpdatesNotValidated);
+end;
+
 procedure TRALFDConnection.OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vQueryAux, vQueryAux2: TFDQuery;
@@ -669,6 +698,8 @@ var
   i: integer;
   vAuxConnClone: TFDConnection;
   vSQL: StringRAL;
+  { 0 Open, 1 ApplyUpdates, 2 ExecSQL - see TRALFDQuery }
+  vType: StringRAL;
 begin
   try
     try
@@ -694,7 +725,10 @@ begin
       { Read once: both queries get the same text, and OnValidateSQL has to see
         it before either of them reaches the database }
       vSQL := TStringStream(vAuxStringStream).DataString;
+      vType := ARequest.ParamByName('Type').AsString;
       CheckSQL(ARequest, vSQL);
+      if vType = '1' then
+        CheckApplyUpdates(ARequest, vSQL);
 
       { nil owner, not Self: this runs on the server's thread pool and Self is
         the one TRALFDConnection of the datamodule, so concurrent requests were
@@ -705,7 +739,7 @@ begin
       vQueryAux.Connection := vAuxConnClone;
       vQueryAux.SQL.Text := vSQL;
 
-      if ARequest.ParamByName('Type').AsString = '1' then
+      if vType = '1' then
       begin
         vQueryAux2 := TFDQuery.Create(nil);
         vQueryAux2.Connection := vAuxConnClone;
@@ -743,7 +777,7 @@ begin
           if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
             vQueryAux.Params[i].Clear;
 
-          if ARequest.ParamByName('Type').AsString = '1' then
+          if vType = '1' then
           begin
             if vNeedAddParam then
               vQueryAux2.Params.Add;
@@ -768,7 +802,7 @@ begin
       if Assigned(vOnQueryAfterOpen) then
         vQueryAux.AfterOpen := vOnQueryAfterOpen;
 
-      if ARequest.ParamByName('Type').AsString = '1' then
+      if vType = '1' then
       begin
         vQueryAux.Close;
         vQueryAux.CachedUpdates := true;
@@ -815,7 +849,7 @@ begin
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux2.Delta.DataView.Rows.Count.ToString, rpkBODY);
       end
-      else if ARequest.ParamByName('Type').AsString = '0' then
+      else if vType = '0' then
       begin
         vQueryAux.Open;
 
@@ -829,7 +863,7 @@ begin
 
         vQueryAux.Close;
       end
-      else if ARequest.ParamByName('Type').AsString = '2' then
+      else if vType = '2' then
       begin
         vQueryAux.ExecSQL;
 
