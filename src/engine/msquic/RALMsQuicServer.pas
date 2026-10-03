@@ -1190,10 +1190,13 @@ begin
           vRequest.ClientInfo.ConnectionID := AConnID;
           vRequest.ClientInfo.MACAddress := '';
 
-          if vMethod <= Byte(Ord(High(TRALMethod))) then
+          { a byte off the wire: amALL is no method, and anything past the last
+            real one is amUNKNOWN, which ValidateRequest answers with 501 - it
+            used to become amGET, the same mistake HTTPMethodToRALMethod made }
+          if (vMethod > Byte(Ord(amALL))) and (vMethod < Byte(Ord(amUNKNOWN))) then
             vRequest.Method := TRALMethod(vMethod)
           else
-            vRequest.Method := amGET;
+            vRequest.Method := amUNKNOWN;
 
           vRequest.Query := vUrl;
           vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
