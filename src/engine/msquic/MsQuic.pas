@@ -776,6 +776,9 @@ begin
             (AStatus = QUIC_STATUS_CERT_UNTRUSTED_ROOT) or
             (AStatus = QUIC_STATUS_CERT_NO_CERT) or
             ((AStatus and $FFFFFF00) = QUIC_STATUS_TLS_ALERT_BASE)
+            { Windows: the whole FACILITY_CERT range - CERT_E_* and TRUST_E_*,
+              of which the three constants above are only part }
+            {$IFDEF MSWINDOWS} or ((AStatus and $FFFF0000) = $800B0000){$ENDIF}
             {$IFNDEF MSWINDOWS} or ((AStatus and $FFFFFF00) = $0BEBC400){$ENDIF};
 end;
 

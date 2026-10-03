@@ -113,4 +113,10 @@ initialization
   RegisterClass(TRALCompressZStd);
   RegisterCompress(TRALCompressZStd);
 
+finalization
+  { RALCompress keeps the class pointer, and this package can be unloaded
+    without it: reinstalled with the IDE open, it left a dangling class
+    behind, and the next request made at design time crashed the IDE }
+  UnregisterCompress(TRALCompressZStd);
+
 end.

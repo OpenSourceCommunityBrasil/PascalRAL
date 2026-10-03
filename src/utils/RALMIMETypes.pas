@@ -271,9 +271,12 @@ begin
   {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
     else
     begin
+      { asked every time, not cached: the list is a singleton that request
+        threads search without a lock, and adding to it here - a sorted
+        insert - moved entries under a binary search running on another
+        thread. The system lookup only happens for extensions the list does
+        not have }
       Result := GetMimeTypeMACOs(vExt);
-      if Result <> '' then
-        AddMIMEType(vExt, Result);
     end
   {$IFEND};
 end;

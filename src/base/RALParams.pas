@@ -2333,10 +2333,19 @@ begin
   if vPos > 0 then
   begin
     vName := Copy(ALine, POSINISTR, vPos - 1);
-    vName := TRALHTTPCoder.DecodeURL(vName);
-
     vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
-    vValue := TRALHTTPCoder.DecodeURL(vValue);
+
+    { an HTTP header is not URL-encoded - a query string, a form field and a
+      cookie are. Decoding headers too turned every '+' into a space: the
+      base64 of an "Authorization: Basic" whenever it holds one (DecodeAuth
+      reads it from here, on every engine), and media types such as
+      application/ld+json or image/svg+xml; any '%XX' in a header was
+      rewritten as well. Nothing on the sending side ever encoded a header }
+    if AKind <> rpkHEADER then
+    begin
+      vName := TRALHTTPCoder.DecodeURL(vName);
+      vValue := TRALHTTPCoder.DecodeURL(vValue);
+    end;
 
     vParam := GetKind[vName, AKind];
     if vParam = nil then

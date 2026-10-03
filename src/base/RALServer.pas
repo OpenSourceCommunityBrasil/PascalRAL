@@ -130,6 +130,9 @@ type
   TRALSecurity = class(TPersistent)
   private
     FBlackIPList: TRALStringListSafe;
+    { what the published BlackIPList is - the list the Object Inspector and the
+      DFM fill. The requests read FBlackIPList; see IPViewChange }
+    FBlackIPView: TStringList;
     FBlockedList: TRALStringListSafe;
     FBruteForce: TRALBruteForceProtection;
     FFloodTimeInterval: IntegerRAL;
@@ -138,12 +141,12 @@ type
     FLastPrune: Cardinal;
     FOptions: TRALSecurityOptions;
     FWhiteIPList: TRALStringListSafe;
-    // Creates and returns the internal Blacklisted IPs
-    function GetBlackIPList: TStringList;
+    { same as FBlackIPView, for FWhiteIPList }
+    FWhiteIPView: TStringList;
     function GetBlockedCount: IntegerRAL;
     function GetFloodCount: IntegerRAL;
-    // Creates and returns the internal Whitelisted IPs
-    function GetWhiteIPList: TStringList;
+    // Copies a changed BlackIPList/WhiteIPList into the list the requests read
+    procedure IPViewChange(Sender: TObject);
     // Setter functions for class properties
     procedure SetBlackIPList(AValue: TStringList);
     procedure SetBruteForce(const Value: TRALBruteForceProtection);
@@ -183,16 +186,19 @@ type
     property BlockedCount: IntegerRAL read GetBlockedCount;
     property FloodCount: IntegerRAL read GetFloodCount;
   published
-    // List of IPs that will not receive a response from the server
-    property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
+    // List of IPs that will not receive a response from the server. Every
+    // change applies at once and copies the whole list, so add many addresses
+    // between BeginUpdate and EndUpdate, or assign a list
+    property BlackIPList: TStringList read FBlackIPView write SetBlackIPList;
     // Set of configurations to block BruteForce attacks
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
     // Time in miliseconds between requests by the same IP that the server will allow
     property FloodTimeInterval: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;
     // Flags that will enable/disable security features
     property Options: TRALSecurityOptions read FOptions write SetOptions;
-    // List of IPs that will always receive a response from the server and won't be blocked
-    property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
+    // List of IPs that will always receive a response from the server and won't
+    // be blocked - changed the same way as BlackIPList
+    property WhiteIPList: TStringList read FWhiteIPView write SetWhiteIPList;
   end;
 
   TRALOnServerError = procedure(Error: Exception) of object;
@@ -1510,11 +1516,20 @@ begin
   FWhiteIPList := TRALStringListSafe.Create;
   FFloodList := TRALStringListSafe.Create;
 
+  FBlackIPView := TStringList.Create;
+  FBlackIPView.OnChange := {$IFDEF FPC}@{$ENDIF}IPViewChange;
+  FWhiteIPView := TStringList.Create;
+  FWhiteIPView.OnChange := {$IFDEF FPC}@{$ENDIF}IPViewChange;
+
   FFloodTimeInterval := 30; // miliseconds
 end;
 
 destructor TRALSecurity.Destroy;
 begin
+  // the views first: a change on the way out still finds both lists
+  FreeAndNil(FBlackIPView);
+  FreeAndNil(FWhiteIPView);
+
   FBlackIPList.Clear(True);
   FBlockedList.Clear(True);
   FWhiteIPList.Clear(True);
@@ -1526,18 +1541,6 @@ begin
   FreeAndNil(FBruteForce);
   FreeAndNil(FFloodList);
   inherited;
-end;
-
-function TRALSecurity.GetBlackIPList: TStringList;
-var
-  vInt: IntegerRAL;
-  vList: TStringList;
-begin
-  Result := TStringList.Create;
-  vList := FBlackIPList.Lock;
-  for vInt := 0 to pred(vList.Count) do
-    Result.Add(vList.Strings[vInt]);
-  FBlackIPList.Unlock;
 end;
 
 function TRALSecurity.GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
@@ -1581,25 +1584,47 @@ begin
   Result := TRALClientList(FFloodList.ObjectByItem(AClientIP));
 end;
 
-function TRALSecurity.GetWhiteIPList: TStringList;
+{ BlackIPList and WhiteIPList are lists that stay with the component, and every
+  change to one is copied whole into the locked list the requests read. The
+  getters used to build a new TStringList on every read, which nobody freed -
+  the DFM writer and the Object Inspector read them too - and that copy is what
+  the DFM reader filled: a list set at design time never reached the server,
+  and BlackIPList.Add did nothing either. }
+procedure TRALSecurity.IPViewChange(Sender: TObject);
 var
+  vSource, vTarget: TStringList;
+  vSafe: TRALStringListSafe;
   vInt: IntegerRAL;
-  vList: TStringList;
 begin
-  Result := TStringList.Create;
-  vList := FWhiteIPList.Lock;
-  for vInt := 0 to pred(vList.Count) do
-    Result.Add(vList.Strings[vInt]);
-  FWhiteIPList.Unlock;
+  vSource := TStringList(Sender);
+  if vSource = FBlackIPView then
+    vSafe := FBlackIPList
+  else
+    vSafe := FWhiteIPList;
+
+  vTarget := vSafe.Lock;
+  try
+    vTarget.Clear;
+    for vInt := 0 to Pred(vSource.Count) do
+      vTarget.Add(vSource.Strings[vInt]);
+  finally
+    vSafe.Unlock;
+  end;
+end;
+
+{ nil empties the list, and a list assigned to itself is left alone: Assign
+  clears before it copies }
+procedure AssignIPList(AView, AValue: TStringList);
+begin
+  if AValue = nil then
+    AView.Clear
+  else if AValue <> AView then
+    AView.Assign(AValue);
 end;
 
 procedure TRALSecurity.SetBlackIPList(AValue: TStringList);
-var
-  vInt: IntegerRAL;
 begin
-  FBlackIPList.Clear;
-  for vInt := 0 to pred(AValue.Count) do
-    FBlackIPList.Add(AValue.Strings[vInt]);
+  AssignIPList(FBlackIPView, AValue);
 end;
 
 procedure TRALSecurity.SetBruteForce(const Value: TRALBruteForceProtection);
@@ -1625,12 +1650,8 @@ begin
 end;
 
 procedure TRALSecurity.SetWhiteIPList(AValue: TStringList);
-var
-  vInt: IntegerRAL;
 begin
-  FWhiteIPList.Clear;
-  for vInt := 0 to pred(AValue.Count) do
-    FWhiteIPList.Add(AValue.Strings[vInt]);
+  AssignIPList(FWhiteIPView, AValue);
 end;
 
 procedure TRALSecurity.UnblockClient(const AClientIP: StringRAL);

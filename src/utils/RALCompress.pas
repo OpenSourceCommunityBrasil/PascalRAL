@@ -158,14 +158,15 @@ begin
   CheckCompressDefs;
   vTypes := ACompress.CompressTypes;
   for vType := Low(TRALCompressType) to High(TRALCompressType) do begin
-    if vType in vTypes then
+    { only what this class registered: RegisterCompress keeps the first class
+      to claim a type, and another one leaving must not take its entry away }
+    if (vType in vTypes) and (CompressClasses[vType] = ACompress) then
     begin
       vStrType := GetEnumName(TypeInfo(TRALCompressType), Ord(vType));
       vPos := CompressDefs.IndexOfName(vStrType);
       if vPos >= 0 then
         CompressDefs.Delete(vPos);
-      if CompressClasses[vType] = ACompress then
-        CompressClasses[vType] := nil;
+      CompressClasses[vType] := nil;
     end;
   end;
 end;

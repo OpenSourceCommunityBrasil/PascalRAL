@@ -101,4 +101,8 @@ initialization
   RegisterClass(TRALCompressBrotli);
   RegisterCompress(TRALCompressBrotli);
 
+finalization
+  // see RALCompressZStd
+  UnregisterCompress(TRALCompressBrotli);
+
 end.

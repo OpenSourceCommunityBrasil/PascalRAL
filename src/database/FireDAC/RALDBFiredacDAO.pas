@@ -7,8 +7,13 @@ interface
 uses
   System.SysUtils, System.Classes, Data.DB, System.TypInfo, System.Variants,
   Firedac.Stan.Def, Firedac.Stan.StorageBin, Firedac.DApt, Firedac.comp.Client,
-  Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
-{$ENDIF}
+  Firedac.comp.DataSet,
+  { Linux first: PascalRAL.inc defines HAS_FMX for every LINUX64, and the
+    FireDAC there ships the console wait cursor only - FMXUI.Wait made the unit
+    stop compiling on Linux }
+  {$IFDEF RALLinux}FireDAC.ConsoleUI.Wait,
+  {$ELSE}{$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait, {$ENDIF}
+  {$ENDIF}
   Firedac.Stan.Intf,
   RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALDBBase, RALRequest, RALResponse,
   RALConsts,

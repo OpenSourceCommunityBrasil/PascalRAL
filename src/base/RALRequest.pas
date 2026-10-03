@@ -387,11 +387,14 @@ begin
 
     Params.CompressType := ctNone;
     Params.CriptoOptions.CriptType := crNone;
-
-    FStream := Params.EncodeBody(vContentType, vContentDisposition);
-
-    Params.CompressType := vCompress;
-    Params.CriptoOptions.CriptType := vCripto;
+    try
+      FStream := Params.EncodeBody(vContentType, vContentDisposition);
+    finally
+      { in a finally: an EncodeBody that raised left the request's params
+        with no compression and no cipher for the rest of their life }
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
   end;
   Result := FStream;
 end;
