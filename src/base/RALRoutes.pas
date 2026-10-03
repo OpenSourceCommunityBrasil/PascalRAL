@@ -192,6 +192,11 @@ begin
     OnReply(ARequest, AResponse)
   else if Assigned(OnReplyGen) then
     OnReplyGen(ARequest, AResponse)
+  { a module's route with no handler is the module's to answer - the
+    WebModule serves the file there. It used to write its handler into the
+    shared route on the thread of each request }
+  else if (Collection <> nil) and (Collection.Owner is TRALModuleRoutes) then
+    TRALModuleRoutes(Collection.Owner).AnswerUnhandled(ARequest, AResponse)
   else
     AResponse.Answer(HTTP_NotFound);
 end;

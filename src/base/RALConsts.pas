@@ -103,6 +103,12 @@ const
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
   // THTTPClient defaults to.
   DEFAULTMAXREDIRECTS = 3;
+  { Milliseconds a WebModule session may sit unused before it is dropped -
+    TRALWebModule.SessionTimeout. Thirty minutes, the usual for a web session.
+    Not TRALServer.SessionTimeout, whose 30000 is what mORMot2 holds an idle
+    kept-alive connection for: at 30 minutes there, an idle client would keep
+    a thread of smThreads for half an hour }
+  DEFAULTWEBSESSIONTIMEOUT = 1800000;
   { Floor for TRALClient.KeepAliveInterval while it is on. It comes from
     WinHTTP, which refuses WINHTTP_OPTION_HTTP2_KEEPALIVE below 5000 ms with
     ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to

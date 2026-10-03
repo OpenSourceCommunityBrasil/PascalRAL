@@ -351,7 +351,12 @@ type
     property Security: TRALSecurity read FSecurity write FSecurity;
     // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    // Timeout (miliseconds) for WebModule to determinate max age of the session
+    // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
+    // kept-alive connection after this long without a request (0 turns
+    // keep-alive off there). Indy hands it to its own session list, which RAL
+    // leaves off, and fpHTTP to the period its accept loop wakes up idle; the
+    // other engines ignore it. Not the WebModule's sessions, despite the name:
+    // those have TRALWebModule.SessionTimeout
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     // Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
@@ -393,6 +398,9 @@ type
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
     // Inherited method of RALServer
     function GetListRoutes: TList; virtual;
+    /// Answers a request for one of this module's routes that has neither
+    /// OnReply nor OnReplyGen: 404 here, a file in TRALWebModule
+    procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
 
     property Routes: TRALRoutes read FRoutes write FRoutes;
   published
@@ -1300,6 +1308,11 @@ begin
 
   for vInt := 0 to Pred(FRoutes.Count) do
     Result.Add(FRoutes.Items[vInt]);
+end;
+
+procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  AResponse.Answer(HTTP_NotFound);
 end;
 
 { TRALSecurity }
