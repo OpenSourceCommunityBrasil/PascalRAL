@@ -317,7 +317,7 @@ type
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     // Compression algorithm that will be used on responses to the client
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    // Determinates in seconds how long will the cookies be kept
+    // Minutes a cookie the server sends is kept by the browser (its Expires)
     property CookieLife: integer read FCookieLife write FCookieLife;
     // Determinates CORS configurations for server-server communication
     property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;

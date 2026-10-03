@@ -531,6 +531,7 @@ var
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
+  vInt: IntegerRAL;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
@@ -560,12 +561,21 @@ begin
             19.9012 came back as 3.939E-313. Drop the guessed defs and let FireDAC
             take the ones travelling in the stream - FLoadingNative keeps
             InternalInitFieldDefs from putting them back while the load reopens
-            the dataset. }
+            the dataset.
+            Only the fields this dataset made for itself go: Fields.Clear also
+            freed the persistent ones of the Fields Editor, which belong to the
+            form - its variables were left pointing at freed memory, and the
+            calculated and lookup fields were gone after the first Open. A
+            persistent field keeps its type, so one made as Float for a NUMERIC
+            column now stops the load with a type mismatch instead of reading
+            the BCD bytes as garbage: recreate it with the real type. }
           FLoadingNative := True;
           if Self.Active then
             Self.Close;
           Self.FieldDefs.Clear;
-          Self.Fields.Clear;
+          for vInt := Pred(Self.Fields.Count) downto 0 do
+            if Self.Fields[vInt].Owner = Self then
+              Self.Fields[vInt].Free;
           Self.LoadFromStream(vDBSQL.Response.Stream);
         end
         else

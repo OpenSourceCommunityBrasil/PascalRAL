@@ -167,6 +167,20 @@ uses
   // CloseSocket for the handlers still open past the wait
   sockets;
 
+{ The listen backlog, as large as the system allows and fcl-web can keep: it
+  holds QueueSize in a Word, and Windows' SOMAXCONN is $7FFFFFFF. Assigned
+  straight, the constant was cut to 65535 by the assignment itself - and a
+  build with range checks (-Cr) refused to compile it }
+function ListenBacklog: Word;
+var
+  vMax: Int64;
+begin
+  vMax := SOMAXCONN;
+  if vMax > High(Word) then
+    vMax := High(Word);
+  Result := vMax;
+end;
+
 { TRALfpHTTPCertData }
 
 function TRALfpHTTPCertData.GetFileName(AIndex: Integer): string;
@@ -320,8 +334,8 @@ end;
 
 procedure TRALfpHttpServerThread.SetQueueSize(const AValue: Word);
 begin
-  if (AValue <= 0) or (AValue > SOMAXCONN) then
-    FHttp.QueueSize := SOMAXCONN
+  if (AValue <= 0) or (AValue > ListenBacklog) then
+    FHttp.QueueSize := ListenBacklog
   else
     FHttp.QueueSize := AValue;
 end;
@@ -672,7 +686,7 @@ begin
   FreeOnTerminate := False;
 
   FHttp := TRALfpHttpServerCore.Create(AOwner);
-  FHttp.QueueSize := SOMAXCONN;
+  FHttp.QueueSize := ListenBacklog;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
   FHttp.OnAllowConnect := @OnAllowConnect;

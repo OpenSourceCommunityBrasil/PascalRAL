@@ -637,60 +637,140 @@ begin
   end;
 end;
 
-function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
-  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+{ The offset of the DATE being converted, not today's: across a daylight-saving
+  change the two differ by an hour. Delphi XE2 on has it in TTimeZone, with
+  each year's own rules; FPC and Delphi XE took the offset in force when the
+  call ran, so a date on the other side of a change came out an hour off - a
+  JWT exp, a JSON date. On Windows they now ask the rules of that year. FPC
+  off Windows still has nothing date-aware in its RTL and keeps today's
+  offset. }
+{$IF (DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)) AND DEFINED(RALWindows)}
+type
+  { SYSTEMTIME as Windows lays it out. Not TSystemTime: FPC's SysUtils
+    declares one of its own with DayOfWeek in another place, and which of the
+    two that name means depends on the order of the uses }
+  TRALWinTime = record
+    wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds: Word;
+  end;
+
+function RALTzInfoForYear(AYear: Word; ADynamic: Pointer;
+  var ATimeZone: TTimeZoneInformation): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetTimeZoneInformationForYear';
+function RALTzLocalToUtc(ATimeZone: PTimeZoneInformation; const ALocal: TRALWinTime;
+  var AUtc: TRALWinTime): BOOL; stdcall;
+  external 'kernel32.dll' name 'TzSpecificLocalTimeToSystemTime';
+function RALTzUtcToLocal(ATimeZone: PTimeZoneInformation; const AUtc: TRALWinTime;
+  var ALocal: TRALWinTime): BOOL; stdcall;
+  external 'kernel32.dll' name 'SystemTimeToTzSpecificLocalTime';
+
+threadvar
+  { the rules of one year, kept per thread: this runs for every JWT checked
+    and every cookie written, and Windows may read them from the registry }
+  gZoneYear: Word;
+  gZone: TTimeZoneInformation;
+
+{ ALocalIn: ADateTime is local and UTC is wanted, or the other way round }
+function RALWinConvert(ADateTime: TDateTime; ALocalIn: boolean; out AResult: TDateTime): boolean;
 var
-  vTimeZone: TTimeZoneInformation;
-  vBias: cardinal;
-  {$IFEND}
+  vIn, vOut: TRALWinTime;
 begin
-  {$IFDEF FPC}
-    Result := LocalTimeToUniversal(ADateTime);
-  {$ELSE}
-    {$IFDEF DELPHIXE2UP}
-        Result := TTimeZone.Local.ToUniversalTime(ADateTime);
-    {$ELSE}
-    case GetTimeZoneInformation(vTimeZone) of
-      TIME_ZONE_ID_UNKNOWN:
-        vBias := vTimeZone.Bias;
-      TIME_ZONE_ID_STANDARD:
-        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-      TIME_ZONE_ID_DAYLIGHT:
-        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-      else
-        vBias := 0;
+  FillChar(vIn, SizeOf(vIn), 0);
+  DecodeDateTime(ADateTime, vIn.wYear, vIn.wMonth, vIn.wDay, vIn.wHour, vIn.wMinute,
+    vIn.wSecond, vIn.wMilliseconds);
+  Result := gZoneYear = vIn.wYear;
+  if not Result then
+  begin
+    Result := RALTzInfoForYear(vIn.wYear, nil, gZone);
+    if Result then
+      gZoneYear := vIn.wYear;
+  end;
+  if Result then
+    if ALocalIn then
+      Result := RALTzLocalToUtc(@gZone, vIn, vOut)
+    else
+      Result := RALTzUtcToLocal(@gZone, vIn, vOut);
+  if Result then
+    Result := TryEncodeDateTime(vOut.wYear, vOut.wMonth, vOut.wDay, vOut.wHour,
+      vOut.wMinute, vOut.wSecond, vOut.wMilliseconds, AResult);
+end;
+{$IFEND}
+
+{$IF NOT DEFINED(FPC) AND NOT DEFINED(DELPHIXE2UP)}
+{ Delphi XE: minutes to add to local time to get UTC, as Windows has them now -
+  only for when it will not say for the date. The old code here subtracted
+  them, and kept them in a Cardinal, which a zone east of UTC turns negative }
+function RALCurrentBias: Integer;
+var
+  vZone: TTimeZoneInformation;
+begin
+  case GetTimeZoneInformation(vZone) of
+    TIME_ZONE_ID_UNKNOWN:
+      Result := vZone.Bias;
+    TIME_ZONE_ID_STANDARD:
+      Result := vZone.Bias + vZone.StandardBias;
+    TIME_ZONE_ID_DAYLIGHT:
+      Result := vZone.Bias + vZone.DaylightBias;
+  else
+    Result := 0;
+  end;
+end;
+{$IFEND}
+
+{ Two hours of the year are not one instant each, and both compilers settle
+  them alike, so a token or a cookie carries the same hour whichever wrote it.
+  The hour the clocks skip forward does not exist: it is read with the offset
+  in force before the change - taken from the day before - which moves it
+  forward by the hour skipped (Windows reads it with the offset after the
+  change, an hour earlier). The hour the clocks repeat happens twice: the
+  first, still in daylight time, is the one taken (the Delphi RTL takes the
+  second unless told). The same choices as java.time and Python }
+function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
+{$IF (DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)) AND DEFINED(RALWindows)}
+var
+  vBack, vBefore: TDateTime;
+{$IFEND}
+begin
+  {$IF DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)}
+    {$IFDEF RALWindows}
+    if RALWinConvert(ADateTime, True, Result) then
+    begin
+      { only a skipped hour comes back as another local time }
+      if RALWinConvert(Result, False, vBack) and not SameDateTime(vBack, ADateTime) and
+         RALWinConvert(ADateTime - 1, True, vBefore) then
+        Result := ADateTime + (vBefore - (ADateTime - 1));
+      Exit;
     end;
-    Result := IncMinute(ADateTime, -vBias);
     {$ENDIF}
-  {$ENDIF}
+    {$IFDEF FPC}
+    Result := LocalTimeToUniversal(ADateTime);
+    {$ELSE}
+    Result := IncMinute(ADateTime, RALCurrentBias);
+    {$ENDIF}
+  {$ELSE}
+    { ToUniversalTime raises on the skipped hour - an opensql over a record
+      holding one answered 500 }
+    if TTimeZone.Local.IsInvalidTime(ADateTime) then
+      Result := ADateTime + (TTimeZone.Local.ToUniversalTime(ADateTime - 1) -
+                             (ADateTime - 1))
+    else
+      Result := TTimeZone.Local.ToUniversalTime(ADateTime, True);
+  {$IFEND}
 end;
 
 function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
-  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
-var
-  vTimeZone: TTimeZoneInformation;
-  vBias: cardinal;
-  {$IFEND}
 begin
-  {$IFDEF FPC}
-    Result := UniversalTimeToLocal(ADateTime);
-  {$ELSE}
-    {$IFDEF DELPHIXE2UP}
-        Result := TTimeZone.Local.ToLocalTime(ADateTime);
-    {$ELSE}
-    case GetTimeZoneInformation(vTimeZone) of
-      TIME_ZONE_ID_UNKNOWN:
-        vBias := vTimeZone.Bias;
-      TIME_ZONE_ID_STANDARD:
-        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-      TIME_ZONE_ID_DAYLIGHT:
-        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-      else
-        vBias := 0;
-    end;
-    Result := IncMinute(ADateTime, vBias);
+  {$IF DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)}
+    {$IFDEF RALWindows}
+    if not RALWinConvert(ADateTime, False, Result) then
     {$ENDIF}
-  {$ENDIF}
+      {$IFDEF FPC}
+      Result := UniversalTimeToLocal(ADateTime);
+      {$ELSE}
+      Result := IncMinute(ADateTime, -RALCurrentBias);
+      {$ENDIF}
+  {$ELSE}
+    Result := TTimeZone.Local.ToLocalTime(ADateTime);
+  {$IFEND}
 end;
 
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;

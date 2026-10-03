@@ -91,27 +91,30 @@ function StringToStream(const AStr: StringRAL): TStream;
 
 implementation
 
+{ Every [0] below is guarded by a length: on an empty array it is past the end,
+  and $R+ refuses it even for a count of 0. Built that way, an empty POST - which
+  Indy hands over as an empty stream - failed in here, and Indy answered its own
+  "200 OK" page to every one of them }
+
 function BytesToStream(ABytes: TBytes): TStream;
 begin
   Result := TMemoryStream.Create;
-  Result.Write(ABytes[0], Length(ABytes));
+  if Length(ABytes) > 0 then
+    Result.Write(ABytes[0], Length(ABytes));
   Result.Position := 0;
 end;
 
 function StreamToBytes(AStream: TStream): TBytes;
 begin
   AStream.Position := 0;
+  SetLength(Result, AStream.Size);
+  if Length(Result) = 0 then
+    Exit;
 
   if AStream.InheritsFrom(TMemoryStream) then
-  begin
-    SetLength(Result, AStream.Size);
-    Move(TMemoryStream(AStream).Memory^, Result[0], AStream.Size);
-  end
+    Move(TMemoryStream(AStream).Memory^, Result[0], Length(Result))
   else
-  begin
-    SetLength(Result, AStream.Size);
-    AStream.Read(Result[0], AStream.Size);
-  end;
+    AStream.Read(Result[0], Length(Result));
 end;
 
 procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
@@ -149,7 +152,8 @@ var
   vBytes: TBytes;
 begin
   SetLength(vBytes, AStream.Size);
-  AStream.Read(vBytes[0], AStream.Size);
+  if Length(vBytes) > 0 then
+    AStream.Read(vBytes[0], Length(vBytes));
   Result := BytesToString(vBytes)
 end;
 
@@ -307,7 +311,8 @@ end;
 
 procedure TRALBinaryWriter.WriteBytesDirect(AValue: TBytes);
 begin
-  FStream.Write(AValue[0], Length(AValue));
+  if Length(AValue) > 0 then
+    FStream.Write(AValue[0], Length(AValue));
 end;
 
 procedure TRALBinaryWriter.WriteChar(AValue: CharRAL);
@@ -467,7 +472,10 @@ function TRALStringStream.DataString: StringRAL;
 var
   vBytes: TBytes;
 begin
+  Result := '';
   Self.Position := 0;
+  if Self.Size = 0 then
+    Exit;
 
   SetLength(vBytes, Self.Size);
   Read(vBytes[0], Self.Size);
@@ -476,7 +484,8 @@ end;
 
 procedure TRALStringStream.WriteBytes(ABytes: TBytes);
 begin
-  Write(ABytes[0], Length(ABytes));
+  if Length(ABytes) > 0 then
+    Write(ABytes[0], Length(ABytes));
 end;
 
 procedure TRALStringStream.WriteString(AString: StringRAL);
@@ -487,14 +496,11 @@ begin
   WriteBytes(vBytes);
 end;
 
+{ a count of 0 copies the whole of AStream from its start, on both compilers -
+  straight across, where a copy into an array first doubled the body in memory }
 procedure TRALStringStream.WriteStream(AStream: TStream);
-var
-  vBytes: TBytes;
 begin
-  AStream.Position := 0;
-  SetLength(vBytes, AStream.Size);
-  AStream.Read(vBytes[0], AStream.Size);
-  WriteBytes(vBytes);
+  CopyFrom(AStream, 0);
 end;
 
 end.

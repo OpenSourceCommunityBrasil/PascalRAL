@@ -34,6 +34,15 @@ type
 
 implementation
 
+{ Hashing is arithmetic modulo 2^64 by definition: overflow and range checks
+  have nothing to find here and only slow it down. Off for the whole unit -
+  the Q-/Q+ switches it used to carry turned overflow checks ON after each
+  block, whatever the project had chosen, and FPC refused the constant table
+  below under -Cr (it reads a hex literal past High(Int64) as a negative
+  number) }
+{$Q-}
+{$R-}
+
 const
   K: array[0..79] of UInt64RAL = (
     $428a2f98d728ae22, $7137449123ef65cd, $b5c0fbcfec4d3b2f, $e9b5dba58189dbbc,
@@ -90,9 +99,7 @@ begin
     s1 := ((W[i - 2] shr 19) or (W[i - 2] shl 45)) 
       xor ((W[i - 2] shr 61) or (W[i - 2] shl 3)) 
       xor (W[i - 2] shr 6);
-    {$Q-}
     W[I] := W[I - 16] + s0 + W[I - 7] + s1;
-    {$Q+}
   end;
 
   for i := 0 to 79 do
@@ -101,33 +108,24 @@ begin
       xor ((e shr 18) or (e shl 46)) 
       xor ((e shr 41) or (e shl 23));
     c0 := (e and f) xor (not e and g);
-    {$Q-}
     t1 := h + s1 + c0 + K[i] + W[i];
-    {$Q+}
 
     s0 := ((a shr 28) or (a shl 36)) 
       xor ((a shr 34) or (a shl 30)) 
       xor ((a shr 39) or (a shl 25));
     m0 := (a and b) xor (a and c) xor (b and c);
-    {$Q-}
     t2 := s0 + m0;
-    {$Q+}
 
     h := g;
     g := f;
     f := e;
-    {$Q-}
     e := d + t1;
-    {$Q+}
     d := c;
     c := b;
     b := a;
-    {$Q-}
     a := t1 + t2;
-    {$Q+}
   end;
 
-  {$Q-}
   FHash[0] := FHash[0] + a;
   FHash[1] := FHash[1] + b;
   FHash[2] := FHash[2] + c;
@@ -136,7 +134,6 @@ begin
   FHash[5] := FHash[5] + f;
   FHash[6] := FHash[6] + g;
   FHash[7] := FHash[7] + h;
-  {$Q+}
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
 
