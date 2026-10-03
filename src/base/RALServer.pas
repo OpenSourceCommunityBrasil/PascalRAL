@@ -1099,7 +1099,12 @@ begin
           FOnClientBlock(Self, ARequest.ClientInfo.IP);
 
         AResponse.Answer(HTTP_Forbidden);
-      end;
+      end
+      { RFC 9110 9.1: a method the server does not implement is answered 501,
+        here and not in a route - before the engine decodes the body, and
+        after the request was counted for flood like any other }
+      else if ARequest.Method = amUNKNOWN then
+        AResponse.Answer(HTTP_NotImplemented);
     end
     else
     begin

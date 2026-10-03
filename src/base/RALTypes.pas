@@ -50,8 +50,11 @@ type
 
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
+  { amUNKNOWN is what a server gets for a method it does not implement, and
+    ValidateRequest answers 501 to it - it is never a member of a route's
+    method sets. It goes last so that no ordinal already stored moves }
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS,
-    amHEAD, amTRACE);
+    amHEAD, amTRACE, amUNKNOWN);
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;

@@ -93,7 +93,8 @@ var
 const
   { method names without the 'am' prefix, in the order of the enum }
   RALMethodNames: array [TRALMethod] of StringRAL = (
-    'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE');
+    'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE',
+    '');
 
 function RALTrimRight(const A: StringRAL): StringRAL;
 var
@@ -515,10 +516,13 @@ var
 begin
   { a table instead of GetEnumValue: the RTTI version built 'am' + UpperCase -
     two UTF-8/UTF-16 conversions on Delphi, plus a concatenation - and only then
-    walked the enum names comparing strings, once per request. The accepted set
-    is the same, and an unknown method still becomes amGET }
-  Result := amGET;
-  for vMethod := Low(TRALMethod) to High(TRALMethod) do
+    walked the enum names comparing strings, once per request.
+    A method that is not one of these is amUNKNOWN, which the server answers
+    with 501. It used to become amGET - and run the route's GET handler, with
+    AllowedMethods and SkipAuthMethods judging a GET nobody sent - while 'ALL',
+    which is no HTTP method at all, became amALL }
+  Result := amUNKNOWN;
+  for vMethod := Succ(amALL) to Pred(amUNKNOWN) do
   begin
     if RALSameName(AMethod, RALMethodNames[vMethod]) then
     begin

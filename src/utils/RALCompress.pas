@@ -36,6 +36,9 @@ type
 
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
+    /// The coding of a name as RALSplitCoding hands it back - lowercase, no
+    /// parameters - for a caller that already split the entry
+    class function NameToCompress(const AName: StringRAL): TRALCompressType;
     class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
     class function CompressTypes : TRALCompressTypes; virtual; abstract;
     class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
@@ -357,15 +360,23 @@ begin
   { a header entry may carry parameters - 'gzip;q=1.0' is what many clients
     send - and comparing the whole entry recognised none of them }
   RALSplitCoding(AStr, vName, vQuality);
-  if (vName = 'gzip') or (vName = 'x-gzip') then
+  Result := NameToCompress(vName);
+end;
+
+class function TRALCompress.NameToCompress(const AName: StringRAL): TRALCompressType;
+begin
+  { split already: GetBestCompress and HasValidAcceptEncoding have the name in
+    hand, and going through StringToCompress split and lowercased it again -
+    on Delphi two more UTF-8/UTF-16 round trips per entry, on every request }
+  if (AName = 'gzip') or (AName = 'x-gzip') then
     Result := ctGZip
-  else if vName = 'zlib' then
+  else if AName = 'zlib' then
     Result := ctZLib
-  else if vName = 'deflate' then
+  else if AName = 'deflate' then
     Result := ctDeflate
-  else if vName = 'zstd' then
+  else if AName = 'zstd' then
     Result := ctZStd
-  else if vName = 'br' then
+  else if AName = 'br' then
     Result := ctBrotli
   else
     Result := ctNone;
@@ -402,7 +413,7 @@ begin
         // q=0 means "not this one" (RFC 9110 12.5.3)
         RALSplitCoding(Copy(AEncoding, vIni, vInt - vIni), vName, vQuality);
         if vQuality > 0 then
-          vTypes := vTypes + [StringToCompress(vName)];
+          vTypes := vTypes + [NameToCompress(vName)];
       end;
       vIni := vInt + 1;
     end;

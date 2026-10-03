@@ -627,13 +627,20 @@ begin
   Result.Add('tablename', FTableName);
 end;
 
+{ The schema a server answers getsqlfields, getfields and gettables with, read
+  on the client. Every level was cast blindly - valid JSON of the wrong shape
+  walked an array with an object's methods - so each checks its type now. Text
+  that is not JSON at all still parses to nil and leaves the info empty, as
+  before; each member asked for and missing still reads as empty. }
 procedure TRALDBInfoField.SetAsJSON(AValue: StringRAL);
 var
-  vJSON : TRALJSONObject;
+  vJSON : TRALJSONValue;
 begin
-  vJSON := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -710,18 +717,21 @@ end;
 
 procedure TRALDBInfoFields.SetAsJSONObj(AValue: TRALJSONArray);
 var
-  vObj: TRALJSONObject;
+  vValue: TRALJSONValue;
   vInt: IntegerRAL;
   vField: TRALDBInfoField;
 begin
   Clear;
 
+  // see TRALDBInfoField.SetAsJSON
   for vInt := 0 to Pred(AValue.Count) do
   begin
-    vObj := TRALJSONObject(AValue.Get(vInt));
+    vValue := AValue.Get(vInt);
+    if not (vValue is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
 
     vField := NewField;
-    vField.AsJSONObj := vObj;
+    vField.AsJSONObj := TRALJSONObject(vValue);
   end;
 end;
 
@@ -739,11 +749,14 @@ end;
 
 procedure TRALDBInfoFields.SetAsJSON(AValue: StringRAL);
 var
-  vJSON: TRALJSONArray;
+  vJSON: TRALJSONValue;
 begin
-  vJSON := TRALJSONArray(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -807,11 +820,14 @@ end;
 
 procedure TRALDBInfoTable.SetAsJSON(AValue: StringRAL);
 var
-  vJSON : TRALJSONObject;
+  vJSON : TRALJSONValue;
 begin
-  vJSON := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -878,11 +894,14 @@ end;
 
 procedure TRALDBInfoTables.SetAsJSON(AValue: StringRAL);
 var
-  vJSON: TRALJSONArray;
+  vJSON: TRALJSONValue;
 begin
-  vJSON := TRALJSONArray(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -890,18 +909,21 @@ end;
 
 procedure TRALDBInfoTables.SetAsJSONObj(AValue: TRALJSONArray);
 var
-  vObj: TRALJSONObject;
+  vValue: TRALJSONValue;
   vInt: IntegerRAL;
   vTable: TRALDBInfoTable;
 begin
   Clear;
 
+  // see TRALDBInfoField.SetAsJSON
   for vInt := 0 to Pred(AValue.Count) do
   begin
-    vObj := TRALJSONObject(AValue.Get(vInt));
+    vValue := AValue.Get(vInt);
+    if not (vValue is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
 
     vTable := NewTable;
-    vTable.AsJSONObj := vObj;
+    vTable.AsJSONObj := TRALJSONObject(vValue);
   end;
 end;
 

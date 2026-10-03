@@ -206,8 +206,7 @@ begin
 
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if (vMethod <> amALL) and ((vMethod in FAllowedMethods) or (amALL in FAllowedMethods))
-    then
+    if (vMethod <> amALL) and IsMethodAllowed(vMethod) then
     begin
       if Result <> '' then
         Result := Result + ', ';
@@ -289,7 +288,8 @@ end;
 function TRALBaseRoute.IsMethodAllowed(const AMethod: TRALMethod): boolean;
 begin
   Result := False;
-  if Self = nil then
+  // amUNKNOWN is a method no route takes, [amALL] included - see TRALMethod
+  if (Self = nil) or (AMethod = amUNKNOWN) then
     Exit;
 
   Result := (amALL in AllowedMethods) or

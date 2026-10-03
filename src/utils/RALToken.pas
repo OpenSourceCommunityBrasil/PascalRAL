@@ -578,16 +578,24 @@ end;
 
 procedure TRALJWTHeader.SetAsJSON(const AValue: StringRAL);
 var
+  vParsed: TRALJSONValue;
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
   vAux1: StringRAL;
 begin
-  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vParsed := TRALJSON.ParseJSON(AValue);
   try
-    if vJson <> nil then
+    { only an object is a header. Anything else - an array, a string, a
+      number - used to be cast to TRALJSONObject all the same and walked with
+      the object's Count/GetName/Get: type confusion, reachable by any Bearer
+      before its signature is checked, since TRALRequest parses the header of
+      every request that carries one. It leaves the header as it was, like
+      text that does not parse at all }
+    if vParsed is TRALJSONObject then
     begin
+      vJson := TRALJSONObject(vParsed);
       Initialize;
       vInt := 0;
       while vInt < vJson.Count do
@@ -619,7 +627,7 @@ begin
       end;
     end;
   finally
-    FreeAndNil(vJson);
+    FreeAndNil(vParsed);
   end;
 end;
 
@@ -739,16 +747,19 @@ end;
 
 procedure TRALJWTParams.SetAsJSON(const AValue: StringRAL);
 var
+  vParsed: TRALJSONValue;
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
 begin
   Clear;
-  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vParsed := TRALJSON.ParseJSON(AValue);
   try
-    if vJson <> nil then
+    { the claim set is an object or nothing - see TRALJWTHeader.SetAsJSON }
+    if vParsed is TRALJSONObject then
     begin
+      vJson := TRALJSONObject(vParsed);
       vInt := 0;
       while vInt < vJson.Count do
       begin
@@ -800,7 +811,7 @@ begin
       end;
     end;
   finally
-    FreeAndNil(vJson);
+    FreeAndNil(vParsed);
   end;
 end;
 
@@ -845,6 +856,17 @@ begin
       FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
       FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       FSignature := vStr.Strings[2];
+    end
+    else
+    begin
+      { not a token, so nothing of the previous one may stay: IsValidToken
+        recomputes the signature from Header and Payload and compares it with
+        FSignature, and with the three left as they were it compared the last
+        token with itself - anything malformed handed to an object that had
+        validated a good token came back valid, with that token's claims. The
+        header keeps its Algorithm, which is the caller's configuration }
+      FPayload.Clear;
+      FSignature := '';
     end;
   finally
     FreeAndNil(vStr);
@@ -946,6 +968,10 @@ begin
 
   if AValue <> '' then
     Token := AValue;
+
+  { SetToken leaves FToken empty for anything that is not three segments }
+  if FToken = '' then
+    Exit;
 
   if vAlgorithm = FHeader.Algorithm then
   begin

@@ -367,7 +367,11 @@ begin
     if vObj.JsonValue is TJSONObject then
       Result := TRALJSONObject.Create
     else if vObj.JsonValue is TJSONArray then
-      Result := TRALJSONObject.Create
+      { an array, not an object: every other Get of every backend gets this
+        right, and an object member that held an array came back as a
+        TRALJSONObject - whose methods then read a TJSONArray as a
+        TJSONObject, and which passed any "is TRALJSONObject" check }
+      Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj.JsonValue, False);
