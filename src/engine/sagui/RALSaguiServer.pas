@@ -413,12 +413,17 @@ begin
 
         { the real size, like Indy, fpHTTP and Synopse report. Zero here was
           the server telling every handler that the request arrived empty.
-          Read BEFORE ValidateRequest, which compares it with MaxRequestSize }
+          A form or a multipart body never reaches the payload -
+          libmicrohttpd parses it into fields and files - so it is the
+          length the client declared there, as on Indy and fpHTTP. Read
+          BEFORE ValidateRequest, which compares it with MaxRequestSize }
         vPayloadLen := 0;
         vPayLoad := sg_httpreq_payload(Areq);
         if Assigned(vPayLoad) then
           vPayloadLen := sg_str_length(vPayLoad);
         ContentSize := vPayloadLen;
+        if ContentSize = 0 then
+          ContentSize := StrToInt64Def(string(ParamByName('Content-Length').AsString), 0);
 
         vServer.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then

@@ -236,6 +236,10 @@ type
     FOnResponse: TRALOnReply;
     FOnServerError: TRALOnServerError;
     procedure WriteActive(const AValue: boolean);
+    { the brute-force count for a request the authentication just answered -
+      see TRALAuthServer.AttemptOf }
+    procedure CountAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+                           AOnAuthRoute: boolean);
   protected
     procedure Loaded; override;
     /// Adds a fixed subroute from other components into server routes
@@ -827,8 +831,6 @@ var
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
   vString: StringRAL;
-  vCheckBruteForce: boolean;
-  vCheckBruteForceTries: boolean;
   vCheck_Authentication: boolean;
   vRouteIsAuth: boolean;
 
@@ -903,6 +905,7 @@ begin
       else if vRouteIsAuth then
       begin
         FAuthentication.BeforeValidate(ARequest, AResponse);
+        CountAttempt(ARequest, AResponse, True);
         goto aFIM;
       end
       else if vRoute.IsMethodAllowed(ARequest.Method) then
@@ -915,18 +918,13 @@ begin
           end
           else
           begin
-            vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
-            // client e valido se o numero de tentativas <= ao max de tentativas
-            vCheckBruteForceTries :=
-              (vCheckBruteForce and (Security.CheckBlockClientTry(
-              ARequest.ClientInfo.IP)));
-
             // devido algumas auths que adiciona o header realm
             vCheck_Authentication := ValidateAuth(ARequest, AResponse);
+            CountAttempt(ARequest, AResponse, False);
 
             if vCheck_Authentication then
               goto aOK
-            else if (vCheckBruteForceTries) or (AResponse.StatusCode = HTTP_Unauthorized) then
+            else if AResponse.StatusCode = HTTP_Unauthorized then
               goto a401
             else
               goto a403;
@@ -959,36 +957,19 @@ begin
 
     aOK:
     begin
-      Security.UnblockClient(ARequest.ClientInfo.IP);
       vRoute.Execute(ARequest, AResponse);
       goto aFIM;
     end;
 
+    { the failed try was already counted, or not, by CountAttempt }
     a401:
     begin
-      { only when the counting is switched on. BlockClient was called from here
-        whatever the options said, and nothing ever read the entry back with
-        rsoBruteForceProtection off, while ClearExpiredIPs only pruned with it
-        on: one permanent object per distinct address that ever failed to
-        authenticate. A scan from varying sources was an unbounded allocation
-        with no protection in exchange. }
-      if rsoBruteForceProtection in Security.Options then
-        Security.BlockClient(ARequest.ClientInfo.IP);
       AResponse.Answer(HTTP_Unauthorized);
       goto aFIM;
     end;
 
     a403:
     begin
-      { same as a401, and the event follows the block: OnClientBlock says a
-        client WAS blocked, so firing it when nothing was counted reported
-        something that did not happen }
-      if rsoBruteForceProtection in Security.Options then
-      begin
-        Security.BlockClient(ARequest.ClientInfo.IP);
-        if Assigned(FOnClientBlock) then
-          FOnClientBlock(Self, ARequest.ClientInfo.IP);
-      end;
       AResponse.Answer(HTTP_Forbidden);
       goto aFIM;
     end;
@@ -1099,7 +1080,12 @@ begin
       // Security Protections
       if vCheckFlood or vCheckPathTransversal then
       begin
-        Security.BlockClient(ARequest.ClientInfo.IP);
+        { a path walking out of the tree is an attack and counts toward the
+          block; a flood refusal is a rate, not a guess - and the first request
+          of every new address measures as one (TRALClientList.Create), so
+          counting it locked clients out for ExpirationTime }
+        if vCheckPathTransversal and (rsoBruteForceProtection in Security.Options) then
+          Security.BlockClient(ARequest.ClientInfo.IP);
 
         if Assigned(FOnClientBlock) then
           FOnClientBlock(Self, ARequest.ClientInfo.IP);
@@ -1197,6 +1183,23 @@ end;
 procedure TRALServer.SetSessionTimeout(const AValue: IntegerRAL);
 begin
   FSessionTimeout := AValue;
+end;
+
+{ Counted where a secret was checked, cleared where one was accepted, nothing
+  otherwise. It used to count every 401 - no credentials, an expired token -
+  but never the token route's, where the password IS checked, so that one could
+  be tried without limit; and any route that answered cleared the count, so one
+  request to a public page between guesses was enough to start over. Off,
+  nothing is kept: no entry would ever be read back. }
+procedure TRALServer.CountAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+  AOnAuthRoute: boolean);
+begin
+  if not (rsoBruteForceProtection in Security.Options) then
+    Exit;
+  case FAuthentication.AttemptOf(ARequest, AResponse, AOnAuthRoute) of
+    raaFailed: Security.BlockClient(ARequest.ClientInfo.IP);
+    raaPassed: Security.UnblockClient(ARequest.ClientInfo.IP);
+  end;
 end;
 
 function TRALServer.ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
@@ -1351,7 +1354,7 @@ begin
   { blocked only from MaxTry failed tries on: the list holds every IP that
     failed once, and testing membership alone locked an IP out at the first
     wrong password, whatever MaxTry said. A successful login clears the
-    counter (ProcessCommands unblocks on the way to the route) }
+    counter - see TRALServer.CountAttempt }
   { Same verdict as before - (blocked by tries OR black-listed) AND NOT
     white-listed - but asking each list only when it can possibly answer yes.
     This runs on every request of every engine, and each Exists takes a
@@ -1656,11 +1659,10 @@ end;
 
 procedure TRALSecurity.UnblockClient(const AClientIP: StringRAL);
 begin
-  { ProcessCommands calls this on the way to every route that answers, so this
-    runs on every SUCCESSFUL request - the hottest path there is. Remove takes
-    the lock and walks the list; with nothing blocked, which is the normal
-    state of a server, that was a critical section per request for a list that
-    has nothing to remove. }
+  { runs on every request whose credentials were accepted - nearly every
+    request of an authenticated server. Remove takes the lock and walks the
+    list; with nothing blocked, which is the normal state of a server, that was
+    a critical section per request for a list that has nothing to remove. }
   if FBlockedList.IsEmpty then
     Exit;
 

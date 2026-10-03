@@ -124,6 +124,9 @@ begin
     vRequest.AcceptEncription := GetEnvironmentVariable('HTTP_ACCEPT_ENCRIPTION');
     vRequest.ContentEncription := GetEnvironmentVariable('HTTP_CONTENT_ENCRIPTION');
     vRequest.ContentType := GetEnvironmentVariable('CONTENT_TYPE');
+    { the length the client declared, as the Delphi side and every other
+      engine report it: it was left at 0 here }
+    vRequest.ContentSize := ARequest.ContentLength;
 
     vRequest.Params.CompressType := vRequest.ContentCompress;
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
