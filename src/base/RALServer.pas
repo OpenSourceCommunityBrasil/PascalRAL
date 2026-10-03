@@ -115,10 +115,12 @@ type
       default False;
     // List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    /// Who may call the server from a browser: '*' (anyone, the default), one
-    /// origin ('https://app.example.com'), or several separated by spaces or
-    /// commas - then the request's Origin is answered back when it is one of
-    /// them, with Vary: Origin, and nothing is answered when it is not
+    /// Who may call the server from a browser on another site: empty (the
+    /// default) is nobody, '*' is anyone, one origin
+    /// ('https://app.example.com') is that one, and several separated by
+    /// spaces or commas make the request's Origin be answered back when it is
+    /// one of them, with Vary: Origin. It was '*' by default until 03/10/2026;
+    /// a form saved before then keeps its '*', which the IDE wrote out
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
     // Time in seconds a browser may keep the preflight answer
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
@@ -488,7 +490,11 @@ end;
 constructor TRALCORSOptions.Create;
 begin
   inherited;
-  FAllowOrigin := '*';
+  { no origin by default: '*' let any web page call the server from a
+    visitor's browser unless someone remembered to close it. Empty is also the
+    one value streaming leaves out of a form, so it is what a form without
+    AllowOrigin has always meant - '*' was always written out explicitly }
+  FAllowOrigin := '';
   FMaxAge := 86400;
 
   FAllowHeaders := TStringList.Create;
