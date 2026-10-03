@@ -31,6 +31,11 @@ type
     property Version: TRALSHA32Versions read FVersion write SetVersion;
   end;
 
+/// PBKDF2 with HMAC-SHA256 (RFC 8018): ALength bytes stretched out of
+/// APassword and ASalt in AIterations rounds, each round one HMAC
+function RALPBKDF2SHA256(const APassword, ASalt: TBytes;
+  AIterations, ALength: IntegerRAL): TBytes;
+
 implementation
 
 const
@@ -214,8 +219,88 @@ function TRALSHA2_32.Swap(AValue: cardinal): cardinal;
 begin
   Result := ((AValue and $FF) shl 24) 
          or ((AValue and $FF00) shl 8) 
-         or ((AValue and $FF0000) shr 8) 
+         or ((AValue and $FF0000) shr 8)
          or ((AValue and $FF000000) shr 24);
+end;
+
+function RALPBKDF2SHA256(const APassword, ASalt: TBytes;
+  AIterations, ALength: IntegerRAL): TBytes;
+var
+  vSha: TRALSHA2_32;
+  vIPad, vOPad: array[0..63] of Byte;
+  vKey, vU, vT, vFirst: TBytes;
+  vBlock, vRound, vInt, vDone, vTake: IntegerRAL;
+
+  { the bytes of the hash, not a stream: one HMAC per round, and a stream per
+    call would cost more than the hashing }
+  function HMAC(const AData: TBytes): TBytes;
+  var
+    vInner: TBytes;
+  begin
+    vSha.Initialize;
+    vSha.HashBytes(@vIPad[0], 64);
+    if Length(AData) > 0 then
+      vSha.HashBytes(@AData[0], Length(AData));
+    vInner := vSha.Finalize;
+    vSha.Initialize;
+    vSha.HashBytes(@vOPad[0], 64);
+    vSha.HashBytes(@vInner[0], Length(vInner));
+    Result := vSha.Finalize;
+  end;
+
+begin
+  SetLength(Result, ALength);
+  vSha := TRALSHA2_32.Create;
+  try
+    vKey := APassword;
+    if Length(vKey) > 64 then
+    begin
+      vSha.Initialize;
+      vSha.HashBytes(@vKey[0], Length(vKey));
+      vKey := vSha.Finalize;
+    end;
+    for vInt := 0 to 63 do
+    begin
+      if vInt < Length(vKey) then
+        vIPad[vInt] := vKey[vInt]
+      else
+        vIPad[vInt] := 0;
+      vOPad[vInt] := vIPad[vInt] xor $5C;
+      vIPad[vInt] := vIPad[vInt] xor $36;
+    end;
+
+    vDone := 0;
+    vBlock := 1;
+    while vDone < ALength do
+    begin
+      { U1 = HMAC(salt || block number, big-endian) }
+      SetLength(vFirst, Length(ASalt) + 4);
+      if Length(ASalt) > 0 then
+        Move(ASalt[0], vFirst[0], Length(ASalt));
+      vFirst[Length(ASalt)] := Byte(vBlock shr 24);
+      vFirst[Length(ASalt) + 1] := Byte(vBlock shr 16);
+      vFirst[Length(ASalt) + 2] := Byte(vBlock shr 8);
+      vFirst[Length(ASalt) + 3] := Byte(vBlock);
+
+      vU := HMAC(vFirst);
+      vT := Copy(vU, 0, Length(vU));
+      for vRound := 2 to AIterations do
+      begin
+        vU := HMAC(vU);
+        for vInt := 0 to High(vT) do
+          vT[vInt] := vT[vInt] xor vU[vInt];
+      end;
+
+      vTake := ALength - vDone;
+      if vTake > Length(vT) then
+        vTake := Length(vT);
+      Move(vT[0], Result[vDone], vTake);
+      Inc(vDone, vTake);
+      Inc(vBlock);
+    end;
+  finally
+    vSha.Free;
+  end;
 end;
 
 end.
