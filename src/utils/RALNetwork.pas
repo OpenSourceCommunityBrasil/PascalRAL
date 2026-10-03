@@ -13,9 +13,11 @@ uses
 
 /// The address this machine uses on the network, in the given family: the
 /// source address the system picks for its default route, which is the one
-/// the other machines see. Without a default route (an isolated network, or
-/// no network at all) it is the first address of an interface that is up,
-/// link-local ones last, and with no such interface the loopback.
+/// the other machines see - in IPv6 the stable one of that interface, not the
+/// temporary one the system prefers to send from. Without a default route
+/// (an isolated network, or no network at all) it is the first address of an
+/// interface that is up, link-local ones last, and with no such interface the
+/// loopback.
 /// '' only when the system refuses a socket of the family at all (no IPv6
 /// stack). Nothing is sent over the network to find it out
 function RALGetLocalAddress(AMode: TRALIpMode = rimIPv4): StringRAL;
@@ -166,6 +168,43 @@ procedure SysClose(ASock: TRALSock);
 begin
   WinCloseSocket(ASock);
 end;
+
+const
+  cIphlpapi = 'iphlpapi.dll';
+  { skip anycast, multicast, DNS servers and the friendly name }
+  cGAAFlags = $2 or $4 or $8 or $20;
+  cERROR_BUFFER_OVERFLOW = 111;
+  cIpSuffixOriginRandom = 5;  // NL_SUFFIX_ORIGIN: a temporary address
+  cIpDadStatePreferred = 4;
+
+type
+  { only the leading fields, laid out the same by every Windows since XP }
+  TRALSocketAddress = record
+    lpSockaddr: Pointer;
+    iSockaddrLength: Integer;
+  end;
+
+  PRALUnicastAddr = ^TRALUnicastAddr;
+  TRALUnicastAddr = record
+    Alignment: UInt64; // Length and Flags
+    Next: PRALUnicastAddr;
+    Address: TRALSocketAddress;
+    PrefixOrigin: Integer;
+    SuffixOrigin: Integer;
+    DadState: Integer;
+  end;
+
+  PRALAdapterAddr = ^TRALAdapterAddr;
+  TRALAdapterAddr = record
+    Alignment: UInt64; // Length and IfIndex
+    Next: PRALAdapterAddr;
+    AdapterName: PAnsiChar;
+    FirstUnicastAddress: PRALUnicastAddr;
+  end;
+
+function GetAdaptersAddresses(AFamily, AFlags: Cardinal; AReserved,
+  AAddresses: Pointer; var ASize: Cardinal): Cardinal; stdcall;
+  external cIphlpapi name 'GetAdaptersAddresses';
 {$ELSE}
 type
   TRALSock = Integer;
@@ -474,6 +513,153 @@ end;
 {$ENDIF}
 {$ENDIF}
 
+{ RFC 6724 rule 7 makes the source address of the IPv6 probe the TEMPORARY one
+  wherever privacy extensions are on - Windows and macOS by default, most Linux
+  desktops, Android - and a temporary address rotates within a day and stops
+  being accepted soon after: a server publishing it is unreachable at it a day
+  later. StableIPv6 answers the stable address of the same interface and /64
+  (SLAAC, which is where temporary addresses come from, always uses that
+  prefix length), or '' to keep what the probe found: the probe's address is
+  not temporary, or nothing better is there, or the system will not say. }
+{$IFDEF RALWindows}
+{ the address of AUni as a sockaddr in ABuf; False for any other family }
+function UnicastAddress(AUni: PRALUnicastAddr; var ABuf: TRALSockAddrBuf): boolean;
+begin
+  Result := (AUni^.Address.lpSockaddr <> nil) and
+            (AUni^.Address.iSockaddrLength >= 24) and
+            (AUni^.Address.iSockaddrLength <= SizeOf(ABuf));
+  if not Result then
+    Exit;
+  FillChar(ABuf, SizeOf(ABuf), 0);
+  Move(AUni^.Address.lpSockaddr^, ABuf, AUni^.Address.iSockaddrLength);
+  Result := GetFamily(ABuf) = cAF_INET6;
+end;
+
+function StableIPv6(const AAddr: TRALSockAddrBuf): string;
+var
+  vData: array of Byte;
+  vSize, vError: Cardinal;
+  vTry: Integer;
+  vAdapter: PRALAdapterAddr;
+  vUni: PRALUnicastAddr;
+  vBuf: TRALSockAddrBuf;
+begin
+  Result := '';
+  vSize := 16384;
+  vTry := 0;
+  repeat
+    SetLength(vData, vSize);
+    vError := GetAdaptersAddresses(cAF_INET6, cGAAFlags, nil, @vData[0], vSize);
+    Inc(vTry);
+  until (vError <> cERROR_BUFFER_OVERFLOW) or (vTry = 3);
+  if vError <> 0 then
+    Exit;
+
+  vAdapter := @vData[0];
+  while vAdapter <> nil do
+  begin
+    vUni := vAdapter^.FirstUnicastAddress;
+    while (vUni <> nil) and
+          not (UnicastAddress(vUni, vBuf) and CompareMem(@vBuf[8], @AAddr[8], 16)) do
+      vUni := vUni^.Next;
+
+    if vUni <> nil then
+    begin
+      if vUni^.SuffixOrigin <> cIpSuffixOriginRandom then
+        Exit;
+      vUni := vAdapter^.FirstUnicastAddress;
+      while vUni <> nil do
+      begin
+        if (vUni^.SuffixOrigin <> cIpSuffixOriginRandom) and
+           (vUni^.DadState = cIpDadStatePreferred) and UnicastAddress(vUni, vBuf) and
+           CompareMem(@vBuf[8], @AAddr[8], 8) then
+        begin
+          Result := FormatAddress(vBuf, rimIPv6);
+          Exit;
+        end;
+        vUni := vUni^.Next;
+      end;
+      Exit;
+    end;
+    vAdapter := vAdapter^.Next;
+  end;
+end;
+{$ELSE}
+{ /proc/net/if_inet6, one line per address: 32 hex digits, then interface
+  index, prefix length, scope and flags in hex, then the interface name.
+  There on Linux; on Android only up to 9, later ones refuse it to apps; not
+  on Apple. Where it cannot be read the probe's answer stands }
+function StableIPv6(const AAddr: TRALSockAddrBuf): string;
+const
+  cTemporary = $01;
+  cUnusable = cTemporary or $08 or $20 or $40; // dadfailed, deprecated, tentative
+type
+  TRALIfInet6 = record
+    Addr: array[0..15] of Byte;
+    IfIndex, Flags: Integer;
+  end;
+var
+  vFile: TextFile;
+  vLine: string;
+  vItems: array of TRALIfInet6;
+  vItem: TRALIfInet6;
+  vInt, vMine: Integer;
+  vParts: TStringList;
+  vBuf: TRALSockAddrBuf;
+begin
+  Result := '';
+  SetLength(vItems, 0);
+  AssignFile(vFile, '/proc/net/if_inet6');
+  {$I-}
+  Reset(vFile);
+  {$I+}
+  if IOResult <> 0 then
+    Exit;
+  vParts := TStringList.Create;
+  try
+    vParts.Delimiter := ' ';
+    vParts.StrictDelimiter := False;
+    while not Eof(vFile) do
+    begin
+      Readln(vFile, vLine);
+      vParts.DelimitedText := vLine;
+      if (vParts.Count < 5) or (Length(vParts[0]) <> 32) then
+        Continue;
+      for vInt := 0 to 15 do
+        vItem.Addr[vInt] := StrToIntDef('$' + Copy(vParts[0], vInt * 2 + 1, 2), 0);
+      vItem.IfIndex := StrToIntDef('$' + vParts[1], -1);
+      vItem.Flags := StrToIntDef('$' + vParts[4], cUnusable);
+      SetLength(vItems, Length(vItems) + 1);
+      vItems[High(vItems)] := vItem;
+    end;
+  finally
+    vParts.Free;
+    CloseFile(vFile);
+  end;
+
+  vMine := -1;
+  for vInt := 0 to High(vItems) do
+    if CompareMem(@vItems[vInt].Addr[0], @AAddr[8], 16) then
+    begin
+      vMine := vInt;
+      Break;
+    end;
+  if (vMine < 0) or ((vItems[vMine].Flags and cTemporary) = 0) then
+    Exit;
+
+  for vInt := 0 to High(vItems) do
+    if (vItems[vInt].IfIndex = vItems[vMine].IfIndex) and
+       ((vItems[vInt].Flags and cUnusable) = 0) and
+       CompareMem(@vItems[vInt].Addr[0], @AAddr[8], 8) then
+    begin
+      vBuf := AAddr;
+      Move(vItems[vInt].Addr[0], vBuf[8], 16);
+      Result := FormatAddress(vBuf, rimIPv6);
+      Exit;
+    end;
+end;
+{$ENDIF}
+
 procedure ListAddresses(AMode: TRALIpMode; AList: TStrings);
 var
   vLinkLocal: TStringList;
@@ -515,7 +701,12 @@ begin
     FillChar(vBuf, SizeOf(vBuf), 0);
     if SysGetSockName(vSock, vBuf) and (GetFamily(vBuf) = FamilyOf(AMode)) and
        (not IsAnyOrLoopback(vBuf, AMode)) then
-      Result := FormatAddress(vBuf, AMode);
+    begin
+      if AMode = rimIPv6 then
+        Result := StableIPv6(vBuf);
+      if Result = '' then
+        Result := FormatAddress(vBuf, AMode);
+    end;
   finally
     SysClose(vSock);
   end;

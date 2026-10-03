@@ -487,11 +487,16 @@ begin
           Self.Connection := TFDConnection.Create(Self);
         end;
 
-        TThread.Synchronize(nil,
-          procedure
-          begin
-            Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
-          end);
+        { loaded on the thread that delivers the answer - the main one under
+          ebMultiThread, the caller's under ebSingleThread - as the memtables
+          do, and as TFDQuery.Open itself does. It went through Synchronize,
+          which under the default ebSingleThread waited for a main thread that
+          was not coming: one blocked in TTask.Wait, or that of a service or
+          console program, which runs no loop - and WakeMainThread does not
+          tell those apart, since this unit links Vcl.Forms through the
+          FireDAC wait cursor. A dataset bound to controls is opened from the
+          main thread, here as with FireDAC }
+        Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
 
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
 
