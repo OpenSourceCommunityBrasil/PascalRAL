@@ -8,6 +8,166 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Security: harden the WebModule and add opt-in protections to the server** (2026-10-04 – tempraturbo)
+  - The WebModule answers only the URLs under its Domain. It served every URL,
+  taking those another module was meant to answer.
+  - TRALWebModule.FollowLinks, True by default as before: False refuses a file
+  reached through a symbolic link or a junction below DocumentRoot, which may
+  lead out of it.
+  - Files go out with X-Content-Type-Options: nosniff, and .mjs, .wasm and
+  .woff2 have their proper types so that nosniff does not break them.
+  - The session cookie goes out SameSite=Lax, and
+  TRALServerJWTAuth.CookieSameSite sets the raltoken cookie's (by default none
+  is written, as before). TRALCookieSiteScope starts with cssDefault now, so an
+  explicit cssLax is written.
+  - TRALServer.HideErrorDetails, off by default: a 500 says "Internal Server
+  Error" instead of the exception's message, which from a driver names tables
+  and quotes SQL. Every engine, TRALDBModule and the FireDAC DAO answer
+  through TRALServer.ErrorText; OnServerError still gets the exception.
+  - TRALServer.SecurityHeaders, empty by default: nosniff, X-Frame-Options,
+  Referrer-Policy, Strict-Transport-Security under TLS and a deny-all
+  Content-Security-Policy on every answer.
+  - TRALCriptoOpenSSL refuses an empty key and cuts or zero-pads the key and
+  the IV to the cipher's sizes: OpenSSL read past a short key.
+
+- **Fix a security hole: BlockedExtensions served blocked files through NTFS stream names and 8.3 aliases** (2026-10-04 – tempraturbo)
+  On Windows /x.ini::$DATA is x.ini itself under a name with no extension, and
+  BANCO~1.SQL is banco.sqlite under its short name: both were answered 200 with
+  a file BlockedExtensions should have refused, on every engine. A path with ':'
+  is refused on Windows, one with a byte below 32 everywhere, and a name with
+  '~' is judged by its long name.
+
+- **Fix a security hole: CR, LF and NUL in a header or cookie split the response** (2026-10-03 – tempraturbo)
+  A value an application takes from a request and sends back - a query param
+  echoed into a header, a file name into Content-Disposition, a cookie - could
+  end the header line where the client chose and write headers of its own
+  (response splitting), on Indy and mORMot2 alike.
+  RALSafeHeaderText turns CR, LF and NUL into a space, as RFC 9110 5.5 asks of
+  a recipient. It runs where headers leave: AssignParams/AssignParamsText for
+  the header and cookie kinds, the cookie builder every engine shares, Sagui's
+  header map, the QUIC frame, the ContentType/ContentDisposition setters, the
+  WWW-Authenticate of Indy, fpHTTP and UniGUI, and the netHTTP and OkHttp
+  clients, which build their own.
+  The cookie builder came with it: Expires is written with RALHTTPDate, which
+  does not depend on the locale's time separator, and a plain cookie carries
+  Path=/. RALHTTPDate, RALAssignProperties and RALAssignOwned land in RALTools
+  here too.
+
+- **Fix security holes in the WebModule: no files without a DocumentRoot, and sessions that work** (2026-10-03 – tempraturbo)
+  An empty DocumentRoot served the executable's folder - its .ini files,
+  certificates and local database - on a route that skips authentication. It
+  serves nothing now, and UseApplicationPathAsRoot brings the old behaviour
+  back on purpose. A relative DocumentRoot is taken from the executable's
+  folder (it answered 404 to everything), and a folder, a Windows device name
+  and an absolute path from the wire are refused. BlockedExtensions lists
+  extensions never served, empty by default. The project wizards generate
+  DocumentRoot = 'www'.
+  Sessions were off. OpenSession finds or creates the browser's session under
+  one lock and sends its cookie once, HttpOnly, Secure under TLS; the name is
+  24 random bytes, and a name the server does not know is never adopted.
+  TRALWebSession locks its objects, DeleteObject honours AFree = False, and
+  idle sessions go after TRALWebModule.SessionTimeout, 30 minutes - not
+  TRALServer.SessionTimeout, which stays mORMot2's keep-alive.
+  A module route with no handler is answered by
+  TRALModuleRoutes.AnswerUnhandled; the WebModule used to write its handler
+  into the shared route on each request's thread. OnBeforeAnswer fires for a
+  file too.
+
+- **Fix security holes in authentication: what brute-force protection counts and the token route** (2026-10-03 – tempraturbo)
+  Brute-force protection counted every 401 - no credentials, an expired token -
+  but never the token route's, where OnGetToken checks the password, so that one
+  could be tried without limit; and any route that answered cleared the count.
+  The authentication now says, per request, whether a secret was checked and
+  refused (TRALAuthServer.AttemptOf), and TRALServer.CountAttempt blocks or
+  clears on that alone. A failed Bearer, a 403 from the application and a flood
+  refusal no longer count; a path walking out of the tree still does.
+  On the token route, credentials used to lose to a Bearer - the raltoken
+  cookie, with UseCookie - so the next user of a shared browser got the
+  previous one's token renewed. A request that posts a body is a login now,
+  Bearer or not; a Bearer alone renews, and a refused renewal is a 401 that
+  also expires the cookie. Whether a body came is the length the client
+  declared, so Sagui reports the Content-Length of a form libmicrohttpd parsed
+  itself, and the FPC CGI fills ContentSize as the Delphi one does.
+
+- **Fix a security hole in the MsQuic server: an unknown method ran as GET** (2026-10-03 – tempraturbo)
+  The method travels in the frame as a byte, and one past the last real method
+  became amGET - the GET handler ran, judged by AllowedMethods and
+  SkipAuthMethods as a GET nobody sent. It is amUNKNOWN now, answered 501 like
+  on every other engine; amALL, which is no method, takes the same path.
+
+- **Fix security holes in redirects off TLS, shared TLS connections and the DAO's ApplyUpdates** (2026-10-03 – tempraturbo)
+  Every engine followed redirects on its own, after the checks that refuse a
+  plain http URL, and resent the request - token included - in the clear.
+  Where TLS is required (SSL.Required, or a pin for the host) the 3xx itself is
+  the answer now, on Indy, fpHTTP, netHTTP, mORMot2 and OkHttp, each through
+  its own hook.
+  mORMot2 opened the TLS connection of a redirect without judging its
+  certificate, left HostNamesCsv naming the first host, and left the kept
+  socket on the second server. fpHTTP never checked where its kept socket
+  pointed, so a request meant for one server could reach another.
+  netHTTP no longer shares a transport with a client that judges certificates:
+  THTTPClient keeps the verdict on the object, so one request could read
+  another's.
+  A POST is not written twice: OkHttp marks the body one-shot, and fpHTTP's
+  own reconnect after a failed read resends idempotent methods only.
+  The DAO's ApplyUpdates runs statements FireDAC builds on the server, which
+  OnValidateSQL never saw. OnValidateApplyUpdates decides those, and with
+  OnValidateSQL assigned and it not, ApplyUpdates is refused.
+
+- **Fix security holes in forged tokens and storages, pre-auth parsing and unknown methods** (2026-10-03 – tempraturbo)
+  Input read off the wire before any authentication met blind casts: a JWT
+  header or payload that was not a JSON object, a storage stream with the wrong
+  JSON shape or with counts the stream could not hold, a schema answer of the
+  wrong type. Each is checked now, and the BIN reader refuses a count larger
+  than what is left to read. A reused TRALJWT compared a malformed token's
+  signature with the previous token's.
+  Cookie, Content-Encoding and Accept-Encoding parsing cut the header from the
+  front once per entry, quadratic on input the client controls.
+  A method the server does not implement ran the route's GET handler; it is
+  answered 501 now.
+
+- **Fix security holes in TLS host checks, the binary reader and query parsing** (2026-10-02 – tempraturbo)
+  Certificates:
+  - okhttp: the trust judge went along on every call, and with it installed
+  no host name was checked, so with no pin and no event a valid
+  certificate for ANY host was accepted. It is installed only when the
+  application decides (a pin for that host, OnValidateServerCert or
+  svNever), and the Trusted it hands over covers the name too.
+  - mORMot2 under OpenSSL - always the case on POSIX - checked no host name
+  at all: HostNamesCsv, the only field its OpenSSL layer reads for that,
+  was never filled. It carries the URL's host now. Trusted is the verdict
+  of the whole chain: keeping only the last callback, which is always the
+  leaf with ok set, made any certificate trusted, a self-signed one too.
+  - Indy: the leaf's Trusted is AOk and (AError = 0). OpenSSL reaches the
+  leaf with ok set and an error from higher up retained, so a chain
+  ending in the attacker's own CA counted as trusted.
+  - src/engine/SSL.md says where Trusted stops at chain and dates: Indy and
+  fpHTTP check no host name, so pin those hosts instead.
+  Input that comes off the network:
+  - TRALParams.AppendParamsText spun at 100% CPU forever on an empty segment
+  of a query string or form body ("?&a=1", SEC-01 of the 10/09/2026
+  audit), and shifted the rest of the text once per segment. One scan now.
+  - RALNormalizeNumber shifted the string once per thousands separator: one
+  form field of a million separators cost minutes of a core. One pass.
+  - TRALBinaryWriter never looked at how many bytes a fixed-size read
+  returned, so at the end of the stream the value was whatever the stack
+  held. ReadExact raises emStreamSizeBeyondEnd, and so does ReadSize when
+  the stream ends inside the size.
+  - A byte cast to an enum is range-checked before it indexes a table: the
+  storage format in StorageLinkClassOf and TRALDBSQLCache.CreateStorage,
+  the field type in the RALDBTypes name lookups. The type mappings start
+  from a default instead of an unassigned result; Firebird and PostgreSQL
+  types they do not list (INT128, DECFLOAT, uuid, json) travel as text,
+  and Firebird BOOLEAN, TIME/TIMESTAMP WITH TIME ZONE and PostgreSQL
+  float4 and time are mapped.
+  - TRALDBSQLCache keeps the statement being read in its list from the
+  start, so a body that breaks off no longer leaks it.
+  TRALSecurity prunes its lists under one lock per list instead of one per
+  entry, and at most once a second from the request path
+  (ClearExpiredIPsOnRequest): the old walk raced and could raise
+  EStringListError out of ValidateRequest. GetBlockClientTry reads the try
+  count under the lock, since another request may free the entry.
+
 - **Fix security holes and errors in the MsQuic engine, plus what they exposed elsewhere** (2026-09-20 – tempraturbo)
   MsQuic client: every transport failure carried ErrorCode 0, so a server that
   was down came back as a success - BeforeSendUrl only raises on a non-zero
@@ -59,6 +219,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Breaking Changes
+- **Breaking change: every engine files a param by where it came from** (2026-10-03 – tempraturbo)
+  Code that reads params by kind sees a different answer; ParamByName reads
+  the same.
+  - Indy and UniGUI took Indy's Params, which mixes the query string with a
+  urlencoded form, both already decoded: a form field was rpkQUERY, and the
+  parser decoded everything a second time (%2B became a space, %2525 became
+  %). They parse QueryParams as rpkQUERY and FormParams as rpkFIELD now, and
+  read the cookies from their header.
+  - fpHTTP filed fcl-web's known headers (Host, Authorization...) as rpkFIELD,
+  so AssignParamsUrl(rpkFIELD) handed back the client's credentials, and
+  decoded QueryFields and CookieFields again; the headers are rpkHEADER and
+  the cookies come from their header.
+  - The CGI engines filed the whole environment as rpkFIELD, so
+  ParamByName('path') answered the server's PATH to a client that sent none:
+  only HTTP_*, CONTENT_TYPE and CONTENT_LENGTH become params now, as headers
+  named the HTTP way, and the cookies are read.
+
+- **Breaking change: CORS lets no origin in by default** (2026-10-03 – tempraturbo)
+  CORSOptions.AllowOrigin started as '*', so any web page could call the
+  server from a visitor's browser unless someone remembered to close it. It
+  starts empty now, which answers no cross-origin caller.
+  A form keeps the '*' it was saved with, since streaming always wrote it out.
+  A server built in code that relied on it has to set AllowOrigin := '*', or
+  name its origins.
+
 - **Breaking change: synchronous calls, a shared connection and the engine pool by default** (2026-09-20 – tempraturbo)
   TRALClient.Get/Post/Put/Patch/Delete with a callback default to
   ebSingleThread: the callback has run when the call returns and the result
@@ -72,7 +257,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode in which MaxKeepAliveConnections applies.
 
 
+### Deprecated
+- **Deprecate reading TRALParams.Body and TRALParam.AsStream** (2026-10-04 – tempraturbo)
+  Both build an object on every read that the caller has to free:
+  TRALParams.Body a list of the body params, TRALParam.AsStream a copy of the
+  whole value. An "if Params.Body.Count > 0" leaks a list each time it runs.
+  What they do is unchanged.
+  FPC warns where either one is read - the directive sits on the getter, so
+  assigning AsStream raises no warning. Delphi rejects the directive on a
+  property and warns about a getter only inside its own unit, so there the doc
+  comments carry the advice. Read Content, or call SaveToStream, instead of
+  AsStream; read Count(rpkBODY), IndexKind[i, rpkBODY] or SingleBody instead of
+  Body. None of them allocates.
+
+
 ### Added
+- **Add an index page, HEAD and the file route's documentation to the WebModule** (2026-10-04 – tempraturbo)
+  - TRALWebModule.IndexFile, index.html by default, answers the Domain's own
+  URL. Without that file in the root, '/' is the server's status page, as
+  before.
+  - The file route allows HEAD, which a client uses to learn the size or the
+  date of a file without downloading it.
+  - GetListRoutes lists the file route, with the Domain, while DocumentRoot
+  serves something, so the Swagger and Postman exporters document it.
+
+- **Add HTTP caching, byte ranges and files streamed from disk to the WebModule** (2026-10-04 – tempraturbo)
+  Every file the WebModule serves carries an ETag (strong for the file's own
+  bytes, weak and named after the coding for compressed ones) and a
+  Last-Modified; If-None-Match and If-Modified-Since are answered 304 without
+  opening the file. A single byte range is answered 206 with Content-Range,
+  If-Range is honoured, a range past the end gets 416, and Accept-Ranges and
+  Vary: Accept-Encoding say what a client may ask for.
+  New published properties on TRALWebModule: CacheControl (one line per
+  extension, empty sends none), ServePrecompressed (x.css.br or x.css.gz beside
+  x.css goes out as it is, off by default), MaxFileSize and FileCacheTime (0 by
+  default: no limit, and the disk asked on every request).
+  A file goes out as a TRALFileStream, read from the disk as it is sent; on
+  mORMot2 a file of 2 MB or more is handed over by name, and RAL answers the
+  Range itself on every engine. The path a URL leads to is worked out once per
+  request (TRALRequest.RouteData) and remembered; whether the file is there, its
+  size and its date take one system call (RALFileInfo). Sessions sit in 16 lists
+  with a lock each.
+  Also new: TRALFileStream and TRALBufferStream (RALStream),
+  RALIsCompressedMediaType (RALMIMETypes), TRALResponse.ContentEncoded for a body
+  coded already, and the 206, 304 and 416 status constants.
+
+- **Add TRALRequest.Route and OutputParams on routes** (2026-10-03 – tempraturbo)
+  TRALRequest.Route is the route answering the request, filled by
+  ProcessCommands - so by every engine - before OnRequest, and nil when none
+  answers. It is declared TCollectionItem and read as
+  TRALBaseRoute(ARequest.Route), because RALRoutes uses RALRequest. With it a
+  handler reads InputParams in the order the route declares, which the
+  params, kept in the order they arrived, do not carry - what RDW's
+  DWServerEvents gave by declaring the params of each event.
+  TRALBaseRoute.OutputParams is what a route answers with, in order, beside
+  InputParams. Copied by Assign, published, and written to a form only when it
+  has items, so a form saved by this version still opens in one without the
+  property. Swagger and Postman document the inputs only.
+
+- **Add opt-in PBKDF2 key derivation for the AES body cipher** (2026-10-03 – tempraturbo)
+  RALCriptoKeyDerivation := rkdPBKDF2 derives the AES key with
+  PBKDF2-HMAC-SHA256 (RALPBKDF2SHA256, RFC 8018; 100 000 rounds, salt
+  'ral-kdf') instead of using the key's UTF-8 bytes padded with zeros. A short
+  key keeps working, but each guess at it costs 100 000 HMACs instead of one
+  AES block.
+  It is process-wide and off by default, so the wire is unchanged; once on,
+  both ends need it, or every body fails its MAC. The last 16 derived keys are
+  kept, so only the first message with a key pays for the rounds.
+  KeyExpansion no longer pads from one past the end of a key as long as the
+  AES size - every derived key is one - which range checks refused.
+
+- **Add the MsQuic server and client on Android** (2026-10-02 – tempraturbo)
+  The MsQuic engine runs on Android 9 and later, server and client, in both
+  ABIs (arm64-v8a and armeabi-v7a), with the msquic 2.6.1 OpenSSL libraries
+  published in the external branch. Verified on a handset: the functional
+  program with both ends on the device, a Windows client against the
+  device's server over Wi-Fi, and a public CA chain validated through the
+  Android store.
+  - QUIC_SETTINGS and QUIC_ADDR keep their explicit padding but are no longer
+  packed: ARM32 reads 8-byte fields with instructions that fault on an
+  unaligned location. The unit pins {$ALIGN 8} / {$PACKRECORDS C} itself.
+  - Outside Windows the client asks for USE_TLS_BUILTIN_CERTIFICATE_VALIDATION:
+  msquic's POSIX platform check is a stub that refuses every certificate
+  and reports SUCCESS under DEFER, so OpenSSL checks the chain and the
+  host name instead.
+  - On Android the system CA store is gathered into one PEM in the cache
+  folder, since OpenSSL 3 cannot look up its old MD5-hashed file names.
+  - TRALMsQuicClientHTTP.DefaultCaFile replaces the platform store.
+  - MsQuicRAL.dproj lists Android and Android64 again, and
+  src/engine/msquic/README.md is the guide for deploying the library.
+  Android 9 (API 28) is the floor: the library build needs glob(), and the
+  symbol versions that come with it make the dynamic linker refuse the .so
+  below that. Kwik stays for Android 8.
+
 - **feat: Função de detectar o IP em que o servidor RAL está rodando fix: Correção de MIMEtypes para Apple** (2026-09-29 – mobius1qwe)
 
 - **feat: ajuste de ícone MsQuicServer para Delphi e Lazarus fix: correção de instalação de brotlicompress no Delphi** (2026-09-28 – mobius1qwe)
@@ -330,6 +607,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Stop counting a client's first request as a flood, and answer 400 to a multipart body with no part** (2026-10-04 – tempraturbo)
+  Flood protection measures an interval from a client's second request on. The
+  first one measured zero against the stamp of the list entry made for it, so
+  with rsoFloodProtection on every client's first request was refused with 403.
+  A body declared multipart/form-data that yields no part and has no close
+  delimiter - no boundary in the Content-Type, one the body never uses, a first
+  part cut short - is answered 400 before any route runs, with
+  emMultipartNoPart. It used to reach the route with empty params.
+  TRALParams.BodyError says why, and TRALMultipartDecoder reports PartCount and
+  Closed. An empty form is still accepted. Sagui cannot tell: libmicrohttpd
+  parses multipart itself.
+
+- **Stop copying bodies and repeating work on every request** (2026-10-04 – tempraturbo)
+  A body reaches the engine as the param holds it: a file as a TRALFileStream,
+  text as a TRALBufferStream over the string, a shared buffer as a twin.
+  EncodeBody copied the whole value first - a file included - and a compressor
+  then held that copy and its own output at once. TRALParam.OpenFile shares the
+  file with writers (fmShareDenyNone), so a later version can be published while
+  answers are going out.
+  Bytes compressed already - images but SVG, audio, video, archives, web fonts -
+  are not compressed again: ProcessCommands leaves the coding off for a lone
+  body of such a type, a route's answer included, and a client sends such an
+  upload plain.
+  The coding picked from Accept-Encoding is matched in place and kept until the
+  header or the registered compressors change. The MIME lookup is a hash table,
+  which finds an extension with a hyphen or an underscore that the old binary
+  search could miss. The CORS Allow-Headers text is kept until the list changes,
+  joined with commas as written, where DelimitedText quoted an item holding a
+  blank. An ASCII header block skips the UTF-8 to UTF-16 round trip, POSIX keeps
+  /dev/urandom open, and route matching returns at once when there are no routes.
+  netHTTP, MsQuic and Kwik keep their transport and connection keys until what
+  they are made of changes, CertPolicyKey included; netHTTP finds each private
+  field by RTTI once per process and takes its pool lock only for a shared h2
+  transport that answered 1.x. The QUIC frame takes a 64-bit body length,
+  checked against its limit.
+  DBWare: the result of opensql, the answer of the SQL cache and what the
+  memtables and the DAO read travel without the three copies they used to make;
+  100 MB of result peaked near 400 MB on the server.
+
+- **Speed up param parsing, lookups and route matching** (2026-10-03 – tempraturbo)
+  - The name index of TRALParams is always on: built with the first param and
+  doubled as the list grows, so a name is looked up one way whatever the
+  size of the list. A param keeps its hash and its place in a chain kept in
+  creation order, so the first param of a name is still the one found; a
+  param that gets its name, from ParamName or from Content-Disposition,
+  enters the index then, and growing the table only relinks what is there.
+  Get and GetKind take the name by const. 20 000 query params went from
+  2.3 s to 16 ms.
+  - A param parsed or stored costs one hash of its name, and AppendParamsText
+  cuts name and value straight from the text: with DecodeURL answering the
+  string itself when there is nothing to decode, a query or form param went
+  from eight allocations to three.
+  - Route matching keeps each route's path split (UpdateSegments) and splits
+  the request once: it used to build two TStringLists and parse both paths
+  for every route on every request.
+  - The multipart decoder copies each line's own bytes instead of converting
+  the whole 64 KB buffer per line; EncodeURL, EncodeHTML, DecodeHTML and
+  OnlyNumbers build their result in one allocation, and DecodeHTML keeps a
+  lone '&' and the text after it.
+
 - **Offer each engine package only the platforms it can serve** (2026-09-21 – tempraturbo)
   The three lists said whatever the template they were copied from said. MsQuic
   listed Android, where its library has no binary anybody publishes; OkHttp and
@@ -378,6 +715,284 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix HTTP dates, base64, JWT checks, HEAD answers and other defects** (2026-10-04 – tempraturbo)
+  - HTTP dates: RALTryHTTPDate reads the IMF date, RFC 850's and asctime's,
+  and the forms cookies carry (RFC 6265 5.1.1); HTTPDateTimeToDateTime raises
+  EConvertError only for text that holds no date. A cookie's Expires comes
+  back in local time, as it is written - it was off by the time zone.
+  - Base64 decoding takes input without '=', skips blanks and line breaks, and
+  raises EConvertError on any other character, on data after the '=' and on a
+  lone character at the end, where it decoded to garbage. A Basic header that
+  does not decode is a 401, and so is a JWT that does not parse (a 500 on FPC).
+  - JWT signatures are checked over the header and payload exactly as they
+  arrived, with the algorithm the header names: a token from another library
+  validates. On FPC a claim holding an object or an array is kept as its JSON
+  text instead of raising.
+  - Request.URL is scheme://host/path, and the CGI engines fill Host and the
+  scheme.
+  - Asking an engine without IPv6 for it no longer stops the running server.
+  - JSON storage escapes field names and writes a character outside the BMP as
+  its surrogate pair; CSV quotes a header name holding the separator, a quote
+  or a line break.
+  - RALInvariantFormat is a variable filled once: typed doubles and currencies
+  went out through a TFormatSettings with two fields set.
+  - TRALClient tells threads apart by a token of its own, not by the system's
+  thread id, which the next thread inherits along with a dead thread's Request.
+  - HEAD: Indy sends the GET's Content-Length, and fpHTTP and MsQuic no longer
+  send the body.
+  - Content-Disposition names the file of an inline answer; a quote or a
+  backslash in the name is left out.
+  - fpHTTP before FPC 3.3 says Connection: close, since it closes every
+  connection.
+  - ConnectionID puts the peer's port above the handle on Indy, fpHTTP, Sagui
+  and MsQuic, where a hundred connections in a row counted as one; fpHTTP and
+  Sagui fill ClientInfo.Port.
+  - The WebModule's settings and the CORS header text are published as
+  immutable versions (TRALSnapshots), read with no lock while a change
+  replaces them.
+  - mORMot2 smAsync: the request options and Accept-Encoding are reset for
+  every request, and Connection: close ends the connection on Windows
+  (SO_UPDATE_ACCEPT_CONTEXT on sockets AcceptEx took). Marked MORMOT2, to go
+  when mORMot2 does both.
+  - OkHttp closes and forgets a cached client no call used for 10 minutes.
+  - Range-check sweep: empty texts in the BIN and JSON storages, the SQL cache
+  and the translations; zlib, zstd and brotli work through a fixed 64 KB
+  buffer; hashing in pieces kept the first piece; the multipart decoder no
+  longer loops over a short stream, frees a part left open, and takes no part
+  from a body without a boundary; the AES cipher no longer allocates a log
+  list it never wrote.
+
+- **Fix gzip answers to clients that never asked on mORMot2, and DBWare ApplyUpdates of several rows** (2026-10-04 – tempraturbo)
+  mORMot2's THttpRequestContext.Reset clears every field of a request but
+  AcceptEncoding, and THttpAsyncServer applies hsoHeadersUnfiltered only to the
+  first request of a connection object. A request without Accept-Encoding
+  inherited the previous one's - on a kept-alive connection in both socket
+  modes, and on a recycled connection object in smAsync - and got a gzip answer
+  it never asked for. The field is emptied once read.
+  TRALBinaryWriter.ReadStream with a size of 0 called CopyFrom with a count of
+  0, which copies the whole rest of the source. In a DBWare ApplyUpdates of
+  several rows, the first statement with no result stream took the answers of
+  the others, and the client raised "Binary stream announces more bytes than it
+  holds" after the server had applied every row. A reused SQL cache is emptied
+  before it is read, so a shorter answer no longer keeps the tail of a longer one.
+
+- **Fix error answers, cookies, missing compressors and object properties that took the caller's pointer** (2026-10-03 – tempraturbo)
+  - An exception outside ProcessCommands - a body that does not decode, a
+  response that does not encode - answers 500: Indy sent its own "200 OK"
+  page, fpHTTP the response as it stood, mORMot2 on FPC nothing at all; Sagui
+  and MsQuic follow the same rule.
+  - A JWT with an empty SignSecretKey answers 500 with emJWTNoSecretKey instead
+  of "Key must be provided.", and ProcessCommands lets an authenticator's own
+  5xx through instead of turning it into 403.
+  - Cookies: Indy, UniGUI and fpHTTP send the lines of the shared builder
+  whole, each on its own Set-Cookie, and both CGI engines send cookies at
+  all; a malformed Expires is ignored (RFC 6265 5.2.1).
+  - A compressor whose unit is not linked no longer empties the body:
+  EncodeBody sends it as it is, DecodeBody leaves it alone, and
+  Content-Encoding only names a coding this build can produce.
+  - ResponseText and RequestText are the body as text: reading them ran
+  multipart, gzip and AES and rewrote ContentType, and on the client wiped
+  the cipher key. mORMot2 reads the wire body through GetResponseEncText.
+  - One query parser: SetQuery uses AppendParamsText, and fpHTTP, mORMot2 and
+  MsQuic stopped parsing again after it - mORMot2 and MsQuic ran the path
+  through the query parser, so /a=b became a param. mORMot2 and MsQuic read
+  the cookies from the Cookie header by kind, so ?cookie=... no longer sets
+  them.
+  - Owned object properties copy what they are given (RALAssignOwned): the six
+  option objects of TRALServer, Routes of a module, CriptoOptions of
+  TRALClient and TRALParams,
+  the params of a route, License of the Swagger module, Payload of the JWT
+  client, Authorization and ClientInfo of a request, Params of the three
+  memtables and SSLOptions of Indy and fpHTTP. They took the pointer: the
+  object the constructor made leaked, and the class freed one its caller
+  could free too. A copied route keeps its handlers, TRALSSL can be
+  assigned, and an IPConfig with no server keeps IPv6Enabled.
+  - Smaller: SetBody clears the body only; a quoted multipart boundary is
+  unquoted, and a preamble or epilogue no longer writes through a nil part;
+  CORS AllowHeaders := empty no longer repeats the defaults; AppendParamsUri
+  takes whole segments; Params.AsString has no trailing separator;
+  ParseJSON(TStream) reads the stream from its start; the Digest client
+  frees the body it encoded.
+
+- **Fix daylight-saving conversions, persistent memtable fields and builds with range checks** (2026-10-03 – tempraturbo)
+  Local time and UTC used the offset in force when the call ran on FPC and
+  Delphi XE, an hour off across a daylight-saving change, and Delphi XE2 on
+  raised on the hour the clocks skip, so an opensql over a record holding one
+  answered 500. On Windows the rules of the date's own year are used now, and
+  both compilers settle the skipped and the repeated hour alike, as java.time
+  and Python do. This is behind JWT exp, iat and nbf, ISO 8601 dates in JSON
+  and the cookie Expires of every engine.
+  The FireDAC memtable freed every field on a native load, the persistent ones
+  of the Fields Editor too, which belong to the form. Only the fields it made
+  for itself go now.
+  Sources compiled with range and overflow checks failed in four places:
+  RALStream took x[0] of an empty array, so every empty POST on Indy raised and
+  Indy answered its own 200 page; the SHA-2 units turned overflow checks on for
+  the rest of the unit; FPC refused the SHA-512 constants under -Cr; and the
+  fpHTTP server put Windows' SOMAXCONN in a Word. TRALStringStream.WriteStream
+  also copies straight across instead of through an array.
+  CookieLife is documented in minutes, as every engine uses it.
+
+- **Fix sqldb commits, the DAO waiting for a main thread and the IPv6 a server reports** (2026-10-03 – tempraturbo)
+  sqldb left its statements to the commit ResetSession ran after the answer was
+  built, so a commit that failed was swallowed while the client read 200, and
+  on PostgreSQL one failed statement made every later one fail. ExecSQL commits
+  its own statements now, and a failure rolls back.
+  The FireDAC DAO loaded an answer through Synchronize, which under the default
+  ebSingleThread waited for a main thread that was not coming: a service, a
+  console program, or one blocked in TTask.Wait. It loads on the thread that
+  delivers the answer, as TFDQuery.Open itself does.
+  The server's own IPv6 (rimIPv6) was the temporary one the system prefers as a
+  source, which rotates within a day. The stable one of the same interface and
+  prefix is answered now, read from the adapter list on Windows and from
+  /proc/net/if_inet6 elsewhere.
+
+- **Fix Basic credentials with a plus sign, IP lists set in a form and smaller engine bugs** (2026-10-03 – tempraturbo)
+  Header values were URL-decoded like a query string, so the '+' of a Basic
+  base64 became a space on every engine, and so did the one in media types such
+  as application/ld+json. Query, field and cookie values still decode.
+  BlackIPList and WhiteIPList are lists the component keeps. The getters built
+  a list on every read that nobody freed, and a list set at design time never
+  reached the server.
+  Smaller ones: the Lazarus package lists the units lazbuild was compiling in
+  implicitly; the FireDAC DAO uses the console wait cursor on Linux, the only
+  one FireDAC ships there; ZStd and Brotli unregister on finalization, and a
+  class that leaves only takes its own entries; MsQuic reads the whole
+  certificate facility as a certificate failure on Windows; the MIME lookup on
+  Apple no longer writes into a list other threads search; GetRequestEncStream
+  restores compression and cipher in a finally block.
+
+- **Fix query leaks on a failed open, disconnects under the pool's lock and the memtables' next Open** (2026-10-02 – tempraturbo)
+  Drivers:
+  - A failed Open left its query behind in all three drivers - an unknown
+  param, a value that did not convert or a statement the server refused
+  cost one query per request, on a connection the pool keeps alive.
+  FireDAC builds its queries in one place, which also takes nil params:
+  TestConnection passes nil and OpenCompatible dereferenced it, so
+  a pool with ValidateOnAcquire failed its test and reconnected on every
+  acquire.
+  - FireDAC built another driver link over the last one on every reconnect;
+  it is built once per driver.
+  - GetNativeConnection and NativeConnection hand the connection out
+  connected. With the pool off - the default - nothing had configured it,
+  so a route got a connection with no driver or database set.
+  Pool:
+  - Closing a connection is network I/O - a database that went away makes
+  it wait out a TCP timeout - and it ran under the pool's lock, with every
+  Acquire and Release of every request queued behind it. Expired and
+  broken items are set aside under the lock and closed once it is let go
+  (FreeDead).
+  Memtables:
+  - FLoading (FireDAC, Zeos) and FOpening (sqldb) are lowered when
+  OpenRemote raises before the request is made - no Client, an engine not
+  registered. The next Open used to open the dataset locally and empty,
+  with every Post taken for a load and never sent, or die with "Missing
+  (compatible) underlying dataset" on sqldb.
+  - The Zeos memtable's native load called LoadFromStream with the class as
+  Self: an access violation on every native answer when Zeos publishes it
+  (ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT).
+  CLAUDE.md gains a section on what changed from report 5 of the audits.
+
+- **Fix server start from a form, error page labels and the fpHTTP protocol version** (2026-10-02 – tempraturbo)
+  TRALServer:
+  - A form saved with Active = True reads it first, since it is the first
+  published property, so the engine started before Port, IPConfig and SSL
+  were read: a server saved with SSL on listened in plain HTTP, and one
+  bound to the loopback listened on every interface. The value is kept
+  while loading and applied in Loaded.
+  - 415 and 406 labelled the plain error page with the client's coding: a
+  client that sent br to a server without brotli got a plain page marked
+  br, and its decoder failed instead of showing the 415. The page goes out
+  unencoded.
+  - A 405 carries Allow, as RFC 9110 requires.
+  - JSONBodyToParams parsed the body of any request, a 404 or one with no
+  token included, one param per member. It only runs when a route will
+  answer.
+  - RALVERSION_MINOR said 1 while RALVERSION has said 1.2 since 0644bad, so
+  RALVERSION_FULL read 10100.
+  Engines:
+  - fpHTTP took every request for HTTP/1.0 - ProtocolVersion rhv10 and
+  Connection: close on all of them - because fcl-web hands the version
+  over without its 'HTTP/'.
+  - Indy, fpHTTP and Sagui fill HttpVersion with the scheme, HTTPS over TLS,
+  instead of copying the 'HTTP' of the request line.
+  - Sagui handed the library a zero or negative PoolCount as it came, while
+  the property already read the default.
+  - MsQuic stops in this order: listener, dispatch pool, connections and
+  registration, then the queue's lock. RegistrationClose waits only for
+  the connections and then tears down the registration's workers, so a
+  server stopped with requests queued closed those streams on workers
+  already gone. A stopping pool refuses work and gives the stream back.
+  Smaller:
+  - The two TRALParams methods that attach a file returned whatever the
+  stack held when given an empty name.
+  - RALSameName compares bytes above 127 as they are instead of handing them
+  to SameText, which folds 'a'..'z' only on both compilers: the same
+  answer, without two UTF-8/UTF-16 conversions per call.
+
+- **Fix the client's failover index, token reset and kept engine, and four engine bugs** (2026-10-02 – tempraturbo)
+  TRALClient:
+  - The failover index was advanced from the callback wrapper, which cast
+  Sender to TRALThreadClient. On the synchronous path Sender is the client
+  itself, so two integers were read out of the middle of the component and
+  one could land in FIndexUrl; on the threaded path a caller's own callback
+  skipped it, and the next request went back to the dead server. Whoever
+  ran the request advances it now, before any callback.
+  - A 401 cleared the token unconditionally. With one authenticator shared
+  by several clients, the 401s of requests already in flight arrive after
+  one of them has fetched the next token, and each threw that token away:
+  every client in turn went back to /gettoken. ResetToken compares the
+  Bearer the request carried with the current token, under the
+  authenticator's lock, and only then clears it.
+  - On a successful attempt made from inside an except block or an
+  Application.OnException handler, OnAfterExecute reported the message of
+  the exception that block was handling. ExceptObject is read only when
+  the attempt is actually unwinding.
+  - Changing EngineType from inside a callback freed the kept engine while
+  it was still serving the request, and its holder freed it again. A busy
+  kept engine is now let go of and closed by its holder, and an engine
+  built under the previous EngineType or pooling rule is closed when given
+  back instead of entering the pool. A request issued from a callback on
+  the thread that holds the kept engine gets a throwaway one.
+  - SetAuthToken returned whatever the stack held for an authenticator class
+  it does not handle, read as an error code that could abort the request.
+  It returns 0.
+  Engines:
+  - Indy kept the socket after a transport failure. After a read timeout a
+  1.1 connection still counts as kept alive, so the late answer was read
+  as the answer to the NEXT request on that engine - one query's dataset
+  delivered to another, and every reply after it shifted by one. The
+  engine outlives the call since 0ebbb89, and with the pool on by default
+  it always does; it disconnects after any transport failure now.
+  - okhttp never compressed a request body: it set Params.CompressType,
+  which RequestStream overwrites from ContentCompress. It sets
+  ContentCompress, as every other engine does.
+  - Kwik's connection sharing key carries KeepAliveInterval: only the client
+  that opens a connection sets its keep-alive, so a client asking for one
+  could land on a connection opened without it and wait out RequestTimeout
+  on a dead network. MsQuic keys it the same way.
+  - MsQuic on Linux and Android: the certificate status codes were 512 off
+  (msquic's CERT_ERROR_BASE is ERROR_BASE + 512), so an expired or
+  untrusted certificate came back as rteConnect - resent to the next
+  BaseURL, and indistinguishable from a server being down - instead of
+  rteCertificate.
+
+- **Fix the build on Android, Linux and FPC** (2026-10-02 – tempraturbo)
+  Three breaks that only show when compiling for a platform other than
+  Win32/Win64:
+  - RALnetHTTPClient: CapConnections, MatchConnectionCap and PoolMatchCap sat
+  inside {$IFDEF RALWindows} while their declarations did not, so the
+  netHTTP engine - the default client on Android - did not compile for
+  Android, Linux or macOS (since 6f8238f).
+  - RALExternalsLibraries.LoadProc passed a PAnsiChar to the symbol lookup,
+  which Delphi's POSIX RTL declares with PChar, so nothing that loads
+  OpenSSL through it compiled there.
+  - RALOpenSSL and RALCriptoOpenSSL did not compile on FPC: the OpenSSL entry
+  points are parameterless procedural variables, which ObjFPC does not call
+  when named without (), and LoadProcs called an abstract inherited. Both
+  units set {$MODE DELPHI}, RALOpenSSL with the same lines the 1.3 branch
+  carries.
+
 - **Fix a race in the field type name cache of RALDBTypes** (2026-09-30 – tempraturbo)
   RALFieldTypeName filled its cache on first use, without a lock. Two
   threads filling it at once could read an empty name or a string already
