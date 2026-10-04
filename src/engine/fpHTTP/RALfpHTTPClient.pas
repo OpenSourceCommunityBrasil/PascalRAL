@@ -1,5 +1,7 @@
 ﻿unit RALfpHTTPClient;
 
+{$I ..\..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -20,6 +22,10 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+    { the socket fphttpclient connected last, recorded by the socket handlers
+      this engine hands it (fphttpclient keeps its own private): what
+      SocketIdle asks before a kept connection is used again }
+    FSocketHandle: LongInt;
     { scheme://host:port the kept socket was opened to. fphttpclient never
       checks it: with KeepConnection on it writes any URL to the socket it
       has, so a client handed to another address, or left connected by a
@@ -49,6 +55,8 @@ type
 implementation
 
 uses
+  // select - before sockets, whose names must win where both declare one
+  {$IFDEF RALWindows}WinSock2,{$ELSE}BaseUnix,{$ENDIF}
   // fpsetsockopt, IPPROTO_TCP and TCP_NODELAY
   sockets,
   // ParseURI, the parse fphttpclient itself connects by
@@ -75,6 +83,8 @@ type
 
   TRALfpNoDelayHandler = class(TSocketHandler)
   public
+    { the engine that asked for it: told which socket was connected }
+    Engine: TRALfpHttpClientHTTP;
     function Connect: boolean; override;
   end;
 
@@ -82,6 +92,7 @@ type
 
   TRALfpNoDelaySSLHandler = class(TOpenSSLSocketHandler)
   public
+    Engine: TRALfpHttpClientHTTP;
     function Connect: boolean; override;
   end;
 
@@ -102,11 +113,42 @@ begin
   fpsetsockopt(ASocket.Handle, IPPROTO_TCP, TCP_NODELAY, @vNoDelay, SizeOf(vNoDelay));
 end;
 
+{ Whether a socket kept between requests is fit for the next one. An idle HTTP
+  connection has nothing to read: a socket that IS readable was closed by the
+  peer - a server restarted, an idle timeout; the read would answer 0 - or
+  holds bytes nobody asked for, and either way must not carry a request.
+  Asked without waiting. A handle that is no socket any more fails the select
+  and counts as unfit too }
+function SocketIdle(AHandle: LongInt): boolean;
+var
+  {$IFDEF RALWindows}
+  vSet: WinSock2.TFDSet;
+  vTime: WinSock2.TTimeVal;
+  {$ELSE}
+  vSet: BaseUnix.TFDSet;
+  vTime: BaseUnix.TTimeVal;
+  {$ENDIF}
+begin
+  vTime.tv_sec := 0;
+  vTime.tv_usec := 0;
+  {$IFDEF RALWindows}
+  WinSock2.FD_ZERO(vSet);
+  WinSock2.FD_SET(WinSock2.TSocket(AHandle), vSet);
+  Result := WinSock2.select(0, @vSet, nil, nil, @vTime) = 0;
+  {$ELSE}
+  BaseUnix.fpFD_ZERO(vSet);
+  BaseUnix.fpFD_SET(AHandle, vSet);
+  Result := BaseUnix.fpSelect(AHandle + 1, @vSet, nil, nil, @vTime) = 0;
+  {$ENDIF}
+end;
+
 { TRALfpNoDelayHandler }
 
 function TRALfpNoDelayHandler.Connect: boolean;
 begin
   RALSocketNoDelay(Socket);
+  if (Engine <> nil) and (Socket <> nil) then
+    Engine.FSocketHandle := Socket.Handle;
   Result := inherited Connect;
 end;
 
@@ -115,6 +157,8 @@ end;
 function TRALfpNoDelaySSLHandler.Connect: boolean;
 begin
   RALSocketNoDelay(Socket);
+  if (Engine <> nil) and (Socket <> nil) then
+    Engine.FSocketHandle := Socket.Handle;
   Result := inherited Connect;
 end;
 
@@ -188,10 +232,12 @@ begin
     { what fphttpclient would have built here is a plain TSocketHandler; this
       is the same thing with Nagle off }
     AHandler := TRALfpNoDelayHandler.Create;
+    TRALfpNoDelayHandler(AHandler).Engine := Self;
     Exit;
   end;
 
   AHandler := TRALfpNoDelaySSLHandler.Create;
+  TRALfpNoDelaySSLHandler(AHandler).Engine := Self;
 
   if CertCheckWanted or (Parent.SSL.Verify = svAlways) then
     { only the callback, and deliberately NOT VerifyPeerCert: that one maps to
@@ -296,6 +342,17 @@ var
     vRetry := True;
   end;
 
+  { Whether the server closes the connection after the answer just read: it
+    said "close", or it answered HTTP/1.0 without asking to keep it }
+  function ServerCloses: boolean;
+  var
+    vConnection: string;
+  begin
+    vConnection := LowerCase(FHttp.ResponseHeaders.Values['Connection']);
+    Result := (Pos('close', vConnection) > 0) or
+              ((FHttp.ServerHTTPVersion = '1.0') and (Pos('keep-alive', vConnection) = 0));
+  end;
+
 begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEFPHTTP);
@@ -325,6 +382,20 @@ begin
   // reusing the connection anyway - and writing to a socket the server had
   // already closed raises EWriteError.
   FHttp.KeepConnection := Parent.KeepAlive;
+
+  { A kept socket the server closed while it sat idle - a restart, an idle
+    timeout - was written into: the request went out, the read failed, and a
+    POST is not sent again after a failed read (see the loop below), so the
+    first POST after the server went away failed. Asked first now, the way
+    the mORMot2 engine probes its socket: unfit, it is dropped before anything
+    is written, and the request goes out on a new connection }
+  if FSocketReused and FHttp.KeepConnection and (not SocketIdle(FSocketHandle)) then
+  begin
+    FHttp.KeepConnection := False; // fphttpclient closes it
+    FSocketReused := False;
+    FHttp.KeepConnection := True;
+  end;
+
   if Parent.KeepAlive then
     ARequest.Params.AddParam('Connection', 'keep-alive', rpkHEADER);
 
@@ -435,9 +506,18 @@ begin
         has to know which one is running in order to ask. }
       AResponse.Protocol := StringRAL(FHttp.ServerHTTPVersion);
       AResponse.ResponseStream := vResult;
+      { A server that closes the connection after this answer says so (RFC
+        9112 9.3), and fphttpclient 3.2 only looks for "Connection: close" in
+        its own REQUEST: it kept the socket and wrote the next request into
+        it. The read then failed, and a POST is not sent again after a failed
+        read (see the loop), so every other POST failed outright - against
+        fcl-web, this engine's own server, which closes after every answer
+        and says so. Switching KeepConnection off makes fphttpclient close it }
+      if ServerCloses then
+        FHttp.KeepConnection := False;
       // the request went through; if keep-alive is on, the socket stays open
       // and the NEXT request will be reusing it - unless a redirect elsewhere
-      // turned it off, see DoRedirect
+      // or the server's own answer turned it off, see DoRedirect
       FSocketReused := FHttp.KeepConnection;
     except
       on e: ESocketError do
