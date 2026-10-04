@@ -37,6 +37,7 @@ type
     FHeaderType: StringRAL;
     FKeyID: StringRAL;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetAsJSON: StringRAL;
     procedure Initialize;
     procedure SetAsJSON(const AValue: StringRAL);
@@ -96,7 +97,12 @@ type
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
     FSignSecretKey: StringRAL;
+    { the header and the payload as the token carried them, joined by their
+      dot - what the signature was computed over }
+    FSigningInput: StringRAL;
     FToken: StringRAL;
+    procedure SetHeader(const AValue: TRALJWTHeader);
+    procedure SetPayload(const AValue: TRALJWTParams);
   protected
     function signHS256(const ASource: StringRAL): StringRAL;
     function signHS384(const ASource: StringRAL): StringRAL;
@@ -112,8 +118,10 @@ type
 
     function IsValidToken(const AValue: StringRAL = ''): boolean;
   published
-    property Header: TRALJWTHeader read FHeader write FHeader;
-    property Payload: TRALJWTParams read FPayload write FPayload;
+    { both copy what they are given (RALAssignOwned): the objects are the
+      token's own, and freed with it }
+    property Header: TRALJWTHeader read FHeader write SetHeader;
+    property Payload: TRALJWTParams read FPayload write SetPayload;
     property Signature: StringRAL read FSignature;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property Token: StringRAL read GetToken write SetToken;
@@ -589,6 +597,17 @@ begin
   FKeyID := '';
 end;
 
+procedure TRALJWTHeader.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALJWTHeader then
+  begin
+    RALAssignProperties(Self, Dest);
+    TRALJWTHeader(Dest).FHeaderType := FHeaderType; // read-only, not copied above
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
 procedure TRALJWTHeader.SetAsJSON(const AValue: StringRAL);
 var
   vParsed: TRALJSONValue;
@@ -830,7 +849,14 @@ begin
         end
         else
         begin
-          AddClaim(vName, vValue.AsString);
+          { an object or an array as its JSON text, the same on both
+            compilers: AsString handed it to fpjson on FPC, which raises for
+            an object - a token from another library with one in its claims
+            was no token there, while Delphi's backend answered the text }
+          if vValue.JsonType in [rjtObject, rjtArray] then
+            AddClaim(vName, vValue.ToJSON)
+          else
+            AddClaim(vName, vValue.AsString);
         end;
 
         vInt := vInt + 1;
@@ -856,6 +882,7 @@ var
   vInt: IntegerRAL;
   vStr: TStringList;
   vWhole: StringRAL;
+  vOk: boolean;
 begin
   FToken := '';
   vWhole := AValue;
@@ -873,30 +900,49 @@ begin
       end;
     until vInt = 0;
 
-    if vStr.Count = 3 then
-    begin
+    vOk := vStr.Count = 3;
+    if vOk then
+    try
+      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
+      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       { the loop above eats AValue segment by segment, and FToken used to be
         assigned AFTER it - always empty, so IsValidToken with no argument
         answered False for a token that had just been assigned }
       FToken := vWhole;
-      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
-      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
+      FSigningInput := vStr.Strings[0] + '.' + vStr.Strings[1];
       FSignature := vStr.Strings[2];
-    end
-    else
+    except
+      { a segment that is not base64, or not JSON: not a token, like a text
+        without its three segments. It raised - on FPC whatever the JSON was,
+        whose parser raises where Delphi's answers nil - and a Bearer of
+        garbage turned into a 500 before any authentication had a say }
+      vOk := False;
+    end;
+
+    if not vOk then
     begin
-      { not a token, so nothing of the previous one may stay: IsValidToken
-        recomputes the signature from Header and Payload and compares it with
-        FSignature, and with the three left as they were it compared the last
-        token with itself - anything malformed handed to an object that had
-        validated a good token came back valid, with that token's claims. The
-        header keeps its Algorithm, which is the caller's configuration }
+      { not a token, so nothing of the previous one may stay: anything
+        malformed handed to an object that had validated a good token came
+        back valid, with that token's claims. The header keeps its Algorithm,
+        which is the caller's configuration }
+      FToken := '';
       FPayload.Clear;
+      FSigningInput := '';
       FSignature := '';
     end;
   finally
     FreeAndNil(vStr);
   end;
+end;
+
+procedure TRALJWT.SetHeader(const AValue: TRALJWTHeader);
+begin
+  RALAssignOwned(FHeader, AValue);
+end;
+
+procedure TRALJWT.SetPayload(const AValue: TRALJWTParams);
+begin
+  RALAssignOwned(FPayload, AValue);
 end;
 
 function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
@@ -1001,8 +1047,17 @@ begin
 
   if vAlgorithm = FHeader.Algorithm then
   begin
-    vSignature := FSignature;
-    GetToken;
+    { over the header and the payload as they arrived. It signed what
+      GetToken wrote back from the objects they were read into, and any
+      difference in that writing - the order of the keys, a number, a claim
+      the objects do not keep - changed what was signed: every token another
+      library issued was refused }
+    case FHeader.Algorithm of
+      tjaHSHA384: vSignature := signHS384(FSigningInput);
+      tjaHSHA512: vSignature := signHS512(FSigningInput);
+    else
+      vSignature := signHS256(FSigningInput);
+    end;
     { constant time: the signature is the secret here }
     if RALSameSecret(vSignature, FSignature) then
     begin
@@ -1026,7 +1081,16 @@ var
   vInt: IntegerRAL;
 begin
   FAuthString := AValue;
-  vString := TRALBase64.Decode(FAuthString);
+  FUserName := '';
+  FPassword := '';
+  { credentials that are not base64 are no credentials - a 401, as for a
+    wrong password. The decoder raises on them now, where it used to answer
+    garbage, and raised here they came out of the engine as a 500 }
+  try
+    vString := TRALBase64.Decode(FAuthString);
+  except
+    vString := '';
+  end;
   vInt := Pos(':', vString);
   if vInt > 0 then begin
     FUserName := Copy(vString, 1, vInt - 1);

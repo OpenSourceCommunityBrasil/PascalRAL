@@ -47,10 +47,12 @@ begin
   if vSize = 0 then
     Exit;
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  { a work buffer of a fixed size. Sized from the input, it came out empty
+    for an empty one - and vBuf[0] of it is a range error - and, on the way
+    back, as small as the compressed body: a 20-byte deflate of a megabyte of
+    zeros took fifty thousand turns of the loop. Nor does a body of 40 MB
+    need a 40 MB copy of itself to go through the compressor }
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   {$IFDEF FPC}
   if Format = ctGZip then
@@ -162,10 +164,7 @@ begin
     AInStream.Position := 0;
   {$ENDIF}
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE); // see InitCompress
 
   vFormat := Format;
   if (vFormat = ctDeflate) and StartsWithZlibHeader(AInStream) then

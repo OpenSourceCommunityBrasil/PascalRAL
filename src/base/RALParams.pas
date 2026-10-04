@@ -505,6 +505,7 @@ function GetRALCookieFromText(ACookieString: StringRAL): TRALCookie;
 var
   Start, P, EqPos, Len: Integer;
   S, Part, Name, Value: StringRAL;
+  vDate: TDateTime;
 begin
   // the record holds strings: release whatever the caller's variable still
   // referenced before zeroing it, or those strings leak
@@ -566,13 +567,15 @@ begin
     else if RALSameName(Name, 'Expires') then
     begin
       { a date that does not parse is ignored (RFC 6265 5.2.1), not the end of
-        the whole cookie - nor of the response the cookie was going out with }
-      try
-        Result.Expires := HTTPDateTimeToDateTime(Value);
-      except
-        on EConvertError do
-          Result.Expires := 0;
-      end;
+        the whole cookie - nor of the response the cookie was going out with.
+        The line carries UTC and Expires is local time, as GetCookieText
+        writes it: read, it came back as the UTC value taken for local, hours
+        off by the zone - and a cookie copied from one answer to another
+        moved by that much each time }
+      if RALTryHTTPDate(Value, vDate) then
+        Result.Expires := RALGMTToDateTime(vDate)
+      else
+        Result.Expires := 0;
     end
     else if RALSameName(Name, 'Max-Age') then
     begin
@@ -1014,7 +1017,6 @@ end;
 function TRALParam.GetAsString: StringRAL;
 var
   vVar: Variant;
-  vFmt: TFormatSettings;
 begin
   Result := '';
   if Self = nil then
@@ -1028,11 +1030,6 @@ begin
     travels in. }
   if GetTypedVariant(vVar) then
   begin
-    { built by hand instead of TFormatSettings.Invariant, which does not exist
-      on the oldest IDEs RAL still compiles on }
-    vFmt.DecimalSeparator := '.';
-    vFmt.ThousandSeparator := ',';
-
     if VarIsType(vVar, varBoolean) then
     begin
       if vVar then
@@ -1041,9 +1038,9 @@ begin
         Result := '0';
     end
     else if VarIsType(vVar, varCurrency) then
-      Result := StringRAL(CurrToStr(vVar, vFmt))
+      Result := StringRAL(CurrToStr(vVar, RALInvariantFormat))
     else if VarIsType(vVar, varDouble) then
-      Result := StringRAL(FloatToStr(Double(vVar), vFmt))
+      Result := StringRAL(FloatToStr(Double(vVar), RALInvariantFormat))
     else
       Result := StringRAL(VarToStr(vVar));
   end
@@ -1078,13 +1075,30 @@ begin
 end;
 
 function TRALParam.GetContentDisposition: StringRAL;
+var
+  vName: StringRAL;
+  vInt: IntegerRAL;
 begin
-  if (FFileName <> '') and (not FContentDispositionInline) then
-    Result := Format('attachment; name="%s"; filename="%s"', [FParamName, FFileName])
+  { the file name inside a quoted string: a quote or a backslash in it ended
+    the string early or escaped what followed. Advice to a browser saving the
+    file, so the two simply go }
+  vName := FFileName;
+  vInt := POSINISTR;
+  while vInt <= RALHighStr(vName) do
+    if (vName[vInt] = '"') or (vName[vInt] = '\') then
+      Delete(vName, vInt - POSINISTR + 1, 1) // Delete counts from 1 everywhere
+    else
+      Inc(vInt);
+
+  { inline keeps no name= - a lone body param travels without its name, see
+    CLAUDE.md - but it does say the file name it is served under: a browser
+    saving the page fell back on the URL's }
+  if vName = '' then
+    Result := 'inline'
+  else if FContentDispositionInline then
+    Result := 'inline; filename="' + vName + '"'
   else
-//    Result := Format('inline; name="%s"', [FParamName]);
-// pode cagar o módulo web
-    Result := 'inline';
+    Result := 'attachment; name="' + FParamName + '"; filename="' + vName + '"';
 end;
 
 function TRALParam.GetContentSize: Int64RAL;

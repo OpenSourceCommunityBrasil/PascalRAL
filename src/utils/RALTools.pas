@@ -50,7 +50,16 @@ function RALISO8601ToDateTime(const AValue: StringRAL): TDateTime;
 function RALTryISO8601ToDateTime(const AValue: StringRAL; out ADate: TDateTime): Boolean;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
+/// The moment an HTTP date stands for, in UTC; raises EConvertError when the
+/// text is not one - see RALTryHTTPDate
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
+/// An HTTP date the way RFC 9110 5.6.7 asks a recipient to read one - the IMF
+/// date ('Sun, 06 Nov 1994 08:49:37 GMT'), RFC 850's ('Sunday, 06-Nov-94
+/// 08:49:37 GMT') and asctime's ('Sun Nov  6 08:49:37 1994') - plus what
+/// cookies carry besides ('Sun, 06-Nov-1994 08:49:37 GMT'), by the algorithm
+/// of RFC 6265 5.1.1. AUtc is the moment in UTC; False when the text holds no
+/// date, which makes a header carrying it count as not sent
+function RALTryHTTPDate(const AText: StringRAL; out AUtc: TDateTime): Boolean;
 /// Equality in constant time, for MACs and signatures: it does not stop at
 /// the first differing byte, so the time taken says nothing about the data
 function RALSameBytes(const A, B: TBytes): Boolean;
@@ -110,6 +119,15 @@ function RALAtomicDec(var ATarget: IntegerRAL): IntegerRAL; overload;
 /// Adds to a 64-bit counter. Only the addition is atomic: a reader still sees
 /// the value move under it, which is what the statistics counters expect.
 function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL; overload;
+
+var
+  /// How a number goes on the wire as text: '.' for decimals, ',' for
+  /// thousands, the rest as the RTL starts with. A local TFormatSettings with
+  /// only the separators assigned held whatever the stack had in every other
+  /// field, which FloatToStr happened not to read. Filled when the program
+  /// starts and only read after that; passed as a const parameter it is not
+  /// copied
+  RALInvariantFormat: TFormatSettings;
 
 implementation
 
@@ -543,13 +561,6 @@ begin
     Result[POSINISTR - 1 + vOut] := vChar;
   end;
   SetLength(Result, vOut);
-end;
-
-function RALInvariantFormat: TFormatSettings;
-begin
-  Result := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
-  Result.DecimalSeparator := '.';
-  Result.ThousandSeparator := ',';
 end;
 
 function RALTryStrToFloat(const AValue: StringRAL; out AResult: Double): Boolean;
@@ -1078,37 +1089,149 @@ begin
 end;
 
 function HTTPDateTimeToDateTime(const AStr: StringRAL): TDateTime;
-const
-  Months: array[1..12] of string = (
-    'Jan','Feb','Mar','Apr','May','Jun',
-    'Jul','Aug','Sep','Oct','Nov','Dec'
-  );
-var
-  Day, Month, Year, Hour, Min, Sec, i: Integer;
-  MonthStr: string;
 begin
-  // Mon, 27 Jul 2026 20:22:11 GMT
-  // M o n ,   2 7   J  u  l     2  0  2  6     2  0  :  2  2  :  1  1     G  M  T
-  // 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
-  Day      := StrToInt(Copy(AStr, 6, 2));
-  MonthStr := Copy(AStr, 9, 3);
-  Year     := StrToInt(Copy(AStr, 13, 4));
-  Hour     := StrToInt(Copy(AStr, 18, 2));
-  Min      := StrToInt(Copy(AStr, 21, 2));
-  Sec      := StrToInt(Copy(AStr, 24, 2));
+  { it read fixed offsets of the IMF date alone, and StrToInt raised on
+    anything else - a one-digit day, RFC 850, asctime, a cookie's dashes }
+  if not RALTryHTTPDate(AStr, Result) then
+    raise EConvertError.CreateFmt(emHTTPDateInvalid, [string(AStr)]);
+end;
 
-  Month := 0;
-  for i := 1 to 12 do
-    if SameText(MonthStr, Months[i]) then
+function RALTryHTTPDate(const AText: StringRAL; out AUtc: TDateTime): Boolean;
+const
+  cMonths: array[0..35] of AnsiChar = 'janfebmaraprmayjunjulaugsepoctnovdec';
+var
+  vText: PByte;
+  vLen, vPos, vStart, vEnd, vInt: IntegerRAL;
+  vDay, vMonth, vYear, vHour, vMin, vSec, vH, vM, vS: Integer;
+
+  { RFC 6265 5.1.1: %x09 / %x20-2F / %x3B-40 / %x5B-60 / %x7B-7E. ':' is
+    not one, so a time stays one token }
+  function IsDelimiter(AChr: Byte): Boolean;
+  begin
+    Result := (AChr = 9) or ((AChr >= $20) and (AChr <= $2F)) or
+              ((AChr >= $3B) and (AChr <= $40)) or
+              ((AChr >= $5B) and (AChr <= $60)) or
+              ((AChr >= $7B) and (AChr <= $7E));
+  end;
+
+  { AMin to AMax digits from APos, and not one more: their value, APos past
+    them. -1 when the token does not start that way }
+  function Number(var APos: IntegerRAL; AMin, AMax: IntegerRAL): Integer;
+  var
+    vCount: IntegerRAL;
+  begin
+    Result := 0;
+    vCount := 0;
+    while (APos < vEnd) and (vText[APos] >= Ord('0')) and (vText[APos] <= Ord('9')) and
+          (vCount <= AMax) do
     begin
-      Month := i;
-      Break;
+      Result := Result * 10 + (vText[APos] - Ord('0'));
+      Inc(APos);
+      Inc(vCount);
+    end;
+    if (vCount < AMin) or (vCount > AMax) then
+      Result := -1;
+  end;
+
+  function SameMonth(AIndex: IntegerRAL): Boolean;
+  var
+    vChr: IntegerRAL;
+  begin
+    Result := True;
+    for vChr := 0 to 2 do
+      if (vText[vStart + vChr] or $20) <> Ord(cMonths[AIndex * 3 + vChr]) then
+      begin
+        Result := False;
+        Exit;
+      end;
+  end;
+
+begin
+  Result := False;
+  AUtc := 0;
+  vDay := -1;
+  vMonth := -1;
+  vYear := -1;
+  vHour := -1;
+  vMin := 0;
+  vSec := 0;
+
+  { each token is tried as the time, then the day, the month and the year,
+    whichever of them is still missing - the first that fits takes it }
+  vText := PByte(Pointer(AText));
+  vLen := Length(AText);
+  vPos := 0;
+  while vPos < vLen do
+  begin
+    while (vPos < vLen) and IsDelimiter(vText[vPos]) do
+      Inc(vPos);
+    vStart := vPos;
+    while (vPos < vLen) and not IsDelimiter(vText[vPos]) do
+      Inc(vPos);
+    vEnd := vPos;
+    if vStart = vEnd then
+      Continue;
+
+    if vHour < 0 then
+    begin
+      vInt := vStart;
+      vH := Number(vInt, 1, 2);
+      if (vH >= 0) and (vInt < vEnd) and (vText[vInt] = Ord(':')) then
+      begin
+        Inc(vInt);
+        vM := Number(vInt, 1, 2);
+        if (vM >= 0) and (vInt < vEnd) and (vText[vInt] = Ord(':')) then
+        begin
+          Inc(vInt);
+          vS := Number(vInt, 1, 2);
+          if vS >= 0 then
+          begin
+            vHour := vH;
+            vMin := vM;
+            vSec := vS;
+            Continue;
+          end;
+        end;
+      end;
     end;
 
-  if Month = 0 then
-    raise EConvertError.CreateFmt(emHTTPDateInvalidMonth, [string(AStr)]);
+    if vDay < 0 then
+    begin
+      vInt := vStart;
+      vDay := Number(vInt, 1, 2);
+      if vDay >= 0 then
+        Continue;
+    end;
 
-  Result := EncodeDateTime(Year, Month, Day, Hour, Min, Sec, 0);
+    if (vMonth < 0) and (vEnd - vStart >= 3) then
+    begin
+      for vInt := 0 to 11 do
+        if SameMonth(vInt) then
+        begin
+          vMonth := vInt + 1;
+          Break;
+        end;
+      if vMonth > 0 then
+        Continue;
+    end;
+
+    if vYear < 0 then
+    begin
+      vInt := vStart;
+      vYear := Number(vInt, 2, 4);
+    end;
+  end;
+
+  if (vHour < 0) or (vDay < 0) or (vMonth < 0) or (vYear < 0) then
+    Exit;
+  if vYear <= 69 then
+    Inc(vYear, 2000)
+  else if vYear <= 99 then
+    Inc(vYear, 1900);
+  if (vDay < 1) or (vDay > 31) or (vYear < 1601) or (vHour > 23) or
+     (vMin > 59) or (vSec > 59) then
+    Exit;
+  Result := TryEncodeDateTime(vYear, vMonth, vDay, vHour, vMin, vSec, 0, AUtc);
 end;
 
 function RALCPUCount: integer;
@@ -1182,12 +1305,15 @@ begin
   {$ENDIF}
 end;
 
-{$IF (DEFINED(FPC) AND NOT DEFINED(CPU64)) OR NOT DEFINED(RALWindows)}
 initialization
+  RALInvariantFormat := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
+  RALInvariantFormat.DecimalSeparator := '.';
+  RALInvariantFormat.ThousandSeparator := ',';
   {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.InitCriticalSection(gAtomic64);
   {$IFEND}
 
+{$IF (DEFINED(FPC) AND NOT DEFINED(CPU64)) OR NOT DEFINED(RALWindows)}
 finalization
   {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.DoneCriticalSection(gAtomic64);

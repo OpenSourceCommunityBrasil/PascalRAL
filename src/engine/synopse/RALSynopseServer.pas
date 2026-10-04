@@ -173,6 +173,127 @@ type
 
 implementation
 
+uses
+  mormot.core.log, mormot.core.threads;
+
+type
+  { THttpAsyncServer - the smAsync mode - with what this engine needs of it
+    that mORMot2 does not do yet, each marked MORMOT2 where it is done. Kept
+    here, and only here, so that the day mORMot2 does them the classes go and
+    the server is created as a plain THttpAsyncServer again }
+  TRALAsyncHttpServer = class(THttpAsyncServer)
+  public
+    { the parameter names are not the ancestor's: FPC refuses a parameter
+      named after a property of the class, ProcessName }
+    constructor Create(const APort: RawUtf8; const AOnStart, AOnStop: TOnNotifyThread;
+      const AProcessName: RawUtf8; APoolCount: integer = 32;
+      AKeepAliveTimeOut: integer = 30000; AOptions: THttpServerOptions = [];
+      ALog: TSynLogClass = nil); override;
+  end;
+
+  { one connection of TRALAsyncHttpServer }
+  TRALAsyncConnection = class(THttpAsyncServerConnection)
+  protected
+    { what a request starts with, where THttpRequestContext.Reset leaves it
+      otherwise }
+    procedure ResetRequestDefaults;
+    function AfterWrite: TPollAsyncSocketOnReadWrite; override;
+  public
+    procedure Recycle(const aRemoteIP: TNetAddr); override;
+  end;
+
+  { the connections of TRALAsyncHttpServer }
+  TRALAsyncConnections = class(THttpAsyncConnections)
+  protected
+    function ConnectionCreate(aSocket: TNetSocket; const aRemoteIp: TNetAddr;
+      out aConnection: TAsyncConnection): boolean; override;
+  end;
+
+{$IFDEF RALWindows}
+{ declared here: the Winsock units of the two compilers do not agree on it }
+function RALSetSockOpt(s: PtrUInt; level, optname: Integer; optval: Pointer;
+  optlen: Integer): Integer; stdcall; external 'ws2_32.dll' name 'setsockopt';
+{$ENDIF}
+
+{ TRALAsyncHttpServer }
+
+constructor TRALAsyncHttpServer.Create(const APort: RawUtf8; const AOnStart,
+  AOnStop: TOnNotifyThread; const AProcessName: RawUtf8; APoolCount,
+  AKeepAliveTimeOut: integer; AOptions: THttpServerOptions; ALog: TSynLogClass);
+begin
+  { THttpAsyncServer.Create only fills the two classes when they are nil }
+  fConnectionClass := TRALAsyncConnection;
+  fConnectionsClass := TRALAsyncConnections;
+  inherited Create(APort, AOnStart, AOnStop, AProcessName, APoolCount,
+    AKeepAliveTimeOut, AOptions, ALog);
+end;
+
+{ TRALAsyncConnection }
+
+procedure TRALAsyncConnection.ResetRequestDefaults;
+begin
+  { MORMOT2: THttpRequestContext.Reset clears Options, so hsoHeadersUnfiltered
+    reached only the first request a connection object served - from the
+    second on, and on every recycled object, Accept-Encoding, User-Agent and
+    the Range were kept out of the headers RAL reads - and it keeps
+    AcceptEncoding, which a next request that sends none then inherits:
+    answered compressed without asking. OnCommandProcess still copes with both
+    for the threads mode; done here they also hold for a request mORMot2
+    refuses on its own, which never reaches it. Remove when Reset does both }
+  if fServer <> nil then
+  begin
+    if hsoHeadersUnfiltered in fServer.Options then
+      Include(fHttp.Options, hroHeadersUnfiltered);
+    if hsoHeadersSanitize in fServer.Options then
+      Include(fHttp.Options, hroHeadersSanitize);
+  end;
+  fHttp.AcceptEncoding := '';
+end;
+
+procedure TRALAsyncConnection.Recycle(const aRemoteIP: TNetAddr);
+begin
+  inherited Recycle(aRemoteIP);
+  ResetRequestDefaults;
+end;
+
+function TRALAsyncConnection.AfterWrite: TPollAsyncSocketOnReadWrite;
+begin
+  Result := inherited AfterWrite;
+  { a kept-alive connection the inherited just reset for its next request -
+    soContinue alone is also a body still going out }
+  if (Result = soContinue) and (fHttp.State = hrsGetCommand) then
+    ResetRequestDefaults;
+end;
+
+{ TRALAsyncConnections }
+
+function TRALAsyncConnections.ConnectionCreate(aSocket: TNetSocket;
+  const aRemoteIp: TNetAddr; out aConnection: TAsyncConnection): boolean;
+{$IFDEF RALWindows}
+var
+  vListen: PtrUInt;
+{$ENDIF}
+begin
+  {$IFDEF RALWindows}
+  { MORMOT2: the IOCP loop accepts with AcceptEx, and a socket accepted that
+    way does not take the listening socket's state until
+    SO_UPDATE_ACCEPT_CONTEXT says so - which mORMot2 never says. shutdown()
+    then fails with WSAENOTCONN, so no FIN went out after Connection: close
+    and a client reading to the end of the answer waited for the idle
+    timeout. On a socket accept() returned the call fails and changes
+    nothing. Remove when TWinIocp.GetNextAccept sets it }
+  if (Server <> nil) and (aSocket <> nil) then
+  begin
+    { ^ written out: TNetSocket is a pointer, and FPC's objfpc mode does not
+      follow one on its own }
+    vListen := PtrUInt(Server.Sock^.Socket);
+    RALSetSockOpt(PtrUInt(aSocket^.Socket), $FFFF {SOL_SOCKET},
+      $700B {SO_UPDATE_ACCEPT_CONTEXT}, @vListen, SizeOf(vListen));
+  end;
+  {$ENDIF}
+  Result := inherited ConnectionCreate(aSocket, aRemoteIp, aConnection);
+end;
+
 { TRALSynopseServer }
 
 procedure TRALSynopseServer.SetActive(const AValue: boolean);
@@ -241,8 +362,9 @@ begin
     { The socket ones descend from THttpServerSocketGeneric and share the SAME
       constructor, so everything that follows holds for both without an "if". }
     if FMode = smAsync then
-      FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount,
-                                       SessionTimeout, vOptions)
+      { mORMot2's, with what it does not do yet - see TRALAsyncHttpServer }
+      FHttp := TRALAsyncHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+                                          SessionTimeout, vOptions)
     else
       FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount,
                                   SessionTimeout, vOptions);
@@ -604,7 +726,9 @@ begin
         The parsed context is published in ConnectionHttp, so the way out is to
         fill from it whatever the list did not bring. Always reading from there
         would be worse: not every engine has the record, and the list's value
-        is what the client actually sent. }
+        is what the client actually sent. TRALAsyncConnection now puts the
+        option back on every reset; this stays for what still comes without
+        them }
       if AContext.ConnectionHttp <> nil then
       begin
         if vRequest.AcceptEncoding = '' then
@@ -615,9 +739,10 @@ begin
           in smAsync on the connection object a new client is handed, since
           Reset also drops hsoHeadersUnfiltered there. A client that never
           asked got its answer compressed. mORMot2 only reads the field while
-          parsing, before this handler runs. Left behind still: a request
-          mORMot2 refuses on its own (a Range it cannot parse), which never
-          reaches here }
+          parsing, before this handler runs. The async mode also clears it on
+          every reset (TRALAsyncConnection), which covers a request mORMot2
+          refuses on its own - a Range it cannot parse - and never reaches
+          here; in the threads mode such a request still leaves it behind }
         AContext.ConnectionHttp^.AcceptEncoding := '';
         if vRequest.ClientInfo.UserAgent = '' then
           vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);

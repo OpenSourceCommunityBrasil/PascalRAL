@@ -68,7 +68,8 @@
 
   emEngineNotFound = 'Engine %s not found: the unit that registers it is not in the uses.';
   emDBFieldLoad = 'Could not load the field %s: %s';
-  emHTTPDateInvalidMonth = 'Invalid month in the HTTP date: %s.';
+  emHTTPDateInvalid = '"%s" is not an HTTP date.';
+  emBase64Invalid = 'Invalid base64 text.';
   emISO8601Invalid = '"%s" is not an ISO 8601 date.';
   emLibraryNotLoaded = 'The library was not loaded.';
   emOpenSSLCallFailed = 'OpenSSL failed in %s.';

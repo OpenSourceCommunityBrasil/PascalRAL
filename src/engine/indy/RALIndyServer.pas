@@ -186,8 +186,11 @@ begin
         ClientInfo.Port := AContext.Binding.PeerPort;
         { the socket of THIS connection: Indy keeps one TIdContext per
           connection, so a kept-alive client's requests all report the same
-          handle, and a new connection gets a new one }
-        ClientInfo.ConnectionID := AContext.Binding.Handle;
+          handle. With the peer's port above it, as http.sys is keyed: the
+          system hands a closed socket's handle to the next connection, and
+          a hundred connections one after another counted as one }
+        ClientInfo.ConnectionID := (Int64RAL(AContext.Binding.PeerPort) shl 48) xor
+          Int64RAL(AContext.Binding.Handle);
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
@@ -312,6 +315,13 @@ begin
 
         if AResponseInfo.ContentStream = nil then
           AResponseInfo.ContentStream := TMemoryStream.Create;
+
+        { Indy sends no body for a HEAD and leaves its length uncounted, then
+          writes Content-Length: 0 - which RFC 9110 9.3.2 forbids unless the
+          GET would send nothing. The size of what a GET would send goes
+          instead; Indy still keeps the body itself back }
+        if ARequestInfo.CommandType = hcHEAD then
+          AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
 
         AResponseInfo.FreeContentStream := True;
 

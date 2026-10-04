@@ -349,6 +349,7 @@ var
   vPPayload: Pcchar;
   vPayloadStream: TMemoryStream;
   vPay: ansistring;
+  vClient: Pcvoid;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -402,10 +403,20 @@ begin
         vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
-        { libmicrohttpd's client handle, which is per CONNECTION - the same
-          pointer GetSaguiIP reads the address from. A kept-alive client's
-          requests all report it; nil (no client) stays 0, meaning unknown }
-        ClientInfo.ConnectionID := Int64RAL(NativeUInt(sg_httpreq_client(Areq)));
+        { libmicrohttpd's client handle, which is per CONNECTION - the
+          sockaddr GetSaguiIP reads the address from. A kept-alive client's
+          requests all report it; nil (no client) stays 0, meaning unknown.
+          The pointer of a closed connection is handed to the next one, so
+          the client's port goes above it, as http.sys is keyed - and the
+          port is reported, which it was not: both families keep it in the
+          third and fourth bytes of the sockaddr, in network order }
+        vClient := sg_httpreq_client(Areq);
+        if vClient <> nil then
+        begin
+          ClientInfo.Port := (PByte(vClient)[2] shl 8) or PByte(vClient)[3];
+          ClientInfo.ConnectionID := (Int64RAL(ClientInfo.Port) shl 48) xor
+            Int64RAL(NativeUInt(vClient));
+        end;
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 

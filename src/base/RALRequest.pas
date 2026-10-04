@@ -37,10 +37,14 @@ type
     /// The value is only unique and only comparable WITHIN one running server:
     /// each engine hands over whatever it already has - http.sys the peer's
     /// address and port (its own ConnectionId is per stream under HTTP/2, and
-    /// its RawConnectionId is not filled on every Windows), the socket engines
-    /// the connection object or its handle - so it must never be persisted,
-    /// sent to a client, or compared across servers. A reused connection keeps the same value for its whole life;
-    /// a value may be reused after its connection is gone.
+    /// its RawConnectionId is not filled on every Windows), mORMot2's socket
+    /// modes a counter of their own, the other engines the connection object
+    /// or its handle with the peer's port above it - the handle alone came
+    /// back for the next connection, and a hundred connections in a row
+    /// counted as one - so it must never be persisted, sent to a client, or
+    /// compared across servers. A reused connection keeps the same value for
+    /// its whole life; a value may be reused after its connection is gone,
+    /// once the client's port comes round again.
     ///
     /// ZERO means the engine cannot tell, which is a legitimate answer and not
     /// an error - CGI has no connection of its own, and UniGUI's belongs to
@@ -234,7 +238,15 @@ end;
 
 function TRALRequest.GetURL: StringRAL;
 begin
-  Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
+  { scheme://host/path - the path is fixed already (SetQuery). It wrote one
+    slash, 'http:/host/route', and TRALServerOAuth takes its signature base
+    string over this; and an engine that left HttpVersion empty, as the CGIs
+    did, made it ':/' }
+  if FHttpVersion = '' then
+    Result := 'http://'
+  else
+    Result := LowerCase(FHttpVersion) + '://';
+  Result := Result + FHost + FQuery;
 end;
 
 procedure TRALRequest.SetQuery(const AValue: StringRAL);

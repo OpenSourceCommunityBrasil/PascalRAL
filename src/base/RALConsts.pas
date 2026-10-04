@@ -63,6 +63,9 @@ const
   MultipartLineLength = 500;
   DEFAULTBUFFERSTREAMSIZE = 52428800;
   DEFAULTDECODERBUFFERSIZE = 65536;
+  { the work buffer the compressors read and write through, whatever the size
+    of the body: see TRALCompressZLib.InitCompress }
+  DEFAULTCOMPRESSBUFFERSIZE = 65536;
 
   // Client defaults and limits.
   // The two timeouts must be written both in the constructor and in the

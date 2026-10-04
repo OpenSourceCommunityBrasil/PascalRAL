@@ -202,6 +202,9 @@ begin
   AResponse.Code := HTTP_InternalError;
   AResponse.ContentType := rctTEXTPLAIN;
   AResponse.Content := AMessage;
+  {$IF FPC_FULLVERSION < 30300}
+  AResponse.Connection := 'close'; // fcl-web closes - see vConnClose
+  {$IFEND}
 end;
 
 { TRALfpHTTPCertData }
@@ -416,9 +419,16 @@ begin
 
         { the socket of THIS connection: fcl-web keeps one TFPHTTPConnection
           per connection, so a kept-alive client's requests all report the same
-          handle, and a new connection gets a new one }
+          handle. With the peer's port above it, as http.sys is keyed: the
+          system hands a closed socket's handle to the next connection, and a
+          hundred connections one after another counted as one. The port is
+          the client's too, which this engine never reported }
         if (ARequest.Connection <> nil) and (ARequest.Connection.Socket <> nil) then
-          ClientInfo.ConnectionID := ARequest.Connection.Socket.Handle;
+        begin
+          ClientInfo.Port := NToHs(ARequest.Connection.Socket.RemoteAddress.sin_port);
+          ClientInfo.ConnectionID := (Int64RAL(ClientInfo.Port) shl 48) xor
+            Int64RAL(ARequest.Connection.Socket.Handle);
+        end;
 
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequest.UserAgent;
@@ -452,6 +462,18 @@ begin
 
         ContentEncription := ParamByName('Content-Encription').AsString;
         AcceptEncription := ParamByName('Accept-Encription').AsString;
+
+        { fcl-web before FPC 3.3 keeps no connection alive - it closes after
+          every answer - and RFC 9112 9.6 asks a server that closes to say so:
+          it never did, and a client reusing the connection sent its next
+          request into a socket about to close. Set before the request is
+          judged: a refused one never reached the assignment below, and the
+          flag was read uninitialised }
+        {$IF FPC_FULLVERSION < 30300}
+        vConnClose := True;
+        {$ELSE}
+        vConnClose := False;
+        {$IFEND}
 
         FParent.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
@@ -500,7 +522,6 @@ begin
           else
             Protocol := '1.0';
 
-          vConnClose := False;
           if Protocol = '1.0' then
             vConnClose := True;
           if SameText(ARequest.GetHeader(hhConnection), 'close') then
@@ -570,7 +591,17 @@ begin
           decoder. }
         Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
 
-        AResponse.SendContent;
+        if vRequest.Method = amHEAD then
+        begin
+          { the headers alone, with the length the GET would send - fcl-web
+            sent the body with them. Its stream is let go once they are out,
+            so what fcl-web sends as the content afterwards is nothing }
+          AResponse.SendHeaders;
+          AResponse.ContentStream := nil;
+          AResponse.SendContent;
+        end
+        else
+          AResponse.SendContent;
       end;
     except
       on e: exception do

@@ -67,10 +67,14 @@ type
     FWaitSepEnd: boolean;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
   protected
+    /// Resets what one body processed leaves behind, before the next one
+    procedure BeginBody;
     /// used to write the info of the Multipart into the stream buffer
     function BurnBuffer: PByte;
     /// destroys the content of the Multipart
     procedure ClearItems;
+    /// Ends a body: its last line, and the part it never closed
+    procedure EndBody;
     /// Method called at the end of the Multipart processing to remove linebreaks
     procedure FinalizeItem;
     /// Gets an item from the FormData based on the index provided
@@ -617,6 +621,24 @@ begin
   Result := @FBuffer[FIndex];
 end;
 
+procedure TRALMultipartDecoder.BeginBody;
+begin
+  FIndex := 0;
+  FWaitSepEnd := False;
+  FIs13 := False;
+  FreeAndNil(FItemForm);
+end;
+
+procedure TRALMultipartDecoder.EndBody;
+begin
+  if FIndex > 0 then
+    ProcessLine;
+  { a part the body opened and never closed is not delivered. It never was -
+    but nothing freed it either: the destructor only let go of the pointer,
+    and a truncated upload leaked its part, whatever it held }
+  FreeAndNil(FItemForm);
+end;
+
 procedure TRALMultipartDecoder.ClearItems;
 begin
   while FFormData.Count > 0 do
@@ -635,7 +657,9 @@ end;
 
 destructor TRALMultipartDecoder.Destroy;
 begin
-  FItemForm := nil;
+  { an open part is never in FFormData: FinalizeItem hands it over or frees
+    it, and lets go of it either way }
+  FreeAndNil(FItemForm);
   ClearItems;
   FFormData.Free;
   inherited Destroy;
@@ -647,6 +671,12 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
+  BeginBody;
+  { with no boundary nothing can be delimited: an empty one made any line
+    holding '--' a delimiter }
+  if FBoundary = '' then
+    Exit;
+
   AStream.Position := 0;
   vPosition := 0;
   vSize := AStream.Size;
@@ -656,20 +686,17 @@ begin
   else
     SetLength(vInBuf, vSize);
 
-  FIndex := 0;
-  FWaitSepEnd := False;
-  FIs13 := False;
-  FItemForm := nil;
-
   while vPosition < vSize do
   begin
     vBytesRead := AStream.Read(vInBuf[0], Length(vInBuf));
+    // a stream that holds less than its Size said: the loop never ended
+    if vBytesRead <= 0 then
+      Break;
     ProcessBuffer(@vInBuf[0], vBytesRead);
     vPosition := vPosition + vBytesRead;
   end;
 
-  if FIndex > 0 then
-    ProcessLine;
+  EndBody;
 end;
 
 procedure TRALMultipartDecoder.ProcessMultiPart(const AString: StringRAL);
@@ -678,6 +705,10 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
+  BeginBody;
+  if FBoundary = '' then
+    Exit;
+
   vPosition := 0;
   vSize := Length(AString);
 
@@ -685,11 +716,6 @@ begin
     SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
   else
     SetLength(vInBuf, vSize);
-
-  FIndex := 0;
-  FWaitSepEnd := False;
-  FIs13 := False;
-  FItemForm := nil;
 
   while vPosition < vSize do
   begin
@@ -703,8 +729,7 @@ begin
     vPosition := vPosition + vBytesRead;
   end;
 
-  if FIndex > 0 then
-    ProcessLine;
+  EndBody;
 end;
 
 function TRALMultipartDecoder.FormDataCount: IntegerRAL;

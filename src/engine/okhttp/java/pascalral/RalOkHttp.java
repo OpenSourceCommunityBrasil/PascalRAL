@@ -80,8 +80,62 @@ public final class RalOkHttp {
    */
   private static final ThreadLocal<RalCertJudge> JUDGE = new ThreadLocal<RalCertJudge>();
 
+  /** A cached client, with what tells whether anybody still uses it. */
+  private static final class Cached {
+    final OkHttpClient client;
+    /** calls running on it now */
+    int inFlight;
+    /** System.nanoTime() of the last call that took it or gave it back */
+    long lastUsed;
+
+    Cached(OkHttpClient client) {
+      this.client = client;
+    }
+  }
+
   /** One client per configuration, mirroring RAL's own transport pool. */
-  private static final Map<String, OkHttpClient> CLIENTS = new HashMap<String, OkHttpClient>();
+  private static final Map<String, Cached> CLIENTS = new HashMap<String, Cached>();
+
+  /**
+   * A client nobody called for this long is closed and forgotten. The key of a
+   * shared client carries the certificate policy, OnValidateServerCert's
+   * object included, so every form that assigned the event got a client of
+   * its own - and release() only ever dropped the isolated ones: one
+   * OkHttpClient per form created, for the life of the process. Ten minutes is
+   * twice what OkHttp keeps an idle connection for, so nothing of value goes.
+   */
+  private static final long IDLE_NANOS = TimeUnit.MINUTES.toNanos(10);
+  private static long lastSweep = System.nanoTime();
+
+  private static void close(OkHttpClient c) {
+    try {
+      c.dispatcher().executorService().shutdown();
+      c.connectionPool().evictAll();
+    } catch (Exception e) {
+      // nothing useful to do while tearing down
+    }
+  }
+
+  /** Closes the clients idle past IDLE_NANOS - at most once a minute. */
+  private static void sweep(long now) {
+    if (now - lastSweep < TimeUnit.MINUTES.toNanos(1)) {
+      return;
+    }
+    lastSweep = now;
+    for (Iterator<Map.Entry<String, Cached>> it = CLIENTS.entrySet().iterator(); it.hasNext(); ) {
+      Cached c = it.next().getValue();
+      if (c.inFlight == 0 && now - c.lastUsed > IDLE_NANOS) {
+        it.remove();
+        close(c.client);
+      }
+    }
+  }
+
+  /** Gives back a client client() handed out. */
+  private static synchronized void done(Cached c) {
+    c.inFlight--;
+    c.lastUsed = System.nanoTime();
+  }
 
   private static X509TrustManager platformTrustManager() {
     try {
@@ -199,10 +253,11 @@ public final class RalOkHttp {
    * shareKey is what decides who shares a transport with whom: empty means
    * "share by configuration", which is what RAL asks for by default, and a
    * value of its own isolates one client - ShareConnection turned off. The
-   * isolated ones are dropped by release(), so the map does not grow with
-   * every client an application creates.
+   * isolated ones are dropped by release(), and any client idle for a while
+   * by sweep(), so the map does not grow with every client an application
+   * creates. The client comes back counted as in use: give it back with done().
    */
-  private static synchronized OkHttpClient client(int connectMs, int readMs,
+  private static synchronized Cached client(int connectMs, int readMs,
                                                   int pingMs,
                                                   boolean allowHttp2,
                                                   boolean followRedirects,
@@ -211,8 +266,12 @@ public final class RalOkHttp {
     String key = (shareKey == null ? "" : shareKey) + "|" + connectMs + "|" + readMs
                + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects
                + "|" + followSslRedirects;
-    OkHttpClient cached = CLIENTS.get(key);
+    long now = System.nanoTime();
+    sweep(now);
+    Cached cached = CLIENTS.get(key);
     if (cached != null) {
+      cached.inFlight++;
+      cached.lastUsed = now;
       return cached;
     }
 
@@ -285,7 +344,9 @@ public final class RalOkHttp {
       // keep OkHttp's own strict defaults - failing closed
     }
 
-    OkHttpClient built = b.build();
+    Cached built = new Cached(b.build());
+    built.inFlight = 1;
+    built.lastUsed = now;
     CLIENTS.put(key, built);
     return built;
   }
@@ -308,14 +369,9 @@ public final class RalOkHttp {
     }
     for (Iterator<String> it = doomed.iterator(); it.hasNext(); ) {
       String k = it.next();
-      OkHttpClient c = CLIENTS.remove(k);
+      Cached c = CLIENTS.remove(k);
       if (c != null) {
-        try {
-          c.dispatcher().executorService().shutdown();
-          c.connectionPool().evictAll();
-        } catch (Exception e) {
-          // nothing useful to do while tearing down
-        }
+        close(c.client);
       }
     }
   }
@@ -338,6 +394,7 @@ public final class RalOkHttp {
     RESULT.set(r);
     JUDGE.set(judge);
     Response resp = null;
+    Cached cached = null;
     try {
       RequestBody rb = null;
       if (permitsBody(method) && body != null && body.length > 0) {
@@ -382,9 +439,9 @@ public final class RalOkHttp {
         }
       }
 
-      resp = client(connectMs, readMs, pingMs, allowHttp2, followRedirects,
-                    followSslRedirects, shareKey)
-               .newCall(q.build()).execute();
+      cached = client(connectMs, readMs, pingMs, allowHttp2, followRedirects,
+                      followSslRedirects, shareKey);
+      resp = cached.client.newCall(q.build()).execute();
       r.status = resp.code();
       r.protocol = resp.protocol().toString();
 
@@ -416,6 +473,9 @@ public final class RalOkHttp {
       JUDGE.remove();
       if (resp != null) {
         resp.close();
+      }
+      if (cached != null) {
+        done(cached);
       }
     }
   }

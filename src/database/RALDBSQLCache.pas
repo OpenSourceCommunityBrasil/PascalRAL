@@ -193,7 +193,8 @@ begin
   Clear;
   FError := True;
   FContentType := rctTEXTPLAIN;
-  FStream.Write(AError[POSINISTR], Length(AError));
+  if AError <> '' then // an empty text has no first character to take
+    FStream.Write(AError[POSINISTR], Length(AError));
   FStream.Position := 0;
 end;
 

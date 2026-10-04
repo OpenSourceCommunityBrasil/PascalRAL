@@ -10,11 +10,27 @@ uses
   RALTypes, RALStream, RALConsts;
 
 type
+  /// What DecodeBase64 carries from one block of the input to the next: the
+  /// sextets of a group not complete yet, and whether the padding began
+  TRALBase64DecodeState = record
+    Bits: Cardinal;
+    Count: IntegerRAL;
+    Padding: Boolean;
+  end;
+
   { TRALBase64 }
 
+  /// Base64 and base64url. Decoding skips blanks and line breaks between the
+  /// characters, as MIME writes them, and raises EConvertError on any other
+  /// character outside both alphabets, or one after the padding: it used to
+  /// fold an invalid one into the group as all bits set, and answer garbage
   TRALBase64 = class
   protected
-    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
+    class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer;
+      var AState: TRALBase64DecodeState): IntegerRAL;
+    /// The bytes of the group the input ended in; raises when one character
+    /// was left over, which makes no byte
+    class function DecodeFinish(AOutput: PByte; var AState: TRALBase64DecodeState): IntegerRAL;
     class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
   public
     class function Decode(const AValue: StringRAL): StringRAL; overload;
@@ -123,8 +139,10 @@ class function TRALBase64.DecodeAsStream(AValue: TStream): TStream;
 var
   vInBuf: array of Byte;
   vOutBuf: array of Byte;
+  vLast: array[0..1] of Byte;
   vBytesRead, vBytesWrite: Integer;
   vPosition, vSize: Int64RAL;
+  vState: TRALBase64DecodeState;
 begin
   AValue.Position := 0;
   vPosition := 0;
@@ -140,18 +158,33 @@ begin
   SetLength(vInBuf, vBytesRead);
   SetLength(vOutBuf, vBytesWrite);
 
+  vState.Bits := 0;
+  vState.Count := 0;
+  vState.Padding := False;
   Result := TMemoryStream.Create;
-  Result.Size := GetSizeDecode(AValue.Size);
-  while vPosition < vSize do
-  begin
-    vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
-    vBytesWrite := DecodeBase64(@vInBuf[0], @vOutBuf[0], vBytesRead);
-
-    Result.Write(vOutbuf[0], vBytesWrite);
-    vPosition := vPosition + vBytesRead;
+  try
+    Result.Size := GetSizeDecode(AValue.Size);
+    while vPosition < vSize do
+    begin
+      vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
+      if vBytesRead <= 0 then
+        Break;
+      { a group may start in one block and end in the next: the state goes
+        along, now that a blank skipped can leave a block off the beat of 4 }
+      vBytesWrite := DecodeBase64(@vInBuf[0], @vOutBuf[0], vBytesRead, vState);
+      if vBytesWrite > 0 then
+        Result.Write(vOutBuf[0], vBytesWrite);
+      vPosition := vPosition + vBytesRead;
+    end;
+    vBytesWrite := DecodeFinish(@vLast[0], vState);
+    if vBytesWrite > 0 then
+      Result.Write(vLast[0], vBytesWrite);
+    Result.Size := Result.Position;
+    Result.Position := 0;
+  except
+    FreeAndNil(Result);
+    raise;
   end;
-  Result.Size := Result.Position;
-  Result.Position := 0;
 end;
 
 class function TRALBase64.DecodeAsStream(AValue: StringRAL): TStream;
@@ -304,60 +337,67 @@ begin
   end;
 end;
 
-class function TRALBase64.DecodeBase64(AInput, AOutput: PByte;
-  AInputLen: Integer): IntegerRAL;
+{ Whole groups of four only; the group the input ends in is DecodeFinish's.
+  The output holds at most GetSizeDecode(AInputLen) bytes. A group short of
+  four is not padded with zeros and written whole - three bytes for an
+  unpadded base64url segment of two characters overflowed the output }
+class function TRALBase64.DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer;
+  var AState: TRALBase64DecodeState): IntegerRAL;
 var
-  vInt, vChar, vBuf, vRead, vValid: IntegerRAL;
+  vValue: IntegerRAL;
 begin
   Result := 0;
   while AInputLen > 0 do
   begin
-    vChar := 0;
-    vInt := 0;
-    vRead := 0;
-    while (vInt < 4) do
-    begin
-      if (AInputLen > 0) and (AInput^ <> 61) then
+    case AInput^ of
+      9, 10, 13, 32: ; // a line break or an indent between the characters
+      61: AState.Padding := True; // '=': the data is over
+    else
+      vValue := IntegerRAL(TDecode64[AInput^]) - 1;
+      if (vValue < 0) or AState.Padding then
+        raise EConvertError.Create(emBase64Invalid);
+      AState.Bits := (AState.Bits shl 6) or Cardinal(vValue);
+      Inc(AState.Count);
+      if AState.Count = 4 then
       begin
-        vBuf := TDecode64[AInput^] - 1;
-        vRead := vRead + 1;
-      end
-      else
-      begin
-        vBuf := 0;
+        AOutput^ := (AState.Bits shr 16) and $FF;
+        Inc(AOutput);
+        AOutput^ := (AState.Bits shr 8) and $FF;
+        Inc(AOutput);
+        AOutput^ := AState.Bits and $FF;
+        Inc(AOutput);
+        Inc(Result, 3);
+        AState.Bits := 0;
+        AState.Count := 0;
       end;
-      vChar := (vChar shl 6) or vBuf;
-      vInt := vInt + 1;
-      Inc(AInput);
-      AInputLen := AInputLen - 1;
     end;
-
-    // vRead counts how many real base64 chars the group had: 4 -> 3 bytes,
-    // 3 -> 2, 2 -> 1. Writing three unconditionally overflowed the output on
-    // any input whose length is not a multiple of 4 - which is exactly what an
-    // unpadded base64url string is, i.e. every JWT segment.
-    vValid := vRead - 1;
-    if vValid < 0 then
-      vValid := 0;
-
-    Result := Result + vValid;
-
-    if vValid > 0 then
-    begin
-      AOutput^ := ((vChar shr 16) and $ff);
-      Inc(AOutput);
-    end;
-    if vValid > 1 then
-    begin
-      AOutput^ := ((vChar shr 8) and $ff);
-      Inc(AOutput);
-    end;
-    if vValid > 2 then
-    begin
-      AOutput^ := (vChar and $ff);
-      Inc(AOutput);
-    end;
+    Inc(AInput);
+    Dec(AInputLen);
   end;
+end;
+
+class function TRALBase64.DecodeFinish(AOutput: PByte;
+  var AState: TRALBase64DecodeState): IntegerRAL;
+begin
+  case AState.Count of
+    1: raise EConvertError.Create(emBase64Invalid);
+    2:
+    begin
+      AOutput^ := (AState.Bits shr 4) and $FF;
+      Result := 1;
+    end;
+    3:
+    begin
+      AOutput^ := (AState.Bits shr 10) and $FF;
+      Inc(AOutput);
+      AOutput^ := (AState.Bits shr 2) and $FF;
+      Result := 2;
+    end;
+  else
+    Result := 0;
+  end;
+  AState.Bits := 0;
+  AState.Count := 0;
 end;
 
 class function TRALBase64.Encode(const AValue: StringRAL; ABinary : boolean): StringRAL;

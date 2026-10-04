@@ -68,7 +68,8 @@
 
   emEngineNotFound = 'Motor %s não encontrado: a unit que o registra não está nas uses.';
   emDBFieldLoad = 'Não foi possível carregar o campo %s: %s';
-  emHTTPDateInvalidMonth = 'Mês inválido na data HTTP: %s.';
+  emHTTPDateInvalid = '"%s" não é uma data HTTP.';
+  emBase64Invalid = 'Texto base64 inválido.';
   emISO8601Invalid = '"%s" não é uma data ISO 8601.';
   emLibraryNotLoaded = 'A biblioteca não foi carregada.';
   emOpenSSLCallFailed = 'O OpenSSL falhou em %s.';

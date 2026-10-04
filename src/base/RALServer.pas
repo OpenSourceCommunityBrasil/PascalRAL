@@ -97,8 +97,10 @@ type
     FAllowOrigin: StringRAL;
     FAllowHeaders: TStringList;
     { AllowHeaders as the header carries it, rebuilt when the list changes:
-      it was rebuilt on every request a route answered }
-    FAllowHeadersText: StringRAL;
+      it was rebuilt on every request a route answered. Published as a
+      snapshot, so a request reading it while the list changes is never left
+      holding a text being freed }
+    FAllowHeadersText: TRALSnapshots;
     FMaxAge: IntegerRAL;
     procedure AllowHeadersChanged(Sender: TObject);
   protected
@@ -419,7 +421,9 @@ type
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     // Inherited method of RALServer
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
-    // Inherited method of RALServer
+    /// A NEW list of this module's routes - what the Swagger and Postman
+    /// exporters document. The caller frees the list, never the routes in it,
+    /// which still belong to the module
     function GetListRoutes: TList; virtual;
     /// Answers a request for one of this module's routes that has neither
     /// OnReply nor OnReplyGen: 404 here, a file in TRALWebModule
@@ -517,22 +521,29 @@ begin
   end;
 end;
 
+type
+  { one version of TRALCORSOptions' header text - see TRALSnapshots }
+  TRALTextVersion = class
+  public
+    Text: StringRAL;
+  end;
+
 procedure TRALCORSOptions.AllowHeadersChanged(Sender: TObject);
 var
   vInt: IntegerRAL;
-  vText: StringRAL;
+  vVersion: TRALTextVersion;
 begin
   { one line, the items joined by commas as they are. DelimitedText used to do
     this, and it also wrapped in quotes any item holding a blank or a quote -
     "X-A, X-B" written on one line went out as one quoted, unusable name }
-  vText := '';
+  vVersion := TRALTextVersion.Create;
   for vInt := 0 to Pred(FAllowHeaders.Count) do
   begin
     if vInt > 0 then
-      vText := vText + ',';
-    vText := vText + StringRAL(FAllowHeaders.Strings[vInt]);
+      vVersion.Text := vVersion.Text + ',';
+    vVersion.Text := vVersion.Text + StringRAL(FAllowHeaders.Strings[vInt]);
   end;
-  FAllowHeadersText := vText;
+  FAllowHeadersText.Publish(vVersion);
 end;
 
 { every engine's SSL descends from this one: the copy takes the published
@@ -564,6 +575,7 @@ begin
   FAllowOrigin := '';
   FMaxAge := 86400;
 
+  FAllowHeadersText := TRALSnapshots.Create;
   FAllowHeaders := TStringList.Create;
   { every change rebuilds the text: Add, Assign, the Object Inspector and a
     form being read all end in OnChange }
@@ -574,6 +586,7 @@ end;
 destructor TRALCORSOptions.Destroy;
 begin
   FreeAndNil(FAllowHeaders);
+  FreeAndNil(FAllowHeadersText);
   inherited;
 end;
 
@@ -617,7 +630,7 @@ end;
 
 function TRALCORSOptions.GetAllowHeaders: StringRAL;
 begin
-  Result := FAllowHeadersText;
+  Result := TRALTextVersion(FAllowHeadersText.Current).Text;
 end;
 
 { TRALIPConfig }
@@ -631,14 +644,16 @@ begin
 
   if FOwner <> nil then
   begin
+    { refused before anything is touched: the refusal used to come after the
+      server had been stopped, and the line starting it again was never
+      reached - asking for IPv6 on an engine without it took a live server
+      down }
+    if AValue and (not FOwner.IPv6IsImplemented) then
+      raise Exception.Create(wmIPv6notImplemented);
+
     vActive := FOwner.Active;
     FOwner.Active := False;
-
-    if (AValue) and (not FOwner.IPv6IsImplemented) then
-      raise Exception.Create(wmIPv6notImplemented)
-    else
-      FIPv6Enabled := AValue;
-
+    FIPv6Enabled := AValue;
     FOwner.Active := vActive;
   end
   else

@@ -53,7 +53,9 @@ begin
   else if ACookie.MaxAge > 0 then
     vCookie.Expires := IncSecond(RALDateTimeToGMT(Now), ACookie.MaxAge)
   else if ACookie.Expires <> 0 then
-    vCookie.Expires := ACookie.Expires; // in GMT, as the line carried it
+    { TCookie writes Expires as it is, with GMT after it; the line carried
+      UTC, which GetRALCookieFromText brings to local time }
+    vCookie.Expires := RALDateTimeToGMT(ACookie.Expires);
   vCookie.Secure := ACookie.Secure;
   {$IFDEF DELPHI10_4UP}
   vCookie.HttpOnly := ACookie.HttpOnly;
@@ -208,6 +210,14 @@ begin
       SERVER_PROTOCOL. Protocol/ProtocolVersion are two faces of one field, so
       this fills both.      Anything the parse does not recognise leaves rhvDefault. }
     vRequest.Protocol := ARequest.ProtocolVersion;
+    { the scheme and the host, which every other engine fills and this one
+      left empty: Request.URL came out as ':/' and the path. HTTPS is 'on'
+      under TLS on Apache and IIS, 'off' or absent otherwise }
+    vRequest.Host := ARequest.Host;
+    if SameText(GetEnvironmentVariable('HTTPS'), 'on') then
+      vRequest.HttpVersion := 'HTTPS'
+    else
+      vRequest.HttpVersion := 'HTTP';
 
     vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 

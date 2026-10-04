@@ -206,7 +206,10 @@ begin
   vBytes := StringToBytesUTF8(AValue);
   vSize := Length(vBytes);
   AStream.Write(vSize, SizeOf(vSize));
-  AStream.Write(vBytes[0], vSize);
+  { an empty text - a VARCHAR holding '' - has no [0] to take: with range
+    checks on, every answer carrying one was a 500 }
+  if vSize > 0 then
+    AStream.Write(vBytes[0], vSize);
 end;
 
 procedure TRALStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);

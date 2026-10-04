@@ -1197,8 +1197,15 @@ begin
       { the segments are base64url (RFC 7515): "-" and "_" instead of "+"
         and "/", no padding. Decoding them as plain base64 left any claim
         whose bytes hit those two characters unreadable on the client }
-      vPayload := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
-      vOk := True;
+      try
+        vPayload := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
+        vOk := True;
+      except
+        { a payload that is not base64url, or empty, is a token that does not
+          parse - see below. The decoder raises on it now, where it answered
+          garbage }
+        vOk := False;
+      end;
     end;
   finally
     vStr.Free;

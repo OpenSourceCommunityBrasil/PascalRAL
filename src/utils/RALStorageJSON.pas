@@ -184,36 +184,69 @@ begin
 end;
 
 function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
+const
+  cHex: array[0..15] of AnsiChar = '0123456789ABCDEF';
 var
   vStr: UCS4String;
-  vInt: integer;
-begin
-  Result := '';
-  vStr := UnicodeStringToUCS4String(AValue);
-  //WideStringToUCS4String(AValue);
-  for vInt := 0 to Pred(Length(vStr) - 1) do
+  vInt, vLen: IntegerRAL;
+  vChr: UCS4Char;
+
+  procedure Put(AChr: AnsiChar);
   begin
-    if vStr[vInt] = 8 then
-      Result := Result + '\b'
-    else if vStr[vInt] = 9 then
-      Result := Result + '\t'
-    else if vStr[vInt] = 10 then
-      Result := Result + '\n'
-    else if vStr[vInt] = 12 then
-      Result := Result + '\f'
-    else if vStr[vInt] = 13 then
-      Result := Result + '\r'
-    else if vStr[vInt] = 92 then
-      Result := Result + '\\'
-    else if vStr[vInt] = 47 then
-      Result := Result + '\/'
-    else if vStr[vInt] = 34 then
-      Result := Result + '\"'
-    else if (vStr[vInt] > 31) and (vStr[vInt] < 127) then
-      Result := Result + Chr(vStr[vInt])
-    else
-      Result := Result + '\u' + IntToHex(vStr[vInt], 4)
+    if vLen >= Length(Result) then
+      SetLength(Result, Length(Result) * 2 + 16);
+    Result[POSINISTR + vLen] := AChr;
+    Inc(vLen);
   end;
+
+  procedure PutEscape(AChr: AnsiChar);
+  begin
+    Put('\');
+    Put(AChr);
+  end;
+
+  procedure PutUnit(AUnit: Cardinal);
+  begin
+    PutEscape('u');
+    Put(cHex[(AUnit shr 12) and 15]);
+    Put(cHex[(AUnit shr 8) and 15]);
+    Put(cHex[(AUnit shr 4) and 15]);
+    Put(cHex[AUnit and 15]);
+  end;
+
+begin
+  { written into one buffer that grows by doubling: one string per
+    character, each a copy of everything before it, is what it used to be }
+  vStr := UnicodeStringToUCS4String(UnicodeString(AValue));
+  SetLength(Result, Length(AValue) + 16);
+  vLen := 0;
+  for vInt := 0 to Length(vStr) - 2 do // the last one is the terminator
+  begin
+    vChr := vStr[vInt];
+    case vChr of
+      8: PutEscape('b');
+      9: PutEscape('t');
+      10: PutEscape('n');
+      12: PutEscape('f');
+      13: PutEscape('r');
+      34: PutEscape('"');
+      47: PutEscape('/');
+      92: PutEscape('\');
+      32..33, 35..46, 48..91, 93..126: Put(AnsiChar(vChr));
+    else
+      if vChr > $FFFF then
+      begin
+        { past the first plane a character is two UTF-16 units in JSON: it
+          went out as one \u of five or six digits, which no parser reads -
+          an emoji in a text column made the whole answer invalid }
+        PutUnit($D800 + ((vChr - $10000) shr 10));
+        PutUnit($DC00 + ((vChr - $10000) and $3FF));
+      end
+      else
+        PutUnit(vChr);
+    end;
+  end;
+  SetLength(Result, vLen);
 end;
 
 function TRALStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
@@ -233,7 +266,8 @@ var
   vBytes: TBytes;
 begin
   vBytes := StringToBytesUTF8(AValue);
-  AStream.Write(vBytes[0], Length(vBytes));
+  if Length(vBytes) > 0 then // as its twin in the CSV storage
+    AStream.Write(vBytes[0], Length(vBytes));
 end;
 
 procedure TRALStorageJSON.WriteCharToStream(AStream: TStream; AValue: Byte);
@@ -288,11 +322,8 @@ end;
 
 function TRALStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
   : StringRAL;
-var
-  vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := '.';
-  Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, vFormat)]);
+  Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, RALInvariantFormat)]);
 end;
 
 function TRALStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
@@ -342,11 +373,8 @@ begin
 end;
 
 function TRALStorageJSON.WriteFloat(AValue: Double): StringRAL;
-var
-  vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := '.';
-  Result := FloatToStr(AValue, vFormat);
+  Result := FloatToStr(AValue, RALInvariantFormat);
 end;
 
 function TRALStorageJSON.WriteBoolean(AValue: Boolean): StringRAL;
@@ -391,7 +419,10 @@ begin
 
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
+    { escaped once here, for every record: an alias with a quote or a
+      backslash in it - and opensql runs the SQL the client sends - wrote
+      invalid JSON, or JSON of the client's making }
+    FFieldNames[vInt] := StringToJSONString(CharCaseValue(ADataset.Fields[vInt].FieldName));
     FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
   end;
 end;

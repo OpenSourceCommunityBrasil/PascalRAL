@@ -30,10 +30,8 @@ var
   vZip: TBrotliCompressionStream;
   vCount: Integer;
 begin
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  // a work buffer of a fixed size, as TRALCompressZLib.InitCompress explains
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   vZip := TBrotliCompressionStream.Create(5, AOutStream);
   try
@@ -53,10 +51,7 @@ var
   vZip : TBrotliDecompressionStream;
   vCount: Integer;
 begin
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE); // see InitCompress
 
   vZip := TBrotliDecompressionStream.Create(AInStream);
   try

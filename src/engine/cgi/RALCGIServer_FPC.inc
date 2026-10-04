@@ -116,6 +116,14 @@ begin
       SERVER_PROTOCOL. Protocol/ProtocolVersion are two faces of one field, so
       this fills both.      Anything the parse does not recognise leaves rhvDefault. }
     vRequest.Protocol := GetEnvironmentVariable('SERVER_PROTOCOL');
+    { the scheme and the host, which every other engine fills and this one
+      left empty: Request.URL came out as ':/' and the path. HTTPS is 'on'
+      under TLS on Apache and IIS, 'off' or absent otherwise }
+    vRequest.Host := GetEnvironmentVariable('HTTP_HOST');
+    if SameText(GetEnvironmentVariable('HTTPS'), 'on') then
+      vRequest.HttpVersion := 'HTTPS'
+    else
+      vRequest.HttpVersion := 'HTTP';
 
     vAux1 := GetEnvironmentVariable('REQUEST_METHOD');
     vRequest.Method := HTTPMethodToRALMethod(vAux1);

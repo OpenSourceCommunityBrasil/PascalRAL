@@ -601,8 +601,11 @@ begin
           vCtx.ClientIP := vConn.ClientIP;
           vCtx.ClientPort := vConn.ClientPort;
           { the connection object itself is the identity: MsQuic builds one per
-            connection and it lives exactly as long as the connection does }
-          vCtx.ConnID := Int64RAL(NativeUInt(vConn));
+            connection and it lives exactly as long as the connection does -
+            with the peer's port above it, as http.sys is keyed, because the
+            memory of a closed connection's object goes to the next one }
+          vCtx.ConnID := (Int64RAL(vConn.ClientPort) shl 48) xor
+            Int64RAL(NativeUInt(vConn));
           MsQuicApi^.SetCallbackHandler(vStarted^.Stream,
             @RALMsQuicStreamCallback, vCtx);
         end;
@@ -1296,6 +1299,14 @@ begin
       vBodyLen := 0;
       if vStream <> nil then
         vBodyLen := vStream.Size;
+      { a HEAD answers what the GET would, without its body - as every HTTP
+        engine does; the size it would have goes as Content-Length }
+      if (vRequest.Method = amHEAD) and (vBodyLen > 0) then
+      begin
+        vHdrSize := AddTextHeaders(vHeaders, vHdrCount, vHdrSize,
+          StringRAL('Content-Length: ' + IntToStr(vBodyLen)));
+        vBodyLen := 0;
+      end;
 
       SetLength(Result, 2 + RALQuicBlockSize(Length(vCType)) + vHdrSize +
                         RALQuicBlockSize(IntegerRAL(vBodyLen)));

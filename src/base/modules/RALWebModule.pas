@@ -79,10 +79,6 @@ type
   private
     FBlockedExtensions: TStringList;
     FCacheControl: TStringList;
-    { CacheControl as the requests read it, rebuilt when the list changes: the
-      extensions with their dot, and the directive for every other one }
-    FCacheRules: TRALWebCacheRules;
-    FCacheDefault: StringRAL;
     FCollectionRoute: TCollection;
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
@@ -91,16 +87,17 @@ type
     FMaxFileSize: Int64RAL;
     { a TRALWebPathCache - see the implementation }
     FPathCache: TObject;
-    { DocumentRoot made absolute, with the separator at the end - or '' when
-      no file is served. Worked out once, when the properties change, instead
-      of on every request }
-    FRootPath: string;
     FServePrecompressed: boolean;
     { the sessions, spread over lists by the first character of their name -
       random hex, so evenly - each list behind its own lock: one list behind
       one lock was where every request using a session queued }
     FSessions: array[0..cRALSessionShards - 1] of TRALStringListSafe;
     FSessionTimeout: IntegerRAL;
+    { what the requests read of the settings, a TRALWebSettings: the root,
+      the blocked extensions, the Cache-Control rules, worked out once per
+      change and published whole - see PublishSettings }
+    FSettings: TRALSnapshots;
+    FSettingsGen: IntegerRAL;
     FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
     procedure BlockedExtensionsChanged(Sender: TObject);
@@ -114,7 +111,9 @@ type
       '' when there is none }
     function PickPrecompressed(ARequest: TRALRequest; const AFileName: string;
       out ASend: string; out ASize, AModified: Int64): StringRAL;
-    procedure RebuildRootPath;
+    { builds the settings the requests read from the properties as they are
+      now, and publishes them - on every change of one of them }
+    procedure PublishSettings;
     { the file a request asks for when the module may serve it, or nil }
     function ResolveFile(ARequest: TRALRequest): TRALWebFile;
     procedure ServeFile(ARequest: TRALRequest; AResponse: TRALResponse; AFile: TRALWebFile);
@@ -230,25 +229,45 @@ type
   { Where each path asked for leads. Resolving one is string work only -
     joining, expanding, checking the root, the blocked extensions, the device
     names - and it was done twice per request, the same answer each time; it
-    depends on nothing but DocumentRoot and BlockedExtensions, whose changes
-    forget it all (Invalidate). Remembered by slot, a path pushing out
-    whatever shared its slot, so it never grows; each slot's lock is one of a
-    few, so requests rarely wait on each other }
+    depends on nothing but the module's settings, so an entry is only good for
+    the generation of the settings it was resolved under. Remembered by slot, a
+    path pushing out whatever shared its slot, so it never grows; each slot's
+    lock is one of a few, so requests rarely wait on each other }
   TRALWebPathCache = class
   private
     FEntries: array of TRALWebPathEntry;
     FLocks: array[0..cRALPathLocks - 1] of TCriticalSection;
-    FGen: IntegerRAL;
   public
     constructor Create;
     destructor Destroy; override;
-    /// Forgets every path: the settings they were resolved under changed
-    procedure Invalidate;
-    function Find(const AKey: StringRAL; out AEntry: TRALWebPathEntry): boolean;
-    /// Keeps AEntry, resolved under AEntry.Gen: an Invalidate in the meantime
-    /// makes it a miss
+    /// The entry of AKey resolved under the settings of generation AGen
+    function Find(const AKey: StringRAL; AGen: IntegerRAL; out AEntry: TRALWebPathEntry): boolean;
     procedure Store(const AEntry: TRALWebPathEntry);
-    property Generation: IntegerRAL read FGen;
+  end;
+
+  { TRALWebSettings }
+
+  { One version of what the requests read of the module's settings - see
+    TRALSnapshots. A request takes the version once and reads it to the end,
+    so the root it resolves under, the blocked list it checks and the
+    generation it stores the answer under always belong together. They were
+    read one at a time from the module: a request that read the root before a
+    change and the generation after it kept, under the new generation, a path
+    resolved under the old root - or the old blocked list - until the slot was
+    reused }
+  TRALWebSettings = class
+  public
+    Gen: IntegerRAL;
+    { DocumentRoot made absolute, with the separator at the end - or '' when
+      no file is served }
+    RootPath: string;
+    Blocked: TStringList;
+    { CacheControl as the requests read it: the extensions with their dot,
+      and the directive for every other one }
+    CacheRules: TRALWebCacheRules;
+    CacheDefault: StringRAL;
+    constructor Create;
+    destructor Destroy; override;
   end;
 
   TRALRangeResult = (rrIgnore, rrSatisfiable, rrUnsatisfiable);
@@ -286,7 +305,6 @@ begin
   SetLength(FEntries, cRALPathSlots);
   for vInt := Low(FLocks) to High(FLocks) do
     FLocks[vInt] := TCriticalSection.Create;
-  FGen := 1; // the empty slots are generation 0, never a hit
 end;
 
 destructor TRALWebPathCache.Destroy;
@@ -298,12 +316,8 @@ begin
   inherited;
 end;
 
-procedure TRALWebPathCache.Invalidate;
-begin
-  RALAtomicInc(FGen);
-end;
-
-function TRALWebPathCache.Find(const AKey: StringRAL; out AEntry: TRALWebPathEntry): boolean;
+function TRALWebPathCache.Find(const AKey: StringRAL; AGen: IntegerRAL;
+  out AEntry: TRALWebPathEntry): boolean;
 var
   vSlot: IntegerRAL;
   vLock: TCriticalSection;
@@ -312,7 +326,8 @@ begin
   vLock := FLocks[vSlot and (cRALPathLocks - 1)];
   vLock.Enter;
   try
-    Result := (FEntries[vSlot].Gen = FGen) and (FEntries[vSlot].Key = AKey);
+    { an empty slot is generation 0, which no settings have }
+    Result := (FEntries[vSlot].Gen = AGen) and (FEntries[vSlot].Key = AKey);
     if Result then
       AEntry := FEntries[vSlot];
   finally
@@ -333,6 +348,20 @@ begin
   finally
     vLock.Leave;
   end;
+end;
+
+{ TRALWebSettings }
+
+constructor TRALWebSettings.Create;
+begin
+  inherited Create;
+  Blocked := TStringList.Create;
+end;
+
+destructor TRALWebSettings.Destroy;
+begin
+  FreeAndNil(Blocked);
+  inherited;
 end;
 
 { TRALWebSession }
@@ -626,16 +655,10 @@ function HTTPDateToUnixSecs(const AText: StringRAL; out ASecs: Int64): boolean;
 var
   vDate: TDateTime;
 begin
-  Result := False;
   ASecs := 0;
-  try
-    vDate := HTTPDateTimeToDateTime(RALTrim(AText));
-  except
-    on EConvertError do
-      Exit;
-  end;
-  ASecs := Round((vDate - UnixDateDelta) * SecsPerDay);
-  Result := True;
+  Result := RALTryHTTPDate(AText, vDate);
+  if Result then
+    ASecs := Round((vDate - UnixDateDelta) * SecsPerDay);
 end;
 
 { Whether an If-Range lets the range through: a tag has to match strongly -
@@ -817,8 +840,9 @@ begin
   FDefaultRoute.AllowedMethods := [amGET];
   FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
-  { before the lists whose changes forget it }
+  { before the lists whose changes publish them }
   FPathCache := TRALWebPathCache.Create;
+  FSettings := TRALSnapshots.Create;
   FBlockedExtensions := TStringList.Create;
   FBlockedExtensions.OnChange := {$IFDEF FPC}@{$ENDIF}BlockedExtensionsChanged;
   FCacheControl := TStringList.Create;
@@ -828,6 +852,8 @@ begin
     FSessions[vInt] := TRALStringListSafe.Create;
   FSweepLock := TCriticalSection.Create;
   FSessionTimeout := DEFAULTWEBSESSIONTIMEOUT;
+
+  PublishSettings;
 end;
 
 destructor TRALWebModule.Destroy;
@@ -843,6 +869,7 @@ begin
   FreeAndNil(FSweepLock);
   FreeAndNil(FCacheControl);
   FreeAndNil(FBlockedExtensions);
+  FreeAndNil(FSettings);
   FreeAndNil(FPathCache);
   FreeAndNil(FCollectionRoute);
   inherited;
@@ -863,8 +890,9 @@ end;
 
 procedure TRALWebModule.BlockedExtensionsChanged(Sender: TObject);
 begin
-  { a path resolved before may lead to an extension blocked now }
-  TRALWebPathCache(FPathCache).Invalidate;
+  { a path resolved before may lead to an extension blocked now: new
+    settings, a new generation, and every path remembered is a miss }
+  PublishSettings;
 end;
 
 function TRALWebModule.GetCacheControl: TStrings;
@@ -881,83 +909,86 @@ begin
 end;
 
 procedure TRALWebModule.CacheControlChanged(Sender: TObject);
-var
-  vInt, vCount: IntegerRAL;
-  vName, vValue, vDefault: StringRAL;
-  vRules: TRALWebCacheRules;
 begin
-  { read once per change into a list the requests search with no parsing,
-    and swapped in whole }
-  vCount := 0;
-  vDefault := '';
-  SetLength(vRules, FCacheControl.Count);
-  for vInt := 0 to Pred(FCacheControl.Count) do
-  begin
-    vName := RALTrim(StringRAL(FCacheControl.Names[vInt]));
-    vValue := RALTrim(StringRAL(FCacheControl.ValueFromIndex[vInt]));
-    if (vName = '') or (vValue = '') then
-      Continue;
-    if vName = '*' then
-      vDefault := vValue
-    else
-    begin
-      if vName[POSINISTR] <> '.' then
-        vName := '.' + vName;
-      vRules[vCount].Ext := vName;
-      vRules[vCount].Value := vValue;
-      Inc(vCount);
-    end;
-  end;
-  SetLength(vRules, vCount);
-  FCacheRules := vRules;
-  FCacheDefault := vDefault;
+  PublishSettings;
 end;
 
 function TRALWebModule.CacheControlFor(const AFileName: string): StringRAL;
 var
-  vRules: TRALWebCacheRules;
+  vSettings: TRALWebSettings;
   vExt: StringRAL;
   vInt: IntegerRAL;
 begin
-  vRules := FCacheRules;
-  Result := FCacheDefault;
-  if Length(vRules) = 0 then
+  vSettings := TRALWebSettings(FSettings.Current);
+  Result := vSettings.CacheDefault;
+  if Length(vSettings.CacheRules) = 0 then
     Exit;
   vExt := StringRAL(ExtractFileExt(AFileName));
-  for vInt := 0 to High(vRules) do
-    if RALSameName(vRules[vInt].Ext, vExt) then
+  for vInt := 0 to High(vSettings.CacheRules) do
+    if RALSameName(vSettings.CacheRules[vInt].Ext, vExt) then
     begin
-      Result := vRules[vInt].Value;
+      Result := vSettings.CacheRules[vInt].Value;
       Break;
     end;
 end;
 
-procedure TRALWebModule.RebuildRootPath;
+procedure TRALWebModule.PublishSettings;
 var
+  vSettings: TRALWebSettings;
   vDir: string;
+  vInt, vCount: IntegerRAL;
+  vName, vValue: StringRAL;
 begin
-  vDir := Trim(string(FDocumentRoot));
-  if (vDir = '') and FUseAppPathAsRoot then
-    vDir := ExtractFilePath(ParamStr(0));
+  vSettings := TRALWebSettings.Create;
+  try
+    vSettings.Gen := RALAtomicInc(FSettingsGen);
 
-  if vDir = '' then
-    FRootPath := ''
-  else
-  begin
-    { a relative DocumentRoot answered 404 to everything: the prefix compared
-      was relative and the file expanded was absolute. It is taken from the
-      executable's folder - the current directory of a service is System32 }
-    {$IFDEF FPC}
-    if not FilenameIsAbsolute(vDir) then
-    {$ELSE}
-    if IsRelativePath(vDir) then
-    {$ENDIF}
-      vDir := ExtractFilePath(ParamStr(0)) + vDir;
-    FRootPath := IncludeTrailingPathDelimiter(ExpandFileName(vDir));
+    vDir := Trim(string(FDocumentRoot));
+    if (vDir = '') and FUseAppPathAsRoot then
+      vDir := ExtractFilePath(ParamStr(0));
+    if vDir <> '' then
+    begin
+      { a relative DocumentRoot answered 404 to everything: the prefix compared
+        was relative and the file expanded was absolute. It is taken from the
+        executable's folder - the current directory of a service is System32 }
+      {$IFDEF FPC}
+      if not FilenameIsAbsolute(vDir) then
+      {$ELSE}
+      if IsRelativePath(vDir) then
+      {$ENDIF}
+        vDir := ExtractFilePath(ParamStr(0)) + vDir;
+      vSettings.RootPath := IncludeTrailingPathDelimiter(ExpandFileName(vDir));
+    end;
+
+    vSettings.Blocked.Assign(FBlockedExtensions);
+
+    { CacheControl read once per change into rules the requests search with
+      no parsing }
+    vCount := 0;
+    SetLength(vSettings.CacheRules, FCacheControl.Count);
+    for vInt := 0 to Pred(FCacheControl.Count) do
+    begin
+      vName := RALTrim(StringRAL(FCacheControl.Names[vInt]));
+      vValue := RALTrim(StringRAL(FCacheControl.ValueFromIndex[vInt]));
+      if (vName = '') or (vValue = '') then
+        Continue;
+      if vName = '*' then
+        vSettings.CacheDefault := vValue
+      else
+      begin
+        if vName[POSINISTR] <> '.' then
+          vName := '.' + vName;
+        vSettings.CacheRules[vCount].Ext := vName;
+        vSettings.CacheRules[vCount].Value := vValue;
+        Inc(vCount);
+      end;
+    end;
+    SetLength(vSettings.CacheRules, vCount);
+  except
+    vSettings.Free;
+    raise;
   end;
-
-  { every path remembered was resolved under the root it had }
-  TRALWebPathCache(FPathCache).Invalidate;
+  FSettings.Publish(vSettings);
 end;
 
 procedure TRALWebModule.SetDocumentRoot(AValue: StringRAL);
@@ -965,7 +996,7 @@ begin
   if FDocumentRoot = AValue then
     Exit;
   FDocumentRoot := AValue;
-  RebuildRootPath;
+  PublishSettings;
 end;
 
 procedure TRALWebModule.SetUseAppPathAsRoot(AValue: boolean);
@@ -973,33 +1004,34 @@ begin
   if FUseAppPathAsRoot = AValue then
     Exit;
   FUseAppPathAsRoot := AValue;
-  RebuildRootPath;
+  PublishSettings;
 end;
 
 function TRALWebModule.ResolveFile(ARequest: TRALRequest): TRALWebFile;
 var
+  vSettings: TRALWebSettings;
   vCache: TRALWebPathCache;
   vEntry: TRALWebPathEntry;
-  vRoot: string;
   vHit, vFresh: boolean;
   {$IFDEF RALWindows}
   vLong: string;
   {$ENDIF}
 begin
   Result := nil;
-  vRoot := FRootPath;
-  if vRoot = '' then
+  { one version of the settings for the whole request - see TRALWebSettings }
+  vSettings := TRALWebSettings(FSettings.Current);
+  if vSettings.RootPath = '' then
     Exit;
 
-  { where the path leads: remembered, or worked out and remembered - under
-    the generation read BEFORE the work, so a change in between is a miss }
+  { where the path leads: remembered under the generation of these settings,
+    or worked out under them }
   vCache := TRALWebPathCache(FPathCache);
-  vHit := vCache.Find(ARequest.Query, vEntry);
+  vHit := vCache.Find(ARequest.Query, vSettings.Gen, vEntry);
   if not vHit then
   begin
-    vEntry.Gen := vCache.Generation;
+    vEntry.Gen := vSettings.Gen;
     vEntry.Key := ARequest.Query;
-    vEntry.Path := ResolvePath(vRoot, vEntry.Key, FBlockedExtensions);
+    vEntry.Path := ResolvePath(vSettings.RootPath, vEntry.Key, vSettings.Blocked);
     vEntry.Checked := 0;
     vEntry.Found := False;
   end;
@@ -1034,10 +1066,10 @@ begin
     alias - BANCO~1.SQL for banco.sqlite - it came in under an extension the
     list does not hold. Only a name with a '~' is asked of the system, on each
     request, and one the system cannot name is refused }
-  if (FBlockedExtensions.Count > 0) and (Pos('~', ExtractFileName(vEntry.Path)) > 0) then
+  if (vSettings.Blocked.Count > 0) and (Pos('~', ExtractFileName(vEntry.Path)) > 0) then
   begin
     vLong := LongFileName(vEntry.Path);
-    if (vLong = '') or IsBlockedName(vLong, FBlockedExtensions) then
+    if (vLong = '') or IsBlockedName(vLong, vSettings.Blocked) then
       Exit;
   end;
   {$ENDIF}

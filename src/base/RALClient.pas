@@ -425,7 +425,8 @@ type
     the client keeps the original instance. }
   TRALThreadRequest = class
   public
-    ThreadID: TThreadID;
+    { see ThreadToken }
+    ThreadToken: Int64RAL;
     Request: TRALRequest;
     Touched: TDateTime;
   end;
@@ -498,7 +499,7 @@ type
     { only used with EnginePooling off: the one engine kept for the thread that
       first asked for it, which is what the client did before the pool }
     FEngineHTTP: TRALClientHTTP;
-    FEngineThread: TThreadID;
+    FEngineThread: Int64RAL; // a ThreadToken
     { FEngineHTTP is out with a request right now - DropEngine must not free it }
     FEngineBusy: boolean;
     { bumped by DropEngine: an engine built before it belongs to the previous
@@ -519,7 +520,7 @@ type
     { the instance belonging to the thread that created the client, kept as a
       field so that the usual single threaded use costs no lookup at all }
     FRequest: TRALRequest;
-    FRequestThread: TThreadID;
+    FRequestThread: Int64RAL; // a ThreadToken
     { TRALThreadRequest, one per OTHER thread that has used Request }
     FRequests: TList;
     FSSL: TRALClientSSL;
@@ -777,6 +778,27 @@ implementation
 
 var
   EnginesDefs : TStringList;
+
+threadvar
+  { see ThreadToken }
+  gThreadToken: Int64RAL;
+
+var
+  gThreadTokens: Int64RAL = 0;
+
+{ A number for the calling thread that no other thread ever has. The system's
+  thread id goes to the next thread once one ends, and keyed by it a new
+  thread took over what a dead one left behind: its Request, params and
+  headers included, or the engine kept for it, with its socket }
+function ThreadToken: Int64RAL;
+begin
+  Result := gThreadToken;
+  if Result = 0 then
+  begin
+    Result := RALAtomicInc(gThreadTokens, 1);
+    gThreadToken := Result;
+  end;
+end;
 
 procedure CheckEngineDefs;
 begin
@@ -1159,13 +1181,13 @@ end;
 
 function TRALClient.GetRequest: TRALRequest;
 var
-  vThread: TThreadID;
+  vThread: Int64RAL;
   vInt: IntegerRAL;
   vItem: TRALThreadRequest;
   vDead: array of TRALThreadRequest;
   vNow: TDateTime;
 begin
-  vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+  vThread := ThreadToken;
   if vThread = FRequestThread then
   begin
     Result := FRequest;
@@ -1186,7 +1208,7 @@ begin
     for vInt := FRequests.Count - 1 downto 0 do
     begin
       vItem := TRALThreadRequest(FRequests.Items[vInt]);
-      if vItem.ThreadID = vThread then
+      if vItem.ThreadToken = vThread then
       begin
         { touched on every use, including the one the send path makes, so a
           thread in the middle of fill-then-call is never swept from under it }
@@ -1196,8 +1218,10 @@ begin
       else if (vNow - vItem.Touched) * 86400000 > RALTHREADREQUESTTIMEOUT then
       begin
         { A thread that has not touched its Request for half an hour is taken
-          to be gone - thread IDs are recycled, and a new thread must not
-          inherit a dead one's params. Its OWN timeout on purpose: this used to
+          to be gone, and what it left is freed. Keyed by the system's thread
+          id this was also what kept a new thread from inheriting a dead one's
+          params - for half an hour - and ThreadToken does that now, for good.
+          Its OWN timeout on purpose: this used to
           ride on PoolConnection.IdleTimeout, five minutes, which a thread
           calling every ten minutes fell foul of, and it applied with the pool
           off as well, where nobody had asked for a timeout at all. }
@@ -1210,7 +1234,7 @@ begin
     if Result = nil then
     begin
       vItem := TRALThreadRequest.Create;
-      vItem.ThreadID := vThread;
+      vItem.ThreadToken := vThread;
       vItem.Request := TRALClientRequest.Create(Self);
       { BORN AS A COPY OF THE CREATOR'S REQUEST, not empty. Before requests
         were per thread there was one object, so "fill Request on the main
@@ -1245,7 +1269,7 @@ end;
 
 function TRALClient.AcquireEngine: TRALClientHTTP;
 var
-  vThread: TThreadID;
+  vThread: Int64RAL;
   vKey: StringRAL;
   vInt: IntegerRAL;
   vSlot, vSpare: TRALPooledEngine;
@@ -1264,7 +1288,7 @@ begin
       first asked, and a throwaway for every other thread. Kept verbatim so
       turning the property off restores the old behaviour exactly, not some
       third thing. }
-    vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+    vThread := ThreadToken;
     LockSession;
     try
       if FEngineHTTP = nil then
@@ -1609,7 +1633,7 @@ begin
   FSSL := TRALClientSSL.Create;
   FCritSession := TCriticalSection.Create;
   FRequest := TRALClientRequest.Create(Self);
-  FRequestThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+  FRequestThread := ThreadToken;
   FRequests := TList.Create;
   FBaseURL := TStringList.Create;
   FThreads := TThreadList.Create;

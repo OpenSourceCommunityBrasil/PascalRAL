@@ -73,7 +73,6 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FLogAES: TStringList;
     FWordKeys: array of Cardinal; // UInt32;
     { the bytes the cipher and the MAC are keyed from: the text key's own, or
       what RALCriptoKeyDerivation stretches out of it }
@@ -89,7 +88,6 @@ type
 
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
-    procedure LogAES(const ALog: StringRAL; AInput: PByte);
     /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure SetAESType(AValue: TRALAESType);
@@ -104,7 +102,6 @@ type
     class procedure InitializeAES;
   public
     constructor Create;
-    destructor Destroy; override;
 
     function AESKeys(AIndex: integer): TBytes;
     function CountKeys: integer;
@@ -630,7 +627,6 @@ end;
 constructor TRALCriptoAES.Create;
 begin
   inherited;
-  FLogAES := TStringList.Create;
   FAESType := tAES128;
 end;
 
@@ -640,12 +636,6 @@ begin
     Result := DerivedKey(Key)
   else
     Result := StringToBytesUTF8(Key);
-end;
-
-destructor TRALCriptoAES.Destroy;
-begin
-  FLogAES.Free;
-  inherited Destroy;
 end;
 
 function TRALCriptoAES.MacKey: TBytes;
@@ -942,28 +932,6 @@ begin
     end;
     Result.Add(vStr);
   end;
-end;
-
-procedure TRALCriptoAES.LogAES(const ALog: StringRAL; AInput: PByte);
-var
-  vInt: IntegerRAL;
-  vStr: StringRAL;
-begin
-  FLogAES.Add(ALog);
-  vStr := '';
-  for vInt := 1 to 16 do
-  begin
-    if vStr <> '' then
-      vStr := vStr + ' ';
-    vStr := vStr + IntToHex(AInput^, 2);
-    if vInt mod 4 = 0 then
-    begin
-      FLogAES.Add(vStr);
-      vStr := '';
-    end;
-    Inc(AInput);
-  end;
-  FLogAES.Add('');
 end;
 
 class function TRALCriptoAES.Multi02(AValue: byte): byte;
