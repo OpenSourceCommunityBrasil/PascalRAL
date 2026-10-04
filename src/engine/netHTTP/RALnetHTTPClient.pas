@@ -33,6 +33,18 @@ type
       state of the shared TRANSPORT, not of one client - see PoolMatchCap }
     FShared: TNetHTTPClient;
     FSharedKey: StringRAL;
+    { what FSharedKey was built from - a TRALnetHTTPSetup, see the
+      implementation - so a call to the same place with the same settings does
+      not build the key again }
+    FSetupAuthority: StringRAL;
+    FSetupUserAgent: StringRAL;
+    FSetupConnect: IntegerRAL;
+    FSetupRequest: IntegerRAL;
+    FSetupRedirects: IntegerRAL;
+    FSetupVersion: TRALHTTPVersion;
+    FSetupKeepAlive: IntegerRAL;
+    FSetupPolicy: StringRAL;
+    FSetupNoDowngrade: boolean;
 
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
@@ -244,21 +256,76 @@ end;
   Outside Windows none of this exists nor is needed: on Android
   HttpURLConnection is OkHttp underneath, which multiplexes h2 in its own pool,
   and on macOS/iOS NSURLSession does the same. }
+
+type
+  { a private field found by RTTI, for one class }
+  PRALRttiSlot = ^TRALRttiSlot;
+  TRALRttiSlot = record
+    Cls: TClass;
+    Field: TRttiField;
+  end;
+
+var
+  { ONE RTTI context for the life of the unit. A context created and freed per
+    call - one per response, in NegotiatedProtocol - rebuilt the RTTI pool
+    whenever no other context was alive, and a TRttiField found is only good
+    while some context keeps that pool }
+  gRttiContext: TRttiContext;
+  { each private field the engine reads, found once: the classes behind
+    THTTPClient are always the same ones, and GetField walked the class's
+    fields comparing names on every response }
+  gSlotHttpClient: PRALRttiSlot = nil;
+  gSlotWSession: PRALRttiSlot = nil;
+  gSlotRespRequest: PRALRttiSlot = nil;
+  gSlotReqRequest: PRALRttiSlot = nil;
+
+{ The field AName of AClass, kept in ASlot by whichever thread looks first -
+  the others read it with no lock: the record is filled before its address is
+  published, and never changes after. A class other than the one kept, which
+  this RTL never hands over, is looked up every time and not kept }
+function RttiField(var ASlot: PRALRttiSlot; AClass: TClass; const AName: string): TRttiField;
+var
+  vSlot, vNew: PRALRttiSlot;
+  vType: TRttiType;
+begin
+  vSlot := ASlot;
+  if (vSlot <> nil) and (vSlot^.Cls = AClass) then
+  begin
+    Result := vSlot^.Field;
+    Exit;
+  end;
+
+  Result := nil;
+  vType := gRttiContext.GetType(AClass);
+  if vType <> nil then
+    Result := vType.GetField(AName);
+
+  if vSlot = nil then
+  begin
+    New(vNew);
+    vNew^.Cls := AClass;
+    vNew^.Field := Result;
+    if AtomicCmpExchange(Pointer(ASlot), Pointer(vNew), nil) <> nil then
+      Dispose(vNew); // another thread kept it first
+  end;
+end;
+
+procedure FreeRttiSlot(var ASlot: PRALRttiSlot);
+begin
+  if ASlot <> nil then
+    Dispose(ASlot);
+  ASlot := nil;
+end;
+
 function WinHttpSessionOf(AHttp: TNetHTTPClient): Pointer;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vValue: TValue;
   vPlatform: TObject;
 begin
   Result := nil;
-  vCtx := TRttiContext.Create;
   try
-    vType := vCtx.GetType(AHttp.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FHttpClient');
+    vField := RttiField(gSlotHttpClient, AHttp.ClassType, 'FHttpClient');
     if vField = nil then
       Exit;
     vValue := vField.GetValue(AHttp);
@@ -268,10 +335,7 @@ begin
     if vPlatform = nil then
       Exit;
 
-    vType := vCtx.GetType(vPlatform.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWSession');
+    vField := RttiField(gSlotWSession, vPlatform.ClassType, 'FWSession');
     if vField = nil then
       Exit;
     Result := vField.GetValue(vPlatform).AsType<Pointer>;
@@ -282,7 +346,6 @@ begin
     on E: Exception do
       Result := nil;
   end;
-  vCtx.Free;
 end;
 
 const
@@ -415,9 +478,11 @@ begin
 end;
 
 { Finds the holder this key belongs to and lets it match the cap to the version
-  that was actually negotiated. Called once per response, and the lookup is a
-  string compare over a list with one entry per DISTINCT configuration - never
-  one per client - so it costs nothing next to the request that just went out. }
+  that was actually negotiated - on Windows, the only place the cap exists, and
+  only for an answer that can take it off (see SendUrl). The lookup is a string
+  compare over a list with one entry per DISTINCT configuration - never one per
+  client. }
+{$IFDEF RALWindows}
 procedure PoolMatchCap(const AKey: StringRAL; AVersion: TRALHTTPVersion);
 var
   vIdx: IntegerRAL;
@@ -434,6 +499,7 @@ begin
     vPoolLock.Leave;
   end;
 end;
+{$ENDIF}
 
 {$IFDEF RALWindows}
 type
@@ -467,8 +533,6 @@ function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcal
   fails gives rhvDefault back, and the caller falls back to what the RTL said. }
 function NegotiatedProtocol(const AResponse: IHTTPResponse): TRALHTTPVersion;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vObj: TObject;
   vHandle: Pointer;
@@ -478,15 +542,11 @@ begin
   if AResponse = nil then
     Exit;
 
-  vCtx := TRttiContext.Create;
   try
     vObj := AResponse as TObject;
     if vObj = nil then
       Exit;
-    vType := vCtx.GetType(vObj.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWRequest');
+    vField := RttiField(gSlotRespRequest, vObj.ClassType, 'FWRequest');
     if vField = nil then
       Exit;
     vHandle := vField.GetValue(vObj).AsType<Pointer>;
@@ -509,7 +569,6 @@ begin
     on E: Exception do
       Result := rhvDefault;
   end;
-  vCtx.Free;
 end;
 
 { THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
@@ -531,8 +590,6 @@ end;
   engine that cannot read a fingerprint, exactly as before. }
 function ServerCertFingerprint(const ARequest: TURLRequest): StringRAL;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vHandle: Pointer;
   vCert: PRALCertContext;
@@ -543,12 +600,8 @@ begin
   Result := '';
   if not (ARequest is TObject) then
     Exit;
-  vCtx := TRttiContext.Create;
   try
-    vType := vCtx.GetType(ARequest.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWRequest');
+    vField := RttiField(gSlotReqRequest, ARequest.ClassType, 'FWRequest');
     if vField = nil then
       Exit;
     vHandle := vField.GetValue(ARequest).AsType<Pointer>;
@@ -575,7 +628,6 @@ begin
     on E: Exception do
       Result := '';
   end;
-  vCtx.Free;
 end;
 {$ENDIF}
 
@@ -688,15 +740,24 @@ end;
   to; the path and the query stay out }
 function RALAuthorityOf(const AURL: StringRAL): StringRAL;
 var
-  vSlash, vEnd: IntegerRAL;
+  vSlash, vInt: IntegerRAL;
 begin
-  Result := LowerCase(AURL);
+  { cut first, then lowered by hand: LowerCase took the whole URL - path and
+    query string too - to UTF-16 and back, and a copy of what followed the
+    '//' was made only to find the next '/'. Only 'A'..'Z' change, as with
+    LowerCase }
+  Result := AURL;
   vSlash := Pos(StringRAL('//'), Result);
-  if vSlash <= 0 then
-    Exit;
-  vEnd := Pos(StringRAL('/'), Copy(Result, vSlash + 2, Length(Result)));
-  if vEnd > 0 then
-    Result := Copy(Result, 1, vSlash + vEnd);
+  if vSlash > 0 then
+    for vInt := vSlash + 2 to Length(Result) do
+      if Result[POSINISTR - 1 + vInt] = '/' then
+      begin
+        Result := Copy(Result, 1, vInt - 1);
+        Break;
+      end;
+  for vInt := POSINISTR to RALHighStr(Result) do
+    if (Result[vInt] >= 'A') and (Result[vInt] <= 'Z') then
+      Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
 end;
 
 { TRALnetHTTPClientHTTP }
@@ -926,6 +987,21 @@ begin
   vSetup.CertPolicy := CertPolicyKey;
   vSetup.NoDowngrade := TLSRequired;
 
+  { the same place with the same settings - every call but the first, as a
+    rule - keeps the transport and the key it has: the key is ten strings
+    joined, and it was built on every request }
+  if (FSharedKey <> '') and (vSetup.Authority = FSetupAuthority) and
+     (vSetup.UserAgent = FSetupUserAgent) and
+     (vSetup.ConnectTimeout = FSetupConnect) and
+     (vSetup.RequestTimeout = FSetupRequest) and
+     (vSetup.MaxRedirects = FSetupRedirects) and (vSetup.Version = FSetupVersion) and
+     (vSetup.KeepAlive = FSetupKeepAlive) and (vSetup.CertPolicy = FSetupPolicy) and
+     (vSetup.NoDowngrade = FSetupNoDowngrade) then
+  begin
+    Result := FShared;
+    Exit;
+  end;
+
   vKey := vSetup.Key;
   if vKey <> FSharedKey then
   begin
@@ -933,6 +1009,15 @@ begin
     FShared := PoolAcquire(vSetup, Self);
     FSharedKey := vKey;
   end;
+  FSetupAuthority := vSetup.Authority;
+  FSetupUserAgent := vSetup.UserAgent;
+  FSetupConnect := vSetup.ConnectTimeout;
+  FSetupRequest := vSetup.RequestTimeout;
+  FSetupRedirects := vSetup.MaxRedirects;
+  FSetupVersion := vSetup.Version;
+  FSetupKeepAlive := vSetup.KeepAlive;
+  FSetupPolicy := vSetup.CertPolicy;
+  FSetupNoDowngrade := vSetup.NoDowngrade;
   Result := FShared;
 end;
 
@@ -1204,8 +1289,15 @@ begin
 
         { AND ONLY NOW the one-connection cap, because only now is there an
           answer to cap for. Asking for h2 is not getting it, and one connection
-          under HTTP/1.1 queues what it should run in parallel. }
-        PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
+          under HTTP/1.1 queues what it should run in parallel. Only where the
+          cap can be on - Windows, a shared transport opened for h2 - and an
+          answer in 1.x takes it off: the pool's global lock was taken for every
+          response, everywhere, to find there was nothing to do }
+        {$IFDEF RALWindows}
+        if (FSharedKey <> '') and (FSetupVersion = rhv2) and
+           (AResponse.ProtocolVersion in [rhv10, rhv11]) then
+          PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
+        {$ENDIF}
 
         { Order matters, and it used to be wrong: CompressType and the crypto
           options were assigned BEFORE the response headers were appended, so
@@ -1259,12 +1351,23 @@ initialization
   vPool.Sorted := True;          // binary IndexOf: the pool is looked up per call
   vPool.Duplicates := dupError;  // two entries under one key would be a defect
   vPoolLock := TCriticalSection.Create;
+  {$IFDEF RALWindows}
+  gRttiContext := TRttiContext.Create;
+  {$ENDIF}
   { qualified: Winapi.Windows, which comes in here only for WinHTTP, has a
     RegisterClass of its own - the window one - that would win the resolution }
   System.Classes.RegisterClass(TRALnetHTTPClientHTTP);
   RegisterEngine(TRALnetHTTPClientHTTP);
 
 finalization
+  {$IFDEF RALWindows}
+  { the fields belong to the context's pool: they go first }
+  FreeRttiSlot(gSlotHttpClient);
+  FreeRttiSlot(gSlotWSession);
+  FreeRttiSlot(gSlotRespRequest);
+  FreeRttiSlot(gSlotReqRequest);
+  gRttiContext.Free;
+  {$ENDIF}
   { whatever is left here is a transport whose client was never freed - there
     is nobody to give it back to, and leaking it would be worse than closing }
   if vPool <> nil then

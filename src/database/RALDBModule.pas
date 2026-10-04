@@ -110,6 +110,23 @@ type
 
 implementation
 
+{ The answers of a SQL cache as the body of AResponse - one param, 'Stream',
+  that the body encoder sends as the whole body. It is the result of a query,
+  and it used to be alive four times at once: in the query's answer, in the
+  serialized cache, in the param that copied it, and in the body copied from
+  the param - 100 MB of result took 400 MB of the server. The cache is
+  serialized once, and that stream is shared, not copied, with what the engine
+  sends (TRALBufferStream); the request's body was read where it is, too, not
+  copied first }
+procedure AnswerSQLCache(AResponse: TRALResponse; ACache: TRALDBSQLCache);
+var
+  vParam: TRALParam;
+begin
+  AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+  vParam := AResponse.Params.AddParam('Stream', TStream(nil), rpkBODY);
+  vParam.AdoptStream(TRALBufferStream.Create(TMemoryStream(ACache.ResponseToStream)));
+end;
+
 { TRALDBModule }
 
 procedure TRALDBModule.SetLibLocation(AValue: String);
@@ -223,7 +240,9 @@ begin
       ADBSQL.Response.ContentType := vContentType;
       ADBSQL.Response.RowsAffected := 0;
       ADBSQL.Response.LastId := 0;
-      ADBSQL.Response.Stream := vResult;
+      { handed over, not copied: Stream := held the result twice }
+      ADBSQL.Response.AdoptStream(TMemoryStream(vResult));
+      vResult := nil;
     finally
       FreeAndNil(vResult);
     end;
@@ -321,7 +340,7 @@ end;
 procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
@@ -331,34 +350,25 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              vDBSQL := vSQLCache.SQLList[0];
+        { the body where it is - see AnswerSQLCache }
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
+            vDBSQL := vSQLCache.SQLList[0];
 
-              OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+            OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else
@@ -378,7 +388,7 @@ procedure TRALDBModule.ApplyUpdates(ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
   vInt: IntegerRAL;
@@ -389,46 +399,36 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              for vInt := 0 to Pred(vSQLCache.Count) do
-              begin
-                vDBSQL := vSQLCache.SQLList[vInt];
-                vDBSQL.Response.Clear;
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
+            for vInt := 0 to Pred(vSQLCache.Count) do
+            begin
+              vDBSQL := vSQLCache.SQLList[vInt];
+              vDBSQL.Response.Clear;
 
-                try
-                  if vDBSQL.ExecType = etExecute then
-                    ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
-                  else
-                    OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
-                except
-                  on e: Exception do
-                    vDBSQL.Response.StrError := e.Message;
-                end;
-              end;
-
-              vResult := vSQLCache.ResponseToStream;
               try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
+                if vDBSQL.ExecType = etExecute then
+                  ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
+                else
+                  OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+              except
+                on e: Exception do
+                  vDBSQL.Response.StrError := e.Message;
               end;
-            finally
-              FreeAndNil(vSQLCache);
             end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else
@@ -447,7 +447,7 @@ end;
 procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
@@ -457,36 +457,26 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
 
-              vDBSQL := vSQLCache.SQLList[0];
-              vDBSQL.Response.Clear;
+            vDBSQL := vSQLCache.SQLList[0];
+            vDBSQL.Response.Clear;
 
-              ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+            ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else

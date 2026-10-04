@@ -33,6 +33,7 @@
   emQuicHandshakeTimeout = 'QUIC handshake with %s:%d timed out.';
   emQuicConnectFailed = 'QUIC connection to %s:%d failed: %s.';
   emQuicFrameMalformed = 'Malformed QUIC frame.';
+  emQuicFrameTooLarge = 'QUIC: a body of %d bytes does not fit in a frame; the limit is %d bytes.';
   emQuicAnswerTimeout = 'QUIC: timed out waiting for the answer.';
   emQuicPeerAborted = 'QUIC: the peer aborted the stream.';
   emQuicPlatformUnsupported = 'The MsQuic engine only translates the status codes of Windows and Linux; it cannot run on this platform yet.';

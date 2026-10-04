@@ -35,6 +35,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    { Takes AStream - a memory stream - as Stream, without copying it: the
+      response frees it. Stream := copies, which held a result twice }
+    procedure AdoptStream(AStream: TMemoryStream);
     procedure Clear;
   published
     property ContentType: StringRAL read FContentType write FContentType;
@@ -143,9 +146,21 @@ end;
 
 procedure TRALDBSQLResponse.SetStream(AValue: TStream);
 begin
-  FStream.Size := 0;
+  { sized once, where the copy grew the stream step by step }
+  FStream.Size := AValue.Size;
+  FStream.Position := 0;
   AValue.Position := 0;
-  FStream.CopyFrom(AValue, AValue.Size);
+  if AValue.Size > 0 then // a count of 0 is "all of it" to CopyFrom
+    FStream.CopyFrom(AValue, AValue.Size);
+  FStream.Position := 0;
+end;
+
+procedure TRALDBSQLResponse.AdoptStream(AStream: TMemoryStream);
+begin
+  if AStream = FStream then
+    Exit;
+  FreeAndNil(FStream);
+  FStream := AStream;
   FStream.Position := 0;
 end;
 

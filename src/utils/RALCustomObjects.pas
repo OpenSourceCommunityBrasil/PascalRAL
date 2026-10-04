@@ -52,6 +52,17 @@ type
     FCriptoKey: StringRAL;
     FProtocolVersion: TRALHTTPVersion;
     FParams: TRALParams;
+    { what AcceptCompress and ContentCompress answered last, for which text and
+      under which set of registered compressors: a request reads each several
+      times, and the header only changes when somebody writes it. The text is
+      compared by reference - kept here, it cannot be freed and its address
+      taken by another string - so a hit costs two comparisons }
+    FAcceptKey: StringRAL;
+    FAcceptGen: IntegerRAL;
+    FAcceptValue: TRALCompressType;
+    FContentKey: StringRAL;
+    FContentGen: IntegerRAL;
+    FContentValue: TRALCompressType;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -166,7 +177,14 @@ end;
 
 function TRALHTTPHeaderInfo.GetAcceptCompress: TRALCompressType;
 begin
-  Result := TRALCompress.GetBestCompress(FAcceptEncoding);
+  if (Pointer(FAcceptEncoding) <> Pointer(FAcceptKey)) or
+     (FAcceptGen <> CompressRegistration) then
+  begin
+    FAcceptValue := TRALCompress.GetBestCompress(FAcceptEncoding);
+    FAcceptKey := FAcceptEncoding;
+    FAcceptGen := CompressRegistration;
+  end;
+  Result := FAcceptValue;
 end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
@@ -461,7 +479,16 @@ end;
 
 function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
 begin
-  Result := TRALCompress.GetBestCompress(FContentEncoding);
+  { the same memory as GetAcceptCompress: ProcessCommands, the engine and the
+    body encoder each ask }
+  if (Pointer(FContentEncoding) <> Pointer(FContentKey)) or
+     (FContentGen <> CompressRegistration) then
+  begin
+    FContentValue := TRALCompress.GetBestCompress(FContentEncoding);
+    FContentKey := FContentEncoding;
+    FContentGen := CompressRegistration;
+  end;
+  Result := FContentValue;
 end;
 
 function TRALHTTPHeaderInfo.GetCookie(const AName: StringRAL): StringRAL;

@@ -169,8 +169,8 @@ begin
   if Length(Result) = 0 then
     Exit;
 
-  if AStream.InheritsFrom(TMemoryStream) then
-    Move(TMemoryStream(AStream).Memory^, Result[0], Length(Result))
+  if AStream.InheritsFrom(TCustomMemoryStream) then
+    Move(TCustomMemoryStream(AStream).Memory^, Result[0], Length(Result))
   else
     AStream.Read(Result[0], Length(Result));
 end;
@@ -458,6 +458,9 @@ var
 begin
   vQWord := ReadSize;
   CheckSize(vQWord);
+  { the whole size at once instead of growing step by step with the copy }
+  if AStream is TMemoryStream then
+    AStream.Size := AStream.Position + Int64(vQWord);
   AStream.CopyFrom(FStream, vQWord);
   AStream.Position := 0;
 end;
@@ -547,17 +550,24 @@ begin
 end;
 
 procedure TRALStringStream.WriteString(AString: StringRAL);
-var
-  vBytes : TBytes;
 begin
-  vBytes := StringToBytesUTF8(AString);
-  WriteBytes(vBytes);
+  { the bytes of the string as they are - StringRAL is UTF-8 already. They
+    went through an array first, StringToBytesUTF8 being that same copy }
+  if AString <> '' then
+    Write(AString[POSINISTR], Length(AString));
 end;
 
 { a count of 0 copies the whole of AStream from its start, on both compilers -
   straight across, where a copy into an array first doubled the body in memory }
 procedure TRALStringStream.WriteStream(AStream: TStream);
+var
+  vNeeded: Int64;
 begin
+  { room for all of it at once: the copy grew the buffer piece by piece, by
+    8 KB at a time on Delphi, and each step could move the whole of it }
+  vNeeded := Position + AStream.Size;
+  if vNeeded > Capacity then
+    Capacity := vNeeded;
   CopyFrom(AStream, 0);
 end;
 

@@ -119,6 +119,9 @@ type
   TRALClientSSL = class(TPersistent)
   private
     FPins: TStringList;
+    { the pins on one line, as TRALClientHTTP.CertPolicyKey puts them in the
+      key - made when the list changes, not on every request }
+    FPinsKey: StringRAL;
     FRequired: boolean;
     FVerify: TRALSSLVerify;
     procedure PinsChanged(Sender: TObject);
@@ -174,6 +177,13 @@ type
     FParent: TRALClient;
     { TRALClient's FEngineGeneration when this engine was built }
     FGeneration: IntegerRAL;
+    { CertPolicyKey as last built, and what it was built from: the engines
+      that pool connections ask for it on every request }
+    FPolicyKey: StringRAL;
+    FPolicyPins: StringRAL;
+    FPolicyVerify: TRALSSLVerify;
+    FPolicyCode: Pointer;
+    FPolicyData: Pointer;
     { host and port of the attempt in progress, filled in by BeforeSendUrl:
       which pin applies is a question about WHERE the client is going, and so
       is TRALCertInfo.Host }
@@ -2012,6 +2022,13 @@ procedure TRALClientSSL.PinsChanged(Sender: TObject);
 var
   vInt: IntegerRAL;
 begin
+  { first, so that it always says what the list holds - the check below
+    raises with the bad line already in. One line on purpose: it ends up in a
+    key, and Text brings line breaks with it }
+  FPinsKey := StringReplace(StringReplace(StringRAL(FPins.Text),
+                              StringRAL(#13), StringRAL(''), [rfReplaceAll]),
+                            StringRAL(#10), StringRAL(','), [rfReplaceAll]);
+
   for vInt := 0 to Pred(FPins.Count) do
     if RALPinFingerprint(StringRAL(FPins.Strings[vInt])) = '' then
       raise Exception.Create(emCertPinInvalid);
@@ -2126,19 +2143,34 @@ end;
 function TRALClientHTTP.CertPolicyKey: StringRAL;
 var
   vMethod: TMethod;
+  vPins: StringRAL;
+  vVerify: TRALSSLVerify;
 begin
-  { one line on purpose: this ends up as a key, and Pins.Text brings line
-    breaks with it }
-  Result := IntToStr(Ord(Parent.SSL.Verify)) + ';' +
-            StringReplace(StringReplace(Parent.SSL.Pins.Text,
-                                        StringRAL(#13), StringRAL(''), [rfReplaceAll]),
-                          StringRAL(#10), StringRAL(','), [rfReplaceAll]) + ';';
-  if Assigned(Parent.OnValidateServerCert) then
+  { built again only when what it is made of changed: four engines key their
+    connections by it on every request, and it took a list to text, two
+    replaces and four numbers to text each time. The pins come as
+    TRALClientSSL keeps them, the same instance while the list is the same }
+  vPins := Parent.SSL.FPinsKey;
+  vVerify := Parent.SSL.Verify;
+  vMethod := TMethod(Parent.OnValidateServerCert);
+  if (FPolicyKey <> '') and (Pointer(vPins) = Pointer(FPolicyPins)) and
+     (vVerify = FPolicyVerify) and (vMethod.Code = FPolicyCode) and
+     (vMethod.Data = FPolicyData) then
   begin
-    vMethod := TMethod(Parent.OnValidateServerCert);
+    Result := FPolicyKey;
+    Exit;
+  end;
+
+  Result := IntToStr(Ord(vVerify)) + ';' + vPins + ';';
+  if vMethod.Code <> nil then
     Result := Result + IntToHex(NativeUInt(vMethod.Code), 8) + ':' +
                        IntToHex(NativeUInt(vMethod.Data), 8);
-  end;
+
+  FPolicyKey := Result;
+  FPolicyPins := vPins;
+  FPolicyVerify := vVerify;
+  FPolicyCode := vMethod.Code;
+  FPolicyData := vMethod.Data;
 end;
 
 class function TRALClientHTTP.SupportsCertPin: boolean;

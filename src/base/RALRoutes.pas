@@ -598,6 +598,12 @@ var
   vRoute: TRALRoute;
   vRaw, vPath: TRALRouteSegments;
 begin
+  Result := nil;
+  { no route, nothing to split the path for: a WebModule without routes of its
+    own - the usual one, serving files - asked this on every request }
+  if Count = 0 then
+    Exit;
+
   { the request's path split once, and every route's kept since it was defined
     (TRALBaseRoute.UpdateSegments). This used to build two TStringLists and
     parse both paths for every route on every request, plus two more lists
@@ -607,7 +613,6 @@ begin
   for vInt := 0 to High(vRaw) do
     vPath[vInt] := RALTrim(vRaw[vInt]);
 
-  Result := nil;
   vBest := MaxInt;
   for vInt := 0 to Pred(Count) do
   begin

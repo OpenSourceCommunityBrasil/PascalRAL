@@ -115,6 +115,12 @@ type
     FTargetHost: StringRAL;
     FTargetPort: IntegerRAL;
     FTargetUrl: StringRAL;
+    { the shared key as last built, and what it was built from - see ShareKey }
+    FKey: StringRAL;
+    FKeyHost: StringRAL;
+    FKeyPort: IntegerRAL;
+    FKeyPolicy: StringRAL;
+    FKeyKeepAlive: IntegerRAL;
     procedure ResolveTarget(const AURL: StringRAL);
     /// The certificate policy to share by, FOwnShareKey to stand alone. The
     /// destination is part of it because one connection serves one peer.
@@ -276,6 +282,8 @@ begin
 end;
 
 function TRALKwikClientHTTP.ShareKey: StringRAL;
+var
+  vPolicy: StringRAL;
 begin
   { A TLS connection is judged ONCE, at its handshake, and a reused one has no
     handshake at all - so a client sharing a connection inherits a verdict it
@@ -286,11 +294,26 @@ begin
     a client asking for one used to land on a connection opened without it and
     go on waiting out RequestTimeout on a dead network - the MsQuic engine
     keys it the same way. }
-  if Parent.ShareConnection then
-    Result := CertPolicyKey + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)) +
-              '|' + StringRAL(IntToStr(Parent.KeepAliveInterval))
-  else
+  if not Parent.ShareConnection then
+  begin
     Result := FOwnShareKey;
+    Exit;
+  end;
+
+  { built again only when what it is made of changed: it was built on every
+    request }
+  vPolicy := CertPolicyKey;
+  if (FKey = '') or (FTargetHost <> FKeyHost) or (FTargetPort <> FKeyPort) or
+     (vPolicy <> FKeyPolicy) or (Parent.KeepAliveInterval <> FKeyKeepAlive) then
+  begin
+    FKey := vPolicy + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)) +
+            '|' + StringRAL(IntToStr(Parent.KeepAliveInterval));
+    FKeyHost := FTargetHost;
+    FKeyPort := FTargetPort;
+    FKeyPolicy := vPolicy;
+    FKeyKeepAlive := Parent.KeepAliveInterval;
+  end;
+  Result := FKey;
 end;
 
 function TRALKwikClientHTTP.CertMode: IntegerRAL;

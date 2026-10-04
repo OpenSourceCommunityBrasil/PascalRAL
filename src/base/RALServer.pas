@@ -96,7 +96,11 @@ type
     FAllowCredentials: boolean;
     FAllowOrigin: StringRAL;
     FAllowHeaders: TStringList;
+    { AllowHeaders as the header carries it, rebuilt when the list changes:
+      it was rebuilt on every request a route answered }
+    FAllowHeadersText: StringRAL;
     FMaxAge: IntegerRAL;
+    procedure AllowHeadersChanged(Sender: TObject);
   protected
     procedure AssignTo(Dest: TPersistent); override;
     procedure SetAllowHeaders(AValue: TStringList);
@@ -499,13 +503,36 @@ begin
   { the defaults replace the list: added to what was there, every empty
     assignment appended the six again, and all the copies went out in
     Access-Control-Allow-Headers }
-  FAllowHeaders.Clear;
-  FAllowHeaders.Add('Content-Type');
-  FAllowHeaders.Add('Origin');
-  FAllowHeaders.Add('Accept');
-  FAllowHeaders.Add('Authorization');
-  FAllowHeaders.Add('Content-Encoding');
-  FAllowHeaders.Add('Accept-Encoding');
+  FAllowHeaders.BeginUpdate;
+  try
+    FAllowHeaders.Clear;
+    FAllowHeaders.Add('Content-Type');
+    FAllowHeaders.Add('Origin');
+    FAllowHeaders.Add('Accept');
+    FAllowHeaders.Add('Authorization');
+    FAllowHeaders.Add('Content-Encoding');
+    FAllowHeaders.Add('Accept-Encoding');
+  finally
+    FAllowHeaders.EndUpdate;
+  end;
+end;
+
+procedure TRALCORSOptions.AllowHeadersChanged(Sender: TObject);
+var
+  vInt: IntegerRAL;
+  vText: StringRAL;
+begin
+  { one line, the items joined by commas as they are. DelimitedText used to do
+    this, and it also wrapped in quotes any item holding a blank or a quote -
+    "X-A, X-B" written on one line went out as one quoted, unusable name }
+  vText := '';
+  for vInt := 0 to Pred(FAllowHeaders.Count) do
+  begin
+    if vInt > 0 then
+      vText := vText + ',';
+    vText := vText + StringRAL(FAllowHeaders.Strings[vInt]);
+  end;
+  FAllowHeadersText := vText;
 end;
 
 { every engine's SSL descends from this one: the copy takes the published
@@ -538,6 +565,9 @@ begin
   FMaxAge := 86400;
 
   FAllowHeaders := TStringList.Create;
+  { every change rebuilds the text: Add, Assign, the Object Inspector and a
+    form being read all end in OnChange }
+  FAllowHeaders.OnChange := {$IFDEF FPC}@{$ENDIF}AllowHeadersChanged;
   SetDefaultHeaders;
 end;
 
@@ -587,8 +617,7 @@ end;
 
 function TRALCORSOptions.GetAllowHeaders: StringRAL;
 begin
-  FAllowHeaders.Delimiter := ',';
-  Result := FAllowHeaders.DelimitedText;
+  Result := FAllowHeadersText;
 end;
 
 { TRALIPConfig }
@@ -935,6 +964,7 @@ var
   vString: StringRAL;
   vCheck_Authentication: boolean;
   vRouteIsAuth: boolean;
+  vBody: TRALParam;
 
 label
   aSTATUS, aOK, a401, a403, a404, a405, aFIM;
@@ -1105,6 +1135,20 @@ begin
 
     aFIM:
     begin
+      { a body that is compressed already - an image, audio, video, an
+        archive - is not compressed again: the coding was chosen above from
+        Accept-Encoding alone, before any route said what it answers, and over
+        such bytes it spends a pass and a buffer of the whole body to come out
+        the same size or larger. Decided here, on the answer the route gave
+        and before any engine reads ContentEncoding; OnResponse still has the
+        last word }
+      if (AResponse.ContentCompress <> ctNone) and (not AResponse.ContentEncoded) then
+      begin
+        vBody := AResponse.Params.SingleBody;
+        if (vBody <> nil) and RALIsCompressedMediaType(vBody.ContentType) then
+          AResponse.ContentCompress := ctNone;
+      end;
+
       if Assigned(FOnResponse) then
         FOnResponse(ARequest, AResponse);
 

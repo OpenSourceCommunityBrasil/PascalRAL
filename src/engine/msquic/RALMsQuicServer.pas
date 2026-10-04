@@ -1146,7 +1146,7 @@ var
   vHdrCount, vHdrSize: IntegerRAL;
   vDest: PByte;
   vStream: TStream;
-  vBodyLen: IntegerRAL;
+  vBodyLen: Int64RAL;
   {$IFDEF RALMSQUIC_PROFILE}vMark: Int64;{$ENDIF}
 begin
   {$IFDEF RALMSQUIC_PROFILE}vMark := SrvTicks;{$ENDIF}
@@ -1259,6 +1259,17 @@ begin
       frame. }
     {$IFDEF RALMSQUIC_PROFILE}SrvMark(spAddParams, vMark);{$ENDIF}
     vStream := vResponse.ResponseStream;
+    if (vStream <> nil) and (vStream.Size > RALQUIC_MAX_FIELD) then
+    begin
+      { the client's reader stops at RALQUIC_MAX_FIELD, so it could only call
+        this frame malformed - and a body of 2 GB or more had its length cut to
+        32 bits. A 500 that says why goes instead }
+      vBodyLen := vStream.Size;
+      FreeAndNil(vStream);
+      vResponse.Answer(HTTP_InternalError, StringRAL(Format(emQuicFrameTooLarge,
+        [vBodyLen, Int64RAL(RALQUIC_MAX_FIELD)])), rctTEXTPLAIN);
+      vStream := vResponse.ResponseStream;
+    end;
     try
       {$IFDEF RALMSQUIC_PROFILE}SrvMark(spBodyText, vMark);{$ENDIF}
       vCType := vResponse.ContentType;
@@ -1287,18 +1298,18 @@ begin
         vBodyLen := vStream.Size;
 
       SetLength(Result, 2 + RALQuicBlockSize(Length(vCType)) + vHdrSize +
-                        RALQuicBlockSize(vBodyLen));
+                        RALQuicBlockSize(IntegerRAL(vBodyLen)));
       vDest := PByte(Result);
       PWord(vDest)^ := vResponse.StatusCode;
       Inc(vDest, 2);
       vDest := RALQuicPutBlockStr(vDest, vCType);
       vDest := RALQuicPutHeaders(vDest, vHeaders, vHdrCount);
-      PCardinal(vDest)^ := vBodyLen;
+      PCardinal(vDest)^ := Cardinal(vBodyLen);
       Inc(vDest, 4);
       if vBodyLen > 0 then
       begin
         vStream.Position := 0;
-        vStream.ReadBuffer(vDest^, vBodyLen);
+        vStream.ReadBuffer(vDest^, IntegerRAL(vBodyLen));
       end;
     finally
       vStream.Free;

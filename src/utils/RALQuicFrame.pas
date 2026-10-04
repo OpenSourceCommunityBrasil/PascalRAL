@@ -101,6 +101,12 @@ procedure RALQuicPrepareRequest(ARequest: TRALRequest;
                                 ACripto: TRALCriptoType;
                                 const ASupportedEncript: StringRAL);
 
+/// Raises emQuicFrameTooLarge when a body of ASize bytes cannot travel in a
+/// frame: the reader refuses any field above RALQUIC_MAX_FIELD, so a bigger
+/// body only ever got as far as "malformed frame" on the other side - and one
+/// of 2 GB or more had its length cut to 32 bits on the way out
+procedure RALQuicCheckBody(ASize: Int64RAL);
+
 /// The request frame. Call it AFTER the headers that depend on the encoded
 /// body are needed - it encodes the body first itself, for the reason in the
 /// body of the function.
@@ -118,6 +124,12 @@ implementation
 function RALQuicBlockSize(ALength: IntegerRAL): IntegerRAL;
 begin
   Result := 4 + ALength;
+end;
+
+procedure RALQuicCheckBody(ASize: Int64RAL);
+begin
+  if ASize > RALQUIC_MAX_FIELD then
+    raise Exception.CreateFmt(emQuicFrameTooLarge, [ASize, Int64RAL(RALQUIC_MAX_FIELD)]);
 end;
 
 function RALQuicPutBlockStr(ADest: PByte; const AText: StringRAL): PByte;
@@ -309,7 +321,7 @@ var
   vHdrCount, vHdrSize: IntegerRAL;
   vSource: TStream;
   vDest: PByte;
-  vBodyLen: IntegerRAL;
+  vBodyLen: Int64RAL;
 begin
   { THE BODY IS ENCODED FIRST, and the headers are built afterwards. Not a
     style choice: RequestStream runs EncodeBody, which decides between a raw
@@ -322,6 +334,7 @@ begin
     vBodyLen := 0;
     if vSource <> nil then
       vBodyLen := vSource.Size;
+    RALQuicCheckBody(vBodyLen);
 
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
@@ -334,18 +347,18 @@ begin
 
     { one allocation, sized up front, and the body read from the encoded stream
       straight into it }
-    SetLength(Result, 1 + RALQuicBlockSize(Length(ARoute)) + vHdrSize + RALQuicBlockSize(vBodyLen));
+    SetLength(Result, 1 + RALQuicBlockSize(Length(ARoute)) + vHdrSize + RALQuicBlockSize(IntegerRAL(vBodyLen)));
     vDest := PByte(Result);
     vDest^ := Ord(AMethod);
     Inc(vDest);
     vDest := RALQuicPutBlockStr(vDest, ARoute);
     vDest := RALQuicPutHeaders(vDest, vHeaders, vHdrCount);
-    PCardinal(vDest)^ := vBodyLen;
+    PCardinal(vDest)^ := Cardinal(vBodyLen);
     Inc(vDest, 4);
     if vBodyLen > 0 then
     begin
       vSource.Position := 0;
-      vSource.ReadBuffer(vDest^, vBodyLen);
+      vSource.ReadBuffer(vDest^, IntegerRAL(vBodyLen));
     end;
   finally
     FreeAndNil(vSource);

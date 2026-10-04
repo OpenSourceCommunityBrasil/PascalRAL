@@ -17,6 +17,7 @@ uses
   {$ENDIF}
   {$IF Defined(POSIX) and not Defined(FPC)}
     Posix.SysStat, // RALFileInfo
+    Posix.Unistd,  // FileClose is inline over close()
   {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
@@ -707,9 +708,69 @@ function SystemFunction036(ABuffer: Pointer; ALength: LongWord): Boolean; stdcal
   external 'advapi32.dll' name 'SystemFunction036';
 {$ENDIF}
 
+{$IFNDEF RALWindows}
+var
+  { /dev/urandom, opened by the first RandomBytes and kept: opening and closing
+    it on every call cost three system calls per AES IV, multipart boundary and
+    token nonce, several per request. -1 until it is opened }
+  gURandom: IntegerRAL = -1;
+
+function CompareExchangeInt(var ATarget: IntegerRAL; AValue,
+  AComparand: IntegerRAL): IntegerRAL;
+begin
+  {$IFDEF FPC}
+  Result := InterLockedCompareExchange(ATarget, AValue, AComparand);
+  {$ELSE}
+  {$IFDEF DELPHIXE3UP}
+  Result := AtomicCmpExchange(ATarget, AValue, AComparand);
+  {$ELSE}
+  Result := TInterlocked.CompareExchange(ATarget, AValue, AComparand);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+{ the kept handle, opened by whichever thread gets here first - the others
+  close theirs }
+function URandomHandle: IntegerRAL;
+var
+  vHandle: THandle;
+begin
+  Result := gURandom;
+  if Result >= 0 then
+    Exit;
+  vHandle := FileOpen('/dev/urandom', fmOpenRead or fmShareDenyNone);
+  if vHandle = THandle(-1) then
+    Exit;
+  Result := IntegerRAL(vHandle);
+  if CompareExchangeInt(gURandom, Result, -1) <> -1 then
+  begin
+    FileClose(vHandle);
+    Result := gURandom;
+  end;
+end;
+
+{ reads until ACount bytes arrived: a read from the device may return fewer }
+function URandomRead(AHandle: IntegerRAL; var ABytes: TBytes;
+  ACount: IntegerRAL): boolean;
+var
+  vDone, vRead: IntegerRAL;
+begin
+  vDone := 0;
+  while vDone < ACount do
+  begin
+    vRead := FileRead(THandle(AHandle), ABytes[vDone], ACount - vDone);
+    if vRead <= 0 then
+      Break;
+    Inc(vDone, vRead);
+  end;
+  Result := vDone = ACount;
+end;
+{$ENDIF}
+
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 {$IFNDEF RALWindows}
 var
+  vHandle: IntegerRAL;
   vFile: TFileStream;
 {$ENDIF}
 begin
@@ -725,6 +786,12 @@ begin
   if not SystemFunction036(@Result[0], numOfBytes) then
     raise Exception.Create(emRandomBytesFailed);
   {$ELSE}
+  vHandle := URandomHandle;
+  if (vHandle >= 0) and URandomRead(vHandle, Result, numOfBytes) then
+    Exit;
+
+  { the kept handle could not be had, or failed: the way it always was, which
+    raises as it always did }
   vFile := TFileStream.Create('/dev/urandom', fmOpenRead or fmShareDenyNone);
   try
     vFile.ReadBuffer(Result[0], numOfBytes);
@@ -1115,12 +1182,20 @@ begin
   {$ENDIF}
 end;
 
-{$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
+{$IF (DEFINED(FPC) AND NOT DEFINED(CPU64)) OR NOT DEFINED(RALWindows)}
 initialization
+  {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.InitCriticalSection(gAtomic64);
+  {$IFEND}
 
 finalization
+  {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.DoneCriticalSection(gAtomic64);
+  {$IFEND}
+  {$IFNDEF RALWindows}
+  if gURandom >= 0 then
+    FileClose(THandle(gURandom));
+  {$ENDIF}
 {$IFEND}
 
 end.

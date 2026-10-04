@@ -48,6 +48,10 @@ type
 
   procedure RegisterCompress(ACompress : TRALCompressClass);
   procedure UnregisterCompress(ACompress : TRALCompressClass);
+  /// Changes whenever a compressor is registered or leaves: what
+  /// GetBestCompress answers for a header depends on that set, so a value kept
+  /// from it is only good while this stays the same
+  function CompressRegistration: IntegerRAL;
   function GetCompressClass(ACompressType : TRALCompressType) : TRALCompressClass;
   procedure GetCompressList(AList : TStrings);
   function GetSuportedCompress : TRALCompressTypes;
@@ -115,6 +119,14 @@ var
     lock, the GetEnumName and the list search from the hot path in one go.
     CompressDefs stays for the by-name listing at design time. }
   CompressClasses : array[TRALCompressType] of TRALCompressClass;
+  { bumped by every change to CompressClasses - see CompressRegistration.
+    Registration runs in unit initializations and finalizations, one thread }
+  CompressGen : IntegerRAL = 1;
+
+function CompressRegistration: IntegerRAL;
+begin
+  Result := CompressGen;
+end;
 
 procedure CheckCompressDefs;
 begin
@@ -144,6 +156,7 @@ begin
     begin
       CompressDefs.Add(vStrType + '=' + ACompress.ClassName);
       CompressClasses[vType] := ACompress;
+      Inc(CompressGen);
     end;
   end;
 end;
@@ -167,6 +180,7 @@ begin
       if vPos >= 0 then
         CompressDefs.Delete(vPos);
       CompressClasses[vType] := nil;
+      Inc(CompressGen);
     end;
   end;
 end;
@@ -383,6 +397,52 @@ begin
     Result := ctNone;
 end;
 
+{ The coding an entry with no parameter names - 'gzip', ' br' - read where it
+  stands: no Copy, no Trim, no LowerCase, each of them a string and, on Delphi,
+  a trip to UTF-16 and back. The same answer NameToCompress gives for
+  LowerCase(Trim(entry)): the blanks trimmed are the bytes Trim drops, and only
+  'A'..'Z' fold, as LowerCase folds them }
+function CodingAt(const AText: StringRAL; AStart, AEnd: IntegerRAL): TRALCompressType;
+const
+  cNames: array[0..5] of StringRAL = ('gzip', 'x-gzip', 'zlib', 'deflate', 'zstd', 'br');
+  cTypes: array[0..5] of TRALCompressType = (ctGZip, ctGZip, ctZLib, ctDeflate,
+    ctZStd, ctBrotli);
+var
+  vInt, vPos, vLen: IntegerRAL;
+  vChr: Byte;
+  vMatch: boolean;
+begin
+  Result := ctNone;
+  while (AStart <= AEnd) and (Ord(AText[AStart]) <= 32) do
+    Inc(AStart);
+  while (AEnd >= AStart) and (Ord(AText[AEnd]) <= 32) do
+    Dec(AEnd);
+  vLen := AEnd - AStart + 1;
+
+  for vInt := Low(cNames) to High(cNames) do
+  begin
+    if Length(cNames[vInt]) <> vLen then
+      Continue;
+    vMatch := True;
+    for vPos := 0 to vLen - 1 do
+    begin
+      vChr := Ord(AText[AStart + vPos]);
+      if (vChr >= Ord('A')) and (vChr <= Ord('Z')) then
+        Inc(vChr, 32);
+      if vChr <> Ord(cNames[vInt][POSINISTR + vPos]) then
+      begin
+        vMatch := False;
+        Break;
+      end;
+    end;
+    if vMatch then
+    begin
+      Result := cTypes[vInt];
+      Break;
+    end;
+  end;
+end;
+
 class function TRALCompress.GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
 var
   vInt, vIni, vHigh: IntegerRAL;
@@ -392,6 +452,7 @@ var
   vTypes: TRALCompressTypes;
   vType, vRegType: TRALCompressType;
   vMax: integer;
+  vParams: boolean;
 begin
   Result := ctNone;
 
@@ -400,24 +461,36 @@ begin
     UTF-8 to UTF-16 and back on Delphi. This loop splits on the comma straight
     over the StringRAL. An empty run is skipped, which comes to the same thing:
     it stood for ctNone, and ctNone is the neutral element in
-    BestCompressFromClass }
+    BestCompressFromClass.
+    An entry with no ';' - what browsers send - is read in place (CodingAt);
+    only one with parameters is cut out and goes through RALSplitCoding, which
+    reads its q }
   vTypes := [];
   vHigh := RALHighStr(AEncoding);
   vIni := POSINISTR;
   vInt := POSINISTR;
+  vParams := False;
   while vInt <= vHigh + 1 do
   begin
     if (vInt > vHigh) or (AEncoding[vInt] = ',') then
     begin
       if vInt > vIni then
       begin
-        // q=0 means "not this one" (RFC 9110 12.5.3)
-        RALSplitCoding(Copy(AEncoding, vIni, vInt - vIni), vName, vQuality);
-        if vQuality > 0 then
-          vTypes := vTypes + [NameToCompress(vName)];
+        if not vParams then
+          vTypes := vTypes + [CodingAt(AEncoding, vIni, vInt - 1)]
+        else
+        begin
+          // q=0 means "not this one" (RFC 9110 12.5.3)
+          RALSplitCoding(Copy(AEncoding, vIni, vInt - vIni), vName, vQuality);
+          if vQuality > 0 then
+            vTypes := vTypes + [NameToCompress(vName)];
+        end;
       end;
       vIni := vInt + 1;
-    end;
+      vParams := False;
+    end
+    else if AEncoding[vInt] = ';' then
+      vParams := True;
     Inc(vInt);
   end;
 

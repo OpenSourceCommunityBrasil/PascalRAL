@@ -468,19 +468,15 @@ var
 begin
   try
     try
-      vStreamAux := nil;
-
       if AException <> '' then
         raise Exception.Create(AException);
 
       if AResponse.StatusCode = HTTP_OK then
       begin
-        vStreamAux := TMemoryStream.Create;
-        TMemoryStream(vStreamAux).Clear;
-        vStreamAux.Position := 0;
-
-        AResponse.ParamByName('Stream').SaveToStream(vStreamAux);
-        vStreamAux.Position := 0;
+        { the param's own stream: it was copied whole into another first }
+        vStreamAux := AResponse.ParamByName('Stream').Content;
+        if vStreamAux <> nil then
+          vStreamAux.Position := 0;
 
         if Assigned(Self.Connection) = false then
         begin
@@ -513,8 +509,6 @@ begin
       end;
     end;
   finally
-    FreeAndNil(vStreamAux);
-
     if Assigned(OnQueryRemoteFinish) then
       OnQueryRemoteFinish(Self, vException);
   end;
@@ -861,7 +855,9 @@ begin
         vQueryAux.SaveToStream(vAuxStream, TFDStorageFormat.sfBinary);
         vAuxStream.Position := 0;
 
-        AResponse.Params.AddParam('Stream', vAuxStream, rpkBODY);
+        { handed over, not copied: AddParam held the result twice }
+        AResponse.Params.AddParam('Stream', TStream(nil), rpkBODY).AdoptStream(vAuxStream);
+        vAuxStream := nil;
 
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);

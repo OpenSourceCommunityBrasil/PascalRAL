@@ -138,6 +138,15 @@ type
     FTargetUrl: StringRAL;
     FTargetHost: StringRAL;
     FTargetPort: IntegerRAL;
+    { ConnectionKey as last built and what it was built from: the same place
+      with the same settings keeps it, where a Format of six values ran on
+      every request }
+    FKey: StringRAL;
+    FKeyHost: StringRAL;
+    FKeyPort: IntegerRAL;
+    FKeyPolicy: StringRAL;
+    FKeyKeepAlive: IntegerRAL;
+    FKeyCaFile: TFileName;
     function AcquirePending: TRALMsQuicPending;
     function CertMode: TRALMsQuicCertMode;
     function ConnectionKey: StringRAL;
@@ -1002,6 +1011,8 @@ begin
 end;
 
 function TRALMsQuicClientHTTP.ConnectionKey: StringRAL;
+var
+  vPolicy: StringRAL;
 begin
   { Where it goes, under which ALPN, and with which certificate policy - the
     policy belongs in the key because a TLS connection carries the decision
@@ -1011,8 +1022,23 @@ begin
     not end up on the same one. So is the CA store, for the same reason as the
     policy: a connection validated against one store says nothing about
     another. }
+  vPolicy := CertPolicyKey;
+  if (FKey <> '') and (FTargetHost = FKeyHost) and (FTargetPort = FKeyPort) and
+     (vPolicy = FKeyPolicy) and (Parent.KeepAliveInterval = FKeyKeepAlive) and
+     (DefaultCaFile = FKeyCaFile) then
+  begin
+    Result := FKey; // the ALPN is the engine's own, fixed at creation
+    Exit;
+  end;
+
   Result := StringRAL(Format('%s:%d|%s|%s|%d|%s', [FTargetHost, FTargetPort,
-    StringRAL(FAlpn), CertPolicyKey, Parent.KeepAliveInterval, DefaultCaFile]));
+    StringRAL(FAlpn), vPolicy, Parent.KeepAliveInterval, DefaultCaFile]));
+  FKey := Result;
+  FKeyHost := FTargetHost;
+  FKeyPort := FTargetPort;
+  FKeyPolicy := vPolicy;
+  FKeyKeepAlive := Parent.KeepAliveInterval;
+  FKeyCaFile := DefaultCaFile;
 end;
 
 procedure TRALMsQuicClientHTTP.ResolveTarget(const AURL: StringRAL);

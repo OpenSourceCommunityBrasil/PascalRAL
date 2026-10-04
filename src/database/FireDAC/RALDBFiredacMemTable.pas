@@ -404,50 +404,47 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
-    try
-      FSQLCache.ResponseFromStream(vMem);
-      for vInt1 := 0 to Pred(FSQLCache.Count) do
+    { the body where it is: AsStream copied the whole answer first }
+    vMem := AResponse.Body.Content;
+    FSQLCache.ResponseFromStream(vMem);
+    for vInt1 := 0 to Pred(FSQLCache.Count) do
+    begin
+      vDBSQL := FSQLCache.SQLList[vInt1];
+      if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+         (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
       begin
-        vDBSQL := FSQLCache.SQLList[vInt1];
-        if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
-        begin
-          Self.GotoBookmark(vDBSQL.BookMark);
+        Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
+        vTable := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
+        try
           try
-            try
-              if vDBSQL.Response.Native then
-                vTable.LoadFromStream(vDBSQL.Response.Stream)
-              else
-                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
+            if vDBSQL.Response.Native then
+              vTable.LoadFromStream(vDBSQL.Response.Stream)
+            else
+              LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
-              Self.Edit;
-              for vInt2 := 0 to Pred(vTable.FieldCount) do
-              begin
-                vField := Self.FindField(vTable.Fields[vInt2].FieldName);
-                if vField <> nil then
-                  vField.Value := vTable.Fields[vInt2].Value;
-              end;
-              Self.Post;
-            except
-
+            Self.Edit;
+            for vInt2 := 0 to Pred(vTable.FieldCount) do
+            begin
+              vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+              if vField <> nil then
+                vField.Value := vTable.Fields[vInt2].Value;
             end;
-          finally
-            FreeAndNil(vTable);
+            Self.Post;
+          except
+
           end;
-        end
-        else if vDBSQL.Response.Error then
-        begin
-          if Assigned(FOnError) then
-            FOnError(Self, vDBSQL.Response.StrError);
+        finally
+          FreeAndNil(vTable);
         end;
+      end
+      else if vDBSQL.Response.Error then
+      begin
+        if Assigned(FOnError) then
+          FOnError(Self, vDBSQL.Response.StrError);
       end;
-      FSQLCache.Clear;
-    finally
-      FreeAndNil(vMem);
     end;
+    FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
@@ -495,20 +492,16 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    vMem := AResponse.Body.Content; // where it is, not a copy
+    vSQLCache := TRALDBSQLCache.Create;
     try
-      vSQLCache := TRALDBSQLCache.Create;
-      try
-        vSQLCache.ResponseFromStream(vMem);
-        vDBSQL := vSQLCache.SQLList[0];
+      vSQLCache.ResponseFromStream(vMem);
+      vDBSQL := vSQLCache.SQLList[0];
 
-        FRowsAffected := vDBSQL.Response.RowsAffected;
-        FLastId := vDBSQL.Response.LastId;
-      finally
-        FreeAndNil(vSQLCache);
-      end;
+      FRowsAffected := vDBSQL.Response.RowsAffected;
+      FLastId := vDBSQL.Response.LastId;
     finally
-      FreeAndNil(vMem);
+      FreeAndNil(vSQLCache);
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
@@ -536,7 +529,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    vMem := AResponse.Body.Content; // where it is, not a copy
     vSQLCache := nil;
     try
       FLoading := True;
@@ -590,7 +583,6 @@ begin
       end;
     finally
       FreeAndNil(vSQLCache);
-      FreeAndNil(vMem);
       FLoading := False;
       FLoadingNative := False;
     end;
