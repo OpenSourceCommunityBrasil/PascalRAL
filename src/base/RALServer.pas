@@ -987,6 +987,15 @@ label
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
+  { a body the engine could not take apart - a multipart with no part
+    delimited by its boundary - is the client's error, answered before any
+    route runs. It used to reach the route with nothing in its params, the
+    body gone without a word }
+  if ARequest.Params.BodyError <> '' then
+  begin
+    AResponse.Answer(HTTP_BadRequest, ARequest.Params.BodyError, rctTEXTPLAIN);
+    Exit;
+  end;
   try
     vRouteIsAuth := False;
 
@@ -1249,9 +1258,9 @@ begin
       if vCheckFlood or vCheckPathTransversal then
       begin
         { a path walking out of the tree is an attack and counts toward the
-          block; a flood refusal is a rate, not a guess - and the first request
-          of every new address measures as one (TRALClientList.Create), so
-          counting it locked clients out for ExpirationTime }
+          block; a flood refusal is a rate, not a guess, and counting it locked
+          clients out for ExpirationTime - back when the first request of every
+          new address measured as a flood too }
         if vCheckPathTransversal and (rsoBruteForceProtection in Security.Options) then
           Security.BlockClient(ARequest.ClientInfo.IP);
 
@@ -1566,11 +1575,10 @@ end;
 
 function TRALSecurity.CheckFlood(const AClientIP: StringRAL): boolean;
 var
-  vInterval: Int64RAL;
   vFlood: TRALClientList;
   vList: TStringList;
   vIndex: IntegerRAL;
-  vLastAccess: TDateTime;
+  vNow, vLastAccess: TDateTime;
 begin
   Result := False;
   if not (rsoFloodProtection in Options) then
@@ -1583,34 +1591,32 @@ begin
     simultaneous requests from being measured against a value one of them has
     already overwritten. CheckBlockClientIP is asked afterwards, outside, so
     this lock is never held while another is taken. }
+  vNow := Now;
   vList := FFloodList.Lock;
   try
     vIndex := vList.IndexOf(AClientIP);
     if vIndex >= 0 then
     begin
       vFlood := TRALClientList(vList.Objects[vIndex]);
+      vLastAccess := vFlood.LastAccess;
     end
     else
     begin
       vFlood := TRALClientList.Create;
       vList.AddObject(AClientIP, vFlood);
+      { an address seen for the first time has no interval to measure. It
+        used to measure one of zero against the stamp TRALClientList.Create
+        had just put in, so the FIRST request of every client was a flood }
+      vLastAccess := 0;
     end;
-
-    vLastAccess := vFlood.LastAccess;
-    vFlood.LastAccess := Now;
+    vFlood.LastAccess := vNow;
   finally
     FFloodList.Unlock;
   end;
 
-  vInterval := MilliSecondsBetween(Now, vLastAccess);
-
-  { unchanged on purpose, including the part that surprises: TRALClientList
-    .Create stamps LastAccess with Now, so a brand new address measures an
-    interval of zero and the FIRST request of every client counts as a flood.
-    Changing that is a decision about what the protection means, not a
-    refactor, so it stays as it was }
-  if (CheckBlockClientIP(AClientIP)) or (vInterval <= FFloodTimeInterval) then
-    Result := True;
+  Result := CheckBlockClientIP(AClientIP) or
+    ((vLastAccess <> 0) and
+     (MilliSecondsBetween(vNow, vLastAccess) <= FFloodTimeInterval));
 end;
 
 { Drops every entry idle for AIdle ms or more, under ONE acquisition of the

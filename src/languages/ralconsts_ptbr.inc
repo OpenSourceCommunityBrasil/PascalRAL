@@ -69,6 +69,7 @@
   emEngineNotFound = 'Motor %s não encontrado: a unit que o registra não está nas uses.';
   emDBFieldLoad = 'Não foi possível carregar o campo %s: %s';
   emHTTPDateInvalid = '"%s" não é uma data HTTP.';
+  emMultipartNoPart = 'Corpo multipart malformado: nenhuma parte completa delimitada pelo boundary.';
   emBase64Invalid = 'Texto base64 inválido.';
   emISO8601Invalid = '"%s" não é uma data ISO 8601.';
   emLibraryNotLoaded = 'A biblioteca não foi carregada.';

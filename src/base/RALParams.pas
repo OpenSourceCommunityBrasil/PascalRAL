@@ -222,6 +222,7 @@ type
       property Current: TRALParam read GetCurrent;
     end;
   private
+    FBodyError: StringRAL;
     FCompressType: TRALCompressType;
     FContentDispositionInline: Boolean;
     FCriptoOptions: TRALCriptoOptions;
@@ -403,6 +404,10 @@ type
     /// returns all the params in a JSON UTF8string format.
     function AsJSON: StringRAL;
 
+    /// Why the last DecodeBody could not take the body apart, '' when it
+    /// could: a multipart that yields no part and is not an empty form, the
+    /// body dropped. TRALServer answers such a request 400 before any route
+    property BodyError: StringRAL read FBodyError;
     /// A NEW list of the rpkBODY params, which the caller has to free - every
     /// read builds another, so 'if Params.Body.Count > 0' leaks one. Count(rpkBODY),
     /// IndexKind[i, rpkBODY] and SingleBody read the same without allocating
@@ -1973,6 +1978,7 @@ begin
     and client response rebuild their RequestStream/ResponseStream from the
     params on demand, which is what they already did for Sagui. }
   Result := nil;
+  FBodyError := '';
   if ASource = nil then
     Exit;
 
@@ -2046,6 +2052,12 @@ begin
         vDecoder.ContentType := vCTMultipart;
         vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
         vDecoder.ProcessMultiPart(vCur);
+        { bytes and not one part out of them, with no close delimiter either -
+          which an empty form still has: no boundary declared, none in the
+          body, or a first part cut short. The body vanished from the params
+          without a word, and the route ran as if nothing had been sent }
+        if (vDecoder.PartCount = 0) and (not vDecoder.Closed) and (vCur.Size > 0) then
+          FBodyError := emMultipartNoPart;
       finally
         FreeAndNil(vDecoder);
       end;

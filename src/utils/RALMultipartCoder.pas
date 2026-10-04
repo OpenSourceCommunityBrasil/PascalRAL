@@ -60,10 +60,12 @@ type
   private
     FBoundary: StringRAL;
     FBuffer: TBytes;
+    FClosed: boolean;
     FFormData: TList;
     FIndex: IntegerRAL;
     FIs13: boolean;
     FItemForm: TRALMultipartFormData;
+    FPartCount: IntegerRAL;
     FWaitSepEnd: boolean;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
   protected
@@ -99,6 +101,12 @@ type
     procedure ProcessMultiPart(const AString: StringRAL); overload;
     /// Gets an item from the FormData based on the index provided
     property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
+    /// Whether the last body processed ended with its close delimiter - what
+    /// an empty form, with no part at all, still carries
+    property Closed: boolean read FClosed;
+    /// The parts the last body processed was cut into, including those
+    /// OnFormDataComplete took over. A part the body never closed is not one
+    property PartCount: IntegerRAL read FPartCount;
   published
     property Boundary: StringRAL read FBoundary write FBoundary;
     property ContentType: StringRAL write SetContentType;
@@ -470,6 +478,7 @@ begin
     if FItemForm.AsStream.Size >= 2 then
       FItemForm.AsStream.Size := FItemForm.AsStream.Size - 2;
     FItemForm.AsStream.Position := 0;
+    Inc(FPartCount);
 
     vFreeItem := False;
     if Assigned(FOnFormDataComplete) then
@@ -565,6 +574,7 @@ begin
     if Pos('--' + FBoundary + '--', vLine) > 0 then
     begin
       FinalizeItem;
+      FClosed := True;
       Result := ResetBuffer;
     end
     // boundary begin of file
@@ -627,6 +637,8 @@ begin
   FWaitSepEnd := False;
   FIs13 := False;
   FreeAndNil(FItemForm);
+  FPartCount := 0;
+  FClosed := False;
 end;
 
 procedure TRALMultipartDecoder.EndBody;
