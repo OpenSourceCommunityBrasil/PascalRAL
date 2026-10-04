@@ -30,6 +30,9 @@ type
     procedure WriteFloat(AStream: TStream; AValue: Double);
     procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
     procedure WriteStream(AStream: TStream; AValue: TStream);
+    /// The text of a memo, as UTF-16LE in the layout WriteStream gives a
+    /// stream - never the field's own bytes (see the implementation)
+    procedure WriteMemo(AStream: TStream; AField: TField);
 
     // read
     function ReadHeader(AStream: TStream): boolean;
@@ -50,6 +53,8 @@ type
     function ReadFloat(AStream: TStream): Double;
     function ReadDateTime(AStream: TStream): TDateTime;
     function ReadStream(AStream: TStream): TStream;
+    /// Reads what WriteMemo writes into AField, which may be nil
+    procedure ReadMemo(AStream: TStream; AField: TField);
   public
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
@@ -169,15 +174,7 @@ begin
               vMem.Free
             end;
           end;
-          sftMemo     : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              WriteStream(AStream, vMem);
-            finally
-              vMem.Free
-            end;
-          end;
+          sftMemo     : WriteMemo(AStream, ADataset.Fields[vInt]);
           sftDateTime : WriteDateTime(AStream, ADataset.Fields[vInt].AsDateTime);
           sftBCD      : WriteString(AStream, RALBCDToText(ADataset.Fields[vInt].AsBCD));
         end;
@@ -277,6 +274,25 @@ begin
   vSize := AValue.Size;
   AStream.Write(vSize, SizeOf(vSize));
   AStream.CopyFrom(AValue, vSize);
+end;
+
+{ It used to be the bytes TBlobField.SaveToStream gives, which are in the
+  field's own encoding - ANSI for a Delphi ftMemo, UTF-8 for an FPC one,
+  UTF-16 for an ftWideMemo on both - and the reader loaded them as they came
+  into the field it built, an ftWideMemo: every memo that was not wide on the
+  writer's side arrived as garbage, an sqldb server's included. UTF-16 is
+  what the wide memos already sent, so a reader of before still reads those,
+  and now every other memo as well. Little-endian, as every target is }
+procedure TRALStorageBIN.WriteMemo(AStream: TStream; AField: TField);
+var
+  vText: UnicodeString;
+  vSize: Int64RAL;
+begin
+  vText := AField.AsWideString;
+  vSize := Length(vText) * SizeOf(WideChar);
+  AStream.Write(vSize, SizeOf(vSize));
+  if vSize > 0 then
+    AStream.Write(vText[1], vSize);
 end;
 
 function TRALStorageBIN.ReadHeader(AStream: TStream): boolean;
@@ -438,14 +454,7 @@ begin
                 vMem.Free
               end;
             end;
-            sftMemo     : begin
-              vMem := ReadStream(AStream);
-              try
-                ReadFieldStream(FFoundFields[vInt], vMem);
-              finally
-                vMem.Free
-              end;
-            end;
+            sftMemo     : ReadMemo(AStream, FFoundFields[vInt]);
             sftDateTime : ReadFieldDateTime(FFoundFields[vInt], ReadDateTime(AStream));
             sftBCD      : ReadFieldBCD(FFoundFields[vInt], RALTextToBCD(ReadString(AStream)));
           end;
@@ -542,6 +551,26 @@ end;
 function TRALStorageBIN.ReadDateTime(AStream: TStream): TDateTime;
 begin
   ReadExact(AStream, Result, SizeOf(Result));
+end;
+
+procedure TRALStorageBIN.ReadMemo(AStream: TStream; AField: TField);
+var
+  vText: UnicodeString;
+  vSize: Int64RAL;
+  vOdd: Byte;
+begin
+  ReadExact(AStream, vSize, SizeOf(vSize));
+  if (vSize < 0) or (vSize > AStream.Size - AStream.Position) then
+    raise Exception.Create(emStreamSizeBeyondEnd);
+  SetLength(vText, vSize div SizeOf(WideChar));
+  if vText <> '' then
+    ReadExact(AStream, vText[1], Length(vText) * SizeOf(WideChar));
+  { an odd size is a narrow memo from a writer of before: the last byte is
+    consumed all the same, so the next field is read where it starts }
+  if Odd(vSize) then
+    ReadExact(AStream, vOdd, 1);
+  if AField <> nil then
+    AField.AsWideString := vText;
 end;
 
 function TRALStorageBIN.ReadStream(AStream: TStream): TStream;

@@ -47,8 +47,7 @@ type
     destructor Destroy; override;
   protected
     function JSONFormatDateTime(AValue: TDateTime): StringRAL;
-    function StringToJSONString(AValue: TStream): StringRAL; overload;
-    function StringToJSONString(AValue: StringRAL): StringRAL; overload;
+    function StringToJSONString(AValue: StringRAL): StringRAL;
     function WriteBlob(AValue: TStream): StringRAL;
     function WriteBoolean(AValue: Boolean): StringRAL;
     function WriteDateTime(AValue: TDateTime): StringRAL;
@@ -60,11 +59,9 @@ type
     function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
     function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
     function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
-    function WriteFieldMemo(AFieldName: StringRAL; AValue: TStream): StringRAL;
     function WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
     function WriteFieldNull(AFieldName: StringRAL): StringRAL;
     function WriteFloat(AValue: Double): StringRAL;
-    function WriteMemo(AValue: TStream): StringRAL;
     function WriteInt64(AValue: Int64RAL): StringRAL;
     function WriteString(AValue: StringRAL): StringRAL;
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
@@ -179,11 +176,6 @@ destructor TRALStorageJSON.Destroy;
 begin
   FreeAndNil(FFormatOptions);
   inherited Destroy;
-end;
-
-function TRALStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
-begin
-  Result := StringToJSONString(StreamToString(AValue));
 end;
 
 function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
@@ -368,12 +360,6 @@ begin
   Result := Format('"%s":"%s"', [AFieldName, TRALBase64.Encode(AValue)]);
 end;
 
-function TRALStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream)
-  : StringRAL;
-begin
-  Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
-end;
-
 function TRALStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime)
   : StringRAL;
 begin
@@ -414,11 +400,6 @@ end;
 function TRALStorageJSON.WriteBlob(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
-end;
-
-function TRALStorageJSON.WriteMemo(AValue: TStream): StringRAL;
-begin
-  Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
 function TRALStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
@@ -491,7 +472,10 @@ begin
             vValue := WriteFieldBCD(FFieldNames[vInt], ADataset.Fields[vInt].AsBCD);
           sftBoolean:
             vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
-          sftString:
+          { a memo is text, which is how the readers always took it - it went
+            out as the field's own bytes, UTF-16 for a wide memo, as escaped
+            UTF-8 (see RALStorageBIN) }
+          sftString, sftMemo:
             vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsWideString);
           sftBlob:
             begin
@@ -499,16 +483,6 @@ begin
               try
                 TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
                 vValue := WriteFieldBlob(FFieldNames[vInt], vMem);
-              finally
-                vMem.Free
-              end;
-            end;
-          sftMemo:
-            begin
-              vMem := TMemoryStream.Create;
-              try
-                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-                vValue := WriteFieldMemo(FFieldNames[vInt], vMem);
               finally
                 vMem.Free
               end;
@@ -589,14 +563,16 @@ begin
     begin
       vjValue := vjObj.Get(vInt);
       { a value of no listed type - an object, an array - is text. vType had
-        no value at all for them, and went to FieldDefs.Add as it was }
-      vType := ftString;
+        no value at all for them, and went to FieldDefs.Add as it was. Text
+        gets the wide types the other readers build (RALFieldTypeToFieldType):
+        an ftString is ANSI on Delphi, and lost what CP_ACP has no place for }
+      vType := ftWideString;
       vSize := MAX_JSONSTRING;
       case vjValue.JSONType of
         rjtString:
           if Length(vjValue.AsString) > MAX_JSONSTRING then
           begin
-            vType := ftMemo;
+            vType := ftWideMemo;
             vSize := 0;
           end;
         rjtNumber:
@@ -828,7 +804,8 @@ begin
           vValue := WriteString(RALBCDToText(ADataset.Fields[vInt].AsBCD));
         sftBoolean:
           vValue := WriteBoolean(ADataset.Fields[vInt].AsBoolean);
-        sftString:
+        // the memo as text, as in the RAW writer
+        sftString, sftMemo:
           vValue := WriteString(ADataset.Fields[vInt].AsString);
         sftBlob:
           begin
@@ -836,16 +813,6 @@ begin
             try
               TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
               vValue := WriteBlob(vMem);
-            finally
-              vMem.Free
-            end;
-          end;
-        sftMemo:
-          begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteMemo(vMem);
             finally
               vMem.Free
             end;

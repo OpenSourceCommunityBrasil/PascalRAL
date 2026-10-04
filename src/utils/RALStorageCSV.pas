@@ -52,6 +52,8 @@ type
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
     function CSVFormatFloat(AValue: Double): StringRAL;
     function CSVFormatStream(AValue: TStream): StringRAL;
+    /// a memo quoted whole, line breaks included
+    function CSVFormatMemo(AValue: StringRAL): StringRAL;
     function CSVFormatString(AValue: StringRAL): StringRAL;
     /// format settings built from FormatOptions on top of the machine defaults
     function CSVFormatSettings: TFormatSettings;
@@ -274,6 +276,15 @@ begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
 end;
 
+{ The text whole, line breaks included - RFC 4180 lets them sit inside the
+  quotes, and ReadLine keeps them there. It was the base64 of the field's own
+  bytes (UTF-16 for a wide memo, see RALStorageBIN), which the reader took
+  for the text itself: a memo came back as base64 }
+function TRALStorageCSV.CSVFormatMemo(AValue: StringRAL): StringRAL;
+begin
+  Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
+end;
+
 function TRALStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, #13, '', [rfReplaceAll]);
@@ -390,15 +401,7 @@ begin
               end;
             end;
           sftMemo:
-            begin
-              vMem := TMemoryStream.Create;
-              try
-                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-                vValue := vValue + CSVFormatStream(vMem);
-              finally
-                vMem.Free
-              end;
-            end;
+            vValue := vValue + CSVFormatMemo(ADataset.Fields[vInt].AsWideString);
           sftDateTime:
             vValue := vValue + CSVFormatDateTime(ADataset.Fields[vInt].AsDateTime);
         end;
@@ -567,16 +570,18 @@ begin
         else
           vValue := '';
         vSize := 0;
+        { text gets the wide types the other readers build: an ftString is
+          ANSI on Delphi, and lost what CP_ACP has no place for }
         if CSVIsQuoted(vValue) then
         begin
           if (FFormatOptions.DateTimeFormat <> dtfUnix) and
              CSVParseDateTime(vValue, vDate) then
             vType := ftDateTime
           else if Length(vValue) - 2 > 255 then
-            vType := ftMemo
+            vType := ftWideMemo
           else
           begin
-            vType := ftString;
+            vType := ftWideString;
             vSize := 255;
           end;
         end
@@ -595,7 +600,7 @@ begin
         end
         else
         begin
-          vType := ftString;
+          vType := ftWideString;
           vSize := 255;
         end
       end;
