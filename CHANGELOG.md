@@ -272,6 +272,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **feat: adição de métodos funcionais para facilitar AllowedMethods e SkipAuthMethods** (2026-10-04 – mobius1qwe)
+
 - **Add an index page, HEAD and the file route's documentation to the WebModule** (2026-10-04 – tempraturbo)
   - TRALWebModule.IndexFile, index.html by default, answers the Domain's own
   URL. Without that file in the root, '/' is the server's status page, as
