@@ -39,6 +39,7 @@
   emQuicPlatformUnsupported = 'The MsQuic engine only translates the status codes of Windows and Linux; it cannot run on this platform yet.';
   emCompressInvalidFormat = 'Invalid compression Format.';
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
+  emCompressFailed = 'The %s compressor failed.';
   emContentCheckError = 'Content check error.';
   emCryptEmptyKey = 'Key must be provided.';
   emCryptInvalidLength = 'Encrypted data has an invalid length: it needs an IV and whole blocks.';

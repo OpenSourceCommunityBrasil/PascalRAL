@@ -24,23 +24,61 @@ implementation
 
 { TRALCompressBrotli }
 
+{ The encoder is driven here, one instance for the whole body, and not through
+  pascal_brotli's TBrotliCompressionStream: its Flush, which Destroy runs, takes
+  a GetMemory(1024) it never gives back, so every body compressed leaked 1 KB -
+  a server answering in brotli lost it on every response. The class also built
+  a new encoder for every Write, a 64 KB piece here, plus one more to finish:
+  an encoder is the costliest thing brotli makes, and pieces compressed apart
+  compress worse. What comes out is one standard brotli stream, which any
+  decoder reads - the RAL of before included. }
 procedure TRALCompressBrotli.InitCompress(AInStream, AOutStream: TStream);
 var
-  vBuf: TBytes;
-  vZip: TBrotliCompressionStream;
-  vCount: Integer;
+  vIn, vOut: TBytes;
+  vState, vNextIn, vNextOut: Pointer;
+  vCount, vOperation: Integer;
+  vAvailIn, vAvailOut: NativeUInt;
+  vFinish: boolean;
 begin
-  // a work buffer of a fixed size, as TRALCompressZLib.InitCompress explains
-  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
+  TBrotli.Check;
+  // work buffers of a fixed size, as TRALCompressZLib.InitCompress explains
+  SetLength(vIn, DEFAULTCOMPRESSBUFFERSIZE);
+  SetLength(vOut, DEFAULTCOMPRESSBUFFERSIZE);
 
-  vZip := TBrotliCompressionStream.Create(5, AOutStream);
+  vState := BrotliEncoderCreateInstance(nil, nil, nil);
+  if vState = nil then
+    raise Exception.CreateFmt(emCompressFailed, ['brotli']);
   try
+    BrotliEncoderSetParameter(vState, Ord(BROTLI_PARAM_QUALITY), 5);
+    BrotliEncoderSetParameter(vState, Ord(BROTLI_PARAM_LGWIN), 22);
     repeat
-      vCount := AInStream.Read(vBuf[0], Length(vBuf));
-      vZip.Write(vBuf[0], vCount);
-    until (vCount = 0);
+      vCount := AInStream.Read(vIn[0], Length(vIn));
+      vFinish := vCount <= 0;
+      if vFinish then
+      begin
+        vCount := 0;
+        vOperation := Ord(BROTLI_OPERATION_FINISH);
+      end
+      else
+        vOperation := Ord(BROTLI_OPERATION_PROCESS);
+      vAvailIn := vCount;
+      vNextIn := @vIn[0];
+      { a piece is done when the encoder took all of it, the end when the
+        encoder says it finished; either way only once it holds no output }
+      repeat
+        vAvailOut := Length(vOut);
+        vNextOut := @vOut[0];
+        if BrotliEncoderCompressStream(vState, vOperation, vAvailIn, @vNextIn,
+             vAvailOut, @vNextOut, nil) <> BROTLI_TRUE then
+          raise Exception.CreateFmt(emCompressFailed, ['brotli']);
+        if vAvailOut < NativeUInt(Length(vOut)) then
+          AOutStream.WriteBuffer(vOut[0], Length(vOut) - Integer(vAvailOut));
+      until (BrotliEncoderHasMoreOutput(vState) <> BROTLI_TRUE) and
+            (((not vFinish) and (vAvailIn = 0)) or
+             (vFinish and (BrotliEncoderIsFinished(vState) = BROTLI_TRUE)));
+    until vFinish;
   finally
-    FreeAndNil(vZip);
+    BrotliEncoderDestroyInstance(vState);
     AOutStream.Position := 0;
   end;
 end;

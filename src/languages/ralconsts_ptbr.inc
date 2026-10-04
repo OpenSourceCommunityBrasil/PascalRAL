@@ -39,6 +39,7 @@
   emQuicPlatformUnsupported = 'O engine MsQuic só traduz os códigos de status do Windows e do Linux; ainda não roda nesta plataforma.';
   emCompressInvalidFormat = 'Formato de compressão inválido.';
   emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
+  emCompressFailed = 'O compressor %s falhou.';
   emContentCheckError = 'Erro de verificação de conteúdo.';
   emCryptEmptyKey = 'A chave deve ser fornecida.';
   emCryptInvalidLength = 'Dados cifrados com tamanho inválido: precisam de IV e blocos inteiros.';
