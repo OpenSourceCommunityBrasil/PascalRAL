@@ -9,9 +9,13 @@ uses
   {$IFDEF FPC}
     LazFileUtils,
   {$ENDIF}
-  Classes, SysUtils, DateUtils,
+  Classes, SysUtils, DateUtils, SyncObjs,
   RALServer, RALTypes, RALConsts, RALTools, RALRoutes, RALRequest, RALResponse, RALParams,
   RALThreadSafe;
+
+const
+  { how many lists the sessions are spread over, each behind its own lock }
+  cRALSessionShards = 16;
 
 type
 
@@ -48,30 +52,81 @@ type
     property LastDate: TDateTime read FLastDate write FLastDate;
   end;
 
+  { TRALWebFile }
+
+  /// What the WebModule knows of the file a request asks for, read with one
+  /// call to the system. CanAnswerRoute leaves it in TRALRequest.RouteData for
+  /// the handler, so a file is resolved once per request
+  TRALWebFile = class
+  public
+    FileName: string;
+    Size: Int64;
+    /// When it was last written, in Unix seconds (UTC)
+    Modified: Int64;
+  end;
+
+  /// One line of TRALWebModule.CacheControl, as the requests read it
+  TRALWebCacheRule = record
+    Ext: StringRAL;
+    Value: StringRAL;
+  end;
+  TRALWebCacheRules = array of TRALWebCacheRule;
+
   { TRALWebModule }
 
   /// Serves the files under DocumentRoot and keeps a session per browser
   TRALWebModule = class(TRALModuleRoutes)
   private
     FBlockedExtensions: TStringList;
+    FCacheControl: TStringList;
+    { CacheControl as the requests read it, rebuilt when the list changes: the
+      extensions with their dot, and the directive for every other one }
+    FCacheRules: TRALWebCacheRules;
+    FCacheDefault: StringRAL;
     FCollectionRoute: TCollection;
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
+    FFileCacheTime: IntegerRAL;
     FLastSweep: TDateTime;
+    FMaxFileSize: Int64RAL;
+    { a TRALWebPathCache - see the implementation }
+    FPathCache: TObject;
     { DocumentRoot made absolute, with the separator at the end - or '' when
       no file is served. Worked out once, when the properties change, instead
       of on every request }
     FRootPath: string;
-    FSessions: TRALStringListSafe;
+    FServePrecompressed: boolean;
+    { the sessions, spread over lists by the first character of their name -
+      random hex, so evenly - each list behind its own lock: one list behind
+      one lock was where every request using a session queued }
+    FSessions: array[0..cRALSessionShards - 1] of TRALStringListSafe;
     FSessionTimeout: IntegerRAL;
+    FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
+    procedure BlockedExtensionsChanged(Sender: TObject);
+    procedure CacheControlChanged(Sender: TObject);
+    { the Cache-Control a file goes out with, '' for none }
+    function CacheControlFor(const AFileName: string): StringRAL;
     function GetBlockedExtensions: TStrings;
+    function GetCacheControl: TStrings;
+    { the coding of a copy of AFileName kept compressed beside it that this
+      request takes - 'br' or 'gzip' - with that copy's name, size and date;
+      '' when there is none }
+    function PickPrecompressed(ARequest: TRALRequest; const AFileName: string;
+      out ASend: string; out ASize, AModified: Int64): StringRAL;
     procedure RebuildRootPath;
+    { the file a request asks for when the module may serve it, or nil }
+    function ResolveFile(ARequest: TRALRequest): TRALWebFile;
+    procedure ServeFile(ARequest: TRALRequest; AResponse: TRALResponse; AFile: TRALWebFile);
     procedure SetBlockedExtensions(AValue: TStrings);
+    procedure SetCacheControl(AValue: TStrings);
     procedure SetUseAppPathAsRoot(AValue: boolean);
-    { the session named in the request, or nil; touches it and sweeps the
-      expired ones. Must run with FSessions locked }
-    function FindSession(AList: TStringList; ARequest: TRALRequest): TRALWebSession;
+    { the expired sessions of every list go, at most once a second, and are
+      freed with no lock held: what a session keeps may take a while to free }
+    procedure SweepSessions;
+    { the session named AName in the list, or nil; touches it. Must run with
+      that list locked }
+    function FindSession(AList: TStringList; const AName: StringRAL): TRALWebSession;
   protected
     procedure CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
     function GetFileRoute(ARequest: TRALRequest): StringRAL;
@@ -100,13 +155,38 @@ type
     /// Empty by default; a deploy folder usually deserves .ini, .log, .bak,
     /// .pem, .key, .pfx and the database files
     property BlockedExtensions: TStrings read GetBlockedExtensions write SetBlockedExtensions;
+    /// Cache-Control for the files served, by extension, one per line:
+    /// '.css=max-age=31536000, immutable', 'html=no-cache', and '*=...' for
+    /// every extension not listed. Empty (the default) sends none. The answer
+    /// always carries ETag and Last-Modified, which is enough for a browser to
+    /// ask again cheaply - a 304 - but without Cache-Control it asks every time
+    property CacheControl: TStrings read GetCacheControl write SetCacheControl;
     /// The folder whose files are served. Empty serves no file at all - it
     /// used to fall back to the executable's folder, publishing its .ini and
     /// certificates on a route that skips authentication; see
     /// UseApplicationPathAsRoot. A relative path is taken from the
     /// executable's folder
     property DocumentRoot: StringRAL read FDocumentRoot write SetDocumentRoot;
+    /// Milliseconds the module trusts what it learned of a file - whether it
+    /// exists, its size and its date - before asking the disk again. Zero (the
+    /// default) asks on every request. Above zero, a file published or removed
+    /// is seen up to that much later, and a 404 costs no trip to the disk.
+    /// Where a URL leads inside DocumentRoot is always remembered: it only
+    /// changes with DocumentRoot or BlockedExtensions, which forget it
+    property FileCacheTime: IntegerRAL read FFileCacheTime write FFileCacheTime default 0;
+    /// The largest file served, in bytes; a bigger one is answered as if it
+    /// were not there. Zero (the default) is no limit. A file goes out read
+    /// from the disk as it is sent, so its size only weighs on memory when it
+    /// is compressed or ciphered on the way
+    property MaxFileSize: Int64RAL read FMaxFileSize write FMaxFileSize default 0;
     property Routes;
+    /// Serve 'page.css.br' or 'page.css.gz', when one is beside 'page.css' and
+    /// the client takes that coding, instead of compressing 'page.css' on every
+    /// request: the compression is done once, when the site is built, at the
+    /// highest level. Brotli needs no compressor linked in for this. Off by
+    /// default
+    property ServePrecompressed: boolean read FServePrecompressed
+      write FServePrecompressed default False;
     /// Milliseconds a session may sit unused before it is dropped, with
     /// everything it holds; every request of its browser starts the count
     /// again. Zero keeps sessions for as long as the module lives
@@ -121,8 +201,139 @@ type
 
 implementation
 
+uses
+  RALMIMETypes, RALStream, RALCompress;
+
 const
   RAL_SESSION: StringRAL = 'ral_websession';
+  { the resolution cache: how many paths it remembers - a power of two - and
+    how many locks guard them }
+  cRALPathSlots = 1024;
+  cRALPathLocks = 16;
+
+type
+  TRALWebPathEntry = record
+    { the request's path, as it came }
+    Key: StringRAL;
+    { where it leads, when the module may serve it, '' when it may not }
+    Path: string;
+    Gen: IntegerRAL;
+    { what the disk said, and when - only kept with FileCacheTime }
+    Checked: TDateTime;
+    Found: boolean;
+    Size: Int64;
+    Modified: Int64;
+  end;
+
+  { TRALWebPathCache }
+
+  { Where each path asked for leads. Resolving one is string work only -
+    joining, expanding, checking the root, the blocked extensions, the device
+    names - and it was done twice per request, the same answer each time; it
+    depends on nothing but DocumentRoot and BlockedExtensions, whose changes
+    forget it all (Invalidate). Remembered by slot, a path pushing out
+    whatever shared its slot, so it never grows; each slot's lock is one of a
+    few, so requests rarely wait on each other }
+  TRALWebPathCache = class
+  private
+    FEntries: array of TRALWebPathEntry;
+    FLocks: array[0..cRALPathLocks - 1] of TCriticalSection;
+    FGen: IntegerRAL;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// Forgets every path: the settings they were resolved under changed
+    procedure Invalidate;
+    function Find(const AKey: StringRAL; out AEntry: TRALWebPathEntry): boolean;
+    /// Keeps AEntry, resolved under AEntry.Gen: an Invalidate in the meantime
+    /// makes it a miss
+    procedure Store(const AEntry: TRALWebPathEntry);
+    property Generation: IntegerRAL read FGen;
+  end;
+
+  TRALRangeResult = (rrIgnore, rrSatisfiable, rrUnsatisfiable);
+
+{ FNV-1a of the path, every byte as it is: two paths are the same only when
+  they are spelled the same. 32-bit arithmetic that wraps on purpose: overflow
+  and range checks are off for this one function }
+{$IFOPT Q+}{$DEFINE RALWEB_Q}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE RALWEB_R}{$R-}{$ENDIF}
+function PathSlot(const AKey: StringRAL): IntegerRAL;
+var
+  vHash: Cardinal;
+  vByte: PByte;
+  vInt: IntegerRAL;
+begin
+  vHash := 2166136261;
+  vByte := PByte(Pointer(AKey));
+  for vInt := 1 to Length(AKey) do
+  begin
+    vHash := (vHash xor vByte^) * Cardinal(16777619);
+    Inc(vByte);
+  end;
+  Result := IntegerRAL(vHash and (cRALPathSlots - 1));
+end;
+{$IFDEF RALWEB_Q}{$Q+}{$UNDEF RALWEB_Q}{$ENDIF}
+{$IFDEF RALWEB_R}{$R+}{$UNDEF RALWEB_R}{$ENDIF}
+
+{ TRALWebPathCache }
+
+constructor TRALWebPathCache.Create;
+var
+  vInt: IntegerRAL;
+begin
+  inherited Create;
+  SetLength(FEntries, cRALPathSlots);
+  for vInt := Low(FLocks) to High(FLocks) do
+    FLocks[vInt] := TCriticalSection.Create;
+  FGen := 1; // the empty slots are generation 0, never a hit
+end;
+
+destructor TRALWebPathCache.Destroy;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := Low(FLocks) to High(FLocks) do
+    FreeAndNil(FLocks[vInt]);
+  inherited;
+end;
+
+procedure TRALWebPathCache.Invalidate;
+begin
+  RALAtomicInc(FGen);
+end;
+
+function TRALWebPathCache.Find(const AKey: StringRAL; out AEntry: TRALWebPathEntry): boolean;
+var
+  vSlot: IntegerRAL;
+  vLock: TCriticalSection;
+begin
+  vSlot := PathSlot(AKey);
+  vLock := FLocks[vSlot and (cRALPathLocks - 1)];
+  vLock.Enter;
+  try
+    Result := (FEntries[vSlot].Gen = FGen) and (FEntries[vSlot].Key = AKey);
+    if Result then
+      AEntry := FEntries[vSlot];
+  finally
+    vLock.Leave;
+  end;
+end;
+
+procedure TRALWebPathCache.Store(const AEntry: TRALWebPathEntry);
+var
+  vSlot: IntegerRAL;
+  vLock: TCriticalSection;
+begin
+  vSlot := PathSlot(AEntry.Key);
+  vLock := FLocks[vSlot and (cRALPathLocks - 1)];
+  vLock.Enter;
+  try
+    FEntries[vSlot] := AEntry;
+  finally
+    vLock.Leave;
+  end;
+end;
 
 { TRALWebSession }
 
@@ -211,14 +422,332 @@ begin
   end;
 end;
 
+{ helpers of the file answer ------------------------------------------------ }
+
+{ The list a session name falls in: the value of its first hex digit. The
+  names the module gives out are random hex, which spreads them evenly; a name
+  that is not hex still lands somewhere, and is simply not found there }
+function SessionShard(const AName: StringRAL): IntegerRAL;
+var
+  vChr: Byte;
+begin
+  Result := 0;
+  if AName = '' then
+    Exit;
+  vChr := Ord(AName[POSINISTR]);
+  case vChr of
+    Ord('0')..Ord('9'): Result := vChr - Ord('0');
+    Ord('a')..Ord('f'): Result := vChr - Ord('a') + 10;
+    Ord('A')..Ord('F'): Result := vChr - Ord('A') + 10;
+  else
+    Result := vChr and (cRALSessionShards - 1);
+  end;
+end;
+
+{ whether BlockedExtensions holds the extension of AFileName, with or without
+  its dot }
+function IsBlockedName(const AFileName: string; ABlocked: TStrings): boolean;
+var
+  vExt: string;
+begin
+  vExt := ExtractFileExt(AFileName);
+  Result := (ABlocked.IndexOf(vExt) >= 0) or
+            ((vExt <> '') and (ABlocked.IndexOf(Copy(vExt, 2, MaxInt)) >= 0));
+end;
+
+{ Where a request's path leads inside ARoot, or '' when it leads nowhere the
+  module may serve: outside the root, an absolute path, a blocked extension,
+  a Windows device name. String work only - whether the file is there is the
+  disk's question, asked by the caller }
+function ResolvePath(const ARoot: string; const AKey: StringRAL; ABlocked: TStrings): string;
+{$IFDEF RALWindows}
+const
+  { resolve inside ANY folder on Windows and are not files: a request for
+    one reached TFileStream, at best an empty answer, at worst a thread stuck
+    on a serial port }
+  cDevices: array[0..21] of string = ('CON', 'PRN', 'AUX', 'NUL',
+    'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9');
+var
+  vBase: string;
+  vInt: Integer;
+{$ENDIF}
+var
+  vFile: string;
+begin
+  Result := '';
+  vFile := string(AKey);
+  Delete(vFile, 1, 1);
+  if vFile = '' then
+    Exit;
+
+  { a path from the wire is always taken inside the root - an absolute one is
+    refused, not followed }
+  {$IFDEF FPC}
+  if FilenameIsAbsolute(vFile) then
+  {$ELSE}
+  if not IsRelativePath(vFile) then
+  {$ENDIF}
+    Exit;
+
+  vFile := ExpandFileName(ARoot + vFile);
+
+  { inside the root: ARoot ends with the separator, so a sibling folder whose
+    name merely starts the same is not taken for it. Case-insensitive only
+    where the file system is }
+  {$IFDEF RALWindows}
+  if not SameText(Copy(vFile, 1, Length(ARoot)), ARoot) then
+  {$ELSE}
+  if Copy(vFile, 1, Length(ARoot)) <> ARoot then
+  {$ENDIF}
+    Exit;
+
+  if (ABlocked.Count > 0) and IsBlockedName(vFile, ABlocked) then
+    Exit;
+
+  {$IFDEF RALWindows}
+  vBase := ChangeFileExt(ExtractFileName(vFile), '');
+  for vInt := Low(cDevices) to High(cDevices) do
+    if SameText(vBase, cDevices[vInt]) then
+      Exit;
+  {$ENDIF}
+
+  Result := vFile;
+end;
+
+{ The entity-tag without its weakness mark: If-None-Match compares weakly
+  (RFC 9110 8.8.3.2), and W/ is not part of what is compared }
+function OpaqueTag(const ATag: StringRAL): StringRAL;
+begin
+  if Copy(ATag, 1, 2) = 'W/' then
+    Result := Copy(ATag, 3, MaxInt)
+  else
+    Result := ATag;
+end;
+
+{ Whether an If-None-Match list holds ATag, or is '*'. The tags are read as
+  RFC 9110 writes them - a quoted string, which may hold a comma - so a list
+  is not simply cut at its commas }
+function TagListMatches(const AList, ATag: StringRAL): boolean;
+var
+  vPos, vStart, vLen: IntegerRAL;
+  vOwn: StringRAL;
+
+  { the character at 1-based APos, whatever the strings' base }
+  function CharAt(APos: IntegerRAL): CharRAL;
+  begin
+    Result := AList[POSINISTR - 1 + APos];
+  end;
+
+begin
+  Result := False;
+  vOwn := OpaqueTag(ATag);
+  vLen := Length(AList);
+  vPos := 1;
+  while vPos <= vLen do
+  begin
+    { blanks and commas between the tags }
+    while (vPos <= vLen) and ((CharAt(vPos) = ',') or (Ord(CharAt(vPos)) <= 32)) do
+      Inc(vPos);
+    if vPos > vLen then
+      Break;
+    if CharAt(vPos) = '*' then
+    begin
+      Result := True;
+      Exit;
+    end;
+    vStart := vPos;
+    if Copy(AList, vPos, 2) = 'W/' then
+      Inc(vPos, 2);
+    if (vPos <= vLen) and (CharAt(vPos) = '"') then
+    begin
+      Inc(vPos);
+      while (vPos <= vLen) and (CharAt(vPos) <> '"') do
+        Inc(vPos);
+      Inc(vPos); // past the closing quote
+      if OpaqueTag(Copy(AList, vStart, vPos - vStart)) = vOwn then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end
+    else
+    begin
+      { not a tag: skipped to the next comma }
+      while (vPos <= vLen) and (CharAt(vPos) <> ',') do
+        Inc(vPos);
+    end;
+  end;
+end;
+
+{ An HTTP date as Unix seconds; False when the text is not one, which makes
+  the header carrying it count as not sent (RFC 9110 13.1.3) }
+function HTTPDateToUnixSecs(const AText: StringRAL; out ASecs: Int64): boolean;
+var
+  vDate: TDateTime;
+begin
+  Result := False;
+  ASecs := 0;
+  try
+    vDate := HTTPDateTimeToDateTime(RALTrim(AText));
+  except
+    on EConvertError do
+      Exit;
+  end;
+  ASecs := Round((vDate - UnixDateDelta) * SecsPerDay);
+  Result := True;
+end;
+
+{ Whether an If-Range lets the range through: a tag has to match strongly -
+  a weak one never does - and a date exactly (RFC 9110 13.1.5). Anything else
+  sends the whole file }
+function IfRangeHolds(const AIfRange, AETag: StringRAL; AModified: Int64): boolean;
+var
+  vValue: StringRAL;
+  vSecs: Int64;
+begin
+  vValue := RALTrim(AIfRange);
+  Result := vValue = '';
+  if Result then
+    Exit;
+  if (Copy(vValue, 1, 1) = '"') or (Copy(vValue, 1, 2) = 'W/') then
+    Result := (Copy(AETag, 1, 2) <> 'W/') and (vValue = AETag)
+  else
+    Result := HTTPDateToUnixSecs(vValue, vSecs) and (vSecs = AModified);
+end;
+
+function IsDigits(const AText: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := AText <> '';
+  for vInt := POSINISTR to RALHighStr(AText) do
+    if (AText[vInt] < '0') or (AText[vInt] > '9') then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+{ A Range header over a file of ASize bytes. One range only: several would
+  need a multipart answer, and the whole file is a valid answer to them. What
+  does not parse is ignored and the whole file goes, as RFC 9110 14.2 asks }
+function ParseRange(const AHeader: StringRAL; ASize: Int64;
+  out AStart, ACount: Int64): TRALRangeResult;
+var
+  vSpec, vFirst, vLast: StringRAL;
+  vPos: IntegerRAL;
+  vA, vB: Int64;
+begin
+  Result := rrIgnore;
+  AStart := 0;
+  ACount := -1;
+
+  vSpec := RALTrim(AHeader);
+  if not RALSameName(Copy(vSpec, 1, 6), 'bytes=') then
+    Exit;
+  vSpec := RALTrim(Copy(vSpec, 7, MaxInt));
+  if Pos(StringRAL(','), vSpec) > 0 then
+    Exit;
+  vPos := Pos(StringRAL('-'), vSpec);
+  if vPos = 0 then
+    Exit;
+  vFirst := RALTrim(Copy(vSpec, 1, vPos - 1));
+  vLast := RALTrim(Copy(vSpec, vPos + 1, MaxInt));
+
+  if vFirst = '' then
+  begin
+    { 'bytes=-500': the last 500 }
+    if (not IsDigits(vLast)) or (not TryStrToInt64(string(vLast), vB)) then
+      Exit;
+    if (vB = 0) or (ASize = 0) then
+    begin
+      Result := rrUnsatisfiable;
+      Exit;
+    end;
+    if vB > ASize then
+      vB := ASize;
+    AStart := ASize - vB;
+    ACount := vB;
+    Result := rrSatisfiable;
+    Exit;
+  end;
+
+  if (not IsDigits(vFirst)) or (not TryStrToInt64(string(vFirst), vA)) then
+    Exit;
+  if vLast = '' then
+    vB := ASize - 1 // 'bytes=1000-': to the end
+  else if (not IsDigits(vLast)) or (not TryStrToInt64(string(vLast), vB)) or (vB < vA) then
+    Exit;
+  if vA >= ASize then
+  begin
+    Result := rrUnsatisfiable;
+    Exit;
+  end;
+  if vB > ASize - 1 then
+    vB := ASize - 1;
+  AStart := vA;
+  ACount := vB - vA + 1;
+  Result := rrSatisfiable;
+end;
+
+{ Whether an Accept-Encoding takes ACoding: by name, or '*' when the name is
+  not there; q=0 refuses either way }
+function AcceptsCoding(const AHeader, ACoding: StringRAL): boolean;
+var
+  vRest, vEntry, vName: StringRAL;
+  vPos: IntegerRAL;
+  vQuality, vStar: Double;
+begin
+  vStar := -1;
+  vRest := AHeader;
+  while vRest <> '' do
+  begin
+    vPos := Pos(StringRAL(','), vRest);
+    if vPos = 0 then
+      vPos := Length(vRest) + 1;
+    vEntry := Copy(vRest, 1, vPos - 1);
+    Delete(vRest, 1, vPos);
+    RALSplitCoding(vEntry, vName, vQuality);
+    if (vName = ACoding) or ((ACoding = 'gzip') and (vName = 'x-gzip')) then
+    begin
+      Result := vQuality > 0;
+      Exit;
+    end;
+    if vName = '*' then
+      vStar := vQuality;
+  end;
+  Result := vStar > 0;
+end;
+
+{ Accept-Encoding into the Vary already there - CORS writes Origin into it }
+procedure AddVary(AResponse: TRALResponse; const AName: StringRAL);
+var
+  vParam: TRALParam;
+begin
+  vParam := AResponse.Params.GetKind['Vary', rpkHEADER];
+  if vParam = nil then
+    AResponse.Params.AddParam('Vary', AName, rpkHEADER)
+  else if Pos(LowerCase(AName), LowerCase(vParam.AsString)) = 0 then
+    vParam.AsString := vParam.AsString + ', ' + AName;
+end;
+
 { TRALWebModule }
 
 function TRALWebModule.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
+var
+  vFile: TRALWebFile;
 begin
   { inherited fires OnBeforeAnswer, which this override used to skip }
   Result := inherited CanAnswerRoute(ARequest, AResponse);
-  if (Result = nil) and (GetFileRoute(ARequest) <> '') then
+  if Result <> nil then
+    Exit;
+
+  vFile := ResolveFile(ARequest);
+  if vFile <> nil then
   begin
+    { kept for WebModFile, which resolved the whole path a second time }
+    ARequest.RouteData := vFile;
     Result := FDefaultRoute;
     if Assigned(OnBeforeAnswer) then
       OnBeforeAnswer(ARequest, AResponse);
@@ -234,6 +763,8 @@ begin
 end;
 
 constructor TRALWebModule.Create(AOwner: TComponent);
+var
+  vInt: IntegerRAL;
 begin
   inherited;
   FCollectionRoute := TCollection.Create(TRALRoute);
@@ -246,16 +777,33 @@ begin
   FDefaultRoute.AllowedMethods := [amGET];
   FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
+  { before the lists whose changes forget it }
+  FPathCache := TRALWebPathCache.Create;
   FBlockedExtensions := TStringList.Create;
-  FSessions := TRALStringListSafe.Create;
+  FBlockedExtensions.OnChange := {$IFDEF FPC}@{$ENDIF}BlockedExtensionsChanged;
+  FCacheControl := TStringList.Create;
+  FCacheControl.OnChange := {$IFDEF FPC}@{$ENDIF}CacheControlChanged;
+
+  for vInt := Low(FSessions) to High(FSessions) do
+    FSessions[vInt] := TRALStringListSafe.Create;
+  FSweepLock := TCriticalSection.Create;
   FSessionTimeout := DEFAULTWEBSESSIONTIMEOUT;
 end;
 
 destructor TRALWebModule.Destroy;
+var
+  vInt: IntegerRAL;
 begin
-  FSessions.Clear(True);
-  FreeAndNil(FSessions);
+  for vInt := Low(FSessions) to High(FSessions) do
+    if FSessions[vInt] <> nil then
+    begin
+      FSessions[vInt].Clear(True);
+      FreeAndNil(FSessions[vInt]);
+    end;
+  FreeAndNil(FSweepLock);
+  FreeAndNil(FCacheControl);
   FreeAndNil(FBlockedExtensions);
+  FreeAndNil(FPathCache);
   FreeAndNil(FCollectionRoute);
   inherited;
 end;
@@ -273,6 +821,77 @@ begin
     FBlockedExtensions.Assign(AValue);
 end;
 
+procedure TRALWebModule.BlockedExtensionsChanged(Sender: TObject);
+begin
+  { a path resolved before may lead to an extension blocked now }
+  TRALWebPathCache(FPathCache).Invalidate;
+end;
+
+function TRALWebModule.GetCacheControl: TStrings;
+begin
+  Result := FCacheControl;
+end;
+
+procedure TRALWebModule.SetCacheControl(AValue: TStrings);
+begin
+  if AValue = nil then
+    FCacheControl.Clear
+  else
+    FCacheControl.Assign(AValue);
+end;
+
+procedure TRALWebModule.CacheControlChanged(Sender: TObject);
+var
+  vInt, vCount: IntegerRAL;
+  vName, vValue, vDefault: StringRAL;
+  vRules: TRALWebCacheRules;
+begin
+  { read once per change into a list the requests search with no parsing,
+    and swapped in whole }
+  vCount := 0;
+  vDefault := '';
+  SetLength(vRules, FCacheControl.Count);
+  for vInt := 0 to Pred(FCacheControl.Count) do
+  begin
+    vName := RALTrim(StringRAL(FCacheControl.Names[vInt]));
+    vValue := RALTrim(StringRAL(FCacheControl.ValueFromIndex[vInt]));
+    if (vName = '') or (vValue = '') then
+      Continue;
+    if vName = '*' then
+      vDefault := vValue
+    else
+    begin
+      if vName[POSINISTR] <> '.' then
+        vName := '.' + vName;
+      vRules[vCount].Ext := vName;
+      vRules[vCount].Value := vValue;
+      Inc(vCount);
+    end;
+  end;
+  SetLength(vRules, vCount);
+  FCacheRules := vRules;
+  FCacheDefault := vDefault;
+end;
+
+function TRALWebModule.CacheControlFor(const AFileName: string): StringRAL;
+var
+  vRules: TRALWebCacheRules;
+  vExt: StringRAL;
+  vInt: IntegerRAL;
+begin
+  vRules := FCacheRules;
+  Result := FCacheDefault;
+  if Length(vRules) = 0 then
+    Exit;
+  vExt := StringRAL(ExtractFileExt(AFileName));
+  for vInt := 0 to High(vRules) do
+    if RALSameName(vRules[vInt].Ext, vExt) then
+    begin
+      Result := vRules[vInt].Value;
+      Break;
+    end;
+end;
+
 procedure TRALWebModule.RebuildRootPath;
 var
   vDir: string;
@@ -282,21 +901,23 @@ begin
     vDir := ExtractFilePath(ParamStr(0));
 
   if vDir = '' then
+    FRootPath := ''
+  else
   begin
-    FRootPath := '';
-    Exit;
+    { a relative DocumentRoot answered 404 to everything: the prefix compared
+      was relative and the file expanded was absolute. It is taken from the
+      executable's folder - the current directory of a service is System32 }
+    {$IFDEF FPC}
+    if not FilenameIsAbsolute(vDir) then
+    {$ELSE}
+    if IsRelativePath(vDir) then
+    {$ENDIF}
+      vDir := ExtractFilePath(ParamStr(0)) + vDir;
+    FRootPath := IncludeTrailingPathDelimiter(ExpandFileName(vDir));
   end;
 
-  { a relative DocumentRoot answered 404 to everything: the prefix compared
-    was relative and the file expanded was absolute. It is taken from the
-    executable's folder - the current directory of a service is System32 }
-  {$IFDEF FPC}
-  if not FilenameIsAbsolute(vDir) then
-  {$ELSE}
-  if IsRelativePath(vDir) then
-  {$ENDIF}
-    vDir := ExtractFilePath(ParamStr(0)) + vDir;
-  FRootPath := IncludeTrailingPathDelimiter(ExpandFileName(vDir));
+  { every path remembered was resolved under the root it had }
+  TRALWebPathCache(FPathCache).Invalidate;
 end;
 
 procedure TRALWebModule.SetDocumentRoot(AValue: StringRAL);
@@ -315,83 +936,270 @@ begin
   RebuildRootPath;
 end;
 
-{ True for a regular file the module may hand out }
-function IsServableFile(const AFile: string; ABlocked: TStrings): boolean;
-{$IFDEF RALWindows}
-const
-  { resolve inside ANY folder on Windows and are not files: a request for
-    one reached TFileStream, at best an empty answer, at worst a thread stuck
-    on a serial port }
-  cDevices: array[0..21] of string = ('CON', 'PRN', 'AUX', 'NUL',
-    'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9');
+function TRALWebModule.ResolveFile(ARequest: TRALRequest): TRALWebFile;
 var
-  vBase: string;
-  vInt: Integer;
-{$ENDIF}
-var
-  vExt: string;
+  vCache: TRALWebPathCache;
+  vEntry: TRALWebPathEntry;
+  vRoot: string;
+  vHit, vFresh: boolean;
 begin
-  { False for a folder too, on both compilers }
-  Result := False;
-  if not FileExists(AFile) then
-    Exit;
-
-  if ABlocked.Count > 0 then
-  begin
-    vExt := ExtractFileExt(AFile);
-    if (ABlocked.IndexOf(vExt) >= 0) or
-       ((vExt <> '') and (ABlocked.IndexOf(Copy(vExt, 2, MaxInt)) >= 0)) then
-      Exit;
-  end;
-
-  {$IFDEF RALWindows}
-  vBase := ChangeFileExt(ExtractFileName(AFile), '');
-  for vInt := Low(cDevices) to High(cDevices) do
-    if SameText(vBase, cDevices[vInt]) then
-      Exit;
-  {$ENDIF}
-
-  Result := True;
-end;
-
-function TRALWebModule.GetFileRoute(ARequest: TRALRequest): StringRAL;
-var
-  vRoot, vFile: string;
-begin
-  Result := '';
+  Result := nil;
   vRoot := FRootPath;
   if vRoot = '' then
     Exit;
 
-  vFile := string(ARequest.Query);
-  Delete(vFile, 1, 1);
-  if vFile = '' then
+  { where the path leads: remembered, or worked out and remembered - under
+    the generation read BEFORE the work, so a change in between is a miss }
+  vCache := TRALWebPathCache(FPathCache);
+  vHit := vCache.Find(ARequest.Query, vEntry);
+  if not vHit then
+  begin
+    vEntry.Gen := vCache.Generation;
+    vEntry.Key := ARequest.Query;
+    vEntry.Path := ResolvePath(vRoot, vEntry.Key, FBlockedExtensions);
+    vEntry.Checked := 0;
+    vEntry.Found := False;
+  end;
+
+  if vEntry.Path <> '' then
+  begin
+    { whether the file is there, how big and how old: one call to the system,
+      where FileExists, the open and the date used to be three - or nothing,
+      inside FileCacheTime }
+    vFresh := (FFileCacheTime > 0) and (vEntry.Checked <> 0) and
+              (MilliSecondsBetween(Now, vEntry.Checked) < FFileCacheTime);
+    if not vFresh then
+    begin
+      vEntry.Found := RALFileInfo(vEntry.Path, vEntry.Size, vEntry.Modified);
+      if FFileCacheTime > 0 then
+      begin
+        vEntry.Checked := Now;
+        vHit := False; // stored again with what the disk said
+      end;
+    end;
+  end;
+
+  if not vHit then
+    vCache.Store(vEntry);
+
+  if (vEntry.Path = '') or (not vEntry.Found) or
+     ((FMaxFileSize > 0) and (vEntry.Size > FMaxFileSize)) then
     Exit;
 
-  { a path from the wire is always taken inside the root - an absolute one is
-    refused, not followed }
-  {$IFDEF FPC}
-  if FilenameIsAbsolute(vFile) then
-  {$ELSE}
-  if not IsRelativePath(vFile) then
-  {$ENDIF}
+  Result := TRALWebFile.Create;
+  Result.FileName := vEntry.Path;
+  Result.Size := vEntry.Size;
+  Result.Modified := vEntry.Modified;
+end;
+
+function TRALWebModule.GetFileRoute(ARequest: TRALRequest): StringRAL;
+var
+  vFile: TRALWebFile;
+begin
+  Result := '';
+  vFile := ResolveFile(ARequest);
+  if vFile <> nil then
+  try
+    Result := StringRAL(vFile.FileName);
+  finally
+    vFile.Free;
+  end;
+end;
+
+function TRALWebModule.PickPrecompressed(ARequest: TRALRequest; const AFileName: string;
+  out ASend: string; out ASize, AModified: Int64): StringRAL;
+const
+  cCodings: array[0..1] of StringRAL = ('br', 'gzip');
+  cSuffixes: array[0..1] of string = ('.br', '.gz');
+  cTypes: array[0..1] of TRALCompressType = (ctBrotli, ctGZip);
+var
+  vInt: IntegerRAL;
+begin
+  Result := '';
+  ASend := '';
+  ASize := 0;
+  AModified := 0;
+  for vInt := Low(cCodings) to High(cCodings) do
+  begin
+    { a CompressType fixed on the server is the coding, whatever the client
+      says - the rule of ProcessCommands }
+    if (Server <> nil) and (Server.CompressType <> ctNone) then
+    begin
+      if Server.CompressType <> cTypes[vInt] then
+        Continue;
+    end
+    else if not AcceptsCoding(ARequest.AcceptEncoding, cCodings[vInt]) then
+      Continue;
+
+    if RALFileInfo(AFileName + cSuffixes[vInt], ASize, AModified) then
+    begin
+      ASend := AFileName + cSuffixes[vInt];
+      Result := cCodings[vInt];
+      Exit;
+    end;
+  end;
+end;
+
+procedure TRALWebModule.ServeFile(ARequest: TRALRequest; AResponse: TRALResponse;
+  AFile: TRALWebFile);
+var
+  vType, vETag, vLastModified, vCacheControl, vCoding, vHeader: StringRAL;
+  vSend: string;
+  vSize, vModified, vSince, vStart, vCount: Int64;
+  vCompress: TRALCompressType;
+  vIdentity, vNotModified, vVary: boolean;
+  vStream: TRALFileStream;
+  vParam: TRALParam;
+begin
+  vType := TRALMIMEType.GetInstance.GetMIMEType(StringRAL(AFile.FileName));
+  if vType = '' then
+    vType := rctAPPLICATIONOCTETSTREAM;
+
+  vSend := AFile.FileName;
+  vSize := AFile.Size;
+  vModified := AFile.Modified;
+  vCoding := '';
+
+  { 1. The coding the file goes out in. ProcessCommands chose it from the
+       server's CompressType or the client's Accept-Encoding before anybody
+       knew what would be answered: bytes compressed already go as they are,
+       and a copy kept compressed on disk goes instead of compressing again }
+  vCompress := AResponse.ContentCompress;
+  if RALIsCompressedMediaType(vType) then
+    vCompress := ctNone
+  else if FServePrecompressed then
+  begin
+    vCoding := PickPrecompressed(ARequest, AFile.FileName, vSend, vSize, vModified);
+    if vCoding <> '' then
+      vCompress := ctNone
+    else
+    begin
+      vSend := AFile.FileName;
+      vSize := AFile.Size;
+      vModified := AFile.Modified;
+    end;
+  end;
+  vIdentity := (vCoding = '') and (vCompress = ctNone);
+
+  { 2. What identifies this representation, for the browser's cache: size and
+       date make the tag - strong for the file's own bytes, weak and named after
+       the coding for compressed ones, which are other bytes. Vary when the
+       coding depended on Accept-Encoding }
+  vETag := '"' + StringRAL(IntToHex(vSize, 1) + '-' + IntToHex(vModified, 1));
+  if vIdentity then
+    vETag := vETag + '"'
+  else if vCoding <> '' then
+    vETag := 'W/' + vETag + '-' + vCoding + '"'
+  else
+    vETag := 'W/' + vETag + '-' + TRALCompress.CompressToString(vCompress) + '"';
+  vLastModified := RALHTTPDate(UnixToDateTime(vModified));
+  vCacheControl := CacheControlFor(AFile.FileName);
+  vVary := (Server <> nil) and (Server.CompressType = ctNone) and
+           (not RALIsCompressedMediaType(vType));
+
+  { 3. The browser has it already: If-None-Match decides when present,
+       If-Modified-Since only without it (RFC 9110 13.2.2) - and the answer is
+       headers alone, the file not even opened }
+  vHeader := ARequest.Params.GetKind['If-None-Match', rpkHEADER].AsString;
+  if vHeader <> '' then
+    vNotModified := TagListMatches(vHeader, vETag)
+  else
+  begin
+    vHeader := ARequest.Params.GetKind['If-Modified-Since', rpkHEADER].AsString;
+    vNotModified := (vHeader <> '') and HTTPDateToUnixSecs(vHeader, vSince) and
+                    (vModified <= vSince);
+  end;
+
+  if vNotModified then
+  begin
+    AResponse.Answer(HTTP_NotModified);
+    AResponse.ContentCompress := ctNone;
+    AResponse.ContentType := vType;
+    AResponse.Params.AddParam('ETag', vETag, rpkHEADER);
+    AResponse.Params.AddParam('Last-Modified', vLastModified, rpkHEADER);
+    if vCacheControl <> '' then
+      AResponse.Params.AddParam('Cache-Control', vCacheControl, rpkHEADER);
+    if vVary then
+      AddVary(AResponse, 'Accept-Encoding');
     Exit;
+  end;
 
-  vFile := ExpandFileName(vRoot + vFile);
+  { 4. A part of it. Only of the file's own bytes - those of a coding are
+       others, and a download resumed over them would be stitched wrong - and
+       only when If-Range, if sent, still describes this file }
+  vStart := 0;
+  vCount := -1;
+  vHeader := ARequest.Params.GetKind['Range', rpkHEADER].AsString;
+  if vIdentity and (vHeader <> '') and
+     IfRangeHolds(ARequest.Params.GetKind['If-Range', rpkHEADER].AsString, vETag, vModified) then
+  begin
+    case ParseRange(vHeader, vSize, vStart, vCount) of
+      rrUnsatisfiable:
+      begin
+        AResponse.Answer(HTTP_RangeNotSatisfiable);
+        AResponse.ContentCompress := ctNone;
+        AResponse.Params.AddParam('Content-Range', 'bytes */' + StringRAL(IntToStr(vSize)), rpkHEADER);
+        AResponse.Params.AddParam('Accept-Ranges', 'bytes', rpkHEADER);
+        Exit;
+      end;
+      rrIgnore:
+      begin
+        vStart := 0;
+        vCount := -1;
+      end;
+    end;
+  end;
 
-  { inside the root: vRoot ends with the separator, so a sibling folder whose
-    name merely starts the same is not taken for it. Case-insensitive only
-    where the file system is }
-  {$IFDEF RALWindows}
-  if not SameText(Copy(vFile, 1, Length(vRoot)), vRoot) then
-  {$ELSE}
-  if Copy(vFile, 1, Length(vRoot)) <> vRoot then
-  {$ENDIF}
-    Exit;
+  { 5. The body: the file itself, read as it goes out. It used to be read
+       whole into memory - and copied once more - before a byte was sent }
+  try
+    vStream := TRALFileStream.Create(vSend, vStart, vCount, True);
+  except
+    on EFOpenError do
+    begin
+      { gone since it was resolved: the answer of a file that is not there.
+        One that is there and cannot be read raises, as it always did }
+      if RALFileInfo(vSend, vSize, vModified) then
+        raise;
+      AResponse.Answer(HTTP_NotFound);
+      Exit;
+    end;
+  end;
 
-  if IsServableFile(vFile, FBlockedExtensions) then
-    Result := StringRAL(vFile);
+  vParam := AResponse.Params.NewParam;
+  vParam.ParamName := 'ral_body';
+  vParam.FileName := StringRAL(ExtractFileName(AFile.FileName));
+  vParam.AdoptStream(vStream);
+  vParam.Kind := rpkBODY;
+  vParam.ContentType := vType;
+  AResponse.ContentDispositionInline := True;
+
+  if vCount >= 0 then
+  begin
+    AResponse.StatusCode := HTTP_PartialContent;
+    AResponse.Params.AddParam('Content-Range', StringRAL(Format('bytes %d-%d/%d',
+      [vStart, vStart + vStream.Size - 1, vSize])), rpkHEADER);
+  end;
+
+  if vCoding <> '' then
+  begin
+    { written as text: the coding need not be one this program can produce }
+    AResponse.ContentEncoding := vCoding;
+    AResponse.ContentEncoded := True;
+  end
+  else if vIdentity then
+    AResponse.ContentCompress := ctNone;
+
+  AResponse.Params.AddParam('ETag', vETag, rpkHEADER);
+  AResponse.Params.AddParam('Last-Modified', vLastModified, rpkHEADER);
+  if vCacheControl <> '' then
+    AResponse.Params.AddParam('Cache-Control', vCacheControl, rpkHEADER);
+  if vIdentity then
+    AResponse.Params.AddParam('Accept-Ranges', 'bytes', rpkHEADER)
+  else
+    AResponse.Params.AddParam('Accept-Ranges', 'none', rpkHEADER);
+  if vVary then
+    AddVary(AResponse, 'Accept-Encoding');
 end;
 
 { 24 random bytes from the system's generator, in hex: the name IS the
@@ -414,50 +1222,85 @@ begin
   end;
 end;
 
-function TRALWebModule.FindSession(AList: TStringList; ARequest: TRALRequest): TRALWebSession;
+procedure TRALWebModule.SweepSessions;
 var
-  vParam: TRALParam;
   vNow: TDateTime;
-  vInt, vTimeout: IntegerRAL;
+  vTimeout, vShard, vInt: IntegerRAL;
+  vList: TStringList;
+  vGone: TList;
 begin
-  Result := nil;
-  vNow := Now;
-
-  { expired sessions go, at most once a second: the list only ever grew, since
-    nothing read LastDate }
   vTimeout := FSessionTimeout;
-  if (vTimeout > 0) and (MilliSecondsBetween(vNow, FLastSweep) >= 1000) then
-  begin
+  if vTimeout <= 0 then
+    Exit;
+
+  { at most once a second, and by one thread: the others go on. Read once
+    without the lock - a stale read only means one look too many or one
+    late - and settled under it }
+  vNow := Now;
+  if MilliSecondsBetween(vNow, FLastSweep) < 1000 then
+    Exit;
+  FSweepLock.Enter;
+  try
+    if MilliSecondsBetween(vNow, FLastSweep) < 1000 then
+      Exit;
     FLastSweep := vNow;
-    for vInt := Pred(AList.Count) downto 0 do
-      if MilliSecondsBetween(vNow, TRALWebSession(AList.Objects[vInt]).LastDate) >= vTimeout then
-      begin
-        AList.Objects[vInt].Free;
-        AList.Delete(vInt);
-      end;
+  finally
+    FSweepLock.Leave;
   end;
 
-  vParam := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE];
-  if vParam = nil then
+  vGone := TList.Create;
+  try
+    for vShard := Low(FSessions) to High(FSessions) do
+    begin
+      vList := FSessions[vShard].Lock;
+      try
+        for vInt := Pred(vList.Count) downto 0 do
+          if MilliSecondsBetween(vNow, TRALWebSession(vList.Objects[vInt]).LastDate) >= vTimeout then
+          begin
+            vGone.Add(vList.Objects[vInt]);
+            vList.Delete(vInt);
+          end;
+      finally
+        FSessions[vShard].Unlock;
+      end;
+    end;
+    for vInt := 0 to Pred(vGone.Count) do
+      TObject(vGone[vInt]).Free;
+  finally
+    FreeAndNil(vGone);
+  end;
+end;
+
+function TRALWebModule.FindSession(AList: TStringList; const AName: StringRAL): TRALWebSession;
+var
+  vInt: IntegerRAL;
+begin
+  Result := nil;
+  if AName = '' then
     Exit;
-  vInt := AList.IndexOf(vParam.AsString);
+  vInt := AList.IndexOf(AName);
   if vInt < 0 then
     Exit;
 
   { reading the session keeps it alive, not only creating it }
   Result := TRALWebSession(AList.Objects[vInt]);
-  Result.LastDate := vNow;
+  Result.LastDate := Now;
 end;
 
 function TRALWebModule.GetWebSession(ARequest: TRALRequest): TRALWebSession;
 var
+  vName: StringRAL;
+  vShard: IntegerRAL;
   vList: TStringList;
 begin
-  vList := FSessions.Lock;
+  SweepSessions;
+  vName := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE].AsString;
+  vShard := SessionShard(vName);
+  vList := FSessions[vShard].Lock;
   try
-    Result := FindSession(vList, ARequest);
+    Result := FindSession(vList, vName);
   finally
-    FSessions.Unlock;
+    FSessions[vShard].Unlock;
   end;
 end;
 
@@ -465,26 +1308,30 @@ function TRALWebModule.OpenSession(ARequest: TRALRequest; AResponse: TRALRespons
 var
   vList: TStringList;
   vName: StringRAL;
+  vShard: IntegerRAL;
   vCookie: TRALCookie;
 begin
-  { found or created under ONE lock: separately, two requests of a new browser
-    both created a session and the sorted list dropped the second }
-  vList := FSessions.Lock;
-  try
-    Result := FindSession(vList, ARequest);
-    if Result <> nil then
-      Exit;
+  Result := GetWebSession(ARequest);
+  if Result <> nil then
+    Exit;
 
-    { a name the browser sent and the server does not know is never adopted:
-      the session gets a name of its own, so nobody can choose it in advance }
-    repeat
-      vName := NewSessionName;
-    until vList.IndexOf(vName) < 0;
-    Result := TRALWebSession.Create;
-    vList.AddObject(vName, Result);
-  finally
-    FSessions.Unlock;
-  end;
+  { a name the browser sent and the server does not know is never adopted:
+    the session gets a name of its own, so nobody can choose it in advance.
+    Checked and inserted under the lock of the list the name falls in }
+  repeat
+    vName := NewSessionName;
+    vShard := SessionShard(vName);
+    vList := FSessions[vShard].Lock;
+    try
+      if vList.IndexOf(vName) < 0 then
+      begin
+        Result := TRALWebSession.Create;
+        vList.AddObject(vName, Result);
+      end;
+    finally
+      FSessions[vShard].Unlock;
+    end;
+  until Result <> nil;
 
   { the cookie only goes out with a new session: it used to go with every
     answer, and with no attribute at all }
@@ -505,14 +1352,16 @@ begin
 end;
 
 procedure TRALWebModule.WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
-var
-  vFile: StringRAL;
 begin
-  vFile := GetFileRoute(ARequest);
-  if vFile <> '' then
-    AResponse.Answer(vFile)
+  { resolved by CanAnswerRoute; a route of this module with no handler gets
+    here without it (AnswerUnhandled) }
+  if not (ARequest.RouteData is TRALWebFile) then
+    ARequest.RouteData := ResolveFile(ARequest);
+
+  if ARequest.RouteData = nil then
+    AResponse.Answer(HTTP_NotFound)
   else
-    AResponse.Answer(HTTP_NotFound);
+    ServeFile(ARequest, AResponse, TRALWebFile(ARequest.RouteData));
 end;
 
 end.

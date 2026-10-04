@@ -75,6 +75,64 @@ type
     procedure WriteStream(AStream: TStream);
   end;
 
+  { TRALFileStream }
+
+  /// A file, or a window of one, read to be sent. It is opened with
+  /// fmShareDenyNone - a file being served does not stop a new version from
+  /// being published - and only when first read, unless AOpenNow. A window
+  /// running past the end of the file is cut to what the file has when it is
+  /// opened. Read-only: Write writes nothing
+  TRALFileStream = class(TStream)
+  private
+    FFile: TFileStream;
+    FFileName: string;
+    FOffset: Int64;
+    { the window as asked for, -1 to the end of the file, and as it is once
+      the file is open }
+    FAsked: Int64;
+    FCount: Int64;
+    FPosition: Int64;
+    { where the file handle stands, so a sequential read seeks nothing; -1
+      when unknown }
+    FFilePos: Int64;
+    procedure NeedFile;
+  protected
+    function GetSize: Int64; override;
+  public
+    constructor Create(const AFileName: string; AOffset: Int64 = 0;
+      ACount: Int64 = -1; AOpenNow: boolean = False);
+    destructor Destroy; override;
+    function Read(var Buffer; Count: Longint): Longint; override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+    function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
+    /// Another stream over the same file and window, not open yet - what a
+    /// param keeps when it hands this one over to be sent
+    function Twin: TRALFileStream;
+    /// The whole file, not a window of it
+    function IsWholeFile: boolean;
+    property FileName: string read FFileName;
+  end;
+
+  { TRALBufferStream }
+
+  /// Read-only bytes kept alive by reference: a string, or a memory stream
+  /// shared by reference count. Twin gives another stream over the same bytes -
+  /// its own position, freed on its own - without copying them, which is how
+  /// a body reaches the engine that frees what it sends while the param still
+  /// holds it. Write writes nothing
+  TRALBufferStream = class(TCustomMemoryStream)
+  private
+    FText: StringRAL;
+    FKeeper: IInterface;
+  public
+    /// Over AText, which is not copied: the stream keeps a reference to it
+    constructor Create(const AText: StringRAL); overload;
+    /// Over AStream, which it TAKES: it is freed with the last stream sharing it
+    constructor Create(AStream: TCustomMemoryStream); overload;
+    function Write(const Buffer; Count: Longint): Longint; override;
+    function Twin: TRALBufferStream;
+  end;
+
 /// Saves the stream into a file given the AFileName
 procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
 /// Creates a TStream and write ABytes on it
@@ -501,6 +559,162 @@ end;
 procedure TRALStringStream.WriteStream(AStream: TStream);
 begin
   CopyFrom(AStream, 0);
+end;
+
+{ TRALFileStream }
+
+constructor TRALFileStream.Create(const AFileName: string; AOffset: Int64;
+  ACount: Int64; AOpenNow: boolean);
+begin
+  inherited Create;
+  FFileName := AFileName;
+  if AOffset < 0 then
+    AOffset := 0;
+  FOffset := AOffset;
+  FAsked := ACount;
+  FCount := ACount;
+  FFilePos := -1;
+  if AOpenNow then
+    NeedFile;
+end;
+
+destructor TRALFileStream.Destroy;
+begin
+  FreeAndNil(FFile);
+  inherited;
+end;
+
+procedure TRALFileStream.NeedFile;
+var
+  vLeft: Int64;
+begin
+  if FFile <> nil then
+    Exit;
+  FFile := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
+  vLeft := FFile.Size - FOffset;
+  if vLeft < 0 then
+    vLeft := 0;
+  if (FAsked < 0) or (FAsked > vLeft) then
+    FCount := vLeft
+  else
+    FCount := FAsked;
+end;
+
+function TRALFileStream.GetSize: Int64;
+begin
+  NeedFile;
+  Result := FCount;
+end;
+
+function TRALFileStream.Read(var Buffer; Count: Longint): Longint;
+var
+  vLeft: Int64;
+begin
+  Result := 0;
+  NeedFile;
+  vLeft := FCount - FPosition;
+  if (Count <= 0) or (vLeft <= 0) then
+    Exit;
+  if Count > vLeft then
+    Count := vLeft;
+  if FFilePos <> FOffset + FPosition then
+    FFilePos := FFile.Seek(FOffset + FPosition, soBeginning);
+  Result := FFile.Read(Buffer, Count);
+  if Result > 0 then
+  begin
+    Inc(FPosition, Result);
+    Inc(FFilePos, Result);
+  end;
+end;
+
+function TRALFileStream.Write(const Buffer; Count: Longint): Longint;
+begin
+  Result := 0; // read-only: WriteBuffer turns this into its EWriteError
+end;
+
+function TRALFileStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
+begin
+  { Position, and Seek(0, soCurrent) under it, opens nothing: only the end
+    of the window needs the file }
+  case Origin of
+    soBeginning:
+      FPosition := Offset;
+    soCurrent:
+      FPosition := FPosition + Offset;
+    soEnd:
+    begin
+      NeedFile;
+      FPosition := FCount + Offset;
+    end;
+  end;
+  if FPosition < 0 then
+    FPosition := 0;
+  Result := FPosition;
+end;
+
+function TRALFileStream.Twin: TRALFileStream;
+begin
+  { the window as it was asked for: a whole file is measured again when the
+    twin opens it }
+  Result := TRALFileStream.Create(FFileName, FOffset, FAsked);
+end;
+
+function TRALFileStream.IsWholeFile: boolean;
+begin
+  Result := (FOffset = 0) and (FAsked < 0);
+end;
+
+{ TRALBufferStream }
+
+type
+  { what keeps a shared memory stream alive: freed - and the stream with it -
+    when the last TRALBufferStream over it lets go }
+  TRALStreamKeeper = class(TInterfacedObject)
+  private
+    FStream: TStream;
+  public
+    constructor Create(AStream: TStream);
+    destructor Destroy; override;
+  end;
+
+constructor TRALStreamKeeper.Create(AStream: TStream);
+begin
+  inherited Create;
+  FStream := AStream;
+end;
+
+destructor TRALStreamKeeper.Destroy;
+begin
+  FreeAndNil(FStream);
+  inherited;
+end;
+
+constructor TRALBufferStream.Create(const AText: StringRAL);
+begin
+  inherited Create;
+  { a reference, not a copy: the string is copied on write by whoever else
+    holds it, never under this stream }
+  FText := AText;
+  SetPointer(Pointer(FText), Length(FText));
+end;
+
+constructor TRALBufferStream.Create(AStream: TCustomMemoryStream);
+begin
+  inherited Create;
+  FKeeper := TRALStreamKeeper.Create(AStream);
+  SetPointer(AStream.Memory, AStream.Size);
+end;
+
+function TRALBufferStream.Write(const Buffer; Count: Longint): Longint;
+begin
+  Result := 0; // the bytes are shared: WriteBuffer turns this into its EWriteError
+end;
+
+function TRALBufferStream.Twin: TRALBufferStream;
+begin
+  Result := TRALBufferStream.Create(FText);
+  Result.FKeeper := FKeeper;
+  Result.SetPointer(Memory, Size);
 end;
 
 end.

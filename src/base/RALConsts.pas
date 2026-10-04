@@ -121,8 +121,10 @@ const
   HTTP_OK                  = 200;
   HTTP_Created             = 201;
   HTTP_NoContent           = 204;
+  HTTP_PartialContent      = 206;
   HTTP_Moved               = 301;
   HTTP_Found               = 302;
+  HTTP_NotModified         = 304;
   HTTP_BadRequest          = 400;
   HTTP_Unauthorized        = 401;
   HTTP_Forbidden           = 403;
@@ -132,6 +134,7 @@ const
   HTTP_RequestTimeout      = 408;
   HTTP_RequestEntityTooLarge = 413;
   HTTP_UnsupportedMedia    = 415;
+  HTTP_RangeNotSatisfiable = 416;
   HTTP_TooManyRequests     = 429;
   HTTP_InternalError       = 500;
   HTTP_NotImplemented      = 501;

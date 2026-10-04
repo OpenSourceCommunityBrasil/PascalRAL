@@ -11,7 +11,13 @@ uses
   {$ENDIF}
   {$IFDEF FPC}
     UTF8Process,
+    {$IFDEF UNIX}
+    BaseUnix, // RALFileInfo
+    {$ENDIF}
   {$ENDIF}
+  {$IF Defined(POSIX) and not Defined(FPC)}
+    Posix.SysStat, // RALFileInfo
+  {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
@@ -76,6 +82,12 @@ function RALSafeHeaderText(const AText: StringRAL): StringRAL;
 /// 'Sun, 06 Nov 1994 08:49:37 GMT'. Digits and English names only - the RTL's
 /// FormatDateTime puts the locale's time separator where ':' is written
 function RALHTTPDate(AUtc: TDateTime): StringRAL;
+/// Whether AFileName is a regular file - not a folder - with its size and the
+/// moment it was last written, in Unix seconds (UTC). A link is followed, as
+/// FileExists does. One call to the system, where FileExists, a size and a
+/// date take three
+function RALFileInfo(const AFileName: string; out ASize: Int64;
+  out AModified: Int64): boolean;
 /// Copies the published properties ASource and ADest have in common - what a
 /// form would store - so that an AssignTo is one line and a property added
 /// later is copied without anyone having to remember it. A sub-object
@@ -173,6 +185,105 @@ begin
   Result := StringRAL(Format('%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT',
     [cDays[DayOfWeek(AUtc)], vDay, cMonths[vMonth], vYear, vHour, vMin, vSec]));
 end;
+
+{$IFDEF RALWindows}
+type
+  { WIN32_FILE_ATTRIBUTE_DATA, declared here because the RTLs of the two
+    compilers do not agree on its name }
+  TRALFileAttributeData = record
+    dwFileAttributes: DWORD;
+    ftCreationTime: TFileTime;
+    ftLastAccessTime: TFileTime;
+    ftLastWriteTime: TFileTime;
+    nFileSizeHigh: DWORD;
+    nFileSizeLow: DWORD;
+  end;
+
+{ the wide one on both compilers: FPC's string is UTF-8, which the ANSI entry
+  point would read in the system code page }
+function RALGetFileAttributesExW(lpFileName: PWideChar; fInfoLevelId: Integer;
+  lpFileInformation: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetFileAttributesExW';
+
+{ a FILETIME counts 100 ns from 1601-01-01, Unix time seconds from 1970 }
+function FileTimeToUnixSecs(const ATime: TFileTime): Int64;
+begin
+  Result := ((Int64(ATime.dwHighDateTime) shl 32) or ATime.dwLowDateTime);
+  Result := (Result - 116444736000000000) div 10000000;
+end;
+{$ENDIF}
+
+function RALFileInfo(const AFileName: string; out ASize: Int64;
+  out AModified: Int64): boolean;
+{$IFDEF RALWindows}
+var
+  vData: TRALFileAttributeData;
+  vName: UnicodeString;
+  vFile: TFileStream;
+  vTime: TFileTime;
+begin
+  ASize := 0;
+  AModified := 0;
+  vName := UnicodeString(AFileName);
+  Result := RALGetFileAttributesExW(PWideChar(vName), 0 {GetFileExInfoStandard},
+              @vData) and ((vData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0);
+  if not Result then
+    Exit;
+
+  if (vData.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) = 0 then
+  begin
+    ASize := (Int64(vData.nFileSizeHigh) shl 32) or vData.nFileSizeLow;
+    AModified := FileTimeToUnixSecs(vData.ftLastWriteTime);
+    Exit;
+  end;
+
+  { a link describes itself - its own size and date - while opening it
+    follows it to the file, which is what FileExists answers for }
+  try
+    vFile := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      ASize := vFile.Size;
+      if GetFileTime(vFile.Handle, nil, nil, @vTime) then
+        AModified := FileTimeToUnixSecs(vTime);
+    finally
+      vFile.Free;
+    end;
+  except
+    on EFOpenError do
+      Result := False; // a link to nothing
+  end;
+end;
+{$ELSE}
+{$IFDEF FPC}
+var
+  vStat: TStat;
+begin
+  ASize := 0;
+  AModified := 0;
+  Result := (FpStat(PChar(AFileName), vStat) = 0) and (not fpS_ISDIR(vStat.st_mode));
+  if Result then
+  begin
+    ASize := vStat.st_size;
+    AModified := vStat.st_mtime;
+  end;
+end;
+{$ELSE}
+var
+  vStat: _stat;
+  vName: UTF8String;
+begin
+  ASize := 0;
+  AModified := 0;
+  vName := UTF8String(AFileName);
+  Result := (stat(MarshaledAString(vName), vStat) = 0) and (not S_ISDIR(vStat.st_mode));
+  if Result then
+  begin
+    ASize := vStat.st_size;
+    AModified := vStat.st_mtime;
+  end;
+end;
+{$ENDIF}
+{$ENDIF}
 
 procedure RALAssignProperties(ASource, ADest: TPersistent);
 var

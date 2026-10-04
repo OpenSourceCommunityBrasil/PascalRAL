@@ -16,7 +16,7 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALBase64, RALNetwork;
+  RALParams, RALTools, RALBase64, RALNetwork, RALStream;
 
 type
 
@@ -116,7 +116,6 @@ type
     /// that object has anywhere to put it - see the property.
     procedure ApplyMaxConnections;
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
-    function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
     procedure OnHttpTerminate(ASender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
@@ -266,7 +265,9 @@ begin
       sending, so no client ever sees the 413 - Indy, netHTTP and mORMot2's
       own client all fail with a transport error instead. The RAL check in
       ValidateRequest answers 413 after the body is read, like every engine }
-    FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
+    { no OnSendFile: mORMot2 sends a file answered as STATICFILE_CONTENT_TYPE
+      itself - see OnCommandProcess. The handler that sat here answered True,
+      "sent", without sending anything }
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.OnTerminate := {$IFDEF FPC}@{$ENDIF}OnHttpTerminate;
     //    FHttp.RegisterCompressGzStatic := True;
@@ -522,11 +523,22 @@ begin
   Result := TRALSynopseSSL.Create;
 end;
 
+{ the Range header a socket server parsed into the context and left out of
+  the list - see OnCommandProcess }
+function RangeHeaderOf(const AContext: THttpRequestContext): StringRAL;
+begin
+  Result := 'bytes=' + StringRAL(IntToStr(AContext.RangeOffset)) + '-';
+  if AContext.RangeLength >= 0 then
+    Result := Result + StringRAL(IntToStr(AContext.RangeOffset + AContext.RangeLength - 1));
+end;
+
 function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vHeaders: StringRAL;
+  vStream: TStream;
+  vHasRange: boolean;
   {$IFDEF RALWindows}
   vApiReq: PHTTP_REQUEST;
   vPeer: PNetAddr;
@@ -597,7 +609,14 @@ begin
           vRequest.AcceptEncoding := StringRAL(AContext.ConnectionHttp^.AcceptEncoding);
         if vRequest.ClientInfo.UserAgent = '' then
           vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);
+        { the Range too: the same servers keep it to themselves, parsed into the
+          context. Rebuilt from there, the WebModule answers a part of a file
+          the same way on every mode }
+        if (rfWantRange in AContext.ConnectionHttp^.ResponseFlags) and
+           (vRequest.Params.GetKind['Range', rpkHEADER] = nil) then
+          vRequest.Params.AddParam('Range', RangeHeaderOf(AContext.ConnectionHttp^), rpkHEADER);
       end;
+      vHasRange := vRequest.Params.GetKind['Range', rpkHEADER] <> nil;
 
       { WHICH VERSION THIS CLIENT ARRIVED ON - and only the server knows.
 
@@ -701,10 +720,46 @@ begin
 
       ProcessCommands(vRequest, vResponse);
 
+      { mORMot2 cuts any answer to the request's Range on its own, whatever its
+        status - so a part of the part the WebModule answered, and a slice of
+        an error page. It still does it for a 200 RAL said nothing about; not
+        for another status, nor where RAL decided, which its Accept-Ranges says }
+      if (AContext.ConnectionHttp <> nil) and
+         ((vResponse.StatusCode <> HTTP_OK) or
+          (vResponse.Params.GetKind['Accept-Ranges', rpkHEADER] <> nil)) then
+        Exclude(AContext.ConnectionHttp^.ResponseFlags, rfWantRange);
+
       //with vResponse do
       begin
-        AContext.OutContent := vResponse.GetResponseEncText; // the wire body: compressed, ciphered
-        AContext.OutContentType := vResponse.ContentType;
+        { the wire body: compressed, ciphered. A whole file that nothing
+          transforms is handed to mORMot2 by name instead - it sends it from
+          the disk in pieces, http.sys from the kernel - and this process never
+          holds it: read into the string below, every request held all of it.
+          Only from the size mORMot2 streams on, HttpContentFromFileSizeInMemory:
+          below it mORMot2 reads the file whole into memory as well, so the
+          name only cost it a second look and a second open of a file that is
+          open here already. Not with a Range, which mORMot2 and http.sys would
+          apply on their own }
+        vStream := vResponse.GetResponseEncStream;
+        try
+          if (vStream is TRALFileStream) and TRALFileStream(vStream).IsWholeFile and
+             (vStream.Size >= HttpContentFromFileSizeInMemory) and
+             (vResponse.StatusCode = HTTP_OK) and (vResponse.ContentEncoding = '') and
+             (not vHasRange) then
+          begin
+            AContext.OutContent := RawUtf8(StringRAL(TRALFileStream(vStream).FileName));
+            AContext.OutContentType := STATICFILE_CONTENT_TYPE;
+            { where mORMot2 and http.sys read the type of a file they send }
+            vResponse.Params.AddParam('Content-Type', vResponse.ContentType, rpkHEADER);
+          end
+          else
+          begin
+            AContext.OutContent := StreamToString(vStream);
+            AContext.OutContentType := vResponse.ContentType;
+          end;
+        finally
+          FreeAndNil(vStream);
+        end;
 
         //if (vResponse.ContentDisposition <> EmptyStr) then
           vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
@@ -751,16 +806,6 @@ begin
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
-end;
-
-function TRALSynopseServer.OnSendFile(AContext: THttpServerRequestAbstract;
-  const LocalFileName: TFileName): boolean;
-begin
-  // para OutContentType = STATICFILE_CONTENT_TYPE
-  {$IFNDEF FPC}
-    AContext.OutContent := UTF8Decode(AContext.OutContent);
-  {$ENDIF}
-  Result := True;
 end;
 
 procedure TRALSynopseServer.OnHttpTerminate(ASender: TObject);

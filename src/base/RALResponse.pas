@@ -15,6 +15,7 @@ type
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
+    FContentEncoded: boolean;
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
     FTransportError: TRALTransportError;
@@ -68,6 +69,11 @@ type
 
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
+    /// The body already carries the coding ContentEncoding names - a file kept
+    /// compressed on disk, which the WebModule serves as it is - so it goes out
+    /// without being compressed again. ContentEncoding is written as text then,
+    /// since the coding need not be one this program can produce
+    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
   published
     /// TCP Client Connection Error
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
@@ -193,6 +199,7 @@ begin
   FStatusCode := -1;
   FErrorCode := 0;
   FTransportError := rteNone;
+  FContentEncoded := False;
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
@@ -306,7 +313,10 @@ begin
 
   Params.CriptoOptions.CriptType := ContentCripto;
   Params.CriptoOptions.Key := CriptoKey;
-  Params.CompressType := ContentCompress;
+  if FContentEncoded then
+    Params.CompressType := ctNone // coded already - see ContentEncoded
+  else
+    Params.CompressType := ContentCompress;
   Params.ContentDispositionInline := ContentDispositionInline;
 
   Result := Params.EncodeBody(vContentType, vContentDisposition);

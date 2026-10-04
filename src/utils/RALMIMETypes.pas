@@ -206,9 +206,57 @@ type
 const
   DEFAULTCONTENTTYPE = rctNONE;
 
+/// True for media types whose bytes are compressed already - images, audio,
+/// video, archives, web fonts: a coding over them spends a whole pass to come
+/// out the same size or larger. Parameters ('; charset=') and case are ignored
+function RALIsCompressedMediaType(const AContentType: StringRAL): boolean;
+
 implementation
 
+uses
+  RALTools;
+
 {$I RALMIMETypes.inc}
+
+function RALIsCompressedMediaType(const AContentType: StringRAL): boolean;
+const
+  { whole types. What compresses is left out on purpose - SVG, BMP, TIFF,
+    WAV, TTF/OTF, PDF - and so is application/octet-stream, which says nothing
+    about the bytes. Windows' registry spells a few its own way, and those are
+    here too }
+  cTypes: array[0..36] of StringRAL = (
+    'image/png', 'image/jpeg', 'image/pjpeg', 'image/gif', 'image/webp',
+    'image/avif', 'image/heic', 'image/heif', 'image/jxl', 'image/jp2',
+    'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/x-aac', 'audio/ogg',
+    'audio/opus', 'audio/webm', 'audio/flac', 'audio/x-flac', 'audio/vorbis',
+    'audio/x-m4a', 'audio/x-ms-wma',
+    'application/zip', 'application/x-zip-compressed', 'application/gzip',
+    'application/x-gzip',
+    'application/x-bzip2', 'application/x-xz', 'application/x-7z-compressed',
+    'application/x-rar-compressed', 'application/vnd.rar', 'application/zstd',
+    'application/java-archive', 'application/vnd.android.package-archive',
+    'application/font-woff', 'font/woff', 'font/woff2');
+var
+  vType: StringRAL;
+  vPos, vInt: IntegerRAL;
+begin
+  vType := RALTrim(AContentType);
+  vPos := Pos(StringRAL(';'), vType);
+  if vPos > 0 then
+    vType := RALTrim(Copy(vType, 1, vPos - 1));
+
+  { video is compressed whatever its container says }
+  Result := RALSameName(Copy(vType, 1, 6), 'video/');
+  if Result then
+    Exit;
+
+  for vInt := Low(cTypes) to High(cTypes) do
+    if RALSameName(vType, cTypes[vInt]) then
+    begin
+      Result := True;
+      Break;
+    end;
+end;
 
 { TRALMIMEType }
 

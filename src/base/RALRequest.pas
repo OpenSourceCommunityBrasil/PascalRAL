@@ -91,10 +91,12 @@ type
     FMethod: TRALMethod;
     FQuery: StringRAL;
     FRoute: TCollectionItem;
+    FRouteData: TObject;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
     procedure SetAuthorization(const AValue: TRALAuthorization);
     procedure SetClientInfo(const AValue: TRALClientInfo);
+    procedure SetRouteData(AValue: TObject);
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
@@ -138,6 +140,12 @@ type
     /// route declares, which the params themselves, kept in the order they
     /// arrived, do not.
     property Route: TCollectionItem read FRoute write FRoute;
+    /// What the module answering the request worked out while deciding to
+    /// answer it, for its handler to use instead of working it out again - the
+    /// WebModule keeps the file it resolved here. OWNED by the request: freed
+    /// with it, or when another object is assigned. Server side only, and
+    /// Clone leaves it behind
+    property RouteData: TObject read FRouteData write SetRouteData;
   published
     property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
     property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
@@ -207,6 +215,14 @@ begin
   RALAssignOwned(FClientInfo, AValue);
 end;
 
+procedure TRALRequest.SetRouteData(AValue: TObject);
+begin
+  if AValue = FRouteData then
+    Exit;
+  FRouteData.Free;
+  FRouteData := AValue;
+end;
+
 procedure TRALRequest.ParseQueryParams(const AValue: StringRAL);
 begin
   { the same parser as everywhere else (AppendParamsText): '&' only, decoded,
@@ -263,6 +279,7 @@ end;
 
 destructor TRALRequest.Destroy;
 begin
+  FreeAndNil(FRouteData);
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
   inherited;
