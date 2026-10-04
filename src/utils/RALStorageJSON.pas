@@ -551,6 +551,7 @@ const
 var
   vjObj: TRALJSONObject;
   vInt, vSize: IntegerRAL;
+  vInt64: Int64;
   vName: StringRAL;
   vField: TField;
   vType: TFieldType;
@@ -601,9 +602,14 @@ begin
         rjtNumber:
           begin
             vSize := 0;
-            vType := ftFloat;
-            if Frac(vjValue.AsFloat) = 0 then
-              vType := ftLargeint;
+            { the text decides, not the double: past 2^53 every double is a
+              whole number, so a decimal of twenty digits came back from
+              AsFloat with no fraction, was taken for an integer, and the first
+              record raised reading it }
+            if TryStrToInt64(string(vjValue.AsString), vInt64) then
+              vType := ftLargeint
+            else
+              vType := ftFloat;
           end;
         rjtBoolean:
           begin
@@ -805,6 +811,12 @@ begin
     vVirg2 := False;
     for vInt := 0 to Pred(ADataset.FieldCount) do
     begin
+      { a null is null: written as the field's value, it came back as 0, an
+        empty text or False - the reader always skipped a JSON null, and
+        nothing ever wrote one }
+      if ADataset.Fields[vInt].IsNull then
+        vValue := 'null'
+      else
       case FFieldTypes[vInt] of
         sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord, sftCardinal,
           sftQWord:
