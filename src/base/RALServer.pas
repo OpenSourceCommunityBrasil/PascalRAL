@@ -1034,6 +1034,7 @@ var
   vCheck_Authentication: boolean;
   vRouteIsAuth: boolean;
   vBody: TRALParam;
+  vAllowed: TRALMethods;
 
 label
   aSTATUS, aOK, a401, a403, a404, a405, aFIM;
@@ -1055,6 +1056,7 @@ begin
   end;
   try
     vRouteIsAuth := False;
+    vAllowed := [];
 
     // a fixed CompressType on the server always wins: it is an explicit
     // choice by whoever set up the server, so the client cannot opt out of
@@ -1154,12 +1156,32 @@ begin
           goto aOK;
       end
       else
+      begin
+        vAllowed := vRoute.AllowedMethods;
         goto a405;
+      end;
     end
     else if (ARequest.Query = '/') and (FShowServerStatus) then
       goto aSTATUS
     else
+    begin
+      { no route takes this method: CanAnswerRoute only finds one that does,
+        since several routes may share a path with a verb each, and so a verb
+        outside AllowedMethods came back as a 404 - the 405 below was reached
+        by the WebModule's files alone. A path some route has is 405, with what
+        all of its routes take in Allow; only a path no route has is 404.
+        OPTIONS keeps the 404 it gets above from a route that does not take it }
+      if ARequest.Method <> amOPTIONS then
+      begin
+        vAllowed := FRoutes.AllowedMethodsOf(ARequest);
+        for vInt := 0 to Pred(FListSubModules.Count) do
+          vAllowed := vAllowed +
+            TRALModuleRoutes(FListSubModules.Items[vInt]).Routes.AllowedMethodsOf(ARequest);
+        if vAllowed <> [] then
+          goto a405;
+      end;
       goto a404;
+    end;
 
     aSTATUS:
     begin
@@ -1210,7 +1232,7 @@ begin
         405, not 403. RFC 9110 15.5.6: a 405 MUST say which methods the
         resource does take, in Allow. }
       AResponse.Answer(HTTP_MethodNotAllowed);
-      AResponse.AddHeader('Allow', vRoute.GetAllowMethods);
+      AResponse.AddHeader('Allow', RALAllowedMethodsText(vAllowed));
       goto aFIM;
     end;
 
