@@ -295,13 +295,15 @@ type
     /// Fills the 'ADest' StringList with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
                            ASeparator: StringRAL = '='); overload;
-    /// Fills the 'ADest' Strings with RALParams matching 'AKind'.
+    /// Fills the 'ADest' Strings with RALParams matching 'AKind'. Headers and
+    /// cookies come out as RALSafeHeaderText leaves them: no CR, LF or NUL.
     procedure AssignParams(ADest: TStrings; AKind: TRALParamKind;
                            ASeparator: StringRAL = '='); overload;
     /// Returns an UTF8 String with RALParams matching 'AKind'.
     function AssignParamsListText(AKind: TRALParamKind;
                                   const ANameSeparator: StringRAL = '='): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind'. Can accept a different Line Separator than CRLF.
+    /// Headers and cookies come out as RALSafeHeaderText leaves them, unless URL-encoded.
     function AssignParamsText(AKind: TRALParamKind; AUrlEncoded: boolean = False;
                               const ANameSeparator: StringRAL = '=';
                               const ALineSeparator: StringRAL = '&'): StringRAL;
@@ -1588,11 +1590,19 @@ procedure TRALParams.AssignParams(ADest: TStrings; AKind: TRALParamKind;
 var
   vInt: IntegerRAL;
   vParam: TRALParam;
+  vHeader: boolean;
 begin
+  { a header or a cookie is one line of the message: a CR or LF in it would
+    end the line where the value chose. Other kinds are left as they are }
+  vHeader := AKind in [rpkHEADER, rpkCOOKIE];
   for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind = AKind then
+    if vParam.Kind <> AKind then
+      Continue;
+    if vHeader then
+      ADest.Add(RALSafeHeaderText(vParam.ParamName + ASeparator + vParam.AsString))
+    else
       ADest.Add(vParam.ParamName + ASeparator + vParam.AsString);
   end;
 end;
@@ -1619,6 +1629,7 @@ var
   vInt: integer;
   vParam: TRALParam;
   vUsed, vCap: IntegerRAL;
+  vHeader: boolean;
 
   procedure Put(const AText: StringRAL);
   var
@@ -1643,13 +1654,23 @@ begin
   Result := '';
   vUsed := 0;
   vCap := 0;
+  { the same rule as AssignParams - a URL-encoded text is never a header }
+  vHeader := (AKind in [rpkHEADER, rpkCOOKIE]) and (not AUrlEncoded);
   for vInt := 0 to Pred(Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
-    if vParam.Kind = AKind then
+    if vParam.Kind <> AKind then
+      Continue;
+    if vUsed > 0 then
+      Put(ALineSeparator);
+    if vHeader then
     begin
-      if vUsed > 0 then
-        Put(ALineSeparator);
+      Put(RALSafeHeaderText(vParam.ParamName));
+      Put(ANameSeparator);
+      Put(RALSafeHeaderText(vParam.AsString));
+    end
+    else
+    begin
       Put(vParam.ParamName);
       Put(ANameSeparator);
       if AUrlEncoded then

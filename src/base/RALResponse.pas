@@ -138,29 +138,16 @@ begin
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
-const
-  HTTPMonths: array[1..12] of string[3] = (
-    'Jan', 'Feb', 'Mar', 'Apr',
-    'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec');
-  HTTPDays: array[1..7] of string[3] = (
-    'Sun', 'Mon', 'Tue', 'Wed',
-    'Thu', 'Fri', 'Sat');
-
-  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
-  Expire     = '; Expires=%s GMT';
 var
   vInt: integer;
-  vYear, vMonth, vDay: Word;
-  vExpire, vValue : StringRAL;
+  vAttrs: StringRAL;
   vParam: TRALParam;
 begin
-  ADateTime := RALDateTimeToGMT(ADateTime);
-  DecodeDate(ADateTime, vYear, vMonth, vDay);
-
-  vExpire := FormatDateTime(DateFormat, ADateTime);
-  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
-  vExpire := Format(Expire, [vExpire]);
+  { what a plain name=value cookie carries: the server's CookieLife, as a date
+    that does not depend on the locale (FormatDateTime wrote its time separator
+    where ':' stood), and Path=/ so the browser sends it to every route - with
+    no Path it kept the cookie for the folder of the URL that set it }
+  vAttrs := '; Expires=' + RALHTTPDate(RALDateTimeToGMT(ADateTime)) + '; Path=/';
 
   for vInt := 0 to Pred(Params.Count) do
   begin
@@ -170,11 +157,12 @@ begin
       { AddCookie(TRALCookie) stores the whole Set-Cookie value - name,
         value, Expires, Path, HttpOnly, Secure - in a param named Set-Cookie:
         that one goes out as it is. A plain name=value param gets the
-        server's CookieLife. Every engine builds its cookies from this list }
+        attributes above. Every engine builds its cookies from this list,
+        so this is where a CR or LF in one is taken out (RALSafeHeaderText) }
       if RALSameName(vParam.ParamName, 'Set-Cookie') then
-        ADest.Add(vParam.AsString)
+        ADest.Add(RALSafeHeaderText(vParam.AsString))
       else
-        ADest.Add(vParam.ParamName + '=' + vParam.AsString + ';' + vExpire);
+        ADest.Add(RALSafeHeaderText(vParam.ParamName + '=' + vParam.AsString) + vAttrs);
     end;
   end;
 end;

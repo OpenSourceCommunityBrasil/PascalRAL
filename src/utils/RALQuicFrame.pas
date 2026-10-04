@@ -41,7 +41,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALParams, RALRequest, RALResponse, RALCompress,
-  RALCripto, RALClient;
+  RALCripto, RALClient, RALTools;
 
 const
   /// The largest single block this reader will believe. A size prefix read
@@ -204,8 +204,10 @@ begin
     vParam := AParams.Index[vInt];
     if vParam.Kind <> rpkHEADER then
       Continue;
-    AHeaders[ACount].Name := vParam.ParamName;
-    AHeaders[ACount].Value := vParam.AsString;
+    { the frame carries lengths, not lines, but a header is the same thing on
+      every engine: no CR or LF, as HTTP/2 and HTTP/3 require of theirs too }
+    AHeaders[ACount].Name := RALSafeHeaderText(vParam.ParamName);
+    AHeaders[ACount].Value := RALSafeHeaderText(vParam.AsString);
     Inc(Result, 8 + Length(AHeaders[ACount].Name) + Length(AHeaders[ACount].Value));
     Inc(ACount);
   end;

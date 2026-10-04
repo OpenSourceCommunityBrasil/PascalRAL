@@ -513,7 +513,7 @@ begin
         vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
         if vParam <> nil then
         begin
-          AResponse.WWWAuthenticate := vParam.AsString;
+          AResponse.WWWAuthenticate := RALSafeHeaderText(vParam.AsString);
           vResponse.Params.DelParam('WWW-Authenticate');
         end;
 

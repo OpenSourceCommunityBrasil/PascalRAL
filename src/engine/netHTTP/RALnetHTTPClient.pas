@@ -13,7 +13,7 @@ uses
   {$ENDIF}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
   RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
-  RALCompress, RALResponse;
+  RALCompress, RALResponse, RALTools;
 
 { whether the RTL lets the engine veto a redirect before it is followed - see
   KeepOnTLS; tested by declaration, like RALNETHTTP_VERSIONED below }
@@ -1135,7 +1135,9 @@ begin
       vParam := ARequest.Params.Index[vInt];
       if vParam.Kind = rpkHEADER then
       begin
-        vHeaders[vIdx] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+        { WinHTTP reads a CRLF inside a header as the start of another one }
+        vHeaders[vIdx] := TNameValuePair.Create(RALSafeHeaderText(vParam.ParamName),
+                                                RALSafeHeaderText(vParam.AsString));
         vIdx := vIdx + 1;
       end
       else if vParam.Kind = rpkCOOKIE then
@@ -1148,7 +1150,7 @@ begin
 
     if vCookies <> '' then
     begin
-      vHeaders[vIdx] := TNameValuePair.Create('Cookie', vCookies);
+      vHeaders[vIdx] := TNameValuePair.Create('Cookie', RALSafeHeaderText(vCookies));
       vIdx := vIdx + 1;
     end;
 

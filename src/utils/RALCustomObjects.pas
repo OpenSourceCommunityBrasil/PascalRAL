@@ -65,6 +65,7 @@ type
     function GetProtocol: StringRAL;
     procedure SetContentCompress(const AValue: TRALCompressType);
     procedure SetContentCripto(AValue: TRALCriptoType);
+    procedure SetContentDisposition(const AValue: StringRAL);
     procedure SetContentType(const AValue: StringRAL);
     procedure SetProtocol(const AValue: StringRAL);
   public
@@ -122,7 +123,7 @@ type
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
+    property ContentDisposition: StringRAL read FContentDisposition write SetContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
     /// Which HTTP version carried this message, as the transport REPORTS it -
     /// never what was asked for, since ALPN settles that during the TLS
@@ -188,9 +189,15 @@ begin
   FContentEncription := CriptoToStrCripto(AValue);
 end;
 
+procedure TRALHTTPHeaderInfo.SetContentDisposition(const AValue: StringRAL);
+begin
+  { the file name in it is often the client's own: kept to one line }
+  FContentDisposition := RALSafeHeaderText(AValue);
+end;
+
 procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
 begin
-  FContentType := AValue;
+  FContentType := RALSafeHeaderText(AValue); // one header line, whatever AValue held
   { Never on a multipart container. RFC 2046 puts the charset on each part, so
     the parameter means nothing here - and appending anything after "boundary="
     breaks every parser that reads the boundary as the rest of the header value.

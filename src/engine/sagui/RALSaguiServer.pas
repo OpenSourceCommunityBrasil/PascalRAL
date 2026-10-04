@@ -835,11 +835,15 @@ end;
 procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
 var
   vInt: integer;
+  vParam: TRALParam;
 begin
+  { what this fills is the response's header map, and each entry becomes one
+    header line: no CR or LF in it, as on every engine }
   for vInt := 0 to Pred(AParams.Count) do
   begin
-    if AParams.Index[vInt].Kind = AKind then
-      Add(AParams.Index[vInt].ParamName, AParams.Index[vInt].AsString);
+    vParam := AParams.Index[vInt];
+    if vParam.Kind = AKind then
+      Add(RALSafeHeaderText(vParam.ParamName), RALSafeHeaderText(vParam.AsString));
   end;
 end;
 

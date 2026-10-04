@@ -65,6 +65,28 @@ function RALTryStrToCurr(const AValue: StringRAL; out AResult: Currency): Boolea
 function RALTrimRight(const A: StringRAL): StringRAL;
 /// The same, both ends.
 function RALTrim(const A: StringRAL): StringRAL;
+/// A header or cookie as RFC 9110 5.5 wants it on the wire: CR, LF and NUL
+/// become a space. A value an application takes from a request - a file name
+/// in Content-Disposition, a cookie, an echoed header - would otherwise end the
+/// line where the client chose and write headers, or a body, of its own
+/// (response splitting). Every engine sends its headers and cookies through
+/// this. The same string comes back when there is nothing to replace.
+function RALSafeHeaderText(const AText: StringRAL): StringRAL;
+/// An HTTP date (RFC 9110 5.6.7) of a moment already in UTC:
+/// 'Sun, 06 Nov 1994 08:49:37 GMT'. Digits and English names only - the RTL's
+/// FormatDateTime puts the locale's time separator where ':' is written
+function RALHTTPDate(AUtc: TDateTime): StringRAL;
+/// Copies the published properties ASource and ADest have in common - what a
+/// form would store - so that an AssignTo is one line and a property added
+/// later is copied without anyone having to remember it. A sub-object
+/// (TStrings, a collection, options) is copied INTO the one ADest has; a
+/// component is a reference, and the reference is what goes over
+procedure RALAssignProperties(ASource, ADest: TPersistent);
+/// The setter of a property whose object the class created and frees: copies
+/// AValue into AOwned and never takes the pointer, which leaked the owned one
+/// and left the class holding an object its caller may free. nil and AOwned
+/// itself are ignored
+procedure RALAssignOwned(AOwned, AValue: TPersistent);
 
 /// Atomic counters, spelled the same way on both compilers: Delphi has
 /// AtomicIncrement/AtomicDecrement in the RTL, FPC calls them InterLocked* and
@@ -127,6 +149,97 @@ begin
     Result := A
   else
     Result := Copy(A, vFirst, vLast - vFirst + 1);
+end;
+
+function RALSafeHeaderText(const AText: StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := AText;
+  for vInt := POSINISTR to RALHighStr(Result) do
+    if Result[vInt] in [#0, #10, #13] then
+      Result[vInt] := ' ';
+end;
+
+function RALHTTPDate(AUtc: TDateTime): StringRAL;
+const
+  cDays: array[1..7] of string = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+  cMonths: array[1..12] of string = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+var
+  vYear, vMonth, vDay, vHour, vMin, vSec, vMSec: Word;
+begin
+  DecodeDateTime(AUtc, vYear, vMonth, vDay, vHour, vMin, vSec, vMSec);
+  Result := StringRAL(Format('%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT',
+    [cDays[DayOfWeek(AUtc)], vDay, cMonths[vMonth], vYear, vHour, vMin, vSec]));
+end;
+
+procedure RALAssignProperties(ASource, ADest: TPersistent);
+var
+  vClass: TClass;
+  vList: PPropList;
+  vCount, vInt: Integer;
+  vProp: PPropInfo;
+  vType: PTypeInfo;
+  vObj, vOwn: TObject;
+begin
+  if (ASource = nil) or (ADest = nil) or (ASource = ADest) then
+    Exit;
+  { the properties of the closest class both are: a PPropInfo only means
+    something to the class that declares it and to its descendants }
+  vClass := ASource.ClassType;
+  while not ADest.InheritsFrom(vClass) do
+    vClass := vClass.ClassParent;
+  vCount := GetPropList(vClass.ClassInfo, vList);
+  try
+    for vInt := 0 to vCount - 1 do
+    begin
+      vProp := vList^[vInt];
+      vType := vProp^.PropType{$IFNDEF FPC}^{$ENDIF};
+      if vProp^.GetProc = nil then
+        Continue;
+      if vType^.Kind = tkClass then
+      begin
+        vObj := GetObjectProp(ASource, vProp);
+        if GetTypeData(vType)^.ClassType.InheritsFrom(TComponent) then
+        begin
+          if vProp^.SetProc <> nil then
+            SetObjectProp(ADest, vProp, vObj);
+        end
+        else
+        begin
+          vOwn := GetObjectProp(ADest, vProp);
+          if (vObj is TPersistent) and (vOwn is TPersistent) and (vOwn <> vObj) then
+            TPersistent(vOwn).Assign(TPersistent(vObj));
+        end;
+        Continue;
+      end;
+      if vProp^.SetProc = nil then
+        Continue;
+      case vType^.Kind of
+        tkInteger, tkChar, tkWChar, tkEnumeration, tkSet{$IFDEF FPC}, tkBool, tkUChar{$ENDIF}:
+          SetOrdProp(ADest, vProp, GetOrdProp(ASource, vProp));
+        tkInt64{$IFDEF FPC}, tkQWord{$ENDIF}:
+          SetInt64Prop(ADest, vProp, GetInt64Prop(ASource, vProp));
+        tkFloat:
+          SetFloatProp(ADest, vProp, GetFloatProp(ASource, vProp));
+        tkString, tkLString, tkWString, tkUString{$IFDEF FPC}, tkAString{$ENDIF}:
+          SetStrProp(ADest, vProp, GetStrProp(ASource, vProp));
+        tkVariant:
+          SetVariantProp(ADest, vProp, GetVariantProp(ASource, vProp));
+        tkMethod:
+          SetMethodProp(ADest, vProp, GetMethodProp(ASource, vProp));
+      end;
+    end;
+  finally
+    FreeMem(vList);
+  end;
+end;
+
+procedure RALAssignOwned(AOwned, AValue: TPersistent);
+begin
+  if (AValue <> nil) and (AValue <> AOwned) then
+    AOwned.Assign(AValue);
 end;
 
 function RALDateTimeToISO8601(const AValue: TDateTime; AInputIsUTC: Boolean): StringRAL;
