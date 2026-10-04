@@ -589,9 +589,11 @@ begin
 
       { Not every mORMot2 server hands these three over in InHeaders.
         ParseHeader consumes them into fields of its own and only returns them
-        to the list when HeadersUnFiltered is on - and the one reading that
-        option is THttpServer; THttpAsyncServer never consults it, so there
-        they arrive empty even with hsoHeadersUnfiltered asked for.
+        to the list when HeadersUnFiltered is on - and THttpServer reads that
+        option on every request, while THttpAsyncServer hands it only to the
+        first request of a connection object it creates: Reset clears it with
+        the rest, so from the second request on, and on every recycled
+        connection, they arrive empty even with hsoHeadersUnfiltered asked for.
 
         The effect was silent and only on the ERROR answer: with CompressType
         ctNone the server follows the client's Accept-Encoding, and without it
@@ -607,6 +609,16 @@ begin
       begin
         if vRequest.AcceptEncoding = '' then
           vRequest.AcceptEncoding := StringRAL(AContext.ConnectionHttp^.AcceptEncoding);
+        { and emptied once read: THttpRequestContext.Reset clears every field
+          of a request but this one, so a request WITHOUT the header found the
+          previous one's - on a kept-alive connection in both socket modes, and
+          in smAsync on the connection object a new client is handed, since
+          Reset also drops hsoHeadersUnfiltered there. A client that never
+          asked got its answer compressed. mORMot2 only reads the field while
+          parsing, before this handler runs. Left behind still: a request
+          mORMot2 refuses on its own (a Range it cannot parse), which never
+          reaches here }
+        AContext.ConnectionHttp^.AcceptEncoding := '';
         if vRequest.ClientInfo.UserAgent = '' then
           vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);
         { the Range too: the same servers keep it to themselves, parsed into the

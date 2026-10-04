@@ -753,6 +753,10 @@ begin
       vDBSQL.Response.RowsAffected := vWriter.ReadInt64;
       vDBSQL.Response.LastId := vWriter.ReadInt64;
 
+      { emptied first: a cache read before - a memtable keeps one - left the
+        last answer in it, and ReadStream writes over it from the start, so a
+        shorter or an empty answer kept the old one's tail }
+      vDBSQL.Response.Stream.Size := 0;
       vWriter.ReadStream(vDBSQL.Response.Stream);
     end;
   finally

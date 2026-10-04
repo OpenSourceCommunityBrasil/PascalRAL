@@ -458,10 +458,17 @@ var
 begin
   vQWord := ReadSize;
   CheckSize(vQWord);
-  { the whole size at once instead of growing step by step with the copy }
-  if AStream is TMemoryStream then
-    AStream.Size := AStream.Position + Int64(vQWord);
-  AStream.CopyFrom(FStream, vQWord);
+  { nothing to copy is nothing: CopyFrom reads a count of 0 as "all of it,
+    from the start", on both compilers, so an empty stream in the data copied
+    the whole of FStream in its place - this field, the ones after it and the
+    ones before - and every read after it ran past the end }
+  if vQWord > 0 then
+  begin
+    { the whole size at once instead of growing step by step with the copy }
+    if AStream is TMemoryStream then
+      AStream.Size := AStream.Position + Int64(vQWord);
+    AStream.CopyFrom(FStream, vQWord);
+  end;
   AStream.Position := 0;
 end;
 
