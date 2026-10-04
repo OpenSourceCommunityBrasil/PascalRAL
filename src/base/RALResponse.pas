@@ -273,7 +273,10 @@ end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
-  Result := GetResponseEncText;
+  { the body as text, never what goes on the wire: on the server that used to
+    run the whole encoding - multipart, gzip, AES - to be thrown away, and
+    rewrote ContentType on the way. An engine wants GetResponseEncText }
+  Result := GetResponseEncText(False);
 end;
 
 { TRALServerResponse }
@@ -281,20 +284,29 @@ end;
 function TRALServerResponse.GetResponseEncStream(const AEncode: boolean): TStream;
 var
   vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
   if not AEncode then
   begin
-    Params.CriptoOptions.CriptType := crNone;
-    Params.CriptoOptions.Key := '';
+    { the plain body, and nothing touched: no cipher key wiped, no
+      ContentType rewritten - the same as TRALClientResponse does }
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
     Params.CompressType := ctNone;
-  end
-  else
-  begin
-    Params.CriptoOptions.CriptType := ContentCripto;
-    Params.CriptoOptions.Key := CriptoKey;
-    Params.CompressType := ContentCompress;
+    Params.CriptoOptions.CriptType := crNone;
+    try
+      Result := Params.EncodeBody(vContentType, vContentDisposition);
+    finally
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
+    Exit;
   end;
 
+  Params.CriptoOptions.CriptType := ContentCripto;
+  Params.CriptoOptions.Key := CriptoKey;
+  Params.CompressType := ContentCompress;
   Params.ContentDispositionInline := ContentDispositionInline;
 
   Result := Params.EncodeBody(vContentType, vContentDisposition);

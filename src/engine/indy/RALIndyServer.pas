@@ -23,11 +23,12 @@ type
   TRALIndySSL = class(TRALSSL)
   private
     FSSLOptions: TIdSSLOptionsRAL;
+    procedure SetSSLOptions(const AValue: TIdSSLOptionsRAL);
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write FSSLOptions;
+    property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write SetSSLOptions;
   end;
 
   { TRALIndyServer }
@@ -70,6 +71,27 @@ type
   end;
 
 implementation
+
+{ The answer to a request whose handling raised outside ProcessCommands -
+  decoding it, or building the answer. The exception used to be swallowed and
+  Indy then wrote its own default page: "200 OK" over a failure. Whatever the
+  answer had been given already goes with it, since a Content-Encoding or a
+  cipher header over a plain-text error would have the client misread it }
+procedure AnswerFailure(AResponseInfo: TIdHTTPResponseInfo; const AMessage: string);
+begin
+  if AResponseInfo.HeaderHasBeenWritten then
+    Exit;
+  AResponseInfo.ContentStream.Free; // this request's, whatever FreeContentStream says
+  AResponseInfo.ContentStream := nil;
+  AResponseInfo.CustomHeaders.Clear;
+  AResponseInfo.Cookies.Clear;
+  AResponseInfo.WWWAuthenticate.Clear;
+  AResponseInfo.ContentEncoding := '';
+  AResponseInfo.ContentDisposition := '';
+  AResponseInfo.ResponseNo := HTTP_InternalError;
+  AResponseInfo.ContentType := rctTEXTPLAIN;
+  AResponseInfo.ContentText := AMessage;
+end;
 
 { TRALIndyServer }
 
@@ -277,25 +299,14 @@ begin
 
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
 
+        { every cookie whole, on its own Set-Cookie line, from the builder all
+          engines share - a TIdCookie made a cookie CALLED Set-Cookie out of an
+          AddCookie(TRALCookie) one, which is why that case went out raw }
         vCookies := TStringList.Create;
         try
-          Params.AssignParams(vCookies, rpkCOOKIE);
+          GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
           for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            { a param named Set-Cookie carries a complete Set-Cookie value
-              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
-              Building a TIdCookie from it made a cookie CALLED Set-Cookie }
-            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
-            begin
-              AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies.ValueFromIndex[vInt]);
-              Continue;
-            end;
-            vIdCookie := AResponseInfo.Cookies.Add;
-            vIdCookie.CookieName := vCookies.Names[vInt];
-            vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-            vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, CookieLife));
-            vIdCookie.Path := '/';
-          end;
+            AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
         finally
           FreeAndNil(vCookies);
         end;
@@ -314,10 +325,13 @@ begin
       end;
     except
       on e: exception do
+      begin
+        AnswerFailure(AResponseInfo, e.Message);
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
           raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);
@@ -469,6 +483,12 @@ begin
   FreeAndNil(FSSLOptions);
   inherited;
 end;
+
+procedure TRALIndySSL.SetSSLOptions(const AValue: TIdSSLOptionsRAL);
+begin
+  RALAssignOwned(FSSLOptions, AValue);
+end;
+
 
 { TIdSSLOptionsRAL }
 

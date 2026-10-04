@@ -48,6 +48,7 @@ type
     procedure DropSchema;
 
     procedure SetSQL(AValue: TStrings);
+    procedure SetParams(const AValue: TParams);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
     procedure SetStorage(const AValue: TRALStorageLink);
@@ -84,7 +85,7 @@ type
     property FieldDefs;
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
-    property Params: TParams read FParams write FParams;
+    property Params: TParams read FParams write SetParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
@@ -252,6 +253,11 @@ begin
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
+end;
+
+procedure TRALDBZMemTable.SetParams(const AValue: TParams);
+begin
+  RALAssignOwned(FParams, AValue);
 end;
 
 procedure TRALDBZMemTable.SetSQL(AValue: TStrings);

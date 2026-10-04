@@ -511,19 +511,26 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetBody(AContent: StringRAL);
 begin
-  Params.ClearParams;
+  Params.ClearParams(rpkBODY); // the body only: headers, cookies and query stay
   Params.AddValue(AContent, rpkBODY);
 end;
 
 procedure TRALHTTPHeaderInfo.SetBody(AContent: TStream);
 begin
-  Params.ClearParams;
+  Params.ClearParams(rpkBODY);
   Params.AddValue(AContent, rpkBODY);
 end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  FContentEncoding := TRALCompress.CompressToString(AValue);
+  { only a coding this program can produce. ContentCompress already reads back
+    ctNone for one whose unit is not linked, so the body went out as it was -
+    while Content-Encoding, written from here, still named it: a server with
+    CompressType = ctZStd and no zstd linked answered "zstd" over plain bytes }
+  if GetCompressClass(AValue) <> nil then
+    FContentEncoding := TRALCompress.CompressToString(AValue)
+  else
+    FContentEncoding := '';
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;

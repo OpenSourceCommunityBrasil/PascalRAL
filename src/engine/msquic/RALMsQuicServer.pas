@@ -1198,10 +1198,11 @@ begin
           else
             vRequest.Method := amUNKNOWN;
 
-          vRequest.Query := vUrl;
-          vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+          vRequest.Query := vUrl; // parses the query string too
 
-          vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+          { the header, by kind: ParamByName took a query param named
+            cookie first, so ?cookie=... set the request's cookies }
+          vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
           DecodeAuth(vRequest);
 
           vRequest.ContentType := vRequest.Params.Get['Content-Type'].AsString;
@@ -1234,12 +1235,16 @@ begin
       end;
     except
       on e: exception do
+      begin
+        { the 500 first, as ProcessCommands does: with OnServerError
+          assigned, the answer used to go out as it stood - a 200 over a
+          failure }
+        vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
-          raise
-        else
-          vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+          raise;
+      end;
     end;
 
     { THE BODY COMES FIRST, and the order is not cosmetic: the getter runs

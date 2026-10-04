@@ -33,11 +33,12 @@ type
   TRALfpHTTPSSL = class(TRALSSL)
   private
     FSSLOptions: TRALfpHTTPCertData;
+    procedure SetSSLOptions(const AValue: TRALfpHTTPCertData);
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TRALfpHTTPCertData read FSSLOptions write FSSLOptions;
+    property SSLOptions: TRALfpHTTPCertData read FSSLOptions write SetSSLOptions;
   end;
 
   TRALfpHttpServer = class;
@@ -165,7 +166,8 @@ uses
     WinSock2,
   {$ENDIF}
   // CloseSocket for the handlers still open past the wait
-  sockets;
+  sockets,
+  RALMIMETypes;
 
 { The listen backlog, as large as the system allows and fcl-web can keep: it
   holds QueueSize in a Word, and Windows' SOMAXCONN is $7FFFFFFF. Assigned
@@ -179,6 +181,27 @@ begin
   if vMax > High(Word) then
     vMax := High(Word);
   Result := vMax;
+end;
+
+{ The answer to a request whose handling raised outside ProcessCommands -
+  decoding it, or building the answer. The exception used to be swallowed and
+  fcl-web then sent the response as it stood: 200 by default, over a failure.
+  Whatever the answer had been given already goes with it, since a
+  Content-Encoding or a cipher header over a plain-text error would have the
+  client misread it }
+procedure AnswerFailure(AResponse: TFPHTTPConnectionResponse; const AMessage: string);
+begin
+  if AResponse.HeadersSent then
+    Exit;
+  AResponse.FreeContentStream := True; // this request's, assigned or not yet owned
+  AResponse.ContentStream := nil;
+  AResponse.CustomHeaders.Clear;
+  AResponse.Cookies.Clear;
+  AResponse.WWWAuthenticate := '';
+  AResponse.ContentEncoding := '';
+  AResponse.Code := HTTP_InternalError;
+  AResponse.ContentType := rctTEXTPLAIN;
+  AResponse.Content := AMessage;
 end;
 
 { TRALfpHTTPCertData }
@@ -380,7 +403,6 @@ var
   vConnClose: boolean;
   vCookies: TStringList;
   vParam: TRALParam;
-  vCookie: TCookie;
 begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
@@ -405,8 +427,7 @@ begin
         ContentType := ARequest.ContentType;
         ContentSize := ARequest.ContentLength;
 
-        Query := ARequest.URI;
-        Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
+        Query := ARequest.URI; // parses the query string too
 
         Method := HTTPMethodToRALMethod(ARequest.Method);
 
@@ -521,25 +542,16 @@ begin
         if vConnClose then
           AResponse.Connection := 'close';
 
+        { every cookie whole, on its own Set-Cookie line, from the builder all
+          engines share. fcl-web's TCookie writes Expires through FormatDateTime
+          with the colons unquoted (HTTPDateFmt), so a locale whose time
+          separator is not ':' sent an invalid date; and a TCookie made a cookie
+          CALLED Set-Cookie out of an AddCookie(TRALCookie) one }
         vCookies := TStringList.Create;
         try
-          Params.AssignParams(vCookies, rpkCOOKIE);
+          GetParamsCookies(vCookies, IncMinute(Now, FParent.CookieLife));
           for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            { a param named Set-Cookie carries a complete Set-Cookie value
-              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
-              Building a TCookie from it made a cookie CALLED Set-Cookie }
-            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
-            begin
-              AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies.ValueFromIndex[vInt]);
-              Continue;
-            end;
-            vCookie := AResponse.Cookies.Add;
-            vCookie.Name := vCookies.Names[vInt];
-            vCookie.Value := vCookies.ValueFromIndex[vInt];
-            vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
-            vCookie.Path := '/';
-          end;
+            AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
         finally
           FreeAndNil(vCookies);
         end;
@@ -565,10 +577,13 @@ begin
       end;
     except
       on e: exception do
+      begin
+        AnswerFailure(AResponse, e.Message);
         if Assigned(FParent.OnServerError) then
           FParent.OnServerError(e)
         else if FParent.RaiseError then
           raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);
@@ -749,6 +764,12 @@ begin
   FSSLOptions.Free;
   inherited;
 end;
+
+procedure TRALfpHTTPSSL.SetSSLOptions(const AValue: TRALfpHTTPCertData);
+begin
+  RALAssignOwned(FSSLOptions, AValue);
+end;
+
 
 { TRALfpHttpServer }
 

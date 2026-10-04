@@ -52,6 +52,7 @@ type
     procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
+    procedure SetParams(const AValue: TParams);
     procedure SetRALConnection(const AValue: TRALDBConnection);
     procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
     procedure SetStorage(const AValue: TRALStorageLink);
@@ -87,7 +88,7 @@ type
   published
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
-    property Params: TParams read FParams write FParams;
+    property Params: TParams read FParams write SetParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
@@ -680,6 +681,11 @@ begin
 
   if FRALConnection <> nil then
     FRALConnection.FreeNotification(Self);
+end;
+
+procedure TRALDBFDMemTable.SetParams(const AValue: TParams);
+begin
+  RALAssignOwned(FParams, AValue);
 end;
 
 procedure TRALDBFDMemTable.SetSQL(AValue: TStrings);

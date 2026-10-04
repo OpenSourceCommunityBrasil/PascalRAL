@@ -2,7 +2,7 @@ uses
   {$IFDEF RALWindows}
     Windows,
   {$ENDIF}
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
   RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALNetwork;
 
@@ -30,6 +30,39 @@ implementation
 
 var
   FCGIApp : TCGIApplication;
+
+{ One cookie of GetParamsCookies, as Web.HTTPApp can send it. TWebResponse
+  writes its custom headers by name (Values[Name]), so a second Set-Cookie line
+  there went out as a copy of the first: each cookie goes into Cookies instead.
+  TCookie has no Max-Age, so one becomes the moment it stands for, and Lax is
+  what a browser assumes, so only None and Strict are written - as GetCookieText
+  does. TCookie gained HttpOnly and SameSite late; below 10.4 they are not set }
+procedure AddWebCookie(AResponse: TWebResponse; const ACookie: TRALCookie);
+var
+  vCookie: TCookie;
+begin
+  if ACookie.Name = '' then
+    Exit;
+  vCookie := AResponse.Cookies.Add;
+  vCookie.Name := string(ACookie.Name);
+  vCookie.Value := string(ACookie.Value);
+  vCookie.Domain := string(ACookie.Domain);
+  vCookie.Path := string(ACookie.Path);
+  if ACookie.MaxAge < 0 then
+    vCookie.Expires := EncodeDate(1970, 1, 1)
+  else if ACookie.MaxAge > 0 then
+    vCookie.Expires := IncSecond(RALDateTimeToGMT(Now), ACookie.MaxAge)
+  else if ACookie.Expires <> 0 then
+    vCookie.Expires := ACookie.Expires; // in GMT, as the line carried it
+  vCookie.Secure := ACookie.Secure;
+  {$IFDEF DELPHI10_4UP}
+  vCookie.HttpOnly := ACookie.HttpOnly;
+  case ACookie.SameSite of
+    cssNone: vCookie.SameSite := 'None';
+    cssStrict: vCookie.SameSite := 'Strict';
+  end;
+  {$ENDIF}
+end;
 
 { TRALCGIServer }
 
@@ -147,6 +180,7 @@ var
   vAux1, vAux2: StringRAL;
   vInt, vPos: IntegerRAL;
   vParam: TRALParam;
+  vCookies: TStringList;
 begin
   vServer := TRALCGIServer(FCGIApp.Owner);
 
@@ -218,6 +252,17 @@ begin
       vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
 
     vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
+
+    { cookies never left this engine - AddCookie and the JWT UseCookie did
+      nothing here. Built like every other engine's (GetParamsCookies) }
+    vCookies := TStringList.Create;
+    try
+      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        AddWebCookie(AResponse, GetRALCookieFromText(vCookies[vInt]));
+    finally
+      FreeAndNil(vCookies);
+    end;
 
     AResponse.Server := 'RAL_CGIDelphi';
     AResponse.ContentType := vResponse.ContentType;

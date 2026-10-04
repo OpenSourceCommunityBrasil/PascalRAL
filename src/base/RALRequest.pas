@@ -92,6 +92,8 @@ type
     FQuery: StringRAL;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
+    procedure SetAuthorization(const AValue: TRALAuthorization);
+    procedure SetClientInfo(const AValue: TRALClientInfo);
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
@@ -129,8 +131,8 @@ type
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
   published
-    property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
-    property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
+    property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
+    property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Host: StringRAL read FHost write FHost;
     /// The SCHEME, not the version: 'HTTP' or 'HTTPS'. Which version carried
@@ -182,21 +184,28 @@ end;
 
 function TRALRequest.GetRequestText: StringRAL;
 begin
-  Result := GetRequestEncText;
+  { the body as text, as on the response: on the client this ran gzip and AES
+    and rewrote ContentType. An engine wants RequestStream }
+  Result := GetRequestEncText(False);
+end;
+
+procedure TRALRequest.SetAuthorization(const AValue: TRALAuthorization);
+begin
+  RALAssignOwned(FAuthorization, AValue);
+end;
+
+procedure TRALRequest.SetClientInfo(const AValue: TRALClientInfo);
+begin
+  RALAssignOwned(FClientInfo, AValue);
 end;
 
 procedure TRALRequest.ParseQueryParams(const AValue: StringRAL);
-var
-  sl: TStringList;
 begin
-  sl := TStringList.Create;
-  try
-    sl.Delimiter := '&';
-    sl.DelimitedText := AValue;
-    Params.AppendParams(sl, rpkQUERY);
-  finally
-    FreeAndNil(sl);	
-  end;
+  { the same parser as everywhere else (AppendParamsText): '&' only, decoded,
+    empty segments skipped. A TStringList's DelimitedText also split on spaces
+    and read quotes - two parsers with two answers for one query string - and
+    the engines that set Query then parsed it a second time }
+  Params.AppendParamsText(AValue, rpkQUERY);
 end;
 
 function TRALRequest.GetURL: StringRAL;
@@ -436,19 +445,29 @@ end;
 function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
   vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
   if not AEncode then
   begin
-    Params.CriptoOptions.CriptType := crNone;
-    Params.CriptoOptions.Key := '';
+    { the plain body, and nothing touched: no cipher key wiped, no
+      ContentType or ContentCompress rewritten }
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
     Params.CompressType := ctNone;
-  end
-  else
-  begin
-    Params.CriptoOptions.CriptType := ContentCripto;
-    Params.CriptoOptions.Key := CriptoKey;
-    Params.CompressType := ContentCompress;
+    Params.CriptoOptions.CriptType := crNone;
+    try
+      Result := Params.EncodeBody(vContentType, vContentDisposition, False);
+    finally
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
+    Exit;
   end;
+
+  Params.CriptoOptions.CriptType := ContentCripto;
+  Params.CriptoOptions.Key := CriptoKey;
+  Params.CompressType := ContentCompress;
   { False: a multipart REQUEST goes out uncompressed. The server is the one that
     parses it, and a server that reads multipart natively - libmicrohttpd, under
     the Sagui engine - parses before any decompression layer, so it saw gzip

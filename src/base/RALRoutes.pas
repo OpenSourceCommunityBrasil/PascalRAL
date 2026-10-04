@@ -74,6 +74,8 @@ type
     procedure SetDisplayName(const AValue: string); override;
     procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
+    procedure SetInputParams(const AValue: TRALRouteParams);
+    procedure SetURIParams(const AValue: TRALRouteParams);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -94,13 +96,13 @@ type
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
-    property URIParams: TRALRouteParams read FURIParams write FURIParams;
+    property URIParams: TRALRouteParams read FURIParams write SetURIParams;
 
     property OnReply: TRALOnReply read FOnReply write FOnReply;
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
   published
     property Description: TStrings read FDescription write SetDescription;
-    property InputParams: TRALRouteParams read FInputParams write FInputParams;
+    property InputParams: TRALRouteParams read FInputParams write SetInputParams;
     property Route: StringRAL read FRoute write SetRoute;
   end;
 
@@ -277,6 +279,16 @@ begin
   end;
 end;
 
+procedure TRALBaseRoute.SetInputParams(const AValue: TRALRouteParams);
+begin
+  RALAssignOwned(FInputParams, AValue);
+end;
+
+procedure TRALBaseRoute.SetURIParams(const AValue: TRALRouteParams);
+begin
+  RALAssignOwned(FURIParams, AValue);
+end;
+
 procedure TRALBaseRoute.SetSkipAuthMethods(const AValue: TRALMethods);
 begin
   if FSkipAuthMethods <> AValue then
@@ -327,9 +339,12 @@ end;
 procedure TRALBaseRoute.AssignTo(Dest: TPersistent);
 var
   vDest: TRALBaseRoute;
-  vInt: integer;
-  vParam : TRALRouteParam;
 begin
+  if not (Dest is TRALBaseRoute) then
+  begin
+    inherited AssignTo(Dest);
+    Exit;
+  end;
   vDest := TRALBaseRoute(Dest);
   vDest.AllowedMethods := FAllowedMethods;
   vDest.AllowURIParams := FAllowURIParams;
@@ -338,20 +353,12 @@ begin
   vDest.Name := FName;
   vDest.Route := FRoute;
   vDest.SkipAuthMethods := FSkipAuthMethods;
-
-  vDest.URIParams.Clear;
-  for vInt := 0 to Pred(FURIParams.Count) do
-  begin
-    vParam := TRALRouteParam(vDest.URIParams.Add);
-    vParam.Assign(FURIParams.Items[vInt]);
-  end;
-
-  vDest.InputParams.Clear;
-  for vInt := 0 to Pred(FInputParams.Count) do
-  begin
-    vParam := TRALRouteParam(vDest.InputParams.Add);
-    vParam.Assign(FInputParams.Items[vInt]);
-  end;
+  vDest.URIParams.Assign(FURIParams);
+  vDest.InputParams.Assign(FInputParams);
+  { the handlers too: a copied route that answers nothing is no copy - and
+    with Routes now copied on assignment, the routes would have gone mute }
+  vDest.OnReply := FOnReply;
+  vDest.OnReplyGen := FOnReplyGen;
 end;
 
 function TRALBaseRoute.GetDisplayName: string;

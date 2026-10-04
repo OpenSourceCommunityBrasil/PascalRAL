@@ -569,6 +569,7 @@ type
     procedure SetKeepAliveInterval(AValue: IntegerRAL); virtual;
     procedure SetRequestTimeout(AValue: IntegerRAL); virtual;
     procedure SetSSL(AValue: TRALClientSSL);
+    procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
     procedure SetUserAgent(AValue: StringRAL); virtual;
 
     { Which BaseURL entry the next request starts from. Read and written under
@@ -643,7 +644,7 @@ type
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default DEFAULTCONNECTTIMEOUT;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     property Engine: StringRAL read FEngine;
     property EngineType : String read FEngineType write SetEngineType;
     /// Which HTTP version to ask the transport for - see TRALHTTPVersion. It
@@ -1570,6 +1571,11 @@ end;
 procedure TRALClient.SetRequestTimeout(AValue: IntegerRAL);
 begin
   FRequestTimeout := AValue;
+end;
+
+procedure TRALClient.SetCriptoOptions(const AValue: TRALCriptoOptions);
+begin
+  RALAssignOwned(FCriptoOptions, AValue);
 end;
 
 procedure TRALClient.SetSSL(AValue: TRALClientSSL);

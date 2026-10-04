@@ -65,6 +65,7 @@ type
     FNotBefore: TDateTime;
     FSubject: StringRAL;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetAsJSON: StringRAL;
     procedure SetAsJSON(const AValue: StringRAL);
   public
@@ -178,6 +179,8 @@ type
     FSessAlgorithm: boolean;
     FStale: StringRAL;
     FUserHash: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
     property Charset: StringRAL read FCharset write FCharset;
@@ -222,6 +225,16 @@ type
   end;
 
 implementation
+
+{ TRALDigestParams }
+
+procedure TRALDigestParams.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALDigestParams then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 { TRALDigest }
 
@@ -641,6 +654,19 @@ begin
     whichever came first. Renewing a token (OnRenewToken) is exactly that }
   DelClaim(AKey);
   FCustomClaims.Add(AKey + '=' + AValue);
+end;
+
+procedure TRALJWTParams.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALJWTParams then
+  begin
+    RALAssignProperties(Self, Dest);
+    { the claims of the application's own, which are not published:
+      name=value lines, no objects }
+    TRALJWTParams(Dest).FCustomClaims.Assign(FCustomClaims);
+  end
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALJWTParams.Create;

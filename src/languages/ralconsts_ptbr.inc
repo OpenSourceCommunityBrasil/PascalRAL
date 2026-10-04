@@ -86,6 +86,7 @@
   wmJWTInvalid = 'A assinatura ou o formato do token é inválido';
   wmJWTNotYetValid = 'O token ainda não é válido';
   wmJWTRefused = 'O token foi recusado pelo servidor';
+  emJWTNoSecretKey = 'JWT: a SignSecretKey está vazia, então o servidor não assina nem aceita tokens';
 
   // sagui error messages
   emSaguiLibraryLoadError = 'Erro ao tentar carregar libsagui.';

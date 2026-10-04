@@ -558,15 +558,16 @@ begin
       vRequest.ContentType := RawUtf8(AContext.InContentType);
       vRequest.ContentSize := Length(AContext.InContent);
 
-      vRequest.Query := RawUtf8(AContext.Url);
-      vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+      vRequest.Query := RawUtf8(AContext.Url); // parses the query string too
 
       vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
 
       vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
 
       // Parse cookie na entrada
-      vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+      { the header, by kind: ParamByName took a query param named cookie
+        first, so ?cookie=... set the request's cookies }
+      vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
 
       DecodeAuth(vRequest);
 
@@ -702,7 +703,7 @@ begin
 
       //with vResponse do
       begin
-        AContext.OutContent := vResponse.ResponseText;
+        AContext.OutContent := vResponse.GetResponseEncText; // the wire body: compressed, ciphered
         AContext.OutContentType := vResponse.ContentType;
 
         //if (vResponse.ContentDisposition <> EmptyStr) then
@@ -730,12 +731,21 @@ begin
       end;
     except
       on e: exception do
+      begin
+        { straight to mORMot2, past the RAL response, whose encoding may be
+          what raised. This used to answer the RAL response and stop there:
+          nothing reached AContext, Result kept whatever it held - the status
+          that went out was garbage - and with OnServerError assigned not even
+          that much was done }
+        AContext.OutContent := StringRAL(e.Message);
+        AContext.OutContentType := rctTEXTPLAIN;
+        AContext.OutCustomHeaders := '';
+        Result := HTTP_InternalError;
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
-          raise
-        else
-          vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+          raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);

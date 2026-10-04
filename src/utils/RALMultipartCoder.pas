@@ -491,6 +491,14 @@ begin
     vInt := Pos(';', AValue);
     if vInt > 0 then
       Delete(AValue, vInt, Length(AValue));
+    { RFC 2046 lets the boundary travel quoted - boundary="..." is what .NET's
+      HttpClient sends - and the quotes are not part of it: kept, they made a
+      delimiter that never matched, and the whole body was dropped under a 200.
+      A boundary has no ';' of its own, so cutting there was already safe }
+    AValue := RALTrim(AValue);
+    if (Length(AValue) >= 2) and (AValue[POSINISTR] = '"') and
+       (AValue[RALHighStr(AValue)] = '"') then
+      AValue := Copy(AValue, POSINISTR + 1, Length(AValue) - 2);
     FBoundary := AValue;
   end;
 end;
@@ -591,7 +599,10 @@ end;
 
 function TRALMultipartDecoder.BurnBuffer: PByte;
 begin
-  if FIndex > 0 then
+  { no part open: the preamble before the first delimiter or the epilogue
+    after the last, which RFC 2046 says to ignore. Writing them went through
+    a nil FItemForm - an access violation from any body that had one }
+  if (FIndex > 0) and (FItemForm <> nil) then
     FItemForm.AsStream.Write(FBuffer[0], FIndex);
   Result := ResetBuffer;
 end;

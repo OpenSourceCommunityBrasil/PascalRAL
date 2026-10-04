@@ -1,5 +1,5 @@
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   custcgi, custweb, fpweb, httpDefs,
   RALServer, RALRequest, RALResponse, RALTools, RALCompress, RALTypes,
   RALParams, RALNetwork;
@@ -92,6 +92,7 @@ var
   vAux1, vAux2: StringRAL;
   vInt, vPos: IntegerRAL;
   vParam: TRALParam;
+  vCookies: TStringList;
 begin
   vApp := TRALCGIServerApp(Owner);
   vServer := TRALCGIServer(vApp.Owner);
@@ -107,8 +108,7 @@ begin
     if vAux1 = '' then
       vAux1 := '/';
 
-    vRequest.Query := vAux1;
-    vRequest.Params.AppendParamsUrl(vAux2, rpkQUERY);
+    vRequest.Query := vAux1; // parses the query string too
 
     { The version the FRONT-END server received, which is the only one that
       exists here: a CGI process never sees a socket. It is also the one place
@@ -169,6 +169,18 @@ begin
       vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
 
     vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
+
+    { cookies never left this engine - AddCookie and the JWT UseCookie did
+      nothing here. Built like every other engine's (GetParamsCookies), whole,
+      one Set-Cookie line each: fcl-web writes repeated names one by one }
+    vCookies := TStringList.Create;
+    try
+      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
+    finally
+      FreeAndNil(vCookies);
+    end;
 
     AResponse.Server := 'RAL_CGILaz';
     AResponse.ContentType := vResponse.ContentType;

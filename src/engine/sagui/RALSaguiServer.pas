@@ -359,6 +359,7 @@ begin
     happened to hold. In a cdecl callback invoked from C that is a silent
     process death, not an exception }
   vStrMap := nil;
+  vRespStream := nil;
   try
     try
       with vRequest do
@@ -524,10 +525,25 @@ begin
                               vResponse.StatusCode)
     except
       on e: exception do
+      begin
+        { the request failed before its response was queued - the stream
+          goes out last - and nothing answered it: a 500 goes out instead,
+          over headers and cookies cleared of whatever the answer had been
+          given already, and the stream that never reached libsagui is
+          freed here }
+        if sg_httpres_is_empty(Ares) then
+        begin
+          FreeAndNil(vRespStream);
+          sg_httpres_clear(Ares);
+          vStr := StringRAL(e.Message);
+          sg_httpres_sendbinary(Ares, PAnsiChar(vStr), Length(vStr),
+                                PAnsiChar(StringRAL(rctTEXTPLAIN)), HTTP_InternalError);
+        end;
         if assigned(vServer.OnServerError) then
           vServer.OnServerError(e)
         else if vServer.RaiseError then
           Raise;
+      end;
     end;
   finally
     FreeAndNil(vStrMap);

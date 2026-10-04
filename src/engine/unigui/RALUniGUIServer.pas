@@ -196,17 +196,15 @@ begin
 
       Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
 
+      { every cookie whole, on its own Set-Cookie line, from the builder all
+        engines share. A TIdCookie made a cookie CALLED Set-Cookie out of an
+        AddCookie(TRALCookie) one, and lasted 30 minutes whatever CookieLife
+        said }
       vCookies := TStringList.Create;
       try
-        Params.AssignParams(vCookies, rpkCOOKIE);
+        GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
         for vInt := 0 to Pred(vCookies.Count) do
-        begin
-          vIdCookie := AResponseInfo.Cookies.Add;
-          vIdCookie.CookieName := vCookies.Names[vInt];
-          vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
-          vIdCookie.Path := '/';
-        end;
+          AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
       finally
         FreeAndNil(vCookies);
       end;

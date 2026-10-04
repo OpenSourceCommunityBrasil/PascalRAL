@@ -229,6 +229,7 @@ type
     function NextParamInt: IntegerRAL;
     /// Moves to the next param and returns its internal name.
     function NextParamStr: StringRAL;
+    procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
     /// Event to be called during the processing of FormData.
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
       var AFreeData: Boolean);
@@ -362,7 +363,7 @@ type
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     /// Configuration of the cryptography used on params for a secure P2P traffic.
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     property ContentDispositionInline: Boolean read FContentDispositionInline
       write FContentDispositionInline;
   end;
@@ -379,32 +380,11 @@ uses
   RALJson;
 
 function DateTimeToCookieExpireDate(ADateTime: TDateTime): StringRAL;
-const
-  HTTPMonths: array[1..12] of string[3] = (
-    'Jan', 'Feb', 'Mar', 'Apr',
-    'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec');
-  HTTPDays: array[1..7] of string[3] = (
-    'Sun', 'Mon', 'Tue', 'Wed',
-    'Thu', 'Fri', 'Sat');
-
-  DateFormat = '"%s", dd "%s" yyyy hh:nn:ss';
-  Expire     = '%s GMT';
-var
-  vInt: integer;
-  vYear, vMonth, vDay: Word;
-  vExpire, vValue : StringRAL;
-  test: String;
 begin
-  // Dia da semana e nome do mês precisam ter a 1a letra maiúscula
-  ADateTime := RALDateTimeToGMT(ADateTime);
-  DecodeDate(ADateTime, vYear, vMonth, vDay);
-
-  vExpire := FormatDateTime(DateFormat, ADateTime);
-  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
-  vExpire := Format(Expire, [vExpire]);
-  Result := vExpire;
-  //Result := 'Mon, 27 Jul 2026 14:00:00 GMT'
+  { RALHTTPDate and not FormatDateTime: the RTL writes the locale's time
+    separator where ':' stands, and an Expires such as 14.00.00 is invalid -
+    the browser keeps the cookie for the session only }
+  Result := RALHTTPDate(RALDateTimeToGMT(ADateTime));
 end;
 
 function GetCookieText(ACookie: TRALCookie): StringRAL;
@@ -505,7 +485,16 @@ begin
         Result.SameSite := cssStrict;
     end
     else if RALSameName(Name, 'Expires') then
-      Result.Expires := HTTPDateTimeToDateTime(Value)
+    begin
+      { a date that does not parse is ignored (RFC 6265 5.2.1), not the end of
+        the whole cookie - nor of the response the cookie was going out with }
+      try
+        Result.Expires := HTTPDateTimeToDateTime(Value);
+      except
+        on EConvertError do
+          Result.Expires := 0;
+      end;
+    end
     else if RALSameName(Name, 'Max-Age') then
     begin
       // 0 in the record means "not set": an expiring Max-Age comes back as -1
@@ -1515,37 +1504,45 @@ end;
 
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
 var
-  vInt, vIdx: IntegerRAL;
+  vInt, vIdx, vStart, vLen: IntegerRAL;
+  vName: StringRAL;
   vParam: TRALParam;
 begin
-  if SameText(AFullURI, APartialURI) then
-    Exit;
-
   AFullURI := FixRoute(AFullURI);
   APartialURI := FixRoute(APartialURI);
 
-  if Pos(LowerCase(APartialURI), LowerCase(AFullURI)) > 0 then
-  begin
-    Delete(AFullURI, 1, Length(APartialURI)); // removendo partialuri
-    vIdx := 1;
-    repeat
-      vInt := Pos('/', AFullURI);
-      if vInt > 0 then
+  { The segments of AFullURI past APartialURI, as ral_uriparam1, 2... - what
+    the route matching gives a route with AllowURIParams. The prefix has to
+    be whole segments at the start: it was looked for anywhere (Pos > 0), so
+    the cut took the wrong characters. And the loop wrote the first param
+    empty and dropped the last one, written for a FixRoute that ended in '/' }
+  vLen := Length(APartialURI);
+  if APartialURI = '/' then
+    vLen := 0
+  else if (not RALSameName(Copy(AFullURI, 1, vLen), APartialURI)) or
+          ((Length(AFullURI) > vLen) and (AFullURI[POSINISTR + vLen] <> '/')) then
+    Exit;
+
+  vIdx := 1;
+  vStart := vLen + 2; // 1-based, as Copy counts: past the '/' after the prefix
+  for vInt := vStart to Length(AFullURI) + 1 do
+    if (vInt > Length(AFullURI)) or (AFullURI[POSINISTR - 1 + vInt] = '/') then
+    begin
+      if vInt > vStart then
       begin
-        vParam := GetKind['ral_uriparam' + IntToStr(vIdx), AKind];
+        vName := 'ral_uriparam' + IntToStr(vIdx);
+        vParam := GetKind[vName, AKind];
         if vParam = nil then
         begin
           vParam := NewParam;
-          vParam.ParamName := 'ral_uriparam' + IntToStr(vIdx);
+          vParam.ParamName := vName;
         end;
-        vParam.AsString := Copy(AFullURI, 1, vInt - 1);
+        vParam.AsString := Copy(AFullURI, vStart, vInt - vStart);
         vParam.Kind := AKind;
-
-        Delete(AFullURI, 1, vInt);
-        vIdx := vIdx + 1;
+        Inc(vIdx);
       end;
-    until vInt = 0;
-  end;
+      vStart := vInt + 1;
+    end;
 end;
 
 procedure TRALParams.AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
@@ -1694,12 +1691,12 @@ var
   I: IntegerRAL;
 begin
   Result := '';
-  if (FParams <> nil) and (FParams.Count > 0) then
+  if FParams <> nil then
     for I := 0 to Pred(FParams.Count) do
     begin
-      Result := Result + TRALParam(FParams.Items[I]).AsString;
-      if FParams.Count > 0 then
+      if I > 0 then // between the values, not after the last one
         Result := Result + ', ';
+      Result := Result + TRALParam(FParams.Items[I]).AsString;
     end;
 end;
 
@@ -1837,7 +1834,12 @@ begin
     the header saying multipart either - an encrypted multipart travels as
     octet-stream, and the only thing that tells it apart from a deflate stream
     is that deflate opens with 0x1F 0x8B and a delimiter opens with "--". }
-  if (FCompressType <> ctNone) and not StartsWithDelim(vCur) then
+  { And only with the decompressor linked. Without it this program cannot have
+    compressed the body either - EncodeBody sends it as it is - and over HTTP
+    ContentCompress never names a coding that is not linked; Decompress had
+    nothing to answer with but nil, and the body arrived empty }
+  if (FCompressType <> ctNone) and (GetCompressClass(FCompressType) <> nil) and
+     not StartsWithDelim(vCur) then
   begin
     try
       vTemp := Decompress(vCur);
@@ -2071,6 +2073,14 @@ begin
       bytes that were never compressed makes the other side fail to inflate }
     FCompressType := ctNone;
 
+  { A compressor whose unit was not linked into the program has nothing to
+    answer with but nil, and the whole body used to go with it - no exception,
+    no warning, an empty request. It goes out as it is, and CompressType says
+    so, as above. TRALParams is born with gzip, so a program that uses it
+    without RALCompressZLib is enough to get here }
+  if (FCompressType <> ctNone) and (GetCompressClass(FCompressType) = nil) then
+    FCompressType := ctNone;
+
   if (FCompressType <> ctNone) and (Result <> nil) then
   begin
     { see DecodeBody: the finally is what stops a failing transform from
@@ -2161,6 +2171,11 @@ begin
     if vParam.Kind in AKinds then
       Result := Result + 1;
   end;
+end;
+
+procedure TRALParams.SetCriptoOptions(const AValue: TRALCriptoOptions);
+begin
+  RALAssignOwned(FCriptoOptions, AValue);
 end;
 
 constructor TRALParams.Create;

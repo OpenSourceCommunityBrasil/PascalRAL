@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
   RALRequest, RALParams, RALResponse, RALCustomObjects, RALUrlCoder,
-  RALMIMETypes;
+  RALMIMETypes, RALStream;
 
 const
   RALTOKENName = 'raltoken';
@@ -156,6 +156,7 @@ type
   protected
     procedure SetRoute(const AValue: StringRAL);
     procedure SetToken(const AValue: StringRAL);
+    procedure SetPayload(const AValue: TRALJWTParams);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -173,7 +174,7 @@ type
     /// REPLACED on every SetToken, so anything reading it from another thread
     /// has to hold Lock for as long as it uses what it read - or call GetClaim,
     /// which does that for a single claim.
-    property Payload: TRALJWTParams read FPayload write FPayload;
+    property Payload: TRALJWTParams read FPayload write SetPayload;
     property Route: StringRAL read FRoute write SetRoute;
     property Token: StringRAL read FToken write SetToken;
     property OnBeforeGetToken;
@@ -200,6 +201,8 @@ type
     { the work of RenewToken; with a request, OnRenewToken is consulted }
     function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
       const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
+    { False, with the 500 already answered, when SignSecretKey is empty }
+    function HasSecretKey(AResponse: TRALResponse): boolean;
     { OnGetToken or OnGetTokenGen is assigned }
     function CanIssue: boolean;
     { the token route logs in (OnGetToken) rather than renews - see BeforeValidate }
@@ -421,27 +424,16 @@ end;
 function TRALClientDigest.GetEntityBody(AParams: TRALParams): StringRAL;
 var
   vStream: TStream;
-  vFreeContent: boolean;
   vContentType, vContentDisposition: StringRAL;
 begin
-  Result := '';
-  vFreeContent := False;
+  { EncodeBody hands back a stream of its own every time, and this freed it
+    only under a flag that never left False: every request authenticated with
+    Digest leaked its whole encoded body }
   vStream := AParams.EncodeBody(vContentType, vContentDisposition);
-  if vStream <> nil then
-  begin
-    vStream.Position := 0;
-    if vStream is TStringStream then
-    begin
-      Result := TStringStream(vStream).DataString;
-    end
-    else
-    begin
-      SetLength(Result, vStream.Size);
-      vStream.Read(Result[PosIniStr], vStream.Size);
-    end;
-
-    if vFreeContent then
-      vStream.Free;
+  try
+    Result := StreamToString(vStream);
+  finally
+    vStream.Free;
   end;
 end;
 
@@ -636,6 +628,18 @@ end;
 
 { TRALServerJWTAuth }
 
+{ A JWT component dropped on a form with SignSecretKey left empty cannot sign
+  or check a token: the HMAC refuses an empty key, and the request died with
+  "Key must be provided.", which names no setting. Without a key the server
+  answers 500 and says which one is missing - a 401 would read as a wrong
+  password. A key of blanks counts as none, as for TRALServerBasicAuth }
+function TRALServerJWTAuth.HasSecretKey(AResponse: TRALResponse): boolean;
+begin
+  Result := RALTrim(FSignSecretKey) <> '';
+  if not Result then
+    AResponse.Answer(HTTP_InternalError, emJWTNoSecretKey, rctTEXTPLAIN);
+end;
+
 function TRALServerJWTAuth.CanIssue: boolean;
 begin
   Result := Assigned(FOnGetToken) or Assigned(FOnGetTokenGen);
@@ -725,6 +729,9 @@ begin
     AResponse.Answer(HTTP_NotFound);
     Exit;
   end;
+
+  if not HasSecretKey(AResponse) then
+    Exit;
 
   vToken := '';
   vStrParams := '';
@@ -878,6 +885,9 @@ var
   vReason: StringRAL;
 begin
   AResponse.StatusCode := HTTP_OK;
+  if not HasSecretKey(AResponse) then
+    Exit;
+
   { the same 401 page answered "no token at all", "expired" and "forged", and a
     client that lost its cookie on the way looked exactly like one holding a
     bad token. The page stays; the WWW-Authenticate header says which }
@@ -1131,6 +1141,18 @@ begin
   FRoute := FixRoute(AValue);
   if FRoute = '/' then
     FRoute := '/gettoken/';
+end;
+
+procedure TRALClientJWTAuth.SetPayload(const AValue: TRALJWTParams);
+begin
+  { a copy into the object this class owns, under the lock: SetToken rewrites
+    that same object on whichever thread a token arrives }
+  Lock;
+  try
+    RALAssignOwned(FPayload, AValue);
+  finally
+    Unlock;
+  end;
 end;
 
 procedure TRALClientJWTAuth.SetToken(const AValue: StringRAL);

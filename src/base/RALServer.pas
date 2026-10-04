@@ -19,6 +19,8 @@ type
   TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     property Enabled: boolean read FEnabled write FEnabled;
   end;
@@ -30,6 +32,8 @@ type
   private
     FExpirationTime: IntegerRAL;
     FMaxTry: IntegerRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create;
   published
@@ -71,6 +75,7 @@ type
     FIPv6Enabled: boolean;
     FOwner: TRALServer;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetIPv6Enabled(AValue: boolean);
   public
     constructor Create(AOwner: TRALServer);
@@ -93,6 +98,7 @@ type
     FAllowHeaders: TStringList;
     FMaxAge: IntegerRAL;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetAllowHeaders(AValue: TStringList);
     procedure SetDefaultHeaders;
   public
@@ -149,6 +155,9 @@ type
     function GetFloodCount: IntegerRAL;
     // Copies a changed BlackIPList/WhiteIPList into the list the requests read
     procedure IPViewChange(Sender: TObject);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  private
     // Setter functions for class properties
     procedure SetBlackIPList(AValue: TStringList);
     procedure SetBruteForce(const Value: TRALBruteForceProtection);
@@ -269,6 +278,13 @@ type
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+    { the object properties copy what they are given (RALAssignOwned) }
+    procedure SetCORSOptions(const AValue: TRALCORSOptions);
+    procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
+    procedure SetIPConfig(const AValue: TRALIPConfig);
+    procedure SetResponsePages(const AValue: TRALResponsePages);
+    procedure SetRoutes(const AValue: TRALRoutes);
+    procedure SetSecurity(const AValue: TRALSecurity);
     function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
   public
     constructor Create(AOwner: TComponent); override;
@@ -320,13 +336,13 @@ type
     // Minutes a cookie the server sends is kept by the browser (its Expires)
     property CookieLife: integer read FCookieLife write FCookieLife;
     // Determinates CORS configurations for server-server communication
-    property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
+    property CORSOptions: TRALCORSOptions read FCORSOptions write SetCORSOptions;
     // Options for P2P crypt security
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     // Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
     // Configuration params for IP listening
-    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
     /// A request body that is a JSON object also becomes params: each member of
     /// the first level is an rpkFIELD param, the same as a form field, so
     /// ParamByName('campo') reads a field posted as JSON too (a nested object or
@@ -336,7 +352,7 @@ type
     /// keeps the query's value first, as it does for a form
     property JSONBodyToParams: boolean read FJSONBodyToParams write FJSONBodyToParams
       default False;
-    property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
+    property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
     // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
     { Largest request body accepted, in bytes; anything bigger is answered 413
@@ -346,11 +362,11 @@ type
       mORMot2 is the exception, it also refuses at the socket }
     property MaxRequestSize: Int64RAL read FMaxRequestSize write SetMaxRequestSize default 0;
     // Route configuration of the server, a.k.a endpoints
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
     // Whether the server will raise error to the application or not (exception raise^), default value is false
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
     // Security configurations of the server
-    property Security: TRALSecurity read FSecurity write FSecurity;
+    property Security: TRALSecurity read FSecurity write SetSecurity;
     // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
     // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
@@ -388,6 +404,7 @@ type
     procedure SetServer(AValue: TRALServer); virtual;
     // Defines the Domain prefix of all the routes of the instance of this class
     procedure SetDomain(const AValue: StringRAL); virtual;
+    procedure SetRoutes(const AValue: TRALRoutes);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -404,7 +421,7 @@ type
     /// OnReply nor OnReplyGen: 404 here, a file in TRALWebModule
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
 
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
     // The RALServer object which this module is attached to
     property Server: TRALServer read FServer write SetServer;
@@ -471,7 +488,7 @@ begin
   if FAllowHeaders = AValue then
     Exit;
 
-  if Trim(AValue.Text) <> '' then
+  if (AValue <> nil) and (Trim(AValue.Text) <> '') then
     FAllowHeaders.Text := AValue.Text
   else
     SetDefaultHeaders;
@@ -479,12 +496,35 @@ end;
 
 procedure TRALCORSOptions.SetDefaultHeaders;
 begin
+  { the defaults replace the list: added to what was there, every empty
+    assignment appended the six again, and all the copies went out in
+    Access-Control-Allow-Headers }
+  FAllowHeaders.Clear;
   FAllowHeaders.Add('Content-Type');
   FAllowHeaders.Add('Origin');
   FAllowHeaders.Add('Accept');
   FAllowHeaders.Add('Authorization');
   FAllowHeaders.Add('Content-Encoding');
   FAllowHeaders.Add('Accept-Encoding');
+end;
+
+{ every engine's SSL descends from this one: the copy takes the published
+  properties both sides have, the engine's own included - SetSSL in the
+  engines called Assign on a class that had no copy, and raised }
+procedure TRALSSL.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALSSL then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
+
+procedure TRALCORSOptions.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALCORSOptions then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALCORSOptions.Create;
@@ -571,7 +611,17 @@ begin
       FIPv6Enabled := AValue;
 
     FOwner.Active := vActive;
-  end;
+  end
+  else
+    FIPv6Enabled := AValue; // no server to restart: it used to be dropped
+end;
+
+procedure TRALIPConfig.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALIPConfig then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALIPConfig.Create(AOwner: TRALServer);
@@ -592,6 +642,14 @@ begin
 end;
 
 { TRALBruteForceProtection }
+
+procedure TRALBruteForceProtection.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALBruteForceProtection then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALBruteForceProtection.Create;
 begin
@@ -817,6 +875,36 @@ begin
   FServerStatus.Assign(AValue);
 end;
 
+procedure TRALServer.SetCORSOptions(const AValue: TRALCORSOptions);
+begin
+  RALAssignOwned(FCORSOptions, AValue);
+end;
+
+procedure TRALServer.SetCriptoOptions(const AValue: TRALCriptoOptions);
+begin
+  RALAssignOwned(FCriptoOptions, AValue);
+end;
+
+procedure TRALServer.SetIPConfig(const AValue: TRALIPConfig);
+begin
+  RALAssignOwned(FIPConfig, AValue);
+end;
+
+procedure TRALServer.SetResponsePages(const AValue: TRALResponsePages);
+begin
+  RALAssignOwned(FResponsePages, AValue);
+end;
+
+procedure TRALServer.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
+end;
+
+procedure TRALServer.SetSecurity(const AValue: TRALSecurity);
+begin
+  RALAssignOwned(FSecurity, AValue);
+end;
+
 procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FAuthentication) then
@@ -940,6 +1028,10 @@ begin
               goto aOK
             else if AResponse.StatusCode = HTTP_Unauthorized then
               goto a401
+            { the authenticator's own server error - a JWT with no key says
+              so - is not a refusal of the client: it goes out as it is }
+            else if AResponse.StatusCode >= HTTP_InternalError then
+              goto aFIM
             else
               goto a403;
           end;
@@ -1236,6 +1328,11 @@ begin
   FDomain := FixRoute(AValue);
 end;
 
+procedure TRALModuleRoutes.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
+end;
+
 procedure TRALModuleRoutes.SetServer(AValue: TRALServer);
 begin
   if AValue <> FServer then
@@ -1530,6 +1627,16 @@ begin
   end;
 end;
 
+procedure TRALSecurity.AssignTo(Dest: TPersistent);
+begin
+  { the configuration only: the blocked and flood lists are this server's
+    own history and are not published }
+  if Dest is TRALSecurity then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
+
 constructor TRALSecurity.Create;
 begin
   FBruteForce := TRALBruteForceProtection.Create;
@@ -1654,11 +1761,7 @@ begin
   { copy the values instead of taking the object: the one created in the
     constructor is the one Destroy frees, and swapping the pointer both leaked
     it and left the server holding an object the caller may free }
-  if (Value <> nil) and (Value <> FBruteForce) then
-  begin
-    FBruteForce.ExpirationTime := Value.ExpirationTime;
-    FBruteForce.MaxTry := Value.MaxTry;
-  end;
+  RALAssignOwned(FBruteForce, Value);
 end;
 
 procedure TRALSecurity.SetFloodTimeInterval(const Value: IntegerRAL);
