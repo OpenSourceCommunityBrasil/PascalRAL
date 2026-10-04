@@ -883,9 +883,19 @@ begin
     except
       on e: Exception do
       begin
+        { a 501 says which request type is missing, RAL's own words; a 500
+          is the driver's, which names tables and quotes SQL - hidden with
+          the server's HideErrorDetails, as every 500 of the server is }
         if AResponse.StatusCode <> HTTP_NotImplemented then
+        begin
           AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ResponseText := e.Message;
+          if vRALServer <> nil then
+            AResponse.ResponseText := vRALServer.ErrorText(e)
+          else
+            AResponse.ResponseText := e.Message;
+        end
+        else
+          AResponse.ResponseText := e.Message;
       end;
     end
   finally

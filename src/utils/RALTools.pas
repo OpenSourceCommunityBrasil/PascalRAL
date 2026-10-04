@@ -12,11 +12,11 @@ uses
   {$IFDEF FPC}
     UTF8Process,
     {$IFDEF UNIX}
-    BaseUnix, // RALFileInfo
+    BaseUnix, // RALFileInfo, RALIsLink
     {$ENDIF}
   {$ENDIF}
   {$IF Defined(POSIX) and not Defined(FPC)}
-    Posix.SysStat, // RALFileInfo
+    Posix.SysStat, // RALFileInfo, RALIsLink
     Posix.Unistd,  // FileClose is inline over close()
   {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
@@ -98,6 +98,10 @@ function RALHTTPDate(AUtc: TDateTime): StringRAL;
 /// date take three
 function RALFileInfo(const AFileName: string; out ASize: Int64;
   out AModified: Int64): boolean;
+/// Whether APath is itself a symbolic link - on Windows also a junction - and
+/// not what it names. A reparse point that stands for the file itself, such as
+/// a OneDrive placeholder or a deduplicated file, is not a link
+function RALIsLink(const APath: string): boolean;
 /// Copies the published properties ASource and ADest have in common - what a
 /// form would store - so that an AssignTo is one line and a property added
 /// later is copied without anyone having to remember it. A sub-object
@@ -300,6 +304,42 @@ begin
     ASize := vStat.st_size;
     AModified := vStat.st_mtime;
   end;
+end;
+{$ENDIF}
+{$ENDIF}
+
+function RALIsLink(const APath: string): boolean;
+{$IFDEF RALWindows}
+var
+  vData: TWin32FindDataW;
+  vHandle: THandle;
+  vName: UnicodeString;
+begin
+  Result := False;
+  vName := UnicodeString(APath);
+  vHandle := FindFirstFileW(PWideChar(vName), vData);
+  if vHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  Windows.FindClose(vHandle);
+  { the reparse tag is in dwReserved0, and a name surrogate - bit 29 - is a
+    tag that points elsewhere: a symbolic link, a junction }
+  Result := ((vData.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) and
+            ((vData.dwReserved0 and $20000000) <> 0);
+end;
+{$ELSE}
+{$IFDEF FPC}
+var
+  vStat: TStat;
+begin
+  Result := (FpLStat(PChar(APath), vStat) = 0) and fpS_ISLNK(vStat.st_mode);
+end;
+{$ELSE}
+var
+  vStat: _stat;
+  vName: UTF8String;
+begin
+  vName := UTF8String(APath);
+  Result := (lstat(MarshaledAString(vName), vStat) = 0) and S_ISLNK(vStat.st_mode);
 end;
 {$ENDIF}
 {$ENDIF}

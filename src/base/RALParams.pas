@@ -11,7 +11,12 @@ uses
   RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
 type
-  TRALCookieSiteScope = (cssLax, cssNone, cssStrict);
+  { The cookie's SameSite. cssDefault, first so that a zeroed record has it,
+    writes no attribute and leaves the browser's own rule - Lax on Chromium,
+    None on Firefox and Safari. cssLax used to be the first, and so the value
+    a record started with, which is why it wrote nothing: asking for Lax
+    explicitly sent nothing either }
+  TRALCookieSiteScope = (cssDefault, cssLax, cssNone, cssStrict);
 
   TRALCookie = record
     Name: StringRAL;
@@ -498,6 +503,9 @@ begin
     Result := Result + '; HttpOnly';
 
   case ACookie.SameSite of
+    cssLax:
+      Result := Result + '; SameSite=Lax';
+    { a browser refuses SameSite=None without Secure }
     cssNone:
       if ACookie.Secure then
         Result := Result + '; SameSite=None';

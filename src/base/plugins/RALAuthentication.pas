@@ -188,6 +188,7 @@ type
     FAlgorithm: TRALJWTAlgorithm;
     FCollectionAuth: TOwnedCollection;
     FAuthToken: TRALBaseRoute;
+    FCookieSameSite: TRALCookieSiteScope;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
     FSignSecretKey: StringRAL;
@@ -239,6 +240,13 @@ type
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property AuthRoute;
+    /// SameSite of the raltoken cookie UseCookie sends. cssDefault (the default)
+    /// writes none and leaves the browser's own rule, as it always did. cssLax
+    /// or cssStrict keep another site from sending it, which is what stops a
+    /// cross-site request riding on the login - and also what stops a page on
+    /// another site that calls this server on purpose, with credentials
+    property CookieSameSite: TRALCookieSiteScope read FCookieSameSite
+      write FCookieSameSite default cssDefault;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
@@ -753,6 +761,7 @@ begin
       vCookie.Secure := true;
       vCookie.HttpOnly := true;
       vCookie.Path := '/';
+      vCookie.SameSite := FCookieSameSite;
       vParamJWT := TRALJWTParams.Create;
       try
         vParamJWT.AsJSON := vStrParams;
@@ -780,6 +789,7 @@ begin
       vCookie.Secure := true;
       vCookie.HttpOnly := true;
       vCookie.Path := '/';
+      vCookie.SameSite := FCookieSameSite;
       vCookie.MaxAge := -1;
       AResponse.AddCookie(vCookie);
     end;

@@ -1242,7 +1242,7 @@ begin
         { the 500 first, as ProcessCommands does: with OnServerError
           assigned, the answer used to go out as it stood - a 200 over a
           failure }
-        vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+        vResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then

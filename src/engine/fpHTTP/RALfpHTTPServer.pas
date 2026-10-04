@@ -606,7 +606,7 @@ begin
     except
       on e: exception do
       begin
-        AnswerFailure(AResponse, e.Message);
+        AnswerFailure(AResponse, string(FParent.ErrorText(e)));
         if Assigned(FParent.OnServerError) then
           FParent.OnServerError(e)
         else if FParent.RaiseError then

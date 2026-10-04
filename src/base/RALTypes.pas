@@ -77,6 +77,21 @@ type
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
+  { The headers TRALServer.SecurityHeaders adds to every answer, with the
+    values the OWASP REST cheat sheet gives an API:
+    rshContentTypeOptions     X-Content-Type-Options: nosniff
+    rshFrameOptions           X-Frame-Options: DENY
+    rshReferrerPolicy         Referrer-Policy: no-referrer
+    rshStrictTransport        Strict-Transport-Security: max-age=31536000,
+                              only when the server runs TLS
+    rshContentSecurityPolicy  Content-Security-Policy: default-src 'none';
+                              frame-ancestors 'none' - which forbids a page
+                              everything, so it is for a server that serves
+                              no HTML; a WebModule's pages need a policy of
+                              their own }
+  TRALSecurityHeader = (rshContentTypeOptions, rshFrameOptions, rshReferrerPolicy,
+    rshStrictTransport, rshContentSecurityPolicy);
+  TRALSecurityHeaders = set of TRALSecurityHeader;
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
   /// IP family of an address - see TRALServer.GetServerAddress

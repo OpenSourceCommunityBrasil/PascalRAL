@@ -929,7 +929,7 @@ begin
           nothing reached AContext, Result kept whatever it held - the status
           that went out was garbage - and with OnServerError assigned not even
           that much was done }
-        AContext.OutContent := StringRAL(e.Message);
+        AContext.OutContent := ErrorText(e);
         AContext.OutContentType := rctTEXTPLAIN;
         AContext.OutCustomHeaders := '';
         Result := HTTP_InternalError;

@@ -330,7 +330,7 @@ begin
     except
       on e: exception do
       begin
-        AnswerFailure(AResponseInfo, e.Message);
+        AnswerFailure(AResponseInfo, string(ErrorText(e)));
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then

@@ -25,6 +25,9 @@ type
     FIV : StringRAL;
   protected
     function CanCript : boolean; override;
+    { the key and the IV in the sizes the cipher reads: the text's bytes,
+      cut or padded with zeros - OpenSSL read 32 bytes of a 3-byte key }
+    procedure CipherKey(out ACipher: Pointer; out AKey, AIV: TBytes);
   public
     constructor Create;
 
@@ -46,6 +49,48 @@ begin
     Result := False;
     raise Exception.Create(emOpenSSLNotLoaded);
   end;
+  { as TRALCriptoAES.CheckKey: no key is no cipher - padded with zeros it
+    would have been a key anybody knows }
+  if Key = '' then
+    raise Exception.Create(emCryptEmptyKey);
+end;
+
+procedure TRALCriptoOpenSSL.CipherKey(out ACipher: Pointer; out AKey, AIV: TBytes);
+var
+  vKeySize, vOld: IntegerRAL;
+begin
+  case FAESType of
+    cotAES128_CBC: ACipher := EVP_aes_128_cbc;
+    cotAES192_CBC: ACipher := EVP_aes_192_cbc;
+    cotAES256_CBC: ACipher := EVP_aes_256_cbc;
+    cotAES128_ECB: ACipher := EVP_aes_128_ecb;
+    cotAES192_ECB: ACipher := EVP_aes_192_ecb;
+  else
+    ACipher := EVP_aes_256_ecb;
+  end;
+  case FAESType of
+    cotAES128_CBC, cotAES128_ECB: vKeySize := 16;
+    cotAES192_CBC, cotAES192_ECB: vKeySize := 24;
+  else
+    vKeySize := 32;
+  end;
+
+  AKey := StringToBytesUTF8(Key);
+  vOld := Length(AKey);
+  SetLength(AKey, vKeySize);
+  if vOld < vKeySize then
+    FillChar(AKey[vOld], vKeySize - vOld, 0);
+
+  { an IV only for CBC, and of one block }
+  AIV := nil;
+  if FAESType in [cotAES128_CBC, cotAES192_CBC, cotAES256_CBC] then
+  begin
+    AIV := StringToBytesUTF8(FIV);
+    vOld := Length(AIV);
+    SetLength(AIV, 16);
+    if vOld < 16 then
+      FillChar(AIV[vOld], 16 - vOld, 0);
+  end;
 end;
 
 constructor TRALCriptoOpenSSL.Create;
@@ -64,18 +109,7 @@ var
 begin
   vCTX := EVP_CIPHER_CTX_new;
   try
-    vKey := StringToBytesUTF8(Key);
-    vIV := StringToBytesUTF8(FIV);
-
-    case FAESType of
-      cotAES128_CBC: vCipher := EVP_aes_128_cbc;
-      cotAES192_CBC: vCipher := EVP_aes_192_cbc;
-      cotAES256_CBC: vCipher := EVP_aes_256_cbc;
-
-      cotAES128_ECB: vCipher := EVP_aes_128_ecb;
-      cotAES192_ECB: vCipher := EVP_aes_192_ecb;
-      cotAES256_ECB: vCipher := EVP_aes_256_ecb;
-    end;
+    CipherKey(vCipher, vKey, vIV);
 
     if Length(vIV) > 0 then
       vPIV := @vIV[0]
@@ -95,7 +129,11 @@ begin
       vSizeBuf := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
 
     SetLength(vInBuf, vSizeBuf);
-    SetLength(vOutBuf, vSizeBuf);
+    { a block more than what goes in: DecryptUpdate may hand back a block it
+      held from the call before, and Final writes one into it even when
+      nothing came in at all - the buffer was the input's size, 0 for an
+      empty one }
+    SetLength(vOutBuf, vSizeBuf + 16);
 
     while AValue.Position < AValue.Size do begin
       vBytesRead := AValue.Read(vInBuf[0], Length(vInBuf));
@@ -130,18 +168,7 @@ var
 begin
   vCTX := EVP_CIPHER_CTX_new;
   try
-    vKey := StringToBytesUTF8(Key);
-    vIV := StringToBytesUTF8(FIV);
-
-    case FAESType of
-      cotAES128_CBC: vCipher := EVP_aes_128_cbc;
-      cotAES192_CBC: vCipher := EVP_aes_192_cbc;
-      cotAES256_CBC: vCipher := EVP_aes_256_cbc;
-
-      cotAES128_ECB: vCipher := EVP_aes_128_ecb;
-      cotAES192_ECB: vCipher := EVP_aes_192_ecb;
-      cotAES256_ECB: vCipher := EVP_aes_256_ecb;
-    end;
+    CipherKey(vCipher, vKey, vIV);
 
     if Length(vIV) > 0 then
       vPIV := @vIV[0]

@@ -34,9 +34,9 @@ var
 { One cookie of GetParamsCookies, as Web.HTTPApp can send it. TWebResponse
   writes its custom headers by name (Values[Name]), so a second Set-Cookie line
   there went out as a copy of the first: each cookie goes into Cookies instead.
-  TCookie has no Max-Age, so one becomes the moment it stands for, and Lax is
-  what a browser assumes, so only None and Strict are written - as GetCookieText
-  does. TCookie gained HttpOnly and SameSite late; below 10.4 they are not set }
+  TCookie has no Max-Age, so one becomes the moment it stands for, and SameSite
+  is written when the cookie names one - as GetCookieText does. TCookie gained
+  HttpOnly and SameSite late; below 10.4 they are not set }
 procedure AddWebCookie(AResponse: TWebResponse; const ACookie: TRALCookie);
 var
   vCookie: TCookie;
@@ -60,6 +60,7 @@ begin
   {$IFDEF DELPHI10_4UP}
   vCookie.HttpOnly := ACookie.HttpOnly;
   case ACookie.SameSite of
+    cssLax: vCookie.SameSite := 'Lax';
     cssNone: vCookie.SameSite := 'None';
     cssStrict: vCookie.SameSite := 'Strict';
   end;

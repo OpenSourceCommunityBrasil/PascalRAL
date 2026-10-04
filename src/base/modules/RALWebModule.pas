@@ -83,6 +83,7 @@ type
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
     FFileCacheTime: IntegerRAL;
+    FFollowLinks: boolean;
     FLastSweep: TDateTime;
     FMaxFileSize: Int64RAL;
     { a TRALWebPathCache - see the implementation }
@@ -94,8 +95,8 @@ type
     FSessions: array[0..cRALSessionShards - 1] of TRALStringListSafe;
     FSessionTimeout: IntegerRAL;
     { what the requests read of the settings, a TRALWebSettings: the root,
-      the blocked extensions, the Cache-Control rules, worked out once per
-      change and published whole - see PublishSettings }
+      the blocked extensions, the Cache-Control rules, the Domain, worked out
+      once per change and published whole - see PublishSettings }
     FSettings: TRALSnapshots;
     FSettingsGen: IntegerRAL;
     FSweepLock: TCriticalSection;
@@ -119,6 +120,7 @@ type
     procedure ServeFile(ARequest: TRALRequest; AResponse: TRALResponse; AFile: TRALWebFile);
     procedure SetBlockedExtensions(AValue: TStrings);
     procedure SetCacheControl(AValue: TStrings);
+    procedure SetFollowLinks(AValue: boolean);
     procedure SetUseAppPathAsRoot(AValue: boolean);
     { the expired sessions of every list go, at most once a second, and are
       freed with no lock held: what a session keeps may take a while to free }
@@ -132,6 +134,7 @@ type
     function GetWebSession(ARequest: TRALRequest): TRALWebSession;
     function NewSessionName: StringRAL;
     procedure SetDocumentRoot(AValue: StringRAL);
+    procedure SetDomain(const AValue: StringRAL); override;
     procedure WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
@@ -164,7 +167,10 @@ type
     /// used to fall back to the executable's folder, publishing its .ini and
     /// certificates on a route that skips authentication; see
     /// UseApplicationPathAsRoot. A relative path is taken from the
-    /// executable's folder
+    /// executable's folder. With a Domain other than '/', only the URLs under
+    /// it are served, and the URL still maps whole onto the folder:
+    /// '/static/x.css' is DocumentRoot\static\x.css. Every URL used to be,
+    /// whatever the Domain, taking those another module was meant to answer
     property DocumentRoot: StringRAL read FDocumentRoot write SetDocumentRoot;
     /// Milliseconds the module trusts what it learned of a file - whether it
     /// exists, its size and its date - before asking the disk again. Zero (the
@@ -173,6 +179,12 @@ type
     /// Where a URL leads inside DocumentRoot is always remembered: it only
     /// changes with DocumentRoot or BlockedExtensions, which forget it
     property FileCacheTime: IntegerRAL read FFileCacheTime write FFileCacheTime default 0;
+    /// Serve a file reached through a symbolic link or a junction below
+    /// DocumentRoot - which may lead out of it, past every check on the path,
+    /// since those read the name and the system follows the link. True (the
+    /// default) is what the module always did. False answers such a file as if
+    /// it were not there; DocumentRoot itself may still be a link
+    property FollowLinks: boolean read FFollowLinks write SetFollowLinks default True;
     /// The largest file served, in bytes; a bigger one is answered as if it
     /// were not there. Zero (the default) is no limit. A file goes out read
     /// from the disk as it is sent, so its size only weighs on memory when it
@@ -266,8 +278,14 @@ type
       and the directive for every other one }
     CacheRules: TRALWebCacheRules;
     CacheDefault: StringRAL;
+    { the module's Domain, '' for '/' }
+    Domain: StringRAL;
+    FollowLinks: boolean;
     constructor Create;
     destructor Destroy; override;
+    /// The path of the file AQuery asks for - AQuery itself - or '' when
+    /// AQuery is outside the Domain
+    function FilePath(const AQuery: StringRAL): StringRAL;
   end;
 
   TRALRangeResult = (rrIgnore, rrSatisfiable, rrUnsatisfiable);
@@ -362,6 +380,20 @@ destructor TRALWebSettings.Destroy;
 begin
   FreeAndNil(Blocked);
   inherited;
+end;
+
+function TRALWebSettings.FilePath(const AQuery: StringRAL): StringRAL;
+var
+  vLen: IntegerRAL;
+begin
+  Result := AQuery;
+  vLen := Length(Domain);
+  { the Domain's own URL or one under it: '/static', '/static/x' - never
+    '/staticx' }
+  if (vLen > 0) and ((Length(AQuery) < vLen) or
+     (not RALSameName(Copy(AQuery, 1, vLen), Domain)) or
+     ((Length(AQuery) > vLen) and (AQuery[POSINISTR + vLen] <> '/'))) then
+    Result := '';
 end;
 
 { TRALWebSession }
@@ -582,6 +614,21 @@ begin
   {$ENDIF}
 
   Result := vFile;
+end;
+
+{ Whether APath, resolved under ARoot, passes through a symbolic link or a
+  junction below it - one per folder of the path and the file itself, each a
+  question to the system. ARoot itself is not asked: it may be a link, put
+  there by whoever deployed the site }
+function ThroughLink(const ARoot, APath: string): boolean;
+var
+  vInt: Integer;
+begin
+  Result := True;
+  for vInt := POSINISTR + Length(ARoot) to POSINISTR + Length(APath) - 1 do
+    if (APath[vInt] = PathDelim) and RALIsLink(Copy(APath, 1, vInt - POSINISTR)) then
+      Exit;
+  Result := RALIsLink(APath);
 end;
 
 { The entity-tag without its weakness mark: If-None-Match compares weakly
@@ -840,6 +887,8 @@ begin
   FDefaultRoute.AllowedMethods := [amGET];
   FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
+  FFollowLinks := True;
+
   { before the lists whose changes publish them }
   FPathCache := TRALWebPathCache.Create;
   FSettings := TRALSnapshots.Create;
@@ -984,6 +1033,10 @@ begin
       end;
     end;
     SetLength(vSettings.CacheRules, vCount);
+
+    if Domain <> '/' then
+      vSettings.Domain := Domain;
+    vSettings.FollowLinks := FFollowLinks;
   except
     vSettings.Free;
     raise;
@@ -996,6 +1049,24 @@ begin
   if FDocumentRoot = AValue then
     Exit;
   FDocumentRoot := AValue;
+  PublishSettings;
+end;
+
+procedure TRALWebModule.SetDomain(const AValue: StringRAL);
+begin
+  { as the inherited: the same text changes nothing, and publishing would
+    keep one more version of the settings for nothing }
+  if AValue = Domain then
+    Exit;
+  inherited SetDomain(AValue);
+  PublishSettings;
+end;
+
+procedure TRALWebModule.SetFollowLinks(AValue: boolean);
+begin
+  if FFollowLinks = AValue then
+    Exit;
+  FFollowLinks := AValue;
   PublishSettings;
 end;
 
@@ -1031,7 +1102,8 @@ begin
   begin
     vEntry.Gen := vSettings.Gen;
     vEntry.Key := ARequest.Query;
-    vEntry.Path := ResolvePath(vSettings.RootPath, vEntry.Key, vSettings.Blocked);
+    vEntry.Path := ResolvePath(vSettings.RootPath, vSettings.FilePath(vEntry.Key),
+      vSettings.Blocked);
     vEntry.Checked := 0;
     vEntry.Found := False;
   end;
@@ -1040,12 +1112,13 @@ begin
   begin
     { whether the file is there, how big and how old: one call to the system,
       where FileExists, the open and the date used to be three - or nothing,
-      inside FileCacheTime }
+      inside FileCacheTime. A link is the disk's answer too }
     vFresh := (FFileCacheTime > 0) and (vEntry.Checked <> 0) and
               (MilliSecondsBetween(Now, vEntry.Checked) < FFileCacheTime);
     if not vFresh then
     begin
-      vEntry.Found := RALFileInfo(vEntry.Path, vEntry.Size, vEntry.Modified);
+      vEntry.Found := RALFileInfo(vEntry.Path, vEntry.Size, vEntry.Modified) and
+        (vSettings.FollowLinks or not ThroughLink(vSettings.RootPath, vEntry.Path));
       if FFileCacheTime > 0 then
       begin
         vEntry.Checked := Now;
@@ -1261,6 +1334,10 @@ begin
   vParam.Kind := rpkBODY;
   vParam.ContentType := vType;
   AResponse.ContentDispositionInline := True;
+  { the type the extension gives is the type the browser takes: a .txt with
+    HTML in it, or anything uploaded under a harmless name, was read as a
+    page by a browser that sniffs, and ran its script on this origin }
+  AResponse.Params.AddParam('X-Content-Type-Options', 'nosniff', rpkHEADER);
 
   if vCount >= 0 then
   begin
@@ -1431,6 +1508,10 @@ begin
   vCookie.HttpOnly := True;
   vCookie.SessionOnly := True;
   vCookie.Secure := (Server <> nil) and Server.SSLEnabled;
+  { another site's form, link or script does not carry it - the session then
+    cannot be ridden from elsewhere (CSRF). Lax keeps it on a link followed
+    to this site, as a user arriving logged in expects }
+  vCookie.SameSite := cssLax;
   AResponse.AddCookie(vCookie);
 end;
 

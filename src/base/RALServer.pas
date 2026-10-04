@@ -234,6 +234,7 @@ type
     FCORSOptions: TRALCORSOptions;
     FCriptoOptions: TRALCriptoOptions;
     FEngine: StringRAL;
+    FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
     FJSONBodyToParams: boolean;
     FListSubModules: TList;
@@ -242,6 +243,7 @@ type
     FRaiseError: boolean;
     FRoutes: TRALRoutes;
     FSecurity: TRALSecurity;
+    FSecurityHeaders: TRALSecurityHeaders;
     FServerStatus: TStringList;
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
@@ -257,6 +259,8 @@ type
       see TRALAuthServer.AttemptOf }
     procedure CountAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
                            AOnAuthRoute: boolean);
+    { the SecurityHeaders an answer goes out with }
+    procedure AddSecurityHeaders(AResponse: TRALResponse);
   protected
     procedure Loaded; override;
     /// Adds a fixed subroute from other components into server routes
@@ -317,6 +321,10 @@ type
     // Create handle response of server
     function CreateResponse: TRALResponse;
     function SSLEnabled: boolean;
+    /// The text a 500 answers for AException: its message, or only
+    /// 'Internal Server Error' with HideErrorDetails on. Every engine answers
+    /// its failures through it, and so do the DBWare module and the DAO
+    function ErrorText(AException: Exception): StringRAL;
     /// The IP address clients reach this server at, in the given family.
     /// A server bound to one address (IPConfig.IPv4Bind / IPv6Bind) answers
     /// that address. The default bind, every interface, answers the address
@@ -347,6 +355,13 @@ type
     property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     // Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
+    /// A 500 says only 'Internal Server Error' instead of the exception's
+    /// message - which, from a database driver, names tables and columns,
+    /// quotes SQL and sometimes part of the connection string. OnServerError
+    /// still receives the exception whole, which is where to log it. Off by
+    /// default: the message goes to the client, as it always did
+    property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
+      default False;
     // Configuration params for IP listening
     property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
     /// A request body that is a JSON object also becomes params: each member of
@@ -373,6 +388,14 @@ type
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
     // Security configurations of the server
     property Security: TRALSecurity read FSecurity write SetSecurity;
+    /// Security headers every answer carries - see TRALSecurityHeader for the
+    /// values. Empty (the default) sends none. A route that sets one of them
+    /// itself keeps its own value, and OnResponse sees them and may change
+    /// them. rshContentSecurityPolicy forbids a page everything: leave it off
+    /// on a server whose WebModule or Swagger serves pages. A 500 an engine
+    /// answers for a body it could not decode carries none
+    property SecurityHeaders: TRALSecurityHeaders read FSecurityHeaders
+      write FSecurityHeaders default [];
     // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
     // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
@@ -428,6 +451,10 @@ type
     /// Answers a request for one of this module's routes that has neither
     /// OnReply nor OnReplyGen: 404 here, a file in TRALWebModule
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    /// TRALServer.ErrorText of the server the module is attached to - the
+    /// exception's message, unless that server hides it - and the message
+    /// as it is with no server
+    function ErrorText(AException: Exception): StringRAL;
 
     property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
@@ -861,6 +888,33 @@ begin
     Result := FSSL.Enabled;
 end;
 
+function TRALServer.ErrorText(AException: Exception): StringRAL;
+begin
+  if FHideErrorDetails or (AException = nil) then
+    Result := SError500
+  else
+    Result := StringRAL(AException.Message);
+end;
+
+procedure TRALServer.AddSecurityHeaders(AResponse: TRALResponse);
+begin
+  if FSecurityHeaders = [] then
+    Exit;
+  if rshContentTypeOptions in FSecurityHeaders then
+    AResponse.Params.AddParam('X-Content-Type-Options', 'nosniff', rpkHEADER);
+  if rshFrameOptions in FSecurityHeaders then
+    AResponse.Params.AddParam('X-Frame-Options', 'DENY', rpkHEADER);
+  if rshReferrerPolicy in FSecurityHeaders then
+    AResponse.Params.AddParam('Referrer-Policy', 'no-referrer', rpkHEADER);
+  { a browser ignores it over plain http (RFC 6797 8.1), and a server behind
+    a proxy that terminates TLS is told nothing here - the proxy sends it }
+  if (rshStrictTransport in FSecurityHeaders) and SSLEnabled then
+    AResponse.Params.AddParam('Strict-Transport-Security', 'max-age=31536000', rpkHEADER);
+  if rshContentSecurityPolicy in FSecurityHeaders then
+    AResponse.Params.AddParam('Content-Security-Policy',
+      'default-src ''none''; frame-ancestors ''none''', rpkHEADER);
+end;
+
 destructor TRALServer.Destroy;
 begin
   if Assigned(FSSL) then
@@ -985,6 +1039,9 @@ label
   aSTATUS, aOK, a401, a403, a404, a405, aFIM;
 
 begin
+  { first, so that every answer has them - those ValidateRequest refused
+    included, which every engine still hands over here }
+  AddSecurityHeaders(AResponse);
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
   { a body the engine could not take apart - a multipart with no part
@@ -1185,7 +1242,7 @@ begin
         200 the response started with and an empty body. Without
         OnServerError and with RaiseError off (the defaults) the exception
         used to be swallowed and the client got exactly that }
-      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+      AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
@@ -1493,6 +1550,14 @@ end;
 procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(HTTP_NotFound);
+end;
+
+function TRALModuleRoutes.ErrorText(AException: Exception): StringRAL;
+begin
+  if FServer <> nil then
+    Result := FServer.ErrorText(AException)
+  else
+    Result := StringRAL(AException.Message);
 end;
 
 { TRALSecurity }

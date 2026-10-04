@@ -546,7 +546,7 @@ begin
         begin
           FreeAndNil(vRespStream);
           sg_httpres_clear(Ares);
-          vStr := StringRAL(e.Message);
+          vStr := vServer.ErrorText(e);
           sg_httpres_sendbinary(Ares, PAnsiChar(vStr), Length(vStr),
                                 PAnsiChar(StringRAL(rctTEXTPLAIN)), HTTP_InternalError);
         end;

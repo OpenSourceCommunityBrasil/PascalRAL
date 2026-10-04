@@ -142,13 +142,20 @@ begin
   // the two branches were swapped: a plain exception answered 429 and a pool
   // timeout answered 408. the intent on record ("pool exhaustion now answers
   // HTTP 429 instead of 503") is pool -> 429 and anything else -> 500.
-  if AException is ERALDBPoolTimeout then
-    AResponse.StatusCode := HTTP_TooManyRequests
-  else
-    AResponse.StatusCode := HTTP_InternalError;
-
   AResponse.ContentType := rctTEXTPLAIN;
-  AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+  if AException is ERALDBPoolTimeout then
+  begin
+    { RAL's own words, which say nothing of the database }
+    AResponse.StatusCode := HTTP_TooManyRequests;
+    AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+  end
+  else
+  begin
+    { the driver's, which names tables and quotes SQL: hidden with the
+      server's HideErrorDetails }
+    AResponse.StatusCode := HTTP_InternalError;
+    AResponse.Params.AddParam('Exception', ErrorText(AException), rpkBODY);
+  end;
 end;
 
 function TRALDBModule.CreatePoolConnection(ASender: TObject): TRALDBBase;
@@ -416,8 +423,10 @@ begin
                 else
                   OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
               except
+                { each statement's own failure, the driver's words - hidden
+                  like a 500's with the server's HideErrorDetails }
                 on e: Exception do
-                  vDBSQL.Response.StrError := e.Message;
+                  vDBSQL.Response.StrError := ErrorText(e);
               end;
             end;
 
