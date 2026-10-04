@@ -90,6 +90,7 @@ type
     FHttpVersion: StringRAL;
     FMethod: TRALMethod;
     FQuery: StringRAL;
+    FRoute: TCollectionItem;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
     procedure SetAuthorization(const AValue: TRALAuthorization);
@@ -130,6 +131,13 @@ type
     property URL: StringRAL read GetURL;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
+    /// The route answering this request: a TRALBaseRoute of RALRoutes, which
+    /// cannot be named here because RALRoutes uses this unit. The server fills
+    /// it once the route is resolved - before OnRequest - and it stays nil
+    /// when none answers. Its InputParams and OutputParams carry the order the
+    /// route declares, which the params themselves, kept in the order they
+    /// arrived, do not.
+    property Route: TCollectionItem read FRoute write FRoute;
   published
     property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
     property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
@@ -242,6 +250,7 @@ begin
   { Protocol is not copied here: it is a face of ProtocolVersion, which the
     inherited Clone above already carried over }
   ASource.Query := Self.Query;
+  ASource.Route := Self.Route;
 end;
 
 constructor TRALRequest.Create(AOwner: TObject);

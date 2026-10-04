@@ -61,6 +61,7 @@ type
     FDescription: TStrings;
     FInputParams: TRALRouteParams;
     FName: StringRAL;
+    FOutputParams: TRALRouteParams;
     FRoute: StringRAL;
     FSegments: TRALRouteSegments;
     FSkipAuthMethods: TRALMethods;
@@ -79,7 +80,9 @@ type
     procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
     procedure SetInputParams(const AValue: TRALRouteParams);
+    procedure SetOutputParams(const AValue: TRALRouteParams);
     procedure SetURIParams(const AValue: TRALRouteParams);
+    function IsOutputParamsStored: Boolean;
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -111,6 +114,14 @@ type
   published
     property Description: TStrings read FDescription write SetDescription;
     property InputParams: TRALRouteParams read FInputParams write SetInputParams;
+    /// What the route answers with, in order - InputParams for the response.
+    /// Nothing on the wire depends on it: it is the order an application can
+    /// read an answer in (a log line, an audit record), and a declaration the
+    /// route keeps instead of each caller. Written to the form only when it
+    /// has items, so a form saved by this version still opens in one without
+    /// the property.
+    property OutputParams: TRALRouteParams read FOutputParams write SetOutputParams
+      stored IsOutputParamsStored;
     property Route: StringRAL read FRoute write SetRoute;
   end;
 
@@ -122,6 +133,7 @@ type
     property Description;
     property InputParams;
     property Name;
+    property OutputParams;
     property Route;
     property SkipAuthMethods;
     property URIParams;
@@ -179,6 +191,7 @@ begin
   UpdateSegments;
   FDescription := TStringList.Create;
   FInputParams := TRALRouteParams.Create(Self);
+  FOutputParams := TRALRouteParams.Create(Self);
   FURIParams := TRALRouteParams.Create(Self);
 
   Changed(False);
@@ -188,6 +201,7 @@ destructor TRALBaseRoute.Destroy;
 begin
   FreeAndNil(FDescription);
   FreeAndNil(FInputParams);
+  FreeAndNil(FOutputParams);
   FreeAndNil(FURIParams);
   inherited Destroy;
 end;
@@ -290,6 +304,16 @@ end;
 procedure TRALBaseRoute.SetInputParams(const AValue: TRALRouteParams);
 begin
   RALAssignOwned(FInputParams, AValue);
+end;
+
+procedure TRALBaseRoute.SetOutputParams(const AValue: TRALRouteParams);
+begin
+  RALAssignOwned(FOutputParams, AValue);
+end;
+
+function TRALBaseRoute.IsOutputParamsStored: Boolean;
+begin
+  Result := FOutputParams.Count > 0;
 end;
 
 procedure TRALBaseRoute.SetURIParams(const AValue: TRALRouteParams);
@@ -420,6 +444,7 @@ begin
   vDest.SkipAuthMethods := FSkipAuthMethods;
   vDest.URIParams.Assign(FURIParams);
   vDest.InputParams.Assign(FInputParams);
+  vDest.OutputParams.Assign(FOutputParams);
   { the handlers too: a copied route that answers nothing is no copy - and
     with Routes now copied on assignment, the routes would have gone mute }
   vDest.OnReply := FOnReply;

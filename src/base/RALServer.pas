@@ -979,6 +979,9 @@ begin
       if vRoute <> nil then
         vRouteIsAuth := True;
     end;
+    { every engine comes through here, so every one fills it: the handler, and
+      OnRequest/OnResponse, can read what the route declares }
+    ARequest.Route := vRoute;
 
     { only when a route will answer: a request for nothing had its whole body
       parsed into params anyway, one AddParam per member - and anyone,
