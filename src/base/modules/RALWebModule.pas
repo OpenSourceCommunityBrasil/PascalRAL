@@ -16,6 +16,8 @@ uses
 const
   { how many lists the sessions are spread over, each behind its own lock }
   cRALSessionShards = 16;
+  { TRALWebModule.IndexFile when nobody says otherwise }
+  cRALIndexFile = 'index.html';
 
 type
 
@@ -79,11 +81,12 @@ type
   private
     FBlockedExtensions: TStringList;
     FCacheControl: TStringList;
-    FCollectionRoute: TCollection;
+    FCollectionRoute: TRALRoutes;
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
     FFileCacheTime: IntegerRAL;
     FFollowLinks: boolean;
+    FIndexFile: StringRAL;
     FLastSweep: TDateTime;
     FMaxFileSize: Int64RAL;
     { a TRALWebPathCache - see the implementation }
@@ -107,6 +110,7 @@ type
     function CacheControlFor(const AFileName: string): StringRAL;
     function GetBlockedExtensions: TStrings;
     function GetCacheControl: TStrings;
+    function IsIndexFileStored: boolean;
     { the coding of a copy of AFileName kept compressed beside it that this
       request takes - 'br' or 'gzip' - with that copy's name, size and date;
       '' when there is none }
@@ -121,6 +125,7 @@ type
     procedure SetBlockedExtensions(AValue: TStrings);
     procedure SetCacheControl(AValue: TStrings);
     procedure SetFollowLinks(AValue: boolean);
+    procedure SetIndexFile(const AValue: StringRAL);
     procedure SetUseAppPathAsRoot(AValue: boolean);
     { the expired sessions of every list go, at most once a second, and are
       freed with no lock held: what a session keeps may take a while to free }
@@ -143,6 +148,10 @@ type
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); override;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
+    /// The module's routes and, while DocumentRoot serves something, the one
+    /// that serves the files - which the Swagger and Postman exporters left
+    /// out. The caller frees the list, not the routes
+    function GetListRoutes: TList; override;
     /// The browser's session, created - and its cookie added to AResponse -
     /// when it has none. Sessions cost memory per browser, so they only exist
     /// for the requests whose handlers ask for one: serving a file creates none.
@@ -185,6 +194,12 @@ type
     /// default) is what the module always did. False answers such a file as if
     /// it were not there; DocumentRoot itself may still be a link
     property FollowLinks: boolean read FFollowLinks write SetFollowLinks default True;
+    /// The file '/' - the Domain's own URL - answers with: index.html unless
+    /// told otherwise. Only that URL; a folder below it is not given one. With
+    /// no such file in the root, '/' is answered as before - by the server's
+    /// status page. A form does not keep an empty value, which comes back as
+    /// index.html: to serve no index page, leave the file out of the root
+    property IndexFile: StringRAL read FIndexFile write SetIndexFile stored IsIndexFileStored;
     /// The largest file served, in bytes; a bigger one is answered as if it
     /// were not there. Zero (the default) is no limit. A file goes out read
     /// from the disk as it is sent, so its size only weighs on memory when it
@@ -280,11 +295,12 @@ type
     CacheDefault: StringRAL;
     { the module's Domain, '' for '/' }
     Domain: StringRAL;
+    IndexFile: StringRAL;
     FollowLinks: boolean;
     constructor Create;
     destructor Destroy; override;
-    /// The path of the file AQuery asks for - AQuery itself - or '' when
-    /// AQuery is outside the Domain
+    /// The path of the file AQuery asks for, the Domain's own URL turned into
+    /// its index file - or '' when AQuery is outside the Domain
     function FilePath(const AQuery: StringRAL): StringRAL;
   end;
 
@@ -393,7 +409,19 @@ begin
   if (vLen > 0) and ((Length(AQuery) < vLen) or
      (not RALSameName(Copy(AQuery, 1, vLen), Domain)) or
      ((Length(AQuery) > vLen) and (AQuery[POSINISTR + vLen] <> '/'))) then
+  begin
     Result := '';
+    Exit;
+  end;
+
+  if (Length(AQuery) = vLen) or
+     ((Length(AQuery) = vLen + 1) and (AQuery[POSINISTR + vLen] = '/')) then
+  begin
+    if IndexFile = '' then
+      Result := ''
+    else
+      Result := Domain + '/' + IndexFile;
+  end;
 end;
 
 { TRALWebSession }
@@ -877,16 +905,21 @@ var
   vInt: IntegerRAL;
 begin
   inherited;
-  FCollectionRoute := TCollection.Create(TRALRoute);
+  { owned by the module, as its Routes are: a collection without an owner
+    left the route's full path without the module's Domain }
+  FCollectionRoute := TRALRoutes.Create(Self);
 
   FDefaultRoute := TRALRoute(FCollectionRoute.Add);
   FDefaultRoute.Route := '/';
   FDefaultRoute.Name := 'webdefault';
-  FDefaultRoute.Description.Text := 'Index Page';
+  FDefaultRoute.Description.Text := 'Files under DocumentRoot';
   FDefaultRoute.SkipAuthMethods := [amALL];
-  FDefaultRoute.AllowedMethods := [amGET];
+  { HEAD is how a client asks for the size or the date of a file without
+    downloading it; refused, it got a 405 }
+  FDefaultRoute.AllowedMethods := [amGET, amHEAD];
   FDefaultRoute.OnReply := {$IFDEF FPC}@{$ENDIF}WebModFile;
 
+  FIndexFile := cRALIndexFile;
   FFollowLinks := True;
 
   { before the lists whose changes publish them }
@@ -1036,6 +1069,11 @@ begin
 
     if Domain <> '/' then
       vSettings.Domain := Domain;
+    { a name in the root: what leads with a slash would be taken as absolute }
+    vSettings.IndexFile := RALTrim(FIndexFile);
+    while (vSettings.IndexFile <> '') and
+          (vSettings.IndexFile[POSINISTR] in ['/', '\']) do
+      Delete(vSettings.IndexFile, 1, 1);
     vSettings.FollowLinks := FFollowLinks;
   except
     vSettings.Free;
@@ -1059,6 +1097,8 @@ begin
   if AValue = Domain then
     Exit;
   inherited SetDomain(AValue);
+  { the file route's full path carries the Domain too }
+  FDefaultRoute.UpdateSegments;
   PublishSettings;
 end;
 
@@ -1070,12 +1110,32 @@ begin
   PublishSettings;
 end;
 
+procedure TRALWebModule.SetIndexFile(const AValue: StringRAL);
+begin
+  if FIndexFile = AValue then
+    Exit;
+  FIndexFile := AValue;
+  PublishSettings;
+end;
+
+function TRALWebModule.IsIndexFileStored: boolean;
+begin
+  Result := FIndexFile <> cRALIndexFile;
+end;
+
 procedure TRALWebModule.SetUseAppPathAsRoot(AValue: boolean);
 begin
   if FUseAppPathAsRoot = AValue then
     Exit;
   FUseAppPathAsRoot := AValue;
   PublishSettings;
+end;
+
+function TRALWebModule.GetListRoutes: TList;
+begin
+  Result := inherited GetListRoutes;
+  if TRALWebSettings(FSettings.Current).RootPath <> '' then
+    Result.Add(FDefaultRoute);
 end;
 
 function TRALWebModule.ResolveFile(ARequest: TRALRequest): TRALWebFile;
