@@ -726,7 +726,10 @@ begin
   FBoolFalseStr := AWriter.ReadString;
   FBoolTrueStr := AWriter.ReadString;
   FColumnSeparator := AWriter.ReadChar;
-  FDateTimeFormat:= TRALDateTimeFormat(AWriter.ReadByte);
+  { a byte of the request body, and every case over it covers all three
+    members - the shape in which FPC jumped out of its table for a
+    TRALFieldType past the last one (see TRALBinaryWriter.ReadEnum) }
+  FDateTimeFormat:= TRALDateTimeFormat(AWriter.ReadEnum(Ord(High(TRALDateTimeFormat))));
   if FDateTimeFormat = dtfCustom then
   begin
     FCustomDateFormat := AWriter.ReadString;

@@ -321,8 +321,11 @@ begin
     vName := ReadString(AStream);
     FFieldNames[vInt] := vName;
 
-    // type
+    // type - checked before it becomes an enum: every record below is read
+    // by a case over it, and past the last member that is no type at all
     vByte := ReadByte(AStream);
+    if not RALIsFieldTypeOrdinal(vByte) then
+      raise Exception.Create(emStorageInvalidBinary);
     vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
     FFieldTypes[vInt] := TRALFieldType(vByte);
 

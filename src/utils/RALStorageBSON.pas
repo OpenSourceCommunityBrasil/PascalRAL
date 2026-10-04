@@ -147,6 +147,7 @@ var
   vFields, vItemField : PBSONItemArray;
   vName: StringRAL;
   vType: TFieldType;
+  vTypeOrd: IntegerRAL;
   vFlags: TBytes;
   vField: TFieldDef;
 begin
@@ -178,7 +179,11 @@ begin
     vName := vItemField^.Values[0]^.ToString;
     FFieldNames[vInt] := vName;
 
-    FFieldTypes[vInt] := TRALFieldType(vItemField^.Values[1]^.ToInt);
+    // checked before it becomes an enum - see RALStorageBIN
+    vTypeOrd := vItemField^.Values[1]^.ToInt;
+    if not RALIsFieldTypeOrdinal(vTypeOrd) then
+      raise Exception.Create(emStorageInvalidBinary);
+    FFieldTypes[vInt] := TRALFieldType(vTypeOrd);
     vType := TRALDB.RALFieldTypeToFieldType(FFieldTypes[vInt]);
 
     vFlags[vInt] := vItemField^.Values[2]^.ToInt;

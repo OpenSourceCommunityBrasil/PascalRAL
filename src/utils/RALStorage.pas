@@ -125,9 +125,11 @@ begin
   { a format read off the wire is a byte cast to the enum, and both tables are
     indexed by it: past the last member this read a "class" from beyond the
     array and called its constructor. The case statement this replaced simply
-    answered nil there }
+    answered nil there. Cardinal, not Ord: Delphi compares a small enum as a
+    signed byte, and 128 to 255 passed "Ord(x) > Ord(High(x))" - see
+    RALFieldTypeName }
   Result := nil;
-  if Ord(AFormat) > Ord(High(TRALStorageFormat)) then
+  if Cardinal(AFormat) > Cardinal(Ord(High(TRALStorageFormat))) then
     Exit;
 
   Result := gStorageLinkClasses[AFormat];
@@ -454,7 +456,7 @@ end;
 procedure TRALStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
 //  FStorageFormat := TRALStorageFormat(AWriter.ReadByte);
-  FFieldCharCase := TRALFieldCharCase(AWriter.ReadByte);
+  FFieldCharCase := TRALFieldCharCase(AWriter.ReadEnum(Ord(High(TRALFieldCharCase))));
 end;
 
 procedure TRALStorageLink.LoadPropsFromStream(AStream: TStream);

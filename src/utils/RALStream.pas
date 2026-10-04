@@ -46,6 +46,10 @@ type
 
     function ReadShortint: Shortint;
     function ReadByte: Byte;
+    /// A byte that becomes an enum whose last member is AHigh, refused with
+    /// emStorageInvalidBinary past it: cast first, a case over the value took
+    /// a member's branch on Delphi Win32 and jumped out of its table on FPC
+    function ReadEnum(AHigh: Byte): Byte;
     function ReadSmallint: Smallint;
     function ReadWord: Word;
     function ReadInteger: IntegerRAL;
@@ -386,6 +390,13 @@ end;
 function TRALBinaryWriter.ReadByte: Byte;
 begin
   ReadExact(Result, SizeOf(Result));
+end;
+
+function TRALBinaryWriter.ReadEnum(AHigh: Byte): Byte;
+begin
+  Result := ReadByte;
+  if Result > AHigh then
+    raise Exception.Create(emStorageInvalidBinary);
 end;
 
 function TRALBinaryWriter.ReadSmallint: Smallint;

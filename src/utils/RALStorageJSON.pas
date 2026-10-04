@@ -860,7 +860,7 @@ var
   vInt, vSize: IntegerRAL;
   vName: StringRAL;
   vType: TFieldType;
-  vByte: Byte;
+  vTypeOrd: Int64RAL;
   vFlags: TBytes;
   vjValue: TRALJSONValue;
   vjArr1, vjArr2: TRALJSONArray;
@@ -893,10 +893,13 @@ begin
       vName := vjArr2.Get(0).AsString;
       FFieldNames[vInt] := vName;
 
-      // type
-      vByte := vjArr2.Get(1).AsInteger;
-      vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
-      FFieldTypes[vInt] := TRALFieldType(vByte);
+      // type - checked whole, before it becomes an enum (see RALStorageBIN);
+      // it was cut to a byte first, so 256 came back as the first type
+      vTypeOrd := vjArr2.Get(1).AsInteger;
+      if not RALIsFieldTypeOrdinal(vTypeOrd) then
+        raise Exception.Create(emInvalidJSONFormat);
+      vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vTypeOrd));
+      FFieldTypes[vInt] := TRALFieldType(vTypeOrd);
 
       // flags
       vFlags[vInt] := vjArr2.Get(2).AsInteger;
@@ -1073,7 +1076,7 @@ end;
 procedure TRALStorageJSONLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
-  FJSONType := TRALJSONType(AWriter.ReadByte);
+  FJSONType := TRALJSONType(AWriter.ReadEnum(Ord(High(TRALJSONType))));
   FFormatOptions.LoadPropsFromStream(AWriter);
 end;
 
@@ -1087,7 +1090,8 @@ end;
 procedure TRALJSONFormatOptions.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
-  FDateTimeFormat := TRALDateTimeFormat(AWriter.ReadByte);
+  // see TRALCSVFormatOptions.LoadPropsFromStream
+  FDateTimeFormat := TRALDateTimeFormat(AWriter.ReadEnum(Ord(High(TRALDateTimeFormat))));
   if FDateTimeFormat = dtfCustom then
     FCustomDateTimeFormat := AWriter.ReadString;
 end;

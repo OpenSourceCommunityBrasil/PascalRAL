@@ -610,7 +610,7 @@ var
   vWriter: TRALBinaryWriter;
 
   vInt1, vInt2, vInt3: IntegerRAL;
-  vByte: byte;
+  vByte, vTypeByte: byte;
   vBoolean: boolean;
 begin
   Clear;
@@ -645,11 +645,12 @@ begin
         vDBSQL := TRALDBSQL.Create;
         FSQLList.Add(vDBSQL);
 
-        // drive type
-        vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadByte);
+        // drive type - every byte is one (qtOther is 255), and it is only
+        // ever compared; read like the others all the same
+        vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadEnum(Ord(High(TRALDBDriverType))));
 
         // type de exec - open or execsql
-        vDBSQL.ExecType := TRALDBExecType(vWriter.ReadByte);
+        vDBSQL.ExecType := TRALDBExecType(vWriter.ReadEnum(Ord(High(TRALDBExecType))));
 
         // index do sql
         vDBSQL.SQLIndex := vWriter.ReadInteger;
@@ -665,8 +666,13 @@ begin
           // name
           vParam.Name := vWriter.ReadString;
 
-          // datatype
-          vStorType := TRALFieldType(vWriter.ReadByte);
+          // datatype - a byte of the request body, checked before it becomes
+          // an enum: the value below is read by a case over it, and on Win32
+          // a type from 128 up was folded onto another one (see RALDBTypes)
+          vTypeByte := vWriter.ReadByte;
+          if not RALIsFieldTypeOrdinal(vTypeByte) then
+            raise Exception.Create(emStorageInvalidBinary);
+          vStorType := TRALFieldType(vTypeByte);
           vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
           // size

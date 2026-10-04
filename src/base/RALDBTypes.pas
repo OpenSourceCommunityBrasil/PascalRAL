@@ -194,6 +194,12 @@ function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL; overload;
 /// TFieldType, which has no member -1. TRALFieldType needs no inverse - its
 /// name is written into the JSON for readers, never read back.
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
+/// True when AValue - a number read off the wire, out of a storage or a request
+/// body - is the ordinal of a TRALFieldType. Check it BEFORE the cast: past the
+/// last member the cast is no RAL type at all, and on Delphi a check written on
+/// the enum afterwards misses half the bytes (see RALFieldTypeName)
+function RALIsFieldTypeOrdinal(AValue: Int64RAL): boolean;
+
 
 /// The message a failed database request came back with - never an empty one.
 function RALDBResponseError(AResponse: TRALResponse): StringRAL;
@@ -270,8 +276,11 @@ begin
   { these values come off the wire as a byte cast to the enum, and the table
     read past its end handed a stray pointer to a string assignment. Not
     GetEnumName either: Delphi's walks its name list for as many steps as the
-    ordinal says, past the last name and into whatever RTTI follows }
-  if Ord(AFieldType) > Ord(High(TRALFieldType)) then
+    ordinal says, past the last name and into whatever RTTI follows.
+    Compared as Cardinal, never with Ord: Delphi compares an enum of up to 128
+    members as a SIGNED byte, on Win32 and Win64 alike, so an ordinal from 128
+    to 255 passed "Ord(x) > Ord(High(x))" and indexed BEFORE the table }
+  if Cardinal(AFieldType) > Cardinal(Ord(High(TRALFieldType))) then
     Result := ''
   else
     Result := gRALFieldTypeNames[AFieldType];
@@ -280,11 +289,17 @@ end;
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
 begin
   { an ordinal outside the enum - reachable only through a cast - has no name;
-    see the overload above. RALNameToFieldType reads '' back as ftUnknown }
-  if Ord(AFieldType) > Ord(High(TFieldType)) then
+    see the overload above, Cardinal included. RALNameToFieldType reads ''
+    back as ftUnknown }
+  if Cardinal(AFieldType) > Cardinal(Ord(High(TFieldType))) then
     Result := ''
   else
     Result := gFieldTypeNames[AFieldType];
+end;
+
+function RALIsFieldTypeOrdinal(AValue: Int64RAL): boolean;
+begin
+  Result := (AValue >= 0) and (AValue <= Ord(High(TRALFieldType)));
 end;
 
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
@@ -311,6 +326,12 @@ begin
     default at all: the result was whatever the register held, and it went on
     to index the type name table }
   Result := sftString;
+  { past the last member a case is not reliably answered by its default on
+    Delphi: on Win32 an ordinal from 128 up can land on a member's branch -
+    see RALFieldTypeToFieldType, and RALFieldTypeName for the signed byte
+    behind it }
+  if Cardinal(AFieldType) > Cardinal(Ord(High(TFieldType))) then
+    Exit;
   case AFieldType of
     ftFixedWideChar,
     ftGuid,
@@ -387,8 +408,12 @@ end;
 class function TRALDB.RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
 begin
   { every member is mapped below; this answers an ordinal that came off the
-    wire past the last one }
+    wire past the last one - before the case, which on Win32 took 128 for
+    sftShortInt and answered ftShortint, and on FPC jumped through its table
+    into an access violation for anything past the last member }
   Result := ftUnknown;
+  if Cardinal(AFieldType) > Cardinal(Ord(High(TRALFieldType))) then
+    Exit;
   case AFieldType of
     {$IFNDEF FPC}
     sftShortInt: Result := ftShortint;
@@ -647,10 +672,19 @@ begin
 end;
 
 procedure TRALDBInfoField.SetAsJSONObj(AValue: TRALJSONObject);
+var
+  vType: Int64RAL;
 begin
   FAttributes := AValue.Get('attributes').AsString;
   FFieldName := AValue.Get('fieldname').AsString;
-  FFieldType := TFieldType(AValue.Get('fieldtype').AsInteger);
+  { a number off the wire: past the last member it is no type at all, and the
+    name this info writes back into its JSON was read from before the name
+    table. ftUnknown, as RALNameToFieldType answers a name it does not know }
+  vType := AValue.Get('fieldtype').AsInteger;
+  if (vType < 0) or (vType > Ord(High(TFieldType))) then
+    FFieldType := ftUnknown
+  else
+    FFieldType := TFieldType(vType);
   FFlags := AValue.Get('flags').AsInteger;
   FLength := AValue.Get('length').AsInteger;
   FPrecision := AValue.Get('precision').AsInteger;
