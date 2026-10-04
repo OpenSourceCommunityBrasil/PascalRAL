@@ -81,7 +81,12 @@ type
     function GetAsDouble: DoubleRAL;
     function GetAsInteger: IntegerRAL;
     function GetAsInt64: Int64;
+    { deprecated through the getter, which is what FPC warns about where the
+      property is read - and only there, not where it is written. Delphi
+      refuses the directive on a property and only warns about a getter in
+      the unit that declares it, so it gets the doc comment alone }
     function GetAsStream: TStream;
+      {$IFDEF FPC}deprecated 'AsStream builds a copy the caller must free: read Content, or call SaveToStream';{$ENDIF}
     function GetAsString: StringRAL;
     function GetContent: TStream;
     function GetContentDisposition: StringRAL;
@@ -181,6 +186,10 @@ type
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsInt64: Int64 read GetAsInt64 write SetAsInt64;
+    /// Writing copies the stream into the param. READING builds a new copy of
+    /// the whole value on every read, which the caller has to free - not the
+    /// param's own stream, despite the name. Deprecated for reading: Content
+    /// is the param's stream, and SaveToStream says that it makes a copy
     property AsStream: TStream read GetAsStream write SetAsStream;
     property AsString: StringRAL read GetAsString write SetAsString;
     { The value as a stream. Asking for it on a param that holds text BUILDS
@@ -260,7 +269,9 @@ type
     /// Results either = or : if found on the input text.
     function FindHeaderNameSeparator(const ASource: StringRAL): StringRAL;
     function FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
+    { deprecated the way TRALParam.GetAsStream is - see there }
     function GetBody: TList;
+      {$IFDEF FPC}deprecated 'Body builds a list the caller must free: read Count(rpkBODY), IndexKind or SingleBody';{$ENDIF}
     function GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam; overload;
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
     function GetParam(const AName: StringRAL): TRALParam; overload;
@@ -392,7 +403,9 @@ type
     /// returns all the params in a JSON UTF8string format.
     function AsJSON: StringRAL;
 
-    /// Grabs only the body kind of params, excluding headers and cookies.
+    /// A NEW list of the rpkBODY params, which the caller has to free - every
+    /// read builds another, so 'if Params.Body.Count > 0' leaks one. Count(rpkBODY),
+    /// IndexKind[i, rpkBODY] and SingleBody read the same without allocating
     property Body: TList read GetBody;
     /// Grabs a param by its index on the TRALParams list.
     property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
@@ -2451,6 +2464,7 @@ function TRALParams.GetBody: TList;
 var
   I: IntegerRAL;
 begin
+  { a new list on every read, the caller's to free - see the property }
   Result := TList.Create;
   for I := 0 to Pred(FParams.Count) do
     if TRALParam(FParams.Items[I]).Kind = rpkBODY then
