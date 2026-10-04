@@ -93,118 +93,175 @@ const
 
   { TRALHTTPCoder }
 
+{ the value of a hexadecimal digit, 255 for any other byte }
+function HexDigit(AByte: Byte): Byte;
+begin
+  case AByte of
+    Ord('0')..Ord('9'):
+      Result := AByte - Ord('0');
+    Ord('A')..Ord('F'):
+      Result := AByte - Ord('A') + 10;
+    Ord('a')..Ord('f'):
+      Result := AByte - Ord('a') + 10;
+  else
+    Result := 255;
+  end;
+end;
+
 class function TRALHTTPCoder.DecodeURL(const AUrl: StringRAL): StringRAL;
 var
-  vInt, vChr, vLen, vEnd: IntegerRAL;
-  vBytes: TBytes;
+  vSrc, vEnd, vDest: PByte;
+  vHigh, vLow: Byte;
+  vDecoded: StringRAL;
 begin
-  { decoded into BYTES and copied into the result whole: "%C3%A7" is the
-    UTF-8 of "ç", and appending CharRAL(#$C3) to a UTF8String on Delphi
-    converted that byte from the ANSI codepage first - every non-ASCII
-    character came out doubly encoded ("Ã§") }
-  Result := '';
-  SetLength(vBytes, Length(AUrl));
-  vEnd := 0;
-  vInt := POSINISTR;
-  vLen := RALHighStr(AUrl);
-  while vInt <= vLen do
+  { nothing to decode is the common case - a name, a number, a plain word -
+    and then the answer is the string itself, not a copy: it used to cost a
+    byte buffer and a new string every time }
+  vSrc := PByte(Pointer(AUrl));
+  vEnd := vSrc + Length(AUrl);
+  while (vSrc < vEnd) and (vSrc^ <> Ord('%')) and (vSrc^ <> Ord('+')) do
+    Inc(vSrc);
+  if vSrc = vEnd then
   begin
-    if AUrl[vInt] = '+' then
-      vBytes[vEnd] := 32
-    else if (AUrl[vInt] = '%') and (vInt + 2 <= vLen) and
-      TryStrToInt('$' + string(Copy(AUrl, vInt + 1, 2)), vChr) then
-    begin
-      vBytes[vEnd] := Byte(vChr);
-      vInt := vInt + 2;
-    end
-    else
-      vBytes[vEnd] := Ord(AUrl[vInt]);
-    vEnd := vEnd + 1;
-    vInt := vInt + 1;
+    Result := AUrl;
+    Exit;
   end;
-  SetLength(Result, vEnd);
-  if vEnd > 0 then
-    Move(vBytes[0], Result[POSINISTR], vEnd);
+
+  { decoded byte by byte straight into a string that can only get shorter:
+    "%C3%A7" is the UTF-8 of "ç", and appending CharRAL(#$C3) to a UTF8String
+    on Delphi converted that byte from the ANSI codepage first - every
+    non-ASCII character came out doubly encoded ("Ã§"). A '%' without two
+    hexadecimal digits after it stays as it is. Result is written last, after
+    AUrl was read whole, because a caller writing "S := DecodeURL(S)" may
+    hand both the same variable }
+  SetLength(vDecoded, Length(AUrl));
+  vDest := PByte(Pointer(vDecoded));
+  Move(PByte(Pointer(AUrl))^, vDest^, vSrc - PByte(Pointer(AUrl)));
+  Inc(vDest, vSrc - PByte(Pointer(AUrl)));
+  while vSrc < vEnd do
+  begin
+    vDest^ := vSrc^;
+    if vSrc^ = Ord('+') then
+      vDest^ := Ord(' ')
+    else if (vSrc^ = Ord('%')) and (vEnd - vSrc > 2) then
+    begin
+      vHigh := HexDigit(vSrc[1]);
+      vLow := HexDigit(vSrc[2]);
+      if (vHigh < 16) and (vLow < 16) then
+      begin
+        vDest^ := (vHigh shl 4) or vLow;
+        Inc(vSrc, 2);
+      end;
+    end;
+    Inc(vDest);
+    Inc(vSrc);
+  end;
+  SetLength(vDecoded, vDest - PByte(Pointer(vDecoded)));
+  Result := vDecoded;
+end;
+
+{ Every byte of AText replaced by its entry of ATable, in one allocation. The
+  result used to grow by concatenation - a reallocation and a copy of all of it
+  per input byte, quadratic - and EncodeURL runs over every form field sent }
+function EncodeByTable(const AText: StringRAL; const ATable: array of StringRAL): StringRAL;
+var
+  vInt, vLen: IntegerRAL;
+  vDest: PByte;
+begin
+  vLen := 0;
+  for vInt := POSINISTR to RALHighStr(AText) do
+    Inc(vLen, Length(ATable[Ord(AText[vInt])]));
+  SetLength(Result, vLen);
+  if vLen = 0 then
+    Exit;
+  vDest := PByte(Pointer(Result));
+  for vInt := POSINISTR to RALHighStr(AText) do
+  begin
+    vLen := Length(ATable[Ord(AText[vInt])]);
+    if vLen > 0 then
+    begin
+      Move(Pointer(ATable[Ord(AText[vInt])])^, vDest^, vLen);
+      Inc(vDest, vLen);
+    end;
+  end;
 end;
 
 class function TRALHTTPCoder.EncodeURL(const AUrl: StringRAL): StringRAL;
-var
-  vInt, vChr: IntegerRAL;
 begin
-  Result := '';
-  vInt := POSINISTR;
-  while vInt <= RALHighStr(AUrl) do
-  begin
-    vChr := Ord(AUrl[vInt]);
-    Result := Result + URLStrTable[vChr];
-    vInt := vInt + 1;
-  end;
+  Result := EncodeByTable(AUrl, URLStrTable);
 end;
 
 class function TRALHTTPCoder.DecodeHTML(const AHtml: StringRAL): StringRAL;
 var
-  vEsc: boolean;
-  vCode: StringRAL;
-  vInt, vChr: integer;
-begin
-  Result := '';
-  vCode := '';
-  vEsc := False;
+  vInt, vHigh, vOut, vEsc, vChr: IntegerRAL;
 
-  vInt := POSINISTR;
-  while vInt <= RALHighStr(AHtml) do
+  { the byte whose entity is AHtml[AFrom..AFrom + ALen - 1], or -1 }
+  function EntityAt(AFrom, ALen: IntegerRAL): IntegerRAL;
+  var
+    vIdx: IntegerRAL;
+  begin
+    for vIdx := 0 to 255 do
+      if (Length(HTMLStrTable[vIdx]) = ALen) and
+         CompareMem(@AHtml[AFrom], Pointer(HTMLStrTable[vIdx]), ALen) then
+      begin
+        Result := vIdx;
+        Exit;
+      end;
+    Result := -1;
+  end;
+
+  procedure Keep(AFrom, ATo: IntegerRAL);
+  begin
+    if ATo >= AFrom then
+    begin
+      Move(AHtml[AFrom], Result[vOut], ATo - AFrom + 1);
+      Inc(vOut, ATo - AFrom + 1);
+    end;
+  end;
+
+begin
+  { One pass into a result that can only shrink - an entity becomes one byte -
+    instead of concatenating a character at a time, which was quadratic, and
+    in an unterminated '&...' as well. An '&' that opens no entity is kept as
+    it is: the text from it to the next '&' used to be dropped }
+  SetLength(Result, Length(AHtml));
+  vOut := POSINISTR;
+  vEsc := -1;
+  vHigh := RALHighStr(AHtml);
+  for vInt := POSINISTR to vHigh do
   begin
     if AHtml[vInt] = '&' then
     begin
-      vEsc := True;
-      vCode := AHtml[vInt];
+      if vEsc >= 0 then
+        Keep(vEsc, vInt - 1);
+      vEsc := vInt;
     end
-    else if (AHtml[vInt] = ';') and (vEsc) then
+    else if (AHtml[vInt] = ';') and (vEsc >= 0) then
     begin
-      vCode := vCode + AHtml[vInt];
-      vChr := 0;
-      while vChr <= 255 do
+      vChr := EntityAt(vEsc, vInt - vEsc + 1);
+      if vChr >= 0 then
       begin
-        if HTMLStrTable[vChr] = vCode then
-        begin
-          Result := Result + CharRAL(vChr);
-          Break;
-        end;
-        vChr := vChr + 1;
-      end;
-
-      if vChr > 255 then
-        Result := Result + vCode;
-
-      vCode := '';
-      vEsc := False;
-    end
-    else
-    begin
-      if vEsc then
-        vCode := vCode + AHtml[vInt]
+        Result[vOut] := CharRAL(vChr);
+        Inc(vOut);
+      end
       else
-        Result := Result + AHtml[vInt];
+        Keep(vEsc, vInt);
+      vEsc := -1;
+    end
+    else if vEsc < 0 then
+    begin
+      Result[vOut] := AHtml[vInt];
+      Inc(vOut);
     end;
-    vInt := vInt + 1;
   end;
-
-  if vCode <> '' then
-    Result := Result + vCode;
+  if vEsc >= 0 then
+    Keep(vEsc, vHigh);
+  SetLength(Result, vOut - POSINISTR);
 end;
 
 class function TRALHTTPCoder.EncodeHTML(const AHtml: StringRAL): StringRAL;
-var
-  vInt, vChr: IntegerRAL;
 begin
-  Result := '';
-  vInt := POSINISTR;
-  while vInt <= RALHighStr(AHtml) do
-  begin
-    vChr := Ord(AHtml[vInt]);
-    Result := Result + HTMLStrTable[vChr];
-    vInt := vInt + 1;
-  end;
+  Result := EncodeByTable(AHtml, HTMLStrTable);
 end;
 
 end.

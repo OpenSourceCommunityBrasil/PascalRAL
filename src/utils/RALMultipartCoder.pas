@@ -550,8 +550,12 @@ var
 begin
   if FIndex < MultipartLineLength then
   begin
-    vLine := BytesToStringUTF8(FBuffer);
+    { the line's own bytes, no more: it used to convert the whole 64 KB buffer
+      and cut the result down, on every line of the body - and ResetBuffer
+      zeroed those 64 KB after each one so the conversion would stop there }
     SetLength(vLine, FIndex);
+    if FIndex > 0 then
+      Move(FBuffer[0], vLine[POSINISTR], FIndex);
 
     // boundary end of file
     if Pos('--' + FBoundary + '--', vLine) > 0 then
@@ -609,8 +613,7 @@ end;
 
 function TRALMultipartDecoder.ResetBuffer: PByte;
 begin
-  FIndex := 0;
-  FillChar(FBuffer[0], Length(FBuffer), 0);
+  FIndex := 0; // FIndex is the end of the data: what lies past it is never read
   Result := @FBuffer[FIndex];
 end;
 

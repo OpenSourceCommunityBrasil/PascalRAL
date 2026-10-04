@@ -1321,11 +1321,17 @@ end;
 { TRALModuleRoutes }
 
 procedure TRALModuleRoutes.SetDomain(const AValue: StringRAL);
+var
+  vInt: IntegerRAL;
 begin
   if AValue = FDomain then
     Exit;
 
   FDomain := FixRoute(AValue);
+  { every route keeps its full path split (UpdateSegments), the domain in it }
+  if FRoutes <> nil then
+    for vInt := 0 to Pred(FRoutes.Count) do
+      TRALBaseRoute(FRoutes.Items[vInt]).UpdateSegments;
 end;
 
 procedure TRALModuleRoutes.SetRoutes(const AValue: TRALRoutes);

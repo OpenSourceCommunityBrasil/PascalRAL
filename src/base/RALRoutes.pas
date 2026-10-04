@@ -10,6 +10,8 @@ uses
 
 type
   TRALRoutes = class;
+  /// The segments of a route's full path, '/api/users/:id' as api, users, :id
+  TRALRouteSegments = array of StringRAL;
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
   TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 
@@ -60,6 +62,7 @@ type
     FInputParams: TRALRouteParams;
     FName: StringRAL;
     FRoute: StringRAL;
+    FSegments: TRALRouteSegments;
     FSkipAuthMethods: TRALMethods;
     FURIParams: TRALRouteParams;
 
@@ -67,6 +70,7 @@ type
     FOnReplyGen: TRALOnReplyGen;
   protected
     procedure AssignTo(Dest: TPersistent); override;
+    procedure SetCollection(Value: TCollection); override;
     function GetDisplayName: string; override;
     /// checks if the route already exists on the list
     procedure SetAllowedMethods(const AValue: TRALMethods);
@@ -90,6 +94,10 @@ type
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// Returns true or false wether the method is skipped in authentication
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
+    /// Splits GetFullRoute into the segments every request is matched against,
+    /// once, instead of on each request. Route, the owning collection and the
+    /// module's Domain call it when they change
+    procedure UpdateSegments;
 
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
@@ -140,8 +148,6 @@ type
       property Current: TRALRoute read GetCurrent;
     end;
   private
-    function CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
-                           var AWeight: IntegerRAL; AURI: TStringList): boolean;
     function GetRoute(const ARoute: StringRAL): TRALRoute;
   public
     constructor Create(AOwner: TPersistent);
@@ -170,6 +176,7 @@ begin
   FCallback := False;
   FName := 'ralroute' + IntToStr(Index);
   FRoute := '/';
+  UpdateSegments;
   FDescription := TStringList.Create;
   FInputParams := TRALRouteParams.Create(Self);
   FURIParams := TRALRouteParams.Create(Self);
@@ -235,6 +242,7 @@ begin
     Exit;
 
   FRoute := AValue;
+  UpdateSegments;
   Delete(AValue, POSINISTR, 1);
 
   vList := TStringList.Create;
@@ -321,6 +329,63 @@ begin
 
   Result := (amALL in SkipAuthMethods) or
             (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
+end;
+
+{ The segments of a path as FixRoute leaves it - '/a/b', or '/' with none - each
+  trimmed when ATrim says so: the split a TStringList with LineBreak '/' made,
+  two of them for every route on every request. Positions count from 1, the
+  way Copy does, and characters are read through POSINISTR }
+function SplitPath(const APath: StringRAL; ATrim: boolean): TRALRouteSegments;
+var
+  vLen, vInt, vStart, vCount: IntegerRAL;
+begin
+  Result := nil;
+  vLen := Length(APath);
+  vStart := 1;
+  if (vLen > 0) and (APath[POSINISTR] = '/') then
+    vStart := 2;
+  if vStart > vLen then
+    Exit;
+
+  vCount := 1;
+  for vInt := vStart to vLen do
+    if APath[POSINISTR - 1 + vInt] = '/' then
+      Inc(vCount);
+  if APath[POSINISTR - 1 + vLen] = '/' then
+    Dec(vCount); // a trailing '/' closes the last segment and opens none
+  SetLength(Result, vCount);
+
+  vCount := 0;
+  for vInt := vStart to vLen + 1 do
+    if (vInt > vLen) or (APath[POSINISTR - 1 + vInt] = '/') then
+    begin
+      if vCount < Length(Result) then
+      begin
+        Result[vCount] := Copy(APath, vStart, vInt - vStart);
+        if ATrim then
+          Result[vCount] := RALTrim(Result[vCount]);
+        Inc(vCount);
+      end;
+      vStart := vInt + 1;
+    end;
+end;
+
+{ ':name' in a route takes any value of the request in its place }
+function IsParamSegment(const ASegment: StringRAL): boolean;
+begin
+  Result := (ASegment <> '') and (ASegment[POSINISTR] = ':');
+end;
+
+procedure TRALBaseRoute.UpdateSegments;
+begin
+  FSegments := SplitPath(GetFullRoute, True);
+end;
+
+procedure TRALBaseRoute.SetCollection(Value: TCollection);
+begin
+  inherited;
+  if Value <> nil then
+    UpdateSegments; // the full route reads the owning module's Domain
 end;
 
 function TRALBaseRoute.GetFullRoute: StringRAL;
@@ -411,76 +476,57 @@ end;
 
 { RALRoutes }
 
-function TRALRoutes.CompareRoutes(ARoute: TRALRoute; AQuery: StringRAL;
-                                  var AWeight: IntegerRAL; AURI: TStringList): boolean;
+{ Whether ARoute answers the request path APath (trimmed segments), and with
+  what weight: 10 for each segment past the route's own, which only a route
+  with AllowURIParams accepts - the lowest weight wins. Nothing is allocated:
+  it runs for every route on every request }
+function MatchRoute(ARoute: TRALBaseRoute; const APath: TRALRouteSegments;
+  out AWeight: IntegerRAL): boolean;
 var
-  vStrQuery1, vStrQuery2: TStringList;
-  vStr1, vStr2, vQuery: StringRAL;
-  vInt, vIdxParam: IntegerRAL;
+  vInt, vCount: IntegerRAL;
 begin
   Result := False;
   AWeight := 0;
-  AURI.Clear;
-
-  vQuery := ARoute.GetFullRoute;
-  System.Delete(vQuery, 1, 1);
-  System.Delete(AQuery, 1, 1);
-
-  vStrQuery1 := TStringList.Create;
-  vStrQuery2 := TStringList.Create;
-  try
-    // query da rota
-    vStrQuery1.LineBreak := '/';
-    vStrQuery1.Text := vQuery;
-
-    // query da requisicao
-    vStrQuery2.LineBreak := '/';
-    vStrQuery2.Text := AQuery;
-
-    // se a rota nao permitir URIParams o total de parametros devem ser iguais
-    // lembrando que a o tamanho da rota da requisicao deve ser maior ou igual ao
-    // tamanho da rota
-    if ((not ARoute.AllowURIParams) and (vStrQuery2.Count <> vStrQuery1.Count)) or
-       (vStrQuery2.Count < vStrQuery1.Count) then
+  vCount := Length(ARoute.FSegments);
+  if (Length(APath) < vCount) or
+     ((not ARoute.AllowURIParams) and (Length(APath) <> vCount)) then
+    Exit;
+  for vInt := 0 to vCount - 1 do
+    if (not IsParamSegment(ARoute.FSegments[vInt])) and
+       (not RALSameName(ARoute.FSegments[vInt], APath[vInt])) then
       Exit;
+  AWeight := 10 * (Length(APath) - vCount);
+  Result := True;
+end;
 
-    vInt := 0;
-    for vInt := 0 to Pred(vStrQuery1.Count) do
+{ The URI params of the route that answers, in the order they always came: the
+  ':name' ones with the trimmed value, then each segment past the route as
+  ral_uriparam1, 2... as it came }
+procedure AddURIParams(ARoute: TRALBaseRoute; const ARaw, APath: TRALRouteSegments;
+  AParams: TRALParams);
+var
+  vInt, vIdx: IntegerRAL;
+  vParam: TRALParam;
+begin
+  for vInt := 0 to High(ARoute.FSegments) do
+    if IsParamSegment(ARoute.FSegments[vInt]) then
     begin
-      vStr1 := Trim(vStrQuery1.Strings[vInt]);
-      vStr2 := Trim(vStrQuery2.Strings[vInt]);
-
-      if vStr1[POSINISTR] = ':' then
-      begin
-        System.Delete(vStr1, POSINISTR, 1);
-        AURI.Add(vStr1 + '=' + vStr2);
-      end
-      { per segment, per route, per request: SameText on Delphi converts both
-        sides from UTF-8 to UTF-16 on every call }
-      else if not RALSameName(vStr1, vStr2) then
-      begin
-        Exit;
-      end;
+      vParam := AParams.NewParam;
+      vParam.ParamName := Copy(ARoute.FSegments[vInt], 2, MaxInt);
+      vParam.AsString := APath[vInt];
+      vParam.Kind := rpkQUERY;
     end;
 
-    if ARoute.AllowURIParams then
-    begin
-      vInt := vStrQuery1.Count;
-      vIdxParam := 1;
-      for vInt := vInt to Pred(vStrQuery2.Count) do
-      begin
-        vStr1 := 'ral_uriparam' + IntToStr(vIdxParam);
-        vStr2 := vStrQuery2.Strings[vInt];
-        AURI.Add(vStr1 + '=' + vStr2);
-        vIdxParam := vIdxParam + 1;
-        AWeight := AWeight + 10;
-      end;
-    end;
-
-    Result := True;
-  finally
-    FreeAndNil(vStrQuery1);
-    FreeAndNil(vStrQuery2);
+  if not ARoute.AllowURIParams then
+    Exit;
+  vIdx := 1;
+  for vInt := Length(ARoute.FSegments) to High(ARaw) do
+  begin
+    vParam := AParams.NewParam;
+    vParam.ParamName := 'ral_uriparam' + IntToStr(vIdx);
+    vParam.AsString := ARaw[vInt];
+    vParam.Kind := rpkQUERY;
+    Inc(vIdx);
   end;
 end;
 
@@ -523,48 +569,34 @@ end;
 
 function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
 var
-  vInt, vRouteWeight, vTempWeight: IntegerRAL;
+  vInt, vWeight, vBest: IntegerRAL;
   vRoute: TRALRoute;
-  vQuery:  StringRAL;
-  vUriRoute, vTempUriRoute: TStringList;
-  vParam: TRALParam;
+  vRaw, vPath: TRALRouteSegments;
 begin
-  vUriRoute := TStringList.Create;
-  vTempUriRoute := TStringList.Create;
-  try
-    vTempWeight := 0;
-    vRouteWeight := MaxInt;
-    Result := nil;
-    vQuery := FixRoute(ARequest.Query);
-    for vInt := 0 to Pred(Self.Count) do
-    begin
-      vRoute := TRALRoute(Items[vInt]);
+  { the request's path split once, and every route's kept since it was defined
+    (TRALBaseRoute.UpdateSegments). This used to build two TStringLists and
+    parse both paths for every route on every request, plus two more lists
+    for the URI params of whichever route was winning so far }
+  vRaw := SplitPath(FixRoute(ARequest.Query), False);
+  SetLength(vPath, Length(vRaw));
+  for vInt := 0 to High(vRaw) do
+    vPath[vInt] := RALTrim(vRaw[vInt]);
 
-      if vRoute.IsMethodAllowed(ARequest.Method) and CompareRoutes(vRoute, vQuery, vTempWeight, vTempUriRoute) then
-      begin
-        if vTempWeight < vRouteWeight then
-        begin
-          Result := vRoute;
-          vUriRoute.Assign(vTempUriRoute);
-          vRouteWeight := vTempWeight;
-        end;
-      end;
-    end;
-
-    if Result <> nil then
+  Result := nil;
+  vBest := MaxInt;
+  for vInt := 0 to Pred(Count) do
+  begin
+    vRoute := TRALRoute(Items[vInt]);
+    if vRoute.IsMethodAllowed(ARequest.Method) and
+       MatchRoute(vRoute, vPath, vWeight) and (vWeight < vBest) then
     begin
-      for vInt := 0 to Pred(vUriRoute.Count) do
-      begin
-        vParam := ARequest.Params.NewParam;
-        vParam.ParamName := vUriRoute.Names[vInt];
-        vParam.AsString := vUriRoute.ValueFromIndex[vInt];
-        vParam.Kind := rpkQUERY;
-      end;
+      Result := vRoute;
+      vBest := vWeight;
     end;
-  finally
-    FreeAndNil(vUriRoute);
-    FreeAndNil(vTempUriRoute);
   end;
+
+  if Result <> nil then
+    AddURIParams(Result, vRaw, vPath, ARequest.Params);
 end;
 
 { TRALRouteParam }

@@ -29,6 +29,8 @@ type
     SameSite: TRALCookieSiteScope;
   end;
 
+  TRALParams = class;
+
   { TRALParam }
 
   /// This is the object of all the data that is traded between request and response.
@@ -56,6 +58,16 @@ type
     FFileName: StringRAL;
     FKind: TRALParamKind;
     FParamName: StringRAL;
+    { the list this param is in, and its place in that list's name index:
+      the order it was created in, the hash of its name, the next param of
+      its bucket and whether it is in the index at all - see
+      TRALParams.IndexAdd }
+    FOwner: TRALParams;
+    FSeq: Cardinal;
+    FHash: Cardinal;
+    FNextSame: TRALParam;
+    FIndexed: Boolean;
+    procedure SetParamName(const AValue: StringRAL);
   protected
     function GetAsBoolean: Boolean;
     function GetAsDouble: DoubleRAL;
@@ -173,7 +185,7 @@ type
     property ContentType: StringRAL read FContentType write FContentType;
     property FileName: StringRAL read FFileName write FFileName;
     property Kind: TRALParamKind read FKind write FKind;
-    property ParamName: StringRAL read FParamName write FParamName;
+    property ParamName: StringRAL read FParamName write SetParamName;
   end;
 
   { TRALParams }
@@ -198,6 +210,26 @@ type
     FCriptoOptions: TRALCriptoOptions;
     FNextParam: IntegerRAL;
     FParams: TList;
+    { The name index. A lookup used to walk the whole list, and every param
+      parsed off the wire is looked up first - the query string, a form, the
+      headers, the cookies - so N params cost N*N/2 comparisons, before any
+      authentication: 50 000 fields in a 400 KB form made a billion. Built
+      with the first param and doubled when it fills up, so a name is looked
+      up one way whatever the size of the list }
+    FBuckets: array of TRALParam;
+    FSeqNext: Cardinal;
+    procedure IndexAdd(AParam: TRALParam; AHash: Cardinal);
+    procedure IndexBuild;
+    function IndexFind(const AName: StringRAL; AHash: Cardinal; AKind: TRALParamKind;
+      AAnyKind: Boolean): TRALParam;
+    procedure IndexRemove(AParam: TRALParam);
+    /// The first param with no name - of that kind, unless AAnyKind.
+    function FindNameless(AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
+    /// The param of that name and kind, created when there is none, with its
+    /// name hashed once.
+    function FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
+    /// Decodes a name and a value already cut apart and stores them.
+    procedure AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
@@ -223,8 +255,8 @@ type
     function GetBody: TList;
     function GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam; overload;
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
-    function GetParam(AName: StringRAL): TRALParam; overload;
-    function GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam; overload;
+    function GetParam(const AName: StringRAL): TRALParam; overload;
+    function GetParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam; overload;
     /// Moves to the next param and returns its index.
     function NextParamInt: IntegerRAL;
     /// Moves to the next param and returns its internal name.
@@ -356,9 +388,9 @@ type
     /// Grabs a param by its index on the TRALParams list.
     property IndexKind[AIndex: IntegerRAL; AKind: TRALParamKind]: TRALParam read GetParam;
     /// Grabs a param by its name.
-    property Get[AName: StringRAL]: TRALParam read GetParam;
+    property Get[const AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
-    property GetKind[AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
+    property GetKind[const AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
   published
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
@@ -378,6 +410,29 @@ implementation
 
 uses
   RALJson;
+
+{ FNV-1a of a name, every byte OR $20 first: 'A'..'Z' land on 'a'..'z', so
+  two names RALSameName calls equal always hash alike - a few other pairs
+  collide too, which costs one comparison and nothing else. No branch per
+  byte, and 32-bit arithmetic that wraps on purpose: overflow and range
+  checks are off for this function alone, whatever the project chose }
+{$IFOPT Q+}{$DEFINE RALPARAMS_Q}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE RALPARAMS_R}{$R-}{$ENDIF}
+function ParamNameHash(const AName: StringRAL): Cardinal;
+var
+  vByte: PByte;
+  vInt: IntegerRAL;
+begin
+  Result := 2166136261;
+  vByte := PByte(Pointer(AName));
+  for vInt := 1 to Length(AName) do
+  begin
+    Result := (Result xor Cardinal(vByte^ or $20)) * Cardinal(16777619);
+    Inc(vByte);
+  end;
+end;
+{$IFDEF RALPARAMS_Q}{$Q+}{$UNDEF RALPARAMS_Q}{$ENDIF}
+{$IFDEF RALPARAMS_R}{$R+}{$UNDEF RALPARAMS_R}{$ENDIF}
 
 function DateTimeToCookieExpireDate(ADateTime: TDateTime): StringRAL;
 begin
@@ -537,6 +592,18 @@ begin
   else
     ASource.AsStream := FContent;
   ASource.ContentType := Self.ContentType;
+end;
+
+procedure TRALParam.SetParamName(const AValue: StringRAL);
+begin
+  { the index of the list holding it keys on the name, and a param enters it
+    only once it has one. A param in a list always has the index there:
+    NewParam builds it before handing the param out }
+  if FIndexed then
+    FOwner.IndexRemove(Self);
+  FParamName := AValue;
+  if (FOwner <> nil) and (AValue <> '') then
+    FOwner.IndexAdd(Self, ParamNameHash(AValue));
 end;
 
 constructor TRALParam.Create;
@@ -1188,8 +1255,10 @@ var
   function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
   begin
     Result := True;
+    { through the setter: written straight into the field, the name changed
+      behind the index of the list, and the param was no longer found by it }
     if RALSameName(AHeader, 'name') then
-      FParamName := AValue
+      ParamName := AValue
     else if RALSameName(AHeader, 'filename') then
       FFileName := AValue
     else
@@ -1230,11 +1299,7 @@ begin
   Result := nil;
   if (AName <> '') and (AValue <> '') then
   begin
-    Result := GetKind[AName, AKind];
-    if Result = nil then
-      Result := NewParam;
-
-    Result.ParamName := AName;
+    Result := FindOrNewParam(AName, AKind);
     Result.AsString := AValue;
     Result.ContentType := rctTEXTPLAIN;
     Result.Kind := AKind;
@@ -1248,11 +1313,7 @@ begin
   if AName = '' then
     Exit;
 
-  Result := GetKind[AName, AKind];
-  if Result = nil then
-    Result := NewParam;
-
-  Result.ParamName := AName;
+  Result := FindOrNewParam(AName, AKind);
   Result.Kind := AKind;
 
   { The Variant conversions below are numeric, not textual, so no locale is
@@ -1281,11 +1342,7 @@ end;
 function TRALParams.AddParam(const AName: StringRAL; AContent: TStream;
   AKind: TRALParamKind): TRALParam;
 begin
-  Result := GetKind[AName, AKind];
-  if Result = nil then
-    Result := NewParam;
-
-  Result.ParamName := AName;
+  Result := FindOrNewParam(AName, AKind);
   Result.AsStream := AContent;
   Result.ContentType := rctAPPLICATIONOCTETSTREAM;
   Result.Kind := AKind;
@@ -1298,11 +1355,7 @@ begin
   if (AParamName = '') or (AFileName = '') then
     Exit;
 
-  Result := GetKind[AParamName, rpkBODY];
-  if Result = nil then
-    Result := NewParam;
-
-  Result.ParamName := AParamName;
+  Result := FindOrNewParam(AParamName, rpkBODY);
   Result.FileName := ExtractFileName(AFileName);
   Result.OpenFile(AFileName);
   Result.Kind := rpkBODY;
@@ -1351,6 +1404,7 @@ end;
 
 procedure TRALParams.ClearParams;
 begin
+  FBuckets := nil; // every param goes, and the index with them
   while FParams.Count > 0 do
   begin
     TObject(FParams.Items[FParams.Count - 1]).Free;
@@ -1369,6 +1423,8 @@ begin
     vParam := TRALParam(FParams.Items[vInt]);
     if vParam.Kind = AKind then
     begin
+      if vParam.FIndexed then
+        IndexRemove(vParam);
       vParam.Free;
       FParams.Delete(vInt);
     end;
@@ -1462,44 +1518,67 @@ end;
 procedure TRALParams.AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
   const ANameSeparator: StringRAL; const ALineSeparator: StringRAL);
 var
-  vLen, vSepLen, vStart, vInt: IntegerRAL;
-  vSep: CharRAL;
+  vText, vLine, vName: PByte;
+  vLen, vLineLen, vNameLen, vStart, vInt: IntegerRAL;
 
+  { the segment [vStart, AEnd) holds name, separator and value, and both are
+    cut straight from the text: copying the segment first and cutting the
+    copy again cost one more string per param. A segment without the
+    separator is skipped, as a line is }
   procedure AppendUpTo(AEnd: IntegerRAL);
+  var
+    vPos: IntegerRAL;
   begin
-    if AEnd > vStart then
-      AppendParamLine(Copy(AText, vStart, AEnd - vStart), ANameSeparator, AKind);
+    vPos := vStart;
+    while vPos <= AEnd - vNameLen do
+    begin
+      if (vText[vPos] = vName^) and
+         ((vNameLen = 1) or CompareMem(@vText[vPos], vName, vNameLen)) then
+      begin
+        AppendParamPair(Copy(AText, vStart + 1, vPos - vStart),
+          Copy(AText, vPos + vNameLen + 1, AEnd - vPos - vNameLen), AKind);
+        Exit;
+      end;
+      Inc(vPos);
+    end;
   end;
 
 begin
-  { ONE scan and one Copy per segment; positions are 1-based, the way Copy
-    counts, and characters are read through POSINISTR.
+  { ONE scan, no copy of a segment, and the bytes read through a pointer:
+    offsets are 0-based from the start of the text, whatever the compiler
+    makes of string indexes, and Copy takes them plus one.
 
     It used to Delete each segment off the front of the text - shifting the
     rest every time, quadratic in the number of segments of a query string or
     form body that comes straight from the network - and kept that Delete
     inside "if vLine <> ''": an empty segment ("?&a=1", "a=1&&b=2") consumed
     nothing and the loop spun at 100% CPU forever (SEC-01 of the 10/09/2026
-    audit). Empty segments are still skipped. }
+    audit). Empty segments are still skipped, and so is everything when there
+    is no name separator to look for. }
   vLen := Length(AText);
-  vSepLen := Length(ALineSeparator);
-  vStart := 1;
-  if vSepLen > 0 then
+  vLineLen := Length(ALineSeparator);
+  vNameLen := Length(ANameSeparator);
+  if (vLen = 0) or (vNameLen = 0) then
+    Exit;
+  vText := PByte(Pointer(AText));
+  vName := PByte(Pointer(ANameSeparator));
+  vStart := 0;
+  if vLineLen > 0 then
   begin
-    vSep := ALineSeparator[POSINISTR];
-    vInt := 1;
-    while vInt <= vLen - vSepLen + 1 do
-      if (AText[POSINISTR - 1 + vInt] = vSep) and
-         ((vSepLen = 1) or (Copy(AText, vInt, vSepLen) = ALineSeparator)) then
+    vLine := PByte(Pointer(ALineSeparator));
+    vInt := 0;
+    while vInt <= vLen - vLineLen do
+      if (vText[vInt] = vLine^) and
+         ((vLineLen = 1) or CompareMem(@vText[vInt], vLine, vLineLen)) then
       begin
         AppendUpTo(vInt);
-        Inc(vInt, vSepLen);
+        Inc(vInt, vLineLen);
         vStart := vInt;
       end
       else
         Inc(vInt);
   end;
-  AppendUpTo(vLen + 1);
+  AppendUpTo(vLen);
 end;
 
 procedure TRALParams.AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
@@ -1531,12 +1610,7 @@ begin
       if vInt > vStart then
       begin
         vName := 'ral_uriparam' + IntToStr(vIdx);
-        vParam := GetKind[vName, AKind];
-        if vParam = nil then
-        begin
-          vParam := NewParam;
-          vParam.ParamName := vName;
-        end;
+        vParam := FindOrNewParam(vName, AKind);
         vParam.AsString := Copy(AFullURI, vStart, vInt - vStart);
         vParam.Kind := AKind;
         Inc(vIdx);
@@ -2196,25 +2270,14 @@ begin
   inherited;
 end;
 
-function TRALParams.GetParam(AName: StringRAL; AKind: TRALParamKind): TRALParam;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
+{ the name by const: by value it cost a reference count up and down, and an
+  exception frame, on every lookup }
+function TRALParams.GetParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
-  Result := nil;
-
-  for vInt := 0 to FParams.Count - 1 do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    { Kind first, which is an enum, and only then the name: this lookup runs
-      once per param inserted, and SameText on Delphi converts both sides from
-      UTF-8 to UTF-16 every call - two heap allocations per comparison }
-    if (vParam.Kind = AKind) and RALSameName(vParam.ParamName, AName) then
-    begin
-      Result := vParam;
-      Break;
-    end;
-  end;
+  if AName <> '' then
+    Result := IndexFind(AName, ParamNameHash(AName), AKind, False)
+  else
+    Result := FindNameless(AKind, False);
 end;
 
 function TRALParams.GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam;
@@ -2257,29 +2320,160 @@ begin
     Result := TRALParam(FParams.Items[AIndex]);
 end;
 
-function TRALParams.GetParam(AName: StringRAL): TRALParam;
-var
-  vInt: IntegerRAL;
-  vParam: TRALParam;
+function TRALParams.GetParam(const AName: StringRAL): TRALParam;
 begin
-  Result := nil;
-
-  for vInt := 0 to FParams.Count - 1 do
-  begin
-    vParam := TRALParam(FParams.Items[vInt]);
-    if RALSameName(vParam.ParamName, AName) then
-    begin
-      Result := vParam;
-      Break;
-    end;
-  end;
+  if AName <> '' then
+    Result := IndexFind(AName, ParamNameHash(AName), rpkNONE, True)
+  else
+    Result := FindNameless(rpkNONE, True);
 end;
 
 function TRALParams.NewParam: TRALParam;
 begin
   Result := TRALParam.Create;
   Result.Kind := rpkNONE;
+  Result.FOwner := Self;
+  Result.FSeq := FSeqNext;
+  Inc(FSeqNext);
   FParams.Add(Result);
+  { no name yet, so not in the index: it enters when it gets one
+    (SetParamName) - indexing it nameless only to move it a line later cost a
+    second pass on every param. The index is built with the first param and
+    doubled by the size of the list }
+  if FParams.Count > Length(FBuckets) then
+    IndexBuild;
+end;
+
+function TRALParams.FindNameless(AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
+var
+  vInt: IntegerRAL;
+begin
+  { a param enters the index only once it has a name, so the empty name -
+    asked by nothing on the request path - walks the list }
+  for vInt := 0 to FParams.Count - 1 do
+  begin
+    Result := TRALParam(FParams.Items[vInt]);
+    if (Result.FParamName = '') and (AAnyKind or (Result.FKind = AKind)) then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+function TRALParams.FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
+var
+  vHash: Cardinal;
+begin
+  if AName = '' then
+  begin
+    Result := FindNameless(AKind, False);
+    if Result = nil then
+      Result := NewParam;
+    Exit;
+  end;
+
+  { the name is hashed once: a lookup followed by assigning ParamName hashed
+    it twice for every param parsed or added }
+  vHash := ParamNameHash(AName);
+  Result := IndexFind(AName, vHash, AKind, False);
+  if Result = nil then
+  begin
+    Result := NewParam;
+    Result.FParamName := AName;
+    IndexAdd(Result, vHash);
+  end
+  else
+    { the same name but for the case of its letters, so the same hash and the
+      same place in the index: only the text changes, to the last one given }
+    Result.FParamName := AName;
+end;
+
+procedure TRALParams.IndexAdd(AParam: TRALParam; AHash: Cardinal);
+var
+  vIdx: IntegerRAL;
+  vAt: TRALParam;
+begin
+  AParam.FHash := AHash;
+  vIdx := AHash and Cardinal(High(FBuckets));
+  { each chain is kept in the order the params were created, so the first
+    param of a name is still the first one found. Chains hold about one
+    param, so walking one is cheaper than keeping a second link per param }
+  vAt := FBuckets[vIdx];
+  if (vAt = nil) or (vAt.FSeq > AParam.FSeq) then
+  begin
+    AParam.FNextSame := vAt;
+    FBuckets[vIdx] := AParam;
+  end
+  else
+  begin
+    while (vAt.FNextSame <> nil) and (vAt.FNextSame.FSeq < AParam.FSeq) do
+      vAt := vAt.FNextSame;
+    AParam.FNextSame := vAt.FNextSame;
+    vAt.FNextSame := AParam;
+  end;
+  AParam.FIndexed := True;
+end;
+
+procedure TRALParams.IndexRemove(AParam: TRALParam);
+var
+  vIdx: IntegerRAL;
+  vAt: TRALParam;
+begin
+  vIdx := AParam.FHash and Cardinal(High(FBuckets));
+  vAt := FBuckets[vIdx];
+  if vAt = AParam then
+    FBuckets[vIdx] := AParam.FNextSame
+  else
+  begin
+    while (vAt <> nil) and (vAt.FNextSame <> AParam) do
+      vAt := vAt.FNextSame;
+    if vAt <> nil then
+      vAt.FNextSame := AParam.FNextSame;
+  end;
+  AParam.FNextSame := nil;
+  AParam.FIndexed := False;
+end;
+
+procedure TRALParams.IndexBuild;
+var
+  vSize, vInt, vIdx: IntegerRAL;
+  vParam: TRALParam;
+begin
+  { two buckets per param or more, so a chain stays about one long; small to
+    start, since most lists are }
+  vSize := 8;
+  while vSize < 2 * FParams.Count do
+    vSize := vSize * 2;
+  FBuckets := nil;
+  SetLength(FBuckets, vSize);
+  { growing is only redistributing: every indexed param keeps its hash. The
+    list is in creation order - params are only ever appended - so walking it
+    backwards and putting each one at the head of its chain leaves every
+    chain in creation order too, with no hash and no comparison }
+  for vInt := FParams.Count - 1 downto 0 do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if vParam.FIndexed then
+    begin
+      vIdx := vParam.FHash and Cardinal(vSize - 1);
+      vParam.FNextSame := FBuckets[vIdx];
+      FBuckets[vIdx] := vParam;
+    end;
+  end;
+end;
+
+function TRALParams.IndexFind(const AName: StringRAL; AHash: Cardinal;
+  AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
+begin
+  { no table only while the list has had no param since it was created or
+    cleared }
+  Result := nil;
+  if FBuckets = nil then
+    Exit;
+  Result := FBuckets[AHash and Cardinal(High(FBuckets))];
+  while (Result <> nil) and
+        ((Result.FHash <> AHash) or ((not AAnyKind) and (Result.FKind <> AKind)) or
+         (not RALSameName(Result.FParamName, AName))) do
+    Result := Result.FNextSame;
 end;
 
 function TRALParams.NextParamStr: StringRAL;
@@ -2359,43 +2553,41 @@ procedure TRALParams.AppendParamLine(const ALine, ANameSeparator: StringRAL;
   AKind: TRALParamKind);
 var
   vPos: IntegerRAL;
-  vName, vValue: StringRAL;
-  vParam: TRALParam;
 begin
   if ALine = '' then
     Exit;
 
   vPos := Pos(ANameSeparator, ALine);
   if vPos > 0 then
+    AppendParamPair(Copy(ALine, POSINISTR, vPos - 1),
+      Copy(ALine, vPos + Length(ANameSeparator), Length(ALine)), AKind);
+end;
+
+procedure TRALParams.AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
+var
+  vParam: TRALParam;
+begin
+  { an HTTP header is not URL-encoded - a query string, a form field and a
+    cookie are. Decoding headers too turned every '+' into a space: the
+    base64 of an "Authorization: Basic" whenever it holds one (DecodeAuth
+    reads it from here, on every engine), and media types such as
+    application/ld+json or image/svg+xml; any '%XX' in a header was
+    rewritten as well. Nothing on the sending side ever encoded a header }
+  if AKind <> rpkHEADER then
   begin
-    vName := Copy(ALine, POSINISTR, vPos - 1);
-    vValue := Copy(ALine, vPos + Length(ANameSeparator), Length(ALine));
-
-    { an HTTP header is not URL-encoded - a query string, a form field and a
-      cookie are. Decoding headers too turned every '+' into a space: the
-      base64 of an "Authorization: Basic" whenever it holds one (DecodeAuth
-      reads it from here, on every engine), and media types such as
-      application/ld+json or image/svg+xml; any '%XX' in a header was
-      rewritten as well. Nothing on the sending side ever encoded a header }
-    if AKind <> rpkHEADER then
-    begin
-      vName := TRALHTTPCoder.DecodeURL(vName);
-      vValue := TRALHTTPCoder.DecodeURL(vValue);
-    end;
-
-    vParam := GetKind[vName, AKind];
-    if vParam = nil then
-      vParam := NewParam;
-    vParam.ParamName := vName;
-    if vValue <> '' then
-      vParam.AsString := vValue;
-    vParam.ContentType := rctTEXTPLAIN;
-    vParam.Kind := AKind;
-
-    { the Indy and mORMot2 clients feed their response headers through here }
-    if (AKind = rpkHEADER) and (vValue <> '') and RALSameName(vName, 'Set-Cookie') then
-      AddSetCookie(vValue);
+    AName := TRALHTTPCoder.DecodeURL(AName);
+    AValue := TRALHTTPCoder.DecodeURL(AValue);
   end;
+
+  vParam := FindOrNewParam(AName, AKind);
+  if AValue <> '' then
+    vParam.AsString := AValue;
+  vParam.ContentType := rctTEXTPLAIN;
+  vParam.Kind := AKind;
+
+  { the Indy and mORMot2 clients feed their response headers through here }
+  if (AKind = rpkHEADER) and (AValue <> '') and RALSameName(AName, 'Set-Cookie') then
+    AddSetCookie(AValue);
 end;
 
 { ONE RULE FOR EVERY ENGINE: a Set-Cookie the server sent is also a cookie
@@ -2632,6 +2824,8 @@ begin
     vParam := TRALParam(FParams.Items[vInt]);
     if (vParam.Kind = AKind) and RALSameName(vParam.ParamName, AName) then
     begin
+      if vParam.FIndexed then
+        IndexRemove(vParam);
       vParam.Free;
       FParams.Delete(vInt);
     end;
@@ -2648,6 +2842,8 @@ begin
     vParam := TRALParam(FParams.Items[vInt]);
     if RALSameName(vParam.ParamName, AName) then
     begin
+      if vParam.FIndexed then
+        IndexRemove(vParam);
       vParam.Free;
       FParams.Delete(vInt);
     end;

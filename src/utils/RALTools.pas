@@ -677,19 +677,19 @@ end;
 
 function OnlyNumbers(const AValue: StringRAL): StringRAL;
 var
-  vInt: IntegerRAL;
+  vInt, vOut: IntegerRAL;
 begin
-  Result := '';
+  { written in place, one allocation - concatenating a digit at a time
+    reallocated the whole result for each one }
+  SetLength(Result, Length(AValue));
+  vOut := POSINISTR;
   for vInt := POSINISTR to RALHighStr(AValue) do
-  begin
-    {$IF (DEFINED(FPC) OR DEFINED(DELPHI2010UP))}
-    if CharInSet(AValue[vInt], ['0'..'9']) then
-      Result := Result + AValue[vInt];
-    {$ELSE}
     if AValue[vInt] in ['0'..'9'] then
-      Result := Result + AValue[vInt];
-    {$IFEND}
-  end;
+    begin
+      Result[vOut] := AValue[vInt];
+      Inc(vOut);
+    end;
+  SetLength(Result, vOut - POSINISTR);
 end;
 
 function RALStringToDateTime(const AValue: StringRAL; const AFormat: StringRAL): TDateTime;
