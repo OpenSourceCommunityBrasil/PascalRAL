@@ -455,6 +455,35 @@ begin
             ((vExt <> '') and (ABlocked.IndexOf(Copy(vExt, 2, MaxInt)) >= 0));
 end;
 
+{$IFDEF RALWindows}
+function RALGetLongPathNameW(lpszShortPath, lpszLongPath: PWideChar;
+  cchBuffer: Cardinal): Cardinal; stdcall; external 'kernel32.dll' name 'GetLongPathNameW';
+
+{ the name a file has, when it was reached by its short 8.3 alias - BANCO~1.SQL
+  for banco.sqlite. '' when the system cannot tell }
+function LongFileName(const AFileName: string): string;
+var
+  vShort, vLong: UnicodeString;
+  vLen: Cardinal;
+begin
+  Result := '';
+  vShort := UnicodeString(AFileName);
+  SetLength(vLong, 260);
+  vLen := RALGetLongPathNameW(PWideChar(vShort), PWideChar(vLong), Length(vLong));
+  { too small: the answer is the size it needs, terminator included }
+  if vLen >= Cardinal(Length(vLong)) then
+  begin
+    SetLength(vLong, vLen);
+    vLen := RALGetLongPathNameW(PWideChar(vShort), PWideChar(vLong), Length(vLong));
+  end;
+  if (vLen > 0) and (vLen < Cardinal(Length(vLong))) then
+  begin
+    SetLength(vLong, vLen);
+    Result := string(vLong);
+  end;
+end;
+{$ENDIF}
+
 { Where a request's path leads inside ARoot, or '' when it leads nowhere the
   module may serve: outside the root, an absolute path, a blocked extension,
   a Windows device name. String work only - whether the file is there is the
@@ -468,18 +497,29 @@ const
   cDevices: array[0..21] of string = ('CON', 'PRN', 'AUX', 'NUL',
     'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
     'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9');
-var
-  vBase: string;
-  vInt: Integer;
 {$ENDIF}
 var
   vFile: string;
+  vInt: Integer;
+  {$IFDEF RALWindows}
+  vBase: string;
+  {$ENDIF}
 begin
   Result := '';
   vFile := string(AKey);
   Delete(vFile, 1, 1);
   if vFile = '' then
     Exit;
+
+  { the name judged has to be the name opened. No byte below 32 is part of a
+    file served, and NUL is where the system stops reading one: a path an
+    engine decoded into 'x.ini'#0'.txt' would pass the extension check as .txt
+    and open x.ini. On Windows no ':' either: 'x.ini::$DATA' IS x.ini, under
+    a name with no extension - BlockedExtensions served it - and 'C:x' is
+    relative to a drive }
+  for vInt := 1 to Length(vFile) do
+    if (vFile[vInt] < ' ') {$IFDEF RALWindows}or (vFile[vInt] = ':'){$ENDIF} then
+      Exit;
 
   { a path from the wire is always taken inside the root - an absolute one is
     refused, not followed }
@@ -942,6 +982,9 @@ var
   vEntry: TRALWebPathEntry;
   vRoot: string;
   vHit, vFresh: boolean;
+  {$IFDEF RALWindows}
+  vLong: string;
+  {$ENDIF}
 begin
   Result := nil;
   vRoot := FRootPath;
@@ -985,6 +1028,19 @@ begin
   if (vEntry.Path = '') or (not vEntry.Found) or
      ((FMaxFileSize > 0) and (vEntry.Size > FMaxFileSize)) then
     Exit;
+
+  {$IFDEF RALWindows}
+  { BlockedExtensions judges the name the file HAS: reached by its short 8.3
+    alias - BANCO~1.SQL for banco.sqlite - it came in under an extension the
+    list does not hold. Only a name with a '~' is asked of the system, on each
+    request, and one the system cannot name is refused }
+  if (FBlockedExtensions.Count > 0) and (Pos('~', ExtractFileName(vEntry.Path)) > 0) then
+  begin
+    vLong := LongFileName(vEntry.Path);
+    if (vLong = '') or IsBlockedName(vLong, FBlockedExtensions) then
+      Exit;
+  end;
+  {$ENDIF}
 
   Result := TRALWebFile.Create;
   Result.FileName := vEntry.Path;
