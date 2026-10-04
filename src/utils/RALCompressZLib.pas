@@ -43,9 +43,12 @@ var
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
 begin
+  { an empty body goes through like any other: a gzip, zlib or deflate stream
+    of nothing is still a stream - 20, 8 and 2 bytes. Leaving the output empty,
+    as this did, sent a body of no bytes under a Content-Encoding that promised
+    a stream, which a strict decoder refuses; zstd and brotli always wrote
+    theirs. Decompress still takes an empty body as an empty one }
   vSize := AInStream.Size;
-  if vSize = 0 then
-    Exit;
 
   { a work buffer of a fixed size. Sized from the input, it came out empty
     for an empty one - and vBuf[0] of it is a range error - and, on the way
