@@ -86,6 +86,7 @@ type
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
+    function Allow(AMethods: TRALMethods): TRALBaseRoute;
     /// Runs the OnReply event
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse);
     /// Returns methods that this route will answer
@@ -97,6 +98,7 @@ type
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// Returns true or false wether the method is skipped in authentication
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
+    function SkipAuth(AMethods: TRALMethods): TRALBaseRoute;    
     /// Splits GetFullRoute into the segments every request is matched against,
     /// once, instead of on each request. Route, the owning collection and the
     /// module's Domain call it when they change
@@ -353,6 +355,18 @@ begin
 
   Result := (amALL in SkipAuthMethods) or
             (not(amALL in SkipAuthMethods) and (AMethod in SkipAuthMethods));
+end;
+
+function TRALBaseRoute.SkipAuth(AMethods: TRALMethods): TRALBaseRoute;
+begin
+  Result := Self;
+  SkipAuthMethods := AMethods;
+end;
+
+function TRALBaseRoute.Allow(AMethods: TRALMethods): TRALBaseRoute;
+begin
+  Result := Self;
+  AllowedMethods := AMethods;
 end;
 
 { The segments of a path as FixRoute leaves it - '/a/b', or '/' with none - each
