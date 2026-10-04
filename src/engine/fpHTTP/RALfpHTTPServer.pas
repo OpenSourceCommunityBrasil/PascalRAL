@@ -399,7 +399,6 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: integer;
-  vStr1, vStr2: StringRAL;
   vConnClose: boolean;
   vCookies: TStringList;
   vParam: TRALParam;
@@ -457,20 +456,18 @@ begin
         FParent.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          // fields tambem
-          vInt := 0;
-          while vInt < ARequest.FieldCount do
-          begin
-            vStr1 := ARequest.FieldNames[vInt];
-            vStr2 := ARequest.FieldValues[vInt];
+          { fcl-web's "fields" are the request headers it knows by name - Host,
+            Authorization, Content-Length - and they were filed as form
+            fields, so AssignParamsUrl(rpkFIELD) handed back the client's
+            credentials. They are headers }
+          for vInt := 0 to ARequest.FieldCount - 1 do
+            Params.AddParam(ARequest.FieldNames[vInt], ARequest.FieldValues[vInt], rpkHEADER);
 
-            Params.AddParam(vStr1, vStr2, rpkFIELD);
-
-            vInt := vInt + 1;
-          end;
-
-          Params.AppendParams(ARequest.QueryFields, rpkQUERY);
-          Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
+          { the query string was parsed off the URI by Query above, and the
+            cookies come from their header as on every engine: QueryFields and
+            CookieFields arrive decoded by fcl-web, and AppendParamLine decoded
+            them again }
+          AddCookies(Params.GetKind['Cookie', rpkHEADER].AsString);
 
           { the Authorization header is a known one and never reaches the
             params here, so the thread's DecodeAuth above reads it straight

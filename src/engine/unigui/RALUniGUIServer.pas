@@ -80,7 +80,6 @@ var
   vInt: IntegerRAL;
   vCookies: TStringList;
   vParam: TRALParam;
-  vIdCookie: TIdCookie;
 begin
   if Assigned(FOnHTTPCommand) then
     FOnHTTPCommand(ARequestInfo, AResponseInfo, Handled);
@@ -129,19 +128,14 @@ begin
       ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < HTTP_BadRequest then
       begin
-        Params.AppendParams(ARequestInfo.Params, rpkQUERY);
-
-        if ARequestInfo.Params.Count = 0 then
-        begin
-          Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
-          Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
-        end;
-
-        for vInt := 0 to Pred(ARequestInfo.Cookies.Count) do
-        begin
-          vIdCookie := ARequestInfo.Cookies.Cookies[vInt];
-          Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
-        end;
+        { each param with the kind of where it came from, decoded once.
+          Indy's Params mixes the query string with a urlencoded form, both already
+          decoded - and AppendParamLine decoded them again, so a '%2B' turned into a
+          space. The raw texts go through the one parser; the cookies come from
+          their header, as on every engine }
+        Params.AppendParamsText(ARequestInfo.QueryParams, rpkQUERY);
+        Params.AppendParamsText(ARequestInfo.FormParams, rpkFIELD);
+        AddCookies(Params.GetKind['Cookie', rpkHEADER].AsString);
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;

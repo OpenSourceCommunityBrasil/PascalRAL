@@ -179,7 +179,6 @@ var
   vResponse: TRALResponse;
   vAux1, vAux2: StringRAL;
   vInt, vPos: IntegerRAL;
-  vParam: TRALParam;
   vCookies: TStringList;
 begin
   vServer := TRALCGIServer(FCGIApp.Owner);
@@ -212,25 +211,24 @@ begin
 
     vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 
+    { the request's headers and nothing else of the environment: CGI hands
+      them over as HTTP_ACCEPT_ENCODING and the like, plus CONTENT_TYPE and
+      CONTENT_LENGTH without the prefix. Every other variable - PATH, the user
+      name, whatever secret a deployment keeps there - became a form field, and
+      ParamByName('path') answered the server's PATH to a client that sent none }
     for vInt := 1 to GetEnvironmentVariableCount do
     begin
       vAux1 := GetEnvironmentString(vInt);
       vPos := Pos('=', vAux1);
       vAux2 := Copy(vAux1, 1, vPos - 1);
-
-      vParam := vRequest.Params.NewParam;
       if Copy(vAux2, 1, 5) = 'HTTP_' then
-      begin
-        Delete(vAux2, 1, 5);
-        vParam.Kind := rpkHEADER;
-      end
-      else
-      begin
-        vParam.Kind := rpkFIELD;
-      end;
-      vParam.ParamName := vAux2;
-      vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
+        Delete(vAux2, 1, 5)
+      else if (vAux2 <> 'CONTENT_TYPE') and (vAux2 <> 'CONTENT_LENGTH') then
+        Continue;
+      vRequest.Params.AddParam(StringReplace(vAux2, '_', '-', [rfReplaceAll]),
+        Copy(vAux1, vPos + 1, Length(vAux1)), rpkHEADER);
     end;
+    vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
 
     vRequest.Params.CompressType := vRequest.ContentCompress;
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
