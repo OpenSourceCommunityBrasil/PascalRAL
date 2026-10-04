@@ -228,6 +228,15 @@ function RALDateTimeToUnixText(const AValue: TDateTime): StringRAL;
 /// The moment of Unix time in seconds, with or without decimals, to the
 /// millisecond
 function RALUnixSecondsToDateTime(const ASeconds: Double): TDateTime;
+/// Which of the three a date and time param of a DBWare request is, in the
+/// size it travels with: 1 a date, 2 a time, 0 both. sftDateTime alone cannot
+/// say, and the server bound every one as a date and time - a time reached a
+/// SQLite TIME column as '1899-12-30 hh:nn:ss.zzz', which no driver read back.
+/// A reader from before 04/10/2026 ignores that size
+function RALDateTimeKind(AType: TFieldType): IntegerRAL;
+/// The param type a kind of RALDateTimeKind stands for; ftDateTime for 0 or
+/// anything it does not know
+function RALDateTimeKindType(AKind: IntegerRAL): TFieldType;
 
 /// The message a failed database request came back with - never an empty one.
 function RALDBResponseError(AResponse: TRALResponse): StringRAL;
@@ -437,6 +446,26 @@ end;
 function RALUnixSecondsToDateTime(const ASeconds: Double): TDateTime;
 begin
   Result := UnixDateDelta + Round(ASeconds * 1000) / MSecsPerDay;
+end;
+
+function RALDateTimeKind(AType: TFieldType): IntegerRAL;
+begin
+  case AType of
+    ftDate: Result := 1;
+    ftTime: Result := 2;
+  else
+    Result := 0;
+  end;
+end;
+
+function RALDateTimeKindType(AKind: IntegerRAL): TFieldType;
+begin
+  case AKind of
+    1: Result := ftDate;
+    2: Result := ftTime;
+  else
+    Result := ftDateTime;
+  end;
 end;
 
 function RALNameToFieldType(const AName: StringRAL): TFieldType;

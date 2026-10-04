@@ -482,8 +482,11 @@ begin
         vStorType := TRALDB.FieldTypeToRALFieldType(vDBSQL.Params.Items[vInt2].DataType);
         vWriter.WriteByte(Ord(vStorType));
 
-        // size
-        vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
+        // size - of a date and time param, which of the three it is
+        if vStorType = sftDateTime then
+          vWriter.WriteInteger(RALDateTimeKind(vDBSQL.Params.Items[vInt2].DataType))
+        else
+          vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
 
         // param null
         vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].IsNull);
@@ -610,7 +613,7 @@ var
   vStorType: TRALFieldType;
   vWriter: TRALBinaryWriter;
 
-  vInt1, vInt2, vInt3: IntegerRAL;
+  vInt1, vInt2, vInt3, vSize: IntegerRAL;
   vByte, vTypeByte: byte;
   vBoolean: boolean;
 begin
@@ -676,8 +679,12 @@ begin
           vStorType := TRALFieldType(vTypeByte);
           vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
-          // size
-          vParam.Size := vWriter.ReadInteger;
+          // size - of a date and time param, which of the three it is
+          vSize := vWriter.ReadInteger;
+          if vStorType = sftDateTime then
+            vParam.DataType := RALDateTimeKindType(vSize)
+          else
+            vParam.Size := vSize;
           vParam.Clear;
 
           // is null
@@ -698,8 +705,18 @@ begin
               sftBoolean : vParam.AsBoolean := vWriter.ReadBoolean;
               sftString  : vParam.AsString := vWriter.ReadString;
               sftBlob    : vParam.AsBlob := vWriter.ReadBytes;
-              sftMemo    : vParam.AsMemo := vWriter.ReadString;
-              sftDateTime: vParam.AsDateTime := vWriter.ReadDateTime;
+              { Value keeps the wide memo set above; AsMemo made it ftMemo,
+                which is ANSI on Delphi: an ideograph in a memo param was
+                bound as '?' - stored that way by an ExecSQL, and never found
+                by the WHERE of an ApplyUpdates, which then saved nothing }
+              sftMemo    : vParam.Value := string(vWriter.ReadString);
+              // AsDateTime would make every one of them ftDateTime again
+              sftDateTime: case vParam.DataType of
+                             ftDate: vParam.AsDate := vWriter.ReadDateTime;
+                             ftTime: vParam.AsTime := vWriter.ReadDateTime;
+                           else
+                             vParam.AsDateTime := vWriter.ReadDateTime;
+                           end;
               sftBCD     : vParam.AsFMTBCD := RALTextToBCD(vWriter.ReadString);
             end;
           end;
