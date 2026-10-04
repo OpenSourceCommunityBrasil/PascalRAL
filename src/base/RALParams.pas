@@ -768,16 +768,28 @@ end;
 
 function TRALParam.MediaType: StringRAL;
 var
-  vPos: IntegerRAL;
+  vIni, vFim: IntegerRAL;
 begin
   Result := '';
   if Self = nil then
     Exit;
 
-  Result := FContentType;
-  vPos := Pos(StringRAL(';'), Result);
-  if vPos > 0 then
-    Result := Copy(Result, POSINISTR, vPos - 1);
+  { the type up to its parameters, without the blanks around it: RFC 9110
+    lets OWS stand before the ';' and around the field value, and the fpHTTP
+    client handed the value over with the blank after the colon - a typed
+    answer lost its marker and its date read as zero. Offsets count from 0 }
+  vFim := Pos(StringRAL(';'), FContentType) - 1;
+  if vFim < 0 then
+    vFim := Length(FContentType);
+  vIni := 0;
+  while (vIni < vFim) and (FContentType[POSINISTR + vIni] in [' ', #9]) do
+    Inc(vIni);
+  while (vFim > vIni) and (FContentType[POSINISTR + vFim - 1] in [' ', #9]) do
+    Dec(vFim);
+  if (vIni = 0) and (vFim = Length(FContentType)) then
+    Result := FContentType
+  else
+    Result := Copy(FContentType, POSINISTR + vIni, vFim - vIni);
 end;
 
 function TRALParam.GetTypedValue(const AType: StringRAL; var ABuffer;

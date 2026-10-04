@@ -490,15 +490,18 @@ begin
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
       AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
 
-      AResponse.ContentEncoding := FHttp.ResponseHeaders.Values['Content-Encoding'];
+      { trimmed: fphttpclient splits its header list at the colon alone, so
+        every value read by name comes with the blank after it - a typed
+        answer's Content-Type lost its marker that way (see MediaType) }
+      AResponse.ContentEncoding := Trim(FHttp.ResponseHeaders.Values['Content-Encoding']);
       AResponse.Params.CompressType := AResponse.ContentCompress;
 
       AResponse.ContentEncription := AResponse.ParamByName('Content-Encription').AsString;
       AResponse.Params.CriptoOptions.CriptType := AResponse.ContentCripto;
       AResponse.Params.CriptoOptions.Key := Parent.CriptoOptions.Key;
 
-      AResponse.ContentType := FHttp.ResponseHeaders.Values['Content-Type'];
-      AResponse.ContentDisposition := FHttp.ResponseHeaders.Values['Content-Disposition'];
+      AResponse.ContentType := Trim(FHttp.ResponseHeaders.Values['Content-Type']);
+      AResponse.ContentDisposition := Trim(FHttp.ResponseHeaders.Values['Content-Disposition']);
       AResponse.StatusCode := FHttp.ResponseStatusCode;
       { Which version answered - TFPHTTPClient kept it from the status line.
         This engine is HTTP/1.x only, so it is always 1.0 or 1.1, and that is
