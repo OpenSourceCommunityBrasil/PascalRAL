@@ -509,6 +509,7 @@ begin
             sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
             sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
             sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
+            sftBCD     : vWriter.WriteString(RALBCDToText(vDBSQL.Params.Items[vInt2].AsFMTBCD));
           end;
         end;
       end;
@@ -699,6 +700,7 @@ begin
               sftBlob    : vParam.AsBlob := vWriter.ReadBytes;
               sftMemo    : vParam.AsMemo := vWriter.ReadString;
               sftDateTime: vParam.AsDateTime := vWriter.ReadDateTime;
+              sftBCD     : vParam.AsFMTBCD := RALTextToBCD(vWriter.ReadString);
             end;
           end;
         end;

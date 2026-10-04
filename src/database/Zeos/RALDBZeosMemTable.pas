@@ -343,6 +343,13 @@ begin
            (vInfo.Field[vInt].Precision > 0) then
           vField.Precision := vInfo.Field[vInt].Precision;
 
+        // a decimal: Precision its digits, Size its scale (see RALDBModule)
+        if TRALFieldType(vType) = sftBCD then
+        begin
+          vField.Precision := RALDecimalPrecision(vInfo.Field[vInt].Precision);
+          vField.Size := vInfo.Field[vInt].Scale;
+        end;
+
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
 
         { faReadonly is deliberately NOT copied here.

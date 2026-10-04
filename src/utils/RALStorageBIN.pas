@@ -110,6 +110,11 @@ begin
 
     // size
     WriteInteger(AStream, ADataset.Fields[vInt].Size);
+
+    // a decimal also says its precision - Size is its scale. Only for sftBCD,
+    // which no reader before it knew, so no stream an older RAL reads changes
+    if vType = sftBCD then
+      WriteInteger(AStream, RALFieldPrecision(ADataset.Fields[vInt]));
   end;
 end;
 
@@ -174,6 +179,7 @@ begin
             end;
           end;
           sftDateTime : WriteDateTime(AStream, ADataset.Fields[vInt].AsDateTime);
+          sftBCD      : WriteString(AStream, RALBCDToText(ADataset.Fields[vInt].AsBCD));
         end;
       end;
     end;
@@ -339,10 +345,14 @@ begin
     vField.Name := vName;
     vField.DataType := vType;
 
-    if FFieldTypes[vInt] = sftString then
+    if FFieldTypes[vInt] in [sftString, sftBCD] then
       vField.Size := vSize
     else
       vField.Size := 0;
+
+    // a decimal also says its precision - Size is its scale
+    if FFieldTypes[vInt] = sftBCD then
+      vField.Precision := RALDecimalPrecision(ReadInteger(AStream));
 
     if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
       vField.Precision := vSize;
@@ -437,6 +447,7 @@ begin
               end;
             end;
             sftDateTime : ReadFieldDateTime(FFoundFields[vInt], ReadDateTime(AStream));
+            sftBCD      : ReadFieldBCD(FFoundFields[vInt], RALTextToBCD(ReadString(AStream)));
           end;
         end;
       end;

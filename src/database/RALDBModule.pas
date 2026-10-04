@@ -294,8 +294,14 @@ begin
       vField.Length := 0;
       vField.Precision := 0;
 
+      { a decimal's Size is its scale; its precision is a property of its own.
+        Precision carried the scale and Scale stayed 0, which no client could
+        rebuild an exact decimal field from }
       if ADataset.Fields[vInt].DataType in [ftBCD, ftFMTBcd] then
-        vField.Precision := ADataset.Fields[vInt].Size
+      begin
+        vField.Precision := RALFieldPrecision(ADataset.Fields[vInt]);
+        vField.Scale := ADataset.Fields[vInt].Size;
+      end
       else
         vField.Length := ADataset.Fields[vInt].Size
     end;
@@ -660,7 +666,11 @@ var
             (Pos(StringRAL('decimal'), AType) > 0) or (Pos(StringRAL('real'), AType) > 0) or
             (Pos(StringRAL('float'), AType) > 0) then
     begin
-      vField.RALFieldType := sftDouble;
+      // NUMERIC and DECIMAL are exact, the others are floats
+      if (Pos(StringRAL('numeric'), AType) > 0) or (Pos(StringRAL('decimal'), AType) > 0) then
+        vField.RALFieldType := RALDecimalFieldType
+      else
+        vField.RALFieldType := sftDouble;
 
       vInt := Pos('(', AType);
       if vInt > 0 then
@@ -719,15 +729,17 @@ var
       table with whatever it held }
     vfbType := sftString;
     case vQuery.FieldByName('rdb$field_type').AsInteger of
+      { an integer with a sub type is a NUMERIC (1) or a DECIMAL (2) stored in
+        it - exact, as RALDecimalFieldType carries it }
       007: begin
             vfbType := sftSmallInt;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       008: begin
             vfbType := sftInteger;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       009: vfbType := sftInt64;
       010,
@@ -745,7 +757,7 @@ var
       016: begin
             vfbType := sftInt64;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       261: begin
         vfbType := sftBlob;
@@ -773,7 +785,7 @@ var
     else if vQuery.FieldByName('rdb$field_type').AsInteger in [7, 8, 16, 27] then
     begin
       // numeric
-      if vfbType = sftDouble then
+      if vfbType in [sftDouble, sftBCD] then
         vField.Precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
 
       if (vQuery.FieldByName('rdb$field_scale').AsInteger < 0) then
@@ -817,8 +829,8 @@ var
       20,
       26   : vpgType := sftInt64;
       700,
-      701,
-      1700 : vpgType := sftDouble;
+      701  : vpgType := sftDouble;
+      1700 : vpgType := RALDecimalFieldType; // numeric
       1083 : vpgType := sftDateTime; // time
       1042,
       1043: vpgType := sftString;

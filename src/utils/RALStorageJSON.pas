@@ -6,7 +6,7 @@ unit RALStorageJSON;
 interface
 
 uses
-  Classes, SysUtils, DB, DateUtils,
+  Classes, SysUtils, DB, DateUtils, FMTBcd,
   RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
   RALJSON, RALConsts;
 
@@ -54,6 +54,9 @@ type
     function WriteDateTime(AValue: TDateTime): StringRAL;
     function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
     function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+    /// A decimal of the RAW format: a JSON number with every digit, so whoever
+    /// reads it from outside still finds the number it always found
+    function WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd): StringRAL;
     function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
     function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
     function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
@@ -253,7 +256,7 @@ function TRALStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
 begin
   case FFormatOptions.DateTimeFormat of
     dtfUnix:
-      Result := IntToStr(DateTimeToUnix(AValue));
+      Result := RALDateTimeToUnixText(AValue);
     dtfISO8601:
       Result := RALDateTimeToISO8601(AValue, FFormatOptions.DateTimeIsUTC);
     dtfCustom:
@@ -276,6 +279,8 @@ begin
 end;
 
 procedure TRALStorageJSON.ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
+var
+  vBcd: TBcd;
 begin
   case FFieldTypes[AIndex] of
     sftShortInt:
@@ -306,11 +311,21 @@ begin
       ReadFieldString(FFoundFields[AIndex], AValue.AsString);
     sftDateTime:
       begin
+        // Unix time, with the decimals of the milliseconds when it has them
         if AValue.JSONType = rjtNumber then
-          ReadFieldDateTime(FFoundFields[AIndex], AValue.AsInteger)
+          ReadFieldDateTime(FFoundFields[AIndex], RALUnixSecondsToDateTime(AValue.AsFloat))
         else
           ReadFieldDateTime(FFoundFields[AIndex], AValue.AsString);
       end;
+    { the digits as text (DBWare) or as a JSON number (RAW). A number keeps its
+      digits only where the JSON backend keeps the text it parsed - Delphi's
+      does, fpjson hands back a float's, in the locale or with an exponent -
+      and that one is read as the float it became }
+    sftBCD:
+      if RALTryTextToBCD(AValue.AsString, vBcd) then
+        ReadFieldBCD(FFoundFields[AIndex], vBcd)
+      else
+        ReadFieldFloat(FFoundFields[AIndex], AValue.AsFloat);
   end;
 end;
 
@@ -324,6 +339,12 @@ function TRALStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
   : StringRAL;
 begin
   Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, RALInvariantFormat)]);
+end;
+
+function TRALStorageJSON.WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd)
+  : StringRAL;
+begin
+  Result := Format('"%s":%s', [AFieldName, RALBCDToText(AValue)]);
 end;
 
 function TRALStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
@@ -466,6 +487,8 @@ begin
             vValue := WriteFieldInt64(FFieldNames[vInt], ADataset.Fields[vInt].AsLargeInt);
           sftDouble:
             vValue := WriteFieldFloat(FFieldNames[vInt], ADataset.Fields[vInt].AsFloat);
+          sftBCD:
+            vValue := WriteFieldBCD(FFieldNames[vInt], ADataset.Fields[vInt].AsBCD);
           sftBoolean:
             vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
           sftString:
@@ -743,6 +766,10 @@ begin
     // size
     WriteStringToStream(AStream, WriteInt64(ADataset.Fields[vInt].Size));
 
+    // a decimal also says its precision - Size is its scale (see RALStorageBIN)
+    if vType = sftBCD then
+      WriteStringToStream(AStream, ',' + WriteInt64(RALFieldPrecision(ADataset.Fields[vInt])));
+
     WriteCharToStream(AStream, Ord(']'));
   end;
 
@@ -784,6 +811,9 @@ begin
           vValue := WriteInt64(ADataset.Fields[vInt].AsLargeInt);
         sftDouble:
           vValue := WriteFloat(ADataset.Fields[vInt].AsFloat);
+        // RAL's own format: the digits as text, exact whatever the JSON backend
+        sftBCD:
+          vValue := WriteString(RALBCDToText(ADataset.Fields[vInt].AsBCD));
         sftBoolean:
           vValue := WriteBoolean(ADataset.Fields[vInt].AsBoolean);
         sftString:
@@ -911,10 +941,14 @@ begin
       vField.Name := vName;
       vField.DataType := vType;
 
-      if FFieldTypes[vInt] = sftString then
+      if FFieldTypes[vInt] in [sftString, sftBCD] then
         vField.Size := vSize
       else
         vField.Size := 0;
+
+      // a decimal also says its precision - Size is its scale
+      if FFieldTypes[vInt] = sftBCD then
+        vField.Precision := RALDecimalPrecision(vjArr2.Get(4).AsInteger);
 
       if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
         vField.Precision := vSize;

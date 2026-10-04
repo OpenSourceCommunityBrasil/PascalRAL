@@ -237,9 +237,11 @@ begin
   inherited;
 
   { A native FireDAC stream describes its own schema, with the real types.
-    Guessing here from the RAL type map - where ftBCD and ftFMTBcd both collapse
-    into sftDouble and come back as ftFloat - makes LoadFromStream pour BCD bytes
-    into a float field, and a NUMERIC(15,4) of 19.9012 reads back as 3.939E-313. }
+    Guessing here from the RAL type map makes LoadFromStream pour its bytes
+    into fields of another type: ftBCD and ftFMTBcd used to collapse into
+    sftDouble and come back as ftFloat, and a NUMERIC(15,4) of 19.9012 read
+    back as 3.939E-313. The map has an exact decimal now (sftBCD), and it is
+    still a guess - an ftFMTBcd where the stream may hold an ftBCD. }
   if FLoadingNative then
     Exit;
 
@@ -290,6 +292,13 @@ begin
         if (TRALFieldType(vType) = sftDouble) and
            (vInfo.Field[vInt].Precision > 0) then
           vField.Precision := vInfo.Field[vInt].Precision;
+
+        // a decimal: Precision its digits, Size its scale (see RALDBModule)
+        if TRALFieldType(vType) = sftBCD then
+        begin
+          vField.Precision := RALDecimalPrecision(vInfo.Field[vInt].Precision);
+          vField.Size := vInfo.Field[vInt].Scale;
+        end;
 
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
         if vInfo.Field[vInt].Flags and 1 > 0 then
@@ -549,10 +558,11 @@ begin
         begin
           { A native stream carries its own schema, and that one is the real one.
             InternalInitFieldDefs has already guessed the fields from the RAL type
-            map, where ftBCD and ftFMTBcd both collapse into sftDouble and come
-            back as ftFloat. Loading native BCD data into an ftFloat field makes
-            FireDAC reinterpret the BCD bytes as a double: a NUMERIC(15,4) holding
-            19.9012 came back as 3.939E-313. Drop the guessed defs and let FireDAC
+            map, which turned ftBCD and ftFMTBcd into ftFloat until the exact
+            decimal (sftBCD) came, and is a guess still. Loading native BCD data
+            into an ftFloat field made FireDAC reinterpret the BCD bytes as a
+            double: a NUMERIC(15,4) holding 19.9012 came back as 3.939E-313.
+            Drop the guessed defs and let FireDAC
             take the ones travelling in the stream - FLoadingNative keeps
             InternalInitFieldDefs from putting them back while the load reopens
             the dataset.

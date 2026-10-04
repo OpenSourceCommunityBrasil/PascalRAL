@@ -63,6 +63,10 @@ begin
 
     vField^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].Size));
 
+    // a decimal also says its precision - Size is its scale (see RALStorageBIN)
+    if vType = sftBCD then
+      vField^.Values.Add(TBSONItemInt32.Create('', RALFieldPrecision(ADataset.Fields[vInt])));
+
     vFields^.Values.Add(vField);
   end;
 
@@ -116,7 +120,15 @@ begin
               FreeAndNil(vMem);
             end;
           end;
-          sftDateTime : vRecord^.Values.Add(TBSONItemDateTime.Create('', ADataset.Fields[vInt].AsDateTime));
+          { kxBSON writes a BSON date in whole seconds (DateTimeToUnix), where
+            the spec says milliseconds, so every time went out cut to the
+            second. A double holds the TDateTime whole; RALLegacyWire keeps
+            the date an older RAL reads }
+          sftDateTime : if RALLegacyWire then
+                          vRecord^.Values.Add(TBSONItemDateTime.Create('', ADataset.Fields[vInt].AsDateTime))
+                        else
+                          vRecord^.Values.Add(TBSONItemDouble.Create('', ADataset.Fields[vInt].AsDateTime));
+          sftBCD      : vRecord^.Values.Add(TBSONItemString.Create('', RALBCDToText(ADataset.Fields[vInt].AsBCD)));
         end;
       end
       else
@@ -171,7 +183,7 @@ begin
 
   for vInt := 0 to Pred(vFields^.Values.Count) do
   begin
-    // a field is [name, type, flags, size]
+    // a field is [name, type, flags, size], and a decimal adds its precision
     vItemField := vFields^.Values.Item[vInt]^.PBSONArray;
     if (vItemField = nil) or (vItemField^.Values.Count < 4) then
       raise Exception.Create(emStorageInvalidBinary);
@@ -193,13 +205,21 @@ begin
     vField.Name := vName;
     vField.DataType := vType;
 
-    if FFieldTypes[vInt] = sftString then
+    if FFieldTypes[vInt] in [sftString, sftBCD] then
       vField.Size := vSize
     else
       vField.Size := 0;
 
     if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
       vField.Precision := vSize;
+
+    // the item list does not check its index (see above): asked only if there
+    if FFieldTypes[vInt] = sftBCD then
+    begin
+      if vItemField^.Values.Count < 5 then
+        raise Exception.Create(emStorageInvalidBinary);
+      vField.Precision := RALDecimalPrecision(vItemField^.Values[4]^.ToInt);
+    end;
 
     if vFlags[vInt] and 1 > 0 then
       vField.Attributes := vField.Attributes + [faReadonly];
@@ -288,8 +308,12 @@ begin
           sftString,
           sftMemo     : ReadFieldString(FFoundFields[vInt2], vItem^.ToString);
           sftBlob     : ReadFieldStream(FFoundFields[vInt2], vItem^.ToString);
+          // the exact double, or the date in seconds an older RAL wrote
           sftDateTime : if vItem^.PBSONDateTime <> nil then
-                          ReadFieldDateTime(FFoundFields[vInt2], vItem^.PBSONDateTime^.Value);
+                          ReadFieldDateTime(FFoundFields[vInt2], vItem^.PBSONDateTime^.Value)
+                        else if vItem^.BSONType = BSON_TYPE_DOUBLE then
+                          ReadFieldDateTime(FFoundFields[vInt2], TDateTime(vItem^.ToDouble));
+          sftBCD      : ReadFieldBCD(FFoundFields[vInt2], RALTextToBCD(vItem^.ToString));
         end;
       end;
       ADataset.Post;

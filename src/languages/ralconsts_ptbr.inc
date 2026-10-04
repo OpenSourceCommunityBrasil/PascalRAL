@@ -72,6 +72,7 @@
   emHTTPDateInvalid = '"%s" não é uma data HTTP.';
   emMultipartNoPart = 'Corpo multipart malformado: nenhuma parte completa delimitada pelo boundary.';
   emBase64Invalid = 'Texto base64 inválido.';
+  emDecimalInvalid = '"%s" não é um número decimal.';
   emISO8601Invalid = '"%s" não é uma data ISO 8601.';
   emLibraryNotLoaded = 'A biblioteca não foi carregada.';
   emOpenSSLCallFailed = 'O OpenSSL falhou em %s.';

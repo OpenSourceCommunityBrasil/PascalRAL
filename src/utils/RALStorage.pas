@@ -7,7 +7,7 @@ uses
   {$IFDEF FPC}
   bufstream,
   {$ENDIF}
-  Classes, SysUtils, DB, DateUtils, TypInfo,
+  Classes, SysUtils, DB, DateUtils, TypInfo, FMTBcd,
   RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts,
   RALStream;
 
@@ -40,6 +40,9 @@ type
     procedure LiftReadOnly;
     procedure RestoreReadOnly;
 
+    /// An sftBCD value: through AsBCD, so a decimal field keeps every digit
+    /// and a float or currency field converts as it would from any TBcd
+    procedure ReadFieldBCD(AField: TField; const AValue: TBcd);
     procedure ReadFieldBoolean(AField: TField; AValue: Boolean);
     procedure ReadFieldByte(AField: TField; AValue: byte);
     procedure ReadFieldDateTime(AField: TField; AValue: TDateTime); overload;
@@ -239,6 +242,12 @@ procedure TRALStorage.ReadFieldFloat(AField: TField; AValue: Double);
 begin
   if AField <> nil then
     AField.AsFloat := AValue;
+end;
+
+procedure TRALStorage.ReadFieldBCD(AField: TField; const AValue: TBcd);
+begin
+  if AField <> nil then
+    AField.AsBCD := AValue;
 end;
 
 procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);

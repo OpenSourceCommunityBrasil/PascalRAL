@@ -8,7 +8,7 @@ unit RALDBTypes;
 interface
 
 uses
-  Classes, SysUtils, TypInfo, DB,
+  Classes, SysUtils, TypInfo, DB, FMTBcd, DateUtils,
   RALTools,
   RALTypes, RALJson, RALParams, RALResponse, RALConsts;
 
@@ -26,9 +26,13 @@ type
     QWord    : 8 - Low: 0                    High: 18446744073709551615
   }
 
+  /// The type of a field on the wire. The ordinal is what travels, so a new
+  /// member only ever goes last: sftBCD, an exact decimal (NUMERIC, DECIMAL)
+  /// carried as its digits in text, came after sftDateTime - see
+  /// RALLegacyWire
   TRALFieldType = (sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte,
     sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
-    sftString, sftBlob, sftMemo, sftDateTime);
+    sftString, sftBlob, sftMemo, sftDateTime, sftBCD);
 
   TRALDBTableOnError = procedure(Sender: TObject; AException: StringRAL) of object;
 
@@ -200,9 +204,44 @@ function RALNameToFieldType(const AName: StringRAL): TFieldType;
 /// the enum afterwards misses half the bytes (see RALFieldTypeName)
 function RALIsFieldTypeOrdinal(AValue: Int64RAL): boolean;
 
+/// What an exact decimal column (ftBCD, ftFMTBcd) travels as: sftBCD, or the
+/// sftDouble it always was while RALLegacyWire is on
+function RALDecimalFieldType: TRALFieldType;
+/// An exact decimal as it travels: its digits, '.' as the separator, no
+/// thousands - the same on every locale and compiler
+function RALBCDToText(const AValue: TBcd): StringRAL;
+/// The inverse, for text RAL wrote itself: anything else raises
+function RALTextToBCD(const AValue: StringRAL): TBcd;
+/// The inverse without raising, for a number another program wrote
+function RALTryTextToBCD(const AValue: StringRAL; out ABcd: TBcd): boolean;
+/// The precision of a decimal field rebuilt from the wire: the one the
+/// column declared, or the most a TBcd holds when nothing said it
+function RALDecimalPrecision(APrecision: IntegerRAL): IntegerRAL;
+/// The total digits a decimal field declares - Size is its scale - or 0 for
+/// any other field
+function RALFieldPrecision(AField: TField): IntegerRAL;
+/// A moment as Unix time, the way the JSON and CSV storages write dtfUnix:
+/// whole seconds, and three decimals when it has milliseconds - unless
+/// RALLegacyWire, when an older RAL reads whole seconds only. It wrote whole
+/// seconds always, and every time went out cut to the second
+function RALDateTimeToUnixText(const AValue: TDateTime): StringRAL;
+/// The moment of Unix time in seconds, with or without decimals, to the
+/// millisecond
+function RALUnixSecondsToDateTime(const ASeconds: Double): TDateTime;
 
 /// The message a failed database request came back with - never an empty one.
 function RALDBResponseError(AResponse: TRALResponse): StringRAL;
+
+var
+  /// True writes what a RAL from before 04/10/2026 reads, for a side whose
+  /// peers are older; reading takes both, whatever this says. Two values
+  /// travel exact since then, and an older reader cannot read either:
+  /// NUMERIC and DECIMAL columns (ftBCD, ftFMTBcd) as sftBCD, their digits -
+  /// they went as a double, so 12345678901234.5678 arrived as
+  /// 12345678901234.6 wherever the native FireDAC stream was not the path -
+  /// and the milliseconds of a date, in the BSON storage, which kxBSON writes
+  /// in whole seconds, and in Unix time (dtfUnix), as decimals of the second.
+  RALLegacyWire: boolean = False;
 
 implementation
 
@@ -302,6 +341,104 @@ begin
   Result := (AValue >= 0) and (AValue <= Ord(High(TRALFieldType)));
 end;
 
+function RALDecimalFieldType: TRALFieldType;
+begin
+  if RALLegacyWire then
+    Result := sftDouble
+  else
+    Result := sftBCD;
+end;
+
+function RALBCDToText(const AValue: TBcd): StringRAL;
+begin
+  Result := StringRAL(BCDToStr(AValue, RALInvariantFormat));
+end;
+
+function RALTextToBCD(const AValue: StringRAL): TBcd;
+begin
+  if not RALTryTextToBCD(AValue, Result) then
+    raise EConvertError.CreateFmt(emDecimalInvalid, [string(AValue)]);
+end;
+
+{ The wire's form only - an optional '-', digits, and at most one '.' with
+  digits on both sides - checked before the conversion: FPC's TryStrToBCD
+  takes the format's thousand separator and skips it, so '1,5', the text
+  fpjson gives a float in a comma locale, read as 15 }
+function RALTryTextToBCD(const AValue: StringRAL; out ABcd: TBcd): boolean;
+var
+  vInt, vStart, vBefore, vAfter: IntegerRAL;
+  vDot: boolean;
+begin
+  Result := False;
+  vStart := 1;
+  if (Length(AValue) > 0) and (AValue[1] = '-') then
+    vStart := 2;
+  vBefore := 0;
+  vAfter := 0;
+  vDot := False;
+  for vInt := vStart to Length(AValue) do
+    case AValue[vInt] of
+      '0'..'9':
+        if vDot then
+          Inc(vAfter)
+        else
+          Inc(vBefore);
+      '.':
+        if vDot then
+          Exit
+        else
+          vDot := True;
+    else
+      Exit;
+    end;
+  if (vBefore = 0) or (vDot and (vAfter = 0)) then
+    Exit;
+  Result := TryStrToBCD(string(AValue), ABcd, RALInvariantFormat);
+end;
+
+function RALDecimalPrecision(APrecision: IntegerRAL): IntegerRAL;
+begin
+  Result := APrecision;
+  if Result <= 0 then
+    Result := 64;
+end;
+
+function RALFieldPrecision(AField: TField): IntegerRAL;
+begin
+  if AField is TFMTBCDField then
+    Result := TFMTBCDField(AField).Precision
+  else if AField is TBCDField then
+    Result := TBCDField(AField).Precision
+  else
+    Result := 0;
+end;
+
+function RALDateTimeToUnixText(const AValue: TDateTime): StringRAL;
+var
+  vMs: Int64;
+  vSign: StringRAL;
+begin
+  vMs := Round((AValue - UnixDateDelta) * MSecsPerDay);
+  if RALLegacyWire or (vMs mod 1000 = 0) then
+  begin
+    Result := StringRAL(IntToStr(DateTimeToUnix(AValue)));
+    Exit;
+  end;
+  // the sign apart: div and mod of a negative count go toward zero
+  vSign := '';
+  if vMs < 0 then
+  begin
+    vSign := '-';
+    vMs := -vMs;
+  end;
+  Result := vSign + StringRAL(IntToStr(vMs div 1000) + '.' + Format('%.3d', [vMs mod 1000]));
+end;
+
+function RALUnixSecondsToDateTime(const ASeconds: Double): TDateTime;
+begin
+  Result := UnixDateDelta + Round(ASeconds * 1000) / MSecsPerDay;
+end;
+
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
 var
   vInt: IntegerRAL;
@@ -356,10 +493,12 @@ begin
     ftSingle,
     ftExtended,
     {$ENDIF}
-    ftFMTBcd,
     ftFloat,
-    ftCurrency,
-    ftBCD: Result := sftDouble;
+    ftCurrency: Result := sftDouble;
+
+    // the exact decimals: see RALLegacyWire
+    ftFMTBcd,
+    ftBCD: Result := RALDecimalFieldType;
 
     {$IFNDEF FPC}
     ftTimeStampOffset,
@@ -435,6 +574,7 @@ begin
     sftBlob: Result := ftBlob;
     sftMemo: Result := ftWideMemo;
     sftDateTime: Result := ftDateTime;
+    sftBCD: Result := ftFMTBcd;
   end;
 end;
 

@@ -6,7 +6,7 @@ interface
 {$I ../base/PascalRAL.inc}
 
 uses
-  Classes, SysUtils, DB, DateUtils,
+  Classes, SysUtils, DB, DateUtils, FMTBcd,
   RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
 
 type
@@ -183,7 +183,7 @@ var
 begin
   case FFormatOptions.DateTimeFormat of
     dtfUnix:
-      Result := IntToStr(DateTimeToUnix(AValue));
+      Result := RALDateTimeToUnixText(AValue);
     dtfISO8601:
       Result := RALDateTimeToISO8601(AValue, True);
     dtfCustom:
@@ -241,7 +241,7 @@ end;
 function TRALStorageCSV.CSVParseDateTime(const AValue: StringRAL;
   var ADate: TDateTime): boolean;
 var
-  vUnix: Int64RAL;
+  vSeconds: Double;
   vText: StringRAL;
 begin
   Result := False;
@@ -250,11 +250,12 @@ begin
     Exit;
 
   case FFormatOptions.DateTimeFormat of
+    // whole seconds, or with the decimals of the milliseconds (see RALDBTypes)
     dtfUnix:
       begin
-        Result := TryStrToInt64(vText, vUnix);
+        Result := TryStrToFloat(string(vText), vSeconds, RALInvariantFormat);
         if Result then
-          ADate := UnixToDateTime(vUnix);
+          ADate := RALUnixSecondsToDateTime(vSeconds);
       end;
     dtfISO8601:
       begin
@@ -371,6 +372,9 @@ begin
             vValue := vValue + ADataset.Fields[vInt].AsString;
           sftDouble:
             vValue := vValue + CSVFormatFloat(ADataset.Fields[vInt].AsFloat);
+          // every digit, with the separator of the options as a float has
+          sftBCD:
+            vValue := vValue + StringRAL(BCDToStr(ADataset.Fields[vInt].AsBCD, CSVFormatSettings));
           sftBoolean:
             vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
           sftString:
@@ -633,6 +637,7 @@ var
   vFormat: TFormatSettings;
   vInt64: Int64RAL;
   vFloat: Extended;
+  vBcd: TBcd;
   vDate: TDateTime;
 begin
   vFormat := CSVFormatSettings;
@@ -666,6 +671,9 @@ begin
             sftDouble:
               if TryStrToFloat(CSVUnquote(vValue), vFloat, vFormat) then
                 ReadFieldFloat(FFoundFields[vInt], vFloat);
+            sftBCD:
+              if TryStrToBCD(string(CSVUnquote(vValue)), vBcd, vFormat) then
+                ReadFieldBCD(FFoundFields[vInt], vBcd);
             sftBoolean:
               ReadFieldBoolean(FFoundFields[vInt],
                 SameText(CSVUnquote(vValue), FFormatOptions.BoolTrueStr));
