@@ -8,6 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Fix a security hole: brotli compression pinned a core on an empty body and leaked 1 KB per body** (2026-10-04 – tempraturbo)
+  Both come from pascal_brotli's TBrotliCompressionStream, the same in the
+  commit the submodule pins and in its upstream main (54dd744, 04/10/2026).
+  Write sizes its output buffer by its input, so on an empty body it had no
+  room for the stream header and looped for ever - reachable by any client:
+  over HTTP, an empty file the WebModule served to a request taking br, on a
+  server with brotli linked and no zstd, never answered, and the server
+  burned 5 s of CPU in the next 5 s with no request at all, one core pinned
+  for good per such request. And Flush, which the destructor runs, takes a
+  GetMemory(1024) it never gives back, so a server answering in brotli lost
+  1 KB on every response: 314 KB in 300 compressions on Delphi, 317 KB on
+  FPC.
+  TRALCompressBrotli.InitCompress drives the brotlilib encoder itself now:
+  one instance for the whole body, where the class built one per 64 KB
+  piece plus the ones that finished it - an encoder is the costliest thing
+  brotli makes, and pieces compressed apart compress worse. What goes out
+  is one standard brotli stream, which any decoder reads, the RAL of before
+  included - checked on Delphi and FPC, each reading the other's output and
+  an older RAL reading both, and against Node's decoder. A failing encoder
+  raises emCompressFailed, where a piece could go missing in silence.
+  Decompression keeps the class, which frees what it takes.
+  Found by the orchestrator's FPC matrix, whose heap check ran with brotli
+  for the first time.
+
+- **Fix a security hole: BlockedExtensions served a name ending in a dot on FPC** (2026-10-04 – tempraturbo)
+  Windows drops trailing dots and blanks from a name it opens, so x.ini.
+  and "x.ini " are x.ini. Delphi's ExpandFileName asks the system and
+  judged x.ini; FPC's works on the text, judged a name with no extension
+  and served the file BlockedExtensions refused, on fpHTTP and mORMot2
+  alike. ResolvePath refuses on Windows a path segment ending in a dot or
+  a blank, "." and ".." aside, on both compilers - the way it refuses ':'
+  - so x.txt. is a 404 on Delphi too, where it used to serve x.txt.
+  Found by the orchestrator's new audit suite.
+
+- **Fix a security hole: forged enum bytes read and jumped outside their tables** (2026-10-04 – tempraturbo)
+  Delphi compares an enum of up to 128 members as a signed byte, on Win32
+  and Win64 alike, so the range guards the first round of 02/10 put on a
+  byte cast to an enum - "Ord(x) > Ord(High(x))" in RALFieldTypeName and
+  StorageLinkClassOf - let every ordinal from 128 to 255 through and
+  indexed before their tables: RALFieldTypeName(TRALFieldType(250)) was an
+  access violation. FPC's four-byte enums kept those guards honest, but
+  not the case of TRALDB.RALFieldTypeToFieldType: any value past the last
+  member jumped through its table into an access violation there, and
+  Win32 took 128 for sftShortInt. The guards compare as Cardinal now, and
+  both type mappings check before their case.
+  The BIN, JSON and BSON storages and the params of a DBWare request body
+  - read on the server before any SQL is validated - check the number with
+  RALIsFieldTypeOrdinal before the cast and refuse the stream otherwise,
+  and a fieldtype past the last member in a schema JSON becomes ftUnknown.
+  The JSON reader cut the number to a byte first, so 256 came back as the
+  first type. The other bytes of a request body that become an enum - the
+  JSONType, DateTimeFormat and FieldCharCase a storage link sends with its
+  properties, the DriverType and ExecType of each DBWare statement - go
+  through TRALBinaryWriter.ReadEnum, which refuses one past the last
+  member.
+  Found by the orchestrator's new audit suite.
+
 - **Security: harden the WebModule and add opt-in protections to the server** (2026-10-04 – tempraturbo)
   - The WebModule answers only the URLs under its Domain. It served every URL,
   taking those another module was meant to answer.
@@ -219,6 +276,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Breaking Changes
+- **Breaking change: the memtables' ApplyUpdates and ExecSQL raise their failures, as the DAO does** (2026-10-04 – tempraturbo)
+  ApplyUpdates sends one UPDATE or DELETE per record, with the old value of
+  every column in the WHERE (upWhereAll), and TRALDBModule answers each
+  statement's RowsAffected - which nobody read: a record someone else
+  changed or deleted since the Open counted as saved, the change gone
+  without a word. A statement that affects other than one record is an
+  error now (emDBRowsAffected), as FireDAC's CountUpdatedRecords and the DAO
+  make it. UpdateOptions.CountUpdatedRecords on the FireDAC memtable, and the
+  published CountUpdatedRecords on the Zeos one and on TRALDBBufDataset, turn
+  the count off - for an UpdateSQL that runs a procedure or touches several
+  rows.
+  What breaks: every failure of ApplyUpdates and ExecSQL - that count, a
+  driver error, a 500, a 401, the pool's 429, a transport failure - is
+  reported through OnError and then raised by the call, as the DAO's
+  ApplyUpdatesRemote and ExecSQLRemote raise. It reached OnError alone
+  before, or nothing without it, and a 401 went unsaid even with it. Code
+  that relied on OnError alone gets the exception too. The dataset stays
+  open, unlike the DAO's: changes a transport failure leaves in the cache
+  can be sent again.
+
+- **Breaking change: NUMERIC, DECIMAL and milliseconds travel whole** (2026-10-04 – tempraturbo)
+  ftBCD and ftFMTBcd went over the wire as a double, so wherever the native
+  FireDAC stream was not the path - Zeos and sqldb always, and a FireDAC
+  client of a Zeos server or the reverse - 12345678901234.5678 arrived as
+  12345678901234.6. They travel as sftBCD now, a member appended to
+  TRALFieldType so that no stored ordinal moves: the digits in text, the
+  same on every locale (RALBCDToText, RALTextToBCD), in the BIN, BSON and CSV
+  storages, as a JSON string in the DBWare JSON and as a JSON number with
+  every digit in the RAW one, which third parties read. A decimal field's
+  header carries its precision, since Size is its scale; the params of a
+  DBWare request go the same way, the memtables rebuild an ftFMTBcd with the
+  column's precision and scale, and getsqlfields sends both - it sent the
+  scale as Precision and left Scale at 0. NUMERIC and DECIMAL of the
+  getfields and gettables catalogs are sftBCD too. FPC's TryStrToBCD reads
+  "1,5" as 15, so the readers check the shape of the digits first and refuse
+  anything else with emDecimalInvalid.
+  Milliseconds went missing in two places. kxBSON writes a BSON date in
+  whole seconds, where the spec says milliseconds, so every date of the BSON
+  storage lost them; it travels as the TDateTime itself, a double. The
+  dtfUnix format of the JSON and CSV storages wrote whole seconds and read
+  an integer; it writes three decimals when a value has milliseconds
+  (RALDateTimeToUnixText) and reads seconds with or without them
+  (RALUnixSecondsToDateTime).
+  Against Firebird 5, FireDAC and Zeos servers to FireDAC and Zeos
+  memtables, storage and native, the decimal arrives whole on all four
+  paths. sqldb hands RAL a NUMERIC with scale up to 4 already rounded: FPC's
+  IBConnection reads it into a Currency through a floating-point division, a
+  double on Win64. RAL carries what it is handed.
+  A RAL from before this reads neither sftBCD, nor a BSON date as a double,
+  nor Unix time with decimals: an older client of a newer server misreads
+  every NUMERIC column and every such date. RALLegacyWire (RALDBTypes,
+  default False) set True writes what an older RAL reads, for a side whose
+  peers are older; reading takes both, whatever it says.
+
 - **Breaking change: every engine files a param by where it came from** (2026-10-03 – tempraturbo)
   Code that reads params by kind sees a different answer; ParamByName reads
   the same.
@@ -717,6 +828,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **Fix the Fields Editor's fields of a FireDAC memtable not matching a native load** (2026-10-04 – tempraturbo)
+  The memtables make their design-time fields from getsqlfields, and the
+  client reduced the server's type to the RAL one - DATE, TIME and TIMESTAMP
+  to ftDateTime, NUMERIC to ftFMTBcd - which is what a RAL storage brings. A
+  FireDAC memtable of a FireDAC server loads FireDAC's native stream instead,
+  with the server's own types: a NUMERIC carried as ftBCD stopped the load
+  (type mismatch, expecting FMTBcd, actual BCD), and a DATE read through its
+  TDateTimeField raised EConvertError ('0.0' is not a valid timestamp).
+  getsqlfields tells which driver's clients the server answers natively
+  (nativedriver: its own driver, when it can export natively), and a memtable
+  of that driver builds its defs from the server's type, size and precision.
+  An older client ignores the key and an older server leaves it out, so the
+  client builds what it always built; the storage path does not change. The
+  Zeos memtable follows the same rule for a Zeos server built with stream
+  export. A persistent field made before this keeps its old type and has to
+  be made again.
+
+- **Fix posting a record with a BLOB column through a memtable on Delphi** (2026-10-04 – tempraturbo)
+  The memtables build the UPDATE of a record by asking each field whether
+  Value <> OldValue. That is a Variant comparison, and on Delphi a blob's
+  Value is a byte array, which the comparison refuses: EVariantTypeCastError
+  before the statement was built, so no record with a BLOB column could be
+  saved through the FireDAC or the Zeos memtable. FieldChanged compares the
+  bytes. FPC hands a blob over as a string and never had the problem.
+
+- **Fix the fpHTTP client losing the type marker of a typed answer** (2026-10-04 – tempraturbo)
+  fphttpclient splits its header list at the colon alone, so a value read
+  by name keeps the blank after it, and the Content-Type of an answer that
+  carries one typed value (application/x-ral-datetime) no longer matched
+  its marker: the date read as zero. The engine trims the values it reads by
+  name, and TRALParam.MediaType ignores the blanks around the type, which RFC
+  9110 allows before the ';' and around a field value, whatever engine or
+  peer sent them.
+  Found end to end over HTTP by the orchestrator's audit suite.
+
+- **Fix FPC readers cutting two escaped characters in a row in any JSON** (2026-10-04 – tempraturbo)
+  FPC 3.2.2's jsonscanner decodes a pair of \u escapes into a String[4]: two
+  ideographs are six bytes of UTF-8 and came out as four, and so did an
+  accented letter next to one. RAL writes every character past ASCII that
+  way, and so does Delphi's JSON, so a column of Chinese text reached every
+  FPC reader as garbage - the JSON storages, the schemas of getsqlfields,
+  the claims of a JWT. TRALJSON.ParseJSON decodes the escapes into UTF-8
+  before fpjson sees the text, a surrogate pair into its one character; what
+  a string cannot hold raw - a control character, the quote, the backslash -
+  goes through escaped. The stream overload reads the whole stream from its
+  start, as the Delphi backend does.
+  Found by the typed field cases of the orchestrator's audit suite.
+
+- **Fix DBWare params binding a time as a date and time, and a memo as ANSI** (2026-10-04 – tempraturbo)
+  sftDateTime alone cannot tell a date from a time, and the server bound
+  every date and time param as both: a time reached a SQLite TIME column as
+  '1899-12-30 hh:nn:ss.zzz', which no driver reads back, and the column came
+  back null. The size each param travels with, which every reader of before
+  ignores for a date, says which one it is (RALDateTimeKind: 1 a date, 2 a
+  time, 0 both), and the server builds the param with it.
+  AsMemo made every memo param ftMemo, which is ANSI on Delphi: an ideograph
+  was bound as '?', stored that way by an ExecSQL and never found by the
+  WHERE of an ApplyUpdates, which under upWhereAll compares every column and
+  then updated no row, without a word. The param keeps the ftWideMemo the
+  reader gives it. Portuguese accents fit CP1252, which is how this stayed
+  hidden.
+  Found end to end over HTTP by the orchestrator's audit suite, against
+  SQLite through FireDAC.
+
+- **Fix memos travelling as the bytes of their field, in an encoding nobody wrote down** (2026-10-04 – tempraturbo)
+  TBlobField.SaveToStream gives ANSI for a Delphi ftMemo, UTF-8 for an FPC
+  one and UTF-16 for an ftWideMemo on both, and the storages wrote those
+  bytes as they came while the readers loaded them into the field they
+  built, an ftWideMemo. In BIN only a wide memo survived, so the text of an
+  sqldb server or of a Delphi ftMemo arrived as garbage; the JSON writer
+  escaped UTF-16 bytes as if they were UTF-8 text; the CSV wrote them in
+  base64 and its reader took the base64 for the text.
+  A memo is text now. In BIN it is the UTF-16LE of AsWideString, in the
+  layout a stream had, so a reader of before still reads the wide memos it
+  always read, and every other one as well; in JSON a string, which is how
+  the readers always took it; in CSV the text quoted whole, line breaks
+  included, as RFC 4180 allows and the reader already followed. The CSV and
+  RAW JSON readers, which guess the types, build ftWideString and ftWideMemo
+  for text as the others do: an ftString is ANSI on Delphi and lost what
+  CP_ACP has no place for.
+  Found by the typed field cases of the orchestrator's audit suite.
+
+- **Fix the JSON storages turning nulls into values and big decimals into integers** (2026-10-04 – tempraturbo)
+  The DBWare JSON wrote a null field as its type's empty value - 0, an empty
+  text, false, 30/12/1899 - so every null came back as a value: the reader
+  always skipped a JSON null, and nothing ever wrote one. It writes null
+  now, as the RAW JSON did.
+  The RAW reader, which has no schema, took a number's type from the double
+  it parsed: past 2^53 every double is whole, so a decimal of twenty digits
+  was taken for an integer and the first record raised reading it. The text
+  of the number decides now.
+  Both found by the exact decimal cases of the orchestrator's audit suite.
+
+- **Fix gzip, zlib and deflate sending an empty body as no bytes under their label** (2026-10-04 – tempraturbo)
+  TRALCompressZLib.InitCompress returned without writing when the input was
+  empty, so an empty answer - an empty file the WebModule serves, a route
+  answering an empty stream - went out as nothing under Content-Encoding:
+  gzip. Zero bytes are no stream of any of the three, and a strict decoder
+  refuses them: Node's zlib answers "unexpected end of file" to each.
+  An empty body goes through the compressor like any other now and comes
+  out as the stream of nothing - 20, 8 and 2 bytes, the same on both
+  compilers - as zstd and brotli always did. Decompress still takes an
+  empty body as an empty one, so either side of the change reads the other:
+  checked on Delphi and FPC, each reading the other's output and an older
+  RAL's, and against Node's decoders.
+  Found over HTTP with the same empty file as the brotli hang.
+
+- **Fix the fpHTTP client writing requests into connections the server had closed** (2026-10-04 – tempraturbo)
+  fphttpclient 3.2 looks for "Connection: close" only in its own request,
+  so a socket the server announced it was closing - fcl-web, this engine's
+  own server, closes after every answer and says so - was kept and written
+  into, and so was one the server closed while it sat idle: a restart, an
+  idle timeout. The read then failed, and a POST is not sent again after a
+  failed read, so with 8 threads against an fpHTTP server 72 POSTs in 480
+  failed, and the first POST after a server restart failed on every server
+  engine.
+  The engine lets the socket go after an answer that closes the connection
+  (Connection: close, or HTTP/1.0 without keep-alive, RFC 9112 9.3), and
+  before reusing a kept socket asks whether it is readable, without
+  waiting: an idle HTTP connection has nothing to read, so a readable one
+  was closed. The socket handlers the engine already supplies record the
+  handle for it - the probe the mORMot2 engine makes with
+  SockReceivePending(0).
+  Found by the orchestrator's pool suite once its memtables opened in
+  parallel again.
+
+- **Fix 404 answers to a verb a route does not take: they are 405 with Allow** (2026-10-04 – tempraturbo)
+  TRALRoutes.CanAnswerRoute only finds a route that takes the method -
+  several routes may share a path with a verb each since c9050cd - so a
+  verb outside AllowedMethods fell through to 404, and the 405 of
+  ProcessCommands, Allow and all, was reached by the WebModule's files
+  alone. When no route answers, the server asks TRALRoutes.AllowedMethodsOf
+  of its own routes and of each module's: a path some route has is 405,
+  with what all of its routes take in Allow (RALAllowedMethodsText, which
+  GetAllowMethods uses too); only a path no route has is 404. OPTIONS
+  keeps the 404 it always got from a route that does not take it. The
+  route lookup itself is unchanged: the second pass runs on the way to a
+  404 only.
+
 - **Fix HTTP dates, base64, JWT checks, HEAD answers and other defects** (2026-10-04 – tempraturbo)
   - HTTP dates: RALTryHTTPDate reads the IMF date, RFC 850's and asctime's,
   and the forms cookies carry (RFC 6265 5.1.1); HTTPDateTimeToDateTime raises
