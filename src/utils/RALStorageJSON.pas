@@ -6,7 +6,7 @@ unit RALStorageJSON;
 interface
 
 uses
-  Classes, SysUtils, DB, DateUtils,
+  Classes, SysUtils, DB, DateUtils, FMTBcd,
   RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
   RALJSON, RALConsts;
 
@@ -47,21 +47,21 @@ type
     destructor Destroy; override;
   protected
     function JSONFormatDateTime(AValue: TDateTime): StringRAL;
-    function StringToJSONString(AValue: TStream): StringRAL; overload;
-    function StringToJSONString(AValue: StringRAL): StringRAL; overload;
+    function StringToJSONString(AValue: StringRAL): StringRAL;
     function WriteBlob(AValue: TStream): StringRAL;
     function WriteBoolean(AValue: Boolean): StringRAL;
     function WriteDateTime(AValue: TDateTime): StringRAL;
     function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
     function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+    /// A decimal of the RAW format: a JSON number with every digit, so whoever
+    /// reads it from outside still finds the number it always found
+    function WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd): StringRAL;
     function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
     function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
     function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
-    function WriteFieldMemo(AFieldName: StringRAL; AValue: TStream): StringRAL;
     function WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
     function WriteFieldNull(AFieldName: StringRAL): StringRAL;
     function WriteFloat(AValue: Double): StringRAL;
-    function WriteMemo(AValue: TStream): StringRAL;
     function WriteInt64(AValue: Int64RAL): StringRAL;
     function WriteString(AValue: StringRAL): StringRAL;
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
@@ -178,11 +178,6 @@ begin
   inherited Destroy;
 end;
 
-function TRALStorageJSON.StringToJSONString(AValue: TStream): StringRAL;
-begin
-  Result := StringToJSONString(StreamToString(AValue));
-end;
-
 function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
 const
   cHex: array[0..15] of AnsiChar = '0123456789ABCDEF';
@@ -253,7 +248,7 @@ function TRALStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
 begin
   case FFormatOptions.DateTimeFormat of
     dtfUnix:
-      Result := IntToStr(DateTimeToUnix(AValue));
+      Result := RALDateTimeToUnixText(AValue);
     dtfISO8601:
       Result := RALDateTimeToISO8601(AValue, FFormatOptions.DateTimeIsUTC);
     dtfCustom:
@@ -276,6 +271,8 @@ begin
 end;
 
 procedure TRALStorageJSON.ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
+var
+  vBcd: TBcd;
 begin
   case FFieldTypes[AIndex] of
     sftShortInt:
@@ -306,11 +303,21 @@ begin
       ReadFieldString(FFoundFields[AIndex], AValue.AsString);
     sftDateTime:
       begin
+        // Unix time, with the decimals of the milliseconds when it has them
         if AValue.JSONType = rjtNumber then
-          ReadFieldDateTime(FFoundFields[AIndex], AValue.AsInteger)
+          ReadFieldDateTime(FFoundFields[AIndex], RALUnixSecondsToDateTime(AValue.AsFloat))
         else
           ReadFieldDateTime(FFoundFields[AIndex], AValue.AsString);
       end;
+    { the digits as text (DBWare) or as a JSON number (RAW). A number keeps its
+      digits only where the JSON backend keeps the text it parsed - Delphi's
+      does, fpjson hands back a float's, in the locale or with an exponent -
+      and that one is read as the float it became }
+    sftBCD:
+      if RALTryTextToBCD(AValue.AsString, vBcd) then
+        ReadFieldBCD(FFoundFields[AIndex], vBcd)
+      else
+        ReadFieldFloat(FFoundFields[AIndex], AValue.AsFloat);
   end;
 end;
 
@@ -324,6 +331,12 @@ function TRALStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
   : StringRAL;
 begin
   Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, RALInvariantFormat)]);
+end;
+
+function TRALStorageJSON.WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd)
+  : StringRAL;
+begin
+  Result := Format('"%s":%s', [AFieldName, RALBCDToText(AValue)]);
 end;
 
 function TRALStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
@@ -345,12 +358,6 @@ function TRALStorageJSON.WriteFieldBlob(AFieldName: StringRAL; AValue: TStream)
   : StringRAL;
 begin
   Result := Format('"%s":"%s"', [AFieldName, TRALBase64.Encode(AValue)]);
-end;
-
-function TRALStorageJSON.WriteFieldMemo(AFieldName: StringRAL; AValue: TStream)
-  : StringRAL;
-begin
-  Result := Format('"%s":"%s"', [AFieldName, StringToJSONString(AValue)]);
 end;
 
 function TRALStorageJSON.WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime)
@@ -393,11 +400,6 @@ end;
 function TRALStorageJSON.WriteBlob(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
-end;
-
-function TRALStorageJSON.WriteMemo(AValue: TStream): StringRAL;
-begin
-  Result := Format('"%s"', [StringToJSONString(AValue)]);
 end;
 
 function TRALStorageJSON.WriteDateTime(AValue: TDateTime): StringRAL;
@@ -466,9 +468,14 @@ begin
             vValue := WriteFieldInt64(FFieldNames[vInt], ADataset.Fields[vInt].AsLargeInt);
           sftDouble:
             vValue := WriteFieldFloat(FFieldNames[vInt], ADataset.Fields[vInt].AsFloat);
+          sftBCD:
+            vValue := WriteFieldBCD(FFieldNames[vInt], ADataset.Fields[vInt].AsBCD);
           sftBoolean:
             vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
-          sftString:
+          { a memo is text, which is how the readers always took it - it went
+            out as the field's own bytes, UTF-16 for a wide memo, as escaped
+            UTF-8 (see RALStorageBIN) }
+          sftString, sftMemo:
             vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsWideString);
           sftBlob:
             begin
@@ -476,16 +483,6 @@ begin
               try
                 TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
                 vValue := WriteFieldBlob(FFieldNames[vInt], vMem);
-              finally
-                vMem.Free
-              end;
-            end;
-          sftMemo:
-            begin
-              vMem := TMemoryStream.Create;
-              try
-                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-                vValue := WriteFieldMemo(FFieldNames[vInt], vMem);
               finally
                 vMem.Free
               end;
@@ -528,6 +525,7 @@ const
 var
   vjObj: TRALJSONObject;
   vInt, vSize: IntegerRAL;
+  vInt64: Int64;
   vName: StringRAL;
   vField: TField;
   vType: TFieldType;
@@ -565,22 +563,29 @@ begin
     begin
       vjValue := vjObj.Get(vInt);
       { a value of no listed type - an object, an array - is text. vType had
-        no value at all for them, and went to FieldDefs.Add as it was }
-      vType := ftString;
+        no value at all for them, and went to FieldDefs.Add as it was. Text
+        gets the wide types the other readers build (RALFieldTypeToFieldType):
+        an ftString is ANSI on Delphi, and lost what CP_ACP has no place for }
+      vType := ftWideString;
       vSize := MAX_JSONSTRING;
       case vjValue.JSONType of
         rjtString:
           if Length(vjValue.AsString) > MAX_JSONSTRING then
           begin
-            vType := ftMemo;
+            vType := ftWideMemo;
             vSize := 0;
           end;
         rjtNumber:
           begin
             vSize := 0;
-            vType := ftFloat;
-            if Frac(vjValue.AsFloat) = 0 then
-              vType := ftLargeint;
+            { the text decides, not the double: past 2^53 every double is a
+              whole number, so a decimal of twenty digits came back from
+              AsFloat with no fraction, was taken for an integer, and the first
+              record raised reading it }
+            if TryStrToInt64(string(vjValue.AsString), vInt64) then
+              vType := ftLargeint
+            else
+              vType := ftFloat;
           end;
         rjtBoolean:
           begin
@@ -743,6 +748,10 @@ begin
     // size
     WriteStringToStream(AStream, WriteInt64(ADataset.Fields[vInt].Size));
 
+    // a decimal also says its precision - Size is its scale (see RALStorageBIN)
+    if vType = sftBCD then
+      WriteStringToStream(AStream, ',' + WriteInt64(RALFieldPrecision(ADataset.Fields[vInt])));
+
     WriteCharToStream(AStream, Ord(']'));
   end;
 
@@ -778,15 +787,25 @@ begin
     vVirg2 := False;
     for vInt := 0 to Pred(ADataset.FieldCount) do
     begin
+      { a null is null: written as the field's value, it came back as 0, an
+        empty text or False - the reader always skipped a JSON null, and
+        nothing ever wrote one }
+      if ADataset.Fields[vInt].IsNull then
+        vValue := 'null'
+      else
       case FFieldTypes[vInt] of
         sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte, sftWord, sftCardinal,
           sftQWord:
           vValue := WriteInt64(ADataset.Fields[vInt].AsLargeInt);
         sftDouble:
           vValue := WriteFloat(ADataset.Fields[vInt].AsFloat);
+        // RAL's own format: the digits as text, exact whatever the JSON backend
+        sftBCD:
+          vValue := WriteString(RALBCDToText(ADataset.Fields[vInt].AsBCD));
         sftBoolean:
           vValue := WriteBoolean(ADataset.Fields[vInt].AsBoolean);
-        sftString:
+        // the memo as text, as in the RAW writer
+        sftString, sftMemo:
           vValue := WriteString(ADataset.Fields[vInt].AsString);
         sftBlob:
           begin
@@ -794,16 +813,6 @@ begin
             try
               TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
               vValue := WriteBlob(vMem);
-            finally
-              vMem.Free
-            end;
-          end;
-        sftMemo:
-          begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vValue := WriteMemo(vMem);
             finally
               vMem.Free
             end;
@@ -860,7 +869,7 @@ var
   vInt, vSize: IntegerRAL;
   vName: StringRAL;
   vType: TFieldType;
-  vByte: Byte;
+  vTypeOrd: Int64RAL;
   vFlags: TBytes;
   vjValue: TRALJSONValue;
   vjArr1, vjArr2: TRALJSONArray;
@@ -893,10 +902,13 @@ begin
       vName := vjArr2.Get(0).AsString;
       FFieldNames[vInt] := vName;
 
-      // type
-      vByte := vjArr2.Get(1).AsInteger;
-      vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
-      FFieldTypes[vInt] := TRALFieldType(vByte);
+      // type - checked whole, before it becomes an enum (see RALStorageBIN);
+      // it was cut to a byte first, so 256 came back as the first type
+      vTypeOrd := vjArr2.Get(1).AsInteger;
+      if not RALIsFieldTypeOrdinal(vTypeOrd) then
+        raise Exception.Create(emInvalidJSONFormat);
+      vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vTypeOrd));
+      FFieldTypes[vInt] := TRALFieldType(vTypeOrd);
 
       // flags
       vFlags[vInt] := vjArr2.Get(2).AsInteger;
@@ -908,10 +920,14 @@ begin
       vField.Name := vName;
       vField.DataType := vType;
 
-      if FFieldTypes[vInt] = sftString then
+      if FFieldTypes[vInt] in [sftString, sftBCD] then
         vField.Size := vSize
       else
         vField.Size := 0;
+
+      // a decimal also says its precision - Size is its scale
+      if FFieldTypes[vInt] = sftBCD then
+        vField.Precision := RALDecimalPrecision(vjArr2.Get(4).AsInteger);
 
       if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
         vField.Precision := vSize;
@@ -1073,7 +1089,7 @@ end;
 procedure TRALStorageJSONLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
-  FJSONType := TRALJSONType(AWriter.ReadByte);
+  FJSONType := TRALJSONType(AWriter.ReadEnum(Ord(High(TRALJSONType))));
   FFormatOptions.LoadPropsFromStream(AWriter);
 end;
 
@@ -1087,7 +1103,8 @@ end;
 procedure TRALJSONFormatOptions.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
   inherited;
-  FDateTimeFormat := TRALDateTimeFormat(AWriter.ReadByte);
+  // see TRALCSVFormatOptions.LoadPropsFromStream
+  FDateTimeFormat := TRALDateTimeFormat(AWriter.ReadEnum(Ord(High(TRALDateTimeFormat))));
   if FDateTimeFormat = dtfCustom then
     FCustomDateTimeFormat := AWriter.ReadString;
 end;

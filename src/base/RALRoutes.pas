@@ -179,11 +179,22 @@ type
     function AsString: StringRAL;
     /// Method that will check if the request finds a matching route
     function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
+    /// The methods the routes of the request's path take, whatever its own
+    /// method is - empty when no route has the path. CanAnswerRoute only finds
+    /// a route that takes the method, since several routes may share a path
+    /// with a verb each; this is what tells a path no route has (404) from a
+    /// method none of its routes takes (405)
+    function AllowedMethodsOf(ARequest: TRALRequest): TRALMethods;
     /// Retuns the internal Enumerator type to allow for..in loops
     function GetEnumerator: TEnumerator; inline;
 
     property Find[const ARoute: StringRAL]: TRALRoute read GetRoute;
   end;
+
+/// The text of an Allow header for a set of methods: each method it takes, in
+/// TRALMethod order - amALL spelled out, and amUNKNOWN, which no route takes,
+/// left out
+function RALAllowedMethodsText(AMethods: TRALMethods): StringRAL;
 
 implementation
 
@@ -241,23 +252,30 @@ begin
   Result := (Self <> nil) and (Assigned(FOnReply) or Assigned(FOnReplyGen));
 end;
 
-function TRALBaseRoute.GetAllowMethods: StringRAL;
+function RALAllowedMethodsText(AMethods: TRALMethods): StringRAL;
 var
   vMethod: TRALMethod;
 begin
   Result := '';
-  if Self = nil then
-    Exit;
-
   for vMethod := Low(TRALMethod) to High(TRALMethod) do
   begin
-    if (vMethod <> amALL) and IsMethodAllowed(vMethod) then
+    if (vMethod <> amALL) and (vMethod <> amUNKNOWN) and
+       ((amALL in AMethods) or (vMethod in AMethods)) then
     begin
       if Result <> '' then
         Result := Result + ', ';
       Result := Result + RALMethodToHTTPMethod(vMethod);
     end;
   end;
+end;
+
+function TRALBaseRoute.GetAllowMethods: StringRAL;
+begin
+  Result := '';
+  if Self = nil then
+    Exit;
+
+  Result := RALAllowedMethodsText(AllowedMethods);
 end;
 
 procedure TRALBaseRoute.SetRoute(AValue: StringRAL);
@@ -628,6 +646,21 @@ begin
       Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
 end;
 
+{ The request's path split once - as it came, and trimmed for matching - while
+  every route's is kept since it was defined (TRALBaseRoute.UpdateSegments).
+  This used to build two TStringLists and parse both paths for every route on
+  every request, plus two more lists for the URI params of whichever route was
+  winning so far }
+procedure SplitRequestPath(ARequest: TRALRequest; out ARaw, APath: TRALRouteSegments);
+var
+  vInt: IntegerRAL;
+begin
+  ARaw := SplitPath(FixRoute(ARequest.Query), False);
+  SetLength(APath, Length(ARaw));
+  for vInt := 0 to High(ARaw) do
+    APath[vInt] := RALTrim(ARaw[vInt]);
+end;
+
 function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
 var
   vInt, vWeight, vBest, vOtherBest: IntegerRAL;
@@ -640,14 +673,7 @@ begin
   if Count = 0 then
     Exit;
 
-  { the request's path split once, and every route's kept since it was defined
-    (TRALBaseRoute.UpdateSegments). This used to build two TStringLists and
-    parse both paths for every route on every request, plus two more lists
-    for the URI params of whichever route was winning so far }
-  vRaw := SplitPath(FixRoute(ARequest.Query), False);
-  SetLength(vPath, Length(vRaw));
-  for vInt := 0 to High(vRaw) do
-    vPath[vInt] := RALTrim(vRaw[vInt]);
+  SplitRequestPath(ARequest, vRaw, vPath);
 
   { the route is found by its path; among the routes of the same path the one
     that takes the method wins. When none of them takes it, the path's route
@@ -682,6 +708,21 @@ begin
 
   if Result <> nil then
     AddURIParams(Result, vRaw, vPath, ARequest.Params);
+end;
+
+function TRALRoutes.AllowedMethodsOf(ARequest: TRALRequest): TRALMethods;
+var
+  vInt, vWeight: IntegerRAL;
+  vRaw, vPath: TRALRouteSegments;
+begin
+  Result := [];
+  if Count = 0 then
+    Exit;
+
+  SplitRequestPath(ARequest, vRaw, vPath);
+  for vInt := 0 to Pred(Count) do
+    if MatchRoute(TRALRoute(Items[vInt]), vPath, vWeight) then
+      Result := Result + TRALRoute(Items[vInt]).AllowedMethods;
 end;
 
 { TRALRouteParam }

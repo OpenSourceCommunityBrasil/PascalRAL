@@ -482,8 +482,11 @@ begin
         vStorType := TRALDB.FieldTypeToRALFieldType(vDBSQL.Params.Items[vInt2].DataType);
         vWriter.WriteByte(Ord(vStorType));
 
-        // size
-        vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
+        // size - of a date and time param, which of the three it is
+        if vStorType = sftDateTime then
+          vWriter.WriteInteger(RALDateTimeKind(vDBSQL.Params.Items[vInt2].DataType))
+        else
+          vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
 
         // param null
         vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].IsNull);
@@ -509,6 +512,7 @@ begin
             sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
             sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
             sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
+            sftBCD     : vWriter.WriteString(RALBCDToText(vDBSQL.Params.Items[vInt2].AsFMTBCD));
           end;
         end;
       end;
@@ -609,8 +613,8 @@ var
   vStorType: TRALFieldType;
   vWriter: TRALBinaryWriter;
 
-  vInt1, vInt2, vInt3: IntegerRAL;
-  vByte: byte;
+  vInt1, vInt2, vInt3, vSize: IntegerRAL;
+  vByte, vTypeByte: byte;
   vBoolean: boolean;
 begin
   Clear;
@@ -645,11 +649,12 @@ begin
         vDBSQL := TRALDBSQL.Create;
         FSQLList.Add(vDBSQL);
 
-        // drive type
-        vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadByte);
+        // drive type - every byte is one (qtOther is 255), and it is only
+        // ever compared; read like the others all the same
+        vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadEnum(Ord(High(TRALDBDriverType))));
 
         // type de exec - open or execsql
-        vDBSQL.ExecType := TRALDBExecType(vWriter.ReadByte);
+        vDBSQL.ExecType := TRALDBExecType(vWriter.ReadEnum(Ord(High(TRALDBExecType))));
 
         // index do sql
         vDBSQL.SQLIndex := vWriter.ReadInteger;
@@ -665,12 +670,21 @@ begin
           // name
           vParam.Name := vWriter.ReadString;
 
-          // datatype
-          vStorType := TRALFieldType(vWriter.ReadByte);
+          // datatype - a byte of the request body, checked before it becomes
+          // an enum: the value below is read by a case over it, and on Win32
+          // a type from 128 up was folded onto another one (see RALDBTypes)
+          vTypeByte := vWriter.ReadByte;
+          if not RALIsFieldTypeOrdinal(vTypeByte) then
+            raise Exception.Create(emStorageInvalidBinary);
+          vStorType := TRALFieldType(vTypeByte);
           vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
-          // size
-          vParam.Size := vWriter.ReadInteger;
+          // size - of a date and time param, which of the three it is
+          vSize := vWriter.ReadInteger;
+          if vStorType = sftDateTime then
+            vParam.DataType := RALDateTimeKindType(vSize)
+          else
+            vParam.Size := vSize;
           vParam.Clear;
 
           // is null
@@ -691,8 +705,19 @@ begin
               sftBoolean : vParam.AsBoolean := vWriter.ReadBoolean;
               sftString  : vParam.AsString := vWriter.ReadString;
               sftBlob    : vParam.AsBlob := vWriter.ReadBytes;
-              sftMemo    : vParam.AsMemo := vWriter.ReadString;
-              sftDateTime: vParam.AsDateTime := vWriter.ReadDateTime;
+              { Value keeps the wide memo set above; AsMemo made it ftMemo,
+                which is ANSI on Delphi: an ideograph in a memo param was
+                bound as '?' - stored that way by an ExecSQL, and never found
+                by the WHERE of an ApplyUpdates, which then saved nothing }
+              sftMemo    : vParam.Value := string(vWriter.ReadString);
+              // AsDateTime would make every one of them ftDateTime again
+              sftDateTime: case vParam.DataType of
+                             ftDate: vParam.AsDate := vWriter.ReadDateTime;
+                             ftTime: vParam.AsTime := vWriter.ReadDateTime;
+                           else
+                             vParam.AsDateTime := vWriter.ReadDateTime;
+                           end;
+              sftBCD     : vParam.AsFMTBCD := RALTextToBCD(vWriter.ReadString);
             end;
           end;
         end;

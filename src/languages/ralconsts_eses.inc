@@ -40,6 +40,7 @@
   emQuicPlatformUnsupported = 'El motor MsQuic solo traduce los códigos de estado de Windows y Linux; todavía no funciona en esta plataforma.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
+  emCompressFailed = 'El compresor %s ha fallado.';
   emContentCheckError = 'Error de comprobación de contenido.';
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
   emCryptInvalidLength = 'Los datos cifrados tienen un tamaño inválido: necesitan IV y bloques enteros.';
@@ -58,6 +59,7 @@
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
   emDBPoolTimeout = 'Se agotó el tiempo de espera por una conexión libre a la base de datos.';
+  emDBRowsAffected = 'ApplyUpdates: una instrucción afectó %d registros en lugar de 1 - el registro fue modificado o eliminado por otro usuario, o el criterio de actualización no identifica exactamente una fila.';
   emDBStatusNoMessage = 'El servidor respondió HTTP %d y no envió ningún mensaje.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
   emInvalidFormat = 'Formato no és válido.';
@@ -74,6 +76,7 @@
   emHTTPDateInvalid = '"%s" no es una fecha HTTP.';
   emMultipartNoPart = 'Cuerpo multipart mal formado: ninguna parte completa delimitada por su boundary.';
   emBase64Invalid = 'Texto base64 no válido.';
+  emDecimalInvalid = '"%s" no es un número decimal.';
   emISO8601Invalid = '"%s" no es una fecha ISO 8601.';
   emLibraryNotLoaded = 'La biblioteca no fue cargada.';
   emOpenSSLCallFailed = 'OpenSSL falló en %s.';

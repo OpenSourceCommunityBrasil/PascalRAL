@@ -586,6 +586,31 @@ begin
     Result := string(vLong);
   end;
 end;
+
+{ Whether a segment of APath - between '/' or '\' - ends in a dot or a blank,
+  '.' and '..' aside. Windows drops those when it opens a file, so 'x.ini.'
+  and 'x.ini ' ARE x.ini, under a name whose extension is '.' or none at all }
+function HasTrimmedAlias(const APath: string): boolean;
+var
+  vInt, vStart, vLen: Integer;
+  vLast: Char;
+begin
+  Result := False;
+  vStart := 1;
+  for vInt := 1 to Length(APath) + 1 do
+    if (vInt > Length(APath)) or (APath[vInt] = '/') or (APath[vInt] = '\') then
+    begin
+      vLen := vInt - vStart;
+      if vLen > 0 then
+      begin
+        vLast := APath[vInt - 1];
+        if (vLast = ' ') or ((vLast = '.') and
+           not ((vLen = 1) or ((vLen = 2) and (APath[vStart] = '.')))) then
+          Exit(True);
+      end;
+      vStart := vInt + 1;
+    end;
+end;
 {$ENDIF}
 
 { Where a request's path leads inside ARoot, or '' when it leads nowhere the
@@ -624,6 +649,16 @@ begin
   for vInt := 1 to Length(vFile) do
     if (vFile[vInt] < ' ') {$IFDEF RALWindows}or (vFile[vInt] = ':'){$ENDIF} then
       Exit;
+
+  { Nor, on Windows, a name ending in a dot or a blank: it is another name's
+    alias, which the system opens with them dropped. Delphi's ExpandFileName
+    below asks the system, and handed back x.ini for 'x.ini.'; FPC's works on
+    the text, kept the dot, and BlockedExtensions served x.ini there. Refused
+    on both compilers, like ':' - a site publishes names, not their aliases }
+  {$IFDEF RALWindows}
+  if HasTrimmedAlias(vFile) then
+    Exit;
+  {$ENDIF}
 
   { a path from the wire is always taken inside the root - an absolute one is
     refused, not followed }

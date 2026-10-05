@@ -7,7 +7,7 @@ uses
   {$IFDEF FPC}
   bufstream,
   {$ENDIF}
-  Classes, SysUtils, DB, DateUtils, TypInfo,
+  Classes, SysUtils, DB, DateUtils, TypInfo, FMTBcd,
   RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts,
   RALStream;
 
@@ -40,6 +40,9 @@ type
     procedure LiftReadOnly;
     procedure RestoreReadOnly;
 
+    /// An sftBCD value: through AsBCD, so a decimal field keeps every digit
+    /// and a float or currency field converts as it would from any TBcd
+    procedure ReadFieldBCD(AField: TField; const AValue: TBcd);
     procedure ReadFieldBoolean(AField: TField; AValue: Boolean);
     procedure ReadFieldByte(AField: TField; AValue: byte);
     procedure ReadFieldDateTime(AField: TField; AValue: TDateTime); overload;
@@ -125,9 +128,11 @@ begin
   { a format read off the wire is a byte cast to the enum, and both tables are
     indexed by it: past the last member this read a "class" from beyond the
     array and called its constructor. The case statement this replaced simply
-    answered nil there }
+    answered nil there. Cardinal, not Ord: Delphi compares a small enum as a
+    signed byte, and 128 to 255 passed "Ord(x) > Ord(High(x))" - see
+    RALFieldTypeName }
   Result := nil;
-  if Ord(AFormat) > Ord(High(TRALStorageFormat)) then
+  if Cardinal(AFormat) > Cardinal(Ord(High(TRALStorageFormat))) then
     Exit;
 
   Result := gStorageLinkClasses[AFormat];
@@ -237,6 +242,12 @@ procedure TRALStorage.ReadFieldFloat(AField: TField; AValue: Double);
 begin
   if AField <> nil then
     AField.AsFloat := AValue;
+end;
+
+procedure TRALStorage.ReadFieldBCD(AField: TField; const AValue: TBcd);
+begin
+  if AField <> nil then
+    AField.AsBCD := AValue;
 end;
 
 procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);
@@ -454,7 +465,7 @@ end;
 procedure TRALStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
 //  FStorageFormat := TRALStorageFormat(AWriter.ReadByte);
-  FFieldCharCase := TRALFieldCharCase(AWriter.ReadByte);
+  FFieldCharCase := TRALFieldCharCase(AWriter.ReadEnum(Ord(High(TRALFieldCharCase))));
 end;
 
 procedure TRALStorageLink.LoadPropsFromStream(AStream: TStream);

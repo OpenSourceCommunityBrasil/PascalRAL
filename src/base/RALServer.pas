@@ -1495,9 +1495,14 @@ begin
     { a verb outside AllowedMethods is not an intrusion attempt, and the answer
       for a route that exists but does not take that method is 405, not 403.
       RFC 9110 15.5.6: a 405 MUST say which methods the resource does take,
-      in Allow }
+      in Allow - and several routes may share a path with a verb each, so it
+      is what all the routes of that path take, not only the one found }
     AResponse.Answer(HTTP_MethodNotAllowed);
-    AResponse.AddHeader('Allow', vRoute.GetAllowMethods);
+    if vRoute.Collection is TRALRoutes then
+      AResponse.AddHeader('Allow', RALAllowedMethodsText(
+        TRALRoutes(vRoute.Collection).AllowedMethodsOf(ARequest)))
+    else
+      AResponse.AddHeader('Allow', vRoute.GetAllowMethods);
   end;
 end;
 

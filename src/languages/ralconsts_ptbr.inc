@@ -40,6 +40,7 @@
   emQuicPlatformUnsupported = 'O engine MsQuic só traduz os códigos de status do Windows e do Linux; ainda não roda nesta plataforma.';
   emCompressInvalidFormat = 'Formato de compressão inválido.';
   emCompressLibFilesError = 'Os arquivos binários das seguintes classes não foram encontrados: %s.';
+  emCompressFailed = 'O compressor %s falhou.';
   emContentCheckError = 'Erro de verificação de conteúdo.';
   emCryptEmptyKey = 'A chave deve ser fornecida.';
   emCryptInvalidLength = 'Dados cifrados com tamanho inválido: precisam de IV e blocos inteiros.';
@@ -58,6 +59,7 @@
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
   emDBPoolTimeout = 'Tempo de espera por uma conexão livre com o banco esgotado.';
+  emDBRowsAffected = 'ApplyUpdates: um comando afetou %d registros em vez de 1 - o registro foi alterado ou excluído por outro usuário, ou o critério da atualização não identifica exatamente uma linha.';
   emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
   emInvalidFormat = 'Formato Inválido.';
@@ -74,6 +76,7 @@
   emHTTPDateInvalid = '"%s" não é uma data HTTP.';
   emMultipartNoPart = 'Corpo multipart malformado: nenhuma parte completa delimitada pelo boundary.';
   emBase64Invalid = 'Texto base64 inválido.';
+  emDecimalInvalid = '"%s" não é um número decimal.';
   emISO8601Invalid = '"%s" não é uma data ISO 8601.';
   emLibraryNotLoaded = 'A biblioteca não foi carregada.';
   emOpenSSLCallFailed = 'O OpenSSL falhou em %s.';

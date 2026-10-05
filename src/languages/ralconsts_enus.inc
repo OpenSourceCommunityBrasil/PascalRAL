@@ -40,6 +40,7 @@
   emQuicPlatformUnsupported = 'The MsQuic engine only translates the status codes of Windows and Linux; it cannot run on this platform yet.';
   emCompressInvalidFormat = 'Invalid compression Format.';
   emCompressLibFilesError = 'The library files of the following classes were not found: %s.';
+  emCompressFailed = 'The %s compressor failed.';
   emContentCheckError = 'Content check error.';
   emCryptEmptyKey = 'Key must be provided.';
   emCryptInvalidLength = 'Encrypted data has an invalid length: it needs an IV and whole blocks.';
@@ -57,6 +58,7 @@
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
   emDBPoolTimeout = 'Timed out waiting for a free database connection.';
+  emDBRowsAffected = 'ApplyUpdates: a statement affected %d records instead of 1 - the record was changed or deleted by another user, or the update criteria do not identify exactly one row.';
   emDBStatusNoMessage = 'The server answered HTTP %d and sent no message.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
   emHMACEmptyText = 'Input text must be provided.';
@@ -74,6 +76,7 @@
   emHTTPDateInvalid = '"%s" is not an HTTP date.';
   emMultipartNoPart = 'Malformed multipart body: no complete part delimited by its boundary.';
   emBase64Invalid = 'Invalid base64 text.';
+  emDecimalInvalid = '"%s" is not a decimal number.';
   emISO8601Invalid = '"%s" is not an ISO 8601 date.';
   emLibraryNotLoaded = 'The library was not loaded.';
   emOpenSSLCallFailed = 'OpenSSL failed in %s.';

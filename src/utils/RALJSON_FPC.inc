@@ -84,6 +84,103 @@ type
 
 implementation
 
+{ FPC 3.2.2's jsonscanner decodes two \u escapes in a row into a String[4]:
+  two ideographs, six bytes of UTF-8, came out cut to four, and so did an
+  accented letter next to one - a column of Chinese text arrived as garbage.
+  RAL writes every character past ASCII that way (StringToJSONString), and so
+  does Delphi's JSON. They are decoded here, into the UTF-8 fpjson reads
+  whole, a surrogate pair into its one character. What a string cannot hold
+  raw - a control character, the quote, the backslash - goes through as it
+  came, and so does anything that is not the escape of a character: a lone
+  surrogate, or the "u" after an escaped backslash. Decoding only shrinks the
+  text, six bytes or twelve into four at most }
+function DecodeUnicodeEscapes(const AJson: StringRAL): StringRAL;
+var
+  vIn, vLen, vOut: IntegerRAL;
+  vCode, vLow: Cardinal;
+
+  function HexAt(APos: IntegerRAL; out AValue: Cardinal): Boolean;
+  var
+    vInt: IntegerRAL;
+  begin
+    AValue := 0;
+    Result := APos + 3 <= vLen;
+    if Result then
+      for vInt := APos to APos + 3 do
+        case AJson[vInt] of
+          '0'..'9': AValue := AValue * 16 + Cardinal(Ord(AJson[vInt]) - Ord('0'));
+          'a'..'f': AValue := AValue * 16 + Cardinal(Ord(AJson[vInt]) - Ord('a') + 10);
+          'A'..'F': AValue := AValue * 16 + Cardinal(Ord(AJson[vInt]) - Ord('A') + 10);
+        else
+          Result := False;
+        end;
+  end;
+
+  procedure Put(AByte: Cardinal);
+  begin
+    Inc(vOut);
+    Result[vOut] := AnsiChar(AByte);
+  end;
+
+begin
+  Result := AJson;
+  if Pos('\u', AJson) = 0 then
+    Exit;
+
+  vLen := Length(AJson);
+  SetLength(Result, vLen);
+  vOut := 0;
+  vIn := 1;
+  while vIn <= vLen do
+  begin
+    if (AJson[vIn] = '\') and (vIn < vLen) then
+    begin
+      if (AJson[vIn + 1] = 'u') and HexAt(vIn + 2, vCode) and (vCode >= $80) then
+      begin
+        if (vCode >= $D800) and (vCode <= $DBFF) then
+        begin
+          if (vIn + 11 <= vLen) and (AJson[vIn + 6] = '\') and (AJson[vIn + 7] = 'u') and
+             HexAt(vIn + 8, vLow) and (vLow >= $DC00) and (vLow <= $DFFF) then
+          begin
+            vCode := $10000 + ((vCode - $D800) shl 10) + (vLow - $DC00);
+            Put($F0 or (vCode shr 18));
+            Put($80 or ((vCode shr 12) and $3F));
+            Put($80 or ((vCode shr 6) and $3F));
+            Put($80 or (vCode and $3F));
+            Inc(vIn, 12);
+            Continue;
+          end;
+        end
+        else if (vCode < $DC00) or (vCode > $DFFF) then
+        begin
+          if vCode < $800 then
+          begin
+            Put($C0 or (vCode shr 6));
+            Put($80 or (vCode and $3F));
+          end
+          else
+          begin
+            Put($E0 or (vCode shr 12));
+            Put($80 or ((vCode shr 6) and $3F));
+            Put($80 or (vCode and $3F));
+          end;
+          Inc(vIn, 6);
+          Continue;
+        end;
+      end;
+      // both characters of any other escape, so an escaped backslash never
+      // lends its second half to what follows
+      Put(Ord(AJson[vIn]));
+      Put(Ord(AJson[vIn + 1]));
+      Inc(vIn, 2);
+      Continue;
+    end;
+    Put(Ord(AJson[vIn]));
+    Inc(vIn);
+  end;
+  SetLength(Result, vOut);
+end;
+
 { TRALJSON }
 
 class function TRALJSON.ParseJSON(AJson: StringRAL): TRALJSONValue;
@@ -92,7 +189,7 @@ var
 begin
   Result := nil;
 
-  jObj := GetJSON(AJson);
+  jObj := GetJSON(DecodeUnicodeEscapes(AJson));
 
   if jObj <> nil then
   begin
@@ -108,22 +205,18 @@ end;
 
 class function TRALJSON.ParseJSON(AStream: TStream): TRALJSONValue;
 var
-  jObj: TJSONData;
+  vJson: StringRAL;
 begin
   Result := nil;
-
-  jObj := GetJSON(AStream);
-
-  if jObj <> nil then
-  begin
-    if jObj is TJSONObject then
-      Result := TRALJSONObject.Create
-    else if jObj is TJSONArray then
-      Result := TRALJSONArray.Create
-    else
-      Result := TRALJSONValue.Create;
-    Result.SetJsonObj(jObj);
-  end;
+  if not Assigned(AStream) then
+    Exit;
+  { read here, the whole stream from its start as the Delphi backend does,
+    so that the text goes through DecodeUnicodeEscapes too }
+  AStream.Position := 0;
+  SetLength(vJson, AStream.Size);
+  if vJson <> '' then
+    AStream.ReadBuffer(vJson[1], Length(vJson));
+  Result := ParseJSON(vJson);
 end;
 
 { TRALJSONArray }
