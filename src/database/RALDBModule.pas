@@ -290,6 +290,12 @@ begin
       vField.FieldName := ADataset.Fields[vInt].FieldName;
       vField.FieldType := ADataset.Fields[vInt].DataType;
       vField.Flags := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
+      { which client gets this field in the native format - the one of this
+        driver, when the driver exports natively at all (see OpenSQLResponse).
+        A client building fields from the schema needs to know, or the ones it
+        builds will not match what it loads }
+      if ADatabase.CanExportNative then
+        vField.NativeDriver := Ord(ADatabase.DriverType);
 
       vField.Length := 0;
       vField.Precision := 0;

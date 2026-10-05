@@ -233,6 +233,7 @@ var
   vType: TRALFieldType;
   vTables: TStringList;
   vReplace: Boolean;
+  vDriver: IntegerRAL;
 begin
   inherited;
 
@@ -268,6 +269,7 @@ begin
     if vReplace then
       FieldDefs.Clear;
 
+    vDriver := Ord(FSQLCache.GetQueryClass(Self));
     try
       for vInt := 0 to Pred(vInfo.Count) do
       begin
@@ -282,22 +284,35 @@ begin
 
         vField := FieldDefs.AddFieldDef;
         vField.Name := vInfo.Field[vInt].FieldName;
-        vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
 
-        if TRALFieldType(vType) = sftString then
-          vField.Size := vInfo.Field[vInt].Length
+        { A server of this driver answers in FireDAC's own format, with its
+          own field types - and the Fields Editor builds its persistent fields
+          from these defs. Reduced to the RAL type they did not match what
+          loads: a NUMERIC that FireDAC carries as ftBCD stopped the load of
+          its TFMTBCDField, and a DATE read through a TDateTimeField raised
+          EConvertError. Through a RAL storage the RAL type is what arrives. }
+        if (vInfo.Field[vInt].NativeDriver = vDriver) and
+           (vInfo.Field[vInt].FieldType <> ftUnknown) then
+          vInfo.Field[vInt].NativeFieldDef(vField)
         else
-          vField.Size := 0;
-
-        if (TRALFieldType(vType) = sftDouble) and
-           (vInfo.Field[vInt].Precision > 0) then
-          vField.Precision := vInfo.Field[vInt].Precision;
-
-        // a decimal: Precision its digits, Size its scale (see RALDBModule)
-        if TRALFieldType(vType) = sftBCD then
         begin
-          vField.Precision := RALDecimalPrecision(vInfo.Field[vInt].Precision);
-          vField.Size := vInfo.Field[vInt].Scale;
+          vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
+
+          if TRALFieldType(vType) = sftString then
+            vField.Size := vInfo.Field[vInt].Length
+          else
+            vField.Size := 0;
+
+          if (TRALFieldType(vType) = sftDouble) and
+             (vInfo.Field[vInt].Precision > 0) then
+            vField.Precision := vInfo.Field[vInt].Precision;
+
+          // a decimal: Precision its digits, Size its scale (see RALDBModule)
+          if TRALFieldType(vType) = sftBCD then
+          begin
+            vField.Precision := RALDecimalPrecision(vInfo.Field[vInt].Precision);
+            vField.Size := vInfo.Field[vInt].Scale;
+          end;
         end;
 
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;

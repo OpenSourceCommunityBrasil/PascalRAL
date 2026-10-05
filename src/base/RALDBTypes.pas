@@ -77,6 +77,7 @@ type
     FFieldType: TFieldType;
     FFlags: byte;
     FLength: IntegerRAL;
+    FNativeDriver: IntegerRAL;
     FPrecision: IntegerRAL;
     FScale: IntegerRAL;
     FSchema: StringRAL;
@@ -91,6 +92,12 @@ type
   public
     constructor Create;
 
+    /// Fills AFieldDef with the server's own field: its type, size and
+    /// precision, which is what a native stream carries - for a client that
+    /// will load natively (see NativeDriver). Every other client builds the
+    /// field from RALFieldType, the type the RAL storages deliver.
+    procedure NativeFieldDef(AFieldDef: TFieldDef);
+
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONObject read GetAsJSONObj write SetAsJSONObj;
   published
@@ -99,6 +106,16 @@ type
     property FieldType: TFieldType read FFieldType write FFieldType;
     property Flags: byte read FFlags write FFlags;
     property Length: IntegerRAL read FLength write FLength;
+    /// The driver (an ordinal of TRALDBDriverType) whose datasets the server
+    /// answers in its native format, or -1 when it answers every client
+    /// through a RAL storage. The native stream carries FieldType, not
+    /// RALFieldType, so a client of that driver building fields from this
+    /// schema - the Fields Editor does - has to make them with FieldType, or
+    /// they will not match what it loads: a NUMERIC that FireDAC carries as
+    /// ftBCD stopped the load of a TFMTBCDField, and a DATE read through a
+    /// TDateTimeField raised EConvertError. An older server does not send it:
+    /// it reads -1 then, and the client builds what it always built.
+    property NativeDriver: IntegerRAL read FNativeDriver write FNativeDriver;
     property Precision: IntegerRAL read FPrecision write FPrecision;
     property Scale: IntegerRAL read FScale write FScale;
     property Schema: StringRAL read FSchema write FSchema;
@@ -813,6 +830,9 @@ begin
   Result.Add('fieldtypename', RALFieldTypeName(FFieldType));
   Result.Add('flags', FFlags);
   Result.Add('length', FLength);
+  // only when there is one: a reader before it never looks for the key
+  if FNativeDriver >= 0 then
+    Result.Add('nativedriver', FNativeDriver);
   Result.Add('precision', FPrecision);
   Result.Add('ralfieldtype', Ord(RALFieldType));
   Result.Add('ralfieldtypename', RALFieldTypeName(RALFieldType));
@@ -843,6 +863,7 @@ end;
 procedure TRALDBInfoField.SetAsJSONObj(AValue: TRALJSONObject);
 var
   vType: Int64RAL;
+  vNative: TRALJSONValue;
 begin
   FAttributes := AValue.Get('attributes').AsString;
   FFieldName := AValue.Get('fieldname').AsString;
@@ -856,6 +877,12 @@ begin
     FFieldType := TFieldType(vType);
   FFlags := AValue.Get('flags').AsInteger;
   FLength := AValue.Get('length').AsInteger;
+  // an older server does not send it: nothing is native then
+  vNative := AValue.Get('nativedriver');
+  if vNative <> nil then
+    FNativeDriver := vNative.AsInteger
+  else
+    FNativeDriver := -1;
   FPrecision := AValue.Get('precision').AsInteger;
   FScale := AValue.Get('scale').AsInteger;
   FSchema := AValue.Get('schema').AsString;
@@ -872,6 +899,19 @@ begin
   FFieldType := TRALDB.RALFieldTypeToFieldType(AValue);
 end;
 
+procedure TRALDBInfoField.NativeFieldDef(AFieldDef: TFieldDef);
+begin
+  AFieldDef.DataType := FFieldType;
+  // a decimal's Size is its scale - see TRALDBModule.GetInfoFieldsStream
+  if FFieldType in [ftBCD, ftFMTBcd] then
+  begin
+    AFieldDef.Precision := FPrecision;
+    AFieldDef.Size := FScale;
+  end
+  else
+    AFieldDef.Size := FLength;
+end;
+
 constructor TRALDBInfoField.Create;
 begin
   FAttributes := '';
@@ -879,6 +919,7 @@ begin
   FFieldType := ftUnknown;
   FFlags := 0;
   FLength := 0;
+  FNativeDriver := -1;
   FPrecision := 0;
   FScale := 0;
   FSchema := '';
