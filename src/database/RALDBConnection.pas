@@ -41,6 +41,59 @@ type
 
 implementation
 
+{ Whether AField holds something other than what it was read with. This was
+  Value <> OldValue, a Variant comparison - and on Delphi a blob's Value is a
+  byte array, which that comparison refuses: the Post of any record with a
+  BLOB column raised EVariantTypeCastError before its statement was built.
+  FPC hands a blob over as a string and never had the problem. }
+function FieldChanged(AField: TField): Boolean;
+var
+  vNew, vOld: Variant;
+  vCount, vInt: IntegerRAL;
+  vPNew, vPOld: Pointer;
+begin
+  vNew := AField.Value;
+  vOld := AField.OldValue;
+  if not VarIsArray(vNew) and not VarIsArray(vOld) then
+  begin
+    Result := vNew <> vOld;
+    Exit;
+  end;
+
+  // an array against Null, or arrays of another type or length
+  Result := True;
+  if not (VarIsArray(vNew) and VarIsArray(vOld)) or (VarType(vNew) <> VarType(vOld)) then
+    Exit;
+  vCount := VarArrayHighBound(vNew, 1) - VarArrayLowBound(vNew, 1) + 1;
+  if vCount <> VarArrayHighBound(vOld, 1) - VarArrayLowBound(vOld, 1) + 1 then
+    Exit;
+
+  if VarType(vNew) and varTypeMask = varByte then
+  begin
+    vPNew := VarArrayLock(vNew);
+    try
+      vPOld := VarArrayLock(vOld);
+      try
+        Result := not CompareMem(vPNew, vPOld, vCount);
+      finally
+        VarArrayUnlock(vOld);
+      end;
+    finally
+      VarArrayUnlock(vNew);
+    end;
+  end
+  else
+  begin
+    Result := False;
+    for vInt := 0 to vCount - 1 do
+      if vNew[VarArrayLowBound(vNew, 1) + vInt] <> vOld[VarArrayLowBound(vOld, 1) + vInt] then
+      begin
+        Result := True;
+        Break;
+      end;
+  end;
+end;
+
 { TRALDBConnection }
 
 procedure TRALDBConnection.SetClient(AValue: TRALClient);
@@ -266,7 +319,7 @@ begin
     vField := ADataset.Fields[vInt];
     if (pfInUpdate in vField.ProviderFlags) and (not vField.ReadOnly) then
     begin
-      if (vField.Value <> vField.OldValue) then
+      if FieldChanged(vField) then
       begin
         if vSQLFields <> '' then
           vSQLFields := vSQLFields + ',';
@@ -278,7 +331,7 @@ begin
     if (pfInKey in vField.ProviderFlags) or
        ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
        ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and
-        (vField.Value <> vField.OldValue)) then
+        FieldChanged(vField)) then
     begin
       if vSQLWhere <> '' then
         vSQLWhere := vSQLWhere + ' and ';
@@ -328,7 +381,7 @@ begin
     if (pfInKey in vField.ProviderFlags) or
        ((AUpdateMode = upWhereAll) and (pfInWhere in vField.ProviderFlags)) or
        ((AUpdateMode = UpWhereChanged) and (pfInWhere in vField.ProviderFlags) and
-        (vField.Value <> vField.OldValue)) then
+        FieldChanged(vField)) then
     begin
       if vSQLWhere <> '' then
         vSQLWhere := vSQLWhere + ' and ';
