@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALToken, RALJWS, RALHashBase, RALSHA2_32,
-  RALRequest, RALResponse, RALParams, RALAuthentication;
+  RALRequest, RALResponse, RALParams, RALPlugin, RALAuthentication;
 
 type
   /// Credentials of AUserName (as sent; the hash of it when AUserHash). Fill
@@ -66,6 +66,10 @@ type
     destructor Destroy; override;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    /// The base rule, except a stale nonce: the credentials were right, only
+    /// the nonce was old, and that is no guess
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
   published
     /// The hashes offered, one challenge each: SHA-512-256, SHA-256, MD5 in
     /// that order of preference
@@ -111,7 +115,7 @@ type
     /// can answer. False when there is none, or when the same nonce came
     /// back without stale=true - the credentials are wrong, and sending them
     /// again would only count one more failure
-    function HandleChallenge(AResponse: TRALResponse): boolean; override;
+    function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     /// There is a nonce to answer
     function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
@@ -295,6 +299,20 @@ begin
       FUsed.Delete(vInt);
 end;
 
+function TRALServerDigest.AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt;
+var
+  vParam: TRALParam;
+begin
+  Result := inherited AttemptOf(ARequest, AResponse, AResult, AOnOwnRoute);
+  if Result = raaFailed then
+  begin
+    vParam := AResponse.Params.GetKind['WWW-Authenticate', rpkHEADER];
+    if (vParam <> nil) and (Pos(StringRAL('stale=true'), vParam.AsString) > 0) then
+      Result := raaNone;
+  end;
+end;
+
 procedure TRALServerDigest.Refuse(AResponse: TRALResponse; AStale: boolean);
 const
   cOrder: array[0..2] of TRALDigestAlgorithm = (tdaSHA2_512, tdaSHA2_256, tdaMD5);
@@ -468,7 +486,8 @@ begin
   Result := FDigest.UserName;
 end;
 
-function TRALClientDigest.HandleChallenge(AResponse: TRALResponse): boolean;
+function TRALClientDigest.HandleChallenge(ARequest: TRALRequest;
+  AResponse: TRALResponse): boolean;
 const
   cOrder: array[0..2] of TRALDigestAlgorithm = (tdaSHA2_512, tdaSHA2_256, tdaMD5);
 var

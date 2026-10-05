@@ -133,8 +133,14 @@ begin
   if not Assigned(AStream) then
     Exit;
 
+  { the whole stream, from its start, the way the FPC backend reads it - and
+    straight into the UTF8String: PChar is PWideChar on Delphi, so the cast
+    only worked by reinterpreting the pointer (W1044), and a stream that was
+    not at position 0 left the tail of the string uninitialised }
+  AStream.Position := 0;
   SetLength(vJson, AStream.Size);
-  AStream.Read(PChar(vJson)^, AStream.Size);
+  if vJson <> '' then
+    AStream.ReadBuffer(Pointer(vJson)^, Length(vJson));
   Result := ParseJSON(vJson);
 end;
 

@@ -68,10 +68,12 @@ type
   private
     FBoundary: StringRAL;
     FBuffer: TBytes;
+    FClosed: boolean;
     FFormData: TList;
     FIndex: IntegerRAL;
     FIs13: boolean;
     FItemForm: TRALMultipartFormData;
+    FPartCount: IntegerRAL;
     FWaitSepEnd: boolean;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
     { parts as windows over the body instead of copies: the absolute position
@@ -82,6 +84,8 @@ type
     FAbs: Int64RAL;
     FContentStart: Int64RAL;
   protected
+    /// Resets what one body processed leaves behind, before the next one
+    procedure BeginBody;
     /// used to write the info of the Multipart into the stream buffer
     function BurnBuffer: PByte;
     /// destroys the content of the Multipart
@@ -89,6 +93,8 @@ type
     { Method called at the end of each part. ALineStart is where the delimiter
       line that ends it starts: the content ends two bytes before (its CRLF) }
     procedure FinalizeItem(ALineStart: Int64RAL);
+    /// Ends a body: its last line, and the part it never closed
+    procedure EndBody;
     /// Gets an item from the FormData based on the index provided
     function GetFormData(idx: Integer): TRALMultipartFormData;
     /// Main method that reads the Multipart
@@ -111,6 +117,12 @@ type
     procedure ProcessMultiPart(const AString: StringRAL); overload;
     /// Gets an item from the FormData based on the index provided
     property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
+    /// Whether the last body processed ended with its close delimiter - what
+    /// an empty form, with no part at all, still carries
+    property Closed: boolean read FClosed;
+    /// The parts the last body processed was cut into, including those
+    /// OnFormDataComplete took over. A part the body never closed is not one
+    property PartCount: IntegerRAL read FPartCount;
   published
     property Boundary: StringRAL read FBoundary write FBoundary;
     property ContentType: StringRAL write SetContentType;
@@ -586,6 +598,7 @@ begin
         FItemForm.AsStream.Size := FItemForm.AsStream.Size - 2;
     end;
     FItemForm.AsStream.Position := 0;
+    Inc(FPartCount);
 
     vFreeItem := False;
     if Assigned(FOnFormDataComplete) then
@@ -611,6 +624,14 @@ begin
     vInt := Pos(';', AValue);
     if vInt > 0 then
       Delete(AValue, vInt, Length(AValue));
+    { RFC 2046 lets the boundary travel quoted - boundary="..." is what .NET's
+      HttpClient sends - and the quotes are not part of it: kept, they made a
+      delimiter that never matched, and the whole body was dropped under a 200.
+      A boundary has no ';' of its own, so cutting there was already safe }
+    AValue := RALTrim(AValue);
+    if (Length(AValue) >= 2) and (AValue[POSINISTR] = '"') and
+       (AValue[RALHighStr(AValue)] = '"') then
+      AValue := Copy(AValue, POSINISTR + 1, Length(AValue) - 2);
     FBoundary := AValue;
   end;
 end;
@@ -667,13 +688,18 @@ begin
   vLineStart := FAbs - FIndex;
   if FIndex < MultipartLineLength then
   begin
-    vLine := BytesToStringUTF8(FBuffer);
+    { the line's own bytes, no more: it used to convert the whole 64 KB buffer
+      and cut the result down, on every line of the body - and ResetBuffer
+      zeroed those 64 KB after each one so the conversion would stop there }
     SetLength(vLine, FIndex);
+    if FIndex > 0 then
+      Move(FBuffer[0], vLine[POSINISTR], FIndex);
 
     // boundary end of file
     if Pos('--' + FBoundary + '--', vLine) > 0 then
     begin
       FinalizeItem(vLineStart);
+      FClosed := True;
       Result := ResetBuffer;
     end
     // boundary begin of file
@@ -726,9 +752,31 @@ end;
 
 function TRALMultipartDecoder.ResetBuffer: PByte;
 begin
-  FIndex := 0;
-  FillChar(FBuffer[0], Length(FBuffer), 0);
+  FIndex := 0; // FIndex is the end of the data: what lies past it is never read
   Result := @FBuffer[FIndex];
+end;
+
+procedure TRALMultipartDecoder.BeginBody;
+begin
+  FIndex := 0;
+  FAbs := 0;
+  FContentStart := -1;
+  FWaitSepEnd := False;
+  FIs13 := False;
+  FreeAndNil(FItemForm);
+  FSliceSource := nil;
+  FPartCount := 0;
+  FClosed := False;
+end;
+
+procedure TRALMultipartDecoder.EndBody;
+begin
+  if FIndex > 0 then
+    ProcessLine;
+  { a part the body opened and never closed is not delivered. It never was -
+    but nothing freed it either: the destructor only let go of the pointer,
+    and a truncated upload leaked its part, whatever it held }
+  FreeAndNil(FItemForm);
 end;
 
 procedure TRALMultipartDecoder.ClearItems;
@@ -749,7 +797,9 @@ end;
 
 destructor TRALMultipartDecoder.Destroy;
 begin
-  FItemForm := nil;
+  { an open part is never in FFormData: FinalizeItem hands it over or frees
+    it, and lets go of it either way }
+  FreeAndNil(FItemForm);
   ClearItems;
   FFormData.Free;
   inherited Destroy;
@@ -761,6 +811,12 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
+  BeginBody;
+  { with no boundary nothing can be delimited: an empty one made any line
+    holding '--' a delimiter }
+  if FBoundary = '' then
+    Exit;
+
   AStream.Position := 0;
   vPosition := 0;
   vSize := AStream.Size;
@@ -770,12 +826,6 @@ begin
   else
     SetLength(vInBuf, vSize);
 
-  FIndex := 0;
-  FAbs := 0;
-  FContentStart := -1;
-  FWaitSepEnd := False;
-  FIs13 := False;
-  FItemForm := nil;
   if FSliceParts then
     FSliceSource := AStream
   else
@@ -786,14 +836,14 @@ begin
       { a window reads the parent itself: position it where this piece is }
       AStream.Position := vPosition;
       vBytesRead := AStream.Read(vInBuf[0], Length(vInBuf));
+      // a stream that holds less than its Size said: the loop never ended
       if vBytesRead <= 0 then
         Break;
       ProcessBuffer(@vInBuf[0], vBytesRead);
       vPosition := vPosition + vBytesRead;
     end;
 
-    if FIndex > 0 then
-      ProcessLine;
+    EndBody;
   finally
     FSliceSource := nil;
   end;
@@ -805,6 +855,10 @@ var
   vBytesRead: IntegerRAL;
   vPosition, vSize: Int64RAL;
 begin
+  BeginBody;
+  if FBoundary = '' then
+    Exit;
+
   vPosition := 0;
   vSize := Length(AString);
 
@@ -812,14 +866,6 @@ begin
     SetLength(vInBuf, DEFAULTBUFFERSTREAMSIZE)
   else
     SetLength(vInBuf, vSize);
-
-  FIndex := 0;
-  FAbs := 0;
-  FContentStart := -1;
-  FWaitSepEnd := False;
-  FIs13 := False;
-  FItemForm := nil;
-  FSliceSource := nil;
 
   while vPosition < vSize do
   begin
@@ -833,8 +879,7 @@ begin
     vPosition := vPosition + vBytesRead;
   end;
 
-  if FIndex > 0 then
-    ProcessLine;
+  EndBody;
 end;
 
 function TRALMultipartDecoder.FormDataCount: IntegerRAL;

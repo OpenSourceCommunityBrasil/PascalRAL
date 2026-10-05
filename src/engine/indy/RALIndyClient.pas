@@ -33,6 +33,8 @@ type
       refused here }
     procedure SelectAuthorization(Sender: TObject;
       var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
+    procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
+                         var Handled: boolean; var VMethod: TIdHTTPMethod);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -62,6 +64,17 @@ begin
   AuthenticationClass := nil;
 end;
 
+{ Not followed off TLS - see TRALClientHTTP.LeavesTLS. Declined, Indy hands the
+  3xx back as it came, Location included. URL is the hop being redirected, set
+  for each request of the chain }
+procedure TRALIndyClientHTTP.DoRedirect(Sender: TObject; var dest: string;
+  var NumRedirect: Integer; var Handled: boolean; var VMethod: TIdHTTPMethod);
+begin
+  if Handled and TLSRequired and
+     LeavesTLS(SameText(FHttp.URL.Protocol, 'https'), StringRAL(dest)) then
+    Handled := False;
+end;
+
 function TRALIndyClientHTTP.VerifyPeer(ACertificate: TIdX509; AOk: boolean;
   ADepth, AError: Integer): boolean;
 var
@@ -82,8 +95,14 @@ begin
   vCert.SerialNumber := StringRAL(ACertificate.SerialNumber);
   vCert.NotBefore := ACertificate.notBefore;
   vCert.NotAfter := ACertificate.notAfter;
-  vCert.Trusted := AOk;
-  if AOk then
+  { AOk alone describes this link only. An error higher up the chain - a root
+    nobody trusts, an intermediate sent by whoever sits in the middle - is let
+    through above, and OpenSSL then reaches the leaf with ok set and that
+    error still in AError ("the last error (if any) is still in the error
+    value", its own source). Trusted is the chain's verdict, so both count.
+    The host name is not part of it on this engine: Indy never checks it. }
+  vCert.Trusted := AOk and (AError = 0);
+  if vCert.Trusted then
     vCert.Error := ''
   else
     vCert.Error := StringRAL(Format(wmCertOpenSSLVerify, [AError]));
@@ -112,6 +131,7 @@ begin
     survives the IOHandler being swapped for the SSL one. }
   FHttp.UseNagle := False;
   FHttp.OnSelectAuthorization := {$IFDEF FPC}@{$ENDIF}SelectAuthorization;
+  FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
@@ -363,6 +383,21 @@ begin
         else
           SetTransportError(AResponse, rteOther, -1, e.Message);
     end;
+
+    { A failed exchange leaves the socket in a state nobody knows, and TIdHTTP
+      keeps it: after a read timeout Response.KeepAlive is still True for any
+      1.1 connection the server has not closed, so the answer that arrived
+      late was read as the answer to the NEXT request on this engine - one
+      dataset delivered to another query, and every reply after it shifted by
+      one. The engine outlives the call (the pool, the kept engine), so it has
+      to be dropped here; the next request reconnects. The except is because
+      closing a broken TLS socket can raise, and the error being reported is
+      the one above. }
+    if AResponse.TransportError <> rteNone then
+      try
+        FHttp.Disconnect;
+      except
+      end;
   finally
     FreeAndNil(vResult);
     FreeAndNil(vSource);

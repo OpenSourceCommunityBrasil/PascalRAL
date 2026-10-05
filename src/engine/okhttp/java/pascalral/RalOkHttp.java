@@ -1,5 +1,6 @@
 package pascalral;
 
+import java.io.IOException;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.cert.Certificate;
@@ -16,6 +17,7 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509ExtendedTrustManager;
@@ -30,6 +32,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okhttp3.internal.tls.OkHostnameVerifier;
+import okio.BufferedSink;
 
 /**
  * Bridge between PascalRAL and OkHttp, so that an Android client can speak
@@ -76,8 +80,62 @@ public final class RalOkHttp {
    */
   private static final ThreadLocal<RalCertJudge> JUDGE = new ThreadLocal<RalCertJudge>();
 
+  /** A cached client, with what tells whether anybody still uses it. */
+  private static final class Cached {
+    final OkHttpClient client;
+    /** calls running on it now */
+    int inFlight;
+    /** System.nanoTime() of the last call that took it or gave it back */
+    long lastUsed;
+
+    Cached(OkHttpClient client) {
+      this.client = client;
+    }
+  }
+
   /** One client per configuration, mirroring RAL's own transport pool. */
-  private static final Map<String, OkHttpClient> CLIENTS = new HashMap<String, OkHttpClient>();
+  private static final Map<String, Cached> CLIENTS = new HashMap<String, Cached>();
+
+  /**
+   * A client nobody called for this long is closed and forgotten. The key of a
+   * shared client carries the certificate policy, OnValidateServerCert's
+   * object included, so every form that assigned the event got a client of
+   * its own - and release() only ever dropped the isolated ones: one
+   * OkHttpClient per form created, for the life of the process. Ten minutes is
+   * twice what OkHttp keeps an idle connection for, so nothing of value goes.
+   */
+  private static final long IDLE_NANOS = TimeUnit.MINUTES.toNanos(10);
+  private static long lastSweep = System.nanoTime();
+
+  private static void close(OkHttpClient c) {
+    try {
+      c.dispatcher().executorService().shutdown();
+      c.connectionPool().evictAll();
+    } catch (Exception e) {
+      // nothing useful to do while tearing down
+    }
+  }
+
+  /** Closes the clients idle past IDLE_NANOS - at most once a minute. */
+  private static void sweep(long now) {
+    if (now - lastSweep < TimeUnit.MINUTES.toNanos(1)) {
+      return;
+    }
+    lastSweep = now;
+    for (Iterator<Map.Entry<String, Cached>> it = CLIENTS.entrySet().iterator(); it.hasNext(); ) {
+      Cached c = it.next().getValue();
+      if (c.inFlight == 0 && now - c.lastUsed > IDLE_NANOS) {
+        it.remove();
+        close(c.client);
+      }
+    }
+  }
+
+  /** Gives back a client client() handed out. */
+  private static synchronized void done(Cached c) {
+    c.inFlight--;
+    c.lastUsed = System.nanoTime();
+  }
 
   private static X509TrustManager platformTrustManager() {
     try {
@@ -119,33 +177,53 @@ public final class RalOkHttp {
 
     public void checkClientTrusted(X509Certificate[] c, String t, SSLEngine e) { }
 
+    // Conscrypt calls one of the two overloads that carry the connection - the
+    // socket or the engine - on an X509ExtendedTrustManager; the plain one only
+    // exists to satisfy the interface, and it has no host to compare.
     public void checkServerTrusted(X509Certificate[] chain, String authType)
         throws CertificateException {
-      judge(chain, authType);
+      judge(chain, authType, null);
     }
 
     public void checkServerTrusted(X509Certificate[] chain, String authType, Socket s)
         throws CertificateException {
-      judge(chain, authType);
+      String host = null;
+      if (s instanceof SSLSocket) {
+        SSLSession hs = ((SSLSocket) s).getHandshakeSession();
+        if (hs != null) {
+          host = hs.getPeerHost();
+        }
+      }
+      judge(chain, authType, host);
     }
 
     public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine e)
         throws CertificateException {
-      judge(chain, authType);
+      judge(chain, authType, e == null ? null : e.getPeerHost());
     }
 
-    private void judge(X509Certificate[] chain, String authType) throws CertificateException {
+    private void judge(X509Certificate[] chain, String authType, String host)
+        throws CertificateException {
       Result r = RESULT.get();
 
-      boolean trusted = false;
+      boolean chainOk = false;
       if (PLATFORM != null) {
         try {
           PLATFORM.checkServerTrusted(chain, authType);
-          trusted = true;
+          chainOk = true;
         } catch (Exception ex) {
-          trusted = false;
+          chainOk = false;
         }
       }
+
+      // What the judge gets as "trusted" is what every other engine's platform
+      // means by it: the chain AND the name. Android's trust manager checks the
+      // chain only - the name is the HostnameVerifier's business - so a valid
+      // certificate issued for ANOTHER host came out trusted, and an
+      // OnValidateServerCert answering ACert.Trusted let it through. Without a
+      // host to compare nothing is vouched for.
+      boolean trusted = chainOk && host != null && chain != null && chain.length > 0
+          && OkHostnameVerifier.INSTANCE.verify(host, chain[0]);
 
       if (chain != null && chain.length > 0) {
         try {
@@ -157,9 +235,11 @@ public final class RalOkHttp {
         r.certIssuer = chain[0].getIssuerDN().getName();
       }
 
+      // With no judge this is plain OkHttp: the chain is decided here and the
+      // name by the HostnameVerifier, which is strict whenever no judge runs.
       RalCertJudge judge = JUDGE.get();
       boolean ok = (judge == null)
-          ? trusted
+          ? chainOk
           : judge.ok(r.certSha256, r.certSubject, r.certIssuer, trusted);
 
       if (!ok) {
@@ -173,18 +253,25 @@ public final class RalOkHttp {
    * shareKey is what decides who shares a transport with whom: empty means
    * "share by configuration", which is what RAL asks for by default, and a
    * value of its own isolates one client - ShareConnection turned off. The
-   * isolated ones are dropped by release(), so the map does not grow with
-   * every client an application creates.
+   * isolated ones are dropped by release(), and any client idle for a while
+   * by sweep(), so the map does not grow with every client an application
+   * creates. The client comes back counted as in use: give it back with done().
    */
-  private static synchronized OkHttpClient client(int connectMs, int readMs,
+  private static synchronized Cached client(int connectMs, int readMs,
                                                   int pingMs,
                                                   boolean allowHttp2,
                                                   boolean followRedirects,
+                                                  boolean followSslRedirects,
                                                   String shareKey) {
     String key = (shareKey == null ? "" : shareKey) + "|" + connectMs + "|" + readMs
-               + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects;
-    OkHttpClient cached = CLIENTS.get(key);
+               + "|" + pingMs + "|" + allowHttp2 + "|" + followRedirects
+               + "|" + followSslRedirects;
+    long now = System.nanoTime();
+    sweep(now);
+    Cached cached = CLIENTS.get(key);
     if (cached != null) {
+      cached.inFlight++;
+      cached.lastUsed = now;
       return cached;
     }
 
@@ -193,7 +280,9 @@ public final class RalOkHttp {
         .readTimeout(readMs, TimeUnit.MILLISECONDS)
         .writeTimeout(readMs, TimeUnit.MILLISECONDS)
         .followRedirects(followRedirects)
-        .followSslRedirects(followRedirects)
+        // false where the caller requires TLS: a redirect from https to plain
+        // http would resend the request - token included - in the clear
+        .followSslRedirects(followSslRedirects)
         .retryOnConnectionFailure(true);
 
     // WHY THIS EXISTS: an HTTP/2 connection is long lived and shared, so a peer
@@ -229,6 +318,9 @@ public final class RalOkHttp {
       // certificate is the certificate, whatever name the URL used, and that
       // is the same latitude the other engines give their handler. With no
       // judge installed the platform verdict rules, and this stays strict.
+      // Pascal installs one ONLY when the application decides - a pin for that
+      // host, OnValidateServerCert, or svNever. It used to install one on every
+      // call, and then the name was never checked by anybody.
       //
       // What decides is ONLY whether a judge is installed - never whether it
       // has already run on this thread. On a RESUMED TLS session the trust
@@ -245,14 +337,16 @@ public final class RalOkHttp {
           if (JUDGE.get() != null) {
             return true;
           }
-          return okhttp3.internal.tls.OkHostnameVerifier.INSTANCE.verify(hostname, session);
+          return OkHostnameVerifier.INSTANCE.verify(hostname, session);
         }
       });
     } catch (Exception e) {
       // keep OkHttp's own strict defaults - failing closed
     }
 
-    OkHttpClient built = b.build();
+    Cached built = new Cached(b.build());
+    built.inFlight = 1;
+    built.lastUsed = now;
     CLIENTS.put(key, built);
     return built;
   }
@@ -275,14 +369,9 @@ public final class RalOkHttp {
     }
     for (Iterator<String> it = doomed.iterator(); it.hasNext(); ) {
       String k = it.next();
-      OkHttpClient c = CLIENTS.remove(k);
+      Cached c = CLIENTS.remove(k);
       if (c != null) {
-        try {
-          c.dispatcher().executorService().shutdown();
-          c.connectionPool().evictAll();
-        } catch (Exception e) {
-          // nothing useful to do while tearing down
-        }
+        close(c.client);
       }
     }
   }
@@ -299,11 +388,13 @@ public final class RalOkHttp {
                             byte[] body, String contentType,
                             int connectMs, int readMs, int pingMs,
                             boolean allowHttp2, boolean followRedirects,
+                            boolean followSslRedirects,
                             String shareKey, RalCertJudge judge) {
     Result r = new Result();
     RESULT.set(r);
     JUDGE.set(judge);
     Response resp = null;
+    Cached cached = null;
     try {
       RequestBody rb = null;
       if (permitsBody(method) && body != null && body.length > 0) {
@@ -314,6 +405,15 @@ public final class RalOkHttp {
         // POST/PUT/PATCH with nothing to send still need an empty body, or
         // OkHttp refuses to build the request.
         rb = RequestBody.create(new byte[0], null);
+      }
+      // retryOnConnectionFailure replays a call whose body it can send twice,
+      // even after the request went out - a byte[] body always can. For a POST
+      // that is the write the server may already have applied: a Wi-Fi to 4G
+      // switch in the middle of one wrote it twice. A one-shot body is never
+      // sent again once sending started, while a route or connect failure,
+      // where nothing reached the server, is still retried.
+      if (rb != null && !idempotent(method)) {
+        rb = oneShot(rb);
       }
 
       Request.Builder q = new Request.Builder().url(url).method(method, rb);
@@ -339,8 +439,9 @@ public final class RalOkHttp {
         }
       }
 
-      resp = client(connectMs, readMs, pingMs, allowHttp2, followRedirects, shareKey)
-               .newCall(q.build()).execute();
+      cached = client(connectMs, readMs, pingMs, allowHttp2, followRedirects,
+                      followSslRedirects, shareKey);
+      resp = cached.client.newCall(q.build()).execute();
       r.status = resp.code();
       r.protocol = resp.protocol().toString();
 
@@ -373,13 +474,16 @@ public final class RalOkHttp {
       if (resp != null) {
         resp.close();
       }
+      if (cached != null) {
+        done(cached);
+      }
     }
   }
 
   /** Which protocol a plain GET settles on - used to prove h2 on a device. */
   public static String probe(String url, int connectMs, int readMs) {
     int rc = execute("GET", url, "", null, "", connectMs, readMs,
-                     0, true, true, "", ACCEPT_ALL);
+                     0, true, true, true, "", ACCEPT_ALL);
     return (rc == 0) ? (protocol() + " status=" + status()) : ("error: " + error());
   }
 
@@ -398,6 +502,33 @@ public final class RalOkHttp {
   /** Methods OkHttp refuses to attach a body to. */
   private static boolean permitsBody(String method) {
     return !"GET".equals(method) && !"HEAD".equals(method);
+  }
+
+  /** RFC 9110 9.2.2 - the same list RAL's own resend rule uses. */
+  private static boolean idempotent(String method) {
+    return "GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)
+        || "TRACE".equals(method) || "PUT".equals(method) || "DELETE".equals(method);
+  }
+
+  /** The same body, marked one-shot - see execute(). */
+  private static RequestBody oneShot(final RequestBody body) {
+    return new RequestBody() {
+      @Override public MediaType contentType() {
+        return body.contentType();
+      }
+
+      @Override public long contentLength() throws IOException {
+        return body.contentLength();
+      }
+
+      @Override public void writeTo(BufferedSink sink) throws IOException {
+        body.writeTo(sink);
+      }
+
+      @Override public boolean isOneShot() {
+        return true;
+      }
+    };
   }
 
   private static String sha256Hex(byte[] der) {

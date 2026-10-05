@@ -11,7 +11,14 @@ uses
   {$ENDIF}
   {$IFDEF FPC}
     UTF8Process,
+    {$IFDEF UNIX}
+    BaseUnix, // RALFileInfo, RALIsLink
+    {$ENDIF}
   {$ENDIF}
+  {$IF Defined(POSIX) and not Defined(FPC)}
+    Posix.SysStat, // RALFileInfo, RALIsLink
+    Posix.Unistd,  // FileClose is inline over close()
+  {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
@@ -43,7 +50,16 @@ function RALISO8601ToDateTime(const AValue: StringRAL): TDateTime;
 function RALTryISO8601ToDateTime(const AValue: StringRAL; out ADate: TDateTime): Boolean;
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
 function RALCPUCount: integer;
+/// The moment an HTTP date stands for, in UTC; raises EConvertError when the
+/// text is not one - see RALTryHTTPDate
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
+/// An HTTP date the way RFC 9110 5.6.7 asks a recipient to read one - the IMF
+/// date ('Sun, 06 Nov 1994 08:49:37 GMT'), RFC 850's ('Sunday, 06-Nov-94
+/// 08:49:37 GMT') and asctime's ('Sun Nov  6 08:49:37 1994') - plus what
+/// cookies carry besides ('Sun, 06-Nov-1994 08:49:37 GMT'), by the algorithm
+/// of RFC 6265 5.1.1. AUtc is the moment in UTC; False when the text holds no
+/// date, which makes a header carrying it count as not sent
+function RALTryHTTPDate(const AText: StringRAL; out AUtc: TDateTime): Boolean;
 /// Equality in constant time, for MACs and signatures: it does not stop at
 /// the first differing byte, so the time taken says nothing about the data
 function RALSameBytes(const A, B: TBytes): Boolean;
@@ -65,6 +81,38 @@ function RALTryStrToCurr(const AValue: StringRAL; out AResult: Currency): Boolea
 function RALTrimRight(const A: StringRAL): StringRAL;
 /// The same, both ends.
 function RALTrim(const A: StringRAL): StringRAL;
+/// A header or cookie as RFC 9110 5.5 wants it on the wire: CR, LF and NUL
+/// become a space. A value an application takes from a request - a file name
+/// in Content-Disposition, a cookie, an echoed header - would otherwise end the
+/// line where the client chose and write headers, or a body, of its own
+/// (response splitting). Every engine sends its headers and cookies through
+/// this. The same string comes back when there is nothing to replace.
+function RALSafeHeaderText(const AText: StringRAL): StringRAL;
+/// An HTTP date (RFC 9110 5.6.7) of a moment already in UTC:
+/// 'Sun, 06 Nov 1994 08:49:37 GMT'. Digits and English names only - the RTL's
+/// FormatDateTime puts the locale's time separator where ':' is written
+function RALHTTPDate(AUtc: TDateTime): StringRAL;
+/// Whether AFileName is a regular file - not a folder - with its size and the
+/// moment it was last written, in Unix seconds (UTC). A link is followed, as
+/// FileExists does. One call to the system, where FileExists, a size and a
+/// date take three
+function RALFileInfo(const AFileName: string; out ASize: Int64;
+  out AModified: Int64): boolean;
+/// Whether APath is itself a symbolic link - on Windows also a junction - and
+/// not what it names. A reparse point that stands for the file itself, such as
+/// a OneDrive placeholder or a deduplicated file, is not a link
+function RALIsLink(const APath: string): boolean;
+/// Copies the published properties ASource and ADest have in common - what a
+/// form would store - so that an AssignTo is one line and a property added
+/// later is copied without anyone having to remember it. A sub-object
+/// (TStrings, a collection, options) is copied INTO the one ADest has; a
+/// component is a reference, and the reference is what goes over
+procedure RALAssignProperties(ASource, ADest: TPersistent);
+/// The setter of a property whose object the class created and frees: copies
+/// AValue into AOwned and never takes the pointer, which leaked the owned one
+/// and left the class holding an object its caller may free. nil and AOwned
+/// itself are ignored
+procedure RALAssignOwned(AOwned, AValue: TPersistent);
 
 /// Atomic counters, spelled the same way on both compilers: Delphi has
 /// AtomicIncrement/AtomicDecrement in the RTL, FPC calls them InterLocked* and
@@ -75,6 +123,15 @@ function RALAtomicDec(var ATarget: IntegerRAL): IntegerRAL; overload;
 /// Adds to a 64-bit counter. Only the addition is atomic: a reader still sees
 /// the value move under it, which is what the statistics counters expect.
 function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL; overload;
+
+var
+  /// How a number goes on the wire as text: '.' for decimals, ',' for
+  /// thousands, the rest as the RTL starts with. A local TFormatSettings with
+  /// only the separators assigned held whatever the stack had in every other
+  /// field, which FloatToStr happened not to read. Filled when the program
+  /// starts and only read after that; passed as a const parameter it is not
+  /// copied
+  RALInvariantFormat: TFormatSettings;
 
 implementation
 
@@ -93,7 +150,8 @@ var
 const
   { method names without the 'am' prefix, in the order of the enum }
   RALMethodNames: array [TRALMethod] of StringRAL = (
-    'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE');
+    'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE',
+    '');
 
 function RALTrimRight(const A: StringRAL): StringRAL;
 var
@@ -126,6 +184,232 @@ begin
     Result := A
   else
     Result := Copy(A, vFirst, vLast - vFirst + 1);
+end;
+
+function RALSafeHeaderText(const AText: StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := AText;
+  for vInt := POSINISTR to RALHighStr(Result) do
+    if Result[vInt] in [#0, #10, #13] then
+      Result[vInt] := ' ';
+end;
+
+function RALHTTPDate(AUtc: TDateTime): StringRAL;
+const
+  cDays: array[1..7] of string = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+  cMonths: array[1..12] of string = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+var
+  vYear, vMonth, vDay, vHour, vMin, vSec, vMSec: Word;
+begin
+  DecodeDateTime(AUtc, vYear, vMonth, vDay, vHour, vMin, vSec, vMSec);
+  Result := StringRAL(Format('%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT',
+    [cDays[DayOfWeek(AUtc)], vDay, cMonths[vMonth], vYear, vHour, vMin, vSec]));
+end;
+
+{$IFDEF RALWindows}
+type
+  { WIN32_FILE_ATTRIBUTE_DATA, declared here because the RTLs of the two
+    compilers do not agree on its name }
+  TRALFileAttributeData = record
+    dwFileAttributes: DWORD;
+    ftCreationTime: TFileTime;
+    ftLastAccessTime: TFileTime;
+    ftLastWriteTime: TFileTime;
+    nFileSizeHigh: DWORD;
+    nFileSizeLow: DWORD;
+  end;
+
+{ the wide one on both compilers: FPC's string is UTF-8, which the ANSI entry
+  point would read in the system code page }
+function RALGetFileAttributesExW(lpFileName: PWideChar; fInfoLevelId: Integer;
+  lpFileInformation: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetFileAttributesExW';
+
+{ a FILETIME counts 100 ns from 1601-01-01, Unix time seconds from 1970 }
+function FileTimeToUnixSecs(const ATime: TFileTime): Int64;
+begin
+  Result := ((Int64(ATime.dwHighDateTime) shl 32) or ATime.dwLowDateTime);
+  Result := (Result - 116444736000000000) div 10000000;
+end;
+{$ENDIF}
+
+function RALFileInfo(const AFileName: string; out ASize: Int64;
+  out AModified: Int64): boolean;
+{$IFDEF RALWindows}
+var
+  vData: TRALFileAttributeData;
+  vName: UnicodeString;
+  vFile: TFileStream;
+  vTime: TFileTime;
+begin
+  ASize := 0;
+  AModified := 0;
+  vName := UnicodeString(AFileName);
+  Result := RALGetFileAttributesExW(PWideChar(vName), 0 {GetFileExInfoStandard},
+              @vData) and ((vData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0);
+  if not Result then
+    Exit;
+
+  if (vData.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) = 0 then
+  begin
+    ASize := (Int64(vData.nFileSizeHigh) shl 32) or vData.nFileSizeLow;
+    AModified := FileTimeToUnixSecs(vData.ftLastWriteTime);
+    Exit;
+  end;
+
+  { a link describes itself - its own size and date - while opening it
+    follows it to the file, which is what FileExists answers for }
+  try
+    vFile := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      ASize := vFile.Size;
+      if GetFileTime(vFile.Handle, nil, nil, @vTime) then
+        AModified := FileTimeToUnixSecs(vTime);
+    finally
+      vFile.Free;
+    end;
+  except
+    on EFOpenError do
+      Result := False; // a link to nothing
+  end;
+end;
+{$ELSE}
+{$IFDEF FPC}
+var
+  vStat: TStat;
+begin
+  ASize := 0;
+  AModified := 0;
+  Result := (FpStat(PChar(AFileName), vStat) = 0) and (not fpS_ISDIR(vStat.st_mode));
+  if Result then
+  begin
+    ASize := vStat.st_size;
+    AModified := vStat.st_mtime;
+  end;
+end;
+{$ELSE}
+var
+  vStat: _stat;
+  vName: UTF8String;
+begin
+  ASize := 0;
+  AModified := 0;
+  vName := UTF8String(AFileName);
+  Result := (stat(MarshaledAString(vName), vStat) = 0) and (not S_ISDIR(vStat.st_mode));
+  if Result then
+  begin
+    ASize := vStat.st_size;
+    AModified := vStat.st_mtime;
+  end;
+end;
+{$ENDIF}
+{$ENDIF}
+
+function RALIsLink(const APath: string): boolean;
+{$IFDEF RALWindows}
+var
+  vData: TWin32FindDataW;
+  vHandle: THandle;
+  vName: UnicodeString;
+begin
+  Result := False;
+  vName := UnicodeString(APath);
+  vHandle := FindFirstFileW(PWideChar(vName), vData);
+  if vHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  Windows.FindClose(vHandle);
+  { the reparse tag is in dwReserved0, and a name surrogate - bit 29 - is a
+    tag that points elsewhere: a symbolic link, a junction }
+  Result := ((vData.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) and
+            ((vData.dwReserved0 and $20000000) <> 0);
+end;
+{$ELSE}
+{$IFDEF FPC}
+var
+  vStat: TStat;
+begin
+  Result := (FpLStat(PChar(APath), vStat) = 0) and fpS_ISLNK(vStat.st_mode);
+end;
+{$ELSE}
+var
+  vStat: _stat;
+  vName: UTF8String;
+begin
+  vName := UTF8String(APath);
+  Result := (lstat(MarshaledAString(vName), vStat) = 0) and S_ISLNK(vStat.st_mode);
+end;
+{$ENDIF}
+{$ENDIF}
+
+procedure RALAssignProperties(ASource, ADest: TPersistent);
+var
+  vClass: TClass;
+  vList: PPropList;
+  vCount, vInt: Integer;
+  vProp: PPropInfo;
+  vType: PTypeInfo;
+  vObj, vOwn: TObject;
+begin
+  if (ASource = nil) or (ADest = nil) or (ASource = ADest) then
+    Exit;
+  { the properties of the closest class both are: a PPropInfo only means
+    something to the class that declares it and to its descendants }
+  vClass := ASource.ClassType;
+  while not ADest.InheritsFrom(vClass) do
+    vClass := vClass.ClassParent;
+  vCount := GetPropList(vClass.ClassInfo, vList);
+  try
+    for vInt := 0 to vCount - 1 do
+    begin
+      vProp := vList^[vInt];
+      vType := vProp^.PropType{$IFNDEF FPC}^{$ENDIF};
+      if vProp^.GetProc = nil then
+        Continue;
+      if vType^.Kind = tkClass then
+      begin
+        vObj := GetObjectProp(ASource, vProp);
+        if GetTypeData(vType)^.ClassType.InheritsFrom(TComponent) then
+        begin
+          if vProp^.SetProc <> nil then
+            SetObjectProp(ADest, vProp, vObj);
+        end
+        else
+        begin
+          vOwn := GetObjectProp(ADest, vProp);
+          if (vObj is TPersistent) and (vOwn is TPersistent) and (vOwn <> vObj) then
+            TPersistent(vOwn).Assign(TPersistent(vObj));
+        end;
+        Continue;
+      end;
+      if vProp^.SetProc = nil then
+        Continue;
+      case vType^.Kind of
+        tkInteger, tkChar, tkWChar, tkEnumeration, tkSet{$IFDEF FPC}, tkBool, tkUChar{$ENDIF}:
+          SetOrdProp(ADest, vProp, GetOrdProp(ASource, vProp));
+        tkInt64{$IFDEF FPC}, tkQWord{$ENDIF}:
+          SetInt64Prop(ADest, vProp, GetInt64Prop(ASource, vProp));
+        tkFloat:
+          SetFloatProp(ADest, vProp, GetFloatProp(ASource, vProp));
+        tkString, tkLString, tkWString, tkUString{$IFDEF FPC}, tkAString{$ENDIF}:
+          SetStrProp(ADest, vProp, GetStrProp(ASource, vProp));
+        tkVariant:
+          SetVariantProp(ADest, vProp, GetVariantProp(ASource, vProp));
+        tkMethod:
+          SetMethodProp(ADest, vProp, GetMethodProp(ASource, vProp));
+      end;
+    end;
+  finally
+    FreeMem(vList);
+  end;
+end;
+
+procedure RALAssignOwned(AOwned, AValue: TPersistent);
+begin
+  if (AValue <> nil) and (AValue <> AOwned) then
+    AOwned.Assign(AValue);
 end;
 
 function RALDateTimeToISO8601(const AValue: TDateTime; AInputIsUTC: Boolean): StringRAL;
@@ -280,7 +564,7 @@ end;
   present, is whichever is not the last. }
 function RALNormalizeNumber(const AValue: StringRAL): string;
 var
-  vInt, vLastDot, vLastComma: IntegerRAL;
+  vInt, vOut, vLastDot, vLastComma: IntegerRAL;
   vDec: Char;
   vChar: Char;
 begin
@@ -298,28 +582,25 @@ begin
     vDec := ','
   else
     vDec := '.';
-  vInt := 1;
-  while vInt <= Length(Result) do
+  { one pass, compacting in place: the write index never passes the read one.
+    A Delete per thousands separator shifted the rest of the string every
+    time, so a value of a million separators - one form field, no size limit
+    by default - cost about 10^12 character moves, minutes of a core per
+    request }
+  vOut := 0;
+  for vInt := 1 to Length(Result) do
   begin
     vChar := Result[POSINISTR - 1 + vInt];
     if (vChar = '.') or (vChar = ',') then
     begin
       if vChar <> vDec then
-      begin
-        Delete(Result, vInt, 1);
         Continue;
-      end;
-      Result[POSINISTR - 1 + vInt] := '.';
+      vChar := '.';
     end;
-    Inc(vInt);
+    Inc(vOut);
+    Result[POSINISTR - 1 + vOut] := vChar;
   end;
-end;
-
-function RALInvariantFormat: TFormatSettings;
-begin
-  Result := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
-  Result.DecimalSeparator := '.';
-  Result.ThousandSeparator := ',';
+  SetLength(Result, vOut);
 end;
 
 function RALTryStrToFloat(const AValue: StringRAL; out AResult: Double): Boolean;
@@ -354,15 +635,10 @@ begin
     vA := Ord(A[vInt]);
     vB := Ord(B[vInt]);
 
-    { outside ASCII, case equivalence belongs to the RTL and not to us: a
-      dotless 'i' and 'I' have different UTF-8 lengths and may still match.
-      Hand the decision back instead of risking a different answer }
-    if (vA > 127) or (vB > 127) then
-    begin
-      Result := SameText(A, B);
-      Exit;
-    end;
-
+    { above 127 the bytes are compared as they are, and that is SameText's own
+      answer: CompareText folds case for 'a'..'z' only, on both compilers, so
+      two valid UTF-8 names it calls equal are equal byte for byte. Handing
+      those to SameText cost two UTF-8/UTF-16 conversions to learn nothing }
     if vA <> vB then
     begin
       if (vA >= Ord('a')) and (vA <= Ord('z')) then
@@ -378,8 +654,8 @@ begin
     Inc(vInt);
   end;
 
-  { only reached when everything compared was ASCII and equal - then the
-    length decides, and in ASCII a byte and a character are the same thing }
+  { only reached when every byte compared was equal, ASCII letters folded -
+    then the length decides }
   Result := Length(A) = Length(B);
 end;
 
@@ -483,9 +759,69 @@ function SystemFunction036(ABuffer: Pointer; ALength: LongWord): Boolean; stdcal
   external 'advapi32.dll' name 'SystemFunction036';
 {$ENDIF}
 
+{$IFNDEF RALWindows}
+var
+  { /dev/urandom, opened by the first RandomBytes and kept: opening and closing
+    it on every call cost three system calls per AES IV, multipart boundary and
+    token nonce, several per request. -1 until it is opened }
+  gURandom: IntegerRAL = -1;
+
+function CompareExchangeInt(var ATarget: IntegerRAL; AValue,
+  AComparand: IntegerRAL): IntegerRAL;
+begin
+  {$IFDEF FPC}
+  Result := InterLockedCompareExchange(ATarget, AValue, AComparand);
+  {$ELSE}
+  {$IFDEF DELPHIXE3UP}
+  Result := AtomicCmpExchange(ATarget, AValue, AComparand);
+  {$ELSE}
+  Result := TInterlocked.CompareExchange(ATarget, AValue, AComparand);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+{ the kept handle, opened by whichever thread gets here first - the others
+  close theirs }
+function URandomHandle: IntegerRAL;
+var
+  vHandle: THandle;
+begin
+  Result := gURandom;
+  if Result >= 0 then
+    Exit;
+  vHandle := FileOpen('/dev/urandom', fmOpenRead or fmShareDenyNone);
+  if vHandle = THandle(-1) then
+    Exit;
+  Result := IntegerRAL(vHandle);
+  if CompareExchangeInt(gURandom, Result, -1) <> -1 then
+  begin
+    FileClose(vHandle);
+    Result := gURandom;
+  end;
+end;
+
+{ reads until ACount bytes arrived: a read from the device may return fewer }
+function URandomRead(AHandle: IntegerRAL; var ABytes: TBytes;
+  ACount: IntegerRAL): boolean;
+var
+  vDone, vRead: IntegerRAL;
+begin
+  vDone := 0;
+  while vDone < ACount do
+  begin
+    vRead := FileRead(THandle(AHandle), ABytes[vDone], ACount - vDone);
+    if vRead <= 0 then
+      Break;
+    Inc(vDone, vRead);
+  end;
+  Result := vDone = ACount;
+end;
+{$ENDIF}
+
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
 {$IFNDEF RALWindows}
 var
+  vHandle: IntegerRAL;
   vFile: TFileStream;
 {$ENDIF}
 begin
@@ -501,6 +837,12 @@ begin
   if not SystemFunction036(@Result[0], numOfBytes) then
     raise Exception.Create(emRandomBytesFailed);
   {$ELSE}
+  vHandle := URandomHandle;
+  if (vHandle >= 0) and URandomRead(vHandle, Result, numOfBytes) then
+    Exit;
+
+  { the kept handle could not be had, or failed: the way it always was, which
+    raises as it always did }
   vFile := TFileStream.Create('/dev/urandom', fmOpenRead or fmShareDenyNone);
   try
     vFile.ReadBuffer(Result[0], numOfBytes);
@@ -516,10 +858,13 @@ var
 begin
   { a table instead of GetEnumValue: the RTTI version built 'am' + UpperCase -
     two UTF-8/UTF-16 conversions on Delphi, plus a concatenation - and only then
-    walked the enum names comparing strings, once per request. The accepted set
-    is the same, and an unknown method still becomes amGET }
-  Result := amGET;
-  for vMethod := Low(TRALMethod) to High(TRALMethod) do
+    walked the enum names comparing strings, once per request.
+    A method that is not one of these is amUNKNOWN, which the server answers
+    with 501. It used to become amGET - and run the route's GET handler, with
+    AllowedMethods and SkipAuthMethods judging a GET nobody sent - while 'ALL',
+    which is no HTTP method at all, became amALL }
+  Result := amUNKNOWN;
+  for vMethod := Succ(amALL) to Pred(amUNKNOWN) do
   begin
     if RALSameName(AMethod, RALMethodNames[vMethod]) then
     begin
@@ -561,19 +906,19 @@ end;
 
 function OnlyNumbers(const AValue: StringRAL): StringRAL;
 var
-  vInt: IntegerRAL;
+  vInt, vOut: IntegerRAL;
 begin
-  Result := '';
+  { written in place, one allocation - concatenating a digit at a time
+    reallocated the whole result for each one }
+  SetLength(Result, Length(AValue));
+  vOut := POSINISTR;
   for vInt := POSINISTR to RALHighStr(AValue) do
-  begin
-    {$IF (DEFINED(FPC) OR DEFINED(DELPHI2010UP))}
-    if CharInSet(AValue[vInt], ['0'..'9']) then
-      Result := Result + AValue[vInt];
-    {$ELSE}
     if AValue[vInt] in ['0'..'9'] then
-      Result := Result + AValue[vInt];
-    {$IFEND}
-  end;
+    begin
+      Result[vOut] := AValue[vInt];
+      Inc(vOut);
+    end;
+  SetLength(Result, vOut - POSINISTR);
 end;
 
 function RALStringToDateTime(const AValue: StringRAL; const AFormat: StringRAL): TDateTime;
@@ -634,60 +979,140 @@ begin
   end;
 end;
 
-function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
-  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
+{ The offset of the DATE being converted, not today's: across a daylight-saving
+  change the two differ by an hour. Delphi XE2 on has it in TTimeZone, with
+  each year's own rules; FPC and Delphi XE took the offset in force when the
+  call ran, so a date on the other side of a change came out an hour off - a
+  JWT exp, a JSON date. On Windows they now ask the rules of that year. FPC
+  off Windows still has nothing date-aware in its RTL and keeps today's
+  offset. }
+{$IF (DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)) AND DEFINED(RALWindows)}
+type
+  { SYSTEMTIME as Windows lays it out. Not TSystemTime: FPC's SysUtils
+    declares one of its own with DayOfWeek in another place, and which of the
+    two that name means depends on the order of the uses }
+  TRALWinTime = record
+    wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds: Word;
+  end;
+
+function RALTzInfoForYear(AYear: Word; ADynamic: Pointer;
+  var ATimeZone: TTimeZoneInformation): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetTimeZoneInformationForYear';
+function RALTzLocalToUtc(ATimeZone: PTimeZoneInformation; const ALocal: TRALWinTime;
+  var AUtc: TRALWinTime): BOOL; stdcall;
+  external 'kernel32.dll' name 'TzSpecificLocalTimeToSystemTime';
+function RALTzUtcToLocal(ATimeZone: PTimeZoneInformation; const AUtc: TRALWinTime;
+  var ALocal: TRALWinTime): BOOL; stdcall;
+  external 'kernel32.dll' name 'SystemTimeToTzSpecificLocalTime';
+
+threadvar
+  { the rules of one year, kept per thread: this runs for every JWT checked
+    and every cookie written, and Windows may read them from the registry }
+  gZoneYear: Word;
+  gZone: TTimeZoneInformation;
+
+{ ALocalIn: ADateTime is local and UTC is wanted, or the other way round }
+function RALWinConvert(ADateTime: TDateTime; ALocalIn: boolean; out AResult: TDateTime): boolean;
 var
-  vTimeZone: TTimeZoneInformation;
-  vBias: cardinal;
-  {$IFEND}
+  vIn, vOut: TRALWinTime;
 begin
-  {$IFDEF FPC}
-    Result := LocalTimeToUniversal(ADateTime);
-  {$ELSE}
-    {$IFDEF DELPHIXE2UP}
-        Result := TTimeZone.Local.ToUniversalTime(ADateTime);
-    {$ELSE}
-    case GetTimeZoneInformation(vTimeZone) of
-      TIME_ZONE_ID_UNKNOWN:
-        vBias := vTimeZone.Bias;
-      TIME_ZONE_ID_STANDARD:
-        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-      TIME_ZONE_ID_DAYLIGHT:
-        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-      else
-        vBias := 0;
+  FillChar(vIn, SizeOf(vIn), 0);
+  DecodeDateTime(ADateTime, vIn.wYear, vIn.wMonth, vIn.wDay, vIn.wHour, vIn.wMinute,
+    vIn.wSecond, vIn.wMilliseconds);
+  Result := gZoneYear = vIn.wYear;
+  if not Result then
+  begin
+    Result := RALTzInfoForYear(vIn.wYear, nil, gZone);
+    if Result then
+      gZoneYear := vIn.wYear;
+  end;
+  if Result then
+    if ALocalIn then
+      Result := RALTzLocalToUtc(@gZone, vIn, vOut)
+    else
+      Result := RALTzUtcToLocal(@gZone, vIn, vOut);
+  if Result then
+    Result := TryEncodeDateTime(vOut.wYear, vOut.wMonth, vOut.wDay, vOut.wHour,
+      vOut.wMinute, vOut.wSecond, vOut.wMilliseconds, AResult);
+end;
+{$IFEND}
+
+{$IF NOT DEFINED(FPC) AND NOT DEFINED(DELPHIXE2UP)}
+{ Delphi XE: minutes to add to local time to get UTC, as Windows has them now -
+  only for when it will not say for the date. The old code here subtracted
+  them, and kept them in a Cardinal, which a zone east of UTC turns negative }
+function RALCurrentBias: Integer;
+var
+  vZone: TTimeZoneInformation;
+begin
+  case GetTimeZoneInformation(vZone) of
+    TIME_ZONE_ID_UNKNOWN:
+      Result := vZone.Bias;
+    TIME_ZONE_ID_STANDARD:
+      Result := vZone.Bias + vZone.StandardBias;
+    TIME_ZONE_ID_DAYLIGHT:
+      Result := vZone.Bias + vZone.DaylightBias;
+  else
+    Result := 0;
+  end;
+end;
+{$IFEND}
+
+{ Two hours of the year are not one instant each, and both compilers settle
+  them alike, so a token or a cookie carries the same hour whichever wrote it.
+  The hour the clocks skip forward does not exist: it is read with the offset
+  in force before the change - taken from the day before - which moves it
+  forward by the hour skipped (Windows reads it with the offset after the
+  change, an hour earlier). The hour the clocks repeat happens twice: the
+  first, still in daylight time, is the one taken (the Delphi RTL takes the
+  second unless told). The same choices as java.time and Python }
+function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
+{$IF (DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)) AND DEFINED(RALWindows)}
+var
+  vBack, vBefore: TDateTime;
+{$IFEND}
+begin
+  {$IF DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)}
+    {$IFDEF RALWindows}
+    if RALWinConvert(ADateTime, True, Result) then
+    begin
+      { only a skipped hour comes back as another local time }
+      if RALWinConvert(Result, False, vBack) and not SameDateTime(vBack, ADateTime) and
+         RALWinConvert(ADateTime - 1, True, vBefore) then
+        Result := ADateTime + (vBefore - (ADateTime - 1));
+      Exit;
     end;
-    Result := IncMinute(ADateTime, -vBias);
     {$ENDIF}
-  {$ENDIF}
+    {$IFDEF FPC}
+    Result := LocalTimeToUniversal(ADateTime);
+    {$ELSE}
+    Result := IncMinute(ADateTime, RALCurrentBias);
+    {$ENDIF}
+  {$ELSE}
+    { ToUniversalTime raises on the skipped hour - an opensql over a record
+      holding one answered 500 }
+    if TTimeZone.Local.IsInvalidTime(ADateTime) then
+      Result := ADateTime + (TTimeZone.Local.ToUniversalTime(ADateTime - 1) -
+                             (ADateTime - 1))
+    else
+      Result := TTimeZone.Local.ToUniversalTime(ADateTime, True);
+  {$IFEND}
 end;
 
 function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
-  {$IF (NOT DEFINED(FPC)) AND (NOT DEFINED(DELPHIXE2UP))}
-var
-  vTimeZone: TTimeZoneInformation;
-  vBias: cardinal;
-  {$IFEND}
 begin
-  {$IFDEF FPC}
-    Result := UniversalTimeToLocal(ADateTime);
-  {$ELSE}
-    {$IFDEF DELPHIXE2UP}
-        Result := TTimeZone.Local.ToLocalTime(ADateTime);
-    {$ELSE}
-    case GetTimeZoneInformation(vTimeZone) of
-      TIME_ZONE_ID_UNKNOWN:
-        vBias := vTimeZone.Bias;
-      TIME_ZONE_ID_STANDARD:
-        vBias := vTimeZone.Bias + vTimeZone.StandardBias;
-      TIME_ZONE_ID_DAYLIGHT:
-        vBias := vTimeZone.Bias + vTimeZone.DaylightBias;
-      else
-        vBias := 0;
-    end;
-    Result := IncMinute(ADateTime, vBias);
+  {$IF DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)}
+    {$IFDEF RALWindows}
+    if not RALWinConvert(ADateTime, False, Result) then
     {$ENDIF}
-  {$ENDIF}
+      {$IFDEF FPC}
+      Result := UniversalTimeToLocal(ADateTime);
+      {$ELSE}
+      Result := IncMinute(ADateTime, -RALCurrentBias);
+      {$ENDIF}
+  {$ELSE}
+    Result := TTimeZone.Local.ToLocalTime(ADateTime);
+  {$IFEND}
 end;
 
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
@@ -704,37 +1129,149 @@ begin
 end;
 
 function HTTPDateTimeToDateTime(const AStr: StringRAL): TDateTime;
-const
-  Months: array[1..12] of string = (
-    'Jan','Feb','Mar','Apr','May','Jun',
-    'Jul','Aug','Sep','Oct','Nov','Dec'
-  );
-var
-  Day, Month, Year, Hour, Min, Sec, i: Integer;
-  MonthStr: string;
 begin
-  // Mon, 27 Jul 2026 20:22:11 GMT
-  // M o n ,   2 7   J  u  l     2  0  2  6     2  0  :  2  2  :  1  1     G  M  T
-  // 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
-  Day      := StrToInt(Copy(AStr, 6, 2));
-  MonthStr := Copy(AStr, 9, 3);
-  Year     := StrToInt(Copy(AStr, 13, 4));
-  Hour     := StrToInt(Copy(AStr, 18, 2));
-  Min      := StrToInt(Copy(AStr, 21, 2));
-  Sec      := StrToInt(Copy(AStr, 24, 2));
+  { it read fixed offsets of the IMF date alone, and StrToInt raised on
+    anything else - a one-digit day, RFC 850, asctime, a cookie's dashes }
+  if not RALTryHTTPDate(AStr, Result) then
+    raise EConvertError.CreateFmt(emHTTPDateInvalid, [string(AStr)]);
+end;
 
-  Month := 0;
-  for i := 1 to 12 do
-    if SameText(MonthStr, Months[i]) then
+function RALTryHTTPDate(const AText: StringRAL; out AUtc: TDateTime): Boolean;
+const
+  cMonths: array[0..35] of AnsiChar = 'janfebmaraprmayjunjulaugsepoctnovdec';
+var
+  vText: PByte;
+  vLen, vPos, vStart, vEnd, vInt: IntegerRAL;
+  vDay, vMonth, vYear, vHour, vMin, vSec, vH, vM, vS: Integer;
+
+  { RFC 6265 5.1.1: %x09 / %x20-2F / %x3B-40 / %x5B-60 / %x7B-7E. ':' is
+    not one, so a time stays one token }
+  function IsDelimiter(AChr: Byte): Boolean;
+  begin
+    Result := (AChr = 9) or ((AChr >= $20) and (AChr <= $2F)) or
+              ((AChr >= $3B) and (AChr <= $40)) or
+              ((AChr >= $5B) and (AChr <= $60)) or
+              ((AChr >= $7B) and (AChr <= $7E));
+  end;
+
+  { AMin to AMax digits from APos, and not one more: their value, APos past
+    them. -1 when the token does not start that way }
+  function Number(var APos: IntegerRAL; AMin, AMax: IntegerRAL): Integer;
+  var
+    vCount: IntegerRAL;
+  begin
+    Result := 0;
+    vCount := 0;
+    while (APos < vEnd) and (vText[APos] >= Ord('0')) and (vText[APos] <= Ord('9')) and
+          (vCount <= AMax) do
     begin
-      Month := i;
-      Break;
+      Result := Result * 10 + (vText[APos] - Ord('0'));
+      Inc(APos);
+      Inc(vCount);
+    end;
+    if (vCount < AMin) or (vCount > AMax) then
+      Result := -1;
+  end;
+
+  function SameMonth(AIndex: IntegerRAL): Boolean;
+  var
+    vChr: IntegerRAL;
+  begin
+    Result := True;
+    for vChr := 0 to 2 do
+      if (vText[vStart + vChr] or $20) <> Ord(cMonths[AIndex * 3 + vChr]) then
+      begin
+        Result := False;
+        Exit;
+      end;
+  end;
+
+begin
+  Result := False;
+  AUtc := 0;
+  vDay := -1;
+  vMonth := -1;
+  vYear := -1;
+  vHour := -1;
+  vMin := 0;
+  vSec := 0;
+
+  { each token is tried as the time, then the day, the month and the year,
+    whichever of them is still missing - the first that fits takes it }
+  vText := PByte(Pointer(AText));
+  vLen := Length(AText);
+  vPos := 0;
+  while vPos < vLen do
+  begin
+    while (vPos < vLen) and IsDelimiter(vText[vPos]) do
+      Inc(vPos);
+    vStart := vPos;
+    while (vPos < vLen) and not IsDelimiter(vText[vPos]) do
+      Inc(vPos);
+    vEnd := vPos;
+    if vStart = vEnd then
+      Continue;
+
+    if vHour < 0 then
+    begin
+      vInt := vStart;
+      vH := Number(vInt, 1, 2);
+      if (vH >= 0) and (vInt < vEnd) and (vText[vInt] = Ord(':')) then
+      begin
+        Inc(vInt);
+        vM := Number(vInt, 1, 2);
+        if (vM >= 0) and (vInt < vEnd) and (vText[vInt] = Ord(':')) then
+        begin
+          Inc(vInt);
+          vS := Number(vInt, 1, 2);
+          if vS >= 0 then
+          begin
+            vHour := vH;
+            vMin := vM;
+            vSec := vS;
+            Continue;
+          end;
+        end;
+      end;
     end;
 
-  if Month = 0 then
-    raise EConvertError.CreateFmt(emHTTPDateInvalidMonth, [string(AStr)]);
+    if vDay < 0 then
+    begin
+      vInt := vStart;
+      vDay := Number(vInt, 1, 2);
+      if vDay >= 0 then
+        Continue;
+    end;
 
-  Result := EncodeDateTime(Year, Month, Day, Hour, Min, Sec, 0);
+    if (vMonth < 0) and (vEnd - vStart >= 3) then
+    begin
+      for vInt := 0 to 11 do
+        if SameMonth(vInt) then
+        begin
+          vMonth := vInt + 1;
+          Break;
+        end;
+      if vMonth > 0 then
+        Continue;
+    end;
+
+    if vYear < 0 then
+    begin
+      vInt := vStart;
+      vYear := Number(vInt, 2, 4);
+    end;
+  end;
+
+  if (vHour < 0) or (vDay < 0) or (vMonth < 0) or (vYear < 0) then
+    Exit;
+  if vYear <= 69 then
+    Inc(vYear, 2000)
+  else if vYear <= 99 then
+    Inc(vYear, 1900);
+  if (vDay < 1) or (vDay > 31) or (vYear < 1601) or (vHour > 23) or
+     (vMin > 59) or (vSec > 59) then
+    Exit;
+  Result := TryEncodeDateTime(vYear, vMonth, vDay, vHour, vMin, vSec, 0, AUtc);
 end;
 
 function RALCPUCount: integer;
@@ -808,12 +1345,23 @@ begin
   {$ENDIF}
 end;
 
-{$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
 initialization
+  RALInvariantFormat := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
+  RALInvariantFormat.DecimalSeparator := '.';
+  RALInvariantFormat.ThousandSeparator := ',';
+  {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.InitCriticalSection(gAtomic64);
+  {$IFEND}
 
+{$IF (DEFINED(FPC) AND NOT DEFINED(CPU64)) OR NOT DEFINED(RALWindows)}
 finalization
+  {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
   System.DoneCriticalSection(gAtomic64);
+  {$IFEND}
+  {$IFNDEF RALWindows}
+  if gURandom >= 0 then
+    FileClose(THandle(gURandom));
+  {$ENDIF}
 {$IFEND}
 
 end.

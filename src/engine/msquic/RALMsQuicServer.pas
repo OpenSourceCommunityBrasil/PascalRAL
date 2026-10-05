@@ -204,6 +204,7 @@ type
     FPoolRunning: boolean;
     procedure StartPool;
     procedure StopPool;
+    procedure FreePool;
     procedure Enqueue(ACtx: TRALMsQuicStream);
     function Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
     procedure RunWork(const AWork: TRALMsQuicWork);
@@ -261,7 +262,8 @@ type
     property IdleTimeout: IntegerRAL read FIdleTimeoutMs write FIdleTimeoutMs
       default RALQUICIDLETIMEOUT;
     /// Where to load msquic from. Empty means the platform default name, found
-    /// through the usual search path.
+    /// through the usual search path - on Android, the library deployed to
+    /// library\lib\<abi>\, which is the application's own folder.
     property LibPath: TFileName read FLibPath write FLibPath;
     /// How many requests one client may have in flight on a single connection.
     /// This is the ceiling on multiplexing, and it is what the peer is told
@@ -612,8 +614,11 @@ begin
           vCtx.ClientIP := vConn.ClientIP;
           vCtx.ClientPort := vConn.ClientPort;
           { the connection object itself is the identity: MsQuic builds one per
-            connection and it lives exactly as long as the connection does }
-          vCtx.ConnID := Int64RAL(NativeUInt(vConn));
+            connection and it lives exactly as long as the connection does -
+            with the peer's port above it, as http.sys is keyed, because the
+            memory of a closed connection's object goes to the next one }
+          vCtx.ConnID := (Int64RAL(vConn.ClientPort) shl 48) xor
+            Int64RAL(NativeUInt(vConn));
           MsQuicApi^.SetCallbackHandler(vStarted^.Stream,
             @RALMsQuicStreamCallback, vCtx);
         end;
@@ -799,7 +804,14 @@ var
 begin
   if not FPoolRunning then
     Exit;
-  FPoolRunning := False;
+  { under the lock: Enqueue runs on MsQuic's threads and refuses from the next
+    stream on, so nothing joins the ring while it is drained below }
+  FQLock.Enter;
+  try
+    FPoolRunning := False;
+  finally
+    FQLock.Leave;
+  end;
 
   for vInt := 0 to High(FWorkers) do
     FWorkers[vInt].Terminate;
@@ -816,8 +828,10 @@ begin
 
   { anything still queued was accepted and will never be answered - give its
     reference back, or the contexts leak with their stream handles. Read
-    straight off the ring: the workers are gone, and going through Dequeue
-    would park on the event for its whole timeout once the queue runs dry. }
+    straight off the ring: the workers are gone, Enqueue refuses, and going
+    through Dequeue would park on the event for its whole timeout once the
+    queue runs dry. Outside the lock: the last reference closes the stream,
+    and StreamClose waits on a MsQuic thread that may be inside Enqueue. }
   while FQCount > 0 do
   begin
     vWork := FQueue[FQHead];
@@ -826,7 +840,10 @@ begin
     Dec(FQCount);
     TRALMsQuicStream(vWork.Ctx).Release;
   end;
+end;
 
+procedure TRALMsQuicServer.FreePool;
+begin
   SetLength(FQueue, 0);
   FreeAndNil(FQSignal);
   FreeAndNil(FQLock);
@@ -836,40 +853,52 @@ procedure TRALMsQuicServer.Enqueue(ACtx: TRALMsQuicStream);
 var
   vNew: TRALMsQuicWorkArray;
   vIndex: IntegerRAL;
-  vSignal: Boolean;
+  vSignal, vQueued: Boolean;
 begin
   vSignal := False;
+  vQueued := False;
   FQLock.Enter;
   try
-    if FQCount = Length(FQueue) then
+    { a stopping pool refuses: nobody would take the work, and the connection
+      it came on is about to be shut down }
+    vQueued := FPoolRunning;
+    if vQueued then
     begin
-      { the ring is full - grow it, copying in logical order so head/tail stay
-        meaningful }
-      SetLength(vNew, Length(FQueue) * 2);
-      for vIndex := 0 to FQCount - 1 do
-        vNew[vIndex] := FQueue[(FQHead + vIndex) mod Length(FQueue)];
-      FQueue := vNew;
-      FQHead := 0;
-      FQTail := FQCount;
+      if FQCount = Length(FQueue) then
+      begin
+        { the ring is full - grow it, copying in logical order so head/tail
+          stay meaningful }
+        SetLength(vNew, Length(FQueue) * 2);
+        for vIndex := 0 to FQCount - 1 do
+          vNew[vIndex] := FQueue[(FQHead + vIndex) mod Length(FQueue)];
+        FQueue := vNew;
+        FQHead := 0;
+        FQTail := FQCount;
+      end;
+      FQueue[FQTail].Ctx := ACtx;
+      FQTail := (FQTail + 1) mod Length(FQueue);
+      Inc(FQCount);
+      {$IFDEF RALMSQUIC_PROFILE}
+      RALAtomicInc(gQDepthSum, FQCount);
+      RALAtomicInc(gQSamples, 1);
+      if FQCount > gQDepthMax then
+        gQDepthMax := FQCount;
+      {$ENDIF}
+      { signalling is a kernel call, and it used to happen on every request
+        while the lock was held - so the transport thread that produced the
+        work waited on a worker that was inside the kernel. A worker that is
+        keeping up is never asleep, so there is nobody to wake. }
+      vSignal := FQWaiters > 0;
     end;
-    FQueue[FQTail].Ctx := ACtx;
-    FQTail := (FQTail + 1) mod Length(FQueue);
-    Inc(FQCount);
-    {$IFDEF RALMSQUIC_PROFILE}
-    RALAtomicInc(gQDepthSum, FQCount);
-    RALAtomicInc(gQSamples, 1);
-    if FQCount > gQDepthMax then
-      gQDepthMax := FQCount;
-    {$ENDIF}
-    { signalling is a kernel call, and it used to happen on every request while
-      the lock was held - so the transport thread that produced the work waited
-      on a worker that was inside the kernel. A worker that is keeping up is
-      never asleep, so there is nobody to wake. }
-    vSignal := FQWaiters > 0;
   finally
     FQLock.Leave;
   end;
-  if vSignal then
+
+  { a refused stream gives back the reference it was handed with - outside the
+    lock, see StopPool }
+  if not vQueued then
+    ACtx.Release
+  else if vSignal then
     FQSignal.SetEvent;
 end;
 
@@ -1022,7 +1051,7 @@ end;
 destructor TRALMsQuicServer.Destroy;
 begin
   SetActive(False);
-  StopPool;
+  CloseServerHandles; // idempotent: whatever a failed start left behind
   inherited;
 end;
 
@@ -1139,7 +1168,7 @@ var
   vHdrCount, vHdrSize: IntegerRAL;
   vDest: PByte;
   vStream: TStream;
-  vBodyLen: IntegerRAL;
+  vBodyLen: Int64RAL;
   {$IFDEF RALMSQUIC_PROFILE}vMark: Int64;{$ENDIF}
 begin
   {$IFDEF RALMSQUIC_PROFILE}vMark := SrvTicks;{$ENDIF}
@@ -1183,15 +1212,19 @@ begin
           vRequest.ClientInfo.ConnectionID := AConnID;
           vRequest.ClientInfo.MACAddress := '';
 
-          if vMethod <= Byte(Ord(High(TRALMethod))) then
+          { a byte off the wire: amALL is no method, and anything past the last
+            real one is amUNKNOWN, which ValidateRequest answers with 501 - it
+            used to become amGET, the same mistake HTTPMethodToRALMethod made }
+          if (vMethod > Byte(Ord(amALL))) and (vMethod < Byte(Ord(amUNKNOWN))) then
             vRequest.Method := TRALMethod(vMethod)
           else
-            vRequest.Method := amGET;
+            vRequest.Method := amUNKNOWN;
 
-          vRequest.Query := vUrl;
-          vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+          vRequest.Query := vUrl; // parses the query string too
 
-          vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+          { the header, by kind: ParamByName took a query param named
+            cookie first, so ?cookie=... set the request's cookies }
+          vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
           DecodeAuth(vRequest);
 
           vRequest.ContentType := vRequest.Params.Get['Content-Type'].AsString;
@@ -1221,12 +1254,16 @@ begin
       end;
     except
       on e: exception do
+      begin
+        { the 500 first, as ProcessCommands does: with OnServerError
+          assigned, the answer used to go out as it stood - a 200 over a
+          failure }
+        vResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
-          raise
-        else
-          vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+          raise;
+      end;
     end;
 
     { THE BODY COMES FIRST, and the order is not cosmetic: TakeWireStream
@@ -1240,6 +1277,17 @@ begin
       itself, and the frame below is then the only copy. }
     {$IFDEF RALMSQUIC_PROFILE}SrvMark(spAddParams, vMark);{$ENDIF}
     vStream := vResponse.TakeWireStream;
+    if (vStream <> nil) and (vStream.Size > RALQUIC_MAX_FIELD) then
+    begin
+      { the client's reader stops at RALQUIC_MAX_FIELD, so it could only call
+        this frame malformed - and a body of 2 GB or more had its length cut to
+        32 bits. A 500 that says why goes instead }
+      vBodyLen := vStream.Size;
+      FreeAndNil(vStream);
+      vResponse.Answer(HTTP_InternalError, StringRAL(Format(emQuicFrameTooLarge,
+        [vBodyLen, Int64RAL(RALQUIC_MAX_FIELD)])), rctTEXTPLAIN);
+      vStream := vResponse.TakeWireStream;
+    end;
     try
       {$IFDEF RALMSQUIC_PROFILE}SrvMark(spBodyText, vMark);{$ENDIF}
       vCType := vResponse.ContentType;
@@ -1266,20 +1314,28 @@ begin
       vBodyLen := 0;
       if vStream <> nil then
         vBodyLen := vStream.Size;
+      { a HEAD answers what the GET would, without its body - as every HTTP
+        engine does; the size it would have goes as Content-Length }
+      if (vRequest.Method = amHEAD) and (vBodyLen > 0) then
+      begin
+        vHdrSize := AddTextHeaders(vHeaders, vHdrCount, vHdrSize,
+          StringRAL('Content-Length: ' + IntToStr(vBodyLen)));
+        vBodyLen := 0;
+      end;
 
       SetLength(Result, 2 + RALQuicBlockSize(Length(vCType)) + vHdrSize +
-                        RALQuicBlockSize(vBodyLen));
+                        RALQuicBlockSize(IntegerRAL(vBodyLen)));
       vDest := PByte(Result);
       PWord(vDest)^ := vResponse.StatusCode;
       Inc(vDest, 2);
       vDest := RALQuicPutBlockStr(vDest, vCType);
       vDest := RALQuicPutHeaders(vDest, vHeaders, vHdrCount);
-      PCardinal(vDest)^ := vBodyLen;
+      PCardinal(vDest)^ := Cardinal(vBodyLen);
       Inc(vDest, 4);
       if vBodyLen > 0 then
       begin
         vStream.Position := 0;
-        vStream.ReadBuffer(vDest^, vBodyLen);
+        vStream.ReadBuffer(vDest^, IntegerRAL(vBodyLen));
       end;
     finally
       vStream.Free;
@@ -1434,6 +1490,14 @@ begin
     MsQuicApi^.ListenerClose(FListener);
     FListener := nil;
   end;
+  { THE POOL GOES WHILE THE REGISTRATION IS STILL ALIVE. Answering is a
+    StreamSend and giving a queued stream back ends in StreamClose, and both
+    are carried out by the registration's own workers - while RegistrationClose
+    only waits for the CONNECTIONS, which we close in their SHUTDOWN_COMPLETE
+    even when a stream of theirs is still in our queue. It used to run after
+    it: a server stopped with requests queued then closed those streams on
+    workers already torn down. }
+  StopPool;
   { RegistrationClose blocks until every connection under it has been closed,
     and a connection is only closed in its SHUTDOWN_COMPLETE - which a client
     sitting on an open, idle connection never produces on its own: with the
@@ -1459,6 +1523,9 @@ begin
     MsQuicApi^.RegistrationClose(FRegistration);
     FRegistration := nil;
   end;
+  { only now: until RegistrationClose returned a stream could still reach
+    Enqueue, and the lock is what lets it refuse }
+  FreePool;
 end;
 
 procedure TRALMsQuicServer.SetActive(const AValue: boolean);
@@ -1484,9 +1551,8 @@ begin
 
   if not AValue then
   begin
-    { listener and connections first, so nothing new is queued, THEN the pool }
+    { listener, then the pool, then the connections - see CloseServerHandles }
     CloseServerHandles;
-    StopPool;
     Exit;
   end;
 
@@ -1550,7 +1616,6 @@ begin
       raise Exception.CreateFmt(emQuicListenFailed, [Port, QuicStatusToStr(vStatus)]);
   except
     CloseServerHandles;
-    StopPool;
     inherited SetActive(False);
     raise;
   end;

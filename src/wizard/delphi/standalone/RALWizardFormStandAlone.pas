@@ -229,6 +229,7 @@ begin
       vFile.Add('  object webmodule: TRALWebModule');
       vFile.Add('    Server = server');
       vFile.Add('    Domain = ''/''');
+      vFile.Add('    DocumentRoot = ''www''');
       vFile.Add('    Routes = <>');
       vFile.Add('    Left = 256');
       vFile.Add('    Top = 200');

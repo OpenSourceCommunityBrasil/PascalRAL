@@ -237,16 +237,20 @@ procedure TRALCompressPlugin.ValidateRequest(ARequest: TRALRequest;
 begin
   if not ARequest.HasValidContentEncoding then
   begin
+    { the error page goes out as it is, so no Content-Encoding on it: this
+      used to echo the client's coding, and a client that sent br to a server
+      without brotli got a plain page labelled br - its decoder failed instead
+      of showing the 415. Accept-Encoding says what this server can read }
     AResponse.Answer(HTTP_UnsupportedMedia);
-    AResponse.ContentEncoding := ARequest.ContentEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
     { 406, not 415: the problem is what the client ACCEPTS, not the body it
-      sent - and it only happens when it refuses identity on purpose }
+      sent - and it only happens when it refuses identity on purpose. Same as
+      above, the page is not encoded: the whole Accept-Encoding used to be
+      copied into its Content-Encoding }
     AResponse.Answer(HTTP_NotAcceptable);
-    AResponse.ContentEncoding := ARequest.AcceptEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
   end;
 end;
@@ -301,6 +305,11 @@ var
   vObject: TRALJSONObject;
   vInt: IntegerRAL;
 begin
+  { only when a route will answer: a request for nothing had its whole body
+    parsed into params anyway, one AddParam per member - and anyone, without
+    a token, can send megabytes of JSON to any URL }
+  if Host.FindRoute(ARequest, AResponse) = nil then
+    Exit;
   { a body that is not an object, or not JSON at all, is left alone: the route
     still has it in Body, and answering 400 is its call }
   if Pos(StringRAL('json'), LowerCase(ARequest.ContentType)) = 0 then

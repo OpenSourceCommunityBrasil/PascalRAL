@@ -11,7 +11,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALTools, RALPlugin, RALRequest, RALResponse, RALRoutes;
+  RALTypes, RALConsts, RALTools, RALThreadSafe, RALPlugin, RALRequest, RALResponse,
+  RALRoutes;
 
 type
   { TRALCORSOptions }
@@ -21,8 +22,14 @@ type
   private
     FAllowCredentials: boolean;
     FAllowHeaders: TStringList;
+    { AllowHeaders as the header carries it, rebuilt when the list changes:
+      it was rebuilt on every request a route answered, writing Delimiter on
+      the shared list. Published as a snapshot, so a request reading it while
+      the list changes is never left holding a text being freed }
+    FAllowHeadersText: TRALSnapshots;
     FAllowOrigin: StringRAL;
     FMaxAge: IntegerRAL;
+    procedure AllowHeadersChanged(Sender: TObject);
   protected
     procedure AssignTo(Dest: TPersistent); override;
     procedure SetAllowHeaders(AValue: TStringList);
@@ -46,10 +53,12 @@ type
       default False;
     /// List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    /// Who may call the server from a browser: '*' (anyone, the default), one
-    /// origin ('https://app.example.com'), or several separated by spaces or
-    /// commas - then the request's Origin is answered back when it is one of
-    /// them, with Vary: Origin, and nothing is answered when it is not
+    /// Who may call the server from a browser on another site: empty (the
+    /// default) is nobody, '*' is anyone, one origin
+    /// ('https://app.example.com') is that one, and several separated by
+    /// spaces or commas make the request's Origin be answered back when it is
+    /// one of them, with Vary: Origin. It was '*' by default until 03/10/2026;
+    /// a form saved before then keeps its '*', which the IDE wrote out
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
     /// Time in seconds a browser may keep the preflight answer
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
@@ -86,17 +95,51 @@ implementation
 constructor TRALCORSOptions.Create;
 begin
   inherited;
-  FAllowOrigin := '*';
+  { no origin by default: '*' let any web page call the server from a
+    visitor's browser unless someone remembered to close it. Empty is also the
+    one value streaming leaves out of a form, so it is what a form without
+    AllowOrigin has always meant - '*' was always written out explicitly }
+  FAllowOrigin := '';
   FMaxAge := 86400;
 
+  FAllowHeadersText := TRALSnapshots.Create;
   FAllowHeaders := TStringList.Create;
+  { every change rebuilds the text: Add, Assign, the Object Inspector and a
+    form being read all end in OnChange }
+  FAllowHeaders.OnChange := {$IFDEF FPC}@{$ENDIF}AllowHeadersChanged;
   SetDefaultHeaders;
 end;
 
 destructor TRALCORSOptions.Destroy;
 begin
   FreeAndNil(FAllowHeaders);
+  FreeAndNil(FAllowHeadersText);
   inherited;
+end;
+
+type
+  { one version of TRALCORSOptions' header text - see TRALSnapshots }
+  TRALTextVersion = class
+  public
+    Text: StringRAL;
+  end;
+
+procedure TRALCORSOptions.AllowHeadersChanged(Sender: TObject);
+var
+  vInt: IntegerRAL;
+  vVersion: TRALTextVersion;
+begin
+  { one line, the items joined by commas as they are. DelimitedText used to do
+    this, and it also wrapped in quotes any item holding a blank or a quote -
+    "X-A, X-B" written on one line went out as one quoted, unusable name }
+  vVersion := TRALTextVersion.Create;
+  for vInt := 0 to Pred(FAllowHeaders.Count) do
+  begin
+    if vInt > 0 then
+      vVersion.Text := vVersion.Text + ',';
+    vVersion.Text := vVersion.Text + StringRAL(FAllowHeaders.Strings[vInt]);
+  end;
+  FAllowHeadersText.Publish(vVersion);
 end;
 
 procedure TRALCORSOptions.AddAllowHeader(AValue: StringRAL);
@@ -119,8 +162,7 @@ end;
 
 function TRALCORSOptions.GetAllowHeaders: StringRAL;
 begin
-  FAllowHeaders.Delimiter := ',';
-  Result := FAllowHeaders.DelimitedText;
+  Result := TRALTextVersion(FAllowHeadersText.Current).Text;
 end;
 
 function TRALCORSOptions.OriginFor(const ARequestOrigin: StringRAL): StringRAL;
@@ -161,7 +203,7 @@ begin
   if FAllowHeaders = AValue then
     Exit;
 
-  if Trim(AValue.Text) <> '' then
+  if (AValue <> nil) and (Trim(AValue.Text) <> '') then
     FAllowHeaders.Text := AValue.Text
   else
     SetDefaultHeaders;
@@ -169,12 +211,21 @@ end;
 
 procedure TRALCORSOptions.SetDefaultHeaders;
 begin
-  FAllowHeaders.Add('Content-Type');
-  FAllowHeaders.Add('Origin');
-  FAllowHeaders.Add('Accept');
-  FAllowHeaders.Add('Authorization');
-  FAllowHeaders.Add('Content-Encoding');
-  FAllowHeaders.Add('Accept-Encoding');
+  { the defaults replace the list: added to what was there, every empty
+    assignment appended the six again, and all the copies went out in
+    Access-Control-Allow-Headers }
+  FAllowHeaders.BeginUpdate;
+  try
+    FAllowHeaders.Clear;
+    FAllowHeaders.Add('Content-Type');
+    FAllowHeaders.Add('Origin');
+    FAllowHeaders.Add('Accept');
+    FAllowHeaders.Add('Authorization');
+    FAllowHeaders.Add('Content-Encoding');
+    FAllowHeaders.Add('Accept-Encoding');
+  finally
+    FAllowHeaders.EndUpdate;
+  end;
 end;
 
 { TRALCORSPlugin }

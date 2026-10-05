@@ -31,7 +31,19 @@ type
     property Version: TRALSHA32Versions read FVersion write SetVersion;
   end;
 
+/// PBKDF2 with HMAC-SHA256 (RFC 8018): ALength bytes stretched out of
+/// APassword and ASalt in AIterations rounds, each round one HMAC
+function RALPBKDF2SHA256(const APassword, ASalt: TBytes;
+  AIterations, ALength: IntegerRAL): TBytes;
+
 implementation
+
+{ Hashing is arithmetic modulo 2^32 by definition: overflow and range checks
+  have nothing to find here and only slow it down. Off for the whole unit -
+  the Q-/Q+ switches it used to carry turned overflow checks ON after each
+  block, whatever the project had chosen }
+{$Q-}
+{$R-}
 
 const
   K: array[0..63] of cardinal = (
@@ -80,9 +92,7 @@ begin
     s1 := ((W[i - 2] shr 17) or (W[i - 2] shl 15)) 
       xor ((W[i - 2] shr 19) or (W[i - 2] shl 13)) 
       xor (W[i - 2] shr 10);
-    {$Q-}
     W[I] := W[I - 16] + s0 + W[I - 7] + s1;
-    {$Q+}
   end;
 
   for i := 0 to 63 do
@@ -95,7 +105,6 @@ begin
       xor ((e shr 25) or (e shl 7));
     m0 := (a and b) xor (a and c) xor (b and c);
     c0 := (e and f) xor (not e and g);
-    {$Q-}
     t1 := h + s1 + c0 + K[i] + W[i];
     t2 := s0 + m0;
 
@@ -107,10 +116,8 @@ begin
     c := b;
     b := a;
     a := t1 + t2;
-    {$Q+}
   end;
 
-  {$Q-}
   FHash[0] := FHash[0] + a;
   FHash[1] := FHash[1] + b;
   FHash[2] := FHash[2] + c;
@@ -119,7 +126,6 @@ begin
   FHash[5] := FHash[5] + f;
   FHash[6] := FHash[6] + g;
   FHash[7] := FHash[7] + h;
-  {$Q+}
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
   inherited;
@@ -214,8 +220,88 @@ function TRALSHA2_32.Swap(AValue: cardinal): cardinal;
 begin
   Result := ((AValue and $FF) shl 24) 
          or ((AValue and $FF00) shl 8) 
-         or ((AValue and $FF0000) shr 8) 
+         or ((AValue and $FF0000) shr 8)
          or ((AValue and $FF000000) shr 24);
+end;
+
+function RALPBKDF2SHA256(const APassword, ASalt: TBytes;
+  AIterations, ALength: IntegerRAL): TBytes;
+var
+  vSha: TRALSHA2_32;
+  vIPad, vOPad: array[0..63] of Byte;
+  vKey, vU, vT, vFirst: TBytes;
+  vBlock, vRound, vInt, vDone, vTake: IntegerRAL;
+
+  { the bytes of the hash, not a stream: one HMAC per round, and a stream per
+    call would cost more than the hashing }
+  function HMAC(const AData: TBytes): TBytes;
+  var
+    vInner: TBytes;
+  begin
+    vSha.Initialize;
+    vSha.HashBytes(@vIPad[0], 64);
+    if Length(AData) > 0 then
+      vSha.HashBytes(@AData[0], Length(AData));
+    vInner := vSha.Finalize;
+    vSha.Initialize;
+    vSha.HashBytes(@vOPad[0], 64);
+    vSha.HashBytes(@vInner[0], Length(vInner));
+    Result := vSha.Finalize;
+  end;
+
+begin
+  SetLength(Result, ALength);
+  vSha := TRALSHA2_32.Create;
+  try
+    vKey := APassword;
+    if Length(vKey) > 64 then
+    begin
+      vSha.Initialize;
+      vSha.HashBytes(@vKey[0], Length(vKey));
+      vKey := vSha.Finalize;
+    end;
+    for vInt := 0 to 63 do
+    begin
+      if vInt < Length(vKey) then
+        vIPad[vInt] := vKey[vInt]
+      else
+        vIPad[vInt] := 0;
+      vOPad[vInt] := vIPad[vInt] xor $5C;
+      vIPad[vInt] := vIPad[vInt] xor $36;
+    end;
+
+    vDone := 0;
+    vBlock := 1;
+    while vDone < ALength do
+    begin
+      { U1 = HMAC(salt || block number, big-endian) }
+      SetLength(vFirst, Length(ASalt) + 4);
+      if Length(ASalt) > 0 then
+        Move(ASalt[0], vFirst[0], Length(ASalt));
+      vFirst[Length(ASalt)] := Byte(vBlock shr 24);
+      vFirst[Length(ASalt) + 1] := Byte(vBlock shr 16);
+      vFirst[Length(ASalt) + 2] := Byte(vBlock shr 8);
+      vFirst[Length(ASalt) + 3] := Byte(vBlock);
+
+      vU := HMAC(vFirst);
+      vT := Copy(vU, 0, Length(vU));
+      for vRound := 2 to AIterations do
+      begin
+        vU := HMAC(vU);
+        for vInt := 0 to High(vT) do
+          vT[vInt] := vT[vInt] xor vU[vInt];
+      end;
+
+      vTake := ALength - vDone;
+      if vTake > Length(vT) then
+        vTake := Length(vT);
+      Move(vT[0], Result[vDone], vTake);
+      Inc(vDone, vTake);
+      Inc(vBlock);
+    end;
+  finally
+    vSha.Free;
+  end;
 end;
 
 end.

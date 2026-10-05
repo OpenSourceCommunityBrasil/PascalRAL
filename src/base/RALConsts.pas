@@ -25,7 +25,7 @@ const
   // Versionamento
   RALVERSION = '1.2.0-1';
   RALVERSION_MAJOR = 1;
-  RALVERSION_MINOR = 1;
+  RALVERSION_MINOR = 2; // with RALVERSION: 1.2 since 0644bad
   RALVERSION_PATCH = 0;
   RALVERSION_FULL  = RALVERSION_MAJOR * 10000
                    + RALVERSION_MINOR * 100
@@ -95,6 +95,9 @@ const
     that frees each block as it reads holds at most one block beyond its
     output. }
   DEFAULTCHUNKSIZE = 1047552;
+  { the work buffer the compressors read and write through, whatever the size
+    of the body: see TRALCompressZLib.InitCompress }
+  DEFAULTCOMPRESSBUFFERSIZE = 65536;
 
   // Client defaults and limits.
   // The two timeouts must be written both in the constructor and in the
@@ -135,6 +138,12 @@ const
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
   // THTTPClient defaults to.
   DEFAULTMAXREDIRECTS = 3;
+  { Milliseconds a WebModule session may sit unused before it is dropped -
+    TRALWebModule.SessionTimeout. Thirty minutes, the usual for a web session.
+    Not TRALServer.SessionTimeout, whose 30000 is what mORMot2 holds an idle
+    kept-alive connection for: at 30 minutes there, an idle client would keep
+    a thread of smThreads for half an hour }
+  DEFAULTWEBSESSIONTIMEOUT = 1800000;
   { Floor for TRALClient.KeepAliveInterval while it is on. It comes from
     WinHTTP, which refuses WINHTTP_OPTION_HTTP2_KEEPALIVE below 5000 ms with
     ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to
@@ -147,8 +156,10 @@ const
   HTTP_OK                  = 200;
   HTTP_Created             = 201;
   HTTP_NoContent           = 204;
+  HTTP_PartialContent      = 206;
   HTTP_Moved               = 301;
   HTTP_Found               = 302;
+  HTTP_NotModified         = 304;
   HTTP_BadRequest          = 400;
   HTTP_Unauthorized        = 401;
   HTTP_Forbidden           = 403;
@@ -158,6 +169,7 @@ const
   HTTP_RequestTimeout      = 408;
   HTTP_RequestEntityTooLarge = 413;
   HTTP_UnsupportedMedia    = 415;
+  HTTP_RangeNotSatisfiable = 416;
   HTTP_TooManyRequests     = 429;
   HTTP_InternalError       = 500;
   HTTP_NotImplemented      = 501;

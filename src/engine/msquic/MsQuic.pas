@@ -14,12 +14,17 @@
 /// 1. Calling convention is cdecl. msquic.h defines QUIC_API as __cdecl. It is
 ///    irrelevant on x64, where there is only one convention, and it is not on
 ///    Win32.
-/// 2. Record layout follows the MSVC ABI, which is what msquic.dll was built
-///    with. Records that contain a 64-bit field are declared packed with
-///    explicit padding, because MSVC aligns a 64-bit field on 8 bytes even on
-///    32-bit targets while the i386 System V ABI that FPC follows aligns it on
-///    4 - a plain record would disagree between compilers. Records without a
-///    64-bit field are left unpacked, where Delphi and FPC both match MSVC.
+/// 2. Record layout follows msquic.h field by field, and it is the same on
+///    every ABI the library ships for - MSVC on Windows, AAPCS on Android ARM32
+///    and ARM64, which were checked with offsetof against the 2.6.1 header.
+///    The two records the library READS from us, QUIC_SETTINGS and QUIC_ADDR,
+///    spell their padding out, because MSVC aligns a 64-bit field on 8 bytes
+///    even on 32-bit targets while the i386 System V ABI that FPC follows
+///    aligns it on 4. They are not packed, though: the C side may read a field
+///    with an instruction that requires its natural alignment, and a packed
+///    record on the stack is a SIGBUS on ARM32 the day it lands one byte off.
+///    The event records ARE packed - the library hands them over by pointer
+///    and Pascal only reads them, which it does safely at any address.
 /// 3. The event unions are raw bytes plus typed accessors. A Pascal variant
 ///    record would leave the offset of the variant part to the compiler; here
 ///    every variant that matters is its own small record whose layout can be
@@ -33,7 +38,16 @@ unit MsQuic;
 {$IFDEF FPC}
   {$MODE DELPHI}
   {$H+}
+  {$PACKRECORDS C}
 {$ENDIF}
+{$IFNDEF FPC}
+  {$IF CompilerVersion > 23}
+    {$LEGACYIFEND ON}
+  {$IFEND}
+  {$ALIGN 8}
+{$ENDIF}
+// The two alignment directives above pin the C layout whatever the project
+// including this unit chose - see point 2.
 
 interface
 
@@ -59,7 +73,12 @@ const
   // Android has no versioned sonames: the packager only carries lib/<abi>/*.so
   // into the APK, so a file called libmsquic.so.2 never reaches the device and
   // the plain name is what dlopen resolves, in the application's own library
-  // folder. Both compilers define ANDROID for that target.
+  // folder. Both compilers define ANDROID for that target. The build RAL
+  // publishes needs Android 9 (API 28): msquic's OpenSSL glue calls glob(),
+  // which the NDK only declares from there, so it is built against API 28,
+  // and the symbol versions that build records (getentropy@LIBC_P) make the
+  // dynamic linker refuse it on an older device - MsQuicLoad passes the
+  // linker's own message on.
   MSQUIC_LIBRARY = 'libmsquic.so';
 {$ELSE}
   MSQUIC_LIBRARY = 'libmsquic.so.2';
@@ -150,10 +169,12 @@ const
   QUIC_STATUS_ALPN_NEG_FAILURE      = QUIC_STATUS(92);       // ENOPROTOOPT
   QUIC_STATUS_STREAM_LIMIT_REACHED  = QUIC_STATUS(86);       // ESTRPIPE
   QUIC_STATUS_ALPN_IN_USE           = QUIC_STATUS(91);       // EPROTOTYPE
-  // QUIC_STATUS_CERT_ERROR(n) = $BEBC200 + n, QUIC_STATUS_TLS_ALERT(n) = $BEBC300 + n
-  QUIC_STATUS_CERT_EXPIRED          = QUIC_STATUS($0BEBC201);
-  QUIC_STATUS_CERT_UNTRUSTED_ROOT   = QUIC_STATUS($0BEBC202);
-  QUIC_STATUS_CERT_NO_CERT          = QUIC_STATUS($0BEBC203);
+  // ERROR_BASE = 200000000 ($BEBC200), TLS_ERROR_BASE = +256, CERT_ERROR_BASE
+  // = +512: QUIC_STATUS_TLS_ALERT(n) = $BEBC300 + n, QUIC_STATUS_CERT_ERROR(n)
+  // = $BEBC400 + n. Nothing is defined at ERROR_BASE itself.
+  QUIC_STATUS_CERT_EXPIRED          = QUIC_STATUS($0BEBC401);
+  QUIC_STATUS_CERT_UNTRUSTED_ROOT   = QUIC_STATUS($0BEBC402);
+  QUIC_STATUS_CERT_NO_CERT          = QUIC_STATUS($0BEBC403);
   QUIC_STATUS_BAD_CERTIFICATE       = QUIC_STATUS($0BEBC32A);
   QUIC_STATUS_TLS_ALERT_BASE        = QUIC_STATUS($0BEBC300);
 {$ENDIF}
@@ -181,6 +202,11 @@ const
   QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED = $00000010;
   QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION  = $00000020;
   QUIC_CREDENTIAL_FLAG_REQUIRE_CLIENT_AUTHENTICATION = $00000040;
+  /// OpenSSL builds only, and outside Windows the only validation there is:
+  /// without it msquic asks its platform layer, which on POSIX is a stub that
+  /// refuses every certificate - and, under DEFER_CERTIFICATE_VALIDATION,
+  /// reports SUCCESS as the deferred verdict. With it, OpenSSL checks the
+  /// chain and the host name against its store.
   QUIC_CREDENTIAL_FLAG_USE_TLS_BUILTIN_CERTIFICATE_VALIDATION = $00000080;
   QUIC_CREDENTIAL_FLAG_SET_ALLOWED_CIPHER_SUITES     = $00002000;
   QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES     = $00004000;
@@ -315,14 +341,17 @@ const
   QUIC_SETTINGS_BIT_GreaseQuicBitEnabled   = $40;
   QUIC_SETTINGS_BIT_EcnEnabled             = $80;
 
-  /// sizeof(QUIC_SETTINGS) as MSVC lays it out. Checked at load time, because a
-  /// silent mismatch here misconfigures the connection instead of failing.
+  /// sizeof(QUIC_SETTINGS) as msquic.h lays it out, the same on every ABI the
+  /// library ships for. Checked at load time, because a silent mismatch here
+  /// misconfigures the connection instead of failing.
   QUIC_SETTINGS_SIZE = 144;
 
 type
-  /// SOCKADDR_INET. Every field sits at its naturally aligned offset, so packed
-  /// reproduces the C layout exactly: 28 bytes.
-  QUIC_ADDR = packed record
+  /// SOCKADDR_INET on Windows, the sockaddr_in/sockaddr_in6 union on POSIX:
+  /// 28 bytes and the same offsets either way. Every field already sits at its
+  /// natural offset, and the record keeps the 4-byte alignment the library
+  /// reads it with - see point 2 on why it is not packed.
+  QUIC_ADDR = record
     case Integer of
       0: (si_family: Word);
       1: (v4_family: Word; v4_port: Word; v4_addr: Cardinal;
@@ -404,10 +433,12 @@ type
   end;
   PQUIC_NEW_CONNECTION_INFO = ^QUIC_NEW_CONNECTION_INFO;
 
-  /// Packed with explicit padding: it mixes 64-, 32-, 16- and 8-bit fields, and
-  /// MSVC's 8-byte alignment of the 64-bit ones is what has to be reproduced.
-  /// The offsets in the comments are what msquic.dll expects.
-  QUIC_SETTINGS = packed record
+  /// Explicit padding, so every compiler puts each field at the header's
+  /// offset - it mixes 64-, 32-, 16- and 8-bit fields - and no packing, so the
+  /// record keeps the 8-byte alignment the library assumes when it reads the
+  /// 64-bit ones (point 2). The offsets in the comments are what msquic
+  /// expects, on 32 and 64 bits alike.
+  QUIC_SETTINGS = record
     IsSetFlags: UInt64;                          //   0
     MaxBytesPerKey: UInt64;                      //   8
     HandshakeIdleTimeoutMs: UInt64;              //  16
@@ -455,7 +486,7 @@ type
   // The connection and stream unions both contain members with a 64-bit field
   // (QUIC_UINT62 error codes, the receive offsets), so their alignment is 8 and
   // the union starts at offset 8 on 32- and 64-bit alike - MSVC aligns a 64-bit
-  // field on 8 bytes on x86 too.
+  // field on 8 bytes on x86 too, and so does AAPCS on ARM32.
   //
   // QUIC_LISTENER_EVENT is the exception, and it is the one that catches
   // everybody: its members are two pointers and two BOOLEAN bitfields, with no
@@ -745,7 +776,10 @@ begin
             (AStatus = QUIC_STATUS_CERT_UNTRUSTED_ROOT) or
             (AStatus = QUIC_STATUS_CERT_NO_CERT) or
             ((AStatus and $FFFFFF00) = QUIC_STATUS_TLS_ALERT_BASE)
-            {$IFNDEF MSWINDOWS} or ((AStatus and $FFFFFF00) = $0BEBC200){$ENDIF};
+            { Windows: the whole FACILITY_CERT range - CERT_E_* and TRUST_E_*,
+              of which the three constants above are only part }
+            {$IFDEF MSWINDOWS} or ((AStatus and $FFFF0000) = $800B0000){$ENDIF}
+            {$IFNDEF MSWINDOWS} or ((AStatus and $FFFFFF00) = $0BEBC400){$ENDIF};
 end;
 
 function QuicAddrToStr(const AAddr: QUIC_ADDR; out APort: Word): string;

@@ -27,6 +27,7 @@ by a RAL client, with the pin accepting it and a wrong pin refusing it.
 - [Server: mORMot2 (smThreads and smAsync)](#server-mormot2-smthreads-and-smasync)
 - [Server: mORMot2 (smHttpSys)](#server-mormot2-smhttpsys)
 - [Server: Sagui](#server-sagui)
+- [Server: MsQuic](#server-msquic) *(QUIC: TLS is not optional)*
 - [Server: CGI and UniGUI](#server-cgi-and-unigui)
 - [Client: the three questions](#client-the-three-questions)
 - [Client: SSL.Verify](#client-sslverify)
@@ -430,6 +431,11 @@ set **before** `Active := True`.
 | **mORMot2** *(OpenSSL)* | `SSL.CertificateFile` | `SSL.PrivateKeyFile` | `.pem` **file names** | `SSL.CACertificatesFile` |
 | **mORMot2** *(`smHttpSys`)* | - | - | bound by `netsh` | - |
 | **Sagui** | `SSL.Certificate` | `SSL.PrivateKey` | the **PEM text itself** | `SSL.Trust` |
+| **MsQuic** | `SSL.CertificateFile` | `SSL.PrivateKeyFile` | `.pem` **file names** | - |
+
+MsQuic is the exception to `SSL.Enabled`: QUIC carries TLS 1.3 inside the transport and
+has no plain mode, so the listener refuses to start without the two files whatever
+`Enabled` says.
 
 Three traps live in that table, and each has cost somebody an afternoon:
 
@@ -756,6 +762,38 @@ export `sg_httpsrv_tls_listen3`. When they do not, RAL reports
 
 ---
 
+## Server: MsQuic
+
+QUIC has no unencrypted mode: TLS 1.3 is part of the transport, so the certificate is
+not an option to turn on but a condition for the listener to start at all.
+
+```pascal
+RALServer.SSL.CertificateFile := 'cert.pem';
+RALServer.SSL.PrivateKeyFile  := 'key.pem';
+RALServer.SSL.PrivateKeyPassword := '';   // only for an encrypted key
+RALServer.Active := True;
+```
+
+Two `.pem` **file names**, the same pair the one command above produces. A key with a
+password needs `PrivateKeyPassword`, which switches the engine to msquic's protected-key
+credential.
+
+**On Android the two files are application data.** Add them to the deployment with the
+remote path `assets\internal\` - `System.StartUpCopy` copies that folder to
+`TPath.GetDocumentsPath` on the first run - and point the properties there:
+
+```pascal
+RALServer.SSL.CertificateFile := TPath.Combine(TPath.GetDocumentsPath, 'cert.pem');
+RALServer.SSL.PrivateKeyFile  := TPath.Combine(TPath.GetDocumentsPath, 'key.pem');
+```
+
+The client side of the same engine pins a self-signed server like any other - see
+[Client: SSL.Pins](#client-sslpins) - and both ends must be RAL: the wire is RAL's own
+frame over QUIC, not HTTP/3. What has to be on each machine, and which build, is in
+[msquic/README.md](msquic/README.md).
+
+---
+
 ## Server: CGI and UniGUI
 
 These two have no `SSL` property, and that is correct: neither of them owns a listening
@@ -819,6 +857,9 @@ genuinely disagree:
 | **netHTTP** (Windows) | validates - WinHTTP, against the Windows store |
 | **mORMot2** | validates - SChannel or OpenSSL |
 | **OkHttp** (Android) | validates - the Android trust store |
+| **Kwik** (Android) | validates - the Android trust store |
+| **MsQuic** (Windows) | validates - the Windows store |
+| **MsQuic** (Android, Linux) | validates - OpenSSL, against the Android system store that RAL gathers into one file, or OpenSSL's default paths on Linux; `TRALMsQuicClientHTTP.DefaultCaFile` replaces either |
 | **Indy** | **does not validate at all** (`VerifyMode` empty is `SSL_VERIFY_NONE`) |
 | **fpHTTP** | **does not validate at all** (FPC 3.2.2 leaves the chain check out) |
 
@@ -908,6 +949,8 @@ what the server presented.
 | **fpHTTP** | yes, everywhere |
 | **netHTTP** | yes on **Windows** (read from the WinHTTP handle); no elsewhere |
 | **OkHttp** | yes on **Android**; the engine does nothing anywhere else |
+| **Kwik** | yes on **Android**; the engine does nothing anywhere else |
+| **MsQuic** | yes, everywhere it runs - Windows, Linux and Android |
 | **mORMot2** | yes **with OpenSSL** - under SChannel the certificate never reaches RAL |
 
 A pin on an engine that cannot read fingerprints does not fail quietly: the request
@@ -959,6 +1002,13 @@ Fields an engine cannot produce come back **empty, never invented**. Returning `
 closes the connection before one byte of the request - the token included - has been
 sent.
 
+**`Trusted` covers the host name everywhere except Indy and fpHTTP**, which never check
+one: there it is the chain and the dates only, so a handler answering `ACert.Trusted` on
+those two accepts a valid certificate issued for another name - pin those hosts instead.
+On OkHttp, mORMot2 with OpenSSL and the Indy chain this was not true before 02/10/2026:
+OkHttp's `Trusted` was the chain alone, mORMot2's came out True for any chain, and Indy's
+ignored an error OpenSSL had found higher up the chain.
+
 ---
 
 ## Client: SSL.Required
@@ -987,6 +1037,14 @@ A host with a pin is already required, implicitly.
 | **mORMot2** | Linux/macOS | OpenSSL, registered on its own | the distribution's OpenSSL | yes |
 | **Indy** | all | OpenSSL **1.0.2** | `ssleay32.dll` + `libeay32.dll` | yes |
 | **fpHTTP** | all | OpenSSL, through FPC | `libssl-1_1`/`libcrypto-1_1` (or the platform's) | yes |
+| **MsQuic** | Windows | the msquic **OpenSSL** build | `msquic.dll` beside the executable | yes |
+| **MsQuic** | Android 9+ | the msquic OpenSSL build | `libmsquic.so` per ABI, in the APK | yes |
+| **MsQuic** | Linux | the msquic OpenSSL build | `libmsquic.so.2` | yes |
+| **Kwik** | Android 8+ | agent15, pure Java | the five jars (see [kwik/README.md](kwik/README.md)) | yes |
+
+The MsQuic binaries RAL was verified with - Windows x64/x86, Android arm64-v8a and
+armeabi-v7a - are in the repository's `external` branch, under `msquic/`; see
+[msquic/README.md](msquic/README.md) for where each one goes.
 
 Two notes that come up often:
 

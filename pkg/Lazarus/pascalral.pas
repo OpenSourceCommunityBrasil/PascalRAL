@@ -16,7 +16,8 @@ uses
   RALStorageCSV, RALStorageJSON, RALExternalsLibraries, RALPostmanExporter, 
   RALSwaggerExporter, RALSwaggerModule, RALWebModule, RALAuthentication, 
   RALQuicFrame, RALPlugin, RALSecurity, RALCORS, RALContent, RALOpenSSL, RALJWS, RALDigest, RALOAuth2,
-  RALBigInt, RALASN1, RALRSA, RALX509, RALSelfSigned, RALNetwork;
+  RALBigInt, RALASN1, RALRSA, RALX509, RALSelfSigned, RALNetwork, RALCRC32, RALDBTypes, RALHashBase,
+  RALHexadecimal, RALResponsePages, RALStream;
 
 implementation
 

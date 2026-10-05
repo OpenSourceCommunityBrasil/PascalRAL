@@ -37,6 +37,8 @@ type
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
     function GetNativeConnection: TComponent; override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: TSQLConnector;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
 
@@ -48,7 +50,7 @@ type
     class function DatabaseName: StringRAL; override;
     class function PackageDependency: StringRAL; override;
     /// The TSQLConnector this driver opens - see GetNativeConnection
-    property NativeConnection: TSQLConnector read FConnector;
+    property NativeConnection: TSQLConnector read GetConnector;
   end;
 
 implementation
@@ -220,8 +222,19 @@ begin
   end;
 end;
 
+{ Connected - and with it configured - on the way out: Database, credentials
+  and the driver settings are only applied by Conectar, and with the pool off
+  (the default) nothing had called it yet, so a route that took this
+  connection got one that knew no database. Conectar returns at once when
+  the connection is already open. }
 function TRALDBSQLDB.GetNativeConnection: TComponent;
 begin
+  Result := GetConnector;
+end;
+
+function TRALDBSQLDB.GetConnector: TSQLConnector;
+begin
+  Conectar;
   Result := FConnector;
 end;
 
@@ -232,10 +245,11 @@ end;
 
 procedure TRALDBSQLDB.ResetSession;
 begin
-  { unlike Zeos and FireDAC there is an explicit transaction here, and it is what
-    persists the request: closing it runs Action (caCommitRetaining), exactly what
-    destroying the driver used to do at the end of every request. Rolling back
-    instead would silently throw away every write once pooling is on.
+  { unlike Zeos and FireDAC there is an explicit transaction here. ExecSQL
+    commits its own statements now; what closing it (Action, caCommitRetaining)
+    still persists is whatever a route wrote through GetNativeConnection, which
+    is what destroying the driver did at the end of every request. Rolling back
+    instead would silently throw that away once pooling is on.
     SQLDB reopens the transaction by itself on the next query }
   if FTransaction.Active then
     FTransaction.Active := False;
@@ -273,6 +287,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -332,6 +349,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -367,6 +387,12 @@ begin
 
       ARowsAffected := vQuery.RowsAffected;
 
+      { persisted HERE, statement by statement, as FireDAC and Zeos do with
+        AutoCommit. Left to ResetSession, the commit ran after the answer was
+        built, and one that failed - a deferred constraint, a serialization
+        conflict - was swallowed while the client read 200 and RowsAffected }
+      FTransaction.CommitRetaining;
+
       if DatabaseType = dtMySQL then
       begin
         vQuery.Close;
@@ -382,6 +408,16 @@ begin
     except
       on e: Exception do
       begin
+        { the statement or its commit failed: nothing of it may stay pending
+          for the next statement - PostgreSQL refuses everything after a
+          failure until the transaction ends, and a later commit there rolled
+          back the statements that had worked. A rollback that fails too means
+          a dead connection, which the pool's test drops; the error the caller
+          needs is this one }
+        try
+          FTransaction.RollbackRetaining;
+        except
+        end;
         if Assigned(OnErrorQuery) then
           OnErrorQuery(vQuery, e.Message, Request);
         raise;

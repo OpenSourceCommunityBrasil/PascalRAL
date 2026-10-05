@@ -25,6 +25,8 @@ type
   TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     property Enabled: boolean read FEnabled write FEnabled;
   end;
@@ -89,6 +91,7 @@ type
     FIPv6Enabled: boolean;
     FOwner: TRALServer;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetIPv6Enabled(AValue: boolean);
   public
     constructor Create(AOwner: TRALServer);
@@ -117,10 +120,13 @@ type
   TRALServer = class(TRALPluginHost)
   private
     FActive: boolean;
+    { Active as read from the form, applied by Loaded - see WriteActive }
+    FStreamedActive: boolean;
     FAuthentication: TRALAuthServer;
     FBaseModule: TRALModuleRoutes;
     FCookieLife: IntegerRAL;
     FEngine: StringRAL;
+    FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
     FListSubModules: TList;
     FPort: IntegerRAL;
@@ -143,7 +149,9 @@ type
     function GetModule(AIndex: IntegerRAL): TRALModuleRoutes;
     /// ServerActivating/ServerDeactivating on the linked modules
     procedure NotifyModules(AActive: boolean);
+    procedure WriteActive(const AValue: boolean);
   protected
+    procedure Loaded; override;
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Used by inherited members to set SSL settings
@@ -174,6 +182,10 @@ type
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+    { the object properties copy what they are given (RALAssignOwned) }
+    procedure SetIPConfig(const AValue: TRALIPConfig);
+    procedure SetResponsePages(const AValue: TRALResponsePages);
+    procedure SetRoutes(const AValue: TRALRoutes);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -211,6 +223,10 @@ type
       loop, then the modules loop }
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     function SSLEnabled: boolean;
+    /// The text a 500 answers for AException: its message, or only
+    /// 'Internal Server Error' with HideErrorDetails on. Every engine answers
+    /// its failures through it, and so do the DBWare module and the DAO
+    function ErrorText(AException: Exception): StringRAL;
     /// The IP address clients reach this server at, in the given family.
     /// A server bound to one address (IPConfig.IPv4Bind / IPv6Bind) answers
     /// that address. The default bind, every interface, answers the address
@@ -244,26 +260,38 @@ type
     // Returns a submodule based on the provided AIndex
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
-    property Active: boolean read FActive write SetActive;
+    property Active: boolean read FActive write WriteActive;
     /// The authentication plugin set up at design time; more can be added
     /// with AddPlugin
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    // Determinates in seconds how long will the cookies be kept
+    // Minutes a cookie the server sends is kept by the browser (its Expires)
     property CookieLife: integer read FCookieLife write FCookieLife;
     // Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
+    /// A 500 says only 'Internal Server Error' instead of the exception's
+    /// message - which, from a database driver, names tables and columns,
+    /// quotes SQL and sometimes part of the connection string. OnServerError
+    /// still receives the exception whole, which is where to log it. Off by
+    /// default: the message goes to the client, as it always did
+    property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
+      default False;
     // Configuration params for IP listening
-    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
+    property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
     // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
     // Whether the server will raise error to the application or not (exception raise^), default value is false
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
-    property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
+    property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
     // Route configuration of the server, a.k.a endpoints
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
     // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    // Timeout (miliseconds) for WebModule to determinate max age of the session
+    // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
+    // kept-alive connection after this long without a request (0 turns
+    // keep-alive off there). Indy hands it to its own session list, which RAL
+    // leaves off, and fpHTTP to the period its accept loop wakes up idle; the
+    // other engines ignore it. Not the WebModule's sessions, despite the name:
+    // those have TRALWebModule.SessionTimeout
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     // Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
@@ -415,6 +443,7 @@ type
     procedure SetDomain(const AValue: StringRAL); virtual;
     // Defines the handle of the RALServer in which will be registered the routes
     procedure SetServer(AValue: TRALServer); virtual;
+    procedure SetRoutes(const AValue: TRALRoutes);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -432,6 +461,9 @@ type
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     // Inherited method of RALServer
+    /// A NEW list of this module's routes - what the Swagger and Postman
+    /// exporters document. The caller frees the list, never the routes in it,
+    /// which still belong to the module
     function GetListRoutes: TList; virtual;
     /// The modules loop of TRALServer.ProcessCommands: False when the route of
     /// the request is not one of this module's. When it is, the module answers
@@ -439,8 +471,16 @@ type
     /// or the route itself
     function ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse): boolean;
       virtual;
+    /// Answers a request for one of this module's routes that has neither
+    /// OnReply nor OnReplyGen, nor a handler of the module's own (ExecuteContext
+    /// left it unanswered): 404 here, a file in TRALWebModule
+    procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    /// TRALServer.ErrorText of the server the module is attached to - the
+    /// exception's message, unless that server hides it - and the message
+    /// as it is with no server
+    function ErrorText(AException: Exception): StringRAL;
 
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
     // The domain of routes, added before all routes of this module
     property Domain: StringRAL read FDomain write SetDomain;
@@ -538,16 +578,41 @@ begin
 
   if FOwner <> nil then
   begin
+    { refused before anything is touched: the refusal used to come after the
+      server had been stopped, and the line starting it again was never
+      reached - asking for IPv6 on an engine without it took a live server
+      down }
+    if AValue and (not FOwner.IPv6IsImplemented) then
+      raise Exception.Create(wmIPv6notImplemented);
+
     vActive := FOwner.Active;
     FOwner.Active := False;
-
-    if (AValue) and (not FOwner.IPv6IsImplemented) then
-      raise Exception.Create(wmIPv6notImplemented)
-    else
-      FIPv6Enabled := AValue;
-
+    FIPv6Enabled := AValue;
     FOwner.Active := vActive;
-  end;
+  end
+  else
+    FIPv6Enabled := AValue; // no server to restart: it used to be dropped
+end;
+
+{ TRALSSL }
+
+{ every engine's SSL descends from this one: the copy takes the published
+  properties both sides have, the engine's own included - SetSSL in the
+  engines called Assign on a class that had no copy, and raised }
+procedure TRALSSL.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALSSL then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
+
+procedure TRALIPConfig.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALIPConfig then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALIPConfig.Create(AOwner: TRALServer);
@@ -711,6 +776,14 @@ begin
     (Length(Snapshot.ByPhase[ppAuthenticate]) > 0);
 end;
 
+function TRALServer.ErrorText(AException: Exception): StringRAL;
+begin
+  if FHideErrorDetails or (AException = nil) then
+    Result := SError500
+  else
+    Result := StringRAL(AException.Message);
+end;
+
 procedure TRALServer.DelSubRoute(ASubRoute: TRALModuleRoutes);
 var
   vInt: IntegerRAL;
@@ -799,6 +872,21 @@ begin
   Result := inherited LookupRoute(ARequest, AResponse, AOwner);
 end;
 
+procedure TRALServer.SetIPConfig(const AValue: TRALIPConfig);
+begin
+  RALAssignOwned(FIPConfig, AValue);
+end;
+
+procedure TRALServer.SetResponsePages(const AValue: TRALResponsePages);
+begin
+  RALAssignOwned(FResponsePages, AValue);
+end;
+
+procedure TRALServer.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
+end;
+
 procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = opRemove) and (AComponent = FAuthentication) then
@@ -821,7 +909,22 @@ var
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
+  { a body the engine could not take apart - a multipart with no part
+    delimited by its boundary - is the client's error, answered before any
+    route runs. It used to reach the route with nothing in its params, the
+    body gone without a word }
+  if ARequest.Params.BodyError <> '' then
+  begin
+    AResponse.Answer(HTTP_BadRequest, ARequest.Params.BodyError, rctTEXTPLAIN);
+    Exit;
+  end;
   try
+    { the route, looked up once and kept in the request (FindRoute), before
+      OnRequest: every engine comes through here, so every one fills
+      Request.Route, and the handler, OnRequest and OnResponse can read what
+      the route declares }
+    FindRoute(ARequest, AResponse);
+
     if Assigned(FOnRequest) then
       FOnRequest(ARequest, AResponse);
 
@@ -859,7 +962,7 @@ begin
         200 the response started with and an empty body. Without
         OnServerError and with RaiseError off (the defaults) the exception
         used to be swallowed and the client got exactly that }
-      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+      AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
@@ -954,6 +1057,33 @@ begin
   end;
 end;
 
+{ A form saved with Active = True reads it FIRST - it is the first published
+  property - so the engine used to start right there, before Port, IPConfig
+  and SSL had been read: a server saved with SSL enabled listened in plain
+  HTTP, one bound to 127.0.0.1 listened on every interface. While loading the
+  value is only kept, and Loaded applies it once everything else is in. }
+procedure TRALServer.WriteActive(const AValue: boolean);
+begin
+  if not (csLoading in ComponentState) then
+    SetActive(AValue)
+  { only a True is kept: the reader never writes the default False, while the
+    setters that restart a live server - SetPort, PoolCount, Mode - write
+    Active := False and back as their own properties are read, and that must
+    not undo it }
+  else if AValue then
+    FStreamedActive := True;
+end;
+
+procedure TRALServer.Loaded;
+begin
+  inherited Loaded;
+  if FStreamedActive then
+  begin
+    FStreamedActive := False;
+    SetActive(True);
+  end;
+end;
+
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
 begin
   { the authenticator is a plugin of this server: the property is the one
@@ -1044,7 +1174,11 @@ end;
 
 procedure TRALServer.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
-  RunValidate(ARequest, AResponse);
+  { RFC 9110 9.1: a method the server does not implement is answered 501,
+    here and not in a route - before the engine decodes the body, and after
+    the plugins (flood counts it like any other request) }
+  if RunValidate(ARequest, AResponse) and (ARequest.Method = amUNKNOWN) then
+    AResponse.Answer(HTTP_NotImplemented);
 end;
 
 { TRALModuleRequest }
@@ -1148,6 +1282,11 @@ begin
 end;
 
 { TRALModuleRoutes }
+
+procedure TRALModuleRoutes.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
+end;
 
 constructor TRALModuleRoutes.Create(AOwner: TComponent);
 begin
@@ -1354,17 +1493,39 @@ begin
   else
   begin
     { a verb outside AllowedMethods is not an intrusion attempt, and the answer
-      for a route that exists but does not take that method is 405, not 403 }
+      for a route that exists but does not take that method is 405, not 403.
+      RFC 9110 15.5.6: a 405 MUST say which methods the resource does take,
+      in Allow }
     AResponse.Answer(HTTP_MethodNotAllowed);
+    AResponse.AddHeader('Allow', vRoute.GetAllowMethods);
   end;
 end;
 
 procedure TRALModuleRoutes.SetDomain(const AValue: StringRAL);
+var
+  vInt: IntegerRAL;
 begin
   if AValue = FDomain then
     Exit;
 
   FDomain := FixRoute(AValue);
+  { every route keeps its full path split (UpdateSegments), the domain in it }
+  if FRoutes <> nil then
+    for vInt := 0 to Pred(FRoutes.Count) do
+      TRALBaseRoute(FRoutes.Items[vInt]).UpdateSegments;
+end;
+
+procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  AResponse.Answer(HTTP_NotFound);
+end;
+
+function TRALModuleRoutes.ErrorText(AException: Exception): StringRAL;
+begin
+  if FServer <> nil then
+    Result := FServer.ErrorText(AException)
+  else
+    Result := StringRAL(AException.Message);
 end;
 
 procedure TRALModuleRoutes.SetServer(AValue: TRALServer);

@@ -40,10 +40,16 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+    { scheme://host:port the kept socket was opened to. fphttpclient never
+      checks it: with KeepConnection on it writes any URL to the socket it
+      has, so a client handed to another address, or left connected by a
+      redirect elsewhere, sent its requests to the previous server }
+    FAuthority: String;
     { True when it was our validation that refused the certificate - see VerifyCert }
     FCertRefused: boolean;
 
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
+    procedure DoRedirect(Sender: TObject; const ASrc: String; var ADest: String);
   protected
     procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
   public
@@ -64,7 +70,19 @@ implementation
 
 uses
   // fpsetsockopt, IPPROTO_TCP and TCP_NODELAY
-  sockets;
+  sockets,
+  // ParseURI, the parse fphttpclient itself connects by
+  URIParser;
+
+{ where fphttpclient connects for this URL, read the way it reads it }
+function FPAuthority(const AURL: String): String;
+var
+  vURI: TURI;
+begin
+  vURI := ParseURI(AURL, False);
+  Result := LowerCase(vURI.Protocol) + '://' + LowerCase(vURI.Host) + ':' +
+            IntToStr(vURI.Port);
+end;
 
 type
   { fphttpclient keeps its socket private and exposes no way to set an option
@@ -255,7 +273,30 @@ begin
   FHttp.AllowRedirect := True;
   FHttp.KeepConnection := True;
   FHttp.OnGetSocketHandler := @Self.OnGetSocketHandler;
+  FHttp.OnRedirect := @Self.DoRedirect;
   FSocketReused := False;
+end;
+
+{ Not followed off TLS - see TRALClientHTTP.LeavesTLS. fphttpclient has no way
+  to decline a redirect: Terminate ends its loop with the 3xx it already read,
+  and the target is pointed back at the same URL so that the redirect step
+  running after this event leaves the response's cookies alone - for another
+  host it swaps them for the ones that were sent.
+  Followed to another address, the kept socket has to go first, or the
+  redirected request is written to the server that sent the 3xx (see
+  FAuthority). Off for the rest of the call, so nothing is kept connected
+  there; SendUrl turns it back on for the next one. }
+procedure TRALfpHttpClientHTTP.DoRedirect(Sender: TObject; const ASrc: String;
+  var ADest: String);
+begin
+  if TLSRequired and LeavesTLS(IsTLSURL(StringRAL(ASrc)), StringRAL(ADest)) then
+  begin
+    ADest := ASrc;
+    FHttp.Terminate;
+  end
+  else if FHttp.KeepConnection and IsAbsoluteURI(ADest) and
+          (FPAuthority(ADest) <> FPAuthority(ASrc)) then
+    FHttp.KeepConnection := False;
 end;
 
 destructor TRALfpHttpClientHTTP.Destroy;
@@ -272,6 +313,7 @@ var
   vAttempt: IntegerRAL;
   vRetry, vReusing: boolean;
   vStart: QWord;
+  vAuthority: String;
 
   { SetTransportError resets compression, crypto and the content type - that
     last one matters here because ResponseText runs the message through
@@ -330,6 +372,16 @@ begin
   FHttp.AllowRedirect := true;
   FHttp.MaxRedirects := Parent.MaxRedirects;
 
+  { a socket kept for another address is no use here - see FAuthority.
+    Switching KeepConnection off is what makes fphttpclient close it }
+  vAuthority := FPAuthority(AURL);
+  if vAuthority <> FAuthority then
+  begin
+    FHttp.KeepConnection := False;
+    FSocketReused := False;
+    FAuthority := vAuthority;
+  end;
+
   // KeepConnection is what actually makes fphttpclient reuse the socket, and it
   // was set once in the constructor and never touched again. Turning KeepAlive
   // off therefore stopped the header from being sent while the client went on
@@ -384,17 +436,17 @@ begin
     ARequest.Params.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
 
     { Reconnect-once loop. A kept-alive socket the server has already closed
-      fails on the very next use, and that request was never processed - so
-      reissuing it is correct for any method, POST included (RFC 7230 6.3.1).
-      It is not a replay: nothing was delivered.
+      fails on the very next use. When the WRITE fails nothing was delivered,
+      and reissuing is correct for any method, POST included (RFC 7230 6.3.1).
+      When the read fails the request is out, and only an idempotent method
+      goes again - see the EHTTPClient branch.
 
       What must NOT be reissued is a read timeout, and fphttpclient reports
       both the same way (EHTTPClient with SErrReadingSocket and StatusCode 0).
       Two conditions separate them: the socket has to have been one this client
       left open (FSocketReused), and the failure has to come back far too fast
-      to be a timeout. Without the second test, a POST that times out on a warm
-      connection would be written twice - the exact defect this whole change
-      exists to remove.
+      to be a timeout. Without the second test, every timeout on a warm
+      connection would be sent again and waited out twice.
 
       The retry lives here rather than in BeforeSendUrl because the token
       routines (the authenticators' Prepare) call SendUrl through their own loops
@@ -454,8 +506,9 @@ begin
       // request will be reusing it. Asked of fphttpclient, not assumed from
       // KeepAlive: an answer carrying "Connection: close" makes it disconnect,
       // and the next request then runs on a fresh socket, where a fast
-      // failure says nothing about an aged-out connection.
-      FSocketReused := Parent.KeepAlive and FHttp.SocketOpen;
+      // failure says nothing about an aged-out connection. Nor when a redirect
+      // elsewhere turned KeepConnection off - see DoRedirect
+      FSocketReused := Parent.KeepAlive and FHttp.KeepConnection and FHttp.SocketOpen;
     except
       on e: ESocketError do
       begin
@@ -499,7 +552,11 @@ begin
           StatusCode = 0 - SErrReadingSocket: the socket was connected and the
             answer could not be read. A read timeout lands here, NOT on
             ESocketError; SocketIsDead tells that case apart from an aged-out
-            kept-alive connection. }
+            kept-alive connection. But the request WAS written, and a server
+            that ran it and died before answering fails just as fast - so only
+            a method that may run twice goes again (RFC 7230 6.3.1). A clean
+            close never gets here: fphttpclient reads it as no answer at all
+            and resends by itself. }
       on e: EHTTPClient do
       begin
         if e.StatusCode > 0 then
@@ -507,7 +564,7 @@ begin
           HandleException(rteNone, 0, e.Message);
           AResponse.StatusCode := e.StatusCode;
         end
-        else if SocketIsDead then
+        else if SocketIsDead and (AMethod in RALIdempotentMethods) then
           Reconnect
         else
           HandleException(rteTimeout, 10060, e.Message);

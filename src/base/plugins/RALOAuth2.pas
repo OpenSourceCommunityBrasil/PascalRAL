@@ -211,6 +211,11 @@ type
     /// The resource server: the bearer token of the request, and the scope of
     /// its route
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    /// The token endpoint checks the client's secret: a refusal there
+    /// (invalid_client, 401) is a guess, a token issued is proof. A bearer
+    /// refused elsewhere is not - nobody guesses a token
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
 
     /// Where codes, refresh tokens and revocations are kept. In memory by
     /// default; an object assigned here becomes the plugin's and is freed with it
@@ -337,7 +342,7 @@ type
     procedure ClearTokens;
     /// A 401: the access token is dropped; the refresh token, if any, renews
     /// it before the request goes again
-    function HandleChallenge(AResponse: TRALResponse): boolean; override;
+    function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     /// There is an access token not about to expire
     function IsAuthenticated: boolean; override;
     /// Obtains the access token: refresh_token first, then the code of
@@ -1164,6 +1169,22 @@ begin
     Delete(Result, Length(Result), 1);
 end;
 
+function TRALServerOAuth2.AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt;
+begin
+  Result := raaNone;
+  if AOnOwnRoute then
+  begin
+    if ARequest.ResolvedRoute = FTokenRoute then
+      case AResult of
+        arAccepted: Result := raaPassed;
+        arUnauthorized: Result := raaFailed;
+      end;
+  end
+  else if (ARequest.Authorization.AuthType = ratBearer) and (AResult = arAccepted) then
+    Result := raaPassed;
+end;
+
 procedure TRALServerOAuth2.BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vRoute: TRALRoute;
@@ -1827,10 +1848,22 @@ begin
   end;
 end;
 
-function TRALClientOAuth2.HandleChallenge(AResponse: TRALResponse): boolean;
+function TRALClientOAuth2.HandleChallenge(ARequest: TRALRequest;
+  AResponse: TRALResponse): boolean;
+var
+  vSent: TRALParam;
 begin
-  FAccessToken := '';
-  FExpiresAt := 0;
+  { only the token this request was refused with - see
+    TRALClientJWTAuth.HandleChallenge: a token another client already renewed
+    is kept }
+  vSent := nil;
+  if ARequest <> nil then
+    vSent := ARequest.Params.GetKind['Authorization', rpkHEADER];
+  if (vSent = nil) or (vSent.AsString = 'Bearer ' + FAccessToken) then
+  begin
+    FAccessToken := '';
+    FExpiresAt := 0;
+  end;
   Result := True;
 end;
 

@@ -13,7 +13,13 @@ uses
   {$ENDIF}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
   RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
-  RALCompress, RALResponse, RALStream;
+  RALCompress, RALResponse, RALStream, RALTools;
+
+{ whether the RTL lets the engine veto a redirect before it is followed - see
+  KeepOnTLS; tested by declaration, like RALNETHTTP_VERSIONED below }
+{$IF Declared(THTTPRedirectEvent)}
+  {$DEFINE RALNETHTTP_REDIRECTEVENT}
+{$IFEND}
 
 type
   { TRALnetHTTPClientHTTP }
@@ -27,6 +33,18 @@ type
       state of the shared TRANSPORT, not of one client - see PoolMatchCap }
     FShared: TNetHTTPClient;
     FSharedKey: StringRAL;
+    { what FSharedKey was built from - a TRALnetHTTPSetup, see the
+      implementation - so a call to the same place with the same settings does
+      not build the key again }
+    FSetupAuthority: StringRAL;
+    FSetupUserAgent: StringRAL;
+    FSetupConnect: IntegerRAL;
+    FSetupRequest: IntegerRAL;
+    FSetupRedirects: IntegerRAL;
+    FSetupVersion: TRALHTTPVersion;
+    FSetupKeepAlive: IntegerRAL;
+    FSetupPolicy: StringRAL;
+    FSetupNoDowngrade: boolean;
 
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
@@ -34,11 +52,18 @@ type
     /// pin, no event and Verify left alone, the RTL keeps the behaviour it
     /// always had and does not even go fetch the certificate to show it.
     function WantsCertHandler: boolean;
-    /// Whether this call may run over a transport shared with other clients.
-    /// The certificate policy is no longer in the way: it is part of the pool
-    /// KEY, so everyone on a shared transport judges certificates by the same
-    /// rules - see CertPolicyKey and TRALnetHTTPHolder.Owner.
+    /// Whether this call may run over a transport shared with other clients:
+    /// ShareConnection, and no say over the certificate - see the body for
+    /// why the RTL rules that out.
     function CanShare: boolean;
+    {$IFDEF RALNETHTTP_REDIRECTEVENT}
+    /// Refuses a redirect that would take a TLS call to plain http. Installed
+    /// only where TLS is required (SSL.Required or a pin), and stateless, so
+    /// a shared transport can carry it.
+    class procedure KeepOnTLS(const Sender: TObject; const ARequest: IHTTPRequest;
+                              const AResponse: IHTTPResponse; ARedirections: Integer;
+                              var AAllow: Boolean);
+    {$ENDIF}
   protected
     /// Picks the transport for this call, borrowing or giving back as the
     /// settings require, and returns it already configured.
@@ -123,23 +148,17 @@ type
       different intervals would share a transport and one would decide for the
       other. }
     KeepAlive: IntegerRAL;
-    { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER.
-
-      The validation handler is installed ON THE TRANSPORT, and the one who
-      installs it is the first client to ask for it. If two clients with
-      different policies shared a transport, one's decision would stand for the
-      other - which is a security hole, not a performance one.
-
-      Putting the policy in the key, only those with an IDENTICAL policy share:
-      same pins, same verification mode and literally the same method (code and
-      instance). There is then nothing left to disagree about.
-
-      One difference is worth noting honestly: the Sender reaching the event is
-      the transport's OWNER at that moment (see TRALnetHTTPHolder.Owner), not
-      necessarily the client that made the request. Since the policy is the
-      same the decision is the same, but anyone using Sender for anything else
-      has to know this. }
+    { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER. Only the
+      clients that leave the certificate to the engine share at all (see
+      CanShare), and for them it is little more than the Verify mode - but with
+      it in the key no rule can ever put two policies on one transport by
+      accident: a TLS connection is judged once, at its handshake, and whoever
+      reuses it inherits the verdict of whoever opened it. }
     CertPolicy: StringRAL;
+    { whether a redirect may leave TLS - see KeepOnTLS. On a shared transport
+      it is SSL.Required alone (a pin keeps its client off the pool), and it
+      is a handler on the object, so it is part of the key too }
+    NoDowngrade: boolean;
     function Key: StringRAL;
   end;
 
@@ -150,23 +169,6 @@ type
       is the sign that the holder may die - and it is a list rather than a
       counter for exactly what comes next. }
     Sharers: TList;
-    { THE CLIENT THAT ANSWERS FOR THE CERTIFICATE POLICY RIGHT NOW.
-
-      The transport is shared; the validation handler cannot be: it is a METHOD
-      of one TRALnetHTTPClientHTTP, and that object may be destroyed while
-      another sharing the same transport carries on using it. Installing one
-      client's method on everyone's transport would leave a dangling pointer
-      waiting for the next TLS negotiation.
-
-      So what goes to the RTL is the HOLDER's handler, assigned ONCE at
-      creation - the RTL never sees the pointer change, so there is no torn
-      write with several threads - and it forwards to Owner. Each client
-      leaving hands Owner over to another that is still alive.
-
-      Forwarding to any of them gives the same answer: Verify, Pins, the user's
-      handler and the host all go into the pool key, so whoever shares a
-      transport has an IDENTICAL policy - see CertPolicy. }
-    Owner: TRALnetHTTPClientHTTP;
     {$IFDEF RALWindows}
     { Whether this transport is currently capped at one connection, and what
       WinHTTP had there before - so putting it back means putting back the
@@ -177,8 +179,6 @@ type
     {$ENDIF}
     constructor Create;
     destructor Destroy; override;
-    procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
-                           const Certificate: TCertificate; var Accepted: boolean);
     { Caps this transport at one connection, which is what turns h2 into
       multiplexing. Called before the first request, from PoolAcquire. }
     procedure CapConnections;
@@ -198,6 +198,8 @@ begin
             IntToStr(ConnectTimeout) + '|' + IntToStr(RequestTimeout) + '|' +
             IntToStr(MaxRedirects) + '|' + IntToStr(Ord(Version)) + '|' +
             IntToStr(KeepAlive) + '|' + CertPolicy;
+  if NoDowngrade then
+    Result := Result + '|tls';
 end;
 
 constructor TRALnetHTTPHolder.Create;
@@ -213,28 +215,6 @@ begin
   inherited;
 end;
 
-
-procedure TRALnetHTTPHolder.ValidateCert(const Sender: TObject;
-  const ARequest: TURLRequest; const Certificate: TCertificate;
-  var Accepted: boolean);
-begin
-  { Under the pool lock on purpose: it is what guarantees the Owner read here
-    is still alive by the time it is called, since a client leaving only swaps
-    Owner inside this very lock. It costs nothing - validating happens once per
-    handshake, not per request - and it does not deadlock on re-entry, because
-    TCriticalSection is recursive. }
-  vPoolLock.Enter;
-  try
-    if Owner <> nil then
-      Owner.ValidateCert(Sender, ARequest, Certificate, Accepted)
-    else
-      { with nobody left to answer for the policy, refusing is the only safe
-        answer: accepting would pass a certificate no one ever checked }
-      Accepted := False;
-  finally
-    vPoolLock.Leave;
-  end;
-end;
 
 {$IFDEF RALWindows}
 { ONE CONNECTION FOR EVERY REQUEST, which is what HTTP/2 promises and WinHTTP
@@ -276,21 +256,76 @@ end;
   Outside Windows none of this exists nor is needed: on Android
   HttpURLConnection is OkHttp underneath, which multiplexes h2 in its own pool,
   and on macOS/iOS NSURLSession does the same. }
+
+type
+  { a private field found by RTTI, for one class }
+  PRALRttiSlot = ^TRALRttiSlot;
+  TRALRttiSlot = record
+    Cls: TClass;
+    Field: TRttiField;
+  end;
+
+var
+  { ONE RTTI context for the life of the unit. A context created and freed per
+    call - one per response, in NegotiatedProtocol - rebuilt the RTTI pool
+    whenever no other context was alive, and a TRttiField found is only good
+    while some context keeps that pool }
+  gRttiContext: TRttiContext;
+  { each private field the engine reads, found once: the classes behind
+    THTTPClient are always the same ones, and GetField walked the class's
+    fields comparing names on every response }
+  gSlotHttpClient: PRALRttiSlot = nil;
+  gSlotWSession: PRALRttiSlot = nil;
+  gSlotRespRequest: PRALRttiSlot = nil;
+  gSlotReqRequest: PRALRttiSlot = nil;
+
+{ The field AName of AClass, kept in ASlot by whichever thread looks first -
+  the others read it with no lock: the record is filled before its address is
+  published, and never changes after. A class other than the one kept, which
+  this RTL never hands over, is looked up every time and not kept }
+function RttiField(var ASlot: PRALRttiSlot; AClass: TClass; const AName: string): TRttiField;
+var
+  vSlot, vNew: PRALRttiSlot;
+  vType: TRttiType;
+begin
+  vSlot := ASlot;
+  if (vSlot <> nil) and (vSlot^.Cls = AClass) then
+  begin
+    Result := vSlot^.Field;
+    Exit;
+  end;
+
+  Result := nil;
+  vType := gRttiContext.GetType(AClass);
+  if vType <> nil then
+    Result := vType.GetField(AName);
+
+  if vSlot = nil then
+  begin
+    New(vNew);
+    vNew^.Cls := AClass;
+    vNew^.Field := Result;
+    if AtomicCmpExchange(Pointer(ASlot), Pointer(vNew), nil) <> nil then
+      Dispose(vNew); // another thread kept it first
+  end;
+end;
+
+procedure FreeRttiSlot(var ASlot: PRALRttiSlot);
+begin
+  if ASlot <> nil then
+    Dispose(ASlot);
+  ASlot := nil;
+end;
+
 function WinHttpSessionOf(AHttp: TNetHTTPClient): Pointer;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vValue: TValue;
   vPlatform: TObject;
 begin
   Result := nil;
-  vCtx := TRttiContext.Create;
   try
-    vType := vCtx.GetType(AHttp.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FHttpClient');
+    vField := RttiField(gSlotHttpClient, AHttp.ClassType, 'FHttpClient');
     if vField = nil then
       Exit;
     vValue := vField.GetValue(AHttp);
@@ -300,10 +335,7 @@ begin
     if vPlatform = nil then
       Exit;
 
-    vType := vCtx.GetType(vPlatform.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWSession');
+    vField := RttiField(gSlotWSession, vPlatform.ClassType, 'FWSession');
     if vField = nil then
       Exit;
     Result := vField.GetValue(vPlatform).AsType<Pointer>;
@@ -314,7 +346,6 @@ begin
     on E: Exception do
       Result := nil;
   end;
-  vCtx.Free;
 end;
 
 const
@@ -402,53 +433,11 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF RALWindows}
-type
-  { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
-    Delphi 10.1 on, so the engine carries its own. }
-  TRALCertContext = record
-    dwCertEncodingType: DWORD;
-    pbCertEncoded: PByte;
-    cbCertEncoded: DWORD;
-    pCertInfo: Pointer;
-    hCertStore: Pointer;
-  end;
-  PRALCertContext = ^TRALCertContext;
+{ The three below are declared for every platform and only DO something on
+  Windows, so they live outside the Windows block - inside it they left the
+  declarations without a body everywhere else, and the unit stopped compiling
+  for Android, Linux and macOS. }
 
-{ Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
-  commented out in Winapi.Windows. One line settles it. }
-function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
-  external 'crypt32.dll' name 'CertFreeCertificateContext';
-
-{ THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
-  what this engine did not have.
-
-  The TCertificate the RTL hands to the validation event carries Subject,
-  Issuer, serial number and dates: all of it copyable, none of it identifying
-  the certificate itself. Comparing those fields WOULD LOOK like pinning and
-  would not be.
-
-  But the certificate is right there, one level down: the event's ARequest is
-  the platform's THTTPRequest, and on Windows it holds the WinHTTP handle, from
-  which WINHTTP_OPTION_SERVER_CERT_CONTEXT returns the CERT_CONTEXT with the
-  raw bytes (pbCertEncoded). SHA-256 over them is the fingerprint - the same
-  one openssl prints with "x509 -fingerprint -sha256".
-
-  Through RTTI for the same reason as LimitToOneConnection: the field is
-  private. Should any step fail it returns '', and RAL then treats it as an
-  engine that cannot read a fingerprint, exactly as before. }
-{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
-
-  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
-  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
-  comes back reported as 1.1, and it is not a rounding error: it was measured
-  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
-
-  WinHTTP does know, and it answers on the REQUEST handle, under
-  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
-  private FWRequest of its own, which is the same door ServerCertFingerprint
-  already opens one level up - and the same RTTI caveat applies: any step that
-  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
 { ONE CONNECTION FOR THIS TRANSPORT - see the long note on LimitToOneConnection.
   Remembers what WinHTTP had, so taking it off puts back the real value and not
   a guess at the default. Called from PoolAcquire, under the pool lock. }
@@ -489,9 +478,11 @@ begin
 end;
 
 { Finds the holder this key belongs to and lets it match the cap to the version
-  that was actually negotiated. Called once per response, and the lookup is a
-  string compare over a list with one entry per DISTINCT configuration - never
-  one per client - so it costs nothing next to the request that just went out. }
+  that was actually negotiated - on Windows, the only place the cap exists, and
+  only for an answer that can take it off (see SendUrl). The lookup is a string
+  compare over a list with one entry per DISTINCT configuration - never one per
+  client. }
+{$IFDEF RALWindows}
 procedure PoolMatchCap(const AKey: StringRAL; AVersion: TRALHTTPVersion);
 var
   vIdx: IntegerRAL;
@@ -508,11 +499,40 @@ begin
     vPoolLock.Leave;
   end;
 end;
+{$ENDIF}
 
+{$IFDEF RALWindows}
+type
+  { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
+    Delphi 10.1 on, so the engine carries its own. }
+  TRALCertContext = record
+    dwCertEncodingType: DWORD;
+    pbCertEncoded: PByte;
+    cbCertEncoded: DWORD;
+    pCertInfo: Pointer;
+    hCertStore: Pointer;
+  end;
+  PRALCertContext = ^TRALCertContext;
+
+{ Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
+  commented out in Winapi.Windows. One line settles it. }
+function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
+  external 'crypt32.dll' name 'CertFreeCertificateContext';
+
+{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
+
+  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
+  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
+  comes back reported as 1.1, and it is not a rounding error: it was measured
+  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
+
+  WinHTTP does know, and it answers on the REQUEST handle, under
+  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
+  private FWRequest of its own, which is the same door ServerCertFingerprint
+  already opens one level up - and the same RTTI caveat applies: any step that
+  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
 function NegotiatedProtocol(const AResponse: IHTTPResponse): TRALHTTPVersion;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vObj: TObject;
   vHandle: Pointer;
@@ -522,15 +542,11 @@ begin
   if AResponse = nil then
     Exit;
 
-  vCtx := TRttiContext.Create;
   try
     vObj := AResponse as TObject;
     if vObj = nil then
       Exit;
-    vType := vCtx.GetType(vObj.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWRequest');
+    vField := RttiField(gSlotRespRequest, vObj.ClassType, 'FWRequest');
     if vField = nil then
       Exit;
     vHandle := vField.GetValue(vObj).AsType<Pointer>;
@@ -553,13 +569,27 @@ begin
     on E: Exception do
       Result := rhvDefault;
   end;
-  vCtx.Free;
 end;
 
+{ THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
+  what this engine did not have.
+
+  The TCertificate the RTL hands to the validation event carries Subject,
+  Issuer, serial number and dates: all of it copyable, none of it identifying
+  the certificate itself. Comparing those fields WOULD LOOK like pinning and
+  would not be.
+
+  But the certificate is right there, one level down: the event's ARequest is
+  the platform's THTTPRequest, and on Windows it holds the WinHTTP handle, from
+  which WINHTTP_OPTION_SERVER_CERT_CONTEXT returns the CERT_CONTEXT with the
+  raw bytes (pbCertEncoded). SHA-256 over them is the fingerprint - the same
+  one openssl prints with "x509 -fingerprint -sha256".
+
+  Through RTTI for the same reason as LimitToOneConnection: the field is
+  private. Should any step fail it returns '', and RAL then treats it as an
+  engine that cannot read a fingerprint, exactly as before. }
 function ServerCertFingerprint(const ARequest: TURLRequest): StringRAL;
 var
-  vCtx: TRttiContext;
-  vType: TRttiType;
   vField: TRttiField;
   vHandle: Pointer;
   vCert: PRALCertContext;
@@ -570,12 +600,8 @@ begin
   Result := '';
   if not (ARequest is TObject) then
     Exit;
-  vCtx := TRttiContext.Create;
   try
-    vType := vCtx.GetType(ARequest.ClassType);
-    if vType = nil then
-      Exit;
-    vField := vType.GetField('FWRequest');
+    vField := RttiField(gSlotReqRequest, ARequest.ClassType, 'FWRequest');
     if vField = nil then
       Exit;
     vHandle := vField.GetValue(ARequest).AsType<Pointer>;
@@ -602,7 +628,6 @@ begin
     on E: Exception do
       Result := '';
   end;
-  vCtx.Free;
 end;
 {$ENDIF}
 
@@ -624,14 +649,11 @@ begin
     begin
       vHolder := TRALnetHTTPHolder(vPool.Objects[vIdx]);
       vHolder.Sharers.Add(AClient);
-      if vHolder.Owner = nil then
-        vHolder.Owner := AClient;
     end
     else
     begin
       vHolder := TRALnetHTTPHolder.Create;
       vHolder.Sharers.Add(AClient);
-      vHolder.Owner := AClient;
       vHolder.Http := TNetHTTPClient.Create(nil);
       {$IFDEF DELPHI10_1UP}
       vHolder.Http.Asynchronous := False;
@@ -640,22 +662,18 @@ begin
       vHolder.Http.MaxRedirects := ASetup.MaxRedirects;
       {$ENDIF}
       vHolder.Http.UserAgent := ASetup.UserAgent;
-
-      { THE CERTIFICATE POLICY GOES ALONG, and it has to be here.
-
-        On its own transport the handler is installed by the request itself,
-        further down. On a borrowed transport that stretch does not run - it
-        only covers the own transport - and without this, sharing handed back a
-        connection with NO policy at all: the client's pin and
-        OnValidateServerCert were dropped in silence, which is the worst way to
-        lose them.
-
-        Installed exactly once, at creation, and pointing at the HOLDER's
-        handler - see TRALnetHTTPHolder.Owner for why it is not the client's.
-        The sharers have an identical policy by construction of the key, so
-        asking the first one is enough. }
-      if AClient.WantsCertHandler then
-        vHolder.Http.OnValidateServerCertificate := vHolder.ValidateCert;
+      { no certificate handler, ever: a client that needs one never shares -
+        see CanShare }
+      {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
+      if ASetup.NoDowngrade then
+        vHolder.Http.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS;
+      { nothing of the application's ever runs here, so nothing needs the main
+        thread - see KeepOnTLS }
+      vHolder.Http.SynchronizeEvents := False;
+      {$ELSEIF Defined(DELPHI10_1UP)}
+      { an RTL with no say over a redirect: TLS required means none followed }
+      vHolder.Http.HandleRedirects := not ASetup.NoDowngrade;
+      {$IFEND}
       {$IFDEF RALNETHTTP_VERSIONED}
       case ASetup.Version of
         rhv11: vHolder.Http.ProtocolVersion := THTTPProtocolVersion.HTTP_1_1;
@@ -708,17 +726,6 @@ begin
     vHolder := TRALnetHTTPHolder(vPool.Objects[vIdx]);
     vHolder.Sharers.Remove(AClient);
 
-    { the one leaving may not go on answering for everyone else's certificate:
-      Owner is handed to someone who stays. If nobody stays, the list is empty
-      and the holder dies just below. }
-    if vHolder.Owner = AClient then
-    begin
-      if vHolder.Sharers.Count > 0 then
-        vHolder.Owner := TRALnetHTTPClientHTTP(vHolder.Sharers[0])
-      else
-        vHolder.Owner := nil;
-    end;
-
     if vHolder.Sharers.Count <= 0 then
     begin
       vPool.Delete(vIdx);
@@ -733,15 +740,24 @@ end;
   to; the path and the query stay out }
 function RALAuthorityOf(const AURL: StringRAL): StringRAL;
 var
-  vSlash, vEnd: IntegerRAL;
+  vSlash, vInt: IntegerRAL;
 begin
-  Result := LowerCase(AURL);
+  { cut first, then lowered by hand: LowerCase took the whole URL - path and
+    query string too - to UTF-16 and back, and a copy of what followed the
+    '//' was made only to find the next '/'. Only 'A'..'Z' change, as with
+    LowerCase }
+  Result := AURL;
   vSlash := Pos(StringRAL('//'), Result);
-  if vSlash <= 0 then
-    Exit;
-  vEnd := Pos(StringRAL('/'), Copy(Result, vSlash + 2, Length(Result)));
-  if vEnd > 0 then
-    Result := Copy(Result, 1, vSlash + vEnd);
+  if vSlash > 0 then
+    for vInt := vSlash + 2 to Length(Result) do
+      if Result[POSINISTR - 1 + vInt] = '/' then
+      begin
+        Result := Copy(Result, 1, vInt - 1);
+        Break;
+      end;
+  for vInt := POSINISTR to RALHighStr(Result) do
+    if (Result[vInt] >= 'A') and (Result[vInt] <= 'Z') then
+      Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
 end;
 
 { TRALnetHTTPClientHTTP }
@@ -910,14 +926,41 @@ end;
 
 function TRALnetHTTPClientHTTP.CanShare: boolean;
 begin
-  { The certificate policy no longer stands in the way of sharing - it goes
-    into the KEY, so the sharers have an identical policy. This used to return
-    False whenever the client wanted a say over the certificate, and the effect
-    was the opposite of the intent: an application using a pin or
-    OnValidateServerCert - that is, any application taking TLS seriously -
-    never shared anything. }
-  Result := Parent.ShareConnection;
+  { A client with a say over the certificate - a pin, OnValidateServerCert,
+    svNever - keeps a transport of its own, and what decides that is the RTL,
+    not a preference. THTTPClient keeps the verdict on the OBJECT, not on the
+    request (FSecureFailureReasons: a TLS failure of one request writes it,
+    every Execute clears it), and fires the event on every HTTPS request
+    rather than once per handshake. On a shared transport one request could
+    read another's verdict - a bad certificate seen as good by a handler
+    deciding on Trusted, or the event and the pin skipped on a good
+    connection - and every judgement ran under the pool's global lock, with
+    the host of whichever client happened to own the transport.
+    Clients that leave the certificate to the engine share as before: nothing
+    of theirs is decided per request. }
+  Result := Parent.ShareConnection and not WantsCertHandler;
 end;
+
+{$IFDEF RALNETHTTP_REDIRECTEVENT}
+{ The RTL follows a redirect on its own, after every check that refuses an
+  http URL up front has passed, and sends the request again - headers, token,
+  body - to wherever Location points. To http:// that is in the clear. Refused
+  here, its loop stops and the 3xx itself is the answer, as on Indy and fpHTTP.
+  TNetHTTPClient hands its events to the main thread through Synchronize when
+  SynchronizeEvents is on (the default) and a VCL or FMX application is linked
+  - which waits for ever in a service, or with the main thread blocked on the
+  caller. This touches no UI, so it runs on the calling thread: SynchronizeEvents
+  is off on a shared transport, and on an own one unless the application's
+  certificate handler is installed, which keeps running where it always did. }
+class procedure TRALnetHTTPClientHTTP.KeepOnTLS(const Sender: TObject;
+  const ARequest: IHTTPRequest; const AResponse: IHTTPResponse;
+  ARedirections: Integer; var AAllow: Boolean);
+begin
+  if LeavesTLS(SameText(ARequest.URL.Scheme, 'https'),
+               StringRAL(AResponse.HeaderValue['Location'])) then
+    AAllow := False;
+end;
+{$ENDIF}
 
 function TRALnetHTTPClientHTTP.PickTransport(const AURL: StringRAL): TNetHTTPClient;
 var
@@ -942,6 +985,22 @@ begin
   vSetup.Version := Parent.HTTPVersion;
   vSetup.KeepAlive := Parent.KeepAliveInterval;
   vSetup.CertPolicy := CertPolicyKey;
+  vSetup.NoDowngrade := TLSRequired;
+
+  { the same place with the same settings - every call but the first, as a
+    rule - keeps the transport and the key it has: the key is ten strings
+    joined, and it was built on every request }
+  if (FSharedKey <> '') and (vSetup.Authority = FSetupAuthority) and
+     (vSetup.UserAgent = FSetupUserAgent) and
+     (vSetup.ConnectTimeout = FSetupConnect) and
+     (vSetup.RequestTimeout = FSetupRequest) and
+     (vSetup.MaxRedirects = FSetupRedirects) and (vSetup.Version = FSetupVersion) and
+     (vSetup.KeepAlive = FSetupKeepAlive) and (vSetup.CertPolicy = FSetupPolicy) and
+     (vSetup.NoDowngrade = FSetupNoDowngrade) then
+  begin
+    Result := FShared;
+    Exit;
+  end;
 
   vKey := vSetup.Key;
   if vKey <> FSharedKey then
@@ -950,6 +1009,15 @@ begin
     FShared := PoolAcquire(vSetup, Self);
     FSharedKey := vKey;
   end;
+  FSetupAuthority := vSetup.Authority;
+  FSetupUserAgent := vSetup.UserAgent;
+  FSetupConnect := vSetup.ConnectTimeout;
+  FSetupRequest := vSetup.RequestTimeout;
+  FSetupRedirects := vSetup.MaxRedirects;
+  FSetupVersion := vSetup.Version;
+  FSetupKeepAlive := vSetup.KeepAlive;
+  FSetupPolicy := vSetup.CertPolicy;
+  FSetupNoDowngrade := vSetup.NoDowngrade;
   Result := FShared;
 end;
 
@@ -1058,6 +1126,20 @@ begin
     {$ENDIF}
     vHttp.UserAgent := Parent.UserAgent;
 
+    { per request: a pin is per host, so TLSRequired is too }
+    {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
+    if TLSRequired then
+      vHttp.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS
+    else
+      vHttp.OnRedirect := nil;
+    { the application's certificate handler keeps running where it always
+      did; RAL's own redirect check does not need the main thread - see
+      KeepOnTLS }
+    vHttp.SynchronizeEvents := WantsCertHandler;
+    {$ELSEIF Defined(DELPHI10_1UP)}
+    vHttp.HandleRedirects := not TLSRequired;
+    {$IFEND}
+
     {$IFDEF RALNETHTTP_VERSIONED}
     case Parent.HTTPVersion of
       rhv11: vHttp.ProtocolVersion := THTTPProtocolVersion.HTTP_1_1;
@@ -1145,7 +1227,9 @@ begin
       vParam := ARequest.Params.Index[vInt];
       if vParam.Kind = rpkHEADER then
       begin
-        vHeaders[vIdx] := TNameValuePair.Create(vParam.ParamName, vParam.AsString);
+        { WinHTTP reads a CRLF inside a header as the start of another one }
+        vHeaders[vIdx] := TNameValuePair.Create(RALSafeHeaderText(vParam.ParamName),
+                                                RALSafeHeaderText(vParam.AsString));
         vIdx := vIdx + 1;
       end
       else if vParam.Kind = rpkCOOKIE then
@@ -1158,7 +1242,7 @@ begin
 
     if vCookies <> '' then
     begin
-      vHeaders[vIdx] := TNameValuePair.Create('Cookie', vCookies);
+      vHeaders[vIdx] := TNameValuePair.Create('Cookie', RALSafeHeaderText(vCookies));
       vIdx := vIdx + 1;
     end;
 
@@ -1212,8 +1296,15 @@ begin
 
         { AND ONLY NOW the one-connection cap, because only now is there an
           answer to cap for. Asking for h2 is not getting it, and one connection
-          under HTTP/1.1 queues what it should run in parallel. }
-        PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
+          under HTTP/1.1 queues what it should run in parallel. Only where the
+          cap can be on - Windows, a shared transport opened for h2 - and an
+          answer in 1.x takes it off: the pool's global lock was taken for every
+          response, everywhere, to find there was nothing to do }
+        {$IFDEF RALWindows}
+        if (FSharedKey <> '') and (FSetupVersion = rhv2) and
+           (AResponse.ProtocolVersion in [rhv10, rhv11]) then
+          PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
+        {$ENDIF}
 
         { Order matters, and it used to be wrong: CompressType and the crypto
           options were assigned BEFORE the response headers were appended, so
@@ -1270,12 +1361,23 @@ initialization
   vPool.Sorted := True;          // binary IndexOf: the pool is looked up per call
   vPool.Duplicates := dupError;  // two entries under one key would be a defect
   vPoolLock := TCriticalSection.Create;
+  {$IFDEF RALWindows}
+  gRttiContext := TRttiContext.Create;
+  {$ENDIF}
   { qualified: Winapi.Windows, which comes in here only for WinHTTP, has a
     RegisterClass of its own - the window one - that would win the resolution }
   System.Classes.RegisterClass(TRALnetHTTPClientHTTP);
   RegisterEngine(TRALnetHTTPClientHTTP);
 
 finalization
+  {$IFDEF RALWindows}
+  { the fields belong to the context's pool: they go first }
+  FreeRttiSlot(gSlotHttpClient);
+  FreeRttiSlot(gSlotWSession);
+  FreeRttiSlot(gSlotRespRequest);
+  FreeRttiSlot(gSlotReqRequest);
+  gRttiContext.Free;
+  {$ENDIF}
   { whatever is left here is a transport whose client was never freed - there
     is nobody to give it back to, and leaking it would be worse than closing }
   if vPool <> nil then

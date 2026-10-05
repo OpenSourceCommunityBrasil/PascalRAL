@@ -17,6 +17,7 @@ type
     function GetDisplayName: string; override;
 
     procedure SetPage(const AValue: TStrings);
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -126,6 +127,16 @@ begin
 end;
 
 { TRALResponsePage }
+
+procedure TRALResponsePage.AssignTo(Dest: TPersistent);
+begin
+  { TCollection.Assign copies item by item: without this, assigning
+    ResponsePages raised }
+  if Dest is TRALResponsePage then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALResponsePage.Create(ACollection: TCollection);
 begin

@@ -37,10 +37,14 @@ type
     /// The value is only unique and only comparable WITHIN one running server:
     /// each engine hands over whatever it already has - http.sys the peer's
     /// address and port (its own ConnectionId is per stream under HTTP/2, and
-    /// its RawConnectionId is not filled on every Windows), the socket engines
-    /// the connection object or its handle - so it must never be persisted,
-    /// sent to a client, or compared across servers. A reused connection keeps the same value for its whole life;
-    /// a value may be reused after its connection is gone.
+    /// its RawConnectionId is not filled on every Windows), mORMot2's socket
+    /// modes a counter of their own, the other engines the connection object
+    /// or its handle with the peer's port above it - the handle alone came
+    /// back for the next connection, and a hundred connections in a row
+    /// counted as one - so it must never be persisted, sent to a client, or
+    /// compared across servers. A reused connection keeps the same value for
+    /// its whole life; a value may be reused after its connection is gone,
+    /// once the client's port comes round again.
     ///
     /// ZERO means the engine cannot tell, which is a legitimate answer and not
     /// an error - CGI has no connection of its own, and UniGUI's belongs to
@@ -94,8 +98,14 @@ type
     FRouteOwner: TObject;
     FRouteResolved: boolean;
     FTrusted: boolean;
+    FRouteData: TObject;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
+    procedure SetAuthorization(const AValue: TRALAuthorization);
+    procedure SetClientInfo(const AValue: TRALClientInfo);
+    procedure SetRouteData(AValue: TObject);
+    function GetRoute: TCollectionItem;
+    procedure SetRoute(AValue: TCollectionItem);
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
@@ -148,9 +158,22 @@ type
     /// Set by a white list plugin: the address is trusted, and the protections
     /// that run after it (black list, brute force, flood) leave the request alone
     property Trusted: boolean read FTrusted write FTrusted;
+    /// The route answering this request: a TRALBaseRoute of RALRoutes, which
+    /// cannot be named here because RALRoutes uses this unit. It is
+    /// ResolvedRoute seen as a collection item: the server resolves it -
+    /// before OnRequest - and it stays nil when none answers. Its InputParams
+    /// and OutputParams carry the order the route declares, which the params
+    /// themselves, kept in the order they arrived, do not.
+    property Route: TCollectionItem read GetRoute write SetRoute;
+    /// What the module answering the request worked out while deciding to
+    /// answer it, for its handler to use instead of working it out again - the
+    /// WebModule keeps the file it resolved here. OWNED by the request: freed
+    /// with it, or when another object is assigned. Server side only, and
+    /// Clone leaves it behind
+    property RouteData: TObject read FRouteData write SetRouteData;
   published
-    property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
-    property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
+    property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
+    property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Host: StringRAL read FHost write FHost;
     /// The SCHEME, not the version: 'HTTP' or 'HTTPS'. Which version carried
@@ -215,26 +238,62 @@ end;
 
 function TRALRequest.GetRequestText: StringRAL;
 begin
-  Result := GetRequestEncText;
+  { the body as text, as on the response: on the client this ran gzip and AES
+    and rewrote ContentType. An engine wants RequestStream }
+  Result := GetRequestEncText(False);
+end;
+
+procedure TRALRequest.SetAuthorization(const AValue: TRALAuthorization);
+begin
+  RALAssignOwned(FAuthorization, AValue);
+end;
+
+procedure TRALRequest.SetClientInfo(const AValue: TRALClientInfo);
+begin
+  RALAssignOwned(FClientInfo, AValue);
+end;
+
+function TRALRequest.GetRoute: TCollectionItem;
+begin
+  if FResolvedRoute is TCollectionItem then
+    Result := TCollectionItem(FResolvedRoute)
+  else
+    Result := nil;
+end;
+
+procedure TRALRequest.SetRoute(AValue: TCollectionItem);
+begin
+  FResolvedRoute := AValue;
+end;
+
+procedure TRALRequest.SetRouteData(AValue: TObject);
+begin
+  if AValue = FRouteData then
+    Exit;
+  FRouteData.Free;
+  FRouteData := AValue;
 end;
 
 procedure TRALRequest.ParseQueryParams(const AValue: StringRAL);
-var
-  sl: TStringList;
 begin
-  sl := TStringList.Create;
-  try
-    sl.Delimiter := '&';
-    sl.DelimitedText := AValue;
-    Params.AppendParams(sl, rpkQUERY);
-  finally
-    FreeAndNil(sl);	
-  end;
+  { the same parser as everywhere else (AppendParamsText): '&' only, decoded,
+    empty segments skipped. A TStringList's DelimitedText also split on spaces
+    and read quotes - two parsers with two answers for one query string - and
+    the engines that set Query then parsed it a second time }
+  Params.AppendParamsText(AValue, rpkQUERY);
 end;
 
 function TRALRequest.GetURL: StringRAL;
 begin
-  Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
+  { scheme://host/path - the path is fixed already (SetQuery). It wrote one
+    slash, 'http:/host/route', and TRALServerOAuth takes its signature base
+    string over this; and an engine that left HttpVersion empty, as the CGIs
+    did, made it ':/' }
+  if FHttpVersion = '' then
+    Result := 'http://'
+  else
+    Result := LowerCase(FHttpVersion) + '://';
+  Result := Result + FHost + FQuery;
 end;
 
 procedure TRALRequest.SetQuery(const AValue: StringRAL);
@@ -273,6 +332,7 @@ begin
   { Protocol is not copied here: it is a face of ProtocolVersion, which the
     inherited Clone above already carried over }
   ASource.Query := Self.Query;
+  ASource.Route := Self.Route;
 end;
 
 constructor TRALRequest.Create(AOwner: TObject);
@@ -285,6 +345,7 @@ end;
 
 destructor TRALRequest.Destroy;
 begin
+  FreeAndNil(FRouteData);
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
   inherited;
@@ -439,11 +500,14 @@ begin
 
     Params.CompressType := ctNone;
     Params.CriptoOptions.CriptType := crNone;
-
-    FStream := Params.EncodeBody(vContentType, vContentDisposition);
-
-    Params.CompressType := vCompress;
-    Params.CriptoOptions.CriptType := vCripto;
+    try
+      FStream := Params.EncodeBody(vContentType, vContentDisposition);
+    finally
+      { in a finally: an EncodeBody that raised left the request's params
+        with no compression and no cipher for the rest of their life }
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
   end;
   Result := FStream;
 end;
@@ -482,19 +546,29 @@ end;
 function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
   vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
   if not AEncode then
   begin
-    Params.CriptoOptions.CriptType := crNone;
-    Params.CriptoOptions.Key := '';
+    { the plain body, and nothing touched: no cipher key wiped, no
+      ContentType or ContentCompress rewritten }
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
     Params.CompressType := ctNone;
-  end
-  else
-  begin
-    Params.CriptoOptions.CriptType := ContentCripto;
-    Params.CriptoOptions.Key := CriptoKey;
-    Params.CompressType := ContentCompress;
+    Params.CriptoOptions.CriptType := crNone;
+    try
+      Result := Params.EncodeBody(vContentType, vContentDisposition, False);
+    finally
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
+    Exit;
   end;
+
+  Params.CriptoOptions.CriptType := ContentCripto;
+  Params.CriptoOptions.Key := CriptoKey;
+  Params.CompressType := ContentCompress;
   { False: a multipart REQUEST goes out uncompressed. The server is the one that
     parses it, and a server that reads multipart natively - libmicrohttpd, under
     the Sagui engine - parses before any decompression layer, so it saw gzip

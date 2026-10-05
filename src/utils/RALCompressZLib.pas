@@ -34,16 +34,6 @@ const
 
 { TRALCompressZLib }
 
-{ the working buffer: DEFAULTBUFFERSTREAMSIZE at most, the input when smaller }
-function WorkBuffer(ASize: Int64RAL): TBytes;
-begin
-  if ASize > DEFAULTBUFFERSTREAMSIZE then
-    ASize := DEFAULTBUFFERSTREAMSIZE;
-  if ASize < 1 then
-    ASize := 1;
-  SetLength(Result, ASize);
-end;
-
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
   vBuf: TBytes;
@@ -59,7 +49,12 @@ begin
   if vSize = 0 then
     Exit;
 
-  vBuf := WorkBuffer(AInStream.Size);
+  { a work buffer of a fixed size. Sized from the input, it came out empty
+    for an empty one - and vBuf[0] of it is a range error - and, on the way
+    back, as small as the compressed body: a 20-byte deflate of a megabyte of
+    zeros took fifty thousand turns of the loop. Nor does a body of 40 MB
+    need a 40 MB copy of itself to go through the compressor }
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   {$IFDEF FPC}
   { the CRC of the gzip trailer is taken from the same pieces that go to the
@@ -166,7 +161,7 @@ begin
   if (vFormat = ctDeflate) and StartsWithZlibHeader(AInStream) then
     vFormat := ctZLib;
 
-  vBuf := WorkBuffer(AInStream.Size);
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE); // see InitCompress
   vSource := AInStream;
   {$IFDEF FPC}
   vCRC32 := nil;

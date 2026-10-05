@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
-  RALRequest, RALParams, RALResponse, RALCustomObjects, RALMIMETypes, RALPlugin;
+  RALRequest, RALParams, RALResponse, RALCustomObjects, RALMIMETypes, RALPlugin,
+  RALStream;
 
 const
   RALTOKENName = 'raltoken';
@@ -87,11 +88,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// The server answered 401 (AResponse, with its WWW-Authenticate). The
-    /// authenticator drops or updates what it holds and says whether the
-    /// request is worth sending once more. Called under Lock, only with
-    /// AutoGetToken on
-    function HandleChallenge(AResponse: TRALResponse): boolean; virtual;
+    /// The server answered 401 (AResponse, with its WWW-Authenticate) to
+    /// ARequest, as it was sent. The authenticator drops or updates what it
+    /// holds and says whether the request is worth sending once more. Called
+    /// under Lock, only with AutoGetToken on
+    function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; virtual;
     /// Whether the scheme has what it needs to authenticate a request - a
     /// token, a nonce. When it has not and AutoGetToken is on, Prepare runs
     function IsAuthenticated: boolean; virtual;
@@ -161,6 +162,12 @@ type
       var AHandled: boolean); override;
     /// ppResolveRoute: the plugin's own route, when it is the one requested
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
+    /// What a request this scheme already answered (AResult) means to the
+    /// brute-force protection - see TRALServerPlugin.AttemptOf. The base rule:
+    /// credentials of this scheme that were checked count, refused (401) as a
+    /// guess and accepted as proof; the scheme's own routes say nothing
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
 
     property AuthRoute: TRALBaseRoute read GetAuthRoute write SetAuthRoute;
     property AuthType: TRALAuthTypes read FAuthType;
@@ -212,11 +219,12 @@ type
   protected
     procedure SetRoute(const AValue: StringRAL);
     procedure SetToken(const AValue: StringRAL);
+    procedure SetPayload(const AValue: TRALJWTParams);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// A 401: the token is dropped, and the request goes again with a new one
-    function HandleChallenge(AResponse: TRALResponse): boolean; override;
+    function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     function IsAuthenticated: boolean; override;
     /// Posts to Route for a token (OnBeforeGetToken, or Payload as the body)
     function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
@@ -234,7 +242,7 @@ type
     /// REPLACED on every SetToken, so anything reading it from another thread
     /// has to hold Lock for as long as it uses what it read - or call GetClaim,
     /// which does that for a single claim.
-    property Payload: TRALJWTParams read FPayload write FPayload;
+    property Payload: TRALJWTParams read FPayload write SetPayload;
     property Route: StringRAL read FRoute write SetRoute;
     property Token: StringRAL read FToken write SetToken;
     property OnBeforeGetToken;
@@ -248,6 +256,7 @@ type
     FAlgorithm: TRALJWTAlgorithm;
     FCollectionAuth: TOwnedCollection;
     FAuthToken: TRALBaseRoute;
+    FCookieSameSite: TRALCookieSiteScope;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
     FSignSecretKey: StringRAL;
@@ -261,6 +270,15 @@ type
     { the work of RenewToken; with a request, OnRenewToken is consulted }
     function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
       const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
+    { False, with the 500 already answered, when SignSecretKey is empty }
+    function HasSecretKey(AResponse: TRALResponse): boolean;
+    { OnGetToken or OnGetTokenGen is assigned }
+    function CanIssue: boolean;
+    { the token route logs in (OnGetToken) rather than renews - see BeforeValidate }
+    function LogsIn(ARequest: TRALRequest): boolean;
+    { a first token from OnGetToken; '' when it refused }
+    function IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
+      var AJSONParams: StringRAL): StringRAL;
     procedure SetUseCookie(AValue: Boolean);
     { RFC 6750 3: tells a client WHY it got the 401 - no credentials at all
       (AError empty) or a token that was refused, and what was wrong with it }
@@ -282,6 +300,8 @@ type
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     property OnGetTokenGen: TRALOnTokenJWTGen read FOnGetTokenGen write FOnGetTokenGen;
     /// OnRenewToken for a plain procedure
     property OnRenewTokenGen: TRALOnTokenJWTGen read FOnRenewTokenGen
@@ -290,6 +310,13 @@ type
   published
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property AuthRoute;
+    /// SameSite of the raltoken cookie UseCookie sends. cssDefault (the default)
+    /// writes none and leaves the browser's own rule, as it always did. cssLax
+    /// or cssStrict keep another site from sending it, which is what stops a
+    /// cross-site request riding on the login - and also what stops a page on
+    /// another site that calls this server on purpose, with credentials
+    property CookieSameSite: TRALCookieSiteScope read FCookieSameSite
+      write FCookieSameSite default cssDefault;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
@@ -391,7 +418,8 @@ begin
   FCritAuth.Release;
 end;
 
-function TRALAuthClient.HandleChallenge(AResponse: TRALResponse): boolean;
+function TRALAuthClient.HandleChallenge(ARequest: TRALRequest;
+  AResponse: TRALResponse): boolean;
 begin
   { what the client always did with a 401: send once more }
   Result := True;
@@ -423,102 +451,163 @@ end;
 
 { TRALServerJWTAuth }
 
+{ A JWT component dropped on a form with SignSecretKey left empty cannot sign
+  or check a token: the HMAC refuses an empty key, and the request died with
+  "Key must be provided.", which names no setting. Without a key the server
+  answers 500 and says which one is missing - a 401 would read as a wrong
+  password. A key of blanks counts as none, as for TRALServerBasicAuth }
+function TRALServerJWTAuth.HasSecretKey(AResponse: TRALResponse): boolean;
+begin
+  Result := RALTrim(FSignSecretKey) <> '';
+  if not Result then
+    AResponse.Answer(HTTP_InternalError, emJWTNoSecretKey, rctTEXTPLAIN);
+end;
+
+function TRALServerJWTAuth.CanIssue: boolean;
+begin
+  Result := Assigned(FOnGetToken) or Assigned(FOnGetTokenGen);
+end;
+
+function TRALServerJWTAuth.LogsIn(ARequest: TRALRequest): boolean;
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+begin
+  { no Bearer: a login, as always. With one, a login only when a body came
+    with it - a login posts its credentials, a renewal posts nothing. Not the
+    query, which a renewal may carry as a cache buster, nor the headers,
+    which every request carries. ContentSize is the length the client
+    declared, on every engine; the kinds of the params cannot tell it: Indy
+    and UniGUI hand a form's fields over as query params, and fpHTTP and CGI
+    file the standard headers and the environment as fields. The body param
+    covers a body sent without a length (chunked); an empty POST still
+    decodes into an empty one, hence the content test }
+  Result := CanIssue;
+  if (not Result) or (ARequest.Authorization.AuthType <> ratBearer) or
+     (ARequest.Authorization.AuthString = '') then
+    Exit;
+
+  Result := ARequest.ContentSize > 0;
+  if Result then
+    Exit;
+  for vInt := 0 to Pred(ARequest.Params.Count) do
+  begin
+    vParam := ARequest.Params.Index[vInt];
+    if (vParam.Kind = rpkBODY) and not vParam.IsNilOrEmpty then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+function TRALServerJWTAuth.IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
+  var AJSONParams: StringRAL): StringRAL;
+var
+  vParams: TRALJWTParams;
+  vResult: boolean;
+begin
+  Result := '';
+  vResult := False;
+  vParams := TRALJWTParams.Create;
+  try
+    if Assigned(FOnGetToken) then
+      FOnGetToken(ARequest, AResponse, vParams, vResult)
+    else
+      FOnGetTokenGen(ARequest, AResponse, vParams, vResult);
+    if vResult then
+    begin
+      AJSONParams := vParams.AsJSON;
+      Result := GetToken(AJSONParams);
+    end;
+  finally
+    vParams.Free;
+  end;
+end;
+
+{ The token route, in this order:
+  - credentials, or no token at all: OnGetToken decides (LogsIn). Credentials
+    used to lose to a Bearer - the cookie, with UseCookie - so a browser
+    holding a token could not log in as somebody else: the next user of a
+    shared machine got the previous one's token renewed;
+  - a Bearer alone renews itself, same claims and a new expiration, with
+    OnRenewToken consulted. Refused - expired, forged, OnRenewToken said no -
+    it is a 401 and nothing else. Handing that request to OnGetToken would
+    try a password sent in a header or in the query next to a dead token,
+    and such a refusal cannot be counted as a failed login: a browser whose
+    token expired sends one on every renewal. With UseCookie the browser is
+    told to drop the cookie, so its next login goes through;
+  - with neither, 401: without OnGetToken nobody checks who is asking, and a
+    client could post any claims and walk away with a signed token }
 procedure TRALServerJWTAuth.BeforeValidate(ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
   vToken: StringRAL;
   vStrParams: StringRAL;
-  vStrResult: StringRAL;
-  vResult: boolean;
-  vParam: TRALParam;
   vParamJWT: TRALJWTParams;
   vCookie: TRALCookie;
 begin
-  if RALSameName(ARequest.Query, AuthRoute.Route) then
+  if not RALSameName(ARequest.Query, AuthRoute.Route) then
   begin
-    vResult := False;
-    vToken := '';
-    vStrParams := '';
-    if (ARequest.Authorization.AuthString <> '') and
-      (ARequest.Authorization.AuthType = ratBearer) then
-    begin
-      { a valid token in hand renews itself: same claims, new expiration.
-        The signature already proves who is asking, so OnGetToken is not
-        consulted here - it decides who gets a FIRST token }
-      vToken := RenewTokenFor(ARequest, AResponse, ARequest.Authorization.AuthString,
-        vStrParams);
-      vResult := vToken <> '';
-    end
-    else if Assigned(FOnGetToken) then
-    begin
-      vParamJWT := TRALJWTParams.Create;
-      try
-        FOnGetToken(ARequest, AResponse, vParamJWT, vResult);
-        if vResult then
-        begin
-          vStrParams := vParamJWT.AsJSON;
-          vToken := GetToken(vStrParams);
-        end;
-      finally
-        FreeAndNil(vParamJWT);
-      end;
-    end
-    else if Assigned(FOnGetTokenGen) then
-    begin
-      vParamJWT := TRALJWTParams.Create;
-      try
-        FOnGetTokenGen(ARequest, AResponse, vParamJWT, vResult);
-        if vResult then
-        begin
-          vStrParams := vParamJWT.AsJSON;
-          vToken := GetToken(vStrParams);
-        end;
-      finally
-        FreeAndNil(vParamJWT);
-      end;
-    end
-    else
-    begin
-      { Without OnGetToken nobody checks who is asking: any client could post
-        any claims and walk away with a signed token, which made JWT the same
-        as no authentication. Issuing a first token needs the event. }
-      AResponse.Answer(HTTP_Unauthorized);
-    end;
+    AResponse.Answer(HTTP_NotFound);
+    Exit;
+  end;
 
-    if vResult then
+  if not HasSecretKey(AResponse) then
+    Exit;
+
+  vToken := '';
+  vStrParams := '';
+  if LogsIn(ARequest) then
+    vToken := IssueToken(ARequest, AResponse, vStrParams)
+  else if (ARequest.Authorization.AuthType = ratBearer) and
+          (ARequest.Authorization.AuthString <> '') then
+    vToken := RenewTokenFor(ARequest, AResponse, ARequest.Authorization.AuthString,
+      vStrParams);
+
+  if vToken <> '' then
+  begin
+    if UseCookie then
     begin
-      vStrResult := Format('{"%s":"%s"}', [FJSONKey, vToken]);
-      if UseCookie then
-      begin
-        Finalize(vCookie); // strings inside: never FillChar over live references
-        FillChar(vCookie, SizeOf(vCookie), 0);
-        vCookie.Name := RALTOKENName;
-        vCookie.Value := vToken;
-        vCookie.Secure := true;
-        vCookie.HttpOnly := true;
-        vCookie.Path := '/';
-        vParamJWT := TRALJWTParams.Create;
-        try
-          vParamJWT.AsJSON := vStrParams;
-          vCookie.Expires := vParamJWT.Expiration;
-        finally
-          FreeAndNIl(vParamJWT);
-        end;
-        AResponse.AddCookie(vCookie);
+      Finalize(vCookie); // strings inside: never FillChar over live references
+      FillChar(vCookie, SizeOf(vCookie), 0);
+      vCookie.Name := RALTOKENName;
+      vCookie.Value := vToken;
+      vCookie.Secure := true;
+      vCookie.HttpOnly := true;
+      vCookie.Path := '/';
+      vCookie.SameSite := FCookieSameSite;
+      vParamJWT := TRALJWTParams.Create;
+      try
+        vParamJWT.AsJSON := vStrParams;
+        vCookie.Expires := vParamJWT.Expiration;
+      finally
+        FreeAndNIl(vParamJWT);
       end;
-      AResponse.StatusCode := HTTP_OK;
-      AResponse.ContentType := rctAPPLICATIONJSON;
-      AResponse.ResponseText := vStrResult;
-    end
-    else
-    begin
-      if AResponse.StatusCode < HTTP_BadRequest then
-        AResponse.Answer(HTTP_Unauthorized);
+      AResponse.AddCookie(vCookie);
     end;
+    AResponse.StatusCode := HTTP_OK;
+    AResponse.ContentType := rctAPPLICATIONJSON;
+    AResponse.ResponseText := Format('{"%s":"%s"}', [FJSONKey, vToken]);
   end
   else
   begin
-    AResponse.Answer(HTTP_NotFound);
+    if AResponse.StatusCode < HTTP_BadRequest then
+      AResponse.Answer(HTTP_Unauthorized);
+    { the browser sends the cookie it has on every call: refused, it is told
+      to drop it, or it keeps offering the same dead token }
+    if UseCookie and (ARequest.Params.GetKind[RALTOKENName, rpkCOOKIE] <> nil) then
+    begin
+      Finalize(vCookie);
+      FillChar(vCookie, SizeOf(vCookie), 0);
+      vCookie.Name := RALTOKENName;
+      vCookie.Secure := true;
+      vCookie.HttpOnly := true;
+      vCookie.Path := '/';
+      vCookie.SameSite := FCookieSameSite;
+      vCookie.MaxAge := -1;
+      AResponse.AddCookie(vCookie);
+    end;
   end;
 end;
 
@@ -621,6 +710,9 @@ var
   vReason: StringRAL;
 begin
   AResponse.StatusCode := HTTP_OK;
+  if not HasSecretKey(AResponse) then
+    Exit;
+
   { the same 401 page answered "no token at all", "expired" and "forged", and a
     client that lost its cookie on the way looked exactly like one holding a
     bad token. The page stays; the WWW-Authenticate header says which }
@@ -710,6 +802,29 @@ begin
     ARequest.Authorization.AuthType := ratBearer;
     ARequest.Authorization.AuthString := vAux;
   end;
+end;
+
+function TRALServerJWTAuth.AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt;
+begin
+  Result := raaNone;
+  { the login itself: OnGetToken checked whatever credentials came with it -
+    a Bearer sent along does not keep a wrong password from counting. Without
+    the event every first token is refused, and that is no guess }
+  if AOnOwnRoute and LogsIn(ARequest) then
+  begin
+    if AResult = arAccepted then
+      Result := raaPassed
+    else if AResult = arUnauthorized then
+      Result := raaFailed;
+  end
+  { nobody guesses a token: expired, forged or refused by OnValidate it says
+    nothing about a password - and counting it, eight clients behind one NAT
+    whose tokens expired together locked the address out. A good one proves
+    the client logged in }
+  else if (not AOnOwnRoute) and (ARequest.Authorization.AuthType = ratBearer) and
+          (AResult = arAccepted) then
+    Result := raaPassed;
 end;
 
 procedure TRALServerJWTAuth.SetUseCookie(AValue: Boolean);
@@ -853,11 +968,25 @@ begin
   inherited;
 end;
 
-function TRALClientJWTAuth.HandleChallenge(AResponse: TRALResponse): boolean;
+function TRALClientJWTAuth.HandleChallenge(ARequest: TRALRequest;
+  AResponse: TRALResponse): boolean;
+var
+  vSent: TRALParam;
 begin
   { the token was refused or expired: a new one is fetched before the request
-    goes again - what ResetToken always meant to do }
-  Token := '';
+    goes again - what ResetToken always meant to do. But only the token this
+    request was refused with, compared under the lock (held by the caller):
+    one authenticator serves many clients, and when a token expires the 401s
+    of the requests already in flight arrive AFTER one of them has fetched the
+    next token. Clearing unconditionally threw that fresh token away, so every
+    client in turn went back to /gettoken - one after the other, since the
+    fetch holds the lock. The header is what was really sent, written by
+    SetAuthHeader }
+  vSent := nil;
+  if ARequest <> nil then
+    vSent := ARequest.Params.GetKind['Authorization', rpkHEADER];
+  if (vSent = nil) or (vSent.AsString = 'Bearer ' + FToken) then
+    Token := '';
   Result := True;
 end;
 
@@ -976,6 +1105,18 @@ begin
     FRoute := '/gettoken/';
 end;
 
+procedure TRALClientJWTAuth.SetPayload(const AValue: TRALJWTParams);
+begin
+  { a copy into the object this class owns, under the lock: SetToken rewrites
+    that same object on whichever thread a token arrives }
+  Lock;
+  try
+    RALAssignOwned(FPayload, AValue);
+  finally
+    Unlock;
+  end;
+end;
+
 procedure TRALClientJWTAuth.SetToken(const AValue: StringRAL);
 var
   vStr: TStringList;
@@ -1018,8 +1159,15 @@ begin
       { the segments are base64url (RFC 7515): "-" and "_" instead of "+"
         and "/", no padding. Decoding them as plain base64 left any claim
         whose bytes hit those two characters unreadable on the client }
-      vPayload := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
-      vOk := True;
+      try
+        vPayload := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
+        vOk := True;
+      except
+        { a payload that is not base64url, or empty, is a token that does not
+          parse - see below. The decoder raises on it now, where it answered
+          garbage }
+        vOk := False;
+      end;
     end;
   finally
     vStr.Free;
@@ -1097,6 +1245,7 @@ procedure TRALAuthServer.ProcessRequest(ARequest: TRALRequest; AResponse: TRALRe
   var AHandled: boolean);
 var
   vRoute: TRALRoute;
+  vResult: TRALAuthResult;
 begin
   vRoute := Host.FindRoute(ARequest, AResponse);
   if vRoute = nil then
@@ -1106,7 +1255,20 @@ begin
   if ARequest.RouteOwner = Self then
   begin
     if ARequest.Method <> amOPTIONS then
+    begin
       BeforeValidate(ARequest, AResponse);
+      { a token route checks a secret too - the JWT login, where OnGetToken
+        reads the password. It used to count for nothing, so that one could be
+        tried without limit }
+      if AResponse.StatusCode < HTTP_BadRequest then
+        vResult := arAccepted
+      else if AResponse.StatusCode = HTTP_Unauthorized then
+        vResult := arUnauthorized
+      else
+        vResult := arForbidden;
+      Host.ReportAttempt(ARequest, AResponse,
+        AttemptOf(ARequest, AResponse, vResult, True));
+    end;
     AHandled := True;
     Exit;
   end;
@@ -1137,7 +1299,10 @@ begin
     end;
     arForbidden:
     begin
-      AResponse.Answer(HTTP_Forbidden);
+      { the authenticator's own server error - a JWT with no key says so - is
+        not a refusal of the client: it goes out as it is }
+      if AResponse.StatusCode < HTTP_InternalError then
+        AResponse.Answer(HTTP_Forbidden);
       AHandled := True;
     end;
   end;
@@ -1156,6 +1321,21 @@ begin
     Result := arUnauthorized
   else
     Result := arForbidden;
+end;
+
+function TRALAuthServer.AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt;
+begin
+  { credentials of this scheme came and were checked: refused, a guess;
+    accepted, proof. 401 only - a 403 is a refusal of someone already known.
+    A route of the scheme's own says nothing unless the scheme says so }
+  Result := raaNone;
+  if AOnOwnRoute or (ARequest.Authorization.AuthType <> AuthType) then
+    Exit;
+  if AResult = arAccepted then
+    Result := raaPassed
+  else if AResult = arUnauthorized then
+    Result := raaFailed;
 end;
 
 function TRALAuthServer.GetAuthRoute: TRALBaseRoute;

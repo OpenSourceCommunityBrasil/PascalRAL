@@ -48,6 +48,7 @@ type
     procedure DropSchema;
 
     procedure SetSQL(AValue: TStrings);
+    procedure SetParams(const AValue: TParams);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
     procedure SetStorage(const AValue: TRALStorageLink);
@@ -84,7 +85,7 @@ type
     property FieldDefs;
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
-    property Params: TParams read FParams write FParams;
+    property Params: TParams read FParams write SetParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
@@ -176,7 +177,16 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches: the next Open then
+        opened the dataset locally and empty, and every Post was taken for a
+        load and never sent }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      except
+        FLoading := False;
+        raise;
+      end;
     end;
     Exit;
   end
@@ -243,6 +253,11 @@ begin
   else if (Operation = opRemove) and (AComponent = FStorage) then
     FStorage := nil;
   inherited;
+end;
+
+procedure TRALDBZMemTable.SetParams(const AValue: TParams);
+begin
+  RALAssignOwned(FParams, AValue);
 end;
 
 procedure TRALDBZMemTable.SetSQL(AValue: TStrings);
@@ -375,9 +390,7 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
-    vMem := AResponse.Body.Content;
+    vMem := AResponse.Body.Content; // where it is, not a copy
     vSQLCache := nil;
     try
       FLoading := True;
@@ -407,7 +420,6 @@ begin
       end;
     finally
       FreeAndNil(vSQLCache);
-      vMem := nil; // the response's own body: not ours to free
       FLoading := False;
     end;
   end
@@ -442,22 +454,16 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
-    vMem := AResponse.Body.Content;
+    vMem := AResponse.Body.Content; // where it is, not a copy
+    vSQLCache := TRALDBSQLCache.Create;
     try
-      vSQLCache := TRALDBSQLCache.Create;
-      try
-        vSQLCache.ResponseFromStream(vMem);
-        vDBSQL := vSQLCache.SQLList[0];
+      vSQLCache.ResponseFromStream(vMem);
+      vDBSQL := vSQLCache.SQLList[0];
 
-        FRowsAffected := vDBSQL.Response.RowsAffected;
-        FLastId := vDBSQL.Response.LastId;
-      finally
-        FreeAndNil(vSQLCache);
-      end;
+      FRowsAffected := vDBSQL.Response.RowsAffected;
+      FLastId := vDBSQL.Response.LastId;
     finally
-      vMem := nil; // the response's own body: not ours to free
+      FreeAndNil(vSQLCache);
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
@@ -485,52 +491,47 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
+    { the body where it is: AsStream copied the whole answer first }
     vMem := AResponse.Body.Content;
-    try
-      FSQLCache.ResponseFromStream(vMem);
-      for vInt1 := 0 to Pred(FSQLCache.Count) do
+    FSQLCache.ResponseFromStream(vMem);
+    for vInt1 := 0 to Pred(FSQLCache.Count) do
+    begin
+      vDBSQL := FSQLCache.SQLList[vInt1];
+      if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+         (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
       begin
-        vDBSQL := FSQLCache.SQLList[vInt1];
-        if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
-        begin
-          Self.GotoBookmark(vDBSQL.BookMark);
+        Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TZMemTable.Create(nil);
+        vTable := TZMemTable.Create(nil);
+        try
           try
-            try
-              if vDBSQL.Response.Native then
-                ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
-              else
-                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
+            if vDBSQL.Response.Native then
+              ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
+            else
+              LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
-              Self.Edit;
-              for vInt2 := 0 to Pred(vTable.FieldCount) do
-              begin
-                vField := Self.FindField(vTable.Fields[vInt2].FieldName);
-                if vField <> nil then
-                  vField.Value := vTable.Fields[vInt2].Value;
-              end;
-              Self.Post;
-            except
-
+            Self.Edit;
+            for vInt2 := 0 to Pred(vTable.FieldCount) do
+            begin
+              vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+              if vField <> nil then
+                vField.Value := vTable.Fields[vInt2].Value;
             end;
-          finally
-            FreeAndNil(vTable);
+            Self.Post;
+          except
+
           end;
-        end
-        else if vDBSQL.Response.Error then
-        begin
-          if Assigned(FOnError) then
-            FOnError(Self, vDBSQL.Response.StrError);
+        finally
+          FreeAndNil(vTable);
         end;
+      end
+      else if vDBSQL.Response.Error then
+      begin
+        if Assigned(FOnError) then
+          FOnError(Self, vDBSQL.Response.StrError);
       end;
-      FSQLCache.Clear;
-    finally
-      vMem := nil; // the response's own body: not ours to free
     end;
+    FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
@@ -559,7 +560,11 @@ begin
     ADataset.LoadFromStream(AStream);
   {$ENDIF}
   {$ELSE}
-  vMethod.Data := Pointer(Self);
+  { the dataset, not Self: this is a class procedure, so Self is the class, and
+    the method ran on the VMT - an access violation on every native answer
+    when Zeos publishes LoadFromStream (ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT).
+    RALDBZeos does the same thing right }
+  vMethod.Data := Pointer(ADataset);
   vMethod.Code := ADataset.MethodAddress('LoadFromStream');
   if vMethod.Code <> nil then
   begin

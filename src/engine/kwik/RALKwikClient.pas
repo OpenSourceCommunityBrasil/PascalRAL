@@ -115,6 +115,12 @@ type
     FTargetHost: StringRAL;
     FTargetPort: IntegerRAL;
     FTargetUrl: StringRAL;
+    { the shared key as last built, and what it was built from - see ShareKey }
+    FKey: StringRAL;
+    FKeyHost: StringRAL;
+    FKeyPort: IntegerRAL;
+    FKeyPolicy: StringRAL;
+    FKeyKeepAlive: IntegerRAL;
     procedure ResolveTarget(const AURL: StringRAL);
     /// The certificate policy to share by, FOwnShareKey to stand alone. The
     /// destination is part of it because one connection serves one peer.
@@ -276,16 +282,38 @@ begin
 end;
 
 function TRALKwikClientHTTP.ShareKey: StringRAL;
+var
+  vPolicy: StringRAL;
 begin
   { A TLS connection is judged ONCE, at its handshake, and a reused one has no
     handshake at all - so a client sharing a connection inherits a verdict it
     never gave. With the certificate policy in the key, only clients that judge
     alike ever share, which is the rule every engine here follows. The
-    destination goes in because one QUIC connection serves one peer. }
-  if Parent.ShareConnection then
-    Result := CertPolicyKey + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort))
-  else
+    destination goes in because one QUIC connection serves one peer, and the
+    keep-alive because only whoever OPENS the connection sets it (RalKwik.acquire):
+    a client asking for one used to land on a connection opened without it and
+    go on waiting out RequestTimeout on a dead network - the MsQuic engine
+    keys it the same way. }
+  if not Parent.ShareConnection then
+  begin
     Result := FOwnShareKey;
+    Exit;
+  end;
+
+  { built again only when what it is made of changed: it was built on every
+    request }
+  vPolicy := CertPolicyKey;
+  if (FKey = '') or (FTargetHost <> FKeyHost) or (FTargetPort <> FKeyPort) or
+     (vPolicy <> FKeyPolicy) or (Parent.KeepAliveInterval <> FKeyKeepAlive) then
+  begin
+    FKey := vPolicy + '|' + FTargetHost + ':' + StringRAL(IntToStr(FTargetPort)) +
+            '|' + StringRAL(IntToStr(Parent.KeepAliveInterval));
+    FKeyHost := FTargetHost;
+    FKeyPort := FTargetPort;
+    FKeyPolicy := vPolicy;
+    FKeyKeepAlive := Parent.KeepAliveInterval;
+  end;
+  Result := FKey;
 end;
 
 function TRALKwikClientHTTP.CertMode: IntegerRAL;

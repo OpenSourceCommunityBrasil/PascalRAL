@@ -367,7 +367,11 @@ begin
     if vObj.JsonValue is TJSONObject then
       Result := TRALJSONObject.Create
     else if vObj.JsonValue is TJSONArray then
-      Result := TRALJSONObject.Create
+      { an array, not an object: every other Get of every backend gets this
+        right, and an object member that held an array came back as a
+        TRALJSONObject - whose methods then read a TJSONArray as a
+        TJSONObject, and which passed any "is TRALJSONObject" check }
+      Result := TRALJSONArray.Create
     else
       Result := TRALJSONValue.Create;
     Result.SetJsonObj(vObj.JsonValue, False);
@@ -479,8 +483,14 @@ begin
   Result := nil;
   if not Assigned(AStream) then
     Exit;
+  { the whole stream, from its start, the way the FPC backend reads it - and
+    straight into the UTF8String: PChar is PWideChar on Delphi, so the cast
+    only worked by reinterpreting the pointer (W1044), and a stream that was
+    not at position 0 left the tail of the string uninitialised }
+  AStream.Position := 0;
   SetLength(vJson, AStream.Size);
-  AStream.Read(PChar(vJson)^, AStream.Size);
+  if vJson <> '' then
+    AStream.ReadBuffer(Pointer(vJson)^, Length(vJson));
   Result := ParseJSON(vJson);
 end;
 

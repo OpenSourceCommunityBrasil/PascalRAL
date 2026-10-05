@@ -372,6 +372,7 @@ var
   vRespStream: TStream;
   vCookies: TStringList;
   vPayloadLen: integer;
+  vClient: Pcvoid;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -382,6 +383,7 @@ begin
     happened to hold. In a cdecl callback invoked from C that is a silent
     process death, not an exception }
   vStrMap := nil;
+  vRespStream := nil;
   try
     try
       with vRequest do
@@ -420,10 +422,20 @@ begin
         vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
-        { libmicrohttpd's client handle, which is per CONNECTION - the same
-          pointer GetSaguiIP reads the address from. A kept-alive client's
-          requests all report it; nil (no client) stays 0, meaning unknown }
-        ClientInfo.ConnectionID := Int64RAL(NativeUInt(sg_httpreq_client(Areq)));
+        { libmicrohttpd's client handle, which is per CONNECTION - the
+          sockaddr GetSaguiIP reads the address from. A kept-alive client's
+          requests all report it; nil (no client) stays 0, meaning unknown.
+          The pointer of a closed connection is handed to the next one, so
+          the client's port goes above it, as http.sys is keyed - and the
+          port is reported, which it was not: both families keep it in the
+          third and fourth bytes of the sockaddr, in network order }
+        vClient := sg_httpreq_client(Areq);
+        if vClient <> nil then
+        begin
+          ClientInfo.Port := (PByte(vClient)[2] shl 8) or PByte(vClient)[3];
+          ClientInfo.ConnectionID := (Int64RAL(ClientInfo.Port) shl 48) xor
+            Int64RAL(NativeUInt(vClient));
+        end;
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 
@@ -432,12 +444,17 @@ begin
 
         { the real size, like Indy, fpHTTP and Synopse report. Zero here was
           the server telling every handler that the request arrived empty.
-          Read BEFORE ValidateRequest, which compares it with MaxRequestSize }
+          A form or a multipart body never reaches the payload -
+          libmicrohttpd parses it into fields and files - so it is the
+          length the client declared there, as on Indy and fpHTTP. Read
+          BEFORE ValidateRequest, which compares it with MaxRequestSize }
         vPayloadLen := 0;
         vPayLoad := sg_httpreq_payload(Areq);
         if Assigned(vPayLoad) then
           vPayloadLen := sg_str_length(vPayLoad);
         ContentSize := vPayloadLen;
+        if ContentSize = 0 then
+          ContentSize := StrToInt64Def(string(ParamByName('Content-Length').AsString), 0);
 
         vServer.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
@@ -480,18 +497,18 @@ begin
           if vPayloadLen > 0 then
             SetWireBody(sg_str_content(vPayLoad), vPayloadLen);
 
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          if vServer.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(vStr, 1, vInt - 1);
-            Protocol := Copy(vStr, vInt + 1, 3);
-          end
+            Protocol := Copy(vStr, vInt + 1, 3)
           else
-          begin
-            HttpVersion := 'HTTP';
             Protocol := '1.0';
-          end;
         end;
       end;
 
@@ -531,10 +548,25 @@ begin
                               vResponse.StatusCode)
     except
       on e: exception do
+      begin
+        { the request failed before its response was queued - the stream
+          goes out last - and nothing answered it: a 500 goes out instead,
+          over headers and cookies cleared of whatever the answer had been
+          given already, and the stream that never reached libsagui is
+          freed here }
+        if sg_httpres_is_empty(Ares) then
+        begin
+          FreeAndNil(vRespStream);
+          sg_httpres_clear(Ares);
+          vStr := vServer.ErrorText(e);
+          sg_httpres_sendbinary(Ares, PAnsiChar(vStr), Length(vStr),
+                                PAnsiChar(StringRAL(rctTEXTPLAIN)), HTTP_InternalError);
+        end;
         if assigned(vServer.OnServerError) then
           vServer.OnServerError(e)
         else if vServer.RaiseError then
           Raise;
+      end;
     end;
   finally
     FreeAndNil(vStrMap);
@@ -827,6 +859,8 @@ begin
     FPoolCount := DEFAULTPOOLCOUNT
   else
     FPoolCount := AValue;
+  { the sanitised value: a zero or negative AValue reached the library as it
+    came, while the property already read DEFAULTPOOLCOUNT }
   if FHandle <> nil then
     sg_httpsrv_set_thr_pool_size(FHandle, FPoolCount);
 end;
@@ -907,11 +941,15 @@ end;
 procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
 var
   vInt: integer;
+  vParam: TRALParam;
 begin
+  { what this fills is the response's header map, and each entry becomes one
+    header line: no CR or LF in it, as on every engine }
   for vInt := 0 to Pred(AParams.Count) do
   begin
-    if AParams.Index[vInt].Kind = AKind then
-      Add(AParams.Index[vInt].ParamName, AParams.Index[vInt].AsString);
+    vParam := AParams.Index[vInt];
+    if vParam.Kind = AKind then
+      Add(RALSafeHeaderText(vParam.ParamName), RALSafeHeaderText(vParam.AsString));
   end;
 end;
 

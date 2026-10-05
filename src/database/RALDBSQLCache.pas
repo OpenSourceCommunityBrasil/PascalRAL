@@ -35,6 +35,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    { Takes AStream - a memory stream - as Stream, without copying it: the
+      response frees it. Stream := copies, which held a result twice }
+    procedure AdoptStream(AStream: TMemoryStream);
     procedure Clear;
   published
     property ContentType: StringRAL read FContentType write FContentType;
@@ -143,9 +146,21 @@ end;
 
 procedure TRALDBSQLResponse.SetStream(AValue: TStream);
 begin
-  FStream.Size := 0;
+  { sized once, where the copy grew the stream step by step }
+  FStream.Size := AValue.Size;
+  FStream.Position := 0;
   AValue.Position := 0;
-  FStream.CopyFrom(AValue, AValue.Size);
+  if AValue.Size > 0 then // a count of 0 is "all of it" to CopyFrom
+    FStream.CopyFrom(AValue, AValue.Size);
+  FStream.Position := 0;
+end;
+
+procedure TRALDBSQLResponse.AdoptStream(AStream: TMemoryStream);
+begin
+  if AStream = FStream then
+    Exit;
+  FreeAndNil(FStream);
+  FStream := AStream;
   FStream.Position := 0;
 end;
 
@@ -178,7 +193,8 @@ begin
   Clear;
   FError := True;
   FContentType := rctTEXTPLAIN;
-  FStream.Write(AError[POSINISTR], Length(AError));
+  if AError <> '' then // an empty text has no first character to take
+    FStream.Write(AError[POSINISTR], Length(AError));
   FStream.Position := 0;
 end;
 
@@ -329,10 +345,16 @@ end;
 
 procedure TRALDBSQLCache.CreateStorage(AWriter: TRALBinaryWriter);
 var
+  vByte: Byte;
   vFormat : TRALStorageFormat;
   vStorageLinkClass : TRALStorageLinkClass;
 begin
-  vFormat := TRALStorageFormat(AWriter.ReadByte);
+  { a byte from the request body: checked before it becomes an enum, which
+    indexes two tables further down }
+  vByte := AWriter.ReadByte;
+  if vByte > Ord(High(TRALStorageFormat)) then
+    raise Exception.CreateFmt(emStorageLinkNotFound, [IntToStr(vByte)]);
+  vFormat := TRALStorageFormat(vByte);
   if vFormat = rsfAuto then
     Exit;
 
@@ -617,7 +639,11 @@ begin
       // lendo e criado o cache
       for vInt2 := 1 to vInt1 do
       begin
+        { in the list at once: Clear frees what is there, and a body that
+          breaks off below - or lies about its counts - used to leak the one
+          being read, on every request }
         vDBSQL := TRALDBSQL.Create;
+        FSQLList.Add(vDBSQL);
 
         // drive type
         vDBSQL.DriverType := TRALDBDriverType(vWriter.ReadByte);
@@ -670,7 +696,6 @@ begin
             end;
           end;
         end;
-        FSQLList.Add(vDBSQL);
       end;
     finally
       FreeAndNil(vStrSQLList);
@@ -729,6 +754,10 @@ begin
       vDBSQL.Response.RowsAffected := vWriter.ReadInt64;
       vDBSQL.Response.LastId := vWriter.ReadInt64;
 
+      { emptied first: a cache read before - a memtable keeps one - left the
+        last answer in it, and ReadStream writes over it from the start, so a
+        shorter or an empty answer kept the old one's tail }
+      vDBSQL.Response.Stream.Size := 0;
       vWriter.ReadStream(vDBSQL.Response.Stream);
     end;
   finally

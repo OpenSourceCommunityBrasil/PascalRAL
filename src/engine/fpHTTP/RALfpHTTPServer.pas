@@ -33,11 +33,12 @@ type
   TRALfpHTTPSSL = class(TRALSSL)
   private
     FSSLOptions: TRALfpHTTPCertData;
+    procedure SetSSLOptions(const AValue: TRALfpHTTPCertData);
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TRALfpHTTPCertData read FSSLOptions write FSSLOptions;
+    property SSLOptions: TRALfpHTTPCertData read FSSLOptions write SetSSLOptions;
   end;
 
   TRALfpHttpServer = class;
@@ -177,7 +178,44 @@ uses
     WinSock2,
   {$ENDIF}
   // CloseSocket for the handlers still open past the wait
-  sockets;
+  sockets,
+  RALMIMETypes;
+
+{ The listen backlog, as large as the system allows and fcl-web can keep: it
+  holds QueueSize in a Word, and Windows' SOMAXCONN is $7FFFFFFF. Assigned
+  straight, the constant was cut to 65535 by the assignment itself - and a
+  build with range checks (-Cr) refused to compile it }
+function ListenBacklog: Word;
+var
+  vMax: Int64;
+begin
+  vMax := SOMAXCONN;
+  if vMax > High(Word) then
+    vMax := High(Word);
+  Result := vMax;
+end;
+
+{ The answer to a request whose handling raised outside ProcessCommands -
+  decoding it, or building the answer. The exception used to be swallowed and
+  fcl-web then sent the response as it stood: 200 by default, over a failure.
+  Whatever the answer had been given already goes with it, since a
+  Content-Encoding or a cipher header over a plain-text error would have the
+  client misread it }
+procedure AnswerFailure(AResponse: TFPHTTPConnectionResponse; const AMessage: string);
+begin
+  if AResponse.HeadersSent then
+    Exit;
+  AResponse.FreeContentStream := True; // this request's, assigned or not yet owned
+  AResponse.ContentStream := nil;
+  AResponse.CustomHeaders.Clear;
+  AResponse.Cookies.Clear;
+  AResponse.WWWAuthenticate := '';
+  AResponse.ContentEncoding := '';
+  AResponse.Code := HTTP_InternalError;
+  AResponse.ContentType := rctTEXTPLAIN;
+  AResponse.Content := AMessage;
+  AResponse.Connection := 'close'; // one request per connection - see OnCommandProcess
+end;
 
 { TRALfpHTTPCertData }
 
@@ -360,8 +398,8 @@ end;
 
 procedure TRALfpHttpServerThread.SetQueueSize(const AValue: Word);
 begin
-  if (AValue <= 0) or (AValue > SOMAXCONN) then
-    FHttp.QueueSize := SOMAXCONN
+  if (AValue <= 0) or (AValue > ListenBacklog) then
+    FHttp.QueueSize := ListenBacklog
   else
     FHttp.QueueSize := AValue;
 end;
@@ -386,10 +424,8 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: integer;
-  vStr1, vStr2: StringRAL;
   vCookies: TStringList;
   vParam: TRALParam;
-  vCookie: TCookie;
 begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
@@ -404,9 +440,16 @@ begin
 
         { the socket of THIS connection: fcl-web keeps one TFPHTTPConnection
           per connection, so a kept-alive client's requests all report the same
-          handle, and a new connection gets a new one }
+          handle. With the peer's port above it, as http.sys is keyed: the
+          system hands a closed socket's handle to the next connection, and a
+          hundred connections one after another counted as one. The port is
+          the client's too, which this engine never reported }
         if (ARequest.Connection <> nil) and (ARequest.Connection.Socket <> nil) then
-          ClientInfo.ConnectionID := ARequest.Connection.Socket.Handle;
+        begin
+          ClientInfo.Port := NToHs(ARequest.Connection.Socket.RemoteAddress.sin_port);
+          ClientInfo.ConnectionID := (Int64RAL(ClientInfo.Port) shl 48) xor
+            Int64RAL(ARequest.Connection.Socket.Handle);
+        end;
 
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequest.UserAgent;
@@ -414,8 +457,7 @@ begin
         ContentType := ARequest.ContentType;
         ContentSize := ARequest.ContentLength;
 
-        Query := ARequest.URI;
-        Params.AppendParamsUrl(ARequest.URI, rpkQUERY);
+        Query := ARequest.URI; // parses the query string too
 
         Method := HTTPMethodToRALMethod(ARequest.Method);
 
@@ -445,20 +487,18 @@ begin
         FParent.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          // fields tambem
-          vInt := 0;
-          while vInt < ARequest.FieldCount do
-          begin
-            vStr1 := ARequest.FieldNames[vInt];
-            vStr2 := ARequest.FieldValues[vInt];
+          { fcl-web's "fields" are the request headers it knows by name - Host,
+            Authorization, Content-Length - and they were filed as form
+            fields, so AssignParamsUrl(rpkFIELD) handed back the client's
+            credentials. They are headers }
+          for vInt := 0 to ARequest.FieldCount - 1 do
+            Params.AddParam(ARequest.FieldNames[vInt], ARequest.FieldValues[vInt], rpkHEADER);
 
-            Params.AddParam(vStr1, vStr2, rpkFIELD);
-
-            vInt := vInt + 1;
-          end;
-
-          Params.AppendParams(ARequest.QueryFields, rpkQUERY);
-          Params.AppendParams(ARequest.CookieFields, rpkCOOKIE);
+          { the query string was parsed off the URI by Query above, and the
+            cookies come from their header as on every engine: QueryFields and
+            CookieFields arrive decoded by fcl-web, and AppendParamLine decoded
+            them again }
+          AddCookies(Params.GetKind['Cookie', rpkHEADER].AsString);
 
           { the Authorization header is a known one and never reaches the
             params here, so the thread's DecodeAuth above reads it straight
@@ -473,22 +513,23 @@ begin
           SetWireBody(ARequest.Content);
 
           Host := ARequest.Host;
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too }
+          if FParent.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
+          { fcl-web hands the version over WITHOUT its 'HTTP/' (fphttpserver,
+            Delete(S, 1, 5)), so the '/' looked for here was never there and
+            every request was taken for HTTP/1.0 - ProtocolVersion rhv10 and
+            Connection: close on all of them }
           vInt := Pos('/', ARequest.ProtocolVersion);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(ARequest.ProtocolVersion, 1, vInt-1);
-            Protocol := Copy(ARequest.ProtocolVersion, vInt+1, 3);
-          end
-          else begin
-            { what fcl-web actually hands over: ParseStartLine deletes the
-              'HTTP/' and keeps '1.1'. Answering '1.0' here reported every
-              request on this engine as HTTP/1.0 }
-            HttpVersion := 'HTTP';
-            if ARequest.ProtocolVersion <> '' then
-              Protocol := ARequest.ProtocolVersion
-            else
-              Protocol := '1.0';
-          end;
+            Protocol := Copy(ARequest.ProtocolVersion, vInt + 1, 3)
+          else if ARequest.ProtocolVersion <> '' then
+            Protocol := ARequest.ProtocolVersion
+          else
+            Protocol := '1.0';
 
           ARequest.Content := '';
           ARequest.QueryFields.Clear;
@@ -521,41 +562,29 @@ begin
         vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
         if vParam <> nil then
         begin
-          AResponse.WWWAuthenticate := vParam.AsString;
+          AResponse.WWWAuthenticate := RALSafeHeaderText(vParam.AsString);
           vResponse.Params.DelParam('WWW-Authenticate');
         end;
 
         AResponse.Server := 'RAL_fpHTTP';
         { Always, whatever the client asked for: this server answers ONE
           request per connection (TRALfpHttpConnectionThread.Execute calls
-          HandleRequest once, and fcl-web 3.2 has no keep-alive to offer
-          anyway) and closes the socket right after - and RFC 9112 9.6 says a
-          server that does not keep the connection MUST send "close". It was
-          meant to go only to HTTP/1.0 and to a client that asked for it; it
-          reached everyone below 400 by accident (the version parse above
-          read every request as 1.0), and from 400 up it depended on an
-          uninitialised variable. }
+          HandleRequest once, whatever keep-alive fcl-web could offer) and
+          closes the socket right after - and RFC 9112 9.6 says a server that
+          does not keep the connection MUST send "close". It is set here, after
+          ProcessCommands, so a request ValidateRequest refused says it too. }
         AResponse.Connection := 'close';
 
+        { every cookie whole, on its own Set-Cookie line, from the builder all
+          engines share. fcl-web's TCookie writes Expires through FormatDateTime
+          with the colons unquoted (HTTPDateFmt), so a locale whose time
+          separator is not ':' sent an invalid date; and a TCookie made a cookie
+          CALLED Set-Cookie out of an AddCookie(TRALCookie) one }
         vCookies := TStringList.Create;
         try
-          Params.AssignParams(vCookies, rpkCOOKIE);
+          GetParamsCookies(vCookies, IncMinute(Now, FParent.CookieLife));
           for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            { a param named Set-Cookie carries a complete Set-Cookie value
-              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
-              Building a TCookie from it made a cookie CALLED Set-Cookie }
-            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
-            begin
-              AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies.ValueFromIndex[vInt]);
-              Continue;
-            end;
-            vCookie := AResponse.Cookies.Add;
-            vCookie.Name := vCookies.Names[vInt];
-            vCookie.Value := vCookies.ValueFromIndex[vInt];
-            vCookie.Expires := RALDateTimeToGMT(IncMinute(Now, FParent.CookieLife));
-            vCookie.Path := '/';
-          end;
+            AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
         finally
           FreeAndNil(vCookies);
         end;
@@ -574,14 +603,27 @@ begin
           decoder. }
         Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
 
-        AResponse.SendContent;
+        if vRequest.Method = amHEAD then
+        begin
+          { the headers alone, with the length the GET would send - fcl-web
+            sent the body with them. Its stream is let go once they are out,
+            so what fcl-web sends as the content afterwards is nothing }
+          AResponse.SendHeaders;
+          AResponse.ContentStream := nil;
+          AResponse.SendContent;
+        end
+        else
+          AResponse.SendContent;
       end;
     except
       on e: exception do
+      begin
+        AnswerFailure(AResponse, string(FParent.ErrorText(e)));
         if Assigned(FParent.OnServerError) then
           FParent.OnServerError(e)
         else if FParent.RaiseError then
           raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);
@@ -699,7 +741,7 @@ begin
   FreeOnTerminate := False;
 
   FHttp := TRALfpHttpServerCore.Create(AOwner);
-  FHttp.QueueSize := SOMAXCONN;
+  FHttp.QueueSize := ListenBacklog;
   FHttp.Threaded := True;
   FHttp.OnRequest := @OnCommandProcess;
   FHttp.OnAllowConnect := @OnAllowConnect;
@@ -776,6 +818,12 @@ begin
   FSSLOptions.Free;
   inherited;
 end;
+
+procedure TRALfpHTTPSSL.SetSSLOptions(const AValue: TRALfpHTTPCertData);
+begin
+  RALAssignOwned(FSSLOptions, AValue);
+end;
+
 
 { TRALfpHttpServer }
 

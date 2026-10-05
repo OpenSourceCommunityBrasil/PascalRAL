@@ -85,7 +85,13 @@ begin
   if FLibraryHandle = 0 then
     raise Exception.Create(emLibraryNotLoaded);
 
-  AProc := GetProcAddress(FLibraryHandle, AName);
+  { Windows and FPC take the symbol name as it is; Delphi's POSIX RTL declares
+    GetProcAddress with a PChar - UTF-16 - and converts it back for dlsym, so
+    there the ANSI name has to go through a string first. Without it the unit,
+    and everything that loads OpenSSL through it, did not compile for Android,
+    Linux or macOS. }
+  AProc := GetProcAddress(FLibraryHandle,
+    {$IFDEF MSWINDOWS}AName{$ELSE}{$IFDEF FPC}AName{$ELSE}PChar(string(AName)){$ENDIF}{$ENDIF});
   FProcs.Add(@AProc);
 end;
 

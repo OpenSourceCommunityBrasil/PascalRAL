@@ -18,6 +18,9 @@ uses
 type
   TRALAESType = (tAES128, tAES192, tAES256);
 
+  /// How the AES key comes out of the text key - see RALCriptoKeyDerivation
+  TRALKeyDerivation = (rkdNone, rkdPBKDF2);
+
   { TRALCriptoAESCipher }
 
   { The block cipher itself, chained in CBC. One instance carries the chain -
@@ -70,8 +73,10 @@ type
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
-    FLogAES: TStringList;
     FWordKeys: array of Cardinal; // UInt32;
+    { the bytes the cipher and the MAC are keyed from: the text key's own, or
+      what RALCriptoKeyDerivation stretches out of it }
+    function KeyBytes: TBytes;
   protected
     function CheckKey: boolean;
     /// a cipher positioned on this key, ready for SetIV
@@ -92,7 +97,6 @@ type
 
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
-    procedure LogAES(const ALog: StringRAL; AInput: PByte);
     /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure SetAESType(AValue: TRALAESType);
@@ -107,7 +111,6 @@ type
     class procedure InitializeAES;
   public
     constructor Create;
-    destructor Destroy; override;
 
     function AESKeys(AIndex: integer): TBytes;
     function CountKeys: integer;
@@ -140,7 +143,75 @@ type
     property AESType: TRALAESType read FAESType write SetAESType;
   end;
 
+var
+  /// How every client and server of the process turns CriptoOptions.Key into
+  /// the AES key. rkdNone, the default, uses the key's bytes as they are, cut
+  /// or zero-padded to the AES size - what RAL always did, so a short key is
+  /// tried by anyone holding one captured message in well under a second.
+  /// rkdPBKDF2 stretches it first with PBKDF2-HMAC-SHA256, 100 000 rounds,
+  /// worked out once per key and kept: every guess then costs those rounds.
+  /// A key of any size is still accepted either way. Both ends have to agree,
+  /// or every body fails its MAC; nothing on the wire changes otherwise
+  RALCriptoKeyDerivation: TRALKeyDerivation = rkdNone;
+
 implementation
+
+uses
+  SyncObjs;
+
+const
+  { fixed on both ends: changing either breaks every peer }
+  cKDFSalt: StringRAL = 'ral-kdf';
+  cKDFRounds = 100000;
+  { distinct keys kept derived; past that the list starts over instead of
+    growing with a process that keeps changing keys }
+  cKDFKept = 16;
+
+type
+  TRALDerivedKey = record
+    Text: StringRAL;
+    Bytes: TBytes;
+  end;
+
+var
+  gDerived: array of TRALDerivedKey;
+  gDerivedLock: TCriticalSection = nil;
+
+{ PBKDF2 of AKey, once per key: a cipher is built for every body, and the
+  rounds are the expensive part on purpose. Worked out outside the lock - two
+  threads meeting a new key at once both derive it, which costs time and
+  nothing else }
+function DerivedKey(const AKey: StringRAL): TBytes;
+var
+  vInt: IntegerRAL;
+begin
+  gDerivedLock.Enter;
+  try
+    for vInt := 0 to High(gDerived) do
+      if gDerived[vInt].Text = AKey then
+      begin
+        { a copy: the callers resize and write into what they get }
+        Result := Copy(gDerived[vInt].Bytes, 0, Length(gDerived[vInt].Bytes));
+        Exit;
+      end;
+  finally
+    gDerivedLock.Leave;
+  end;
+
+  Result := RALPBKDF2SHA256(StringToBytesUTF8(AKey), StringToBytesUTF8(cKDFSalt),
+    cKDFRounds, 32);
+
+  gDerivedLock.Enter;
+  try
+    if Length(gDerived) >= cKDFKept then
+      SetLength(gDerived, 0);
+    SetLength(gDerived, Length(gDerived) + 1);
+    gDerived[High(gDerived)].Text := AKey;
+    gDerived[High(gDerived)].Bytes := Result;
+  finally
+    gDerivedLock.Leave;
+  end;
+end;
 
 const
   cNumberRounds: array [TRALAESType] of integer = (10, 12, 14); // nr
@@ -558,14 +629,14 @@ begin
   vNb := cBlockSize;
   vNr := cNumberRounds[FAESType];
 
-  vKey := StringToBytesUTF8(Key);
-
-  vInt := 4 * vNk;
-  if Length(Key) < vInt then
-    vInt := Length(Key);
-
+  { cut or zero-padded to the AES size. Only a shorter key is padded:
+    vKey[Length] is past the end, which $R+ refuses even for a count of 0 -
+    every key from the AES size up, and every derived one, raised there }
+  vKey := KeyBytes;
+  vInt := Length(vKey);
   SetLength(vKey, 4 * vNk);
-  FillChar(vKey[vInt], (4 * vNk) - vInt, 0);
+  if vInt < 4 * vNk then
+    FillChar(vKey[vInt], (4 * vNk) - vInt, 0);
   SetLength(FWordKeys, vNb * (vNr + 1));
 
   for vInt := 0 to Pred(vNk) do
@@ -587,14 +658,15 @@ end;
 constructor TRALCriptoAES.Create;
 begin
   inherited;
-  FLogAES := TStringList.Create;
   FAESType := tAES128;
 end;
 
-destructor TRALCriptoAES.Destroy;
+function TRALCriptoAES.KeyBytes: TBytes;
 begin
-  FLogAES.Free;
-  inherited Destroy;
+  if RALCriptoKeyDerivation = rkdPBKDF2 then
+    Result := DerivedKey(Key)
+  else
+    Result := StringToBytesUTF8(Key);
 end;
 
 function TRALCriptoAES.MacKey: TBytes;
@@ -606,7 +678,7 @@ begin
   { a key of its own for the MAC, derived from the cipher key: the same bytes
     must not serve two algorithms. SHA-256 of key || 'ral-mac' is easy to
     reproduce outside RAL, which keeps the format readable by third parties }
-  vBytes := StringToBytesUTF8(Key);
+  vBytes := KeyBytes;
   vSalt := StringToBytesUTF8('ral-mac');
   SetLength(vBytes, Length(vBytes) + Length(vSalt));
   Move(vSalt[0], vBytes[Length(vBytes) - Length(vSalt)], Length(vSalt));
@@ -1010,28 +1082,6 @@ begin
   end;
 end;
 
-procedure TRALCriptoAES.LogAES(const ALog: StringRAL; AInput: PByte);
-var
-  vInt: IntegerRAL;
-  vStr: StringRAL;
-begin
-  FLogAES.Add(ALog);
-  vStr := '';
-  for vInt := 1 to 16 do
-  begin
-    if vStr <> '' then
-      vStr := vStr + ' ';
-    vStr := vStr + IntToHex(AInput^, 2);
-    if vInt mod 4 = 0 then
-    begin
-      FLogAES.Add(vStr);
-      vStr := '';
-    end;
-    Inc(AInput);
-  end;
-  FLogAES.Add('');
-end;
-
 class function TRALCriptoAES.Multi02(AValue: byte): byte;
 begin
   Result := (AValue shl 1) xor ((AValue shr 7) * 283);
@@ -1129,5 +1179,9 @@ end;
 
 initialization
 TRALCriptoAES.InitializeAES;
+gDerivedLock := TCriticalSection.Create;
+
+finalization
+FreeAndNil(gDerivedLock);
 
 end.

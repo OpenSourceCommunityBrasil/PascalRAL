@@ -40,10 +40,8 @@ begin
   vOptions.Workers := 0;
   vOptions.Check;
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  // a work buffer of a fixed size, as TRALCompressZLib.InitCompress explains
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   vZip := TZSTDCompressStream.Create(AOutStream, vOptions);
   try
@@ -64,10 +62,7 @@ var
   vZip: TZSTDDecompressStream;
   vCount: integer;
 begin
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE); // see InitCompress
 
   vOption.Init;
   vZip := TZSTDDecompressStream.Create(AInStream, vOption);
@@ -112,5 +107,11 @@ end;
 initialization
   RegisterClass(TRALCompressZStd);
   RegisterCompress(TRALCompressZStd);
+
+finalization
+  { RALCompress keeps the class pointer, and this package can be unloaded
+    without it: reinstalled with the IDE open, it left a dangling class
+    behind, and the next request made at design time crashed the IDE }
+  UnregisterCompress(TRALCompressZStd);
 
 end.

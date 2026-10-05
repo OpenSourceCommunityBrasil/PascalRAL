@@ -38,6 +38,8 @@ type
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
     function GetNativeConnection: TComponent; override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: TZConnection;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -47,7 +49,7 @@ type
     class function DatabaseName : StringRAL; override;
     class function PackageDependency : StringRAL; override;
     /// The TZConnection this driver opens - see GetNativeConnection
-    property NativeConnection: TZConnection read FConnector;
+    property NativeConnection: TZConnection read GetConnector;
   end;
 
 implementation
@@ -174,6 +176,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -222,8 +227,19 @@ begin
   FConnector.Disconnect;
 end;
 
+{ Connected - and with it configured - on the way out: Database, credentials
+  and the driver settings are only applied by Conectar, and with the pool off
+  (the default) nothing had called it yet, so a route that took this
+  connection got one that knew no database. Conectar returns at once when
+  the connection is already open. }
 function TRALDBZeos.GetNativeConnection: TComponent;
 begin
+  Result := GetConnector;
+end;
+
+function TRALDBZeos.GetConnector: TZConnection;
+begin
+  Conectar;
   Result := FConnector;
 end;
 
@@ -317,6 +333,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;

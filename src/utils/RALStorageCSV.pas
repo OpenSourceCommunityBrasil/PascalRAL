@@ -310,7 +310,7 @@ end;
 
 procedure TRALStorageCSV.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
-  vFields: StringRAL;
+  vFields, vName: StringRAL;
   vInt: IntegerRAL;
 begin
   SetLength(FFieldNames, ADataset.FieldCount);
@@ -321,7 +321,16 @@ begin
   begin
     if vInt > 0 then
       vFields := vFields + FFormatOptions.FColumnSeparator;
-    vFields := vFields + ADataset.Fields[vInt].FieldName;
+    { a name holding the separator, a quote or a line break - an alias, which
+      opensql takes from the SQL the client sends - split the header or ran
+      into the records: it is quoted like a text value, which the reader
+      already unquotes. Any other name goes as it always did }
+    vName := ADataset.Fields[vInt].FieldName;
+    if (Pos(StringRAL(FFormatOptions.FColumnSeparator), vName) > 0) or
+       (Pos(StringRAL('"'), vName) > 0) or (Pos(StringRAL(#13), vName) > 0) or
+       (Pos(StringRAL(#10), vName) > 0) then
+      vName := CSVFormatString(vName);
+    vFields := vFields + vName;
 
     FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
     FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);

@@ -63,6 +63,7 @@ type
                      body: TJavaArray<Byte>; contentType: JString;
                      connectMs: Integer; readMs: Integer; pingMs: Integer;
                      allowHttp2: Boolean; followRedirects: Boolean;
+                     followSslRedirects: Boolean;
                      shareKey: JString; judge: JRalCertJudge): Integer; cdecl;
     procedure release(shareKey: JString); cdecl;
     function status: Integer; cdecl;
@@ -256,7 +257,9 @@ begin
       begin
         if SameText(string(vParam.ParamName), 'User-Agent') then
           vHasUserAgent := True;
-        vLines.Add(vParam.ParamName + ': ' + vParam.AsString);
+        { the Java side splits this block on LF, so one inside a value would
+          become a header of its own }
+        vLines.Add(RALSafeHeaderText(vParam.ParamName + ': ' + vParam.AsString));
       end
       else if vParam.Kind = rpkCOOKIE then
       begin
@@ -273,7 +276,7 @@ begin
       vLines.Add('User-Agent: ' + Parent.UserAgent);
 
     if vCookies <> '' then
-      vLines.Add('Cookie: ' + vCookies);
+      vLines.Add('Cookie: ' + RALSafeHeaderText(vCookies));
 
     { LF and not the platform separator: the Java side splits on "\n", and a
       CRLF would leave a stray CR at the end of every value. }
@@ -436,12 +439,16 @@ var
   vBody: TJavaArray<Byte>;
   vContentType, vHeaders: StringRAL;
   vRC, vPing: Integer;
+  vJudge: JRalCertJudge;
 begin
   inherited;
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEOKHTTP);
 
-  ARequest.Params.CompressType := Parent.CompressType;
+  { ContentCompress, as every other engine sets it: RequestStream takes the
+    compression from there and overwrites Params.CompressType, which is what
+    this used to set - so no request body was ever compressed on this engine }
+  ARequest.ContentCompress := Parent.CompressType;
   ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
   ARequest.CriptoKey := Parent.CriptoOptions.Key;
@@ -473,6 +480,19 @@ begin
     else
       vPing := 0;
 
+    { THE JUDGE ONLY GOES ALONG WHEN THE APPLICATION DECIDES - a pin for this
+      host, OnValidateServerCert, or svNever - because its presence is what
+      tells the bridge's hostname check that the name no longer matters. It
+      used to go along always, so the name was never checked at all: with no
+      pin and no event, a certificate valid for ANY host was accepted for this
+      one, and whoever held one could sit in the middle. With no judge the
+      bridge is plain OkHttp: the platform judges the chain and
+      OkHostnameVerifier the name. }
+    if CertCheckWanted or (Parent.SSL.Verify = svNever) then
+      vJudge := FJudge
+    else
+      vJudge := nil;
+
     vRC := TJRalOkHttp.JavaClass.execute(
       StringToJString(string(RALMethodToHTTPMethod(AMethod))),
       StringToJString(string(AURL)),
@@ -487,8 +507,11 @@ begin
         does not expose the number. So MaxRedirects is honoured where it can
         be: zero means do not follow at all, anything else means follow. }
       Parent.MaxRedirects > 0,
+      { never from https to plain http where TLS is required - see
+        TRALClientHTTP.LeavesTLS }
+      (Parent.MaxRedirects > 0) and not TLSRequired,
       StringToJString(string(ShareKey)),
-      FJudge);
+      vJudge);
 
     if vRC = 0 then
       ReadResponse(AResponse)

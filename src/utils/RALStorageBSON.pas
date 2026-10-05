@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB,
   kxBSON,
-  RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64;
+  RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALConsts;
 
 type
 
@@ -155,7 +155,13 @@ begin
 
   ADataset.FieldDefs.Clear;
 
-  vFields := ADocument.Values.ByName('fd');
+  { the document is whatever came over the wire - a server's answer, a
+    client's delta to applyupdates - so every item is asked for by type: the
+    untyped ByName handed back an item of any type, read as an array from
+    then on, and the item list does not check its index }
+  vFields := ADocument.Values.ByName('fd', BSON_TYPE_ARRAY);
+  if vFields = nil then
+    raise Exception.Create(emStorageInvalidBinary);
 
   SetLength(FFieldNames, vFields^.Values.Count);
   SetLength(FFieldTypes, vFields^.Values.Count);
@@ -164,7 +170,10 @@ begin
 
   for vInt := 0 to Pred(vFields^.Values.Count) do
   begin
+    // a field is [name, type, flags, size]
     vItemField := vFields^.Values.Item[vInt]^.PBSONArray;
+    if (vItemField = nil) or (vItemField^.Values.Count < 4) then
+      raise Exception.Create(emStorageInvalidBinary);
 
     vName := vItemField^.Values[0]^.ToString;
     FFieldNames[vInt] := vName;
@@ -219,59 +228,79 @@ procedure TRALStorageBSON.ReadRecords(ADataset: TDataSet;
   ADocument: TBSONDocument);
 var
   vRecords, vRecord: PBSONItemArray;
-  vInt1, vInt2: IntegerRAL;
+  vItem: PBSONItemBase;
+  vInt1, vInt2, vCount: IntegerRAL;
   vBookMark: TBookMark;
 begin
-  vRecords := ADocument.Values.ByName('rc');
+  // typed, like everything read here - see ReadFields
+  vRecords := ADocument.Values.ByName('rc', BSON_TYPE_ARRAY);
+  if vRecords = nil then
+    raise Exception.Create(emStorageInvalidBinary);
 
   ADataset.DisableControls;
   LiftReadOnly;
-
-  if not ADataset.IsUniDirectional then
-  begin
-    vBookMark := ADataset.GetBookmark;
-    ADataset.First;
-  end;
-
-  // the array is zero-based: starting at 1 silently dropped the first record
-  for vInt1 := 0 to Pred(vRecords^.Values.Count) do
-  begin
-    vRecord := vRecords^.Values.Items[vInt1];
-
-    ADataset.Append;
-    for vInt2 := 0 to Pred(vRecord^.Values.Count) do
+  vBookMark := nil;
+  try
+    if not ADataset.IsUniDirectional then
     begin
-      if vRecord^.Values[vInt2]^.BSONType <> BSON_TYPE_NULL then
+      vBookMark := ADataset.GetBookmark;
+      ADataset.First;
+    end;
+
+    // the array is zero-based: starting at 1 silently dropped the first record
+    for vInt1 := 0 to Pred(vRecords^.Values.Count) do
+    begin
+      vRecord := vRecords^.Values.Item[vInt1]^.PBSONArray;
+      if vRecord = nil then
+        raise Exception.Create(emStorageInvalidBinary);
+
+      { values go by position, and only as far as there are fields: a record
+        with more values indexed past FFieldTypes }
+      vCount := vRecord^.Values.Count;
+      if vCount > Length(FFieldTypes) then
+        vCount := Length(FFieldTypes);
+
+      ADataset.Append;
+      for vInt2 := 0 to Pred(vCount) do
       begin
+        vItem := vRecord^.Values[vInt2];
+        if vItem^.BSONType = BSON_TYPE_NULL then
+          Continue;
+
+        { PBSONBoolean and PBSONDateTime are nil for an item of another type }
         case FFieldTypes[vInt2] of
           sftShortInt,
           sftSmallInt,
           sftInteger,
           sftByte,
-          sftWord     : ReadFieldInteger(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToInt);
+          sftWord     : ReadFieldInteger(FFoundFields[vInt2], vItem^.ToInt);
           sftCardinal,
           sftInt64,
-          sftQWord    : ReadFieldInt64(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToInt64);
-          sftDouble   : ReadFieldFloat(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToDouble);
-          sftBoolean  : ReadFieldBoolean(FFoundFields[vInt2], vRecord^.Values[vInt2]^.PBSONBoolean^.Value);
+          sftQWord    : ReadFieldInt64(FFoundFields[vInt2], vItem^.ToInt64);
+          sftDouble   : ReadFieldFloat(FFoundFields[vInt2], vItem^.ToDouble);
+          sftBoolean  : if vItem^.PBSONBoolean <> nil then
+                          ReadFieldBoolean(FFoundFields[vInt2], vItem^.PBSONBoolean^.Value);
           sftString,
-          sftMemo     : ReadFieldString(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToString);
-          sftBlob     : ReadFieldStream(FFoundFields[vInt2], vRecord^.Values[vInt2]^.ToString);
-          sftDateTime : ReadFieldDateTime(FFoundFields[vInt2], vRecord^.Values[vInt2]^.PBSONDateTime^.Value);
+          sftMemo     : ReadFieldString(FFoundFields[vInt2], vItem^.ToString);
+          sftBlob     : ReadFieldStream(FFoundFields[vInt2], vItem^.ToString);
+          sftDateTime : if vItem^.PBSONDateTime <> nil then
+                          ReadFieldDateTime(FFoundFields[vInt2], vItem^.PBSONDateTime^.Value);
         end;
       end;
+      ADataset.Post;
     end;
-    ADataset.Post;
-  end;
 
-  if not ADataset.IsUniDirectional then
-  begin
-    ADataset.GotoBookmark(vBookMark);
-    ADataset.FreeBookmark(vBookMark);
+    if vBookMark <> nil then
+      ADataset.GotoBookmark(vBookMark);
+  finally
+    { in a finally, as the CSV reader already had it: a record that failed
+      left the read-only fields writable, the controls disabled and the
+      bookmark allocated }
+    if vBookMark <> nil then
+      ADataset.FreeBookmark(vBookMark);
+    RestoreReadOnly;
+    ADataset.EnableControls;
   end;
-
-  RestoreReadOnly;
-  ADataset.EnableControls;
 end;
 
 procedure TRALStorageBSON.SaveToStream(ADataset: TDataSet; AStream: TStream);

@@ -34,6 +34,7 @@
   emQuicHandshakeTimeout = 'El handshake QUIC con %s:%d agotó el tiempo.';
   emQuicConnectFailed = 'La conexión QUIC con %s:%d falló: %s.';
   emQuicFrameMalformed = 'Frame QUIC malformado.';
+  emQuicFrameTooLarge = 'QUIC: un cuerpo de %d bytes no cabe en un frame; el límite es de %d bytes.';
   emQuicAnswerTimeout = 'QUIC: tiempo agotado esperando la respuesta.';
   emQuicPeerAborted = 'QUIC: el otro extremo abortó el stream.';
   emQuicPlatformUnsupported = 'El motor MsQuic solo traduce los códigos de estado de Windows y Linux; todavía no funciona en esta plataforma.';
@@ -70,7 +71,9 @@
 
   emEngineNotFound = 'Motor %s no encontrado: la unit que lo registra no está en las uses.';
   emDBFieldLoad = 'No se pudo cargar el campo %s: %s';
-  emHTTPDateInvalidMonth = 'Mes inválido en la fecha HTTP: %s.';
+  emHTTPDateInvalid = '"%s" no es una fecha HTTP.';
+  emMultipartNoPart = 'Cuerpo multipart mal formado: ninguna parte completa delimitada por su boundary.';
+  emBase64Invalid = 'Texto base64 no válido.';
   emISO8601Invalid = '"%s" no es una fecha ISO 8601.';
   emLibraryNotLoaded = 'La biblioteca no fue cargada.';
   emOpenSSLCallFailed = 'OpenSSL falló en %s.';
@@ -89,6 +92,7 @@
   wmJWTInvalid = 'La firma o el formato del token no es válido';
   wmJWTNotYetValid = 'El token aún no es válido';
   wmJWTRefused = 'El token fue rechazado por el servidor';
+  emJWTNoSecretKey = 'JWT: la SignSecretKey está vacía, así que el servidor no firma ni acepta tokens';
 
   // jws messages (RS/ES tokens and JWK)
   emJWSInvalidKey = 'No se pudo leer la clave.';

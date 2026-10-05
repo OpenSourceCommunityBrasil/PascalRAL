@@ -15,6 +15,7 @@ type
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
+    FContentEncoded: boolean;
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
     FTransportError: TRALTransportError;
@@ -94,6 +95,11 @@ type
       received, not put back together with another boundary }
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
+    /// The body already carries the coding ContentEncoding names - a file kept
+    /// compressed on disk, which the WebModule serves as it is - so it goes out
+    /// without being compressed again. ContentEncoding is written as text then,
+    /// since the coding need not be one this program can produce
+    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
   published
     /// TCP Client Connection Error
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
@@ -219,6 +225,7 @@ end;
 function TRALResponse.TakeWireStream: TStream;
 var
   vParam: TRALParam;
+  vEncoding: StringRAL;
 begin
   { BodyStream may have been asked before the handler set the content type }
   vParam := Body;
@@ -226,45 +233,52 @@ begin
      (vParam.Content = FBodyStream) then
     vParam.ContentType := ContentType;
   FBodyStream := nil;
-  Result := inherited TakeWireStream;
+  { coded already (ContentEncoded): nothing compresses it again, and
+    ContentEncoding goes out as it was written - the coding need not be one
+    this program can produce }
+  if FContentEncoded then
+  begin
+    vEncoding := ContentEncoding;
+    ContentCompress := ctNone;
+    Result := inherited TakeWireStream;
+    ContentEncoding := vEncoding;
+  end
+  else
+    Result := inherited TakeWireStream;
 end;
 
 function TRALResponse.TakeWireString: RawByteString;
 var
   vParam: TRALParam;
+  vEncoding: StringRAL;
 begin
   vParam := Body;
   if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
      (vParam.Content = FBodyStream) then
     vParam.ContentType := ContentType;
   FBodyStream := nil;
-  Result := inherited TakeWireString;
+  if FContentEncoded then
+  begin
+    vEncoding := ContentEncoding;
+    ContentCompress := ctNone;
+    Result := inherited TakeWireString;
+    ContentEncoding := vEncoding;
+  end
+  else
+    Result := inherited TakeWireString;
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
-const
-  HTTPMonths: array[1..12] of string[3] = (
-    'Jan', 'Feb', 'Mar', 'Apr',
-    'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec');
-  HTTPDays: array[1..7] of string[3] = (
-    'Sun', 'Mon', 'Tue', 'Wed',
-    'Thu', 'Fri', 'Sat');
-
-  DateFormat = '"%s", dd "%s" yyyy hh:mm:ss';
-  Expire     = '; Expires=%s GMT';
 var
   vInt: integer;
-  vYear, vMonth, vDay: Word;
-  vExpire, vValue : StringRAL;
+  vAttrs: StringRAL;
   vParam: TRALParam;
 begin
-  ADateTime := RALDateTimeToGMT(ADateTime);
-  DecodeDate(ADateTime, vYear, vMonth, vDay);
-
-  vExpire := FormatDateTime(DateFormat, ADateTime);
-  vExpire := Format(vExpire, [HTTPDays[DayOfWeek(ADateTime)], HTTPMonths[vMonth]]);
-  vExpire := Format(Expire, [vExpire]);
+  { what a plain name=value cookie carries: the server's CookieLife, as a date
+    that does not depend on the locale (FormatDateTime wrote its time separator
+    where ':' stood), and Path=/ so the browser sends it to every route - with
+    no Path it kept the cookie for the folder of the URL that set it }
+  vAttrs := '; Expires=' + RALHTTPDate(RALDateTimeToGMT(ADateTime)) + '; Path=/';
 
   for vInt := 0 to Pred(Params.Count) do
   begin
@@ -274,11 +288,12 @@ begin
       { AddCookie(TRALCookie) stores the whole Set-Cookie value - name,
         value, Expires, Path, HttpOnly, Secure - in a param named Set-Cookie:
         that one goes out as it is. A plain name=value param gets the
-        server's CookieLife. Every engine builds its cookies from this list }
+        attributes above. Every engine builds its cookies from this list,
+        so this is where a CR or LF in one is taken out (RALSafeHeaderText) }
       if RALSameName(vParam.ParamName, 'Set-Cookie') then
-        ADest.Add(vParam.AsString)
+        ADest.Add(RALSafeHeaderText(vParam.AsString))
       else
-        ADest.Add(vParam.ParamName + '=' + vParam.AsString + ';' + vExpire);
+        ADest.Add(RALSafeHeaderText(vParam.ParamName + '=' + vParam.AsString) + vAttrs);
     end;
   end;
 end;
@@ -310,6 +325,7 @@ begin
   FStatusCode := -1;
   FErrorCode := 0;
   FTransportError := rteNone;
+  FContentEncoded := False;
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
@@ -392,6 +408,9 @@ end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
+  { the body as text, never what goes on the wire: on the server that used to
+    run the whole encoding - multipart, gzip, AES - to be thrown away, and
+    rewrote ContentType on the way. An engine wants GetResponseEncText }
   Result := GetResponseEncText(False);
 end;
 
@@ -441,16 +460,20 @@ begin
   try
     Params.CriptoOptions.CriptType := ContentCripto;
     Params.CriptoOptions.Key := CriptoKey;
-    Params.CompressType := ContentCompress;
+    if FContentEncoded then
+      Params.CompressType := ctNone // coded already - see ContentEncoded
+    else
+      Params.CompressType := ContentCompress;
     Params.ContentDispositionInline := ContentDispositionInline;
 
     Result := Params.EncodeBody(vContentType, vContentDisposition);
     ContentType := vContentType;
     ContentDisposition := vContentDisposition;
-    { what was done, not what was asked }
+    { what was done, not what was asked - but a body coded already keeps the
+      ContentEncoding it was written with }
     if Result = nil then
       ContentCompress := ctNone
-    else
+    else if not FContentEncoded then
       ContentCompress := Params.CompressType;
   finally
     Params.CompressType := vCompress;

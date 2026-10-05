@@ -50,8 +50,11 @@ type
 
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
+  { amUNKNOWN is what a server gets for a method it does not implement, and
+    ValidateRequest answers 501 to it - it is never a member of a route's
+    method sets. It goes last so that no ordinal already stored moves }
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS,
-    amHEAD, amTRACE);
+    amHEAD, amTRACE, amUNKNOWN);
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
@@ -74,6 +77,21 @@ type
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
+  { The headers TRALServer.SecurityHeaders adds to every answer, with the
+    values the OWASP REST cheat sheet gives an API:
+    rshContentTypeOptions     X-Content-Type-Options: nosniff
+    rshFrameOptions           X-Frame-Options: DENY
+    rshReferrerPolicy         Referrer-Policy: no-referrer
+    rshStrictTransport        Strict-Transport-Security: max-age=31536000,
+                              only when the server runs TLS
+    rshContentSecurityPolicy  Content-Security-Policy: default-src 'none';
+                              frame-ancestors 'none' - which forbids a page
+                              everything, so it is for a server that serves
+                              no HTML; a WebModule's pages need a policy of
+                              their own }
+  TRALSecurityHeader = (rshContentTypeOptions, rshFrameOptions, rshReferrerPolicy,
+    rshStrictTransport, rshContentSecurityPolicy);
+  TRALSecurityHeaders = set of TRALSecurityHeader;
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
   /// IP family of an address - see TRALServer.GetServerAddress
@@ -164,6 +182,11 @@ const
   sLineBreak = #13#10;
   {$IFEND}
   EmptyStr: StringRAL = StringRAL('');
+
+  { methods whose repetition leaves the server where one call would
+    (RFC 7231 4.2.2): the only ones a client may send again once the request
+    may have been delivered }
+  RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
 
 // Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;

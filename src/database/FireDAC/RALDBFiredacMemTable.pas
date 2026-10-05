@@ -52,6 +52,7 @@ type
     procedure InternalDelete; override;
 
     procedure SetSQL(AValue: TStrings);
+    procedure SetParams(const AValue: TParams);
     procedure SetRALConnection(const AValue: TRALDBConnection);
     procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
     procedure SetStorage(const AValue: TRALStorageLink);
@@ -87,7 +88,7 @@ type
   published
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
-    property Params: TParams read FParams write FParams;
+    property Params: TParams read FParams write SetParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
@@ -403,52 +404,47 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
+    { the body where it is: AsStream copied the whole answer first }
     vMem := AResponse.Body.Content;
-    try
-      FSQLCache.ResponseFromStream(vMem);
-      for vInt1 := 0 to Pred(FSQLCache.Count) do
+    FSQLCache.ResponseFromStream(vMem);
+    for vInt1 := 0 to Pred(FSQLCache.Count) do
+    begin
+      vDBSQL := FSQLCache.SQLList[vInt1];
+      if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+         (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
       begin
-        vDBSQL := FSQLCache.SQLList[vInt1];
-        if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
-        begin
-          Self.GotoBookmark(vDBSQL.BookMark);
+        Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
+        vTable := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
+        try
           try
-            try
-              if vDBSQL.Response.Native then
-                vTable.LoadFromStream(vDBSQL.Response.Stream)
-              else
-                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
+            if vDBSQL.Response.Native then
+              vTable.LoadFromStream(vDBSQL.Response.Stream)
+            else
+              LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
-              Self.Edit;
-              for vInt2 := 0 to Pred(vTable.FieldCount) do
-              begin
-                vField := Self.FindField(vTable.Fields[vInt2].FieldName);
-                if vField <> nil then
-                  vField.Value := vTable.Fields[vInt2].Value;
-              end;
-              Self.Post;
-            except
-
+            Self.Edit;
+            for vInt2 := 0 to Pred(vTable.FieldCount) do
+            begin
+              vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+              if vField <> nil then
+                vField.Value := vTable.Fields[vInt2].Value;
             end;
-          finally
-            FreeAndNil(vTable);
+            Self.Post;
+          except
+
           end;
-        end
-        else if vDBSQL.Response.Error then
-        begin
-          if Assigned(FOnError) then
-            FOnError(Self, vDBSQL.Response.StrError);
+        finally
+          FreeAndNil(vTable);
         end;
+      end
+      else if vDBSQL.Response.Error then
+      begin
+        if Assigned(FOnError) then
+          FOnError(Self, vDBSQL.Response.StrError);
       end;
-      FSQLCache.Clear;
-    finally
-      vMem := nil; // the response's own body: not ours to free
     end;
+    FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
@@ -496,22 +492,16 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
-    vMem := AResponse.Body.Content;
+    vMem := AResponse.Body.Content; // where it is, not a copy
+    vSQLCache := TRALDBSQLCache.Create;
     try
-      vSQLCache := TRALDBSQLCache.Create;
-      try
-        vSQLCache.ResponseFromStream(vMem);
-        vDBSQL := vSQLCache.SQLList[0];
+      vSQLCache.ResponseFromStream(vMem);
+      vDBSQL := vSQLCache.SQLList[0];
 
-        FRowsAffected := vDBSQL.Response.RowsAffected;
-        FLastId := vDBSQL.Response.LastId;
-      finally
-        FreeAndNil(vSQLCache);
-      end;
+      FRowsAffected := vDBSQL.Response.RowsAffected;
+      FLastId := vDBSQL.Response.LastId;
     finally
-      vMem := nil; // the response's own body: not ours to free
+      FreeAndNil(vSQLCache);
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
@@ -535,12 +525,11 @@ var
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
+  vInt: IntegerRAL;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    { the body where it is - the cache copies what it keeps. AsStream copied
-      a whole result set only to read it once }
-    vMem := AResponse.Body.Content;
+    vMem := AResponse.Body.Content; // where it is, not a copy
     vSQLCache := nil;
     try
       FLoading := True;
@@ -566,12 +555,21 @@ begin
             19.9012 came back as 3.939E-313. Drop the guessed defs and let FireDAC
             take the ones travelling in the stream - FLoadingNative keeps
             InternalInitFieldDefs from putting them back while the load reopens
-            the dataset. }
+            the dataset.
+            Only the fields this dataset made for itself go: Fields.Clear also
+            freed the persistent ones of the Fields Editor, which belong to the
+            form - its variables were left pointing at freed memory, and the
+            calculated and lookup fields were gone after the first Open. A
+            persistent field keeps its type, so one made as Float for a NUMERIC
+            column now stops the load with a type mismatch instead of reading
+            the BCD bytes as garbage: recreate it with the real type. }
           FLoadingNative := True;
           if Self.Active then
             Self.Close;
           Self.FieldDefs.Clear;
-          Self.Fields.Clear;
+          for vInt := Pred(Self.Fields.Count) downto 0 do
+            if Self.Fields[vInt].Owner = Self then
+              Self.Fields[vInt].Free;
           Self.LoadFromStream(vDBSQL.Response.Stream);
         end
         else
@@ -585,7 +583,6 @@ begin
       end;
     finally
       FreeAndNil(vSQLCache);
-      vMem := nil; // the response's own body: not ours to free
       FLoading := False;
       FLoadingNative := False;
     end;
@@ -638,7 +635,16 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, FStorage, OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches: the next Open then
+        opened the dataset locally and empty, and every Post was taken for a
+        load and never sent }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, OnQueryResponse);
+      except
+        FLoading := False;
+        raise;
+      end;
     end;
   end
   else if (not AValue) and (not FLoading) then
@@ -667,6 +673,11 @@ begin
 
   if FRALConnection <> nil then
     FRALConnection.FreeNotification(Self);
+end;
+
+procedure TRALDBFDMemTable.SetParams(const AValue: TParams);
+begin
+  RALAssignOwned(FParams, AValue);
 end;
 
 procedure TRALDBFDMemTable.SetSQL(AValue: TStrings);

@@ -34,6 +34,7 @@
   emQuicHandshakeTimeout = 'QUIC handshake with %s:%d timed out.';
   emQuicConnectFailed = 'QUIC connection to %s:%d failed: %s.';
   emQuicFrameMalformed = 'Malformed QUIC frame.';
+  emQuicFrameTooLarge = 'QUIC: a body of %d bytes does not fit in a frame; the limit is %d bytes.';
   emQuicAnswerTimeout = 'QUIC: timed out waiting for the answer.';
   emQuicPeerAborted = 'QUIC: the peer aborted the stream.';
   emQuicPlatformUnsupported = 'The MsQuic engine only translates the status codes of Windows and Linux; it cannot run on this platform yet.';
@@ -70,7 +71,9 @@
 
   emEngineNotFound = 'Engine %s not found: the unit that registers it is not in the uses.';
   emDBFieldLoad = 'Could not load the field %s: %s';
-  emHTTPDateInvalidMonth = 'Invalid month in the HTTP date: %s.';
+  emHTTPDateInvalid = '"%s" is not an HTTP date.';
+  emMultipartNoPart = 'Malformed multipart body: no complete part delimited by its boundary.';
+  emBase64Invalid = 'Invalid base64 text.';
   emISO8601Invalid = '"%s" is not an ISO 8601 date.';
   emLibraryNotLoaded = 'The library was not loaded.';
   emOpenSSLCallFailed = 'OpenSSL failed in %s.';
@@ -89,6 +92,7 @@
   wmJWTInvalid = 'The token signature or format is invalid';
   wmJWTNotYetValid = 'The token is not valid yet';
   wmJWTRefused = 'The token was refused by the server';
+  emJWTNoSecretKey = 'JWT: SignSecretKey is empty, so the server neither signs nor accepts tokens';
 
   // jws messages (RS/ES tokens and JWK)
   emJWSInvalidKey = 'The key could not be read.';

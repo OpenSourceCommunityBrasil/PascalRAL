@@ -21,7 +21,8 @@ type
 
   /// How the server's certificate is judged on a connection.
   TRALMsQuicCertMode = (
-    /// the library validates against the system store, and its verdict stands
+    /// the library validates - chain and host name - against the store
+    /// TRALMsQuicClientHTTP.DefaultCaFile describes, and its verdict stands
     qcmSystem,
     /// SSL.Verify = svNever with nobody else to ask: anything is accepted
     qcmNone,
@@ -137,6 +138,15 @@ type
     FTargetUrl: StringRAL;
     FTargetHost: StringRAL;
     FTargetPort: IntegerRAL;
+    { ConnectionKey as last built and what it was built from: the same place
+      with the same settings keeps it, where a Format of six values ran on
+      every request }
+    FKey: StringRAL;
+    FKeyHost: StringRAL;
+    FKeyPort: IntegerRAL;
+    FKeyPolicy: StringRAL;
+    FKeyKeepAlive: IntegerRAL;
+    FKeyCaFile: TFileName;
     function AcquirePending: TRALMsQuicPending;
     function CertMode: TRALMsQuicCertMode;
     function ConnectionKey: StringRAL;
@@ -156,10 +166,22 @@ type
     /// wins for the whole process.
     ///
     /// Leave it empty on Android too: the library deployed to
-    /// library\lib\arm64-v8a\ lands in the application's own folder, which is
-    /// where dlopen looks for a plain name. It is here for the odd case of a
-    /// library kept somewhere else.
+    /// library\lib\arm64-v8a\ (library\lib\armeabi-v7a\ for the 32-bit slice)
+    /// lands in the application's own folder, which is where dlopen looks for
+    /// a plain name. It is here for the odd case of a library kept somewhere
+    /// else.
     class var DefaultLibPath: TFileName;
+    /// PEM file with the certificate authorities a server's chain is checked
+    /// against, for the OpenSSL build of msquic. Empty, the default, means the
+    /// platform's own store: the Windows one on Windows; on Android the system
+    /// CAs, gathered by this unit into one file, once per process (Android
+    /// names its CA files in a way OpenSSL 3 cannot look up); on Linux
+    /// OpenSSL's default paths, which SSL_CERT_FILE and SSL_CERT_DIR can
+    /// redirect. Set, it replaces the system store on Windows too - the way to
+    /// trust a private CA without installing it on the machine. Read when the
+    /// first connection under a certificate policy is configured, so set it
+    /// before the first request.
+    class var DefaultCaFile: TFileName;
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -199,6 +221,11 @@ procedure RALMsQuicProfileReset;
 
 implementation
 
+{$IF Defined(ANDROID) and not Defined(FPC)}
+uses
+  System.IOUtils, Posix.Unistd, Posix.Stdio;
+{$IFEND}
+
 const
   /// A receive buffer above this is released instead of kept between requests.
   RALMSQUIC_KEEP_BUFFER = 1024 * 1024;
@@ -232,6 +259,90 @@ var
   vRegistration: HQUIC = nil;
   vConfigs: TStringList = nil;
   vGlobalLock: TCriticalSection = nil;
+
+{$IF Defined(ANDROID) and not Defined(FPC)}
+var
+  vAndroidCaFile: UTF8String = '';
+
+{ The system's trusted CAs as ONE PEM file, for OpenSSL to load.
+
+  Android keeps them one certificate per file, named by the old MD5 subject
+  hash, and OpenSSL 3 looks a directory up by the new one - pointed at that
+  folder it would find nothing. Its compiled-in default paths do not exist on a
+  handset either. A single file needs no lookup, so the store is copied into
+  the cache folder, once per process. Android 14 moved the store into the
+  Conscrypt module, which updates it without a system update, and that copy
+  wins when it exists.
+
+  Called with vGlobalLock held. Returns '' when nothing could be gathered, and
+  validation then fails closed - an unpinned host is refused, a pin still
+  decides for its own. }
+function AndroidCaBundle: UTF8String;
+const
+  cStores: array[0..1] of string = ('/apex/com.android.conscrypt/cacerts',
+                                    '/system/etc/security/cacerts');
+  cBreak: Byte = 10;
+var
+  vStore, vTarget, vTemp: string;
+  vRec: TSearchRec;
+  vOut: TFileStream;
+  vBytes: TBytes;
+  vCount, vIdx: IntegerRAL;
+begin
+  Result := vAndroidCaFile;
+  if Result <> '' then
+    Exit;
+
+  vStore := '';
+  for vIdx := Low(cStores) to High(cStores) do
+    if DirectoryExists(cStores[vIdx]) then
+    begin
+      vStore := cStores[vIdx];
+      Break;
+    end;
+  if vStore = '' then
+    Exit;
+
+  vTarget := TPath.Combine(TPath.GetCachePath, 'ral-msquic-cacerts.pem');
+  { written aside and renamed over the target: another process of the same
+    application may be loading the file this one is replacing }
+  vTemp := vTarget + '.' + IntToStr(getpid);
+  vCount := 0;
+  try
+    vOut := TFileStream.Create(vTemp, fmCreate);
+    try
+      if FindFirst(TPath.Combine(vStore, '*'), faAnyFile, vRec) = 0 then
+      try
+        repeat
+          if (vRec.Attr and faDirectory) = 0 then
+          try
+            vBytes := TFile.ReadAllBytes(TPath.Combine(vStore, vRec.Name));
+            if Length(vBytes) > 0 then
+            begin
+              vOut.WriteBuffer(vBytes[0], Length(vBytes));
+              vOut.WriteBuffer(cBreak, 1);
+              Inc(vCount);
+            end;
+          except
+            // one unreadable certificate must not cost the others
+          end;
+        until FindNext(vRec) <> 0;
+      finally
+        FindClose(vRec);
+      end;
+    finally
+      vOut.Free;
+    end;
+    if (vCount > 0) and RenameFile(vTemp, vTarget) then
+      vAndroidCaFile := UTF8String(vTarget);
+  except
+    // no cache folder to write to: no bundle, and the paragraph above applies
+  end;
+  if vAndroidCaFile = '' then
+    DeleteFile(vTemp);
+  Result := vAndroidCaFile;
+end;
+{$IFEND}
 
 { The registration and the configurations, created on first use. Callers hold
   no lock: this takes vGlobalLock itself. }
@@ -273,11 +384,26 @@ var
   vCred: QUIC_CREDENTIAL_CONFIG;
   vAlpnBuf: QUIC_BUFFER;
   vStatus: QUIC_STATUS;
+  vCaFile: UTF8String;
+  vBuiltin: boolean;
 begin
-  vKey := StringRAL(AAlpn) + '|' + StringRAL(IntToStr(Ord(ACertMode))) + '|' +
-          StringRAL(IntToStr(AHandshakeTimeout)) + '|' + StringRAL(IntToStr(AKeepAlive));
   vGlobalLock.Enter;
   try
+    { the store a server's chain is checked against - see DefaultCaFile. It is
+      part of the key because a configuration keeps the store it was built
+      with }
+    vCaFile := '';
+    if ACertMode <> qcmNone then
+    begin
+      vCaFile := UTF8String(TRALMsQuicClientHTTP.DefaultCaFile);
+      {$IF Defined(ANDROID) and not Defined(FPC)}
+      if vCaFile = '' then
+        vCaFile := AndroidCaBundle;
+      {$IFEND}
+    end;
+    vKey := StringRAL(AAlpn) + '|' + StringRAL(IntToStr(Ord(ACertMode))) + '|' +
+            StringRAL(IntToStr(AHandshakeTimeout)) + '|' +
+            StringRAL(IntToStr(AKeepAlive)) + '|' + StringRAL(vCaFile);
     vIdx := vConfigs.IndexOf(vKey);
     if vIdx >= 0 then
     begin
@@ -364,6 +490,29 @@ begin
                        QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED or
                        QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION or
                        QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES;
+    end;
+    { WHO VALIDATES. On Windows msquic asks the system - chain, host name, the
+      machine's store. Everywhere else that platform check is a stub: without
+      DEFER it refuses every certificate, a valid one included, and under DEFER
+      it hands back SUCCESS as its verdict - TRALCertInfo.Trusted would read
+      True for any certificate, and an OnValidateServerCert that relies on it
+      would accept anything. OpenSSL's own validation is the real one there -
+      chain and host name, against vCaFile plus OpenSSL's default paths - and
+      on Windows it is what a DefaultCaFile asks for. }
+    if ACertMode <> qcmNone then
+    begin
+      {$IFDEF MSWINDOWS}
+      vBuiltin := vCaFile <> '';
+      {$ELSE}
+      vBuiltin := True;
+      {$ENDIF}
+      if vBuiltin then
+        vCred.Flags := vCred.Flags or QUIC_CREDENTIAL_FLAG_USE_TLS_BUILTIN_CERTIFICATE_VALIDATION;
+      if vCaFile <> '' then
+      begin
+        vCred.Flags := vCred.Flags or QUIC_CREDENTIAL_FLAG_SET_CA_CERTIFICATE_FILE;
+        vCred.CaCertificateFile := PAnsiChar(vCaFile);
+      end;
     end;
     vStatus := MsQuicApi^.ConfigurationLoadCredential(vCfg, @vCred);
     if QUIC_FAILED(vStatus) then
@@ -862,15 +1011,34 @@ begin
 end;
 
 function TRALMsQuicClientHTTP.ConnectionKey: StringRAL;
+var
+  vPolicy: StringRAL;
 begin
   { Where it goes, under which ALPN, and with which certificate policy - the
     policy belongs in the key because a TLS connection carries the decision
     taken once at handshake time: two clients sharing one must judge a
     certificate the same way. The keep-alive interval is part of it too: two
     clients that disagree on how often to prove the connection is alive must
-    not end up on the same one. }
-  Result := StringRAL(Format('%s:%d|%s|%s|%d', [FTargetHost, FTargetPort,
-    StringRAL(FAlpn), CertPolicyKey, Parent.KeepAliveInterval]));
+    not end up on the same one. So is the CA store, for the same reason as the
+    policy: a connection validated against one store says nothing about
+    another. }
+  vPolicy := CertPolicyKey;
+  if (FKey <> '') and (FTargetHost = FKeyHost) and (FTargetPort = FKeyPort) and
+     (vPolicy = FKeyPolicy) and (Parent.KeepAliveInterval = FKeyKeepAlive) and
+     (DefaultCaFile = FKeyCaFile) then
+  begin
+    Result := FKey; // the ALPN is the engine's own, fixed at creation
+    Exit;
+  end;
+
+  Result := StringRAL(Format('%s:%d|%s|%s|%d|%s', [FTargetHost, FTargetPort,
+    StringRAL(FAlpn), vPolicy, Parent.KeepAliveInterval, DefaultCaFile]));
+  FKey := Result;
+  FKeyHost := FTargetHost;
+  FKeyPort := FTargetPort;
+  FKeyPolicy := vPolicy;
+  FKeyKeepAlive := Parent.KeepAliveInterval;
+  FKeyCaFile := DefaultCaFile;
 end;
 
 procedure TRALMsQuicClientHTTP.ResolveTarget(const AURL: StringRAL);
@@ -1123,6 +1291,7 @@ initialization
   {$ENDIF}
   TRALMsQuicClientHTTP.DefaultAlpn := RALQUICALPN;
   TRALMsQuicClientHTTP.DefaultLibPath := '';
+  TRALMsQuicClientHTTP.DefaultCaFile := '';
   vPool := TStringList.Create;
   vPool.Sorted := True;
   vPoolLock := TCriticalSection.Create;

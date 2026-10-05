@@ -119,6 +119,9 @@ type
   TRALClientSSL = class(TPersistent)
   private
     FPins: TStringList;
+    { the pins on one line, as TRALClientHTTP.CertPolicyKey puts them in the
+      key - made when the list changes, not on every request }
+    FPinsKey: StringRAL;
     FRequired: boolean;
     FVerify: TRALSSLVerify;
     procedure PinsChanged(Sender: TObject);
@@ -175,6 +178,15 @@ type
     FAuthTransport: TRALAuthTransport;
     FIndexUrl: IntegerRAL; // cliente control base url
     FParent: TRALClient;
+    { TRALClient's FEngineGeneration when this engine was built }
+    FGeneration: IntegerRAL;
+    { CertPolicyKey as last built, and what it was built from: the engines
+      that pool connections ask for it on every request }
+    FPolicyKey: StringRAL;
+    FPolicyPins: StringRAL;
+    FPolicyVerify: TRALSSLVerify;
+    FPolicyCode: Pointer;
+    FPolicyData: Pointer;
     { host and port of the attempt in progress, filled in by BeforeSendUrl:
       which pin applies is a question about WHERE the client is going, and so
       is TRALCertInfo.Host }
@@ -209,6 +221,10 @@ type
                          out AApplies, AMatches: boolean);
     /// Whether SSL.Pins has anything to say about the host being called
     function HasPinForHost: boolean;
+    /// SSL.Required or a pin for the host being called: no plain http, neither
+    /// as the URL - BeforeSendUrl refuses it up front - nor as the target of a
+    /// redirect the engine would follow on its own
+    function TLSRequired: boolean;
     /// The single place a server certificate is judged, for every engine:
     /// the event decides, else the pin, else what the engine itself concluded.
     /// Engines only translate their native callback into TRALCertInfo and ask
@@ -247,6 +263,15 @@ type
     class function EngineName : StringRAL; virtual; abstract;
     class function EngineVersion : StringRAL; virtual; abstract;
     class function PackageDependency : StringRAL; virtual; abstract;
+
+    /// Whether a redirect to ALocation takes a call off TLS: the hop it comes
+    /// from is https and the target an absolute http:// URL. A relative target,
+    /// or one starting with //, keeps the scheme it came from. Engines that
+    /// follow redirects ask this with TLSRequired and hand the 3xx back as it
+    /// came instead of following it
+    class function LeavesTLS(ACurrentIsTLS: boolean; const ALocation: StringRAL): boolean;
+    /// AURL is https
+    class function IsTLSURL(const AURL: StringRAL): boolean;
 
     { The two below answer what this engine CAN do, on this platform and this
       compiler. They are class functions on purpose: the IDE has to be able to
@@ -381,7 +406,8 @@ type
     the client keeps the original instance. }
   TRALThreadRequest = class
   public
-    ThreadID: TThreadID;
+    { see ThreadToken }
+    ThreadToken: Int64RAL;
     Request: TRALRequest;
     Touched: TDateTime;
   end;
@@ -454,7 +480,13 @@ type
     { only used with EnginePooling off: the one engine kept for the thread that
       first asked for it, which is what the client did before the pool }
     FEngineHTTP: TRALClientHTTP;
-    FEngineThread: TThreadID;
+    FEngineThread: Int64RAL; // a ThreadToken
+    { FEngineHTTP is out with a request right now - DropEngine must not free it }
+    FEngineBusy: boolean;
+    { bumped by DropEngine: an engine built before it belongs to the previous
+      EngineType or pooling rule, and is closed when given back instead of
+      going into the pool }
+    FEngineGeneration: IntegerRAL;
     FHTTPVersion: TRALHTTPVersion;
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
@@ -469,7 +501,7 @@ type
     { the instance belonging to the thread that created the client, kept as a
       field so that the usual single threaded use costs no lookup at all }
     FRequest: TRALRequest;
-    FRequestThread: TThreadID;
+    FRequestThread: Int64RAL; // a ThreadToken
     { TRALThreadRequest, one per OTHER thread that has used Request }
     FRequests: TList;
     FSkipCompressedTypes: boolean;
@@ -534,6 +566,7 @@ type
     procedure SetSkipCompressTypes(AValue: TStrings);
     procedure SetSpoolAbove(AValue: Int64RAL);
     procedure SetSSL(AValue: TRALClientSSL);
+    procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
     procedure SetUserAgent(AValue: StringRAL); virtual;
 
     { Which BaseURL entry the next request starts from. Read and written under
@@ -589,7 +622,12 @@ type
                   AExecBehavior: TRALExecBehavior = ebSingleThread); overload;
 
     { The calling thread's request. Two threads never share one, so the
-      fill-then-call pattern is safe from either - see TRALThreadRequest. }
+      fill-then-call pattern is safe from either - see TRALThreadRequest.
+      One gap is left on purpose: another thread's FIRST read copies the
+      creator thread's request, and the creator does not lock while filling
+      it - so finish filling before starting the thread that reads it (a
+      TTask started mid-fill can copy it half-written). Closing it would put a
+      lock on every read of Request. }
     property Request: TRALRequest read GetRequest;
   published
     /// The Accept-Encoding sent with every request: what this client can read.
@@ -603,7 +641,7 @@ type
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
     property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default DEFAULTCONNECTTIMEOUT;
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     property Engine: StringRAL read FEngine;
     property EngineType : String read FEngineType write SetEngineType;
     /// Which HTTP version to ask the transport for - see TRALHTTPVersion. It
@@ -806,6 +844,27 @@ end;
 
 var
   EnginesDefs : TStringList;
+
+threadvar
+  { see ThreadToken }
+  gThreadToken: Int64RAL;
+
+var
+  gThreadTokens: Int64RAL = 0;
+
+{ A number for the calling thread that no other thread ever has. The system's
+  thread id goes to the next thread once one ends, and keyed by it a new
+  thread took over what a dead one left behind: its Request, params and
+  headers included, or the engine kept for it, with its socket }
+function ThreadToken: Int64RAL;
+begin
+  Result := gThreadToken;
+  if Result = 0 then
+  begin
+    Result := RALAtomicInc(gThreadTokens, 1);
+    gThreadToken := Result;
+  end;
+end;
 
 procedure CheckEngineDefs;
 begin
@@ -1085,8 +1144,13 @@ end;
 procedure TRALClient.OnThreadResponse(Sender: TObject; AResponse: TRALResponse;
   AException: StringRAL);
 begin
-  AdvanceIndexUrl(TRALThreadClient(Sender).IndexUrlStart,
-                  TRALThreadClient(Sender).IndexUrl);
+  { Sender is the thread on the threaded path and this client itself on the
+    synchronous one, so it is never cast. The failover index is advanced by
+    whoever ran the request: ExecuteThread's own finally, and
+    TRALThreadClient.OnTerminateThread. It used to be done here, reading the
+    thread's fields out of whatever Sender was - on the synchronous path two
+    integers from the middle of this component, one of which could land in
+    FIndexUrl - while a caller's own callback never got here at all }
   if Assigned(FOnResponse) then
     FOnResponse(Self, AResponse, AException);
 end;
@@ -1094,14 +1158,17 @@ end;
 function TRALClient.CreateClient: TRALClientHTTP;
 var
   vClass: TRALClientHTTPClass;
+  vGeneration: IntegerRAL;
 begin
-  Result := nil;
-
+  { the generation is read BEFORE the class: a DropEngine landing in between
+    then leaves the engine marked old, and it is closed when given back -
+    never the other way round, an old class marked current }
+  vGeneration := FEngineGeneration;
   vClass := GetEngineClass(EngineType);
-  if vClass <> nil then
-    Result := vClass.Create(Self)
-  else
+  if vClass = nil then
     raise Exception.CreateFmt(emEngineNotFound, [EngineType]);
+  Result := vClass.Create(Self);
+  Result.FGeneration := vGeneration;
 end;
 
 { AN ENGINE PER REQUEST IN FLIGHT, BORROWED AND GIVEN BACK.
@@ -1180,13 +1247,13 @@ end;
 
 function TRALClient.GetRequest: TRALRequest;
 var
-  vThread: TThreadID;
+  vThread: Int64RAL;
   vInt: IntegerRAL;
   vItem: TRALThreadRequest;
   vDead: array of TRALThreadRequest;
   vNow: TDateTime;
 begin
-  vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+  vThread := ThreadToken;
   if vThread = FRequestThread then
   begin
     Result := FRequest;
@@ -1207,7 +1274,7 @@ begin
     for vInt := FRequests.Count - 1 downto 0 do
     begin
       vItem := TRALThreadRequest(FRequests.Items[vInt]);
-      if vItem.ThreadID = vThread then
+      if vItem.ThreadToken = vThread then
       begin
         { touched on every use, including the one the send path makes, so a
           thread in the middle of fill-then-call is never swept from under it }
@@ -1217,8 +1284,10 @@ begin
       else if (vNow - vItem.Touched) * 86400000 > RALTHREADREQUESTTIMEOUT then
       begin
         { A thread that has not touched its Request for half an hour is taken
-          to be gone - thread IDs are recycled, and a new thread must not
-          inherit a dead one's params. Its OWN timeout on purpose: this used to
+          to be gone, and what it left is freed. Keyed by the system's thread
+          id this was also what kept a new thread from inheriting a dead one's
+          params - for half an hour - and ThreadToken does that now, for good.
+          Its OWN timeout on purpose: this used to
           ride on PoolConnection.IdleTimeout, five minutes, which a thread
           calling every ten minutes fell foul of, and it applied with the pool
           off as well, where nobody had asked for a timeout at all. }
@@ -1231,7 +1300,7 @@ begin
     if Result = nil then
     begin
       vItem := TRALThreadRequest.Create;
-      vItem.ThreadID := vThread;
+      vItem.ThreadToken := vThread;
       vItem.Request := TRALClientRequest.Create(Self);
       { BORN AS A COPY OF THE CREATOR'S REQUEST, not empty. Before requests
         were per thread there was one object, so "fill Request on the main
@@ -1266,7 +1335,7 @@ end;
 
 function TRALClient.AcquireEngine: TRALClientHTTP;
 var
-  vThread: TThreadID;
+  vThread: Int64RAL;
   vKey: StringRAL;
   vInt: IntegerRAL;
   vSlot, vSpare: TRALPooledEngine;
@@ -1285,7 +1354,7 @@ begin
       first asked, and a throwaway for every other thread. Kept verbatim so
       turning the property off restores the old behaviour exactly, not some
       third thing. }
-    vThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+    vThread := ThreadToken;
     LockSession;
     try
       if FEngineHTTP = nil then
@@ -1293,8 +1362,14 @@ begin
         FEngineHTTP := CreateClient;
         FEngineThread := vThread;
       end;
-      if FEngineThread = vThread then
+      { busy means its own thread is already using it - a request issued from
+        the callback of another - and that one gets a throwaway: the kept
+        engine has one holder at a time, so nobody frees it from under another }
+      if (FEngineThread = vThread) and (not FEngineBusy) then
+      begin
         Result := FEngineHTTP;
+        FEngineBusy := True;
+      end;
     finally
       UnLockSession;
     end;
@@ -1378,10 +1453,16 @@ begin
   LockSession;
   try
     { with pooling off the kept engine belongs to its thread and stays put;
-      anything else was a throwaway and is closed, as it always was }
-    if not FPoolConnection.Enabled then
-      vKept := AEngine = FEngineHTTP
-    else if (FEnginePool <> nil) and
+      anything else was a throwaway and is closed, as it always was. An
+      engine built before the last DropEngine is of the previous EngineType
+      or pooling rule: it closes too, instead of serving the next request }
+    if AEngine = FEngineHTTP then
+    begin
+      vKept := True;
+      FEngineBusy := False;
+    end
+    else if FPoolConnection.Enabled and (FEnginePool <> nil) and
+            (AEngine.FGeneration = FEngineGeneration) and
             (FEnginePool.Count < FPoolConnection.MaxIdle) then
     begin
       vSlot := TRALPooledEngine.Create;
@@ -1456,7 +1537,15 @@ begin
   SetLength(vIdle, 0);
   LockSession;
   try
-    FreeAndNil(FEngineHTTP);
+    Inc(FEngineGeneration);
+    { the kept engine out with a request - changing EngineType from inside a
+      callback is enough - is only let go of: no longer FEngineHTTP, its holder
+      closes it on ReleaseEngine. Freeing it here was a double free there }
+    if FEngineBusy then
+      FEngineHTTP := nil
+    else
+      FreeAndNil(FEngineHTTP);
+    FEngineBusy := False;
     if FEnginePool <> nil then
     begin
       SetLength(vIdle, FEnginePool.Count);
@@ -1607,6 +1696,11 @@ begin
   FRequestTimeout := AValue;
 end;
 
+procedure TRALClient.SetCriptoOptions(const AValue: TRALCriptoOptions);
+begin
+  RALAssignOwned(FCriptoOptions, AValue);
+end;
+
 procedure TRALClient.SetSSL(AValue: TRALClientSSL);
 begin
   { copies into the object we own, as the other sub-objects do: the component
@@ -1628,7 +1722,7 @@ begin
   FSSL := TRALClientSSL.Create;
   FCritSession := TCriticalSection.Create;
   FRequest := TRALClientRequest.Create(Self);
-  FRequestThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+  FRequestThread := ThreadToken;
   FRequests := TList.Create;
   FBaseURL := TStringList.Create;
   FThreads := TThreadList.Create;
@@ -2045,6 +2139,13 @@ procedure TRALClientSSL.PinsChanged(Sender: TObject);
 var
   vInt: IntegerRAL;
 begin
+  { first, so that it always says what the list holds - the check below
+    raises with the bad line already in. One line on purpose: it ends up in a
+    key, and Text brings line breaks with it }
+  FPinsKey := StringReplace(StringReplace(StringRAL(FPins.Text),
+                              StringRAL(#13), StringRAL(''), [rfReplaceAll]),
+                            StringRAL(#10), StringRAL(','), [rfReplaceAll]);
+
   for vInt := 0 to Pred(FPins.Count) do
     if RALPinFingerprint(StringRAL(FPins.Strings[vInt])) = '' then
       raise Exception.Create(emCertPinInvalid);
@@ -2109,6 +2210,26 @@ begin
   ResolvePin('', Result, vMatches);
 end;
 
+function TRALClientHTTP.TLSRequired: boolean;
+begin
+  Result := FParent.SSL.Required or HasPinForHost;
+end;
+
+class function TRALClientHTTP.IsTLSURL(const AURL: StringRAL): boolean;
+begin
+  Result := RALSameName(Copy(RALTrim(AURL), 1, 8), 'https://');
+end;
+
+class function TRALClientHTTP.LeavesTLS(ACurrentIsTLS: boolean;
+  const ALocation: StringRAL): boolean;
+begin
+  { every engine that follows redirects did it on its own, so a server - or
+    whoever sat between - answering 301 to http:// took the call off TLS
+    behind every check that refused an http URL up front: SSL.Required, the
+    pin. Only an absolute http:// target leaves TLS }
+  Result := ACurrentIsTLS and RALSameName(Copy(RALTrim(ALocation), 1, 7), 'http://');
+end;
+
 function TRALClientHTTP.AcceptServerCert(const ACert: TRALCertInfo): boolean;
 var
   vCert: TRALCertInfo;
@@ -2139,19 +2260,34 @@ end;
 function TRALClientHTTP.CertPolicyKey: StringRAL;
 var
   vMethod: TMethod;
+  vPins: StringRAL;
+  vVerify: TRALSSLVerify;
 begin
-  { one line on purpose: this ends up as a key, and Pins.Text brings line
-    breaks with it }
-  Result := IntToStr(Ord(Parent.SSL.Verify)) + ';' +
-            StringReplace(StringReplace(Parent.SSL.Pins.Text,
-                                        StringRAL(#13), StringRAL(''), [rfReplaceAll]),
-                          StringRAL(#10), StringRAL(','), [rfReplaceAll]) + ';';
-  if Assigned(Parent.OnValidateServerCert) then
+  { built again only when what it is made of changed: four engines key their
+    connections by it on every request, and it took a list to text, two
+    replaces and four numbers to text each time. The pins come as
+    TRALClientSSL keeps them, the same instance while the list is the same }
+  vPins := Parent.SSL.FPinsKey;
+  vVerify := Parent.SSL.Verify;
+  vMethod := TMethod(Parent.OnValidateServerCert);
+  if (FPolicyKey <> '') and (Pointer(vPins) = Pointer(FPolicyPins)) and
+     (vVerify = FPolicyVerify) and (vMethod.Code = FPolicyCode) and
+     (vMethod.Data = FPolicyData) then
   begin
-    vMethod := TMethod(Parent.OnValidateServerCert);
+    Result := FPolicyKey;
+    Exit;
+  end;
+
+  Result := IntToStr(Ord(vVerify)) + ';' + vPins + ';';
+  if vMethod.Code <> nil then
     Result := Result + IntToHex(NativeUInt(vMethod.Code), 8) + ':' +
                        IntToHex(NativeUInt(vMethod.Data), 8);
-  end;
+
+  FPolicyKey := Result;
+  FPolicyPins := vPins;
+  FPolicyVerify := vVerify;
+  FPolicyCode := vMethod.Code;
+  FPolicyData := vMethod.Data;
 end;
 
 class function TRALClientHTTP.SupportsCertPin: boolean;
@@ -2213,7 +2349,7 @@ var
   vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
   vURL, vCancelReason: StringRAL;
-  vRepeat, vTriedToken, vCancel: boolean;
+  vRepeat, vTriedToken, vCancel, vDone: boolean;
   vInfo: TRALExecInfo;
   vStart: TDateTime;
 begin
@@ -2242,8 +2378,7 @@ begin
     { Both refusals happen HERE, before a socket is opened, and not inside the
       TLS callback: that one runs on the stack of a C library (OpenSSL), where
       an exception would unwind through frames that cannot handle it. }
-    if (FParent.SSL.Required or HasPinForHost) and
-       (not SameText(Copy(vURL, 1, 6), 'https:')) then
+    if TLSRequired and not IsTLSURL(vURL) then
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertRequiresTLS, [vURL])));
@@ -2306,6 +2441,7 @@ begin
     if Assigned(FParent.OnBeforeExecute) then
       FParent.OnBeforeExecute(FParent, ARequest, vInfo, vCancel, vCancelReason);
 
+    vDone := False;
     vParams := TStringList.Create;
     try
       { the refusal lives INSIDE this try so that the OnAfterExecute in the
@@ -2369,6 +2505,7 @@ begin
         vResp := AResponse.StatusCode;
         vErrorCode := AResponse.ErrorCode;
       end;
+      vDone := True;
     finally
       FreeAndNil(vParams);
 
@@ -2376,13 +2513,17 @@ begin
         and including when the application refused it. ExceptObject is whatever
         is unwinding right now, and it is the only way to name the failure here
         without wrapping the whole attempt in one more try just to catch it and
-        re-raise. }
+        re-raise. Only when something IS unwinding, though: on a normal exit
+        ExceptObject is the exception an outer handler is still handling - a
+        request made from inside an except block, an Application.OnException
+        that logs to the server - and a successful attempt arrived carrying
+        that message. }
       if Assigned(FParent.OnAfterExecute) then
       begin
         vInfo.Elapsed := MilliSecondsBetween(Now, vStart);
         vInfo.StatusCode := AResponse.StatusCode;
         vInfo.TransportError := AResponse.TransportError;
-        if ExceptObject is Exception then
+        if (not vDone) and (ExceptObject is Exception) then
           vInfo.ErrorMessage := StringRAL(Exception(ExceptObject).Message);
 
         FParent.OnAfterExecute(FParent, ARequest, AResponse, vInfo);
@@ -2409,7 +2550,7 @@ begin
       vTriedToken := True;
       FParent.Authentication.Lock;
       try
-        vRepeat := FParent.Authentication.HandleChallenge(AResponse);
+        vRepeat := FParent.Authentication.HandleChallenge(ARequest, AResponse);
       finally
         FParent.Authentication.Unlock;
       end;
@@ -2467,7 +2608,7 @@ begin
     // does not change the end state may go elsewhere (RFC 7231 4.2.2). This is
     // what stops a timed-out POST from being written twice.
     rteTimeout:
-      Result := AMethod in [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+      Result := AMethod in RALIdempotentMethods;
   else
     Result := False;
   end;
@@ -2565,6 +2706,10 @@ begin
   vParent := FParent;
   if vParent <> nil then
   begin
+    { the failover index first, and whatever the callback is: a request that
+      found its server dead must leave the next one pointing past it, and the
+      callback is often what issues that next one }
+    vParent.AdvanceIndexUrl(FIndexUrlStart, FIndexUrl);
     vParent.FThreads.LockList;
     try
       vAnswer := FOnResponse;

@@ -19,7 +19,7 @@ uses
   RALHttpSysCert,
   {$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork;
+  RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream;
 
 type
 
@@ -129,7 +129,6 @@ type
     /// that object has anywhere to put it - see the property.
     procedure ApplyMaxConnections;
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
-    function OnSendFile(AContext: THttpServerRequestAbstract; const LocalFileName: TFileName): boolean;
     procedure OnHttpTerminate(ASender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
@@ -194,6 +193,127 @@ type
   end;
 
 implementation
+
+uses
+  mormot.core.log, mormot.core.threads;
+
+type
+  { THttpAsyncServer - the smAsync mode - with what this engine needs of it
+    that mORMot2 does not do yet, each marked MORMOT2 where it is done. Kept
+    here, and only here, so that the day mORMot2 does them the classes go and
+    the server is created as a plain THttpAsyncServer again }
+  TRALAsyncHttpServer = class(THttpAsyncServer)
+  public
+    { the parameter names are not the ancestor's: FPC refuses a parameter
+      named after a property of the class, ProcessName }
+    constructor Create(const APort: RawUtf8; const AOnStart, AOnStop: TOnNotifyThread;
+      const AProcessName: RawUtf8; APoolCount: integer = 32;
+      AKeepAliveTimeOut: integer = 30000; AOptions: THttpServerOptions = [];
+      ALog: TSynLogClass = nil); override;
+  end;
+
+  { one connection of TRALAsyncHttpServer }
+  TRALAsyncConnection = class(THttpAsyncServerConnection)
+  protected
+    { what a request starts with, where THttpRequestContext.Reset leaves it
+      otherwise }
+    procedure ResetRequestDefaults;
+    function AfterWrite: TPollAsyncSocketOnReadWrite; override;
+  public
+    procedure Recycle(const aRemoteIP: TNetAddr); override;
+  end;
+
+  { the connections of TRALAsyncHttpServer }
+  TRALAsyncConnections = class(THttpAsyncConnections)
+  protected
+    function ConnectionCreate(aSocket: TNetSocket; const aRemoteIp: TNetAddr;
+      out aConnection: TAsyncConnection): boolean; override;
+  end;
+
+{$IFDEF RALWindows}
+{ declared here: the Winsock units of the two compilers do not agree on it }
+function RALSetSockOpt(s: PtrUInt; level, optname: Integer; optval: Pointer;
+  optlen: Integer): Integer; stdcall; external 'ws2_32.dll' name 'setsockopt';
+{$ENDIF}
+
+{ TRALAsyncHttpServer }
+
+constructor TRALAsyncHttpServer.Create(const APort: RawUtf8; const AOnStart,
+  AOnStop: TOnNotifyThread; const AProcessName: RawUtf8; APoolCount,
+  AKeepAliveTimeOut: integer; AOptions: THttpServerOptions; ALog: TSynLogClass);
+begin
+  { THttpAsyncServer.Create only fills the two classes when they are nil }
+  fConnectionClass := TRALAsyncConnection;
+  fConnectionsClass := TRALAsyncConnections;
+  inherited Create(APort, AOnStart, AOnStop, AProcessName, APoolCount,
+    AKeepAliveTimeOut, AOptions, ALog);
+end;
+
+{ TRALAsyncConnection }
+
+procedure TRALAsyncConnection.ResetRequestDefaults;
+begin
+  { MORMOT2: THttpRequestContext.Reset clears Options, so hsoHeadersUnfiltered
+    reached only the first request a connection object served - from the
+    second on, and on every recycled object, Accept-Encoding, User-Agent and
+    the Range were kept out of the headers RAL reads - and it keeps
+    AcceptEncoding, which a next request that sends none then inherits:
+    answered compressed without asking. OnCommandProcess still copes with both
+    for the threads mode; done here they also hold for a request mORMot2
+    refuses on its own, which never reaches it. Remove when Reset does both }
+  if fServer <> nil then
+  begin
+    if hsoHeadersUnfiltered in fServer.Options then
+      Include(fHttp.Options, hroHeadersUnfiltered);
+    if hsoHeadersSanitize in fServer.Options then
+      Include(fHttp.Options, hroHeadersSanitize);
+  end;
+  fHttp.AcceptEncoding := '';
+end;
+
+procedure TRALAsyncConnection.Recycle(const aRemoteIP: TNetAddr);
+begin
+  inherited Recycle(aRemoteIP);
+  ResetRequestDefaults;
+end;
+
+function TRALAsyncConnection.AfterWrite: TPollAsyncSocketOnReadWrite;
+begin
+  Result := inherited AfterWrite;
+  { a kept-alive connection the inherited just reset for its next request -
+    soContinue alone is also a body still going out }
+  if (Result = soContinue) and (fHttp.State = hrsGetCommand) then
+    ResetRequestDefaults;
+end;
+
+{ TRALAsyncConnections }
+
+function TRALAsyncConnections.ConnectionCreate(aSocket: TNetSocket;
+  const aRemoteIp: TNetAddr; out aConnection: TAsyncConnection): boolean;
+{$IFDEF RALWindows}
+var
+  vListen: PtrUInt;
+{$ENDIF}
+begin
+  {$IFDEF RALWindows}
+  { MORMOT2: the IOCP loop accepts with AcceptEx, and a socket accepted that
+    way does not take the listening socket's state until
+    SO_UPDATE_ACCEPT_CONTEXT says so - which mORMot2 never says. shutdown()
+    then fails with WSAENOTCONN, so no FIN went out after Connection: close
+    and a client reading to the end of the answer waited for the idle
+    timeout. On a socket accept() returned the call fails and changes
+    nothing. Remove when TWinIocp.GetNextAccept sets it }
+  if (Server <> nil) and (aSocket <> nil) then
+  begin
+    { ^ written out: TNetSocket is a pointer, and FPC's objfpc mode does not
+      follow one on its own }
+    vListen := PtrUInt(Server.Sock^.Socket);
+    RALSetSockOpt(PtrUInt(aSocket^.Socket), $FFFF {SOL_SOCKET},
+      $700B {SO_UPDATE_ACCEPT_CONTEXT}, @vListen, SizeOf(vListen));
+  end;
+  {$ENDIF}
+  Result := inherited ConnectionCreate(aSocket, aRemoteIp, aConnection);
+end;
 
 { TRALSynopseServer }
 
@@ -263,8 +383,9 @@ begin
     { The socket ones descend from THttpServerSocketGeneric and share the SAME
       constructor, so everything that follows holds for both without an "if". }
     if FMode = smAsync then
-      FHttp := THttpAsyncServer.Create(vAddr, nil, nil, '', FPoolCount,
-                                       SessionTimeout, vOptions)
+      { mORMot2's, with what it does not do yet - see TRALAsyncHttpServer }
+      FHttp := TRALAsyncHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+                                          SessionTimeout, vOptions)
     else
       FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount,
                                   SessionTimeout, vOptions);
@@ -287,7 +408,9 @@ begin
       sending, so no client ever sees the 413 - Indy, netHTTP and mORMot2's
       own client all fail with a transport error instead. The RAL check in
       ValidateRequest answers 413 after the body is read, like every engine }
-    FHttp.OnSendFile := {$IFDEF FPC}@{$ENDIF}OnSendFile;
+    { no OnSendFile: mORMot2 sends a file answered as STATICFILE_CONTENT_TYPE
+      itself - see OnCommandProcess. The handler that sat here answered True,
+      "sent", without sending anything }
     FHttp.ServerName := 'RAL_Mormot2';
     FHttp.OnTerminate := {$IFDEF FPC}@{$ENDIF}OnHttpTerminate;
     //    FHttp.RegisterCompressGzStatic := True;
@@ -545,11 +668,22 @@ begin
   Result := TRALSynopseSSL.Create;
 end;
 
+{ the Range header a socket server parsed into the context and left out of
+  the list - see OnCommandProcess }
+function RangeHeaderOf(const AContext: THttpRequestContext): StringRAL;
+begin
+  Result := 'bytes=' + StringRAL(IntToStr(AContext.RangeOffset)) + '-';
+  if AContext.RangeLength >= 0 then
+    Result := Result + StringRAL(IntToStr(AContext.RangeOffset + AContext.RangeLength - 1));
+end;
+
 function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vHeaders: StringRAL;
+  vStream: TStream;
+  vHasRange: boolean;
   {$IFDEF RALWindows}
   vApiReq: PHTTP_REQUEST;
   vPeer: PNetAddr;
@@ -581,15 +715,16 @@ begin
       vRequest.ContentType := RawUtf8(AContext.InContentType);
       vRequest.ContentSize := Length(AContext.InContent);
 
-      vRequest.Query := RawUtf8(AContext.Url);
-      vRequest.Params.AppendParamsUrl(vRequest.Query, rpkQUERY);
+      vRequest.Query := RawUtf8(AContext.Url); // parses the query string too
 
       vRequest.Method := HTTPMethodToRALMethod(RawUtf8(AContext.Method));
 
       vRequest.Params.AppendParamsListText(RawUtf8(AContext.InHeaders), rpkHEADER);
 
       // Parse cookie na entrada
-      vRequest.AddCookies(vRequest.ParamByName('Cookie').AsString);
+      { the header, by kind: ParamByName took a query param named cookie
+        first, so ?cookie=... set the request's cookies }
+      vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
 
       DecodeAuth(vRequest);
 
@@ -599,9 +734,11 @@ begin
 
       { Not every mORMot2 server hands these three over in InHeaders.
         ParseHeader consumes them into fields of its own and only returns them
-        to the list when HeadersUnFiltered is on - and the one reading that
-        option is THttpServer; THttpAsyncServer never consults it, so there
-        they arrive empty even with hsoHeadersUnfiltered asked for.
+        to the list when HeadersUnFiltered is on - and THttpServer reads that
+        option on every request, while THttpAsyncServer hands it only to the
+        first request of a connection object it creates: Reset clears it with
+        the rest, so from the second request on, and on every recycled
+        connection, they arrive empty even with hsoHeadersUnfiltered asked for.
 
         The effect was silent and only on the ERROR answer: with CompressType
         ctNone the server follows the client's Accept-Encoding, and without it
@@ -612,14 +749,34 @@ begin
         The parsed context is published in ConnectionHttp, so the way out is to
         fill from it whatever the list did not bring. Always reading from there
         would be worse: not every engine has the record, and the list's value
-        is what the client actually sent. }
+        is what the client actually sent. TRALAsyncConnection now puts the
+        option back on every reset; this stays for what still comes without
+        them }
       if AContext.ConnectionHttp <> nil then
       begin
         if vRequest.AcceptEncoding = '' then
           vRequest.AcceptEncoding := StringRAL(AContext.ConnectionHttp^.AcceptEncoding);
+        { and emptied once read: THttpRequestContext.Reset clears every field
+          of a request but this one, so a request WITHOUT the header found the
+          previous one's - on a kept-alive connection in both socket modes, and
+          in smAsync on the connection object a new client is handed, since
+          Reset also drops hsoHeadersUnfiltered there. A client that never
+          asked got its answer compressed. mORMot2 only reads the field while
+          parsing, before this handler runs. The async mode also clears it on
+          every reset (TRALAsyncConnection), which covers a request mORMot2
+          refuses on its own - a Range it cannot parse - and never reaches
+          here; in the threads mode such a request still leaves it behind }
+        AContext.ConnectionHttp^.AcceptEncoding := '';
         if vRequest.ClientInfo.UserAgent = '' then
           vRequest.ClientInfo.UserAgent := StringRAL(AContext.ConnectionHttp^.UserAgent);
+        { the Range too: the same servers keep it to themselves, parsed into the
+          context. Rebuilt from there, the WebModule answers a part of a file
+          the same way on every mode }
+        if (rfWantRange in AContext.ConnectionHttp^.ResponseFlags) and
+           (vRequest.Params.GetKind['Range', rpkHEADER] = nil) then
+          vRequest.Params.AddParam('Range', RangeHeaderOf(AContext.ConnectionHttp^), rpkHEADER);
       end;
+      vHasRange := vRequest.Params.GetKind['Range', rpkHEADER] <> nil;
 
       { WHICH VERSION THIS CLIENT ARRIVED ON - and only the server knows.
 
@@ -722,13 +879,52 @@ begin
 
       ProcessCommands(vRequest, vResponse);
 
+      { mORMot2 cuts any answer to the request's Range on its own, whatever its
+        status - so a part of the part the WebModule answered, and a slice of
+        an error page. It still does it for a 200 RAL said nothing about; not
+        for another status, nor where RAL decided, which its Accept-Ranges says }
+      if (AContext.ConnectionHttp <> nil) and
+         ((vResponse.StatusCode <> HTTP_OK) or
+          (vResponse.Params.GetKind['Accept-Ranges', rpkHEADER] <> nil)) then
+        Exclude(AContext.ConnectionHttp^.ResponseFlags, rfWantRange);
+
       //with vResponse do
       begin
         { first: only after it do ContentType and ContentEncoding say what was
-          really done to the body. A text answer with nothing to transform is
-          the handler's own string, not a copy }
-        AContext.OutContent := vResponse.TakeWireString;
-        AContext.OutContentType := vResponse.ContentType;
+          really done to the body. A whole file that nothing transforms is
+          handed to mORMot2 by name instead - it sends it from the disk in
+          pieces, http.sys from the kernel - and this process never holds it.
+          Only from the size mORMot2 streams on, HttpContentFromFileSizeInMemory:
+          below it mORMot2 reads the file whole into memory as well, so the
+          name only cost it a second look and a second open of a file that is
+          open here already. Not with a Range, which mORMot2 and http.sys would
+          apply on their own. A text answer with nothing to transform is the
+          handler's own string, not a copy }
+        vStream := vResponse.TakeWireStream;
+        try
+          if (vStream is TRALFileStream) and TRALFileStream(vStream).IsWholeFile and
+             (vStream.Size >= HttpContentFromFileSizeInMemory) and
+             (vResponse.StatusCode = HTTP_OK) and (vResponse.ContentEncoding = '') and
+             (not vHasRange) then
+          begin
+            AContext.OutContent := RawUtf8(StringRAL(TRALFileStream(vStream).FileName));
+            AContext.OutContentType := STATICFILE_CONTENT_TYPE;
+            { where mORMot2 and http.sys read the type of a file they send }
+            vResponse.Params.AddParam('Content-Type', vResponse.ContentType, rpkHEADER);
+          end
+          else
+          begin
+            if vStream = nil then
+              AContext.OutContent := ''
+            else if vStream is TRALStringView then
+              AContext.OutContent := TRALStringView(vStream).Text
+            else
+              AContext.OutContent := StreamToString(vStream);
+            AContext.OutContentType := vResponse.ContentType;
+          end;
+        finally
+          FreeAndNil(vStream);
+        end;
 
         //if (vResponse.ContentDisposition <> EmptyStr) then
           vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
@@ -755,27 +951,26 @@ begin
       end;
     except
       on e: exception do
+      begin
+        { straight to mORMot2, past the RAL response, whose encoding may be
+          what raised. This used to answer the RAL response and stop there:
+          nothing reached AContext, Result kept whatever it held - the status
+          that went out was garbage - and with OnServerError assigned not even
+          that much was done }
+        AContext.OutContent := ErrorText(e);
+        AContext.OutContentType := rctTEXTPLAIN;
+        AContext.OutCustomHeaders := '';
+        Result := HTTP_InternalError;
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
-          raise
-        else
-          vResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+          raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
   end;
-end;
-
-function TRALSynopseServer.OnSendFile(AContext: THttpServerRequestAbstract;
-  const LocalFileName: TFileName): boolean;
-begin
-  // para OutContentType = STATICFILE_CONTENT_TYPE
-  {$IFNDEF FPC}
-    AContext.OutContent := UTF8Decode(AContext.OutContent);
-  {$ENDIF}
-  Result := True;
 end;
 
 procedure TRALSynopseServer.OnHttpTerminate(ASender: TObject);

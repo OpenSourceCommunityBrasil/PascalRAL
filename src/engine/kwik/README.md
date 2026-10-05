@@ -5,20 +5,35 @@ same wire as `TRALMsQuicClientHTTP`: both build the frame with `RALQuicFrame`,
 so one `TRALMsQuicServer` serves a desktop and a handset without knowing which
 is on the other end.
 
-## Why it exists
+## Why it exists, now that MsQuic runs on Android
 
-MsQuic is a C library, and on Android that means a `libmsquic.so` built with
-the NDK — a platform its own project does not claim and for which nobody
-publishes a binary.
+Kwik was written when MsQuic had no Android binary anywhere: msquic does not
+claim the platform and publishes none. RAL now publishes its own build (the
+repository's `external` branch, under `msquic/`), and the MsQuic engine itself
+runs on Android 9 and later — the server too. See
+[../msquic/README.md](../msquic/README.md).
 
-And no official Android stack can take its place, because they are all HTTP
-clients while this frame wants a **raw bidirectional stream**:
+Kwik stays for the two cases that build cannot cover:
+
+| | MsQuic | Kwik |
+|---|---|---|
+| Android floor | **9** (API 28) | **8** (API 26) |
+| Server on the handset | yes | no — client only |
+| Native library | `libmsquic.so`, one per ABI (3.5-3.9 MB) | **none** — 646 KB of jars, any ABI |
+| Licence | MIT + Apache 2.0 | **LGPL v3** |
+
+Both speak the same frame to the same `TRALMsQuicServer`, so the choice can be
+made per application without touching the server.
+
+No official Android stack could have done Kwik's job either, because they are
+all HTTP clients while this frame wants a **raw bidirectional stream**:
 
 | | speaks QUIC | raw stream | needs a `.so` |
 |---|---|---|---|
 | OkHttp | no — `Protocol.HTTP_3` is declared with nothing behind it | — | — |
 | Cronet / `android.net.http.HttpEngine` | yes, as HTTP/3 | **no** | no |
 | Netty incubator QUIC | yes | yes | **yes**, and it ships no Android natives |
+| MsQuic, RAL's build | yes | yes | **yes**, from the `external` branch |
 | **Kwik** | yes | yes | **no** |
 
 Kwik is QUIC in pure Java: four jars, 646 KB, one set of files whatever the
@@ -40,7 +55,7 @@ below assume a `java\` folder beside the `.dpr`.
 | `ralkwik.jar` | the bridge this engine talks to, built from `java/pascalral/` | same as RAL |
 
 Nothing there is native, so one set serves every ABI — unlike `libmsquic.so`,
-which would be one build per architecture.
+which is one build per architecture.
 
 **Kwik is LGPL v3**, the first dependency in this repository with a relink
 clause. Decide what that means for a closed application before shipping it.

@@ -43,6 +43,9 @@ uses
   RALTypes, RALConsts, RALCustomObjects, RALRequest, RALResponse, RALRoutes;
 
 const
+  /// Security headers: added first, so every answer carries them - a 403 or a
+  /// 413 of the plugins below included
+  RALPrioritySecurityHeaders = 950;
   /// Size limit: 413
   RALPriorityLimits = 900;
   /// Compression: 415, 406, and how the response is compressed
@@ -100,6 +103,13 @@ type
     /// Known, but not allowed: 403
     arForbidden);
 
+  /// What one request means to the brute-force protection, as the
+  /// authenticator that checked it says (TRALServerPlugin.AttemptOf): a wrong
+  /// secret (counted against the address), a right one (the count starts over)
+  /// or neither - no credentials at all is not a guess, and nobody guesses an
+  /// expired token
+  TRALAuthAttempt = (raaNone, raaFailed, raaPassed);
+
   { TRALServerPlugin }
 
   /// Base of everything that plugs into a server
@@ -132,6 +142,16 @@ type
     /// ppAuthenticate. ARoute is the route of the request
     function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       ARoute: TRALRoute): TRALAuthResult; virtual;
+    /// ppAuthenticate: what the request this authenticator just decided
+    /// (AResult) means to the brute-force protection. AOnOwnRoute is True for
+    /// the plugin's own routes - the JWT token route. Only a secret that was
+    /// checked counts; raaNone, the default, is "not mine to say"
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; virtual;
+    /// ppAuthResult: an authenticator reported what a request meant
+    /// (TRALPluginHost.ReportAttempt) - brute force counts or clears here
+    procedure AuthAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+      AAttempt: TRALAuthAttempt); virtual;
     /// ppProcess. Set AHandled to True to answer the request here
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); virtual;
@@ -238,6 +258,11 @@ type
       ARoute: TRALRoute): TRALAuthResult;
     /// A plugin blocked AClientIP. TRALServer fires OnClientBlock
     procedure ClientBlocked(const AClientIP: StringRAL); virtual;
+    /// Hands AAttempt to the ppAuthResult plugins (AuthAttempt). Authenticate
+    /// does it for the routes it decides; an authenticator answering a route
+    /// of its own (the JWT token route) calls it itself. raaNone reaches no one
+    procedure ReportAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+      AAttempt: TRALAuthAttempt);
     /// The first enabled plugin of AClass (or a descendant), in running order
     function FindPlugin(AClass: TRALServerPluginClass): TRALServerPlugin;
     /// The route that answers ARequest, or nil. Looked up once and kept in the
@@ -281,6 +306,18 @@ function TRALServerPlugin.Authenticate(ARequest: TRALRequest; AResponse: TRALRes
   ARoute: TRALRoute): TRALAuthResult;
 begin
   Result := arAccepted;
+end;
+
+function TRALServerPlugin.AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt;
+begin
+  Result := raaNone;
+end;
+
+procedure TRALServerPlugin.AuthAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+  AAttempt: TRALAuthAttempt);
+begin
+  // nothing to count
 end;
 
 procedure TRALServerPlugin.Changed;
@@ -453,10 +490,12 @@ var
   vList: TRALPluginList;
   vInt: IntegerRAL;
   vResult: TRALAuthResult;
+  vAttempt: TRALAuthAttempt;
 begin
   vSnap := FSnapshot;
   vList := vSnap.ByPhase[ppAuthenticate];
   Result := arAccepted;
+  vAttempt := raaNone;
   if Length(vList) > 0 then
   begin
     Result := arForbidden;
@@ -471,11 +510,35 @@ begin
       if vResult = arUnauthorized then
         Result := arUnauthorized;
     end;
+
+    { the authenticator of the scheme the client used says what it meant; the
+      others answer raaNone }
+    for vInt := 0 to High(vList) do
+    begin
+      vAttempt := vList[vInt].AttemptOf(ARequest, AResponse, Result, False);
+      if vAttempt <> raaNone then
+        Break;
+    end;
   end;
 
   vList := vSnap.ByPhase[ppAuthResult];
   for vInt := 0 to High(vList) do
     vList[vInt].AfterAuthenticate(ARequest, AResponse, Result);
+
+  ReportAttempt(ARequest, AResponse, vAttempt);
+end;
+
+procedure TRALPluginHost.ReportAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+  AAttempt: TRALAuthAttempt);
+var
+  vList: TRALPluginList;
+  vInt: IntegerRAL;
+begin
+  if AAttempt = raaNone then
+    Exit;
+  vList := FSnapshot.ByPhase[ppAuthResult];
+  for vInt := 0 to High(vList) do
+    vList[vInt].AuthAttempt(ARequest, AResponse, AAttempt);
 end;
 
 procedure TRALPluginHost.ClientBlocked(const AClientIP: StringRAL);

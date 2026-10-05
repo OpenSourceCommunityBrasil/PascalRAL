@@ -67,6 +67,9 @@ type
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
     /// One ASCII byte straight into the stream: the separators and brackets
     procedure WriteCharToStream(AStream: TStream; AValue: Byte);
+    /// Puts AValue into the field at AIndex, by that field's RAL type -
+    /// what both readers do for each value of a record
+    procedure ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions
       write FFormatOptions;
@@ -181,36 +184,69 @@ begin
 end;
 
 function TRALStorageJSON.StringToJSONString(AValue: StringRAL): StringRAL;
+const
+  cHex: array[0..15] of AnsiChar = '0123456789ABCDEF';
 var
   vStr: UCS4String;
-  vInt: integer;
-begin
-  Result := '';
-  vStr := UnicodeStringToUCS4String(AValue);
-  //WideStringToUCS4String(AValue);
-  for vInt := 0 to Pred(Length(vStr) - 1) do
+  vInt, vLen: IntegerRAL;
+  vChr: UCS4Char;
+
+  procedure Put(AChr: AnsiChar);
   begin
-    if vStr[vInt] = 8 then
-      Result := Result + '\b'
-    else if vStr[vInt] = 9 then
-      Result := Result + '\t'
-    else if vStr[vInt] = 10 then
-      Result := Result + '\n'
-    else if vStr[vInt] = 12 then
-      Result := Result + '\f'
-    else if vStr[vInt] = 13 then
-      Result := Result + '\r'
-    else if vStr[vInt] = 92 then
-      Result := Result + '\\'
-    else if vStr[vInt] = 47 then
-      Result := Result + '\/'
-    else if vStr[vInt] = 34 then
-      Result := Result + '\"'
-    else if (vStr[vInt] > 31) and (vStr[vInt] < 127) then
-      Result := Result + Chr(vStr[vInt])
-    else
-      Result := Result + '\u' + IntToHex(vStr[vInt], 4)
+    if vLen >= Length(Result) then
+      SetLength(Result, Length(Result) * 2 + 16);
+    Result[POSINISTR + vLen] := AChr;
+    Inc(vLen);
   end;
+
+  procedure PutEscape(AChr: AnsiChar);
+  begin
+    Put('\');
+    Put(AChr);
+  end;
+
+  procedure PutUnit(AUnit: Cardinal);
+  begin
+    PutEscape('u');
+    Put(cHex[(AUnit shr 12) and 15]);
+    Put(cHex[(AUnit shr 8) and 15]);
+    Put(cHex[(AUnit shr 4) and 15]);
+    Put(cHex[AUnit and 15]);
+  end;
+
+begin
+  { written into one buffer that grows by doubling: one string per
+    character, each a copy of everything before it, is what it used to be }
+  vStr := UnicodeStringToUCS4String(UnicodeString(AValue));
+  SetLength(Result, Length(AValue) + 16);
+  vLen := 0;
+  for vInt := 0 to Length(vStr) - 2 do // the last one is the terminator
+  begin
+    vChr := vStr[vInt];
+    case vChr of
+      8: PutEscape('b');
+      9: PutEscape('t');
+      10: PutEscape('n');
+      12: PutEscape('f');
+      13: PutEscape('r');
+      34: PutEscape('"');
+      47: PutEscape('/');
+      92: PutEscape('\');
+      32..33, 35..46, 48..91, 93..126: Put(AnsiChar(vChr));
+    else
+      if vChr > $FFFF then
+      begin
+        { past the first plane a character is two UTF-16 units in JSON: it
+          went out as one \u of five or six digits, which no parser reads -
+          an emoji in a text column made the whole answer invalid }
+        PutUnit($D800 + ((vChr - $10000) shr 10));
+        PutUnit($DC00 + ((vChr - $10000) and $3FF));
+      end
+      else
+        PutUnit(vChr);
+    end;
+  end;
+  SetLength(Result, vLen);
 end;
 
 function TRALStorageJSON.JSONFormatDateTime(AValue: TDateTime): StringRAL;
@@ -230,12 +266,52 @@ var
   vBytes: TBytes;
 begin
   vBytes := StringToBytesUTF8(AValue);
-  AStream.Write(vBytes[0], Length(vBytes));
+  if Length(vBytes) > 0 then // as its twin in the CSV storage
+    AStream.Write(vBytes[0], Length(vBytes));
 end;
 
 procedure TRALStorageJSON.WriteCharToStream(AStream: TStream; AValue: Byte);
 begin
   AStream.Write(AValue, 1);
+end;
+
+procedure TRALStorageJSON.ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
+begin
+  case FFieldTypes[AIndex] of
+    sftShortInt:
+      ReadFieldShortint(FFoundFields[AIndex], AValue.AsInteger);
+    sftSmallInt:
+      ReadFieldSmallint(FFoundFields[AIndex], AValue.AsInteger);
+    sftInteger:
+      ReadFieldInteger(FFoundFields[AIndex], AValue.AsInteger);
+    sftInt64:
+      ReadFieldInt64(FFoundFields[AIndex], AValue.AsInteger);
+    sftByte:
+      ReadFieldByte(FFoundFields[AIndex], AValue.AsInteger);
+    sftWord:
+      ReadFieldWord(FFoundFields[AIndex], AValue.AsInteger);
+    sftCardinal:
+      ReadFieldLongWord(FFoundFields[AIndex], AValue.AsInteger);
+    sftQWord:
+      ReadFieldInt64(FFoundFields[AIndex], AValue.AsInteger);
+    sftDouble:
+      ReadFieldFloat(FFoundFields[AIndex], AValue.AsFloat);
+    sftBoolean:
+      ReadFieldBoolean(FFoundFields[AIndex], AValue.AsBoolean);
+    sftString:
+      ReadFieldString(FFoundFields[AIndex], AValue.AsString);
+    sftBlob:
+      ReadFieldStream(FFoundFields[AIndex], AValue.AsString);
+    sftMemo:
+      ReadFieldString(FFoundFields[AIndex], AValue.AsString);
+    sftDateTime:
+      begin
+        if AValue.JSONType = rjtNumber then
+          ReadFieldDateTime(FFoundFields[AIndex], AValue.AsInteger)
+        else
+          ReadFieldDateTime(FFoundFields[AIndex], AValue.AsString);
+      end;
+  end;
 end;
 
 function TRALStorageJSON.WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL)
@@ -246,11 +322,8 @@ end;
 
 function TRALStorageJSON.WriteFieldFloat(AFieldName: StringRAL; AValue: Double)
   : StringRAL;
-var
-  vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := '.';
-  Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, vFormat)]);
+  Result := Format('"%s":%s', [AFieldName, FloatToStr(AValue, RALInvariantFormat)]);
 end;
 
 function TRALStorageJSON.WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean)
@@ -300,11 +373,8 @@ begin
 end;
 
 function TRALStorageJSON.WriteFloat(AValue: Double): StringRAL;
-var
-  vFormat: TFormatSettings;
 begin
-  vFormat.DecimalSeparator := '.';
-  Result := FloatToStr(AValue, vFormat);
+  Result := FloatToStr(AValue, RALInvariantFormat);
 end;
 
 function TRALStorageJSON.WriteBoolean(AValue: Boolean): StringRAL;
@@ -349,7 +419,10 @@ begin
 
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
+    { escaped once here, for every record: an alias with a quote or a
+      backslash in it - and opensql runs the SQL the client sends - wrote
+      invalid JSON, or JSON of the client's making }
+    FFieldNames[vInt] := StringToJSONString(CharCaseValue(ADataset.Fields[vInt].FieldName));
     FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
   end;
 end;
@@ -468,7 +541,12 @@ begin
 
   ADataset.FieldDefs.Clear;
 
-  vjObj := TRALJSONObject(AJSON.Get(0));
+  { the first record names the fields - see LoadFromStream. Get once: every
+    call wraps the value anew, and the wrapper lives as long as AJSON }
+  vjValue := AJSON.Get(0);
+  if not (vjValue is TRALJSONObject) then
+    raise Exception.Create(emInvalidJSONFormat);
+  vjObj := TRALJSONObject(vjValue);
 
   SetLength(FFieldNames, vjObj.Count);
   SetLength(FFieldTypes, vjObj.Count);
@@ -486,24 +564,29 @@ begin
     else
     begin
       vjValue := vjObj.Get(vInt);
-      vSize := 0;
+      { a value of no listed type - an object, an array - is text. vType had
+        no value at all for them, and went to FieldDefs.Add as it was }
+      vType := ftString;
+      vSize := MAX_JSONSTRING;
       case vjValue.JSONType of
         rjtString:
+          if Length(vjValue.AsString) > MAX_JSONSTRING then
           begin
-            vType := ftString;
-            if Length(vjValue.AsString) > MAX_JSONSTRING then
-              vType := ftMemo
-            else
-              vSize := MAX_JSONSTRING;
+            vType := ftMemo;
+            vSize := 0;
           end;
         rjtNumber:
           begin
+            vSize := 0;
             vType := ftFloat;
             if Frac(vjValue.AsFloat) = 0 then
               vType := ftLargeint;
           end;
         rjtBoolean:
-          vType := ftBoolean;
+          begin
+            vSize := 0;
+            vType := ftBoolean;
+          end;
       end;
     end;
     FFieldNames[vInt] := vName;
@@ -532,64 +615,40 @@ end;
 
 procedure TRALStorageJSON_RAW.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
 var
+  vjValue: TRALJSONValue;
   vjObj: TRALJSONObject;
   vInt64: Int64RAL;
-  vInt: IntegerRAL;
-  vjValue: TRALJSONValue;
+  vInt, vCount: IntegerRAL;
 begin
-  vInt64 := 0;
   ADataset.DisableControls;
   LiftReadOnly;
-
-  while vInt64 < AJSON.Count do
-  begin
-    vjObj := TRALJSONObject(AJSON.Get(vInt64));
-    ADataset.Append;;
-    for vInt := 0 to Pred(vjObj.Count) do
+  try
+    vInt64 := 0;
+    while vInt64 < AJSON.Count do
     begin
-      vjValue := vjObj.Get(vInt);
-      case FFieldTypes[vInt] of
-        sftShortInt:
-          ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
-        sftSmallInt:
-          ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
-        sftInteger:
-          ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
-        sftInt64:
-          ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-        sftByte:
-          ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
-        sftWord:
-          ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
-        sftCardinal:
-          ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
-        sftQWord:
-          ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-        sftDouble:
-          ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
-        sftBoolean:
-          ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
-        sftString:
-          ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-        sftBlob:
-          ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
-        sftMemo:
-          ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-        sftDateTime:
-          begin
-            if vjValue.JSONType = rjtNumber then
-              ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
-            else
-              ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
-          end;
-      end;
-    end;
-    ADataset.Post;
-    vInt64 := vInt64 + 1;
-  end;
+      vjValue := AJSON.Get(vInt64);
+      if not (vjValue is TRALJSONObject) then
+        raise Exception.Create(emInvalidJSONFormat);
+      vjObj := TRALJSONObject(vjValue);
 
-  RestoreReadOnly;
-  ADataset.EnableControls;
+      { values go by position, and only as far as there are fields: a record
+        with more members than the first one indexed past FFieldTypes }
+      vCount := vjObj.Count;
+      if vCount > Length(FFieldTypes) then
+        vCount := Length(FFieldTypes);
+
+      ADataset.Append;
+      for vInt := 0 to Pred(vCount) do
+        ReadFieldValue(vInt, vjObj.Get(vInt));
+      ADataset.Post;
+      vInt64 := vInt64 + 1;
+    end;
+  finally
+    { in a finally, as the CSV reader already had it: a record that failed
+      left the read-only fields writable and the controls disabled }
+    RestoreReadOnly;
+    ADataset.EnableControls;
+  end;
 
   SetLength(FFieldNames, 0);
   SetLength(FFieldTypes, 0);
@@ -618,19 +677,26 @@ begin
   end;
 end;
 
+{ Every reader below checks the type of what it is about to walk. The stream
+  is whatever came over the wire - a server's answer to a memtable, a client's
+  delta to applyupdates - and each level used to be cast to TRALJSONObject or
+  TRALJSONArray blindly and walked with that class's Count/Get: valid JSON of
+  the wrong shape was type confusion, on the server before any query ran. }
 procedure TRALStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vjArr: TRALJSONArray;
+  vjValue: TRALJSONValue;
 begin
-  vjArr := TRALJSONArray(TRALJSON.ParseJSON(AStream));
+  vjValue := TRALJSON.ParseJSON(AStream);
   try
-    if vjArr <> nil then
+    if vjValue <> nil then
     begin
-      ReadFields(ADataset, vjArr);
-      ReadRecords(ADataset, vjArr);
+      if not (vjValue is TRALJSONArray) then
+        raise Exception.Create(emInvalidJSONFormat);
+      ReadFields(ADataset, TRALJSONArray(vjValue));
+      ReadRecords(ADataset, TRALJSONArray(vjValue));
     end;
   finally
-    FreeAndNil(vjArr);
+    FreeAndNil(vjValue);
   end;
 end;
 
@@ -772,17 +838,18 @@ end;
 
 function TRALStorageJSON_DBWare.ReadHeaders(AJSON: TRALJSONObject): Boolean;
 var
-  vSign: StringRAL;
-  vVersion: IntegerRAL;
+  vSign, vVersion: TRALJSONValue;
 begin
   Result := False;
   if AJSON = nil then
     Exit;
 
-  vSign := AJSON.Get('sign').AsString;
-  vVersion := AJSON.Get('version').AsInteger;
+  // Get answers nil for a member that is not there
+  vSign := AJSON.Get('sign');
+  vVersion := AJSON.Get('version');
 
-  if (vSign <> 'RAL') or (vVersion <> GetStoreVersion) then
+  if (vSign = nil) or (vVersion = nil) or (vSign.AsString <> 'RAL') or
+     (vVersion.AsInteger <> GetStoreVersion) then
     raise Exception.Create(emInvalidJSONFormat);
 
   Result := True;
@@ -795,6 +862,7 @@ var
   vType: TFieldType;
   vByte: Byte;
   vFlags: TBytes;
+  vjValue: TRALJSONValue;
   vjArr1, vjArr2: TRALJSONArray;
   vField: TFieldDef;
 begin
@@ -803,9 +871,11 @@ begin
 
   ADataset.FieldDefs.Clear;
 
-  vjArr1 := TRALJSONArray(AJSON.Get('fd'));
-  if vjArr1 <> nil then
+  // see TRALStorageJSON_RAW.LoadFromStream and ReadFields
+  vjValue := AJSON.Get('fd');
+  if vjValue is TRALJSONArray then
   begin
+    vjArr1 := TRALJSONArray(vjValue);
     SetLength(FFieldNames, vjArr1.Count);
     SetLength(FFieldTypes, vjArr1.Count);
     SetLength(FFoundFields, vjArr1.Count);
@@ -813,7 +883,11 @@ begin
 
     for vInt := 0 to Pred(vjArr1.Count) do
     begin
-      vjArr2 := TRALJSONArray(vjArr1.Get(vInt));
+      // a field is [name, type, flags, size]
+      vjValue := vjArr1.Get(vInt);
+      if not (vjValue is TRALJSONArray) or (TRALJSONArray(vjValue).Count < 4) then
+        raise Exception.Create(emInvalidJSONFormat);
+      vjArr2 := TRALJSONArray(vjValue);
 
       // name
       vName := vjArr2.Get(0).AsString;
@@ -873,75 +947,44 @@ end;
 procedure TRALStorageJSON_DBWare.ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
 var
   vInt64: Int64RAL;
-  vIsNull: Boolean;
-  vInt: IntegerRAL;
+  vInt, vCount: IntegerRAL;
   vjArr1, vjArr2: TRALJSONArray;
   vjValue: TRALJSONValue;
 begin
-  vjArr1 := TRALJSONArray(AJSON.Get('rc'));
-  if vjArr1 <> nil then
+  // see TRALStorageJSON_RAW.LoadFromStream, ReadFields and ReadRecords
+  vjValue := AJSON.Get('rc');
+  if vjValue is TRALJSONArray then
   begin
+    vjArr1 := TRALJSONArray(vjValue);
     ADataset.DisableControls;
     LiftReadOnly;
-
-    vInt64 := 0;
-    while vInt64 < vjArr1.Count do
-    begin
-      vjArr2 := TRALJSONArray(vjArr1.Get(vInt64));
-
-      ADataset.Append;
-
-      for vInt := 0 to Pred(vjArr2.Count) do
+    try
+      vInt64 := 0;
+      while vInt64 < vjArr1.Count do
       begin
-        vjValue := vjArr2.Get(vInt);
+        vjValue := vjArr1.Get(vInt64);
+        if not (vjValue is TRALJSONArray) then
+          raise Exception.Create(emInvalidJSONFormat);
+        vjArr2 := TRALJSONArray(vjValue);
 
-        // is null
-        vIsNull := vjValue.IsNull;
-        if not vIsNull then
+        vCount := vjArr2.Count;
+        if vCount > Length(FFieldTypes) then
+          vCount := Length(FFieldTypes);
+
+        ADataset.Append;
+        for vInt := 0 to Pred(vCount) do
         begin
-          case FFieldTypes[vInt] of
-            sftShortInt:
-              ReadFieldShortint(FFoundFields[vInt], vjValue.AsInteger);
-            sftSmallInt:
-              ReadFieldSmallint(FFoundFields[vInt], vjValue.AsInteger);
-            sftInteger:
-              ReadFieldInteger(FFoundFields[vInt], vjValue.AsInteger);
-            sftInt64:
-              ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-            sftByte:
-              ReadFieldByte(FFoundFields[vInt], vjValue.AsInteger);
-            sftWord:
-              ReadFieldWord(FFoundFields[vInt], vjValue.AsInteger);
-            sftCardinal:
-              ReadFieldLongWord(FFoundFields[vInt], vjValue.AsInteger);
-            sftQWord:
-              ReadFieldInt64(FFoundFields[vInt], vjValue.AsInteger);
-            sftDouble:
-              ReadFieldFloat(FFoundFields[vInt], vjValue.AsFloat);
-            sftBoolean:
-              ReadFieldBoolean(FFoundFields[vInt], vjValue.AsBoolean);
-            sftString:
-              ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-            sftBlob:
-              ReadFieldStream(FFoundFields[vInt], vjValue.AsString);
-            sftMemo:
-              ReadFieldString(FFoundFields[vInt], vjValue.AsString);
-            sftDateTime:
-              begin
-                if vjValue.JSONType = rjtNumber then
-                  ReadFieldDateTime(FFoundFields[vInt], vjValue.AsInteger)
-                else
-                  ReadFieldDateTime(FFoundFields[vInt], vjValue.AsString);
-              end;
-          end;
+          vjValue := vjArr2.Get(vInt);
+          if not vjValue.IsNull then
+            ReadFieldValue(vInt, vjValue);
         end;
+        ADataset.Post;
+        vInt64 := vInt64 + 1;
       end;
-      ADataset.Post;
-      vInt64 := vInt64 + 1;
+    finally
+      RestoreReadOnly;
+      ADataset.EnableControls;
     end;
-
-    RestoreReadOnly;
-    ADataset.EnableControls;
   end;
 
   SetLength(FFieldNames, 0);
@@ -960,17 +1003,20 @@ end;
 
 procedure TRALStorageJSON_DBWare.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vjObj: TRALJSONObject;
+  vjValue: TRALJSONValue;
 begin
-  vjObj := TRALJSONObject(TRALJSON.ParseJSON(AStream));
+  vjValue := TRALJSON.ParseJSON(AStream);
   try
-    if ReadHeaders(vjObj) then
+    // see TRALStorageJSON_RAW.LoadFromStream
+    if (vjValue <> nil) and not (vjValue is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
+    if ReadHeaders(TRALJSONObject(vjValue)) then
     begin
-      ReadFields(ADataset, vjObj);
-      ReadRecords(ADataset, vjObj);
+      ReadFields(ADataset, TRALJSONObject(vjValue));
+      ReadRecords(ADataset, TRALJSONObject(vjValue));
     end;
   finally
-    FreeAndNil(vjObj);
+    FreeAndNil(vjValue);
   end;
 end;
 
@@ -1007,12 +1053,13 @@ end;
 
 function TRALStorageJSONLink.GetStorage: TRALStorage;
 begin
-  case FJSONType of
-    jtRAW:
-      Result := TRALStorageJSON_RAW.Create;
-    jtDBWare:
-      Result := TRALStorageJSON_DBWare.Create;
-  end;
+  { an if, not a case: on the DBWare server FJSONType is a byte of the request
+    body (LoadPropsFromStream), and the case had no else - any other value left
+    Result undefined, and the next line wrote through it }
+  if FJSONType = jtRAW then
+    Result := TRALStorageJSON_RAW.Create
+  else
+    Result := TRALStorageJSON_DBWare.Create;
 
   Result.FieldCharCase := FieldCharCase;
 

@@ -16,6 +16,8 @@ type
   private
     FCriptType: TRALCriptoType;
     FKey: StringRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create;
   published
@@ -63,7 +65,18 @@ type
 
 implementation
 
+uses
+  RALTools;
+
 { TRALCriptoOptions }
+
+procedure TRALCriptoOptions.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALCriptoOptions then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALCriptoOptions.Create;
 begin

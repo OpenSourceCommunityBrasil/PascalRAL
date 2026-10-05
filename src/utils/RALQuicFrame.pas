@@ -41,7 +41,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALParams, RALRequest, RALResponse, RALCompress,
-  RALCripto, RALClient;
+  RALCripto, RALClient, RALTools;
 
 const
   /// The largest single block this reader will believe. A size prefix read
@@ -106,6 +106,12 @@ procedure RALQuicPrepareRequest(ARequest: TRALRequest;
                                 ACripto: TRALCriptoType;
                                 const ASupportedEncript: StringRAL);
 
+/// Raises emQuicFrameTooLarge when a body of ASize bytes cannot travel in a
+/// frame: the reader refuses any field above RALQUIC_MAX_FIELD, so a bigger
+/// body only ever got as far as "malformed frame" on the other side - and one
+/// of 2 GB or more had its length cut to 32 bits on the way out
+procedure RALQuicCheckBody(ASize: Int64RAL);
+
 /// The request frame. Call it AFTER the headers that depend on the encoded
 /// body are needed - it encodes the body first itself, for the reason in the
 /// body of the function.
@@ -123,6 +129,12 @@ implementation
 function RALQuicBlockSize(ALength: IntegerRAL): IntegerRAL;
 begin
   Result := 4 + ALength;
+end;
+
+procedure RALQuicCheckBody(ASize: Int64RAL);
+begin
+  if ASize > RALQUIC_MAX_FIELD then
+    raise Exception.CreateFmt(emQuicFrameTooLarge, [ASize, Int64RAL(RALQUIC_MAX_FIELD)]);
 end;
 
 function RALQuicPutBlockStr(ADest: PByte; const AText: StringRAL): PByte;
@@ -229,8 +241,10 @@ begin
     vParam := AParams.Index[vInt];
     if vParam.Kind <> rpkHEADER then
       Continue;
-    AHeaders[ACount].Name := vParam.ParamName;
-    AHeaders[ACount].Value := vParam.AsString;
+    { the frame carries lengths, not lines, but a header is the same thing on
+      every engine: no CR or LF, as HTTP/2 and HTTP/3 require of theirs too }
+    AHeaders[ACount].Name := RALSafeHeaderText(vParam.ParamName);
+    AHeaders[ACount].Value := RALSafeHeaderText(vParam.AsString);
     Inc(Result, 8 + Length(AHeaders[ACount].Name) + Length(AHeaders[ACount].Value));
     Inc(ACount);
   end;
@@ -332,7 +346,7 @@ var
   vHdrCount, vHdrSize: IntegerRAL;
   vSource: TStream;
   vDest: PByte;
-  vBodyLen: IntegerRAL;
+  vBodyLen: Int64RAL;
 begin
   { THE BODY IS ENCODED FIRST, and the headers are built afterwards. Not a
     style choice: TakeWireStream decides between a raw body and multipart and
@@ -346,6 +360,7 @@ begin
     vBodyLen := 0;
     if vSource <> nil then
       vBodyLen := vSource.Size;
+    RALQuicCheckBody(vBodyLen);
 
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
@@ -358,18 +373,18 @@ begin
 
     { one allocation, sized up front, and the body read from the encoded stream
       straight into it }
-    SetLength(Result, 1 + RALQuicBlockSize(Length(ARoute)) + vHdrSize + RALQuicBlockSize(vBodyLen));
+    SetLength(Result, 1 + RALQuicBlockSize(Length(ARoute)) + vHdrSize + RALQuicBlockSize(IntegerRAL(vBodyLen)));
     vDest := PByte(Result);
     vDest^ := Ord(AMethod);
     Inc(vDest);
     vDest := RALQuicPutBlockStr(vDest, ARoute);
     vDest := RALQuicPutHeaders(vDest, vHeaders, vHdrCount);
-    PCardinal(vDest)^ := vBodyLen;
+    PCardinal(vDest)^ := Cardinal(vBodyLen);
     Inc(vDest, 4);
     if vBodyLen > 0 then
     begin
       vSource.Position := 0;
-      vSource.ReadBuffer(vDest^, vBodyLen);
+      vSource.ReadBuffer(vDest^, IntegerRAL(vBodyLen));
     end;
   finally
     FreeAndNil(vSource);

@@ -233,40 +233,58 @@ begin
 end;
 
 var
-  { Resolved once per value and kept. GetEnumName walks the RTTI short-string
-    table from the start, and on Delphi it also hands back a UTF-16 string that
-    then converts into StringRAL - both per field, per row, on every DBWare
-    answer. The cache is filled BY GetEnumName, so it stays correct on any
-    compiler whatever members TFieldType happens to have; a hand-written table
-    would not. Two threads racing here compute the same string, so no lock. }
-  gFieldTypeNames: array of StringRAL;
+  { Resolved once and kept. GetEnumName walks the RTTI short-string table from
+    the start, and on Delphi it also hands back a UTF-16 string that then
+    converts into StringRAL - both per field, per row, on every DBWare answer.
+    The tables are filled BY GetEnumName, so they stay correct on any compiler
+    whatever members TFieldType happens to have; a hand-written table would not.
+
+    They are filled in initialization, before any thread exists, and only read
+    after that. Filling them lazily raced: a managed string written by two
+    threads without a lock can reach a reader freed or half-published, and the
+    SetLength of the lazy version could swap the whole array under a reader,
+    who then got ''. Measured with 6 threads on a cold cache: 441 of 3000 rounds
+    with a wrong name or an exception on the client side, 69 on the server side.
+    A '' that reaches RALNameToFieldType comes back as ftUnknown, and the server
+    then refuses the parameter with "Field '<name>' is of an unknown type" - on
+    the first DAO requests of a process, which a client may well fire in
+    parallel. }
+  gFieldTypeNames: array [TFieldType] of StringRAL;
   gRALFieldTypeNames: array [TRALFieldType] of StringRAL;
+
+procedure FillFieldTypeNames;
+var
+  vFieldType: TFieldType;
+  vRALFieldType: TRALFieldType;
+begin
+  for vFieldType := Low(TFieldType) to High(TFieldType) do
+    gFieldTypeNames[vFieldType] :=
+      StringRAL(GetEnumName(TypeInfo(TFieldType), Ord(vFieldType)));
+  for vRALFieldType := Low(TRALFieldType) to High(TRALFieldType) do
+    gRALFieldTypeNames[vRALFieldType] :=
+      StringRAL(GetEnumName(TypeInfo(TRALFieldType), Ord(vRALFieldType)));
+end;
 
 function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL;
 begin
-  if gRALFieldTypeNames[AFieldType] = '' then
-    gRALFieldTypeNames[AFieldType] :=
-      StringRAL(GetEnumName(TypeInfo(TRALFieldType), Ord(AFieldType)));
-  Result := gRALFieldTypeNames[AFieldType];
+  { these values come off the wire as a byte cast to the enum, and the table
+    read past its end handed a stray pointer to a string assignment. Not
+    GetEnumName either: Delphi's walks its name list for as many steps as the
+    ordinal says, past the last name and into whatever RTTI follows }
+  if Ord(AFieldType) > Ord(High(TRALFieldType)) then
+    Result := ''
+  else
+    Result := gRALFieldTypeNames[AFieldType];
 end;
 
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
-var
-  vOrd: IntegerRAL;
 begin
-  vOrd := Ord(AFieldType);
-  if Length(gFieldTypeNames) = 0 then
-    SetLength(gFieldTypeNames, Ord(High(TFieldType)) + 1);
-
-  if (vOrd < 0) or (vOrd > High(gFieldTypeNames)) then
-  begin
-    Result := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
-    Exit;
-  end;
-
-  if gFieldTypeNames[vOrd] = '' then
-    gFieldTypeNames[vOrd] := StringRAL(GetEnumName(TypeInfo(TFieldType), vOrd));
-  Result := gFieldTypeNames[vOrd];
+  { an ordinal outside the enum - reachable only through a cast - has no name;
+    see the overload above. RALNameToFieldType reads '' back as ftUnknown }
+  if Ord(AFieldType) > Ord(High(TFieldType)) then
+    Result := ''
+  else
+    Result := gFieldTypeNames[AFieldType];
 end;
 
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
@@ -288,6 +306,11 @@ end;
 
 class function TRALDB.FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
 begin
+  { a type with no RAL counterpart travels as text - ftUnknown included, which
+    is what a column of a type no driver recognised arrives as. There was no
+    default at all: the result was whatever the register held, and it went on
+    to index the type name table }
+  Result := sftString;
   case AFieldType of
     ftFixedWideChar,
     ftGuid,
@@ -363,6 +386,9 @@ end;
 
 class function TRALDB.RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
 begin
+  { every member is mapped below; this answers an ordinal that came off the
+    wire past the last one }
+  Result := ftUnknown;
   case AFieldType of
     {$IFNDEF FPC}
     sftShortInt: Result := ftShortint;
@@ -601,13 +627,20 @@ begin
   Result.Add('tablename', FTableName);
 end;
 
+{ The schema a server answers getsqlfields, getfields and gettables with, read
+  on the client. Every level was cast blindly - valid JSON of the wrong shape
+  walked an array with an object's methods - so each checks its type now. Text
+  that is not JSON at all still parses to nil and leaves the info empty, as
+  before; each member asked for and missing still reads as empty. }
 procedure TRALDBInfoField.SetAsJSON(AValue: StringRAL);
 var
-  vJSON : TRALJSONObject;
+  vJSON : TRALJSONValue;
 begin
-  vJSON := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -684,18 +717,21 @@ end;
 
 procedure TRALDBInfoFields.SetAsJSONObj(AValue: TRALJSONArray);
 var
-  vObj: TRALJSONObject;
+  vValue: TRALJSONValue;
   vInt: IntegerRAL;
   vField: TRALDBInfoField;
 begin
   Clear;
 
+  // see TRALDBInfoField.SetAsJSON
   for vInt := 0 to Pred(AValue.Count) do
   begin
-    vObj := TRALJSONObject(AValue.Get(vInt));
+    vValue := AValue.Get(vInt);
+    if not (vValue is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
 
     vField := NewField;
-    vField.AsJSONObj := vObj;
+    vField.AsJSONObj := TRALJSONObject(vValue);
   end;
 end;
 
@@ -713,11 +749,14 @@ end;
 
 procedure TRALDBInfoFields.SetAsJSON(AValue: StringRAL);
 var
-  vJSON: TRALJSONArray;
+  vJSON: TRALJSONValue;
 begin
-  vJSON := TRALJSONArray(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -781,11 +820,14 @@ end;
 
 procedure TRALDBInfoTable.SetAsJSON(AValue: StringRAL);
 var
-  vJSON : TRALJSONObject;
+  vJSON : TRALJSONValue;
 begin
-  vJSON := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -852,11 +894,14 @@ end;
 
 procedure TRALDBInfoTables.SetAsJSON(AValue: StringRAL);
 var
-  vJSON: TRALJSONArray;
+  vJSON: TRALJSONValue;
 begin
-  vJSON := TRALJSONArray(TRALJSON.ParseJSON(AValue));
+  vJSON := TRALJSON.ParseJSON(AValue);
   try
-    AsJSONObj := vJSON;
+    // see TRALDBInfoField.SetAsJSON
+    if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
+      raise Exception.Create(emInvalidJSONFormat);
+    AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
   end;
@@ -864,18 +909,21 @@ end;
 
 procedure TRALDBInfoTables.SetAsJSONObj(AValue: TRALJSONArray);
 var
-  vObj: TRALJSONObject;
+  vValue: TRALJSONValue;
   vInt: IntegerRAL;
   vTable: TRALDBInfoTable;
 begin
   Clear;
 
+  // see TRALDBInfoField.SetAsJSON
   for vInt := 0 to Pred(AValue.Count) do
   begin
-    vObj := TRALJSONObject(AValue.Get(vInt));
+    vValue := AValue.Get(vInt);
+    if not (vValue is TRALJSONObject) then
+      raise Exception.Create(emInvalidJSONFormat);
 
     vTable := NewTable;
-    vTable.AsJSONObj := vObj;
+    vTable.AsJSONObj := TRALJSONObject(vValue);
   end;
 end;
 
@@ -911,5 +959,8 @@ begin
   Result := TRALDBInfoTable.Create;
   FTables.Add(Result);
 end;
+
+initialization
+  FillFieldTypeNames;
 
 end.

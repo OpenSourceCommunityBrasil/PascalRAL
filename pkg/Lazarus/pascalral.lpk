@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1" Minor="2"/>
-    <Files Count="52">
+    <Files Count="58">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -234,6 +234,30 @@
         <Filename Value="..\..\src\utils\RALNetwork.pas"/>
         <UnitName Value="RALNetwork"/>
       </Item52>
+      <Item53>
+        <Filename Value="..\..\src\utils\RALCRC32.pas"/>
+        <UnitName Value="RALCRC32"/>
+      </Item53>
+      <Item54>
+        <Filename Value="..\..\src\base\RALDBTypes.pas"/>
+        <UnitName Value="RALDBTypes"/>
+      </Item54>
+      <Item55>
+        <Filename Value="..\..\src\utils\RALHashBase.pas"/>
+        <UnitName Value="RALHashBase"/>
+      </Item55>
+      <Item56>
+        <Filename Value="..\..\src\utils\RALHexadecimal.pas"/>
+        <UnitName Value="RALHexadecimal"/>
+      </Item56>
+      <Item57>
+        <Filename Value="..\..\src\utils\RALResponsePages.pas"/>
+        <UnitName Value="RALResponsePages"/>
+      </Item57>
+      <Item58>
+        <Filename Value="..\..\src\utils\RALStream.pas"/>
+        <UnitName Value="RALStream"/>
+      </Item58>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
