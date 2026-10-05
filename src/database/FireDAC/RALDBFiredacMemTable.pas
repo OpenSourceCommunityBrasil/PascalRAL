@@ -39,12 +39,19 @@ type
       to pay that round trip again before /opensql }
     FSchema: TRALDBInfoFields;
     FSchemaSQL: StringRAL;
+    { the first failure of the running ApplyUpdates or ExecSQL, which the call
+      raises when it returns }
+    FFailure: StringRAL;
 
     FOnError: TRALDBTableOnError;
   protected
     /// Server schema for ASQL, fetched once per SQL text and kept until the SQL or the connection changes
     function SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
     procedure DropSchema;
+    /// A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
+    /// raises the first one when it returns
+    procedure CallFailed(const AMessage: StringRAL);
+    procedure RaiseFailure;
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
@@ -78,7 +85,17 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Sends what Post and Delete cached, one statement per record, and waits
+    /// for the answer. A statement that failed, and an UPDATE or DELETE that
+    /// did not affect exactly one record - the record was changed or deleted
+    /// by someone else, or the criteria matched no row - is reported through
+    /// OnError and then raised, the first one, once the whole answer is
+    /// handled: the DAO's ApplyUpdatesRemote and FireDAC itself do the same.
+    /// UpdateOptions.CountUpdatedRecords set to False skips the count.
     procedure ApplyUpdates;
+    /// Runs SQL with Params on the server and waits: RowsAffected and LastId
+    /// are read on the next line. A failure is reported through OnError and
+    /// then raised, as the DAO's ExecSQLRemote does.
     procedure ExecSQL;
 
     function ParamByName(const AValue: StringRAL): TParam;
@@ -107,7 +124,31 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
+  FFailure := '';
   FRALConnection.ApplyUpdatesRemote(FSQLCache, OnApplyUpdates);
+  RaiseFailure;
+end;
+
+procedure TRALDBFDMemTable.CallFailed(const AMessage: StringRAL);
+begin
+  if Assigned(FOnError) then
+    FOnError(Self, AMessage);
+  if FFailure = '' then
+    FFailure := AMessage;
+end;
+
+{ ApplyUpdatesRemote and ExecSQLRemote are ebSingleThread: the answer was
+  handled on this thread before the call returned, so its failure is raised
+  to the caller - as the DAO does - instead of reaching OnError alone, or
+  nothing at all when OnError was not assigned }
+procedure TRALDBFDMemTable.RaiseFailure;
+var
+  vError: StringRAL;
+begin
+  vError := FFailure;
+  FFailure := '';
+  if vError <> '' then
+    raise Exception.Create(string(vError));
 end;
 
 procedure TRALDBFDMemTable.CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType);
@@ -207,7 +248,9 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
+  FFailure := '';
   FRALConnection.ExecSQLRemote(Self, FStorage, OnExecSQLResponse);
+  RaiseFailure;
 end;
 
 procedure TRALDBFDMemTable.InternalDelete;
@@ -463,23 +506,28 @@ begin
         end;
       end
       else if vDBSQL.Response.Error then
-      begin
-        if Assigned(FOnError) then
-          FOnError(Self, vDBSQL.Response.StrError);
-      end;
+        CallFailed(vDBSQL.Response.StrError)
+      { An UPDATE or DELETE whose record someone else changed or deleted - or
+        whose criteria match no row, or several - runs and changes nothing, or
+        more than one record. It used to count as saved, the change gone
+        without a word; FireDAC and the DAO report it (CountUpdatedRecords). A
+        negative count is a driver that cannot tell. }
+      else if (vDBSQL.ExecType = etExecute) and UpdateOptions.CountUpdatedRecords and
+              (vDBSQL.Response.RowsAffected >= 0) and (vDBSQL.Response.RowsAffected <> 1) then
+        CallFailed(StringRAL(Format(emDBRowsAffected, [vDBSQL.Response.RowsAffected])));
     end;
     FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
+    CallFailed(RALDBResponseError(AResponse))
+  else
   begin
-    vException := RALDBResponseError(AResponse);
-    if Assigned(FOnError) then
-      FOnError(Self, vException);
-  end
-  else if AException <> '' then
-  begin
-    if Assigned(FOnError) then
-      FOnError(Self, AException);
+    { 401, 404, a transport failure: nothing reached the database, which went
+      unsaid whenever AException came empty - the same words as an Open }
+    vException := AException;
+    if vException = '' then
+      vException := RALDBResponseError(AResponse);
+    CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
   end;
 end;
 
@@ -529,15 +577,15 @@ begin
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
+    CallFailed(RALDBResponseError(AResponse))
+  else
   begin
-    vException := RALDBResponseError(AResponse);
-    if Assigned(FOnError) then
-      FOnError(Self, vException);
-  end
-  else if AException <> '' then
-  begin
-    if Assigned(FOnError) then
-      FOnError(Self, AException);
+    { 401, 404, the pool's 429, a transport failure: the statement did not
+      run, which went unsaid whenever AException came empty }
+    vException := AException;
+    if vException = '' then
+      vException := RALDBResponseError(AResponse);
+    CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
   end;
 end;
 

@@ -56,6 +56,7 @@
   emDBEmptyBody = 'O "body" está vazio.';
   emDBLinkMissing = 'Propriedade DBLink ausente.';
   emDBPoolTimeout = 'Tempo de espera por uma conexão livre com o banco esgotado.';
+  emDBRowsAffected = 'ApplyUpdates: um comando afetou %d registros em vez de 1 - o registro foi alterado ou excluído por outro usuário, ou o critério da atualização não identifica exatamente uma linha.';
   emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
   emInvalidFormat = 'Formato Inválido.';

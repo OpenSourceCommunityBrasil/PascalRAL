@@ -56,6 +56,7 @@
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
   emDBPoolTimeout = 'Se agotó el tiempo de espera por una conexión libre a la base de datos.';
+  emDBRowsAffected = 'ApplyUpdates: una instrucción afectó %d registros en lugar de 1 - el registro fue modificado o eliminado por otro usuario, o el criterio de actualización no identifica exactamente una fila.';
   emDBStatusNoMessage = 'El servidor respondió HTTP %d y no envió ningún mensaje.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
   emInvalidFormat = 'Formato no és válido.';

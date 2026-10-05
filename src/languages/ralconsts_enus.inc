@@ -55,6 +55,7 @@
   emDBEmptyBody = 'Body is empty.';
   emDBLinkMissing = 'DBLink Property missing.';
   emDBPoolTimeout = 'Timed out waiting for a free database connection.';
+  emDBRowsAffected = 'ApplyUpdates: a statement affected %d records instead of 1 - the record was changed or deleted by another user, or the update criteria do not identify exactly one row.';
   emDBStatusNoMessage = 'The server answered HTTP %d and sent no message.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
   emHMACEmptyText = 'Input text must be provided.';
