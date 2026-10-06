@@ -43,30 +43,44 @@ type
 
   TRALfpHttpServer = class;
 
-  { TRALfpHttpConnectionThread }
+  TRALfpHttpServerCore = class;
 
-  { fcl-web's own connection thread frees the connection (which decrements
-    the server's ConnectionCount) BEFORE taking itself out of the server's
-    thread list. TFPCustomHttpServer.Destroy sees the count reach zero, frees
-    that list, and the thread's Remove then runs on freed memory: an access
-    violation that took whole test processes down as soon as a server was
-    freed while a request was finishing (07/09/2026). This thread lives in a
-    list the RAL owns and leaves it FIRST, so that a server waiting on
-    TRALfpHttpServerCore.WaitHandlers can free everything afterwards }
-  TRALfpHttpConnectionThread = class(TFPHTTPConnectionThread)
+  { TRALfpHttpWorker }
+
+  { A thread of the server's pool: it takes the connections the accept loop
+    queues, one at a time, and handles each. fcl-web starts a thread per
+    connection and serves one request per connection, so every request paid
+    a thread created and destroyed - about 220 us of wall time and 125 us of
+    CPU each on FPC 3.2 for Windows, measured on 05/10/2026, and on FPC every
+    new thread also builds a heap of its own. A worker waits for the next
+    connection for WorkerIdleTimeout and then ends }
+  TRALfpHttpWorker = class(TThread)
   private
-    FHandlers: TThreadList;
-  public
-    constructor CreateHandler(AConnection: TFPHTTPConnection; AHandlers: TThreadList);
+    FCore: TRALfpHttpServerCore;
+  protected
     procedure Execute; override;
+  public
+    constructor Create(ACore: TRALfpHttpServerCore);
   end;
 
   { TRALfpHttpServerCore }
 
   TRALfpHttpServerCore = class(TFPHttpServer)
   private
-    FHandlers: TThreadList;
     FCertLock: TCriticalSection;
+    { the pool: connections accepted and not taken yet, the ones being
+      handled, how many workers wait for one and how many are alive }
+    FPoolLock: TCriticalSection;
+    FWake: TEvent;
+    FQueue: TList;
+    FActive: TList;
+    FIdle: Integer;
+    FWorkers: Integer;
+    FStopping: Boolean;
+    { the next connection for a worker, or nil when it waited
+      WorkerIdleTimeout for nothing or the server is stopping }
+    function TakeConnection: TFPHTTPConnection;
+    procedure ConnectionDone(AConnection: TFPHTTPConnection);
   protected
     { every TLS connection copies CertificateData into a socket handler of its
       own (CreateSSLSocketHandler): under the lock, so a certificate replaced
@@ -74,13 +88,17 @@ type
     function GetSocketHandler(const AUseSSL: Boolean): TSocketHandler; override;
     { turns Nagle off on the accepted socket - see the implementation }
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
+    { queues the connection for the pool instead of starting a thread for it;
+      a worker is started only when none is waiting. fcl-web ignores what
+      this returns }
     function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    { waits until every connection thread has finished. Past ATimeoutMs it
-      closes the sockets still open (a client that connected and never sent
-      a request would otherwise hold a thread forever) and waits again }
+    { waits until every connection has been handled and every worker has
+      ended. Past ATimeoutMs it closes the sockets still open (a client that
+      connected and never sent a request would otherwise hold a worker
+      forever) and waits again }
     procedure WaitHandlers(ATimeoutMs: Integer);
     { the certificate of the connections accepted from now on: fcl-web builds
       an OpenSSL context per connection from CertificateData, so replacing it
@@ -241,33 +259,54 @@ begin
   end;
 end;
 
-{ TRALfpHttpConnectionThread }
+const
+  { how long a worker of the pool waits for the next connection before it
+    ends: the pool follows the load down, and a burst finds the threads of
+    the previous one still there }
+  WorkerIdleTimeout = 10000;
+  { a wait is never longer than this: a signal two connections collapsed into
+    one costs at most this much, never a whole idle timeout }
+  WorkerWaitStep = 1000;
 
-constructor TRALfpHttpConnectionThread.CreateHandler(AConnection: TFPHTTPConnection;
-  AHandlers: TThreadList);
+{ TRALfpHttpWorker }
+
+constructor TRALfpHttpWorker.Create(ACore: TRALfpHttpServerCore);
 begin
-  FHandlers := AHandlers;
-  FHandlers.Add(Self);
-  { the one-argument constructor: fcl-web's list stays out of it }
-  inherited CreateConnection(AConnection);
+  FCore := ACore;
+  FreeOnTerminate := True;
+  inherited Create(False);
 end;
 
-procedure TRALfpHttpConnectionThread.Execute;
+procedure TRALfpHttpWorker.Execute;
 var
   vConnection: TFPHTTPConnection;
+  vCore: TRALfpHttpServerCore;
 begin
-  vConnection := Connection;
+  vCore := FCore;
   try
-    try
-      vConnection.HandleRequest;
-    finally
-      { out of the list first: whoever waits on the list then frees the
-        server only after the connection (and its count) is gone too }
-      FHandlers.Remove(Self);
-      vConnection.Free;
-    end;
-  except
-    // silently ignore errors, as fcl-web does
+    repeat
+      vConnection := vCore.TakeConnection;
+      if vConnection = nil then
+        Break;
+      try
+        try
+          vConnection.HandleRequest;
+        finally
+          { out of the list first, then the connection (and the server's
+            count of them): WaitHandlers frees the server only once both are
+            gone - fcl-web's own thread did it the other way round and freed
+            the server under a thread still on its way out (07/09/2026) }
+          vCore.ConnectionDone(vConnection);
+          vConnection.Free;
+        end;
+      except
+        // silently ignore errors, as fcl-web does
+      end;
+    until False;
+  finally
+    { the last thing this thread does to the server: WaitHandlers frees it
+      once the count of workers is zero }
+    InterLockedDecrement(vCore.FWorkers);
   end;
 end;
 
@@ -276,15 +315,72 @@ end;
 constructor TRALfpHttpServerCore.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FHandlers := TThreadList.Create;
   FCertLock := TCriticalSection.Create;
+  FPoolLock := TCriticalSection.Create;
+  FWake := TEvent.Create(nil, False, False, '');
+  FQueue := TList.Create;
+  FActive := TList.Create;
 end;
 
 destructor TRALfpHttpServerCore.Destroy;
 begin
   inherited Destroy;
-  FreeAndNil(FHandlers);
   FreeAndNil(FCertLock);
+  FreeAndNil(FQueue);
+  FreeAndNil(FActive);
+  FreeAndNil(FWake);
+  FreeAndNil(FPoolLock);
+end;
+
+function TRALfpHttpServerCore.TakeConnection: TFPHTTPConnection;
+var
+  vDeadline, vNow: QWord;
+  vWait: QWord;
+begin
+  Result := nil;
+  vDeadline := GetTickCount64 + WorkerIdleTimeout;
+  FPoolLock.Acquire;
+  try
+    Inc(FIdle);
+    repeat
+      if FQueue.Count > 0 then
+      begin
+        Result := TFPHTTPConnection(FQueue[0]);
+        FQueue.Delete(0);
+        FActive.Add(Result);
+        Break;
+      end;
+      vNow := GetTickCount64;
+      if FStopping or (vNow >= vDeadline) then
+        Break;
+      vWait := vDeadline - vNow;
+      if vWait > WorkerWaitStep then
+        vWait := WorkerWaitStep;
+      FPoolLock.Release;
+      try
+        FWake.WaitFor(vWait);
+      finally
+        FPoolLock.Acquire;
+      end;
+    until False;
+    Dec(FIdle);
+    { the event wakes one worker: pass it on while there is still work, or a
+      stop, and someone else waiting }
+    if ((FQueue.Count > 0) or FStopping) and (FIdle > 0) then
+      FWake.SetEvent;
+  finally
+    FPoolLock.Release;
+  end;
+end;
+
+procedure TRALfpHttpServerCore.ConnectionDone(AConnection: TFPHTTPConnection);
+begin
+  FPoolLock.Acquire;
+  try
+    FActive.Remove(AConnection);
+  finally
+    FPoolLock.Release;
+  end;
 end;
 
 function TRALfpHttpServerCore.GetSocketHandler(const AUseSSL: Boolean): TSocketHandler;
@@ -333,23 +429,39 @@ begin
 end;
 
 function TRALfpHttpServerCore.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;
+var
+  vStart: Boolean;
 begin
-  Result := TRALfpHttpConnectionThread.CreateHandler(Conn, FHandlers);
+  Result := nil;
+  FPoolLock.Acquire;
+  try
+    FQueue.Add(Conn);
+    { a new worker only when every one waiting already has a connection to
+      take: a route that blocks never holds up the next connection, the same
+      as with a thread per connection }
+    vStart := FIdle < FQueue.Count;
+    if vStart then
+      InterLockedIncrement(FWorkers);
+    FWake.SetEvent;
+  finally
+    FPoolLock.Release;
+  end;
+  if vStart then
+    TRALfpHttpWorker.Create(Self);
 end;
 
 procedure TRALfpHttpServerCore.WaitHandlers(ATimeoutMs: Integer);
 var
-  vList: TList;
   vInt: Integer;
   vStart: TDateTime;
 
   function Pending: Boolean;
   begin
-    vList := FHandlers.LockList;
+    FPoolLock.Acquire;
     try
-      Result := vList.Count > 0;
+      Result := (FQueue.Count > 0) or (FActive.Count > 0);
     finally
-      FHandlers.UnlockList;
+      FPoolLock.Release;
     end;
     Result := Result or (ConnectionCount > 0);
   end;
@@ -358,18 +470,36 @@ begin
   vStart := Now;
   while Pending and (MilliSecondsBetween(Now, vStart) < ATimeoutMs) do
     Sleep(10);
-  if not Pending then
-    Exit;
-
-  vList := FHandlers.LockList;
-  try
-    for vInt := vList.Count - 1 downto 0 do
-      CloseSocket(TRALfpHttpConnectionThread(vList[vInt]).Connection.Socket.Handle);
-  finally
-    FHandlers.UnlockList;
+  if Pending then
+  begin
+    FPoolLock.Acquire;
+    try
+      for vInt := FActive.Count - 1 downto 0 do
+        CloseSocket(TFPHTTPConnection(FActive[vInt]).Socket.Handle);
+      for vInt := FQueue.Count - 1 downto 0 do
+        CloseSocket(TFPHTTPConnection(FQueue[vInt]).Socket.Handle);
+    finally
+      FPoolLock.Release;
+    end;
+    while Pending do
+      Sleep(10);
   end;
-  while Pending do
+
+  { and the workers, which hold the server: told to stop, woken, and waited
+    for until the last one has let go of it }
+  FPoolLock.Acquire;
+  try
+    FStopping := True;
+    FWake.SetEvent;
+  finally
+    FPoolLock.Release;
+  end;
+  while FWorkers > 0 do
+  begin
+    FWake.SetEvent;
     Sleep(10);
+  end;
+  FStopping := False;
 end;
 
 { TRALfpHttpServerThread }
@@ -547,6 +677,9 @@ begin
           what was really done (a JPEG goes out uncompressed) }
         AResponse.ContentStream := TakeWireStream;
         AResponse.FreeContentStream := True;
+        { the answer is built: what a plugin took for the request - a slot of
+          the concurrency limit - goes back now, before the bytes go out }
+        vRequest.Finish;
 
         AResponse.Code := StatusCode;
 
@@ -568,8 +701,8 @@ begin
 
         AResponse.Server := 'RAL_fpHTTP';
         { Always, whatever the client asked for: this server answers ONE
-          request per connection (TRALfpHttpConnectionThread.Execute calls
-          HandleRequest once, whatever keep-alive fcl-web could offer) and
+          request per connection (TRALfpHttpWorker.Execute calls
+          HandleRequest once per connection, whatever keep-alive fcl-web could offer) and
           closes the socket right after - and RFC 9112 9.6 says a server that
           does not keep the connection MUST send "close". It is set here, after
           ProcessCommands, so a request ValidateRequest refused says it too. }
@@ -795,7 +928,7 @@ begin
   { the connection threads still handling a request - the wake-up GET of
     TerminatedSet among them - read FParent (CreateRequest,
     ProcessCommands...) and the server itself, so both outlive them: the
-    RAL's own wait (see TRALfpHttpConnectionThread) comes before the free.
+    RAL's own wait (see TRALfpHttpWorker) comes before the free.
     Ten seconds is more than any request in flight needs; whatever is still
     open then is a client that never sent its request, and gets its socket
     closed }

@@ -48,6 +48,17 @@ type
     class function EncodeAsStream(AValue: TStream): TStream; overload;
     class function FromBase64Url(const AValue: StringRAL): StringRAL;
     class function ToBase64Url(const AValue: StringRAL): StringRAL;
+    /// ALength characters of base64 or base64url at AInput, padded or not,
+    /// straight into a string of the decoded bytes: one allocation, where
+    /// Decode(FromBase64Url(...)) went through two replaced strings, two
+    /// streams and, on Delphi, UTF-16. Refuses what Decode refuses, an empty
+    /// text included
+    class function DecodeBuffer(AInput: PByte; ALength: IntegerRAL): StringRAL;
+    /// The same, for a whole text
+    class function DecodeText(const AValue: StringRAL): StringRAL;
+    /// ALength bytes at AData as base64url without padding (RFC 7515 2) - what
+    /// ToBase64Url(Encode(...)) gives - in one allocation
+    class function EncodeUrl(AData: PByte; ALength: IntegerRAL): StringRAL;
 
     class function GetSizeEncode(ASize: Int64RAL): Int64RAL;
     class function GetSizeDecode(ASize: Int64RAL): Int64RAL;
@@ -163,7 +174,7 @@ begin
   vState.Bits := 0;
   vState.Count := 0;
   vState.Padding := False;
-  Result := TMemoryStream.Create;
+  Result := TRALMemoryStream.Create;
   try
     Result.Size := GetSizeDecode(AValue.Size);
     while vPosition < vSize do
@@ -206,6 +217,86 @@ begin
   Result := StringReplace(AValue, '+', '-', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
   Result := StringReplace(Result, '=', '', [rfReplaceAll]);
+end;
+
+class function TRALBase64.DecodeBuffer(AInput: PByte; ALength: IntegerRAL): StringRAL;
+var
+  vState: TRALBase64DecodeState;
+  vChars, vInt, vSize: IntegerRAL;
+  vByte: PByte;
+begin
+  if ALength <= 0 then
+    raise Exception.Create(emHMACEmptyText);
+  { the characters that carry data, counted the way DecodeBase64 reads them,
+    give the size of the result }
+  vChars := 0;
+  vByte := AInput;
+  for vInt := 1 to ALength do
+  begin
+    if not (vByte^ in [9, 10, 13, 32, 61]) then
+      Inc(vChars);
+    Inc(vByte);
+  end;
+  vSize := (vChars div 4) * 3;
+  case vChars mod 4 of
+    2: Inc(vSize, 1);
+    3: Inc(vSize, 2);
+  end;
+  vState.Bits := 0;
+  vState.Count := 0;
+  vState.Padding := False;
+  SetLength(Result, vSize);
+  if vSize = 0 then
+  begin
+    { nothing to write, but the text is still checked: a lone character or
+      one outside both alphabets raises, as in Decode }
+    DecodeBase64(AInput, nil, ALength, vState);
+    DecodeFinish(nil, vState);
+    Exit;
+  end;
+  vInt := DecodeBase64(AInput, PByte(Pointer(Result)), ALength, vState);
+  Inc(vInt, DecodeFinish(PByte(Pointer(Result)) + vInt, vState));
+  if vInt <> vSize then
+    SetLength(Result, vInt);
+end;
+
+class function TRALBase64.DecodeText(const AValue: StringRAL): StringRAL;
+begin
+  Result := DecodeBuffer(PByte(Pointer(AValue)), Length(AValue));
+end;
+
+class function TRALBase64.EncodeUrl(AData: PByte; ALength: IntegerRAL): StringRAL;
+var
+  vWhole, vRest, vSize, vInt: IntegerRAL;
+  vLast: array[0..3] of Byte;
+  vChar: PByte;
+begin
+  Result := '';
+  if ALength <= 0 then
+    Exit;
+  vWhole := (ALength div 3) * 3;
+  vRest := ALength - vWhole;
+  vSize := (vWhole div 3) * 4;
+  if vRest > 0 then
+    Inc(vSize, vRest + 1);
+  SetLength(Result, vSize);
+  vChar := PByte(Pointer(Result));
+  if vWhole > 0 then
+    EncodeBase64(AData, vChar, vWhole);
+  if vRest > 0 then
+  begin
+    { the last group, without its padding }
+    EncodeBase64(AData + vWhole, @vLast[0], vRest);
+    Move(vLast[0], (vChar + (vWhole div 3) * 4)^, vRest + 1);
+  end;
+  for vInt := 1 to vSize do
+  begin
+    case vChar^ of
+      43: vChar^ := 45; // '+' -> '-'
+      47: vChar^ := 95; // '/' -> '_'
+    end;
+    Inc(vChar);
+  end;
 end;
 
 class function TRALBase64.GetSizeEncode(ASize: Int64RAL): Int64RAL;
@@ -482,7 +573,7 @@ begin
   SetLength(vInBuf, vBytesRead);
   SetLength(vOutBuf, vBytesWrite);
 
-  Result := TMemoryStream.Create;
+  Result := TRALMemoryStream.Create;
   Result.Size := GetSizeEncode(AValue.Size);
   while vPosition < vSize do
   begin

@@ -7,6 +7,7 @@ uses
   Classes, SysUtils, DateUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
   IdGlobalProtocols, IdGlobal, IdCookie, IdHeaderList,
+  {$IFDEF FPC}IdSchedulerOfThreadPool,{$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALStream, RALPlugin, RALContent;
 
@@ -142,6 +143,32 @@ begin
     inherits TCP_NODELAY from the one that accepted it. mORMot2 does the same
     thing on its own, in TCrtSocket.SetupConnection. }
   FHttp.UseNagle := False;
+
+  { RAL reads the query string and the form from QueryParams and FormParams,
+    which Indy fills whatever this says, and parses them itself; the Params
+    list Indy decodes into was only ever cleared. Decoding it cost a lookup of
+    the charset by name on every request - a walk of Indy's whole table with
+    AnsiCompareText, which on FPC converts both names to UTF-16 at each step:
+    about a third of the CPU of a GET on that compiler (profiled on
+    05/10/2026) }
+  FHttp.ParseParams := False;
+
+{$IFDEF FPC}
+  { on FPC a thread of a connection that ended waits for the next one instead
+    of being destroyed: Indy's default scheduler starts a thread per
+    connection and destroys it with the connection, so a client that opens a
+    connection per request - what JMeter does by default - paid a thread
+    created and destroyed on every request, and on FPC a new thread also
+    builds a heap of its own. A connection that finds no thread in the pool
+    still gets a new one, so nothing waits that did not wait before; the pool
+    only keeps up to PoolSize idle threads for the next ones. Measured on
+    05/10/2026, 64 clients opening a connection per request: 5.4k -> 8.5k
+    requests per second on FPC. Not on Delphi: there the same pool HALVED it
+    (1.5k -> 0.6-0.9k, the CPU idle - a pooled thread waking up is slower
+    than a new one), so Delphi keeps Indy's default }
+  FHttp.Scheduler := TIdSchedulerOfThreadPool.Create(FHttp);
+  TIdSchedulerOfThreadPool(FHttp.Scheduler).PoolSize := 2 * RALCPUCount;
+{$ENDIF}
 
   { 0, not -1: Indy reads anything <= 0 as "no ceiling" all the same, and 0 is
     what the other three RAL servers publish under this name }
@@ -314,6 +341,9 @@ begin
         AResponseInfo.FreeContentStream := True;
 
         AResponseInfo.ResponseNo := StatusCode;
+        { the answer is built: what a plugin took for the request - a slot of
+          the concurrency limit - goes back now, before the bytes go out }
+        vRequest.Finish;
 
         AResponseInfo.Server := 'RAL_Indy';
         AResponseInfo.ContentEncoding := ContentEncoding;

@@ -157,6 +157,9 @@ begin
       AResponseInfo.ContentText := '';
       AResponseInfo.ContentStream := TakeWireStream;
       AResponseInfo.FreeContentStream := AResponseInfo.ContentStream <> nil;
+      { the answer is built: what a plugin took for the request - a slot of
+        the concurrency limit - goes back now, before the bytes go out }
+      vRequest.Finish;
 
       AResponseInfo.ResponseNo := StatusCode;
 

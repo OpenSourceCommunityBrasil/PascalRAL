@@ -76,6 +76,11 @@ type
     FHash: Cardinal;
     FNextSame: TRALParam;
     FIndexed: Boolean;
+    { made from a header block that is still text (TRALParams.FPending) and
+      not in the list yet: it joins the list, in its place, when the block is
+      parsed. A list chains its detached params through FNextDetached }
+    FDetached: Boolean;
+    FNextDetached: TRALParam;
     procedure SetParamName(const AValue: StringRAL);
   protected
     function GetAsBoolean: Boolean;
@@ -223,10 +228,26 @@ type
     property ParamName: StringRAL read FParamName write SetParamName;
   end;
 
+  /// One line of a header block kept as text (TRALParams.FPending): where its
+  /// name and its value are
+  TRALPendingLine = record
+    NameStart: IntegerRAL;
+    NameLen: IntegerRAL;
+    ValueStart: IntegerRAL;
+    ValueLen: IntegerRAL;
+    /// The param a lookup made from this line (and the other lines of its
+    /// name), or nil. A TRALParam - declared as TObject, the class comes later
+    Owner: TObject;
+  end;
+
   { TRALParams }
 
   /// Collection of TRALParam objects
   TRALParams = class
+  public const
+    /// The most lines a header block may have to be kept as text; a longer one
+    /// is parsed at once. Browsers send 15 to 21
+    PendingLinesMax = 32;
   public type
     /// Support enumeration of values in TRALParams.
     TEnumerator = class
@@ -245,7 +266,9 @@ type
     FContentDispositionInline: Boolean;
     FCriptoOptions: TRALCriptoOptions;
     FNextParam: IntegerRAL;
-    FParams: TList;
+    { the params, in the order they were created. Read through FParams, which
+      parses a pending header block first - see GetList }
+    FList: TList;
     { the streams the body params are windows of, freed after them: the
       received body, or the buffer it was decrypted in }
     FBuffers: TList;
@@ -264,6 +287,30 @@ type
       up one way whatever the size of the list }
     FBuckets: array of TRALParam;
     FSeqNext: Cardinal;
+    { A block of header lines kept as text until something needs the list
+      (AppendParamsListText). A server engine hands over every header the
+      client sent, and most are never read: each one parsed is a param, its
+      name and its value, three allocations - a third of all a GET made. A
+      lookup by name answers from the lines and makes that one param alone,
+      at the place in the order it would have had: FPendingSeq is the creation
+      order reserved for the first line. Anything else parses the whole block
+      first, through FParams }
+    FPending: StringRAL;
+    FPendingKind: TRALParamKind;
+    FPendingSeq: Cardinal;
+    FPendingCount: IntegerRAL;
+    FPendingLines: array[0..PendingLinesMax - 1] of TRALPendingLine;
+    FDetached: TRALParam;
+    FDetachedCount: IntegerRAL;
+    { while the block is parsed: NewParam takes FFlushSeq, the order reserved
+      for the line being parsed, instead of the next one }
+    FFlushing: Boolean;
+    FFlushSeq: Cardinal;
+    { the order reserved for the block being parsed: a line merges only into a
+      param of the block itself - one older than the block got its name by a
+      rename made after the block arrived, which the parse at once would have
+      come before }
+    FFlushBase: Cardinal;
     /// frees FBuffers and forgets FDecoded
     procedure ClearBuffers;
     function GetDecoded: TStream;
@@ -299,10 +346,29 @@ type
     function FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
     /// Decodes a name and a value already cut apart and stores them.
     procedure AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
+    /// Keeps a header block as text instead of parsing it, when it can be:
+    /// ASCII already checked, at most PendingLinesMax lines, no Set-Cookie
+    /// (which also makes cookie params) and no name of a param of that kind
+    /// already in the list (parsing would have merged into it)
+    function DeferBlock(const ASource, ANameSeparator: StringRAL;
+      AKind: TRALParamKind): boolean;
+    /// Parses the pending block into the list, each param at its reserved place
+    procedure FlushPending;
+    /// The list, with the pending block parsed into it
+    function GetList: TList;
+    /// The param of AName made from the pending block, or nil when the block
+    /// has no such line - or the first one comes at or after the creation order
+    /// ABefore. Detached: in the index, not in the list yet
+    function PendingMake(const AName: StringRAL; ABefore: Cardinal): TRALParam;
+    /// Every access to the list goes through here: no method sees a list
+    /// without the headers of a pending block
+    property FParams: TList read GetList;
   protected
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
       AKind: TRALParamKind);
+    procedure AppendParamSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
+      const ANameSeparator: StringRAL; AKind: TRALParamKind);
     /// The name=value pair of a Set-Cookie header, as an rpkCOOKIE param.
     procedure AddSetCookie(const AValue: StringRAL);
     /// Compresses the input stream into a TStream.
@@ -332,6 +398,7 @@ type
     function NextParamInt: IntegerRAL;
     /// Moves to the next param and returns its internal name.
     function NextParamStr: StringRAL;
+    function GetCriptoOptions: TRALCriptoOptions;
     procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
     /// Event to be called during the processing of FormData.
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
@@ -509,11 +576,18 @@ type
     property SkipCompressedTypes: Boolean read FSkipCompressedTypes write FSkipCompressedTypes;
     /// More types encoding does not compress; referenced, not owned
     property SkipCompressTypes: TStrings read FSkipCompressTypes write FSkipCompressTypes;
+    /// Whether CriptoOptions exists yet - asking for it would create it
+    function HasCriptoOptions: boolean;
+    /// A cipher with a key is set, without creating CriptoOptions to find out.
+    /// ATrimKey: a key of blanks counts as none
+    function HasCipher(ATrimKey: boolean): boolean;
   published
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    /// Configuration of the cryptography used on params for a secure P2P traffic.
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
+    /// Configuration of the cryptography used on params for a secure P2P
+    /// traffic. Created the first time it is asked for: a request or a
+    /// response with no cipher never makes one
+    property CriptoOptions: TRALCriptoOptions read GetCriptoOptions write SetCriptoOptions;
     property ContentDispositionInline: Boolean read FContentDispositionInline
       write FContentDispositionInline;
   end;
@@ -528,6 +602,24 @@ implementation
 
 uses
   RALJson;
+
+const
+  cRALParamNames = 32;
+
+var
+  { Strings every param and every request write, kept here with a reference
+    count. Delphi copies a literal to the heap each time one is assigned to a
+    field or a result - a param cost an allocation for its 'text/plain', a
+    body one more for 'ral_body', and naming it 'ral_param1' three, through
+    UTF-16 - while handing one of these over only counts a reference. FPC never
+    copies a literal, so there they change nothing }
+  gTextPlain: StringRAL;
+  gOctetStream: StringRAL;
+  gRalBody: StringRAL;
+  gInline: StringRAL;
+  gColonSpace: StringRAL;
+  gEquals: StringRAL;
+  gParamNames: array[1..cRALParamNames] of StringRAL;
 
 { FNV-1a of a name, every byte OR $20 first: 'A'..'Z' land on 'a'..'z', so
   two names RALSameName calls equal always hash alike - a few other pairs
@@ -737,7 +829,7 @@ begin
   FOwnsContent := True;
   FText := '';
   FIsText := False;
-  FContentType := rctTEXTPLAIN;
+  FContentType := gTextPlain;
   FKind := rpkNONE;
 end;
 
@@ -768,7 +860,7 @@ begin
 
   // same rule as SetAsStream: new content, no stale typed marker
   if IsTyped then
-    FContentType := rctAPPLICATIONOCTETSTREAM;
+    FContentType := gOctetStream;
 end;
 
 function TRALParam.TakeContent(AConsume: Boolean): TStream;
@@ -1082,7 +1174,7 @@ begin
     marker from whatever the param held before, or a file that happens to be the
     right size would be read as a number. }
   if IsTyped then
-    FContentType := rctAPPLICATIONOCTETSTREAM;
+    FContentType := gOctetStream;
 end;
 
 function TRALParam.GetAsInt64: Int64;
@@ -1266,7 +1358,7 @@ begin
     CLAUDE.md - but it does say the file name it is served under: a browser
     saving the page fell back on the URL's }
   if vName = '' then
-    Result := 'inline'
+    Result := gInline
   else if FContentDispositionInline then
     Result := 'inline; filename="' + vName + '"'
   else
@@ -1414,7 +1506,7 @@ begin
     that no longer describes it. The decoder assigns AsStream and only then sets
     ContentType, so restoring a typed param over the wire still works. }
   if IsTyped then
-    FContentType := rctAPPLICATIONOCTETSTREAM;
+    FContentType := gOctetStream;
 end;
 
 procedure TRALParam.AdoptStream(AStream: TStream);
@@ -1431,7 +1523,7 @@ begin
 
   // same rule as SetAsStream: new content, no stale typed marker
   if IsTyped then
-    FContentType := rctAPPLICATIONOCTETSTREAM;
+    FContentType := gOctetStream;
 end;
 
 procedure TRALParam.SetAsString(const AValue: StringRAL);
@@ -1447,7 +1539,7 @@ begin
     assigned over an rctRALDOUBLE param is eight bytes, so it would come back as
     6.82E-38 instead of 12345678. Only SetTypedValue may set these markers. }
   if IsTyped then
-    FContentType := rctTEXTPLAIN;
+    FContentType := gTextPlain;
 end;
 
 procedure TRALParam.SetContentDisposition(AValue: StringRAL);
@@ -1521,7 +1613,7 @@ begin
   Result := NewParam;
   Result.ParamName := AName;
   Result.AsString := AValue;
-  Result.ContentType := rctTEXTPLAIN;
+  Result.ContentType := gTextPlain;
   Result.Kind := AKind;
 end;
 
@@ -1532,7 +1624,7 @@ begin
   begin
     Result := FindOrNewParam(AName, AKind);
     Result.AsString := AValue;
-    Result.ContentType := rctTEXTPLAIN;
+    Result.ContentType := gTextPlain;
     Result.Kind := AKind;
   end;
 end;
@@ -1565,7 +1657,7 @@ begin
   else
     begin
       Result.AsString := VarToStr(AValue);
-      Result.ContentType := rctTEXTPLAIN;
+      Result.ContentType := gTextPlain;
     end;
   end;
 end;
@@ -1575,7 +1667,7 @@ function TRALParams.AddParam(const AName: StringRAL; AContent: TStream;
 begin
   Result := FindOrNewParam(AName, AKind);
   Result.AsStream := AContent;
-  Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := gOctetStream;
   Result.Kind := AKind;
 end;
 
@@ -1594,7 +1686,7 @@ begin
   // the MIME table is a singleton, never freed here
   Result.ContentType := TRALMIMEType.GetInstance.GetMIMEType(AFileName);
   if Result.ContentType = '' then
-    Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+    Result.ContentType := gOctetStream;
 end;
 
 function TRALParams.AddFile(const AFileName: StringRAL): TRALParam;
@@ -1611,7 +1703,7 @@ begin
 
   Result.ContentType := TRALMIMEType.GetInstance.GetMIMEType(AFileName);
   if Result.ContentType = '' then
-    Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+    Result.ContentType := gOctetStream;
 end;
 
 function TRALParams.AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE)
@@ -1620,7 +1712,7 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsString := AContent;
-  Result.ContentType := rctTEXTPLAIN;
+  Result.ContentType := gTextPlain;
   Result.Kind := AKind;
 end;
 
@@ -1629,17 +1721,33 @@ begin
   Result := NewParam;
   Result.ParamName := NextParamStr;
   Result.AsStream := AContent;
-  Result.ContentType := rctAPPLICATIONOCTETSTREAM;
+  Result.ContentType := gOctetStream;
   Result.Kind := AKind;
 end;
 
 procedure TRALParams.ClearParams;
+var
+  vParam, vNext: TRALParam;
 begin
-  FBuckets := nil; // every param goes, and the index with them
-  while FParams.Count > 0 do
+  { a block still pending goes as text, nothing parsed; its detached params
+    are in no list but this chain }
+  FPending := '';
+  FPendingCount := 0;
+  vParam := FDetached;
+  FDetached := nil;
+  FDetachedCount := 0;
+  while vParam <> nil do
   begin
-    TObject(FParams.Items[FParams.Count - 1]).Free;
-    FParams.Delete(FParams.Count - 1);
+    vNext := vParam.FNextDetached;
+    vParam.Free;
+    vParam := vNext;
+  end;
+
+  FBuckets := nil; // every param goes, and the index with them
+  while FList.Count > 0 do
+  begin
+    TObject(FList.Items[FList.Count - 1]).Free;
+    FList.Delete(FList.Count - 1);
   end;
   { after the params: they may be windows over these }
   ClearBuffers;
@@ -1768,6 +1876,11 @@ begin
   if (ASource <> '') and (ANameSeparator = '') then
     ANameSeparator := FindHeaderNameSeparator(ASource);
 
+  { kept as text when it can be - see FPending }
+  if (AKind = rpkHEADER) and (ASource <> '') and (ANameSeparator <> '') and
+     (FPending = '') and DeferBlock(ASource, ANameSeparator, AKind) then
+    Exit;
+
   { The line used to be built one character at a time - "vLine := vLine +
     ASource[vInt]" - which reallocates the growing string on EVERY character.
     A two hundred byte header block is then two hundred allocations per
@@ -1787,14 +1900,14 @@ begin
   begin
     if ASource[vInt] = #13 then
     begin
-      AppendParamLine(Copy(ASource, vStart, vInt - vStart), ANameSeparator, AKind);
+      AppendParamSpan(ASource, vStart, vInt - vStart, ANameSeparator, AKind);
       vIs13 := True;
       vStart := vInt + 1;
     end
     else if ASource[vInt] = #10 then
     begin
       if not vIs13 then
-        AppendParamLine(Copy(ASource, vStart, vInt - vStart), ANameSeparator, AKind);
+        AppendParamSpan(ASource, vStart, vInt - vStart, ANameSeparator, AKind);
       vIs13 := False;
       vStart := vInt + 1;
     end
@@ -1803,7 +1916,7 @@ begin
   end;
 
   if vStart <= RALHighStr(ASource) then
-    AppendParamLine(Copy(ASource, vStart, MaxInt), ANameSeparator, AKind);
+    AppendParamSpan(ASource, vStart, RALHighStr(ASource) - vStart + 1, ANameSeparator, AKind);
 end;
 
 procedure TRALParams.AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
@@ -1984,7 +2097,13 @@ end;
 
   The result is identical, deliberately: the line separator still goes in only
   before a param that is not the first to produce output, and the whole thing
-  is still TrimRight'ed at the end. }
+  is still TrimRight'ed at the end.
+
+  Headers and cookies - the text every response's headers are made of - are
+  measured first and written into a string of their exact size: one
+  allocation, where growing from 256 bytes and cutting to size at the end took
+  two (and on Delphi the cut is a ReallocMem). The escaping of CR, LF and NUL
+  keeps the length, so it is done in place, in the copy. }
 function TRALParams.AssignParamsText(AKind: TRALParamKind; AUrlEncoded: boolean;
   const ANameSeparator: StringRAL; const ALineSeparator: StringRAL): StringRAL;
 var
@@ -1992,6 +2111,36 @@ var
   vParam: TRALParam;
   vUsed, vCap: IntegerRAL;
   vHeader: boolean;
+  vValue: StringRAL;
+
+  { copies AText at vUsed; ASafe turns CR, LF and NUL into a space, as
+    RALSafeHeaderText does - for names and values, never for the separators
+    the caller chose }
+  procedure PutAt(const AText: StringRAL; ASafe: boolean);
+  var
+    vLen, vPos: IntegerRAL;
+    vChar: PAnsiChar;
+  begin
+    vLen := Length(AText);
+    if vLen = 0 then
+      Exit;
+    { a value that came back longer the second time (nothing in RAL does
+      that) must not write past the string }
+    if vUsed + vLen > Length(Result) then
+      SetLength(Result, vUsed + vLen);
+    Move(Pointer(AText)^, Result[POSINISTR + vUsed], vLen);
+    if ASafe then
+    begin
+      vChar := @Result[POSINISTR + vUsed];
+      for vPos := 1 to vLen do
+      begin
+        if vChar^ in [#0, #10, #13] then
+          vChar^ := ' ';
+        Inc(vChar);
+      end;
+    end;
+    Inc(vUsed, vLen);
+  end;
 
   procedure Put(const AText: StringRAL);
   var
@@ -2018,6 +2167,38 @@ begin
   vCap := 0;
   { the same rule as AssignParams - a URL-encoded text is never a header }
   vHeader := (AKind in [rpkHEADER, rpkCOOKIE]) and (not AUrlEncoded);
+  if vHeader then
+  begin
+    for vInt := 0 to Pred(Count) do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind <> AKind then
+        Continue;
+      vValue := vParam.AsString;
+      if vCap > 0 then
+        Inc(vCap, Length(ALineSeparator));
+      Inc(vCap, Length(vParam.ParamName) + Length(ANameSeparator) + Length(vValue));
+    end;
+    if vCap = 0 then
+      Exit;
+    SetLength(Result, vCap);
+    for vInt := 0 to Pred(Count) do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind <> AKind then
+        Continue;
+      vValue := vParam.AsString;
+      if vUsed > 0 then
+        PutAt(ALineSeparator, False);
+      PutAt(vParam.ParamName, True);
+      PutAt(ANameSeparator, False);
+      PutAt(vValue, True);
+    end;
+    if vUsed < Length(Result) then
+      SetLength(Result, vUsed);
+    Result := RALTrimRight(Result);
+    Exit;
+  end;
   for vInt := 0 to Pred(Count) do
   begin
     vParam := TRALParam(FParams.Items[vInt]);
@@ -2146,8 +2327,7 @@ end;
 function TRALParams.NewCipher(AEncoding: boolean): TRALCriptoAES;
 begin
   Result := nil;
-  if (FCriptoOptions.CriptType = crNone) or (FCriptoOptions.Key = '') or
-     (AEncoding and (Trim(FCriptoOptions.Key) = '')) then
+  if not HasCipher(AEncoding) then
     Exit;
   Result := TRALCriptoAES.Create;
   case FCriptoOptions.CriptType of
@@ -2199,6 +2379,8 @@ var
 
   procedure KeepChain;
   begin
+    if FBuffers = nil then
+      FBuffers := TList.Create;
     while vChain.Count > 0 do
     begin
       FBuffers.Add(vChain.Items[0]);
@@ -2326,7 +2508,7 @@ begin
       vCTMultipart := '';
       if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
         vCTMultipart := AContentType
-      else if (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(vCur) then
+      else if (FCriptoOptions <> nil) and (FCriptoOptions.CriptType <> crNone) and StartsWithDelim(vCur) then
         vCTMultipart := BodyContentType(vCur);
 
       if vCTMultipart <> '' then
@@ -2360,7 +2542,7 @@ begin
       else
       begin
         vParam := NewParam;
-        vParam.ParamName := 'ral_body';
+        vParam.ParamName := gRalBody;
         vParam.FileName := '';
         vParam.ContentDisposition := AContentDisposition;
 
@@ -2451,7 +2633,7 @@ begin
     cipher only ever talks to RAL, so nothing outside loses the urlencoded
     form it would have expected. }
   vFormAsMultipart := (not ACompressMultipart) and (vInt1 = 0) and (vInt2 > 0) and
-    (FCriptoOptions.CriptType <> crNone) and (Trim(FCriptoOptions.Key) <> '');
+    HasCipher(True);
 
   AContentDisposition := '';
 
@@ -2467,7 +2649,7 @@ begin
     vItem.ContentDispositionInline := FContentDispositionInline;
 
     if Pos(StringRAL('ral_param'), vItem.ParamName) > 0 then
-      vItem.ParamName := 'ral_body';
+      vItem.ParamName := gRalBody;
 
     Result := vItem.TakeContent(AConsume);
 
@@ -2649,7 +2831,7 @@ begin
       Only on the request path, where the far end may parse on its own. }
     if (vCipher <> nil) and (not ACompressMultipart) and
        (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
-      AContentType := rctAPPLICATIONOCTETSTREAM;
+      AContentType := gOctetStream;
   finally
     vCipher.Free;
   end;
@@ -2714,7 +2896,7 @@ begin
 
   vCompress := EffectiveCompress(AContentType, ACompressMultipart);
   if (vCompress = ctNone) and
-     ((FCriptoOptions.CriptType = crNone) or (Trim(FCriptoOptions.Key) = '')) then
+     (not HasCipher(True)) then
   begin
     { nothing to transform: the body itself goes out }
     Result := vSource;
@@ -2858,22 +3040,49 @@ begin
   end;
 end;
 
+function TRALParams.GetCriptoOptions: TRALCriptoOptions;
+begin
+  if FCriptoOptions = nil then
+    FCriptoOptions := TRALCriptoOptions.Create;
+  Result := FCriptoOptions;
+end;
+
+function TRALParams.HasCriptoOptions: boolean;
+begin
+  Result := FCriptoOptions <> nil;
+end;
+
+function TRALParams.HasCipher(ATrimKey: boolean): boolean;
+begin
+  Result := (FCriptoOptions <> nil) and (FCriptoOptions.CriptType <> crNone);
+  if Result then
+  begin
+    if ATrimKey then
+      Result := Trim(FCriptoOptions.Key) <> ''
+    else
+      Result := FCriptoOptions.Key <> '';
+  end;
+end;
+
 procedure TRALParams.SetCriptoOptions(const AValue: TRALCriptoOptions);
 begin
-  RALAssignOwned(FCriptoOptions, AValue);
+  if AValue <> nil then
+    RALAssignOwned(GetCriptoOptions, AValue);
 end;
 
 constructor TRALParams.Create;
 begin
   inherited;
-  FParams := TList.Create;
-  FBuffers := TList.Create;
+  FList := TList.Create;
+  { FBuffers and FCriptoOptions are made when first needed: most requests
+    never keep a buffer and never cipher }
+  FBuffers := nil;
   FDecoded := nil;
   FDecodedIsParam := False;
   FSpoolAbove := 0;
   FSkipCompressedTypes := False;
   FSkipCompressTypes := nil;
-  FCriptoOptions := TRALCriptoOptions.Create;
+  FCriptoOptions := nil;
 
   FCompressType := ctGZip;
   FNextParam := 0;
@@ -2882,7 +3091,7 @@ end;
 destructor TRALParams.Destroy;
 begin
   ClearParams;
-  FreeAndNil(FParams);
+  FreeAndNil(FList);
   FreeAndNil(FBuffers);
   FreeAndNil(FCriptoOptions);
   inherited;
@@ -2949,17 +3158,27 @@ end;
 
 function TRALParams.NewParam: TRALParam;
 begin
+  { room for what a request carries - the RAL header and three or four from
+    the client - in one allocation: TList grows by four, so the fifth param
+    reallocated the list }
+  if FParams.Capacity < 8 then
+    FParams.Capacity := 8;
   Result := TRALParam.Create;
   Result.Kind := rpkNONE;
   Result.FOwner := Self;
-  Result.FSeq := FSeqNext;
-  Inc(FSeqNext);
+  if FFlushing then
+    Result.FSeq := FFlushSeq // the place its line had in a pending block
+  else
+  begin
+    Result.FSeq := FSeqNext;
+    Inc(FSeqNext);
+  end;
   FParams.Add(Result);
   { no name yet, so not in the index: it enters when it gets one
     (SetParamName) - indexing it nameless only to move it a line later cost a
     second pass on every param. The index is built with the first param and
     doubled by the size of the list }
-  if FParams.Count > Length(FBuckets) then
+  if FList.Count + FDetachedCount > Length(FBuckets) then
     IndexBuild;
 end;
 
@@ -2982,6 +3201,10 @@ function TRALParams.FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind)
 var
   vHash: Cardinal;
 begin
+  { an insertion: the block goes into the list first, so the new param comes
+    after its headers, as it would have }
+  if FPending <> '' then
+    FlushPending;
   if AName = '' then
   begin
     Result := FindNameless(AKind, False);
@@ -2994,6 +3217,17 @@ begin
     it twice for every param parsed or added }
   vHash := ParamNameHash(AName);
   Result := IndexFind(AName, vHash, AKind, False);
+  { parsing a pending block: past what is older than the block, see FFlushBase.
+    The chain is in creation order, so the rest of it is younger }
+  if FFlushing then
+    while (Result <> nil) and (Result.FSeq < FFlushBase) do
+    begin
+      Result := Result.FNextSame;
+      while (Result <> nil) and
+            ((Result.FHash <> vHash) or (Result.FKind <> AKind) or
+             (not RALSameName(Result.FParamName, AName))) do
+        Result := Result.FNextSame;
+    end;
   if Result = nil then
   begin
     Result := NewParam;
@@ -3060,7 +3294,7 @@ begin
   { two buckets per param or more, so a chain stays about one long; small to
     start, since most lists are }
   vSize := 8;
-  while vSize < 2 * FParams.Count do
+  while vSize < 2 * (FList.Count + FDetachedCount) do
     vSize := vSize * 2;
   FBuckets := nil;
   SetLength(FBuckets, vSize);
@@ -3068,9 +3302,9 @@ begin
     list is in creation order - params are only ever appended - so walking it
     backwards and putting each one at the head of its chain leaves every
     chain in creation order too, with no hash and no comparison }
-  for vInt := FParams.Count - 1 downto 0 do
+  for vInt := FList.Count - 1 downto 0 do
   begin
-    vParam := TRALParam(FParams.Items[vInt]);
+    vParam := TRALParam(FList.Items[vInt]);
     if vParam.FIndexed then
     begin
       vIdx := vParam.FHash and Cardinal(vSize - 1);
@@ -3078,27 +3312,63 @@ begin
       FBuckets[vIdx] := vParam;
     end;
   end;
+  { the detached ones, in no list: IndexAdd keeps each chain in creation
+    order. They are few, and only while a header block is pending - or being
+    parsed, when the ones that joined the list already were placed above }
+  vParam := FDetached;
+  while vParam <> nil do
+  begin
+    if vParam.FDetached and vParam.FIndexed then
+    begin
+      vParam.FNextSame := nil;
+      IndexAdd(vParam, vParam.FHash);
+    end;
+    vParam := vParam.FNextDetached;
+  end;
 end;
 
 function TRALParams.IndexFind(const AName: StringRAL; AHash: Cardinal;
   AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
+var
+  vEarlier: TRALParam;
 begin
   { no table only while the list has had no param since it was created or
     cleared }
   Result := nil;
-  if FBuckets = nil then
-    Exit;
-  Result := FBuckets[AHash and Cardinal(High(FBuckets))];
-  while (Result <> nil) and
-        ((Result.FHash <> AHash) or ((not AAnyKind) and (Result.FKind <> AKind)) or
-         (not RALSameName(Result.FParamName, AName))) do
-    Result := Result.FNextSame;
+  if FBuckets <> nil then
+  begin
+    Result := FBuckets[AHash and Cardinal(High(FBuckets))];
+    while (Result <> nil) and
+          ((Result.FHash <> AHash) or ((not AAnyKind) and (Result.FKind <> AKind)) or
+           (not RALSameName(Result.FParamName, AName))) do
+      Result := Result.FNextSame;
+  end;
+  { A param in the list is older than every line of a pending block (an
+    insertion parses the block first): found, it is the answer. A detached one
+    stands for lines of the block, and was found by the name it has now - it
+    may have been renamed since - so a line of the block with that name, if
+    one comes before it, is the earlier param. Not found, the block may hold
+    the name }
+  if (FPending <> '') and (AAnyKind or (AKind = FPendingKind)) then
+  begin
+    if Result = nil then
+      Result := PendingMake(AName, High(Cardinal))
+    else if Result.FDetached then
+    begin
+      vEarlier := PendingMake(AName, Result.FSeq);
+      if vEarlier <> nil then
+        Result := vEarlier;
+    end;
+  end;
 end;
 
 function TRALParams.NextParamStr: StringRAL;
 begin
   FNextParam := FNextParam + 1;
-  Result := 'ral_param' + IntToStr(FNextParam);
+  if FNextParam <= cRALParamNames then
+    Result := gParamNames[FNextParam]
+  else
+    Result := 'ral_param' + StringRAL(IntToStr(FNextParam));
 end;
 
 function TRALParams.FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
@@ -3143,16 +3413,16 @@ begin
   vMin := Pos(StringRAL('='), ASource);
 
   if (vPos > 0) and ((vMin = 0) or (vPos < vMin)) then
-    Result := ': '
+    Result := gColonSpace
   else if vMin > 0 then
-    Result := '='
+    Result := gEquals
   else
   begin
     Engine := Self.GetParam('RALEngine').AsString;
     if SameText(Engine, ENGINESYNOPSE) or SameText(Engine, ENGINEINDY) then
-      Result := ': '
+      Result := gColonSpace
     else
-      Result := '=';
+      Result := gEquals;
   end;
 end;
 
@@ -3182,6 +3452,313 @@ begin
       Copy(ALine, vPos + Length(ANameSeparator), Length(ALine)), AKind);
 end;
 
+{ AppendParamLine over ALen characters of ASource from AStart, without the
+  copy of the line it would take: the name and the value are the only strings
+  made. The same answer - the first ANameSeparator splits, a line without one
+  adds nothing }
+{ Where the first ANameSeparator of the span starts, 0 when it has none }
+function SeparatorInSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
+  const ANameSeparator: StringRAL): IntegerRAL;
+var
+  vSep, vInt, vSub: IntegerRAL;
+begin
+  Result := 0;
+  vSep := Length(ANameSeparator);
+  if (ALen <= 0) or (vSep = 0) then
+    Exit;
+  for vInt := AStart to AStart + ALen - vSep do
+  begin
+    vSub := 0;
+    while (vSub < vSep) and (ASource[vInt + vSub] = ANameSeparator[POSINISTR + vSub]) do
+      Inc(vSub);
+    if vSub = vSep then
+    begin
+      Result := vInt;
+      Exit;
+    end;
+  end;
+end;
+
+{ AName against ALen characters of ASource from AStart, by RALSameName's rule:
+  ASCII letters without case, every other byte as it is }
+function SameNameAt(const ASource: StringRAL; AStart, ALen: IntegerRAL;
+  const AName: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+  vA, vB: Byte;
+begin
+  Result := False;
+  if ALen <> Length(AName) then
+    Exit;
+  for vInt := 0 to ALen - 1 do
+  begin
+    vA := Ord(ASource[AStart + vInt]);
+    vB := Ord(AName[POSINISTR + vInt]);
+    if vA <> vB then
+    begin
+      if (vA >= Ord('a')) and (vA <= Ord('z')) then
+        Dec(vA, 32);
+      if (vB >= Ord('a')) and (vB <= Ord('z')) then
+        Dec(vB, 32);
+      if vA <> vB then
+        Exit;
+    end;
+  end;
+  Result := True;
+end;
+
+procedure TRALParams.AppendParamSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
+  const ANameSeparator: StringRAL; AKind: TRALParamKind);
+var
+  vPos, vSep: IntegerRAL;
+begin
+  vPos := SeparatorInSpan(ASource, AStart, ALen, ANameSeparator);
+  if vPos > 0 then
+  begin
+    vSep := Length(ANameSeparator);
+    AppendParamPair(Copy(ASource, AStart, vPos - AStart),
+      Copy(ASource, vPos + vSep, AStart + ALen - vPos - vSep), AKind);
+  end;
+end;
+
+function TRALParams.DeferBlock(const ASource, ANameSeparator: StringRAL;
+  AKind: TRALParamKind): boolean;
+var
+  vInt, vStart, vPos, vSep: IntegerRAL;
+  vIs13: Boolean;
+  vParam: TRALParam;
+
+  { the span AppendParamsListText would parse, recorded instead; False when
+    the table is full }
+  function Keep(AStart, ALen: IntegerRAL): boolean;
+  begin
+    Result := True;
+    vPos := SeparatorInSpan(ASource, AStart, ALen, ANameSeparator);
+    if vPos = 0 then
+      Exit; // a line with no separator adds nothing, here as there
+    if FPendingCount >= PendingLinesMax then
+    begin
+      Result := False;
+      Exit;
+    end;
+    with FPendingLines[FPendingCount] do
+    begin
+      NameStart := AStart;
+      NameLen := vPos - AStart;
+      ValueStart := vPos + vSep;
+      ValueLen := AStart + ALen - vPos - vSep;
+      Owner := nil;
+    end;
+    Inc(FPendingCount);
+  end;
+
+begin
+  Result := False;
+  { a Set-Cookie also makes a cookie param (AppendParamPair): parsed at once }
+  if RALPosText('set-cookie', ASource) > 0 then
+    Exit;
+
+  vSep := Length(ANameSeparator);
+  FPendingCount := 0;
+  { the very line breaking of AppendParamsListText: CR and LF each end a line,
+    CRLF only one, and the tail counts when it is not empty }
+  vStart := POSINISTR;
+  vIs13 := False;
+  for vInt := POSINISTR to RALHighStr(ASource) do
+  begin
+    if ASource[vInt] = #13 then
+    begin
+      if not Keep(vStart, vInt - vStart) then
+        Break;
+      vIs13 := True;
+      vStart := vInt + 1;
+    end
+    else if ASource[vInt] = #10 then
+    begin
+      if (not vIs13) and not Keep(vStart, vInt - vStart) then
+        Break;
+      vIs13 := False;
+      vStart := vInt + 1;
+    end
+    else
+      vIs13 := False;
+  end;
+  if FPendingCount >= PendingLinesMax then
+  begin
+    FPendingCount := 0;
+    Exit;
+  end;
+  if (vStart <= RALHighStr(ASource)) and
+     not Keep(vStart, RALHighStr(ASource) - vStart + 1) then
+  begin
+    FPendingCount := 0;
+    Exit;
+  end;
+
+  { a header of the same name already in the list - the engine's RALEngine,
+    if a client sent one too - would have taken the block's value: parsed at
+    once, so that it does }
+  for vInt := 0 to FList.Count - 1 do
+  begin
+    vParam := TRALParam(FList.Items[vInt]);
+    if vParam.FKind <> AKind then
+      Continue;
+    for vPos := 0 to FPendingCount - 1 do
+      if SameNameAt(ASource, FPendingLines[vPos].NameStart,
+           FPendingLines[vPos].NameLen, vParam.FParamName) then
+      begin
+        FPendingCount := 0;
+        Exit;
+      end;
+  end;
+
+  Result := True;
+  if FPendingCount = 0 then
+    Exit; // nothing to add, as the parse would have added nothing
+  FPending := ASource; // the engine's own string, with a reference: no copy
+  FPendingKind := AKind;
+  FPendingSeq := FSeqNext;
+  Inc(FSeqNext, FPendingCount);
+end;
+
+function TRALParams.GetList: TList;
+begin
+  if FPending <> '' then
+    FlushPending;
+  Result := FList;
+end;
+
+procedure TRALParams.FlushPending;
+var
+  vText: StringRAL;
+  vKind: TRALParamKind;
+  vSeq: Cardinal;
+  vCount, vInt, vKept: IntegerRAL;
+  vParam, vNext, vOwner: TRALParam;
+  vIndexed: array[0..PendingLinesMax - 1] of TRALParam;
+begin
+  { taken off first: everything below reaches FParams again }
+  vText := FPending;
+  vKind := FPendingKind;
+  vSeq := FPendingSeq;
+  vCount := FPendingCount;
+  FPending := '';
+  FPendingCount := 0;
+
+  { A detached param already says what its lines said, and since then the
+    application may have changed its value or its name - which, parsed at once,
+    it would have done AFTER the parse. So its lines are not parsed again, it
+    only takes its place in the list, and it leaves the index meanwhile so that
+    no other line merges into it under a name it was given later }
+  vKept := 0;
+  vParam := FDetached;
+  while vParam <> nil do
+  begin
+    if vParam.FIndexed then
+    begin
+      IndexRemove(vParam);
+      vIndexed[vKept] := vParam;
+      Inc(vKept);
+    end;
+    vParam := vParam.FNextDetached;
+  end;
+
+  FFlushBase := vSeq;
+  FFlushing := True;
+  try
+    for vInt := 0 to vCount - 1 do
+    begin
+      vOwner := TRALParam(FPendingLines[vInt].Owner);
+      if vOwner <> nil then
+      begin
+        { the first line of its name is where it stands }
+        if vOwner.FDetached then
+        begin
+          vOwner.FDetached := False;
+          FList.Add(vOwner);
+        end;
+        Continue;
+      end;
+      FFlushSeq := vSeq + Cardinal(vInt);
+      with FPendingLines[vInt] do
+        AppendParamPair(Copy(vText, NameStart, NameLen),
+          Copy(vText, ValueStart, ValueLen), vKind);
+    end;
+  finally
+    FFlushing := False;
+    { every detached param owns a line of this block and joined the list
+      there; one that did not is still not lost }
+    vParam := FDetached;
+    FDetached := nil;
+    FDetachedCount := 0;
+    while vParam <> nil do
+    begin
+      vNext := vParam.FNextDetached;
+      vParam.FNextDetached := nil;
+      if vParam.FDetached then
+      begin
+        vParam.FDetached := False;
+        FList.Add(vParam);
+      end;
+      vParam := vNext;
+    end;
+    { back in the index, each chain in creation order }
+    for vInt := 0 to vKept - 1 do
+      IndexAdd(vIndexed[vInt], vIndexed[vInt].FHash);
+  end;
+end;
+
+function TRALParams.PendingMake(const AName: StringRAL; ABefore: Cardinal): TRALParam;
+var
+  vInt, vFirst, vLast, vValue: IntegerRAL;
+begin
+  Result := nil;
+  { the param the parse would have made: placed by its FIRST line, with the
+    name as the LAST line writes it and the last value that was not empty -
+    a repeated header merges into one param, see AppendParamPair }
+  vFirst := -1;
+  vLast := -1;
+  vValue := -1;
+  { a line that already made a param is that param's, whatever the param was
+    renamed to since: asking again for the line's name finds nothing, as it
+    would have after the rename }
+  for vInt := 0 to FPendingCount - 1 do
+    with FPendingLines[vInt] do
+      if (Owner = nil) and SameNameAt(FPending, NameStart, NameLen, AName) then
+      begin
+        if vFirst < 0 then
+          vFirst := vInt;
+        vLast := vInt;
+        if ValueLen > 0 then
+          vValue := vInt;
+      end;
+  if (vFirst < 0) or (FPendingSeq + Cardinal(vFirst) >= ABefore) then
+    Exit;
+
+  Result := TRALParam.Create;
+  Result.FKind := FPendingKind;
+  Result.FOwner := Self;
+  Result.FSeq := FPendingSeq + Cardinal(vFirst);
+  Result.FDetached := True;
+  Result.FNextDetached := FDetached;
+  FDetached := Result;
+  Inc(FDetachedCount);
+
+  Result.FParamName := Copy(FPending, FPendingLines[vLast].NameStart,
+    FPendingLines[vLast].NameLen);
+  if FList.Count + FDetachedCount > Length(FBuckets) then
+    IndexBuild;
+  IndexAdd(Result, ParamNameHash(Result.FParamName));
+  if vValue >= 0 then
+    Result.AsString := Copy(FPending, FPendingLines[vValue].ValueStart,
+      FPendingLines[vValue].ValueLen);
+  Result.ContentType := gTextPlain;
+  for vInt := vFirst to vLast do
+    with FPendingLines[vInt] do
+      if (Owner = nil) and SameNameAt(FPending, NameStart, NameLen, AName) then
+        Owner := Result;
+end;
+
 procedure TRALParams.AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
 var
   vParam: TRALParam;
@@ -3201,7 +3778,7 @@ begin
   vParam := FindOrNewParam(AName, AKind);
   if AValue <> '' then
     vParam.AsString := AValue;
-  vParam.ContentType := rctTEXTPLAIN;
+  vParam.ContentType := gTextPlain;
   vParam.Kind := AKind;
 
   { the Indy and mORMot2 clients feed their response headers through here }
@@ -3268,7 +3845,7 @@ begin
   if AFormData.ContentType <> '' then
     vParam.ContentType := AFormData.ContentType
   else
-    vParam.ContentType := rctTEXTPLAIN;
+    vParam.ContentType := gTextPlain;
 
   if AFormData.Disposition <> '' then
     vParam.ContentDisposition := AFormData.Disposition;
@@ -3302,7 +3879,7 @@ function TRALParams.Encrypt(AStream: TStream): TStream;
 //var
 //  vCript: TRALCripto;
 begin
-  Result := TRALHashes.Encrypt(AStream, FCriptoOptions.Key, FCriptoOptions.CriptType);
+  Result := TRALHashes.Encrypt(AStream, CriptoOptions.Key, CriptoOptions.CriptType);
 //  Result := nil;
 //  case FCriptoOptions.CriptType of
 //    crAES128:
@@ -3378,7 +3955,7 @@ function TRALParams.Decrypt(AStream: TStream): TStream;
 //var
 //  vCript: TRALCripto;
 begin
-  Result := TRALHashes.Decrypt(AStream, FCriptoOptions.Key, FCriptoOptions.CriptType);
+  Result := TRALHashes.Decrypt(AStream, CriptoOptions.Key, CriptoOptions.CriptType);
 //  case FCriptoOptions.CriptType of
 //    crAES128:
 //    begin
@@ -3409,7 +3986,7 @@ function TRALParams.Decrypt(const ASource: StringRAL): StringRAL;
 //var
 //  vCript: TRALCripto;
 begin
-  Result := TRALHashes.Decrypt(ASource, FCriptoOptions.Key, FCriptoOptions.CriptType);
+  Result := TRALHashes.Decrypt(ASource, CriptoOptions.Key, CriptoOptions.CriptType);
 //  case FCriptoOptions.CriptType of
 //    crAES128:
 //    begin
@@ -3497,5 +4074,24 @@ function TRALParams.GetEnumerator: TEnumerator;
 begin
   Result := TEnumerator.Create(Self);
 end;
+
+procedure FillSharedStrings;
+var
+  vInt: IntegerRAL;
+begin
+  { on Delphi this is the one copy of each literal; from here on they are
+    handed over by reference }
+  gTextPlain := rctTEXTPLAIN;
+  gOctetStream := rctAPPLICATIONOCTETSTREAM;
+  gRalBody := 'ral_body';
+  gInline := 'inline';
+  gColonSpace := ': ';
+  gEquals := '=';
+  for vInt := 1 to cRALParamNames do
+    gParamNames[vInt] := 'ral_param' + StringRAL(IntToStr(vInt));
+end;
+
+initialization
+  FillSharedStrings;
 
 end.

@@ -144,11 +144,21 @@ type
 
   /// Refuses (403) an address that sends two requests closer than Interval
   TRALFloodPlugin = class(TRALPlugin)
+  public const
+    /// The record of an address lives in one of this many lists, by a hash of
+    /// the address: every request takes the lock of its own list only
+    FloodStripes = 16;
   private
-    FFlood: TRALStringListSafe;
+    { one lock for every request of every thread was the plugin's cost under
+      load: the addresses are spread over FloodStripes lists, each with its
+      lock, and two requests only wait for each other when their addresses
+      share a list }
+    FFlood: array[0..FloodStripes - 1] of TRALStringListSafe;
     FInterval: IntegerRAL;
     FLastPrune: Cardinal;
     function GetFloodCount: IntegerRAL;
+    /// The list that keeps AClientIP
+    function StripeOf(const AClientIP: StringRAL): TRALStringListSafe;
   protected
     class function DefaultPriority: IntegerRAL; override;
     function Phases: TRALPluginPhases; override;
@@ -520,22 +530,44 @@ end;
 { TRALFloodPlugin }
 
 constructor TRALFloodPlugin.Create(AOwner: TComponent);
+var
+  vInt: IntegerRAL;
 begin
   inherited Create(AOwner);
-  FFlood := TRALStringListSafe.Create;
+  for vInt := 0 to FloodStripes - 1 do
+    FFlood[vInt] := TRALStringListSafe.Create;
   FInterval := 30; // milliseconds
 end;
 
 destructor TRALFloodPlugin.Destroy;
+var
+  vInt: IntegerRAL;
 begin
-  FFlood.Clear(True);
-  FreeAndNil(FFlood);
+  for vInt := 0 to FloodStripes - 1 do
+  begin
+    FFlood[vInt].Clear(True);
+    FreeAndNil(FFlood[vInt]);
+  end;
   inherited Destroy;
+end;
+
+function TRALFloodPlugin.StripeOf(const AClientIP: StringRAL): TRALStringListSafe;
+var
+  vHash: Cardinal;
+  vInt: IntegerRAL;
+begin
+  { the last bytes of an address are the ones that vary between clients of
+    one network; a sum of all of them is plenty for sixteen lists }
+  vHash := 0;
+  for vInt := POSINISTR to RALHighStr(AClientIP) do
+    vHash := (vHash * 31 + Ord(AClientIP[vInt])) and $FFFFFF;
+  Result := FFlood[vHash mod FloodStripes];
 end;
 
 function TRALFloodPlugin.CheckFlood(const AClientIP: StringRAL): boolean;
 var
   vFlood: TRALClientList;
+  vStripe: TRALStringListSafe;
   vList: TStringList;
   vIndex: IntegerRAL;
   vNow, vLastAccess: TDateTime;
@@ -544,7 +576,8 @@ begin
     inside it: two simultaneous requests must not measure against a value one
     of them already overwrote }
   vNow := Now;
-  vList := FFlood.Lock;
+  vStripe := StripeOf(AClientIP);
+  vList := vStripe.Lock;
   try
     vIndex := vList.IndexOf(AClientIP);
     if vIndex >= 0 then
@@ -563,7 +596,7 @@ begin
     end;
     vFlood.LastAccess := vNow;
   finally
-    FFlood.Unlock;
+    vStripe.Unlock;
   end;
 
   Result := (vLastAccess <> 0) and
@@ -577,12 +610,16 @@ end;
 
 function TRALFloodPlugin.GetClientList(const AClientIP: StringRAL): TRALClientList;
 begin
-  Result := TRALClientList(FFlood.ObjectByItem(AClientIP));
+  Result := TRALClientList(StripeOf(AClientIP).ObjectByItem(AClientIP));
 end;
 
 function TRALFloodPlugin.GetFloodCount: IntegerRAL;
+var
+  vInt: IntegerRAL;
 begin
-  Result := FFlood.Count;
+  Result := 0;
+  for vInt := 0 to FloodStripes - 1 do
+    Inc(Result, FFlood[vInt].Count);
 end;
 
 function TRALFloodPlugin.Phases: TRALPluginPhases;
@@ -593,22 +630,23 @@ end;
 procedure TRALFloodPlugin.Prune;
 var
   vIdle: Int64RAL;
+  vNow: TDateTime;
+  vInt: IntegerRAL;
 begin
   { an entry only matters for Interval after its last access; anything idle
     for a minute (or a generous multiple of the interval) cannot be flooding
     any more, and keeping it made a scan from random sources a leak }
-  if FFlood.IsEmpty then
-    Exit;
   vIdle := 60000;
   if Int64RAL(FInterval) * 10 > vIdle then
     vIdle := Int64RAL(FInterval) * 10;
-  PruneIdle(FFlood, vIdle, Now);
+  vNow := Now;
+  for vInt := 0 to FloodStripes - 1 do
+    if not FFlood[vInt].IsEmpty then
+      PruneIdle(FFlood[vInt], vIdle, vNow);
 end;
 
 procedure TRALFloodPlugin.PruneOnRequest;
 begin
-  if FFlood.IsEmpty then
-    Exit;
   if NewSecond(FLastPrune) then
     Prune;
 end;

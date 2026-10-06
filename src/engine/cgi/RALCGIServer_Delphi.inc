@@ -270,6 +270,9 @@ begin
     { first: only after it do ContentType and ContentEncoding say what was
       really done to the body }
     AResponse.ContentStream := vResponse.TakeWireStream;
+    { the answer is built: what a plugin took for the request - a slot of
+      the concurrency limit - goes back now, before the bytes go out }
+    vRequest.Finish;
 
     if vResponse.AcceptEncoding <> '' then
       vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);

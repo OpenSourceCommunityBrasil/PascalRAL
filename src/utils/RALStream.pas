@@ -66,7 +66,28 @@ type
     function ReadBytesDirect(ALength: integer): TBytes;
   end;
 
-  TRALStringStream = class(TMemoryStream)
+  /// The capacity argument of TMemoryStream.Realloc, which changed type
+  TRALStreamCapacity = {$IFDEF FPC}PtrInt{$ELSE}{$IFDEF DELPHI11UP}NativeInt{$ELSE}Longint{$ENDIF}{$ENDIF};
+
+  { TRALMemoryStream }
+
+  /// A TMemoryStream that holds a small content in a small block. Delphi
+  /// rounds every capacity up to 8 KB and FPC to 4 KB, so a stream of a few
+  /// bytes - a segment of a JWT, an HMAC, a short answer - took a block of
+  /// that size: on Delphi a medium block, which FastMM serves under a single
+  /// lock for every thread of the process. Below 8 KB the capacity is the
+  /// size rounded to 64 bytes, growing by half at least; from 8 KB on it is
+  /// the RTL's own
+  TRALMemoryStream = class(TMemoryStream)
+  protected
+    function Realloc(var NewCapacity: TRALStreamCapacity): Pointer; override;
+  public
+    /// The capacity for ASize bytes, at once: a body whose size is known is
+    /// allocated whole
+    procedure Reserve(ASize: Int64RAL);
+  end;
+
+  TRALStringStream = class(TRALMemoryStream)
   public
     constructor Create(AString: StringRAL); overload;
     constructor Create(AStream: TStream); overload;
@@ -691,13 +712,37 @@ end;
 
 { TRALBodyStream }
 
-type
-  { TMemoryStream with its capacity in reach: a body whose size is known is
-    allocated whole, once }
-  TRALMemoryStream = class(TMemoryStream)
-  public
-    procedure Reserve(ASize: Int64RAL);
+{ TRALMemoryStream }
+
+const
+  { below this, the capacity is RAL's: the size the RTLs round up to }
+  cRALSmallStream = 8192;
+
+function TRALMemoryStream.Realloc(var NewCapacity: TRALStreamCapacity): Pointer;
+begin
+  if NewCapacity > 0 then
+  begin
+    { growing, by half at least: a stream written a little at a time would
+      otherwise be copied on every write }
+    if (NewCapacity > Capacity) and (NewCapacity < Capacity + Capacity div 2) then
+      NewCapacity := Capacity + Capacity div 2;
+    if NewCapacity < cRALSmallStream then
+    begin
+      NewCapacity := (NewCapacity + 63) and not 63;
+      Result := Memory;
+      { GetMem and ReallocMem raise EOutOfMemory themselves }
+      if NewCapacity <> Capacity then
+      begin
+        if Result = nil then
+          GetMem(Result, NewCapacity)
+        else
+          ReallocMem(Result, NewCapacity);
+      end;
+      Exit;
+    end;
   end;
+  Result := inherited Realloc(NewCapacity);
+end;
 
 procedure TRALMemoryStream.Reserve(ASize: Int64RAL);
 begin
@@ -908,7 +953,7 @@ end;
 
 function BytesToStream(ABytes: TBytes): TStream;
 begin
-  Result := TMemoryStream.Create;
+  Result := TRALMemoryStream.Create;
   if Length(ABytes) > 0 then
     Result.Write(ABytes[0], Length(ABytes));
   Result.Position := 0;

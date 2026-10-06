@@ -44,6 +44,7 @@ contains
   RALSecurity in '..\..\src\base\plugins\RALSecurity.pas',
   RALCORS in '..\..\src\base\plugins\RALCORS.pas',
   RALContent in '..\..\src\base\plugins\RALContent.pas',
+  RALConcurrency in '..\..\src\base\plugins\RALConcurrency.pas',
   RALOpenSSL in '..\..\src\utils\RALOpenSSL.pas',
   RALJWS in '..\..\src\utils\RALJWS.pas',
   RALDigest in '..\..\src\base\plugins\RALDigest.pas',

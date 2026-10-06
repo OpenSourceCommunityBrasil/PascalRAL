@@ -68,6 +68,11 @@ function RALSameSecret(const A, B: StringRAL): Boolean;
 /// Case-insensitive name comparison without leaving StringRAL. Use it for param
 /// and header names; SameText is the general-purpose one and stays for text.
 function RALSameName(const A, B: StringRAL): Boolean;
+/// Where ASubLower first appears in AText, ASCII letters compared without
+/// case, or 0. ASubLower must already be lower case. Pos(LowerCase(...)) on
+/// Delphi converts the text to UTF-16 and back and allocates both times; this
+/// reads the bytes where they are
+function RALPosText(const ASubLower, AText: StringRAL): IntegerRAL;
 /// A number that came as text over HTTP, whatever the locale of this machine:
 /// '2.5' and '2,5' are both 2.5, and with both separators present the last one
 /// is the decimal ('1.234,5' and '1,234.5'). False when it is not a number
@@ -659,11 +664,70 @@ begin
   Result := Length(A) = Length(B);
 end;
 
+function RALPosText(const ASubLower, AText: StringRAL): IntegerRAL;
+var
+  vInt, vSub, vLast, vLen: IntegerRAL;
+  vChar: Byte;
+begin
+  Result := 0;
+  vLen := Length(ASubLower);
+  vLast := Length(AText) - vLen;
+  if (vLen = 0) or (vLast < 0) then
+    Exit;
+  for vInt := 0 to vLast do
+  begin
+    vSub := 0;
+    while vSub < vLen do
+    begin
+      vChar := Ord(AText[POSINISTR + vInt + vSub]);
+      if (vChar >= Ord('A')) and (vChar <= Ord('Z')) then
+        Inc(vChar, 32);
+      if vChar <> Ord(ASubLower[POSINISTR + vSub]) then
+        Break;
+      Inc(vSub);
+    end;
+    if vSub = vLen then
+    begin
+      Result := vInt + 1;
+      Exit;
+    end;
+  end;
+end;
+
+{ Whether ARoute is already what FixRoute makes of it: one leading '/', no
+  '//', no '..' and no trailing '/' (other than the route '/' itself) }
+function IsFixedRoute(const ARoute: StringRAL): boolean;
+var
+  vInt, vHigh: IntegerRAL;
+begin
+  Result := False;
+  vHigh := RALHighStr(ARoute);
+  if (vHigh < POSINISTR) or (ARoute[POSINISTR] <> '/') then
+    Exit;
+  if (vHigh > POSINISTR) and (ARoute[vHigh] = '/') then
+    Exit;
+  for vInt := POSINISTR + 1 to vHigh do
+    if ((ARoute[vInt] = '/') and (ARoute[vInt - 1] = '/')) or
+       ((ARoute[vInt] = '.') and (ARoute[vInt - 1] = '.')) then
+      Exit;
+  Result := True;
+end;
+
 function FixRoute(ARoute: StringRAL): StringRAL;
 var
   vInt, vOut, vHigh: IntegerRAL;
   vPrevSlash: boolean;
 begin
+  { the common case, and the only one on the path of a request: a path that
+    is already fixed comes back as it is. The engines fix the path of every
+    request (TRALRequest.SetQuery) and the route lookup fixed it again - two
+    new strings each time, for an answer equal to the question }
+  if IsFixedRoute(ARoute) then
+  begin
+    Result := ARoute;
+    Exit;
+  end;
+
   Result := '/' + ARoute;
 
   { path transversal fix - same semantics as StringReplace(...,'../','',

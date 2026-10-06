@@ -97,6 +97,9 @@
   wmJWTRefused = 'El token fue rechazado por el servidor';
   emJWTNoSecretKey = 'JWT: la SignSecretKey está vacía, así que el servidor no firma ni acepta tokens';
 
+  // concurrency limit (TRALConcurrencyPlugin)
+  emConcurrencyQueueTimeout = 'El servidor está ocupado: ningún turno de petición se liberó en %d ms. Inténtelo más tarde';
+
   // jws messages (RS/ES tokens and JWK)
   emJWSInvalidKey = 'No se pudo leer la clave.';
   emJWSNoPrivateKey = 'Firmar exige una clave privada: SignKey está vacía o es solo pública.';

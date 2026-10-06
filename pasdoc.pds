@@ -93,7 +93,7 @@ Item_21=src\wizard\delphi\standalone
 Item_22=src\wizard\lazarus
 
 [Files]
-Count=114
+Count=115
 Item_0=src\base\plugins\RALAuthentication.pas
 Item_1=src\base\RALClient.pas
 Item_2=src\base\RALConsts.pas
@@ -208,6 +208,7 @@ Item_110=src\utils\RALX509.pas
 Item_111=src\base\plugins\RALSelfSigned.pas
 Item_112=src\engine\synopse\RALHttpSysCert.pas
 Item_113=src\utils\RALNetwork.pas
+Item_114=src\base\plugins\RALConcurrency.pas
 [AdditionalFiles]
 Count=0
 

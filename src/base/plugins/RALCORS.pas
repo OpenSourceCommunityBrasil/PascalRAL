@@ -90,6 +90,25 @@ type
 
 implementation
 
+var
+  { the names and fixed values CORS writes on every answer, made once at
+    initialization: on Delphi a literal assigned into a param is a new copy of
+    it on every request }
+  gHdrAllowOrigin, gHdrVary, gValOrigin, gHdrAllowCredentials, gValTrue,
+  gHdrAllowMethods, gHdrAllowHeaders, gHdrMaxAge: StringRAL;
+
+procedure FillCORSNames;
+begin
+  gHdrAllowOrigin := 'Access-Control-Allow-Origin';
+  gHdrVary := 'Vary';
+  gValOrigin := 'Origin';
+  gHdrAllowCredentials := 'Access-Control-Allow-Credentials';
+  gValTrue := 'true';
+  gHdrAllowMethods := 'Access-Control-Allow-Methods';
+  gHdrAllowHeaders := 'Access-Control-Allow-Headers';
+  gHdrMaxAge := 'Access-Control-Max-Age';
+end;
+
 { TRALCORSOptions }
 
 constructor TRALCORSOptions.Create;
@@ -247,22 +266,21 @@ procedure TRALCORSPlugin.AnswerCORS(const AAllowMethods: StringRAL;
 var
   vOrigin: StringRAL;
 begin
-  vOrigin := FOptions.OriginFor(ARequest.Params.GetKind['Origin', rpkHEADER].AsString);
+  vOrigin := FOptions.OriginFor(ARequest.Params.GetKind[gValOrigin, rpkHEADER].AsString);
   if vOrigin <> '' then
-    AResponse.Params.AddParam('Access-Control-Allow-Origin', vOrigin, rpkHEADER);
+    AResponse.Params.AddParam(gHdrAllowOrigin, vOrigin, rpkHEADER);
   { the answer depends on who asked whenever it is not one fixed value, and a
-    cache in the middle must not hand one origin's answer to another }
-  if (vOrigin <> Trim(FOptions.AllowOrigin)) or (vOrigin = '') then
-    AResponse.Params.AddParam('Vary', 'Origin', rpkHEADER);
+    cache in the middle must not hand one origin's answer to another. RALTrim:
+    Trim over a StringRAL goes through UTF-16 on Delphi }
+  if (vOrigin <> RALTrim(FOptions.AllowOrigin)) or (vOrigin = '') then
+    AResponse.Params.AddParam(gHdrVary, gValOrigin, rpkHEADER);
   if FOptions.AllowCredentials and (vOrigin <> '') and (vOrigin <> '*') then
-    AResponse.Params.AddParam('Access-Control-Allow-Credentials', 'true', rpkHEADER);
-  AResponse.Params.AddParam('Access-Control-Allow-Methods', AAllowMethods, rpkHEADER);
-  AResponse.Params.AddParam('Access-Control-Allow-Headers', FOptions.GetAllowHeaders,
-    rpkHEADER);
+    AResponse.Params.AddParam(gHdrAllowCredentials, gValTrue, rpkHEADER);
+  AResponse.Params.AddParam(gHdrAllowMethods, AAllowMethods, rpkHEADER);
+  AResponse.Params.AddParam(gHdrAllowHeaders, FOptions.GetAllowHeaders, rpkHEADER);
 
   if FOptions.MaxAge > 0 then
-    AResponse.Params.AddParam('Access-Control-Max-Age', IntToStr(FOptions.MaxAge),
-      rpkHEADER);
+    AResponse.Params.AddParam(gHdrMaxAge, IntToStr(FOptions.MaxAge), rpkHEADER);
 end;
 
 class function TRALCORSPlugin.DefaultPriority: IntegerRAL;
@@ -292,5 +310,8 @@ begin
   if (AValue <> nil) and (AValue <> FOptions) then
     FOptions.Assign(AValue);
 end;
+
+initialization
+  FillCORSNames;
 
 end.

@@ -1289,6 +1289,9 @@ begin
       vStream := vResponse.TakeWireStream;
     end;
     try
+      { the answer is built: what a plugin took for the request - a slot of
+        the concurrency limit - goes back now, before the bytes go out }
+      vRequest.Finish;
       {$IFDEF RALMSQUIC_PROFILE}SrvMark(spBodyText, vMark);{$ENDIF}
       vCType := vResponse.ContentType;
 

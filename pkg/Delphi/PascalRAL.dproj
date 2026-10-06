@@ -183,6 +183,7 @@
         <DCCReference Include="..\..\src\base\plugins\RALSecurity.pas"/>
         <DCCReference Include="..\..\src\base\plugins\RALCORS.pas"/>
         <DCCReference Include="..\..\src\base\plugins\RALContent.pas"/>
+        <DCCReference Include="..\..\src\base\plugins\RALConcurrency.pas"/>
         <DCCReference Include="..\..\src\utils\RALOpenSSL.pas"/>
         <DCCReference Include="..\..\src\utils\RALJWS.pas"/>
         <DCCReference Include="..\..\src\base\plugins\RALDigest.pas"/>

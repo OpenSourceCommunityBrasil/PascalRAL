@@ -82,11 +82,23 @@ type
     property AsAuthBearer: TRALJWT read GetAuthBearer;
   end;
 
+  TRALRequest = class;
+
+  /// Runs once, when the server is done with a request - see
+  /// TRALRequest.AddFinishHandler
+  TRALOnRequestFinish = procedure(ARequest: TRALRequest) of object;
+
   { TRALRequest }
 
   /// Class that stores everything regarding REQUEST data
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
+    { the first two handlers live in the request itself: a request with one
+      or two of them - the concurrency limit - allocates nothing for them }
+    FFinish: array[0..1] of TRALOnRequestFinish;
+    FFinishMore: array of TRALOnRequestFinish;
+    FFinishCount: IntegerRAL;
+    FFinished: boolean;
     FAuthorization: TRALAuthorization;
     FContentSize: Int64RAL;
     FClientInfo: TRALClientInfo;
@@ -101,6 +113,7 @@ type
     FRouteData: TObject;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
+    function GetAuthorization: TRALAuthorization;
     procedure SetAuthorization(const AValue: TRALAuthorization);
     procedure SetClientInfo(const AValue: TRALClientInfo);
     procedure SetRouteData(AValue: TObject);
@@ -134,6 +147,21 @@ type
     /// Adds an UTF8 String to the header of the request.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
     procedure Clone(ASource: TRALRequest); reintroduce;
+    /// AHandler runs when the server is done with this request: once the answer
+    /// is built - encoded, compressed, encrypted - and before the engine sends
+    /// it (Finish), or when the request is freed if the engine never got there
+    /// (an exception). What a plugin takes for a request and must give back,
+    /// whatever happens to the request, is given back here - the slot of
+    /// TRALConcurrencyPlugin. Handlers run in reverse order of addition, each
+    /// once; one added after Finish runs at once
+    procedure AddFinishHandler(AHandler: TRALOnRequestFinish);
+    /// The server is done with this request: runs the handlers of
+    /// AddFinishHandler, once. Every server engine calls it right after it
+    /// took the response's body (TakeWireStream), so what follows - the bytes
+    /// going over the network - is outside anything a handler limits. Calling
+    /// it again does nothing. The first exception of a handler goes up, after
+    /// all of them ran
+    procedure Finish;
     /// Returns the request data in TStream format
     function GetRequestEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// Returns the request data in UTF8String format
@@ -143,6 +171,8 @@ type
     procedure SetResolvedRoute(ARoute, AOwner: TObject);
 
     property URL: StringRAL read GetURL;
+    /// Whether Finish already ran
+    property Finished: boolean read FFinished;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
     /// The TRALRoute that answers this request, or nil when none does. Only
@@ -172,7 +202,9 @@ type
     /// Clone leaves it behind
     property RouteData: TObject read FRouteData write SetRouteData;
   published
-    property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
+    /// Created the first time it is asked for: a server without
+    /// authentication never decodes credentials, and never needs one
+    property Authorization: TRALAuthorization read GetAuthorization write SetAuthorization;
     property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Host: StringRAL read FHost write FHost;
@@ -243,9 +275,17 @@ begin
   Result := GetRequestEncText(False);
 end;
 
+function TRALRequest.GetAuthorization: TRALAuthorization;
+begin
+  if FAuthorization = nil then
+    FAuthorization := TRALAuthorization.Create;
+  Result := FAuthorization;
+end;
+
 procedure TRALRequest.SetAuthorization(const AValue: TRALAuthorization);
 begin
-  RALAssignOwned(FAuthorization, AValue);
+  if AValue <> nil then
+    RALAssignOwned(GetAuthorization, AValue);
 end;
 
 procedure TRALRequest.SetClientInfo(const AValue: TRALClientInfo);
@@ -301,8 +341,10 @@ var
   vInt: IntegerRAL;
 begin
   FQuery := AValue;
-  
-  vInt := Pos('?', FQuery);
+
+  { the '?' as a StringRAL: a Char literal picked the UnicodeString overload
+    of Pos on Delphi, and the whole path went to UTF-16 to be searched }
+  vInt := Pos(StringRAL('?'), FQuery);
   if vInt > 0 then
   begin
     ParseQueryParams(Copy(FQuery, vInt + 1, Length(FQuery)));
@@ -338,17 +380,77 @@ end;
 constructor TRALRequest.Create(AOwner: TObject);
 begin
   inherited;
-  FAuthorization := TRALAuthorization.Create;
+  FAuthorization := nil; // on first use, see the property
   FClientInfo := TRALClientInfo.Create;
   FContentSize := 0;
 end;
 
 destructor TRALRequest.Destroy;
 begin
+  { the safety net: an engine that raised before Finish still gives back what
+    the plugins took. A destructor must not raise }
+  if not FFinished then
+    try
+      Finish;
+    except
+      // the request is going away; nothing is left to answer it
+    end;
   FreeAndNil(FRouteData);
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
   inherited;
+end;
+
+procedure TRALRequest.AddFinishHandler(AHandler: TRALOnRequestFinish);
+begin
+  if not Assigned(AHandler) then
+    Exit;
+  if FFinished then
+  begin
+    AHandler(Self);
+    Exit;
+  end;
+  if FFinishCount <= High(FFinish) then
+    FFinish[FFinishCount] := AHandler
+  else
+  begin
+    SetLength(FFinishMore, FFinishCount - Length(FFinish) + 1);
+    FFinishMore[High(FFinishMore)] := AHandler;
+  end;
+  Inc(FFinishCount);
+end;
+
+procedure TRALRequest.Finish;
+var
+  vInt: IntegerRAL;
+  vHandler: TRALOnRequestFinish;
+  vError: TObject;
+begin
+  if FFinished then
+    Exit;
+  { set first: a handler that frees the request, or calls Finish again, must
+    not run the list twice }
+  FFinished := True;
+  vError := nil;
+  for vInt := FFinishCount - 1 downto 0 do
+  begin
+    if vInt <= High(FFinish) then
+      vHandler := FFinish[vInt]
+    else
+      vHandler := FFinishMore[vInt - Length(FFinish)];
+    try
+      vHandler(Self);
+    except
+      { every handler runs - each gives back something of its own - and the
+        first failure is the one that goes up }
+      if vError = nil then
+        vError := TObject(AcquireExceptionObject);
+    end;
+  end;
+  FFinishCount := 0;
+  FFinishMore := nil;
+  if vError <> nil then
+    raise vError;
 end;
 
 function TRALRequest.AddHeader(const AName: StringRAL; const AValue: StringRAL
@@ -439,24 +541,36 @@ begin
   inherited;
 end;
 
+{ The object of the credentials is made when asked for, from what AuthType
+  and AuthString say then. It used to be made on every AuthString assigned -
+  that is, for every request that carried credentials - and the JWT one
+  parses the whole token: the authenticator parses it again to check it, so
+  every Bearer request was decoded twice, a hundred allocations for nothing }
 function TRALAuthorization.GetAuthBasic: TRALAuthBasic;
 begin
   Result := nil;
-  if FAuthType = ratBasic then
-    Result := TRALAuthBasic(FObjAuth);
+  if FAuthType <> ratBasic then
+    Exit;
+  if not (FObjAuth is TRALAuthBasic) then
+    CreateObjAuth;
+  Result := TRALAuthBasic(FObjAuth);
 end;
 
 function TRALAuthorization.GetAuthBearer: TRALJWT;
 begin
   Result := nil;
-  if FAuthType = ratBearer then
-    Result := TRALJWT(FObjAuth);
+  if FAuthType <> ratBearer then
+    Exit;
+  if not (FObjAuth is TRALJWT) then
+    CreateObjAuth;
+  Result := TRALJWT(FObjAuth);
 end;
 
 procedure TRALAuthorization.SetAuthString(const AValue: StringRAL);
 begin
   FAuthString := AValue;
-  CreateObjAuth;
+  { made again from the new string the next time it is asked for }
+  FreeAndNil(FObjAuth);
 end;
 
 { TRALServerRequest }

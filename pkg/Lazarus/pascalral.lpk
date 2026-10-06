@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="1" Minor="2"/>
-    <Files Count="58">
+    <Files Count="59">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -258,6 +258,10 @@
         <Filename Value="..\..\src\utils\RALStream.pas"/>
         <UnitName Value="RALStream"/>
       </Item58>
+      <Item59>
+        <Filename Value="..\..\src\base\plugins\RALConcurrency.pas"/>
+        <UnitName Value="RALConcurrency"/>
+      </Item59>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

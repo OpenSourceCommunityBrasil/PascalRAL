@@ -1018,83 +1018,101 @@ begin
   inherited;
 end;
 
+{ the alg names, filled once at initialization: a name answered from a
+  literal is a new copy of it on every call on Delphi, and SetAsJSON asks for
+  all eight to recognise the header of every token received }
+var
+  gJWTAlgorithmNames: array[TRALJWTAlgorithm] of StringRAL;
+
+procedure FillJWTAlgorithmNames;
+var
+  vAlg: TRALJWTAlgorithm;
+begin
+  for vAlg := Low(TRALJWTAlgorithm) to High(TRALJWTAlgorithm) do
+    case vAlg of
+      tjaHSHA384: gJWTAlgorithmNames[vAlg] := 'HS384';
+      tjaHSHA512: gJWTAlgorithmNames[vAlg] := 'HS512';
+      tjaRS256: gJWTAlgorithmNames[vAlg] := 'RS256';
+      tjaRS384: gJWTAlgorithmNames[vAlg] := 'RS384';
+      tjaRS512: gJWTAlgorithmNames[vAlg] := 'RS512';
+      tjaES256: gJWTAlgorithmNames[vAlg] := 'ES256';
+      tjaES384: gJWTAlgorithmNames[vAlg] := 'ES384';
+    else
+      gJWTAlgorithmNames[vAlg] := 'HS256';
+    end;
+end;
+
 class function TRALJWT.AlgorithmName(AAlgorithm: TRALJWTAlgorithm): StringRAL;
 begin
-  case AAlgorithm of
-    tjaHSHA384: Result := 'HS384';
-    tjaHSHA512: Result := 'HS512';
-    tjaRS256: Result := 'RS256';
-    tjaRS384: Result := 'RS384';
-    tjaRS512: Result := 'RS512';
-    tjaES256: Result := 'ES256';
-    tjaES384: Result := 'ES384';
-  else
-    Result := 'HS256';
-  end;
+  Result := gJWTAlgorithmNames[AAlgorithm];
 end;
 
 procedure TRALJWT.SetToken(AValue: StringRAL);
 var
-  vInt: IntegerRAL;
-  vStr: TStringList;
-  vWhole: StringRAL;
+  vLen, vEnd, vDot1, vDot2, vInt: IntegerRAL;
   vOk: boolean;
 begin
   FToken := '';
   FSigningInput := '';
-  vWhole := AValue;
-  vStr := TStringList.Create;
-  try
-    repeat
-      vInt := Pos('.', AValue);
-      if (vInt = 0) and (AValue <> '') then
-        vInt := Length(AValue) + 1;
-
-      if vInt > 0 then
-      begin
-        vStr.Add(Copy(AValue, 1, vInt - 1));
-        Delete(AValue, 1, vInt);
-      end;
-    until vInt = 0;
-
-    vOk := vStr.Count = 3;
-    if vOk then
-    try
-      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
-      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
-      { the loop above eats AValue segment by segment, and FToken used to be
-        assigned AFTER it - always empty, so IsValidToken with no argument
-        answered False for a token that had just been assigned }
-      FToken := vWhole;
-      FSigningInput := vStr.Strings[0] + '.' + vStr.Strings[1];
-      FSignature := vStr.Strings[2];
-    except
-      { a segment that is not base64, or not JSON: not a token, like a text
-        without its three segments. It raised - on FPC whatever the JSON was,
-        whose parser raises where Delphi's answers nil - and a Bearer of
-        garbage turned into a 500 before any authentication had a say }
-      vOk := False;
-    end;
-
-    if not vOk then
+  { the three segments, found where the old split - a TStringList and a
+    Delete per segment - found them: on every dot, except that one dot at the
+    very end closes the last segment instead of opening a fourth, empty one.
+    Positions here count from 1 }
+  vLen := Length(AValue);
+  vEnd := vLen;
+  if (vLen > 0) and (AValue[POSINISTR + vLen - 1] = '.') then
+    Dec(vEnd);
+  vDot1 := 0;
+  vDot2 := 0;
+  vOk := vLen > 0;
+  for vInt := 1 to vEnd do
+    if AValue[POSINISTR + vInt - 1] = '.' then
     begin
-      { not a token, so nothing of the previous one may stay: anything
-        malformed handed to an object that had validated a good token came
-        back valid, with that token's claims. The header keeps its Algorithm,
-        which is the caller's configuration }
-      FToken := '';
-      FPayload.Clear;
-      FSigningInput := '';
-      FSignature := '';
+      if vDot1 = 0 then
+        vDot1 := vInt
+      else if vDot2 = 0 then
+        vDot2 := vInt
+      else
+      begin
+        vOk := False;
+        Break;
+      end;
     end;
-  finally
-    FreeAndNil(vStr);
+  vOk := vOk and (vDot2 > 0);
+
+  if vOk then
+  try
+    FHeader.AsJSON := TRALBase64.DecodeBuffer(PByte(Pointer(AValue)), vDot1 - 1);
+    FPayload.AsJSON := TRALBase64.DecodeBuffer(PByte(Pointer(AValue)) + vDot1,
+      vDot2 - vDot1 - 1);
+    FToken := AValue;
+    FSigningInput := Copy(AValue, POSINISTR, vDot2 - 1);
+    FSignature := Copy(AValue, POSINISTR + vDot2, vEnd - vDot2);
+  except
+    { a segment that is not base64, or not JSON: not a token, like a text
+      without its three segments. It raised - on FPC whatever the JSON was,
+      whose parser raises where Delphi's answers nil - and a Bearer of
+      garbage turned into a 500 before any authentication had a say }
+    vOk := False;
+  end;
+
+  if not vOk then
+  begin
+    { not a token, so nothing of the previous one may stay: anything
+      malformed handed to an object that had validated a good token came
+      back valid, with that token's claims. The header keeps its Algorithm,
+      which is the caller's configuration }
+    FToken := '';
+    FPayload.Clear;
+    FSigningInput := '';
+    FSignature := '';
   end;
 end;
 
 function TRALJWT.SignInput(const AInput: StringRAL): StringRAL;
 var
   vHash: TRALHashBase;
+  vDigest: TBytes;
 begin
   case FHeader.Algorithm of
     tjaHSHA256, tjaHSHA384, tjaHSHA512:
@@ -1113,8 +1131,19 @@ begin
           TRALSHA2_64(vHash).Version := rsv512;
       end;
       try
-        vHash.OutputType := rhotBase64Url;
-        Result := vHash.HMACAsString(AInput, FSignSecretKey);
+        { the incremental HMAC over the text where it is, and the digest
+          written as base64url at once: HMACAsString went through a stream
+          for the text, one per pad and one for the base64, plus three
+          StringReplace - which on Delphi are UTF-16 - on every token checked.
+          It refuses what HMACAsString refused, in the same order }
+        if AInput = '' then
+          raise Exception.Create(emHMACEmptyText);
+        if FSignSecretKey = '' then
+          raise Exception.Create(emCryptEmptyKey);
+        vHash.HMACBegin(StringToBytesUTF8(FSignSecretKey));
+        vHash.HMACUpdate(Pointer(AInput), Length(AInput));
+        vDigest := vHash.HMACEnd;
+        Result := TRALBase64.EncodeUrl(PByte(Pointer(vDigest)), Length(vDigest));
       finally
         FreeAndNil(vHash);
       end;
@@ -1216,7 +1245,7 @@ var
   vNow: TDateTime;
 begin
   Result := False;
-  if (Trim(AValue) = '') and (Trim(FToken) = '') then
+  if (RALTrim(AValue) = '') and (RALTrim(FToken) = '') then
     Exit;
 
   { the algorithm is the one this instance was set to, never the one the token
@@ -1260,15 +1289,18 @@ begin
     wrong password. The decoder raises on them now, where it used to answer
     garbage, and raised here they came out of the engine as a 500 }
   try
-    vString := TRALBase64.Decode(FAuthString);
+    vString := TRALBase64.DecodeText(FAuthString);
   except
     vString := '';
   end;
-  vInt := Pos(':', vString);
+  vInt := Pos(StringRAL(':'), vString);
   if vInt > 0 then begin
     FUserName := Copy(vString, 1, vInt - 1);
     FPassword := Copy(vString, vInt + 1, Length(vString));
   end;
 end;
+
+initialization
+  FillJWTAlgorithmNames;
 
 end.

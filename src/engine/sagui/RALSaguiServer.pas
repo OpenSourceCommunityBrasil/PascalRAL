@@ -140,6 +140,11 @@ type
     /// threads in the pool. Use False only for routes that never block.
     /// Takes effect on the next activation. MaxConnections is also the thread
     /// limit when this is True.
+    /// What it costs, on routes that never block: measured on 28/09/2026 with a
+    /// route answering a constant, 64 kept-alive connections, 15.1k requests
+    /// per second against 18.4k with False - about 18%. Kept as the default
+    /// because a route that waits on anything is the common case, and there
+    /// False serialises the connections of each pool thread behind it
     property ThreadPerConnection: boolean read FThreadPerConnection
       write FThreadPerConnection default True;
   end;
@@ -521,6 +526,9 @@ begin
         say what was really done. The params give their streams away - the
         body is sent after this callback returns, when the response is gone }
       vRespStream := vResponse.TakeWireStream;
+      { the answer is built: what a plugin took for the request - a slot of
+        the concurrency limit - goes back now, before the bytes go out }
+      vRequest.Finish;
 
       vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
 

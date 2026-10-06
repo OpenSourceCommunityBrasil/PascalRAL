@@ -97,6 +97,9 @@
   wmJWTRefused = 'The token was refused by the server';
   emJWTNoSecretKey = 'JWT: SignSecretKey is empty, so the server neither signs nor accepts tokens';
 
+  // concurrency limit (TRALConcurrencyPlugin)
+  emConcurrencyQueueTimeout = 'The server is busy: no request slot was freed in %d ms. Try again later';
+
   // jws messages (RS/ES tokens and JWK)
   emJWSInvalidKey = 'The key could not be read.';
   emJWSNoPrivateKey = 'Signing needs a private key: SignKey is missing or public only.';

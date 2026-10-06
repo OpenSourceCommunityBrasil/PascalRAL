@@ -71,6 +71,11 @@ const
   RALPriorityJSONBody = 400;
   /// What a plugin gets when it does not say otherwise
   RALPriorityDefault = 100;
+  /// Concurrency limit (RALConcurrency): after every RAL plugin that refuses
+  /// in ppValidate - a request the black list, the flood check or the size
+  /// limit refuse never waits for a slot - and just before the engine decodes
+  /// the body
+  RALPriorityConcurrency = 50;
 
 type
   TRALPluginHost = class;

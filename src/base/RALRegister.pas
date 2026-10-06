@@ -24,6 +24,7 @@ uses
   // server
   RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
   RALStorageCSV, RALSecurity, RALCORS, RALContent, RALDigest, RALOAuth2, RALSelfSigned,
+  RALConcurrency,
   // client
   RALClient;
 
@@ -168,7 +169,7 @@ begin
   RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
     TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
-    TRALSelfSigned, TRALSecurityHeadersPlugin]);
+    TRALSelfSigned, TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
   { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,

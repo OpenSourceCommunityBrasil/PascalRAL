@@ -99,6 +99,42 @@ var
 
 implementation
 
+{ blanks off both ends and ASCII letters in lower case, in a StringRAL: on
+  Delphi LowerCase(Trim(...)) over one goes through UTF-16 and allocates twice
+  on every request that names a coding. The same string comes back when there
+  is nothing to change - the usual case, since codings and media types are
+  written in lower case. Bytes above 127 are left as they are, as LowerCase
+  leaves them }
+function TrimLowerASCII(const AText: StringRAL): StringRAL;
+var
+  vFirst, vLast, vInt: IntegerRAL;
+  vUpper: boolean;
+begin
+  vFirst := POSINISTR;
+  vLast := POSINISTR + Length(AText) - 1;
+  while (vFirst <= vLast) and (Ord(AText[vFirst]) <= 32) do
+    Inc(vFirst);
+  while (vLast >= vFirst) and (Ord(AText[vLast]) <= 32) do
+    Dec(vLast);
+  vUpper := False;
+  for vInt := vFirst to vLast do
+    if AText[vInt] in ['A'..'Z'] then
+    begin
+      vUpper := True;
+      Break;
+    end;
+  if (not vUpper) and (vFirst = POSINISTR) and (vLast = POSINISTR + Length(AText) - 1) then
+  begin
+    Result := AText;
+    Exit;
+  end;
+  Result := Copy(AText, vFirst, vLast - vFirst + 1);
+  if vUpper then
+    for vInt := POSINISTR to POSINISTR + Length(Result) - 1 do
+      if Result[vInt] in ['A'..'Z'] then
+        Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
+end;
+
 function RALInflatedSizeHint(ASource: TStream; AFormat: TRALCompressType): Int64RAL;
 var
   vTail: array[0..3] of Byte;
@@ -129,7 +165,7 @@ end;
 function RALIsCompressedType(const AContentType: StringRAL; ABuiltIn: boolean;
   AExtra: TStrings): boolean;
 const
-  cTypes: array[0..15] of string = (
+  cTypes: array[0..15] of StringRAL = (
     'application/zip', 'application/x-zip-compressed', 'application/gzip',
     'application/x-gzip', 'application/x-7z-compressed',
     'application/x-rar-compressed', 'application/vnd.rar', 'application/x-bzip2',
@@ -137,22 +173,25 @@ const
     'font/woff2', 'application/font-woff', 'application/x-font-woff',
     'application/x-brotli');
 var
-  vType, vEntry: string;
+  vType, vEntry: StringRAL;
   vInt: IntegerRAL;
 begin
+  { in StringRAL from start to end: the type of every answer goes through
+    here, and on Delphi a string, Trim and LowerCase over it were three
+    conversions to UTF-16 and back }
   Result := False;
-  vType := string(AContentType);
-  vInt := Pos(';', vType);
+  vInt := Pos(StringRAL(';'), AContentType);
   if vInt > 0 then
-    vType := Copy(vType, 1, vInt - 1);
-  vType := LowerCase(Trim(vType));
+    vType := TrimLowerASCII(Copy(AContentType, POSINISTR, vInt - POSINISTR))
+  else
+    vType := TrimLowerASCII(AContentType);
   if vType = '' then
     Exit;
 
   if ABuiltIn then
   begin
-    if ((Pos('image/', vType) = 1) and (Pos('svg', vType) = 0)) or
-       (Pos('audio/', vType) = 1) or (Pos('video/', vType) = 1) then
+    if ((Pos(StringRAL('image/'), vType) = 1) and (Pos(StringRAL('svg'), vType) = 0)) or
+       (Pos(StringRAL('audio/'), vType) = 1) or (Pos(StringRAL('video/'), vType) = 1) then
     begin
       Result := True;
       Exit;
@@ -168,10 +207,10 @@ begin
   if AExtra <> nil then
     for vInt := 0 to AExtra.Count - 1 do
     begin
-      vEntry := LowerCase(Trim(AExtra[vInt]));
+      vEntry := TrimLowerASCII(StringRAL(AExtra[vInt]));
       if vEntry = '' then
         Continue;
-      if (vEntry[Length(vEntry)] = '/') and (Pos(vEntry, vType) = 1) then
+      if (vEntry[POSINISTR + Length(vEntry) - 1] = '/') and (Pos(vEntry, vType) = 1) then
         Result := True
       else if vEntry = vType then
         Result := True;
@@ -197,10 +236,10 @@ begin
   vPos := Pos(StringRAL(';'), AToken);
   if vPos = 0 then
   begin
-    AName := LowerCase(Trim(AToken));
+    AName := TrimLowerASCII(AToken);
     Exit;
   end;
-  AName := LowerCase(Trim(Copy(AToken, 1, vPos - 1)));
+  AName := TrimLowerASCII(Copy(AToken, 1, vPos - 1));
   vParam := LowerCase(StringReplace(Copy(AToken, vPos + 1, MaxInt), ' ', '',
     [rfReplaceAll]));
   // q always uses the dot (RFC 9110 12.4.2), so Val and not the locale

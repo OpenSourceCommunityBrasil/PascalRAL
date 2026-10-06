@@ -760,14 +760,17 @@ var
 begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
-  vStr := Trim(AValue);
-  if vStr = EmptyStr then
+  { RALTrim and a StringRAL to Pos: on Delphi Trim and Pos(' ') over a
+    StringRAL go through UTF-16 - seven allocations on every request that
+    carries credentials }
+  vStr := RALTrim(AValue);
+  if vStr = '' then
     Exit;
-  vInt := Pos(' ', vStr);
+  vInt := Pos(StringRAL(' '), vStr);
   if vInt = 0 then
     Exit;
-  AResult.Authorization.AuthType := AuthTypeOf(Trim(Copy(vStr, 1, vInt - 1)));
-  AResult.Authorization.AuthString := Trim(Copy(vStr, vInt + 1, Length(vStr)));
+  AResult.Authorization.AuthType := AuthTypeOf(RALTrim(Copy(vStr, 1, vInt - 1)));
+  AResult.Authorization.AuthString := RALTrim(Copy(vStr, vInt + 1, Length(vStr)));
 end;
 
 function TRALServer.HasAuthentication: boolean;

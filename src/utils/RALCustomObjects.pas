@@ -72,6 +72,7 @@ type
     function GetContentCompress: TRALCompressType;
     /// Grabs the kind of criptography that will be used on the traffic
     function GetContentCripto: TRALCriptoType;
+    procedure ApplyCripto(AKey: boolean);
     function GetParams: TRALParams;
     function GetProtocol: StringRAL;
     procedure SetContentCompress(const AValue: TRALCompressType);
@@ -222,15 +223,16 @@ begin
 end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
-var
-  vStr: StringRAL;
 begin
-  vStr := LowerCase(FContentEncription);
-  if (Pos(StringRAL('aes256cbc_pkcs7'), vStr) > 0) then
+  { read where it is: LowerCase was a UTF-16 trip on Delphi, and this runs
+    for every request and every response }
+  if FContentEncription = '' then
+    Result := crNone
+  else if RALPosText('aes256cbc_pkcs7', FContentEncription) > 0 then
     Result := crAES256
-  else if (Pos(StringRAL('aes192cbc_pkcs7'), vStr) > 0) then
+  else if RALPosText('aes192cbc_pkcs7', FContentEncription) > 0 then
     Result := crAES192
-  else if (Pos(StringRAL('aes128cbc_pkcs7'), vStr) > 0) then
+  else if RALPosText('aes128cbc_pkcs7', FContentEncription) > 0 then
     Result := crAES128
   else
     Result := crNone;
@@ -247,9 +249,19 @@ begin
   FContentDisposition := RALSafeHeaderText(AValue);
 end;
 
-procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
+var
+  { The types every response and every param start with, and what
+    SetContentType makes of each - computed once. On Delphi a literal assigned
+    to a field is copied to the heap every time, and the charset appended, the
+    lower-case copy and the trip to UTF-16 of IsTextualType made a dozen
+    allocations per request out of two assignments of a constant. A string
+    held here has a reference count, so handing it to a field costs none }
+  gKnownGiven: array[0..5] of StringRAL;
+  gKnownFinal: array[0..5] of StringRAL;
+
+function SafeContentType(const AValue: StringRAL): StringRAL;
 begin
-  FContentType := RALSafeHeaderText(AValue); // one header line, whatever AValue held
+  Result := RALSafeHeaderText(AValue); // one header line, whatever AValue held
   { Never on a multipart container. RFC 2046 puts the charset on each part, so
     the parameter means nothing here - and appending anything after "boundary="
     breaks every parser that reads the boundary as the rest of the header value.
@@ -263,34 +275,47 @@ begin
     application/octet-stream, and "octet-stream; charset=utf-8" made browsers
     and proxies treat binary downloads as text. Multipart is not textual
     either, which keeps the boundary guard above. }
-  if (FContentType <> '') and
-     (Pos(StringRAL('charset='), FContentType) = 0) and
-     IsTextualType(FContentType) then
-    FContentType := FContentType + '; charset=utf-8';
+  if (Result <> '') and
+     (RALPosText('charset=', Result) = 0) and
+     TRALHTTPHeaderInfo.IsTextualType(Result) then
+    Result := Result + '; charset=utf-8';
+end;
+
+procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to High(gKnownGiven) do
+    if AValue = gKnownGiven[vInt] then
+    begin
+      FContentType := gKnownFinal[vInt];
+      Exit;
+    end;
+  FContentType := SafeContentType(AValue);
 end;
 
 class function TRALHTTPHeaderInfo.IsTextualType(const AContentType: StringRAL): boolean;
-var
-  vType: StringRAL;
 begin
-  vType := LowerCase(AContentType);
-  Result := (Pos(StringRAL('text/'), vType) = 1) or
-            (Pos(StringRAL('json'), vType) > 0) or
-            (Pos(StringRAL('xml'), vType) > 0) or
-            (Pos(StringRAL('javascript'), vType) > 0) or
-            (Pos(StringRAL('x-www-form-urlencoded'), vType) > 0);
+  { compared where it is: a lower-case copy was a UTF-16 trip and three
+    allocations on Delphi, every time a content type was set }
+  Result := (RALPosText('text/', AContentType) = 1) or
+            (RALPosText('json', AContentType) > 0) or
+            (RALPosText('xml', AContentType) > 0) or
+            (RALPosText('javascript', AContentType) > 0) or
+            (RALPosText('x-www-form-urlencoded', AContentType) > 0);
 end;
 
 function TRALHTTPHeaderInfo.GetAcceptCripto: TRALCriptoType;
-var
-  vStr: StringRAL;
 begin
-  vStr := LowerCase(FAcceptEncription);
-  if (Pos(StringRAL('aes256cbc_pkcs7'), vStr) > 0) then
+  { read where it is: LowerCase was a UTF-16 trip on Delphi, and this runs
+    for every request and every response }
+  if FAcceptEncription = '' then
+    Result := crNone
+  else if RALPosText('aes256cbc_pkcs7', FAcceptEncription) > 0 then
     Result := crAES256
-  else if (Pos(StringRAL('aes192cbc_pkcs7'), vStr) > 0) then
+  else if RALPosText('aes192cbc_pkcs7', FAcceptEncription) > 0 then
     Result := crAES192
-  else if (Pos(StringRAL('aes128cbc_pkcs7'), vStr) > 0) then
+  else if RALPosText('aes128cbc_pkcs7', FAcceptEncription) > 0 then
     Result := crAES128
   else
     Result := crNone;
@@ -334,7 +359,7 @@ begin
     by that default instead of by what the other side said is how a plain body
     gets inflated }
   FParams.CompressType := ContentCompress;
-  FParams.CriptoOptions.CriptType := ContentCripto;
+  ApplyCripto(False);
   FParams.DecodeBody(AStream, FContentType, FContentDisposition, AOwnership);
 end;
 
@@ -354,13 +379,28 @@ begin
   SetWireBody(TRALMemoryView.Create(ABuffer, ASize), boOwned);
 end;
 
+{ The cipher of the body, from the headers, handed to the params - which create
+  their options only when there is a cipher to hold: a plain request makes
+  none. AKey also hands over the key this side holds (the way out); on the way
+  in the key is already in the params, put there by the crypto plugin }
+procedure TRALHTTPHeaderInfo.ApplyCripto(AKey: boolean);
+var
+  vCripto: TRALCriptoType;
+begin
+  vCripto := ContentCripto;
+  if (vCripto = crNone) and not FParams.HasCriptoOptions then
+    Exit;
+  FParams.CriptoOptions.CriptType := vCripto;
+  if AKey then
+    FParams.CriptoOptions.Key := FCriptoKey;
+end;
+
 function TRALHTTPHeaderInfo.TakeWireStream: TStream;
 var
   vContentType, vContentDisposition: StringRAL;
 begin
   FParams.CompressType := ContentCompress;
-  FParams.CriptoOptions.CriptType := ContentCripto;
-  FParams.CriptoOptions.Key := FCriptoKey;
+  ApplyCripto(True);
   FParams.ContentDispositionInline := FContentDispositionInline;
 
   vContentType := '';
@@ -379,8 +419,7 @@ var
   vContentType, vContentDisposition: StringRAL;
 begin
   FParams.CompressType := ContentCompress;
-  FParams.CriptoOptions.CriptType := ContentCripto;
-  FParams.CriptoOptions.Key := FCriptoKey;
+  ApplyCripto(True);
   FParams.ContentDispositionInline := FContentDispositionInline;
 
   vContentType := '';
@@ -779,5 +818,24 @@ begin
   vRefused := (vIdentity = 0) or ((vIdentity < 0) and (vStar = 0));
   Result := (not vRefused) or vHasCoding;
 end;
+
+procedure FillKnownTypes;
+var
+  vInt: IntegerRAL;
+begin
+  gKnownGiven[0] := rctTEXTPLAIN;
+  gKnownGiven[1] := rctAPPLICATIONJSON;
+  gKnownGiven[2] := rctTEXTHTML;
+  gKnownGiven[3] := rctAPPLICATIONOCTETSTREAM;
+  gKnownGiven[4] := rctAPPLICATIONXML;
+  gKnownGiven[5] := rctMULTIPARTFORMDATA;
+  { Delphi copies a literal into a global, as into any field: what is kept
+    here is a heap string, a type with a charset or not }
+  for vInt := 0 to High(gKnownGiven) do
+    gKnownFinal[vInt] := SafeContentType(gKnownGiven[vInt]);
+end;
+
+initialization
+  FillKnownTypes;
 
 end.

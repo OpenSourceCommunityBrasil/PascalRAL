@@ -141,7 +141,7 @@ Submodules must be checked out for the compression/BSON packages:
 
 - **Phases** (`Phases` says which; only those hooks are called): `ppValidate` (`ValidateRequest`, before decoding), `ppProcess` (`ProcessRequest(..., var AHandled)`, the plugin loop), and three that are **calls between plugins, not loops of the server**: `ppResolveRoute` (offer a route of the plugin's own - the JWT token route - which the plugin then answers in its `ProcessRequest`, where `ARequest.RouteOwner = Self`), `ppAuthenticate` (`arAccepted`/`arUnauthorized`/`arForbidden`) and `ppAuthResult` (react to the verdict, may change it). There is no post-module phase: once a module ran the route the answer is given; only `OnResponse` remains.
 - **The route is resolved once and kept in the request.** `TRALPluginHost.FindRoute` looks it up on the first call (`LookupRoute`: the modules in loop order, then `ppResolveRoute`) and stores it with its owner (`TRALRequest.ResolvedRoute`/`RouteOwner`/`RouteResolved`, typed `TObject` because `RALRoutes` uses `RALRequest`). CORS needs the route's methods, authentication its `SkipAuthMethods`, and the module that owns it answers without looking again - `OnBeforeAnswer` of a module fires once, before the plugins that asked.
-- **Order is `Priority`, highest first; ties keep the order of registration.** The `RALPriority*` constants: security headers 950 (`plugins/RALSecurity.pas`), limits 900, compression 890, crypto 880 (`plugins/RALContent.pas`), white list 870, black list 860, brute force 850, flood 840, path traversal 830 (`plugins/RALSecurity.pas`), CORS 700 (`plugins/RALCORS.pas`), authentication 500 (`plugins/RALAuthentication.pas`), JSON body 400 (`RALContent`, after authentication so nothing is parsed for a refused request), default 100.
+- **Order is `Priority`, highest first; ties keep the order of registration.** The `RALPriority*` constants: security headers 950 (`plugins/RALSecurity.pas`), limits 900, compression 890, crypto 880 (`plugins/RALContent.pas`), white list 870, black list 860, brute force 850, flood 840, path traversal 830 (`plugins/RALSecurity.pas`), CORS 700 (`plugins/RALCORS.pas`), authentication 500 (`plugins/RALAuthentication.pas`), JSON body 400 (`RALContent`, after authentication so nothing is parsed for a refused request), default 100, concurrency 50 (`plugins/RALConcurrency.pas`: last of the validators, so a request refused by any of them never takes a slot).
 - **What each property became:** `MaxRequestSize` -> `TRALLimitsPlugin.MaxRequestSize` (msquic reads it through `FindPlugin` to refuse while receiving); `CompressType` -> `TRALCompressPlugin.CompressType` (`ctNone` follows the client; the plugin also owns the 415/406 checks); `CriptoOptions.Key` -> `TRALCriptoPlugin.Key` (its `ValidateRequest` hands the key to `ARequest.Params.CriptoOptions` before the engine decodes the body - engines no longer read a key from the server); `JSONBodyToParams` -> `TRALJSONBodyPlugin`; `CORSOptions` -> `TRALCORSPlugin.Options` (`TRALCORSOptions` lives in `RALCORS`); `Security` -> one plugin per protection. All are on the `RAL - Plugins` palette.
 - **Authentication is a plugin** (`TRALAuthServer` descends from `TRALServerPlugin`; `Server.Authentication` adds it). In the plugin loop it answers its own route, then - only the first authenticator in running order, since `Host.Authenticate` asks all of them (accepted when any accepts) - authenticates the request's route unless the method is OPTIONS, outside `AllowedMethods` (the module answers 405 before any 401) or in `SkipAuthMethods`. **With no authentication plugin nothing is skipped, because nothing is asked.** `Host.Authenticate` then runs `ppAuthResult`, which is how brute force hears the verdict before any module runs. Removing or freeing the authenticator clears the property through `PluginRemoved` - a plugin removes itself **before** its free notifications go out, so `Notification` alone would leave it dangling.
 - **The white list is a pass, not a check:** it sets `TRALRequest.Trusted`, and black list, brute force and flood leave a trusted request alone (path traversal still refuses it, without counting). `OnClientBlock` is fired through `TRALPluginHost.ClientBlocked`. Each protection prunes its own list from its `ValidateRequest`, at most once a second (`PruneOnRequest`) and under **one** lock per list (`PruneIdle`) - walking it with the lock taken per element raced (`EStringListError` out of `ValidateRequest`); `Prune` called directly still prunes at once.
@@ -1003,7 +1003,7 @@ Since 03/10/2026 (fifth round) that is literally true. Indy, UniGUI and fpHTTP b
 Reported on Linux/FPC (07/09/2026): `Active := False` never returned and the process had to be killed, on both engines; the same code on Delphi/Linux stops fine. Changed on FPC only. **mORMot2**: RAL called `Sock.Close` and then `WaitFor` on the server thread; closing the listening socket wakes a blocked `accept()` on Windows but not reliably on Linux, so `WaitFor` never returned. The FPC branch now does `Terminate`, `Sock.Close` and a touch-and-go `NewSocket` connection to the port before `WaitFor` - the same release `THttpServer.Destroy` performs; Delphi keeps the old order. **fpHTTP**: the stop relies on a wake-up GET from `TerminatedSet`; it had no timeout, and the thread destructor nilled `FParent` before `FHttp`'s destructor waited for the connection threads that still read it. The GET now has 2 s connect/read timeouts and `FParent` is cleared after `FreeAndNil(FHttp)`. Not verified on Linux here (no Linux box).
 
 ### Fixed: the fpHTTP server thread was freed alive
-The real fpHTTP defect, found the same day by the pool suite: `TRALfpHttpServerThread.Destroy` never called `inherited`, so `TThread.Destroy` - the one that terminates and waits for the thread - never ran, and the object was released with the accept loop still on it. A server stopped with `Active := False` and then freed (`TRALfpHttpServer.Destroy` only terminated the thread when still active) left a thread parked in `accept()` with the port still bound; the next connection to that port woke it on freed memory (`FParent` nil at `if FParent.Active`) and took the process down - that was the "access violation nine cases into the next server" blamed on `AcceptIdleTimeout` (a server stopping on its own inside the timeout just reached the same zombie sooner), the FPC pool suite dying whenever a second server reused a port, and most likely the Linux process that would not exit. The thread destructor now does `Terminate` (`if Suspended then Start`) and `WaitFor` first, and `Active := False` itself makes the wake-up GET (`WakeUpAccept`) so the port is free the moment it returns; fcl-web only clears a flag there. `TRALfpHttpServerCore` also gives connections its own thread class: fcl-web's `TFPHTTPConnectionThread` frees the connection (decrementing `ConnectionCount`) before leaving the server's thread list, and `TFPCustomHttpServer.Destroy` frees that list as soon as the count is zero - `TRALfpHttpConnectionThread` leaves the RAL's list first, and `WaitHandlers` (10 s, then the open sockets are closed) runs before `FreeAndNil(FHttp)`. Proof: a 60-line program (server up, one GET, `Active := False`, `Free`, connect to the port) crashed with runtime 217 before and prints "port free" after; FPC's own crash trace was garbage (`TExternalThread.Destroy`/`SysAllocateThreadVars` frames) - `C:\lazarus\mingw\x86_64-win64\bin\gdb.exe -batch -ex run -ex bt` gave the real frame in seconds. Use gdb for FPC access violations.
+The real fpHTTP defect, found the same day by the pool suite: `TRALfpHttpServerThread.Destroy` never called `inherited`, so `TThread.Destroy` - the one that terminates and waits for the thread - never ran, and the object was released with the accept loop still on it. A server stopped with `Active := False` and then freed (`TRALfpHttpServer.Destroy` only terminated the thread when still active) left a thread parked in `accept()` with the port still bound; the next connection to that port woke it on freed memory (`FParent` nil at `if FParent.Active`) and took the process down - that was the "access violation nine cases into the next server" blamed on `AcceptIdleTimeout` (a server stopping on its own inside the timeout just reached the same zombie sooner), the FPC pool suite dying whenever a second server reused a port, and most likely the Linux process that would not exit. The thread destructor now does `Terminate` (`if Suspended then Start`) and `WaitFor` first, and `Active := False` itself makes the wake-up GET (`WakeUpAccept`) so the port is free the moment it returns; fcl-web only clears a flag there. `TRALfpHttpServerCore` also gives connections its own thread class: fcl-web's `TFPHTTPConnectionThread` frees the connection (decrementing `ConnectionCount`) before leaving the server's thread list, and `TFPCustomHttpServer.Destroy` frees that list as soon as the count is zero - `TRALfpHttpConnectionThread` leaves the RAL's list first, and `WaitHandlers` (10 s, then the open sockets are closed) runs before `FreeAndNil(FHttp)`. Since 05/10/2026 a worker pool (`TRALfpHttpWorker`) handles the connections instead, keeping that order: out of the RAL's list, then the connection freed, and `WaitHandlers` also waits for the workers. Proof: a 60-line program (server up, one GET, `Active := False`, `Free`, connect to the port) crashed with runtime 217 before and prints "port free" after; FPC's own crash trace was garbage (`TExternalThread.Destroy`/`SysAllocateThreadVars` frames) - `C:\lazarus\mingw\x86_64-win64\bin\gdb.exe -batch -ex run -ex bt` gave the real frame in seconds. Use gdb for FPC access violations.
 
 ### Fixed by the pool suite: Sagui thread pool applied after listen, SQLite "database is locked", sqldb library loading under concurrency
 `TRALSaguiServer.SetActive(True)` set `PoolCount` after `InitializeServer`: `sg_httpsrv_set_thr_pool_size` only counts before `sg_httpsrv_listen`, so Sagui served every request on one thread and the pool never saw two requests at once. It is set between `CreateServerHandle` and `InitializeServer` now. Eight parallel writers on SQLite got `SQLITE_BUSY` and lost rows on both FPC drivers: `RALDBZeos.pas` sets the `busytimeout` property to 10 s for SQLite when the user left it empty, and `RALDBSQLDB.pas` calls `sqlite3_busy_timeout(Handle, 10000)` after the open (FireDAC already had its own). Eight sqldb connections opening at once crashed inside `sqlite3dyn`/`ibase60dyn`, whose library reference counts are not thread-safe: `RALDBSQLDB.pas` serializes open, close and free in a unit-level critical section (`gOpenLock`); only the library load/unload is inside it, queries run in parallel as before.
@@ -1514,6 +1514,79 @@ The orchestrator (`ral_orquestrador`) gained audit suites built from the batteri
 - **An ApplyUpdates statement that finds no row is an error, as in the DAO** (the maintainer's call). The memtables generate one UPDATE or DELETE per record, with the old value of every column in the WHERE (`upWhereAll`), and `TRALDBModule` answers each statement's `RowsAffected` - which nobody read: a record someone else changed or deleted since the `Open`, or criteria matching no row (or several), counted as saved, the change gone without a word. FireDAC's `CountUpdatedRecords` raises there, and so does the DAO, which applies through it. A statement that affects other than one record is now an error (`emDBRowsAffected`), reported through `OnError` and then raised by `ApplyUpdates` - the first one, once the whole answer is handled - as the DAO's `ApplyUpdatesRemote` raises (the maintainer's call: the DAO's behaviour). So is every other failure of an ApplyUpdates - a driver error, a 500, a 401, a transport failure - which reached `OnError` alone, or nothing without it (a 401 went unsaid even with it); and the memtables' `ExecSQL`, whose failure raises now as `ExecSQLRemote`'s does (a 401 or the pool's 429 went unsaid there too). A negative count, a driver that cannot tell, is not judged. `UpdateOptions.CountUpdatedRecords` on the FireDAC memtable, and the published `CountUpdatedRecords` on the Zeos one and on `TRALDBBufDataset`, turn the count off - for an `UpdateSQL` that runs a procedure or touches several rows. Each statement still runs and commits on its own, so the rest of the batch is saved, and the cache is cleared as before. What the DAO also does, closing the dataset on a failure, the memtables do not: changes a transport failure leaves in the cache can be sent again, and closing would throw them away.
 - **Posting a record with a BLOB column raised on Delphi.** `ConstructUpdateSQL`/`ConstructDeleteSQL` asked `Value <> OldValue`, and a Delphi blob's `Value` is a byte array, which a Variant comparison refuses: `EVariantTypeCastError` before the statement was built, on the FireDAC and Zeos memtables. `FieldChanged` (`RALDBConnection`) compares the bytes; FPC hands a blob over as a string and never had the problem. The persistent-field cases found it - the first to post such a record.
 - **How these three were verified**: the audit suites (Delphi Win64 1446/1446 with OpenSSL, FPC x64 1156/1156; built against the code before, the Delphi one failed on exactly the persistent-field and ApplyUpdates cases), the matrices filtered to the groups they touch (Delphi DAO and MEMTAB 19 440/19 440, FPC MEMTAB 16 128/16 128), every package unit compiled for Win32, Win64, Android, Android64, Linux64 and FPC (the Zeos memtable for Win32 and Win64), and the cross suite: 40 559 of 40 560 - the one failure a read timeout of the Delphi Sagui server to an UPDATE on its Zeos route, with the FPC Indy client, which five reruns of that pair did not reproduce.
+
+### Changed on 05/10/2026: performance under load (`.agents/PLANO_DESEMPENHO.md`)
+
+The diagnosis, the owner's decisions and the numbers of each stage are in the plan
+(Portuguese). What changed, and what a change to these paths has to keep:
+
+- **The allocator is what serialises threads, not RAL's locks.** Delphi's FastMM4
+  serves medium blocks (8 KB and up) under one lock, and FPC's default heap degenerates
+  with many threads, recycling whole OS chunks. The number of allocations per request
+  is therefore the figure to watch: a GET on mORMot2 is **23 on Delphi and 18 on FPC**
+  (it was 181/74 on `dev`), JWT+CORS+gzip **143 and 114** (it was 609/376). The
+  orchestrator suite `carga`/`cargafpc` guards it - see below. Alternative memory
+  managers are out by the owner's decision: `fpcx64mm` is only a diagnostic tool.
+- **Delphi copies a string literal assigned into a field, a var or a Result**
+  (`_LStrAsg` copies a constant whose refcount is -1); FPC does not. Anything a request
+  writes from a literal - a param name, a header name, an alg name - comes from a
+  global filled once at initialization (`gParamNames` and friends in `RALParams`,
+  `gJWTAlgorithmNames` in `RALToken`, the header names in `RALCORS`).
+- **On Delphi, keep the per-request path in `StringRAL`** (see the next section):
+  `RALTrim`, `RALSameName`, `RALPosText`, `Pos(StringRAL('x'), ...)`. A `Pos` with a
+  char literal, `Trim`, `LowerCase`, `IfThen` and `SameText` over a `StringRAL` go
+  through UTF-16. A `Pos` in UTF-16 over UTF-8 bytes also answers the wrong index: the
+  Basic decoder split non-ASCII user names and passwords in the wrong place until
+  this round.
+- **Received headers are kept as text and materialised on demand** (`TRALParams`
+  `FPending`, up to 32 lines): a lookup by name creates only that param, at the place
+  it would have had, and anything that walks the list goes through the `FParams`
+  property, which flushes the pending block first. Verified identical to the eager
+  parse by random scripts on both compilers.
+- **`TRALConcurrencyPlugin`** (D2): caps how many requests are processed at once
+  (`MaxConcurrent`, 0 = 2 x logical processors), the rest wait up to `MaxQueueWait`
+  (30 s; 0 = forever) and get 503 + `Retry-After`. The slot is taken in `ppValidate`
+  and given back by **`TRALRequest.Finish`**, which every engine calls right after
+  `TakeWireStream` - compressing and ciphering the answer stay inside the limit,
+  sending it does not. `AddFinishHandler` registers what runs there (reverse order,
+  once; the first error is re-raised after all ran), and the request's destructor is
+  the safety net for an exception. **A new engine must call `Finish`** after it took
+  the answer, or the slots come back only when the request is freed.
+- **zlib** compresses with `deflateInit2` straight into the destination, the window
+  sized to the body, the buffers on the stack (`RALCompressZLib`, Delphi XE2+ and FPC);
+  **`TRALMemoryStream`** sizes a capacity below 8 KB to the content (the RTLs round
+  every capacity up to 8 KB / 4 KB, a medium block on Delphi); **the flood list** is
+  16 lists by a hash of the address (`TRALFloodPlugin.FloodStripes`); the response
+  headers are written into a string of their exact size (`AssignParamsText`); a
+  route keeps its full path with its segments (`GetFullRoute` is a field now, built
+  by `UpdateSegments`); the JWT is decoded once, its segments straight into strings
+  (`TRALBase64.DecodeBuffer`/`DecodeText`) and its HMAC computed incrementally and
+  written with `TRALBase64.EncodeUrl`.
+- **fpHTTP has a worker pool** (`TRALfpHttpWorker` in `RALfpHTTPServer`): fcl-web
+  starts a thread per connection and serves one request per connection, so every
+  request paid a thread - ~220 us of wall time and ~125 us of CPU on FPC. The accept
+  loop queues the connection (`CreateConnectionThread` returns nil, fcl-web ignores
+  it) and a worker takes it; a new worker starts only when none is idle, so a route
+  that blocks never holds up the next connection, and an idle worker ends after 10 s.
+  `WaitHandlers` waits for the queue, the connections in hand and the workers.
+  5.4k -> 9.8k requests per second at 64 clients.
+- **Indy**: `ParseParams := False` - RAL reads `QueryParams`/`FormParams` raw, and the
+  `Params` list Indy decoded (looking the charset up by name through its whole table
+  with `AnsiCompareText`, UTF-16 on FPC) was only ever cleared: a third of the CPU of a
+  GET on FPC. On FPC only, `TIdSchedulerOfThreadPool` (PoolSize 2 x processors) keeps
+  the threads of ended connections for the next ones: one connection per request went
+  5.4k -> 8.5k. On Delphi the same pool halved that shape, so Delphi keeps Indy's
+  default scheduler.
+- **Measuring**: the suite `carga` (`RALOrquestrador/suite/CasosCarga.pas`) has two
+  parts. ALOCACAO runs the real mORMot2 `OnCommandProcess` in memory under a counting
+  memory manager, with targets (GET <= 25 Delphi / 20 FPC; JWT+CORS+gzip <= 260 / 200
+  and <= 64 KB) that apply only to a RAL with `RALConcurrency.pas`; VAZAO starts each
+  engine and loads it from another process (the suite's own exe with `-gerador`,
+  raw WinSock), reporting requests per second, latency and the MACHINE's CPU - the
+  process's own times were unreliable in FPC processes. It is informative and depends
+  on what else runs: its first line says how busy the machine was. The deeper tools
+  (stack sampler, allocations by call stack, builds of old commits) are in
+  `RALOrquestrador/ferramentas/carga`.
 
 **The whole project is written in English** — identifiers, `///` doc comments and ordinary comments alike. A few older comments are in Portuguese; new code is not.
 

@@ -866,7 +866,12 @@ begin
           further up from what the connection actually negotiated. It used to
           be a hardcoded '1.1', which stopped being true the day this engine
           learned to serve HTTP/2. }
-        vRequest.HttpVersion := IfThen(SSL.Enabled, 'HTTPS', 'HTTP');
+        { not IfThen: it answers a string, converted from UTF-16 on every
+          request on Delphi }
+        if SSL.Enabled then
+          vRequest.HttpVersion := 'HTTPS'
+        else
+          vRequest.HttpVersion := 'HTTP';
 
         //if SSL.Enabled then
         //  vRequest.HttpVersion := 'HTTPS'
@@ -925,6 +930,10 @@ begin
         finally
           FreeAndNil(vStream);
         end;
+
+        { the answer is built: what a plugin took for the request - a slot of
+          the concurrency limit - goes back now, before the bytes go out }
+        vRequest.Finish;
 
         //if (vResponse.ContentDisposition <> EmptyStr) then
           vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);

@@ -56,6 +56,10 @@ type
   TRALBaseRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
+    { RALAllowedMethodsText of FAllowedMethods, made when they change: the
+      CORS plugin asks it on every request, and building it took some thirty
+      allocations each time }
+    FAllowText: StringRAL;
     FAllowURIParams: boolean;
     FCallback: boolean;
     FDescription: TStrings;
@@ -64,6 +68,9 @@ type
     FOutputParams: TRALRouteParams;
     FRoute: StringRAL;
     FSegments: TRALRouteSegments;
+    { GetFullRoute, kept with FSegments: the token route of an authenticator
+      compares it with every request }
+    FFullRoute: StringRAL;
     FSkipAuthMethods: TRALMethods;
     FURIParams: TRALRouteParams;
 
@@ -207,6 +214,7 @@ constructor TRALBaseRoute.Create(ACollection: TCollection);
 begin
   inherited;
   FAllowedMethods := [amALL];
+  FAllowText := RALAllowedMethodsText(FAllowedMethods);
   FSkipAuthMethods := [];
   FCallback := False;
   FName := 'ralroute' + IntToStr(Index);
@@ -275,7 +283,7 @@ begin
   if Self = nil then
     Exit;
 
-  Result := RALAllowedMethodsText(AllowedMethods);
+  Result := FAllowText;
 end;
 
 procedure TRALBaseRoute.SetRoute(AValue: StringRAL);
@@ -449,7 +457,12 @@ end;
 
 procedure TRALBaseRoute.UpdateSegments;
 begin
-  FSegments := SplitPath(GetFullRoute, True);
+  FFullRoute := '';
+  if (Collection <> nil) and (Collection.Owner <> nil) and
+    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) then
+    FFullRoute := TRALModuleRoutes(Collection.Owner).Domain;
+  FFullRoute := FixRoute(FFullRoute + '/' + FRoute);
+  FSegments := SplitPath(FFullRoute, True);
 end;
 
 procedure TRALBaseRoute.SetCollection(Value: TCollection);
@@ -461,15 +474,12 @@ end;
 
 function TRALBaseRoute.GetFullRoute: StringRAL;
 begin
-  Result := '';
+  { built by UpdateSegments, which every change of the route, of its
+    collection or of the module's Domain calls }
   if Self = nil then
-    Exit;
-
-  if (Collection <> nil) and (Collection.Owner <> nil) and
-    (Collection.Owner.InheritsFrom(TRALModuleRoutes)) then
-    Result := TRALModuleRoutes(Collection.Owner).Domain;
-
-  Result := FixRoute(Result + '/' + FRoute);
+    Result := ''
+  else
+    Result := FFullRoute;
 end;
 
 procedure TRALBaseRoute.AssignTo(Dest: TPersistent);
@@ -531,6 +541,7 @@ begin
       FAllowedMethods := AValue - [amALL]
     else
       FAllowedMethods := AValue;
+    FAllowText := RALAllowedMethodsText(FAllowedMethods);
   end;
 end;
 
@@ -654,11 +665,28 @@ end;
 procedure SplitRequestPath(ARequest: TRALRequest; out ARaw, APath: TRALRouteSegments);
 var
   vInt: IntegerRAL;
+  vTrim: StringRAL;
+  vOwn: boolean;
 begin
   ARaw := SplitPath(FixRoute(ARequest.Query), False);
-  SetLength(APath, Length(ARaw));
+  { the trimmed segments are the raw ones until one of them has blanks to
+    lose - a path never has, so the two share one array. Written only after a
+    Copy: a dynamic array assigned is the same array, not a copy on write }
+  APath := ARaw;
+  vOwn := False;
   for vInt := 0 to High(ARaw) do
-    APath[vInt] := RALTrim(ARaw[vInt]);
+  begin
+    vTrim := RALTrim(ARaw[vInt]);
+    if Length(vTrim) <> Length(ARaw[vInt]) then
+    begin
+      if not vOwn then
+      begin
+        APath := Copy(ARaw, 0, Length(ARaw));
+        vOwn := True;
+      end;
+      APath[vInt] := vTrim;
+    end;
+  end;
 end;
 
 function TRALRoutes.CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
