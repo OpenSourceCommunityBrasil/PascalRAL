@@ -169,7 +169,7 @@ begin
   RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
     TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
-    TRALSelfSigned, TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
+    TRALSelfSignedPlugin, TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
   { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,

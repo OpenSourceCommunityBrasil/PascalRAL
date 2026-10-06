@@ -45,7 +45,7 @@ uses
   RALTypes, RALConsts, RALTools, RALPlugin, RALServer, RALRSA, RALX509, RALASN1;
 
 type
-  /// Where a TRALSelfSigned stands
+  /// Where a TRALSelfSignedPlugin stands
   TRALSelfSignedState = (
     /// nothing done yet
     sssNone,
@@ -65,19 +65,19 @@ type
     const AOldFingerprint, ANewFingerprint: StringRAL) of object;
   TRALSelfSignedErrorEvent = procedure(Sender: TObject; AError: Exception) of object;
 
-  TRALSelfSigned = class;
+  TRALSelfSignedPlugin = class;
 
   { TRALSelfSignedWatcher }
 
   /// Wakes every CheckInterval and renews when the certificate is due
   TRALSelfSignedWatcher = class(TThread)
   private
-    FOwner: TRALSelfSigned;
+    FOwner: TRALSelfSignedPlugin;
     FWake: TEvent;
   protected
     procedure Execute; override;
   public
-    constructor Create(AOwner: TRALSelfSigned);
+    constructor Create(AOwner: TRALSelfSignedPlugin);
     destructor Destroy; override;
     /// asks the thread to end, without waiting
     procedure Stop;
@@ -85,9 +85,9 @@ type
     procedure Wake;
   end;
 
-  { TRALSelfSigned }
+  { TRALSelfSignedPlugin }
 
-  TRALSelfSigned = class(TRALPlugin)
+  TRALSelfSignedPlugin = class(TRALPlugin)
   private
     FAutoRenew: boolean;
     FCheckInterval: IntegerRAL;
@@ -257,7 +257,7 @@ type
     property OnError: TRALSelfSignedErrorEvent read FOnError write FOnError;
   end;
 
-/// Where TRALSelfSigned keeps its files by default: %LOCALAPPDATA%\PascalRAL\
+/// Where TRALSelfSignedPlugin keeps its files by default: %LOCALAPPDATA%\PascalRAL\
 /// certs on Windows, ~/.config/pascalral/certs elsewhere
 function RALSelfSignedDefaultFolder: string;
 
@@ -360,7 +360,7 @@ end;
 
 { TRALSelfSignedWatcher }
 
-constructor TRALSelfSignedWatcher.Create(AOwner: TRALSelfSigned);
+constructor TRALSelfSignedWatcher.Create(AOwner: TRALSelfSignedPlugin);
 begin
   FOwner := AOwner;
   FWake := TEvent.Create(nil, False, False, '');
@@ -402,9 +402,9 @@ begin
   FWake.SetEvent;
 end;
 
-{ TRALSelfSigned }
+{ TRALSelfSignedPlugin }
 
-constructor TRALSelfSigned.Create(AOwner: TComponent);
+constructor TRALSelfSignedPlugin.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FLock := TCriticalSection.Create;
@@ -417,7 +417,7 @@ begin
   FState := sssNone;
 end;
 
-destructor TRALSelfSigned.Destroy;
+destructor TRALSelfSignedPlugin.Destroy;
 begin
   { the watcher before anything it reads; the host is told by the base
     destructor, which does not call ServerDeactivating on a plugin that is
@@ -430,7 +430,7 @@ begin
   FreeAndNil(FLock);
 end;
 
-procedure TRALSelfSigned.Loaded;
+procedure TRALSelfSignedPlugin.Loaded;
 begin
   inherited;
   { linked while loading, the plugin could not hear about a server that was
@@ -439,7 +439,7 @@ begin
     ServerActivating;
 end;
 
-function TRALSelfSigned.ServerOf: TRALServer;
+function TRALSelfSignedPlugin.ServerOf: TRALServer;
 begin
   if Host is TRALServer then
     Result := TRALServer(Host)
@@ -447,7 +447,7 @@ begin
     Result := nil;
 end;
 
-function TRALSelfSigned.BaseName: string;
+function TRALSelfSignedPlugin.BaseName: string;
 begin
   if FFileName <> '' then
     Result := string(FFileName)
@@ -461,7 +461,7 @@ begin
     Result := RALSelfSignedDefaultFolder + Result;
 end;
 
-function TRALSelfSigned.IsOwnCertificate(ACert: TRALX509Certificate): boolean;
+function TRALSelfSignedPlugin.IsOwnCertificate(ACert: TRALX509Certificate): boolean;
 var
   vOwn: TRALX509Certificate;
 begin
@@ -480,7 +480,7 @@ begin
   end;
 end;
 
-function TRALSelfSigned.EffectivePfxPassword: StringRAL;
+function TRALSelfSignedPlugin.EffectivePfxPassword: StringRAL;
 begin
   if FPfxPassword <> '' then
     Result := FPfxPassword
@@ -492,7 +492,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.FillHostNames(AList: TStrings);
+procedure TRALSelfSignedPlugin.FillHostNames(AList: TStrings);
 var
   vInt: IntegerRAL;
   vName: string;
@@ -517,7 +517,7 @@ begin
     AList.Add(vName);
 end;
 
-function TRALSelfSigned.EffectiveCommonName(AHosts: TStrings): StringRAL;
+function TRALSelfSignedPlugin.EffectiveCommonName(AHosts: TStrings): StringRAL;
 var
   vInt: IntegerRAL;
   vName: string;
@@ -543,7 +543,7 @@ begin
   Result := 'localhost';
 end;
 
-procedure TRALSelfSigned.MakeCertificate(const ACN: StringRAL; AHosts: TStrings;
+procedure TRALSelfSignedPlugin.MakeCertificate(const ACN: StringRAL; AHosts: TStrings;
   out AKey: TRALRSAKey; out ACert: TRALX509Certificate);
 var
   vHosts: TStringList;
@@ -575,7 +575,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.Adopt(AKey: TRALRSAKey; ACert: TRALX509Certificate);
+procedure TRALSelfSignedPlugin.Adopt(AKey: TRALRSAKey; ACert: TRALX509Certificate);
 begin
   if FKey <> AKey then
     FreeAndNil(FKey);
@@ -585,7 +585,7 @@ begin
   FCertificate := ACert;
 end;
 
-procedure TRALSelfSigned.SaveTarget;
+procedure TRALSelfSignedPlugin.SaveTarget;
 begin
   if FTargetKey <> '' then
     WriteFileReplacing(FTargetKey, RALStringToBytes(FKey.PrivateKeyPEM), True);
@@ -597,7 +597,7 @@ begin
       True);
 end;
 
-procedure TRALSelfSigned.FillTLS(out ATLS: TRALTLSCertificate);
+procedure TRALSelfSignedPlugin.FillTLS(out ATLS: TRALTLSCertificate);
 begin
   RALClearTLSCertificate(ATLS);
   ATLS.CertificateFile := StringRAL(FTargetCert);
@@ -610,7 +610,7 @@ begin
   ATLS.PrivateKeyDER := FKey.PrivateKeyPKCS1;
 end;
 
-procedure TRALSelfSigned.UseOwnFiles(AForceNew: boolean);
+procedure TRALSelfSignedPlugin.UseOwnFiles(AForceNew: boolean);
 var
   vBase: string;
   vKey: TRALRSAKey;
@@ -687,7 +687,7 @@ begin
     FOnCertificateCreated(Self, FCertificate.FingerprintSHA256);
 end;
 
-function TRALSelfSigned.ReadEngineCertificate(const ATLS: TRALTLSCertificate;
+function TRALSelfSignedPlugin.ReadEngineCertificate(const ATLS: TRALTLSCertificate;
   out AMissing: boolean): TRALX509Certificate;
 var
   vData: TBytes;
@@ -724,7 +724,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.Provision;
+procedure TRALSelfSignedPlugin.Provision;
 var
   vServer: TRALServer;
   vTLS: TRALTLSCertificate;
@@ -842,7 +842,7 @@ begin
   FState := sssActive;
 end;
 
-procedure TRALSelfSigned.Apply;
+procedure TRALSelfSignedPlugin.Apply;
 var
   vServer: TRALServer;
   vTLS: TRALTLSCertificate;
@@ -867,7 +867,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.ServerActivating;
+procedure TRALSelfSignedPlugin.ServerActivating;
 begin
   if FRestarting then
     Exit;
@@ -893,20 +893,20 @@ begin
     StartWatcher;
 end;
 
-procedure TRALSelfSigned.ServerDeactivating;
+procedure TRALSelfSignedPlugin.ServerDeactivating;
 begin
   if FRestarting then
     Exit;
   StopWatcher;
 end;
 
-procedure TRALSelfSigned.StartWatcher;
+procedure TRALSelfSignedPlugin.StartWatcher;
 begin
   if FWatcher = nil then
     FWatcher := TRALSelfSignedWatcher.Create(Self);
 end;
 
-procedure TRALSelfSigned.StopWatcher;
+procedure TRALSelfSignedPlugin.StopWatcher;
 var
   vWatcher: TRALSelfSignedWatcher;
 begin
@@ -926,7 +926,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.ReportError(AError: Exception);
+procedure TRALSelfSignedPlugin.ReportError(AError: Exception);
 begin
   FLastError := AError.Message;
   if Assigned(FOnError) then
@@ -937,13 +937,13 @@ begin
     end;
 end;
 
-function TRALSelfSigned.NeedsRenewal: boolean;
+function TRALSelfSignedPlugin.NeedsRenewal: boolean;
 begin
   Result := (FCertificate = nil) or
     (RALNowUTC >= IncDay(FCertificate.NotAfter, -FRenewBeforeDays));
 end;
 
-procedure TRALSelfSigned.CheckRenewal;
+procedure TRALSelfSignedPlugin.CheckRenewal;
 begin
   FLock.Acquire;
   try
@@ -963,7 +963,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.DoRenew;
+procedure TRALSelfSignedPlugin.DoRenew;
 var
   vKey: TRALRSAKey;
   vCert: TRALX509Certificate;
@@ -996,7 +996,7 @@ begin
     FOnCertificateRenewed(Self, vOld, FCertificate.FingerprintSHA256);
 end;
 
-procedure TRALSelfSigned.Generate;
+procedure TRALSelfSignedPlugin.Generate;
 begin
   FLock.Acquire;
   try
@@ -1017,7 +1017,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.LoadOrGenerate;
+procedure TRALSelfSignedPlugin.LoadOrGenerate;
 begin
   FLock.Acquire;
   try
@@ -1038,7 +1038,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.Renew;
+procedure TRALSelfSignedPlugin.Renew;
 begin
   FLock.Acquire;
   try
@@ -1056,7 +1056,7 @@ begin
   end;
 end;
 
-procedure TRALSelfSigned.ExportFingerprint(const AFileName: string);
+procedure TRALSelfSignedPlugin.ExportFingerprint(const AFileName: string);
 var
   vText: StringRAL;
   vFile: string;
@@ -1085,12 +1085,12 @@ begin
   end;
 end;
 
-function TRALSelfSigned.FingerprintText(const ASeparator: StringRAL): StringRAL;
+function TRALSelfSignedPlugin.FingerprintText(const ASeparator: StringRAL): StringRAL;
 begin
   Result := RALFormatFingerprint(Fingerprint, ASeparator);
 end;
 
-function TRALSelfSigned.CertificatePEM: StringRAL;
+function TRALSelfSignedPlugin.CertificatePEM: StringRAL;
 begin
   FLock.Acquire;
   try
@@ -1103,22 +1103,22 @@ begin
   end;
 end;
 
-function TRALSelfSigned.GetCertificateFile: string;
+function TRALSelfSignedPlugin.GetCertificateFile: string;
 begin
   Result := FTargetCert;
 end;
 
-function TRALSelfSigned.GetPrivateKeyFile: string;
+function TRALSelfSignedPlugin.GetPrivateKeyFile: string;
 begin
   Result := FTargetKey;
 end;
 
-function TRALSelfSigned.GetPfxFile: string;
+function TRALSelfSignedPlugin.GetPfxFile: string;
 begin
   Result := FTargetPfx;
 end;
 
-function TRALSelfSigned.GetFingerprint: StringRAL;
+function TRALSelfSignedPlugin.GetFingerprint: StringRAL;
 begin
   FLock.Acquire;
   try
@@ -1131,7 +1131,7 @@ begin
   end;
 end;
 
-function TRALSelfSigned.GetFingerprintSHA1: StringRAL;
+function TRALSelfSignedPlugin.GetFingerprintSHA1: StringRAL;
 begin
   FLock.Acquire;
   try
@@ -1144,7 +1144,7 @@ begin
   end;
 end;
 
-function TRALSelfSigned.GetNotAfter: TDateTime;
+function TRALSelfSignedPlugin.GetNotAfter: TDateTime;
 begin
   if FCertificate <> nil then
     Result := FCertificate.NotAfter
@@ -1152,7 +1152,7 @@ begin
     Result := 0;
 end;
 
-function TRALSelfSigned.GetNotBefore: TDateTime;
+function TRALSelfSignedPlugin.GetNotBefore: TDateTime;
 begin
   if FCertificate <> nil then
     Result := FCertificate.NotBefore
@@ -1160,7 +1160,7 @@ begin
     Result := 0;
 end;
 
-procedure TRALSelfSigned.SetCheckInterval(AValue: IntegerRAL);
+procedure TRALSelfSignedPlugin.SetCheckInterval(AValue: IntegerRAL);
 begin
   if AValue < 1 then
     AValue := 1;
@@ -1170,19 +1170,19 @@ begin
     FWatcher.Wake;
 end;
 
-procedure TRALSelfSigned.SetHostNames(AValue: TStrings);
+procedure TRALSelfSignedPlugin.SetHostNames(AValue: TStrings);
 begin
   FHostNames.Assign(AValue);
 end;
 
-procedure TRALSelfSigned.SetKeyBits(AValue: IntegerRAL);
+procedure TRALSelfSignedPlugin.SetKeyBits(AValue: IntegerRAL);
 begin
   if AValue < 1024 then
     AValue := 1024;
   FKeyBits := AValue;
 end;
 
-procedure TRALSelfSigned.SetValidDays(AValue: IntegerRAL);
+procedure TRALSelfSignedPlugin.SetValidDays(AValue: IntegerRAL);
 begin
   if AValue < 1 then
     AValue := 1;
