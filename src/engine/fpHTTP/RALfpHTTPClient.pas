@@ -657,8 +657,7 @@ begin
             kept-alive connection. But the request WAS written, and a server
             that ran it and died before answering fails just as fast - so only
             a method that may run twice goes again (RFC 7230 6.3.1). A clean
-            close never gets here: fphttpclient reads it as no answer at all
-            and resends by itself. }
+            close never gets here: it is ERALfpConnectionClosed, above. }
       on e: EHTTPClient do
       begin
         if e.StatusCode > 0 then
