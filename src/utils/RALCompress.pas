@@ -132,7 +132,9 @@ begin
   if vUpper then
     for vInt := POSINISTR to POSINISTR + Length(Result) - 1 do
       if Result[vInt] in ['A'..'Z'] then
-        Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
+        // a StringRAL element is AnsiChar everywhere; CharRAL is WideChar
+        // before Delphi 10.1
+        Result[vInt] := AnsiChar(Ord(Result[vInt]) + 32);
 end;
 
 function RALInflatedSizeHint(ASource: TStream; AFormat: TRALCompressType): Int64RAL;

@@ -9,7 +9,8 @@ uses
   Classes, SysUtils,
   IdSSLOpenSSL, IdSSLOpenSSLHeaders, IdHTTP, IdMultipartFormData,
   IdAuthentication, IdGlobal, IdHeaderList,
-  IdCookie, IdException, IdExceptionCore, IdStack,
+  IdCookie, IdCookieManager, IdURI, IdGlobalProtocols,
+  IdException, IdExceptionCore, IdStack,
   RALClient, RALParams, RALTypes, RALTools, RALConsts, RALCompress, RALRequest,
   RALResponse, RALStream;
 
@@ -23,7 +24,16 @@ type
     { True when it was OUR validation that refused the certificate: from the
       outside the failure is indistinguishable from the one OpenSSL raises }
     FCertRefused: boolean;
+    { the request being sent, for the redirect handler: the next hop's Cookie
+      header is rebuilt from its params and the jar }
+    FCurrent: TRALRequest;
 
+    /// what the client's jar holds for AURI, as a Cookie value
+    function JarCookiesFor(AURI: TIdURI): StringRAL;
+    /// where a redirect to ADest lands, from the hop FHttp is on
+    function RedirectURI(const ADest: string): TIdURI;
+    procedure DoHeadersAvailable(Sender: TObject; AHeaders: TIdHeaderList;
+                                 var VContinue: boolean);
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
     { TIdHTTP answers every 401 itself (DoOnAuthorization, with or without
@@ -35,6 +45,8 @@ type
       var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
     procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
                          var Handled: boolean; var VMethod: TIdHTTPMethod);
+  protected
+    class function NewCookieJar: TObject; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -69,10 +81,106 @@ end;
   for each request of the chain }
 procedure TRALIndyClientHTTP.DoRedirect(Sender: TObject; var dest: string;
   var NumRedirect: Integer; var Handled: boolean; var VMethod: TIdHTTPMethod);
+var
+  vURI: TIdURI;
 begin
   if Handled and TLSRequired and
      LeavesTLS(SameText(FHttp.URL.Protocol, 'https'), StringRAL(dest)) then
     Handled := False;
+
+  { the next hop goes to another URL, and the jar may hold other cookies for
+    it - this answer's among them, stored by DoHeadersAvailable. CustomHeaders
+    is copied into every hop's headers, so rewriting it here is enough }
+  if Handled and (FCurrent <> nil) then
+  begin
+    vURI := RedirectURI(dest);
+    try
+      FHttp.Request.CustomHeaders.Values['Cookie'] :=
+        string(FCurrent.Params.CookieHeaderText(JarCookiesFor(vURI)));
+    finally
+      FreeAndNil(vURI);
+    end;
+  end;
+end;
+
+{ Fires on every answer of the exchange that is not 1xx - each hop of a
+  redirect, a 401 before the retry, the final one - with FHttp.URL on the hop
+  that answered: the same answers TIdHTTP's own ProcessCookies stores, which
+  AllowCookies = False turned off }
+procedure TRALIndyClientHTTP.DoHeadersAvailable(Sender: TObject;
+  AHeaders: TIdHeaderList; var VContinue: boolean);
+var
+  vLines: TStringList;
+  vJar: TObject;
+begin
+  vLines := TStringList.Create;
+  try
+    AHeaders.Extract('Set-Cookie', vLines);
+    if vLines.Count = 0 then
+      Exit;
+    LockCookieJar;
+    try
+      vJar := CookieJar;
+      if vJar <> nil then
+        TIdCookieManager(vJar).AddServerCookies(vLines, FHttp.URL);
+    finally
+      UnlockCookieJar;
+    end;
+  finally
+    FreeAndNil(vLines);
+  end;
+end;
+
+function TRALIndyClientHTTP.JarCookiesFor(AURI: TIdURI): StringRAL;
+var
+  vHeaders: TIdHeaderList;
+  vJar: TObject;
+begin
+  Result := '';
+  vHeaders := TIdHeaderList.Create(QuoteHTTP);
+  try
+    LockCookieJar;
+    try
+      vJar := CookieJar;
+      if vJar <> nil then
+        TIdCookieManager(vJar).GenerateClientCookies(AURI,
+          TextIsSame(AURI.Protocol, 'https'), vHeaders);
+    finally
+      UnlockCookieJar;
+    end;
+    Result := StringRAL(vHeaders.Values['Cookie']);
+  finally
+    FreeAndNil(vHeaders);
+  end;
+end;
+
+{ Only what the jar matches on matters here - scheme, host, port and path -
+  so a relative Location is resolved against the current hop the simple way }
+function TRALIndyClientHTTP.RedirectURI(const ADest: string): TIdURI;
+var
+  vBase: TIdURI;
+  vOrigin: string;
+begin
+  vBase := FHttp.URL;
+  if Pos('://', ADest) > 0 then
+    Result := TIdURI.Create(ADest)
+  else if Copy(ADest, 1, 2) = '//' then
+    Result := TIdURI.Create(vBase.Protocol + ':' + ADest)
+  else
+  begin
+    vOrigin := vBase.Protocol + '://' + vBase.Host;
+    if vBase.Port <> '' then
+      vOrigin := vOrigin + ':' + vBase.Port;
+    if Copy(ADest, 1, 1) = '/' then
+      Result := TIdURI.Create(vOrigin + ADest)
+    else
+      Result := TIdURI.Create(vOrigin + vBase.Path + ADest);
+  end;
+end;
+
+class function TRALIndyClientHTTP.NewCookieJar: TObject;
+begin
+  Result := TIdCookieManager.Create(nil);
 end;
 
 function TRALIndyClientHTTP.VerifyPeer(ACertificate: TIdX509; AOk: boolean;
@@ -133,6 +241,14 @@ begin
   FHttp.OnSelectAuthorization := {$IFDEF FPC}@{$ENDIF}SelectAuthorization;
   FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
+  { TIdHTTP's own jar wrote a second Cookie line after RAL's, and the server
+    kept the last one - the application's cookies were lost as soon as an
+    answer had set one. The cookies go to the client's jar instead (see
+    TRALClientHTTP.CookieJar), stored by DoHeadersAvailable and merged into
+    the one header in SendUrl and DoRedirect }
+  FHttp.AllowCookies := False;
+  FHttp.OnHeadersAvailable := {$IFDEF FPC}@{$ENDIF}DoHeadersAvailable;
+
   FHandlerSSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
   FHandlerSSL.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
 end;
@@ -150,8 +266,7 @@ var
   vSource: TStream;
   vResult: TRALBodyStream;
   vCookieText: StringRAL;
-  vCookies: TStringList;
-  vInt: IntegerRAL;
+  vURI: TIdURI;
 
   { Winsock codes that mean the request never reached a server: connection
     refused, timed out, network or host unreachable, host not found. Anything
@@ -235,34 +350,22 @@ begin
     FHttp.Request.Connection := 'close';
 
   // cookies
-  { Sent as a plain Cookie header, the way RALSynopseClient already does it.
+  { Sent as a plain Cookie header, the way RALSynopseClient already does it:
+    the jar's cookies for this URL and the application's, in one header.
 
-    Filling TIdHTTP's CookieManager instead did not work on either count: the
-    manager is created lazily inside ProcessCookies, which only runs when a
-    *response* carries cookies, so it was still nil here and every request with a
-    cookie died with an access violation; and even once created, Indy emits from
-    the jar through GenerateClientCookies, which matches on domain and path - a
-    cookie added without them never matches the URL and silently goes nowhere.
-    The jar stays for cookies the server sets; these are the ones the caller
-    asked to send. }
-  vCookies := TStringList.Create;
+    Adding the application's cookies to the jar instead did not work: a cookie
+    added without domain and path never matches the URL in
+    GenerateClientCookies and silently goes nowhere, and one that did would
+    stay in the jar for every request after this one. }
+  vURI := TIdURI.Create(AURL);
   try
-    ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
-    if vCookies.Count > 0 then
-    begin
-      vCookieText := '';
-      for vInt := 0 to Pred(vCookies.Count) do
-      begin
-        if vInt > 0 then
-          vCookieText := vCookieText + '; ';
-        vCookieText := vCookieText + vCookies.Strings[vInt];
-      end;
-      { goes in as a header param so it rides the same AssignParams below }
-      ARequest.Params.AddParam('Cookie', vCookieText, rpkHEADER);
-    end;
+    vCookieText := ARequest.Params.CookieHeaderText(JarCookiesFor(vURI));
   finally
-    vCookies.Free;
+    FreeAndNil(vURI);
   end;
+  { goes in as a header param so it rides the same AssignParams below }
+  if vCookieText <> '' then
+    ARequest.Params.AddParam('Cookie', vCookieText, rpkHEADER);
 
   { What to compress is decided here; what was ACTUALLY compressed is only
     known after the body is encoded, so the Content-Encoding header is copied
@@ -312,6 +415,7 @@ begin
     if ARequest.ContentCompress <> ctNone then
       FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
 
+    FCurrent := ARequest;
     try
       case AMethod of
         amGET:
@@ -399,6 +503,7 @@ begin
       except
       end;
   finally
+    FCurrent := nil;
     FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;

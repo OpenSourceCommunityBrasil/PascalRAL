@@ -42,6 +42,8 @@ type
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+    { the Cookie value of the request being sent - see DoRedirect }
+    FCookieText: StringRAL;
     { the socket fphttpclient connected last, recorded by the socket handlers
       this engine hands it (fphttpclient keeps its own private): what
       SocketIdle asks before a kept connection is used again }
@@ -340,9 +342,20 @@ begin
     ADest := ASrc;
     FHttp.Terminate;
   end
-  else if FHttp.KeepConnection and IsAbsoluteURI(ADest) and
-          (FPAuthority(ADest) <> FPAuthority(ASrc)) then
-    FHttp.KeepConnection := False;
+  else
+  begin
+    if FHttp.KeepConnection and IsAbsoluteURI(ADest) and
+       (FPAuthority(ADest) <> FPAuthority(ASrc)) then
+      FHttp.KeepConnection := False;
+    { for a hop to the same host fphttpclient sends what it parsed out of the
+      3xx's Set-Cookie - cut at every ';', so "hop=1; Path=/" went out as two
+      cookies - in place of the ones that were sent, and the application's were
+      lost. They go on instead, as on every engine that keeps no jar (for
+      another host fphttpclient puts the sent ones back by itself) }
+    FHttp.Cookies.Clear;
+    if FCookieText <> '' then
+      FHttp.Cookies.Add(string(FCookieText));
+  end;
 end;
 
 destructor TRALfpHttpClientHTTP.Destroy;
@@ -356,6 +369,7 @@ procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
 var
   vSource: TStream;
   vResult: TRALBodyStream;
+  vCookies: StringRAL;
   vAttempt: IntegerRAL;
   vRetry, vReusing: boolean;
   vStart: QWord;
@@ -539,7 +553,10 @@ begin
         kept-alive socket went out without its cookies. They used to be
         assigned twice before the loop, which also doubled every cookie. }
       FHttp.Cookies.Clear;
-      ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE, '=');
+      vCookies := ARequest.Params.CookieHeaderText;
+      FCookieText := vCookies;
+      if vCookies <> '' then
+        FHttp.Cookies.Add(vCookies);
 
     // não deve ser usado o método direto e sim como HTTPMethod,
     // devido o parâmetro AllowedResponseCodes
@@ -554,8 +571,11 @@ begin
         amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
         amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
       end;
+      { the Set-Cookie headers become the answer's cookies right there
+        (AddSetCookie). FHttp.Cookies is not read: fphttpclient splits each
+        Set-Cookie at every ';', so Path, Expires and Max-Age came back as
+        cookies of their own }
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
-      AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
 
       { trimmed: fphttpclient splits its header list at the colon alone, so
         every value read by name comes with the blank after it - a typed

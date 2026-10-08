@@ -480,6 +480,18 @@ type
                               const ALineSeparator: StringRAL = '&'): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind' using default URL separators.
     function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
+    /// The value of a request's Cookie header: every rpkCOOKIE param as
+    /// name=value, joined by '; ', as RALSafeHeaderText leaves it. A param
+    /// named Set-Cookie holds a whole cookie line (what AddCookie(TRALCookie)
+    /// of a response stores) and gives its name=value pair alone - a Cookie
+    /// header carries no attributes. Every client engine builds its header here.
+    function CookieHeaderText: StringRAL; overload;
+    /// The same, merged with AJarCookies - the Cookie value an engine's own
+    /// jar holds for the URL - into the one header a request may carry: the
+    /// jar's pairs first, then the params, and for a name both have, the
+    /// param's value alone. The application's cookie wins for that request; the
+    /// jar is not touched.
+    function CookieHeaderText(const AJarCookies: StringRAL): StringRAL; overload;
     /// Clears all params.
     procedure ClearParams; overload;
     /// Clears all params matching AKind.
@@ -783,13 +795,56 @@ begin
   end;
 end;
 
+{ the name=value pair of a cookie line: what comes before the first ';' }
+function CookiePairOf(const ALine: StringRAL): StringRAL;
+var
+  vPos: IntegerRAL;
+begin
+  vPos := Pos(StringRAL(';'), ALine);
+  if vPos > 0 then
+    Result := RALTrim(Copy(ALine, 1, vPos - 1))
+  else
+    Result := RALTrim(ALine);
+end;
+
+{ A cookie is kept in one of two shapes. One that arrived - the Cookie header
+  of a request, a Set-Cookie on the client - is a param named after it holding
+  its value, attributes gone. One AddCookie(TRALCookie) set on a response is a
+  param named Set-Cookie holding the whole line. This read only the second
+  shape, by the cookie's name, so it parsed a bare value and answered an empty
+  Name and Value for every cookie received - and raised on nil for a cookie
+  that was not there. }
 function GetRALCookieFromParam(AParamName: StringRAL; AParams: TRALParams
   ): TRALCookie;
 var
-  vCookieStr: StringRAL;
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+  vPrefix: StringRAL;
 begin
-  vCookieStr := AParams.GetKind[AParamName, rpkCOOKIE].AsString;
-  Result := GetRALCookieFromText(vCookieStr);
+  Finalize(Result);
+  FillChar(Result, SizeOf(Result), 0);
+  if (AParams = nil) or (AParamName = '') then
+    Exit;
+
+  vParam := AParams.GetKind[AParamName, rpkCOOKIE];
+  if (vParam <> nil) and (not RALSameName(vParam.ParamName, 'Set-Cookie')) then
+  begin
+    Result.Name := vParam.ParamName;
+    Result.Value := vParam.AsString;
+    Exit;
+  end;
+
+  vPrefix := AParamName + '=';
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    vParam := AParams.Index[vInt];
+    if (vParam.Kind = rpkCOOKIE) and RALSameName(vParam.ParamName, 'Set-Cookie') and
+       (Pos(vPrefix, vParam.AsString) = 1) then
+    begin
+      Result := GetRALCookieFromText(vParam.AsString);
+      Exit;
+    end;
+  end;
 end;
 
 procedure TRALParam.Clone(ASource: TRALParam);
@@ -2230,6 +2285,119 @@ end;
 function TRALParams.AssignParamsUrl(AKind: TRALParamKind): StringRAL;
 begin
   Result := AssignParamsText(AKind, True);
+end;
+
+{ ONE RULE FOR EVERY CLIENT, the way AddSetCookie is one for every answer.
+  Each engine joined the params itself, as ParamName=Value, so a cookie added
+  as a TRALCookie record went out as "Cookie: Set-Cookie=sessao=abc; Path=/" -
+  a cookie called Set-Cookie, which no server read under the name it was given }
+function TRALParams.CookieHeaderText: StringRAL;
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+  vPair: StringRAL;
+begin
+  Result := '';
+  for vInt := 0 to Pred(Count) do
+  begin
+    vParam := TRALParam(FParams.Items[vInt]);
+    if vParam.Kind <> rpkCOOKIE then
+      Continue;
+    if RALSameName(vParam.ParamName, 'Set-Cookie') then
+    begin
+      vPair := CookiePairOf(vParam.AsString);
+      // a line with no name=value in it is no cookie to send
+      if Pos(StringRAL('='), vPair) <= 1 then
+        Continue;
+    end
+    else
+      vPair := vParam.ParamName + '=' + vParam.AsString;
+    if Result <> '' then
+      Result := Result + '; ';
+    Result := Result + RALSafeHeaderText(vPair);
+  end;
+end;
+
+{ The engines whose library keeps a cookie jar (Indy, netHTTP) used to let the
+  library write the header as well: Indy as a second Cookie line, which the
+  server read last, the RTL over RAL's own - so once an answer had set a
+  cookie, the next request lost the application's. They hand the jar's text
+  here instead and send one header. Names are compared case-sensitively, as
+  RFC 6265 compares them. }
+function TRALParams.CookieHeaderText(const AJarCookies: StringRAL): StringRAL;
+var
+  vInt, vPos: IntegerRAL;
+  vParam: TRALParam;
+  vApp, vText, vPair: StringRAL;
+  vNames: TStringList;
+
+  function NameOf(const APair: StringRAL): StringRAL;
+  var
+    vEq: IntegerRAL;
+  begin
+    vEq := Pos(StringRAL('='), APair);
+    if vEq > 0 then
+      Result := RALTrim(Copy(APair, 1, vEq - 1))
+    else
+      Result := RALTrim(APair);
+  end;
+
+begin
+  { the parentheses are the call: in ObjFPC mode the bare name of the function
+    being written is its Result }
+  vApp := CookieHeaderText();
+  if AJarCookies = '' then
+  begin
+    Result := vApp;
+    Exit;
+  end;
+
+  vNames := TStringList.Create;
+  try
+    vNames.CaseSensitive := True;
+    for vInt := 0 to Pred(Count) do
+    begin
+      vParam := TRALParam(FParams.Items[vInt]);
+      if vParam.Kind <> rpkCOOKIE then
+        Continue;
+      if RALSameName(vParam.ParamName, 'Set-Cookie') then
+        vNames.Add(NameOf(CookiePairOf(vParam.AsString)))
+      else
+        vNames.Add(vParam.ParamName);
+    end;
+
+    Result := '';
+    vText := AJarCookies;
+    while vText <> '' do
+    begin
+      vPos := Pos(StringRAL(';'), vText);
+      if vPos > 0 then
+      begin
+        vPair := RALTrim(Copy(vText, 1, vPos - 1));
+        Delete(vText, 1, vPos);
+      end
+      else
+      begin
+        vPair := RALTrim(vText);
+        vText := '';
+      end;
+      if (Pos(StringRAL('='), vPair) <= 1) or
+         (vNames.IndexOf(NameOf(vPair)) >= 0) then
+        Continue;
+      if Result <> '' then
+        Result := Result + '; ';
+      Result := Result + RALSafeHeaderText(vPair);
+    end;
+  finally
+    vNames.Free;
+  end;
+
+  if vApp <> '' then
+  begin
+    if Result <> '' then
+      Result := Result + '; ';
+    Result := Result + vApp;
+  end;
 end;
 
 function TRALParams.AsString: StringRAL;
