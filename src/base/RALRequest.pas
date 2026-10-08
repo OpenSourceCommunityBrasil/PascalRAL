@@ -118,7 +118,8 @@ type
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
     /// Adds a string cookie to the body of the request.
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce; overload;
-    /// Adds a RALcookie to the header of the request.
+    /// Adds a cookie to the Cookie header of the request: its Name and Value,
+    /// the only part of a TRALCookie a request carries.
     function AddCookie(const ACookie: TRALCookie): TRALRequest; reintroduce; overload;
     /// Adds a string param with the "Field" kind to the request.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
@@ -327,7 +328,12 @@ end;
 
 function TRALRequest.AddCookie(const ACookie: TRALCookie): TRALRequest;
 begin
-  inherited AddCookie(ACookie);
+  { a Cookie header is name=value pairs: Path, Expires, HttpOnly and the rest
+    are what a server tells a browser. The inherited method keeps the whole
+    Set-Cookie line, right for a response, and here the cookie went out as
+    "Cookie: Set-Cookie=name=value" on the engines that join the params
+    themselves, while GetRALCookie could not find it by its name }
+  Params.AddParam(ACookie.Name, ACookie.Value, rpkCOOKIE);
   Result := Self;
 end;
 

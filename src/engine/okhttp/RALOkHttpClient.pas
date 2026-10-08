@@ -246,7 +246,6 @@ var
   vHasUserAgent: boolean;
   vLines: TStringList;
 begin
-  vCookies := '';
   vHasUserAgent := False;
   vLines := TStringList.Create;
   try
@@ -260,12 +259,6 @@ begin
         { the Java side splits this block on LF, so one inside a value would
           become a header of its own }
         vLines.Add(RALSafeHeaderText(vParam.ParamName + ': ' + vParam.AsString));
-      end
-      else if vParam.Kind = rpkCOOKIE then
-      begin
-        if vCookies <> '' then
-          vCookies := vCookies + '; ';
-        vCookies := vCookies + vParam.ParamName + '=' + vParam.AsString;
       end;
     end;
 
@@ -275,8 +268,9 @@ begin
     if (not vHasUserAgent) and (Parent.UserAgent <> '') then
       vLines.Add('User-Agent: ' + Parent.UserAgent);
 
+    vCookies := ARequest.Params.CookieHeaderText;
     if vCookies <> '' then
-      vLines.Add('Cookie: ' + RALSafeHeaderText(vCookies));
+      vLines.Add('Cookie: ' + vCookies);
 
     { LF and not the platform separator: the Java side splits on "\n", and a
       CRLF would leave a stray CR at the end of every value. }

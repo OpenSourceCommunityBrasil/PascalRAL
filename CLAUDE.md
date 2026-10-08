@@ -571,6 +571,31 @@ recovering from them: it lets the socket go after an answer that closes the
 connection - fphttpclient reads `Connection: close` only in its own request -
 and probes a kept socket before reusing it (`SocketIdle`). See there.
 
+**fphttpclient has a resend of its own, and it is broken; RAL replaces it**
+(`TRALfpHttpClientCore`, brought over from `1.3-plugin` on 08/10/2026, where
+the FPC pooler suite found it). Two fphttpclient 3.2 defects together:
+
+- `HasConnectionClose` looks for `Connection: close` in the **request** headers
+  only, so a server announcing it closes the connection is never heard and the
+  socket is kept. The override also reads the answer's header. `ServerCloses`
+  in `SendUrl` could not cover this: it only looks after the whole call, and
+  fphttpclient follows a **redirect inside its own loop** (`HTTPMethod`). Every
+  redirect from fcl-web - which answers everything with `Connection: close` -
+  wrote the hop into the closed socket and failed with `EHTTPClient` "Error
+  reading data from socket", while Indy followed the same 302 fine. With
+  `KeepAlive` off it worked, since fphttpclient then closes after every
+  exchange.
+- On a kept-alive socket, when `ReadResponse` finds the connection closed before
+  a status line, `DoKeepConnectionRequest` reconnects and calls `SendRequest`
+  again - which copies the body with `CopyFrom(RequestBody, Size)` from where
+  the first send left it, the end: **every request with a body dies with
+  `EReadError` "Stream read error"** (and the cookies, already handed to the
+  wire, are gone). The override raises `ERALfpConnectionClosed` instead, and
+  `SendUrl` takes the case into the reconnect-once loop above.
+
+`FSocketReused` now asks fphttpclient whether the socket is still open
+(`SocketOpen`) instead of assuming it from `KeepAlive`.
+
 `EHTTPClient` also means two different things depending on `StatusCode`:
 above zero the server answered and the status was not allowed, so it belongs in
 `AResponse.StatusCode`; putting it in `ErrorCode` (as it used to) turned every
@@ -807,6 +832,24 @@ The name comes from the wire when it is the multipart `filename` or a value the 
 A response cookie is an `rpkCOOKIE` param, and every engine builds its `Set-Cookie` lines from `TRALResponse.GetParamsCookies`: a plain `name=value` param goes out with the server's `CookieLife` as `Expires`; a param **named `Set-Cookie`** already holds a complete cookie text (that is what `AddCookie(TRALCookie)` stores - name, value, Expires, Path, HttpOnly, Secure) and goes out as it is. Before this, mORMot2 wrote every cookie param as a header named after the cookie, and Indy and fpHTTP turned the `Set-Cookie` param into a cookie *called* Set-Cookie - so `TRALServerJWTAuth.UseCookie` never produced a usable `raltoken` cookie on any of them. On the client side, `TRALClientJWTAuth.SetToken` decodes the payload as base64url now (`-`/`_`, no padding), as RFC 7515 defines the segments; plain base64 left claims unreadable whenever their bytes hit those characters.
 
 Since 03/10/2026 (fifth round) that is literally true. Indy, UniGUI and fpHTTP built cookies of their own through `TIdCookie`/`TCookie` - fcl-web's writes `Expires` with the locale's time separator, UniGUI's lasted 30 minutes whatever `CookieLife` said and made a cookie called Set-Cookie - and neither CGI sent a cookie at all; all of them take the lines whole now, each on its own `Set-Cookie`. A plain cookie carries `Path=/`, which Indy and fpHTTP always gave it and mORMot2, Sagui and MsQuic did not (the browser then kept it for the folder of the URL that set it). The Delphi CGI differs in form only: `TWebResponse` writes custom headers by name, so a second `Set-Cookie` would repeat the first, and each line is rebuilt into a `TCookie` there - `Max-Age` becomes the date it stands for, and `HttpOnly`/`SameSite` need Delphi 10.4 or later.
+
+### Request cookies: two shapes, one reader, one Cookie header
+A cookie lives as an `rpkCOOKIE` param in one of two shapes: one that **arrived** (a request's `Cookie` header, a `Set-Cookie` on the client) is a param named after the cookie holding its value, attributes gone; one that `AddCookie(TRALCookie)` **set on a response** is a param named `Set-Cookie` holding the whole line. Two defects came from mixing them, fixed 06/10/2026 on every engine:
+
+- `TRALRequest.AddCookie(TRALCookie)` stored the response shape, and every client joined params as `ParamName=Value`, so the record went out as `Cookie: Set-Cookie=sessao=abc; Path=/` - the server found no `sessao`. It stores `Name`/`Value` as a plain param now; a request carries nothing else of the record.
+- `GetRALCookie(AName)` (`GetRALCookieFromParam`) parsed the value of the param named `AName` as a whole cookie line, so every cookie received answered an empty `Name`/`Value` (`xyz=` came back as a cookie named `xyz`). It reads the arrived shape by name, then looks for a `Set-Cookie` line starting with `AName=`, and answers an empty record when there is neither (and for a nil list, where it raised). `GetCookie(AName)` (deprecated) falls back on it, so it finds a cookie a response set with the record too.
+
+`TRALParams.CookieHeaderText` is the one place a client's `Cookie` value is built - Indy, mORMot2, fpHTTP, netHTTP, OkHttp and the QUIC frame (MsQuic, Kwik) all call it; a `Set-Cookie` param put in a request by hand gives its `name=value` pair alone. The fpHTTP client also stopped appending fphttpclient's `Cookies` list to the answer: it splits every `Set-Cookie` at each `;`, so `Path`, `Expires` and `Max-Age` arrived as cookies; the `Set-Cookie` headers already become cookies through `AddSetCookie`, as on every engine, and the value now arrives as sent (the list's copy was URL-decoded).
+
+### The cookie jar belongs to the client, and goes out merged with the application's cookies
+The Indy and netHTTP clients kept the cookie jar of their library (`TIdHTTP`/`THTTPClient`, `AllowCookies` on by default), and once an answer had set a cookie the next request's application cookies were lost: Indy wrote the jar's as a second `Cookie` line, which the server reads last, and the RTL replaced RAL's header with the jar's. netHTTP's jar also lived on the transport, so with `ShareConnection` on every client aimed at the same host sent the others' cookies. Fixed 07/10/2026, in `dev` and the 1.3 branch alike, with the rule the maintainer chose:
+
+- **One `Cookie` header: the jar's cookies for the URL, then the application's `rpkCOOKIE` params, and for a name both carry the application's value alone** - `TRALParams.CookieHeaderText(AJarCookies)`, names compared case-sensitively. The application's cookie wins for that request only; the jar is not touched.
+- **One jar per `TRALClient`** (`TRALClientHTTP.CookieJar`), shared by every engine the client lends - pool, threads - and never by two clients. The engine still uses its library's jar type, for its domain, path and expiry rules (`NewCookieJar`: `TIdCookieManager`, `TCookieManager`; nil, the default, keeps none), and touches it only between `LockCookieJar` and `UnlockCookieJar`: `TIdCookieManager.AddServerCookie` adds to a `TCollection` with no lock of its own. A jar of an `EngineType` left behind is kept until `Destroy`, since a request may still be running on it. A `Clone` starts with an empty jar.
+- **The libraries no longer write the header.** Indy runs with `AllowCookies := False`, stores every answer's `Set-Cookie` from `OnHeadersAvailable` - each redirect hop and a 401 included, the answers its own `ProcessCookies` stored - and rewrites the next hop's header in `OnRedirect` (`CustomHeaders` is copied into every hop). netHTTP runs with `CookieManager := nil` on its own and on the shared transports: with one assigned the RTL replaces the header on every hop whatever `AllowCookies` says (Delphi 10.0 to 13 alike), and without one it still parses `Set-Cookie` into `IHTTPResponse.Cookies`. It stores the answer's cookies after the call and each 3xx's in `OnRedirect`, where the next hop's header is rebuilt for the `Location` the RTL resolves (`TURI.PathRelativeToAbs`, as `ComposeRedirectURL`). A shared transport's handler is a class method that finds its engine through the threadvar `vSendingEngine`, right because `SynchronizeEvents` is off there. Two gaps, both only for the next hop of a redirect, whose cookies still reach the jar with the final answer: an RTL without `THTTPRedirectEvent` (before Delphi 12), and a plain http call on an own transport with the application's certificate handler, where every event is synchronized and the handler stays off so the call does not start waiting for the main thread.
+- **mORMot2, fpHTTP, OkHttp and the QUIC engines keep no jar** and send the application's cookies alone - fpHTTP on a redirect too now: for a hop to the same host fphttpclient sent what it cut out of the 3xx's `Set-Cookie` (`hop=1`, `Path=/`, two cookies) in place of the request's; `DoRedirect` puts the request's back.
+
+Verified by a scratch harness (unit cases of the merge, and Indy, netHTTP and mORMot2 clients against an Indy server: app and jar in one header, the jar alone, an expired cookie leaving, no cookie crossing to another client, a redirect hop's cookie sent on and kept) on Delphi 13 Win32 and Win64, and Indy and fpHTTP on FPC (fpHTTP's redirect case on the 1.3 branch only: in `dev` that client does not follow a redirect from an fcl-web server at all - "Error reading data from socket", a defect of its own); built against the code with the libraries' jars back on, it fails on exactly those cases. The orchestrator's matrix has it as `H_CookieJar`, group COOKIE, once per pair of engines, each request on a `Clone` of the combination's client so no cookie travels into the cases after it.
 
 ### Fixed: port change on a live server, Indy closing HTTP/1.1, multipart edge cases, compressor lookup
 `TRALIndyServer.SetPort` and `TRALSaguiServer.SetPort` reactivated the server *before* calling `inherited`, so the rebind used the old `Port`. Indy required an explicit `Connection: keep-alive` and closed every HTTP/1.1 connection that, correctly, did not send it; 1.1 is persistent unless the client says `close`. The multipart decoder subtracted two bytes from every part, so an empty part got a negative size, and the encoder's boundary was the clock (`ral` + `ddmmyyyyhhnnsszzz`), predictable; it is `ral` + 24 hex digits from `RandomBytes` now. `GetSuportedCompress` and `GetBestCompress` touched `CompressDefs` without `CheckCompressDefs`, an access violation on a build with no compressor registered.

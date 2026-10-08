@@ -241,7 +241,9 @@ begin
       vChr := EntityAt(vEsc, vInt - vEsc + 1);
       if vChr >= 0 then
       begin
-        Result[vOut] := CharRAL(vChr);
+        // a StringRAL element is AnsiChar everywhere; CharRAL is WideChar
+        // before Delphi 10.1
+        Result[vOut] := AnsiChar(vChr);
         Inc(vOut);
       end
       else

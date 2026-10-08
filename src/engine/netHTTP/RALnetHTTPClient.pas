@@ -45,7 +45,18 @@ type
     FSetupKeepAlive: IntegerRAL;
     FSetupPolicy: StringRAL;
     FSetupNoDowngrade: boolean;
+    { the request being sent, for the redirect handlers: the next hop's Cookie
+      header is rebuilt from its params and the client's jar }
+    FCurrent: TRALRequest;
 
+    /// what the client's jar holds for AURL, as a Cookie value
+    function JarCookiesFor(const AURL: TURI): StringRAL;
+    /// keeps ACookies - an answer's - in the client's jar
+    procedure StoreCookies(ACookies: TCookies; const AURL: TURI);
+    /// a redirect is about to be followed: keeps the cookies the 3xx set and
+    /// rewrites ARequest's Cookie header for where it is going
+    procedure FollowCookies(const ARequest: IHTTPRequest;
+                            const AResponse: IHTTPResponse);
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
     /// Whether this client wants a say over the server certificate. With no
@@ -63,12 +74,23 @@ type
     class procedure KeepOnTLS(const Sender: TObject; const ARequest: IHTTPRequest;
                               const AResponse: IHTTPResponse; ARedirections: Integer;
                               var AAllow: Boolean);
+    /// The cookies of a redirect, on a shared transport: the engine is the one
+    /// sending on this thread - see vSendingEngine
+    class procedure SharedRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
+                                   const AResponse: IHTTPResponse; ARedirections: Integer;
+                                   var AAllow: Boolean);
+    /// The same on the own transport, where the engine is Self, after the
+    /// KeepOnTLS check when TLS is required
+    procedure OwnRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
+                          const AResponse: IHTTPResponse; ARedirections: Integer;
+                          var AAllow: Boolean);
     {$ENDIF}
   protected
     /// Picks the transport for this call, borrowing or giving back as the
     /// settings require, and returns it already configured.
     function PickTransport(const AURL: StringRAL): TNetHTTPClient;
     procedure DropShared;
+    class function NewCookieJar: TObject; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -191,6 +213,13 @@ type
 var
   vPool: TStringList = nil;        // sorted: key -> TRALnetHTTPHolder
   vPoolLock: TCriticalSection = nil;
+
+{ The engine inside SendUrl on this thread. A shared transport serves many
+  clients at once, so its redirect handler cannot be a method of one of them;
+  it runs on the calling thread (SynchronizeEvents is off there - see
+  PoolAcquire), and this tells it whose request it is. }
+threadvar
+  vSendingEngine: TRALnetHTTPClientHTTP;
 
 function TRALnetHTTPSetup.Key: StringRAL;
 begin
@@ -664,11 +693,17 @@ begin
       vHolder.Http.UserAgent := ASetup.UserAgent;
       { no certificate handler, ever: a client that needs one never shares -
         see CanShare }
+      { the RTL's jar is per transport, so the sharers sent each other's
+        cookies; each client keeps its own - see TRALClientHTTP.CookieJar }
+      vHolder.Http.CookieManager := nil;
       {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
       if ASetup.NoDowngrade then
-        vHolder.Http.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS;
+        vHolder.Http.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS
+      else
+        vHolder.Http.OnRedirect := TRALnetHTTPClientHTTP.SharedRedirect;
       { nothing of the application's ever runs here, so nothing needs the main
-        thread - see KeepOnTLS }
+        thread - see KeepOnTLS; and vSendingEngine is only right on the
+        calling thread }
       vHolder.Http.SynchronizeEvents := False;
       {$ELSEIF Defined(DELPHI10_1UP)}
       { an RTL with no say over a redirect: TLS required means none followed }
@@ -757,7 +792,9 @@ begin
       end;
   for vInt := POSINISTR to RALHighStr(Result) do
     if (Result[vInt] >= 'A') and (Result[vInt] <= 'Z') then
-      Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
+      // a StringRAL element is AnsiChar everywhere; CharRAL is WideChar
+      // before Delphi 10.1
+      Result[vInt] := AnsiChar(Ord(Result[vInt]) + 32);
 end;
 
 { TRALnetHTTPClientHTTP }
@@ -769,6 +806,72 @@ begin
   {$IFDEF DELPHI10_1UP}
   FHttp.Asynchronous := False;
   {$ENDIF}
+  { THTTPClient wrote its jar's cookies OVER the Cookie header on every hop
+    whenever a CookieManager is assigned - AllowCookies only stops the storing
+    - so once an answer had set a cookie, the application's were gone. With
+    none it leaves the header alone and still parses Set-Cookie into
+    IHTTPResponse.Cookies; the cookies go to the client's jar instead }
+  FHttp.CookieManager := nil;
+end;
+
+class function TRALnetHTTPClientHTTP.NewCookieJar: TObject;
+begin
+  Result := TCookieManager.Create;
+end;
+
+function TRALnetHTTPClientHTTP.JarCookiesFor(const AURL: TURI): StringRAL;
+var
+  vJar: TObject;
+begin
+  Result := '';
+  LockCookieJar;
+  try
+    vJar := CookieJar;
+    if vJar <> nil then
+      Result := StringRAL(TCookieManager(vJar).CookieHeaders(AURL));
+  finally
+    UnlockCookieJar;
+  end;
+end;
+
+procedure TRALnetHTTPClientHTTP.StoreCookies(ACookies: TCookies; const AURL: TURI);
+var
+  vInt: IntegerRAL;
+  vJar: TObject;
+begin
+  if (ACookies = nil) or (ACookies.Count = 0) then
+    Exit;
+  LockCookieJar;
+  try
+    vJar := CookieJar;
+    if vJar <> nil then
+      for vInt := 0 to ACookies.Count - 1 do
+        TCookieManager(vJar).AddServerCookie(ACookies[vInt], AURL);
+  finally
+    UnlockCookieJar;
+  end;
+end;
+
+{ Called before the RTL moves the request to the Location, with the 3xx in
+  AResponse: the next hop goes out with the headers ARequest has, and the RTL
+  no longer touches its Cookie, so it is rewritten here. Where it lands is
+  computed the way the RTL computes it (ComposeRedirectURL) }
+procedure TRALnetHTTPClientHTTP.FollowCookies(const ARequest: IHTTPRequest;
+  const AResponse: IHTTPResponse);
+var
+  vNext: TURI;
+  vText: StringRAL;
+begin
+  if FCurrent = nil then
+    Exit;
+  StoreCookies(AResponse.Cookies, ARequest.URL);
+  vNext := TURI.Create(TURI.PathRelativeToAbs(AResponse.HeaderValue['Location'],
+                                              ARequest.URL));
+  vText := FCurrent.Params.CookieHeaderText(JarCookiesFor(vNext));
+  if vText <> '' then
+    ARequest.SetHeaderValue('Cookie', string(vText))
+  else
+    ARequest.RemoveHeader('Cookie');
 end;
 
 { Most platforms this engine compiles for have a library able to frame HTTP/2,
@@ -959,6 +1062,30 @@ begin
   if LeavesTLS(SameText(ARequest.URL.Scheme, 'https'),
                StringRAL(AResponse.HeaderValue['Location'])) then
     AAllow := False;
+  { installed as is only on a shared transport; the own one goes through
+    OwnRedirect, which does the cookies itself }
+  if AAllow and (vSendingEngine <> nil) and (vSendingEngine.FShared <> nil) then
+    vSendingEngine.FollowCookies(ARequest, AResponse);
+end;
+
+class procedure TRALnetHTTPClientHTTP.SharedRedirect(const Sender: TObject;
+  const ARequest: IHTTPRequest; const AResponse: IHTTPResponse;
+  ARedirections: Integer; var AAllow: Boolean);
+begin
+  if AAllow and (vSendingEngine <> nil) then
+    vSendingEngine.FollowCookies(ARequest, AResponse);
+end;
+
+procedure TRALnetHTTPClientHTTP.OwnRedirect(const Sender: TObject;
+  const ARequest: IHTTPRequest; const AResponse: IHTTPResponse;
+  ARedirections: Integer; var AAllow: Boolean);
+begin
+  if TLSRequired and
+     LeavesTLS(SameText(ARequest.URL.Scheme, 'https'),
+               StringRAL(AResponse.HeaderValue['Location'])) then
+    AAllow := False;
+  if AAllow then
+    FollowCookies(ARequest, AResponse);
 end;
 {$ENDIF}
 
@@ -1127,13 +1254,16 @@ begin
 
     { per request: a pin is per host, so TLSRequired is too }
     {$IF Defined(RALNETHTTP_REDIRECTEVENT)}
-    if TLSRequired then
-      vHttp.OnRedirect := TRALnetHTTPClientHTTP.KeepOnTLS
-    else
-      vHttp.OnRedirect := nil;
     { the application's certificate handler keeps running where it always
       did; RAL's own redirect check does not need the main thread - see
-      KeepOnTLS }
+      KeepOnTLS. With that handler on, every event is synchronized, so the
+      redirect handler stays where it already was (TLS required): a plain
+      http call that never waited for the main thread does not start to - and
+      there the cookies of a redirect reach the jar, but not the next hop }
+    if TLSRequired or (not WantsCertHandler) then
+      vHttp.OnRedirect := OwnRedirect
+    else
+      vHttp.OnRedirect := nil;
     vHttp.SynchronizeEvents := WantsCertHandler;
     {$ELSEIF Defined(DELPHI10_1UP)}
     vHttp.HandleRedirects := not TLSRequired;
@@ -1212,9 +1342,8 @@ begin
     if ARequest.ContentCompress <> ctNone then
       ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
-    vCookies := '';
     vIdx := 0;
-    SetLength(vHeaders, ARequest.Params.Count([rpkHEADER, rpkCOOKIE]));
+    SetLength(vHeaders, ARequest.Params.Count(rpkHEADER) + 1);
     for vInt := 0 to Pred(ARequest.Params.Count) do
     begin
       vParam := ARequest.Params.Index[vInt];
@@ -1224,23 +1353,28 @@ begin
         vHeaders[vIdx] := TNameValuePair.Create(RALSafeHeaderText(vParam.ParamName),
                                                 RALSafeHeaderText(vParam.AsString));
         vIdx := vIdx + 1;
-      end
-      else if vParam.Kind = rpkCOOKIE then
-      begin
-        if vCookies <> '' then
-          vCookies := vCookies + '; ';
-        vCookies := vCookies + vParam.ParamName + '=' + vParam.AsString;
       end;
     end;
 
+    { one Cookie header: the client jar's cookies for this URL and the
+      application's, the application's winning for a name both have. A URL
+      TURI cannot read is left for the call below to refuse, as before }
+    try
+      vCookies := JarCookiesFor(TURI.Create(AURL));
+    except
+      vCookies := '';
+    end;
+    vCookies := ARequest.Params.CookieHeaderText(vCookies);
     if vCookies <> '' then
     begin
-      vHeaders[vIdx] := TNameValuePair.Create('Cookie', RALSafeHeaderText(vCookies));
+      vHeaders[vIdx] := TNameValuePair.Create('Cookie', vCookies);
       vIdx := vIdx + 1;
     end;
 
     SetLength(vHeaders, vIdx);
 
+    FCurrent := ARequest;
+    vSendingEngine := Self;
     try
       case AMethod of
         amGET:
@@ -1317,6 +1451,13 @@ begin
           for vInt := 0 to vRespCookies.Count - 1 do
             AResponse.Params.AddParam(StringRAL(vRespCookies[vInt].Name),
               StringRAL(vRespCookies[vInt].Value), rpkCOOKIE);
+        { and into the client's jar, for the next request - the hops before
+          this answer went in through FollowCookies. Each TCookie already
+          carries the domain and path of the hop that set it }
+        try
+          StoreCookies(vRespCookies, TURI.Create(AURL));
+        except
+        end;
 
         AResponse.ContentEncoding := vResponse.ContentEncoding;
         AResponse.Params.CompressType := AResponse.ContentCompress;
@@ -1342,6 +1483,8 @@ begin
         HandleException(e.Message);
     end;
   finally
+    FCurrent := nil;
+    vSendingEngine := nil;
     FreeAndNil(vSource);
   end;
 end;

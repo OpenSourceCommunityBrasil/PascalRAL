@@ -309,7 +309,7 @@ begin
   { the cookies the application set travel as one Cookie header, the way the
     Indy and mORMot2 clients send them; the server reads that header back
     into cookie params }
-  vCookies := ARequest.Params.AssignParamsText(rpkCOOKIE, False, '=', '; ');
+  vCookies := ARequest.Params.CookieHeaderText;
   if vCookies <> '' then
     ARequest.Params.AddParam('Cookie', vCookies, rpkHEADER);
 end;

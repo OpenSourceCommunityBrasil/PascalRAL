@@ -11,17 +11,39 @@ uses
   RALRequest, RALCompress, RALResponse, RALMIMETypes;
 
 type
+  { TRALfpHttpClientCore }
+
+  { fphttpclient with its own resend taken away (ReadResponse) and the
+    server's "Connection: close" honoured (HasConnectionClose) }
+  TRALfpHttpClientCore = class(TFPHTTPClient)
+  protected
+    function ReadResponse(Stream: TStream; const AllowedResponseCodes: array of Integer;
+                          HeadersOnly: Boolean = False): Boolean; override;
+    function HasConnectionClose: Boolean; override;
+  public
+    { True while a socket is open, i.e. while the next request will reuse it;
+      fphttpclient keeps Connected protected }
+    function SocketOpen: boolean;
+  end;
+
+  { ERALfpConnectionClosed }
+
+  { the server closed the connection before a status line arrived }
+  ERALfpConnectionClosed = class(EHTTPClient);
+
   { TRALfpHttpClientHTTP }
 
   TRALfpHttpClientHTTP = class(TRALClientHTTP)
   private
-    FHttp: TFPHTTPClient;
+    FHttp: TRALfpHttpClientCore;
     { True when the previous request finished and left the socket open, so this
       one is reusing it. fphttpclient reports "could not read the socket" the
       same way for a read timeout and for a kept-alive connection the server
       had already closed, and only this tells them apart: on a reused socket
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
+    { the Cookie value of the request being sent - see DoRedirect }
+    FCookieText: StringRAL;
     { the socket fphttpclient connected last, recorded by the socket handlers
       this engine hands it (fphttpclient keeps its own private): what
       SocketIdle asks before a kept connection is used again }
@@ -162,6 +184,54 @@ begin
   Result := inherited Connect;
 end;
 
+{ TRALfpHttpClientCore }
+
+{ ReadResponse answers False when the connection was closed before a status
+  line arrived, and on a kept-alive connection fphttpclient then reconnects
+  and calls SendRequest again (DoKeepConnectionRequest). That resend is
+  broken: SendRequest writes the body with CopyFrom(RequestBody, Size) from
+  wherever the stream was left - its end, after the first send - so every
+  request carrying a body died with EReadError "Stream read error", and the
+  cookies, which the first send had handed over to the wire, were gone too. It
+  also resends whatever the method and however long the server took.
+
+  Raising here takes that resend away, and the case lands in SendUrl, which
+  already resends a request from a dead kept-alive socket properly: body
+  rewound, cookies reassigned, and only when the failure cannot have been a
+  request the server already processed. On a connection that is not kept
+  alive (DoNormalRequest) the False used to be ignored altogether and the
+  request "succeeded" with status 0 and no body. }
+function TRALfpHttpClientCore.ReadResponse(Stream: TStream;
+  const AllowedResponseCodes: array of Integer; HeadersOnly: Boolean): Boolean;
+begin
+  Result := inherited ReadResponse(Stream, AllowedResponseCodes, HeadersOnly);
+  if (not Result) and (not Terminated) then
+    { the URL is only known to SendUrl, which formats the message }
+    raise ERALfpConnectionClosed.Create(emConnectionClosedNoResponse);
+end;
+
+{ fphttpclient decides whether to drop the socket after an answer by looking
+  for "Connection: close" in the REQUEST headers only (GetHeader reads
+  RequestHeaders), so a server announcing that it is closing the connection
+  was never heard: the socket was kept and the next request was written into
+  one the server had already closed. The answer's header counts too now.
+  This is the only hook INSIDE a call: a redirect is followed in
+  fphttpclient's own loop (HTTPMethod), so the hop after a 3xx answered with
+  "Connection: close" - fcl-web, this engine's own server, answers every
+  request that way - was written into the closed socket and failed with
+  "Error reading data from socket", where ServerCloses in SendUrl only gets
+  to look after the whole chain. }
+function TRALfpHttpClientCore.HasConnectionClose: Boolean;
+begin
+  Result := inherited HasConnectionClose or
+            (CompareText(GetHeader(ResponseHeaders, 'Connection'), 'close') = 0);
+end;
+
+function TRALfpHttpClientCore.SocketOpen: boolean;
+begin
+  Result := IsConnected;
+end;
+
 { TRALfpHttpClientHTTP }
 
 class function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
@@ -253,7 +323,7 @@ end;
 constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClient);
 begin
   inherited Create(AOwner);
-  FHttp := TFPHTTPClient.Create(nil);
+  FHttp := TRALfpHttpClientCore.Create(nil);
   FHttp.AllowRedirect := True;
   FHttp.KeepConnection := True;
   FHttp.OnGetSocketHandler := @Self.OnGetSocketHandler;
@@ -278,9 +348,20 @@ begin
     ADest := ASrc;
     FHttp.Terminate;
   end
-  else if FHttp.KeepConnection and IsAbsoluteURI(ADest) and
-          (FPAuthority(ADest) <> FPAuthority(ASrc)) then
-    FHttp.KeepConnection := False;
+  else
+  begin
+    if FHttp.KeepConnection and IsAbsoluteURI(ADest) and
+       (FPAuthority(ADest) <> FPAuthority(ASrc)) then
+      FHttp.KeepConnection := False;
+    { for a hop to the same host fphttpclient sends what it parsed out of the
+      3xx's Set-Cookie - cut at every ';', so "hop=1; Path=/" went out as two
+      cookies - in place of the ones that were sent, and the application's were
+      lost. They go on instead, as on every engine that keeps no jar (for
+      another host fphttpclient puts the sent ones back by itself) }
+    FHttp.Cookies.Clear;
+    if FCookieText <> '' then
+      FHttp.Cookies.Add(string(FCookieText));
+  end;
 end;
 
 destructor TRALfpHttpClientHTTP.Destroy;
@@ -293,6 +374,7 @@ procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource, vResult: TStream;
+  vCookies: StringRAL;
   vAttempt: IntegerRAL;
   vRetry, vReusing: boolean;
   vStart: QWord;
@@ -472,7 +554,10 @@ begin
         kept-alive socket went out without its cookies. They used to be
         assigned twice before the loop, which also doubled every cookie. }
       FHttp.Cookies.Clear;
-      ARequest.Params.AssignParams(FHttp.Cookies, rpkCOOKIE, '=');
+      vCookies := ARequest.Params.CookieHeaderText;
+      FCookieText := vCookies;
+      if vCookies <> '' then
+        FHttp.Cookies.Add(vCookies);
 
     // não deve ser usado o método direto e sim como HTTPMethod,
     // devido o parâmetro AllowedResponseCodes
@@ -487,8 +572,11 @@ begin
         amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
         amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
       end;
+      { the Set-Cookie headers become the answer's cookies right there
+        (AddSetCookie). FHttp.Cookies is not read: fphttpclient splits each
+        Set-Cookie at every ';', so Path, Expires and Max-Age came back as
+        cookies of their own }
       AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
-      AResponse.Params.AppendParams(FHttp.Cookies, rpkCOOKIE);
 
       { trimmed: fphttpclient splits its header list at the colon alone, so
         every value read by name comes with the blank after it - a typed
@@ -511,17 +599,19 @@ begin
       AResponse.ResponseStream := vResult;
       { A server that closes the connection after this answer says so (RFC
         9112 9.3), and fphttpclient 3.2 only looks for "Connection: close" in
-        its own REQUEST: it kept the socket and wrote the next request into
-        it. The read then failed, and a POST is not sent again after a failed
-        read (see the loop), so every other POST failed outright - against
-        fcl-web, this engine's own server, which closes after every answer
-        and says so. Switching KeepConnection off makes fphttpclient close it }
+        its own REQUEST. TRALfpHttpClientCore.HasConnectionClose already reads
+        the answer's header too; turning KeepConnection off here also covers an
+        HTTP/1.0 answer that did not ask to keep the connection }
       if ServerCloses then
         FHttp.KeepConnection := False;
-      // the request went through; if keep-alive is on, the socket stays open
-      // and the NEXT request will be reusing it - unless a redirect elsewhere
-      // or the server's own answer turned it off, see DoRedirect
-      FSocketReused := FHttp.KeepConnection;
+      // the request went through; if the socket is still open, the NEXT
+      // request will be reusing it. Asked of fphttpclient, not assumed from
+      // KeepAlive: an answer carrying "Connection: close" makes it disconnect,
+      // and the next request then runs on a fresh socket, where a fast
+      // failure says nothing about an aged-out connection. Nor when a redirect
+      // elsewhere or the server's own answer turned KeepConnection off - see
+      // DoRedirect
+      FSocketReused := Parent.KeepAlive and FHttp.KeepConnection and FHttp.SocketOpen;
     except
       on e: ESocketError do
       begin
@@ -542,6 +632,17 @@ begin
           HandleException(rteOther, -1, e.Message);
         end;
       end;
+      { The server closed the connection with no status line - see
+        TRALfpHttpClientCore.ReadResponse. On a socket this client had left
+        open that is the peer having dropped it, and nothing was processed.
+        Tested before EHTTPClient, which it descends from. }
+      on e: ERALfpConnectionClosed do
+      begin
+        if SocketIsDead then
+          Reconnect
+        else
+          HandleException(rteOther, -1, Format(emConnectionClosedNoResponse, [AURL]));
+      end;
       { EHTTPClient means two different things in fphttpclient, and only the
         StatusCode tells them apart:
 
@@ -557,8 +658,7 @@ begin
             kept-alive connection. But the request WAS written, and a server
             that ran it and died before answering fails just as fast - so only
             a method that may run twice goes again (RFC 7230 6.3.1). A clean
-            close never gets here: fphttpclient reads it as no answer at all
-            and resends by itself. }
+            close never gets here: it is ERALfpConnectionClosed, above. }
       on e: EHTTPClient do
       begin
         if e.StatusCode > 0 then

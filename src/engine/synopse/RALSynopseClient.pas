@@ -196,8 +196,7 @@ var
   vAddress: UTF8String;
   vResult: IntegerRAL;
   vKeepAlive: Cardinal;
-  vCookies: TStringList;
-  vInt: IntegerRAL;
+  vCookies: StringRAL;
   vUri: TUri;
   vServer, vHostName: StringRAL;
   vHostPort: IntegerRAL;
@@ -410,22 +409,9 @@ begin
       vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 
       // cookies
-      vCookies := TStringList.Create;
-      try
-        ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
-        if vCookies.Count > 0 then
-        begin
-          vHeader := vHeader + HTTPLineBreak + 'Cookie: ';
-          for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            if vInt > 0 then
-               vHeader := vHeader + '; ';
-            vHeader := vHeader + vCookies.Strings[vInt];
-          end;
-        end;
-      finally
-        FreeAndNil(vCookies);
-      end;
+      vCookies := ARequest.Params.CookieHeaderText;
+      if vCookies <> '' then
+        vHeader := vHeader + HTTPLineBreak + 'Cookie: ' + vCookies;
 
       try
         case AMethod of

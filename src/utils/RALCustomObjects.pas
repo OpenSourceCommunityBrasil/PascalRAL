@@ -106,6 +106,9 @@ type
     procedure Clone(ASource: TRALHTTPHeaderInfo);
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
     function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
+    /// The cookie of that name, received (Name and Value; the attributes of a
+    /// Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
+    /// this response (the whole record). An empty record when there is none.
     function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;
     function GetHeader(const AName: StringRAL): StringRAL; virtual;
@@ -498,7 +501,10 @@ begin
   Result := '';
   vParam := FParams.GetKind[AName, rpkCOOKIE];
   if vParam <> nil then
-    Result := vParam.AsString;
+    Result := vParam.AsString
+  else
+    // one AddCookie(TRALCookie) set on a response sits inside a Set-Cookie line
+    Result := GetRALCookie(AName).Value;
 end;
 
 function TRALHTTPHeaderInfo.GetRALCookie(const AName: StringRAL): TRALCookie;

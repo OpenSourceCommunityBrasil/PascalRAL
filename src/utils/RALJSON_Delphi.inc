@@ -399,7 +399,7 @@ end;
 
 function TRALJSONObject.Get(const AName: StringRAL): TRALJSONValue;
 var
-  {$IFNDEF DELPHI10_1UP}
+  {$IFNDEF DELPHI10_3UP}
   vPair: TJSONPair;
   {$ENDIF}
   {$IFNDEF DELPHIXEUP}

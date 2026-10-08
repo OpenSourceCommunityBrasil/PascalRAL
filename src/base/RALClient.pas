@@ -271,6 +271,24 @@ type
     /// verify at all unless asked, and enabling it unconditionally would break
     /// plain HTTPS on Windows, where OpenSSL has no certificate store
     function CertCheckWanted: boolean;
+    { THE CLIENT'S COOKIE JAR, for the engines whose library keeps one (Indy,
+      netHTTP). It belongs to the TRALClient, not to the engine: a client lends
+      several engines (the pool, one per thread) and every one of them has to
+      see the cookies the others received, while two clients - even sharing a
+      transport - must never see each other's. The engine still uses its
+      library's jar type, for the domain, path and expiry rules; it only stops
+      letting the library write the Cookie header, which is built by
+      TRALParams.CookieHeaderText(jar text). }
+
+    /// A new, empty jar of this engine's kind; nil - the default - for an
+    /// engine that keeps none. The client owns what it returns
+    class function NewCookieJar: TObject; virtual;
+    /// The client's jar, made by NewCookieJar on first use; nil when the
+    /// engine keeps none. Only between LockCookieJar and UnlockCookieJar:
+    /// Indy's jar is not safe across threads
+    function CookieJar: TObject;
+    procedure LockCookieJar;
+    procedure UnlockCookieJar;
 
     property Parent: TRALClient read FParent write FParent;
   public
@@ -526,6 +544,17 @@ type
     FSSL: TRALClientSSL;
     FThreads: TThreadList;
     FUserAgent: StringRAL;
+    { see TRALClientHTTP.CookieJar: the jar, the engine class that made it,
+      and the lock every use of it takes }
+    FCookieJar: TObject;
+    FCookieJarEngine: TClass;
+    FCookieLock: TCriticalSection;
+    { jars of an EngineType left behind - kept until Destroy, because a request
+      may still be running on an engine of the old type }
+    FOldCookieJars: TList;
+
+    { the jar for an engine of class AEngine - the caller holds FCookieLock }
+    function GetCookieJar(AEngine: TRALClientHTTPClass): TObject;
   protected
     procedure LockSession;
     procedure UnLockSession;
@@ -679,10 +708,11 @@ type
     /// connection - with every other client aimed at the same host with the
     /// same settings. On by default: the engines that honour it (netHTTP,
     /// OkHttp, MsQuic) are the ones where a connection per client is pure
-    /// cost. Two things change with it that a caller may be relying on: the
-    /// engine's cookie jar becomes common to the sharers, and their requests
-    /// queue on one connection unless the transport can multiplex (which is
-    /// what HTTPVersion = rhv2 buys, and what QUIC does by construction).
+    /// cost. One thing changes with it that a caller may be relying on: the
+    /// sharers' requests queue on one connection unless the transport can
+    /// multiplex (which is what HTTPVersion = rhv2 buys, and what QUIC does by
+    /// construction). The cookies do not travel with the transport: each
+    /// client keeps its own jar - see TRALClientHTTP.CookieJar.
     ///
     /// It is a HINT, not a contract: engines that cannot share ignore it
     /// silently instead of raising, because the same client is often
@@ -1650,6 +1680,25 @@ begin
   FCompressType := ctGZip;
   FEnginePool := TList.Create;
   FPoolConnection := TRALPoolConnection.Create(Self);
+  FCookieLock := TCriticalSection.Create;
+  FOldCookieJars := TList.Create;
+end;
+
+function TRALClient.GetCookieJar(AEngine: TRALClientHTTPClass): TObject;
+begin
+  { another EngineType asks: the old jar's type means nothing to this engine,
+    and an engine of the old type may still be using it }
+  if (FCookieJar <> nil) and (FCookieJarEngine <> AEngine) then
+  begin
+    FOldCookieJars.Add(FCookieJar);
+    FCookieJar := nil;
+  end;
+  if FCookieJar = nil then
+  begin
+    FCookieJar := AEngine.NewCookieJar;
+    FCookieJarEngine := AEngine;
+  end;
+  Result := FCookieJar;
 end;
 
 destructor TRALClient.Destroy;
@@ -1676,6 +1725,18 @@ begin
   end;
   FreeAndNil(FRequest);
   FreeAndNil(FBaseURL);
+  { after the engines and the threads: nobody is left to use a jar }
+  FreeAndNil(FCookieJar);
+  if FOldCookieJars <> nil then
+  begin
+    while FOldCookieJars.Count > 0 do
+    begin
+      TObject(FOldCookieJars.Items[0]).Free;
+      FOldCookieJars.Delete(0);
+    end;
+    FreeAndNil(FOldCookieJars);
+  end;
+  FreeAndNil(FCookieLock);
   { last, so everything above could still take it }
   FreeAndNil(FCritSession);
   inherited Destroy;
@@ -2231,6 +2292,31 @@ end;
 function TRALClientHTTP.CertCheckWanted: boolean;
 begin
   Result := HasPinForHost or Assigned(FParent.OnValidateServerCert);
+end;
+
+class function TRALClientHTTP.NewCookieJar: TObject;
+begin
+  Result := nil;
+end;
+
+function TRALClientHTTP.CookieJar: TObject;
+begin
+  if FParent <> nil then
+    Result := FParent.GetCookieJar(TRALClientHTTPClass(ClassType))
+  else
+    Result := nil;
+end;
+
+procedure TRALClientHTTP.LockCookieJar;
+begin
+  if (FParent <> nil) and (FParent.FCookieLock <> nil) then
+    FParent.FCookieLock.Acquire;
+end;
+
+procedure TRALClientHTTP.UnlockCookieJar;
+begin
+  if (FParent <> nil) and (FParent.FCookieLock <> nil) then
+    FParent.FCookieLock.Release;
 end;
 
 function TRALClientHTTP.AcceptEncodingFor(ARequest: TRALRequest): StringRAL;

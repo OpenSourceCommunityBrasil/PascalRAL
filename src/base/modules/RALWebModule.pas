@@ -712,8 +712,9 @@ var
   vPos, vStart, vLen: IntegerRAL;
   vOwn: StringRAL;
 
-  { the character at 1-based APos, whatever the strings' base }
-  function CharAt(APos: IntegerRAL): CharRAL;
+  { the character at 1-based APos, whatever the strings' base. AnsiChar, the
+    element of a StringRAL: CharRAL is WideChar before Delphi 10.1 }
+  function CharAt(APos: IntegerRAL): AnsiChar;
   begin
     Result := AList[POSINISTR - 1 + APos];
   end;
@@ -1467,8 +1468,9 @@ end;
   on every platform. Uniqueness is checked by the caller, under the lock }
 function TRALWebModule.NewSessionName: StringRAL;
 const
-  cHex: array[0..15] of CharRAL = ('0', '1', '2', '3', '4', '5', '6', '7',
-                                   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+  // AnsiChar, the element of a StringRAL: CharRAL is WideChar before Delphi 10.1
+  cHex: array[0..15] of AnsiChar = ('0', '1', '2', '3', '4', '5', '6', '7',
+                                    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
 var
   vBytes: TBytes;
   vInt: IntegerRAL;
