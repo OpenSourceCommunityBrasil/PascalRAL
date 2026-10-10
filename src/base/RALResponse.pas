@@ -1,4 +1,4 @@
-﻿/// Unit that contains everything related to the HTTP response of the traffic
+﻿/// The response of a server or the answer a client receives.
 unit RALResponse;
 
 interface
@@ -9,125 +9,100 @@ uses
   RALCompress, RALTools;
 
 type
-
-  { TRALResponse }
-
-  /// Base class for everything related to data response
+  /// A response: status, headers, cookies and body.
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
+    /// Stream handed out by BodyStream while it is the body.
     FBodyStream: TStream;
     FContentEncoded: boolean;
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
     FTransportError: TRALTransportError;
   protected
-    /// The body, decoded (see ResponseStream)
     function GetResponseStream: TStream;
-    /// The body, decoded, as text (see ResponseText)
     function GetResponseText: StringRAL;
-    /// Assign a Stream into the Response
     procedure SetResponseStream(const AValue: TStream); virtual; abstract;
-    /// Assign an UTF8String into the Response
     procedure SetResponseText(const AValue: StringRAL); virtual; abstract;
   public
     constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
 
-    /// Append an UTF8 String to the response
+    /// Adds AText as the body, of AContextType; returns the response.
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;
-    /// Append a name:value cookie to the response
+    { Adds a name=value cookie; returns the response.
+      @deprecated Use AddCookie(ACookie: TRALCookie). }
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce; overload; deprecated 'use AddCookie(ACookie: TRALCookie) instead';
-    /// Append a TRALCookie to the response
+    /// Adds ACookie, with its attributes; returns the response.
     function AddCookie(const ACookie: TRALCookie): TRALResponse; reintroduce; overload;
-    /// Append a custom param of type "Field" to the response
+    /// Adds a form field; returns the response.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
-    /// Loads and append a file to the response from given AFileName
+    /// Adds the file AFileName to the body; returns the response.
     function AddFile(const AFileName: StringRAL): TRALResponse; reintroduce; overload;
-    /// Append a file to the response from given AStream
+    /// Adds AStream to the body as a file named AFileName; returns the response.
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALResponse; reintroduce; overload;
-    /// Append a name:value param to the header of the response
+    /// Adds a header; returns the response.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
-    /// Sets the response with the given status code, UTF8 String and Content-Type
+    /// Answers AStatusCode with the text AMessage, of AContentType.
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
-    /// Sets the response with the given status code, Data Stream and Content-Type.
-    /// AStream is copied: the caller still owns it
+    /// Answers AStatusCode with a copy of AStream; the caller keeps AStream.
     procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
-    { The same, and with AOwnsStream the response TAKES AStream instead of
-      copying it: it is sent as it is and freed with the response, so the
-      caller must not touch it again. A stream built only to answer - a
-      file, a query saved to memory - costs its size once, not twice.
-      False copies, like the overload above }
+    { Answers AStatusCode with AStream; with AOwnsStream the response takes it,
+      sends it as it is and frees it, otherwise it is copied. }
     procedure Answer(AStatusCode: IntegerRAL; AStream: TStream;
                      const AContentType: StringRAL; AOwnsStream: boolean); overload;
-    /// Sets the response with the given status code
+    /// Answers AStatusCode, with the server's page for it when there is one.
     procedure Answer(AStatusCode: IntegerRAL); overload;
-    /// Loads and set a file to the response with the given AFileName and sets the disposition
-    /// to inline by default.
+    /// Answers with the file AFileName, inline unless DispositionInline is False.
     procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
-    { A stream to WRITE the body into, owned by the response and sent as it
-      is - Storage.SaveToStream(Query, AResponse.BodyStream) answers a query
-      with no intermediate copy. It is the body until something else replaces
-      it (Answer, ResponseText :=); asking again returns the same stream, so
-      several writes append. The body goes out with the response's
-      ContentType, whenever that is set }
+    { A stream to write the body into, owned by the response and sent as it is;
+      asking again returns the same stream while it is still the body. }
     function BodyStream: TStream;
-    /// Empties out the Response and sets default values
+    /// Empties the response and restores its defaults.
     procedure Clear; override;
-    /// Fills the 'ADest' Strings with RALParams Cookies' Headers
+    /// Adds the Set-Cookie values to ADest; ADateTime expires the plain cookies.
     procedure GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
-    /// Returns an UTF8 String with RALParams Cookies' Headers
+    /// The Set-Cookie header lines of the cookies, each starting with AHeader.
     function GetParamsCookiesText(ADateTime: TDateTime; AHeader: StringRAL = 'Set-Cookie: ') : StringRAL;
-    { The body, encoded for the wire when AEncode (a new stream the caller
-      frees): what the server engines used before TakeWireStream, which does
-      the same without copying a body that has nothing to transform. Without
-      AEncode, the body as it is }
+    /// The body, encoded for the wire when AEncode, as a stream (see the descendants).
     function GetResponseEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
+    /// The body as text, encoded for the wire when AEncode.
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
     function TakeWireStream: TStream; override;
     function TakeWireString: RawByteString; override;
 
-    /// The body already carries the coding ContentEncoding names - a file kept
-    /// compressed on disk, which the WebModule serves as it is - so it goes out
-    /// without being compressed again. ContentEncoding is written as text then,
-    /// since the coding need not be one this program can produce
+    /// The body is already coded as ContentEncoding says, and is not compressed again.
     property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
+    /// The body, decoded: on a server a copy the caller frees, on a client the one kept.
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
-    { The body, DECODED - never compressed or encrypted, whatever the headers
-      say. On a server it is what the handler answered, as a new stream the
-      caller frees (up to 1.2 it was the encoded body - an engine that read it
-      for the wire must use TakeWireStream). On a client it is the body that
-      arrived, owned by the response, and a multipart comes back as the bytes
-      received, not put back together with another boundary }
+    /// The body, decoded, as text.
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
   published
-    /// TCP Client Connection Error
+    /// Error of the transport on a client, 0 when an HTTP response arrived.
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
-    /// HTTP StatusCode
+    /// HTTP status code.
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
-    /// How the send attempt ended for the transport. rteNone means an HTTP
-    /// response arrived (even a 4xx/5xx one); anything else means it did not,
-    /// and then StatusCode carries no meaning. Filled by the client engines,
-    /// and read by TRALClientHTTP.BeforeSendUrl to decide whether resending on
-    /// another BaseURL is safe.
+    /// How the send attempt ended for the transport; rteNone when a response arrived.
     property TransportError: TRALTransportError read FTransportError
                                                 write FTransportError;
   end;
 
-  /// Derived class to handle ServerResponse
+  /// Response a server sends.
   TRALServerResponse = class(TRALResponse)
   protected
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
   public
+    /// The handler's body: encoded for the wire when AEncode, a plain copy otherwise.
     function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
   end;
 
-  /// Derived class to handle ClientResponse
+  /// Response a client receives.
   TRALClientResponse = class(TRALResponse)
   private
+    /// Body assembled from the params when none went through the decoder.
     FStream: TStream;
   protected
     procedure SetResponseStream(const AValue: TStream); override;
@@ -137,8 +112,7 @@ type
     destructor Destroy; override;
 
     procedure Clear; override;
-    { The body that arrived, decoded - the one stream the body params read
-      from, owned by the response. AEncode means nothing here }
+    /// The body that arrived, decoded and owned by the response; AEncode is ignored.
     function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
     procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); override;
@@ -204,7 +178,7 @@ function TRALResponse.BodyStream: TStream;
 var
   vParam: TRALParam;
 begin
-  { the same stream while it is still the body: several writes append }
+  // the same stream while it is still the body: several writes append
   vParam := Body;
   if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
      (vParam.Content = FBodyStream) and (Params.Count(rpkBODY) = 1) then
@@ -228,15 +202,14 @@ var
   vParam: TRALParam;
   vEncoding: StringRAL;
 begin
-  { BodyStream may have been asked before the handler set the content type }
+  // BodyStream may have been asked before the handler set the content type
   vParam := Body;
   if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
      (vParam.Content = FBodyStream) then
     vParam.ContentType := ContentType;
   FBodyStream := nil;
-  { coded already (ContentEncoded): nothing compresses it again, and
-    ContentEncoding goes out as it was written - the coding need not be one
-    this program can produce }
+  { coded already: nothing compresses it again, and ContentEncoding goes out as
+    written, even for a coding this program cannot produce }
   if FContentEncoded then
   begin
     vEncoding := ContentEncoding;
@@ -275,10 +248,8 @@ var
   vAttrs: StringRAL;
   vParam: TRALParam;
 begin
-  { what a plain name=value cookie carries: the server's CookieLife, as a date
-    that does not depend on the locale (FormatDateTime wrote its time separator
-    where ':' stood), and Path=/ so the browser sends it to every route - with
-    no Path it kept the cookie for the folder of the URL that set it }
+  { A plain name=value cookie expires at ADateTime and carries Path=/, so the
+    browser sends it to every route. }
   vAttrs := '; Expires=' + RALHTTPDate(RALDateTimeToGMT(ADateTime)) + '; Path=/';
 
   for vInt := 0 to Pred(Params.Count) do
@@ -286,11 +257,8 @@ begin
     vParam := TRALParam(Params.Index[vInt]);
     if (vParam <> nil) and (vParam.Kind = rpkCOOKIE) then
     begin
-      { AddCookie(TRALCookie) stores the whole Set-Cookie value - name,
-        value, Expires, Path, HttpOnly, Secure - in a param named Set-Cookie:
-        that one goes out as it is. A plain name=value param gets the
-        attributes above. Every engine builds its cookies from this list,
-        so this is where a CR or LF in one is taken out (RALSafeHeaderText) }
+      { A Set-Cookie param holds a whole cookie line and goes out as it is; every
+        engine builds its cookies from here, so CR and LF are taken out here. }
       if RALSameName(vParam.ParamName, 'Set-Cookie') then
         ADest.Add(RALSafeHeaderText(vParam.AsString))
       else
@@ -402,16 +370,13 @@ end;
 
 function TRALResponse.GetResponseStream: TStream;
 begin
-  { decoded on both sides: on a server, what the handler answered - an
-    OnResponse reading it gets the text, not gzip }
+  // decoded on both sides: on a server, what the handler answered
   Result := GetResponseEncStream(False);
 end;
 
 function TRALResponse.GetResponseText: StringRAL;
 begin
-  { the body as text, never what goes on the wire: on the server that used to
-    run the whole encoding - multipart, gzip, AES - to be thrown away, and
-    rewrote ContentType on the way. An engine wants GetResponseEncText }
+  // the body as text, never what goes on the wire (that is GetResponseEncText)
   Result := GetResponseEncText(False);
 end;
 
@@ -431,8 +396,7 @@ begin
   vContentDisposition := '';
   if not AEncode then
   begin
-    { what the handler answered, as the caller's own copy - the contract
-      ResponseStream always had. Nothing here is changed }
+    // what the handler answered, as the caller's own copy
     vSource := Params.PlainBody(vContentType, vContentDisposition);
     if vSource = nil then
       Exit;
@@ -452,9 +416,7 @@ begin
     Exit;
   end;
 
-  { encoded, for an engine written before TakeWireStream. The params are left
-    as they were: this used to set the response's key and compression on them
-    and leave them there, so a later read of the body saw them too }
+  // encoded, for an engine without TakeWireStream; the params are restored after
   vCompress := Params.CompressType;
   vCripto := Params.CriptoOptions.CriptType;
   vKey := Params.CriptoOptions.Key;
@@ -470,8 +432,7 @@ begin
     Result := Params.EncodeBody(vContentType, vContentDisposition);
     ContentType := vContentType;
     ContentDisposition := vContentDisposition;
-    { what was done, not what was asked - but a body coded already keeps the
-      ContentEncoding it was written with }
+    // what was done, not what was asked; a body coded already keeps its ContentEncoding
     if Result = nil then
       ContentCompress := ctNone
     else if not FContentEncoded then
@@ -553,8 +514,7 @@ end;
 
 procedure TRALClientResponse.Clear;
 begin
-  { a response is reused across the attempts of one call: the body assembled
-    for the previous one must not answer for this one }
+  // a response is reused across the attempts of one call
   FreeAndNil(FStream);
   inherited;
 end;
@@ -573,7 +533,7 @@ var
   vCompress: TRALCompressType;
   vCripto: TRALCriptoType;
 begin
-  { the body as it arrived, decoded once - no copy }
+  // the body as it arrived, decoded once, with no copy
   Result := Params.Decoded;
   if Result <> nil then
   begin
@@ -604,16 +564,13 @@ end;
 function TRALClientResponse.GetResponseEncText(
   const AEncode: boolean): StringRAL;
 begin
-  { a body an engine delivered as a string comes back as that string; any
-    other is read once. It was copied into a TRALStringStream first, then
-    read out of it: two copies to read a body as text }
+  // a body delivered as a string comes back as that string
   Result := RALStreamText(GetResponseEncStream(AEncode));
 end;
 
 procedure TRALClientResponse.SetResponseStream(const AValue: TStream);
 begin
-  { the old engine entry: decoded with whatever Params says, and AValue is
-    copied (SetWireBody is the one that adopts) }
+  // decoded with what Params says; AValue is copied (SetWireBody adopts)
   FreeAndNil(FStream);
   if Assigned(AValue) and (AValue.size > 0) then
     Params.DecodeBody(AValue, ContentType, ContentDisposition);
