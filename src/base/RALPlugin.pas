@@ -1,38 +1,5 @@
-﻿/// Base classes of the server plugins, and the host that runs them
+﻿/// Base classes of the server plugins, and the host that runs them.
 unit RALPlugin;
-
-{ A server answers a request in two loops (TRALServer.ProcessCommands): first
-  its plugins, in order of Priority, then its modules, which look for the route
-  and run it. A server with no plugin still answers - the first loop has
-  nothing to walk - and every feature that is not routing is a plugin: the size
-  limit, compression, encryption, the security lists, brute force, flood, CORS,
-  each authentication, the JSON body as params. Like the middlewares of other
-  frameworks, with the order fixed by the priorities and not by the order the
-  application links them in; plugins with the same Priority keep the order they
-  were added in.
-
-  A plugin states the phases it acts in (Phases) and the host keeps one list per
-  phase, so a phase nobody uses costs nothing:
-  - ppValidate runs before the body is decoded (TRALServer.ValidateRequest,
-    which the engines call), so a refused request is never decoded;
-  - ppProcess is the plugin loop of ProcessCommands: a plugin that answers the
-    request sets AHandled, and neither the next plugins nor the modules run;
-  - ppResolveRoute, ppAuthenticate and ppAuthResult are not loops of the server
-    but calls between plugins: a plugin offering a route of its own, the
-    authenticators deciding, and the plugins that want to know the verdict -
-    brute force counts the failures there, before any module runs.
-
-  The route of a request is looked up once, the first time someone asks
-  (FindRoute), and kept in the request: an authentication plugin needs it to
-  know whether the method skips authentication, CORS needs its methods, and the
-  modules then answer it without looking again.
-
-  A plugin hears the server start and stop (ServerActivating and
-  ServerDeactivating), with the contract the modules have: activating is
-  requested, not listening - the engines call it before they open the port, so
-  a plugin can still change how they open it (RALSelfSigned hands them a
-  certificate there) - and an exception keeps the server stopped. A plugin
-  added to a running server hears ServerActivating at once. }
 
 interface
 
@@ -43,81 +10,66 @@ uses
   RALTypes, RALConsts, RALCustomObjects, RALRequest, RALResponse, RALRoutes;
 
 const
-  /// Security headers: added first, so every answer carries them - a 403 or a
-  /// 413 of the plugins below included
+  /// Priority of the security headers: first, so every answer carries them.
   RALPrioritySecurityHeaders = 950;
-  /// Size limit: 413
+  /// Priority of the size limit (413).
   RALPriorityLimits = 900;
-  /// Compression: 415, 406, and how the response is compressed
+  /// Priority of compression (415, 406 and the coding of the response).
   RALPriorityCompress = 890;
-  /// Encryption: the key of the body and of the response
+  /// Priority of the body cipher.
   RALPriorityCripto = 880;
-  /// White list: marks the request Trusted for the protections below
+  /// Priority of the white list, which marks the request Trusted.
   RALPriorityWhiteList = 870;
-  /// Black list: 403
+  /// Priority of the black list (403).
   RALPriorityBlackList = 860;
-  /// Brute force: 403 for an address with MaxTry failures
+  /// Priority of the brute force protection (403 after MaxTry failures).
   RALPriorityBruteForce = 850;
-  /// Flood: 403 for a request too close to the previous one
+  /// Priority of the flood protection (403 for requests too close together).
   RALPriorityFlood = 840;
-  /// Path traversal: 403 for a route with '../'
+  /// Priority of the path traversal protection (403 for a route with '../').
   RALPriorityPathTraversal = 830;
-  /// CORS headers
+  /// Priority of the CORS headers.
   RALPriorityCORS = 700;
-  /// Authentication
+  /// Priority of the authentication plugins.
   RALPriorityAuthentication = 500;
-  /// JSON body as params: after the authentication, nothing is parsed for a
-  /// request that is refused
+  /// Priority of the JSON body as params: after authentication.
   RALPriorityJSONBody = 400;
-  /// What a plugin gets when it does not say otherwise
+  /// Priority of a plugin that does not set its own.
   RALPriorityDefault = 100;
-  /// Concurrency limit (RALConcurrency): after every RAL plugin that refuses
-  /// in ppValidate - a request the black list, the flood check or the size
-  /// limit refuse never waits for a slot - and just before the engine decodes
-  /// the body
+  /// Priority of the concurrency limit: the last validator before the body is decoded.
   RALPriorityConcurrency = 50;
 
 type
   TRALPluginHost = class;
 
-  /// The points of a request where a plugin can act
+  /// Point of a request where a plugin acts.
   TRALPluginPhase = (
-    /// Before the body is decoded (TRALServer.ValidateRequest). Answering a
-    /// status of 400 or more refuses the request; the next plugins do not run
+    /// Before the body is decoded; a status of 400 or more refuses the request.
     ppValidate,
-    /// The plugin loop of TRALServer.ProcessCommands. Setting AHandled answers
-    /// the request here, with whatever the plugin put in the response
+    /// The plugin loop of TRALServer.ProcessCommands; AHandled answers there.
     ppProcess,
-    /// The plugin offers a route of its own (the JWT token route), looked up
-    /// after the routes of the modules. It answers it in ProcessRequest, where
-    /// the request's RouteOwner is the plugin
+    /// The plugin offers a route of its own and answers it in ProcessRequest.
     ppResolveRoute,
-    /// The plugin is an authenticator: TRALPluginHost.Authenticate asks it
+    /// The plugin is an authenticator, asked by TRALPluginHost.Authenticate.
     ppAuthenticate,
-    /// The authentication decided: the plugin may change the verdict - brute
-    /// force counts the failures here
+    /// The plugin hears the authentication verdict and may change it.
     ppAuthResult);
+  /// Set of plugin phases.
   TRALPluginPhases = set of TRALPluginPhase;
 
-  /// What an authenticating plugin concluded about a request
+  /// Verdict of an authenticating plugin.
   TRALAuthResult = (
-    /// The credentials are good: the route runs
+    /// Credentials accepted: the route runs.
     arAccepted,
-    /// No credentials, or wrong ones: 401
+    /// No credentials, or wrong ones: 401.
     arUnauthorized,
-    /// Known, but not allowed: 403
+    /// Known, but not allowed: 403.
     arForbidden);
 
-  /// What one request means to the brute-force protection, as the
-  /// authenticator that checked it says (TRALServerPlugin.AttemptOf): a wrong
-  /// secret (counted against the address), a right one (the count starts over)
-  /// or neither - no credentials at all is not a guess, and nobody guesses an
-  /// expired token
+  /// What a request means to brute force: a failed secret, a passed one, or neither.
   TRALAuthAttempt = (raaNone, raaFailed, raaPassed);
 
-  { TRALServerPlugin }
-
-  /// Base of everything that plugs into a server
+  /// Base of everything that plugs into a server.
   TRALServerPlugin = class(TRALComponent)
   private
     FEnabled: boolean;
@@ -127,161 +79,141 @@ type
     procedure SetEnabled(AValue: boolean);
     procedure SetPriority(AValue: IntegerRAL);
   protected
-    /// Tells the host to rebuild its lists: the priority, the phases or
-    /// Enabled changed
+    /// Tells the host to rebuild its lists after Priority, Phases or Enabled changed.
     procedure Changed;
-    /// The Priority a new instance starts with
+    /// Priority a new instance starts with.
     class function DefaultPriority: IntegerRAL; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// The phases this plugin acts in. Only these hooks are ever called; a
-    /// plugin whose phases depend on its configuration calls Changed when that
-    /// configuration changes
+    { Phases the plugin acts in; only their hooks are called. A plugin whose
+      phases depend on its settings calls Changed when they change. }
     function Phases: TRALPluginPhases; virtual;
-    /// Called by the host when the plugin is added to it or removed from it
+    /// Called by the host when the plugin is added to it or removed from it.
     procedure SetHost(AHost: TRALPluginHost); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// ppAuthResult. Change AResult to change the verdict
+    /// ppAuthResult: hears the verdict and may change AResult.
     procedure AfterAuthenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       var AResult: TRALAuthResult); virtual;
-    /// ppAuthenticate: what the request this authenticator just decided
-    /// (AResult) means to the brute-force protection. AOnOwnRoute is True for
-    /// the plugin's own routes - the JWT token route. Only a secret that was
-    /// checked counts; raaNone, the default, is "not mine to say"
+    { ppAuthenticate: what the request this authenticator decided means to brute
+      force. AOnOwnRoute is True on the plugin's own routes; the default is raaNone. }
     function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
       AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; virtual;
-    /// ppAuthResult: an authenticator reported what a request meant
-    /// (TRALPluginHost.ReportAttempt) - brute force counts or clears here
+    /// ppAuthResult: an authenticator reported AAttempt for the request.
     procedure AuthAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
       AAttempt: TRALAuthAttempt); virtual;
-    /// ppAuthenticate. ARoute is the route of the request
+    /// ppAuthenticate: decides ARequest, whose route is ARoute.
     function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       ARoute: TRALRoute): TRALAuthResult; virtual;
-    /// Whether the lifecycle hooks may be called: not while designing,
-    /// loading or destroying
+    /// False while designing, loading or destroying, when no lifecycle hook is called.
     function CanNotify: boolean;
-    /// ppProcess. Set AHandled to True to answer the request here
+    /// ppProcess: set AHandled to answer the request here.
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); virtual;
-    /// ppResolveRoute. A route of the plugin's own, or nil
+    /// ppResolveRoute: a route of the plugin's own for the request, or nil.
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       virtual;
-    /// The server is starting: called before the engine opens its port, or at
-    /// once when the plugin is added to a server that is already running. An
-    /// exception keeps the server stopped (or the plugin out of it)
+    { The server is starting (before the engine opens its port), or the plugin
+      joined a running server. An exception keeps the server stopped. }
     procedure ServerActivating; virtual;
-    /// The server is stopping, or the plugin left a running server. Requests
-    /// may still be running; exceptions go to the server's OnServerError
+    { The server is stopping, or the plugin left a running server. Requests may
+      still be running; exceptions go to the server's OnServerError. }
     procedure ServerDeactivating; virtual;
-    /// ppValidate. Answer 400 or above to refuse
+    /// ppValidate: answer a status of 400 or above to refuse the request.
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
 
-    /// The server this plugin is in, or nil
+    /// Server the plugin is in, or nil.
     property Host: TRALPluginHost read FHost;
   published
-    /// A disabled plugin stays in the host and is skipped
+    /// A disabled plugin stays in the server and is skipped.
     property Enabled: boolean read FEnabled write SetEnabled default True;
-    /// Higher runs first. See the RALPriority* constants for the RAL ones
+    /// Running order: higher runs first (see the RALPriority* constants).
     property Priority: IntegerRAL read FPriority write SetPriority;
   end;
 
+  /// Class of a server plugin.
   TRALServerPluginClass = class of TRALServerPlugin;
 
-  { TRALPlugin }
-
-  /// A plugin that is dropped on a form and attached with its Server property,
-  /// the way modules are. Inherit from this one to write a plugin
+  /// Plugin dropped on a form and linked by its Server property; inherit from it.
   TRALPlugin = class(TRALServerPlugin)
   private
     function GetServer: TRALPluginHost;
     procedure SetServer(AValue: TRALPluginHost);
   published
+    /// Server the plugin is linked to.
     property Server: TRALPluginHost read GetServer write SetServer;
   end;
 
+  /// Array of plugins.
   TRALPluginList = array of TRALServerPlugin;
 
-  { TRALPluginSnapshot }
-
-  /// The plugins of a host as the requests read them: sorted, per phase, and
-  /// never changed after it is built. The host builds a new one instead
+  /// Plugins of a host as requests read them: sorted, per phase, never changed.
   TRALPluginSnapshot = class
   public
+    /// Enabled plugins of each phase, in running order.
     ByPhase: array[TRALPluginPhase] of TRALPluginList;
+    /// Enabled plugins, in running order.
     Sorted: TRALPluginList;
   end;
 
-  { TRALPluginHost }
-
-  /// What a server is to its plugins: the list, the order and the runners.
-  /// TRALServer descends from it
+  /// Plugin list, running order and runners of a server; TRALServer descends from it.
   TRALPluginHost = class(TRALComponent)
   private
+    /// Guards the plugin list and the rebuild of the snapshot.
     FLock: TCriticalSection;
+    /// Plugins added, in the order they were added.
     FPlugins: TList;
+    /// Replaced snapshots, kept until the host is freed.
     FRetired: TList;
+    /// Current snapshot.
     FSnapshot: TRALPluginSnapshot;
 
+    /// Builds a new snapshot; called under FLock.
     procedure Rebuild;
   protected
-    /// Whether the host is running: a plugin added now hears ServerActivating.
-    /// TRALServer answers its Active
+    /// Whether the host runs: a plugin added then hears ServerActivating.
     function IsHostActive: boolean; virtual;
-    /// Looks the route of ARequest up, without the cache of FindRoute: here,
-    /// the routes plugins offer. TRALServer asks its modules first
+    /// Route of ARequest without the cache of FindRoute: here, the routes plugins offer.
     function LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
       out AOwner: TObject): TRALRoute; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// ServerActivating (AActive) or ServerDeactivating on every plugin, in
-    /// running order. Starting, the first exception stops the walk, the
-    /// plugins that had started hear the stop, and it goes up; stopping always
-    /// reaches all of them, their exceptions through PluginError
+    { Calls ServerActivating (AActive) or ServerDeactivating on every plugin.
+      Starting, an exception stops the plugins already started and goes up. }
     procedure NotifyPlugins(AActive: boolean);
-    /// An exception of a plugin that is stopping. TRALServer hands it to
-    /// OnServerError
+    /// Exception of a stopping plugin; TRALServer hands it to OnServerError.
     procedure PluginError(AError: Exception); virtual;
-    /// A plugin left the host - removed, or freed. A descendant that keeps a
-    /// reference of its own to a plugin clears it here: the plugin removes
-    /// itself before its free notifications go out, so this is the one
-    /// moment the host is sure to hear about it
+    /// A plugin left the host, removed or freed: clear any reference kept to it.
     procedure PluginRemoved(APlugin: TRALServerPlugin); virtual;
-    /// ppValidate: True when the request may go on
+    /// Runs the ppValidate plugins; False when one refused the request.
     function RunValidate(ARequest: TRALRequest; AResponse: TRALResponse): boolean;
-    /// The current snapshot. Read once per request and walk that one: a
-    /// snapshot replaced meanwhile stays alive until the host is destroyed
+    /// Current snapshot; read it once per request and walk that one.
     function Snapshot: TRALPluginSnapshot;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Adds a plugin; adding one already there does nothing. The host does
-    /// not own it
+    /// Adds a plugin, if not there yet; the host does not own it.
     procedure AddPlugin(APlugin: TRALServerPlugin);
-    /// Every authenticator decides (ppAuthenticate): accepted when any of them
-    /// accepts, otherwise 401 when any says so, 403 when all that answered say
-    /// 403. Then the ppAuthResult plugins may change the verdict. Called by
-    /// an authentication plugin, from its ProcessRequest
+    { Asks every authenticator: accepted when any accepts, else 401 when any
+      said 401, else 403. Then the ppAuthResult plugins may change the verdict. }
     function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       ARoute: TRALRoute): TRALAuthResult;
-    /// A plugin blocked AClientIP. TRALServer fires OnClientBlock
+    /// A plugin blocked AClientIP; TRALServer fires OnClientBlock.
     procedure ClientBlocked(const AClientIP: StringRAL); virtual;
-    /// The first enabled plugin of AClass (or a descendant), in running order
+    /// First enabled plugin of AClass or a descendant, in running order, or nil.
     function FindPlugin(AClass: TRALServerPluginClass): TRALServerPlugin;
-    /// The route that answers ARequest, or nil. Looked up once and kept in the
-    /// request (ResolvedRoute, RouteOwner): every later call is free
+    /// Route that answers ARequest, or nil; looked up once and kept in the request.
     function FindRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
-    /// The plugins in the order they run
+    /// Enabled plugin at AIndex in running order, or nil.
     function GetPlugin(AIndex: IntegerRAL): TRALServerPlugin;
-    /// Rebuilds the lists; plugins call it through TRALServerPlugin.Changed
+    /// Rebuilds the lists; plugins call it through TRALServerPlugin.Changed.
     procedure PluginChanged(APlugin: TRALServerPlugin);
-    /// How many enabled plugins
+    /// Number of enabled plugins.
     function PluginCount: IntegerRAL;
+    /// Removes a plugin; it hears ServerDeactivating if the server is running.
     procedure RemovePlugin(APlugin: TRALServerPlugin);
-    /// Hands AAttempt to the ppAuthResult plugins (AuthAttempt). Authenticate
-    /// does it for the routes it decides; an authenticator answering a route
-    /// of its own (the JWT token route) calls it itself. raaNone reaches no one
+    /// Hands AAttempt to the ppAuthResult plugins; raaNone reaches no one.
     procedure ReportAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
       AAttempt: TRALAuthAttempt);
   end;
@@ -440,8 +372,7 @@ var
   vInt: IntegerRAL;
   vPlugin: TRALServerPlugin;
 begin
-  { the plugins outlive the host as often as not (a form frees its components
-    in any order): they are told, and they stop pointing here }
+  // plugins may outlive the host (a form frees in any order): they stop pointing here
   for vInt := Pred(FPlugins.Count) downto 0 do
   begin
     vPlugin := TRALServerPlugin(FPlugins.Items[vInt]);
@@ -467,7 +398,7 @@ begin
   try
     if FPlugins.IndexOf(APlugin) >= 0 then
       Exit;
-    { a plugin lives in one host at a time }
+    // a plugin lives in one host at a time
     if (APlugin.Host <> nil) and (APlugin.Host <> Self) then
       APlugin.Host.RemovePlugin(APlugin);
     FPlugins.Add(APlugin);
@@ -479,10 +410,8 @@ begin
     FLock.Release;
   end;
 
-  { outside the lock: starting may take a while (a key to generate) and may
-    ask the host things. A plugin that cannot start does not stay in a running
-    server; while loading, the plugin's own Loaded does it, once its
-    properties are read }
+  { Outside the lock: starting may be slow and may ask the host things. A plugin
+    that cannot start leaves; while loading, its own Loaded starts it. }
   if IsHostActive and APlugin.Enabled and APlugin.CanNotify then
     try
       APlugin.ServerActivating;
@@ -520,8 +449,7 @@ begin
         Result := arUnauthorized;
     end;
 
-    { the authenticator of the scheme the client used says what it meant; the
-      others answer raaNone }
+    // the authenticator of the scheme the client used answers; the others say raaNone
     for vInt := 0 to High(vList) do
     begin
       vAttempt := vList[vInt].AttemptOf(ARequest, AResponse, Result, False);
@@ -626,7 +554,7 @@ begin
   end
   else
   begin
-    { in reverse: what started last stops first }
+    // in reverse: what started last stops first
     for vInt := High(vSnap.Sorted) downto 0 do
       if vSnap.Sorted[vInt].CanNotify then
         try
@@ -702,8 +630,7 @@ begin
   // runs under FLock
   vNew := TRALPluginSnapshot.Create;
 
-  { insertion sort, stable: the lists are a handful of items, and a plugin with
-    the same priority as another keeps the place it was added in }
+  // stable insertion sort: plugins of the same priority keep the order they were added
   vCount := 0;
   SetLength(vNew.Sorted, FPlugins.Count);
   for vInt := 0 to Pred(FPlugins.Count) do
@@ -733,9 +660,8 @@ begin
       end;
   end;
 
-  { the old snapshot may be in the hands of a request right now: it is kept, not
-    freed. Plugins change while a server is being set up, not while it serves,
-    so this list stays as short as the number of changes }
+  { A request may be walking the old snapshot: it is kept until the host is freed.
+    Plugins change while a server is set up, so the list stays short. }
   if FSnapshot <> nil then
     FRetired.Add(FSnapshot);
   FSnapshot := vNew;
@@ -745,8 +671,8 @@ procedure TRALPluginHost.RemovePlugin(APlugin: TRALServerPlugin);
 var
   vInt: IntegerRAL;
 begin
-  { a plugin leaving a running server stops first; one being destroyed is
-    half gone by now (its own destructor already ran) and stopped itself }
+  { A plugin leaving a running server stops first; one being destroyed already
+    ran its destructor and stopped itself. }
   if (FPlugins <> nil) and (FPlugins.IndexOf(APlugin) >= 0) and IsHostActive and
     APlugin.Enabled and APlugin.CanNotify then
     try
