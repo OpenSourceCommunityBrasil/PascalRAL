@@ -1,4 +1,4 @@
-﻿// Unit for all HTTP Server related implementations
+﻿/// The server component, its modules, and the TLS certificate API of the engines.
 unit RALServer;
 
 interface
@@ -10,122 +10,111 @@ uses
   RALResponsePages, RALCompressZLib, RALPlugin;
 
 const
-  /// The start of the friendly name of the certificates RALSelfSigned makes:
-  /// what tells them apart in the Windows store, so that renewing removes the
-  /// old one and never a certificate somebody else put there
+  /// Start of the friendly name of the certificates RALSelfSigned makes in the store.
   RALSelfSignedFriendlyName = 'PascalRAL self-signed';
 
 type
   TRALServer = class;
   TRALModuleRoutes = class;
 
-  { TRALSSL }
-
-  // Internal SSL property of RALServer Component
+  /// TLS settings of a server; each engine descends it.
   TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
   protected
     procedure AssignTo(Dest: TPersistent); override;
   published
+    /// The server serves HTTPS.
     property Enabled: boolean read FEnabled write FEnabled;
   end;
 
-  /// How an engine takes its server certificate (TRALServer.TLSProvisioning):
-  /// whoever provides one - RALSelfSigned - writes what the engine reads
+  /// How an engine takes its server certificate.
   TRALTLSProvisioning = (
-    /// TLS is not the engine's (CGI, UniGUI): the server in front of it does it
+    /// TLS is not the engine's (CGI, UniGUI): the server in front does it.
     tpNone,
-    /// a certificate file and a key file in PEM (Indy, fpHTTP, MsQuic)
+    /// Certificate and key files in PEM (Indy, fpHTTP, MsQuic).
     tpPEMFiles,
-    /// one PKCS#12 file with its password (mORMot2 sockets: SChannel and OpenSSL)
+    /// One PKCS#12 file and its password (mORMot2 sockets).
     tpPFXFile,
-    /// the certificate and the key as PEM text (Sagui)
+    /// Certificate and key as PEM text (Sagui).
     tpPEMText,
-    /// the Windows machine store and a binding of the port (mORMot2 http.sys)
+    /// Windows machine store and a binding of the port (mORMot2 http.sys).
     tpWindowsStore);
 
-  /// A server certificate in every form the engines take. A provider fills all
-  /// of them and each engine reads the ones its TLSProvisioning names; an
-  /// engine describing its own certificate (GetTLSCertificate) fills what it
-  /// has
+  { A server certificate in every form the engines take; each engine reads the
+    fields its TLSProvisioning names. }
   TRALTLSCertificate = record
-    /// certificate in PEM (the chain may follow the certificate)
+    /// Certificate file in PEM; the chain may follow the certificate.
     CertificateFile: StringRAL;
-    /// private key in PEM
+    /// Private key file in PEM.
     PrivateKeyFile: StringRAL;
-    /// password of PrivateKeyFile; empty for a plain key
+    /// Password of PrivateKeyFile; empty for a plain key.
     PrivateKeyPassword: StringRAL;
-    /// the certificate and its key in PKCS#12
+    /// Certificate and key in a PKCS#12 file.
     PfxFile: StringRAL;
+    /// Password of PfxFile.
     PfxPassword: StringRAL;
-    /// the certificate and the key as PEM text
+    /// Certificate as PEM text.
     CertificatePEM: StringRAL;
+    /// Private key as PEM text.
     PrivateKeyPEM: StringRAL;
-    /// the DER of the certificate: what the engine holds when it has no file
-    /// (the Windows store), and what a provider hands over so an engine that
-    /// loads the certificate per connection never reads a file half written
+    /// Certificate in DER, also for an engine without a file (the Windows store).
     CertificateDER: TBytes;
-    /// the DER of the private key, RSAPrivateKey (PKCS#1)
+    /// Private key in DER (PKCS#1 RSAPrivateKey).
     PrivateKeyDER: TBytes;
   end;
 
-  /// What TRALServer.SetTLSCertificate did
+  /// What TRALServer.SetTLSCertificate did.
   TRALTLSApplyResult = (
-    /// the engine has no TLS of its own: nothing was done
+    /// The engine has no TLS of its own: nothing was done.
     tarUnsupported,
-    /// set up; on a running server the connections that arrive from now on
-    /// use it, the open ones keep theirs
+    /// Set up; on a running server, new connections use it.
     tarApplied,
-    /// set up, but the running listener opened without TLS and cannot turn it
-    /// on: the caller restarts the server
+    /// Set up, but the listener opened without TLS: restart the server.
     tarRestartNeeded);
 
-  { TRALIPConfig }
-
-  // Internal IP Configuration property of RALServer
+  /// Addresses a server listens on.
   TRALIPConfig = class(TPersistent)
   private
     FIPv4Bind: StringRAL;
     FIPv6Bind: StringRAL;
     FIPv6Enabled: boolean;
+    /// Server the settings belong to.
     FOwner: TRALServer;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     procedure SetIPv6Enabled(AValue: boolean);
   public
+    /// Settings of AOwner: every IPv4 address, no IPv6.
     constructor Create(AOwner: TRALServer);
   published
+    /// IPv4 address to listen on; '0.0.0.0' is every address.
     property IPv4Bind: StringRAL read FIPv4Bind write FIPv4Bind;
+    /// IPv6 address to listen on; '::' is every address.
     property IPv6Bind: StringRAL read FIPv6Bind write FIPv6Bind;
+    /// Listens on IPv6 too; raises on an engine without it, restarts a running server.
     property IPv6Enabled: boolean read FIPv6Enabled write SetIPv6Enabled;
   end;
 
-  // Event fired when requesting IP is blocked
+  /// Event fired when a plugin blocks the address AClientIP.
   TRALOnClientBlock = procedure(Sender: TObject; AClientIP: StringRAL) of object;
 
+  /// Event fired with an exception the server caught.
   TRALOnServerError = procedure(Error: Exception) of object;
 
-  { TRALServer }
-
-  { Base class for HTTP Server components.
-    ProcessCommands answers a request in two loops: the plugins (see RALPlugin),
-    by priority, until one of them answers; then the modules, until one of them
-    owns the route - the server's own routes first, through an internal module,
-    then the TRALModuleRoutes linked to it. With no plugin the first loop has
-    nothing to do, and with no route and no module the answer is 404. Every
-    feature that is not routing - size limit, compression, encryption, security
-    lists, brute force, flood, CORS, authentication, JSON body as params - is a
-    plugin the application links, none of them built in }
+  { Base of the server components: answers each request through its plugins, then
+    its modules. Every feature other than routing is a plugin. }
   TRALServer = class(TRALPluginHost)
   private
     FActive: boolean;
     FAuthentication: TRALAuthServer;
+    /// Internal module of the server's own routes and of its status page.
     FBaseModule: TRALModuleRoutes;
     FCookieLife: IntegerRAL;
     FEngine: StringRAL;
     FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
+    /// Modules linked to the server.
     FListSubModules: TList;
     FOnClientBlock: TRALOnClientBlock;
     FOnRequest: TRALOnReply;
@@ -138,48 +127,42 @@ type
     FServerStatus: TStringList;
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
+    /// TLS settings, created by the engine (CreateRALSSL).
     FSSL: TRALSSL;
-    { Active as read from the form, applied by Loaded - see WriteActive }
+    /// Active as read from a form, applied by Loaded.
     FStreamedActive: boolean;
 
-    /// Index of the first module of the modules loop: -1, the internal module
-    /// of the server's own routes, when there is something for it to answer
+    /// First module of the modules loop: -1, the internal module, when it has work.
     function FirstModule: IntegerRAL;
-    /// -1 is the internal module; from 0 on, the linked ones
+    /// Module at AIndex: -1 is the internal module, from 0 on the linked ones.
     function GetModule(AIndex: IntegerRAL): TRALModuleRoutes;
-    /// ServerActivating/ServerDeactivating on the linked modules
+    /// Calls ServerActivating or ServerDeactivating on the linked modules.
     procedure NotifyModules(AActive: boolean);
     procedure WriteActive(const AValue: boolean);
   protected
-    /// Adds a fixed subroute from other components into server routes
+    /// Links a module to the server.
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
-    /// Used by inherited members to set SSL settings
+    /// Creates the TLS settings of the engine; nil when it has none.
     function CreateRALSSL: TRALSSL; virtual;
-    /// Removes a fixed subroute used by other components
+    /// Unlinks a module from the server.
     procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
-    /// Used by inherited members to return the SSL definitions
+    /// TLS settings of the server, for the engines.
     function GetDefaultSSL: TRALSSL;
     function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
-    /// Checks if the current server component allows IPv6
+    /// True when the engine can listen on IPv6.
     function IPv6IsImplemented: boolean; virtual;
-    /// Active, for the plugins: one added to a running server starts at once
     function IsHostActive: boolean; override;
     procedure Loaded; override;
-    /// The modules, in the order of the modules loop, then the routes plugins
-    /// offer
     function LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
       out AOwner: TObject): TRALRoute; override;
-    /// Internal function to properly dispose the component attached to the server
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// A plugin failed while the server stopped: OnServerError
     procedure PluginError(AError: Exception); override;
-    /// The authenticator left the plugins (freed, or removed): the property
-    /// must not keep pointing at it
     procedure PluginRemoved(APlugin: TRALServerPlugin); override;
+    /// Starts or stops the server; plugins and modules hear it before the engine opens.
     procedure SetActive(const AValue: boolean); virtual;
     procedure SetAuthentication(const AValue: TRALAuthServer);
+    /// Sets Engine, the name of the engine.
     procedure SetEngine(const AValue: StringRAL);
-    { the object properties copy what they are given (RALAssignOwned) }
     procedure SetIPConfig(const AValue: TRALIPConfig);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetResponsePages(const AValue: TRALResponsePages);
@@ -190,130 +173,96 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// The TRALAuthTypes of an auth scheme: 'Basic', 'Bearer', 'Digest';
-    /// ratNone for any other
+    /// Authentication scheme of a scheme name: 'Basic', 'Bearer', 'Digest'; else ratNone.
     class function AuthTypeOf(const AScheme: StringRAL): TRALAuthTypes;
-    /// A server freed while running never goes through SetActive(False): its
-    /// plugins stop here, before the engine is torn down under them
+    /// Stops the plugins of a server freed while running.
     procedure BeforeDestruction; override;
-    /// A plugin blocked AClientIP: fires OnClientBlock
     procedure ClientBlocked(const AClientIP: StringRAL); override;
+    /// Number of linked modules.
     function CountSubModules: IntegerRAL;
-    // Create handle request of server
+    /// A new request of this server; the caller frees it.
     function CreateRequest: TRALRequest;
-    // Create handle response of server
+    /// A new response of this server, with status 200; the caller frees it.
     function CreateResponse: TRALResponse;
-    // Shortcut to create routes on the server
+    /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
+    /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
-    { Fills Request.Authorization from the Authorization header param or, for
-      a JWT server, from the raltoken cookie. Public because the engines call
-      it from their own classes (Sagui's callback, fpHTTP's thread), after
-      the header and cookie params are in place }
+    { Fills Request.Authorization from the Authorization header, or from where a
+      scheme keeps it otherwise (the raltoken cookie); engines call it. }
     procedure DecodeAuth(AResult: TRALRequest);
-    /// Fills Request.Authorization from an Authorization header value - for
-    /// the engines that read the header themselves
+    /// Fills Request.Authorization from the value of an Authorization header.
     procedure DecodeAuthValue(AResult: TRALRequest; const AValue: StringRAL);
-    /// The text a 500 answers for AException: its message, or only
-    /// 'Internal Server Error' with HideErrorDetails on. Every engine answers
-    /// its failures through it, and so do the DBWare module and the DAO
+    /// Text a 500 answers for AException, generic with HideErrorDetails.
     function ErrorText(AException: Exception): StringRAL;
-    /// The IP address clients reach this server at, in the given family.
-    /// A server bound to one address (IPConfig.IPv4Bind / IPv6Bind) answers
-    /// that address. The default bind, every interface, answers the address
-    /// this machine uses on the network - the source of its default route,
-    /// see RALGetLocalAddress - or the loopback when there is no network.
-    /// rimIPv6 answers '' while IPConfig.IPv6Enabled is off, since the server
-    /// does not listen on IPv6 then. The same on every engine, and the server
-    /// does not have to be active: it reads the configuration and asks the
-    /// operating system, not the engine. Engines whose address comes from
-    /// elsewhere (CGI, http.sys) or that ignore IPConfig (MsQuic) override it
+    { IP address clients reach the server at: the bound address, or the machine's
+      own for the default bind; '' for rimIPv6 while IPv6 is off. }
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
-    /// The certificate the engine is set up with - what SSL points at, or for
-    /// http.sys what is bound to the port. False when there is none; a file
-    /// named but missing still counts as named, and the caller checks it
+    /// Certificate the engine is set up with; False when there is none.
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; virtual;
-    /// Whether an authentication plugin is linked, by Authentication or as a
-    /// plugin of its own: without one the credentials are not even decoded
+    /// True when an authentication plugin is linked.
     function HasAuthentication: boolean;
-    { Core procedure of the server, every request will pass through here to be
-      processed into response that will be answered to the client: the plugins
-      loop, then the modules loop }
+    /// Answers a request: the plugins loop, then the modules loop, else 404.
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
-    /// Sets the engine up with ACertificate (the fields its TLSProvisioning
-    /// reads) and turns SSL on. Called while the server starts, before the
-    /// engine opens its port, or on a running server - then the certificate
-    /// is swapped under the listener, without stopping it
+    { Sets the engine up with ACertificate and turns SSL on; on a running server
+      the certificate is swapped under the listener. }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; virtual;
+    /// True when SSL is enabled.
     function SSLEnabled: boolean;
-    // Shortcut to start the server
+    /// Starts the server.
     procedure Start;
-    // Shortcut to stop the server
+    /// Stops the server.
     procedure Stop;
-    /// How this engine takes a certificate; tpNone when TLS is not its own
+    /// How the engine takes a certificate; tpNone when TLS is not its own.
     function TLSProvisioning: TRALTLSProvisioning; virtual;
-    /// Runs the ppValidate plugins, before the engine decodes the body: a
-    /// status of 400 or more refuses the request
+    /// Runs the ppValidate plugins before the body is decoded; 501 for an unknown method.
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 
-    // Returns a submodule based on the provided AIndex
+    /// Linked module at AIndex, or nil.
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
+    /// Starts and stops the server; read from a form, it is applied by Loaded.
     property Active: boolean read FActive write WriteActive;
-    /// The authentication plugin set up at design time; more can be added
-    /// with AddPlugin
+    /// Authentication plugin set up at design time; more can be added with AddPlugin.
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
-    // Minutes a cookie the server sends is kept by the browser (its Expires)
+    /// Minutes a cookie the server sends lasts in the browser.
     property CookieLife: integer read FCookieLife write FCookieLife;
-    // Read-only property to indicate engine version
+    /// Name and version of the engine.
     property Engine: StringRAL read FEngine;
-    /// A 500 says only 'Internal Server Error' instead of the exception's
-    /// message - which, from a database driver, names tables and columns,
-    /// quotes SQL and sometimes part of the connection string. OnServerError
-    /// still receives the exception whole, which is where to log it. Off by
-    /// default: the message goes to the client, as it always did
+    /// A 500 says only 'Internal Server Error'; OnServerError still gets the exception.
     property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
       default False;
-    // Configuration params for IP listening
+    /// Addresses the server listens on.
     property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
-    // Event fired whenever an incoming IP gets blocked by a plugin
+    /// Fired when a plugin blocks an address.
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
-    // Event fired whenever any request is received by the server, before the plugins
+    /// Fired for every request, after its route is looked up and before the plugins.
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
-    // Event fired whenever any response is sent by the server
+    /// Fired for every request once it is answered, before the answer is sent.
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
-    // Event fired whenever any error happens inside the server
+    /// Fired with an exception the server caught.
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
-    // Port to listen to
+    /// Port to listen on.
     property Port: IntegerRAL read FPort write SetPort;
-    // Whether the server will raise error to the application or not (exception raise^), default value is false
+    /// Raises the exceptions of the handlers when OnServerError is not assigned.
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
+    /// HTML page answered with each error status.
     property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
-    // Route configuration of the server, a.k.a endpoints
+    /// Routes of the server.
     property Routes: TRALRoutes read FRoutes write SetRoutes;
-    // Default text answered by the server without WebModule when requesting the route '/'
+    /// Text answered at '/' by ShowServerStatus; the default page when empty.
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
-    // kept-alive connection after this long without a request (0 turns
-    // keep-alive off there). Indy hands it to its own session list, which RAL
-    // leaves off, and fpHTTP to the period its accept loop wakes up idle; the
-    // other engines ignore it. Not the WebModule's sessions, despite the name:
-    // those have TRALWebModule.SessionTimeout
+    { Milliseconds an idle kept-alive connection stays open, on the engines that
+      use it (mORMot2, fpHTTP); not the WebModule sessions. }
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
-    // Boolean check to whether or not show the default text for route '/'
+    /// Answers '/' with ServerStatus when no route takes it.
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
   end;
 
-  { TRALModuleRequest }
-
-  { The request as the handlers of a module see it (see
-    TRALModuleRoutes.ExecuteContext). It is not a copy: it holds the
-    TRALRequest the engine created (Core), whose params hold the body, and
-    every call reaches that same object. A module descends it to add what
-    only its own routes need - the rest of the project never sees it. Built
-    and freed by the module for one request }
+  { The request as the handlers of a module see it: it holds the core TRALRequest
+    and forwards to it. A module descends it for its own routes. }
   TRALModuleRequest = class
   private
     FCore: TRALRequest;
@@ -324,30 +273,31 @@ type
     function GetParams: TRALParams;
     function GetQuery: StringRAL;
   public
+    /// Request of AModule for ARoute, over the core request ACore.
     constructor Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
       ACore: TRALRequest); virtual;
 
-    /// The body when it is a single value (TRALHTTPHeaderInfo.Body)
+    /// The body when it is a single value.
     function Body: TRALParam;
+    /// Param named AName of the core request, or nil.
     function ParamByName(const AName: StringRAL): TRALParam;
 
-    /// The request of the core, for everything this class does not repeat
+    /// The core request.
     property Core: TRALRequest read FCore;
+    /// HTTP method.
     property Method: TRALMethod read GetMethod;
+    /// Module that answers.
     property Module: TRALModuleRoutes read FModule;
+    /// Params of the core request.
     property Params: TRALParams read GetParams;
+    /// Path of the request.
     property Query: StringRAL read GetQuery;
+    /// Route being answered.
     property Route: TRALRoute read FRoute;
   end;
 
-  { TRALModuleResponse }
-
-  { The response as the handlers of a module see it. Same idea as
-    TRALModuleRequest: it writes to the TRALResponse the engine created (Core)
-    and sends. A module descends it to answer in its own terms - an Answer
-    overload the core does not have, for one. In Delphi and FPC alike a
-    method declared with overload in the descendant adds to the inherited
-    Answer overloads; without the directive it would hide them }
+  { The response as the handlers of a module see it: it writes to the core
+    TRALResponse. A module descends it to answer in its own terms. }
   TRALModuleResponse = class
   private
     FCore: TRALResponse;
@@ -360,43 +310,46 @@ type
     procedure SetContentType(const AValue: StringRAL);
     procedure SetStatusCode(const AValue: IntegerRAL);
   public
+    /// Response of AModule for ARoute, over the core response ACore.
     constructor Create(AModule: TRALModuleRoutes; ARoute: TRALRoute;
       ACore: TRALResponse); virtual;
 
+    /// Adds a header to the core response.
     procedure AddHeader(const AName: StringRAL; const AValue: StringRAL);
+    /// Answers AStatusCode with the text AMessage, of AContentType.
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Answers AStatusCode with a copy of AStream.
     procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+    /// Answers AStatusCode, with the server's page for it.
     procedure Answer(AStatusCode: IntegerRAL); overload;
+    /// Answers with the file AFileName.
     procedure Answer(const AFileName: StringRAL;
                      const ADispositionInline: boolean = True); overload;
 
+    /// Content type of the response.
     property ContentType: StringRAL read GetContentType write SetContentType;
-    /// The response of the core, for everything this class does not repeat
+    /// The core response.
     property Core: TRALResponse read FCore;
+    /// Module that answers.
     property Module: TRALModuleRoutes read FModule;
+    /// Params of the core response.
     property Params: TRALParams read GetParams;
+    /// Route being answered.
     property Route: TRALRoute read FRoute;
+    /// HTTP status code of the response.
     property StatusCode: IntegerRAL read GetStatusCode write SetStatusCode;
   end;
 
+  /// Class of a module request.
   TRALModuleRequestClass = class of TRALModuleRequest;
+  /// Class of a module response.
   TRALModuleResponseClass = class of TRALModuleResponse;
 
-  { TRALModuleRoutes }
-
-  { Attachment module to allow adding custom route modules for 3rd party
-    components. What a descendant can change, from the lightest to the
-    deepest:
-    - routes created in the constructor (CreateRoute), answered with the
-      core's TRALRequest/TRALResponse, as any route;
-    - BeforeExecute/AfterExecute around every route of the module;
-    - its own route class (RouteClass), holding data or a typed handler;
-    - its own request/response (RequestClass/ResponseClass), handed to
-      ExecuteContext for every route that has no core handler;
-    - its own error answer (HandleException) and its own reaction to the
-      server starting and stopping (ServerActivating/ServerDeactivating) }
+  { Base of the modules: a component that adds routes to a server. A descendant
+    may change the classes of its routes, request and response, the hooks around
+    each route, its error answer, and what it does when the server starts and stops. }
   TRALModuleRoutes = class(TRALComponent)
   private
     FDomain: StringRAL;
@@ -404,100 +357,78 @@ type
     FRoutes: TRALRoutes;
     FServer: TRALServer;
 
-    /// False while the module is loading, designed or destroyed: the moments
-    /// the lifecycle hooks must not run
+    /// False while loading, designing or destroying, when no lifecycle hook runs.
     function CanNotify: boolean;
   protected
-    /// Runs a route that has no core handler (OnReply/OnReplyGen), with the
-    /// request and response of this module - RequestClass and ResponseClass,
-    /// built for this request and freed after it. The default runs
-    /// ARoute.Execute with the core objects, which answers 404 for a route
-    /// with no handler; a module with typed routes calls their handler here
+    { Runs a route without a core handler, with this module's request and response;
+      the default runs ARoute.Execute with the core objects. }
     procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
       AResponse: TRALModuleResponse); virtual;
-    /// Runs one route of this module, between BeforeExecute and AfterExecute:
-    /// the core handler when the route has one, the context otherwise
+    /// Runs a route of the module (core handler or context).
     procedure ExecuteRoute(ARoute: TRALRoute; ARequest: TRALRequest;
       AResponse: TRALResponse); virtual;
-    /// An exception raised by BeforeExecute, a route or AfterExecute of this
-    /// module. True when the module answered it; False (the default) lets it
-    /// reach the server, which answers 500 and fires OnServerError
+    /// An exception of a route of the module; True when the module answered it.
     function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
       AException: Exception): boolean; virtual;
     procedure Loaded; override;
-    /// A new route of RouteClass with the path and the description set; the
-    /// caller assigns the handler
+    /// Adds a route of RouteClass without a handler; the caller sets one.
     function NewRoute(const ARoute: StringRAL;
       const ADescription: StringRAL = ''): TRALRoute;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// The class of the request handed to ExecuteContext
+    /// Class of the request handed to ExecuteContext.
     class function RequestClass: TRALModuleRequestClass; virtual;
-    /// The class of the response handed to ExecuteContext
+    /// Class of the response handed to ExecuteContext.
     class function ResponseClass: TRALModuleResponseClass; virtual;
-    /// The class of the routes of this module (TRALRoute by default)
+    /// Class of the routes of the module (TRALRoute by default).
     class function RouteClass: TRALRouteClass; virtual;
-    /// The server this module is linked to was asked to start, or the module
-    /// was linked to a server already running. Engines call it before they
-    /// open the port; raising here keeps the server stopped
+    { The server is starting (before the engine opens its port), or the module
+      joined a running server; an exception keeps the server stopped. }
     procedure ServerActivating; virtual;
-    /// The server was asked to stop, or the module leaves a running server.
-    /// Requests may still be running: do not free what a route may be using.
-    /// An exception here goes to OnServerError and never stops the shutdown
+    { The server is stopping, or the module left a running server; requests may
+      still run, and an exception goes to OnServerError. }
     procedure ServerDeactivating; virtual;
-    // Defines the Domain prefix of all the routes of the instance of this class
     procedure SetDomain(const AValue: StringRAL); virtual;
     procedure SetRoutes(const AValue: TRALRoutes);
-    // Defines the handle of the RALServer in which will be registered the routes
     procedure SetServer(AValue: TRALServer); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Runs right after a route of this module executed
+    /// Runs after each route of the module.
     procedure AfterExecute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    /// Answers a request for one of this module's routes that has neither
-    /// OnReply nor OnReplyGen, nor a handler of the module's own (ExecuteContext
-    /// left it unanswered): 404 here, a file in TRALWebModule
+    /// Answers a route of the module that has no handler: 404, a file in TRALWebModule.
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    /// Runs right before a route of THIS module executes, the plugins already
-    /// passed: the place for a module to prepare the request or the response
-    /// of its own routes only
+    /// Runs before each route of the module, after the plugins.
     procedure BeforeExecute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    /// The route of this module that answers ARequest, or nil
+    /// Route of the module that answers ARequest, or nil; fires OnBeforeAnswer.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
-    // Shortcut to create route on the server, similar to RALServer's CreateRoute
+    /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
+    /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
-    /// TRALServer.ErrorText of the server the module is attached to - the
-    /// exception's message, unless that server hides it - and the message
-    /// as it is with no server
+    /// TRALServer.ErrorText of the linked server; the message itself with no server.
     function ErrorText(AException: Exception): StringRAL;
-    // Inherited method of RALServer
-    /// A NEW list of this module's routes - what the Swagger and Postman
-    /// exporters document. The caller frees the list, never the routes in it,
-    /// which still belong to the module
+    /// A new list of the module's routes; the caller frees the list, not the routes.
     function GetListRoutes: TList; virtual;
-    /// The modules loop of TRALServer.ProcessCommands: False when the route of
-    /// the request is not one of this module's. When it is, the module answers
-    /// it - the preflight (OPTIONS), 405 for a method the route does not take,
-    /// or the route itself
+    { The modules loop: False when the route is not this module's; otherwise it
+      answers - the preflight, 405 for a method it does not take, or the route. }
     function ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse): boolean;
       virtual;
 
+    /// Routes of the module.
     property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
-    // The domain of routes, added before all routes of this module
+    /// Path prefix of every route of the module.
     property Domain: StringRAL read FDomain write SetDomain;
-    { Fired when a route of this module matched, before the plugins that ask
-      for it (authentication, CORS) }
+    /// Fired when a route of the module matches, before the plugins that ask for it.
     property OnBeforeAnswer: TRALOnReply read FOnBeforeAnswer write FOnBeforeAnswer;
-    // The RALServer object which this module is attached to
+    /// Server the module is linked to.
     property Server: TRALServer read FServer write SetServer;
   end;
 
-/// Every field of ACertificate empty
+/// Empties every field of ACertificate.
 procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
 
 implementation
@@ -518,21 +449,20 @@ begin
 end;
 
 type
-  { TRALBaseModule }
-
-  { The module of the server's own routes (TRALServer.Routes) and of its status
-    page. Owned by the server, never streamed and never in SubModule[]: it
-    takes part in the modules loop whenever the server has a route, or shows
-    the status page }
+  { Module of the server's own routes and of its status page; owned by the server,
+    never streamed, never in SubModule[]. }
   TRALBaseModule = class(TRALModuleRoutes)
   private
+    /// Route of the status page, '/'.
     FStatusRoute: TRALRoute;
 
+    /// Answers the status page.
     procedure AnswerStatus(ARequest: TRALRequest; AResponse: TRALResponse);
   public
+    /// Module of AServer.
     constructor CreateFor(AServer: TRALServer);
 
-    /// A route of the server, or the status page at '/'
+    /// A route of the server, or the status page at '/'.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
   end;
@@ -542,13 +472,13 @@ type
 constructor TRALBaseModule.CreateFor(AServer: TRALServer);
 begin
   inherited Create(nil);
-  { the field, not SetServer: this module is not one of the linked ones }
+  // the field, not SetServer: this module is not a linked one
   FServer := AServer;
 
   FStatusRoute := TRALRoute(Routes.Add);
   FStatusRoute.Route := '/';
   FStatusRoute.AllowedMethods := [amGET, amOPTIONS];
-  { the status page never asked for credentials }
+  // the status page asks for no credentials
   FStatusRoute.SkipAuthMethods := [amALL];
   FStatusRoute.OnReply := {$IFDEF FPC}@{$ENDIF}AnswerStatus;
 end;
@@ -585,10 +515,7 @@ begin
 
   if FOwner <> nil then
   begin
-    { refused before anything is touched: the refusal used to come after the
-      server had been stopped, and the line starting it again was never
-      reached - asking for IPv6 on an engine without it took a live server
-      down }
+    // refused before the server is stopped
     if AValue and (not FOwner.IPv6IsImplemented) then
       raise Exception.Create(wmIPv6notImplemented);
 
@@ -598,14 +525,12 @@ begin
     FOwner.Active := vActive;
   end
   else
-    FIPv6Enabled := AValue; // no server to restart: it used to be dropped
+    FIPv6Enabled := AValue; // no server to restart
 end;
 
 { TRALSSL }
 
-{ every engine's SSL descends from this one: the copy takes the published
-  properties both sides have, the engine's own included - SetSSL in the
-  engines called Assign on a class that had no copy, and raised }
+// copies the published properties both sides have, the engine's own included
 procedure TRALSSL.AssignTo(Dest: TPersistent);
 begin
   if Dest is TRALSSL then
@@ -767,9 +692,7 @@ var
 begin
   AResult.Authorization.AuthType := ratNone;
   AResult.Authorization.AuthString := '';
-  { RALTrim and a StringRAL to Pos: on Delphi Trim and Pos(' ') over a
-    StringRAL go through UTF-16 - seven allocations on every request that
-    carries credentials }
+  // RALTrim and a StringRAL Pos: Delphi's Trim and Pos(' ') go through UTF-16
   vStr := RALTrim(AValue);
   if vStr = '' then
     Exit;
@@ -866,9 +789,8 @@ var
   vInt: IntegerRAL;
   vModule: TRALModuleRoutes;
 begin
-  { the same order as the modules loop, then the routes plugins keep for
-    themselves (the JWT token route): a route of the application or of a
-    module with the same path wins, as it always did }
+  { The order of the modules loop, then the routes plugins keep (the JWT token
+    route): a route of the application or a module with the same path wins. }
   for vInt := FirstModule to Pred(FListSubModules.Count) do
   begin
     vModule := GetModule(vInt);
@@ -919,20 +841,15 @@ var
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
-  { a body the engine could not take apart - a multipart with no part
-    delimited by its boundary - is the client's error, answered before any
-    route runs. It used to reach the route with nothing in its params, the
-    body gone without a word }
+  // a body the engine could not take apart is the client's error, answered first
   if ARequest.Params.BodyError <> '' then
   begin
     AResponse.Answer(HTTP_BadRequest, ARequest.Params.BodyError, rctTEXTPLAIN);
     Exit;
   end;
   try
-    { the route, looked up once and kept in the request (FindRoute), before
-      OnRequest: every engine comes through here, so every one fills
-      Request.Route, and the handler, OnRequest and OnResponse can read what
-      the route declares }
+    { the route is looked up once and kept in the request, before OnRequest,
+      so OnRequest, the handler and OnResponse can read it }
     FindRoute(ARequest, AResponse);
 
     if Assigned(FOnRequest) then
@@ -968,10 +885,8 @@ begin
   except
     on e: exception do
     begin
-      { the answer comes first: a handler that blew up must not leave the
-        200 the response started with and an empty body. Without
-        OnServerError and with RaiseError off (the defaults) the exception
-        used to be swallowed and the client got exactly that }
+      { The 500 comes first, so a failed handler never leaves a 200; then
+        OnServerError, or the exception goes up with RaiseError. }
       AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
@@ -1067,19 +982,14 @@ begin
   end;
 end;
 
-{ A form saved with Active = True reads it FIRST - it is the first published
-  property - so the engine used to start right there, before Port, IPConfig
-  and SSL had been read: a server saved with SSL enabled listened in plain
-  HTTP, one bound to 127.0.0.1 listened on every interface. While loading the
-  value is only kept, and Loaded applies it once everything else is in. }
+{ While loading, Active is only kept: Loaded applies it after Port, IPConfig and
+  SSL are read. }
 procedure TRALServer.WriteActive(const AValue: boolean);
 begin
   if not (csLoading in ComponentState) then
     SetActive(AValue)
-  { only a True is kept: the reader never writes the default False, while the
-    setters that restart a live server - SetPort, PoolCount, Mode - write
-    Active := False and back as their own properties are read, and that must
-    not undo it }
+  { only a True is kept: the setters that restart a live server turn Active off
+    and on again while their own properties are read }
   else if AValue then
     FStreamedActive := True;
 end;
@@ -1323,8 +1233,7 @@ var
   vRequest: TRALModuleRequest;
   vResponse: TRALModuleResponse;
 begin
-  { a route with a core handler costs what it always cost: the context is only
-    built for the routes a module answers in its own terms }
+  // a route with a core handler runs directly: the context is built for the others
   if ARoute.HasCoreHandler then
   begin
     ARoute.Execute(ARequest, AResponse);
@@ -1421,8 +1330,7 @@ end;
 function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
   const ADescription: StringRAL): TRALRoute;
 begin
-  { through the collection, so the route is of RouteClass: TRALRoute.Create
-    here made every route a plain TRALRoute whatever the module asked for }
+  // through the collection, so the route is of RouteClass
   Result := NewRoute(ARoute, ADescription);
   Result.OnReply := AReplyProc;
 end;
@@ -1502,11 +1410,8 @@ begin
   end
   else
   begin
-    { a verb outside AllowedMethods is not an intrusion attempt, and the answer
-      for a route that exists but does not take that method is 405, not 403.
-      RFC 9110 15.5.6: a 405 MUST say which methods the resource does take,
-      in Allow - and several routes may share a path with a verb each, so it
-      is what all the routes of that path take, not only the one found }
+    { 405 with Allow (RFC 9110 15.5.6): what all the routes of the path take,
+      since several routes may share a path with a verb each. }
     AResponse.Answer(HTTP_MethodNotAllowed);
     if vRoute.Collection is TRALRoutes then
       AResponse.AddHeader('Allow', RALAllowedMethodsText(
