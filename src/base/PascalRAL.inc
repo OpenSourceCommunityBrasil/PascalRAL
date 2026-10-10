@@ -1,7 +1,8 @@
+/// Compiler, platform and feature directives shared by every PascalRAL unit.
 {$DEFINE PascalRAL}
 {.$DEFINE RAL_DEBUG} (* Internal debugging directive *)
 
-(* IFEND Directives - HAS TO STAY ON TOP OF THE FILE!*)
+(* IFEND directives: they must stay at the top of the file *)
 
 {$IFNDEF FPC}
   {$IF CompilerVersion > 23}
@@ -12,13 +13,13 @@
 (* End of IFEND Directives *)
 (******************************************************************************)
 
-(* Languague definition *)
+(* Language definition *)
 
 {$DEFINE LANG_ENUS}
 {.$DEFINE LANG_ESES}
 {.$DEFINE LANG_PTBR}
 
-(* End of Languague directives definition *)
+(* End of Language directives definition *)
 (******************************************************************************)
 
 (* 3rd Party directives definition *)
@@ -466,13 +467,13 @@
 {$IFEND}
 
 (* End of GUI Directives *)
-(* Delphi Bug avoidance Directives*)
+(* Delphi workaround Directives *)
 
 {$IFDEF DELPHIXE8UP}
   {$DEFINE NOTRAWSUPPORT}
 {$ENDIF}
 
-(* End of Delphi Bug avoidance Directives*)
+(* End of Delphi workaround Directives *)
 (******************************************************************************)
 (* General functional Directives *)
 
@@ -572,7 +573,7 @@
 
 (* End of Lazarus/FPC exclusive Directives *)
 (******************************************************************************)
-(* Compiler settings *)
+(* Compiler switches in effect, as defines *)
 
 {$IFOPT A+} {$DEFINE ALIGN_ON} {$ENDIF}
 {$IFOPT B+} {$DEFINE BOOLEVAL_ON} {$ENDIF}
@@ -585,7 +586,6 @@
   {$IFOPT H+} {$DEFINE LONGSTRINGS_ON} {$ENDIF}
 {$ENDIF}
 
-// Hints
 {$IFOPT I+} {$DEFINE IOCHECKS_ON} {$ENDIF}
 {$IFDEF COMPILER2_UP}
   {$IFOPT J+} {$DEFINE WRITEABLECONST_ON} {$ENDIF}
@@ -597,13 +597,11 @@
 {$IFOPT Q+} {$DEFINE OVERFLOWCHECKS_ON} {$ENDIF}
 {$IFOPT R+} {$DEFINE RANGECHECKS_ON} {$ENDIF}
 
-// Real compatibility
 {$IFOPT T+} {$DEFINE TYPEDADDRESS_ON} {$ENDIF}
 {$IFOPT U+} {$DEFINE SAFEDIVIDE_ON} {$ENDIF}
 {$IFOPT V+} {$DEFINE VARSTRINGCHECKS_ON} {$ENDIF}
 {$IFOPT W+} {$DEFINE STACKFRAMES_ON} {$ENDIF}
 
-// Warnings
 {$IFOPT X+} {$DEFINE EXTENDEDSYNTAX_ON} {$ENDIF}
 
 // for Delphi/BCB trial versions remove the point from the line below
