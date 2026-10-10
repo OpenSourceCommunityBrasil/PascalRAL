@@ -41,10 +41,10 @@ type
   TRALDB = class
   public
     class function FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
-    class function RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
     class function GetFieldProviderFlags(AField: TField): byte;
-    class procedure SetFieldProviderFlags(AField: TField; AFlag: byte);
     class procedure ParseSQLParams(ASQL: StringRAL; AParams: TParams);
+    class function RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
+    class procedure SetFieldProviderFlags(AField: TField; AFlag: byte);
   end;
 
   { TRALDBUpdateSQL }
@@ -55,10 +55,10 @@ type
     FInsertSQL: TStrings;
     FUpdateSQL: TStrings;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetDeleteSQL(AValue: TStrings);
     procedure SetInsertSQL(AValue: TStrings);
     procedure SetUpdateSQL(AValue: TStrings);
-    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create;
     destructor Destroy; override;
@@ -117,11 +117,10 @@ type
     /// it reads -1 then, and the client builds what it always built.
     property NativeDriver: IntegerRAL read FNativeDriver write FNativeDriver;
     property Precision: IntegerRAL read FPrecision write FPrecision;
+    property RALFieldType: TRALFieldType read GetRALFieldType write SetRALFieldType;
     property Scale: IntegerRAL read FScale write FScale;
     property Schema: StringRAL read FSchema write FSchema;
     property TableName: StringRAL read FTableName write FTableName;
-
-    property RALFieldType: TRALFieldType read GetRALFieldType write SetRALFieldType;
   end;
 
   { TRALDBInfoFields }
@@ -140,24 +139,22 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function Count: IntegerRAL;
     procedure Clear;
-
+    function Count: IntegerRAL;
     function NewField: TRALDBInfoField;
-
-    property Field[AIndex: IntegerRAL]: TRALDBInfoField read GetField;
-    property FieldName[AName: StringRAL]: TRALDBInfoField read GetFieldName;
 
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
+    property Field[AIndex: IntegerRAL]: TRALDBInfoField read GetField;
+    property FieldName[AName: StringRAL]: TRALDBInfoField read GetFieldName;
   end;
 
   { TRALDBInfoTable }
 
   TRALDBInfoTable = class
   private
-    FName: StringRAL;
     FIsSystem: boolean;
+    FName: StringRAL;
     FSchema: StringRAL;
   protected
     function GetAsJSON: StringRAL;
@@ -170,8 +167,8 @@ type
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONObject read GetAsJSONObj write SetAsJSONObj;
   published
-    property Name: StringRAL read FName write FName;
     property IsSystem: boolean read FIsSystem write FIsSystem;
+    property Name: StringRAL read FName write FName;
     property Schema: StringRAL read FSchema write FSchema;
   end;
 
@@ -191,16 +188,14 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function Count: IntegerRAL;
     procedure Clear;
-
+    function Count: IntegerRAL;
     function NewTable: TRALDBInfoTable;
-
-    property Table[AIndex: IntegerRAL]: TRALDBInfoTable read GetTable;
-    property TableName[AName: StringRAL]: TRALDBInfoTable read GetTableName;
 
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
+    property Table[AIndex: IntegerRAL]: TRALDBInfoTable read GetTable;
+    property TableName[AName: StringRAL]: TRALDBInfoTable read GetTableName;
   end;
 
 /// The name of a TFieldType, memoised. Same result as GetEnumName, without
