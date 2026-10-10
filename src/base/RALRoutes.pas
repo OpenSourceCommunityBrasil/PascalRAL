@@ -47,6 +47,7 @@ type
   TRALRouteParams = class(TOwnedCollection)
   public
     constructor Create(AOwner: TPersistent);
+
     function IndexOf(AName: StringRAL): IntegerRAL;
   end;
 
@@ -63,48 +64,48 @@ type
     FAllowURIParams: boolean;
     FCallback: boolean;
     FDescription: TStrings;
-    FInputParams: TRALRouteParams;
-    FName: StringRAL;
-    FOutputParams: TRALRouteParams;
-    FRoute: StringRAL;
-    FSegments: TRALRouteSegments;
     { GetFullRoute, kept with FSegments: the token route of an authenticator
       compares it with every request }
     FFullRoute: StringRAL;
-    FSkipAuthMethods: TRALMethods;
-    FURIParams: TRALRouteParams;
-
+    FInputParams: TRALRouteParams;
+    FName: StringRAL;
     FOnReply: TRALOnReply;
     FOnReplyGen: TRALOnReplyGen;
+    FOutputParams: TRALRouteParams;
+    FRoute: StringRAL;
+    FSegments: TRALRouteSegments;
+    FSkipAuthMethods: TRALMethods;
+    FURIParams: TRALRouteParams;
   protected
     procedure AssignTo(Dest: TPersistent); override;
-    procedure SetCollection(Value: TCollection); override;
     function GetDisplayName: string; override;
+    function IsOutputParamsStored: Boolean;
     /// checks if the route already exists on the list
     procedure SetAllowedMethods(const AValue: TRALMethods);
+    procedure SetCollection(Value: TCollection); override;
     procedure SetDescription(const AValue: TStrings);
     procedure SetDisplayName(const AValue: string); override;
-    procedure SetRoute(AValue: StringRAL);
-    procedure SetSkipAuthMethods(const AValue: TRALMethods);
     procedure SetInputParams(const AValue: TRALRouteParams);
     procedure SetOutputParams(const AValue: TRALRouteParams);
+    procedure SetRoute(AValue: StringRAL);
+    procedure SetSkipAuthMethods(const AValue: TRALMethods);
     procedure SetURIParams(const AValue: TRALRouteParams);
-    function IsOutputParamsStored: Boolean;
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
+
     function Allow(AMethods: TRALMethods): TRALBaseRoute;
     /// Runs the OnReply event. Virtual so a route class of a module can call
     /// a handler of its own instead
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    /// True when OnReply or OnReplyGen is assigned: the route answers through
-    /// the core handler, and a module's context is not built for it
-    function HasCoreHandler: boolean;
     /// Returns methods that this route will answer
     function GetAllowMethods: StringRAL;
     function GetFullRoute: StringRAL;
     /// Returns internal name of the route
     function GetNamePath: string; override;
+    /// True when OnReply or OnReplyGen is assigned: the route answers through
+    /// the core handler, and a module's context is not built for it
+    function HasCoreHandler: boolean;
     /// Returns true or false wether the method is allowed in route
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// Returns true or false wether the method is skipped in authentication
@@ -119,11 +120,10 @@ type
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
     property Callback: boolean read FCallback write FCallback;
     property Name: StringRAL read FName write FName;
-    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
-    property URIParams: TRALRouteParams read FURIParams write SetURIParams;
-
     property OnReply: TRALOnReply read FOnReply write FOnReply;
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
+    property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
+    property URIParams: TRALRouteParams read FURIParams write SetURIParams;
   published
     property Description: TStrings read FDescription write SetDescription;
     property InputParams: TRALRouteParams read FInputParams write SetInputParams;
@@ -146,12 +146,11 @@ type
     property Description;
     property InputParams;
     property Name;
+    property OnReply;
     property OutputParams;
     property Route;
     property SkipAuthMethods;
     property URIParams;
-
-    property OnReply;
   public
     property OnReplyGen;
   end;
@@ -167,12 +166,14 @@ type
     /// Support enumeration of values in TRALParams.
     TEnumerator = class
     private
-      FIndex: Integer;
       FArray: TRALRoutes;
+      FIndex: Integer;
     public
       constructor Create(const AArray: TRALRoutes);
+
       function GetCurrent: TRALRoute; inline;
       function MoveNext: Boolean; inline;
+
       property Current: TRALRoute read GetCurrent;
     end;
   private
@@ -182,16 +183,17 @@ type
     /// A collection of AItemClass routes: a module keeps data or a handler of
     /// its own on each route by descending TRALRoute
     constructor Create(AOwner: TPersistent; AItemClass: TRALRouteClass); overload;
-    /// Returns a list of routes separated by sLineBreak
-    function AsString: StringRAL;
-    /// Method that will check if the request finds a matching route
-    function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
+
     /// The methods the routes of the request's path take, whatever its own
     /// method is - empty when no route has the path. CanAnswerRoute only finds
     /// a route that takes the method, since several routes may share a path
     /// with a verb each; this is what tells a path no route has (404) from a
     /// method none of its routes takes (405)
     function AllowedMethodsOf(ARequest: TRALRequest): TRALMethods;
+    /// Returns a list of routes separated by sLineBreak
+    function AsString: StringRAL;
+    /// Method that will check if the request finds a matching route
+    function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
     /// Retuns the internal Enumerator type to allow for..in loops
     function GetEnumerator: TEnumerator; inline;
 
