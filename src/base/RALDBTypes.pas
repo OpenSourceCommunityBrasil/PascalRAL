@@ -1,4 +1,4 @@
-/// Base unit for database related type definitions
+/// Field types, schema descriptions and value conversions of DBWare.
 unit RALDBTypes;
 
 {$IFDEF FPC}
@@ -13,42 +13,31 @@ uses
   RALTypes, RALJson, RALParams, RALResponse, RALConsts;
 
 type
-  {
-    ShortInt : 1 - Low: -128                 High: 127
-    Byte     : 1 - Low: 0                    High: 255
-    SmallInt : 2 - Low: -32768               High: 32767
-    Word     : 2 - Low: 0                    High: 65535
-    Integer  : 4 - Low: -2147483648          High: 2147483647
-    LongInt  : 4 - Low: -2147483648          High: 2147483647
-    Cardinal : 4 - Low: 0                    High: 4294967295
-    LongWord : 4 - Low: 0                    High: 4294967295
-    Int64    : 8 - Low: -9223372036854775808 High: 9223372036854775807
-    QWord    : 8 - Low: 0                    High: 18446744073709551615
-  }
-
-  /// The type of a field on the wire. The ordinal is what travels, so a new
-  /// member only ever goes last: sftBCD, an exact decimal (NUMERIC, DECIMAL)
-  /// carried as its digits in text, came after sftDateTime - see
-  /// RALLegacyWire
+  /// Type of a field between client and server; its ordinal goes on the wire.
   TRALFieldType = (sftShortInt, sftSmallInt, sftInteger, sftInt64, sftByte,
     sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
     sftString, sftBlob, sftMemo, sftDateTime, sftBCD);
 
+  /// Event fired with the message of a failed database request.
   TRALDBTableOnError = procedure(Sender: TObject; AException: StringRAL) of object;
 
-  { TRALDB }
-
+  /// Conversions between field types, and the field flags DBWare sends.
   TRALDB = class
   public
+    /// Returns the RAL type AFieldType travels as; sftString when it has none.
     class function FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
+    /// Packs ReadOnly, Required and the provider flags of AField into a byte.
     class function GetFieldProviderFlags(AField: TField): byte;
+    { Creates in AParams a param for each :name of ASQL outside quotes, and frees
+      the params of AParams that ASQL does not name. }
     class procedure ParseSQLParams(ASQL: StringRAL; AParams: TParams);
+    /// Returns the TFieldType built for a RAL type; ftUnknown for an invalid ordinal.
     class function RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
+    /// Sets ReadOnly, Required and the provider flags of AField from AFlag.
     class procedure SetFieldProviderFlags(AField: TField; AFlag: byte);
   end;
 
-  { TRALDBUpdateSQL }
-
+  /// SQL statements that apply the changes of a dataset.
   TRALDBUpdateSQL = class(TPersistent)
   private
     FDeleteSQL: TStrings;
@@ -63,13 +52,15 @@ type
     constructor Create;
     destructor Destroy; override;
   published
+    /// SQL that deletes a record.
     property DeleteSQL: TStrings read FDeleteSQL write SetDeleteSQL;
+    /// SQL that inserts a record.
     property InsertSQL: TStrings read FInsertSQL write SetInsertSQL;
+    /// SQL that updates a record.
     property UpdateSQL: TStrings read FUpdateSQL write SetUpdateSQL;
   end;
 
-  { TRALDBInfoField }
-
+  /// Description of one field, as a server sends it in a schema.
   TRALDBInfoField = class
   private
     FAttributes: StringRAL;
@@ -92,41 +83,44 @@ type
   public
     constructor Create;
 
-    /// Fills AFieldDef with the server's own field: its type, size and
-    /// precision, which is what a native stream carries - for a client that
-    /// will load natively (see NativeDriver). Every other client builds the
-    /// field from RALFieldType, the type the RAL storages deliver.
+    /// Fills AFieldDef with the field's own type, size and precision, for a native load.
     procedure NativeFieldDef(AFieldDef: TFieldDef);
 
+    /// The description as JSON text.
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    /// The description as a JSON object; a read returns a new object the caller frees.
     property AsJSONObj: TRALJSONObject read GetAsJSONObj write SetAsJSONObj;
   published
+    /// Comma-separated attributes of the column, such as pk, from the catalog.
     property Attributes: StringRAL read FAttributes write FAttributes;
+    /// Name of the field.
     property FieldName: StringRAL read FFieldName write FFieldName;
+    /// Type of the field on the server.
     property FieldType: TFieldType read FFieldType write FFieldType;
+    /// ReadOnly, Required and provider flags, packed by TRALDB.GetFieldProviderFlags.
     property Flags: byte read FFlags write FFlags;
+    /// Size of the field.
     property Length: IntegerRAL read FLength write FLength;
-    /// The driver (an ordinal of TRALDBDriverType) whose datasets the server
-    /// answers in its native format, or -1 when it answers every client
-    /// through a RAL storage. The native stream carries FieldType, not
-    /// RALFieldType, so a client of that driver building fields from this
-    /// schema - the Fields Editor does - has to make them with FieldType, or
-    /// they will not match what it loads: a NUMERIC that FireDAC carries as
-    /// ftBCD stopped the load of a TFMTBCDField, and a DATE read through a
-    /// TDateTimeField raised EConvertError. An older server does not send it:
-    /// it reads -1 then, and the client builds what it always built.
+    { Driver (an ordinal of TRALDBDriverType) whose clients the server answers in
+      its native format, or -1. A client of that driver builds the field with
+      FieldType, through NativeFieldDef. }
     property NativeDriver: IntegerRAL read FNativeDriver write FNativeDriver;
+    /// Total digits of a decimal field.
     property Precision: IntegerRAL read FPrecision write FPrecision;
+    /// Type the field travels as, derived from FieldType.
     property RALFieldType: TRALFieldType read GetRALFieldType write SetRALFieldType;
+    /// Digits after the decimal point of a decimal field.
     property Scale: IntegerRAL read FScale write FScale;
+    /// Schema of the table.
     property Schema: StringRAL read FSchema write FSchema;
+    /// Table the field belongs to.
     property TableName: StringRAL read FTableName write FTableName;
   end;
 
-  { TRALDBInfoFields }
-
+  /// List of field descriptions; it owns them.
   TRALDBInfoFields = class
   private
+    /// The TRALDBInfoField objects of the list.
     FFields: TList;
   protected
     function GetAsJSON: StringRAL;
@@ -139,18 +133,24 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Frees every field description.
     procedure Clear;
+    /// Number of field descriptions.
     function Count: IntegerRAL;
+    /// Appends an empty field description and returns it.
     function NewField: TRALDBInfoField;
 
+    /// The list as JSON text (an array).
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    /// The list as a JSON array; a read returns a new array the caller frees.
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
+    /// Field description at AIndex, or nil out of range.
     property Field[AIndex: IntegerRAL]: TRALDBInfoField read GetField;
+    /// Field description named AName (case-insensitive), or nil.
     property FieldName[AName: StringRAL]: TRALDBInfoField read GetFieldName;
   end;
 
-  { TRALDBInfoTable }
-
+  /// Description of one table, as a server sends it.
   TRALDBInfoTable = class
   private
     FIsSystem: boolean;
@@ -164,18 +164,23 @@ type
   public
     constructor Create;
 
+    /// The description as JSON text.
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    /// The description as a JSON object; a read returns a new object the caller frees.
     property AsJSONObj: TRALJSONObject read GetAsJSONObj write SetAsJSONObj;
   published
+    /// True for a system table.
     property IsSystem: boolean read FIsSystem write FIsSystem;
+    /// Name of the table.
     property Name: StringRAL read FName write FName;
+    /// Schema of the table.
     property Schema: StringRAL read FSchema write FSchema;
   end;
 
-  { TRALDBInfoTables }
-
+  /// List of table descriptions; it owns them.
   TRALDBInfoTables = class
   private
+    /// The TRALDBInfoTable objects of the list.
     FTables: TList;
   protected
     function GetAsJSON: StringRAL;
@@ -188,98 +193,65 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Frees every table description.
     procedure Clear;
+    /// Number of table descriptions.
     function Count: IntegerRAL;
+    /// Appends an empty table description and returns it.
     function NewTable: TRALDBInfoTable;
 
+    /// The list as JSON text (an array).
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
+    /// The list as a JSON array; a read returns a new array the caller frees.
     property AsJSONObj: TRALJSONArray read GetAsJSONObj write SetAsJSONObj;
+    /// Table description at AIndex, or nil out of range.
     property Table[AIndex: IntegerRAL]: TRALDBInfoTable read GetTable;
+    /// Table description named AName (case-insensitive), or nil.
     property TableName[AName: StringRAL]: TRALDBInfoTable read GetTableName;
   end;
 
-/// The name of a TFieldType, memoised. Same result as GetEnumName, without
-/// walking the RTTI name table on every field of every row.
+/// Name of a TFieldType ('ftString'); '' for an invalid ordinal.
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL; overload;
-/// Same for RAL's own field type. It is the conversion that costs, not the size
-/// of the enum: GetEnumName hands back a 'string' (UTF-16 on Delphi) that then
-/// converts into StringRAL, and that price is identical for both enums.
+/// Name of a TRALFieldType ('sftString'); '' for an invalid ordinal.
 function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL; overload;
-/// The inverse: the TFieldType a name stands for, or ftUnknown when it matches
-/// none. GetEnumValue answers -1 there, and every caller cast that straight to
-/// TFieldType, which has no member -1. TRALFieldType needs no inverse - its
-/// name is written into the JSON for readers, never read back.
+/// The TFieldType named AName (case-insensitive), or ftUnknown.
 function RALNameToFieldType(const AName: StringRAL): TFieldType;
-/// True when AValue - a number read off the wire, out of a storage or a request
-/// body - is the ordinal of a TRALFieldType. Check it BEFORE the cast: past the
-/// last member the cast is no RAL type at all, and on Delphi a check written on
-/// the enum afterwards misses half the bytes (see RALFieldTypeName)
+/// True when AValue is a TRALFieldType ordinal; check a wire value before the cast.
 function RALIsFieldTypeOrdinal(AValue: Int64RAL): boolean;
 
-/// What an exact decimal column (ftBCD, ftFMTBcd) travels as: sftBCD, or the
-/// sftDouble it always was while RALLegacyWire is on
+/// Type an exact decimal travels as: sftBCD, or sftDouble under RALLegacyWire.
 function RALDecimalFieldType: TRALFieldType;
-/// An exact decimal as it travels: its digits, '.' as the separator, no
-/// thousands - the same on every locale and compiler
+/// An exact decimal as text: its digits, '.' as separator, no thousands, any locale.
 function RALBCDToText(const AValue: TBcd): StringRAL;
-/// The inverse, for text RAL wrote itself: anything else raises
+/// Reads text in the RALBCDToText form; raises EConvertError for anything else.
 function RALTextToBCD(const AValue: StringRAL): TBcd;
-/// The inverse without raising, for a number another program wrote
+/// Reads text in the RALBCDToText form; False for anything else.
 function RALTryTextToBCD(const AValue: StringRAL; out ABcd: TBcd): boolean;
-/// The precision of a decimal field rebuilt from the wire: the one the
-/// column declared, or the most a TBcd holds when nothing said it
+/// APrecision, or 64 (the most a TBcd holds) when it is 0 or less.
 function RALDecimalPrecision(APrecision: IntegerRAL): IntegerRAL;
-/// The total digits a decimal field declares - Size is its scale - or 0 for
-/// any other field
+/// Total digits of a decimal field (TBCDField, TFMTBCDField); 0 for any other field.
 function RALFieldPrecision(AField: TField): IntegerRAL;
-/// A moment as Unix time, the way the JSON and CSV storages write dtfUnix:
-/// whole seconds, and three decimals when it has milliseconds - unless
-/// RALLegacyWire, when an older RAL reads whole seconds only. It wrote whole
-/// seconds always, and every time went out cut to the second
+/// AValue as Unix seconds, with 3 decimals if it has milliseconds (not RALLegacyWire).
 function RALDateTimeToUnixText(const AValue: TDateTime): StringRAL;
-/// The moment of Unix time in seconds, with or without decimals, to the
-/// millisecond
+/// The moment of a Unix time in seconds, to the millisecond.
 function RALUnixSecondsToDateTime(const ASeconds: Double): TDateTime;
-/// Which of the three a date and time param of a DBWare request is, in the
-/// size it travels with: 1 a date, 2 a time, 0 both. sftDateTime alone cannot
-/// say, and the server bound every one as a date and time - a time reached a
-/// SQLite TIME column as '1899-12-30 hh:nn:ss.zzz', which no driver read back.
-/// A reader from before 04/10/2026 ignores that size
+/// Kind of a date and time param, sent in its size: 1 a date, 2 a time, 0 both.
 function RALDateTimeKind(AType: TFieldType): IntegerRAL;
-/// The param type a kind of RALDateTimeKind stands for; ftDateTime for 0 or
-/// anything it does not know
+/// Field type of a RALDateTimeKind: ftDate, ftTime, or ftDateTime for anything else.
 function RALDateTimeKindType(AKind: IntegerRAL): TFieldType;
 
-/// The message a failed database request came back with - never an empty one.
+/// Error message of a failed database answer; never empty.
 function RALDBResponseError(AResponse: TRALResponse): StringRAL;
 
 var
-  /// True writes what a RAL from before 04/10/2026 reads, for a side whose
-  /// peers are older; reading takes both, whatever this says. Two values
-  /// travel exact since then, and an older reader cannot read either:
-  /// NUMERIC and DECIMAL columns (ftBCD, ftFMTBcd) as sftBCD, their digits -
-  /// they went as a double, so 12345678901234.5678 arrived as
-  /// 12345678901234.6 wherever the native FireDAC stream was not the path -
-  /// and the milliseconds of a date, in the BSON storage, which kxBSON writes
-  /// in whole seconds, and in Unix time (dtfUnix), as decimals of the second.
+  { True writes decimals as doubles and dates in whole seconds, as older RAL
+    versions read them; reading takes both forms. }
   RALLegacyWire: boolean = False;
 
 implementation
 
-{ Three steps, and each one is there because the step before it can come up
-  empty:
-
-  - TRALDBModule.AnswerException answers with a single body param NAMED
-    'Exception', but EncodeBody skips multipart for a lone body param and never
-    puts its name on the wire, so what usually arrives is the anonymous body;
-  - a param that is not there is nil, not an empty one, so neither read can be
-    chained onto the other without a guard - and this runs on the error path,
-    where an access violation is the last thing anyone needs;
-  - an answer carrying a status and no body at all - a proxy in the middle, a
-    bare Answer(status) - used to raise an exception with an EMPTY message, and
-    an empty message tells the user nothing at all. The status is the least
-    that can be said, and it is written so that a caller matching on the number
-    still finds it. }
+{ The 'Exception' param; else the body, since a lone param travels without its
+  name; else a message with the status code. }
 function RALDBResponseError(AResponse: TRALResponse): StringRAL;
 var
   vParam: TRALParam;
@@ -299,25 +271,12 @@ begin
 end;
 
 var
-  { Resolved once and kept. GetEnumName walks the RTTI short-string table from
-    the start, and on Delphi it also hands back a UTF-16 string that then
-    converts into StringRAL - both per field, per row, on every DBWare answer.
-    The tables are filled BY GetEnumName, so they stay correct on any compiler
-    whatever members TFieldType happens to have; a hand-written table would not.
-
-    They are filled in initialization, before any thread exists, and only read
-    after that. Filling them lazily raced: a managed string written by two
-    threads without a lock can reach a reader freed or half-published, and the
-    SetLength of the lazy version could swap the whole array under a reader,
-    who then got ''. Measured with 6 threads on a cold cache: 441 of 3000 rounds
-    with a wrong name or an exception on the client side, 69 on the server side.
-    A '' that reaches RALNameToFieldType comes back as ftUnknown, and the server
-    then refuses the parameter with "Field '<name>' is of an unknown type" - on
-    the first DAO requests of a process, which a client may well fire in
-    parallel. }
+  /// Names of TFieldType, filled by GetEnumName in initialization and then only read.
   gFieldTypeNames: array [TFieldType] of StringRAL;
+  /// Names of TRALFieldType, filled the same way.
   gRALFieldTypeNames: array [TRALFieldType] of StringRAL;
 
+/// Fills the name tables; runs in initialization, before any thread exists.
 procedure FillFieldTypeNames;
 var
   vFieldType: TFieldType;
@@ -333,13 +292,7 @@ end;
 
 function RALFieldTypeName(AFieldType: TRALFieldType): StringRAL;
 begin
-  { these values come off the wire as a byte cast to the enum, and the table
-    read past its end handed a stray pointer to a string assignment. Not
-    GetEnumName either: Delphi's walks its name list for as many steps as the
-    ordinal says, past the last name and into whatever RTTI follows.
-    Compared as Cardinal, never with Ord: Delphi compares an enum of up to 128
-    members as a SIGNED byte, on Win32 and Win64 alike, so an ordinal from 128
-    to 255 passed "Ord(x) > Ord(High(x))" and indexed BEFORE the table }
+  // compared as Cardinal: Delphi compares a small enum as a signed byte
   if Cardinal(AFieldType) > Cardinal(Ord(High(TRALFieldType))) then
     Result := ''
   else
@@ -348,9 +301,7 @@ end;
 
 function RALFieldTypeName(AFieldType: TFieldType): StringRAL;
 begin
-  { an ordinal outside the enum - reachable only through a cast - has no name;
-    see the overload above, Cardinal included. RALNameToFieldType reads ''
-    back as ftUnknown }
+  // an ordinal past the enum has no name; RALNameToFieldType reads '' as ftUnknown
   if Cardinal(AFieldType) > Cardinal(Ord(High(TFieldType))) then
     Result := ''
   else
@@ -381,10 +332,8 @@ begin
     raise EConvertError.CreateFmt(emDecimalInvalid, [string(AValue)]);
 end;
 
-{ The wire's form only - an optional '-', digits, and at most one '.' with
-  digits on both sides - checked before the conversion: FPC's TryStrToBCD
-  takes the format's thousand separator and skips it, so '1,5', the text
-  fpjson gives a float in a comma locale, read as 15 }
+{ The form is checked first (optional '-', digits, one '.' between digits):
+  FPC's TryStrToBCD skips thousand separators and would read '1,5' as 15. }
 function RALTryTextToBCD(const AValue: StringRAL; out ABcd: TBcd): boolean;
 var
   vInt, vStart, vBefore, vAfter: IntegerRAL;
@@ -499,15 +448,9 @@ end;
 
 class function TRALDB.FieldTypeToRALFieldType(AFieldType: TFieldType): TRALFieldType;
 begin
-  { a type with no RAL counterpart travels as text - ftUnknown included, which
-    is what a column of a type no driver recognised arrives as. There was no
-    default at all: the result was whatever the register held, and it went on
-    to index the type name table }
+  // a type with no RAL counterpart, ftUnknown included, travels as text
   Result := sftString;
-  { past the last member a case is not reliably answered by its default on
-    Delphi: on Win32 an ordinal from 128 up can land on a member's branch -
-    see RALFieldTypeToFieldType, and RALFieldTypeName for the signed byte
-    behind it }
+  // checked before the case: Delphi may take a member's branch for an invalid ordinal
   if Cardinal(AFieldType) > Cardinal(Ord(High(TFieldType))) then
     Exit;
   case AFieldType of
@@ -566,31 +509,13 @@ begin
     ftMemo,
     ftFmtMemo: Result := sftMemo;
 
-    // ignorados
-{
-    ftObject: ;
-    ftConnection: ;
-    ftParams: ;
-    ftParadoxOle: ;
-    ftDBaseOle: ;
-    ftCursor: ;
-    ftADT: ;
-    ftArray: ;
-    ftReference: ;
-    ftDataSet: ;
-    ftVariant: ;
-    ftInterface: ;
-    ftIDispatch: ;
-}
+    // the other types (ftObject, ftADT, ftDataSet, ftVariant...) travel as text
   end;
 end;
 
 class function TRALDB.RALFieldTypeToFieldType(AFieldType: TRALFieldType): TFieldType;
 begin
-  { every member is mapped below; this answers an ordinal that came off the
-    wire past the last one - before the case, which on Win32 took 128 for
-    sftShortInt and answered ftShortint, and on FPC jumped through its table
-    into an access violation for anything past the last member }
+  // an ordinal past the last member answers ftUnknown, checked before the case
   Result := ftUnknown;
   if Cardinal(AFieldType) > Cardinal(Ord(High(TRALFieldType))) then
     Exit;
@@ -825,7 +750,7 @@ begin
   Result.Add('fieldtypename', RALFieldTypeName(FFieldType));
   Result.Add('flags', FFlags);
   Result.Add('length', FLength);
-  // only when there is one: a reader before it never looks for the key
+  // written only when set: older readers do not know the key
   if FNativeDriver >= 0 then
     Result.Add('nativedriver', FNativeDriver);
   Result.Add('precision', FPrecision);
@@ -836,11 +761,8 @@ begin
   Result.Add('tablename', FTableName);
 end;
 
-{ The schema a server answers getsqlfields, getfields and gettables with, read
-  on the client. Every level was cast blindly - valid JSON of the wrong shape
-  walked an array with an object's methods - so each checks its type now. Text
-  that is not JSON at all still parses to nil and leaves the info empty, as
-  before; each member asked for and missing still reads as empty. }
+{ JSON of the wrong shape raises emInvalidJSONFormat; text that is not JSON
+  leaves the description empty, and a missing member reads as empty. }
 procedure TRALDBInfoField.SetAsJSON(AValue: StringRAL);
 var
   vJSON : TRALJSONValue;
@@ -862,9 +784,7 @@ var
 begin
   FAttributes := AValue.Get('attributes').AsString;
   FFieldName := AValue.Get('fieldname').AsString;
-  { a number off the wire: past the last member it is no type at all, and the
-    name this info writes back into its JSON was read from before the name
-    table. ftUnknown, as RALNameToFieldType answers a name it does not know }
+  // an ordinal past the last member reads as ftUnknown
   vType := AValue.Get('fieldtype').AsInteger;
   if (vType < 0) or (vType > Ord(High(TFieldType))) then
     FFieldType := ftUnknown
@@ -872,7 +792,7 @@ begin
     FFieldType := TFieldType(vType);
   FFlags := AValue.Get('flags').AsInteger;
   FLength := AValue.Get('length').AsInteger;
-  // an older server does not send it: nothing is native then
+  // absent from older servers: nothing is native
   vNative := AValue.Get('nativedriver');
   if vNative <> nil then
     FNativeDriver := vNative.AsInteger
