@@ -32,7 +32,7 @@ HtmlBodyBegin=
 HtmlBodyEnd=
 ExternalDescriptions=
 WriteUsesList=1
-AutoAbstract=0
+AutoAbstract=1
 AutoLink=1
 HandleMacros=1
 UseTipueSearch=1
@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=23
+Count=24
 Item_0=src\base
 Item_1=src\base\modules
 Item_2=src\base\plugins
@@ -90,10 +90,11 @@ Item_18=src\wizard\delphi
 Item_19=src\wizard\delphi\cgi
 Item_20=src\wizard\delphi\console
 Item_21=src\wizard\delphi\standalone
-Item_22=src\wizard\lazarus
+Item_22=src\engine\kwik
+Item_23=src\engine\okhttp
 
 [Files]
-Count=115
+Count=117
 Item_0=src\base\plugins\RALAuthentication.pas
 Item_1=src\base\RALClient.pas
 Item_2=src\base\RALConsts.pas
@@ -192,23 +193,25 @@ Item_94=src\wizard\delphi\RALWizardReg.pas
 Item_95=src\wizard\delphi\RALWizardTools.pas
 Item_96=src\wizard\delphi\standalone\RALWizardFormStandAlone.pas
 Item_97=src\wizard\delphi\standalone\RALWizardProjStandAlone.pas
-Item_98=src\wizard\lazarus\ralwizard.pas
-Item_99=src\wizard\lazarus\ralwizardform.pas
-Item_100=src\base\RALPlugin.pas
-Item_101=src\base\plugins\RALSecurity.pas
-Item_102=src\base\plugins\RALCORS.pas
-Item_103=src\base\plugins\RALContent.pas
-Item_104=src\utils\RALJWS.pas
-Item_105=src\base\plugins\RALDigest.pas
-Item_106=src\base\plugins\RALOAuth2.pas
-Item_107=src\utils\RALBigInt.pas
-Item_108=src\utils\RALASN1.pas
-Item_109=src\utils\RALRSA.pas
-Item_110=src\utils\RALX509.pas
-Item_111=src\base\plugins\RALSelfSigned.pas
-Item_112=src\engine\synopse\RALHttpSysCert.pas
-Item_113=src\utils\RALNetwork.pas
-Item_114=src\base\plugins\RALConcurrency.pas
+Item_98=src\base\RALPlugin.pas
+Item_99=src\base\plugins\RALSecurity.pas
+Item_100=src\base\plugins\RALCORS.pas
+Item_101=src\base\plugins\RALContent.pas
+Item_102=src\utils\RALJWS.pas
+Item_103=src\base\plugins\RALDigest.pas
+Item_104=src\base\plugins\RALOAuth2.pas
+Item_105=src\utils\RALBigInt.pas
+Item_106=src\utils\RALASN1.pas
+Item_107=src\utils\RALRSA.pas
+Item_108=src\utils\RALX509.pas
+Item_109=src\base\plugins\RALSelfSigned.pas
+Item_110=src\engine\synopse\RALHttpSysCert.pas
+Item_111=src\utils\RALNetwork.pas
+Item_112=src\base\plugins\RALConcurrency.pas
+Item_113=src\engine\kwik\RALKwikClient.pas
+Item_114=src\engine\kwik\RALKwikRegister.pas
+Item_115=src\engine\okhttp\RALOkHttpClient.pas
+Item_116=src\engine\okhttp\RALOkHttpRegister.pas
 [AdditionalFiles]
 Count=0
 
