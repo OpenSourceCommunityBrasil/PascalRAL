@@ -123,6 +123,7 @@ type
     FEnabled: boolean;
     FHost: TRALPluginHost;
     FPriority: IntegerRAL;
+
     procedure SetEnabled(AValue: boolean);
     procedure SetPriority(AValue: IntegerRAL);
   protected
@@ -141,12 +142,10 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// ppAuthResult. Change AResult to change the verdict
     procedure AfterAuthenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       var AResult: TRALAuthResult); virtual;
-    /// ppAuthenticate. ARoute is the route of the request
-    function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
-      ARoute: TRALRoute): TRALAuthResult; virtual;
     /// ppAuthenticate: what the request this authenticator just decided
     /// (AResult) means to the brute-force protection. AOnOwnRoute is True for
     /// the plugin's own routes - the JWT token route. Only a secret that was
@@ -157,14 +156,18 @@ type
     /// (TRALPluginHost.ReportAttempt) - brute force counts or clears here
     procedure AuthAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
       AAttempt: TRALAuthAttempt); virtual;
+    /// ppAuthenticate. ARoute is the route of the request
+    function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
+      ARoute: TRALRoute): TRALAuthResult; virtual;
+    /// Whether the lifecycle hooks may be called: not while designing,
+    /// loading or destroying
+    function CanNotify: boolean;
     /// ppProcess. Set AHandled to True to answer the request here
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); virtual;
     /// ppResolveRoute. A route of the plugin's own, or nil
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       virtual;
-    /// ppValidate. Answer 400 or above to refuse
-    procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     /// The server is starting: called before the engine opens its port, or at
     /// once when the plugin is added to a server that is already running. An
     /// exception keeps the server stopped (or the plugin out of it)
@@ -172,9 +175,8 @@ type
     /// The server is stopping, or the plugin left a running server. Requests
     /// may still be running; exceptions go to the server's OnServerError
     procedure ServerDeactivating; virtual;
-    /// Whether the lifecycle hooks may be called: not while designing,
-    /// loading or destroying
-    function CanNotify: boolean;
+    /// ppValidate. Answer 400 or above to refuse
+    procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
 
     /// The server this plugin is in, or nil
     property Host: TRALPluginHost read FHost;
@@ -221,6 +223,7 @@ type
     FPlugins: TList;
     FRetired: TList;
     FSnapshot: TRALPluginSnapshot;
+
     procedure Rebuild;
   protected
     /// Whether the host is running: a plugin added now hears ServerActivating.
@@ -230,6 +233,7 @@ type
     /// the routes plugins offer. TRALServer asks its modules first
     function LookupRoute(ARequest: TRALRequest; AResponse: TRALResponse;
       out AOwner: TObject): TRALRoute; virtual;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// ServerActivating (AActive) or ServerDeactivating on every plugin, in
     /// running order. Starting, the first exception stops the walk, the
     /// plugins that had started hear the stop, and it goes up; stopping always
@@ -238,7 +242,6 @@ type
     /// An exception of a plugin that is stopping. TRALServer hands it to
     /// OnServerError
     procedure PluginError(AError: Exception); virtual;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// A plugin left the host - removed, or freed. A descendant that keeps a
     /// reference of its own to a plugin clears it here: the plugin removes
     /// itself before its free notifications go out, so this is the one
@@ -252,6 +255,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Adds a plugin; adding one already there does nothing. The host does
     /// not own it
     procedure AddPlugin(APlugin: TRALServerPlugin);
@@ -263,11 +267,6 @@ type
       ARoute: TRALRoute): TRALAuthResult;
     /// A plugin blocked AClientIP. TRALServer fires OnClientBlock
     procedure ClientBlocked(const AClientIP: StringRAL); virtual;
-    /// Hands AAttempt to the ppAuthResult plugins (AuthAttempt). Authenticate
-    /// does it for the routes it decides; an authenticator answering a route
-    /// of its own (the JWT token route) calls it itself. raaNone reaches no one
-    procedure ReportAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
-      AAttempt: TRALAuthAttempt);
     /// The first enabled plugin of AClass (or a descendant), in running order
     function FindPlugin(AClass: TRALServerPluginClass): TRALServerPlugin;
     /// The route that answers ARequest, or nil. Looked up once and kept in the
@@ -280,6 +279,11 @@ type
     /// How many enabled plugins
     function PluginCount: IntegerRAL;
     procedure RemovePlugin(APlugin: TRALServerPlugin);
+    /// Hands AAttempt to the ppAuthResult plugins (AuthAttempt). Authenticate
+    /// does it for the routes it decides; an authenticator answering a route
+    /// of its own (the JWT token route) calls it itself. raaNone reaches no one
+    procedure ReportAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+      AAttempt: TRALAuthAttempt);
   end;
 
 implementation
