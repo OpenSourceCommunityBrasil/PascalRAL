@@ -1,14 +1,11 @@
-/// Unit that stores all constant values, version configuration and i18n message strings
+/// Constants, version numbers and the translated messages of PascalRAL.
 unit RALConsts;
 
 interface
 
 {$I PascalRAL.inc}
 
-{ the language files are UTF-8 with a BOM. Delphi reads a file without one in
-  the system ANSI codepage, and every accented message came out double-encoded;
-  FPC refuses to include a file with a BOM into a module of another codepage,
-  hence the directive - on FPC only, Delphi has none and needs none }
+// the language files are UTF-8 with BOM: FPC includes them only under this directive
 {$IFDEF FPC}
   {$CODEPAGE UTF8}
 {$ENDIF}
@@ -17,37 +14,53 @@ uses
   Classes, SysUtils;
 
 type
-  { OAuth 1.0a (ratOAuth) was removed in 1.3: OAuth2 is a different protocol,
-    not an extension of it }
+  /// Authentication scheme of a request.
   TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth2, ratDigest);
 
 const
-  // Versionamento
+  /// PascalRAL version, as text.
   RALVERSION = '1.2.0-1';
+  /// Major part of the version.
   RALVERSION_MAJOR = 1;
+  /// Minor part of the version.
   RALVERSION_MINOR = 2;
+  /// Patch part of the version.
   RALVERSION_PATCH = 0;
+  /// Version as one number: major * 10000 + minor * 100 + patch.
   RALVERSION_FULL  = RALVERSION_MAJOR * 10000
                    + RALVERSION_MINOR * 100
                    + RALVERSION_PATCH;
 
-  // IOTA Constants
+  /// Package name shown in the IDE.
   RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
+  /// Short package name.
   RALPACKAGESHORT          = 'PascalRAL';
+  /// Short name with the version, shown in the IDE splash and about box.
   RALPACKAGESHORTLICENSE   = 'PascalRAL v' + RALVERSION;
+  /// Project site.
   RALPACKAGESITE           = 'https://github.com/OpenSourceCommunityBrasil/PascalRAL';
+  /// License shown in the IDE about box.
   RALPACKAGELICENSE        = 'OpenSource';
+  /// License with the version.
   RALPACKAGELICENSEVERSION = 'OpenSource - v' + RALVERSION;
+  /// Name of the mORMot2 engine.
   ENGINESYNOPSE            = 'mORMot2';
+  /// Name of the Indy engine.
   ENGINEINDY               = 'Indy';
+  /// Name of the Sagui engine.
   ENGINESAGUI              = 'Sagui';
+  /// Name of the netHTTP engine.
   ENGINENETHTTP            = 'netHttp';
+  /// Name of the fpHTTP engine.
   ENGINEFPHTTP             = 'fpHttp';
+  /// Name of the OkHttp engine.
   ENGINEOKHTTP             = 'OkHttp';
+  /// Name of the MsQuic engine.
   ENGINEMSQUIC             = 'MsQuic';
+  /// Name of the Kwik engine.
   ENGINEKWIK               = 'Kwik';
 
-  // html pages
+  /// Server status page; %ralengine% is replaced by the engine name.
   RALDefaultPage = '<!DOCTYPE html>'
                  + '<html lang="en-us">'
                  + '<head><title>RALServer - ' + RALVERSION + '</title>'
@@ -55,126 +68,99 @@ const
                  + '<h4>Version: ' + RALVERSION + '</h4>'
                  + '<h4>Engine: %ralengine%</h4>'
                  + '</body></html>';
+  /// Error page for Format: language, status code, title and message.
   RALPage = '<!DOCTYPE html>'
           + '<html lang="%s">'
           + '<head><title>RALServer - ' + RALVERSION + '</title>'
           + '</head><body><h1>%d - %s</h1>'
           + '<p>%s</p></body></html>';
 
+  /// Ciphers a client accepts in an answer, sent in Accept-Encription.
   SupportedEncriptKind = 'aes128cbc_pkcs7, aes192cbc_pkcs7, aes256cbc_pkcs7';
+  /// Longest line the multipart decoder reads as a boundary or a part header.
   MultipartLineLength = 500;
-  { Ceiling of the work buffer the transforms allocate (zlib, zstd, brotli,
-    AES, hashes, base64, hex, the multipart decoder): Min(size, this). It was
-    50 MB, so up to that size the buffer was as large as the whole body - one
-    more full copy of it in every transform. Measured on 27/09/2026 (Delphi 13
-    Win64): gzip runs at the same speed with a 16 KB and a 4 MB buffer.
-    Lowering it meant that every path in pieces now runs for any body above
-    64 KB instead of above 50 MB, and two of them were wrong: base64 encoded
-    each piece on its own (a "=" in the middle when a piece is not a multiple
-    of 3 bytes) and the hashes overwrote a partial block with the next piece
-    (TRALHashBase.HashBytes). Both are fixed; keep the value a multiple of 64
-    (a hash block) and of 3 and 4 is taken care of by base64 itself. }
+  /// Largest work buffer of a transform (compression, cipher, hash, encoders).
   DEFAULTBUFFERSTREAMSIZE = 65536;
+  /// Buffer of the multipart decoder.
   DEFAULTDECODERBUFFERSIZE = 65536;
-  { A body is kept in ONE contiguous block up to this size and as a list of
-    DEFAULTCHUNKSIZE blocks above it (.agents/PLANO_STREAM_UNICO.md, D8).
-    Measured on 27/09/2026 (Delphi 13 Win64, FastMM, one process per case):
-    a TMemoryStream filled in 64 KB writes commits 2 MB beyond a 4 MB body,
-    7 MB beyond 8 MB and 18 MB beyond 16 MB (366 MB beyond 512 MB), and fills
-    2-3x slower than the block list, which stays below 1% at every size. At
-    8 MB the growth already costs about what joining the blocks costs the
-    engines that need contiguous memory (mORMot2 and QUIC), so from there on
-    the blocks win even for them. A body whose size is known in advance and
-    preallocated does not grow, and costs nothing extra either way. }
+  /// Largest body kept in one block; a larger one is split into DEFAULTCHUNKSIZE blocks.
   DEFAULTCHUNKABOVE = 8388608;
-  { Usable size of each block of a chunked body: 1 MB minus 1 KB, on purpose.
-    The memory manager's header pushes an exact power of two into the next
-    64 KB granule: 1 MB blocks committed 6.4% more than the body and 256 KB
-    blocks 25%, while 1023 KB and 255 KB blocks cost 0.4%. The block size did
-    not change the speed of gzip anywhere between 64 KB and 64 MB; a transform
-    that frees each block as it reads holds at most one block beyond its
-    output. }
+  /// Usable size of each block of a chunked body (1 MB minus 1 KB).
   DEFAULTCHUNKSIZE = 1047552;
-  { the work buffer the compressors read and write through, whatever the size
-    of the body: see TRALCompressZLib.InitCompress }
+  /// Work buffer the compressors read and write through.
   DEFAULTCOMPRESSBUFFERSIZE = 65536;
 
-  // Client defaults and limits.
-  // The two timeouts must be written both in the constructor and in the
-  // published property's "default" directive: they used to disagree (the
-  // directive said 5000/30000 while the constructor set 30000/10000), and
-  // "default" is what tells the streaming system not to write the property to
-  // the dfm/lfm - so typing exactly 5000 in the Object Inspector produced a
-  // component that ran with 30000.
+  /// Default TRALClient.ConnectTimeout, in milliseconds.
   DEFAULTCONNECTTIMEOUT = 30000;
-  { How many idle client engines TRALClient keeps for reuse. An engine owns a
-    connection, so this is also the ceiling on connections one client holds
-    open while nothing is in flight. Past it a released engine is closed
-    instead of pooled, which is what the client did for EVERY engine before
-    the pool existed. }
+  /// Most idle engines, and so open connections, a TRALClient keeps for reuse.
   RALMAXIDLEENGINES = 32;
-  { Milliseconds an engine may sit idle in TRALClient's pool before it is
-    closed instead of handed out again. Zero keeps it forever. Five minutes
-    is below what a server usually allows a kept-alive connection. }
+  /// Milliseconds an idle engine stays in the TRALClient pool; 0 keeps it forever.
   RALENGINEIDLETIMEOUT = 300000;
-  { Milliseconds a thread's own Request - TRALClient.Request is one object per
-    thread - may sit untouched before the client discards it. Deliberately NOT
-    the pool's idle timeout: a thread that set a header once and calls every
-    ten minutes must not lose it in between. Thirty minutes. }
+  /// Milliseconds a thread's own TRALClient.Request may stay unused before it is dropped.
   RALTHREADREQUESTTIMEOUT = 1800000;
-  { The port a TRALServer listens on when nobody chose one, and the port a
-    client assumes for a BaseURL without one on the engines that have to know
-    - the QUIC engine has no 80/443 convention to fall back on. }
+  /// Port of a server when none is set, and of a QUIC BaseURL without one.
   DEFAULTSERVERPORT = 8000;
-  { ALPN the QUIC engine offers on both ends. A server and a client with
-    different values never complete a handshake. }
+  /// ALPN of the QUIC engines; client and server must offer the same value.
   RALQUICALPN = 'ralq1';
-  { Milliseconds a QUIC connection may sit idle before either end closes it.
-    QUIC negotiates the smaller of the two peers' values, so the client and
-    the server start from the same one. }
+  /// Milliseconds a QUIC connection may stay idle before it is closed.
   RALQUICIDLETIMEOUT = 30000;
+  /// Default TRALClient.RequestTimeout, in milliseconds.
   DEFAULTREQUESTTIMEOUT = 10000;
-  // Consecutive redirects a client follows. Engines used to disagree without
-  // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
-  // THTTPClient defaults to.
+  /// Default number of consecutive redirects a client follows.
   DEFAULTMAXREDIRECTS = 3;
-  { Milliseconds a WebModule session may sit unused before it is dropped -
-    TRALWebModule.SessionTimeout. Thirty minutes, the usual for a web session.
-    Not TRALServer.SessionTimeout, whose 30000 is what mORMot2 holds an idle
-    kept-alive connection for: at 30 minutes there, an idle client would keep
-    a thread of smThreads for half an hour }
+  /// Default TRALWebModule.SessionTimeout: 30 minutes, in milliseconds.
   DEFAULTWEBSESSIONTIMEOUT = 1800000;
-  { Floor for TRALClient.KeepAliveInterval while it is on. It comes from
-    WinHTTP, which refuses WINHTTP_OPTION_HTTP2_KEEPALIVE below 5000 ms with
-    ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to
-    MinKeepAliveInterval and are not held to this one. }
+  /// Smallest TRALClient.KeepAliveInterval WinHTTP accepts, in milliseconds.
   MINKEEPALIVEMS = 5000;
-  // Attempts to obtain a token, in TRALAuthClient.Prepare of JWT and OAuth2.
+  /// Attempts to obtain a token in the JWT and OAuth2 client authenticators.
   RALMAXTOKENTRIES = 4;
+  /// Line break of the HTTP protocol (CR LF).
   HTTPLineBreak = #13#10;
-  // HTTP Codes
+  /// HTTP status 200 OK.
   HTTP_OK                  = 200;
+  /// HTTP status 201 Created.
   HTTP_Created             = 201;
+  /// HTTP status 204 No Content.
   HTTP_NoContent           = 204;
+  /// HTTP status 206 Partial Content.
   HTTP_PartialContent      = 206;
+  /// HTTP status 301 Moved Permanently.
   HTTP_Moved               = 301;
+  /// HTTP status 302 Found.
   HTTP_Found               = 302;
+  /// HTTP status 304 Not Modified.
   HTTP_NotModified         = 304;
+  /// HTTP status 400 Bad Request.
   HTTP_BadRequest          = 400;
+  /// HTTP status 401 Unauthorized.
   HTTP_Unauthorized        = 401;
+  /// HTTP status 403 Forbidden.
   HTTP_Forbidden           = 403;
+  /// HTTP status 404 Not Found.
   HTTP_NotFound            = 404;
+  /// HTTP status 405 Method Not Allowed.
   HTTP_MethodNotAllowed    = 405;
+  /// HTTP status 406 Not Acceptable.
   HTTP_NotAcceptable       = 406;
+  /// HTTP status 408 Request Timeout.
   HTTP_RequestTimeout      = 408;
+  /// HTTP status 413 Content Too Large.
   HTTP_RequestEntityTooLarge = 413;
+  /// HTTP status 415 Unsupported Media Type.
   HTTP_UnsupportedMedia    = 415;
+  /// HTTP status 416 Range Not Satisfiable.
   HTTP_RangeNotSatisfiable = 416;
+  /// HTTP status 429 Too Many Requests.
   HTTP_TooManyRequests     = 429;
+  /// HTTP status 500 Internal Server Error.
   HTTP_InternalError       = 500;
+  /// HTTP status 501 Not Implemented.
   HTTP_NotImplemented      = 501;
+  /// HTTP status 502 Bad Gateway.
   HTTP_BadGateway          = 502;
+  /// HTTP status 503 Service Unavailable.
   HTTP_ServiceUnavailable  = 503;
+  /// HTTP status 505 HTTP Version Not Supported.
   HTTP_VersionNotSupported = 505;
 
 resourcestring
