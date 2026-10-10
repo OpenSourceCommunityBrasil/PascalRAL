@@ -1,4 +1,4 @@
-/// Class to create(register) components on pallete
+/// Registers the RAL components and their property editors in the IDE.
 unit RALRegister;
 
 {$I PascalRAL.inc}
@@ -29,6 +29,7 @@ uses
   RALClient;
 
 type
+  /// Property editor of TRALClient.BaseURL: one URL per line, in a dialog.
   TRALBaseURLEditor = class(TClassProperty)
   public
     procedure Edit; override;
@@ -37,39 +38,30 @@ type
     procedure SetValue(const Value: string); override;
   end;
 
+  /// Property editor that lists the compressions linked into the program.
   TRALCompressEditor = class(TEnumProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
-  { Drops from the Object Inspector the published properties that say nothing
-    about the component as it is configured right now - the mORMot2 server's
-    HttpSysDomain outside smHttpSys, ShareConnection on an engine with one
-    socket per object. What is irrelevant is decided by the component itself,
-    in TRALComponent.IsPropertyRelevant, so this unit never has to know one
-    engine from another - and an engine never has to link against the IDE.
-
-    It is COMFORT, not enforcement: what is hidden keeps whatever value it had
-    and is ignored, never refused, because it may simply be left over from
-    another configuration. A choice that cannot work is a different matter and
-    is never hidden - it raises, and says why.
-
-    Delphi filters through a second interface on the selection editor,
-    ISelectionPropertyFilter; Lazarus through a virtual method plus an
-    attribute. Same idea, two shapes. }
+  { Hides from the Object Inspector the properties a component calls irrelevant
+    (TRALComponent.IsPropertyRelevant); a hidden value is kept and ignored. }
   TRALSelectionEditor = class(TSelectionEditor{$IFNDEF FPC}, ISelectionPropertyFilter{$ENDIF})
   public
     {$IFDEF FPC}
+      /// Removes from AProperties what no selected component calls relevant.
       procedure FilterProperties(ASelection: TPersistentSelectionList;
                                  AProperties: TPropertyEditorList); override;
       function GetAttributes: TSelectionEditorAttributes; override;
     {$ELSE}
+      /// Removes from ASelectionProperties what no selected component calls relevant.
       procedure FilterProperties(const ASelection: IDesignerSelections;
                                  const ASelectionProperties: IInterfaceList);
     {$ENDIF}
   end;
 
+  /// Selection editor of the servers: adds the units a handler needs to the uses.
   TRALServerSelectionEditor = class(TRALSelectionEditor)
   public
     {$IFNDEF FPC}
@@ -77,6 +69,7 @@ type
     {$ENDIF}
   end;
 
+  /// Selection editor of the clients: also adds the unit of the chosen engine.
   TRALClientSelectionEditor = class(TRALSelectionEditor)
   public
     {$IFNDEF FPC}
@@ -84,46 +77,38 @@ type
     {$ENDIF}
   end;
 
-  { A sieve ONE level down: it receives every sub-property the object editor
-    was about to hand the Object Inspector, and passes on only those at least
-    one of the selected components calls relevant - the same rule as the level
-    above, which is why it is written the same way. }
+  /// Passes on only the sub-properties some selected component calls relevant.
   TRALNestedSieve = class
   private
+    /// Callback that receives the sub-properties kept.
     FOuter: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF};
+    /// Selected RAL components.
     FOwners: TList;
+    /// Name of the object property and a dot, put before each sub-property name.
     FPrefix: StringRAL;
 
+    /// True when a selected component calls AName relevant, or none is selected.
     function IsRelevant(const AName: StringRAL): boolean;
   public
     constructor Create;
     destructor Destroy; override;
 
+    /// Hands AProp on when it is relevant.
     procedure PassOn({$IFDEF FPC}AProp: TPropertyEditor{$ELSE}const AProp: IProperty{$ENDIF});
   end;
 
-  { Drops, INSIDE an object property, the sub-properties the component does not
-    use as it is configured right now - SSL.CertificateFile on a mORMot2 server
-    in smHttpSys, where the certificate comes from the machine store through
-    netsh and the file is never read.
-
-    The name the component is asked is the DOTTED one, 'SSL.CertificateFile',
-    so that a single IsPropertyRelevant answers for both levels and this unit
-    still never has to know one engine from another.
-
-    Same rule as the level above: what is hidden keeps the value it had and is
-    ignored, never refused. }
+  { Property editor of an object property, such as SSL, that hides the
+    sub-properties the component does not use; it asks for the dotted name. }
   TRALNestedProperty = class(TClassProperty)
   public
     procedure GetProperties(Proc: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF}); override;
   end;
 
-  { TRALClientEngines }
-
-
+  /// Property editor of TRALClient.EngineType: lists the registered engines.
   TRALClientEngines = class(TStringProperty)
   private
     {$IFDEF FPC}
+       /// Adds the unit and the package of AEngine to the Lazarus project.
        procedure FPCRequiresUnits(AEngine : string);
     {$ENDIF}
   public
@@ -133,12 +118,10 @@ type
   end;
 
 
+/// Registers the components and property editors in the IDE.
 procedure Register;
 
 implementation
-
-// this allow to put a nice entry in the delphi
-// ide splash screen and about box
 
 procedure Register;
 {$IFDEF DELPHI2005UP}
@@ -166,17 +149,14 @@ begin
   RegisterComponents('RAL - Client', [TRALClient, TRALClientBasicAuth, TRALClientJWTAuth,
     TRALClientDigest, TRALClientOAuth2, TRALOAuth2Loopback]);
   RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
-  { a server carries no plugin: each feature is one of these, linked by its
-    Server property (authentication by Server.Authentication) }
+  // plugins link to a server by their Server property
   RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
     TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
     TRALSelfSignedPlugin, TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
   RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
 
-  { Registered for the BASE classes on purpose: the IDE walks up the hierarchy,
-    so every engine's server and every client gets the property filter without
-    a line of design-time code of its own. }
+  // registered for the base classes: the IDE also applies them to every descendant
   RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
   RegisterSelectionEditor(TRALClient, TRALClientSelectionEditor);
 
@@ -186,10 +166,7 @@ begin
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALClient, 'CompressType', TRALCompressEditor);
   RegisterPropertyEditor(TypeInfo(TRALCompressType), TRALServer, 'CompressType', TRALCompressEditor);
 
-  { By the BASE TYPE, tied to no component: the IDE matches a descendant class
-    with the editor registered for its ancestor, so this covers the SSL of
-    every server engine at once. With no rule on the component nothing changes
-    - IsPropertyRelevant answers True by default. }
+  // by the base type, for any component: covers the SSL of every engine
   RegisterPropertyEditor(TypeInfo(TRALSSL), nil, '', TRALNestedProperty);
   RegisterPropertyEditor(TypeInfo(TRALClientSSL), nil, '', TRALNestedProperty);
 end;
@@ -365,8 +342,7 @@ function TRALNestedSieve.IsRelevant(const AName: StringRAL): boolean;
 var
   vInt: IntegerRAL;
 begin
-  { hidden only when it says nothing for ANY of the selected ones - with a
-    mixed selection the honest thing is to go on showing it }
+  // hidden only when no selected component calls it relevant
   for vInt := 0 to FOwners.Count - 1 do
     if TRALComponent(FOwners[vInt]).IsPropertyRelevant(AName) then
       Exit(True);
@@ -396,7 +372,7 @@ begin
         vSieve.FOwners.Add(vObj);
     end;
 
-    { no RAL component in the selection: nothing to sieve }
+    // no RAL component in the selection: nothing to hide
     if vSieve.FOwners.Count = 0 then
     begin
       inherited GetProperties(Proc);
@@ -434,8 +410,7 @@ end;
     begin
       vName := StringRAL(AProperties[vProp].GetName);
 
-      { hidden only when it says nothing for EVERY selected component: with a
-        mixed selection the honest thing is to go on showing it }
+      // hidden only when no selected component calls it relevant
       vShow := False;
       for vSel := 0 to ASelection.Count - 1 do
       begin
@@ -468,8 +443,7 @@ end;
         Continue;
       vName := StringRAL(vEditor.GetName);
 
-      { hidden only when it says nothing for EVERY selected component: with a
-        mixed selection the honest thing is to go on showing it }
+      // hidden only when no selected component calls it relevant
       vShow := False;
       for vSel := 0 to ASelection.Count - 1 do
       begin
@@ -497,7 +471,7 @@ end;
     Proc('RALTypes');
   end;
 
-  { TRALClienteSelectionEditor }
+  { TRALClientSelectionEditor }
 
   procedure TRALClientSelectionEditor.RequiresUnits(Proc: TGetStrProc);
   var
@@ -509,7 +483,7 @@ end;
     Proc('RALRequest');
     Proc('RALResponse');
 
-    // might be a better way of doing the code from here onwards?
+    // the unit of each client's engine on the form
     if (Designer = nil) or (Designer.Root = nil) then
       Exit;
 
