@@ -109,7 +109,7 @@ type
     FRouteOwner: TObject;
     FRouteResolved: boolean;
     FTrusted: boolean;
-  private
+
     function GetAuthorization: TRALAuthorization;
     function GetRoute: TCollectionItem;
     procedure ParseQueryParams(const AValue: StringRAL);
@@ -222,6 +222,9 @@ type
   TRALServerRequest = class(TRALRequest)
   private
     FStream: TStream;
+  protected
+    procedure SetRequestStream(const AValue: TStream); override;
+    procedure SetRequestText(const AValue: StringRAL); override;
   public
     constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
@@ -233,9 +236,6 @@ type
     /// The body that arrived, decoded, as text (RequestText)
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
     procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); override;
-  protected
-    procedure SetRequestStream(const AValue: TStream); override;
-    procedure SetRequestText(const AValue: StringRAL); override;
   end;
 
 
@@ -243,12 +243,6 @@ type
 
   /// Derived class to handle ClientRequest
   TRALClientRequest = class(TRALRequest)
-  public
-    { The body encoded for the wire, as a new stream the caller frees - what
-      the engines used before TakeWireStream, which does the same without
-      copying the body when there is nothing to transform }
-    function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
-    function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetRequestStream(const AValue: TStream); override;
     procedure SetRequestText(const AValue: StringRAL); override;
@@ -257,6 +251,12 @@ type
       BaseURL or after a 401, sends them again }
     function WireCompressMultipart: boolean; override;
     function WireConsume: boolean; override;
+  public
+    { The body encoded for the wire, as a new stream the caller frees - what
+      the engines used before TakeWireStream, which does the same without
+      copying the body when there is nothing to transform }
+    function GetRequestEncStream(const AEncode: boolean = true): TStream; override;
+    function GetRequestEncText(const AEncode: boolean = true): StringRAL; override;
   end;
 
 implementation

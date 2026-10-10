@@ -117,18 +117,21 @@ type
 
   /// Derived class to handle ServerResponse
   TRALServerResponse = class(TRALResponse)
-  public
-    function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
-    function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
   protected
     procedure SetResponseStream(const AValue: TStream); override;
     procedure SetResponseText(const AValue: StringRAL); override;
+  public
+    function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
+    function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
   end;
 
   /// Derived class to handle ClientResponse
   TRALClientResponse = class(TRALResponse)
   private
     FStream: TStream;
+  protected
+    procedure SetResponseStream(const AValue: TStream); override;
+    procedure SetResponseText(const AValue: StringRAL); override;
   public
     constructor Create(AOwner : TObject); override;
     destructor Destroy; override;
@@ -139,9 +142,6 @@ type
     function GetResponseEncStream(const AEncode: boolean = true): TStream; override;
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; override;
     procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); override;
-  protected
-    procedure SetResponseStream(const AValue: TStream); override;
-    procedure SetResponseText(const AValue: StringRAL); override;
   end;
 
 implementation

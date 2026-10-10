@@ -139,6 +139,8 @@ type
   end;
 
   TRALRoute = class(TRALBaseRoute)
+  public
+    property OnReplyGen;
   published
     property AllowedMethods;
     property AllowURIParams;
@@ -151,8 +153,6 @@ type
     property Route;
     property SkipAuthMethods;
     property URIParams;
-  public
-    property OnReplyGen;
   end;
 
   /// The route class a module creates its routes with (TRALModuleRoutes.RouteClass)
