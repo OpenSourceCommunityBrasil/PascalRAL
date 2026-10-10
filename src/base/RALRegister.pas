@@ -33,8 +33,8 @@ type
   public
     procedure Edit; override;
     function GetAttributes: TPropertyAttributes; override;
-    procedure SetValue(const Value: string); override;
     function GetValue: string; override;
+    procedure SetValue(const Value: string); override;
   end;
 
   TRALCompressEditor = class(TEnumProperty)
@@ -61,9 +61,9 @@ type
   TRALSelectionEditor = class(TSelectionEditor{$IFNDEF FPC}, ISelectionPropertyFilter{$ENDIF})
   public
     {$IFDEF FPC}
-      function GetAttributes: TSelectionEditorAttributes; override;
       procedure FilterProperties(ASelection: TPersistentSelectionList;
                                  AProperties: TPropertyEditorList); override;
+      function GetAttributes: TSelectionEditorAttributes; override;
     {$ELSE}
       procedure FilterProperties(const ASelection: IDesignerSelections;
                                  const ASelectionProperties: IInterfaceList);
@@ -93,10 +93,12 @@ type
     FOuter: {$IFDEF FPC}TGetPropEditProc{$ELSE}TGetPropProc{$ENDIF};
     FOwners: TList;
     FPrefix: StringRAL;
+
     function IsRelevant(const AName: StringRAL): boolean;
   public
     constructor Create;
     destructor Destroy; override;
+
     procedure PassOn({$IFDEF FPC}AProp: TPropertyEditor{$ELSE}const AProp: IProperty{$ENDIF});
   end;
 
