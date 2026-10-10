@@ -15,11 +15,11 @@ type
   /// Base class for everything related to data response
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
+    FBodyStream: TStream;
     FContentEncoded: boolean;
     FErrorCode: IntegerRAL;
     FStatusCode: IntegerRAL;
     FTransportError: TRALTransportError;
-    FBodyStream: TStream;
   protected
     /// The body, decoded (see ResponseStream)
     function GetResponseStream: TStream;
@@ -32,6 +32,7 @@ type
   public
     constructor Create(AOwner: TObject); override;
     destructor Destroy; override;
+
     /// Append an UTF8 String to the response
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALResponse; reintroduce;
     /// Append a name:value cookie to the response
@@ -60,6 +61,11 @@ type
       False copies, like the overload above }
     procedure Answer(AStatusCode: IntegerRAL; AStream: TStream;
                      const AContentType: StringRAL; AOwnsStream: boolean); overload;
+    /// Sets the response with the given status code
+    procedure Answer(AStatusCode: IntegerRAL); overload;
+    /// Loads and set a file to the response with the given AFileName and sets the disposition
+    /// to inline by default.
+    procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
     { A stream to WRITE the body into, owned by the response and sent as it
       is - Storage.SaveToStream(Query, AResponse.BodyStream) answers a query
       with no intermediate copy. It is the body until something else replaces
@@ -67,11 +73,6 @@ type
       several writes append. The body goes out with the response's
       ContentType, whenever that is set }
     function BodyStream: TStream;
-    /// Sets the response with the given status code
-    procedure Answer(AStatusCode: IntegerRAL); overload;
-    /// Loads and set a file to the response with the given AFileName and sets the disposition
-    /// to inline by default.
-    procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
     /// Empties out the Response and sets default values
     procedure Clear; override;
     /// Fills the 'ADest' Strings with RALParams Cookies' Headers
@@ -87,6 +88,12 @@ type
     function TakeWireStream: TStream; override;
     function TakeWireString: RawByteString; override;
 
+    /// The body already carries the coding ContentEncoding names - a file kept
+    /// compressed on disk, which the WebModule serves as it is - so it goes out
+    /// without being compressed again. ContentEncoding is written as text then,
+    /// since the coding need not be one this program can produce
+    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
+    property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     { The body, DECODED - never compressed or encrypted, whatever the headers
       say. On a server it is what the handler answered, as a new stream the
       caller frees (up to 1.2 it was the encoded body - an engine that read it
@@ -94,12 +101,6 @@ type
       arrived, owned by the response, and a multipart comes back as the bytes
       received, not put back together with another boundary }
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
-    property ResponseStream: TStream read GetResponseStream write SetResponseStream;
-    /// The body already carries the coding ContentEncoding names - a file kept
-    /// compressed on disk, which the WebModule serves as it is - so it goes out
-    /// without being compressed again. ContentEncoding is written as text then,
-    /// since the coding need not be one this program can produce
-    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
   published
     /// TCP Client Connection Error
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
