@@ -1,4 +1,4 @@
-﻿/// Base unit for everything related to server Routing
+﻿/// Routes of a server: their paths, methods, handlers and declared params.
 unit RALRoutes;
 
 interface
@@ -10,17 +10,17 @@ uses
 
 type
   TRALRoutes = class;
-  /// The segments of a route's full path, '/api/users/:id' as api, users, :id
+  /// Segments of a route's full path: '/api/users/:id' as api, users, :id.
   TRALRouteSegments = array of StringRAL;
+  /// Handler of a route, as a method.
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
+  /// Handler of a route, as a plain procedure.
   TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 
-  // swagger defines
-  // array, boolean, integer, number, object, string
+  /// Type of a declared route param, as Swagger documents it.
   TRALRouteParamType = (prtBoolean, prtInteger, prtNumber, prtString);
 
-  { TRALRouteParam }
-
+  /// A param a route declares: name, type, whether it is required, and a description.
   TRALRouteParam = class(TCollectionItem)
   private
     FDescription: TStrings;
@@ -35,37 +35,37 @@ type
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
   published
+    /// Description of the param, for the API documentation.
     property Description: TStrings read FDescription write SetDescription;
+    /// Name of the param.
     property ParamName: StringRAL read FParamName write FParamName;
+    /// Type of the param.
     property ParamType: TRALRouteParamType read FParamType write FParamType;
+    /// Whether the param is required.
     property Required: boolean read FRequired write FRequired;
   end;
 
 
-  { TRALRouteParams }
-
+  /// Collection of route params.
   TRALRouteParams = class(TOwnedCollection)
   public
+    /// Collection of params owned by AOwner.
     constructor Create(AOwner: TPersistent);
 
+    /// Index of the param named AName (case-insensitive), or -1.
     function IndexOf(AName: StringRAL): IntegerRAL;
   end;
 
-  { TRALBaseRoute }
-
-  /// Base class for individual route definition
+  /// A route: path, methods, handler and declared params.
   TRALBaseRoute = class(TCollectionItem)
   private
     FAllowedMethods: TRALMethods;
-    { RALAllowedMethodsText of FAllowedMethods, made when they change: the
-      CORS plugin asks it on every request, and building it took some thirty
-      allocations each time }
+    /// Text of the Allow header for AllowedMethods, built when they change.
     FAllowText: StringRAL;
     FAllowURIParams: boolean;
     FCallback: boolean;
     FDescription: TStrings;
-    { GetFullRoute, kept with FSegments: the token route of an authenticator
-      compares it with every request }
+    /// Full route (module domain and route), built by UpdateSegments.
     FFullRoute: StringRAL;
     FInputParams: TRALRouteParams;
     FName: StringRAL;
@@ -73,6 +73,7 @@ type
     FOnReplyGen: TRALOnReplyGen;
     FOutputParams: TRALRouteParams;
     FRoute: StringRAL;
+    /// Segments of FFullRoute, matched against each request.
     FSegments: TRALRouteSegments;
     FSkipAuthMethods: TRALMethods;
     FURIParams: TRALRouteParams;
@@ -80,7 +81,6 @@ type
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
     function IsOutputParamsStored: Boolean;
-    /// checks if the route already exists on the list
     procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetCollection(Value: TCollection); override;
     procedure SetDescription(const AValue: TStrings);
@@ -94,50 +94,56 @@ type
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
 
+    /// Sets AllowedMethods; returns the route.
     function Allow(AMethods: TRALMethods): TRALBaseRoute;
-    /// Runs the OnReply event. Virtual so a route class of a module can call
-    /// a handler of its own instead
+    { Runs the handler (OnReply or OnReplyGen); with neither, the owning module
+      answers, or 404. A route class may run a handler of its own. }
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    /// Returns methods that this route will answer
+    /// The Allow header text of the methods the route takes.
     function GetAllowMethods: StringRAL;
+    /// Path of the route with the domain of its module.
     function GetFullRoute: StringRAL;
-    /// Returns internal name of the route
     function GetNamePath: string; override;
-    /// True when OnReply or OnReplyGen is assigned: the route answers through
-    /// the core handler, and a module's context is not built for it
+    /// True when OnReply or OnReplyGen is assigned.
     function HasCoreHandler: boolean;
-    /// Returns true or false wether the method is allowed in route
+    /// True when the route takes AMethod; amUNKNOWN never.
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
-    /// Returns true or false wether the method is skipped in authentication
+    /// True when AMethod skips authentication on this route.
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
+    /// Sets SkipAuthMethods; returns the route.
     function SkipAuth(AMethods: TRALMethods): TRALBaseRoute;    
-    /// Splits GetFullRoute into the segments every request is matched against,
-    /// once, instead of on each request. Route, the owning collection and the
-    /// module's Domain call it when they change
+    /// Rebuilds the full route and its segments; called when route or domain change.
     procedure UpdateSegments;
 
+    /// Methods the route takes; amALL takes every method.
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
+    /// The route also answers paths longer than its own, as ral_uriparam1, 2...
     property AllowURIParams: Boolean read FAllowURIParams write FAllowURIParams;
+    /// Marks the route as a callback in the API documentation.
     property Callback: boolean read FCallback write FCallback;
+    /// Name of the route.
     property Name: StringRAL read FName write FName;
+    /// Handler of the route, as a method.
     property OnReply: TRALOnReply read FOnReply write FOnReply;
+    /// Handler of the route, as a plain procedure.
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
+    /// Methods that skip authentication on this route; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
+    /// The ':name' params of the path, in order.
     property URIParams: TRALRouteParams read FURIParams write SetURIParams;
   published
+    /// Description of the route, for the API documentation.
     property Description: TStrings read FDescription write SetDescription;
+    /// Params the route takes, in the order it declares them.
     property InputParams: TRALRouteParams read FInputParams write SetInputParams;
-    /// What the route answers with, in order - InputParams for the response.
-    /// Nothing on the wire depends on it: it is the order an application can
-    /// read an answer in (a log line, an audit record), and a declaration the
-    /// route keeps instead of each caller. Written to the form only when it
-    /// has items, so a form saved by this version still opens in one without
-    /// the property.
+    /// Params the route answers with, in order; stored only when it has items.
     property OutputParams: TRALRouteParams read FOutputParams write SetOutputParams
       stored IsOutputParamsStored;
+    /// Path of the route; ':name' segments take any value.
     property Route: StringRAL read FRoute write SetRoute;
   end;
 
+  /// A route, with its properties published for the Object Inspector.
   TRALRoute = class(TRALBaseRoute)
   public
     property OnReplyGen;
@@ -155,54 +161,55 @@ type
     property URIParams;
   end;
 
-  /// The route class a module creates its routes with (TRALModuleRoutes.RouteClass)
+  /// Route class a module creates its routes with (TRALModuleRoutes.RouteClass).
   TRALRouteClass = class of TRALRoute;
 
-  { TRALRoutes }
-
-  /// Collection class to store all route definitions
+  /// The routes of a server or a module.
   TRALRoutes = class(TOwnedCollection)
   public type
-    /// Support enumeration of values in TRALParams.
+    /// Enumerator of the routes, for for..in loops.
     TEnumerator = class
     private
+      /// Collection being enumerated.
       FArray: TRALRoutes;
+      /// Index of the current route.
       FIndex: Integer;
     public
+      /// Enumerator over AArray.
       constructor Create(const AArray: TRALRoutes);
 
+      /// The current route.
       function GetCurrent: TRALRoute; inline;
+      /// Moves to the next route; False past the last one.
       function MoveNext: Boolean; inline;
 
+      /// The current route.
       property Current: TRALRoute read GetCurrent;
     end;
   private
     function GetRoute(const ARoute: StringRAL): TRALRoute;
   public
+    /// Collection of TRALRoute owned by AOwner.
     constructor Create(AOwner: TPersistent); overload;
-    /// A collection of AItemClass routes: a module keeps data or a handler of
-    /// its own on each route by descending TRALRoute
+    /// Collection of AItemClass routes, so a module keeps its own data on each route.
     constructor Create(AOwner: TPersistent; AItemClass: TRALRouteClass); overload;
 
-    /// The methods the routes of the request's path take, whatever its own
-    /// method is - empty when no route has the path. CanAnswerRoute only finds
-    /// a route that takes the method, since several routes may share a path
-    /// with a verb each; this is what tells a path no route has (404) from a
-    /// method none of its routes takes (405)
+    { Methods the routes of the request's path take; empty when no route has the
+      path. Tells a 404 (no route) from a 405 (no route takes the method). }
     function AllowedMethodsOf(ARequest: TRALRequest): TRALMethods;
-    /// Returns a list of routes separated by sLineBreak
+    /// The full paths of the routes, one per line.
     function AsString: StringRAL;
-    /// Method that will check if the request finds a matching route
+    { The route that answers the request path, preferring one that takes its
+      method, or nil; adds the URI params of the route to the request. }
     function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
-    /// Retuns the internal Enumerator type to allow for..in loops
+    /// Enumerator of the routes, for for..in loops.
     function GetEnumerator: TEnumerator; inline;
 
+    /// Route whose Name is ARoute (case-insensitive), or nil.
     property Find[const ARoute: StringRAL]: TRALRoute read GetRoute;
   end;
 
-/// The text of an Allow header for a set of methods: each method it takes, in
-/// TRALMethod order - amALL spelled out, and amUNKNOWN, which no route takes,
-/// left out
+/// Allow header text of AMethods, in TRALMethod order; amALL spelled out as every method.
 function RALAllowedMethodsText(AMethods: TRALMethods): StringRAL;
 
 implementation
@@ -248,9 +255,7 @@ begin
     OnReply(ARequest, AResponse)
   else if Assigned(OnReplyGen) then
     OnReplyGen(ARequest, AResponse)
-  { a module's route with no handler is the module's to answer - the
-    WebModule serves the file there. It used to write its handler into the
-    shared route on the thread of each request }
+  // a module's route with no handler is the module's to answer (the WebModule's files)
   else if (Collection <> nil) and (Collection.Owner is TRALModuleRoutes) then
     TRALModuleRoutes(Collection.Owner).AnswerUnhandled(ARequest, AResponse)
   else
@@ -309,7 +314,7 @@ begin
     vList.LineBreak := '/';
     vList.Text := AValue;
 
-    // limpando a rota e deixando somente os URIParams
+    // only the ':name' segments stay
     vInt := 0;
     while vInt < vList.Count do
     begin
@@ -320,7 +325,7 @@ begin
         vList.Delete(vInt);
     end;
 
-    // criando os novos URIParams
+    // the URI params, in path order
     for vInt := 0 to Pred(vList.Count) do
     begin
       vStr := vList.Strings[vInt];
@@ -412,10 +417,8 @@ begin
   AllowedMethods := AMethods;
 end;
 
-{ The segments of a path as FixRoute leaves it - '/a/b', or '/' with none - each
-  trimmed when ATrim says so: the split a TStringList with LineBreak '/' made,
-  two of them for every route on every request. Positions count from 1, the
-  way Copy does, and characters are read through POSINISTR }
+{ Segments of a path as FixRoute leaves it ('/a/b', or '/' with none), trimmed
+  when ATrim. Positions count from 1, as Copy does. }
 function SplitPath(const APath: StringRAL; ATrim: boolean): TRALRouteSegments;
 var
   vLen, vInt, vStart, vCount: IntegerRAL;
@@ -451,7 +454,7 @@ begin
     end;
 end;
 
-{ ':name' in a route takes any value of the request in its place }
+/// True for a ':name' segment, which takes any value of the request.
 function IsParamSegment(const ASegment: StringRAL): boolean;
 begin
   Result := (ASegment <> '') and (ASegment[POSINISTR] = ':');
@@ -476,8 +479,7 @@ end;
 
 function TRALBaseRoute.GetFullRoute: StringRAL;
 begin
-  { built by UpdateSegments, which every change of the route, of its
-    collection or of the module's Domain calls }
+  // built by UpdateSegments when the route, its collection or the domain change
   if Self = nil then
     Result := ''
   else
@@ -504,8 +506,7 @@ begin
   vDest.URIParams.Assign(FURIParams);
   vDest.InputParams.Assign(FInputParams);
   vDest.OutputParams.Assign(FOutputParams);
-  { the handlers too: a copied route that answers nothing is no copy - and
-    with Routes now copied on assignment, the routes would have gone mute }
+  // the handlers too: a copied route must still answer
   vDest.OnReply := FOnReply;
   vDest.OnReplyGen := FOnReplyGen;
 end;
@@ -561,10 +562,8 @@ end;
 
 { RALRoutes }
 
-{ Whether ARoute answers the request path APath (trimmed segments), and with
-  what weight: 10 for each segment past the route's own, which only a route
-  with AllowURIParams accepts - the lowest weight wins. Nothing is allocated:
-  it runs for every route on every request }
+{ Whether ARoute answers the path APath, and its weight: 10 per segment past the
+  route's own (AllowURIParams only); the lowest weight wins. Allocates nothing. }
 function MatchRoute(ARoute: TRALBaseRoute; const APath: TRALRouteSegments;
   out AWeight: IntegerRAL): boolean;
 var
@@ -584,9 +583,8 @@ begin
   Result := True;
 end;
 
-{ The URI params of the route that answers, in the order they always came: the
-  ':name' ones with the trimmed value, then each segment past the route as
-  ral_uriparam1, 2... as it came }
+{ Adds the URI params of the answering route: the ':name' ones, trimmed, then each
+  segment past the route as ral_uriparam1, 2... }
 procedure AddURIParams(ARoute: TRALBaseRoute; const ARaw, APath: TRALRouteSegments;
   AParams: TRALParams);
 var
@@ -624,8 +622,6 @@ function TRALRoutes.GetRoute(const ARoute: StringRAL): TRALRoute;
 var
   I: integer;
 begin
-  { nil when nothing matches: the Result used to be whatever was on the
-    stack, and the caller dereferenced it }
   Result := nil;
   for I := 0 to pred(Self.Count) do
   if RALSameName(ARoute, StringRAL(Self.Items[I].DisplayName)) then
@@ -659,11 +655,7 @@ begin
       Result := Result + sLineBreak + TRALRoute(Self.Items[vInt]).GetFullRoute;
 end;
 
-{ The request's path split once - as it came, and trimmed for matching - while
-  every route's is kept since it was defined (TRALBaseRoute.UpdateSegments).
-  This used to build two TStringLists and parse both paths for every route on
-  every request, plus two more lists for the URI params of whichever route was
-  winning so far }
+/// Splits the request path once: ARaw as it came, APath trimmed for matching.
 procedure SplitRequestPath(ARequest: TRALRequest; out ARaw, APath: TRALRouteSegments);
 var
   vInt: IntegerRAL;
@@ -698,18 +690,14 @@ var
   vRaw, vPath: TRALRouteSegments;
 begin
   Result := nil;
-  { no route, nothing to split the path for: a WebModule without routes of its
-    own - the usual one, serving files - asked this on every request }
+  // no route, nothing to split the path for
   if Count = 0 then
     Exit;
 
   SplitRequestPath(ARequest, vRaw, vPath);
 
-  { the route is found by its path; among the routes of the same path the one
-    that takes the method wins. When none of them takes it, the path's route
-    is still the answer: the module that owns it answers 405 - filtering by
-    method here made every wrong verb a 404, and the 405 of the core was
-    never reached }
+  { found by its path; among routes of the same path the one that takes the
+    method wins. When none takes it, the path's route answers, with 405. }
   vBest := MaxInt;
   vOtherBest := MaxInt;
   vOther := nil;
