@@ -1,8 +1,4 @@
-{ @abstract Unit for all type definitions used within PascalRAL
-  These definitions are meant to keep same code across all versions of the IDE
-  or IDEs that might differ on the charset code or basic type length.
-  Expect heavy usage of IFDEFs in this unit
-}
+/// Types that are the same on every compiler, the shared enums, and string conversions.
 unit RALTypes;
 
 interface
@@ -19,192 +15,161 @@ uses
   Classes, SysUtils;
 
 type
+  /// Integer type used across PascalRAL.
   IntegerRAL = Integer;
+  /// 64-bit integer type used across PascalRAL.
   Int64RAL = Int64;
+  /// Floating point type used across PascalRAL.
   DoubleRAL = Double;
 
   {$IF Defined(FPC) OR Defined(DELPHIXE2UP)}
+    /// Unsigned 64-bit integer; Int64 on compilers without UInt64.
     UInt64RAL = UInt64;
   {$ELSE}
+    /// Unsigned 64-bit integer; Int64 on compilers without UInt64.
     UInt64RAL = Int64;
   {$IFEND}
 
   {$IF Defined(FPC) OR Defined(DELPHI10_1UP)}
+    /// UTF-8 string used for all text in PascalRAL.
     StringRAL = UTF8String;
+    /// Character of a StringRAL.
     CharRAL = UTF8Char;
   {$ELSE}
+    /// UTF-8 string used for all text in PascalRAL.
     StringRAL = UTF8String;
+    /// Character of a StringRAL.
     CharRAL = Char;
   {$IFEND}
+  /// Pointer to a CharRAL.
   PCharRAL = ^CharRAL;
 
   {$IF NOT DEFINED(FPC) AND NOT DEFINED(DELPHI2010UP)}
+  /// Dynamic byte array, for compilers that do not declare TBytes.
   TBytes = array of byte;
   {$IFEND}
 
   {$IF DEFINED(DELPHI10_1UP) OR DEFINED(FPC)}
+  /// Buffered file stream; a plain TFileStream where the RTL has no buffered one.
   TRALBufFileStream = TBufferedFileStream;
   {$ELSE}
+  /// Buffered file stream; a plain TFileStream where the RTL has no buffered one.
   TRALBufFileStream = TFileStream;
   {$IFEND}
 
+  /// Body cipher: none, or AES with a 128, 192 or 256-bit key.
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
+  /// Kind of a JSON value.
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
-  { amUNKNOWN is what a server gets for a method it does not implement, and
-    ValidateRequest answers 501 to it - it is never a member of a route's
-    method sets. It goes last so that no ordinal already stored moves }
+  /// HTTP method; amALL means every method, amUNKNOWN one the server answers 501.
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS,
     amHEAD, amTRACE, amUNKNOWN);
+  /// Set of HTTP methods.
   TRALMethods = set of TRALMethod;
+  /// Where a param travels (body, field, header, query, cookie); rpkNONE is not sent.
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
+  /// Set of param kinds.
   TRALParamKinds = set of TRALParamKind;
 
-  { How a param value travels on the wire.
-
-    rptText is what every param has always used: the value becomes UTF-8 text,
-    so reading it back is a locale-dependent parse - a client writing 2,5 and a
-    server parsing with '.' as the decimal separator silently gets 0, and 03/04
-    is March 4th or April 3rd depending on the machine.
-
-    The others carry the raw value instead, little-endian and fixed size, tagged
-    with the matching rctRAL* content type: no parse, no locale. The type is
-    stated explicitly rather than inferred from the value because Object Pascal
-    promotes numeric literals - 2 would fit Integer, Int64 and Double, and
-    Currency could never be told apart from Double. }
+  { How a param value travels: rptText as UTF-8 text, the others as the raw
+    little-endian value, tagged with its rctRAL* content type and read back
+    without depending on the locale. }
   TRALParamType = (rptText, rptInteger, rptInt64, rptDouble, rptCurrency,
                    rptBoolean, rptDateTime);
 
+  /// Protection against brute force, flood or path traversal.
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
+  /// Set of security protections.
   TRALSecurityOptions = set of TRALSecurityOption;
-  { The headers TRALServer.SecurityHeaders adds to every answer, with the
-    values the OWASP REST cheat sheet gives an API:
-    rshContentTypeOptions     X-Content-Type-Options: nosniff
-    rshFrameOptions           X-Frame-Options: DENY
-    rshReferrerPolicy         Referrer-Policy: no-referrer
-    rshStrictTransport        Strict-Transport-Security: max-age=31536000,
-                              only when the server runs TLS
-    rshContentSecurityPolicy  Content-Security-Policy: default-src 'none';
-                              frame-ancestors 'none' - which forbids a page
-                              everything, so it is for a server that serves
-                              no HTML; a WebModule's pages need a policy of
-                              their own }
+  { Security header added to every answer: X-Content-Type-Options,
+    X-Frame-Options, Referrer-Policy, Strict-Transport-Security (under TLS only)
+    and Content-Security-Policy. }
   TRALSecurityHeader = (rshContentTypeOptions, rshFrameOptions, rshReferrerPolicy,
     rshStrictTransport, rshContentSecurityPolicy);
+  /// Set of security headers.
   TRALSecurityHeaders = set of TRALSecurityHeader;
+  /// Thread that runs a client call: the calling one (ebSingleThread) or a new one.
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
+  /// Date and time format of a storage: Unix time, ISO 8601 or a custom format.
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
-  /// IP family of an address - see TRALServer.GetServerAddress
+  /// IP family of an address.
   TRALIpMode = (rimIPv4, rimIPv6);
 
-  { How a send attempt ended, from the transport's point of view.
-
-    This is what decides whether resending is safe, so it has to mean the same
-    thing on every engine - StatusCode cannot: when no HTTP response happened
-    there is no status, and each engine used to leave a different made-up value
-    behind (-1 on Indy, 10061 on mORMot2, 0 on fpHTTP).
-
-    The distinction that matters is whether the request reached a server:
-    rteConnect means it provably did not, so another BaseURL may be tried with
-    any method; rteTimeout means it did and may already have run, so only an
-    idempotent method may be sent elsewhere. }
+  /// How a send attempt ended for the transport; decides whether it may be resent.
   TRALTransportError = (
-    /// an HTTP response was received, even a 4xx/5xx one
+    /// An HTTP response arrived, even a 4xx or 5xx one.
     rteNone,
-    /// could not connect: refused, DNS, unreachable, connect timeout
+    /// No connection: refused, DNS, unreachable or connect timeout.
     rteConnect,
-    /// connected and the request went out; the response did not arrive in time
+    /// The request went out and no response arrived in time.
     rteTimeout,
-    /// any other transport failure
+    /// Any other transport failure.
     rteOther,
-    /// the TLS handshake failed over the server certificate - refused by the
-    /// engine's own validation, by SSL.Pin or by OnValidateServerCert
+    /// The server certificate was refused (engine, SSL.Pins or OnValidateServerCert).
     rteCertificate,
-    /// the application refused the attempt from OnBeforeExecute, so nothing
-    /// went out and there is nothing to resend
-    /// - new values are APPENDED, never inserted: every value above keeps its
-    ///   ordinal, and CanSwitchURL's "else" already declines to resend what it
-    ///   does not know
+    /// OnBeforeExecute refused the attempt; nothing was sent.
     rteCancelled);
 
-  { Which HTTP protocol version to speak.
-
-    RAL does not implement HTTP/2 itself: what frames it is the platform under
-    an engine - WinHTTP on Windows, OkHttp under HttpURLConnection on Android -
-    and only some engines reach such a platform at all. So this is what the
-    client ASKS for; what was actually negotiated comes back in
-    TRALResponse.ProtocolVersion, because ALPN may always settle on less.
-
-    rhvDefault leaves every engine with the behaviour it has today, so nothing
-    changes for an application that does not ask. Asking rhv2 of an engine
-    whose SupportsHTTP2 is False raises on the first request instead of
-    quietly falling back - a transport that silently is not what was asked for
-    is how one spends an afternoon wondering why nothing got faster.
-
-    In practice HTTP/2 only happens over TLS: both platforms negotiate it by
-    ALPN and neither offers the cleartext upgrade (h2c).
-
-    The same type answers the other direction, on TRALRequest/TRALResponse:
-    which version the message ACTUALLY travelled on - see ProtocolVersion and
-    Protocol on TRALHTTPHeaderInfo, which are two faces of one field and
-    therefore cannot disagree. That is why rhv10 exists: nothing can ASK for
-    HTTP/1.0, but a server still receives it, and the fpHTTP engine decides
-    whether to close the connection by it. }
+  { HTTP version a client asks for, or the one a message travelled on
+    (TRALHTTPHeaderInfo.ProtocolVersion). }
   TRALHTTPVersion = (
-    /// whatever the engine does today - HTTP/1.1 everywhere, at present; also
-    /// what a transport that cannot tell the version reports back
+    /// The engine's own choice; also the value when the version is unknown.
     rhvDefault,
-    /// HTTP/1.0 - an OBSERVED value only: BeforeSendUrl refuses it as a
-    /// request, because no engine can ask a transport for it
+    /// HTTP/1.0; only reported, never requested.
     rhv10,
-    /// force HTTP/1.1, declining an HTTP/2 the platform might have taken
+    /// HTTP/1.1, even where HTTP/2 is available.
     rhv11,
-    /// ask for HTTP/2, falling back to 1.1 when the server does not offer it
+    /// HTTP/2, falling back to 1.1 when the server does not offer it.
     rhv2);
 
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
+  /// Base64 conversion of a StringRAL.
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL
   public
+    /// Returns the string encoded in Base64.
     function toBase64: StringRAL;
+    /// Returns the string decoded from Base64.
     function fromBase64: StringRAL;
   end;
   {$IFEND}
 
 const
   {$IF Defined(FPC) OR Defined(DELPHIXE3UP)}
+  /// Index of the first character of a string.
   POSINISTR = Low(String);
   {$ELSE}
+  /// Index of the first character of a string.
   POSINISTR = 1;
   {$IFEND}
 
-  // old versions of Delphi that don't have sLineBreak
   {$IF NOT Defined(FPC) AND NOT Defined(DELPHI7UP)}
+  /// Line break, for Delphi versions that do not declare sLineBreak.
   sLineBreak = #13#10;
   {$IFEND}
+  /// Empty StringRAL.
   EmptyStr: StringRAL = StringRAL('');
 
-  { methods whose repetition leaves the server where one call would
-    (RFC 7231 4.2.2): the only ones a client may send again once the request
-    may have been delivered }
+  /// Idempotent methods (RFC 9110 9.2.2): the ones a client may send again.
   RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
 
-// Returns the last position of a string
+/// Returns the index of the last character of AStr.
 function RALHighStr(const AStr: StringRAL): integer;
 
+/// Returns the bytes of AString as they are (StringRAL is already UTF-8).
 function StringToBytesUTF8(const AString: StringRAL): TBytes;
+/// Returns ABytes, UTF-8 text, as a StringRAL.
 function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 
+/// Returns AString converted to the ANSI code page.
 function StringToBytes(const AString: StringRAL): TBytes;
+/// Returns ABytes, read as ANSI text, as a StringRAL.
 function BytesToString(const ABytes: TBytes): StringRAL;
 
-/// The version as it is written on the wire - '1.0', '1.1', '2.0', or '' when
-/// the transport could not tell. This is what TRALHTTPHeaderInfo.Protocol
-/// hands back, so every engine spells it the same way.
+/// Returns the version as written on the wire: '1.0', '1.1', '2.0', or '' if unknown.
 function RALHTTPVersionToStr(AVersion: TRALHTTPVersion): StringRAL;
-/// Reads back what RALHTTPVersionToStr writes, and also what the engines find
-/// in a request line or a status line: the leading 'HTTP/' is optional, and so
-/// is the minor part, so '2', '2.0' and 'HTTP/2' all mean rhv2. Anything else
-/// - including the empty string - is rhvDefault, never a guess.
+{ Reads a version as RALHTTPVersionToStr writes it, or from a request or status
+  line ('HTTP/1.1 200 OK', 'h2'); anything else is rhvDefault. }
 function StrToRALHTTPVersion(const AValue: StringRAL): TRALHTTPVersion;
 
 implementation
@@ -238,21 +203,7 @@ end;
 
 function StringToBytesUTF8(const AString: StringRAL): TBytes;
 begin
-  { StringRAL already IS UTF-8: TEncoding.UTF8.GetBytes forced the whole string
-    into UTF-16 before the call and encoded it back afterwards - a full round
-    trip, two allocations, to hand back exactly the bytes the string already
-    held.
-
-    And it was not only slow: the decoder does not refuse an invalid sequence,
-    it substitutes. The bytes A3 9A 4F C2 00 7E FF 10 came back as EF BF BD
-    EF BF BD 4F EF BF BD 00 7E EF BF BD 10 - half of them destroyed, every
-    invalid one collapsing into the same U+FFFD, and the length doubled. A
-    derived key is made of bytes like those, which is what RALHashBase works
-    around with HMACAsDigest.
-
-    BytesToStringUTF8 already copied straight through (its TEncoding.UTF8
-    .GetString is commented out just below); the pair now closes and the round
-    trip is byte for byte. }
+  // a plain copy: TEncoding.UTF8 would replace the bytes that are not valid UTF-8
   SetLength(Result, Length(AString));
   if Length(AString) > 0 then
     Move(AString[POSINISTR], Result[0], Length(AString));
@@ -280,8 +231,6 @@ function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 {$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
-    //Result := TEncoding.UTF8.GetString(ABytes);
-//    SetString(Result, PUTF8Char(ABytes), Length(ABytes));
       SetString(Result, PAnsiChar(ABytes), Length(ABytes));
   {$ELSE}
     SetLength(vStr, Length(ABytes));
@@ -297,7 +246,7 @@ begin
     rhv11: Result := '1.1';
     rhv2:  Result := '2.0';
   else
-    Result := ''; // rhvDefault: the transport did not say, so neither do we
+    Result := ''; // rhvDefault: unknown
   end;
 end;
 
@@ -308,8 +257,7 @@ var
 begin
   vStr := UpperCase(Trim(AValue));
 
-  { 'HTTP/1.1 200 OK' and 'HTTP/1.1' and '1.1' all have to land on rhv11:
-    drop the scheme, then whatever follows the version }
+  // 'HTTP/1.1 200 OK', 'HTTP/1.1' and '1.1' all read as 1.1
   if Pos(StringRAL('HTTP/'), vStr) = 1 then
     Delete(vStr, 1, 5);
 
@@ -317,7 +265,7 @@ begin
   if vPos > 0 then
     vStr := Copy(vStr, 1, vPos - 1);
 
-  { 'h2' is how ALPN names it, and what OkHttp reports }
+  // 'h2' is the ALPN name, which OkHttp reports
   if (vStr = '2') or (vStr = '2.0') or (vStr = 'H2') or (vStr = 'H2C') then
     Result := rhv2
   else if vStr = '1.1' then
