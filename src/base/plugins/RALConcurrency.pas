@@ -31,7 +31,7 @@ unit RALConcurrency;
 
 interface
 
-{$I PascalRAL.inc}
+{$I ..\PascalRAL.inc}
 
 uses
   {$IFNDEF FPC}{$IFDEF MSWINDOWS}Windows,{$ENDIF}{$ENDIF}
