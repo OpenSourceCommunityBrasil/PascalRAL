@@ -46,7 +46,6 @@ type
     { THE VALUE LIVES IN FText WHEN IT WAS SET AS TEXT, and in FContent when it
       is a stream: a body adopted from the engine, an open file, or a typed
       binary payload. FIsText says which of the two is live; the other is empty.
-
       It used to be always a stream, so every header cost a heap object for its
       value on top of the TRALParam itself, and a request carries dozens of
       them. That allocation is what caps a RAL server - measured on the QUIC
@@ -55,38 +54,43 @@ type
       things slower instead of faster because the threads queue on the memory
       manager. A stream is now built only when somebody actually asks for one. }
     FContent: TStream;
-    { False when FContent was lent (BorrowStream): a view over the engine's
-      buffer or over the request's decoded body, which this param must not
-      free - and which is read-only }
-    FOwnsContent: Boolean;
-    FText: StringRAL;
-    FIsText: Boolean;
-    FContentType: StringRAL;
     FContentDisposition: StringRAL;
     FContentDispositionInline: Boolean;
+    FContentType: StringRAL;
+    { made from a header block that is still text (TRALParams.FPending) and
+      not in the list yet: it joins the list, in its place, when the block is
+      parsed. A list chains its detached params through FNextDetached }
+    FDetached: Boolean;
     FFileName: StringRAL;
+    FHash: Cardinal;
+    FIndexed: Boolean;
+    FIsText: Boolean;
     FKind: TRALParamKind;
-    FParamName: StringRAL;
+    FNextDetached: TRALParam;
+    FNextSame: TRALParam;
     { the list this param is in, and its place in that list's name index:
       the order it was created in, the hash of its name, the next param of
       its bucket and whether it is in the index at all - see
       TRALParams.IndexAdd }
     FOwner: TRALParams;
+    { False when FContent was lent (BorrowStream): a view over the engine's
+      buffer or over the request's decoded body, which this param must not
+      free - and which is read-only }
+    FOwnsContent: Boolean;
+    FParamName: StringRAL;
     FSeq: Cardinal;
-    FHash: Cardinal;
-    FNextSame: TRALParam;
-    FIndexed: Boolean;
-    { made from a header block that is still text (TRALParams.FPending) and
-      not in the list yet: it joins the list, in its place, when the block is
-      parsed. A list chains its detached params through FNextDetached }
-    FDetached: Boolean;
-    FNextDetached: TRALParam;
+    FText: StringRAL;
+
     procedure SetParamName(const AValue: StringRAL);
   protected
+    /// The value as text, wherever it is being kept.
+    function ContentText: StringRAL;
+    /// Drops the content: frees it when it is this param's own
+    procedure FreeContent;
     function GetAsBoolean: Boolean;
     function GetAsDouble: DoubleRAL;
-    function GetAsInteger: IntegerRAL;
     function GetAsInt64: Int64;
+    function GetAsInteger: IntegerRAL;
     { deprecated through the getter, which is what FPC warns about where the
       property is read - and only there, not where it is written. Delphi
       refuses the directive on a property and only warns about a getter in
@@ -97,82 +101,53 @@ type
     function GetContent: TStream;
     function GetContentDisposition: StringRAL;
     function GetContentSize: Int64RAL;
-    /// The value as text, wherever it is being kept.
-    function ContentText: StringRAL;
-    /// Moves a text value into a stream, for the few callers that need one.
-    procedure NeedStream;
-    /// Drops the content: frees it when it is this param's own
-    procedure FreeContent;
-    procedure SetAsBoolean(const AValue: Boolean);
-    procedure SetAsDouble(const AValue: DoubleRAL);
-    procedure SetAsInteger(const AValue: IntegerRAL);
-    procedure SetAsInt64(const AValue: Int64);
-    procedure SetAsString(const AValue: StringRAL);
-    procedure SetAsStream(const AValue: TStream);
-    procedure SetContentDisposition(AValue: StringRAL);
-
+    /// Reads a raw payload back; False when the marker or the size do not match.
+    function GetTypedValue(const AType: StringRAL; var ABuffer; ASize: Integer): Boolean;
+    { Reads whatever typed payload the param carries, whichever one it is.
+      Every accessor goes through this instead of asking only for its own
+      marker: reading an rptInt64 param with AsInteger has to convert the value,
+      not fall through to the text branch, where the raw bytes would parse as 0
+      and hand back silently wrong data. }
+    function GetTypedVariant(out AValue: Variant): Boolean;
     { ContentType without its parameters: 'application/x-ral-double; charset=utf-8'
       answers 'application/x-ral-double'. A lone body param travels as the HTTP
       Content-Type header, and TRALHTTPHeaderInfo.SetContentType appends the
       charset on the way, so comparing the whole string would miss every marker
       that crossed a real connection - it only ever matched in-process. }
     function MediaType: StringRAL;
+    /// Moves a text value into a stream, for the few callers that need one.
+    procedure NeedStream;
+    procedure SetAsBoolean(const AValue: Boolean);
+    procedure SetAsDouble(const AValue: DoubleRAL);
+    procedure SetAsInt64(const AValue: Int64);
+    procedure SetAsInteger(const AValue: IntegerRAL);
+    procedure SetAsStream(const AValue: TStream);
+    procedure SetAsString(const AValue: StringRAL);
+    procedure SetContentDisposition(AValue: StringRAL);
     /// Writes a raw little-endian payload and stamps ContentType with AType.
     procedure SetTypedValue(const AType: StringRAL; const ABuffer; ASize: Integer);
-    /// Reads a raw payload back; False when the marker or the size do not match.
-    function GetTypedValue(const AType: StringRAL; var ABuffer; ASize: Integer): Boolean;
-    { Reads whatever typed payload the param carries, whichever one it is.
-
-      Every accessor goes through this instead of asking only for its own
-      marker: reading an rptInt64 param with AsInteger has to convert the value,
-      not fall through to the text branch, where the raw bytes would parse as 0
-      and hand back silently wrong data. }
-    function GetTypedVariant(out AValue: Variant): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
 
+    { Takes AStream as the content WITHOUT copying it: the param owns it from
+      here on and frees it. AsStream := X copies X; this is for a stream that
+      was created for the param anyway (DecodeBody's decrypted or inflated
+      body), where the copy only cost memory and time }
+    procedure AdoptStream(AStream: TStream);
+    function AsCurrency: Currency;
     function AsDateTime: TDateTime; overload;
     function AsDateTime(ACustomFormat: TFormatSettings): TDateTime; overload;
-    function AsCurrency: Currency;
-    /// The value as a number, and whether it was one: AsDouble answers 0 for
-    /// both "0" and "abc". Text is read with either separator, never with the
-    /// locale of the server (see RALTryStrToFloat)
-    function TryAsDouble(out AValue: DoubleRAL): Boolean;
     /// AsDouble with the value to answer when the param is not a number
     function AsDoubleDef(const ADefault: DoubleRAL): DoubleRAL;
-
-    { Typed binary writers - see the rctRAL* constants in RALMIMETypes.
-
-      They are new methods instead of a change to AsInteger/AsDouble/..., so
-      existing code keeps producing exactly the same bytes on the wire. The
-      readers are the ordinary AsInteger/AsInt64/AsDouble/AsCurrency/AsBoolean/
-      AsDateTime: they look at ContentType first and fall back to parsing text,
-      so an old writer still talks to a new reader unchanged.
-
-      Works with any number of params. With two or more the multipart encoder
-      copies the stream verbatim and the decoder restores name and content type;
-      with a single body param the value travels as the whole body and the type
-      still survives in the HTTP Content-Type header - only the name is replaced
-      by 'ral_body', which is how a lone body param already behaves today,
-      independently of this.
-
-      Payload is little-endian and fixed size; on big-endian FPC targets the
-      bytes are swapped at both ends so the wire format is the same everywhere.
-      TDate and TTime are TDateTime in Object Pascal, so SetTypedDateTime covers
-      the three of them. }
-    procedure SetTypedInteger(const AValue: IntegerRAL);
-    procedure SetTypedInt64(const AValue: Int64RAL);
-    procedure SetTypedDouble(const AValue: DoubleRAL);
-    procedure SetTypedCurrency(const AValue: Currency);
-    procedure SetTypedBoolean(const AValue: Boolean);
-    procedure SetTypedDateTime(const AValue: TDateTime);
-
-    /// True when this param carries a typed binary payload instead of text.
-    function IsTyped: Boolean;
-
+    { Takes AStream as the content WITHOUT owning it: the lender keeps it alive
+      for as long as this param lives, and nobody writes to it. How a received
+      body reaches the params without a copy (TRALParams.DecodeBody) }
+    procedure BorrowStream(AStream: TStream);
     procedure Clone(ASource: TRALParam);
     function IsNilOrEmpty: Boolean;
+    /// True when this param carries a typed binary payload instead of text.
+    function IsTyped: Boolean;
     /// Clears and assign a file to the FContent.
     procedure OpenFile(const AFileName: StringRAL);
     /// Saves FContent to the default executable location.
@@ -181,15 +156,31 @@ type
     procedure SaveToFile(const AFileName: StringRAL); overload;
     /// Save FContent with the given Filename and the foldername.
     procedure SaveToFile(AFolderName, AFileName: StringRAL); overload;
-    { Takes AStream as the content WITHOUT copying it: the param owns it from
-      here on and frees it. AsStream := X copies X; this is for a stream that
-      was created for the param anyway (DecodeBody's decrypted or inflated
-      body), where the copy only cost memory and time }
-    procedure AdoptStream(AStream: TStream);
-    { Takes AStream as the content WITHOUT owning it: the lender keeps it alive
-      for as long as this param lives, and nobody writes to it. How a received
-      body reaches the params without a copy (TRALParams.DecodeBody) }
-    procedure BorrowStream(AStream: TStream);
+    function SaveToStream: TStream; overload;
+    procedure SaveToStream(AStream: TStream); overload;
+    procedure SetTypedBoolean(const AValue: Boolean);
+    procedure SetTypedCurrency(const AValue: Currency);
+    procedure SetTypedDateTime(const AValue: TDateTime);
+    procedure SetTypedDouble(const AValue: DoubleRAL);
+    procedure SetTypedInt64(const AValue: Int64RAL);
+    { Typed binary writers - see the rctRAL* constants in RALMIMETypes.
+      They are new methods instead of a change to AsInteger/AsDouble/..., so
+      existing code keeps producing exactly the same bytes on the wire. The
+      readers are the ordinary AsInteger/AsInt64/AsDouble/AsCurrency/AsBoolean/
+      AsDateTime: they look at ContentType first and fall back to parsing text,
+      so an old writer still talks to a new reader unchanged.
+      Works with any number of params. With two or more the multipart encoder
+      copies the stream verbatim and the decoder restores name and content type;
+      with a single body param the value travels as the whole body and the type
+      still survives in the HTTP Content-Type header - only the name is replaced
+      by 'ral_body', which is how a lone body param already behaves today,
+      independently of this.
+      Payload is little-endian and fixed size; on big-endian FPC targets the
+      bytes are swapped at both ends so the wire format is the same everywhere.
+      TDate and TTime are TDateTime in Object Pascal, so SetTypedDateTime covers
+      the three of them. }
+    procedure SetTypedInteger(const AValue: IntegerRAL);
+    function Size: Int64;
     { The content as a stream the CALLER owns, for the body that goes on the
       wire (TRALParams.TakeWireStream): a text value comes as a view that holds
       the string, nothing copied. With AConsume the param's own stream moves
@@ -197,14 +188,15 @@ type
       stands on its own; without, it is a view that is valid while this param
       lives }
     function TakeContent(AConsume: Boolean): TStream;
-    function SaveToStream: TStream; overload;
-    procedure SaveToStream(AStream: TStream); overload;
-    function Size: Int64;
+    /// The value as a number, and whether it was one: AsDouble answers 0 for
+    /// both "0" and "abc". Text is read with either separator, never with the
+    /// locale of the server (see RALTryStrToFloat)
+    function TryAsDouble(out AValue: DoubleRAL): Boolean;
 
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
-    property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     property AsInt64: Int64 read GetAsInt64 write SetAsInt64;
+    property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
     /// Writing copies the stream into the param. READING builds a new copy of
     /// the whole value on every read, which the caller has to free - not the
     /// param's own stream, despite the name. Deprecated for reading: Content
@@ -252,33 +244,18 @@ type
     /// Support enumeration of values in TRALParams.
     TEnumerator = class
     private
-      FIndex: Integer;
       FArray: TRALParams;
+      FIndex: Integer;
     public
       constructor Create(const AArray: TRALParams);
+
       function GetCurrent: TRALParam; inline;
       function MoveNext: Boolean; inline;
+
       property Current: TRALParam read GetCurrent;
     end;
   private
     FBodyError: StringRAL;
-    FCompressType: TRALCompressType;
-    FContentDispositionInline: Boolean;
-    FCriptoOptions: TRALCriptoOptions;
-    FNextParam: IntegerRAL;
-    { the params, in the order they were created. Read through FParams, which
-      parses a pending header block first - see GetList }
-    FList: TList;
-    { the streams the body params are windows of, freed after them: the
-      received body, or the buffer it was decrypted in }
-    FBuffers: TList;
-    FDecoded: TStream;
-    { FDecoded is the content of the lone body param: whoever writes that param
-      again frees it, so it is looked up before being handed out }
-    FDecodedIsParam: Boolean;
-    FSpoolAbove: Int64RAL;
-    FSkipCompressedTypes: Boolean;
-    FSkipCompressTypes: TStrings;
     { The name index. A lookup used to walk the whole list, and every param
       parsed off the wire is looked up first - the query string, a form, the
       headers, the cookies - so N params cost N*N/2 comparisons, before any
@@ -286,7 +263,31 @@ type
       with the first param and doubled when it fills up, so a name is looked
       up one way whatever the size of the list }
     FBuckets: array of TRALParam;
-    FSeqNext: Cardinal;
+    { the streams the body params are windows of, freed after them: the
+      received body, or the buffer it was decrypted in }
+    FBuffers: TList;
+    FCompressType: TRALCompressType;
+    FContentDispositionInline: Boolean;
+    FCriptoOptions: TRALCriptoOptions;
+    FDecoded: TStream;
+    { FDecoded is the content of the lone body param: whoever writes that param
+      again frees it, so it is looked up before being handed out }
+    FDecodedIsParam: Boolean;
+    FDetached: TRALParam;
+    FDetachedCount: IntegerRAL;
+    { the order reserved for the block being parsed: a line merges only into a
+      param of the block itself - one older than the block got its name by a
+      rename made after the block arrived, which the parse at once would have
+      come before }
+    FFlushBase: Cardinal;
+    { while the block is parsed: NewParam takes FFlushSeq, the order reserved
+      for the line being parsed, instead of the next one }
+    FFlushing: Boolean;
+    FFlushSeq: Cardinal;
+    { the params, in the order they were created. Read through FParams, which
+      parses a pending header block first - see GetList }
+    FList: TList;
+    FNextParam: IntegerRAL;
     { A block of header lines kept as text until something needs the list
       (AppendParamsListText). A server engine hands over every header the
       client sent, and most are never read: each one parsed is a param, its
@@ -296,33 +297,25 @@ type
       order reserved for the first line. Anything else parses the whole block
       first, through FParams }
     FPending: StringRAL;
-    FPendingKind: TRALParamKind;
-    FPendingSeq: Cardinal;
     FPendingCount: IntegerRAL;
+    FPendingKind: TRALParamKind;
     FPendingLines: array[0..PendingLinesMax - 1] of TRALPendingLine;
-    FDetached: TRALParam;
-    FDetachedCount: IntegerRAL;
-    { while the block is parsed: NewParam takes FFlushSeq, the order reserved
-      for the line being parsed, instead of the next one }
-    FFlushing: Boolean;
-    FFlushSeq: Cardinal;
-    { the order reserved for the block being parsed: a line merges only into a
-      param of the block itself - one older than the block got its name by a
-      rename made after the block arrived, which the parse at once would have
-      come before }
-    FFlushBase: Cardinal;
+    FPendingSeq: Cardinal;
+    FSeqNext: Cardinal;
+    FSkipCompressedTypes: Boolean;
+    FSkipCompressTypes: TStrings;
+    FSpoolAbove: Int64RAL;
+
+    /// Decodes a name and a value already cut apart and stores them.
+    procedure AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
     /// frees FBuffers and forgets FDecoded
     procedure ClearBuffers;
-    function GetDecoded: TStream;
-    { a cipher on CriptoOptions, nil when there is none. Encoding ignores a key
-      of blanks, as it always did; decoding only an empty one }
-    function NewCipher(AEncoding: boolean): TRALCriptoAES;
-    { The plain body as a stream the CALLER owns, or nil when there is none:
-      the lone body param itself, the form as text, or the multipart as a
-      TRALConcatStream. Nothing is copied - see TRALParam.TakeContent for
-      AConsume. Sets AContentType/AContentDisposition as EncodeBody always did }
-    function PrepareBody(var AContentType, AContentDisposition: StringRAL;
-      ACompressMultipart, AConsume: boolean): TStream;
+    /// Keeps a header block as text instead of parsing it, when it can be:
+    /// ASCII already checked, at most PendingLinesMax lines, no Set-Cookie
+    /// (which also makes cookie params) and no name of a param of that kind
+    /// already in the list (parsing would have merged into it)
+    function DeferBlock(const ASource, ANameSeparator: StringRAL;
+      AKind: TRALParamKind): boolean;
     { The compression the body will really get: CompressType, except none for
       a form or multipart on the request path (see EncodeBody), for a type
       already compressed (SkipCompressedTypes/SkipCompressTypes) and when the
@@ -330,47 +323,50 @@ type
       the caller learns what to put in Content-Encoding }
     function EffectiveCompress(const AContentType: StringRAL;
       ACompressMultipart: boolean): TRALCompressType;
-    { ASource, plain, compressed and/or encrypted into ADest - straight into
-      it, with the AES working in place after the compressor }
-    procedure WriteTransformed(ASource, ADest: TStream; ACompress: TRALCompressType;
-      var AContentType: StringRAL; ACompressMultipart: boolean);
-    procedure IndexAdd(AParam: TRALParam; AHash: Cardinal);
-    procedure IndexBuild;
-    function IndexFind(const AName: StringRAL; AHash: Cardinal; AKind: TRALParamKind;
-      AAnyKind: Boolean): TRALParam;
-    procedure IndexRemove(AParam: TRALParam);
     /// The first param with no name - of that kind, unless AAnyKind.
     function FindNameless(AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
     /// The param of that name and kind, created when there is none, with its
     /// name hashed once.
     function FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
-    /// Decodes a name and a value already cut apart and stores them.
-    procedure AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
-    /// Keeps a header block as text instead of parsing it, when it can be:
-    /// ASCII already checked, at most PendingLinesMax lines, no Set-Cookie
-    /// (which also makes cookie params) and no name of a param of that kind
-    /// already in the list (parsing would have merged into it)
-    function DeferBlock(const ASource, ANameSeparator: StringRAL;
-      AKind: TRALParamKind): boolean;
     /// Parses the pending block into the list, each param at its reserved place
     procedure FlushPending;
+    function GetDecoded: TStream;
     /// The list, with the pending block parsed into it
     function GetList: TList;
+    procedure IndexAdd(AParam: TRALParam; AHash: Cardinal);
+    procedure IndexBuild;
+    function IndexFind(const AName: StringRAL; AHash: Cardinal; AKind: TRALParamKind;
+      AAnyKind: Boolean): TRALParam;
+    procedure IndexRemove(AParam: TRALParam);
+    { a cipher on CriptoOptions, nil when there is none. Encoding ignores a key
+      of blanks, as it always did; decoding only an empty one }
+    function NewCipher(AEncoding: boolean): TRALCriptoAES;
     /// The param of AName made from the pending block, or nil when the block
     /// has no such line - or the first one comes at or after the creation order
     /// ABefore. Detached: in the index, not in the list yet
     function PendingMake(const AName: StringRAL; ABefore: Cardinal): TRALParam;
+    { The plain body as a stream the CALLER owns, or nil when there is none:
+      the lone body param itself, the form as text, or the multipart as a
+      TRALConcatStream. Nothing is copied - see TRALParam.TakeContent for
+      AConsume. Sets AContentType/AContentDisposition as EncodeBody always did }
+    function PrepareBody(var AContentType, AContentDisposition: StringRAL;
+      ACompressMultipart, AConsume: boolean): TStream;
+    { ASource, plain, compressed and/or encrypted into ADest - straight into
+      it, with the AES working in place after the compressor }
+    procedure WriteTransformed(ASource, ADest: TStream; ACompress: TRALCompressType;
+      var AContentType: StringRAL; ACompressMultipart: boolean);
+
     /// Every access to the list goes through here: no method sees a list
     /// without the headers of a pending block
     property FParams: TList read GetList;
   protected
+    /// The name=value pair of a Set-Cookie header, as an rpkCOOKIE param.
+    procedure AddSetCookie(const AValue: StringRAL);
     /// Decodes the ALine URL and adds it to the param list.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
       AKind: TRALParamKind);
     procedure AppendParamSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
       const ANameSeparator: StringRAL; AKind: TRALParamKind);
-    /// The name=value pair of a Set-Cookie header, as an rpkCOOKIE param.
-    procedure AddSetCookie(const AValue: StringRAL);
     /// Compresses the input stream into a TStream.
     function Compress(AStream: TStream): TStream;
     /// Decompresses the input string into an UTF8 String.
@@ -383,13 +379,13 @@ type
     function Decrypt(const ASource: StringRAL): StringRAL; overload;
     /// Encrypts the whole class instead of each individual object.
     function Encrypt(AStream: TStream): TStream;
-
+    function FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
     /// Results either = or : if found on the input text.
     function FindHeaderNameSeparator(const ASource: StringRAL): StringRAL;
-    function FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
     { deprecated the way TRALParam.GetAsStream is - see there }
     function GetBody: TList;
       {$IFDEF FPC}deprecated 'Body builds a list the caller must free: read Count(rpkBODY), IndexKind or SingleBody';{$ENDIF}
+    function GetCriptoOptions: TRALCriptoOptions;
     function GetParam(AIndex: IntegerRAL; AKind: TRALParamKind): TRALParam; overload;
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
     function GetParam(const AName: StringRAL): TRALParam; overload;
@@ -398,7 +394,6 @@ type
     function NextParamInt: IntegerRAL;
     /// Moves to the next param and returns its internal name.
     function NextParamStr: StringRAL;
-    function GetCriptoOptions: TRALCriptoOptions;
     procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
     /// Event to be called during the processing of FormData.
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
@@ -422,20 +417,12 @@ type
     /// ParamByName answers the one added first - see ReplaceParam
     function AddParam(const AName: StringRAL; const AValue: StringRAL;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    /// Removes every param named AName, whatever its kind, and adds this one -
-    /// even with an empty value. The way for a server to impose a value that
-    /// ParamByName must return: one derived from the token in OnValidate, say,
-    /// over whatever the client put in the query string under the same name
-    function ReplaceParam(const AName: StringRAL; const AValue: StringRAL;
-                          AKind: TRALParamKind = rpkNONE): TRALParam;
     /// AddParam is used to include a TRALParam Object into the internal list.
     function AddParam(const AName: StringRAL; AContent: TStream;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     { Adds a param stating how the value should travel - see TRALParamType.
-
         Params.AddParam('quantidade', 2.5, rpkBODY, rptDouble);
         Params.AddParam('datacoleta', Now, rpkBODY, rptDateTime);
-
       With rptText it behaves like the string overload, so one call site can
       switch between text and typed without changing shape. Unlike that
       overload it does NOT reject an empty value: a typed param still has a
@@ -446,12 +433,12 @@ type
     function AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
     /// AddValue creates a new RALParam in the internal list and fills it with the given parameters.
     function AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
+    /// Used to append a list of params (ASource) from the body to the current params list.
+    procedure AppendBodyParams(ASource: TStrings; AKind: TRALParamKind);
     /// Used to append a list of params (ASource) to the current params list.
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
     /// Used to append a list of params (ASource) to the current params list.
     procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
-    /// Used to append a list of params (ASource) from the body to the current params list.
-    procedure AppendBodyParams(ASource: TStrings; AKind: TRALParamKind);
     /// Used to append a list of params in a string to the current params list.
     procedure AppendParamsListText(ASource: StringRAL; AKind: TRALParamKind;
                                    ANameSeparator: StringRAL = '');
@@ -459,10 +446,12 @@ type
     procedure AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
                                const ANameSeparator: StringRAL = '=';
                                const ALineSeparator: StringRAL = '&');
-    /// Appends params based on the full URL given.
-    procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
     /// Appends params based on the full URL given separated by '/'.
     procedure AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
+    /// Appends params based on the full URL given.
+    procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
+    /// returns all the params in a JSON UTF8string format.
+    function AsJSON: StringRAL;
     /// Fills the 'ADest' StringList with RALParams matching 'AKind'.
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
                            ASeparator: StringRAL = '='); overload;
@@ -480,6 +469,12 @@ type
                               const ALineSeparator: StringRAL = '&'): StringRAL;
     /// Returns an UTF8 String with RALParams matching 'AKind' using default URL separators.
     function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
+    /// returns all the params in a comma separated UTF8string.
+    function AsString: StringRAL;
+    /// Clears all params.
+    procedure ClearParams; overload;
+    /// Clears all params matching AKind.
+    procedure ClearParams(AKind: TRALParamKind); overload;
     /// The value of a request's Cookie header: every rpkCOOKIE param as
     /// name=value, joined by '; ', as RALSafeHeaderText leaves it. A param
     /// named Set-Cookie holds a whole cookie line (what AddCookie(TRALCookie)
@@ -492,10 +487,6 @@ type
     /// param's value alone. The application's cookie wins for that request; the
     /// jar is not touched.
     function CookieHeaderText(const AJarCookies: StringRAL): StringRAL; overload;
-    /// Clears all params.
-    procedure ClearParams; overload;
-    /// Clears all params matching AKind.
-    procedure ClearParams(AKind: TRALParamKind); overload;
     /// Returns total ammount of RALParams.
     function Count: IntegerRAL; overload;
     /// Returns total ammount of RALParams matching AKind.
@@ -532,10 +523,28 @@ type
       The params are left as they are }
     procedure EncodeInto(ADest: TStream; var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart: boolean = True);
+    /// Retuns the internal Enumerator type to allow for..in loops
+    function GetEnumerator: TEnumerator; inline;
+    /// A cipher with a key is set, without creating CriptoOptions to find out.
+    /// ATrimKey: a key of blanks counts as none
+    function HasCipher(ATrimKey: boolean): boolean;
+    /// Whether CriptoOptions exists yet - asking for it would create it
+    function HasCriptoOptions: boolean;
+    /// creates and returns an empty param for a more flexible way of coding.
+    function NewParam: TRALParam;
     { The body as it is, neither compressed nor encrypted, as a stream the
       CALLER frees - a view: valid while the params live, and nothing copied.
       nil when there is no body. What reads back what a handler answered }
     function PlainBody(var AContentType, AContentDisposition: StringRAL): TStream;
+    /// Removes every param named AName, whatever its kind, and adds this one -
+    /// even with an empty value. The way for a server to impose a value that
+    /// ParamByName must return: one derived from the token in OnValidate, say,
+    /// over whatever the client put in the query string under the same name
+    function ReplaceParam(const AName: StringRAL; const AValue: StringRAL;
+                          AKind: TRALParamKind = rpkNONE): TRALParam;
+    /// The body param when the body is that one value - one rpkBODY and no
+    /// rpkFIELD, which EncodeBody sends as the whole body - or nil
+    function SingleBody: TRALParam;
     { The body for the wire, as a stream the CALLER owns, built once: with no
       compression and no cipher it is the body itself - the lone param's
       stream moved out, a view on its text, the multipart as a
@@ -549,59 +558,43 @@ type
     /// a lone text body with no transform is the param's string itself
     function TakeWireString(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart, AConsume: boolean): RawByteString;
-    /// Retuns the internal Enumerator type to allow for..in loops
-    function GetEnumerator: TEnumerator; inline;
-    /// The body param when the body is that one value - one rpkBODY and no
-    /// rpkFIELD, which EncodeBody sends as the whole body - or nil
-    function SingleBody: TRALParam;
-    /// creates and returns an empty param for a more flexible way of coding.
-    function NewParam: TRALParam;
     /// converts a HTML encoded URL into a TStringList.
     function URLEncodedToList(ASource: StringRAL): TStringList;
-    /// returns all the params in a comma separated UTF8string.
-    function AsString: StringRAL;
-    /// returns all the params in a JSON UTF8string format.
-    function AsJSON: StringRAL;
 
-    /// Why the last DecodeBody could not take the body apart, '' when it
-    /// could: a multipart that yields no part and is not an empty form, the
-    /// body dropped. TRALServer answers such a request 400 before any route
-    property BodyError: StringRAL read FBodyError;
     /// A NEW list of the rpkBODY params, which the caller has to free - every
     /// read builds another, so 'if Params.Body.Count > 0' leaks one. Count(rpkBODY),
     /// IndexKind[i, rpkBODY] and SingleBody read the same without allocating
     property Body: TList read GetBody;
-    /// Grabs a param by its index on the TRALParams list.
-    property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
-    /// Grabs a param by its index on the TRALParams list.
-    property IndexKind[AIndex: IntegerRAL; AKind: TRALParamKind]: TRALParam read GetParam;
+    /// Why the last DecodeBody could not take the body apart, '' when it
+    /// could: a multipart that yields no part and is not an empty form, the
+    /// body dropped. TRALServer answers such a request 400 before any route
+    property BodyError: StringRAL read FBodyError;
+    { The body received, decoded (DecodeBody): what RequestStream on the
+      server and ResponseStream on the client read. Owned by the params }
+    property Decoded: TStream read GetDecoded;
     /// Grabs a param by its name.
     property Get[const AName: StringRAL]: TRALParam read GetParam;
     /// Grabs a param by its name and kind since you can have multiple kinds with same name.
     property GetKind[const AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
-    { The body received, decoded (DecodeBody): what RequestStream on the
-      server and ResponseStream on the client read. Owned by the params }
-    property Decoded: TStream read GetDecoded;
-    /// Bodies above this size are spooled to a temporary file (0: never)
-    property SpoolAbove: Int64RAL read FSpoolAbove write FSpoolAbove;
+    /// Grabs a param by its index on the TRALParams list.
+    property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
+    /// Grabs a param by its index on the TRALParams list.
+    property IndexKind[AIndex: IntegerRAL; AKind: TRALParamKind]: TRALParam read GetParam;
     /// Encoding skips the built-in list of already compressed types
     property SkipCompressedTypes: Boolean read FSkipCompressedTypes write FSkipCompressedTypes;
     /// More types encoding does not compress; referenced, not owned
     property SkipCompressTypes: TStrings read FSkipCompressTypes write FSkipCompressTypes;
-    /// Whether CriptoOptions exists yet - asking for it would create it
-    function HasCriptoOptions: boolean;
-    /// A cipher with a key is set, without creating CriptoOptions to find out.
-    /// ATrimKey: a key of blanks counts as none
-    function HasCipher(ATrimKey: boolean): boolean;
+    /// Bodies above this size are spooled to a temporary file (0: never)
+    property SpoolAbove: Int64RAL read FSpoolAbove write FSpoolAbove;
   published
     /// Which algorithm to compress the content of params.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
+    property ContentDispositionInline: Boolean read FContentDispositionInline
+      write FContentDispositionInline;
     /// Configuration of the cryptography used on params for a secure P2P
     /// traffic. Created the first time it is asked for: a request or a
     /// response with no cipher never makes one
     property CriptoOptions: TRALCriptoOptions read GetCriptoOptions write SetCriptoOptions;
-    property ContentDispositionInline: Boolean read FContentDispositionInline
-      write FContentDispositionInline;
   end;
 
 function GetCookieText(ACookie: TRALCookie): StringRAL;
