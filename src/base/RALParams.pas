@@ -1,5 +1,4 @@
-﻿/// Unit that contains everything related to Params from either the query request
-/// or response.
+﻿/// Params of a request or response: values, headers, cookies, the body and its encoding.
 unit RALParams;
 
 interface
@@ -11,111 +10,90 @@ uses
   RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
 type
-  { The cookie's SameSite. cssDefault, first so that a zeroed record has it,
-    writes no attribute and leaves the browser's own rule - Lax on Chromium,
-    None on Firefox and Safari. cssLax used to be the first, and so the value
-    a record started with, which is why it wrote nothing: asking for Lax
-    explicitly sent nothing either }
+  /// SameSite of a cookie; cssDefault writes none and leaves the browser's own rule.
   TRALCookieSiteScope = (cssDefault, cssLax, cssNone, cssStrict);
 
+  /// A cookie and its attributes.
   TRALCookie = record
+    /// Name of the cookie.
     Name: StringRAL;
+    /// Value of the cookie.
     Value: StringRAL;
+    /// Domain attribute; empty sends none.
     Domain: StringRAL;
+    /// Path attribute; empty sends none.
     Path: StringRAL;
+    /// Expiration, in local time; 0 sends none.
     Expires: TDateTime;
-    /// Seconds until the cookie expires, sent as Max-Age. 0 means not set - the
-    /// record starts zeroed - and anything below zero expires it at once
-    /// (Max-Age=0, the way to delete a cookie). Browsers let it win over Expires
+    /// Seconds until it expires (Max-Age); 0 is not set, below 0 deletes the cookie.
     MaxAge: Int64;
+    /// Hides the cookie from scripts.
     HttpOnly: Boolean;
+    /// Cookie of the browser session: Expires is not written.
     SessionOnly: Boolean;
+    /// Sent over HTTPS only.
     Secure: Boolean;
+    /// SameSite attribute.
     SameSite: TRALCookieSiteScope;
   end;
 
   TRALParams = class;
 
-  { TRALParam }
-
-  /// This is the object of all the data that is traded between request and response.
-  /// each RALParam has a name, a kind and a content that can either be a text
-  /// (String) or a bytearray (Stream)
+  { One param of a request or response: a name, a kind, and a value kept as text or
+    as a stream. }
   TRALParam = class
   private
-    { THE VALUE LIVES IN FText WHEN IT WAS SET AS TEXT, and in FContent when it
-      is a stream: a body adopted from the engine, an open file, or a typed
-      binary payload. FIsText says which of the two is live; the other is empty.
-      It used to be always a stream, so every header cost a heap object for its
-      value on top of the TRALParam itself, and a request carries dozens of
-      them. That allocation is what caps a RAL server - measured on the QUIC
-      engine, where MsQuic moves a whole request for 18 us of CPU while the RAL
-      pipeline around it spends 250, and where a second dispatch thread makes
-      things slower instead of faster because the threads queue on the memory
-      manager. A stream is now built only when somebody actually asks for one. }
+    /// The value when it is a stream; nil while it is text.
     FContent: TStream;
+    /// Not used: ContentDisposition is built from FileName.
     FContentDisposition: StringRAL;
     FContentDispositionInline: Boolean;
     FContentType: StringRAL;
-    { made from a header block that is still text (TRALParams.FPending) and
-      not in the list yet: it joins the list, in its place, when the block is
-      parsed. A list chains its detached params through FNextDetached }
+    /// Made from a pending header block and not in the list yet.
     FDetached: Boolean;
     FFileName: StringRAL;
+    /// Hash of the name, for the index of the owning list.
     FHash: Cardinal;
+    /// Whether the param is in the name index of its list.
     FIndexed: Boolean;
     FIsText: Boolean;
     FKind: TRALParamKind;
+    /// Next detached param of the owning list.
     FNextDetached: TRALParam;
+    /// Next param of the same bucket of the name index, in creation order.
     FNextSame: TRALParam;
-    { the list this param is in, and its place in that list's name index:
-      the order it was created in, the hash of its name, the next param of
-      its bucket and whether it is in the index at all - see
-      TRALParams.IndexAdd }
+    /// List the param belongs to, or nil.
     FOwner: TRALParams;
-    { False when FContent was lent (BorrowStream): a view over the engine's
-      buffer or over the request's decoded body, which this param must not
-      free - and which is read-only }
     FOwnsContent: Boolean;
     FParamName: StringRAL;
+    /// Creation order of the param in its list.
     FSeq: Cardinal;
+    /// The value while it is text.
     FText: StringRAL;
 
     procedure SetParamName(const AValue: StringRAL);
   protected
-    /// The value as text, wherever it is being kept.
+    /// The value as text, wherever it is kept.
     function ContentText: StringRAL;
-    /// Drops the content: frees it when it is this param's own
+    /// Drops the value, freeing it when the param owns it.
     procedure FreeContent;
     function GetAsBoolean: Boolean;
     function GetAsDouble: DoubleRAL;
     function GetAsInt64: Int64;
     function GetAsInteger: IntegerRAL;
-    { deprecated through the getter, which is what FPC warns about where the
-      property is read - and only there, not where it is written. Delphi
-      refuses the directive on a property and only warns about a getter in
-      the unit that declares it, so it gets the doc comment alone }
     function GetAsStream: TStream;
       {$IFDEF FPC}deprecated 'AsStream builds a copy the caller must free: read Content, or call SaveToStream';{$ENDIF}
     function GetAsString: StringRAL;
     function GetContent: TStream;
     function GetContentDisposition: StringRAL;
     function GetContentSize: Int64RAL;
-    /// Reads a raw payload back; False when the marker or the size do not match.
+    /// Reads a typed payload of AType into ABuffer; False when the type or size differ.
     function GetTypedValue(const AType: StringRAL; var ABuffer; ASize: Integer): Boolean;
-    { Reads whatever typed payload the param carries, whichever one it is.
-      Every accessor goes through this instead of asking only for its own
-      marker: reading an rptInt64 param with AsInteger has to convert the value,
-      not fall through to the text branch, where the raw bytes would parse as 0
-      and hand back silently wrong data. }
+    /// Reads the typed payload the param holds, of any type; False for a text value.
     function GetTypedVariant(out AValue: Variant): Boolean;
-    { ContentType without its parameters: 'application/x-ral-double; charset=utf-8'
-      answers 'application/x-ral-double'. A lone body param travels as the HTTP
-      Content-Type header, and TRALHTTPHeaderInfo.SetContentType appends the
-      charset on the way, so comparing the whole string would miss every marker
-      that crossed a real connection - it only ever matched in-process. }
+    /// ContentType without its parameters and the blanks around it.
     function MediaType: StringRAL;
-    /// Moves a text value into a stream, for the few callers that need one.
+    /// Moves a text value into a stream.
     procedure NeedStream;
     procedure SetAsBoolean(const AValue: Boolean);
     procedure SetAsDouble(const AValue: DoubleRAL);
@@ -124,265 +102,250 @@ type
     procedure SetAsStream(const AValue: TStream);
     procedure SetAsString(const AValue: StringRAL);
     procedure SetContentDisposition(AValue: StringRAL);
-    /// Writes a raw little-endian payload and stamps ContentType with AType.
+    /// Writes a little-endian payload and sets ContentType to AType.
     procedure SetTypedValue(const AType: StringRAL; const ABuffer; ASize: Integer);
   public
     constructor Create;
     destructor Destroy; override;
 
-    { Takes AStream as the content WITHOUT copying it: the param owns it from
-      here on and frees it. AsStream := X copies X; this is for a stream that
-      was created for the param anyway (DecodeBody's decrypted or inflated
-      body), where the copy only cost memory and time }
+    /// Takes AStream as the value without copying it; the param frees it.
     procedure AdoptStream(AStream: TStream);
+    /// The value as Currency; 0 when it is not a number.
     function AsCurrency: Currency;
+    /// The value as a date and time; 0 when it is not one.
     function AsDateTime: TDateTime; overload;
+    /// The value as a date and time, text read with ACustomFormat; 0 when it is not one.
     function AsDateTime(ACustomFormat: TFormatSettings): TDateTime; overload;
-    /// AsDouble with the value to answer when the param is not a number
+    /// The value as a number, or ADefault when it is not one.
     function AsDoubleDef(const ADefault: DoubleRAL): DoubleRAL;
-    { Takes AStream as the content WITHOUT owning it: the lender keeps it alive
-      for as long as this param lives, and nobody writes to it. How a received
-      body reaches the params without a copy (TRALParams.DecodeBody) }
+    /// Uses AStream as the value without owning it: read-only, freed by its lender.
     procedure BorrowStream(AStream: TStream);
+    /// Copies the name, kind, file name, value and type of this param into ASource.
     procedure Clone(ASource: TRALParam);
+    /// True when the param is nil or its value is empty.
     function IsNilOrEmpty: Boolean;
-    /// True when this param carries a typed binary payload instead of text.
+    /// True when the value is a typed binary payload (an rctRAL* content type).
     function IsTyped: Boolean;
-    /// Clears and assign a file to the FContent.
+    /// Makes the file AFileName the value, read when sent; empty if it does not exist.
     procedure OpenFile(const AFileName: StringRAL);
-    /// Saves FContent to the default executable location.
+    /// Saves the value next to the executable, named after FileName or the param.
     procedure SaveToFile; overload;
-    /// Save FContent with the given Filename.
+    /// Saves the value to AFileName.
     procedure SaveToFile(const AFileName: StringRAL); overload;
-    /// Save FContent with the given Filename and the foldername.
+    { Saves the value in AFolderName (the executable's folder when empty) as
+      AFileName, or FileName; only the last path component of the name is used. }
     procedure SaveToFile(AFolderName, AFileName: StringRAL); overload;
+    /// Returns a new stream with a copy of the value; the caller frees it.
     function SaveToStream: TStream; overload;
+    /// Writes the value to AStream.
     procedure SaveToStream(AStream: TStream); overload;
+    /// Sets the value as a typed boolean.
     procedure SetTypedBoolean(const AValue: Boolean);
+    /// Sets the value as a typed Currency.
     procedure SetTypedCurrency(const AValue: Currency);
+    /// Sets the value as a typed TDateTime (also for a TDate or a TTime).
     procedure SetTypedDateTime(const AValue: TDateTime);
+    /// Sets the value as a typed Double.
     procedure SetTypedDouble(const AValue: DoubleRAL);
+    /// Sets the value as a typed Int64.
     procedure SetTypedInt64(const AValue: Int64RAL);
-    { Typed binary writers - see the rctRAL* constants in RALMIMETypes.
-      They are new methods instead of a change to AsInteger/AsDouble/..., so
-      existing code keeps producing exactly the same bytes on the wire. The
-      readers are the ordinary AsInteger/AsInt64/AsDouble/AsCurrency/AsBoolean/
-      AsDateTime: they look at ContentType first and fall back to parsing text,
-      so an old writer still talks to a new reader unchanged.
-      Works with any number of params. With two or more the multipart encoder
-      copies the stream verbatim and the decoder restores name and content type;
-      with a single body param the value travels as the whole body and the type
-      still survives in the HTTP Content-Type header - only the name is replaced
-      by 'ral_body', which is how a lone body param already behaves today,
-      independently of this.
-      Payload is little-endian and fixed size; on big-endian FPC targets the
-      bytes are swapped at both ends so the wire format is the same everywhere.
-      TDate and TTime are TDateTime in Object Pascal, so SetTypedDateTime covers
-      the three of them. }
+    /// Sets the value as a typed Integer.
     procedure SetTypedInteger(const AValue: IntegerRAL);
+    /// Size of the value, in bytes.
     function Size: Int64;
-    { The content as a stream the CALLER owns, for the body that goes on the
-      wire (TRALParams.TakeWireStream): a text value comes as a view that holds
-      the string, nothing copied. With AConsume the param's own stream moves
-      out (the param is left empty) and a lent one is copied, so the result
-      stands on its own; without, it is a view that is valid while this param
-      lives }
+    { The value as a stream the caller owns: with AConsume the param's own stream
+      moves out; without, a view valid while the param lives. }
     function TakeContent(AConsume: Boolean): TStream;
-    /// The value as a number, and whether it was one: AsDouble answers 0 for
-    /// both "0" and "abc". Text is read with either separator, never with the
-    /// locale of the server (see RALTryStrToFloat)
+    /// The value as a number, and whether it was one; text takes either separator.
     function TryAsDouble(out AValue: DoubleRAL): Boolean;
 
+    /// The value as a boolean: '1' or 'true', in any case, is True.
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
+    /// The value as a number; 0 when it is not one. Text takes either separator.
     property AsDouble: DoubleRAL read GetAsDouble write SetAsDouble;
+    /// The value as a 64-bit integer; 0 when it is not one.
     property AsInt64: Int64 read GetAsInt64 write SetAsInt64;
+    /// The value as an integer; 0 when it is not one.
     property AsInteger: IntegerRAL read GetAsInteger write SetAsInteger;
-    /// Writing copies the stream into the param. READING builds a new copy of
-    /// the whole value on every read, which the caller has to free - not the
-    /// param's own stream, despite the name. Deprecated for reading: Content
-    /// is the param's stream, and SaveToStream says that it makes a copy
+    { Writing copies the stream into the param; reading returns a new copy that
+      the caller frees. @deprecated Read Content, or call SaveToStream. }
     property AsStream: TStream read GetAsStream write SetAsStream;
+    /// The value as text; a typed value is written in an invariant format.
     property AsString: StringRAL read GetAsString write SetAsString;
-    { The value as a stream. Asking for it on a param that holds text BUILDS
-      one - the param keeps it from then on - so read it only when a stream is
-      really what is wanted; AsString costs nothing on the common case. }
+    /// The value as a stream the param keeps; a text value is converted on first read.
     property Content: TStream read GetContent;
+    /// Content-Disposition of the param: built from FileName, read for name and filename.
     property ContentDisposition: StringRAL read GetContentDisposition write SetContentDisposition;
+    /// Content-Disposition is inline instead of attachment.
     property ContentDispositionInline: Boolean read FContentDispositionInline write FContentDispositionInline;
+    /// Size of the value, in bytes.
     property ContentSize: Int64RAL read GetContentSize;
+    /// Content type of the value.
     property ContentType: StringRAL read FContentType write FContentType;
+    /// File name of the value, sent in Content-Disposition.
     property FileName: StringRAL read FFileName write FFileName;
-    /// True while the value is kept as text (AsString), False when it is a stream
+    /// True while the value is kept as text, False when it is a stream.
     property IsText: Boolean read FIsText;
+    /// Where the param travels.
     property Kind: TRALParamKind read FKind write FKind;
-    /// False for a lent content (BorrowStream): read-only, freed by its lender
+    /// False for a lent value (BorrowStream): read-only, freed by its lender.
     property OwnsContent: Boolean read FOwnsContent;
+    /// Name of the param.
     property ParamName: StringRAL read FParamName write SetParamName;
   end;
 
-  /// One line of a header block kept as text (TRALParams.FPending): where its
-  /// name and its value are
+  /// One line of a header block kept as text: where its name and value are.
   TRALPendingLine = record
+    /// Index of the first character of the name.
     NameStart: IntegerRAL;
+    /// Length of the name.
     NameLen: IntegerRAL;
+    /// Index of the first character of the value.
     ValueStart: IntegerRAL;
+    /// Length of the value.
     ValueLen: IntegerRAL;
-    /// The param a lookup made from this line (and the other lines of its
-    /// name), or nil. A TRALParam - declared as TObject, the class comes later
+    /// The TRALParam a lookup made from this line, or nil.
     Owner: TObject;
   end;
 
-  { TRALParams }
-
-  /// Collection of TRALParam objects
+  /// List of params of a request or response, indexed by name.
   TRALParams = class
   public const
-    /// The most lines a header block may have to be kept as text; a longer one
-    /// is parsed at once. Browsers send 15 to 21
+    /// Most lines a header block may have to be kept as text; a longer one is parsed.
     PendingLinesMax = 32;
   public type
-    /// Support enumeration of values in TRALParams.
+    /// Enumerator of the params, for for..in loops.
     TEnumerator = class
     private
+      /// List being enumerated.
       FArray: TRALParams;
+      /// Index of the current param.
       FIndex: Integer;
     public
+      /// Enumerator over AArray.
       constructor Create(const AArray: TRALParams);
 
+      /// The current param.
       function GetCurrent: TRALParam; inline;
+      /// Moves to the next param; False past the last one.
       function MoveNext: Boolean; inline;
 
+      /// The current param.
       property Current: TRALParam read GetCurrent;
     end;
   private
     FBodyError: StringRAL;
-    { The name index. A lookup used to walk the whole list, and every param
-      parsed off the wire is looked up first - the query string, a form, the
-      headers, the cookies - so N params cost N*N/2 comparisons, before any
-      authentication: 50 000 fields in a 400 KB form made a billion. Built
-      with the first param and doubled when it fills up, so a name is looked
-      up one way whatever the size of the list }
+    /// Buckets of the name index; each chains its params through FNextSame.
     FBuckets: array of TRALParam;
-    { the streams the body params are windows of, freed after them: the
-      received body, or the buffer it was decrypted in }
+    /// Streams the body params are windows over, freed after them.
     FBuffers: TList;
     FCompressType: TRALCompressType;
     FContentDispositionInline: Boolean;
+    /// Cipher settings; created when first asked for.
     FCriptoOptions: TRALCriptoOptions;
+    /// The body decoded by DecodeBody.
     FDecoded: TStream;
-    { FDecoded is the content of the lone body param: whoever writes that param
-      again frees it, so it is looked up before being handed out }
+    /// Whether FDecoded is the value of the lone body param.
     FDecodedIsParam: Boolean;
+    /// Params made from the pending block and not in the list yet, chained.
     FDetached: TRALParam;
+    /// Number of detached params.
     FDetachedCount: IntegerRAL;
-    { the order reserved for the block being parsed: a line merges only into a
-      param of the block itself - one older than the block got its name by a
-      rename made after the block arrived, which the parse at once would have
-      come before }
+    /// Creation order reserved for the header block being parsed.
     FFlushBase: Cardinal;
-    { while the block is parsed: NewParam takes FFlushSeq, the order reserved
-      for the line being parsed, instead of the next one }
+    /// True while the pending block is parsed.
     FFlushing: Boolean;
+    /// Creation order of the line of the pending block being parsed.
     FFlushSeq: Cardinal;
-    { the params, in the order they were created. Read through FParams, which
-      parses a pending header block first - see GetList }
+    /// The params in creation order; read through FParams.
     FList: TList;
+    /// Counter of the generated names (ral_param1, ral_param2...).
     FNextParam: IntegerRAL;
-    { A block of header lines kept as text until something needs the list
-      (AppendParamsListText). A server engine hands over every header the
-      client sent, and most are never read: each one parsed is a param, its
-      name and its value, three allocations - a third of all a GET made. A
-      lookup by name answers from the lines and makes that one param alone,
-      at the place in the order it would have had: FPendingSeq is the creation
-      order reserved for the first line. Anything else parses the whole block
-      first, through FParams }
+    /// Header block kept as text until something needs the list.
     FPending: StringRAL;
+    /// Number of lines of the pending block.
     FPendingCount: IntegerRAL;
+    /// Kind of the params of the pending block.
     FPendingKind: TRALParamKind;
+    /// Lines of the pending block.
     FPendingLines: array[0..PendingLinesMax - 1] of TRALPendingLine;
+    /// Creation order reserved for the first line of the pending block.
     FPendingSeq: Cardinal;
+    /// Creation order of the next param.
     FSeqNext: Cardinal;
     FSkipCompressedTypes: Boolean;
     FSkipCompressTypes: TStrings;
     FSpoolAbove: Int64RAL;
 
-    /// Decodes a name and a value already cut apart and stores them.
+    /// Decodes a name and a value already split, and stores them.
     procedure AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamKind);
-    /// frees FBuffers and forgets FDecoded
+    /// Frees FBuffers and forgets FDecoded.
     procedure ClearBuffers;
-    /// Keeps a header block as text instead of parsing it, when it can be:
-    /// ASCII already checked, at most PendingLinesMax lines, no Set-Cookie
-    /// (which also makes cookie params) and no name of a param of that kind
-    /// already in the list (parsing would have merged into it)
+    { Keeps a header block as text instead of parsing it, when it has at most
+      PendingLinesMax lines, no Set-Cookie and no name already in the list. }
     function DeferBlock(const ASource, ANameSeparator: StringRAL;
       AKind: TRALParamKind): boolean;
-    { The compression the body will really get: CompressType, except none for
-      a form or multipart on the request path (see EncodeBody), for a type
-      already compressed (SkipCompressedTypes/SkipCompressTypes) and when the
-      compressor is not linked. Writes it back to CompressType, which is where
-      the caller learns what to put in Content-Encoding }
+    { Compression the body really gets: CompressType, or none for a form or a
+      multipart on the request path, a type already compressed or a compressor
+      not linked. Written back to CompressType. }
     function EffectiveCompress(const AContentType: StringRAL;
       ACompressMultipart: boolean): TRALCompressType;
-    /// The first param with no name - of that kind, unless AAnyKind.
+    /// First param with no name, of AKind unless AAnyKind.
     function FindNameless(AKind: TRALParamKind; AAnyKind: Boolean): TRALParam;
-    /// The param of that name and kind, created when there is none, with its
-    /// name hashed once.
+    /// The param of AName and AKind, created when there is none.
     function FindOrNewParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
-    /// Parses the pending block into the list, each param at its reserved place
+    /// Parses the pending block into the list, each param at its reserved place.
     procedure FlushPending;
     function GetDecoded: TStream;
-    /// The list, with the pending block parsed into it
     function GetList: TList;
+    /// Adds AParam to the name index, keeping its chain in creation order.
     procedure IndexAdd(AParam: TRALParam; AHash: Cardinal);
+    /// Rebuilds the name index at a size for the current list.
     procedure IndexBuild;
+    /// First param of AName (and of AKind, unless AAnyKind), pending block included.
     function IndexFind(const AName: StringRAL; AHash: Cardinal; AKind: TRALParamKind;
       AAnyKind: Boolean): TRALParam;
+    /// Removes AParam from the name index.
     procedure IndexRemove(AParam: TRALParam);
-    { a cipher on CriptoOptions, nil when there is none. Encoding ignores a key
-      of blanks, as it always did; decoding only an empty one }
+    /// Cipher for CriptoOptions, or nil when there is none; the caller frees it.
     function NewCipher(AEncoding: boolean): TRALCriptoAES;
-    /// The param of AName made from the pending block, or nil when the block
-    /// has no such line - or the first one comes at or after the creation order
-    /// ABefore. Detached: in the index, not in the list yet
+    /// Param of AName made from the pending block; nil if none comes before ABefore.
     function PendingMake(const AName: StringRAL; ABefore: Cardinal): TRALParam;
-    { The plain body as a stream the CALLER owns, or nil when there is none:
-      the lone body param itself, the form as text, or the multipart as a
-      TRALConcatStream. Nothing is copied - see TRALParam.TakeContent for
-      AConsume. Sets AContentType/AContentDisposition as EncodeBody always did }
+    { The plain body as a stream the caller owns, or nil: the lone body param, the
+      form as text or a multipart. Sets AContentType and AContentDisposition. }
     function PrepareBody(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart, AConsume: boolean): TStream;
-    { ASource, plain, compressed and/or encrypted into ADest - straight into
-      it, with the AES working in place after the compressor }
+    /// Writes ASource into ADest, compressed and/or encrypted.
     procedure WriteTransformed(ASource, ADest: TStream; ACompress: TRALCompressType;
       var AContentType: StringRAL; ACompressMultipart: boolean);
 
-    /// Every access to the list goes through here: no method sees a list
-    /// without the headers of a pending block
+    /// The list, with the pending block parsed into it first.
     property FParams: TList read GetList;
   protected
-    /// The name=value pair of a Set-Cookie header, as an rpkCOOKIE param.
+    /// Adds the name=value pair of a Set-Cookie header as an rpkCOOKIE param.
     procedure AddSetCookie(const AValue: StringRAL);
-    /// Decodes the ALine URL and adds it to the param list.
+    /// Adds the param of one name/value line, URL-decoded unless it is a header.
     procedure AppendParamLine(const ALine: StringRAL; const ANameSeparator: StringRAL;
       AKind: TRALParamKind);
+    /// AppendParamLine over ALen characters of ASource from AStart, with no copy.
     procedure AppendParamSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
       const ANameSeparator: StringRAL; AKind: TRALParamKind);
-    /// Compresses the input stream into a TStream.
+    /// Compresses AStream with CompressType into a new stream; nil if not linked.
     function Compress(AStream: TStream): TStream;
-    /// Decompresses the input string into an UTF8 String.
+    /// Decompresses ASource with CompressType.
     function Decompress(const ASource: StringRAL): StringRAL; overload;
-    /// Decompresses the input stream into a TStream.
+    /// Decompresses AStream with CompressType into a new stream; nil if not linked.
     function Decompress(AStream: TStream): TStream; overload;
-    /// Decrypts the input stream into a TStream.
+    /// Decrypts AStream with CriptoOptions into a new stream.
     function Decrypt(AStream: TStream): TStream; overload;
-    /// Decrypts the input string into an UTF8 String.
+    /// Decrypts ASource, Base64 text, with CriptoOptions.
     function Decrypt(const ASource: StringRAL): StringRAL; overload;
-    /// Encrypts the whole class instead of each individual object.
+    /// Encrypts AStream with CriptoOptions into a new stream.
     function Encrypt(AStream: TStream): TStream;
+    /// '=' or ': ', whichever ASource uses as its name separator.
     function FindBodyNameSeparator(const ASource: StringRAL): StringRAL;
-    /// Results either = or : if found on the input text.
+    /// ': ' or '=', whichever comes first in ASource.
     function FindHeaderNameSeparator(const ASource: StringRAL): StringRAL;
-    { deprecated the way TRALParam.GetAsStream is - see there }
     function GetBody: TList;
       {$IFDEF FPC}deprecated 'Body builds a list the caller must free: read Count(rpkBODY), IndexKind or SingleBody';{$ENDIF}
     function GetCriptoOptions: TRALCriptoOptions;
@@ -390,215 +353,175 @@ type
     function GetParam(AIndex: IntegerRAL): TRALParam; overload;
     function GetParam(const AName: StringRAL): TRALParam; overload;
     function GetParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam; overload;
-    /// Moves to the next param and returns its index.
+    /// Advances the counter of generated names and returns it.
     function NextParamInt: IntegerRAL;
-    /// Moves to the next param and returns its internal name.
+    /// Advances the counter and returns the next generated name (ral_paramN).
     function NextParamStr: StringRAL;
     procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
-    /// Event to be called during the processing of FormData.
+    /// Adds each part the multipart decoder completes as an rpkBODY param.
     procedure OnFormBodyData(Sender: TObject; AFormData: TRALMultipartFormData;
       var AFreeData: Boolean);
   public
     constructor Create;
     destructor Destroy; override;
 
-    /// Locate the RALParam with the given AParamName and fills it with a file from the AFileName.
+    /// Adds or replaces the body param AParamName with the file AFileName.
     function AddFile(const AParamName: StringRAL; const AFileName: StringRAL): TRALParam; overload;
-    /// Creates a new RALParam in the internal list and fills it with a file from the AFileName.
+    /// Adds a body param with the file AFileName, under a generated name.
     function AddFile(const AFileName: StringRAL): TRALParam; overload;
-    /// A header received from the wire. Same as AddParam with rpkHEADER, plus
-    /// what every engine owes the application: a Set-Cookie also lands as an
-    /// rpkCOOKIE param, so cookies a server sets read the same whatever the
-    /// transport was.
+    /// Adds a received header; a Set-Cookie also becomes an rpkCOOKIE param.
     procedure AddHeader(const AName, AValue: StringRAL);
-    /// AddParam is used to include a TRALParam Object into the internal list.
-    /// It only replaces a param of the SAME name and kind: a query param 'loja'
-    /// and an AddParam('loja', ..., rpkHEADER) end up as two params, and
-    /// ParamByName answers the one added first - see ReplaceParam
+    { Adds or replaces the param of AName and AKind with the text AValue; nothing
+      when AName or AValue is empty. Another kind of the same name is another param. }
     function AddParam(const AName: StringRAL; const AValue: StringRAL;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    /// AddParam is used to include a TRALParam Object into the internal list.
+    /// Adds or replaces the param of AName and AKind with a copy of AContent.
     function AddParam(const AName: StringRAL; AContent: TStream;
                       AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    { Adds a param stating how the value should travel - see TRALParamType.
-        Params.AddParam('quantidade', 2.5, rpkBODY, rptDouble);
-        Params.AddParam('datacoleta', Now, rpkBODY, rptDateTime);
-      With rptText it behaves like the string overload, so one call site can
-      switch between text and typed without changing shape. Unlike that
-      overload it does NOT reject an empty value: a typed param still has a
-      value when its text form would be empty. }
+    /// Adds or replaces the param of AName and AKind with AValue, typed as AType.
     function AddParam(const AName: StringRAL; const AValue: Variant;
                       AKind: TRALParamKind; AType: TRALParamType): TRALParam; overload;
-    /// AddValue creates a new RALParam in the internal list and fills it with the given parameters.
+    /// Adds a param with a generated name and the text AContent; rpkNONE is not sent.
     function AddValue(const AContent: StringRAL; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    /// AddValue creates a new RALParam in the internal list and fills it with the given parameters.
+    /// Adds a param with a generated name and a copy of AContent; rpkNONE is not sent.
     function AddValue(AContent: TStream; AKind: TRALParamKind = rpkNONE): TRALParam; overload;
-    /// Used to append a list of params (ASource) from the body to the current params list.
+    /// Adds the name=value lines of ASource (form fields), URL-decoded, as params.
     procedure AppendBodyParams(ASource: TStrings; AKind: TRALParamKind);
-    /// Used to append a list of params (ASource) to the current params list.
+    /// Adds the name/value lines of ASource as params of AKind.
     procedure AppendParams(ASource: TStringList; AKind: TRALParamKind); overload;
-    /// Used to append a list of params (ASource) to the current params list.
+    /// Adds the name/value lines of ASource as params of AKind.
     procedure AppendParams(ASource: TStrings; AKind: TRALParamKind); overload;
-    /// Used to append a list of params in a string to the current params list.
+    /// Adds the lines of ASource (CR or LF separated) as params of AKind.
     procedure AppendParamsListText(ASource: StringRAL; AKind: TRALParamKind;
                                    ANameSeparator: StringRAL = '');
-    /// Appends params based on a string 'AText'.
+    /// Adds the name=value pairs of AText, split at ALineSeparator, URL-decoded.
     procedure AppendParamsText(AText: StringRAL; AKind: TRALParamKind;
                                const ANameSeparator: StringRAL = '=';
                                const ALineSeparator: StringRAL = '&');
-    /// Appends params based on the full URL given separated by '/'.
+    /// Adds the path segments of AFullURI past APartialURI as ral_uriparam1, 2...
     procedure AppendParamsUri(AFullURI, APartialURI: StringRAL; AKind: TRALParamKind);
-    /// Appends params based on the full URL given.
+    /// Adds the query string of AUrlQuery, after its '?', as params of AKind.
     procedure AppendParamsUrl(AUrlQuery: StringRAL; AKind: TRALParamKind);
-    /// returns all the params in a JSON UTF8string format.
+    /// The params as a JSON object of names and text values; '' when there are none.
     function AsJSON: StringRAL;
-    /// Fills the 'ADest' StringList with RALParams matching 'AKind'.
+    /// Adds the params of AKind to ADest as lines of name, ASeparator and value.
     procedure AssignParams(ADest: TStringList; AKind: TRALParamKind;
                            ASeparator: StringRAL = '='); overload;
-    /// Fills the 'ADest' Strings with RALParams matching 'AKind'. Headers and
-    /// cookies come out as RALSafeHeaderText leaves them: no CR, LF or NUL.
+    /// The same for TStrings; headers and cookies lose CR, LF and NUL.
     procedure AssignParams(ADest: TStrings; AKind: TRALParamKind;
                            ASeparator: StringRAL = '='); overload;
-    /// Returns an UTF8 String with RALParams matching 'AKind'.
+    /// The params of AKind as CRLF lines of name, ANameSeparator and value.
     function AssignParamsListText(AKind: TRALParamKind;
                                   const ANameSeparator: StringRAL = '='): StringRAL;
-    /// Returns an UTF8 String with RALParams matching 'AKind'. Can accept a different Line Separator than CRLF.
-    /// Headers and cookies come out as RALSafeHeaderText leaves them, unless URL-encoded.
+    { The params of AKind as text: name, ANameSeparator and value, joined by
+      ALineSeparator and URL-encoded on request. Headers and cookies lose CR, LF, NUL. }
     function AssignParamsText(AKind: TRALParamKind; AUrlEncoded: boolean = False;
                               const ANameSeparator: StringRAL = '=';
                               const ALineSeparator: StringRAL = '&'): StringRAL;
-    /// Returns an UTF8 String with RALParams matching 'AKind' using default URL separators.
+    /// The params of AKind as a URL-encoded query string.
     function AssignParamsUrl(AKind: TRALParamKind): StringRAL;
-    /// returns all the params in a comma separated UTF8string.
+    /// The values of all params, separated by ', '.
     function AsString: StringRAL;
-    /// Clears all params.
+    /// Frees every param.
     procedure ClearParams; overload;
-    /// Clears all params matching AKind.
+    /// Frees the params of AKind.
     procedure ClearParams(AKind: TRALParamKind); overload;
-    /// The value of a request's Cookie header: every rpkCOOKIE param as
-    /// name=value, joined by '; ', as RALSafeHeaderText leaves it. A param
-    /// named Set-Cookie holds a whole cookie line (what AddCookie(TRALCookie)
-    /// of a response stores) and gives its name=value pair alone - a Cookie
-    /// header carries no attributes. Every client engine builds its header here.
+    /// Value of a request's Cookie header, built from the rpkCOOKIE params.
     function CookieHeaderText: StringRAL; overload;
-    /// The same, merged with AJarCookies - the Cookie value an engine's own
-    /// jar holds for the URL - into the one header a request may carry: the
-    /// jar's pairs first, then the params, and for a name both have, the
-    /// param's value alone. The application's cookie wins for that request; the
-    /// jar is not touched.
+    { The same merged with the cookies of a jar (AJarCookies): the jar's first, then
+      the params; a param wins over a jar cookie of the same name. }
     function CookieHeaderText(const AJarCookies: StringRAL): StringRAL; overload;
-    /// Returns total ammount of RALParams.
+    /// Number of params.
     function Count: IntegerRAL; overload;
-    /// Returns total ammount of RALParams matching AKind.
+    /// Number of params of AKind.
     function Count(AKind: TRALParamKind): IntegerRAL; overload;
-    /// Returns total ammount of RALParams matching multiple kinds.
+    /// Number of params of any of AKinds.
     function Count(AKinds: TRALParamKinds): IntegerRAL; overload;
-    /// Returns a TStream with the filtered Stream body contents. ASource is
-    /// copied once (boCopy): the caller keeps it and may free it right after
+    /// Decodes a copy of ASource into the params; returns nil (see Decoded).
     function DecodeBody(ASource: TStream; const AContentType: StringRAL;
                         const AContentDisposition: StringRAL = ''): TStream; overload;
-    { The body the engine received, decrypted and decompressed into ONE stream
-      that the body params read from - a window for each multipart part, the
-      stream itself for a lone body - with no copy of ASource unless
-      AOwnership is boCopy (see TRALBodyOwnership). Decrypts in place when the
-      stream may be written. Returns nil; Decoded is the decoded body }
+    { Decrypts and decompresses ASource into the params: one body param, or a
+      window per multipart part. AOwnership says whose ASource is. Returns nil. }
     function DecodeBody(ASource: TStream; const AContentType, AContentDisposition: StringRAL;
                         AOwnership: TRALBodyOwnership): TStream; overload;
-    /// Returns a TStream with the filtered String body contents.
+    /// Decodes ASource, held as a view, into the params; returns nil (see Decoded).
     function DecodeBody(const ASource, AContentType: StringRAL;
                         const AContentDisposition: StringRAL = ''): TStream; overload;
-    /// Decode and append RALParams based on the ASource input.
+    /// Adds the fields of an x-www-form-urlencoded text as params of AKind.
     procedure DecodeFields(const ASource: StringRAL; AKind: TRALParamKind = rpkFIELD);
-    /// Removes a RALParam matching the given AName.
+    /// Frees every param named AName.
     procedure DelParam(const AName: StringRAL); overload;
-    /// Removes a RALParam matching the given AName and AKind.
+    /// Frees the params named AName of AKind.
     procedure DelParam(const AName: StringRAL; AKind: TRALParamKind); overload;
-    /// Returns a TStream with all RALParams that matches 'Body' Kind.
-    { ACompressMultipart False leaves a multipart body uncompressed - only the
-      client request path asks for that, and the reason is written where the
-      flag is read. Everything else keeps compressing as it always did. }
+    { The body params encoded for the wire, compressed and/or encrypted, as a new
+      stream the caller frees; ACompressMultipart False sends forms uncompressed. }
     function EncodeBody(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart: boolean = True): TStream;
-    { The body, compressed and/or encrypted, written into ADest where it is.
-      The params are left as they are }
+    /// Writes the encoded body into ADest; the params stay as they are.
     procedure EncodeInto(ADest: TStream; var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart: boolean = True);
-    /// Retuns the internal Enumerator type to allow for..in loops
+    /// Enumerator of the params, for for..in loops.
     function GetEnumerator: TEnumerator; inline;
-    /// A cipher with a key is set, without creating CriptoOptions to find out.
-    /// ATrimKey: a key of blanks counts as none
+    /// True when a cipher with a key is set; ATrimKey counts a key of blanks as none.
     function HasCipher(ATrimKey: boolean): boolean;
-    /// Whether CriptoOptions exists yet - asking for it would create it
+    /// True when CriptoOptions exists; reading CriptoOptions would create it.
     function HasCriptoOptions: boolean;
-    /// creates and returns an empty param for a more flexible way of coding.
+    /// Adds an empty param and returns it.
     function NewParam: TRALParam;
-    { The body as it is, neither compressed nor encrypted, as a stream the
-      CALLER frees - a view: valid while the params live, and nothing copied.
-      nil when there is no body. What reads back what a handler answered }
+    /// The body, not compressed nor encrypted, as a view the caller frees; nil if none.
     function PlainBody(var AContentType, AContentDisposition: StringRAL): TStream;
-    /// Removes every param named AName, whatever its kind, and adds this one -
-    /// even with an empty value. The way for a server to impose a value that
-    /// ParamByName must return: one derived from the token in OnValidate, say,
-    /// over whatever the client put in the query string under the same name
+    { Frees every param named AName, of any kind, and adds this one, even empty:
+      how a server imposes a value over one the client sent. }
     function ReplaceParam(const AName: StringRAL; const AValue: StringRAL;
                           AKind: TRALParamKind = rpkNONE): TRALParam;
-    /// The body param when the body is that one value - one rpkBODY and no
-    /// rpkFIELD, which EncodeBody sends as the whole body - or nil
+    /// The body param when it is the only one and there are no fields; nil otherwise.
     function SingleBody: TRALParam;
-    { The body for the wire, as a stream the CALLER owns, built once: with no
-      compression and no cipher it is the body itself - the lone param's
-      stream moved out, a view on its text, the multipart as a
-      TRALConcatStream - and nothing is copied. With AConsume the params give
-      their streams away and the result stands on its own (a server response,
-      which an engine may send after the response is freed); without, it is
-      valid while the params live (a client request, resent on a retry) }
+    { The body for the wire, as a stream the caller owns. AConsume moves the
+      params' streams into it; without it, it is valid while the params live. }
     function TakeWireStream(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart, AConsume: boolean): TStream;
-    /// TakeWireStream as a RawByteString, for the engines that send one:
-    /// a lone text body with no transform is the param's string itself
+    /// TakeWireStream as a RawByteString; a lone text body is the param's string itself.
     function TakeWireString(var AContentType, AContentDisposition: StringRAL;
       ACompressMultipart, AConsume: boolean): RawByteString;
-    /// converts a HTML encoded URL into a TStringList.
+    /// Splits a URL-encoded text at each '&' into a new list the caller frees.
     function URLEncodedToList(ASource: StringRAL): TStringList;
 
-    /// A NEW list of the rpkBODY params, which the caller has to free - every
-    /// read builds another, so 'if Params.Body.Count > 0' leaks one. Count(rpkBODY),
-    /// IndexKind[i, rpkBODY] and SingleBody read the same without allocating
+    { A new list of the rpkBODY params, which the caller frees.
+      @deprecated Read Count(rpkBODY), IndexKind or SingleBody. }
     property Body: TList read GetBody;
-    /// Why the last DecodeBody could not take the body apart, '' when it
-    /// could: a multipart that yields no part and is not an empty form, the
-    /// body dropped. TRALServer answers such a request 400 before any route
+    /// Why the last DecodeBody could not split the body; '' when it could.
     property BodyError: StringRAL read FBodyError;
-    { The body received, decoded (DecodeBody): what RequestStream on the
-      server and ResponseStream on the client read. Owned by the params }
+    /// The body received, decoded by DecodeBody; owned by the params.
     property Decoded: TStream read GetDecoded;
-    /// Grabs a param by its name.
+    /// First param named AName, of any kind, or nil.
     property Get[const AName: StringRAL]: TRALParam read GetParam;
-    /// Grabs a param by its name and kind since you can have multiple kinds with same name.
+    /// First param named AName of AKind, or nil.
     property GetKind[const AName: StringRAL; AKind: TRALParamKind]: TRALParam read GetParam;
-    /// Grabs a param by its index on the TRALParams list.
+    /// Param at AIndex, or nil.
     property Index[AIndex: IntegerRAL]: TRALParam read GetParam;
-    /// Grabs a param by its index on the TRALParams list.
+    /// The AIndex-th param of AKind, or nil.
     property IndexKind[AIndex: IntegerRAL; AKind: TRALParamKind]: TRALParam read GetParam;
-    /// Encoding skips the built-in list of already compressed types
+    /// Encoding leaves already compressed types (images, archives...) uncompressed.
     property SkipCompressedTypes: Boolean read FSkipCompressedTypes write FSkipCompressedTypes;
-    /// More types encoding does not compress; referenced, not owned
+    /// More content types encoding does not compress; referenced, not owned.
     property SkipCompressTypes: TStrings read FSkipCompressTypes write FSkipCompressTypes;
-    /// Bodies above this size are spooled to a temporary file (0: never)
+    /// Bodies above this size are spooled to a temporary file; 0 never.
     property SpoolAbove: Int64RAL read FSpoolAbove write FSpoolAbove;
   published
-    /// Which algorithm to compress the content of params.
+    /// Compression of the body.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
+    /// A lone body param goes out with an inline Content-Disposition.
     property ContentDispositionInline: Boolean read FContentDispositionInline
       write FContentDispositionInline;
-    /// Configuration of the cryptography used on params for a secure P2P
-    /// traffic. Created the first time it is asked for: a request or a
-    /// response with no cipher never makes one
+    /// Cipher of the body; created the first time it is read.
     property CriptoOptions: TRALCriptoOptions read GetCriptoOptions write SetCriptoOptions;
   end;
 
+/// Set-Cookie text of ACookie, with its attributes.
 function GetCookieText(ACookie: TRALCookie): StringRAL;
+/// Parses a Set-Cookie text into a cookie record.
 function GetRALCookieFromText(ACookieString: StringRAL): TRALCookie;
+/// Cookie named AParamName in AParams, received or set; empty when absent.
 function GetRALCookieFromParam(AParamName: StringRAL; AParams: TRALParams): TRALCookie;
 
 implementation
@@ -609,28 +532,27 @@ uses
   RALJson;
 
 const
+  /// Number of generated names kept ready (ral_param1 to ral_param32).
   cRALParamNames = 32;
 
 var
-  { Strings every param and every request write, kept here with a reference
-    count. Delphi copies a literal to the heap each time one is assigned to a
-    field or a result - a param cost an allocation for its 'text/plain', a
-    body one more for 'ral_body', and naming it 'ral_param1' three, through
-    UTF-16 - while handing one of these over only counts a reference. FPC never
-    copies a literal, so there they change nothing }
+  /// 'text/plain', handed over by reference instead of copying the literal.
   gTextPlain: StringRAL;
+  /// 'application/octet-stream', shared.
   gOctetStream: StringRAL;
+  /// 'ral_body', shared.
   gRalBody: StringRAL;
+  /// 'inline', shared.
   gInline: StringRAL;
+  /// ': ', shared.
   gColonSpace: StringRAL;
+  /// '=', shared.
   gEquals: StringRAL;
+  /// The generated names ral_param1 to ral_param32, shared.
   gParamNames: array[1..cRALParamNames] of StringRAL;
 
-{ FNV-1a of a name, every byte OR $20 first: 'A'..'Z' land on 'a'..'z', so
-  two names RALSameName calls equal always hash alike - a few other pairs
-  collide too, which costs one comparison and nothing else. No branch per
-  byte, and 32-bit arithmetic that wraps on purpose: overflow and range
-  checks are off for this function alone, whatever the project chose }
+{ FNV-1a of AName with $20 set in every byte, so names RALSameName calls equal hash
+  alike. The arithmetic wraps: overflow and range checks are off here. }
 {$IFOPT Q+}{$DEFINE RALPARAMS_Q}{$Q-}{$ENDIF}
 {$IFOPT R+}{$DEFINE RALPARAMS_R}{$R-}{$ENDIF}
 function ParamNameHash(const AName: StringRAL): Cardinal;
@@ -649,11 +571,10 @@ end;
 {$IFDEF RALPARAMS_Q}{$Q+}{$UNDEF RALPARAMS_Q}{$ENDIF}
 {$IFDEF RALPARAMS_R}{$R+}{$UNDEF RALPARAMS_R}{$ENDIF}
 
+/// ADateTime, in local time, as an HTTP date in GMT.
 function DateTimeToCookieExpireDate(ADateTime: TDateTime): StringRAL;
 begin
-  { RALHTTPDate and not FormatDateTime: the RTL writes the locale's time
-    separator where ':' stands, and an Expires such as 14.00.00 is invalid -
-    the browser keeps the cookie for the session only }
+  // RALHTTPDate: FormatDateTime would write the locale's time separator
   Result := RALHTTPDate(RALDateTimeToGMT(ADateTime));
 end;
 
@@ -670,8 +591,7 @@ begin
   if (not ACookie.SessionOnly) and (ACookie.Expires <> 0) then
     Result := Result + '; Expires=' + DateTimeToCookieExpireDate(ACookie.Expires);
 
-  { Max-Age was in the record and never written, so a cookie "deleted" with it
-    stayed as a session cookie. Written as it came, or as 0 to expire now }
+  // Max-Age as given, or 0 to expire the cookie now
   if ACookie.MaxAge > 0 then
     Result := Result + '; Max-Age=' + IntToStr(ACookie.MaxAge)
   else if ACookie.MaxAge < 0 then
@@ -701,8 +621,7 @@ var
   S, Part, Name, Value: StringRAL;
   vDate: TDateTime;
 begin
-  // the record holds strings: release whatever the caller's variable still
-  // referenced before zeroing it, or those strings leak
+  // the record holds strings: finalized before zeroing, or they leak
   Finalize(Result);
   FillChar(Result, SizeOf(Result), 0);
 
@@ -714,15 +633,12 @@ begin
   Start := 1;
   while Start <= Len do
   begin
-    // Encontra o próximo ';'
+    // up to the next ';'
     P := Start;
     while (P <= Len) and (S[P] <> ';') do
       Inc(P);
 
-    // Extrai o trecho atual (já sem espaço extra por causa do Replace)
     Part := Copy(S, Start, P - Start);
-
-    // Avança para o próximo
     Start := P + 1;
 
     if Part = '' then
@@ -740,7 +656,7 @@ begin
       Value := '';
     end;
 
-    // Comparações case-sensitive como no original (pode trocar por SameText se quiser case-insensitive)
+    // attribute names are compared without case
     if RALSameName(Name, 'HttpOnly') then
       Result.HttpOnly := True
     else if RALSameName(Name, 'Secure') then
@@ -760,12 +676,8 @@ begin
     end
     else if RALSameName(Name, 'Expires') then
     begin
-      { a date that does not parse is ignored (RFC 6265 5.2.1), not the end of
-        the whole cookie - nor of the response the cookie was going out with.
-        The line carries UTC and Expires is local time, as GetCookieText
-        writes it: read, it came back as the UTC value taken for local, hours
-        off by the zone - and a cookie copied from one answer to another
-        moved by that much each time }
+      { A date that does not parse is ignored (RFC 6265 5.2.1). The text is GMT
+        and Expires is local time, as GetCookieText writes it. }
       if RALTryHTTPDate(Value, vDate) then
         Result.Expires := RALGMTToDateTime(vDate)
       else
@@ -781,14 +693,14 @@ begin
     end
     else
     begin
-      // Primeiro (e único) name=value que sobra é o cookie propriamente dito
+      // the name=value that is no attribute is the cookie itself
       Result.Name  := Name;
       Result.Value := Value;
     end;
   end;
 end;
 
-{ the name=value pair of a cookie line: what comes before the first ';' }
+/// The name=value pair of a cookie line: what comes before the first ';'.
 function CookiePairOf(const ALine: StringRAL): StringRAL;
 var
   vPos: IntegerRAL;
@@ -800,13 +712,8 @@ begin
     Result := RALTrim(ALine);
 end;
 
-{ A cookie is kept in one of two shapes. One that arrived - the Cookie header
-  of a request, a Set-Cookie on the client - is a param named after it holding
-  its value, attributes gone. One AddCookie(TRALCookie) set on a response is a
-  param named Set-Cookie holding the whole line. This read only the second
-  shape, by the cookie's name, so it parsed a bare value and answered an empty
-  Name and Value for every cookie received - and raised on nil for a cookie
-  that was not there. }
+{ A cookie that arrived is a param named after it, holding its value; one set
+  with AddCookie(TRALCookie) is a Set-Cookie param holding the whole line. }
 function GetRALCookieFromParam(AParamName: StringRAL; AParams: TRALParams
   ): TRALCookie;
 var
@@ -847,10 +754,7 @@ begin
   ASource.Kind := Self.Kind;
   ASource.ParamName := Self.ParamName;
 
-  { Content first, ContentType after: writing content drops a typed marker (see
-    SetAsStream), so assigning the type before the stream would clear it again
-    and a cloned typed param would come out as a plain octet-stream. The
-    multipart decoder already assigns in this order. }
+  // content first: writing it drops a typed marker, so the type goes after
   if FIsText then
     ASource.AsString := FText
   else
@@ -860,9 +764,7 @@ end;
 
 procedure TRALParam.SetParamName(const AValue: StringRAL);
 begin
-  { the index of the list holding it keys on the name, and a param enters it
-    only once it has one. A param in a list always has the index there:
-    NewParam builds it before handing the param out }
+  // the owning list indexes by name; a param enters the index once it has one
   if FIndexed then
     FOwner.IndexRemove(Self);
   FParamName := AValue;
@@ -922,8 +824,7 @@ begin
   else if AConsume and FOwnsContent then
   begin
     Result := FContent;
-    { a file goes as it is and the param keeps an unopened twin, so whoever
-      reads it afterwards (OnResponse, a log) still finds the file }
+    // a file goes as it is; the param keeps an unopened twin for later readers
     if Result is TRALFileStream then
       FContent := TRALFileStream(Result).Twin
     else
@@ -931,7 +832,7 @@ begin
   end
   else if AConsume then
   begin
-    { lent by somebody who may not outlive the caller: the one copy left }
+    // lent by someone who may not outlive the caller: copied
     vBody := TRALBodyStream.Create(FContent.Size);
     try
       FContent.Position := 0;
@@ -970,8 +871,7 @@ begin
   if Self = nil then
     Exit;
 
-  { A typed payload has no format to interpret, so the custom settings simply do
-    not apply to it - they still drive the text fallback. }
+  // the format applies to text only, never to a typed payload
   if GetTypedVariant(vVar) then
     Result := vVar
   else
@@ -979,13 +879,7 @@ begin
 end;
 
 
-{ Typed binary payloads ------------------------------------------------------
-
-  The wire format is little-endian and fixed size. Object Pascal targets are
-  little-endian in practice, but FPC also builds for big-endian machines, so the
-  bytes are swapped there on both write and read - the format on the wire never
-  changes, only the in-memory representation does. }
-
+/// Swaps ABuffer between memory and the little-endian wire on big-endian targets.
 procedure RALSwapBytes(var ABuffer; ASize: Integer);
 {$IF Defined(FPC) and Defined(ENDIAN_BIG)}
 var
@@ -1004,7 +898,7 @@ begin
 end;
 {$ELSE}
 begin
-  { little-endian target: the wire format already matches memory }
+  // little-endian: the wire format matches memory
 end;
 {$IFEND}
 
@@ -1016,12 +910,7 @@ begin
   if Self = nil then
     Exit;
 
-  { MediaType is a function and was being called SIX times - once per
-    comparison - and each call redoes the Pos and the Copy. On top of that,
-    SameText on Delphi converts both sides from UTF-8 to UTF-16 every call:
-    twelve conversions for a param that is not typed, which is the normal case.
-    And this runs in every SetAsString/SetAsStream/AdoptStream/OpenFile, that
-    is, once per value received on every request }
+  // MediaType once, compared byte by byte: this runs for every value received
   vType := MediaType;
   Result := RALSameName(vType, rctRALINT32) or
             RALSameName(vType, rctRALINT64) or
@@ -1060,10 +949,7 @@ begin
   if Self = nil then
     Exit;
 
-  { the type up to its parameters, without the blanks around it: RFC 9110
-    lets OWS stand before the ';' and around the field value, and the fpHTTP
-    client handed the value over with the blank after the colon - a typed
-    answer lost its marker and its date read as zero. Offsets count from 0 }
+  // up to ';', without the blanks RFC 9110 allows around it; offsets count from 0
   vFim := Pos(StringRAL(';'), FContentType) - 1;
   if vFim < 0 then
     vFim := Length(FContentType);
@@ -1081,11 +967,8 @@ end;
 function TRALParam.GetTypedValue(const AType: StringRAL; var ABuffer;
   ASize: Integer): Boolean;
 begin
-  { Size is checked as well as the marker: a truncated or padded payload is
-    treated as "not typed" and falls through to the text reader, which is the
-    safe direction - better to try parsing than to hand back garbage. }
-  { size before type: an integer test that discards most params without
-    calling MediaType (Pos + Copy) or comparing any string }
+  { The size first, the cheap test, then the type; a payload of the wrong size
+    reads as text. }
   Result := (Self <> nil) and (FContent <> nil) and (FContent.Size = ASize) and
             RALSameName(MediaType, AType);
 
@@ -1143,8 +1026,7 @@ end;
 
 procedure TRALParam.SetTypedCurrency(const AValue: Currency);
 begin
-  { Currency is a scaled Int64 in Object Pascal, so the raw 8 bytes round-trip
-    it exactly - which text never guarantees for money. }
+  // Currency is a scaled Int64: its 8 bytes round-trip exactly
   SetTypedValue(rctRALCURRENCY, AValue, SizeOf(AValue));
 end;
 
@@ -1164,8 +1046,7 @@ procedure TRALParam.SetTypedDateTime(const AValue: TDateTime);
 var
   vDouble: Double;
 begin
-  { TDateTime is a Double; sending it raw removes the date-format ambiguity
-    entirely (03/04 being March 4th or April 3rd depending on the machine). }
+  // TDateTime is a Double, sent raw: no date format involved
   vDouble := AValue;
   SetTypedValue(rctRALDATETIME, vDouble, SizeOf(vDouble));
 end;
@@ -1206,11 +1087,8 @@ begin
   FIsText := False;
   if FileExists(AFileName) then
   begin
-    { opened now, as it always was - a file that cannot be read raises here,
-      in the caller's hands - but shared with writers: fmShareDenyWrite held
-      off a new version of the file until the answer had gone out. And a
-      TRALFileStream, which EncodeBody hands to the engine as it is, where the
-      whole file used to be copied into memory first }
+    { Opened now, so an unreadable file raises here, shared with writers, and
+      sent from disk as it is. }
     FContent := TRALFileStream.Create(string(AFileName), 0, -1, True);
   end
   else
@@ -1218,9 +1096,7 @@ begin
     FContent := TMemoryStream.Create;
   end;
 
-  { Same guard as SetAsString/SetAsStream: file content must not inherit a typed
-    marker from whatever the param held before, or a file that happens to be the
-    right size would be read as a number. }
+  // new content drops a typed marker, or a file of the right size reads as a number
   if IsTyped then
     FContentType := gOctetStream;
 end;
@@ -1270,8 +1146,7 @@ begin
   if Self = nil then
     Exit;
 
-  { Any typed payload converts; only an untyped one falls back to parsing text,
-    which is what keeps an old client working against a new server. }
+  // a typed payload converts; text is parsed
   if GetTypedVariant(vVar) then
     Result := vVar
   else
@@ -1332,12 +1207,8 @@ begin
   if Self = nil then
     Exit;
 
-  { A typed param renders as text instead of handing back its raw bytes, which
-    would come out as mojibake. Rendering is invariant so whatever reads it
-    afterwards - a log, generic code, another param - gets something it can
-    parse back. Boolean renders as '1'/'0', which is what GetAsBoolean already
-    accepts, and a date/time renders as its TDateTime number, the same shape it
-    travels in. }
+  { A typed value as invariant text: a boolean as 1 or 0, a date and time as its
+    TDateTime number. }
   if GetTypedVariant(vVar) then
   begin
     if VarIsType(vVar, varBoolean) then
@@ -1360,7 +1231,6 @@ end;
 
 function TRALParam.ContentText: StringRAL;
 begin
-  { a body the engine delivered as a string is read back as that string }
   if FIsText then
     Result := FText
   else
@@ -1391,9 +1261,7 @@ var
   vName: StringRAL;
   vInt: IntegerRAL;
 begin
-  { the file name inside a quoted string: a quote or a backslash in it ended
-    the string early or escaped what followed. Advice to a browser saving the
-    file, so the two simply go }
+  // quotes and backslashes leave the name: it goes inside a quoted string
   vName := FFileName;
   vInt := POSINISTR;
   while vInt <= RALHighStr(vName) do
@@ -1402,9 +1270,7 @@ begin
     else
       Inc(vInt);
 
-  { inline keeps no name= - a lone body param travels without its name, see
-    CLAUDE.md - but it does say the file name it is served under: a browser
-    saving the page fell back on the URL's }
+  // inline carries the file name but no name=
   if vName = '' then
     Result := gInline
   else if FContentDispositionInline then
@@ -1431,14 +1297,10 @@ end;
 
 procedure TRALParam.SaveToStream(AStream: TStream);
 begin
-  { a text value goes straight out of the string - building a stream for it
-    first would be the allocation this class now exists to avoid }
+  // a text value is written straight from the string
   if FIsText then
   begin
-    { Pointer(FText)^, not FText[1]: indexing the string for an untyped
-      argument makes Delphi copy the whole string first when it is shared -
-      and a text body always is, with the application's own variable.
-      Measured: 8 MB more for an 8 MB body }
+    // Pointer(FText)^: FText[1] makes Delphi copy a shared string first
     if FText <> '' then
       AStream.WriteBuffer(Pointer(FText)^, Length(FText));
     Exit;
@@ -1453,8 +1315,7 @@ end;
 
 function TRALParam.SaveToStream: TStream;
 begin
-  { the copy made in one go - see TRALStringStream.WriteStream - where it
-    used to grow the new stream piece by piece }
+  // copied in one go (TRALStringStream)
   if FIsText then
     Result := TRALStringStream.Create(FText)
   else if (FContent <> nil) and (FContent.Size > 0) then
@@ -1483,7 +1344,6 @@ begin
       try
         vExt := vMime.GetMIMEContentExt(FContentType);
       finally
-//        FreeAndNil(vMime);
       end;
 
       AFileName := FParamName + vExt;
@@ -1494,9 +1354,7 @@ begin
     end;
   end;
 
-  { the name may have come from the wire (the multipart filename, or a value
-    the caller took from a param): "..\..\x" or "C:\x" must not leave the
-    folder. Only the last path component survives, on either separator }
+  // only the last path component: the name may come from the wire
   AFileName := ExtractFileName(StringReplace(StringReplace(AFileName,
     '\', PathDelim, [rfReplaceAll]), '/', PathDelim, [rfReplaceAll]));
   if AFileName = '' then
@@ -1531,8 +1389,7 @@ end;
 
 procedure TRALParam.SetAsStream(const AValue: TStream);
 begin
-  { AValue may be this param's own lent content (Content): copy it before
-    letting go of it }
+  // AValue may be this param's own content: copied before it is released
   if (AValue <> nil) and (AValue = FContent) then
   begin
     AValue.Position := 0;
@@ -1550,9 +1407,7 @@ begin
     FContent.Position := 0;
   end;
 
-  { Same reason as SetAsString: arbitrary content must not keep a typed marker
-    that no longer describes it. The decoder assigns AsStream and only then sets
-    ContentType, so restoring a typed param over the wire still works. }
+  // new content drops a typed marker; the decoder sets ContentType after
   if IsTyped then
     FContentType := gOctetStream;
 end;
@@ -1581,11 +1436,7 @@ begin
   FText := AValue;
   FIsText := True;
 
-  { Writing text over a typed param has to drop the marker, otherwise the value
-    is text while ContentType still claims a binary type - and a payload that
-    happens to match the expected size gets read as that type. '12345678'
-    assigned over an rctRALDOUBLE param is eight bytes, so it would come back as
-    6.82E-38 instead of 12345678. Only SetTypedValue may set these markers. }
+  // text drops a typed marker, or text of the right size would read as that type
   if IsTyped then
     FContentType := gTextPlain;
 end;
@@ -1626,8 +1477,7 @@ var
   function ProcessVar(const AHeader, AValue: StringRAL): Boolean;
   begin
     Result := True;
-    { through the setter: written straight into the field, the name changed
-      behind the index of the list, and the param was no longer found by it }
+    // through the setter, which keeps the name index right
     if RALSameName(AHeader, 'name') then
       ParamName := AValue
     else if RALSameName(AHeader, 'filename') then
@@ -1638,9 +1488,9 @@ var
 
 begin
   AValue := Trim(AValue);
-  // captura o tipo de content-disposition (inline, attachment, form-data)
+  // the disposition type (inline, attachment, form-data)
   vStr := GetWord(AValue);
-  // captura o primeiro param
+  // the first parameter
   vStr := GetWord(AValue);
   while (vStr <> '') do
   begin
@@ -1687,8 +1537,7 @@ begin
   Result := FindOrNewParam(AName, AKind);
   Result.Kind := AKind;
 
-  { The Variant conversions below are numeric, not textual, so no locale is
-    involved on this side either. }
+  // the Variant conversions are numeric: no locale involved
   case AType of
     rptInteger:
       Result.SetTypedInteger(AValue);
@@ -1721,7 +1570,6 @@ end;
 
 function TRALParams.AddFile(const AParamName, AFileName: StringRAL): TRALParam;
 begin
-  // nil, not whatever the stack held, when there is nothing to add
   Result := nil;
   if (AParamName = '') or (AFileName = '') then
     Exit;
@@ -1866,14 +1714,8 @@ var
 begin
   vSeparator := '';
 
-  { A header list holds 'Name: Value' lines, but TStrings.NameValueSeparator is
-    a Char that defaults to '=' and can never be empty, so the sniffer below was
-    unreachable and every header got split on the first '=' found anywhere in
-    the value: 'Content-Type: multipart/form-data; boundary=ral01' came back
-    named 'Content-Type: multipart/form-data; boundary'. Indy's TIdHeaderList
-    does declare ': ', but on a property of its own that is invisible through
-    this TStrings reference. So headers ask the sniffer; everything else - query
-    params, which really are 'name=value' - keeps using NameValueSeparator. }
+  { Headers: the separator is read from the first line, since
+    TStrings.NameValueSeparator is a Char that is never empty. }
   if (AKind = rpkHEADER) and (ASource.Count > 0) then
     vSeparator := FindHeaderNameSeparator(ASource.Strings[0]);
 
@@ -1884,7 +1726,7 @@ begin
     AppendParamLine(ASource.Strings[vInt], vSeparator, AKind);
 end;
 
-{ True when every byte of AText is below 128 }
+/// True when every byte of AText is below 128.
 function IsAsciiText(const AText: StringRAL): Boolean;
 var
   vByte: PByte;
@@ -1907,11 +1749,7 @@ var
   vInt, vStart: IntegerRAL;
   vIs13: Boolean;
 begin
-  { the whole block went to UTF-16 and back before it was even read - two
-    copies of every header of every request on mORMot2, and of every answer on
-    its client. Over ASCII, which is what headers are, the trip changes
-    nothing, so it is skipped; a block with any byte above 127 still takes it,
-    whatever it does to such a byte }
+  // an ASCII block, as headers are, skips the round trip through UTF-16
   if not IsAsciiText(ASource) then
   begin
     {$IFDEF FPC}
@@ -1929,19 +1767,7 @@ begin
      (FPending = '') and DeferBlock(ASource, ANameSeparator, AKind) then
     Exit;
 
-  { The line used to be built one character at a time - "vLine := vLine +
-    ASource[vInt]" - which reallocates the growing string on EVERY character.
-    A two hundred byte header block is then two hundred allocations per
-    request, and every allocation takes the memory manager's lock: with twenty
-    threads the requests queue behind each other and adding threads stops
-    adding throughput. Measured on the QUIC engine, twenty threads against one
-    server: this call went from 0.151 ms to 4.330 ms per request and became 61%
-    of the whole request. Now the line is delimited by index and cut once with
-    Copy, so a header block costs one allocation per line instead of one per
-    character. Every engine parses its response headers through here.
-
-    The line breaking is unchanged, deliberately: CR and LF each end a line,
-    CRLF ends only one, and the tail is emitted when it is not empty. }
+  // CR and LF each end a line, CRLF only one; the tail counts when not empty
   vStart := POSINISTR;
   vIs13 := False;
   for vInt := POSINISTR to RALHighStr(ASource) do
@@ -1973,10 +1799,8 @@ var
   vText, vLine, vName: PByte;
   vLen, vLineLen, vNameLen, vStart, vInt: IntegerRAL;
 
-  { the segment [vStart, AEnd) holds name, separator and value, and both are
-    cut straight from the text: copying the segment first and cutting the
-    copy again cost one more string per param. A segment without the
-    separator is skipped, as a line is }
+  { The segment [vStart, AEnd) holds name, separator and value, cut straight
+    from the text; a segment without the separator is skipped. }
   procedure AppendUpTo(AEnd: IntegerRAL);
   var
     vPos: IntegerRAL;
@@ -1996,17 +1820,8 @@ var
   end;
 
 begin
-  { ONE scan, no copy of a segment, and the bytes read through a pointer:
-    offsets are 0-based from the start of the text, whatever the compiler
-    makes of string indexes, and Copy takes them plus one.
-
-    It used to Delete each segment off the front of the text - shifting the
-    rest every time, quadratic in the number of segments of a query string or
-    form body that comes straight from the network - and kept that Delete
-    inside "if vLine <> ''": an empty segment ("?&a=1", "a=1&&b=2") consumed
-    nothing and the loop spun at 100% CPU forever (SEC-01 of the 10/09/2026
-    audit). Empty segments are still skipped, and so is everything when there
-    is no name separator to look for. }
+  { One scan through a pointer, offsets 0-based (Copy takes them plus one).
+    Empty segments are skipped, and so is everything without a name separator. }
   vLen := Length(AText);
   vLineLen := Length(ALineSeparator);
   vNameLen := Length(ANameSeparator);
@@ -2042,11 +1857,8 @@ begin
   AFullURI := FixRoute(AFullURI);
   APartialURI := FixRoute(APartialURI);
 
-  { The segments of AFullURI past APartialURI, as ral_uriparam1, 2... - what
-    the route matching gives a route with AllowURIParams. The prefix has to
-    be whole segments at the start: it was looked for anywhere (Pos > 0), so
-    the cut took the wrong characters. And the loop wrote the first param
-    empty and dropped the last one, written for a FixRoute that ended in '/' }
+  { The segments of AFullURI past APartialURI, as ral_uriparam1, 2...; the
+    prefix has to be whole segments at the start. }
   vLen := Length(APartialURI);
   if APartialURI = '/' then
     vLen := 0
@@ -2115,8 +1927,7 @@ var
   vParam: TRALParam;
   vHeader: boolean;
 begin
-  { a header or a cookie is one line of the message: a CR or LF in it would
-    end the line where the value chose. Other kinds are left as they are }
+  // a header or a cookie is one line: CR or LF in it would end the line
   vHeader := AKind in [rpkHEADER, rpkCOOKIE];
   for vInt := 0 to Pred(FParams.Count) do
   begin
@@ -2136,22 +1947,8 @@ begin
   Result := AssignParamsText(AKind, False, ANameSeparator, HTTPLineBreak);
 end;
 
-{ Built into a buffer that grows geometrically instead of by concatenation.
-  Every "Result := Result + x" reallocates the whole string and copies it, so a
-  response with eight headers reallocated two dozen times - and each
-  reallocation takes the memory manager's lock, which is what turns into a
-  queue once twenty threads are answering at once. Measured on the QUIC engine:
-  building the response headers was 0.155 ms of a 0.433 ms request.
-
-  The result is identical, deliberately: the line separator still goes in only
-  before a param that is not the first to produce output, and the whole thing
-  is still TrimRight'ed at the end.
-
-  Headers and cookies - the text every response's headers are made of - are
-  measured first and written into a string of their exact size: one
-  allocation, where growing from 256 bytes and cutting to size at the end took
-  two (and on Delphi the cut is a ReallocMem). The escaping of CR, LF and NUL
-  keeps the length, so it is done in place, in the copy. }
+{ Built in a buffer that grows geometrically. Headers and cookies are sized first
+  and written at their exact length, CR, LF and NUL turned into blanks. }
 function TRALParams.AssignParamsText(AKind: TRALParamKind; AUrlEncoded: boolean;
   const ANameSeparator: StringRAL; const ALineSeparator: StringRAL): StringRAL;
 var
@@ -2172,8 +1969,7 @@ var
     vLen := Length(AText);
     if vLen = 0 then
       Exit;
-    { a value that came back longer the second time (nothing in RAL does
-      that) must not write past the string }
+    // a value longer than its first reading must not write past the string
     if vUsed + vLen > Length(Result) then
       SetLength(Result, vUsed + vLen);
     Move(Pointer(AText)^, Result[POSINISTR + vUsed], vLen);
@@ -2280,10 +2076,8 @@ begin
   Result := AssignParamsText(AKind, True);
 end;
 
-{ ONE RULE FOR EVERY CLIENT, the way AddSetCookie is one for every answer.
-  Each engine joined the params itself, as ParamName=Value, so a cookie added
-  as a TRALCookie record went out as "Cookie: Set-Cookie=sessao=abc; Path=/" -
-  a cookie called Set-Cookie, which no server read under the name it was given }
+{ Every client engine builds its Cookie header here; a Set-Cookie param gives
+  its name=value pair alone, since a Cookie header carries no attributes. }
 function TRALParams.CookieHeaderText: StringRAL;
 var
   vInt: IntegerRAL;
@@ -2311,12 +2105,8 @@ begin
   end;
 end;
 
-{ The engines whose library keeps a cookie jar (Indy, netHTTP) used to let the
-  library write the header as well: Indy as a second Cookie line, which the
-  server read last, the RTL over RAL's own - so once an answer had set a
-  cookie, the next request lost the application's. They hand the jar's text
-  here instead and send one header. Names are compared case-sensitively, as
-  RFC 6265 compares them. }
+{ For the engines whose library keeps a jar (Indy, netHTTP): one header with the
+  jar's cookies and the params'. Names compare case-sensitively (RFC 6265). }
 function TRALParams.CookieHeaderText(const AJarCookies: StringRAL): StringRAL;
 var
   vInt, vPos: IntegerRAL;
@@ -2407,11 +2197,8 @@ begin
     end;
 end;
 
-{ The content type a multipart body would have declared, rebuilt from the body
-  itself: its first line is the delimiter, so the boundary is what follows the
-  two dashes. Used when the header cannot carry it - an encrypted multipart
-  travels declared as octet-stream, see EncodeBody. Hands back the whole header
-  on purpose: the decoder sets itself up from ContentType. }
+{ Content type of a multipart body, rebuilt from its first line, the delimiter:
+  an encrypted multipart travels declared as octet-stream. }
 function BodyContentType(AStream: TStream): StringRAL;
 const
   { RFC 2046 bchars; anything else on the first line means it is not a
@@ -2443,11 +2230,7 @@ begin
     if (vBoundary = '') or (Length(vBoundary) > 70) then
       Exit;
 
-    { Starting with "--" is not enough: an encrypted plain text that happens to
-      open with two dashes - a comment, a command line - would be torn apart as
-      multipart and lost. A real multipart always ends with the closing
-      delimiter, so the tail of the body has to carry it. Only the tail is
-      read: the body may be large, and the close is always at the end. }
+    // a real multipart ends with the close delimiter: only the tail is read
     vClose := '--' + vBoundary + '--';
     vSize := Length(vClose) + 4; // room for a CRLF after the close
     if AStream.Size < vSize then
@@ -2463,10 +2246,8 @@ begin
   Result := rctMULTIPARTFORMDATA + '; boundary=' + vBoundary;
 end;
 
-{ True when the stream opens with the two dashes that start a multipart
-  delimiter. Enough to tell a plain multipart body from a compressed one: every
-  compressor RAL uses writes a header of its own first, and none of them starts
-  with "--" (deflate opens with 0x1F 0x8B). }
+{ True when AStream starts with '--', as a plain multipart does; no compressed
+  body starts that way. }
 function StartsWithDelim(AStream: TStream): boolean;
 var
   vDashes: array [0 .. 1] of Byte;
@@ -2499,7 +2280,7 @@ begin
   Result.Key := FCriptoOptions.Key;
 end;
 
-{ a stream the body decoder may overwrite: not a view of someone else's memory }
+/// True when the decoder may overwrite AStream: it is not a view of other memory.
 function CanWriteBody(AStream: TStream): boolean;
 begin
   Result := not ((AStream is TRALMemoryView) or (AStream is TRALStreamSlice) or
@@ -2528,7 +2309,7 @@ var
   vComp: TRALCompress;
   vLen: Int64RAL;
 
-  { the streams vCur depends on (the buffer a window was decrypted in) }
+  // frees the streams vCur depends on (the buffer a window was decrypted in)
   procedure DropChain;
   begin
     while vChain.Count > 0 do
@@ -2549,7 +2330,7 @@ var
     end;
   end;
 
-  { vCur is replaced by a stream that depends on nothing before it }
+  // vCur becomes ANew, which depends on nothing before it
   procedure Replace(ANew: TStream);
   begin
     if vCurOwned then
@@ -2561,12 +2342,7 @@ var
   end;
 
 begin
-  { Returns nil: the body ends up in the params, nothing else. It used to be
-    copied into a fresh stream, decrypted into another, inflated into
-    another and copied into the body param; since 1.3 the engine's buffer is
-    read where it is (boBorrowed), the cipher works on it in place when it may
-    be written, and the one decoded body is shared by the params as windows
-    (.agents/PLANO_STREAM_UNICO.md) }
+  // returns nil: the body ends up in the params, read where it is
   Result := nil;
   vParam := nil;
   FBodyError := '';
@@ -2627,15 +2403,8 @@ begin
           vCipher.Free;
         end;
 
-      { A body that is ALREADY multipart is not decompressed, whatever the
-        settings say. EncodeBody stopped compressing multipart (the reason is
-        written there), and this side has no header to learn that from when
-        both ends are two plain TRALParams in the same process - they are born
-        with CompressType = gzip, so it would try to inflate a body that was
-        never deflated. The bytes decide, not the header: a body that opens
-        with a delimiter was never compressed, whatever Content-Encoding
-        claims - an encrypted multipart travels as octet-stream, and only a
-        plain one starts with the two dashes of a delimiter }
+      { A body that starts with a multipart delimiter was never compressed: the
+        bytes decide, not the header. }
       if (FCompressType <> ctNone) and not StartsWithDelim(vCur) then
       begin
         vClass := GetCompressClass(FCompressType);
@@ -2660,12 +2429,8 @@ begin
         end;
       end;
 
-      { Multipart is recognised by the header OR, when it was encrypted, by
-        the bytes: such a body travels declared as octet-stream, because
-        announcing multipart over ciphertext makes a server that parses
-        natively read the ciphertext as parts and drop everything. The header
-        is gone, the boundary is not - the first line of the plaintext is the
-        delimiter. }
+      { Multipart by the header, or by the bytes for an encrypted body, which
+        travels declared as octet-stream. }
       vCTMultipart := '';
       if Pos(rctMULTIPARTFORMDATA, LowerCase(AContentType)) > 0 then
         vCTMultipart := AContentType
@@ -2682,10 +2447,7 @@ begin
           vDecoder.SliceParts := True;
           vDecoder.OnFormDataComplete := {$IFDEF FPC}@{$ENDIF}OnFormBodyData;
           vDecoder.ProcessMultiPart(vCur);
-          { bytes and not one part out of them, with no close delimiter either -
-            which an empty form still has: no boundary declared, none in the
-            body, or a first part cut short. The body vanished from the params
-            without a word, and the route ran as if nothing had been sent }
+          // bytes with no part and no close delimiter: refused through BodyError
           if (vDecoder.PartCount = 0) and (not vDecoder.Closed) and (vCur.Size > 0) then
             FBodyError := emMultipartNoPart;
         finally
@@ -2707,11 +2469,7 @@ begin
         vParam.FileName := '';
         vParam.ContentDisposition := AContentDisposition;
 
-        { Content first, ContentType after - the order is load-bearing. A single
-          body param travels with its own content type as the HTTP header, so
-          this is what restores a typed marker on the way in; assigning the
-          type before the stream would clear it again (SetAsStream drops it).
-          Same ordering as TRALParam.Clone }
+        // content first: it drops a typed marker, which the type then restores
         if vCurOwned then
           vParam.AdoptStream(vCur)
         else
@@ -2724,9 +2482,7 @@ begin
       FDecoded := vCur;
       FDecodedIsParam := vParam <> nil;
     except
-      { what was built stays with the params until they go, never freed here:
-        a multipart that failed half way has already handed windows over it
-        to the parts it read }
+      // what was built stays with the params: parts may be windows over it
       if vCurOwned and not vHanded then
         vChain.Add(vCur);
       KeepChain;
@@ -2746,9 +2502,7 @@ begin
   if ASource = '' then
     Exit;
 
-  { a view that holds the string: nothing copied and no code page on the way
-    (a TStringStream converted on the compilers without its RawByteString
-    overload, and copied on all). The params own the view }
+  // a view that holds the string: no copy and no code page conversion
   vStream := TRALStringView.Create(ASource);
   Result := DecodeBody(vStream, AContentType, AContentDisposition, boOwned);
 end;
@@ -2764,9 +2518,7 @@ var
 begin
   Result := nil;
 
-  { one walk for the body and field params, and the first body one: it took
-    three - Count(rpkBODY), Count(rpkFIELD), IndexKind - over a list a
-    response fills with its headers }
+  // one walk counts body and field params and finds the first body one
   vInt1 := 0;
   vInt2 := 0;
   vBody := nil;
@@ -2784,25 +2536,14 @@ begin
   end;
   vSingle := (vInt1 = 1) and (vInt2 = 0);
 
-  { An encrypted form request goes out as multipart. A server that parses
-    application/x-www-form-urlencoded natively - Indy's TIdHTTPServer and
-    libmicrohttpd under Sagui both do, before any RAL layer runs - reads the
-    ciphertext as the form, finds no field and throws the body away: Indy frees
-    PostStream, Sagui hands over an empty payload. An encrypted multipart is
-    already declared as octet-stream (see WriteTransformed), so nobody parses it
-    natively, and DecodeBody finds the delimiter once it has decrypted. RAL's
-    cipher only ever talks to RAL, so nothing outside loses the urlencoded
-    form it would have expected. }
+  { An encrypted form request goes as multipart, declared octet-stream: Indy and
+    libmicrohttpd parse a urlencoded body themselves and would drop the ciphertext. }
   vFormAsMultipart := (not ACompressMultipart) and (vInt1 = 0) and (vInt2 > 0) and
     HasCipher(True);
 
   AContentDisposition := '';
 
-  { the shortcut "the body IS this value" is for a lone rpkBODY only. It used to
-    take a lone rpkFIELD too, by counting params instead of looking at their
-    kind: AddField('m', json) went out as the raw JSON, with no "m=", and a
-    third-party server found no field at all (a RAL server did not notice, the
-    value just landed in Body). A form field is always name=value, one or many }
+  // only a lone rpkBODY is the whole body; form fields are always name=value
   if vSingle then
   begin
     vItem := vBody;
@@ -2828,10 +2569,7 @@ begin
         if vString <> '' then
           vString := vString + '&';
 
-        { real form encoding, name and value: '=', '%', '+', '&' and every
-          byte above 127 used to go out raw (only '&' was escaped), and a
-          third-party server split the fields wrong. AppendParamLine on the
-          RAL side already decodes, so nothing changes between two RALs }
+        // name and value form-encoded
         vValor := TRALHTTPCoder.EncodeURL(vItem.ParamName) + '=' +
           TRALHTTPCoder.EncodeURL(vItem.AsString);
 
@@ -2851,29 +2589,9 @@ begin
         vItem := Index[vInt1];
         if vItem.Kind in [rpkBODY, rpkFIELD] then
         begin
-          { A BODY part with no real filename goes out named after itself; a
-            FIELD part goes out as a plain form field.
-
-            Why the body parts must be named: libmicrohttpd, under the Sagui
-            engine, routes any multipart body through its upload machinery and
-            materialises only the parts that name a file - the rest vanish in
-            silence, no field, no upload, no payload. Body parts are RAL's own
-            envelope (typed params, "SQL", "ParamCount", "N0"), so naming them
-            costs nothing outside: no foreign server could read them anyway.
-
-            Why the field parts must NOT be named: a server that is not RAL
-            files a named part under uploads instead of fields - PHP's $_FILES,
-            Spring's MultipartFile, Go's MultipartForm.File. A RAL client
-            posting an ordinary form, or a login, to such a server would have
-            its fields land in the wrong place.
-
-            Measured, not assumed: a field mixed with a named body part still
-            reaches a Sagui server - once the library is processing the
-            multipart it hands the unnamed part over as a field. What it drops
-            is a multipart made ONLY of unnamed parts, and that never reaches
-            it: fields on their own travel urlencoded, a body part is always
-            named, and the one fields-only multipart - an encrypted form - is
-            declared octet-stream, which libmicrohttpd leaves alone. }
+          { A body part without a file name is named after itself (libmicrohttpd
+            drops unnamed parts); a field part stays unnamed, or other servers
+            take it as an upload. }
           vFile := vItem.FileName;
           if (vFile = '') and (vItem.Kind = rpkBODY) then
             vFile := vItem.ParamName;
@@ -2901,45 +2619,23 @@ function TRALParams.EffectiveCompress(const AContentType: StringRAL;
 begin
   Result := FCompressType;
 
-  { A multipart body goes out uncompressed, on purpose.
-
-    Compressing it leaves the header saying "multipart/form-data" while the
-    bytes are gzip. That is legal HTTP - Content-Encoding describes a transform
-    over the declared type - but it only works against a server that
-    decompresses before parsing the parts. RAL's own engines do; servers that
-    parse multipart natively do not, and libmicrohttpd under the Sagui engine is
-    one of those: it read the gzip bytes as parts, found none, and dropped the
-    whole body without an error.
-
-    Little is lost by not compressing it. What makes a multipart body here are
-    typed params of a few bytes and files that usually arrive compressed
-    already, while the response - where the volume actually is - still
-    compresses normally.
-
-    A urlencoded form request goes out uncompressed for the same reason: Indy
-    and libmicrohttpd parse it before anything decompresses, read gzip bytes
-    as the form and lose every field - a lone AddField included, which before
-    reached a RAL server's Body because it travelled as a raw body. }
+  { On the request path a multipart or urlencoded body goes uncompressed: Indy
+    and libmicrohttpd parse them before anything decompresses. }
   if (not ACompressMultipart) and (Result <> ctNone) and
      ((Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) or
       (Pos(StringRAL(rctAPPLICATIONXWWWFORMURLENCODED), LowerCase(AContentType)) > 0)) then
     Result := ctNone;
 
-  { already compressed (a JPEG, a zip): compressing again gains nothing but CPU
-    and a second buffer - see RALIsCompressedType }
+  // already compressed (a JPEG, a zip): nothing to gain
   if (Result <> ctNone) and (FSkipCompressedTypes or (FSkipCompressTypes <> nil)) and
      RALIsCompressedType(AContentType, FSkipCompressedTypes, FSkipCompressTypes) then
     Result := ctNone;
 
-  { a compressor that is not linked used to make the whole body vanish (nil
-    out of Compress, and EncodeBody handed nil on): it goes uncompressed, and
-    the header says so }
+  // a compressor that is not linked: the body goes uncompressed
   if (Result <> ctNone) and (GetCompressClass(Result) = nil) then
     Result := ctNone;
 
-  { and the caller hears about it through CompressType: whoever fills
-    Content-Encoding reads it back from here, and a header promising gzip over
-    bytes that were never compressed makes the other side fail to inflate }
+  // written back: Content-Encoding is filled from CompressType
   FCompressType := Result;
 end;
 
@@ -2982,14 +2678,8 @@ begin
       RALCopyStream(ASource, ADest, ASource.Size);
     end;
 
-    { Ciphertext is not multipart in any sense a parser can use, so it stops
-      saying it is. Announcing multipart over ciphertext made libmicrohttpd,
-      under the Sagui engine, hand the ciphertext to its multipart machinery,
-      find no parts and drop the body - which is how the AES transport lost
-      every param. Nothing goes with the header: DecodeBody reads the boundary
-      back from the first line of the plaintext, which IS the delimiter.
-
-      Only on the request path, where the far end may parse on its own. }
+    { An encrypted multipart request is declared octet-stream: a server that
+      parses multipart itself would drop it. DecodeBody finds the boundary. }
     if (vCipher <> nil) and (not ACompressMultipart) and
        (Pos(StringRAL(rctMULTIPARTFORMDATA), LowerCase(AContentType)) > 0) then
       AContentType := gOctetStream;
@@ -3020,8 +2710,7 @@ function TRALParams.EncodeBody(var AContentType, AContentDisposition: StringRAL;
 var
   vBody: TRALBodyStream;
 begin
-  { a new stream the caller owns, as it always was; the params are left as they
-    are. Nothing is copied on the way but the body into the result }
+  // a new stream the caller owns; the params stay as they are
   Result := nil;
   if Count([rpkBODY, rpkFIELD]) = 0 then
   begin
@@ -3049,8 +2738,7 @@ begin
   vSource := PrepareBody(AContentType, AContentDisposition, ACompressMultipart, AConsume);
   if vSource = nil then
   begin
-    { no body, so nothing was compressed: a Content-Encoding over zero bytes
-      is a lie some clients choke on }
+    // no body, nothing compressed: no Content-Encoding over zero bytes
     FCompressType := ctNone;
     Exit;
   end;
@@ -3258,8 +2946,6 @@ begin
   inherited;
 end;
 
-{ the name by const: by value it cost a reference count up and down, and an
-  exception frame, on every lookup }
 function TRALParams.GetParam(const AName: StringRAL; AKind: TRALParamKind): TRALParam;
 begin
   if AName <> '' then
@@ -3319,9 +3005,7 @@ end;
 
 function TRALParams.NewParam: TRALParam;
 begin
-  { room for what a request carries - the RAL header and three or four from
-    the client - in one allocation: TList grows by four, so the fifth param
-    reallocated the list }
+  // room for a request's usual params in one allocation
   if FParams.Capacity < 8 then
     FParams.Capacity := 8;
   Result := TRALParam.Create;
@@ -3335,10 +3019,7 @@ begin
     Inc(FSeqNext);
   end;
   FParams.Add(Result);
-  { no name yet, so not in the index: it enters when it gets one
-    (SetParamName) - indexing it nameless only to move it a line later cost a
-    second pass on every param. The index is built with the first param and
-    doubled by the size of the list }
+  // indexed once it has a name; the index grows with the list
   if FList.Count + FDetachedCount > Length(FBuckets) then
     IndexBuild;
 end;
@@ -3374,8 +3055,7 @@ begin
     Exit;
   end;
 
-  { the name is hashed once: a lookup followed by assigning ParamName hashed
-    it twice for every param parsed or added }
+  // the name is hashed once
   vHash := ParamNameHash(AName);
   Result := IndexFind(AName, vHash, AKind, False);
   { parsing a pending block: past what is older than the block, see FFlushBase.
@@ -3555,21 +3235,9 @@ var
   vPos, vMin: IntegerRAL;
   Engine: StringRAL;
 begin
-  { Decide from the data, not from the engine name.
-
-    Engines do not agree on the shape of the list they hand over: Indy and
-    Synopse pass real header lines ('Name: Value'), while fpHTTP passes its
-    TRequest.CustomHeaders, which is a name=value list. Keying off the engine
-    got both wrong at different times - '=' chopped Indy's headers at whatever
-    equals sign sat inside the value (that is how 'Content-Encription' went
-    missing and encrypted bodies reached the multipart decoder undecrypted),
-    and ':' matched nothing at all in fpHTTP's list, silently dropping every
-    header.
-
-    Whichever of ': ' and '=' comes FIRST in the line is the separator, which
-    settles both: 'Content-Type: multipart/form-data; boundary=ral01' splits at
-    the colon, and 'Host=127.0.0.1:18921' splits at the equals. The engine table
-    below only decides when the line carries neither. }
+  { Decided by the data: whichever of ': ' and '=' comes first. Engines hand over
+    'Name: Value' lines (Indy, Synopse) or name=value lists (fpHTTP); the engine
+    name decides only a line with neither. }
   vPos := Pos(StringRAL(': '), ASource);
   vMin := Pos(StringRAL('='), ASource);
 
@@ -3613,11 +3281,7 @@ begin
       Copy(ALine, vPos + Length(ANameSeparator), Length(ALine)), AKind);
 end;
 
-{ AppendParamLine over ALen characters of ASource from AStart, without the
-  copy of the line it would take: the name and the value are the only strings
-  made. The same answer - the first ANameSeparator splits, a line without one
-  adds nothing }
-{ Where the first ANameSeparator of the span starts, 0 when it has none }
+/// Position of the first ANameSeparator in the span, 0 when there is none.
 function SeparatorInSpan(const ASource: StringRAL; AStart, ALen: IntegerRAL;
   const ANameSeparator: StringRAL): IntegerRAL;
 var
@@ -3808,7 +3472,7 @@ begin
 
   { A detached param already says what its lines said, and since then the
     application may have changed its value or its name - which, parsed at once,
-    it would have done AFTER the parse. So its lines are not parsed again, it
+    it would have done after the parse. So its lines are not parsed again, it
     only takes its place in the list, and it leaves the index meanwhile so that
     no other line merges into it under a name it was given later }
   vKept := 0;
@@ -3874,8 +3538,8 @@ var
   vInt, vFirst, vLast, vValue: IntegerRAL;
 begin
   Result := nil;
-  { the param the parse would have made: placed by its FIRST line, with the
-    name as the LAST line writes it and the last value that was not empty -
+  { the param the parse would have made: placed by its first line, with the
+    name as the last line writes it and the last value that was not empty -
     a repeated header merges into one param, see AppendParamPair }
   vFirst := -1;
   vLast := -1;
@@ -3924,12 +3588,7 @@ procedure TRALParams.AppendParamPair(AName, AValue: StringRAL; AKind: TRALParamK
 var
   vParam: TRALParam;
 begin
-  { an HTTP header is not URL-encoded - a query string, a form field and a
-    cookie are. Decoding headers too turned every '+' into a space: the
-    base64 of an "Authorization: Basic" whenever it holds one (DecodeAuth
-    reads it from here, on every engine), and media types such as
-    application/ld+json or image/svg+xml; any '%XX' in a header was
-    rewritten as well. Nothing on the sending side ever encoded a header }
+  // a header is not URL-encoded; query, field and cookie values are
   if AKind <> rpkHEADER then
   begin
     AName := TRALHTTPCoder.DecodeURL(AName);
@@ -3947,13 +3606,8 @@ begin
     AddSetCookie(AValue);
 end;
 
-{ ONE RULE FOR EVERY ENGINE: a Set-Cookie the server sent is also a cookie
-  param of the response - name and value only, the attributes after the first
-  ';' are the browser's business. netHTTP, fpHTTP and OkHttp each did this in
-  their own way while Indy, mORMot2 and MsQuic did not, so whether an
-  application could read a cookie the server set depended on the transport.
-  It also keeps several cookies alive: AddParam replaces a param by name and
-  kind, so as headers alone only the LAST Set-Cookie of an answer survived. }
+{ A Set-Cookie is also a cookie param of its own, name and value only, on
+  every engine. }
 procedure TRALParams.AddSetCookie(const AValue: StringRAL);
 var
   vPos: IntegerRAL;
@@ -3997,9 +3651,7 @@ begin
   else
     vParam.ParamName := AFormData.Name;
 
-  { the part's content moves into the param: a window over the body when the
-    decoder was told to slice, the part's own buffer otherwise. It used to be
-    copied here, after the decoder had already copied it once }
+  // the part's content moves into the param: a window over the body, or its buffer
   vParam.AdoptStream(AFormData.ReleaseBuffer);
   vParam.FileName := AFormData.FileName;
 
@@ -4037,35 +3689,8 @@ begin
 end;
 
 function TRALParams.Encrypt(AStream: TStream): TStream;
-//var
-//  vCript: TRALCripto;
 begin
   Result := TRALHashes.Encrypt(AStream, CriptoOptions.Key, CriptoOptions.CriptType);
-//  Result := nil;
-//  case FCriptoOptions.CriptType of
-//    crAES128:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES128;
-//    end;
-//    crAES192:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES192;
-//    end;
-//    crAES256:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES256;
-//    end;
-//  end;
-//
-//  try
-//    vCript.Key := FCriptoOptions.Key;
-//    Result := vCript.EncryptAsStream(AStream);
-//  finally
-//    FreeAndNil(vCript);
-//  end;
 end;
 
 function TRALParams.Decompress(AStream: TStream): TStream;
@@ -4093,8 +3718,6 @@ var
   vStream, vResult: TStream;
 begin
   Result := '';
-  // the test used to read Result, which had just been emptied: the string
-  // overload never decompressed anything
   if ASource <> '' then
   begin
     vStream := StringToStream(ASource);
@@ -4113,65 +3736,13 @@ begin
 end;
 
 function TRALParams.Decrypt(AStream: TStream): TStream;
-//var
-//  vCript: TRALCripto;
 begin
   Result := TRALHashes.Decrypt(AStream, CriptoOptions.Key, CriptoOptions.CriptType);
-//  case FCriptoOptions.CriptType of
-//    crAES128:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES128;
-//    end;
-//    crAES192:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES192;
-//    end;
-//    crAES256:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES256;
-//    end;
-//  end;
-//
-//  try
-//    vCript.Key := FCriptoOptions.Key;
-//    Result := vCript.DecryptAsStream(AStream);
-//  finally
-//    FreeAndNil(vCript);
-//  end;
 end;
 
 function TRALParams.Decrypt(const ASource: StringRAL): StringRAL;
-//var
-//  vCript: TRALCripto;
 begin
   Result := TRALHashes.Decrypt(ASource, CriptoOptions.Key, CriptoOptions.CriptType);
-//  case FCriptoOptions.CriptType of
-//    crAES128:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES128;
-//    end;
-//    crAES192:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES192;
-//    end;
-//    crAES256:
-//    begin
-//      vCript := TRALCriptoAES.Create;
-//      TRALCriptoAES(vCript).AESType := tAES256;
-//    end;
-//  end;
-//
-//  try
-//    vCript.Key := FCriptoOptions.Key;
-//    Result := vCript.Decrypt(ASource);
-//  finally
-//    FreeAndNil(vCript);
-//  end;
 end;
 
 procedure TRALParams.DelParam(const AName: StringRAL; AKind: TRALParamKind);
@@ -4236,12 +3807,12 @@ begin
   Result := TEnumerator.Create(Self);
 end;
 
+/// Fills the shared strings, once, in initialization.
 procedure FillSharedStrings;
 var
   vInt: IntegerRAL;
 begin
-  { on Delphi this is the one copy of each literal; from here on they are
-    handed over by reference }
+  // on Delphi the one copy of each literal; from here on handed over by reference
   gTextPlain := rctTEXTPLAIN;
   gOctetStream := rctAPPLICATIONOCTETSTREAM;
   gRalBody := 'ral_body';
