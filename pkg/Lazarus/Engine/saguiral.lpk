@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\engine\sagui;..\..\..\src\others"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\sagui;..\..\..\src\others;..\..\..\src\storage\bson;..\..\..\src\compress\brotli;..\..\..\src\compress\zstd;..\..\..\src\bindings"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Other>

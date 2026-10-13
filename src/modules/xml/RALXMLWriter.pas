@@ -1,7 +1,7 @@
 /// XML writer of RAL: writes UTF-8 straight into a stream, escaping only where needed.
 unit RALXMLWriter;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

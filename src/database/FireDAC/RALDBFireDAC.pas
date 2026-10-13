@@ -1,7 +1,7 @@
 /// Base unit for FireDAC wrappings
 unit RALDBFireDAC;
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

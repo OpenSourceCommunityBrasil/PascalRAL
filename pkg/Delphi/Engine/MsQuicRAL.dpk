@@ -33,7 +33,7 @@ requires
   PascalRALDsgn;
 
 contains
-  MsQuic in '..\..\..\src\engine\msquic\MsQuic.pas',
+  MsQuic in '..\..\..\src\bindings\MsQuic.pas',
   RALMsQuicClient in '..\..\..\src\engine\msquic\RALMsQuicClient.pas',
   RALMsQuicRegister in '..\..\..\src\engine\msquic\RALMsQuicRegister.pas',
   RALMsQuicServer in '..\..\..\src\engine\msquic\RALMsQuicServer.pas';

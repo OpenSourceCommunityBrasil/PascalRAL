@@ -1,7 +1,7 @@
 /// Storage of datasets in XML: RAL's own format, plain XML, the MIDAS datapacket and ADO.
 unit RALStorageXML;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

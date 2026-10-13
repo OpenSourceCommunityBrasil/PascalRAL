@@ -2,7 +2,7 @@
 /// another one (Windows only)
 unit RALHttpSysCert;
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 { http.sys does not read a certificate file: it serves the certificate that
   "netsh http add sslcert" bound to the IP and port, from a store of the

@@ -3,7 +3,7 @@ unit RALDBSQLCache;
 
 interface
 
-{$I ..\base\PascalRAL.inc}
+{$I ..\core\PascalRAL.inc}
 
 uses
   {$IFDEF FPC}

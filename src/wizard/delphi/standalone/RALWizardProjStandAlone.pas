@@ -1,6 +1,6 @@
 unit RALWizardProjStandAlone;
 
-{$I ..\..\src\base\PascalRAL.inc}
+{$I ..\..\..\core\PascalRAL.inc}
 
 interface
 

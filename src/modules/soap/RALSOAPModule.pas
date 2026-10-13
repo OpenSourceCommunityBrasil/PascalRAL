@@ -1,7 +1,7 @@
 /// SOAP server module of RAL: operations as routes, SOAP 1.1 and 1.2, faults and WSDL.
 unit RALSOAPModule;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

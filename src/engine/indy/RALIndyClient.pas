@@ -1,7 +1,7 @@
 /// Base unit for RALClients using Indy engine
 unit RALIndyClient;
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

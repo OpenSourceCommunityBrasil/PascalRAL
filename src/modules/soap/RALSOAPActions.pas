@@ -1,7 +1,7 @@
 /// Action that calls an operation of a TRALSOAPClient from a button or a menu.
 unit RALSOAPActions;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

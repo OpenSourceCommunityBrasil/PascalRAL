@@ -32,7 +32,7 @@ requires
   PascalRALDsgn;
 
 contains
-  RALCompressZStd in '..\..\..\..\src\others\RALCompressZStd.pas',
+  RALCompressZStd in '..\..\..\..\src\compress\zstd\RALCompressZStd.pas',
   ZSTD in '..\..\..\..\src\others\ZSTD\ZSTD.pas',
   ZSTDLib in '..\..\..\..\src\others\ZSTD\ZSTDLib.pas';
 

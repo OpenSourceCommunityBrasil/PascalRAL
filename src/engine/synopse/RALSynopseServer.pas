@@ -1,7 +1,7 @@
 ﻿/// Base unit for RALServer component using mORMot2 Engine
 unit RALSynopseServer;
 
-{$I ..\\..\\base\\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

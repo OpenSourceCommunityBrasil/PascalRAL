@@ -1,7 +1,7 @@
 /// XML pull parser of RAL: tokens over UTF-8, encodings, entities, namespaces, limits.
 unit RALXMLReader;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

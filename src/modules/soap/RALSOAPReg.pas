@@ -1,7 +1,7 @@
 /// Registers the SOAP module, client and action in the IDE, with their verbs.
 unit RALSOAPReg;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

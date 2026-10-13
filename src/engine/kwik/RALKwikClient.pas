@@ -24,7 +24,7 @@ unit RALKwikClient;
   {$MODE DELPHI}
 {$ENDIF}
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

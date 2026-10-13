@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils;..\..\src\engine\synopse;..\..\..\src\engine\synopse"/>
+        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\engine\synopse;..\..\..\src\engine\synopse"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Linking>

@@ -2,7 +2,7 @@ unit RALCGIServer;
 
 interface
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$I RALCGIServer_FPC.inc}

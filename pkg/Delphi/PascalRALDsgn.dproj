@@ -137,7 +137,7 @@
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
         <DCC_DcuOutput>..\..\compiled</DCC_DcuOutput>
-        <DCC_UnitSearchPath>..\..\src\base\;..\..\src\utils\;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Description>PascalRAL Components</DCC_Description>
@@ -156,7 +156,7 @@
         <DCCReference Include="PascalRAL.dcr"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="PascalRAL.dcp"/>
-        <DCCReference Include="..\..\src\base\RALRegister.pas"/>
+        <DCCReference Include="..\..\src\design\RALRegister.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

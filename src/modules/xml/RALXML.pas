@@ -1,7 +1,7 @@
 /// XML document of RAL: a DOM with a fluent API, paths, typed values and datasets.
 unit RALXML;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

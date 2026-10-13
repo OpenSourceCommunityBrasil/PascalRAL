@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..;..\ZSTD;..\..\..\src\others;..\..\..\src\others\ZSTD"/>
+        <OtherUnitFiles Value="..;..\ZSTD;..\..\..\src\others;..\..\..\src\storage\bson;..\..\..\src\compress\brotli;..\..\..\src\compress\zstd;..\..\..\src\bindings;..\..\..\src\others\ZSTD"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
@@ -18,7 +18,7 @@
     <Version Major="2"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\..\src\others\RALCompressZStd.pas"/>
+        <Filename Value="..\..\..\src\compress\zstd\RALCompressZStd.pas"/>
         <UnitName Value="RALCompressZStd"/>
       </Item1>
       <Item2>

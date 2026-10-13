@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\others;..\..\..\src\utils"/>
+        <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\others;..\..\..\src\storage\bson;..\..\..\src\compress\brotli;..\..\..\src\compress\zstd;..\..\..\src\bindings;..\..\..\src\core;..\..\..\src\compress;..\..\..\src\storage;..\..\..\src\common;..\..\..\src\crypto"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
@@ -22,11 +22,11 @@
         <UnitName Value="kxBSON"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\utils\RALStorageBSON.pas"/>
+        <Filename Value="..\..\..\src\storage\bson\RALStorageBSON.pas"/>
         <UnitName Value="RALStorageBSON"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\others\RALBSONReg.pas"/>
+        <Filename Value="..\..\..\src\storage\bson\RALBSONReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALBSONReg"/>
       </Item3>

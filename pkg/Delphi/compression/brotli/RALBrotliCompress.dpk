@@ -32,7 +32,7 @@ requires
   PascalRALDsgn;
 
 contains
-  RALCompressBrotli in '..\..\..\..\src\others\RALCompressBrotli.pas',
+  RALCompressBrotli in '..\..\..\..\src\compress\brotli\RALCompressBrotli.pas',
   brotlilib in '..\..\..\..\src\others\pascal_brotli\brotlilib.pas',
   brotlistream in '..\..\..\..\src\others\pascal_brotli\brotlistream.pas';
 

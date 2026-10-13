@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils;..\..\src\engine\msquic;..\..\..\src\engine\msquic"/>
+        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\bindings;..\..\..\src\bindings;..\..\..\src\engine\msquic"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Linking>
@@ -32,7 +32,7 @@
         <Type Value="LRS"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\engine\msquic\MsQuic.pas"/>
+        <Filename Value="..\..\..\src\bindings\MsQuic.pas"/>
         <UnitName Value="MsQuic"/>
       </Item2>
       <Item3>

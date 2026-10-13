@@ -1,7 +1,7 @@
 /// Types shared by the SOAP server and client: versions, namespaces, faults, XSD types.
 unit RALSOAPTypes;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

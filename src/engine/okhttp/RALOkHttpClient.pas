@@ -1,7 +1,7 @@
 /// Base unit for RALClients using OkHttp - the only way to speak HTTP/2 on Android
 unit RALOkHttpClient;
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

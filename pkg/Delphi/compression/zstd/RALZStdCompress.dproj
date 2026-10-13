@@ -96,7 +96,7 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
         <SanitizedProjectName>RALZStdCompress</SanitizedProjectName>
-        <DCC_UnitSearchPath>..\..\..\..\src\utils;..\..\..\..\src\base;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\..\..\..\src\core;..\..\..\..\src\compress;..\..\..\..\src\storage;..\..\..\..\src\storage\bson;..\..\..\..\src\common;..\..\..\..\src\crypto;..\..\..\..\src\design;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Description>PascalRAL | ZStd Compression Library</DCC_Description>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
@@ -182,7 +182,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\..\..\src\others\RALCompressZStd.pas"/>
+        <DCCReference Include="..\..\..\..\src\compress\zstd\RALCompressZStd.pas"/>
         <DCCReference Include="..\..\..\..\src\others\ZSTD\ZSTD.pas"/>
         <DCCReference Include="..\..\..\..\src\others\ZSTD\ZSTDLib.pas"/>
         <BuildConfiguration Include="Base">

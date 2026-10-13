@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\engine\indy;..\..\src\base;..\..\src\utils;..\..\..\src\engine\indy"/>
+        <OtherUnitFiles Value="..\..\src\engine\indy;..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\..\src\engine\indy"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
       <Linking>

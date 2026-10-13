@@ -1,6 +1,6 @@
 ﻿unit RALfpHTTPClient;
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

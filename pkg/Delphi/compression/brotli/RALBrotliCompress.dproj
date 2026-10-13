@@ -94,7 +94,7 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
         <SanitizedProjectName>RALBrotliCompress</SanitizedProjectName>
-        <DCC_UnitSearchPath>..\..\..\..\src\base;..\..\..\..\src\utils;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\..\..\..\src\core;..\..\..\..\src\storage;..\..\..\..\src\design;..\..\..\..\src\compress;..\..\..\..\src\storage\bson;..\..\..\..\src\common;..\..\..\..\src\crypto;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Description>PascalRAL | Brotli Compression Library</DCC_Description>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
@@ -183,7 +183,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\..\..\src\others\RALCompressBrotli.pas"/>
+        <DCCReference Include="..\..\..\..\src\compress\brotli\RALCompressBrotli.pas"/>
         <DCCReference Include="..\..\..\..\src\others\pascal_brotli\brotlilib.pas"/>
         <DCCReference Include="..\..\..\..\src\others\pascal_brotli\brotlistream.pas"/>
         <BuildConfiguration Include="Base">

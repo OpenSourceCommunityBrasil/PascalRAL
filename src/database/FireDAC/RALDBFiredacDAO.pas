@@ -2,7 +2,7 @@ unit RALDBFiredacDAO;
 
 interface
 
-{$I ..\..\base\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 uses
   System.SysUtils, System.Classes, Data.DB, System.TypInfo, System.Variants,

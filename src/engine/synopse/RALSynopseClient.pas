@@ -1,7 +1,7 @@
 /// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
-{$I ..\\..\\base\\PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 { mORMot builds its OpenSSL unit for every target except Android, and honours a
   global DISABLE_OPENSSL (mormot.defines.inc). Its own USE_OPENSSL define does

@@ -1,7 +1,7 @@
 /// Registers the XML storage link in the IDE.
 unit RALXMLReg;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 interface
 

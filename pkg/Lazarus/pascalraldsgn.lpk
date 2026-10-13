@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\base;..\..\src\utils;..\..\src\database"/>
+        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\database"/>
         <UnitOutputDirectory Value="..\..\compiled"/>
       </SearchPaths>
       <Linking>
@@ -28,7 +28,7 @@
     <Version Major="2"/>
     <Files Count="2">
       <Item1>
-        <Filename Value="..\..\src\base\RALRegister.pas"/>
+        <Filename Value="..\..\src\design\RALRegister.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALRegister"/>
       </Item1>

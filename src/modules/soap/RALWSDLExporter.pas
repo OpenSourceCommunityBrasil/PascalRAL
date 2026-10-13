@@ -1,7 +1,7 @@
 /// Generates the WSDL 1.1 of a SOAP module, with SOAP 1.1 and 1.2 bindings.
 unit RALWSDLExporter;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

@@ -1,7 +1,7 @@
 /// SOAP client of RAL: a TRALClient calling operations set up in the IDE or from a WSDL.
 unit RALSOAPClient;
 
-{$I ../../base/PascalRAL.inc}
+{$I ..\..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}

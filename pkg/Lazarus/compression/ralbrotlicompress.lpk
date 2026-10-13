@@ -11,7 +11,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <Libraries Value="..\..\..\src\others\pascal_brotli\static_libs\lazarus\$(TargetCPU)_$(TargetOS)"/>
-        <OtherUnitFiles Value="..\..\..\src\others;..\..\..\src\others\pascal_brotli"/>
+        <OtherUnitFiles Value="..\..\..\src\others;..\..\..\src\storage\bson;..\..\..\src\compress\brotli;..\..\..\src\compress\zstd;..\..\..\src\bindings;..\..\..\src\others\pascal_brotli"/>
         <UnitOutputDirectory Value="..\..\..\compiled"/>
       </SearchPaths>
     </CompilerOptions>
@@ -19,7 +19,7 @@
     <Version Major="2"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="..\..\..\src\others\RALCompressBrotli.pas"/>
+        <Filename Value="..\..\..\src\compress\brotli\RALCompressBrotli.pas"/>
         <UnitName Value="RALCompressBrotli"/>
       </Item1>
       <Item2>
