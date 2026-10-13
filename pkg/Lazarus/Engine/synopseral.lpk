@@ -10,8 +10,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\engine\synopse;..\..\..\src\engine\synopse"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\synopse"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\synopseral"/>
       </SearchPaths>
       <Linking>
         <Debugging>
@@ -24,40 +24,39 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Package for installing mORMot2 data engine components for PascalRAL."/>
+    <Description Value="PascalRAL | mORMot2 engine"/>
     <Version Major="2"/>
     <Files Count="5">
       <Item1>
-        <Filename Value="SynopseRAL.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
+        <UnitName Value="RALSynopseServer"/>
       </Item1>
       <Item2>
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <UnitName Value="RALSynopseClient"/>
       </Item2>
       <Item3>
+        <Filename Value="..\..\..\src\engine\synopse\RALHttpSysCert.pas"/>
+        <UnitName Value="RALHttpSysCert"/>
+      </Item3>
+      <Item4>
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALSynopseReg"/>
-      </Item3>
-      <Item4>
-        <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
-        <UnitName Value="RALSynopseServer"/>
       </Item4>
       <Item5>
-        <Filename Value="..\..\..\src\engine\synopse\RALHttpSysCert.pas"/>
-        <UnitName Value="RALHttpSysCert"/>
+        <Filename Value="SynopseRAL.lrs"/>
+        <Type Value="LRS"/>
       </Item5>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="mormot2"/>
-        <MinVersion Major="2" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="FCL"/>

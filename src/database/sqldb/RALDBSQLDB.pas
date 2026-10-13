@@ -325,7 +325,7 @@ end;
 
 class function TRALDBSQLDB.PackageDependency: StringRAL;
 begin
-  Result := '';
+  Result := 'raldbsqldbpackage';
 end;
 
 function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;

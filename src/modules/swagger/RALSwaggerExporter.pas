@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALJSON, RALServer, RALTypes, RALAuthentication, RALRoutes, RALTools,
+  RALJSON, RALServer, RALTypes, RALAuthBase, RALAuthentication, RALRoutes, RALTools,
   RALSwaggerModule;
 
 type

@@ -8,7 +8,7 @@ unit fphttpral;
 interface
 
 uses
-  RALfpHTTPClient, RALfpHTTPReg, RALfpHTTPServer, LazarusPackageIntf;
+  RALfpHTTPServer, RALfpHTTPClient, RALfpHTTPReg, LazarusPackageIntf;
 
 implementation
 

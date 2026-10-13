@@ -2,7 +2,7 @@
 <CONFIG>
   <Package Version="5">
     <PathDelim Value="\"/>
-    <Name Value="saguiral"/>
+    <Name Value="SaguiRAL"/>
     <Type Value="RunAndDesignTime"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="OpenSourceCommunityBrasil"/>
@@ -10,37 +10,46 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\engine\sagui;..\..\..\src\others;..\..\..\src\storage\bson;..\..\..\src\compress\brotli;..\..\..\src\compress\zstd;..\..\..\src\bindings"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\..\src\bindings;..\..\..\src\engine\sagui"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\saguiral"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
       <Other>
         <Verbosity>
           <ShowLineNum Value="True"/>
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Package for installing libsagui data engine components for PascalRAL."/>
+    <Description Value="PascalRAL | Sagui engine"/>
     <Version Major="2"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
-        <Filename Value="..\..\..\src\engine\sagui\RALSaguiServer.pas"/>
-        <UnitName Value="RALSaguiServer"/>
+        <Filename Value="..\..\..\src\bindings\libsagui.pas"/>
+        <UnitName Value="libsagui"/>
       </Item1>
       <Item2>
+        <Filename Value="..\..\..\src\engine\sagui\RALSaguiServer.pas"/>
+        <UnitName Value="RALSaguiServer"/>
+      </Item2>
+      <Item3>
         <Filename Value="..\..\..\src\engine\sagui\RALSaguiReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALSaguiReg"/>
-      </Item2>
-      <Item3>
+      </Item3>
+      <Item4>
         <Filename Value="SaguiRAL.lrs"/>
         <Type Value="LRS"/>
-      </Item3>
+      </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>

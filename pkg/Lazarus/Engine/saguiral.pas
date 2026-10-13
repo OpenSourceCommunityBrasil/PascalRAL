@@ -2,13 +2,13 @@
   This source is only used to compile and install the package.
  }
 
-unit saguiral;
+unit SaguiRAL;
 
 {$warn 5023 off : no warning about unused units}
 interface
 
 uses
-  RALSaguiServer, RALSaguiReg, LazarusPackageIntf;
+  libsagui, RALSaguiServer, RALSaguiReg, LazarusPackageIntf;
 
 implementation
 
@@ -18,5 +18,5 @@ begin
 end;
 
 initialization
-  RegisterPackage('saguiral', @Register);
+  RegisterPackage('SaguiRAL', @Register);
 end.

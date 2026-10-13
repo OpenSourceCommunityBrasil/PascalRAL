@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALStoragePackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\storage"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralstoragepackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Dataset storage (BIN, JSON, CSV)"/>
+    <Version Major="2"/>
+    <Files Count="8">
+      <Item1>
+        <Filename Value="..\..\..\src\storage\RALStorageTypes.pas"/>
+        <UnitName Value="RALStorageTypes"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\storage\RALDBTypes.pas"/>
+        <UnitName Value="RALDBTypes"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\storage\RALStorage.pas"/>
+        <UnitName Value="RALStorage"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\storage\RALStorageBIN.pas"/>
+        <UnitName Value="RALStorageBIN"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\storage\RALStorageJSON.pas"/>
+        <UnitName Value="RALStorageJSON"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\storage\RALStorageCSV.pas"/>
+        <UnitName Value="RALStorageCSV"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\storage\RALStorageReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALStorageReg"/>
+      </Item7>
+      <Item8>
+        <Filename Value="ralstoragepackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item8>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

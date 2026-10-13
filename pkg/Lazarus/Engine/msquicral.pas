@@ -8,8 +8,7 @@ unit MsQuicRAL;
 interface
 
 uses
-  MsQuic, RALMsQuicClient, RALMsQuicReg, RALMsQuicServer,
-  LazarusPackageIntf;
+  MsQuic, RALMsQuicServer, RALMsQuicClient, RALMsQuicReg, LazarusPackageIntf;
 
 implementation
 

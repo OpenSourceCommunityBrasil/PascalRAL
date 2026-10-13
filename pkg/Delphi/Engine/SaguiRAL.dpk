@@ -26,14 +26,15 @@ package SaguiRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Sagui Components'}
+{$DESCRIPTION 'PascalRAL | Sagui engine'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
-  RALSaguiReg in '..\..\..\src\engine\sagui\RALSaguiReg.pas',
-  RALSaguiServer in '..\..\..\src\engine\sagui\RALSaguiServer.pas';
+  libsagui in '..\..\..\src\bindings\libsagui.pas',
+  RALSaguiServer in '..\..\..\src\engine\sagui\RALSaguiServer.pas',
+  RALSaguiReg in '..\..\..\src\engine\sagui\RALSaguiReg.pas';
 
 end.

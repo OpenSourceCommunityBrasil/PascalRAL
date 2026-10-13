@@ -11,9 +11,20 @@ uses
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
 
-  // sempre jogar a qtOther pra frente, ela tem valor igual a 255
-  TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
+  /// Same as RALStorageTypes.TRALDBDriverType.
+  TRALDBDriverType = RALStorageTypes.TRALDBDriverType;
 
+const
+  /// Same as RALStorageTypes.qtFiredac.
+  qtFiredac = RALStorageTypes.qtFiredac;
+  /// Same as RALStorageTypes.qtZeos.
+  qtZeos = RALStorageTypes.qtZeos;
+  /// Same as RALStorageTypes.qtLazSQL.
+  qtLazSQL = RALStorageTypes.qtLazSQL;
+  /// Same as RALStorageTypes.qtOther.
+  qtOther = RALStorageTypes.qtOther;
+
+type
   TRALDBOnConnect = procedure(ASender: TObject; ARequest: TRALRequest) of object;
   TRALDBOnError = procedure(ASender: TObject; AException: StringRAL; ARequest: TRALRequest) of object;
   { Fired before the DBWare module runs a statement that came over the wire.

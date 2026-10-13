@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALPluginTLSPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\plugins\tls"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralplugintlspackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Certificate plugins"/>
+    <Version Major="2"/>
+    <Files Count="3">
+      <Item1>
+        <Filename Value="..\..\..\src\plugins\tls\RALSelfSigned.pas"/>
+        <UnitName Value="RALSelfSigned"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\plugins\tls\RALPluginTLSReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALPluginTLSReg"/>
+      </Item2>
+      <Item3>
+        <Filename Value="ralplugintlspackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item3>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

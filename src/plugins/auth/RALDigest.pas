@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALToken, RALJWS, RALHashBase, RALSHA2_32,
-  RALRequest, RALResponse, RALParams, RALPlugin, RALAuthentication;
+  RALRequest, RALResponse, RALParams, RALPlugin, RALAuthBase;
 
 type
   /// Credentials of AUserName (as sent; the hash of it when AUserHash). Fill

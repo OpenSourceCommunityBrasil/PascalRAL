@@ -28,7 +28,7 @@ uses
     SSL.Pin fails loudly, see EachPeerVerify }
   mormot.lib.openssl11,
   {$ENDIF}
-  RALClient, RALParams, RALTypes, RALTools, RALConsts, RALAuthentication, RALRequest,
+  RALClient, RALParams, RALTypes, RALTools, RALConsts, RALRequest,
   RALCompress, RALResponse;
 
 type

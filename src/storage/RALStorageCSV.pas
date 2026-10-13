@@ -770,10 +770,8 @@ begin
 end;
 
 initialization
-  // BIN, JSON and BSON register their link; CSV did not. GetStorageClass
-  // resolves the link by class name, so a server asked for CSV got nil and
-  // died with an access violation at address zero on Create
   RegisterClass(TRALStorageCSVLink);
+  RegisterStorageLink(rsfCSV, TRALStorageCSVLink);
 
 finalization
   UnregisterStorageLink(TRALStorageCSVLink);

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils,
   fphttpclient, fphttp, ssockets, sslsockets, opensslsockets, fpopenssl,
-  RALClient, RALTypes, RALConsts, RALAuthentication, RALParams,
+  RALClient, RALTypes, RALConsts, RALParams,
   RALRequest, RALCompress, RALResponse, RALMIMETypes, RALStream;
 
 type

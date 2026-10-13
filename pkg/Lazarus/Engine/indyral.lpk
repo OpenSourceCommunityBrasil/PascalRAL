@@ -10,8 +10,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\engine\indy;..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\..\src\engine\indy"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\indy"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\indyral"/>
       </SearchPaths>
       <Linking>
         <Debugging>
@@ -24,12 +24,12 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Package for Installing Indy data engine components for PascalRAL."/>
+    <Description Value="PascalRAL | Indy engine"/>
     <Version Major="2"/>
     <Files Count="4">
       <Item1>
-        <Filename Value="IndyRAL.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>
+        <UnitName Value="RALIndyServer"/>
       </Item1>
       <Item2>
         <Filename Value="..\..\..\src\engine\indy\RALIndyClient.pas"/>
@@ -41,19 +41,18 @@
         <UnitName Value="RALIndyReg"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>
-        <UnitName Value="RALIndyServer"/>
+        <Filename Value="IndyRAL.lrs"/>
+        <Type Value="LRS"/>
       </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="indylaz"/>
-        <MinVersion Major="10" Minor="6" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="FCL"/>

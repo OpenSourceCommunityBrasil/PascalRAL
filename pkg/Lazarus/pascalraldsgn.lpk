@@ -2,7 +2,7 @@
 <CONFIG>
   <Package Version="5">
     <PathDelim Value="\"/>
-    <Name Value="pascalraldsgn"/>
+    <Name Value="PascalRALDsgn"/>
     <Type Value="DesignTime"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="OpenSourceCommunityBrasil"/>
@@ -10,8 +10,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\database"/>
-        <UnitOutputDirectory Value="..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\src\design"/>
+        <UnitOutputDirectory Value="..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\pascalraldsgn"/>
       </SearchPaths>
       <Linking>
         <Debugging>
@@ -24,7 +24,7 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
+    <Description Value="PascalRAL | Core (design time)"/>
     <Version Major="2"/>
     <Files Count="2">
       <Item1>
@@ -44,7 +44,7 @@
       </Item1>
       <Item2>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="IDEIntf"/>

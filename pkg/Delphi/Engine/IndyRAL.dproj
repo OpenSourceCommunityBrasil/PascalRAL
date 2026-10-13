@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9C29CB30-B81C-4269-A127-ACEEB17CC555}</ProjectGuid>
         <MainSource>IndyRAL.dpk</MainSource>
@@ -78,7 +78,8 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>..\..\..\compiled</DCC_DcuOutput>
+        <DCC_Description>PascalRAL | Indy engine</DCC_Description>
+        <DCC_DcuOutput>..\..\..\compiled\delphi\$(Platform)\$(Config)\IndyRAL</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -119,7 +120,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>rtl;IndySystem;IndyProtocols;IndyCore;PascalRAL;PascalRALDsgn;IndyCore160;IndySystem160;IndyProtocols160;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>rtl;PascalRAL;IndySystem;IndyProtocols;IndyCore;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -127,7 +128,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>rtl;IndySystem;IndyProtocols;IndyCore;PascalRAL;PascalRALDsgn;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>rtl;PascalRAL;IndySystem;IndyProtocols;IndyCore;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -154,11 +155,10 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
-        <DCC_UnitSearchPath>..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\engine\indy;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_Description>PascalRAL | Indy Components</DCC_Description>
-        <DCC_DcuOutput>..\..\..\compiled</DCC_DcuOutput>
+        <DCC_DcuOutput>..\..\..\compiled\delphi\$(Platform)\$(Config)\IndyRAL</DCC_DcuOutput>
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -171,11 +171,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="IndyRAL.dcr"/>
-        <DCCReference Include="PascalRALDsgn.dcp"/>
+        <DCCReference Include="PascalRAL.dcp"/>
+        <DCCReference Include="..\..\..\src\engine\indy\RALIndyServer.pas"/>
         <DCCReference Include="..\..\..\src\engine\indy\RALIndyClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\indy\RALIndyReg.pas"/>
-        <DCCReference Include="..\..\..\src\engine\indy\RALIndyServer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

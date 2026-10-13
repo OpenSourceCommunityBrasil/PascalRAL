@@ -23,7 +23,7 @@ end;
 
 {$IFDEF FPC}
 initialization
-{$I raldbpackage.lrs}
+{$I ralstoragebsonpackage.lrs}
 {$ENDIF}
 
 end.

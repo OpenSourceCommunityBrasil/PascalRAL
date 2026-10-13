@@ -1,7 +1,7 @@
 package PascalRALDsgn;
 
 {$R *.res}
-{$R 'PascalRAL.dcr'}
+{$R 'PascalRALDsgn.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,7 +26,8 @@ package PascalRALDsgn;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL Components'}
+{$DESCRIPTION 'PascalRAL | Core (design time)'}
+{$DESIGNONLY}
 {$IMPLICITBUILD ON}
 
 requires

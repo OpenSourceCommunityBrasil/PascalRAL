@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALPluginAuthPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\plugins\auth"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralpluginauthpackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Authentication plugins (Basic, JWT, Digest, OAuth2)"/>
+    <Version Major="2"/>
+    <Files Count="5">
+      <Item1>
+        <Filename Value="..\..\..\src\plugins\auth\RALAuthentication.pas"/>
+        <UnitName Value="RALAuthentication"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\plugins\auth\RALDigest.pas"/>
+        <UnitName Value="RALDigest"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\plugins\auth\RALOAuth2.pas"/>
+        <UnitName Value="RALOAuth2"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\plugins\auth\RALPluginAuthReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALPluginAuthReg"/>
+      </Item4>
+      <Item5>
+        <Filename Value="ralpluginauthpackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

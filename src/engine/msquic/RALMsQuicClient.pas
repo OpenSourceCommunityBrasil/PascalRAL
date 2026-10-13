@@ -947,7 +947,7 @@ end;
 
 class function TRALMsQuicClientHTTP.PackageDependency: StringRAL;
 begin
-  Result := 'msquic';
+  Result := 'MsQuicRAL';
 end;
 
 class function TRALMsQuicClientHTTP.SupportsHTTPVersion: boolean;

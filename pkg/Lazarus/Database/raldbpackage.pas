@@ -8,16 +8,8 @@ unit RALDBPackage;
 interface
 
 uses
-  RALDBBase, RALDBModule, RALDBReg, RALDBConnection, RALDBSQLCache, 
-  RALDBPool, LazarusPackageIntf;
+  RALDBBase, RALDBPool, RALDBSQLCache, RALDBConnection, RALDBModule;
 
 implementation
 
-procedure Register;
-begin
-  RegisterUnit('RALDBReg', @RALDBReg.Register);
-end;
-
-initialization
-  RegisterPackage('RALDBPackage', @Register);
 end.

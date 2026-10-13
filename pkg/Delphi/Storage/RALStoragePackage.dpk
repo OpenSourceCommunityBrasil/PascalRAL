@@ -1,0 +1,46 @@
+package RALStoragePackage;
+
+{$R *.res}
+{$R 'RALStoragePackage.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Dataset storage (BIN, JSON, CSV)'}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  dbrtl,
+  PascalRAL;
+
+contains
+  RALStorageTypes in '..\..\..\src\storage\RALStorageTypes.pas',
+  RALDBTypes in '..\..\..\src\storage\RALDBTypes.pas',
+  RALStorage in '..\..\..\src\storage\RALStorage.pas',
+  RALStorageBIN in '..\..\..\src\storage\RALStorageBIN.pas',
+  RALStorageJSON in '..\..\..\src\storage\RALStorageJSON.pas',
+  RALStorageCSV in '..\..\..\src\storage\RALStorageCSV.pas',
+  RALStorageReg in '..\..\..\src\storage\RALStorageReg.pas';
+
+end.

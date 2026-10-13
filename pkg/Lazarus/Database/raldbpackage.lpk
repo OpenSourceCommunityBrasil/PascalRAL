@@ -3,15 +3,15 @@
   <Package Version="5">
     <PathDelim Value="\"/>
     <Name Value="RALDBPackage"/>
-    <Type Value="RunAndDesignTime"/>
+    <Type Value="RunTime"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\database;..\..\..\src\database"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\..\src\database"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\raldbpackage"/>
       </SearchPaths>
       <Linking>
         <Debugging>
@@ -24,54 +24,39 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Package for DBWare components for PascalRAL."/>
+    <Description Value="PascalRAL | DBWare"/>
     <Version Major="2"/>
-    <Files Count="7">
+    <Files Count="5">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\database\RALDBModule.pas"/>
-        <UnitName Value="RALDBModule"/>
-      </Item2>
-      <Item3>
-        <Filename Value="..\..\..\src\database\RALDBReg.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBReg"/>
-      </Item3>
-      <Item4>
-        <Filename Value="raldbpackage.lrs"/>
-        <Type Value="LRS"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\..\src\database\RALDBConnection.pas"/>
-        <UnitName Value="RALDBConnection"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\..\src\database\RALDBSQLCache.pas"/>
-        <UnitName Value="RALDBSQLCache"/>
-      </Item6>
-      <Item7>
         <Filename Value="..\..\..\src\database\RALDBPool.pas"/>
         <UnitName Value="RALDBPool"/>
-      </Item7>
-    </Files>
-    <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="4">
-      <Item1>
-        <PackageName Value="CodeTools"/>
-      </Item1>
-      <Item2>
-        <PackageName Value="IDEIntf"/>
       </Item2>
       <Item3>
-        <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <Filename Value="..\..\..\src\database\RALDBSQLCache.pas"/>
+        <UnitName Value="RALDBSQLCache"/>
       </Item3>
       <Item4>
-        <PackageName Value="FCL"/>
+        <Filename Value="..\..\..\src\database\RALDBConnection.pas"/>
+        <UnitName Value="RALDBConnection"/>
       </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\database\RALDBModule.pas"/>
+        <UnitName Value="RALDBModule"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="ralstoragepackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

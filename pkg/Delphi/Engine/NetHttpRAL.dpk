@@ -26,11 +26,11 @@ package NetHttpRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | NetHttp Components'}
+{$DESCRIPTION 'PascalRAL | netHTTP engine'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
   RALnetHTTPClient in '..\..\..\src\engine\netHTTP\RALnetHTTPClient.pas',

@@ -76,7 +76,10 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
+        <DCC_Description>PascalRAL | Core</DCC_Description>
+        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+        <DCC_UsePackage>rtl;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_DcuOutput>..\..\compiled\delphi\$(Platform)\$(Config)\PascalRAL</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -88,7 +91,6 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
         <SanitizedProjectName>PascalRAL</SanitizedProjectName>
-        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
         <VerInfo_Locale>1046</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
     </PropertyGroup>
@@ -155,9 +157,8 @@
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_DcuOutput>..\..\compiled</DCC_DcuOutput>
-        <DCC_UnitSearchPath>..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_Description>PascalRAL Components Runtime</DCC_Description>
+        <DCC_DcuOutput>..\..\compiled\delphi\$(Platform)\$(Config)\PascalRAL</DCC_DcuOutput>
+        <DCC_UnitSearchPath>$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_MapFile>3</DCC_MapFile>
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
@@ -172,66 +173,53 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
-        <DCCReference Include="dbrtl.dcp"/>
-        <DCCReference Include="..\..\src\core\RALClient.pas"/>
+        <DCCReference Include="..\..\src\core\RALTypes.pas"/>
         <DCCReference Include="..\..\src\core\RALConsts.pas"/>
+        <DCCReference Include="..\..\src\core\RALCustomObjects.pas"/>
         <DCCReference Include="..\..\src\core\RALParams.pas"/>
         <DCCReference Include="..\..\src\core\RALRequest.pas"/>
         <DCCReference Include="..\..\src\core\RALResponse.pas"/>
         <DCCReference Include="..\..\src\core\RALRoutes.pas"/>
         <DCCReference Include="..\..\src\core\RALPlugin.pas"/>
-        <DCCReference Include="..\..\src\plugins\RALSecurity.pas"/>
-        <DCCReference Include="..\..\src\plugins\RALCORS.pas"/>
-        <DCCReference Include="..\..\src\plugins\RALContent.pas"/>
-        <DCCReference Include="..\..\src\plugins\RALConcurrency.pas"/>
+        <DCCReference Include="..\..\src\core\RALAuthBase.pas"/>
+        <DCCReference Include="..\..\src\core\RALServer.pas"/>
+        <DCCReference Include="..\..\src\core\RALClient.pas"/>
+        <DCCReference Include="..\..\src\common\RALTools.pas"/>
+        <DCCReference Include="..\..\src\common\RALStream.pas"/>
+        <DCCReference Include="..\..\src\common\RALThreadSafe.pas"/>
+        <DCCReference Include="..\..\src\common\RALJson.pas"/>
+        <DCCReference Include="..\..\src\common\RALMIMETypes.pas"/>
+        <DCCReference Include="..\..\src\common\RALUrlCoder.pas"/>
+        <DCCReference Include="..\..\src\common\RALMultipartCoder.pas"/>
+        <DCCReference Include="..\..\src\common\RALNetwork.pas"/>
+        <DCCReference Include="..\..\src\common\RALBase64.pas"/>
+        <DCCReference Include="..\..\src\common\RALHexadecimal.pas"/>
+        <DCCReference Include="..\..\src\common\RALResponsePages.pas"/>
+        <DCCReference Include="..\..\src\common\RALExternalsLibraries.pas"/>
+        <DCCReference Include="..\..\src\common\RALQuicFrame.pas"/>
+        <DCCReference Include="..\..\src\compress\RALCompress.pas"/>
+        <DCCReference Include="..\..\src\compress\RALCompressZLib.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALHashBase.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALHashes.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALMD5.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALSHA1.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALSHA2_32.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALSHA2_64.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALCRC32.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALCripto.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALCriptoAES.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALCriptoOpenSSL.pas"/>
         <DCCReference Include="..\..\src\crypto\RALOpenSSL.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALJWS.pas"/>
-        <DCCReference Include="..\..\src\plugins\auth\RALDigest.pas"/>
-        <DCCReference Include="..\..\src\plugins\auth\RALOAuth2.pas"/>
         <DCCReference Include="..\..\src\crypto\RALBigInt.pas"/>
         <DCCReference Include="..\..\src\crypto\RALASN1.pas"/>
         <DCCReference Include="..\..\src\crypto\RALRSA.pas"/>
         <DCCReference Include="..\..\src\crypto\RALX509.pas"/>
-        <DCCReference Include="..\..\src\plugins\tls\RALSelfSigned.pas"/>
-        <DCCReference Include="..\..\src\core\RALServer.pas"/>
-        <DCCReference Include="..\..\src\core\RALTypes.pas"/>
-        <DCCReference Include="..\..\src\common\RALBase64.pas"/>
-        <DCCReference Include="..\..\src\compress\RALCompress.pas"/>
-        <DCCReference Include="..\..\src\compress\RALCompressZLib.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALCRC32.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALCripto.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALCriptoAES.pas"/>
-        <DCCReference Include="..\..\src\core\RALCustomObjects.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALHashBase.pas"/>
-        <DCCReference Include="..\..\src\common\RALJson.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALMD5.pas"/>
-        <DCCReference Include="..\..\src\common\RALMIMETypes.pas"/>
-        <DCCReference Include="..\..\src\common\RALMultipartCoder.pas"/>
-        <DCCReference Include="..\..\src\common\RALNetwork.pas"/>
-        <DCCReference Include="..\..\src\common\RALQuicFrame.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALSHA1.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALSHA2_32.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALSHA2_64.pas"/>
-        <DCCReference Include="..\..\src\common\RALStream.pas"/>
-        <DCCReference Include="..\..\src\common\RALThreadSafe.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALJWS.pas"/>
         <DCCReference Include="..\..\src\crypto\RALToken.pas"/>
-        <DCCReference Include="..\..\src\common\RALTools.pas"/>
-        <DCCReference Include="..\..\src\common\RALUrlCoder.pas"/>
-        <DCCReference Include="..\..\src\common\RALResponsePages.pas"/>
-        <DCCReference Include="..\..\src\storage\RALStorage.pas"/>
-        <DCCReference Include="..\..\src\storage\RALStorageCSV.pas"/>
-        <DCCReference Include="..\..\src\storage\RALStorageJSON.pas"/>
-        <DCCReference Include="..\..\src\storage\RALStorageBIN.pas"/>
-        <DCCReference Include="..\..\src\storage\RALStorageTypes.pas"/>
-        <DCCReference Include="..\..\src\storage\RALDBTypes.pas"/>
-        <DCCReference Include="..\..\src\crypto\RALHashes.pas"/>
-        <DCCReference Include="..\..\src\common\RALHexadecimal.pas"/>
-        <DCCReference Include="..\..\src\common\RALExternalsLibraries.pas"/>
-        <DCCReference Include="..\..\src\modules\swagger\RALPostmanExporter.pas"/>
-        <DCCReference Include="..\..\src\modules\swagger\RALSwaggerExporter.pas"/>
-        <DCCReference Include="..\..\src\modules\swagger\RALSwaggerModule.pas"/>
-        <DCCReference Include="..\..\src\modules\web\RALWebModule.pas"/>
-        <DCCReference Include="..\..\src\plugins\auth\RALAuthentication.pas"/>
+        <DCCReference Include="..\..\src\plugins\RALSecurity.pas"/>
+        <DCCReference Include="..\..\src\plugins\RALCORS.pas"/>
+        <DCCReference Include="..\..\src\plugins\RALContent.pas"/>
+        <DCCReference Include="..\..\src\plugins\RALConcurrency.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

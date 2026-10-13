@@ -12,7 +12,7 @@ uses
   Winapi.Windows, Winapi.WinHTTP, System.Rtti, System.Hash,
   {$ENDIF}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.UrlClient,
-  RALClient, RALParams, RALTypes, RALRequest, RALAuthentication, RALConsts,
+  RALClient, RALParams, RALTypes, RALRequest, RALConsts,
   RALCompress, RALResponse, RALStream, RALTools;
 
 { whether the RTL lets the engine veto a redirect before it is followed - see

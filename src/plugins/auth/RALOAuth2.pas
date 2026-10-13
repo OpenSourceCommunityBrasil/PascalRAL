@@ -29,7 +29,7 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALBase64, RALJson, RALToken, RALJWS,
   RALHashBase, RALSHA2_32, RALMIMETypes, RALUrlCoder, RALRoutes, RALRequest,
-  RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthentication, RALServer;
+  RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthBase, RALServer;
 
 type
   /// How a client proves itself to the token endpoint: HTTP Basic

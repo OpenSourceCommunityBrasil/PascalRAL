@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleSOAPPackage"/>
+    <Type Value="RunTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\soap"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulesoappackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | SOAP module"/>
+    <Version Major="2"/>
+    <Files Count="5">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\soap\RALSOAPTypes.pas"/>
+        <UnitName Value="RALSOAPTypes"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\soap\RALSOAPModule.pas"/>
+        <UnitName Value="RALSOAPModule"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\soap\RALWSDLExporter.pas"/>
+        <UnitName Value="RALWSDLExporter"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\soap\RALSOAPClient.pas"/>
+        <UnitName Value="RALSOAPClient"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\soap\RALSOAPActions.pas"/>
+        <UnitName Value="RALSOAPActions"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="ralmodulexmlpackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

@@ -217,7 +217,7 @@ end;
 
 class function TRALDBZeos.PackageDependency: StringRAL;
 begin
-  Result := '';
+  Result := 'raldbzeospackage';
 end;
 
 procedure TRALDBZeos.Disconnect;

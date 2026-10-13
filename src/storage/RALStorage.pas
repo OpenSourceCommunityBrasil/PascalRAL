@@ -116,7 +116,9 @@ type
 procedure RALStoragePosted(ADataset: TDataSet);
 /// Called once a storage load is over: what it brought is data, not changes to apply.
 procedure RALStorageLoaded(ADataset: TDataSet);
-/// Forgets the cached link class ALink; each storage unit calls it in its finalization.
+/// Makes ALink the class of AFormat; each storage unit calls it in its initialization.
+procedure RegisterStorageLink(AFormat: TRALStorageFormat; ALink: TRALStorageLinkClass);
+/// Forgets ALink wherever it is registered; each storage unit calls it in its finalization.
 procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
 
 implementation
@@ -143,39 +145,25 @@ begin
   {$ENDIF}
 end;
 
-const
-  cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
-    'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink',
-    'TRALStorageXMLLink');
-
 var
-  { GetClass takes MonitorEnter on the RTL's global class registry, and these
-    lookups happen once per database request. There is no registration routine
-    here to keep the class in - the storage units only call RegisterClass in
-    their own initialization - so the resolution is cached on first use.
-    Only a NON-nil result is kept: a design-time package loaded later is still
-    found, and two threads racing here are harmless, both compute the same
-    pointer. }
+  { The class of each format, kept by the format's own unit: looking it up costs
+    no lock, and a format whose package is unloaded leaves no class behind. }
   gStorageLinkClasses: array[TRALStorageFormat] of TRALStorageLinkClass;
 
 function StorageLinkClassOf(AFormat: TRALStorageFormat): TRALStorageLinkClass;
 begin
-  { a format read off the wire is a byte cast to the enum, and both tables are
-    indexed by it: past the last member this read a "class" from beyond the
-    array and called its constructor. The case statement this replaced simply
-    answered nil there. Cardinal, not Ord: Delphi compares a small enum as a
-    signed byte, and 128 to 255 passed "Ord(x) > Ord(High(x))" - see
-    RALFieldTypeName }
+  { a format read off the wire is a byte cast to the enum: compared as Cardinal,
+    since Delphi compares a small enum as a signed byte }
   Result := nil;
   if Cardinal(AFormat) > Cardinal(Ord(High(TRALStorageFormat))) then
     Exit;
-
   Result := gStorageLinkClasses[AFormat];
-  if Result = nil then
-  begin
-    Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[AFormat]));
-    gStorageLinkClasses[AFormat] := Result;
-  end;
+end;
+
+procedure RegisterStorageLink(AFormat: TRALStorageFormat; ALink: TRALStorageLinkClass);
+begin
+  if AFormat <> rsfAuto then
+    gStorageLinkClasses[AFormat] := ALink;
 end;
 
 procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
@@ -410,10 +398,8 @@ var
   vLinks: TRALStorageFormat;
 begin
   Result := nil;
-  for vLinks := Low(cStorageLinkClass) to High(cStorageLinkClass) do
+  for vLinks := Low(TRALStorageFormat) to High(TRALStorageFormat) do
   begin
-    { through the cache: GetClass takes the global lock of the RTL's class
-       registry }
     Result := StorageLinkClassOf(vLinks);
     if Result <> nil then
       Break;
@@ -549,14 +535,11 @@ end;
 
 class function TRALStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
 const
-  { the same rsfAuto order of preference that was being built into a
-    TStringList on every call }
+  // the order of preference of rsfAuto
   cAuto: array [0 .. 4] of TRALStorageFormat = (rsfBIN, rsfJSON, rsfBSON, rsfCSV, rsfXML);
 var
   vInt: IntegerRAL;
 begin
-  { the per-call TStringList went away with the GetClass: an object allocated,
-    filled and freed only to pick between four formats known at compile time }
   if AFormat <> rsfAuto then
   begin
     Result := StorageLinkClassOf(AFormat);

@@ -25,11 +25,11 @@ package KwikRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Kwik QUIC Components (Android)'}
+{$DESCRIPTION 'PascalRAL | Kwik engine (QUIC, Android)'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
   RALKwikClient in '..\..\..\src\engine\kwik\RALKwikClient.pas',

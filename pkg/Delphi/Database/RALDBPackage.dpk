@@ -1,7 +1,6 @@
 package RALDBPackage;
 
 {$R *.res}
-{$R 'RALDBPackage.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -26,19 +25,18 @@ package RALDBPackage;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | Database Components'}
+{$DESCRIPTION 'PascalRAL | DBWare'}
+{$RUNONLY}
 {$IMPLICITBUILD ON}
 
 requires
-  dcldb,
-  PascalRALDsgn;
+  RALStoragePackage;
 
 contains
   RALDBBase in '..\..\..\src\database\RALDBBase.pas',
   RALDBPool in '..\..\..\src\database\RALDBPool.pas',
-  RALDBModule in '..\..\..\src\database\RALDBModule.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
   RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',
-  RALDBReg in '..\..\..\src\database\RALDBReg.pas';
+  RALDBModule in '..\..\..\src\database\RALDBModule.pas';
 
 end.

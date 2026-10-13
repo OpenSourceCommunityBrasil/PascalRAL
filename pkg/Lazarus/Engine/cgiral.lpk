@@ -11,34 +11,48 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <OtherUnitFiles Value="..\..\..\src\engine\cgi"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\cgiral"/>
       </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
     </CompilerOptions>
-    <Description Value="Package for installing CGI data engine components for PascalRAL."/>
+    <Description Value="PascalRAL | CGI engine"/>
     <Version Major="2"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="..\..\..\src\engine\cgi\RALCGIServer.pas"/>
         <UnitName Value="RALCGIServer"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\engine\cgi\RALCGIServer_FPC.inc"/>
-        <Type Value="Include"/>
-      </Item2>
-      <Item3>
         <Filename Value="..\..\..\src\engine\cgi\RALCGIReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALCGIReg"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\engine\cgi\RALCGIServer_FPC.inc"/>
+        <Type Value="Include"/>
       </Item3>
+      <Item4>
+        <Filename Value="cgiRAL.lrs"/>
+        <Type Value="LRS"/>
+      </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="weblaz"/>
+        <PackageName Value="FCL"/>
       </Item2>
     </RequiredPkgs>
     <UsageOptions>

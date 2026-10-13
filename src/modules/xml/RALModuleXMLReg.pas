@@ -24,7 +24,7 @@ end;
 
 {$IFDEF FPC}
 initialization
-{$I ralxml.lrs}
+{$I ralmodulexmlpackage.lrs}
 {$ENDIF}
 
 end.

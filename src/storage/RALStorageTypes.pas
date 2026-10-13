@@ -18,6 +18,10 @@ type
     sftWord, sftCardinal, sftQWord, sftDouble, sftBoolean,
     sftString, sftBlob, sftMemo, sftDateTime, sftBCD);
 
+  { Database access library of a DBWare server or client; its ordinal goes on the
+    wire, and qtOther stays last, at 255. }
+  TRALDBDriverType = (qtFiredac, qtZeos, qtLazSQL, qtOther = 255);
+
   /// Event fired with the message of a failed database request.
   TRALDBTableOnError = procedure(Sender: TObject; AException: StringRAL) of object;
 

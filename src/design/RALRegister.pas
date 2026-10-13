@@ -20,11 +20,9 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   // generic
-  RALConsts, RALAuthentication, RALCompress, RALTypes, RALCustomObjects,
+  RALConsts, RALCompress, RALTypes, RALCustomObjects,
   // server
-  RALServer, RALWebModule, RALSwaggerModule, RALStorageJSON, RALStorageBIN,
-  RALStorageCSV, RALSecurity, RALCORS, RALContent, RALDigest, RALOAuth2, RALSelfSigned,
-  RALConcurrency,
+  RALServer, RALSecurity, RALCORS, RALContent, RALConcurrency,
   // client
   RALClient;
 
@@ -144,17 +142,12 @@ begin
   {$ENDIF}
 
   // component registration process
-  RegisterComponents('RAL - Server', [TRALServerBasicAuth, TRALServerJWTAuth,
-    TRALServerDigest, TRALServerOAuth2]);
-  RegisterComponents('RAL - Client', [TRALClient, TRALClientBasicAuth, TRALClientJWTAuth,
-    TRALClientDigest, TRALClientOAuth2, TRALOAuth2Loopback]);
-  RegisterComponents('RAL - Modules', [TRALWebModule, TRALSwaggerModule]);
+  RegisterComponents('RAL - Client', [TRALClient]);
   // plugins link to a server by their Server property
   RegisterComponents('RAL - Plugins', [TRALLimitsPlugin, TRALCompressPlugin,
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
     TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
-    TRALSelfSignedPlugin, TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
-  RegisterComponents('RAL - Storage', [TRALStorageJSONLink, TRALStorageBINLink, TRALStorageCSVLink]);
+    TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
 
   // registered for the base classes: the IDE also applies them to every descendant
   RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);

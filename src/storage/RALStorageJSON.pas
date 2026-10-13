@@ -1160,6 +1160,7 @@ end;
 
 initialization
   RegisterClass(TRALStorageJSONLink);
+  RegisterStorageLink(rsfJSON, TRALStorageJSONLink);
 
 finalization
   UnregisterStorageLink(TRALStorageJSONLink);

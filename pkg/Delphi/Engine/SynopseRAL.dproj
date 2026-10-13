@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{559EBE0E-EA9A-4B5B-B03A-F2543BC4D068}</ProjectGuid>
         <MainSource>SynopseRAL.dpk</MainSource>
@@ -84,7 +84,8 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>..\..\..\compiled</DCC_DcuOutput>
+        <DCC_Description>PascalRAL | mORMot2 engine</DCC_Description>
+        <DCC_DcuOutput>..\..\..\compiled\delphi\$(Platform)\$(Config)\SynopseRAL</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -125,7 +126,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>rtl;PascalRAL;PascalRALDsgn;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>rtl;PascalRAL;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -133,7 +134,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>rtl;PascalRAL;PascalRALDsgn;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>rtl;PascalRAL;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -160,10 +161,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
-        <DCC_UnitSearchPath>..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\engine\synopse;$(mormot2);$(mormot2)\core;$(mormot2)\lib;$(mormot2)\crypt;$(mormot2)\net;$(mormot2)\db;$(mormot2)\rest;$(mormot2)\orm;$(mormot2)\soa;$(mormot2)\app;$(mormot2)\script;$(mormot2)\ui;$(mormot2)\tools;$(mormot2)\misc;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>$(mormot2);$(mormot2)\core;$(mormot2)\lib;$(mormot2)\crypt;$(mormot2)\net;$(mormot2)\db;$(mormot2)\rest;$(mormot2)\orm;$(mormot2)\soa;$(mormot2)\app;$(mormot2)\script;$(mormot2)\ui;$(mormot2)\tools;$(mormot2)\misc;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_Description>PascalRAL | Synopse Components</DCC_Description>
         <Debugger_IncludeSystemVars>true</Debugger_IncludeSystemVars>
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
     </PropertyGroup>
@@ -181,12 +181,11 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="SynopseRAL.dcr"/>
-        <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
-        <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseReg.pas"/>
+        <DCCReference Include="PascalRAL.dcp"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>
+        <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseClient.pas"/>
         <DCCReference Include="..\..\..\src\engine\synopse\RALHttpSysCert.pas"/>
+        <DCCReference Include="..\..\..\src\engine\synopse\RALSynopseReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

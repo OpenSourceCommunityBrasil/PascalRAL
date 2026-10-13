@@ -108,6 +108,12 @@ begin
   AProject.AddPackageDependency('LCL');
   AProject.AddPackageDependency('pascalral');
   AProject.AddPackageDependency(vServerPkg);
+  if FAuthType > 0 then
+    AProject.AddPackageDependency('ralpluginauthpackage');
+  if FSwagger then
+    AProject.AddPackageDependency('ralmoduleswaggerpackage');
+  if FWebModule then
+    AProject.AddPackageDependency('ralmodulewebpackage');
 
   vFile := TStringList.Create;
   try
@@ -214,6 +220,12 @@ begin
 
   AProject.AddPackageDependency('pascalral');
   AProject.AddPackageDependency(vServerPkg);
+  if FAuthType > 0 then
+    AProject.AddPackageDependency('ralpluginauthpackage');
+  if FSwagger then
+    AProject.AddPackageDependency('ralmoduleswaggerpackage');
+  if FWebModule then
+    AProject.AddPackageDependency('ralmodulewebpackage');
 
   vFile := TStringList.Create;
   try
@@ -386,6 +398,12 @@ begin
 
   AProject.AddPackageDependency('pascalral');
   AProject.AddPackageDependency(vServerPkg);
+  if FAuthType > 0 then
+    AProject.AddPackageDependency('ralpluginauthpackage');
+  if FSwagger then
+    AProject.AddPackageDependency('ralmoduleswaggerpackage');
+  if FWebModule then
+    AProject.AddPackageDependency('ralmodulewebpackage');
 
   vFile := TStringList.Create;
   try

@@ -8,7 +8,7 @@ unit IndyRAL;
 interface
 
 uses
-  RALIndyClient, RALIndyReg, RALIndyServer, LazarusPackageIntf;
+  RALIndyServer, RALIndyClient, RALIndyReg, LazarusPackageIntf;
 
 implementation
 

@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, DB, DateUtils, FMTBcd, Math,
   RALTypes, RALConsts, RALStorage, RALStorageJSON, RALTools, RALBase64, RALStream,
-  RALMIMETypes, RALStorageTypes, RALDBBase, RALXMLReader, RALXMLWriter;
+  RALMIMETypes, RALStorageTypes, RALXMLReader, RALXMLWriter;
 
 type
   { Format of the XML: xtAuto lets a DBWare answer follow the client's dataset and is
@@ -2209,6 +2209,7 @@ end;
 
 initialization
   RegisterClass(TRALStorageXMLLink);
+  RegisterStorageLink(rsfXML, TRALStorageXMLLink);
 
 finalization
   UnregisterStorageLink(TRALStorageXMLLink);

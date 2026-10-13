@@ -4,21 +4,30 @@
     <Targets>
       <Target FileName="pascalral.lpk"/>
       <Target FileName="pascalraldsgn.lpk"/>
-      <Target FileName="ralwizardpack.lpk"/>
+      <Target FileName="Engine\indyral.lpk"/>
+      <Target FileName="Engine\synopseral.lpk"/>
+      <Target FileName="Engine\saguiral.lpk"/>
+      <Target FileName="Engine\msquicral.lpk"/>
       <Target FileName="Engine\cgiral.lpk"/>
       <Target FileName="Engine\fphttpral.lpk"/>
-      <Target FileName="Engine\indyral.lpk"/>
-      <Target FileName="Engine\saguiral.lpk"/>
-      <Target FileName="Engine\synopseral.lpk"/>
-      <Target FileName="Engine\msquicral.lpk"/>
+      <Target FileName="Plugins\ralpluginauthpackage.lpk"/>
+      <Target FileName="Plugins\ralplugintlspackage.lpk"/>
+      <Target FileName="Storage\ralstoragepackage.lpk"/>
+      <Target FileName="Storage\ralstoragebsonpackage.lpk"/>
       <Target FileName="Database\raldbpackage.lpk"/>
-      <Target FileName="Database\raldbsqldblink.lpk"/>
-      <Target FileName="Database\raldbzeoslink.lpk"/>
-      <Target FileName="compression\ralbrotlicompress.lpk"/>
-      <Target FileName="compression\ralzstdcompress.lpk"/>
-      <Target FileName="Database\raldbbson.lpk"/>
-      <Target FileName="Modules\ralxmlpackage.lpk"/>
-      <Target FileName="Modules\ralsoappackage.lpk"/>
+      <Target FileName="Database\raldbdsgn.lpk"/>
+      <Target FileName="Database\raldbzeospackage.lpk"/>
+      <Target FileName="Database\raldbzeosdsgn.lpk"/>
+      <Target FileName="Database\raldbsqldbpackage.lpk"/>
+      <Target FileName="Database\raldbsqldbdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulewebpackage.lpk"/>
+      <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
+      <Target FileName="Modules\ralmodulexmlpackage.lpk"/>
+      <Target FileName="Modules\ralmodulesoappackage.lpk"/>
+      <Target FileName="Modules\ralmodulesoapdsgn.lpk"/>
+      <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
+      <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
+      <Target FileName="Wizard\ralwizarddsgn.lpk"/>
     </Targets>
   </ProjectGroup>
 </CONFIG>

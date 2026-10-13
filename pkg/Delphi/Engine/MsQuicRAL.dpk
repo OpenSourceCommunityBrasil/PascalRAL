@@ -26,16 +26,16 @@ package MsQuicRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | MsQuic Components'}
+{$DESCRIPTION 'PascalRAL | MsQuic engine (QUIC)'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
   MsQuic in '..\..\..\src\bindings\MsQuic.pas',
+  RALMsQuicServer in '..\..\..\src\engine\msquic\RALMsQuicServer.pas',
   RALMsQuicClient in '..\..\..\src\engine\msquic\RALMsQuicClient.pas',
-  RALMsQuicReg in '..\..\..\src\engine\msquic\RALMsQuicReg.pas',
-  RALMsQuicServer in '..\..\..\src\engine\msquic\RALMsQuicServer.pas';
+  RALMsQuicReg in '..\..\..\src\engine\msquic\RALMsQuicReg.pas';
 
 end.

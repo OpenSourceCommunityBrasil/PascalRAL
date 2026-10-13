@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs, DateUtils,
-  RALCustomObjects, RALTypes, RALAuthentication, RALRequest, RALResponse,
+  RALCustomObjects, RALTypes, RALAuthBase, RALRequest, RALResponse,
   RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJSON, RALParams,
   RALMimeTypes, RALStream;
 

@@ -10,8 +10,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\src\core;..\..\src\storage;..\..\src\design;..\..\src\compress;..\..\src\storage\bson;..\..\src\common;..\..\src\crypto;..\..\src\engine\fpHTTP;..\..\..\src\engine\fpHTTP"/>
-        <UnitOutputDirectory Value="..\..\..\compiled"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\fpHTTP"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\fphttpral"/>
       </SearchPaths>
       <Linking>
         <Debugging>
@@ -24,12 +24,12 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Package for installing fpHttp data engine components for PascalRAL."/>
+    <Description Value="PascalRAL | fpHTTP engine"/>
     <Version Major="2"/>
     <Files Count="4">
       <Item1>
-        <Filename Value="fpHttpRAL.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="..\..\..\src\engine\fpHTTP\RALfpHTTPServer.pas"/>
+        <UnitName Value="RALfpHTTPServer"/>
       </Item1>
       <Item2>
         <Filename Value="..\..\..\src\engine\fpHTTP\RALfpHTTPClient.pas"/>
@@ -41,15 +41,15 @@
         <UnitName Value="RALfpHTTPReg"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\..\src\engine\fpHTTP\RALfpHTTPServer.pas"/>
-        <UnitName Value="RALfpHTTPServer"/>
+        <Filename Value="fpHttpRAL.lrs"/>
+        <Type Value="LRS"/>
       </Item4>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="PascalRAL"/>
-        <MinVersion Major="1" Valid="True"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>

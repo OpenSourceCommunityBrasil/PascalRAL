@@ -25,11 +25,11 @@ package OkHttpRAL;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'PascalRAL | OkHttp Components (Android)'}
+{$DESCRIPTION 'PascalRAL | OkHttp engine (Android)'}
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRALDsgn;
+  PascalRAL;
 
 contains
   RALOkHttpClient in '..\..\..\src\engine\okhttp\RALOkHttpClient.pas',

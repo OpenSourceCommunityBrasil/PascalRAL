@@ -8,7 +8,7 @@ unit SynopseRAL;
 interface
 
 uses
-  RALSynopseClient, RALSynopseReg, RALSynopseServer, RALHttpSysCert,
+  RALSynopseServer, RALSynopseClient, RALHttpSysCert, RALSynopseReg, 
   LazarusPackageIntf;
 
 implementation
