@@ -16,7 +16,7 @@
       </SearchPaths>
     </CompilerOptions>
     <Description Value="SOAP 1.1/1.2 module, WSDL exporter and SOAP client for PascalRAL."/>
-    <Version Major="1" Minor="3"/>
+    <Version Major="2"/>
     <Files Count="6">
       <Item1>
         <Filename Value="..\..\..\src\modules\soap\RALSOAPTypes.pas"/>

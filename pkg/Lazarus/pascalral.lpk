@@ -24,7 +24,7 @@
       </Other>
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
-    <Version Major="1" Minor="2"/>
+    <Version Major="2"/>
     <Files Count="59">
       <Item1>
         <Filename Value="..\..\src\base\RALClient.pas"/>

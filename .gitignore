@@ -72,3 +72,6 @@ __recovery/
 # Lazarus specific ignores
 bak/
 *.lps
+
+# build output of the packages
+compiled/

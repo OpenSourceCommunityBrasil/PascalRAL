@@ -16,7 +16,7 @@
       </SearchPaths>
     </CompilerOptions>
     <Description Value="XML library and XML dataset storage for PascalRAL."/>
-    <Version Major="1" Minor="3"/>
+    <Version Major="2"/>
     <Files Count="5">
       <Item1>
         <Filename Value="..\..\..\src\modules\xml\RALXMLReader.pas"/>

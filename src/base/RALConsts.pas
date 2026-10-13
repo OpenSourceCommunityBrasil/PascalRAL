@@ -19,11 +19,11 @@ type
 
 const
   /// PascalRAL version, as text.
-  RALVERSION = '1.2.0-1';
+  RALVERSION = '2.0.0';
   /// Major part of the version.
-  RALVERSION_MAJOR = 1;
+  RALVERSION_MAJOR = 2;
   /// Minor part of the version.
-  RALVERSION_MINOR = 2;
+  RALVERSION_MINOR = 0;
   /// Patch part of the version.
   RALVERSION_PATCH = 0;
   /// Version as one number: major * 10000 + minor * 100 + patch.
