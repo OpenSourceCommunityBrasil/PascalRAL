@@ -390,6 +390,8 @@ begin
   vSQL := GetQuerySQL(ADataset);
   vDriver := GetQueryClass(ADataset);
   vParams := GetQueryParams(ADataset);
+  if FStorage <> nil then
+    FStorage.PrepareForDataSet(ADataset);
   try
     Add(vSQL, vParams, nil, AExecType, vDriver);
   finally

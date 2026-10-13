@@ -8,7 +8,7 @@ uses
     a console server or a service then fails to link, asking for WSRegisterControl
     and the rest of the widgetset registration }
   Classes, SysUtils, DB,
-  BufDataset,
+  BufDataset, XMLDatapacketReader,
   RALStorage, RALTools, RALTypes, RALResponse, RALMIMETypes,
   RALStorageBIN, RALStorageJSON, RALDBTypes, RALDBSQLCache,
   RALDBConnection, RALConsts;
@@ -21,6 +21,7 @@ type
   private
     FRALConnection: TRALDBConnection;
     FLoading: boolean;
+    FLoadingNative: boolean;
     FLastId: Int64RAL;
     FOpened: boolean;
     FOpening: boolean;
@@ -123,6 +124,17 @@ type
 
 implementation
 
+{ The TBufDataset format of a native answer, from the content type it came with. fcl-db
+  reads only dfXML (dfXMLUTF8 has no reader); its text goes through the system code
+  page, which is UTF-8 under RAL. }
+function NativePacketFormat(const AContentType: StringRAL): TDataPacketFormat;
+begin
+  if Pos(StringRAL('xml'), AContentType) > 0 then
+    Result := dfXML
+  else
+    Result := dfBinary;
+end;
+
 { TRALDBBufDataset }
 
 procedure TRALDBBufDataset.SetUpdateSQL(AValue: TRALDBUpdateSQL);
@@ -138,6 +150,8 @@ var
   vType: TRALFieldType;
   vTables: TStringList;
 begin
+  if FLoadingNative then
+    Exit;
   vTables := TStringList.Create;
 
   vInfo := SchemaFor(FSQL.Text);
@@ -265,6 +279,12 @@ end;
 
 procedure TRALDBBufDataset.InternalOpen;
 begin
+  // a native answer brings its own field defs, which TBufDataset reads from it
+  if FLoadingNative then
+  begin
+    inherited InternalOpen;
+    Exit;
+  end;
   if (FLoading) and (not FOpened) then
   begin
     FOpened := True;
@@ -397,6 +417,7 @@ var
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
+  vInt: IntegerRAL;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
@@ -417,7 +438,23 @@ begin
         vDBSQL := vSQLCache.SQLList[0];
 
         if vDBSQL.Response.Native then
-          Self.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
+        begin
+          { the stream carries the real schema: the defs guessed from the RAL type
+            map and the fields the dataset made for itself give way to it }
+          FLoadingNative := True;
+          try
+            if Self.Active then
+              Self.Close;
+            Self.FieldDefs.Clear;
+            for vInt := Pred(Self.Fields.Count) downto 0 do
+              if Self.Fields[vInt].Owner = Self then
+                Self.Fields[vInt].Free;
+            Self.LoadFromStream(vDBSQL.Response.Stream,
+              NativePacketFormat(vDBSQL.Response.ContentType));
+          finally
+            FLoadingNative := False;
+          end;
+        end
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
 
@@ -525,7 +562,8 @@ begin
         try
           try
             if vDBSQL.Response.Native then
-              vTable.LoadFromStream(vDBSQL.Response.Stream, dfBinary)
+              vTable.LoadFromStream(vDBSQL.Response.Stream,
+                NativePacketFormat(vDBSQL.Response.ContentType))
             else
               LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 

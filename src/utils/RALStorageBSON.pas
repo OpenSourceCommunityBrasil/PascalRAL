@@ -317,6 +317,7 @@ begin
         end;
       end;
       ADataset.Post;
+      RALStoragePosted(ADataset);
     end;
 
     if vBookMark <> nil then
@@ -383,6 +384,9 @@ end;
 
 initialization
   RegisterClass(TRALStorageBSONLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageBSONLink);
 
 end.
 

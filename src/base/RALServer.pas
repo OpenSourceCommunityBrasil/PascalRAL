@@ -304,6 +304,8 @@ type
     FModule: TRALModuleRoutes;
     FRoute: TRALRoute;
 
+    /// AContentType, or the module's default when empty, or JSON when both are.
+    function ContentTypeOf(const AContentType: StringRAL): StringRAL;
     function GetContentType: StringRAL;
     function GetParams: TRALParams;
     function GetStatusCode: IntegerRAL;
@@ -316,12 +318,14 @@ type
 
     /// Adds a header to the core response.
     procedure AddHeader(const AName: StringRAL; const AValue: StringRAL);
-    /// Answers AStatusCode with the text AMessage, of AContentType.
+    { Answers AStatusCode with the text AMessage, of AContentType; empty is the
+      module's TRALModuleRoutes.DefaultContentType. }
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
-                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
-    /// Answers AStatusCode with a copy of AStream.
+                     const AContentType: StringRAL = ''); overload;
+    { Answers AStatusCode with a copy of AStream, of AContentType; empty is the
+      module's TRALModuleRoutes.DefaultContentType. }
     procedure Answer(AStatusCode: IntegerRAL; const AStream: TStream;
-                     const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
+                     const AContentType: StringRAL = ''); overload;
     /// Answers AStatusCode, with the server's page for it.
     procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Answers with the file AFileName.
@@ -408,6 +412,9 @@ type
     /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
+    { Content type the module answers in, set on the response before the preflight,
+      the 405 or the route runs; empty keeps the response's own (JSON). }
+    function DefaultContentType: StringRAL; virtual;
     /// TRALServer.ErrorText of the linked server; the message itself with no server.
     function ErrorText(AException: Exception): StringRAL;
     /// A new list of the module's routes; the caller frees the list, not the routes.
@@ -1156,13 +1163,22 @@ end;
 procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
   const AContentType: StringRAL);
 begin
-  FCore.Answer(AStatusCode, AMessage, AContentType);
+  FCore.Answer(AStatusCode, AMessage, ContentTypeOf(AContentType));
 end;
 
 procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
   const AContentType: StringRAL);
 begin
-  FCore.Answer(AStatusCode, AStream, AContentType);
+  FCore.Answer(AStatusCode, AStream, ContentTypeOf(AContentType));
+end;
+
+function TRALModuleResponse.ContentTypeOf(const AContentType: StringRAL): StringRAL;
+begin
+  Result := AContentType;
+  if (Result = '') and (FModule <> nil) then
+    Result := FModule.DefaultContentType;
+  if Result = '' then
+    Result := rctAPPLICATIONJSON;
 end;
 
 procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL);
@@ -1373,6 +1389,7 @@ function TRALModuleRoutes.ProcessRequest(ARequest: TRALRequest;
   AResponse: TRALResponse): boolean;
 var
   vRoute: TRALRoute;
+  vType: StringRAL;
 begin
   if ARequest.RouteResolved then
   begin
@@ -1389,6 +1406,10 @@ begin
       Exit;
     ARequest.SetResolvedRoute(vRoute, Self);
   end;
+
+  vType := DefaultContentType;
+  if vType <> '' then
+    AResponse.ContentType := vType;
 
   if ARequest.Method = amOPTIONS then
   begin
@@ -1438,6 +1459,11 @@ end;
 procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   AResponse.Answer(HTTP_NotFound);
+end;
+
+function TRALModuleRoutes.DefaultContentType: StringRAL;
+begin
+  Result := '';
 end;
 
 function TRALModuleRoutes.ErrorText(AException: Exception): StringRAL;

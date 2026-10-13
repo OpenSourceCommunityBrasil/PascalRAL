@@ -706,4 +706,7 @@ initialization
   RegisterClass(TRALfpHttpClientHTTP);
   RegisterEngine(TRALfpHttpClientHTTP);
 
+finalization
+  UnregisterEngine(TRALfpHttpClientHTTP);
+
 end.

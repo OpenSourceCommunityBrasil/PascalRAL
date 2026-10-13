@@ -11,6 +11,17 @@ uses
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
   RALParams, RALMultipartCoder, RALTools;
 
+{ fcl-web 3.3 gives each connection to a TFPHTTPServerConnectionHandler, where 3.2
+  asks CreateConnectionThread for a thread. It also keeps the request body as TBytes
+  (ContentBytes), Content being a copy: no unit-level name marks that, and
+  DefaultMaxHeaderCount marks a later fcl-web, so it stands for it }
+{$IF DECLARED(TFPHTTPServerConnectionHandler)}
+  {$DEFINE RALFPHTTPHANDLER}
+{$IFEND}
+{$IF DECLARED(DefaultMaxHeaderCount)}
+  {$DEFINE RALFPHTTPBYTES}
+{$IFEND}
+
 type
 
   { TRALfpHTTPCertData }
@@ -77,10 +88,17 @@ type
     FIdle: Integer;
     FWorkers: Integer;
     FStopping: Boolean;
+    /// Closes the socket of every connection queued or being handled.
+    procedure CloseConnections;
+    procedure ConnectionDone(AConnection: TFPHTTPConnection);
+    /// How many connections are queued or being handled.
+    function PoolCount: Integer;
+    { queues the connection for a worker of the pool, starting one only when
+      none is waiting }
+    procedure QueueConnection(AConnection: TFPHTTPConnection);
     { the next connection for a worker, or nil when it waited
       WorkerIdleTimeout for nothing or the server is stopping }
     function TakeConnection: TFPHTTPConnection;
-    procedure ConnectionDone(AConnection: TFPHTTPConnection);
   protected
     { every TLS connection copies CertificateData into a socket handler of its
       own (CreateSSLSocketHandler): under the lock, so a certificate replaced
@@ -88,13 +106,20 @@ type
     function GetSocketHandler(const AUseSSL: Boolean): TSocketHandler; override;
     { turns Nagle off on the accepted socket - see the implementation }
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
-    { queues the connection for the pool instead of starting a thread for it;
-      a worker is started only when none is waiting. fcl-web ignores what
-      this returns }
+  {$IFDEF RALFPHTTPHANDLER}
+    /// Answers the handler that gives every connection to the pool.
+    function CreateConnectionHandler: TFPHTTPServerConnectionHandler; override;
+  {$ELSE}
+    { queues the connection for the pool instead of starting a thread for it.
+      fcl-web ignores what this returns }
     function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
+  {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { the ceiling on open connections, 0 for none, where fcl-web applies it
+      itself instead of asking OnAllowConnect }
+    procedure ApplyMaxConnections(AValue: Integer);
     { waits until every connection has been handled and every worker has
       ended. Past ATimeoutMs it closes the sockets still open (a client that
       connected and never sent a request would otherwise hold a worker
@@ -180,9 +205,10 @@ type
     /// this name: past it a NEW connection is refused, so no existing client is
     /// dropped to make room. 0 means no ceiling.
     ///
-    /// fcl-web has no such setting of its own - what it has is the question it
-    /// asks before accepting (OnAllowConnect) and the count of connections it
+    /// fcl-web 3.2 has no such setting of its own - what it has is the question
+    /// it asks before accepting (OnAllowConnect) and the count of connections it
     /// already has (ConnectionCount), and the two together are exactly this.
+    /// fcl-web 3.3 has one, MaxLiveConnectionCount, which this sets.
     property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
     property QueueSize : Word read GetQueueSize write SetQueueSize;
     property SSL: TRALfpHTTPSSL read GetSSL write SetSSL;
@@ -198,6 +224,29 @@ uses
   // CloseSocket for the handlers still open past the wait
   sockets,
   RALMIMETypes;
+
+{$IFDEF RALFPHTTPHANDLER}
+type
+  { Gives every connection fcl-web accepts to the server's pool, whatever
+    ThreadMode says: the pool's workers handle it and free it }
+  TRALfpHttpConnectionHandler = class(TFPHTTPServerConnectionHandler)
+  private
+    /// The server this handler belongs to.
+    function Core: TRALfpHttpServerCore;
+  protected
+    /// Takes the connection out of the pool and frees it.
+    procedure RemoveConnection(aConnection: TFPHTTPConnection); override;
+  public
+    /// Does nothing: a worker takes each connection as soon as it is queued.
+    procedure CheckRequests; override;
+    /// Closes the socket of every connection queued or being handled.
+    procedure CloseSockets; override;
+    /// How many connections are queued or being handled.
+    function GetActiveConnectionCount: Integer; override;
+    /// Queues the connection for a worker of the pool.
+    procedure HandleConnection(aConnection: TFPHTTPConnection); override;
+  end;
+{$ENDIF}
 
 { The listen backlog, as large as the system allows and fcl-web can keep: it
   holds QueueSize in a Word, and Windows' SOMAXCONN is $7FFFFFFF. Assigned
@@ -320,6 +369,30 @@ begin
   FWake := TEvent.Create(nil, False, False, '');
   FQueue := TList.Create;
   FActive := TList.Create;
+  { the limits fcl-web 3.3 added are off, so it serves what 3.2 served: the
+    ceiling is MaxConnections (ApplyMaxConnections) and the size limits are
+    the plugins'. KeepConnections stays off - one request per connection }
+  {$IF DECLARED(DefaultMaxLiveConnectionCount)}
+  MaxLiveConnectionCount := 0;
+  Send503OnMaxConnections := False;
+  {$IFEND}
+  {$IF DECLARED(DefaultMaxHeaderCount)}
+  MaxHeaderCount := 0;
+  MaxLineLength := 0;
+  {$IFEND}
+  {$IF DECLARED(DefaultRequestReadTimeout)}
+  RequestReadTimeout := 0;
+  StrictASCIIURL := False;
+  {$IFEND}
+end;
+
+procedure TRALfpHttpServerCore.ApplyMaxConnections(AValue: Integer);
+begin
+  { fcl-web asks OnAllowConnect where it has no ceiling of its own, and stops
+    asking where it has one: read on every accept, like OnAllowConnect }
+  {$IF DECLARED(DefaultMaxLiveConnectionCount)}
+  MaxLiveConnectionCount := AValue;
+  {$IFEND}
 end;
 
 destructor TRALfpHttpServerCore.Destroy;
@@ -428,14 +501,26 @@ begin
   Result := inherited CreateConnection(Data);
 end;
 
+{$IFDEF RALFPHTTPHANDLER}
+function TRALfpHttpServerCore.CreateConnectionHandler: TFPHTTPServerConnectionHandler;
+begin
+  Result := TRALfpHttpConnectionHandler.Create(Self);
+end;
+{$ELSE}
 function TRALfpHttpServerCore.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;
+begin
+  Result := nil;
+  QueueConnection(Conn);
+end;
+{$ENDIF}
+
+procedure TRALfpHttpServerCore.QueueConnection(AConnection: TFPHTTPConnection);
 var
   vStart: Boolean;
 begin
-  Result := nil;
   FPoolLock.Acquire;
   try
-    FQueue.Add(Conn);
+    FQueue.Add(AConnection);
     { a new worker only when every one waiting already has a connection to
       take: a route that blocks never holds up the next connection, the same
       as with a thread per connection }
@@ -450,20 +535,40 @@ begin
     TRALfpHttpWorker.Create(Self);
 end;
 
-procedure TRALfpHttpServerCore.WaitHandlers(ATimeoutMs: Integer);
+function TRALfpHttpServerCore.PoolCount: Integer;
+begin
+  FPoolLock.Acquire;
+  try
+    Result := FQueue.Count + FActive.Count;
+  finally
+    FPoolLock.Release;
+  end;
+end;
+
+procedure TRALfpHttpServerCore.CloseConnections;
 var
   vInt: Integer;
+begin
+  FPoolLock.Acquire;
+  try
+    for vInt := FActive.Count - 1 downto 0 do
+      CloseSocket(TFPHTTPConnection(FActive[vInt]).Socket.Handle);
+    for vInt := FQueue.Count - 1 downto 0 do
+      CloseSocket(TFPHTTPConnection(FQueue[vInt]).Socket.Handle);
+  finally
+    FPoolLock.Release;
+  end;
+end;
+
+procedure TRALfpHttpServerCore.WaitHandlers(ATimeoutMs: Integer);
+var
   vStart: TDateTime;
 
   function Pending: Boolean;
   begin
-    FPoolLock.Acquire;
-    try
-      Result := (FQueue.Count > 0) or (FActive.Count > 0);
-    finally
-      FPoolLock.Release;
-    end;
-    Result := Result or (ConnectionCount > 0);
+    { fcl-web 3.2 counts the connection objects alive, one created and not
+      queued yet included; 3.3 asks the pool (PoolCount) }
+    Result := (PoolCount > 0) or (ConnectionCount > 0);
   end;
 
 begin
@@ -472,15 +577,7 @@ begin
     Sleep(10);
   if Pending then
   begin
-    FPoolLock.Acquire;
-    try
-      for vInt := FActive.Count - 1 downto 0 do
-        CloseSocket(TFPHTTPConnection(FActive[vInt]).Socket.Handle);
-      for vInt := FQueue.Count - 1 downto 0 do
-        CloseSocket(TFPHTTPConnection(FQueue[vInt]).Socket.Handle);
-    finally
-      FPoolLock.Release;
-    end;
+    CloseConnections;
     while Pending do
       Sleep(10);
   end;
@@ -501,6 +598,43 @@ begin
   end;
   FStopping := False;
 end;
+
+{$IFDEF RALFPHTTPHANDLER}
+
+{ TRALfpHttpConnectionHandler }
+
+function TRALfpHttpConnectionHandler.Core: TRALfpHttpServerCore;
+begin
+  Result := TRALfpHttpServerCore(Server);
+end;
+
+procedure TRALfpHttpConnectionHandler.RemoveConnection(aConnection: TFPHTTPConnection);
+begin
+  Core.ConnectionDone(aConnection);
+  aConnection.Free;
+end;
+
+procedure TRALfpHttpConnectionHandler.CheckRequests;
+begin
+  // nothing waits here for a poll
+end;
+
+procedure TRALfpHttpConnectionHandler.CloseSockets;
+begin
+  Core.CloseConnections;
+end;
+
+function TRALfpHttpConnectionHandler.GetActiveConnectionCount: Integer;
+begin
+  Result := Core.PoolCount;
+end;
+
+procedure TRALfpHttpConnectionHandler.HandleConnection(aConnection: TFPHTTPConnection);
+begin
+  Core.QueueConnection(aConnection);
+end;
+
+{$ENDIF}
 
 { TRALfpHttpServerThread }
 
@@ -556,6 +690,9 @@ var
   vInt: integer;
   vCookies: TStringList;
   vParam: TRALParam;
+  {$IFDEF RALFPHTTPBYTES}
+  vBody: TBytes;
+  {$ENDIF}
 begin
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
@@ -637,10 +774,15 @@ begin
           if Authorization.AuthType = ratNone then
             FParent.DecodeAuth(vRequest);
 
-          { a view that holds fcl-web's own string: the reference is shared,
-            not the bytes copied - clearing Content below only drops fcl-web's
-            half of it }
+          { a view over fcl-web's own body, never a copy: its string, or its
+            bytes held by vBody until this method returns - after vRequest.
+            Clearing it below only drops fcl-web's reference }
+          {$IFDEF RALFPHTTPBYTES}
+          vBody := ARequest.ContentBytes;
+          SetWireBody(Pointer(vBody), Length(vBody));
+          {$ELSE}
           SetWireBody(ARequest.Content);
+          {$ENDIF}
 
           Host := ARequest.Host;
           { HttpVersion is the scheme, which the request line does not carry -
@@ -661,7 +803,11 @@ begin
           else
             Protocol := '1.0';
 
+          {$IFDEF RALFPHTTPBYTES}
+          ARequest.ContentBytes := nil;
+          {$ELSE}
           ARequest.Content := '';
+          {$ENDIF}
           ARequest.QueryFields.Clear;
           ARequest.CustomHeaders.Clear;
           ARequest.CookieFields.Clear;
@@ -859,8 +1005,8 @@ procedure TRALfpHttpServerThread.OnAllowConnect(Sender: TObject; ASocket: Longin
   var AAllow: Boolean);
 begin
   { ConnectionCount is kept by TFPHTTPConnection's own constructor and
-    destructor, so it counts whether or not the server is Threaded, and it is
-    already interlocked. The connection being asked about is NOT in it yet:
+    destructor on fcl-web 3.2, and is the pool's count on 3.3 - interlocked or
+    locked either way. The connection being asked about is NOT in it yet:
     "<" is what makes MaxConnections the number of connections that may be
     open, and not one more than that. }
   AAllow := (FParent.MaxConnections <= 0) or
@@ -875,7 +1021,11 @@ begin
 
   FHttp := TRALfpHttpServerCore.Create(AOwner);
   FHttp.QueueSize := ListenBacklog;
+  {$IFDEF RALFPHTTPHANDLER}
+  FHttp.ThreadMode := tmThread;
+  {$ELSE}
   FHttp.Threaded := True;
+  {$ENDIF}
   FHttp.OnRequest := @OnCommandProcess;
   FHttp.OnAllowConnect := @OnAllowConnect;
   { AcceptIdleTimeout stays at fcl-web's default (0, a blocking accept):
@@ -970,12 +1120,15 @@ end;
 
 procedure TRALfpHttpServer.SetMaxConnections(const AValue: IntegerRAL);
 begin
-  { Nothing to hand over and nothing to restart: OnAllowConnect reads it on
-    every accept, so it takes effect on a running server too }
+  { Nothing to restart: OnAllowConnect, or fcl-web's own ceiling on an fcl-web
+    that does not ask, reads it on every accept, so it takes effect on a
+    running server too }
   if AValue < 0 then
     FMaxConnections := 0
   else
     FMaxConnections := AValue;
+  if FHttpThread <> nil then
+    FHttpThread.FHttp.ApplyMaxConnections(FMaxConnections);
 end;
 
 function TRALfpHttpServer.TLSProvisioning: TRALTLSProvisioning;

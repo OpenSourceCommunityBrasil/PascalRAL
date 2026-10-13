@@ -112,6 +112,8 @@ type
   end;
 
   TRALClient = class;
+  /// Class of a client component, for a descendant such as a protocol's own client.
+  TRALClientClass = class of TRALClient;
 
   /// Base of the client engines: one request at a time, over one connection.
   TRALClientHTTP = class(TPersistent)
@@ -533,9 +535,9 @@ type
     property UserAgent: StringRAL read FUserAgent write SetUserAgent;
   end;
 
-  /// Registers a client engine under its EngineName.
+  /// Registers AEngine under its EngineName, replacing a class of that name.
   procedure RegisterEngine(AEngine : TRALClientHTTPClass);
-  /// Unregisters a client engine.
+  /// Unregisters AEngine; each engine unit calls it in its finalization.
   procedure UnregisterEngine(AEngine : TRALClientHTTPClass);
   /// Engine class registered as AEngineName, or nil.
   function GetEngineClass(AEngineName : StringRAL) : TRALClientHTTPClass;
@@ -657,21 +659,28 @@ begin
 end;
 
 procedure RegisterEngine(AEngine: TRALClientHTTPClass);
+var
+  vPos : IntegerRAL;
 begin
   CheckEngineDefs;
 
-  if EnginesDefs.IndexOfName(AEngine.EngineName) < 0 then
-    // the class is kept, so GetEngineClass never takes the lock of GetClass
-    EnginesDefs.AddObject(AEngine.EngineName + '=' + AEngine.ClassName, TObject(AEngine));
+  // the class is kept, so GetEngineClass never takes the lock of GetClass
+  vPos := EnginesDefs.IndexOfName(AEngine.EngineName);
+  if vPos < 0 then
+    EnginesDefs.AddObject(AEngine.EngineName + '=' + AEngine.ClassName, TObject(AEngine))
+  else
+    EnginesDefs.Objects[vPos] := TObject(AEngine);
 end;
 
 procedure UnregisterEngine(AEngine: TRALClientHTTPClass);
 var
   vPos : IntegerRAL;
 begin
-  CheckEngineDefs;
+  if EnginesDefs = nil then
+    Exit;
+  // only its own entry: the class kept there dies with the engine's package
   vPos := EnginesDefs.IndexOfName(AEngine.EngineName);
-  if vPos >= 0 then
+  if (vPos >= 0) and (EnginesDefs.Objects[vPos] = TObject(AEngine)) then
     EnginesDefs.Delete(vPos);
 end;
 
@@ -1594,7 +1603,8 @@ end;
 
 function TRALClient.Clone(AOwner: TComponent): TRALClient;
 begin
-  Result := TRALClient.Create(nil);
+  // the class of this object, so a descendant clones into its own kind
+  Result := TRALClientClass(ClassType).Create(nil);
   CopyProperties(Result);
 end;
 

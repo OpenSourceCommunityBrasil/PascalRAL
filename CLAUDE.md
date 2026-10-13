@@ -644,6 +644,8 @@ Consequence: **an algorithm exists only if its unit is linked into the binary.**
 
 `TRALStorageLink.GetStorageClass` is the exception: the storage units only call `RegisterClass`, there is no `RegisterStorage` to keep the class in, so `StorageLinkClassOf` caches the resolution on first use. Only a non-nil result is cached, so a design-time package loaded later is still found. `RegisterClass` stays mandatory for storages — that is what `GetClass` reads.
 
+**A kept class dies with its package, so every unit that registers one unregisters it in its `finalization`** (fixed 12/10/2026). The IDE unloads and reloads a package whenever it rebuilds it or one it requires, while `PascalRAL.bpl` stays loaded: the entry kept pointing at the freed class, `RegisterEngine` saw the name and skipped the new one, and the next `IsPropertyRelevant` or `EngineType :=` was an access violation inside `PascalRAL.bpl` (reported from the Object Inspector of a `TRALSOAPClient` on Delphi 13). `GetClass` never had this, since the RTL unregisters a module's classes when it unloads. Engines call `UnregisterEngine`, drivers `UnregisterDatabase`, storages `UnregisterStorageLink`; each removes only its own entry, and registering a name again replaces the class, so a third-party engine without a `finalization` is right again once its package is back.
+
 
 ### Connection charset is chosen by the driver, not left blank
 
@@ -765,7 +767,8 @@ together:
 
 `FSocketReused` now asks fphttpclient whether the socket is still open instead
 of assuming it from `KeepAlive`. The fpHTTP server serves **one request per
-connection** (fcl-web 3.2 has no keep-alive) and now says `Connection: close`
+connection** (fcl-web 3.2 has no keep-alive, and 3.3's stays off - see "fpHTTP on
+fcl-web 3.3") and now says `Connection: close`
 on every answer; it used to by accident below 400 - its version parse read
 every request as HTTP/1.0, since fcl-web hands over `1.1` without the
 `HTTP/` - and from 400 up depending on an uninitialised variable.
@@ -1627,7 +1630,8 @@ The diagnosis, the owner's decisions and the numbers of each stage are in the pl
   starts a thread per connection and serves one request per connection, so every
   request paid a thread - ~220 us of wall time and ~125 us of CPU on FPC. The accept
   loop queues the connection (`CreateConnectionThread` returns nil, fcl-web ignores
-  it) and a worker takes it; a new worker starts only when none is idle, so a route
+  it; on fcl-web 3.3 a connection handler, see "fpHTTP on fcl-web 3.3") and a worker
+  takes it; a new worker starts only when none is idle, so a route
   that blocks never holds up the next connection, and an idle worker ends after 10 s.
   `WaitHandlers` waits for the queue, the connections in hand and the workers.
   5.4k -> 9.8k requests per second at 64 clients.
@@ -1648,6 +1652,150 @@ The diagnosis, the owner's decisions and the numbers of each stage are in the pl
   on what else runs: its first line says how busy the machine was. The deeper tools
   (stack sampler, allocations by call stack, builds of old commits) are in
   `RALOrquestrador/ferramentas/carga`.
+
+### fpHTTP on fcl-web 3.3 (FPC 3.3.1): the pool behind a connection handler
+
+fcl-web 3.3 removed `CreateConnectionThread`, the hook the worker pool sat on: every
+accepted connection now goes to a `TFPHTTPServerConnectionHandler` that
+`CreateConnectionHandler` (virtual) builds by `ThreadMode`. `TRALfpHttpServerCore`
+overrides it with `TRALfpHttpConnectionHandler` (implementation section), which hands
+each connection to the same `QueueConnection` the 3.2 override calls - one pool, one
+`WaitHandlers`, the same order of teardown. `TCP_NODELAY` (`CreateConnection`) and the
+certificate lock (`GetSocketHandler`, and `TSSLSocketHandler.SetCertificateData` still
+copies) needed nothing. Fixed on 12/10/2026; built and run on FPC 3.2.3 and 3.3.1.
+
+- **The conditions test what fcl-web has, not the version number** - trunk is 3.3.1 for
+  five years of different APIs. `{$IF DECLARED(TFPHTTPServerConnectionHandler)}`
+  (`RALFPHTTPHANDLER`) is the handler API (fcl-web commit `f6c476ae79`, 2021-08, which
+  also removed `CreateConnectionThread`); the limits below are tested by their own
+  constants, `DefaultMaxHeaderCount` (2026-05-20), `DefaultMaxLiveConnectionCount`
+  (2026-05-21) and `DefaultRequestReadTimeout` (2026-06-18, with `StrictASCIIURL`).
+- **`ConnectionCount` is the handler's count on 3.3** (`GetActiveConnectionCount`), so
+  the handler answers the pool's (`PoolCount`: queued + in hand); on 3.2 it is still
+  the count fcl-web keeps in the connection's constructor and destructor.
+- **fcl-web 3.3's new defaults are off, so 3.3 serves what 3.2 served**:
+  `MaxLiveConnectionCount` was 128 - a 129th simultaneous connection was refused, with
+  a 503 written raw on the socket (unreadable under TLS); `MaxHeaderCount` 256 and
+  `MaxLineLength` 32 KB dropped the request with no answer; `StrictASCIIURL` refused a
+  request line with raw UTF-8 (curl sends one); `RequestReadTimeout` (30 s, also set as
+  `SO_RCVTIMEO`/`SO_SNDTIMEO`) cut a client that paused. All zero/False in the core's
+  constructor: RAL's limits are the plugins' (`TRALLimitsPlugin`), and a client that
+  never writes is closed by `WaitHandlers` at the stop, as on 3.2. `MaxBodySize`
+  (`MaxInt`) is left: 3.2's `Integer` `ContentLength` never read more either.
+- **`MaxConnections` goes to `MaxLiveConnectionCount`** (`ApplyMaxConnections`, from
+  the setter, live): since the commit that added that ceiling fcl-web no longer calls
+  `OnAllowConnect` at all - `DoOnAllowConnect` replaced it. Both stay wired, and agree
+  (`count >= ceiling` refuses), so a fcl-web that asks either way gets the ceiling.
+  `Send503OnMaxConnections` is False: a refused connection is closed without an
+  answer, as on 3.2 and on Indy and Sagui.
+- **The body is a view over `ContentBytes`** (`RALFPHTTPBYTES`): fcl-web 3.3 keeps the
+  request body as `TBytes` and `Content` is a string converted from it - a whole copy
+  per request. `OnCommandProcess` lends the bytes (`SetWireBody(Pointer, Size)`) and
+  holds them in a local until it returns, after the RAL request is freed. Where
+  `ContentBytes` exists without the 2026 constants it falls back to `Content`, which
+  is byte-exact (the system encoding converts nothing) - checked by forcing that path.
+- **Keep-alive stays off - one request per connection, `Connection: close` always.**
+  fcl-web 3.3 does support it (`KeepConnections`, off by default; `KeepConnectionTimeout`,
+  `KeepConnectionIdleTimeout`), but its two ways of finding the next request on a kept
+  connection are both what the pool exists to avoid or what this engine already gave
+  up: `tmThread` parks a thread on each idle connection, polling every
+  `KeepConnectionIdleTimeout` (50 ms) until the timeout; `tmThreadPool`/`tmPolled`
+  look for pending data on the accept-idle tick, which needs `AcceptIdleTimeout > 0` -
+  the setting that raced fcl-web's teardown on Windows (see the thread's constructor).
+  Turning it on would also make the same engine behave differently on 3.2 and 3.3, and
+  every client already copes with the close (`TRALfpHttpClientCore` reads the answer's
+  `Connection: close`). Revisit as an opt-in only with a readiness poll of RAL's own.
+- **Measured the same on both** (scratch harness, raw-socket client, 39 checks):
+  GET/HEAD/404/HTTP 1.0, binary, text, empty and 9 MB POST echoed byte for byte, a raw
+  UTF-8 URL, 300 headers, a 40 KB header line, a client writing 1.5 s late, 64 x 50
+  GETs and 32 x 20 POSTs in parallel, 200 connections open at once (200 in flight),
+  `MaxConnections = 4` refusing the 5th live and lifted live, `Active := False` with 8
+  requests in flight (all answered, port closed, restart on the same port), `Free`
+  with 8 in flight (waits ~1.1 s, all answered), `Free` right after `Active := True`
+  30 times (slowest 32 ms, port free), a client that never writes (closed by `Free`
+  after the 10 s of `WaitHandlers`); heaptrc 0 unfreed blocks on both. TLS with
+  `TRALSelfSignedPlugin`: HTTPS GETs, three hot renewals under four clients opening
+  new connections in a loop (~1000 handshakes, 0 failures - the certificate lock),
+  stop, restart, free. `pascalral.lpk` and `fphttpral.lpk` build with `lazbuild` on
+  both. Not run: Linux, the orchestrator suites on 3.3.
+
+### XML and SOAP (since 1.3; plan and status in `.agents/PLANO_SOAP.md`)
+
+Two packages of their own, one folder each: `RALXMLPackage` (`src/modules/xml`:
+`RALXMLReader` pull parser, `RALXMLWriter`, `RALXML` DOM with the fluent API and
+paths, `RALStorageXML`, `RALXMLReg`) requires `RALDBPackage`; `RALSOAPPackage`
+(`src/modules/soap`: `RALSOAPTypes`, `RALSOAPModule`, `RALWSDLExporter`,
+`RALSOAPClient`, `RALSOAPActions`, `RALSOAPReg`) requires the XML one. Packages
+in `pkg/Delphi/Modules` and `pkg/Lazarus/Modules`, in both group files. User guide:
+the wiki pages `xml`, `storage-xml`, `modulo-soap`, `cliente-soap`; the whys in
+`internos-nucleo` and `internos-dbware`.
+
+- **The main package knows no new unit.** It gained extension points only:
+  `TRALModuleRoutes.DefaultContentType` (the type of a module's answers that name
+  none, set by `ProcessRequest` before OPTIONS/405), `prtXML` in
+  `TRALRouteParamType`, `TRALClientClass` so `Clone` creates a descendant, and the
+  virtuals `AllowNative`/`NativeContentType`/`PrepareForDataSet` of
+  `TRALStorageLink` (`rsfXML` names `TRALStorageXMLLink`). `PascalRAL.bpl` grew
+  11 KB.
+- **`.gitignore` had `modules/`** (Boss's vendor folder), which on Windows also
+  hid `src/modules` and `pkg/*/Modules`: a commit would have left the whole module
+  out without a word. It is `/modules/` now - check `git status` shows them.
+- **A Lazarus package cannot be named like a unit it contains**: `ralxml.lpk`
+  generates `ralxml.pas`, which shadows `RALXML` for every unit that uses it. Hence
+  `ralxmlpackage`/`ralsoappackage` (and `RALXMLPackage`/`RALSOAPPackage` in Delphi,
+  to match).
+- **The SOAP module picks the operation before authentication**, in
+  `CanAnswerRoute` (plugins ask it through `FindRoute`): only the head of the
+  envelope is pull-read (version, first element of the Body; DOCTYPE and PIs
+  refused there), kept in `RouteData` as `TRALSOAPEnvelopeInfo`; the whole
+  document is built when a handler asks. The endpoint's own routes (WSDL on GET,
+  "operation not found" on POST) live in a private collection, never in
+  `Operations`, so no `.dfm` stores them. Every exception becomes a `Fault` through
+  `HandleException`, its text through `ErrorText` (`HideErrorDetails` applies).
+- **The charset comes from the header as it arrived** (`GetHeader('Content-Type')`):
+  `TRALRequest.ContentType` gains `; charset=utf-8` when the client sent none, and
+  RFC 7303 makes a charset override the XML declaration - an ISO-8859-1 envelope
+  sent as plain `text/xml` failed until then. The RAL client itself always
+  declares a charset.
+- **WSDL: one port type and binding per style.** WS-I BP 1.1 (R2705) forbids a
+  binding mixing document and rpc, and `wsimport` refuses it; `RALWSDLExporter`
+  emits `<Service>Soap`/`<Service>RpcSoap` when both exist, and the client's
+  `LoadWSDL` reads every binding of its version. JDK 8's `wsimport` still
+  mis-annotates the rpc methods of a mixed service; single-style services import
+  clean everywhere.
+- **`TRALSOAPClient` sets `CompressType := ctNone`**: WCF answers a gzip request
+  400, and most SOAP stacks never read one. An `ebMultiThread` call builds the
+  payload on the caller's thread (the `Params` belong to the form) and delivers on
+  `OnTerminate`; the destructor waits for pending calls, like `TRALClient`.
+- **FireDAC's `sfXML` is MSXML, which is COM**: a server thread or a console
+  program never initialized it and FireDAC fails with "No active document".
+  `RALDBFireDAC` and `RALDBFiredacMemTable` wrap XML save/load in
+  `CoInitializeEx` and undo only what they did.
+- **fcl-db reads only `dfXML`** (`dfXMLUTF8` has no reader registered, in 3.3.1
+  either); its text goes through the system code page, UTF-8 under RAL. The sqldb
+  `OpenNative` opens a buffered query (`SaveToStream` refuses a unidirectional
+  one) and `TRALDBBufDataset` loads a native answer with the defs it carries.
+- **Fixed on the way: loading any storage into a `TBufDataset` was quadratic on
+  FPC** - every `Post` searches the change log, and loaded records went into it
+  (BIN/JSON 40 000 records 2.5 s, 100 000 about 17 s; Delphi unaffected).
+  `RALStoragePosted` after each `Post` merges the log every 1000 records and
+  `RALStorageLoaded` merges the rest at the end of `TRALStorageLink.LoadFromStream`;
+  every storage calls them. 40 000 records: 0.1-0.2 s.
+- **Verified** (12/10/2026): the orchestrator suites `soap` (Delphi 13 Win64,
+  2399 cases: reader, DOM, the four storage formats with `TClientDataSet`/ADO
+  interop, IDE streaming, DBWare over SQLite, and 163 SOAP cases on each of 12
+  server x client pairs - Indy, mORMot2 threads/async, Sagui x Indy, mORMot2,
+  netHTTP) and `soapfpc` (FPC 3.2.3, 2780 cases, 15 pairs with fpHTTP, mORMot2,
+  Indy, Sagui); 100 000 fuzzed inputs with `$R+ $Q+` on Delphi Win32/Win64 and FPC;
+  Delphi 12 run; units compile on XE2, Seattle, Sydney, Athens, 13, Android,
+  Android64, Linux64 and FPC 3.3.1 (SOAP run there on mORMot2); packages built
+  with `dcc32`/`dcc64` and `lazbuild` into scratch folders; interop with Delphi's
+  `THTTPRIO` (WSDLImp), .NET (`New-WebServiceProxy`), Java (`wsimport`) and a WCF
+  service. Filtered matrices green (Indy x Indy 2287, fpHTTP x fpHTTP 1884).
+  **Not verified:** Delphi XE (not installed), the W3C XML conformance suite,
+  MsQuic/CGI/UniGUI/http.sys as SOAP servers, the IDE verbs by hand, Devart DACs;
+  fpHTTP as the SOAP server on FPC 3.3.1 (it did not build there until 12/10/2026 -
+  see "fpHTTP on fcl-web 3.3").
 
 **The whole project is written in English** — identifiers, doc comments and ordinary comments alike. A few older comments are in Portuguese; new code is not.
 

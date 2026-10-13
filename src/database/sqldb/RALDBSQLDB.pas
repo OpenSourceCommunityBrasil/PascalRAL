@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, DB,
   SQLDB, SQLDBLib, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
-  ibase60dyn, sqlite3dyn, SyncObjs,
+  XMLDatapacketReader, ibase60dyn, sqlite3dyn, SyncObjs,
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -266,7 +266,8 @@ begin
 
   vQuery := TSQLQuery.Create(nil);
   try
-    vQuery.UniDirectional := True;
+    // the native answer is TBufDataset.SaveToStream, which needs the rows buffered
+    vQuery.UniDirectional := False;
     vQuery.DataBase := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
@@ -298,8 +299,18 @@ end;
 procedure TRALDBSQLDB.SaveToStream(ADataset: TDataSet; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
 begin
-  TSQLQuery(ADataset).SaveToStream(AStream, dfBinary);
-  AContentType := rctAPPLICATIONOCTETSTREAM;
+  { XMLDatapacketReader, in the uses, registers dfXML, the one XML format fcl-db
+    reads; its text goes through the system code page, which is UTF-8 under RAL }
+  if Pos(StringRAL('xml'), AContentType) > 0 then
+  begin
+    TSQLQuery(ADataset).SaveToStream(AStream, dfXML);
+    AContentType := rctAPPLICATIONXML;
+  end
+  else
+  begin
+    TSQLQuery(ADataset).SaveToStream(AStream, dfBinary);
+    AContentType := rctAPPLICATIONOCTETSTREAM;
+  end;
 end;
 
 function TRALDBSQLDB.CanExportNative: boolean;
@@ -434,6 +445,7 @@ initialization
   RegisterDatabase(TRALDBSQLDB);
 
 finalization
+  UnregisterDatabase(TRALDBSQLDB);
   if gFirebirdPinned then
     ReleaseIBase60;
   FreeAndNil(gOpenLock);

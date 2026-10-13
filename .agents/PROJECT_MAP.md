@@ -214,7 +214,26 @@ Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades
 
 ---
 
-### 3.7) `src/wizard/`
+### 3.7) `src/modules/` (submodulos, um pacote cada; 1.3)
+
+XML (`pkg/Delphi/Modules/RALXMLPackage`, `pkg/Lazarus/Modules/ralxmlpackage.lpk`)
+- `modules/xml/RALXMLReader.pas` - leitor pull (XML 1.0, namespaces, entidades com limites, codificacoes)
+- `modules/xml/RALXMLWriter.pas` - escritor em stream, escapes, nomes codificados
+- `modules/xml/RALXML.pas` - DOM com API fluente, caminhos (subconjunto do XPath e forma com pontos), valores tipados
+- `modules/xml/RALStorageXML.pas` - `TRALStorageXMLLink`: DBWare, RAW, DataPacket (MIDAS/TBufDataset), ADO; helpers `ToXML`/`LoadFromXML`
+- `modules/xml/RALXMLReg.pas` - paleta `RAL - Storage`
+
+SOAP (`pkg/Delphi/Modules/RALSOAPPackage`, `pkg/Lazarus/Modules/ralsoappackage.lpk`; requer o XML)
+- `modules/soap/RALSOAPTypes.pas` - versoes, namespaces, `ERALSOAPFault`, montar e ler faults
+- `modules/soap/RALSOAPModule.pas` - `TRALSOAPModule` (paleta `RAL - Modules`), operacoes, `TRALSOAPRequest`/`TRALSOAPResponse`
+- `modules/soap/RALWSDLExporter.pas` - WSDL 1.1 com bindings SOAP 1.1 e 1.2
+- `modules/soap/RALSOAPClient.pas` - `TRALSOAPClient` (descende de `TRALClient`), `ImportWSDL`, operacoes, chamada em thread
+- `modules/soap/RALSOAPActions.pas` - acao `TRALSOAPExecute`
+- `modules/soap/RALSOAPReg.pas` - registro, verbos "Importar WSDL"/"Exportar WSDL"
+
+---
+
+### 3.8) `src/wizard/`
 
 Delphi
 - `wizard/delphi/RALWizard.pas`

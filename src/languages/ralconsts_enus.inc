@@ -214,3 +214,81 @@
   // wizard messages
   emWizardDirEmpty = 'The directory must be filled in.';
   emWizardDirNotFound = 'The directory does not exist.';
+
+  // xml messages (RALXMLReader, RALXMLWriter, RALXML)
+  emXMLAtPosition = '%s (line %d, column %d)';
+  emXMLAttributeLimit = 'More than %d attributes in one element.';
+  emXMLBadDeclaration = 'Invalid "%s" in the XML declaration.';
+  emXMLBadDTD = 'Invalid document type declaration.';
+  emXMLCDataEnd = '"]]>" is not allowed in text.';
+  emXMLContentAfterRoot = 'Content after the root element.';
+  emXMLDeclarationPlace = 'The XML declaration is only allowed at the start of the document.';
+  emXMLDepthLimit = 'Elements nested deeper than %d.';
+  emXMLDocTypePlace = 'DOCTYPE out of place.';
+  emXMLDoubleDash = '"--" is not allowed inside a comment.';
+  emXMLDuplicateAttribute = 'Attribute "%s" appears twice.';
+  emXMLEncodingData = 'The bytes of the document do not match its encoding.';
+  emXMLEncodingUnknown = 'Unsupported XML encoding: %s';
+  emXMLEntityDisabled = 'Entity "%s" is not expanded: ProcessInternalEntities is off.';
+  emXMLEntityElements = 'Entity "%s" does not close the elements it opens.';
+  emXMLEntityLimit = 'Entity expansion exceeds the configured limits (%d bytes).';
+  emXMLEntityRecursion = 'Entity "%s" references itself.';
+  emXMLEqualsExpected = '"=" was expected.';
+  emXMLExternalEntity = 'External entity "%s" is not read; assign OnResolveEntity to provide it.';
+  emXMLExternalInAttribute = 'External entity "%s" in an attribute value.';
+  emXMLGreaterExpected = '">" was expected.';
+  emXMLInEntity = '%s, in entity "%s"';
+  emXMLInvalidChar = 'Character U+%s is not allowed in XML.';
+  emXMLInvalidCharRef = 'Invalid character reference.';
+  emXMLInvalidName = '"%s" is not a valid XML name.';
+  emXMLInvalidQName = '"%s" is not a valid qualified name.';
+  emXMLInvalidUTF8 = 'Invalid UTF-8 sequence.';
+  emXMLLtInAttribute = 'Character "<" is not allowed in an attribute value.';
+  emXMLNameExpected = 'A name was expected.';
+  emXMLNameLimit = 'Name longer than %d bytes.';
+  emXMLNoRoot = 'The document has no root element.';
+  emXMLPEInInternalSubset = 'Parameter entity reference inside a declaration of the internal subset.';
+  emXMLQuoteExpected = 'A quoted value was expected.';
+  emXMLReservedPrefix = 'Reserved namespace prefix or URI misused.';
+  emXMLSemicolonExpected = '";" was expected after a reference.';
+  emXMLSpaceExpected = 'A blank was expected.';
+  emXMLSyntax = 'XML syntax error.';
+  emXMLTagMismatch = 'End tag </%s> does not match <%s>.';
+  emXMLTextOutsideRoot = 'Text outside the root element.';
+  emXMLUnclosed = 'Element <%s> is not closed.';
+  emXMLUndeclaredPrefix = 'Namespace prefix "%s" is not declared.';
+  emXMLUndefinedEntity = 'Undefined entity "%s".';
+  emXMLUnexpectedElement = 'Element <%s> where only text was expected.';
+  emXMLUnexpectedEnd = 'Unexpected end of the document.';
+  emXMLUnexpectedEndTag = 'Unexpected end tag </%s>.';
+  emXMLUnparsedEntity = 'Unparsed entity "%s" referenced in content.';
+  emXMLAttributeOutsideTag = 'An attribute can only follow a start tag.';
+  emXMLHierarchy = 'A node cannot be placed inside itself or under another parent.';
+  emXMLInvalidComment = 'A comment cannot hold "--" or end with "-".';
+  emXMLInvalidFieldText = 'Field "%s" of record %d holds characters XML cannot carry.';
+  emXMLInvalidPI = 'A processing instruction cannot hold "?>".';
+  emXMLInvalidTextWrite = 'The text holds characters XML cannot carry.';
+  emXMLNoDataSet = 'The node holds no dataset.';
+  emXMLNoOpenElement = 'There is no open element to close.';
+  emXMLPathInvalid = 'Invalid XML path: %s';
+  emXMLStorageFormat = 'The XML is not a dataset storage the RAL reads.';
+  emXMLValueType = '"%s" is not a valid %s value.';
+
+  // SOAP
+  emSOAPDocType = 'A SOAP message cannot carry a document type declaration or a processing instruction.';
+  emSOAPEmptyAnswer = 'The SOAP service answered HTTP %d with no envelope.';
+  emSOAPInvalidAnswer = 'The SOAP service answered HTTP %d with an invalid envelope: %s';
+  emSOAPInvalidWSDL = 'The document is not a WSDL 1.1 description.';
+  emSOAPMustUnderstand = 'The header block "%s" must be understood and no handler took it.';
+  emSOAPNoBody = 'The SOAP envelope has no Body.';
+  emSOAPNoClient = 'The operation is not in the Operations of a TRALSOAPClient.';
+  emSOAPNoEnvelope = 'The message is not a SOAP envelope.';
+  emSOAPNoWSDL = 'No WSDL was given to import.';
+  emSOAPOperationNotFound = 'The service has no operation "%s"%s.';
+  emSOAPVersionMismatch = 'The envelope is of a SOAP version this service does not accept.';
+
+  // SOAP: IDE
+  cmSOAPExportWSDL = 'Export WSDL...';
+  cmSOAPImportWSDL = 'Import WSDL...';
+  cmSOAPImported = '%d operations imported.';
+  cmSOAPWSDLSource = 'Address or file of the WSDL:';

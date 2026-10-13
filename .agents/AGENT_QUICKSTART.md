@@ -17,6 +17,8 @@ Guia mínimo para agentes de IA navegarem o projeto com **baixo consumo de conte
 7. **DBWare/DBModule (integrar com banco)** → `src/database/RALDBModule.pas` + `src/database/*` + `src/utils/RALStorage*.pas`
 8. **Swagger/Postman (export de rotas/documentação)** → `src/base/modules/RALSwaggerExporter.pas` + `src/base/modules/RALSwaggerModule.pas` + `src/base/modules/RALPostmanExporter.pas`
 9. **Autenticação/Security** → `src/base/plugins/RALAuthentication.pas` + `src/base/RALRoutes.pas` (checagens/allowed methods)
+10. **XML (leitor, DOM, storage de dataset)** → `src/modules/xml/RALXMLReader.pas` + `src/modules/xml/RALXML.pas` + `src/modules/xml/RALStorageXML.pas` (plano: `.agents/PLANO_SOAP.md`)
+11. **SOAP (servidor, WSDL, cliente)** → `src/modules/soap/RALSOAPModule.pas` + `src/modules/soap/RALWSDLExporter.pas` + `src/modules/soap/RALSOAPClient.pas` (tipos e faults em `RALSOAPTypes.pas`; IDE em `RALSOAPReg.pas`)
 
 ---
 

@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=24
+Count=26
 Item_0=src\base
 Item_1=src\base\modules
 Item_2=src\base\plugins
@@ -92,9 +92,11 @@ Item_20=src\wizard\delphi\console
 Item_21=src\wizard\delphi\standalone
 Item_22=src\engine\kwik
 Item_23=src\engine\okhttp
+Item_24=src\modules\xml
+Item_25=src\modules\soap
 
 [Files]
-Count=117
+Count=128
 Item_0=src\base\plugins\RALAuthentication.pas
 Item_1=src\base\RALClient.pas
 Item_2=src\base\RALConsts.pas
@@ -212,6 +214,17 @@ Item_113=src\engine\kwik\RALKwikClient.pas
 Item_114=src\engine\kwik\RALKwikRegister.pas
 Item_115=src\engine\okhttp\RALOkHttpClient.pas
 Item_116=src\engine\okhttp\RALOkHttpRegister.pas
+Item_117=src\modules\xml\RALXMLReader.pas
+Item_118=src\modules\xml\RALXMLWriter.pas
+Item_119=src\modules\xml\RALXML.pas
+Item_120=src\modules\xml\RALStorageXML.pas
+Item_121=src\modules\xml\RALXMLReg.pas
+Item_122=src\modules\soap\RALSOAPTypes.pas
+Item_123=src\modules\soap\RALSOAPModule.pas
+Item_124=src\modules\soap\RALWSDLExporter.pas
+Item_125=src\modules\soap\RALSOAPClient.pas
+Item_126=src\modules\soap\RALSOAPActions.pas
+Item_127=src\modules\soap\RALSOAPReg.pas
 [AdditionalFiles]
 Count=0
 

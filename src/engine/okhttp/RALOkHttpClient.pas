@@ -590,4 +590,7 @@ initialization
   RegisterClass(TRALOkHttpClientHTTP);
   RegisterEngine(TRALOkHttpClientHTTP);
 
+finalization
+  UnregisterEngine(TRALOkHttpClientHTTP);
+
 end.

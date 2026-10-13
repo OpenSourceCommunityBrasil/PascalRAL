@@ -17,6 +17,8 @@
       <Target FileName="compression\ralbrotlicompress.lpk"/>
       <Target FileName="compression\ralzstdcompress.lpk"/>
       <Target FileName="Database\raldbbson.lpk"/>
+      <Target FileName="Modules\ralxmlpackage.lpk"/>
+      <Target FileName="Modules\ralsoappackage.lpk"/>
     </Targets>
   </ProjectGroup>
 </CONFIG>

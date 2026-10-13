@@ -379,7 +379,18 @@ var
 begin
   { the connection came from AcquireDatabase, which bound it to the request }
   CheckSQL(ADatabase.Request, ADBSQL.SQL);
-  if ADBSQL.DriverType = ADatabase.DriverType then
+
+  // the link has the say when there is one: it knows which dataset reads the answer
+  vNative := ADatabase.CanExportNative;
+  if vNative then
+  begin
+    if AStorage <> nil then
+      vNative := AStorage.AllowNative(Ord(ADatabase.DriverType), Ord(ADBSQL.DriverType))
+    else
+      vNative := ADBSQL.DriverType = ADatabase.DriverType;
+  end;
+
+  if vNative or (ADBSQL.DriverType = ADatabase.DriverType) then
     vQuery := ADatabase.OpenNative(ADBSQL.SQL, ADBSQL.Params)
   else
     vQuery := ADatabase.OpenCompatible(ADBSQL.SQL, ADBSQL.Params);
@@ -388,10 +399,12 @@ begin
   try
     vResult := TMemoryStream.Create;
     try
-      if (ADatabase.CanExportNative) and (ADBSQL.DriverType = ADatabase.DriverType) then
+      if vNative then
       begin
-        vContentType := rctAPPLICATIONOCTETSTREAM;
-        vNative := True;
+        if AStorage <> nil then
+          vContentType := AStorage.NativeContentType
+        else
+          vContentType := rctAPPLICATIONOCTETSTREAM;
         ADatabase.SaveToStream(vQuery, vResult, vContentType, vNative);
       end
       else

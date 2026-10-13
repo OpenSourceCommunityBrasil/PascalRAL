@@ -11,12 +11,12 @@ uses
   FireDAC.Comp.Client, FireDAC.Comp.DataSet, FireDAC.Comp.UI, FireDAC.Phys,
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
-  FireDAC.Stan.StorageBin, FireDAC.Stan.Def, FireDAC.Stan.Async,
+  FireDAC.Stan.StorageBin, FireDAC.Stan.StorageXML, FireDAC.Stan.Def, FireDAC.Stan.Async,
   FireDAC.Stan.Option,
   {$ELSE}
   uADCompClient, uADCompDataSet, uADCompGUIx,
   uADPhysIntf,
-  uADDAptIntf, uADStanIntf, uADStanStorage,
+  uADDAptIntf, uADStanIntf, uADStanStorage, uADStanStorageXML,
   uADStanConst, uADStanUtil,
   {$ENDIF}
   RALDBBase, RALTypes, RALMimeTypes;
@@ -74,6 +74,27 @@ type
   end;
 
 implementation
+
+{$IFDEF MSWINDOWS}
+uses
+  {$IFDEF DELPHIXE2UP}Winapi.ActiveX{$ELSE}ActiveX{$ENDIF};
+{$ENDIF}
+
+{$IFDEF MSWINDOWS}
+{ FireDAC reads and writes XML through MSXML, a COM library: the calling thread needs
+  COM, which a server thread or a console program has not started. True when this
+  call started it and ComLeave must end it. }
+function ComEnter: boolean;
+begin
+  Result := Succeeded(CoInitializeEx(nil, COINIT_MULTITHREADED));
+end;
+
+procedure ComLeave(AEntered: boolean);
+begin
+  if AEntered then
+    CoUninitialize;
+end;
+{$ENDIF}
 
 { TRALDBFireDAC }
 
@@ -313,15 +334,32 @@ procedure TRALDBFireDAC.SaveToStream(ADataset: TDataset; AStream: TStream;
   var AContentType: StringRAL; var ANative: boolean);
 var
   vFdFormat: {$IFDEF DELPHIXE4UP}TFDStorageFormat{$ELSE}TADStorageFormat{$ENDIF};
+  {$IFDEF MSWINDOWS}
+  vCom: boolean;
+  {$ENDIF}
 begin
   inherited;
   if Pos(StringRAL(rctAPPLICATIONJSON), AContentType) > 0 then
     vFdFormat := {$IFDEF DELPHIXE4UP}sfJSON{$ELSE}sfAuto{$ENDIF}
+  else if Pos(StringRAL('xml'), AContentType) > 0 then
+  begin
+    vFdFormat := sfXML;
+    AContentType := rctAPPLICATIONXML;
+  end
   else
     vFdFormat := sfBinary;
 
   AStream.Size := 0;
-  {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}(ADataset).SaveToStream(AStream, vFdFormat);
+  {$IFDEF MSWINDOWS}
+  vCom := (vFdFormat = sfXML) and ComEnter;
+  try
+  {$ENDIF}
+    {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}(ADataset).SaveToStream(AStream, vFdFormat);
+  {$IFDEF MSWINDOWS}
+  finally
+    ComLeave(vCom);
+  end;
+  {$ENDIF}
   AStream.Position := 0;
 end;
 
@@ -382,5 +420,8 @@ end;
 initialization
   RegisterClass(TRALDBFireDAC);
   RegisterDatabase(TRALDBFireDAC);
+
+finalization
+  UnregisterDatabase(TRALDBFireDAC);
 
 end.

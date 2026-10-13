@@ -214,3 +214,81 @@
   // wizard messages
   emWizardDirEmpty = 'O diretório deve ser preenchido.';
   emWizardDirNotFound = 'O diretório não existe.';
+
+  // xml messages (RALXMLReader, RALXMLWriter, RALXML)
+  emXMLAtPosition = '%s (linha %d, coluna %d)';
+  emXMLAttributeLimit = 'Mais de %d atributos num elemento.';
+  emXMLBadDeclaration = '"%s" inválido na declaração XML.';
+  emXMLBadDTD = 'Declaração de tipo de documento inválida.';
+  emXMLCDataEnd = '"]]>" não é permitido no texto.';
+  emXMLContentAfterRoot = 'Conteúdo depois do elemento raiz.';
+  emXMLDeclarationPlace = 'A declaração XML só é permitida no início do documento.';
+  emXMLDepthLimit = 'Elementos aninhados com mais de %d níveis.';
+  emXMLDocTypePlace = 'DOCTYPE fora do lugar.';
+  emXMLDoubleDash = '"--" não é permitido dentro de um comentário.';
+  emXMLDuplicateAttribute = 'O atributo "%s" aparece duas vezes.';
+  emXMLEncodingData = 'Os bytes do documento não correspondem à sua codificação.';
+  emXMLEncodingUnknown = 'Codificação XML não suportada: %s';
+  emXMLEntityDisabled = 'A entidade "%s" não é expandida: ProcessInternalEntities está desligado.';
+  emXMLEntityElements = 'A entidade "%s" não fecha os elementos que abre.';
+  emXMLEntityLimit = 'A expansão de entidades passa dos limites configurados (%d bytes).';
+  emXMLEntityRecursion = 'A entidade "%s" referencia a si mesma.';
+  emXMLEqualsExpected = 'Era esperado "=".';
+  emXMLExternalEntity = 'A entidade externa "%s" não é lida; atribua OnResolveEntity para fornecê-la.';
+  emXMLExternalInAttribute = 'Entidade externa "%s" no valor de um atributo.';
+  emXMLGreaterExpected = 'Era esperado ">".';
+  emXMLInEntity = '%s, na entidade "%s"';
+  emXMLInvalidChar = 'O caractere U+%s não é permitido em XML.';
+  emXMLInvalidCharRef = 'Referência de caractere inválida.';
+  emXMLInvalidName = '"%s" não é um nome XML válido.';
+  emXMLInvalidQName = '"%s" não é um nome qualificado válido.';
+  emXMLInvalidUTF8 = 'Sequência UTF-8 inválida.';
+  emXMLLtInAttribute = 'O caractere "<" não é permitido no valor de um atributo.';
+  emXMLNameExpected = 'Era esperado um nome.';
+  emXMLNameLimit = 'Nome com mais de %d bytes.';
+  emXMLNoRoot = 'O documento não tem elemento raiz.';
+  emXMLPEInInternalSubset = 'Referência a entidade de parâmetro dentro de uma declaração do subconjunto interno.';
+  emXMLQuoteExpected = 'Era esperado um valor entre aspas.';
+  emXMLReservedPrefix = 'Prefixo ou URI de namespace reservado usado de forma indevida.';
+  emXMLSemicolonExpected = 'Era esperado ";" depois de uma referência.';
+  emXMLSpaceExpected = 'Era esperado um espaço.';
+  emXMLSyntax = 'Erro de sintaxe XML.';
+  emXMLTagMismatch = 'A tag de fechamento </%s> não corresponde a <%s>.';
+  emXMLTextOutsideRoot = 'Texto fora do elemento raiz.';
+  emXMLUnclosed = 'O elemento <%s> não foi fechado.';
+  emXMLUndeclaredPrefix = 'O prefixo de namespace "%s" não foi declarado.';
+  emXMLUndefinedEntity = 'Entidade "%s" não definida.';
+  emXMLUnexpectedElement = 'Elemento <%s> onde só era esperado texto.';
+  emXMLUnexpectedEnd = 'Fim inesperado do documento.';
+  emXMLUnexpectedEndTag = 'Tag de fechamento </%s> inesperada.';
+  emXMLUnparsedEntity = 'Entidade não analisada "%s" referenciada no conteúdo.';
+  emXMLAttributeOutsideTag = 'Um atributo só pode vir logo depois de uma tag de abertura.';
+  emXMLHierarchy = 'Um nó não pode ser colocado dentro de si mesmo ou sob outro pai.';
+  emXMLInvalidComment = 'Um comentário não pode conter "--" nem terminar com "-".';
+  emXMLInvalidFieldText = 'O campo "%s" do registro %d tem caracteres que o XML não comporta.';
+  emXMLInvalidPI = 'Uma instrução de processamento não pode conter "?>".';
+  emXMLInvalidTextWrite = 'O texto tem caracteres que o XML não comporta.';
+  emXMLNoDataSet = 'O nó não contém um dataset.';
+  emXMLNoOpenElement = 'Não há elemento aberto para fechar.';
+  emXMLPathInvalid = 'Caminho XML inválido: %s';
+  emXMLStorageFormat = 'O XML não é um armazenamento de dataset que o RAL lê.';
+  emXMLValueType = '"%s" não é um valor %s válido.';
+
+  // SOAP
+  emSOAPDocType = 'Uma mensagem SOAP não pode trazer declaração de tipo de documento nem instrução de processamento.';
+  emSOAPEmptyAnswer = 'O serviço SOAP respondeu HTTP %d sem envelope.';
+  emSOAPInvalidAnswer = 'O serviço SOAP respondeu HTTP %d com um envelope inválido: %s';
+  emSOAPInvalidWSDL = 'O documento não é uma descrição WSDL 1.1.';
+  emSOAPMustUnderstand = 'O bloco de cabeçalho "%s" precisa ser entendido e nenhum tratador o aceitou.';
+  emSOAPNoBody = 'O envelope SOAP não tem Body.';
+  emSOAPNoClient = 'A operação não está nas Operations de um TRALSOAPClient.';
+  emSOAPNoEnvelope = 'A mensagem não é um envelope SOAP.';
+  emSOAPNoWSDL = 'Nenhum WSDL foi informado para importar.';
+  emSOAPOperationNotFound = 'O serviço não tem a operação "%s"%s.';
+  emSOAPVersionMismatch = 'O envelope é de uma versão do SOAP que este serviço não aceita.';
+
+  // SOAP: IDE
+  cmSOAPExportWSDL = 'Exportar WSDL...';
+  cmSOAPImportWSDL = 'Importar WSDL...';
+  cmSOAPImported = '%d operações importadas.';
+  cmSOAPWSDLSource = 'Endereço ou arquivo do WSDL:';

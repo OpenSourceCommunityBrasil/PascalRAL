@@ -38,6 +38,46 @@ type
 
 implementation
 
+// Adds the OpenAPI "type" and, where it has one, "format" of a route param type
+procedure AddSchemaType(AObject: TRALJSONObject; AType: TRALRouteParamType);
+begin
+  case AType of
+    prtBoolean:
+      AObject.Add('type', 'boolean');
+    prtInteger:
+      AObject.Add('type', 'integer');
+    prtNumber:
+      AObject.Add('type', 'number');
+    prtDecimal:
+    begin
+      AObject.Add('type', 'string');
+      AObject.Add('format', 'decimal');
+    end;
+    prtDate:
+    begin
+      AObject.Add('type', 'string');
+      AObject.Add('format', 'date');
+    end;
+    prtTime:
+    begin
+      AObject.Add('type', 'string');
+      AObject.Add('format', 'time');
+    end;
+    prtDateTime:
+    begin
+      AObject.Add('type', 'string');
+      AObject.Add('format', 'date-time');
+    end;
+    prtBase64:
+    begin
+      AObject.Add('type', 'string');
+      AObject.Add('format', 'byte');
+    end;
+  else
+    AObject.Add('type', 'string');
+  end;
+end;
+
 { TRALSwaggerExporter }
 
 procedure TRALSwaggerExporter.ExportToFile(AServer: TRALServer; AFileName: TFileName);
@@ -290,16 +330,7 @@ var
     Result.Add('required', (AParam.Required) or (AType = 'path'));
 
     rbAux1 := TRALJSONObject.Create;
-    case AParam.ParamType of
-      prtBoolean:
-        rbAux1.Add('type', 'boolean');
-      prtInteger:
-        rbAux1.Add('type', 'integer');
-      prtNumber:
-        rbAux1.Add('type', 'number');
-      prtString:
-        rbAux1.Add('type', 'string');
-    end;
+    AddSchemaType(rbAux1, AParam.ParamType);
     // rbAux2.Add('example', '');
 
     Result.Add('schema', rbAux1);
@@ -327,16 +358,7 @@ var
       spParam := TRALRouteParam(ARoute.InputParams.Items[spInt]);
 
       spAux3 := TRALJSONObject.Create;
-      case spParam.ParamType of
-        prtBoolean:
-          spAux3.Add('type', 'boolean');
-        prtInteger:
-          spAux3.Add('type', 'integer');
-        prtNumber:
-          spAux3.Add('type', 'number');
-        prtString:
-          spAux3.Add('type', 'string');
-      end;
+      AddSchemaType(spAux3, spParam.ParamType);
       spAux3.Add('description', spParam.Description.Text);
       // spAux3.Add('example', '');
 

@@ -13,7 +13,7 @@ uses
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
-  TRALStorageFormat = (rsfAuto, rsfBIN, rsfJSON, rsfBSON, rsfCSV);
+  TRALStorageFormat = (rsfAuto, rsfBIN, rsfJSON, rsfBSON, rsfCSV, rsfXML);
 
   { TRALStorage }
 
@@ -83,9 +83,16 @@ type
   public
     constructor Create(AOwner : TComponent); override;
 
+    { Whether a database answer may go in the native format of the server's driver
+      to a client whose dataset is of AClientDriver; by default when both match. }
+    function AllowNative(AServerDriver, AClientDriver: Byte): boolean; virtual;
     function GetStorage: TRALStorage; virtual;
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
+    /// Content type the server's driver writes a native answer in.
+    function NativeContentType: StringRAL; virtual;
+    /// Called with the dataset the link serves, before its properties are sent.
+    procedure PrepareForDataSet(ADataSet: TDataSet); virtual;
     procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
@@ -104,14 +111,42 @@ type
     property StorageFormat: TRALStorageFormat read FStorageFormat;
   end;
 
+{ Called after each record a storage load posts: keeps the change log of a
+  TBufDataset short, which every Post searches. }
+procedure RALStoragePosted(ADataset: TDataSet);
+/// Called once a storage load is over: what it brought is data, not changes to apply.
+procedure RALStorageLoaded(ADataset: TDataSet);
+/// Forgets the cached link class ALink; each storage unit calls it in its finalization.
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+
 implementation
 
 uses
-  RALTools;
+  {$IFDEF FPC}
+  BufDataset,
+  {$ENDIF}
+  RALTools, RALMIMETypes;
+
+procedure RALStoragePosted(ADataset: TDataSet);
+begin
+  {$IFDEF FPC}
+  if (ADataset is TCustomBufDataset) and (ADataset.RecordCount mod 1000 = 0) then
+    TCustomBufDataset(ADataset).MergeChangeLog;
+  {$ENDIF}
+end;
+
+procedure RALStorageLoaded(ADataset: TDataSet);
+begin
+  {$IFDEF FPC}
+  if (ADataset is TCustomBufDataset) and ADataset.Active then
+    TCustomBufDataset(ADataset).MergeChangeLog;
+  {$ENDIF}
+end;
 
 const
   cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
-    'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink');
+    'TRALStorageJSONLink', 'TRALStorageBSONLink', 'TRALStorageCSVLink',
+    'TRALStorageXMLLink');
 
 var
   { GetClass takes MonitorEnter on the RTL's global class registry, and these
@@ -141,6 +176,15 @@ begin
     Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[AFormat]));
     gStorageLinkClasses[AFormat] := Result;
   end;
+end;
+
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+var
+  vFormat: TRALStorageFormat;
+begin
+  for vFormat := Low(TRALStorageFormat) to High(TRALStorageFormat) do
+    if gStorageLinkClasses[vFormat] = ALink then
+      gStorageLinkClasses[vFormat] := nil;
 end;
 
   { TRALStorage }
@@ -304,6 +348,21 @@ end;
 
 { TRALStorageLink }
 
+function TRALStorageLink.AllowNative(AServerDriver, AClientDriver: Byte): boolean;
+begin
+  Result := AServerDriver = AClientDriver;
+end;
+
+function TRALStorageLink.NativeContentType: StringRAL;
+begin
+  Result := rctAPPLICATIONOCTETSTREAM;
+end;
+
+procedure TRALStorageLink.PrepareForDataSet(ADataSet: TDataSet);
+begin
+  // a link that adapts to the client's dataset overrides this
+end;
+
 function TRALStorageLink.Clone: TRALStorageLink;
 var
   vStorageLinkClass : TRALStorageLinkClass;
@@ -457,6 +516,7 @@ begin
   vStor := GetStorage;
   try
     vStor.LoadFromStream(ADataset, AStream);
+    RALStorageLoaded(ADataset);
   finally
     FreeAndNil(vStor);
   end;
@@ -491,7 +551,7 @@ class function TRALStorageLink.GetStorageClass(AFormat: TRALStorageFormat): TRAL
 const
   { the same rsfAuto order of preference that was being built into a
     TStringList on every call }
-  cAuto: array [0 .. 3] of TRALStorageFormat = (rsfBIN, rsfJSON, rsfBSON, rsfCSV);
+  cAuto: array [0 .. 4] of TRALStorageFormat = (rsfBIN, rsfJSON, rsfBSON, rsfCSV, rsfXML);
 var
   vInt: IntegerRAL;
 begin

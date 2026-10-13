@@ -1513,6 +1513,7 @@ initialization
   RegisterEngine(TRALnetHTTPClientHTTP);
 
 finalization
+  UnregisterEngine(TRALnetHTTPClientHTTP);
   {$IFDEF RALWindows}
   { the fields belong to the context's pool: they go first }
   FreeRttiSlot(gSlotHttpClient);

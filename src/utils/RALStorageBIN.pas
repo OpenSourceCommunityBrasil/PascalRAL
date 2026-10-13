@@ -461,6 +461,7 @@ begin
         end;
       end;
       ADataset.Post;
+      RALStoragePosted(ADataset);
       vInt64 := vInt64 + 1;
     end;
   finally
@@ -635,5 +636,8 @@ end;
 
 initialization
   RegisterClass(TRALStorageBINLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageBINLink);
 
 end.

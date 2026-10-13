@@ -9,9 +9,9 @@ uses
   Classes, SysUtils, DB,
   {$IFDEF DELPHIXE4UP}
   FireDAC.Comp.Client, FireDAC.Stan.StorageJSON, FireDAC.Stan.StorageBin,
-  FireDAC.Comp.DataSet,
+  FireDAC.Stan.StorageXML, FireDAC.Stan.Intf, FireDAC.Comp.DataSet,
   {$ELSE}
-  uADCompClient, uADCompDataSet, uADStanStorage,
+  uADCompClient, uADCompDataSet, uADStanStorage, uADStanStorageXML, uADStanIntf,
   {$ENDIF}
   RALStorage, RALTypes, RALTools, RALDBConnection, RALDBSQLCache, RALMIMETypes,
   RALDBTypes, RALResponse, RALConsts;
@@ -116,6 +116,64 @@ type
   end;
 
 implementation
+
+{$IFDEF MSWINDOWS}
+uses
+  {$IFDEF DELPHIXE2UP}Winapi.ActiveX{$ELSE}ActiveX{$ENDIF};
+{$ENDIF}
+
+{$IFDEF MSWINDOWS}
+{ FireDAC reads and writes XML through MSXML, a COM library: the calling thread needs
+  COM, which a server thread or a console program has not started. True when this
+  call started it and ComLeave must end it. }
+function ComEnter: boolean;
+begin
+  Result := Succeeded(CoInitializeEx(nil, COINIT_MULTITHREADED));
+end;
+
+procedure ComLeave(AEntered: boolean);
+begin
+  if AEntered then
+    CoUninitialize;
+end;
+{$ENDIF}
+
+{ Loads into ADataSet the native answer AStream: FireDAC binary, or XML when it starts
+  with '<'. }
+procedure LoadNative(ADataSet: {$IFDEF DELPHIXE4UP}TFDDataSet{$ELSE}TADDataSet{$ENDIF};
+  AStream: TStream);
+var
+  vByte: Byte;
+  vXML: boolean;
+  {$IFDEF MSWINDOWS}
+  vCom: boolean;
+  {$ENDIF}
+begin
+  vXML := False;
+  AStream.Position := 0;
+  while AStream.Read(vByte, 1) = 1 do
+    if not (vByte in [9, 10, 13, 32, $EF, $BB, $BF]) then
+    begin
+      vXML := vByte = Ord('<');
+      Break;
+    end;
+  AStream.Position := 0;
+  if not vXML then
+  begin
+    ADataSet.LoadFromStream(AStream);
+    Exit;
+  end;
+  {$IFDEF MSWINDOWS}
+  vCom := ComEnter;
+  try
+  {$ENDIF}
+    ADataSet.LoadFromStream(AStream, sfXML);
+  {$IFDEF MSWINDOWS}
+  finally
+    ComLeave(vCom);
+  end;
+  {$ENDIF}
+end;
 
 { TRALDBFDMemTable }
 
@@ -486,7 +544,7 @@ begin
         try
           try
             if vDBSQL.Response.Native then
-              vTable.LoadFromStream(vDBSQL.Response.Stream)
+              LoadNative(vTable, vDBSQL.Response.Stream)
             else
               LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
@@ -643,7 +701,7 @@ begin
           for vInt := Pred(Self.Fields.Count) downto 0 do
             if Self.Fields[vInt].Owner = Self then
               Self.Fields[vInt].Free;
-          Self.LoadFromStream(vDBSQL.Response.Stream);
+          LoadNative(Self, vDBSQL.Response.Stream);
         end
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);

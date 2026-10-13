@@ -694,6 +694,7 @@ begin
           end;
         end;
         ADataset.Post;
+        RALStoragePosted(ADataset);
       finally
         FreeAndNil(vLine);
       end;
@@ -773,5 +774,8 @@ initialization
   // resolves the link by class name, so a server asked for CSV got nil and
   // died with an access violation at address zero on Create
   RegisterClass(TRALStorageCSVLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageCSVLink);
 
 end.

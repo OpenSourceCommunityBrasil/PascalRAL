@@ -528,4 +528,7 @@ initialization
   RegisterClass(TRALIndyClientHTTP);
   RegisterEngine(TRALIndyClientHTTP);
 
+finalization
+  UnregisterEngine(TRALIndyClientHTTP);
+
 end.

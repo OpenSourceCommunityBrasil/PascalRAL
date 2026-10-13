@@ -646,6 +646,7 @@ begin
       for vInt := 0 to Pred(vCount) do
         ReadFieldValue(vInt, vjObj.Get(vInt));
       ADataset.Post;
+      RALStoragePosted(ADataset);
       vInt64 := vInt64 + 1;
     end;
   finally
@@ -995,6 +996,7 @@ begin
             ReadFieldValue(vInt, vjValue);
         end;
         ADataset.Post;
+        RALStoragePosted(ADataset);
         vInt64 := vInt64 + 1;
       end;
     finally
@@ -1158,5 +1160,8 @@ end;
 
 initialization
   RegisterClass(TRALStorageJSONLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageJSONLink);
 
 end.

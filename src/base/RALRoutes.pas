@@ -17,8 +17,10 @@ type
   /// Handler of a route, as a plain procedure.
   TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 
-  /// Type of a declared route param, as Swagger documents it.
-  TRALRouteParamType = (prtBoolean, prtInteger, prtNumber, prtString);
+  { Type of a declared route param, as Swagger and WSDL document it: decimal is an
+    exact number, XML a free fragment. }
+  TRALRouteParamType = (prtBoolean, prtInteger, prtNumber, prtString, prtDecimal,
+    prtDate, prtTime, prtDateTime, prtBase64, prtXML);
 
   /// A param a route declares: name, type, whether it is required, and a description.
   TRALRouteParam = class(TCollectionItem)
