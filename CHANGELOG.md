@@ -828,6 +828,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Erro de adição de cookie fix: Erro de JAR nos clientes fix: Erro de compilação Delphi seattle** (2026-10-08 – mobius1qwe)
+
 - **Fix the Fields Editor's fields of a FireDAC memtable not matching a native load** (2026-10-04 – tempraturbo)
   The memtables make their design-time fields from getsqlfields, and the
   client reduced the server's type to the RAL one - DATE, TIME and TIMESTAMP
