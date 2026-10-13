@@ -269,7 +269,7 @@ Inspector. Assign it in code, from wherever your application keeps its secrets.
 
 ## RALSelfSigned: RAL makes it, attaches it and renews it
 
-`TRALSelfSigned` (`src/base/plugins/RALSelfSigned.pas`, palette **RAL - Plugins**) does
+`TRALSelfSigned` (`src/plugins/tls/RALSelfSigned.pas`, palette **RAL - Plugins**) does
 everything the section above does with `openssl`, in Pascal, for whichever engine the
 server is:
 

@@ -58,7 +58,7 @@ Seven traps, in the order they bite:
 1. **`/p:UsePackages=true` is mandatory.** The targets emit `-LU` only `Condition="'$(UsePackages)'==true Or '$(DCC_EnabledPackages)'=='true'"`, and **no `.dproj` in this repo sets either**. Without it `msbuild` produces a package with Indy/FireDAC linked *statically* — it compiles clean and the IDE then refuses it with a duplicate-unit error. Watch the size: `IndyRAL.bpl` comes out at 1.5 MB instead of 45 KB, `RALDBFireDACPackage.bpl` at 2.9 MB instead of 104 KB.
 2. **Filter `DCC_UsePackage` against the `.dcp` that actually exist.** These lists accumulate whatever was installed when the `.dproj` was last saved; `IndyRAL.dproj` still names `IndyCore160`/`IndySystem160`/`IndyProtocols160`. With `-LU` on, a name with no `.dcp` is a hard `E2202: Required package 'IndyCore160' not found`. Keep only the entries with a matching `.dcp` under the lib or `Dcp` directory.
 3. **The `Base` PropertyGroup's `DCC_UnitSearchPath` does not get applied this way.** It only matters for `SynopseRAL`, because every other package names its units with explicit `in '..\..\src\...'` paths in the `.dpk` while the mORMot units are external. Pass them yourself, `$(mormot2)` expanded:
-   `/p:DCC_UnitSearchPath="<src\base>;<src\utils>;<src\engine\synopse>;<m>;<m>\core;<m>\lib;<m>\crypt;<m>\net;<m>\db;<m>\rest;<m>\orm;<m>\soa;<m>\app;<m>\script;<m>\ui;<m>\tools;<m>\misc"`.
+   `/p:DCC_UnitSearchPath="<src\core>;<src\common>;<src\compress>;<src\crypto>;<src\plugins>;<src\engine\synopse>;<m>;<m>\core;<m>\lib;<m>\crypt;<m>\net;<m>\db;<m>\rest;<m>\orm;<m>\soa;<m>\app;<m>\script;<m>\ui;<m>\tools;<m>\misc"`.
    `mormot2` is an **IDE** environment variable, so `msbuild` does not see it — pass `/p:mormot2=...` or set it in the shell.
 4. **Set `BDS`, `BDSCOMMONDIR` and `BDSLIB` yourself** when the shell was not
    initialized by `rsvars.bat`. Without `BDS` the `.dproj` never imports
@@ -101,7 +101,7 @@ If you would rather bypass `msbuild` entirely, `dcc32` still works:
 
 ```bash
 dcc32 --no-config -B -Q -NS"System;System.Win;Winapi;Vcl;Data;Data.Win;Xml;Web;Soap;Datasnap" \
-  -U"<BDS lib\win32\release>;<BDSCOMMONDIR>\Dcp;<src dirs>" -I"src\base;src\languages" \
+  -U"<BDS lib\win32\release>;<BDSCOMMONDIR>\Dcp;<src dirs>" -I"src\core;src\languages" \
   -LU"IndyCore;IndyProtocols;IndySystem;PascalRAL;PascalRALDsgn;rtl" \
   -LE"<BDSCOMMONDIR>\Bpl" -LN"<BDSCOMMONDIR>\Dcp" IndyRAL.dpk
 ```
@@ -113,8 +113,8 @@ Sanity check after a build: `IndyRAL.bpl` around 44 KB and `RALDBFireDACPackage.
 ```bash
 # from a scratch dir, NOT the repo
 dcc32 --no-config -B -Q -NS"System;System.Win;Winapi;Vcl;Data;Data.Win;Xml;Web;Soap;Datasnap" \
-  -U"<BDS lib\win32\release>;<repo>\src\base;<repo>\src\base\plugins;<repo>\src\utils;<repo>\src\database" \
-  -I"<repo>\src\base;<repo>\src\languages" -N0"C:\temp\chk" -E"C:\temp\chk" chk.dpr
+  -U"<BDS lib\win32\release>;<repo>\src\core;<repo>\src\common;<repo>\src\compress;<repo>\src\crypto;<repo>\src\plugins;<repo>\src\storage;<repo>\src\database" \
+  -I"<repo>\src\core;<repo>\src\languages" -N0"C:\temp\chk" -E"C:\temp\chk" chk.dpr
 ```
 
 Pass every path to `dcc32` in Windows form (`C:\temp\chk`). Git Bash rewrites a `/c/...` or `/tmp/...` argument into something like `C:C:/Program Files/Git/...` and the compiler dies with `F2039 Could not create output file`.

@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=42
+Count=41
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -108,11 +108,10 @@ Item_36=src\wizard\delphi
 Item_37=src\wizard\delphi\console
 Item_38=src\wizard\delphi\standalone
 Item_39=src\wizard\delphi\cgi
-Item_40=src\wizard\lazarus
-Item_41=src\languages
+Item_40=src\languages
 
 [Files]
-Count=136
+Count=134
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -247,8 +246,6 @@ Item_130=src\wizard\delphi\console\RALWizardProjConsole.pas
 Item_131=src\wizard\delphi\standalone\RALWizardFormStandAlone.pas
 Item_132=src\wizard\delphi\standalone\RALWizardProjStandAlone.pas
 Item_133=src\wizard\delphi\cgi\RALWizardProjCGI.pas
-Item_134=src\wizard\lazarus\ralwizard.pas
-Item_135=src\wizard\lazarus\ralwizardform.pas
 [AdditionalFiles]
 Count=0
 
