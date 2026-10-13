@@ -7,8 +7,8 @@ Playbooks curtos para tarefas comuns. Cada playbook aponta exatamente **onde ler
 ## Playbook A — “Quero uma rota ping (Server)”
 
 1) Leia:
-- `src/base/RALRoutes.pas` (como rotas são registradas/descobertas)
-- `src/base/RALServer.pas` (como o ciclo executa handlers)
+- `src/core/RALRoutes.pas` (como rotas são registradas/descobertas)
+- `src/core/RALServer.pas` (como o ciclo executa handlers)
 
 2) Depois escolha engine:
 - `src/engine/indy/RALIndyServer.pas` (ou fpHTTP/synopse/cgi)
@@ -16,22 +16,22 @@ Playbooks curtos para tarefas comuns. Cada playbook aponta exatamente **onde ler
 3) Confirme a assinatura do handler no repo.
 
 4) No handler, preencha resposta usando o padrão do projeto:
-- procure exemplos de `AResponse.Answer(...)` em `src/base/RALResponse.pas` e handlers existentes.
+- procure exemplos de `AResponse.Answer(...)` em `src/core/RALResponse.pas` e handlers existentes.
 
 ---
 
 ## Playbook B — “Quero consumir a rota via Client”
 
 1) Leia:
-- `src/base/RALClient.pas` (orquestra)
-- `src/base/RALRequest.pas` / `src/base/RALResponse.pas`
+- `src/core/RALClient.pas` (orquestra)
+- `src/core/RALRequest.pas` / `src/core/RALResponse.pas`
 
 2) Escolha engine do transporte:
 - `src/engine/indy/RALIndyClient.pas`
 - `src/engine/fpHTTP/RALfpHTTPClient.pas`
 - `src/engine/netHTTP/RALnetHTTPClient.pas`
 - `src/engine/synopse/RALSynopseClient.pas`
-- `src/engine/unigui/RALUniGUIRegister.pas` (se aplicável)
+- `src/engine/unigui/RALUniGUIReg.pas` (se aplicável)
 
 3) Confirme:
 - como setar BaseURL/route
@@ -43,9 +43,9 @@ Playbooks curtos para tarefas comuns. Cada playbook aponta exatamente **onde ler
 ## Playbook C — “Enviar JSON e ler JSON”
 
 1) Leia:
-- `src/utils/RALJson.pas`
-- `src/base/RALParams.pas` (conversion helpers)
-- `src/base/RALResponse.pas`
+- `src/common/RALJson.pas`
+- `src/core/RALParams.pas` (conversion helpers)
+- `src/core/RALResponse.pas`
 
 2) Confirme onde fica o encoder/decoder do repo.
 
@@ -57,8 +57,8 @@ Playbooks curtos para tarefas comuns. Cada playbook aponta exatamente **onde ler
 ## Playbook D — “Multipart/form-data”
 
 1) Leia:
-- `src/utils/RALMultipartCoder.pas`
-- `src/base/RALParams.pas` (quando faz decode do body)
+- `src/common/RALMultipartCoder.pas`
+- `src/core/RALParams.pas` (quando faz decode do body)
 
 2) Confirme:
 - como adicionar File vs Text no `TRALParams`
@@ -73,14 +73,14 @@ request, one per response" do `CLAUDE.md` e o bloco "Estado" de
 `.agents/PLANO_STREAM_UNICO.md` (posse, faixas de tamanho, API de engine).
 
 1) Leia:
-- `src/utils/RALStream.pas` (vistas, janelas, blocos, disco, `TRALBodyStream`)
-- `src/utils/RALCompress*.pas` (`CompressTo`/`DecompressTo`, `RALIsCompressedType`)
-- `src/utils/RALCripto*.pas` (`EncryptTo`/`EncryptInPlace`/`DecryptInPlace`)
+- `src/common/RALStream.pas` (vistas, janelas, blocos, disco, `TRALBodyStream`)
+- `src/compress/RALCompress*.pas` (`CompressTo`/`DecompressTo`, `RALIsCompressedType`)
+- `src/crypto/RALCripto*.pas` (`EncryptTo`/`EncryptInPlace`/`DecryptInPlace`)
 
 2) Leia as dependências no pipeline:
-- `src/utils/RALCustomObjects.pas` (`SetWireBody`, `TakeWireStream`/`TakeWireString`)
-- `src/base/RALRequest.pas` / `src/base/RALResponse.pas`
-- `src/base/RALParams.pas` (`DecodeBody` com posse, `PrepareBody`,
+- `src/core/RALCustomObjects.pas` (`SetWireBody`, `TakeWireStream`/`TakeWireString`)
+- `src/core/RALRequest.pas` / `src/core/RALResponse.pas`
+- `src/core/RALParams.pas` (`DecodeBody` com posse, `PrepareBody`,
   `EffectiveCompress`, `WriteTransformed`, `TakeWireStream`)
 
 3) Só então ajuste engine:
@@ -104,15 +104,15 @@ request, one per response" do `CLAUDE.md` e o bloco "Estado" de
 - `src/database/Zeos/*`
 
 3) Persistência/serialização do resultado:
-- `src/utils/RALStorage*.pas`
+- `src/storage/RALStorage*.pas`
 
 ---
 
 ## Playbook G — “Swagger e Postman”
 
 1) Leia:
-- `src/base/modules/RALSwaggerExporter.pas` + `src/base/modules/RALSwaggerModule.pas`
-- `src/base/modules/RALPostmanExporter.pas`
+- `src/modules/swagger/RALSwaggerExporter.pas` + `src/modules/swagger/RALSwaggerModule.pas`
+- `src/modules/swagger/RALPostmanExporter.pas`
 
 2) Se precisar customizar:
 - procure no repo onde `SwaggerModule` recebe URLs/paths/titles.
@@ -122,11 +122,11 @@ request, one per response" do `CLAUDE.md` e o bloco "Estado" de
 ## Playbook H — “Security/Auth (Allowed/Skip + plugin)”
 
 1) Leia:
-- `src/base/plugins/RALAuthentication.pas`
-- `src/base/RALRoutes.pas` (allowed/skip e validações)
+- `src/plugins/auth/RALAuthentication.pas`
+- `src/core/RALRoutes.pas` (allowed/skip e validações)
 
 2) Leia o fluxo:
-- `src/base/RALServer.pas` (quando valida e quando responde)
+- `src/core/RALServer.pas` (quando valida e quando responde)
 
 ---
 

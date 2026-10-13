@@ -12,11 +12,11 @@ Instruções para acelerar desempenho de agentes de IA usando este repositório.
 
 > Para reduzir gasto de tokens, use um cache local (abaixo) antes de refazer indexações/leitura repetitiva.
 
-  - Rotas/servidor → `src/base/RALRoutes.pas`, `src/base/RALServer.pas`
-  - Params/request/response → `src/base/RALParams.pas`, `src/base/RALRequest.pas`, `src/base/RALResponse.pas`
-  - Multipart → `src/utils/RALMultipartCoder.pas`
-  - Storage/serialization → `src/utils/RALStorage*.pas`
-  - Compress/Cripto → `src/utils/RALCompress*.pas`, `src/utils/RALCripto*.pas`, `src/utils/RALStream.pas`
+  - Rotas/servidor → `src/core/RALRoutes.pas`, `src/core/RALServer.pas`
+  - Params/request/response → `src/core/RALParams.pas`, `src/core/RALRequest.pas`, `src/core/RALResponse.pas`
+  - Multipart → `src/common/RALMultipartCoder.pas`
+  - Storage/serialization → `src/storage/RALStorage*.pas`
+  - Compress/Cripto → `src/compress/RALCompress*.pas`, `src/crypto/RALCripto*.pas`, `src/common/RALStream.pas`
   - Engines de transporte → `src/engine/*`
   - DBModule/DBWare → `src/database/*`
   - Wizard → `src/wizard/*`
@@ -77,14 +77,14 @@ Exemplo de padrão de handler (deve ser confirmado no repo)
 
 ## 5) Performance: cuidado com multi-thread
 - Procure por:
-  - `ThreadSafe` em `src/utils/RALThreadSafe.pas`
+  - `ThreadSafe` em `src/common/RALThreadSafe.pas`
   - implementações multithread nas engines/clients (quando existirem)
 - Sempre verifique ownership/lifetime de objetos ao modificar lógica.
 
 ---
 
 ## 6) Mudanças seguras
-- Antes de editar qualquer unit base (`src/base/*`), leia também:
+- Antes de editar qualquer unit base (`src/core/*`), leia também:
   - unidades que consomem essas classes nos engines
   - unidades de utilitários que são chamadas recursivamente
 - Evite alterar interfaces públicas sem checar impacto no resto do projeto.

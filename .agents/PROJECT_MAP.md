@@ -43,86 +43,244 @@ Este arquivo foi criado para ajudar agentes de IA a entenderem rapidamente a est
 
 ## 2) Código-fonte (`src/`) — visão geral
 
-A pasta `src/` está organizada em:
+Desde a 2.0, **uma pasta pertence a um pacote só**; a exceção é `src/others`, que
+guarda todos os submódulos e nenhuma unit do RAL. As units de design ficam numa
+subpasta `design/` própria: o `lazbuild -B` compila de novo, dentro do pacote de
+design, toda unit de runtime que achar na mesma pasta. Nomes de pacote:
+`RAL<Categoria><Item>Package` / `RAL<Categoria><Item>Dsgn`; motores `<Motor>RAL`;
+`PascalRAL` e `PascalRALDsgn` são os obrigatórios (raiz de `pkg/<IDE>`). O plano e as
+decisões estão em `.agents/PLANO_REFORMA_2_0.md`.
 
-- `src/base/` — tipos base, core do servidor/cliente, rotas, requisições/respostas e registro.
-- `src/database/` — camada de DBWare/DBModule e conectores (FireDAC/SQLDB/Zeos).
-- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, MsQuic, netHTTP, OkHttp, Sagui, Synopse, UniGUI).
-- `src/languages/` — arquivos de constantes/strings por idioma.
-- `src/others/` — integrações e implementações externas (ex.: kxBSON, brotli, ZSTD).
-- `src/utils/` — utilitários (JSON, compressões, hash, stream, storage, criptografia, multipart etc.).
-- `src/wizard/` — tooling de wizard (Delphi e Lazarus).
+| pasta | pacote(s) | o que tem |
+|---|---|---|
+| `src/core/` | `PascalRAL` | servidor, cliente, request/response, rotas, params, plugins (núcleo), base da autenticação |
+| `src/bindings/` | `MsQuicRAL`, `SaguiRAL` | bindings de bibliotecas C (`MsQuic.pas`, `libsagui.pas`), sem unit do RAL |
+| `src/common/` | `PascalRAL` | utilitários do núcleo: JSON, stream, MIME, URL, multipart, rede, base64, quadro QUIC |
+| `src/compress/` | `PascalRAL` | compressão do núcleo (zlib/gzip/deflate) e o registro de compressores |
+| `src/compress/brotli/` | `RALCompressBrotliPackage` | Brotli (o submódulo fica em `src/others/pascal_brotli`) |
+| `src/compress/zstd/` | `RALCompressZStdPackage` | ZStd (o submódulo fica em `src/others/ZSTD`) |
+| `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`) |
+| `src/database/` | `RALDBPackage` | DBWare: módulo, conexão, pool, cache de SQL, base dos drivers |
+| `src/database/FireDAC/` | `RALDBFireDACDAOPackage`, `RALDBFireDACPackage` | driver e memtable FireDAC, DAO |
+| `src/database/FireDAC/design/` | `RALDBFireDACDsgn` | design do FireDAC |
+| `src/database/Zeos/` | `RALDBZeosPackage` | driver e memtable Zeos |
+| `src/database/Zeos/design/` | `RALDBZeosDsgn` | design do Zeos |
+| `src/database/design/` | `RALDBDsgn` | design do DBWare |
+| `src/database/sqldb/` | `raldbsqldbpackage.lpk` | driver e dataset sqldb (Lazarus) |
+| `src/database/sqldb/design/` | `raldbsqldbdsgn.lpk` | design do sqldb |
+| `src/design/` | `PascalRALDsgn` | design do núcleo (`RALRegister`, editores de propriedade) |
+| `src/modules/soap/` | `RALModuleSOAPPackage` | SOAP: módulo, cliente, WSDL |
+| `src/modules/soap/design/` | `RALModuleSOAPDsgn` | design do SOAP (verbos de IDE) |
+| `src/modules/swagger/` | `RALModuleSwaggerPackage` | módulo Swagger e exportadores Swagger/Postman |
+| `src/modules/web/` | `RALModuleWebPackage` | módulo web (arquivos estáticos, sessões) |
+| `src/modules/xml/` | `RALModuleXMLPackage` | XML (leitor, escritor, DOM) e o storage XML |
+| `src/plugins/` | `PascalRAL` | plugins do núcleo: segurança, CORS, conteúdo (limites, compressão, cripto, JSON), concorrência |
+| `src/plugins/auth/` | `RALPluginAuthPackage` | autenticação: Basic e JWT (`RALAuthentication`), Digest, OAuth2 |
+| `src/plugins/tls/` | `RALPluginTLSPackage` | certificado autoassinado (`RALSelfSigned`) |
+| `src/storage/` | `RALStoragePackage` | storage de dataset: base, tipos (`RALStorageTypes`; `RALDBTypes` é a unit de transição), BIN, JSON, CSV |
+| `src/storage/bson/` | `RALStorageBSONPackage` | storage BSON (o submódulo kxBSON fica em `src/others/kxBSON`) |
+| `src/wizard/delphi/` | `RALWizardDsgn` | assistentes de projeto (Delphi) |
+| `src/wizard/delphi/cgi/` | `RALWizardDsgn` |  |
+| `src/wizard/delphi/console/` | `RALWizardDsgn` |  |
+| `src/wizard/delphi/standalone/` | `RALWizardDsgn` |  |
+| `src/wizard/lazarus/` | `RALWizardDsgn` | assistentes de projeto (Lazarus) |
+| `src/engine/<motor>/` | `<Motor>RAL` (`indyral.lpk`...) | um motor por pasta |
+| `src/languages/` | (incluído pelo `RALConsts`) | textos por idioma |
+| `src/others/` | (o pacote que usa cada um) | só submódulos: ZSTD, pascal_brotli, kxBSON |
 
----
+## 3) Mapa detalhado por pasta (unidades)
 
-## 3) Mapa detalhado por módulo (unidades principais)
+### 3.1) `src/core/`
 
-### 3.1) `src/base/`
+- `RALAuthBase.pas` — PascalRAL
+- `RALClient.pas` — PascalRAL
+- `RALConsts.pas` — PascalRAL
+- `RALCustomObjects.pas` — PascalRAL
+- `RALParams.pas` — PascalRAL
+- `RALPlugin.pas` — PascalRAL
+- `RALRequest.pas` — PascalRAL
+- `RALResponse.pas` — PascalRAL
+- `RALRoutes.pas` — PascalRAL
+- `RALServer.pas` — PascalRAL
+- `RALTypes.pas` — PascalRAL
 
-**Arquivos principais:**
-- `PascalRAL.inc`
-- `RALClient.pas`
-- `RALConsts.pas`
-- `RALDBTypes.pas`
-- `RALParams.pas`
-- `RALRegister.pas`
-- `RALRequest.pas`
-- `RALResponse.pas`
-- `RALRoutes.pas`
-- `RALServer.pas`
-- `RALTypes.pas`
+### 3.2) `src/bindings/`
 
-**Subpastas:**
-- `src/base/modules/`
-  - `RALExternalsLibraries.pas`
-  - `RALPostmanExporter.pas`
-  - `RALSwaggerExporter.pas`
-  - `RALSwaggerModule.pas`
-  - `RALWebModule.pas`
-- `src/base/plugins/`
-  - `RALAuthentication.pas`
+- `libsagui.pas` — SaguiRAL
+- `MsQuic.pas` — MsQuicRAL
 
----
+### 3.3) `src/common/`
 
-### 3.2) `src/database/` (DBWare / DBModule)
+- `RALBase64.pas` — PascalRAL
+- `RALExternalsLibraries.pas` — PascalRAL
+- `RALHexadecimal.pas` — PascalRAL
+- `RALJson.pas` — PascalRAL
+- `RALMIMETypes.pas` — PascalRAL
+- `RALMultipartCoder.pas` — PascalRAL
+- `RALNetwork.pas` — PascalRAL
+- `RALQuicFrame.pas` — PascalRAL
+- `RALResponsePages.pas` — PascalRAL
+- `RALStream.pas` — PascalRAL
+- `RALThreadSafe.pas` — PascalRAL
+- `RALTools.pas` — PascalRAL
+- `RALTranslate.pas` — (fora de pacote)
+- `RALUrlCoder.pas` — PascalRAL
 
-**Arquivos principais:**
-- `RALDBBase.pas`
-- `RALDBConnection.pas`
-- `RALDBConnectionPooler.pas`
-- `RALDBModule.pas`
-- `raldbregister.pas`
-- `RALDBSQLCache.pas`
+### 3.4) `src/compress/`
 
-**Conectores:**
-- `src/database/FireDAC/`
-  - `RALDBFireDAC.pas`
-  - `RALDBFiredacDAO.pas`
-  - `RALDBFireDACLinkReg.pas`
-  - `RALDBFiredacMemTable.pas`
-- `src/database/sqldb/`
-  - `RALDBBufDataset.pas`
-  - `RALDBSQLDB.pas`
-  - `RALDBSQLDBLinkReg.pas`
-- `src/database/Zeos/`
-  - `RALDBZeos.pas`
-  - `RALDBZeosLinkReg.pas`
-  - `RALDBZeosMemTable.pas`
+- `RALCompress.pas` — PascalRAL
+- `RALCompressZLib.pas` — PascalRAL
 
----
+### 3.5) `src/compress/brotli/`
 
-### 3.3) `src/engine/` (transport engines)
+- `RALCompressBrotli.pas` — RALCompressBrotliPackage
 
-- `engine/cgi/`: `RALCGIRegister.pas`, `RALCGIServer*.inc`, `RALCGIServer.pas`
-- `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPRegister.pas`, `RALfpHTTPServer.pas`
-- `engine/indy/`: `RALIndyClient.pas`, `RALIndyRegister.pas`, `RALIndyServer.pas`
-- `engine/msquic/`: `MsQuic.pas` (binding da API C, carga dinamica), `RALMsQuicClient.pas`, `RALMsQuicRegister.pas`, `RALMsQuicServer.pas` — QUIC (RFC 9000) por MsQuic; **nao e HTTP/3**: o que trafega e um frame binario proprio, entao as DUAS pontas tem de ser RAL. Precisa da `msquic.dll`/`libmsquic.so.2` (build OpenSSL) em runtime — no Android e `libmsquic.so`, deployada em `library\lib\arm64-v8a\` e `library\lib\armeabi-v7a\`, porque la nao ha soname versionado; a lib so e carregada no `Active := True`. Servidor E cliente rodam no Android 9+ (API 28) sem port, verificados no aparelho nos dois ABIs em 02/10/2026; os binarios (Windows x64/x86, Android arm64/armv7) ficam zipados na branch `external`, em `msquic/`. `README.md` e o guia de uso (deploy por plataforma, certificados); fora do Windows a validacao de certificado e a do OpenSSL (o check de plataforma do msquic e um stub no POSIX), e no Android a loja do sistema e juntada num PEM no cache — `TRALMsQuicClientHTTP.DefaultCaFile` troca a loja
-- `engine/kwik/`: `RALKwikClient.pas`, `RALKwikRegister.pas`, `java/` (ponte JNI + 5 jars), `README.md` — cliente QUIC de **Android**, so Delphi; fala o MESMO frame do MsQuic (os dois usam `RALQuicFrame`), entao conversa com o `TRALMsQuicServer`; nasceu quando o MsQuic nao tinha `.so` para Android, e hoje fica para o Android 8 (API 26-27, abaixo do piso do msquic) e para app que nao quer biblioteca nativa. Kwik e LGPL v3
-- `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPRegister.pas`
-- `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpRegister.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
-- `engine/sagui/`: `RALSaguiRegister.pas`, `RALSaguiServer.pas`
-- `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseRegister.pas`, `RALSynopseServer.pas`
-- `engine/unigui/`: `RALUniGUIRegister.pas`, `RALUniGUIServer.pas`
+### 3.6) `src/compress/zstd/`
+
+- `RALCompressZStd.pas` — RALCompressZStdPackage
+
+### 3.7) `src/crypto/`
+
+- `RALASN1.pas` — PascalRAL
+- `RALBigInt.pas` — PascalRAL
+- `RALCRC32.pas` — PascalRAL
+- `RALCripto.pas` — PascalRAL
+- `RALCriptoAES.pas` — PascalRAL
+- `RALCriptoOpenSSL.pas` — PascalRAL
+- `RALHashBase.pas` — PascalRAL
+- `RALHashes.pas` — PascalRAL
+- `RALJWS.pas` — PascalRAL
+- `RALMD5.pas` — PascalRAL
+- `RALOpenSSL.pas` — PascalRAL
+- `RALRSA.pas` — PascalRAL
+- `RALSHA1.pas` — PascalRAL
+- `RALSHA2_32.pas` — PascalRAL
+- `RALSHA2_64.pas` — PascalRAL
+- `RALToken.pas` — PascalRAL
+- `RALX509.pas` — PascalRAL
+
+### 3.8) `src/database/`
+
+- `RALDBBase.pas` — RALDBPackage
+- `RALDBConnection.pas` — RALDBPackage
+- `RALDBModule.pas` — RALDBPackage
+- `RALDBPool.pas` — RALDBPackage
+- `RALDBSQLCache.pas` — RALDBPackage
+
+### 3.9) `src/database/FireDAC/`
+
+- `RALDBFireDAC.pas` — RALDBFireDACPackage
+- `RALDBFiredacDAO.pas` — RALDBFireDACDAOPackage
+- `RALDBFiredacMemTable.pas` — RALDBFireDACPackage
+
+### 3.10) `src/database/FireDAC/design/`
+
+- `RALDBFireDACReg.pas` — RALDBFireDACDsgn
+
+### 3.11) `src/database/Zeos/`
+
+- `RALDBZeos.pas` — RALDBZeosPackage
+- `RALDBZeosMemTable.pas` — RALDBZeosPackage
+
+### 3.12) `src/database/Zeos/design/`
+
+- `RALDBZeosReg.pas` — RALDBZeosDsgn
+
+### 3.13) `src/database/design/`
+
+- `RALDBReg.pas` — RALDBDsgn
+
+### 3.14) `src/database/sqldb/`
+
+- `RALDBBufDataset.pas` — raldbsqldbpackage.lpk
+- `RALDBSQLDB.pas` — raldbsqldbpackage.lpk
+
+### 3.15) `src/database/sqldb/design/`
+
+- `RALDBSQLDBReg.pas` — raldbsqldbdsgn.lpk
+
+### 3.16) `src/design/`
+
+- `RALRegister.pas` — PascalRALDsgn
+
+### 3.17) `src/modules/soap/`
+
+- `RALSOAPActions.pas` — RALModuleSOAPPackage
+- `RALSOAPClient.pas` — RALModuleSOAPPackage
+- `RALSOAPModule.pas` — RALModuleSOAPPackage
+- `RALSOAPTypes.pas` — RALModuleSOAPPackage
+- `RALWSDLExporter.pas` — RALModuleSOAPPackage
+
+### 3.18) `src/modules/soap/design/`
+
+- `RALModuleSOAPReg.pas` — RALModuleSOAPDsgn
+
+### 3.19) `src/modules/swagger/`
+
+- `RALModuleSwaggerReg.pas` — RALModuleSwaggerPackage
+- `RALPostmanExporter.pas` — RALModuleSwaggerPackage
+- `RALSwaggerExporter.pas` — RALModuleSwaggerPackage
+- `RALSwaggerModule.pas` — RALModuleSwaggerPackage
+
+### 3.20) `src/modules/web/`
+
+- `RALModuleWebReg.pas` — RALModuleWebPackage
+- `RALWebModule.pas` — RALModuleWebPackage
+
+### 3.21) `src/modules/xml/`
+
+- `RALModuleXMLReg.pas` — RALModuleXMLPackage
+- `RALStorageXML.pas` — RALModuleXMLPackage
+- `RALXML.pas` — RALModuleXMLPackage
+- `RALXMLReader.pas` — RALModuleXMLPackage
+- `RALXMLWriter.pas` — RALModuleXMLPackage
+
+### 3.22) `src/plugins/`
+
+- `RALConcurrency.pas` — PascalRAL
+- `RALContent.pas` — PascalRAL
+- `RALCORS.pas` — PascalRAL
+- `RALSecurity.pas` — PascalRAL
+
+### 3.23) `src/plugins/auth/`
+
+- `RALAuthentication.pas` — RALPluginAuthPackage
+- `RALDigest.pas` — RALPluginAuthPackage
+- `RALOAuth2.pas` — RALPluginAuthPackage
+- `RALPluginAuthReg.pas` — RALPluginAuthPackage
+
+### 3.24) `src/plugins/tls/`
+
+- `RALPluginTLSReg.pas` — RALPluginTLSPackage
+- `RALSelfSigned.pas` — RALPluginTLSPackage
+
+### 3.25) `src/storage/`
+
+- `RALDBTypes.pas` — RALStoragePackage
+- `RALStorage.pas` — RALStoragePackage
+- `RALStorageBIN.pas` — RALStoragePackage
+- `RALStorageCSV.pas` — RALStoragePackage
+- `RALStorageJSON.pas` — RALStoragePackage
+- `RALStorageReg.pas` — RALStoragePackage
+- `RALStorageTypes.pas` — RALStoragePackage
+
+### 3.26) `src/storage/bson/`
+
+- `RALStorageBSON.pas` — RALStorageBSONPackage
+- `RALStorageBSONReg.pas` — RALStorageBSONPackage
+
+### 3.27) `src/engine/` (transport engines)
+
+- `engine/cgi/`: `RALCGIReg.pas`, `RALCGIServer*.inc`, `RALCGIServer.pas`
+- `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPReg.pas`, `RALfpHTTPServer.pas`
+- `engine/indy/`: `RALIndyClient.pas`, `RALIndyReg.pas`, `RALIndyServer.pas`
+- `engine/msquic/`: `MsQuic.pas` (binding da API C, carga dinamica), `RALMsQuicClient.pas`, `RALMsQuicReg.pas`, `RALMsQuicServer.pas` — QUIC (RFC 9000) por MsQuic; **nao e HTTP/3**: o que trafega e um frame binario proprio, entao as DUAS pontas tem de ser RAL. Precisa da `msquic.dll`/`libmsquic.so.2` (build OpenSSL) em runtime — no Android e `libmsquic.so`, deployada em `library\lib\arm64-v8a\` e `library\lib\armeabi-v7a\`, porque la nao ha soname versionado; a lib so e carregada no `Active := True`. Servidor E cliente rodam no Android 9+ (API 28) sem port, verificados no aparelho nos dois ABIs em 02/10/2026; os binarios (Windows x64/x86, Android arm64/armv7) ficam zipados na branch `external`, em `msquic/`. `README.md` e o guia de uso (deploy por plataforma, certificados); fora do Windows a validacao de certificado e a do OpenSSL (o check de plataforma do msquic e um stub no POSIX), e no Android a loja do sistema e juntada num PEM no cache — `TRALMsQuicClientHTTP.DefaultCaFile` troca a loja
+- `engine/kwik/`: `RALKwikClient.pas`, `RALKwikReg.pas`, `java/` (ponte JNI + 5 jars), `README.md` — cliente QUIC de **Android**, so Delphi; fala o MESMO frame do MsQuic (os dois usam `RALQuicFrame`), entao conversa com o `TRALMsQuicServer`; nasceu quando o MsQuic nao tinha `.so` para Android, e hoje fica para o Android 8 (API 26-27, abaixo do piso do msquic) e para app que nao quer biblioteca nativa. Kwik e LGPL v3
+- `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPReg.pas`
+- `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpReg.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
+- `engine/sagui/`: `RALSaguiReg.pas`, `RALSaguiServer.pas`
+- `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseReg.pas`, `RALSynopseServer.pas`
+- `engine/unigui/`: `RALUniGUIReg.pas`, `RALUniGUIServer.pas`
 
 **O que é igual entre os motores, e onde não dá para ser (2026-09-15)**
 
@@ -138,102 +296,26 @@ Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades
 
 ---
 
-### 3.4) `src/languages/`
+### 3.28) `src/modules/xml` e `src/modules/soap` (o que cada unit faz)
 
-- `ralconsts_enus.inc`
-- `ralconsts_eses.inc`
-- `ralconsts_ptbr.inc`
-- `rallang.es_ES`
-- `rallang.pt_BR`
-
----
-
-### 3.5) `src/others/` (dependências externas)
-
-- `libsagui.pas`
-- `RALBSONReg.pas`
-- `RALCompressBrotli.pas`
-- `RALCompressZStd.pas`
-
-**kxBSON**
-- `others/kxBSON/Source/kxBSON.pas`
-
-**pascal_brotli**
-- `others/pascal_brotli/brotlilib.pas`
-- `others/pascal_brotli/brotlistream.pas`
-
-**ZSTD**
-- `others/ZSTD/LZ4.pas`
-- `others/ZSTD/LZ4Lib.pas`
-- `others/ZSTD/ZSTD.pas`
-- `others/ZSTD/ZSTDLib.pas`
-
----
-
-### 3.6) `src/utils/` (utilitários)
-
-- `RALBase64.pas`
-- `RALCompress.pas`
-- `RALCompressZLib.pas`
-- `RALCRC32.pas`
-- `RALCripto.pas`
-- `RALCriptoAES.pas`
-- `RALCriptoOpenSSL.pas`
-- `ralcrud.pas`
-- `RALCustomObjects.pas`
-- `RALHashBase.pas`
-- `RALHashes.pas`
-- `RALHexadecimal.pas`
-- `RALJson.pas`
-- `RALMD5.pas`
-- `RALSHA1.pas`
-- `RALSHA2_32.pas`
-- `RALSHA2_64.pas`
-- `RALMIMETypes.pas`
-- `RALMultipartCoder.pas`
-- `RALNetwork.pas` (IPs da propria maquina, pedidos ao sistema; base de `TRALServer.GetServerAddress`)
-- `RALOpenSSL.pas`
-- `RALResponsePages.pas`
-- `RALStorage.pas`
-- `RALStorageBIN.pas`
-- `RALStorageBSON.pas`
-- `RALStorageCSV.pas`
-- `RALStorageJSON.pas`
-- `RALStream.pas`
-- `RALThreadSafe.pas`
-- `RALToken.pas`
-- `RALTools.pas`
-- `RALTranslate.pas`
-- `RALUrlCoder.pas`
-
-**Includes de JSON (multi-compatibilidade):**
-- `RALJSON_Delphi.inc`
-- `RALJSON_FPC.inc`
-- `RALJSON_lkJSON.inc`
-- `RALJSON_uJSON.inc`
-
----
-
-### 3.7) `src/modules/` (submodulos, um pacote cada; 1.3)
-
-XML (`pkg/Delphi/Modules/RALXMLPackage`, `pkg/Lazarus/Modules/ralxmlpackage.lpk`)
+XML (`pkg/Delphi/Modules/RALModuleXMLPackage`, `pkg/Lazarus/Modules/ralmodulexmlpackage.lpk`)
 - `modules/xml/RALXMLReader.pas` - leitor pull (XML 1.0, namespaces, entidades com limites, codificacoes)
 - `modules/xml/RALXMLWriter.pas` - escritor em stream, escapes, nomes codificados
 - `modules/xml/RALXML.pas` - DOM com API fluente, caminhos (subconjunto do XPath e forma com pontos), valores tipados
 - `modules/xml/RALStorageXML.pas` - `TRALStorageXMLLink`: DBWare, RAW, DataPacket (MIDAS/TBufDataset), ADO; helpers `ToXML`/`LoadFromXML`
-- `modules/xml/RALXMLReg.pas` - paleta `RAL - Storage`
+- `modules/xml/RALModuleXMLReg.pas` - paleta `RAL - Storage`
 
-SOAP (`pkg/Delphi/Modules/RALSOAPPackage`, `pkg/Lazarus/Modules/ralsoappackage.lpk`; requer o XML)
+SOAP (`pkg/Delphi/Modules/RALModuleSOAPPackage`, `pkg/Lazarus/Modules/ralmodulesoappackage.lpk`; requer o XML)
 - `modules/soap/RALSOAPTypes.pas` - versoes, namespaces, `ERALSOAPFault`, montar e ler faults
 - `modules/soap/RALSOAPModule.pas` - `TRALSOAPModule` (paleta `RAL - Modules`), operacoes, `TRALSOAPRequest`/`TRALSOAPResponse`
 - `modules/soap/RALWSDLExporter.pas` - WSDL 1.1 com bindings SOAP 1.1 e 1.2
 - `modules/soap/RALSOAPClient.pas` - `TRALSOAPClient` (descende de `TRALClient`), `ImportWSDL`, operacoes, chamada em thread
 - `modules/soap/RALSOAPActions.pas` - acao `TRALSOAPExecute`
-- `modules/soap/RALSOAPReg.pas` - registro, verbos "Importar WSDL"/"Exportar WSDL"
+- `modules/soap/RALModuleSOAPReg.pas` - registro, verbos "Importar WSDL"/"Exportar WSDL"
 
 ---
 
-### 3.8) `src/wizard/`
+### 3.29) `src/wizard/`
 
 Delphi
 - `wizard/delphi/RALWizard.pas`
@@ -312,14 +394,14 @@ Lazarus
 
 1. `RALDBModule` mapeia requests para queries/execs.
 2. Conectores (FireDAC/SQLDB/Zeos) implementam `Open/Exec/ApplyUpdates`.
-3. `RALDBStorage*` e utilitários em `src/utils/` lidam com serialização (JSON/BIN/BSON/CSV).
+3. `RALStorage*` em `src/storage/` (e `src/storage/bson`, `src/modules/xml`) lidam com serialização (JSON/BIN/BSON/CSV).
 
 ---
 
 ## 5) Como usar este mapa
 
-- Para entender rotas e execução: `src/base/RALRoutes.pas` e `src/base/RALServer.pas`.
-- Para params/request/response: `src/base/RALParams.pas`, `src/base/RALRequest.pas`, `src/base/RALResponse.pas`.
+- Para entender rotas e execução: `src/core/RALRoutes.pas` e `src/core/RALServer.pas`.
+- Para params/request/response: `src/core/RALParams.pas`, `src/core/RALRequest.pas`, `src/core/RALResponse.pas`.
 - **Parâmetros tipados** (`TRALParamType` em `RALTypes.pas`, content types `rctRAL*`
   em `RALMIMETypes.pas`): um param de body pode viajar como valor binário
   little-endian em vez de texto, para não depender do locale das duas pontas.
@@ -336,8 +418,8 @@ Lazarus
   `TRequest.CustomHeaders`, que é `nome=valor`. `FindHeaderNameSeparator` decide
   pelo dado (vence o que vier primeiro entre `': '` e `'='`), não pelo nome do
   engine. Mexer nisso quebra headers de um engine ou de outro em silêncio.
-- Para multipart: `src/utils/RALMultipartCoder.pas`.
-- Para compressão/cripto/stream: `src/utils/RALCompress*.pas`, `src/utils/RALCripto*.pas`, `src/utils/RALStream.pas`.
+- Para multipart: `src/common/RALMultipartCoder.pas`.
+- Para compressão/cripto/stream: `src/compress/RALCompress*.pas`, `src/crypto/RALCripto*.pas`, `src/common/RALStream.pas`.
 
 ---
 
