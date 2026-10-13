@@ -1301,6 +1301,7 @@ initialization
   RegisterEngine(TRALMsQuicClientHTTP);
 
 finalization
+  UnregisterEngine(TRALMsQuicClientHTTP);
   { Order matters and it is MsQuic's, not Pascal's: connections first, then the
     configurations they were opened with, then the registration that owns the
     threads running them. Closing the registration first would be closing the

@@ -542,4 +542,7 @@ initialization
   RegisterClass(TRALKwikClientHTTP);
   RegisterEngine(TRALKwikClientHTTP);
 
+finalization
+  UnregisterEngine(TRALKwikClientHTTP);
+
 end.

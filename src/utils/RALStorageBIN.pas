@@ -636,4 +636,7 @@ end;
 initialization
   RegisterClass(TRALStorageBINLink);
 
+finalization
+  UnregisterStorageLink(TRALStorageBINLink);
+
 end.

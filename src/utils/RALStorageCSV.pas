@@ -774,4 +774,7 @@ initialization
   // died with an access violation at address zero on Create
   RegisterClass(TRALStorageCSVLink);
 
+finalization
+  UnregisterStorageLink(TRALStorageCSVLink);
+
 end.

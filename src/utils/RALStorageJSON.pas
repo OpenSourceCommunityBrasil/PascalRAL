@@ -1159,4 +1159,7 @@ end;
 initialization
   RegisterClass(TRALStorageJSONLink);
 
+finalization
+  UnregisterStorageLink(TRALStorageJSONLink);
+
 end.

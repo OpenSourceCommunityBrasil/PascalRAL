@@ -383,4 +383,7 @@ initialization
   RegisterClass(TRALDBFireDAC);
   RegisterDatabase(TRALDBFireDAC);
 
+finalization
+  UnregisterDatabase(TRALDBFireDAC);
+
 end.

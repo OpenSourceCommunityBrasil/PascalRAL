@@ -533,4 +533,7 @@ initialization
   RegisterClass(TRALSynopseClientHTTP);
   RegisterEngine(TRALSynopseClientHTTP);
 
+finalization
+  UnregisterEngine(TRALSynopseClientHTTP);
+
 end.

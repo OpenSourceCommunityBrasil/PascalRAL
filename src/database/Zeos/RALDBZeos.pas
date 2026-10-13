@@ -399,5 +399,8 @@ initialization
   RegisterClass(TRALDBZeos);
   RegisterDatabase(TRALDBZeos);
 
+finalization
+  UnregisterDatabase(TRALDBZeos);
+
 end.
 

@@ -114,7 +114,9 @@ type
 
   TRALDBClass = class of TRALDBBase;
 
+  /// Registers ADatabase under its DatabaseName, replacing a class of that name.
   procedure RegisterDatabase(ADatabase: TRALDBClass);
+  /// Unregisters ADatabase; each driver unit calls it in its finalization.
   procedure UnregisterDatabase(ADatabase: TRALDBClass);
   function GetDatabaseClass(ADatabaseName: StringRAL): TRALDBClass;
   procedure GetDatabaseList(AList: TStrings);
@@ -139,21 +141,28 @@ begin
 end;
 
 procedure RegisterDatabase(ADatabase: TRALDBClass);
+var
+  vPos: IntegerRAL;
 begin
   CheckDatabaseDefs;
-  if DatabasesDefs.IndexOfName(ADatabase.DatabaseName) < 0 then
-    { AddObject: same reason as RegisterEngine - keeping only the name forced
-      GetDatabaseClass through the global lock of the class registry }
-    DatabasesDefs.AddObject(ADatabase.DatabaseName + '=' + ADatabase.ClassName, TObject(ADatabase));
+  { the class is kept: keeping only the name forced GetDatabaseClass through
+    the global lock of the class registry }
+  vPos := DatabasesDefs.IndexOfName(ADatabase.DatabaseName);
+  if vPos < 0 then
+    DatabasesDefs.AddObject(ADatabase.DatabaseName + '=' + ADatabase.ClassName, TObject(ADatabase))
+  else
+    DatabasesDefs.Objects[vPos] := TObject(ADatabase);
 end;
 
 procedure UnregisterDatabase(ADatabase: TRALDBClass);
 var
   vPos: IntegerRAL;
 begin
-  CheckDatabaseDefs;
+  if DatabasesDefs = nil then
+    Exit;
+  // only its own entry: the class kept there dies with the driver's package
   vPos := DatabasesDefs.IndexOfName(ADatabase.DatabaseName);
-  if vPos >= 0 then
+  if (vPos >= 0) and (DatabasesDefs.Objects[vPos] = TObject(ADatabase)) then
     DatabasesDefs.Delete(vPos);
 end;
 

@@ -845,23 +845,31 @@ begin
 end;
 
 procedure RegisterEngine(AEngine: TRALClientHTTPClass);
+var
+  vPos : IntegerRAL;
 begin
   CheckEngineDefs;
 
-  if EnginesDefs.IndexOfName(AEngine.EngineName) < 0 then
-    { AddObject: RegisterEngine already holds the class, and keeping only the
-      name forced GetEngineClass through GetClass - which takes MonitorEnter on
-      the RTL's process-wide class registry }
-    EnginesDefs.AddObject(AEngine.EngineName + '=' + AEngine.ClassName, TObject(AEngine));
+  { AddObject: RegisterEngine already holds the class, and keeping only the
+    name forced GetEngineClass through GetClass - which takes MonitorEnter on
+    the RTL's process-wide class registry. A new class of the same name (its
+    package loaded again) replaces the old one }
+  vPos := EnginesDefs.IndexOfName(AEngine.EngineName);
+  if vPos < 0 then
+    EnginesDefs.AddObject(AEngine.EngineName + '=' + AEngine.ClassName, TObject(AEngine))
+  else
+    EnginesDefs.Objects[vPos] := TObject(AEngine);
 end;
 
 procedure UnregisterEngine(AEngine: TRALClientHTTPClass);
 var
   vPos : IntegerRAL;
 begin
-  CheckEngineDefs;
+  if EnginesDefs = nil then
+    Exit;
+  // only its own entry: the class kept there dies with the engine's package
   vPos := EnginesDefs.IndexOfName(AEngine.EngineName);
-  if vPos >= 0 then
+  if (vPos >= 0) and (EnginesDefs.Objects[vPos] = TObject(AEngine)) then
     EnginesDefs.Delete(vPos);
 end;
 

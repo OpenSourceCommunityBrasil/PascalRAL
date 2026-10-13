@@ -502,6 +502,8 @@ Consequence: **an algorithm exists only if its unit is linked into the binary.**
 
 `TRALStorageLink.GetStorageClass` is the exception: the storage units only call `RegisterClass`, there is no `RegisterStorage` to keep the class in, so `StorageLinkClassOf` caches the resolution on first use. Only a non-nil result is cached, so a design-time package loaded later is still found. `RegisterClass` stays mandatory for storages — that is what `GetClass` reads.
 
+**A kept class dies with its package, so every unit that registers one unregisters it in its `finalization`** (fixed 12/10/2026). The IDE unloads and reloads a package whenever it rebuilds it or one it requires, while `PascalRAL.bpl` stays loaded: the entry kept pointing at the freed class, `RegisterEngine` saw the name and skipped the new one, and the next `IsPropertyRelevant` or `EngineType :=` was an access violation inside `PascalRAL.bpl` (reported from the Object Inspector of a `TRALSOAPClient` on Delphi 13). `GetClass` never had this, since the RTL unregisters a module's classes when it unloads. Engines call `UnregisterEngine`, drivers `UnregisterDatabase`, storages `UnregisterStorageLink`; each removes only its own entry, and registering a name again replaces the class, so a third-party engine without a `finalization` is right again once its package is back.
+
 
 ### Connection charset is chosen by the driver, not left blank
 

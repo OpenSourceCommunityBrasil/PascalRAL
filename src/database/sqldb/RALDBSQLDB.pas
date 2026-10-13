@@ -434,6 +434,7 @@ initialization
   RegisterDatabase(TRALDBSQLDB);
 
 finalization
+  UnregisterDatabase(TRALDBSQLDB);
   if gFirebirdPinned then
     ReleaseIBase60;
   FreeAndNil(gOpenLock);

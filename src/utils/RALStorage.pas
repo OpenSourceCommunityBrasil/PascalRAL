@@ -104,6 +104,9 @@ type
     property StorageFormat: TRALStorageFormat read FStorageFormat;
   end;
 
+/// Forgets the cached link class ALink; each storage unit calls it in its finalization.
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+
 implementation
 
 uses
@@ -141,6 +144,15 @@ begin
     Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[AFormat]));
     gStorageLinkClasses[AFormat] := Result;
   end;
+end;
+
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+var
+  vFormat: TRALStorageFormat;
+begin
+  for vFormat := Low(TRALStorageFormat) to High(TRALStorageFormat) do
+    if gStorageLinkClasses[vFormat] = ALink then
+      gStorageLinkClasses[vFormat] := nil;
 end;
 
   { TRALStorage }
