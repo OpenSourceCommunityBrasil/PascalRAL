@@ -6,8 +6,9 @@
 /// - Lazarus: the package links (packagefiles.xml) and the packages built into
 ///   the IDE (StaticAutoInstallPackages).
 /// A package counts as RAL's by name: the names of the chosen version's
-/// catalog, the names in the pkg folder of the RAL tree the IDE points to, and
-/// PascalRAL/PascalRALDsgn, which every version has. RALRESTDW and other
+/// catalog, the names in the pkg folder of the RAL tree the IDE points to,
+/// PascalRAL/PascalRALDsgn, which every version has, and every 1.x name
+/// (RALInst.Heranca), which a 2.0 no longer has. RALRESTDW and other
 /// packages built on RAL are not RAL: they are never counted, nor removed.
 unit RALInst.Existente;
 
@@ -77,7 +78,7 @@ implementation
 
 uses
   {$IFDEF MSWINDOWS} RALInst.Registro.Delphi, {$ENDIF}
-  RALInst.Config.Lazarus, RALInst.Mensagens;
+  RALInst.Config.Lazarus, RALInst.Heranca, RALInst.Mensagens;
 
 const
   // o nucleo existe em toda versao do RAL, com estes nomes
@@ -137,6 +138,7 @@ constructor TInstalacaoExistente.Create;
 
 var
   vNome: string;
+  vLista: TStringList;
 begin
   inherited Create;
   FCaminhos := NovaLista;
@@ -148,6 +150,15 @@ begin
   FPacotes64 := NovaLista;
   for vNome in NomesBase do
     FNomes.Add(vNome);
+  // os pacotes da 1.x: atualizada para a 2.0, uma IDE ainda os tem, e a
+  // arvore antiga pode nem existir mais para dizer que sao do RAL
+  vLista := TStringList.Create;
+  try
+    NomesDa1x(vLista);
+    FNomes.AddStrings(vLista);
+  finally
+    vLista.Free;
+  end;
 end;
 
 destructor TInstalacaoExistente.Destroy;

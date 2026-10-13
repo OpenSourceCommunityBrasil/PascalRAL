@@ -417,6 +417,7 @@ resourcestring
   cmSaiDaIDE = '  %s -= %s  (sai da IDE)';
   cmSaiNaoExiste = 'não existe no RAL %s';
   cmSaiNaoMarcado = 'não foi marcado';
+  cmSaiTrocado = 'a 2.0 o trocou por %s';
   cmSaiOutraPasta = 'aponta para outra pasta';
   cmSituacao = '== %s';
 
@@ -452,6 +453,12 @@ resourcestring
   emZipNaoExiste = '%s não existe em %s';
   emZipNaoLido = '%s não pôde ser lido de %s';
   wmZipEntradaSuspeita = 'entrada suspeita no zip, ignorada: %s';
+
+  // RALInst.Motores
+  emIDESemMotorPossivel = '%s: nenhum motor do RAL cabe nesta IDE, então o RAL não ' +
+    'pode ser instalado nela.';
+  emSemMotor = '%s: nenhum motor escolhido. O RAL não funciona sem um; escolha ao ' +
+    'menos um destes: %s.';
 
 implementation
 

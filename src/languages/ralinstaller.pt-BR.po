@@ -2019,3 +2019,27 @@ msgstr ""
 msgctxt "TTelaVersoesIDE.lbIDEListing.Caption"
 msgid "Lista de IDEs"
 msgstr ""
+
+#: ralinst.mensagens.cmsaitrocado
+msgid "a 2.0 o trocou por %s"
+msgstr ""
+
+#: ralinst.mensagens.emidesemmotorpossivel
+msgid "%s: nenhum motor do RAL cabe nesta IDE, então o RAL não pode ser instalado nela."
+msgstr ""
+
+#: ralinst.mensagens.emsemmotor
+msgid "%s: nenhum motor escolhido. O RAL não funciona sem um; escolha ao menos um destes: %s."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupoassistentes
+msgid "Assistentes de projeto"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupomodulos
+msgid "Módulos"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmgrupoplugins
+msgid "Plugins"
+msgstr ""

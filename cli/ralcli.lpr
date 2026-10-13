@@ -370,6 +370,12 @@ begin
     WriteLn(vRodada.Plano);
     if not AExecutar then
       Exit;
+    // sem motor numa IDE nao instala: recusa antes de perguntar ou baixar
+    if Trim(vRodada.SemMotor) <> '' then
+    begin
+      WriteLn('ERRO: ', Trim(vRodada.SemMotor));
+      Halt(1);
+    end;
     // a mesma versao com os mesmos pacotes em todas: nada a perguntar
     if vRodada.NadaAFazer then
     begin

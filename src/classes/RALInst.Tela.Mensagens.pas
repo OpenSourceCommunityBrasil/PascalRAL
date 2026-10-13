@@ -76,11 +76,14 @@ resourcestring
   cmFaltaFonte = 'falta o fonte %s';
   cmFaltaSubmodulo = 'falta o submódulo %s (git submodule update --init)';
   cmFicaDeForaEm = '  [fica de fora em %s]';
+  cmGrupoAssistentes = 'Assistentes de projeto';
   cmGrupoBase = 'Pacotes base';
   cmGrupoCompressao = 'Bibliotecas de compressão';
   cmGrupoDBWare = 'Módulos DBWare';
+  cmGrupoModulos = 'Módulos';
   cmGrupoMotores = 'Motores (engines)';
   cmGrupoOutros = 'Outros';
+  cmGrupoPlugins = 'Plugins';
   cmGrupoStorage = 'Storage';
   cmGrupoSwagger = 'Swagger';
   cmLendoVersao = 'Lendo a versão %s...';

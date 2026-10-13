@@ -1033,6 +1033,178 @@ ainda: a consulta real diz "atualizado").
 - Falta: um release de verdade para o teste de ponta a ponta; conferir a troca
   no macOS (assinatura).
 
+### F13 — Estrutura de pastas e pacotes da 2.0
+Depende da reforma do RAL estar concluída: etapas P0 a P5 de
+`PascalRAL-2.0/.agents/PLANO_REFORMA_2_0.md` (o branch `1.3-plugin`
+vira `2.0`, e a pasta vira `PascalRAL-2.0`). Até lá nada aqui muda. É a
+etapa P6 daquele plano, e a 2.0 só é lançada depois desta fase.
+
+**O que a reforma muda e o instalador precisa saber.** O instalador continua
+instalando a 1.x, então tudo abaixo vale **para as duas estruturas**:
+
+- `src/base` + `src/utils` viram `src/core`, `common`, `compress`, `crypto`,
+  `plugins`, `storage`, `modules`, `bindings`, `design`. `src/others` continua,
+  agora **só com submódulos**.
+- Na raiz de `pkg/<IDE>` só ficam `PascalRAL` e `PascalRALDsgn`. As subpastas
+  passam a ser `Engine`, `Plugins`, `Storage`, `Database`, `Modules`,
+  `Compression` e `Wizard` (o assistente sai da raiz).
+- Pacotes renomeados pelo padrão `RAL<Categoria><Item>Package`/`Dsgn`
+  (`RALDBFireDACLink` -> `RALDBFireDACPackage`, `RALBSONStorage` ->
+  `RALStorageBSONPackage`, `RALZStdCompress` -> `RALCompressZStdPackage`,
+  `RALWizard` -> `RALWizardDsgn`...; a tabela completa está no plano da
+  reforma). `PascalRAL`, `PascalRALDsgn` e os `<Motor>RAL` não mudam.
+- Pacotes novos, que herdam o que estava no núcleo: `RALStoragePackage`
+  (BIN, JSON, CSV), `RALPluginAuthPackage` (Basic, JWT, Digest, OAuth2),
+  `RALPluginTLSPackage` (SelfSigned), `RALModuleWebPackage`,
+  `RALModuleSwaggerPackage`.
+- Runtime e design separados: os `...Dsgn` são `{$DESIGNONLY}`, e motores,
+  storages e compressão exigem `PascalRAL`, não `PascalRALDsgn`.
+
+**O que fazer:**
+
+1. **Categorias da árvore** (`RALInst.Tela.Recursos` `CategoriaDoPacote`):
+   pela subpasta (`plugins`, `storage`, `modules`, `wizard`, além das que já
+   existem). As heurísticas por nome (`bson`, `storage`, `swagger`) ficam só
+   para a 1.x. Textos novos em `RALInst.Tela.Mensagens` e nos
+   `src/languages/*.po`.
+2. **Pelo menos um motor, ou não instala** (decisão do dono, 12/10/2026: o
+   instalador não pode deixar o usuário cometer erros). O nome `<Motor>RAL`
+   existe para lembrar que o RAL não funciona sem um motor. Para cada IDE
+   marcada que vai **instalar** RAL, a seleção tem de ter pelo menos um pacote
+   de `Engine/`:
+   - **Tela:** o botão de instalar fica desabilitado enquanto faltar motor, e
+     a tela diz em qual IDE falta. Não é um aviso que se fecha e segue em
+     frente.
+   - **`ralcli`:** recusa antes de qualquer download ou compilação, com código
+     de saída de erro e a mensagem dizendo a IDE e os motores disponíveis
+     para ela.
+   - **IDE sem motor possível** (nenhum pacote de `Engine/` compatível com
+     aquela IDE, pelo catálogo e pela `RALInst.Compatibilidade`): a IDE não
+     pode ser marcada para instalar, e a tela diz o motivo.
+   - **Não se aplica a desinstalar:** uma rodada sem nada marcado continua
+     desinstalando.
+   - **Vale também para a 1.x** (onde os motores ficam em `Engine/`, como na
+     2.0): o erro é o mesmo nas duas versões.
+   - Testes: seleção sem motor recusada na tela (estado do botão) e na CLI
+     (código de saída), em Delphi e Lazarus; desinstalar sem nada marcado
+     continua funcionando.
+3. **Seleção padrão** (`RALInst.Rodada`): continua "a raiz de `pkg/<IDE>`"; o
+   desvio pelo nome `wizard` fica só para a 1.x, já que na 2.0 o assistente
+   está em `Wizard/`.
+4. **Herança 1.x -> 2.0** (`RALInst.Situacao`, `Tela.Recursos`): numa
+   atualização, o pacote novo que herdou um recurso que a versão anterior tinha
+   instalado vem marcado por padrão. Exemplos: o núcleo da 1.x tinha storages,
+   Web, Swagger e as autenticações; um `RALDBFireDACLink` instalado vira um
+   `RALDBFireDACPackage` + `RALDBFireDACDsgn` marcados. É uma tabela pequena de
+   dados, não regra espalhada pelo código, e vale só para a passagem 1.x -> 2.0.
+5. **Pacotes renomeados ou que deixam de existir**: a troca de versão já
+   recompila tudo e remove os pacotes RAL que não mantém. Conferir com os nomes
+   da tabela, inclusive um pacote antigo em `Disabled Packages`, e o caminho
+   inverso (2.0 -> 1.x).
+6. **Library path** (`RALInst.Instalar.Delphi` `MontarCaminhos`): as entradas
+   novas já entram sozinhas, porque são derivadas. Garantir que as que o próprio
+   instalador escreveu e não existem na versão nova (`$(PascalRAL)\base`,
+   `\utils`, `\base\modules`, `\base\plugins`) **saiam**, pelo recibo. O mesmo
+   vale para o Lazarus (links de pacote com nome antigo).
+7. **Design só onde há IDE** (`RALInst.Build.Delphi`, `ExigeDesignide`): com
+   `{$DESIGNONLY}` nos `...Dsgn`, os pacotes de runtime passam a compilar para
+   Win64, Android e Linux sem `designide`. A regra "o `PascalRALDsgn` exige o
+   designide sem ser só de design" vale só para a 1.x; conferir que a 2.0 não
+   pula plataforma que agora compila.
+8. **Instalação manual malfeita** (`RALInst.Existente`, `Catalogo`
+   `SubmodulosAusentes`): na 2.0 `src/others` só tem submódulos, então um
+   arquivo faltando ali é sempre submódulo não baixado. A mensagem diz qual
+   submódulo e o comando (`git submodule update --init --recursive`), e não
+   culpa o RAL.
+9. **RAL existente** (`RALInst.Existente`): `NomesBase` e
+   `pkg/Lazarus/pascalral.lpk` continuam valendo (nomes mantidos). Conferir que
+   um RAL 2.0 instalado à mão é reconhecido, e com a versão certa
+   (`RALVERSION` = 2.0).
+10. **Compatibilidade** (`RALInst.Compatibilidade`): achar o `PascalRAL.inc` em
+    `src/core`; revisar o `manifesto/ral.json` para os pacotes novos.
+11. **Versões** (`RALInst.GitHub`): o branch `2.0` (ou a tag `v2.0.0`) aparece
+    sozinho; decidir a ordem na lista em relação às 1.x.
+12. **Plano e wiki**: registrar o estado aqui; a página da wiki sobre o
+    instalador cita as categorias novas.
+
+**Testes:**
+
+- `tests/catalogo`: um fixture da árvore 2.0 ao lado do da 1.x; categorias,
+  ordem topológica, raiz = obrigatórios.
+- `tests/situacao` e `tests/recibos`: 1.x -> 2.0 e 2.0 -> 1.x (pacotes
+  renomeados removidos, herança marcada, library path limpo).
+- `tests/instalar`, `tests/build`: um pacote de runtime da 2.0 compila em Win64
+  sem `designide`; o `...Dsgn` só em Win32 (e Win64 do Delphi 12 em diante).
+- `tests/existente`: RAL 2.0 instalado à mão; submódulo faltando.
+- Todos sobre cópias do registro e da configuração do Lazarus, como os outros
+  testes daqui: nunca na IDE de verdade.
+
+**Pronto quando:** numa máquina limpa, o instalador instala a 2.0 e a 1.x
+(Delphi e Lazarus); atualiza de uma para a outra nos dois sentidos, sem deixar
+pacote nem entrada de library path da outra versão; uma seleção sem motor não
+instala (tela e CLI); e uma instalação manual da 2.0 com submódulo faltando é apontada pelo
+nome do submódulo.
+
+**Prompt da tarefa** (para abrir numa sessão própria quando a reforma terminar):
+
+> Implemente a fase F13 de `PascalRAL-Instalador/.agents/PLANO_INSTALADOR.md`:
+> o instalador passa a instalar o RAL 2.0, com a nova estrutura de pastas e
+> pacotes, sem deixar de instalar a 1.x. A estrutura 2.0 está descrita em
+> `PascalRAL-2.0/.agents/PLANO_REFORMA_2_0.md` (seções "Nomes", "Estrutura
+> alvo" e "Impacto fora do repositório > Instalador"). Leia os dois planos e o
+> `CLAUDE.md` do workspace antes de começar. Use a árvore `PascalRAL-2.0` e
+> uma 1.x (`PascalRAL-dev`) como fixtures. Os testes trabalham em cópias do
+> registro e da configuração do Lazarus, nunca na IDE real. Verifique com
+> `lazbuild -B`, rode os testes de `tests/` e deixe para o dono os comandos da
+> instalação real numa máquina limpa.
+
+**Estado (13/10/2026, sem commit):** implementada sobre a árvore da 2.0
+(`PascalRAL-2.0`, branch local `2.0`); compila com `lazbuild -B`
+(Lazarus 4.8, `ralcli.exe` e `ralinstaller_w64.exe`) e os testes de `tests/`
+passam, inclusive o novo `tests/motores`.
+
+- **Regra do motor** (`RALInst.Motores`): motor é pacote da pasta `Engine` de
+  `pkg/<IDE>`; `FaltaMotor` diz, por IDE, por que não instala
+  (`emSemMotor`, com os motores que cabem; `emIDESemMotorPossivel` quando nenhum
+  cabe). Uma IDE que não recebe nenhum pacote na rodada não é cobrada: nada
+  marcado continua desinstalando. A **CLI** conta o que a IDE já tem e continua
+  instalado (`ManterInstalados`: `IncluirInstalados` virou público e o
+  `TRodada.SemMotor` o usa), mostra o motivo no plano e, em `instalar`, recusa
+  com código 1 antes de perguntar ou baixar; `Executar` recusa de novo. A
+  **tela** bloqueia o Avançar da página de recursos com o motivo
+  (`ValidatePageNext`) — o botão não fica desabilitado nem a IDE desmarcada
+  (diferença do que o item 2 pede; o usuário não passa, mas só vê o motivo ao
+  tentar).
+- **Herança 1.x -> 2.0** (`RALInst.Heranca`): a tabela `HERANCAS` (nome 1.x ->
+  herdeiros 2.0) e `IncluirHerdeiros`, usada pelos dois motores de instalação
+  (`IncluirInstalados`) e pela tela (`DetectarRAL`). Conta como 1.x a
+  instalação cuja árvore é 1.x **ou** que tem um pacote que a 2.0 não tem — o
+  caso de atualizar na mesma pasta, que já tem a 2.0 enquanto a IDE ainda tem os
+  nomes antigos. No Delphi só o `PascalRALDsgn` fica nos Known Packages, por
+  isso ele leva os mesmos herdeiros do `PascalRAL` (storage, auth, TLS, Web,
+  Swagger). Um pacote que sai por ter sido renomeado diz por qual
+  (`cmSaiTrocado`). `RALInst.Existente` reconhece os nomes 1.x (`NomesDa1x`)
+  depois que a árvore deles sumiu.
+- **Categorias** (`Tela.Recursos`): pela pasta (`Plugins`, `Storage`,
+  `Modules`, `Wizard`...), heurística por nome só para a 1.x; textos
+  `cmGrupoPlugins`/`cmGrupoModulos`/`cmGrupoAssistentes` e os de cima nos três
+  `.po`.
+- **Library path:** `TirarCaminhosQueSumiram` (Delphi) tira as entradas
+  `$(PascalRAL)\X` cuja pasta não existe na árvore nova, numa mudança completa.
+- Itens 7 e 8 valem sem código novo: `ExigeDesignide` vem do `requires` (os
+  runtime da 2.0 não pedem `designide`) e submódulo ausente já tem mensagem com
+  o comando.
+- Conferido pelo `ralcli plano` contra o Delphi 13 desta máquina (sem
+  instalar): sem motor e `--remover-outros`, recusa; sem `--remover-outros`,
+  mantém os motores e marca todos os herdeiros dos pacotes 1.x que a IDE tem.
+
+**Falta:** desabilitar o botão e marcar a IDE sem motor possível na tela (hoje
+é bloqueio no Avançar); Lazarus pelo `ralcli` (não conferido aqui);
+`tests/catalogo` com fixture 2.0 e `tests/situacao` 1.x -> 2.0 -> 1.x; links
+Lazarus com nome antigo; `RALVERSION` 2.0 no `Existente`; ordem do branch `2.0`
+na lista de versões; página da wiki do instalador; e a instalação real numa
+máquina limpa, com o dono.
+
 ### Revisão de 2026-09-25 — o que o dono apontou testando a tela
 
 Conferido pela tela de verdade (captura), em português, inglês e espanhol,

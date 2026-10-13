@@ -80,8 +80,6 @@ type
     /// this run provides (AFornecidos)
     procedure ExternosAusentes(AInstalar: TList; AAusentes: TStrings;
       AFornecidos: TStrings = nil);
-    /// ManterInstalados: the RAL packages the IDE has join the asked ones
-    procedure IncluirInstalados;
     /// Runs lazbuild; False when it failed
     function Lazbuild(AParams: TStrings): boolean;
     /// Passes the line to Log when assigned
@@ -126,6 +124,9 @@ type
     function Existente: TInstalacaoExistente;
     /// Returns False when something failed; the report says what entered
     function Executar: boolean;
+    /// ManterInstalados: the RAL packages the IDE has join the asked ones; a 1.x
+    /// package 2.0 renamed or split comes back as its 2.0 heirs
+    procedure IncluirInstalados;
     /// Root of the dependency copy registered in this IDE (the .lpk link in
     /// packagefiles.xml, minus the recipe's .lpk path); '' if unknown
     function PastaDependencia(AReceita: TReceita): string;
@@ -198,7 +199,8 @@ implementation
 
 uses
   StrUtils, RegExpr, fpjson,
-  RALInst.Config.Lazarus, RALInst.Fontes, RALInst.Mensagens, RALInst.Recibos;
+  RALInst.Config.Lazarus, RALInst.Fontes, RALInst.Heranca, RALInst.Mensagens,
+  RALInst.Recibos;
 
 { TInstalacaoLazarus }
 
@@ -407,11 +409,13 @@ end;
 procedure TInstalacaoLazarus.IncluirInstalados;
 var
   vExistente: TInstalacaoExistente;
+  vNomes: TStringList;
   vInt: integer;
   vPacote: TPacote;
 
   procedure Incluir(const ANome: string);
   begin
+    vNomes.Add(ANome);
     vPacote := FCatalogo.Buscar(tpLazarus, ANome);
     if (vPacote <> nil) and (FPacotes.IndexOf(vPacote.Nome) < 0) then
       FPacotes.Add(vPacote.Nome);
@@ -420,14 +424,18 @@ var
 begin
   if not FManterInstalados or (FCatalogo = nil) then
     Exit;
+  vNomes := TStringList.Create;
   vExistente := Existente;
   try
     for vInt := 0 to Pred(vExistente.Links.Count) do
       Incluir(vExistente.Links.Names[vInt]);
     for vInt := 0 to Pred(vExistente.Pacotes.Count) do
       Incluir(vExistente.Pacotes.Names[vInt]);
+    // de uma 1.x: o que a 2.0 tirou dos pacotes que ela tinha entra tambem
+    IncluirHerdeiros(vExistente.Fontes, vNomes, FCatalogo, tpLazarus, FPacotes);
   finally
     vExistente.Free;
+    vNomes.Free;
   end;
 end;
 
@@ -448,7 +456,9 @@ var
     for vLinha := 0 to Pred(AFora.Count) do
       if SameText(Copy(AFora[vLinha], 1, Length(ANome) + 2), ANome + ': ') then
         Exit(Copy(AFora[vLinha], Length(ANome) + 3, MaxInt));
-    if FCatalogo.Buscar(tpLazarus, ANome) = nil then
+    if (FCatalogo.Buscar(tpLazarus, ANome) = nil) and (TrocadoPor(ANome) <> '') then
+      Result := Format(cmSaiTrocado, [TrocadoPor(ANome)])
+    else if FCatalogo.Buscar(tpLazarus, ANome) = nil then
       Result := Format(cmSaiNaoExiste, [DescreverFontes(FFontesNovas)])
     else
       Result := cmSaiNaoMarcado;

@@ -29,8 +29,8 @@ type
   TTiposPacote = set of TTipoPacote;
 
   /// Where a package goes in the features tree, in this order.
-  TCategoriaPacote = (cpBase, cpMotor, cpDBWare, cpSwagger, cpCompressao,
-    cpStorage, cpOutros);
+  TCategoriaPacote = (cpBase, cpMotor, cpPlugins, cpStorage, cpDBWare, cpModulos,
+    cpSwagger, cpCompressao, cpAssistentes, cpOutros);
 
   /// What the background thread is loading.
   TCarga = (cgNada, cgVersoes, cgCatalogo);
@@ -222,8 +222,8 @@ implementation
 
 uses
   StrUtils,
-  RALInst.Dependencias, RALInst.Fontes, RALInst.Mensagens, RALInst.Tela.Imagens,
-  RALInst.Tela.Mensagens,
+  RALInst.Dependencias, RALInst.Fontes, RALInst.Heranca, RALInst.Mensagens,
+  RALInst.Motores, RALInst.Tela.Imagens, RALInst.Tela.Mensagens,
   RALInst.Zip;
 
 const
@@ -234,22 +234,31 @@ function CategoriaDoPacote(APacote: TPacote): TCategoriaPacote;
 var
   vRaiz, vNome: string;
 begin
-  vNome := LowerCase(APacote.Nome);
-  vRaiz := LowerCase(APacote.Grupo);
+  vNome := LowerCase(APacote.Grupo);
+  vRaiz := vNome;
   if Pos('/', vRaiz) > 0 then
     vRaiz := Copy(vRaiz, 1, Pos('/', vRaiz) - 1);
+  vNome := LowerCase(APacote.Nome);
+  // a pasta de pkg/<IDE> diz a categoria (2.0); os nomes resolvem a 1.x, que
+  // tinha o assistente na raiz, o BSON em Database e o Swagger num pacote so
   if Pos('swagger', vNome) > 0 then
     Result := cpSwagger
+  else if (vRaiz = 'wizard') or (Pos('wizard', vNome) > 0) then
+    Result := cpAssistentes
   else if vRaiz = '' then
     Result := cpBase
   else if vRaiz = 'engine' then
     Result := cpMotor
+  else if vRaiz = 'plugins' then
+    Result := cpPlugins
   else if vRaiz = 'compression' then
     Result := cpCompressao
-  else if (Pos('bson', vNome) > 0) or (Pos('storage', vNome) > 0) then
+  else if (vRaiz = 'storage') or (Pos('bson', vNome) > 0) or (Pos('storage', vNome) > 0) then
     Result := cpStorage
   else if vRaiz = 'database' then
     Result := cpDBWare
+  else if vRaiz = 'modules' then
+    Result := cpModulos
   else
     Result := cpOutros;
 end;
@@ -257,12 +266,15 @@ end;
 function NomeCategoria(ACategoria: TCategoriaPacote): string;
 begin
   case ACategoria of
-    cpBase:       Result := cmGrupoBase;
-    cpMotor:      Result := cmGrupoMotores;
-    cpDBWare:     Result := cmGrupoDBWare;
-    cpSwagger:    Result := cmGrupoSwagger;
-    cpCompressao: Result := cmGrupoCompressao;
-    cpStorage:    Result := cmGrupoStorage;
+    cpBase:        Result := cmGrupoBase;
+    cpMotor:       Result := cmGrupoMotores;
+    cpPlugins:     Result := cmGrupoPlugins;
+    cpStorage:     Result := cmGrupoStorage;
+    cpDBWare:      Result := cmGrupoDBWare;
+    cpModulos:     Result := cmGrupoModulos;
+    cpSwagger:     Result := cmGrupoSwagger;
+    cpCompressao:  Result := cmGrupoCompressao;
+    cpAssistentes: Result := cmGrupoAssistentes;
   else
     Result := cmGrupoOutros;
   end;
@@ -272,7 +284,7 @@ var
   // quantos pacotes exigem cada um (nome=total), durante a ordenacao da arvore
   GDependentes: TStringList;
 
-// base, motores, DBWare, Swagger, compressao, storage; dentro de cada grupo,
+// a ordem das categorias (TCategoriaPacote); dentro de cada grupo,
 // primeiro o que os outros exigem (o RALDBPackage antes dos links), depois a
 // ordem de instalacao (o PascalRAL antes do PascalRALDsgn) e o nome
 function CompararNaArvore(AItem1, AItem2: Pointer): integer;
@@ -977,8 +989,8 @@ end;
 procedure TTelaRecursos.DetectarRAL;
 var
   vIDEs, vFechamento: TList;
-  vNomes: TStringList;
-  vInt, vPac: integer;
+  vNomes, vHerdeiros: TStringList;
+  vInt, vPac, vHer: integer;
   vTela: TIDETela;
   vTipo: TTipoPacote;
   vPacote: TPacote;
@@ -989,6 +1001,7 @@ begin
   vIDEs := TList.Create;
   vFechamento := TList.Create;
   vNomes := TStringList.Create;
+  vHerdeiros := TStringList.Create;
   try
     IDEsMarcadas(vIDEs);
     for vInt := 0 to Pred(vIDEs.Count) do
@@ -1007,6 +1020,14 @@ begin
       vTela.Existente.ListarNomes(vNomes);
       for vPac := 0 to Pred(vTela.Existente.Links.Count) do
         vNomes.Add(vTela.Existente.Links.Names[vPac]);
+      // de uma 1.x para a 2.0: o que saiu do pacote que ela tinha vem marcado
+      // tambem (RALInst.Heranca)
+      vHerdeiros.Clear;
+      IncluirHerdeiros(vTela.Existente.Fontes, vNomes, FCatalogo, vTipo, vHerdeiros);
+      for vHer := 0 to Pred(vHerdeiros.Count) do
+        if FInstaladosDiretos.IndexOf(vHerdeiros[vHer]) < 0 then
+          FInstaladosDiretos.AddObject(vHerdeiros[vHer],
+            FCatalogo.Buscar(vTipo, vHerdeiros[vHer]));
       for vPac := Pred(vNomes.Count) downto 0 do
       begin
         vPacote := FCatalogo.Buscar(vTipo, vNomes[vPac]);
@@ -1031,6 +1052,7 @@ begin
       end;
     end;
   finally
+    vHerdeiros.Free;
     vNomes.Free;
     vFechamento.Free;
     vIDEs.Free;
@@ -1682,7 +1704,10 @@ end;
 
 function TTelaRecursos.ValidatePageNext: boolean;
 var
-  vNomes: TStringList;
+  vNomes, vMotivos: TStringList;
+  vIDEs: TList;
+  vInt: integer;
+  vMotivo: string;
 begin
   Result := False;
   if Carregando then
@@ -1736,6 +1761,26 @@ begin
       ShowMessage(Format(cmPastaDeOutro, [ExcludeTrailingPathDelimiter(PastaFontes)]));
       Exit;
     end;
+  end;
+  // sem motor o RAL instala e nao responde nada: nao instala (RALInst.Motores)
+  vMotivos := TStringList.Create;
+  vIDEs := TList.Create;
+  try
+    IDEsMarcadas(vIDEs);
+    for vInt := 0 to Pred(vIDEs.Count) do
+    begin
+      vMotivo := FaltaMotor(FCatalogo, Compat, TIDETela(vIDEs[vInt]).Instancia, FEscolhidos);
+      if vMotivo <> '' then
+        vMotivos.Add(vMotivo);
+    end;
+    if vMotivos.Count > 0 then
+    begin
+      ShowMessage(Trim(vMotivos.Text));
+      Exit;
+    end;
+  finally
+    vIDEs.Free;
+    vMotivos.Free;
   end;
   Result := True;
 end;

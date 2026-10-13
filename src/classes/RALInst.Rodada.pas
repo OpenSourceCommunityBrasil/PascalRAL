@@ -92,6 +92,9 @@ type
     function NadaAFazer: boolean;
     /// The asked names that exist in no kind of this version
     procedure PacotesDesconhecidos(ALista: TStrings);
+    /// '' when every IDE of the run gets an engine that fits it; otherwise why
+    /// not, one line per IDE (RALInst.Motores)
+    function SemMotor: string;
     /// The asked names that exist in the IDE kind; with none asked, RAL's core
     procedure PacotesDoTipo(ATipo: TTipoPacote; ALista: TStrings);
     /// <folder>/PascalRAL/<version>/, or the local folder
@@ -141,7 +144,7 @@ uses
   StrUtils,
   {$IFDEF MSWINDOWS} RALInst.Instalar.Delphi, {$ENDIF}
   RALInst.Dependencias, RALInst.Fontes, RALInst.Instalar.Lazarus, RALInst.Mensagens,
-  RALInst.Recibos, RALInst.Zip;
+  RALInst.Recibos, RALInst.Zip, RALInst.Motores;
 
 { TRodada }
 
@@ -389,6 +392,63 @@ begin
   end;
 end;
 
+function TRodada.SemMotor: string;
+var
+  vNomes: TStringList;
+  vIDE: integer;
+  vAIDE: TIDEInstance;
+  vMotivo: string;
+  vLaz: TInstalacaoLazarus;
+  {$IFDEF MSWINDOWS}
+  vDelphi: TInstalacaoDelphi;
+  {$ENDIF}
+begin
+  Result := '';
+  vNomes := TStringList.Create;
+  try
+    for vIDE := 0 to Pred(FIDEs.Count) do
+    begin
+      vAIDE := TIDEInstance(FIDEs[vIDE]);
+      PacotesDoTipo(TipoDe(vAIDE), vNomes);
+      if vNomes.Count = 0 then
+        Continue;
+      // o que a IDE ja tem e continua instalado tambem conta como motor
+      if FManterInstalados then
+        if vAIDE.Tipo = tiLazarus then
+        begin
+          vLaz := TInstalacaoLazarus.Create(vAIDE, CatalogoDaExecucao);
+          try
+            vLaz.Pacotes.Assign(vNomes);
+            vLaz.ManterInstalados := True;
+            vLaz.IncluirInstalados;
+            vNomes.Assign(vLaz.Pacotes);
+          finally
+            vLaz.Free;
+          end;
+        end
+        {$IFDEF MSWINDOWS}
+        else
+        begin
+          vDelphi := TInstalacaoDelphi.Create(vAIDE, CatalogoDaExecucao);
+          try
+            vDelphi.Pacotes.Assign(vNomes);
+            vDelphi.ManterInstalados := True;
+            vDelphi.IncluirInstalados;
+            vNomes.Assign(vDelphi.Pacotes);
+          finally
+            vDelphi.Free;
+          end;
+        end
+        {$ENDIF};
+      vMotivo := FaltaMotor(FCatalogo, Compat, vAIDE, vNomes);
+      if vMotivo <> '' then
+        Result := Result + vMotivo + LineEnding;
+    end;
+  finally
+    vNomes.Free;
+  end;
+end;
+
 procedure TRodada.PacotesDesconhecidos(ALista: TStrings);
 var
   vInt: integer;
@@ -581,6 +641,8 @@ begin
     if vDesconhecidos.Count > 0 then
       Result := Result + Format(cmPlanoNaoExistem, [vDesconhecidos.CommaText]) +
                 LineEnding;
+    // sem motor numa IDE, a execucao recusa: o plano ja diz por que
+    Result := Result + SemMotor;
 
     // 2. as dependencias: cada IDE pede o que nao tem, na versao que aceita
     for vIDE := 0 to Pred(FIDEs.Count) do
@@ -781,6 +843,10 @@ begin
   // o plano decide o que baixar: sem ele, as dependencias ficam sem pasta
   if not FPlanejado then
     Plano;
+  // sem motor o RAL instala e nao responde nada: nem baixa
+  FErro := Trim(SemMotor);
+  if FErro <> '' then
+    Exit;
   // todas as IDEs ja tem estes fontes e pacotes: nada a baixar nem instalar
   if NadaAFazer then
   begin

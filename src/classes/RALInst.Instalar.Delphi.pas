@@ -115,8 +115,6 @@ type
     procedure FiltrarCompativeis(ALista: TList; AFora: TStrings);
     /// Creates FRegistro when needed
     procedure GarantirRegistro;
-    /// ManterInstalados: the RAL packages the IDE has join the asked ones
-    procedure IncluirInstalados;
     /// Passes the line to Log when assigned
     procedure Logar(const ALinha: string);
     /// Library path entries and one unit per folder (to spot another RAL copy)
@@ -153,6 +151,9 @@ type
     /// Takes out of the library path the entries written in full inside
     /// another RAL tree: they would come before the new sources
     procedure TirarCaminhosDe(const APasta: string);
+    /// Removes the $(PascalRAL) entries whose folder the new sources do not have
+    /// ($(PascalRAL)\base after an update from 1.x to 2.0)
+    procedure TirarCaminhosQueSumiram;
   public
     constructor Create(AIDE: TIDEInstance; ACatalogo: TCatalogo);
     destructor Destroy; override;
@@ -170,6 +171,9 @@ type
     /// What RAL the IDE already has, by hand or by the installer (the caller
     /// frees it)
     function Existente: TInstalacaoExistente;
+    /// ManterInstalados: the RAL packages the IDE has join the asked ones; a 1.x
+    /// package 2.0 renamed or split comes back as its 2.0 heirs
+    procedure IncluirInstalados;
     /// What the run will do, without doing anything
     function Plano: string;
     /// What Desinstalar will do, without doing anything
@@ -245,7 +249,7 @@ implementation
 
 uses
   StrUtils, fpjson,
-  RALInst.Fontes, RALInst.Mensagens, RALInst.Recibos;
+  RALInst.Fontes, RALInst.Heranca, RALInst.Mensagens, RALInst.Recibos;
 
 // 'a, b, c' (os nomes de uma lista nome=valor quando ANomes)
 function Juntar(ALista: TStrings; ANomes: boolean): string;
@@ -987,7 +991,16 @@ var
   vExistente: TInstalacaoExistente;
   vNomes: TStringList;
   vNome: string;
-  vPacote: TPacote;
+
+  procedure Incluir(const ANome: string);
+  var
+    vPacote: TPacote;
+  begin
+    vPacote := FCatalogo.Buscar(tpDelphi, ANome);
+    if (vPacote <> nil) and (FPacotes.IndexOf(vPacote.Nome) < 0) then
+      FPacotes.Add(vPacote.Nome);
+  end;
+
 begin
   if not FManterInstalados or (FCatalogo = nil) then
     Exit;
@@ -996,11 +1009,9 @@ begin
   try
     vExistente.ListarNomes(vNomes);
     for vNome in vNomes do
-    begin
-      vPacote := FCatalogo.Buscar(tpDelphi, vNome);
-      if (vPacote <> nil) and (FPacotes.IndexOf(vPacote.Nome) < 0) then
-        FPacotes.Add(vPacote.Nome);
-    end;
+      Incluir(vNome);
+    // de uma 1.x: o que a 2.0 tirou dos pacotes que ela tinha entra tambem
+    IncluirHerdeiros(vExistente.Fontes, vNomes, FCatalogo, tpDelphi, FPacotes);
   finally
     vExistente.Free;
     vNomes.Free;
@@ -1032,7 +1043,10 @@ var
         Continue;
       vMotivo := AFora.Values[vNome];
       if (vMotivo = '') and (FCatalogo.Buscar(tpDelphi, vNome) = nil) then
-        vMotivo := Format(cmSaiNaoExiste, [DescreverFontes(FFontesNovas)]);
+        if TrocadoPor(vNome) <> '' then
+          vMotivo := Format(cmSaiTrocado, [TrocadoPor(vNome)])
+        else
+          vMotivo := Format(cmSaiNaoExiste, [DescreverFontes(FFontesNovas)]);
       if vMotivo = '' then
         vMotivo := cmSaiNaoMarcado;
       FSaemNomes.Values[vNome] := vMotivo;
@@ -1135,6 +1149,60 @@ begin
     vArquivos.Free;
     vNomes.Free;
     vExistente.Free;
+  end;
+end;
+
+procedure TInstalacaoDelphi.TirarCaminhosQueSumiram;
+var
+  vSubchaves, vItens: TStringList;
+  vSub, vEntrada, vNovo, vMarca, vResto: string;
+  vInt: integer;
+  vTirou: boolean;
+begin
+  if not FRegistro.AceitaVariaveis then
+    Exit;
+  vMarca := '$(' + FNomeVariavel + ')';
+  vSubchaves := TStringList.Create;
+  vItens := TStringList.Create;
+  try
+    if FRegistro.ChaveLibrary('win64') = 'Library' then
+      vSubchaves.Add('Library')
+    else
+    begin
+      FRegistro.ListarSubchaves('Library', vSubchaves);
+      for vInt := 0 to Pred(vSubchaves.Count) do
+        vSubchaves[vInt] := 'Library\' + vSubchaves[vInt];
+    end;
+    for vSub in vSubchaves do
+    begin
+      vItens.StrictDelimiter := True;
+      vItens.Delimiter := ';';
+      vItens.DelimitedText := FRegistro.LerValor(vSub, 'Search Path');
+      vNovo := '';
+      vTirou := False;
+      for vInt := 0 to Pred(vItens.Count) do
+      begin
+        vEntrada := Trim(vItens[vInt]);
+        if SameText(Copy(vEntrada, 1, Length(vMarca)), vMarca) then
+        begin
+          vResto := Copy(vEntrada, Length(vMarca) + 1, MaxInt);
+          if not DirectoryExists(FRaizFontes + 'src' + vResto) then
+          begin
+            Logar(Format(cmCaminhoRemovido, [vSub, vEntrada]));
+            vTirou := True;
+            Continue;
+          end;
+        end;
+        if vNovo <> '' then
+          vNovo := vNovo + ';';
+        vNovo := vNovo + vItens[vInt];
+      end;
+      if vTirou then
+        FRegistro.Escrever(vSub, 'Search Path', vNovo);
+    end;
+  finally
+    vItens.Free;
+    vSubchaves.Free;
   end;
 end;
 
@@ -1737,6 +1805,9 @@ begin
     if MudancaCompleta(FMudanca) and (FFontesAtuais.Pasta <> '') and
        not MesmaPasta(FFontesAtuais.Pasta, FRaizFontes) then
       TirarCaminhosDe(FFontesAtuais.Pasta);
+    // outra versao pode nao ter as pastas da anterior: a 1.x tinha src\base
+    if MudancaCompleta(FMudanca) then
+      TirarCaminhosQueSumiram;
 
     // 3. library path e variavel, so do que vai ficar utilizavel
     MontarCaminhos(vRegistrar, vCaminhos, vUnidades);
