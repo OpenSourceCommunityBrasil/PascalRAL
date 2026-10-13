@@ -1,5 +1,5 @@
 /// Unit that register BSON Storage component in the IDE
-unit RALBSONReg;
+unit RALStorageBSONReg;
 
 {$I ..\..\core\PascalRAL.inc}
 

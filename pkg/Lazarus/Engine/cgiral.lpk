@@ -26,9 +26,9 @@
         <Type Value="Include"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\engine\cgi\RALCGIRegister.pas"/>
+        <Filename Value="..\..\..\src\engine\cgi\RALCGIReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALCGIRegister"/>
+        <UnitName Value="RALCGIReg"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>

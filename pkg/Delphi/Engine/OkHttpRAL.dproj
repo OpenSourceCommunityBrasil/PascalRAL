@@ -217,7 +217,7 @@
         </DelphiCompile>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\engine\okhttp\RALOkHttpClient.pas"/>
-        <DCCReference Include="..\..\..\src\engine\okhttp\RALOkHttpRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\okhttp\RALOkHttpReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

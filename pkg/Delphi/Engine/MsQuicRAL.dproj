@@ -219,7 +219,7 @@
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\bindings\MsQuic.pas"/>
         <DCCReference Include="..\..\..\src\engine\msquic\RALMsQuicClient.pas"/>
-        <DCCReference Include="..\..\..\src\engine\msquic\RALMsQuicRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\msquic\RALMsQuicReg.pas"/>
         <DCCReference Include="..\..\..\src\engine\msquic\RALMsQuicServer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

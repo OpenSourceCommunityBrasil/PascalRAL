@@ -8,13 +8,13 @@ unit cgiral;
 interface
 
 uses
-  RALCGIServer, RALCGIRegister, LazarusPackageIntf;
+  RALCGIServer, RALCGIReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALCGIRegister', @RALCGIRegister.Register);
+  RegisterUnit('RALCGIReg', @RALCGIReg.Register);
 end;
 
 initialization

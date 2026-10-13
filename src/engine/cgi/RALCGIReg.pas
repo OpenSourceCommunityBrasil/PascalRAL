@@ -1,4 +1,4 @@
-unit RALCGIRegister;
+unit RALCGIReg;
 
 interface
 

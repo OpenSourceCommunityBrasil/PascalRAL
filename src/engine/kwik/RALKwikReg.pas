@@ -7,7 +7,7 @@
 /// EngineType lists what RegisterEngine filled in, and a name missing from
 /// that list can never be chosen, not even for an Android target built on a
 /// Windows IDE.
-unit RALKwikRegister;
+unit RALKwikReg;
 
 interface
 

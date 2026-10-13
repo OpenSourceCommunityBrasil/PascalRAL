@@ -27,9 +27,9 @@
         <UnitName Value="RALSaguiServer"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\engine\sagui\RALSaguiRegister.pas"/>
+        <Filename Value="..\..\..\src\engine\sagui\RALSaguiReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALSaguiRegister"/>
+        <UnitName Value="RALSaguiReg"/>
       </Item2>
       <Item3>
         <Filename Value="SaguiRAL.lrs"/>

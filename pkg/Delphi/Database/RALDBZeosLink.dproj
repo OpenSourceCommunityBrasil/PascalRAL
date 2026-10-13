@@ -175,7 +175,7 @@
         <DCCReference Include="RALDBPackage.dcp"/>
         <DCCReference Include="ZComponent.dcp"/>
         <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeos.pas"/>
-        <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeosLinkReg.pas"/>
+        <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeosReg.pas"/>
         <DCCReference Include="..\..\..\src\database\Zeos\RALDBZeosMemTable.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

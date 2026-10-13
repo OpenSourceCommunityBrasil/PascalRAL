@@ -8,13 +8,13 @@ unit IndyRAL;
 interface
 
 uses
-  RALIndyClient, RALIndyRegister, RALIndyServer, LazarusPackageIntf;
+  RALIndyClient, RALIndyReg, RALIndyServer, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALIndyRegister', @RALIndyRegister.Register);
+  RegisterUnit('RALIndyReg', @RALIndyReg.Register);
 end;
 
 initialization

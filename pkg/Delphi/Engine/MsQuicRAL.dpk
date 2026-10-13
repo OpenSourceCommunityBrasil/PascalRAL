@@ -35,7 +35,7 @@ requires
 contains
   MsQuic in '..\..\..\src\bindings\MsQuic.pas',
   RALMsQuicClient in '..\..\..\src\engine\msquic\RALMsQuicClient.pas',
-  RALMsQuicRegister in '..\..\..\src\engine\msquic\RALMsQuicRegister.pas',
+  RALMsQuicReg in '..\..\..\src\engine\msquic\RALMsQuicReg.pas',
   RALMsQuicServer in '..\..\..\src\engine\msquic\RALMsQuicServer.pas';
 
 end.

@@ -218,7 +218,7 @@
         <DCCReference Include="NetHttpRAL.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\engine\netHTTP\RALnetHTTPClient.pas"/>
-        <DCCReference Include="..\..\..\src\engine\netHTTP\RALNetHTTPRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\netHTTP\RALNetHTTPReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

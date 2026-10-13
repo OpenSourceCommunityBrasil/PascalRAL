@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB,
   kxBSON,
-  RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALConsts;
+  RALTypes, RALStorage, RALTools, RALMIMETypes, RALStorageTypes, RALBase64, RALConsts;
 
 type
 

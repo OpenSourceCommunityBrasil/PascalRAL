@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils, FMTBcd,
-  RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALDBTypes,
+  RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALStorageTypes,
   RALJSON, RALConsts;
 
 type

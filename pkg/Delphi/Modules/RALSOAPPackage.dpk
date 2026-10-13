@@ -43,6 +43,6 @@ contains
   RALWSDLExporter in '..\..\..\src\modules\soap\RALWSDLExporter.pas',
   RALSOAPClient in '..\..\..\src\modules\soap\RALSOAPClient.pas',
   RALSOAPActions in '..\..\..\src\modules\soap\RALSOAPActions.pas',
-  RALSOAPReg in '..\..\..\src\modules\soap\RALSOAPReg.pas';
+  RALModuleSOAPReg in '..\..\..\src\modules\soap\RALModuleSOAPReg.pas';
 
 end.

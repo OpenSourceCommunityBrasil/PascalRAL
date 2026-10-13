@@ -217,7 +217,7 @@
         </DelphiCompile>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="..\..\..\src\engine\kwik\RALKwikClient.pas"/>
-        <DCCReference Include="..\..\..\src\engine\kwik\RALKwikRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\kwik\RALKwikReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

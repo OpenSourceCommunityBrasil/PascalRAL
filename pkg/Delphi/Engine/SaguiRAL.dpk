@@ -33,7 +33,7 @@ requires
   PascalRALDsgn;
 
 contains
-  RALSaguiRegister in '..\..\..\src\engine\sagui\RALSaguiRegister.pas',
+  RALSaguiReg in '..\..\..\src\engine\sagui\RALSaguiReg.pas',
   RALSaguiServer in '..\..\..\src\engine\sagui\RALSaguiServer.pas';
 
 end.

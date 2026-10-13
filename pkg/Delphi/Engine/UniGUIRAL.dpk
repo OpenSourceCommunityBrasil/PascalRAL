@@ -33,7 +33,7 @@ requires
   PascalRALDsgn;
 
 contains
-  RALUniGUIRegister in '..\..\..\src\engine\unigui\RALUniGUIRegister.pas',
+  RALUniGUIReg in '..\..\..\src\engine\unigui\RALUniGUIReg.pas',
   RALUniGUIServer in '..\..\..\src\engine\unigui\RALUniGUIServer.pas';
 
 end.

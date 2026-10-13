@@ -33,6 +33,6 @@ requires
 
 contains
   RALOkHttpClient in '..\..\..\src\engine\okhttp\RALOkHttpClient.pas',
-  RALOkHttpRegister in '..\..\..\src\engine\okhttp\RALOkHttpRegister.pas';
+  RALOkHttpReg in '..\..\..\src\engine\okhttp\RALOkHttpReg.pas';
 
 end.

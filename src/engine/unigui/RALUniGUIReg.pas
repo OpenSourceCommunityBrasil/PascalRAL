@@ -1,5 +1,5 @@
 /// Unit that register RAL UniGUI Engine components in the IDE
-unit RALUniGUIRegister;
+unit RALUniGUIReg;
 
 interface
 

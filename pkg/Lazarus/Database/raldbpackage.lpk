@@ -36,9 +36,9 @@
         <UnitName Value="RALDBModule"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\database\raldbregister.pas"/>
+        <Filename Value="..\..\..\src\database\RALDBReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBRegister"/>
+        <UnitName Value="RALDBReg"/>
       </Item3>
       <Item4>
         <Filename Value="raldbpackage.lrs"/>

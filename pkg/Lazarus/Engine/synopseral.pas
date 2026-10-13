@@ -8,14 +8,14 @@ unit SynopseRAL;
 interface
 
 uses
-  RALSynopseClient, RALSynopseRegister, RALSynopseServer, RALHttpSysCert,
+  RALSynopseClient, RALSynopseReg, RALSynopseServer, RALHttpSysCert,
   LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALSynopseRegister', @RALSynopseRegister.Register);
+  RegisterUnit('RALSynopseReg', @RALSynopseReg.Register);
 end;
 
 initialization

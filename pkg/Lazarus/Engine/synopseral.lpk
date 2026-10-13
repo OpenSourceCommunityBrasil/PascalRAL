@@ -36,9 +36,9 @@
         <UnitName Value="RALSynopseClient"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\engine\synopse\RALSynopseRegister.pas"/>
+        <Filename Value="..\..\..\src\engine\synopse\RALSynopseReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALSynopseRegister"/>
+        <UnitName Value="RALSynopseReg"/>
       </Item3>
       <Item4>
         <Filename Value="..\..\..\src\engine\synopse\RALSynopseServer.pas"/>

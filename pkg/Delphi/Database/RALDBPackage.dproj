@@ -180,7 +180,7 @@
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>
-        <DCCReference Include="..\..\..\src\database\RALDBRegister.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -1,5 +1,5 @@
 /// Unit that register RAL OkHttp Engine components in the IDE
-unit RALOkHttpRegister;
+unit RALOkHttpReg;
 
 interface
 

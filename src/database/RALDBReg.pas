@@ -1,5 +1,5 @@
 /// Unit that register RAL Database components in the IDE
-unit RALDBRegister;
+unit RALDBReg;
 
 {$I ..\core\PascalRAL.inc}
 

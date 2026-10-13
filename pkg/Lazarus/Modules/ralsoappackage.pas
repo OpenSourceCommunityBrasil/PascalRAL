@@ -8,13 +8,13 @@ unit ralsoappackage;
 interface
 
 uses
-  RALSOAPTypes, RALSOAPModule, RALWSDLExporter, RALSOAPClient, RALSOAPActions, RALSOAPReg, LazarusPackageIntf;
+  RALSOAPTypes, RALSOAPModule, RALWSDLExporter, RALSOAPClient, RALSOAPActions, RALModuleSOAPReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALSOAPReg', @RALSOAPReg.Register);
+  RegisterUnit('RALModuleSOAPReg', @RALModuleSOAPReg.Register);
 end;
 
 initialization

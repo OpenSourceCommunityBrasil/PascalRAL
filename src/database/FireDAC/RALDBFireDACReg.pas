@@ -1,12 +1,12 @@
 /// Register unit for FireDAC wrappers
-unit RALDBFireDACLinkReg;
+unit RALDBFireDACReg;
 
 interface
 
 uses
   Classes, SysUtils, VCL.DIalogs,
   DesignEditors, DesignIntf, DSDesign, DB,
-  RALDBFireDAC, RALDBFiredacMemTable, RALDBTypes, RALDBConnection, RALTypes,
+  RALDBFireDAC, RALDBFiredacMemTable, RALStorageTypes, RALDBConnection, RALTypes,
   RALConsts;
 
 type

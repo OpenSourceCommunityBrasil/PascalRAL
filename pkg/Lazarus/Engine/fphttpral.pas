@@ -8,13 +8,13 @@ unit fphttpral;
 interface
 
 uses
-  RALfpHTTPClient, RALfpHTTPRegister, RALfpHTTPServer, LazarusPackageIntf;
+  RALfpHTTPClient, RALfpHTTPReg, RALfpHTTPServer, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALfpHTTPRegister', @RALfpHTTPRegister.Register);
+  RegisterUnit('RALfpHTTPReg', @RALfpHTTPReg.Register);
 end;
 
 initialization

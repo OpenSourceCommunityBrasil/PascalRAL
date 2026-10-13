@@ -326,7 +326,7 @@ type
 implementation
 
 uses
-  RALTools, RALBase64, RALDBTypes;
+  RALTools, RALBase64, RALStorageTypes;
 
 /// Splits a qualified name into prefix and local part
 procedure SplitQName(const AName: StringRAL; out APrefix, ALocal: StringRAL);

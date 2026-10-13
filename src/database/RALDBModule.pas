@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils, DB,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJSON, RALDBTypes,
+  RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJSON, RALStorageTypes,
   RALDBSQLCache, RALStream, RALDBPool;
 
 type

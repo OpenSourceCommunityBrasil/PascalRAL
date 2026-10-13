@@ -196,7 +196,7 @@
         </DelphiCompile>
         <DCCReference Include="UniGUIRAL.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\..\src\engine\unigui\RALUniGUIRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\unigui\RALUniGUIReg.pas"/>
         <DCCReference Include="..\..\..\src\engine\unigui\RALUniGUIServer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

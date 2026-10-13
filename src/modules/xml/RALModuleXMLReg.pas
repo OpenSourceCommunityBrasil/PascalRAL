@@ -1,5 +1,5 @@
 /// Registers the XML storage link in the IDE.
-unit RALXMLReg;
+unit RALModuleXMLReg;
 
 {$I ..\..\core\PascalRAL.inc}
 

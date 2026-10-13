@@ -197,7 +197,7 @@
         <DCCReference Include="..\..\..\src\modules\soap\RALWSDLExporter.pas"/>
         <DCCReference Include="..\..\..\src\modules\soap\RALSOAPClient.pas"/>
         <DCCReference Include="..\..\..\src\modules\soap\RALSOAPActions.pas"/>
-        <DCCReference Include="..\..\..\src\modules\soap\RALSOAPReg.pas"/>
+        <DCCReference Include="..\..\..\src\modules\soap\RALModuleSOAPReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

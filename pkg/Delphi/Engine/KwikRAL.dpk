@@ -33,6 +33,6 @@ requires
 
 contains
   RALKwikClient in '..\..\..\src\engine\kwik\RALKwikClient.pas',
-  RALKwikRegister in '..\..\..\src\engine\kwik\RALKwikRegister.pas';
+  RALKwikReg in '..\..\..\src\engine\kwik\RALKwikReg.pas';
 
 end.

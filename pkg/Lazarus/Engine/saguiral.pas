@@ -8,13 +8,13 @@ unit saguiral;
 interface
 
 uses
-  RALSaguiServer, RALSaguiRegister, LazarusPackageIntf;
+  RALSaguiServer, RALSaguiReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALSaguiRegister', @RALSaguiRegister.Register);
+  RegisterUnit('RALSaguiReg', @RALSaguiReg.Register);
 end;
 
 initialization

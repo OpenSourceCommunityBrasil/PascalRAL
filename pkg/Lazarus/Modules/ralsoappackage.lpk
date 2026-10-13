@@ -39,9 +39,9 @@
         <UnitName Value="RALSOAPActions"/>
       </Item5>
       <Item6>
-        <Filename Value="..\..\..\src\modules\soap\RALSOAPReg.pas"/>
+        <Filename Value="..\..\..\src\modules\soap\RALModuleSOAPReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALSOAPReg"/>
+        <UnitName Value="RALModuleSOAPReg"/>
       </Item6>
     </Files>
     <CompatibilityMode Value="True"/>

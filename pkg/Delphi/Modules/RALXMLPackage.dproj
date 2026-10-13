@@ -194,7 +194,7 @@
         <DCCReference Include="..\..\..\src\modules\xml\RALXMLWriter.pas"/>
         <DCCReference Include="..\..\..\src\modules\xml\RALXML.pas"/>
         <DCCReference Include="..\..\..\src\modules\xml\RALStorageXML.pas"/>
-        <DCCReference Include="..\..\..\src\modules\xml\RALXMLReg.pas"/>
+        <DCCReference Include="..\..\..\src\modules\xml\RALModuleXMLReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

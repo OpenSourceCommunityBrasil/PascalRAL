@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils, FMTBcd,
-  RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
+  RALTypes, RALStorage, RALTools, RALMIMETypes, RALStorageTypes, RALBase64, RALStream;
 
 type
 
@@ -252,7 +252,7 @@ begin
     Exit;
 
   case FFormatOptions.DateTimeFormat of
-    // whole seconds, or with the decimals of the milliseconds (see RALDBTypes)
+    // whole seconds, or with the decimals of the milliseconds (see RALStorageTypes)
     dtfUnix:
       begin
         Result := TryStrToFloat(string(vText), vSeconds, RALInvariantFormat);

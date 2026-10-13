@@ -1,5 +1,5 @@
 /// Unit that register RAL net.http Engine components in the IDE
-unit RALNetHTTPRegister;
+unit RALNetHTTPReg;
 
 interface
 

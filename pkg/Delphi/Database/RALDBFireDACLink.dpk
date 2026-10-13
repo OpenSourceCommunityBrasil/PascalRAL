@@ -34,7 +34,7 @@ requires
 
 contains
   RALDBFireDAC in '..\..\..\src\database\FireDAC\RALDBFireDAC.pas',
-  RALDBFireDACLinkReg in '..\..\..\src\database\FireDAC\RALDBFireDACLinkReg.pas',
+  RALDBFireDACReg in '..\..\..\src\database\FireDAC\RALDBFireDACReg.pas',
   RALDBFiredacMemTable in '..\..\..\src\database\FireDAC\RALDBFiredacMemTable.pas';
 
 end.

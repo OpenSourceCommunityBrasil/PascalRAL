@@ -34,7 +34,7 @@ requires
 
 contains
   RALIndyClient in '..\..\..\src\engine\indy\RALIndyClient.pas',
-  RALIndyRegister in '..\..\..\src\engine\indy\RALIndyRegister.pas',
+  RALIndyReg in '..\..\..\src\engine\indy\RALIndyReg.pas',
   RALIndyServer in '..\..\..\src\engine\indy\RALIndyServer.pas';
 
 end.

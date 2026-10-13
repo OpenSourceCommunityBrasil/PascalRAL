@@ -8,7 +8,7 @@ uses
   bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, DateUtils, TypInfo, FMTBcd,
-  RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts,
+  RALTypes, RALCustomObjects, RALStorageTypes, RALBase64, RALConsts,
   RALStream;
 
 type

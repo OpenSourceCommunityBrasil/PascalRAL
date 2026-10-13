@@ -8,13 +8,13 @@ unit raldbzeoslink;
 interface
 
 uses
-  RALDBZeos, RALDBZeosLinkReg, RALDBZeosMemTable, LazarusPackageIntf;
+  RALDBZeos, RALDBZeosReg, RALDBZeosMemTable, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALDBZeosLinkReg', @RALDBZeosLinkReg.Register);
+  RegisterUnit('RALDBZeosReg', @RALDBZeosReg.Register);
 end;
 
 initialization

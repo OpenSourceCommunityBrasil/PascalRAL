@@ -8,13 +8,13 @@ unit ralxmlpackage;
 interface
 
 uses
-  RALXMLReader, RALXMLWriter, RALXML, RALStorageXML, RALXMLReg, LazarusPackageIntf;
+  RALXMLReader, RALXMLWriter, RALXML, RALStorageXML, RALModuleXMLReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALXMLReg', @RALXMLReg.Register);
+  RegisterUnit('RALModuleXMLReg', @RALModuleXMLReg.Register);
 end;
 
 initialization

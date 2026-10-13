@@ -23,9 +23,9 @@
     <Version Major="2"/>
     <Files Count="4">
       <Item1>
-        <Filename Value="..\..\..\src\database\sqldb\RALDBSQLDBLinkReg.pas"/>
+        <Filename Value="..\..\..\src\database\sqldb\RALDBSQLDBReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALDBSQLDBLinkReg"/>
+        <UnitName Value="RALDBSQLDBReg"/>
       </Item1>
       <Item2>
         <Filename Value="raldbpackage.lrs"/>

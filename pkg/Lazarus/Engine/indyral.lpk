@@ -36,9 +36,9 @@
         <UnitName Value="RALIndyClient"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\engine\indy\RALIndyRegister.pas"/>
+        <Filename Value="..\..\..\src\engine\indy\RALIndyReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALIndyRegister"/>
+        <UnitName Value="RALIndyReg"/>
       </Item3>
       <Item4>
         <Filename Value="..\..\..\src\engine\indy\RALIndyServer.pas"/>

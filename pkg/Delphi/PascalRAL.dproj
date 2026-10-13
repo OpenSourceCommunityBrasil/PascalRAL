@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{1925C1DA-9CCF-474B-B024-33CF54B0DC81}</ProjectGuid>
         <MainSource>PascalRAL.dpk</MainSource>
@@ -222,6 +222,7 @@
         <DCCReference Include="..\..\src\storage\RALStorageCSV.pas"/>
         <DCCReference Include="..\..\src\storage\RALStorageJSON.pas"/>
         <DCCReference Include="..\..\src\storage\RALStorageBIN.pas"/>
+        <DCCReference Include="..\..\src\storage\RALStorageTypes.pas"/>
         <DCCReference Include="..\..\src\storage\RALDBTypes.pas"/>
         <DCCReference Include="..\..\src\crypto\RALHashes.pas"/>
         <DCCReference Include="..\..\src\common\RALHexadecimal.pas"/>

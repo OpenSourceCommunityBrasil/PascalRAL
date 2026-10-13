@@ -10,7 +10,7 @@ uses
   Classes, SysUtils, DB,
   BufDataset, XMLDatapacketReader,
   RALStorage, RALTools, RALTypes, RALResponse, RALMIMETypes,
-  RALStorageBIN, RALStorageJSON, RALDBTypes, RALDBSQLCache,
+  RALStorageBIN, RALStorageJSON, RALStorageTypes, RALDBSQLCache,
   RALDBConnection, RALConsts;
 
 type

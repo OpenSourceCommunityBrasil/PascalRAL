@@ -8,14 +8,14 @@ unit MsQuicRAL;
 interface
 
 uses
-  MsQuic, RALMsQuicClient, RALMsQuicRegister, RALMsQuicServer,
+  MsQuic, RALMsQuicClient, RALMsQuicReg, RALMsQuicServer,
   LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('RALMsQuicRegister', @RALMsQuicRegister.Register);
+  RegisterUnit('RALMsQuicReg', @RALMsQuicReg.Register);
 end;
 
 initialization

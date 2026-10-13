@@ -189,7 +189,7 @@
         </DelphiCompile>
         <DCCReference Include="SaguiRAL.dcr"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
-        <DCCReference Include="..\..\..\src\engine\sagui\RALSaguiRegister.pas"/>
+        <DCCReference Include="..\..\..\src\engine\sagui\RALSaguiReg.pas"/>
         <DCCReference Include="..\..\..\src\engine\sagui\RALSaguiServer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

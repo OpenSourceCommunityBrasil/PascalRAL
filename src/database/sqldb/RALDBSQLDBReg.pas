@@ -1,4 +1,4 @@
-unit RALDBSQLDBLinkReg;
+unit RALDBSQLDBReg;
 
 {$mode ObjFPC}{$H+}
 
@@ -9,7 +9,7 @@ uses
   LResources, ComponentEditors, FieldsEditor, PropEdits,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBSQLDB, RALDBBufDataset, RALDBTypes, RALDBConnection, RALTypes, RALConsts;
+  RALDBSQLDB, RALDBBufDataset, RALStorageTypes, RALDBConnection, RALTypes, RALConsts;
 
 type
 

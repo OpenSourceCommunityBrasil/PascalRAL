@@ -26,9 +26,9 @@
         <UnitName Value="RALStorageBSON"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\..\src\storage\bson\RALBSONReg.pas"/>
+        <Filename Value="..\..\..\src\storage\bson\RALStorageBSONReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALBSONReg"/>
+        <UnitName Value="RALStorageBSONReg"/>
       </Item3>
     </Files>
     <CompatibilityMode Value="True"/>

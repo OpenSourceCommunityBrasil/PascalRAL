@@ -10,7 +10,7 @@ interface
 uses
   Classes, SysUtils, DB,
   ZDataset,
-  RALStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALDBTypes,
+  RALStorage, RALRequest, RALClient, RALTypes, RALResponse, RALMIMETypes, RALStorageTypes,
   RALTools, RALDBConnection, RALDBSQLCache, RALConsts;
 
 type

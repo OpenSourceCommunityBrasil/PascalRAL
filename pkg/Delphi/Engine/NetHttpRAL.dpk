@@ -34,6 +34,6 @@ requires
 
 contains
   RALnetHTTPClient in '..\..\..\src\engine\netHTTP\RALnetHTTPClient.pas',
-  RALNetHTTPRegister in '..\..\..\src\engine\netHTTP\RALNetHTTPRegister.pas';
+  RALNetHTTPReg in '..\..\..\src\engine\netHTTP\RALNetHTTPReg.pas';
 
 end.

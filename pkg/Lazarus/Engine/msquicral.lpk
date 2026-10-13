@@ -40,9 +40,9 @@
         <UnitName Value="RALMsQuicClient"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\..\src\engine\msquic\RALMsQuicRegister.pas"/>
+        <Filename Value="..\..\..\src\engine\msquic\RALMsQuicReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALMsQuicRegister"/>
+        <UnitName Value="RALMsQuicReg"/>
       </Item4>
       <Item5>
         <Filename Value="..\..\..\src\engine\msquic\RALMsQuicServer.pas"/>

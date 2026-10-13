@@ -190,7 +190,7 @@
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="PascalRALDsgn.dcp"/>
         <DCCReference Include="RALDBPackage.dcp"/>
-        <DCCReference Include="..\..\..\src\storage\bson\RALBSONReg.pas"/>
+        <DCCReference Include="..\..\..\src\storage\bson\RALStorageBSONReg.pas"/>
         <DCCReference Include="..\..\..\src\storage\bson\RALStorageBSON.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

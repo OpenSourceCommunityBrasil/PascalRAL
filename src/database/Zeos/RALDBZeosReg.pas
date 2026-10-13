@@ -1,5 +1,5 @@
 ﻿/// Register unit for Zeos Wrapping components
-unit RALDBZeosLinkReg;
+unit RALDBZeosReg;
 
 {$IFDEF FPC}
 {$mode ObjFPC}{$H+}
@@ -14,7 +14,7 @@ uses
     DesignEditors, DesignIntf, DSDesign, DB,
   {$ENDIF}
   Classes, SysUtils, RALDBZeos, RALDBZeosMemTable, ZAbstractConnection,
-  RALTypes, RALDBTypes, RALDBConnection, RALConsts;
+  RALTypes, RALStorageTypes, RALDBConnection, RALConsts;
 
 type
 

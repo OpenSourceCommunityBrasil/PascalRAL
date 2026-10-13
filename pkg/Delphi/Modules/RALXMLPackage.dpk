@@ -40,6 +40,6 @@ contains
   RALXMLWriter in '..\..\..\src\modules\xml\RALXMLWriter.pas',
   RALXML in '..\..\..\src\modules\xml\RALXML.pas',
   RALStorageXML in '..\..\..\src\modules\xml\RALStorageXML.pas',
-  RALXMLReg in '..\..\..\src\modules\xml\RALXMLReg.pas';
+  RALModuleXMLReg in '..\..\..\src\modules\xml\RALModuleXMLReg.pas';
 
 end.

@@ -35,9 +35,9 @@
         <UnitName Value="RALStorageXML"/>
       </Item4>
       <Item5>
-        <Filename Value="..\..\..\src\modules\xml\RALXMLReg.pas"/>
+        <Filename Value="..\..\..\src\modules\xml\RALModuleXMLReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="RALXMLReg"/>
+        <UnitName Value="RALModuleXMLReg"/>
       </Item5>
     </Files>
     <CompatibilityMode Value="True"/>

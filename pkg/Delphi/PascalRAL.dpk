@@ -83,6 +83,7 @@ contains
   RALStorageCSV in '..\..\src\storage\RALStorageCSV.pas',
   RALStorageJSON in '..\..\src\storage\RALStorageJSON.pas',
   RALStorageBIN in '..\..\src\storage\RALStorageBIN.pas',
+  RALStorageTypes in '..\..\src\storage\RALStorageTypes.pas',
   RALDBTypes in '..\..\src\storage\RALDBTypes.pas',
   RALHashes in '..\..\src\crypto\RALHashes.pas',
   RALHexadecimal in '..\..\src\common\RALHexadecimal.pas',

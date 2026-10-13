@@ -15,7 +15,7 @@ uses
   {$ELSE}{$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait, {$ENDIF}
   {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALDBBase, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALStorageTypes, RALServer, RALDBBase, RALRequest, RALResponse,
   RALConsts,
   System.SyncObjs;
 

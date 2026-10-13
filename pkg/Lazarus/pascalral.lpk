@@ -25,7 +25,7 @@
     </CompilerOptions>
     <Description Value="Complete component suite for quick development of n-tier applications featuring modern server, client, security, documentation and many more tools!"/>
     <Version Major="2"/>
-    <Files Count="59">
+    <Files Count="60">
       <Item1>
         <Filename Value="..\..\src\core\RALClient.pas"/>
         <UnitName Value="RALClient"/>
@@ -239,8 +239,8 @@
         <UnitName Value="RALCRC32"/>
       </Item53>
       <Item54>
-        <Filename Value="..\..\src\storage\RALDBTypes.pas"/>
-        <UnitName Value="RALDBTypes"/>
+        <Filename Value="..\..\src\storage\RALStorageTypes.pas"/>
+        <UnitName Value="RALStorageTypes"/>
       </Item54>
       <Item55>
         <Filename Value="..\..\src\crypto\RALHashBase.pas"/>
@@ -262,6 +262,10 @@
         <Filename Value="..\..\src\plugins\RALConcurrency.pas"/>
         <UnitName Value="RALConcurrency"/>
       </Item59>
+      <Item60>
+        <Filename Value="..\..\src\storage\RALDBTypes.pas"/>
+        <UnitName Value="RALDBTypes"/>
+      </Item60>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

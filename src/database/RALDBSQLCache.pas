@@ -10,7 +10,7 @@ uses
   bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
-  RALDBTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes,
+  RALStorageTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes,
   RALStorage;
 
 type
@@ -674,7 +674,7 @@ begin
 
           // datatype - a byte of the request body, checked before it becomes
           // an enum: the value below is read by a case over it, and on Win32
-          // a type from 128 up was folded onto another one (see RALDBTypes)
+          // a type from 128 up was folded onto another one (see RALStorageTypes)
           vTypeByte := vWriter.ReadByte;
           if not RALIsFieldTypeOrdinal(vTypeByte) then
             raise Exception.Create(emStorageInvalidBinary);

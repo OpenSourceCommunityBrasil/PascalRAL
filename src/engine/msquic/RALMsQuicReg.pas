@@ -1,5 +1,5 @@
-/// Unit that register RAL Sagui Engine components in the IDE
-unit RALSaguiRegister;
+/// Unit that register RAL QUIC Engine components in the IDE
+unit RALMsQuicReg;
 
 interface
 
@@ -8,7 +8,7 @@ uses
   LResources,
   {$ENDIF}
   Classes,
-  RALSaguiServer;
+  RALMsQuicServer;
 
 procedure Register;
 
@@ -16,12 +16,12 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Server', [TRALSaguiServer]);
+  RegisterComponents('RAL - Server', [TRALMsQuicServer]);
 end;
 
 {$IFDEF FPC}
 initialization
-{$I SaguiRAL.lrs}
+{$I MsQuicRAL.lrs}
 {$ENDIF}
 
 end.

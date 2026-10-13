@@ -14,7 +14,7 @@ uses
   uADCompClient, uADCompDataSet, uADStanStorage, uADStanStorageXML, uADStanIntf,
   {$ENDIF}
   RALStorage, RALTypes, RALTools, RALDBConnection, RALDBSQLCache, RALMIMETypes,
-  RALDBTypes, RALResponse, RALConsts;
+  RALStorageTypes, RALResponse, RALConsts;
 
 type
   { TRALDBFDMemTable }

@@ -27,9 +27,9 @@
         <UnitName Value="RALDBZeos"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\..\src\database\Zeos\RALDBZeosLinkReg.pas"/>
+        <Filename Value="..\..\..\src\database\Zeos\RALDBZeosReg.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="raldbzeoslinkreg"/>
+        <UnitName Value="RALDBZeosReg"/>
       </Item2>
       <Item3>
         <Filename Value="raldbpackage.lrs"/>

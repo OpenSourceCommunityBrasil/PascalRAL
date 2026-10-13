@@ -1,5 +1,5 @@
 /// Unit that register RAL Indy Engine components in the IDE
-unit RALIndyRegister;
+unit RALIndyReg;
 
 interface
 
