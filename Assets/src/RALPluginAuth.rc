@@ -1,0 +1,8 @@
+TRALClientBasicAuth BITMAP "..\components\base\client\TRALClientBasicAuth.bmp"
+TRALClientJWTAuth BITMAP "..\components\base\client\TRALClientJWTAuth.bmp"
+TRALClientDigest BITMAP "..\components\base\client\TRALClientDigest.bmp"
+TRALClientOAuth2 BITMAP "..\components\base\client\TRALClientOAuth2.bmp"
+TRALServerBasicAuth BITMAP "..\components\base\server\TRALServerBasicAuth.bmp"
+TRALServerJWTAuth BITMAP "..\components\base\server\TRALServerJWTAuth.bmp"
+TRALServerDigest BITMAP "..\components\base\server\TRALServerDigest.bmp"
+TRALServerOAuth2 BITMAP "..\components\base\server\TRALServerOAuth2.bmp"

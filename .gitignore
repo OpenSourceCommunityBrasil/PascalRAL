@@ -75,3 +75,6 @@ bak/
 
 # build output of the packages
 compiled/
+
+# Local material for AI agents, never committed
+.agents/local/

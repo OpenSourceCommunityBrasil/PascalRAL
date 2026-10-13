@@ -1,0 +1,3 @@
+TRALStorageJSONLink BITMAP "..\components\base\storage\TRALStorageJSONLink.bmp"
+TRALStorageBINLink BITMAP "..\components\base\storage\TRALStorageBINLink.bmp"
+TRALStorageCSVLink BITMAP "..\components\base\storage\TRALStorageCSVLink.bmp"
