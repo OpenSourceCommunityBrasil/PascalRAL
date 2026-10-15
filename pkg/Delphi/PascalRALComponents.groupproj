@@ -9,6 +9,9 @@
         <Projects Include="PascalRALDsgn.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
+        <Projects Include="Wizard\RALWizardDsgn.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
         <Projects Include="Engine\IndyRAL.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
@@ -33,12 +36,6 @@
         <Projects Include="Engine\UniGUIRAL.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
-        <Projects Include="Plugins\RALPluginAuthPackage.dproj">
-            <Dependencies>PascalRAL.dproj</Dependencies>
-        </Projects>
-        <Projects Include="Plugins\RALPluginTLSPackage.dproj">
-            <Dependencies>PascalRAL.dproj</Dependencies>
-        </Projects>
         <Projects Include="Storage\RALStoragePackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
@@ -48,10 +45,13 @@
         <Projects Include="Database\RALDBPackage.dproj">
             <Dependencies>Storage\RALStoragePackage.dproj</Dependencies>
         </Projects>
-        <Projects Include="Database\RALDBDsgn.dproj">
+        <Projects Include="Database\RALDBFireDACPackage.dproj">
             <Dependencies>Database\RALDBPackage.dproj</Dependencies>
         </Projects>
-        <Projects Include="Database\RALDBFireDACPackage.dproj">
+        <Projects Include="Database\RALDBZeosPackage.dproj">
+            <Dependencies>Database\RALDBPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Database\RALDBDsgn.dproj">
             <Dependencies>Database\RALDBPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="Database\RALDBFireDACDsgn.dproj">
@@ -60,11 +60,14 @@
         <Projects Include="Database\RALDBFireDACDAOPackage.dproj">
             <Dependencies>Database\RALDBPackage.dproj</Dependencies>
         </Projects>
-        <Projects Include="Database\RALDBZeosPackage.dproj">
-            <Dependencies>Database\RALDBPackage.dproj</Dependencies>
-        </Projects>
         <Projects Include="Database\RALDBZeosDsgn.dproj">
             <Dependencies>Database\RALDBZeosPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Plugins\RALPluginAuthPackage.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Plugins\RALPluginTLSPackage.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Modules\RALModuleWebPackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
@@ -85,9 +88,6 @@
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
         <Projects Include="Compression\RALCompressBrotliPackage.dproj">
-            <Dependencies>PascalRAL.dproj</Dependencies>
-        </Projects>
-        <Projects Include="Wizard\RALWizardDsgn.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
     </ItemGroup>
@@ -115,6 +115,15 @@
     </Target>
     <Target Name="PascalRALDsgn:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="PascalRALDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALWizardDsgn" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Wizard\RALWizardDsgn.dproj"/>
+    </Target>
+    <Target Name="RALWizardDsgn:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Wizard\RALWizardDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALWizardDsgn:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Wizard\RALWizardDsgn.dproj" Targets="Make"/>
     </Target>
     <Target Name="IndyRAL" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Engine\IndyRAL.dproj"/>
@@ -188,24 +197,6 @@
     <Target Name="UniGUIRAL:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Engine\UniGUIRAL.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALPluginAuthPackage" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj"/>
-    </Target>
-    <Target Name="RALPluginAuthPackage:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALPluginAuthPackage:Make" DependsOnTargets="PascalRAL:Make">
-        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="RALPluginTLSPackage" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj"/>
-    </Target>
-    <Target Name="RALPluginTLSPackage:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALPluginTLSPackage:Make" DependsOnTargets="PascalRAL:Make">
-        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj" Targets="Make"/>
-    </Target>
     <Target Name="RALStoragePackage" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Storage\RALStoragePackage.dproj"/>
     </Target>
@@ -233,15 +224,6 @@
     <Target Name="RALDBPackage:Make" DependsOnTargets="RALStoragePackage:Make">
         <MSBuild Projects="Database\RALDBPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBDsgn" DependsOnTargets="RALDBPackage">
-        <MSBuild Projects="Database\RALDBDsgn.dproj"/>
-    </Target>
-    <Target Name="RALDBDsgn:Clean" DependsOnTargets="RALDBPackage:Clean">
-        <MSBuild Projects="Database\RALDBDsgn.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALDBDsgn:Make" DependsOnTargets="RALDBPackage:Make">
-        <MSBuild Projects="Database\RALDBDsgn.dproj" Targets="Make"/>
-    </Target>
     <Target Name="RALDBFireDACPackage" DependsOnTargets="RALDBPackage">
         <MSBuild Projects="Database\RALDBFireDACPackage.dproj"/>
     </Target>
@@ -250,6 +232,24 @@
     </Target>
     <Target Name="RALDBFireDACPackage:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="Database\RALDBFireDACPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALDBZeosPackage" DependsOnTargets="RALDBPackage">
+        <MSBuild Projects="Database\RALDBZeosPackage.dproj"/>
+    </Target>
+    <Target Name="RALDBZeosPackage:Clean" DependsOnTargets="RALDBPackage:Clean">
+        <MSBuild Projects="Database\RALDBZeosPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALDBZeosPackage:Make" DependsOnTargets="RALDBPackage:Make">
+        <MSBuild Projects="Database\RALDBZeosPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALDBDsgn" DependsOnTargets="RALDBPackage">
+        <MSBuild Projects="Database\RALDBDsgn.dproj"/>
+    </Target>
+    <Target Name="RALDBDsgn:Clean" DependsOnTargets="RALDBPackage:Clean">
+        <MSBuild Projects="Database\RALDBDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALDBDsgn:Make" DependsOnTargets="RALDBPackage:Make">
+        <MSBuild Projects="Database\RALDBDsgn.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALDBFireDACDsgn" DependsOnTargets="RALDBFireDACPackage">
         <MSBuild Projects="Database\RALDBFireDACDsgn.dproj"/>
@@ -269,15 +269,6 @@
     <Target Name="RALDBFireDACDAOPackage:Make" DependsOnTargets="RALDBPackage:Make">
         <MSBuild Projects="Database\RALDBFireDACDAOPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALDBZeosPackage" DependsOnTargets="RALDBPackage">
-        <MSBuild Projects="Database\RALDBZeosPackage.dproj"/>
-    </Target>
-    <Target Name="RALDBZeosPackage:Clean" DependsOnTargets="RALDBPackage:Clean">
-        <MSBuild Projects="Database\RALDBZeosPackage.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALDBZeosPackage:Make" DependsOnTargets="RALDBPackage:Make">
-        <MSBuild Projects="Database\RALDBZeosPackage.dproj" Targets="Make"/>
-    </Target>
     <Target Name="RALDBZeosDsgn" DependsOnTargets="RALDBZeosPackage">
         <MSBuild Projects="Database\RALDBZeosDsgn.dproj"/>
     </Target>
@@ -286,6 +277,24 @@
     </Target>
     <Target Name="RALDBZeosDsgn:Make" DependsOnTargets="RALDBZeosPackage:Make">
         <MSBuild Projects="Database\RALDBZeosDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALPluginAuthPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj"/>
+    </Target>
+    <Target Name="RALPluginAuthPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALPluginAuthPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Plugins\RALPluginAuthPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALPluginTLSPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj"/>
+    </Target>
+    <Target Name="RALPluginTLSPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALPluginTLSPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Plugins\RALPluginTLSPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALModuleWebPackage" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Modules\RALModuleWebPackage.dproj"/>
@@ -350,23 +359,14 @@
     <Target Name="RALCompressBrotliPackage:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Compression\RALCompressBrotliPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALWizardDsgn" DependsOnTargets="PascalRAL">
-        <MSBuild Projects="Wizard\RALWizardDsgn.dproj"/>
-    </Target>
-    <Target Name="RALWizardDsgn:Clean" DependsOnTargets="PascalRAL:Clean">
-        <MSBuild Projects="Wizard\RALWizardDsgn.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="RALWizardDsgn:Make" DependsOnTargets="PascalRAL:Make">
-        <MSBuild Projects="Wizard\RALWizardDsgn.dproj" Targets="Make"/>
-    </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;IndyRAL;SynopseRAL;SaguiRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALPluginAuthPackage;RALPluginTLSPackage;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBDsgn;RALDBFireDACPackage;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosPackage;RALDBZeosDsgn;RALModuleWebPackage;RALModuleSwaggerPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALCompressZStdPackage;RALCompressBrotliPackage;RALWizardDsgn"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;RALWizardDsgn;IndyRAL;SynopseRAL;SaguiRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBFireDACPackage;RALDBZeosPackage;RALDBDsgn;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosDsgn;RALPluginAuthPackage;RALPluginTLSPackage;RALModuleWebPackage;RALModuleSwaggerPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALCompressZStdPackage;RALCompressBrotliPackage"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBDsgn:Clean;RALDBFireDACPackage:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosPackage:Clean;RALDBZeosDsgn:Clean;RALModuleWebPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean;RALWizardDsgn:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;RALWizardDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBFireDACPackage:Clean;RALDBZeosPackage:Clean;RALDBDsgn:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosDsgn:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALModuleWebPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBDsgn:Make;RALDBFireDACPackage:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosPackage:Make;RALDBZeosDsgn:Make;RALModuleWebPackage:Make;RALModuleSwaggerPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make;RALWizardDsgn:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;RALWizardDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBFireDACPackage:Make;RALDBZeosPackage:Make;RALDBDsgn:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosDsgn:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALModuleWebPackage:Make;RALModuleSwaggerPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
