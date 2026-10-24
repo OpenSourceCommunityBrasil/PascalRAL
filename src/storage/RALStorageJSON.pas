@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils, DB, DateUtils, FMTBcd,
   RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALStorageTypes,
-  RALJSON, RALConsts;
+  RALJson, RALConsts;
 
 type
   TRALJSONType = (jtDBWare, jtRAW);
